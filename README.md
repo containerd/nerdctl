@@ -35,6 +35,13 @@ In addition to containerd, the following components should be installed (optiona
 - [CNI plugins](https://github.com/containernetworking/plugins): for internet connectivity.
 - [BuildKit](https://github.com/moby/buildkit): for using `nerdctl build`. BuildKit daemon (`buildkitd`) needs to be running.
 
+## Build
+
+To build nerdctl and output it to _output/nerdctl:
+```console
+# make binaries
+```
+
 ## Motivation
 
 The goal of `nerdctl` is to facilitate experimenting the cutting-edge features of containerd that are not present in Docker.
