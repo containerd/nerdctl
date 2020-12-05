@@ -59,6 +59,9 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
   - `-a` (WIP: Ignored and always assumed to be true)
   - `--no-trunc`
 
+- `nerdctl rm`
+  - `-f`
+
 - `nerdctl pull`
 
 - `nerdctl run`
