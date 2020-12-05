@@ -67,6 +67,7 @@ func newApp() *cli.App {
 	app.Commands = []*cli.Command{
 		buildCommand,
 		psCommand,
+		rmCommand,
 		pullCommand,
 		runCommand,
 	}
