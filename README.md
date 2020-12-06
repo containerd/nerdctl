@@ -1,6 +1,6 @@
 # nerdctl: Docker-compatible CLI for containerd
 
-`nerdctl` is a Docker-compatible CLI for [containerd](https://containerd.io).
+`nerdctl` is a Docker-compatible CLI for [contai**nerd**](https://containerd.io).
 
 ## Examples
 
@@ -27,6 +27,8 @@ To list Kubernetes containers:
 
 ## Install
 
+Run `make install`, or just use `go get`:
+
 ```console
 # go get github.com/AkihiroSuda/nerdctl
 ```
@@ -34,13 +36,6 @@ To list Kubernetes containers:
 In addition to containerd, the following components should be installed (optional):
 - [CNI plugins](https://github.com/containernetworking/plugins): for internet connectivity.
 - [BuildKit](https://github.com/moby/buildkit): for using `nerdctl build`. BuildKit daemon (`buildkitd`) needs to be running.
-
-## Build
-
-To build nerdctl and output it to _output/nerdctl:
-```console
-# make binaries
-```
 
 ## Motivation
 
@@ -66,10 +61,10 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
   - `-a` (WIP: Ignored and always assumed to be true)
   - `--no-trunc`
 
+- `nerdctl pull`
+
 - `nerdctl rm`
   - `-f`
-
-- `nerdctl pull`
 
 - `nerdctl run`
   - `-i` (WIP: always needs to be true)
