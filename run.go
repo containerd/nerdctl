@@ -26,6 +26,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/containerd/console"
@@ -77,6 +78,10 @@ var runCommand = &cli.Command{
 			Usage: "Set custom DNS servers (only meaningful for \"bridge\" network)",
 			Value: cli.NewStringSlice("8.8.8.8", "1.1.1.1"),
 		},
+		&cli.StringSliceFlag{
+			Name:  "security-opt",
+			Usage: "Set security options (Currently enable Seccomp custom profile)",
+		},
 	},
 }
 
@@ -105,7 +110,6 @@ func runAction(clicontext *cli.Context) error {
 		oci.WithDefaultSpec(),
 		oci.WithDefaultUnixDevices,
 		oci.WithImageConfig(ensured.Image),
-		seccomp.WithDefaultProfile(),
 	)
 	cOpts = append(cOpts,
 		containerd.WithImage(ensured.Image),
@@ -151,6 +155,16 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, withCustomResolvConf(resolvConf.Name()))
 	default:
 		return errors.Errorf("unknown network %q", netstr)
+	}
+
+	securityOpts := clicontext.StringSlice("security-opt")
+	if securityOpts != nil {
+		securityOptsMaps := ConvertKVStringsToMap(securityOpts)
+		secopts := GenerateSecurityOps(securityOptsMaps)
+		opts = append(opts, secopts...)
+	} else {
+		// append the default profiles if no security-opt
+		opts = append(opts, seccomp.WithDefaultProfile())
 	}
 
 	var s specs.Spec
@@ -240,4 +254,33 @@ func withCustomResolvConf(src string) func(context.Context, oci.Client, *contain
 		})
 		return nil
 	}
+}
+
+func GenerateSecurityOps(securityOptsMaps map[string]string) []oci.SpecOpts {
+	var opts []oci.SpecOpts
+	seccompProfile := securityOptsMaps["seccomp"]
+	if seccompProfile != "" {
+		if seccompProfile != "unconfined" {
+			opts = append(opts, seccomp.WithProfile(seccompProfile))
+		}
+	} else {
+		opts = append(opts, seccomp.WithDefaultProfile())
+	}
+	return opts
+}
+
+// ConvertKVStringsToMap is from https://github.com/moby/moby/blob/master/runconfig/opts/parse.go
+// ConvertKVStringsToMap converts ["key=value"] to {"key":"value"}
+func ConvertKVStringsToMap(values []string) map[string]string {
+	result := make(map[string]string, len(values))
+	for _, value := range values {
+		kv := strings.SplitN(value, "=", 2)
+		if len(kv) == 1 {
+			result[kv[0]] = ""
+		} else {
+			result[kv[0]] = kv[1]
+		}
+	}
+
+	return result
 }
