@@ -27,7 +27,7 @@ To list Kubernetes containers:
 
 ## Install
 
-Run `make install`, or just use `go get`:
+Run `make && sudo make install`, or just use `go get`:
 
 ```console
 # go get github.com/AkihiroSuda/nerdctl
