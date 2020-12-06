@@ -54,7 +54,7 @@ binaries: nerdctl
 
 build: nerdctl
 
-install-nerdctl: nerdctl
+install-nerdctl:
 	install -D -m 755 $(CURDIR)/_output/nerdctl $(DESTDIR)$(BINDIR)/nerdctl
 
 install: install-nerdctl
