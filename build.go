@@ -19,11 +19,12 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/images/archive"
 	"github.com/urfave/cli/v2"
 )
 
@@ -50,8 +51,6 @@ func buildAction(clicontext *cli.Context) error {
 		return errors.New("tag needs to be specified")
 	}
 	sn := containerd.DefaultSnapshotter
-	containerdAddr := strings.TrimPrefix(clicontext.String("host"), "unix://")
-	ns := clicontext.String("namespace")
 
 	buildctlCmd := exec.Command("buildctl",
 		"build",
@@ -61,30 +60,48 @@ func buildAction(clicontext *cli.Context) error {
 		"--output=type=docker,name="+tag)
 	buildctlCmd.Env = os.Environ()
 
-	// FIXME: do not rely on ctr command
-	ctrCmd := exec.Command("ctr",
-		"--address", containerdAddr,
-		"--namespace", ns,
-		"images",
-		"import",
-		"--snapshotter", sn,
-		"-")
-	ctrCmd.Env = os.Environ()
-
 	buildctlStdout, err := buildctlCmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
 	buildctlCmd.Stderr = clicontext.App.Writer
-	ctrCmd.Stdin = buildctlStdout
-	ctrCmd.Stdout = clicontext.App.Writer
-	ctrCmd.Stderr = clicontext.App.ErrWriter
 
 	if err := buildctlCmd.Start(); err != nil {
 		return err
 	}
-	if err := ctrCmd.Start(); err != nil {
+
+	// Load images from buildkit tar stream
+	client, ctx, cancel, err := newClient(clicontext)
+	if err != nil {
 		return err
 	}
-	return ctrCmd.Wait()
+	defer cancel()
+
+	var opts []containerd.ImportOpt
+	opts = append(opts, containerd.WithDigestRef(archive.DigestTranslator(sn)))
+
+	imgs, err := client.Import(ctx, buildctlStdout, opts...)
+	if err != nil {
+		return err
+	}
+
+	// Wait exporting images to containerd
+	err = buildctlCmd.Wait()
+	if err != nil {
+		return err
+	}
+
+	for _, img := range imgs {
+		image := containerd.NewImage(client, img)
+
+		// TODO: Show unpack status
+		fmt.Printf("unpacking %s (%s)...", img.Name, img.Target.Digest)
+		err = image.Unpack(ctx, sn)
+		if err != nil {
+			return err
+		}
+		fmt.Println("done")
+	}
+
+	return nil
 }
