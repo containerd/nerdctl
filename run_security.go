@@ -20,10 +20,15 @@ package main
 import (
 	"strconv"
 
+	"github.com/containerd/containerd/contrib/apparmor"
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
+
+// defaultAppArmorProfileName corresponds to CRI's profile name.
+const defaultAppArmorProfileName = "cri-containerd.apparmor.d"
 
 var privilegedOpts = []oci.SpecOpts{
 	oci.WithPrivileged,
@@ -34,12 +39,31 @@ var privilegedOpts = []oci.SpecOpts{
 
 func generateSecurityOpts(securityOptsMap map[string]string) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
-	if seccompProfile := securityOptsMap["seccomp"]; seccompProfile != "" {
+	if seccompProfile, ok := securityOptsMap["seccomp"]; ok {
+		if seccompProfile == "" {
+			return nil, errors.New("invalid security-opt \"seccomp\"")
+		}
+
 		if seccompProfile != "unconfined" {
 			opts = append(opts, seccomp.WithProfile(seccompProfile))
 		}
 	} else {
 		opts = append(opts, seccomp.WithDefaultProfile())
+	}
+
+	aaSupported := hostSupportsAppArmor()
+	if aaProfile, ok := securityOptsMap["apparmor"]; ok {
+		if aaProfile == "" {
+			return nil, errors.New("invalid security-opt \"apparmor\"")
+		}
+		if aaProfile != "unconfined" {
+			if !aaSupported {
+				logrus.Warnf("The host does not support AppArmor. Ignoring profile %q", aaProfile)
+			}
+			opts = append(opts, apparmor.WithProfile(aaProfile))
+		}
+	} else if aaSupported {
+		opts = append(opts, apparmor.WithDefaultProfile(defaultAppArmorProfileName))
 	}
 
 	nnp := false

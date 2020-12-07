@@ -74,6 +74,7 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
   - `--dns`
   - `--pull=(always|missing|never)`
   - `--security-opt seccomp`
+  - `--security-opt apparmor`
   - `--security-opt no-new-privileges`
   - `--privileged`
 

@@ -78,7 +78,7 @@ var runCommand = &cli.Command{
 		},
 		&cli.StringSliceFlag{
 			Name:  "security-opt",
-			Usage: "Set security options (Currently enable Seccomp custom profile)",
+			Usage: "Security options",
 		},
 		&cli.BoolFlag{
 			Name:  "privileged",
