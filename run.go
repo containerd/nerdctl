@@ -160,7 +160,12 @@ func runAction(clicontext *cli.Context) error {
 	}
 
 	securityOptsMaps := ConvertKVStringsToMap(clicontext.StringSlice("security-opt"))
-	opts = append(opts, generateSecurityOpts(securityOptsMaps)...)
+	if secOpts, err := generateSecurityOpts(securityOptsMaps); err != nil {
+		return err
+	} else {
+		opts = append(opts, secOpts...)
+	}
+
 	if clicontext.Bool("privileged") {
 		opts = append(opts, privilegedOpts...)
 	}

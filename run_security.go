@@ -18,8 +18,11 @@
 package main
 
 import (
+	"strconv"
+
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
+	"github.com/pkg/errors"
 )
 
 var privilegedOpts = []oci.SpecOpts{
@@ -29,14 +32,30 @@ var privilegedOpts = []oci.SpecOpts{
 	oci.WithNewPrivileges,
 }
 
-func generateSecurityOpts(securityOptsMaps map[string]string) []oci.SpecOpts {
+func generateSecurityOpts(securityOptsMap map[string]string) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
-	if seccompProfile := securityOptsMaps["seccomp"]; seccompProfile != "" {
+	if seccompProfile := securityOptsMap["seccomp"]; seccompProfile != "" {
 		if seccompProfile != "unconfined" {
 			opts = append(opts, seccomp.WithProfile(seccompProfile))
 		}
 	} else {
 		opts = append(opts, seccomp.WithDefaultProfile())
 	}
-	return opts
+
+	nnp := false
+	if nnpStr, ok := securityOptsMap["no-new-privileges"]; ok {
+		if nnpStr == "" {
+			nnp = true
+		} else {
+			var err error
+			nnp, err = strconv.ParseBool(nnpStr)
+			if err != nil {
+				return nil, errors.Wrapf(err, "invalid \"no-new-privileges\" value: %q", nnpStr)
+			}
+		}
+	}
+	if !nnp {
+		opts = append(opts, oci.WithNewPrivileges)
+	}
+	return opts, nil
 }
