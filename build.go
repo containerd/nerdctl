@@ -64,7 +64,7 @@ func buildAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	buildctlCmd.Stderr = clicontext.App.Writer
+	buildctlCmd.Stderr = clicontext.App.ErrWriter
 
 	if err := buildctlCmd.Start(); err != nil {
 		return err
@@ -86,8 +86,7 @@ func buildAction(clicontext *cli.Context) error {
 	}
 
 	// Wait exporting images to containerd
-	err = buildctlCmd.Wait()
-	if err != nil {
+	if err = buildctlCmd.Wait(); err != nil {
 		return err
 	}
 
@@ -95,12 +94,12 @@ func buildAction(clicontext *cli.Context) error {
 		image := containerd.NewImage(client, img)
 
 		// TODO: Show unpack status
-		fmt.Printf("unpacking %s (%s)...", img.Name, img.Target.Digest)
+		fmt.Fprintf(clicontext.App.Writer, "unpacking %s (%s)...", img.Name, img.Target.Digest)
 		err = image.Unpack(ctx, sn)
 		if err != nil {
 			return err
 		}
-		fmt.Println("done")
+		fmt.Fprintf(clicontext.App.Writer, "done\n")
 	}
 
 	return nil
