@@ -80,6 +80,10 @@ var runCommand = &cli.Command{
 			Name:  "security-opt",
 			Usage: "Set security options (Currently enable Seccomp custom profile)",
 		},
+		&cli.BoolFlag{
+			Name:  "privileged",
+			Usage: "Give extended privileges to this container",
+		},
 	},
 }
 
@@ -157,6 +161,9 @@ func runAction(clicontext *cli.Context) error {
 
 	securityOptsMaps := ConvertKVStringsToMap(clicontext.StringSlice("security-opt"))
 	opts = append(opts, generateSecurityOpts(securityOptsMaps)...)
+	if clicontext.Bool("privileged") {
+		opts = append(opts, privilegedOpts...)
+	}
 
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)

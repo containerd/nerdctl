@@ -22,6 +22,13 @@ import (
 	"github.com/containerd/containerd/oci"
 )
 
+var privilegedOpts = []oci.SpecOpts{
+	oci.WithPrivileged,
+	oci.WithAllDevicesAllowed,
+	oci.WithHostDevices,
+	oci.WithNewPrivileges,
+}
+
 func generateSecurityOpts(securityOptsMaps map[string]string) []oci.SpecOpts {
 	var opts []oci.SpecOpts
 	if seccompProfile := securityOptsMaps["seccomp"]; seccompProfile != "" {

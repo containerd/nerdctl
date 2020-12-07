@@ -73,6 +73,8 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
   - `--network=(bridge|host|none)`
   - `--dns`
   - `--pull=(always|missing|never)`
+  - `--security-opt seccomp`
+  - `--privileged`
 
 Lots of commands and flags are currently missing. Pull requests are highly welcome.
 
