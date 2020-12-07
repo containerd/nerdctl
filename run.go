@@ -26,14 +26,12 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
-	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
@@ -157,15 +155,8 @@ func runAction(clicontext *cli.Context) error {
 		return errors.Errorf("unknown network %q", netstr)
 	}
 
-	securityOpts := clicontext.StringSlice("security-opt")
-	if securityOpts != nil {
-		securityOptsMaps := ConvertKVStringsToMap(securityOpts)
-		secopts := GenerateSecurityOps(securityOptsMaps)
-		opts = append(opts, secopts...)
-	} else {
-		// append the default profiles if no security-opt
-		opts = append(opts, seccomp.WithDefaultProfile())
-	}
+	securityOptsMaps := ConvertKVStringsToMap(clicontext.StringSlice("security-opt"))
+	opts = append(opts, generateSecurityOpts(securityOptsMaps)...)
 
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)
@@ -254,33 +245,4 @@ func withCustomResolvConf(src string) func(context.Context, oci.Client, *contain
 		})
 		return nil
 	}
-}
-
-func GenerateSecurityOps(securityOptsMaps map[string]string) []oci.SpecOpts {
-	var opts []oci.SpecOpts
-	seccompProfile := securityOptsMaps["seccomp"]
-	if seccompProfile != "" {
-		if seccompProfile != "unconfined" {
-			opts = append(opts, seccomp.WithProfile(seccompProfile))
-		}
-	} else {
-		opts = append(opts, seccomp.WithDefaultProfile())
-	}
-	return opts
-}
-
-// ConvertKVStringsToMap is from https://github.com/moby/moby/blob/master/runconfig/opts/parse.go
-// ConvertKVStringsToMap converts ["key=value"] to {"key":"value"}
-func ConvertKVStringsToMap(values []string) map[string]string {
-	result := make(map[string]string, len(values))
-	for _, value := range values {
-		kv := strings.SplitN(value, "=", 2)
-		if len(kv) == 1 {
-			result[kv[0]] = ""
-		} else {
-			result[kv[0]] = kv[1]
-		}
-	}
-
-	return result
 }
