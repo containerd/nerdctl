@@ -20,11 +20,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -43,6 +45,8 @@ var rmCommand = &cli.Command{
 }
 
 func rmAction(clicontext *cli.Context) error {
+	const idLength = 64
+
 	if clicontext.NArg() == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
@@ -54,7 +58,29 @@ func rmAction(clicontext *cli.Context) error {
 	defer cancel()
 
 	force := clicontext.Bool("force")
+
+	containers, err := client.Containers(ctx)
+	if err != nil {
+		return err
+	}
+	allIDs := make([]string, len(containers))
+	for i, c := range containers {
+		allIDs[i] = c.ID()
+	}
 	for _, id := range clicontext.Args().Slice() {
+		if len(id) < idLength {
+			found := 0
+			for _, ctID := range allIDs {
+				if strings.HasPrefix(ctID, id) {
+					id = ctID
+					found++
+				}
+			}
+			if found > 1 {
+				logrus.Errorf("Ambiguous container ID: %s", id)
+				continue
+			}
+		}
 		if err := removeContainer(ctx, client, id, force); err != nil {
 			return err
 		}
