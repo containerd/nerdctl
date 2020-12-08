@@ -41,7 +41,7 @@ var psCommand = &cli.Command{
 		&cli.BoolFlag{
 			Name:    "all",
 			Aliases: []string{"a"},
-			Usage:   "(Currently ignored and always assumed to be true)",
+			Usage:   "Show all containers (default shows just running)",
 		},
 		&cli.BoolFlag{
 			Name:  "no-trunc",
@@ -65,6 +65,7 @@ func psAction(clicontext *cli.Context) error {
 
 func printContainers(ctx context.Context, clicontext *cli.Context, containers []containerd.Container) error {
 	trunc := !clicontext.Bool("no-trunc")
+	all := clicontext.Bool("all")
 
 	w := tabwriter.NewWriter(os.Stdout, 4, 8, 4, ' ', 0)
 	fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
@@ -84,12 +85,18 @@ func printContainers(ctx context.Context, clicontext *cli.Context, containers []
 		if trunc && len(id) > 12 {
 			id = id[:12]
 		}
+
+		cStatus := containerStatus(ctx, c)
+		if cStatus != "Running" && !all {
+			continue
+		}
+
 		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			id,
 			imageName,
 			containerCommand(spec, trunc),
 			timeSinceInHuman(info.CreatedAt),
-			containerStatus(ctx, c),
+			cStatus,
 			"", // PORTS,
 			"", // NAMES
 		); err != nil {
