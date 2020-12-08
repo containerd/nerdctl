@@ -58,7 +58,7 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
   - `-t`
 
 - `nerdctl ps`
-  - `-a` (WIP: Ignored and always assumed to be true)
+  - `-a, --all`: Show all containers (default shows just running)
   - `--no-trunc`
 
 - `nerdctl pull`
