@@ -19,21 +19,27 @@ package imgutil
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/containerd/containerd"
-	"github.com/pkg/errors"
-
 	"github.com/containerd/containerd/cmd/ctr/commands/content"
+	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes/docker"
+	"github.com/containerd/stargz-snapshotter/fs/source"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 type EnsuredImage struct {
 	Ref         string
 	Image       containerd.Image
 	Snapshotter string
+	Remote      bool // true for stargz
 }
 
 // PullMode is either one of "always", "missing", "never"
@@ -53,6 +59,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 				Ref:         ref,
 				Image:       image,
 				Snapshotter: snapshotter,
+				Remote:      isStargz(snapshotter),
 			}
 			if unpacked, err := image.IsUnpacked(ctx, snapshotter); err == nil && !unpacked {
 				if err := image.Unpack(ctx, snapshotter); err != nil {
@@ -76,24 +83,56 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 	resovlerOpts := docker.ResolverOptions{}
 	resolver := docker.NewResolver(resovlerOpts)
 
-	config := &content.FetchConfig{
-		Resolver:        resolver,
-		ProgressOutput:  stdout,
-		PlatformMatcher: platforms.Default(),
-	}
+	var containerdImage containerd.Image
+	sgz := isStargz(snapshotter)
+	if sgz {
+		h := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			if desc.MediaType != images.MediaTypeDockerSchema1Manifest {
+				fmt.Fprintf(stdout, "fetching %v... %v\n", desc.Digest.String()[:15], desc.MediaType)
+			}
+			return nil, nil
+		})
+		// TODO: support "skip-content-verify"
+		opts := []containerd.RemoteOpt{
+			containerd.WithResolver(resolver),
+			containerd.WithImageHandler(h),
+			containerd.WithSchema1Conversion,
+			containerd.WithPullUnpack,
+			containerd.WithPullSnapshotter(snapshotter),
+			containerd.WithImageHandlerWrapper(source.AppendDefaultLabelsHandlerWrapper(ref, 10*1024*1024)),
+		}
+		containerdImage, err = client.Pull(ctx, ref, opts...)
+	} else {
+		config := &content.FetchConfig{
+			Resolver:        resolver,
+			ProgressOutput:  stdout,
+			PlatformMatcher: platforms.Default(),
+		}
 
-	img, err := content.Fetch(ctx, client, ref, config)
-	if err != nil {
-		return nil, err
-	}
-	i := containerd.NewImageWithPlatform(client, img, config.PlatformMatcher)
-	if err = i.Unpack(ctx, snapshotter); err != nil {
-		return nil, err
+		img, err := content.Fetch(ctx, client, ref, config)
+		if err != nil {
+			return nil, err
+		}
+		containerdImage = containerd.NewImageWithPlatform(client, img, config.PlatformMatcher)
+		if err := containerdImage.Unpack(ctx, snapshotter); err != nil {
+			return nil, err
+		}
 	}
 	res := &EnsuredImage{
 		Ref:         ref,
-		Image:       i,
+		Image:       containerdImage,
 		Snapshotter: snapshotter,
+		Remote:      sgz,
 	}
 	return res, nil
+}
+
+func isStargz(sn string) bool {
+	if !strings.Contains(sn, "stargz") {
+		return false
+	}
+	if sn != "stargz" {
+		logrus.Debugf("assuming %q to be a stargz-compatible snapshotter", sn)
+	}
+	return true
 }

@@ -84,6 +84,10 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 
 Lots of commands and flags are currently missing. Pull requests are highly welcome.
 
+## Features present in `nerdctl` but not present in Docker
+- Namespacing as in `kubectl --namespace=<NS>`: `nerdctl --namespace=<NS> ps`
+- [Lazy-pulling using Stargz Snapshotter](./docs/stargz.md): `nerdctl --snapshotter=stargz run`
+
 ## Contributing to nerdctl
 
 - Please certify your [Developer Certificate of Origin (DCO)](https://developercertificate.org/), by signing off your commit with `git commit -s` and with your real name.
