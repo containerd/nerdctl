@@ -6,7 +6,7 @@ require (
 	github.com/containerd/console v1.0.1
 	github.com/containerd/containerd v1.4.1-0.20201208141117-1e624fa3deb4
 	github.com/containerd/go-cni v1.0.1
-	github.com/containerd/stargz-snapshotter v0.1.1-0.20201209065606-08ad6ae8f885
+	github.com/containerd/stargz-snapshotter v0.2.0
 	github.com/docker/go-units v0.4.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
