@@ -67,6 +67,12 @@ var runCommand = &cli.Command{
 			Usage:   "Run container in background and print container ID",
 		},
 		&cli.StringFlag{
+			Name:    "cni-bin-dir",
+			Usage:   "Set the cni-plugins binary directory",
+			EnvVars: []string{"CNI_BIN_DIR"},
+			Value:   gocni.DefaultCNIDir,
+		},
+		&cli.StringFlag{
 			Name:  "restart",
 			Usage: "Restart policy to apply when a container exits (implemented values: \"no\"|\"always\")",
 			Value: "no",
@@ -158,6 +164,7 @@ func runAction(clicontext *cli.Context) error {
 	}
 	cOpts = append(cOpts, restartOpts...)
 
+	var cniBinDir = clicontext.String("cni-bin-dir")
 	var cniNetwork gocni.CNI
 	switch netstr := clicontext.String("network"); netstr {
 	case "none":
@@ -166,12 +173,12 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, oci.WithHostNamespace(specs.NetworkNamespace), oci.WithHostHostsFile, oci.WithHostResolvconf)
 	case "bridge":
 		for _, f := range requiredCNIPlugins {
-			p := filepath.Join(gocni.DefaultCNIDir, f)
+			p := filepath.Join(cniBinDir, f)
 			if _, err := exec.LookPath(p); err != nil {
 				return errors.Wrapf(err, "needs CNI plugin %q to be installed, see https://github.com/containernetworking/plugins/releases", p)
 			}
 		}
-		if cniNetwork, err = gocni.New(gocni.WithConfListBytes([]byte(defaultBridgeNetwork))); err != nil {
+		if cniNetwork, err = gocni.New(gocni.WithPluginDir([]string{cniBinDir}), gocni.WithConfListBytes([]byte(defaultBridgeNetwork))); err != nil {
 			return err
 		}
 		resolvConf, err := ioutil.TempFile("", "nerdctl-resolvconf")
