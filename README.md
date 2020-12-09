@@ -59,6 +59,7 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 
 - `nerdctl images`
   - `-q, --quiet`: Only show numeric IDs
+  - `--no-trunc`: Don't truncate output
 
 - `nerdctl ps`
   - `-a, --all`: Show all containers (default shows just running)
