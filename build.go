@@ -18,13 +18,14 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images/archive"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -51,6 +52,13 @@ func buildAction(clicontext *cli.Context) error {
 		return errors.New("tag needs to be specified")
 	}
 	sn := containerd.DefaultSnapshotter
+
+	buildctlCheckCmd := exec.Command("buildctl", "debug", "workers")
+	buildctlCheckCmd.Env = os.Environ()
+	if out, err := buildctlCheckCmd.CombinedOutput(); err != nil {
+		logrus.Error(string(out))
+		return errors.Wrap(err, "`buildctl` needs to be installed and `buildkitd` needs to be running, see https://github.com/moby/buildkit")
+	}
 
 	buildctlCmd := exec.Command("buildctl",
 		"build",

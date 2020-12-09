@@ -26,6 +26,8 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/containerd/console"
@@ -135,6 +137,12 @@ func runAction(clicontext *cli.Context) error {
 	case "host":
 		opts = append(opts, oci.WithHostNamespace(specs.NetworkNamespace), oci.WithHostHostsFile, oci.WithHostResolvconf)
 	case "bridge":
+		for _, f := range requiredCNIPlugins {
+			p := filepath.Join(gocni.DefaultCNIDir, f)
+			if _, err := exec.LookPath(p); err != nil {
+				return errors.Wrapf(err, "needs CNI plugin %q to be installed, see https://github.com/containernetworking/plugins/releases", p)
+			}
+		}
 		if cniNetwork, err = gocni.New(gocni.WithConfListBytes([]byte(defaultBridgeNetwork))); err != nil {
 			return err
 		}

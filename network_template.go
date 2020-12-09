@@ -59,3 +59,7 @@ const defaultBridgeNetwork = `{
     }
   ]
 }`
+
+var requiredCNIPlugins = []string{
+	"bridge", "portmap", "firewall", "tuning",
+}
