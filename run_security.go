@@ -23,6 +23,7 @@ import (
 	"github.com/containerd/containerd/contrib/apparmor"
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
+	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -51,7 +52,7 @@ func generateSecurityOpts(securityOptsMap map[string]string) ([]oci.SpecOpts, er
 		opts = append(opts, seccomp.WithDefaultProfile())
 	}
 
-	aaSupported := hostSupportsAppArmor()
+	aaSupported := pkgapparmor.HostSupports()
 	if aaProfile, ok := securityOptsMap["apparmor"]; ok {
 		if aaProfile == "" {
 			return nil, errors.New("invalid security-opt \"apparmor\"")
