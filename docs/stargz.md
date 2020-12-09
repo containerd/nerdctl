@@ -68,5 +68,5 @@ sys     0m0.158s
 - Launch `buildkitd` with `--oci-worker-snapshotter=stargz` (or `--containerd-worker-snapshotter=stargz` if you use containerd worker)
 - Launch `nerdctl build`. No need to specify `--snapshotter` for `nerdctl`.
 
-## Buildint stargz images using `nerdctl build`
+## Building stargz images using `nerdctl build`
 Unsupported yet
