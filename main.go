@@ -25,6 +25,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/namespaces"
+	gocni "github.com/containerd/go-cni"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -69,6 +70,12 @@ func newApp() *cli.App {
 			Usage:   "containerd snapshotter",
 			EnvVars: []string{"CONTAINERD_SNAPSHOTTER"},
 			Value:   containerd.DefaultSnapshotter,
+		},
+		&cli.StringFlag{
+			Name:    "cni-path",
+			Usage:   "Set the cni-plugins binary directory",
+			EnvVars: []string{"CNI_PATH"},
+			Value:   gocni.DefaultCNIDir,
 		},
 	}
 	app.Before = func(clicontext *cli.Context) error {
