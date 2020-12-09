@@ -102,6 +102,9 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 			containerd.WithImageHandlerWrapper(source.AppendDefaultLabelsHandlerWrapper(ref, 10*1024*1024)),
 		}
 		containerdImage, err = client.Pull(ctx, ref, opts...)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		config := &content.FetchConfig{
 			Resolver:        resolver,
