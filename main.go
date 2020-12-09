@@ -21,6 +21,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/version"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/namespaces"
@@ -41,6 +42,7 @@ func newApp() *cli.App {
 	app.Name = "nerdctl"
 	app.Usage = "Docker-compatible CLI for containerd"
 	app.UseShortOptionHandling = true
+	app.Version = version.Version
 	app.Flags = []cli.Flag{
 		&cli.BoolFlag{
 			Name:        "debug",
@@ -86,6 +88,7 @@ func newApp() *cli.App {
 		rmCommand,
 		pullCommand,
 		runCommand,
+		versionCommand,
 	}
 	return app
 }

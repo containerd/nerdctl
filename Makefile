@@ -16,19 +16,14 @@
 
 GO ?= go
 
-export GO_BUILD=$(GO) build
-export GO_TEST=$(GO) test
 
-PROJECT := github.com/AkihiroSuda/nerdctl
+PACKAGE := github.com/AkihiroSuda/nerdctl
 BINDIR ?= /usr/local/bin
 
-VERSION := $(shell git describe --tags --dirty --always)
-VERSION := $(VERSION:v%=%)
+VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always --tags)
+REVISION=$(shell git rev-parse HEAD)$(shell if ! git diff --no-ext-diff --quiet --exit-code; then echo .m; fi)
 
-BUILD_BIN_PATH := $(shell pwd)/build/bin
-
-GOLANGCI_LINT := $(BUILD_BIN_PATH)/golangci-lint
-GOLANGCI_LINT_VERSION := "v1.32.2"
+export GO_BUILD=GO111MODULE=on CGO_ENABLED=0 $(GO) build -ldflags "-X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
 
 all: binaries
 
@@ -40,10 +35,7 @@ help:
 	@echo " * 'clean' - Clean artifacts."
 
 nerdctl:
-	CGO_ENABLED=0 $(GO_BUILD) -o $(CURDIR)/_output/nerdctl \
-		-ldflags '$(GO_LDFLAGS)' \
-		-tags '$(BUILDTAGS)' \
-		$(PROJECT)
+	$(GO_BUILD) -o $(CURDIR)/_output/nerdctl $(PACKAGE)
 
 clean:
 	find . -name \*~ -delete
@@ -52,26 +44,14 @@ clean:
 
 binaries: nerdctl
 
-build: nerdctl
-
-install-nerdctl:
+install:
 	install -D -m 755 $(CURDIR)/_output/nerdctl $(DESTDIR)$(BINDIR)/nerdctl
 
-install: install-nerdctl
-
-lint: $(GOLANGCI_LINT)
-	$(GOLANGCI_LINT) run
-
-install.tools: install.lint
-
-install.lint: $(GOLANGCI_LINT)
-
-$(GOLANGCI_LINT):
-	export \
-		VERSION=$(GOLANGCI_LINT_VERSION) \
-		URL=https://raw.githubusercontent.com/golangci/golangci-lint \
-		BINDIR=${BUILD_BIN_PATH} && \
-	curl -sfL $$URL/$$VERSION/install.sh | sh -s $$VERSION
+artifacts:
+	rm -f $(CURDIR)/_output/nerdctl
+	GOOS=linux GOARCH=amd64       $(GO_BUILD) -o $(CURDIR)/_output/nerdctl-$(VERSION)-linux-amd64 $(PACKAGE)
+	GOOS=linux GOARCH=arm64       $(GO_BUILD) -o $(CURDIR)/_output/nerdctl-$(VERSION)-linux-arm64 $(PACKAGE)
+	GOOS=linux GOARCH=arm GOARM=7 $(GO_BUILD) -o $(CURDIR)/_output/nerdctl-$(VERSION)-linux-arm-v7 $(PACKAGE)
 
 .PHONY: \
 	help \
@@ -79,6 +59,4 @@ $(GOLANGCI_LINT):
 	clean \
 	binaries \
 	install \
-	install-nerdctl \
-	lint \
-	install.tools
+	artifacts
