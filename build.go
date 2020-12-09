@@ -51,7 +51,7 @@ func buildAction(clicontext *cli.Context) error {
 	if tag == "" {
 		return errors.New("tag needs to be specified")
 	}
-	sn := containerd.DefaultSnapshotter
+	sn := clicontext.String("snapshotter")
 
 	buildctlCheckCmd := exec.Command("buildctl", "debug", "workers")
 	buildctlCheckCmd.Env = os.Environ()

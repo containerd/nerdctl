@@ -47,7 +47,7 @@ func pullAction(clicontext *cli.Context) error {
 		return err
 	}
 	defer cancel()
-	_, err = ensureImage(ctx, client, clicontext.App.Writer, clicontext.Args().First(), "always")
+	_, err = ensureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(), "always")
 	return err
 }
 
@@ -60,24 +60,23 @@ type EnsuredImage struct {
 // PullMode is either one of "always", "missing", "never"
 type PullMode = string
 
-func ensureImage(ctx context.Context, client *containerd.Client, stdout io.Writer, rawRef string, mode PullMode) (*EnsuredImage, error) {
+func ensureImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter, rawRef string, mode PullMode) (*EnsuredImage, error) {
 	named, err := refdocker.ParseDockerRef(rawRef)
 	if err != nil {
 		return nil, err
 	}
 	ref := named.String()
 
-	sn := containerd.DefaultSnapshotter
 	if mode != "always" {
 		if i, err := client.ImageService().Get(ctx, ref); err == nil {
 			image := containerd.NewImage(client, i)
 			res := &EnsuredImage{
 				Ref:         ref,
 				Image:       image,
-				Snapshotter: sn,
+				Snapshotter: snapshotter,
 			}
-			if unpacked, err := image.IsUnpacked(ctx, sn); err == nil && !unpacked {
-				if err := image.Unpack(ctx, sn); err != nil {
+			if unpacked, err := image.IsUnpacked(ctx, snapshotter); err == nil && !unpacked {
+				if err := image.Unpack(ctx, snapshotter); err != nil {
 					return nil, err
 				}
 			}
@@ -109,13 +108,13 @@ func ensureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 		return nil, err
 	}
 	i := containerd.NewImageWithPlatform(client, img, config.PlatformMatcher)
-	if err = i.Unpack(ctx, sn); err != nil {
+	if err = i.Unpack(ctx, snapshotter); err != nil {
 		return nil, err
 	}
 	res := &EnsuredImage{
 		Ref:         ref,
 		Image:       i,
-		Snapshotter: sn,
+		Snapshotter: snapshotter,
 	}
 	return res, nil
 }

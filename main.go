@@ -21,6 +21,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/pkg/errors"
@@ -59,6 +60,13 @@ func newApp() *cli.App {
 			Usage:   "containerd namespace, such as \"moby\" for Docker, \"k8s.io\" for Kubernetes",
 			EnvVars: []string{namespaces.NamespaceEnvVar},
 			Value:   namespaces.Default,
+		},
+		&cli.StringFlag{
+			Name:    "snapshotter",
+			Aliases: []string{"storage-driver"},
+			Usage:   "containerd snapshotter",
+			EnvVars: []string{"CONTAINERD_SNAPSHOTTER"},
+			Value:   containerd.DefaultSnapshotter,
 		},
 	}
 	app.Before = func(clicontext *cli.Context) error {

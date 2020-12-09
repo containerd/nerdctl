@@ -101,7 +101,7 @@ func runAction(clicontext *cli.Context) error {
 		return err
 	}
 	defer cancel()
-	ensured, err := ensureImage(ctx, client, clicontext.App.Writer, clicontext.Args().First(), clicontext.String("pull"))
+	ensured, err := ensureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(), clicontext.String("pull"))
 	if err != nil {
 		return err
 	}
