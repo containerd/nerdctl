@@ -67,7 +67,7 @@ func printContainers(ctx context.Context, clicontext *cli.Context, containers []
 	trunc := !clicontext.Bool("no-trunc")
 	all := clicontext.Bool("all")
 
-	w := tabwriter.NewWriter(os.Stdout, 4, 8, 4, ' ', 0)
+	w := tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
 	fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
 	for _, c := range containers {
 		info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
