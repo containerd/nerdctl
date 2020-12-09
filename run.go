@@ -33,10 +33,12 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
@@ -52,12 +54,22 @@ var runCommand = &cli.Command{
 		&cli.BoolFlag{
 			Name:    "tty",
 			Aliases: []string{"t"},
-			Usage:   "(Currently always needs to be true)",
+			Usage:   "(Currently -t needs to correspond to -i)",
 		},
 		&cli.BoolFlag{
 			Name:    "interactive",
 			Aliases: []string{"i"},
-			Usage:   "(Currently always needs to be true)",
+			Usage:   "(Currently -i needs to correspond to -t)",
+		},
+		&cli.BoolFlag{
+			Name:    "detach",
+			Aliases: []string{"d"},
+			Usage:   "Run container in background and print container ID",
+		},
+		&cli.StringFlag{
+			Name:  "restart",
+			Usage: "Restart policy to apply when a container exits (implemented values: \"no\"|\"always\")",
+			Value: "no",
 		},
 		&cli.BoolFlag{
 			Name:  "rm",
@@ -126,10 +138,25 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, oci.WithProcessArgs(clicontext.Args().Tail()...))
 	}
 
-	if !clicontext.Bool("i") || !clicontext.Bool("t") {
-		return errors.New("currently -i and -t need to be always specified (FIXME)")
+	flagI := clicontext.Bool("i")
+	flagT := clicontext.Bool("t")
+	flagD := clicontext.Bool("d")
+
+	if (flagI && !flagT) || (!flagI && flagT) {
+		return errors.New("currently -i and -t need to be always set or unset together (FIXME)")
 	}
-	opts = append(opts, oci.WithTTY)
+	if flagT {
+		if flagD {
+			return errors.New("currently flag -t and -d cannot be specified together (FIXME)")
+		}
+		opts = append(opts, oci.WithTTY)
+	}
+
+	restartOpts, err := generateRestartOpts(clicontext.String("restart"), clicontext.String("network"))
+	if err != nil {
+		return err
+	}
+	cOpts = append(cOpts, restartOpts...)
 
 	var cniNetwork gocni.CNI
 	switch netstr := clicontext.String("network"); netstr {
@@ -187,31 +214,37 @@ func runAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if clicontext.Bool("rm") {
+	if clicontext.Bool("rm") && !flagD {
 		defer container.Delete(ctx, containerd.WithSnapshotCleanup)
 	}
 
-	con := console.Current()
-	defer con.Reset()
-	if err := con.SetRaw(); err != nil {
-		return err
+	var con console.Console
+	if flagT {
+		con = console.Current()
+		defer con.Reset()
+		if err := con.SetRaw(); err != nil {
+			return err
+		}
 	}
 
-	task, err := tasks.NewTask(ctx, client, container, "", con, false, "", nil)
+	task, err := tasks.NewTask(ctx, client, container, "", con, flagD, "", nil)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if cniNetwork != nil {
-			if err := cniNetwork.Remove(ctx, fullID(ctx, container), ""); err != nil {
-				logrus.WithError(err).Error("network review")
+	var statusC <-chan containerd.ExitStatus
+	if !flagD {
+		defer func() {
+			if cniNetwork != nil {
+				if err := cniNetwork.Remove(ctx, fullID(ctx, container), ""); err != nil {
+					logrus.WithError(err).Error("network review")
+				}
 			}
+			task.Delete(ctx)
+		}()
+		statusC, err = task.Wait(ctx)
+		if err != nil {
+			return err
 		}
-		task.Delete(ctx)
-	}()
-	statusC, err := task.Wait(ctx)
-	if err != nil {
-		return err
 	}
 	if cniNetwork != nil {
 		if _, err := cniNetwork.Setup(ctx, fullID(ctx, container), fmt.Sprintf("/proc/%d/ns/net", task.Pid())); err != nil {
@@ -221,8 +254,17 @@ func runAction(clicontext *cli.Context) error {
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
-	if err := tasks.HandleConsoleResize(ctx, task, con); err != nil {
-		logrus.WithError(err).Error("console resize")
+	if flagD {
+		fmt.Fprintf(clicontext.App.Writer, "%s\n", id)
+		return nil
+	}
+	if flagT {
+		if err := tasks.HandleConsoleResize(ctx, task, con); err != nil {
+			logrus.WithError(err).Error("console resize")
+		}
+	} else {
+		sigc := commands.ForwardAllSignals(ctx, task)
+		defer commands.StopCatch(sigc)
 	}
 	status := <-statusC
 	code, _, err := status.Result()
@@ -265,5 +307,21 @@ func withCustomResolvConf(src string) func(context.Context, oci.Client, *contain
 			Options:     []string{"rbind", "ro"},
 		})
 		return nil
+	}
+}
+
+func generateRestartOpts(restartFlag, netFlag string) ([]containerd.NewContainerOpts, error) {
+	switch restartFlag {
+	case "", "no":
+		return nil, nil
+	case "always":
+		switch netFlag {
+		case "none", "host":
+			return []containerd.NewContainerOpts{restart.WithStatus(containerd.Running)}, nil
+		}
+		// FIXME: execute `/proc/$$/exe internal oci-hook` as an OCI hook to set up CNI
+		return nil, errors.Errorf("currently, --restart=%s conflicts with --net=%s (FIXME)", restartFlag, netFlag)
+	default:
+		return nil, errors.Errorf("unsupported restart type %q, supported types are: \"no\",  \"always\"", restartFlag)
 	}
 }
