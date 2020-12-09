@@ -32,7 +32,7 @@ func newClient(clicontext *cli.Context) (*containerd.Client, context.Context, co
 	ctx := context.Background()
 	namespace := clicontext.String("namespace")
 	ctx = namespaces.WithNamespace(ctx, namespace)
-	address := strings.TrimPrefix(clicontext.String("host"), "unix://")
+	address := strings.TrimPrefix(clicontext.String("address"), "unix://")
 	if err := unix.Access(address, unix.R_OK|unix.W_OK); err != nil {
 		err = errors.Wrapf(err, "cannot access containerd socket %q", address)
 		return nil, nil, nil, err

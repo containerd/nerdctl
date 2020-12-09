@@ -19,9 +19,11 @@ package main
 
 import (
 	"os"
+	"strings"
 
 	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -45,9 +47,10 @@ func newApp() *cli.App {
 			Destination: &debug,
 		},
 		&cli.StringFlag{
-			Name:    "host",
-			Aliases: []string{"H"},
-			Usage:   "containerd address, e.g. \"unix:///run/containerd/containerd.sock\", or \"/var/run/docker/containerd/containerd.sock\"",
+			Name:    "address",
+			Aliases: []string{"a", "host", "H"},
+			Usage:   "containerd address, optionally with \"unix://\" prefix",
+			EnvVars: []string{"CONTAINERD_ADDRESS"},
 			Value:   "unix://" + defaults.DefaultAddress,
 		},
 		&cli.StringFlag{
@@ -58,9 +61,13 @@ func newApp() *cli.App {
 			Value:   namespaces.Default,
 		},
 	}
-	app.Before = func(context *cli.Context) error {
+	app.Before = func(clicontext *cli.Context) error {
 		if debug {
 			logrus.SetLevel(logrus.DebugLevel)
+		}
+		address := clicontext.String("address")
+		if strings.Contains(address, "://") && !strings.HasPrefix(address, "unix://") {
+			return errors.Errorf("invalid address %q", address)
 		}
 		return nil
 	}
