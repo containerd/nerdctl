@@ -18,16 +18,9 @@
 package main
 
 import (
-	"context"
-	"io"
-
-	"github.com/containerd/containerd"
+	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/containerd/containerd/cmd/ctr/commands/content"
-	"github.com/containerd/containerd/platforms"
-	refdocker "github.com/containerd/containerd/reference/docker"
-	"github.com/containerd/containerd/remotes/docker"
 	"github.com/urfave/cli/v2"
 )
 
@@ -47,74 +40,6 @@ func pullAction(clicontext *cli.Context) error {
 		return err
 	}
 	defer cancel()
-	_, err = ensureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(), "always")
+	_, err = imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(), "always")
 	return err
-}
-
-type EnsuredImage struct {
-	Ref         string
-	Image       containerd.Image
-	Snapshotter string
-}
-
-// PullMode is either one of "always", "missing", "never"
-type PullMode = string
-
-func ensureImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter, rawRef string, mode PullMode) (*EnsuredImage, error) {
-	named, err := refdocker.ParseDockerRef(rawRef)
-	if err != nil {
-		return nil, err
-	}
-	ref := named.String()
-
-	if mode != "always" {
-		if i, err := client.ImageService().Get(ctx, ref); err == nil {
-			image := containerd.NewImage(client, i)
-			res := &EnsuredImage{
-				Ref:         ref,
-				Image:       image,
-				Snapshotter: snapshotter,
-			}
-			if unpacked, err := image.IsUnpacked(ctx, snapshotter); err == nil && !unpacked {
-				if err := image.Unpack(ctx, snapshotter); err != nil {
-					return nil, err
-				}
-			}
-			return res, nil
-		}
-	}
-
-	if mode == "never" {
-		return nil, errors.Errorf("image %q is not available", rawRef)
-	}
-
-	ctx, done, err := client.WithLease(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer done(ctx)
-
-	resovlerOpts := docker.ResolverOptions{}
-	resolver := docker.NewResolver(resovlerOpts)
-
-	config := &content.FetchConfig{
-		Resolver:        resolver,
-		ProgressOutput:  stdout,
-		PlatformMatcher: platforms.Default(),
-	}
-
-	img, err := content.Fetch(ctx, client, ref, config)
-	if err != nil {
-		return nil, err
-	}
-	i := containerd.NewImageWithPlatform(client, img, config.PlatformMatcher)
-	if err = i.Unpack(ctx, snapshotter); err != nil {
-		return nil, err
-	}
-	res := &EnsuredImage{
-		Ref:         ref,
-		Image:       i,
-		Snapshotter: snapshotter,
-	}
-	return res, nil
 }

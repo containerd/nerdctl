@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
@@ -101,7 +102,7 @@ func runAction(clicontext *cli.Context) error {
 		return err
 	}
 	defer cancel()
-	ensured, err := ensureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(), clicontext.String("pull"))
+	ensured, err := imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(), clicontext.String("pull"))
 	if err != nil {
 		return err
 	}
