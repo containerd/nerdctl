@@ -46,6 +46,11 @@ var psCommand = &cli.Command{
 			Name:  "no-trunc",
 			Usage: "Don't truncate output",
 		},
+		&cli.BoolFlag{
+			Name:    "quiet",
+			Aliases: []string{"q"},
+			Usage:   "Only display container IDs",
+		},
 	},
 }
 
@@ -65,9 +70,13 @@ func psAction(clicontext *cli.Context) error {
 func printContainers(ctx context.Context, clicontext *cli.Context, containers []containerd.Container) error {
 	trunc := !clicontext.Bool("no-trunc")
 	all := clicontext.Bool("all")
+	quiet := clicontext.Bool("quiet")
 
 	w := tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
-	fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+	if !quiet {
+		fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+	}
+
 	for _, c := range containers {
 		info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
 		if err != nil {
@@ -87,6 +96,13 @@ func printContainers(ctx context.Context, clicontext *cli.Context, containers []
 
 		cStatus := containerStatus(ctx, c)
 		if cStatus != "Running" && !all {
+			continue
+		}
+
+		if quiet {
+			if _, err := fmt.Fprintf(w, "%s\n", id); err != nil {
+				return err
+			}
 			continue
 		}
 
