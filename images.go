@@ -41,6 +41,10 @@ var imagesCommand = &cli.Command{
 			Aliases: []string{"q"},
 			Usage:   "Only show numeric IDs",
 		},
+		&cli.BoolFlag{
+			Name:  "no-trunc",
+			Usage: "Don't truncate output",
+		},
 	},
 }
 
@@ -68,6 +72,7 @@ func imagesAction(clicontext *cli.Context) error {
 
 func printImages(ctx context.Context, clicontext *cli.Context, imageList []images.Image, cs content.Store) error {
 	quiet := clicontext.Bool("quiet")
+	noTrunc := clicontext.Bool("no-trunc")
 
 	w := tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
 	if !quiet {
@@ -90,10 +95,15 @@ func printImages(ctx context.Context, clicontext *cli.Context, imageList []image
 		}
 		tag = repositoryTag[1]
 
-		digest := strings.Split(img.Target.Digest.String(), ":")
+		var digest string
+		if !noTrunc {
+			digest = strings.Split(img.Target.Digest.String(), ":")[1][:12]
+		} else {
+			digest = img.Target.Digest.String()
+		}
 
 		if quiet {
-			if _, err := fmt.Fprintf(w, "%s\n", digest[1][:12]); err != nil {
+			if _, err := fmt.Fprintf(w, "%s\n", digest); err != nil {
 				return err
 			}
 			continue
@@ -102,7 +112,7 @@ func printImages(ctx context.Context, clicontext *cli.Context, imageList []image
 		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			repository,
 			tag,
-			digest[1][:12],
+			digest,
 			timeSinceInHuman(img.CreatedAt),
 			progress.Bytes(size),
 		); err != nil {
