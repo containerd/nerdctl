@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/mountutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
@@ -103,6 +104,11 @@ var runCommand = &cli.Command{
 			Name:  "privileged",
 			Usage: "Give extended privileges to this container",
 		},
+		&cli.StringSliceFlag{
+			Name:    "volume",
+			Aliases: []string{"v"},
+			Usage:   "Bind mount a volume",
+		},
 	},
 }
 
@@ -170,6 +176,16 @@ func runAction(clicontext *cli.Context) error {
 		}
 		opts = append(opts, oci.WithTTY)
 	}
+
+	var mounts []specs.Mount
+	for _, v := range clicontext.StringSlice("v") {
+		m, err := mountutil.ParseFlagV(v)
+		if err != nil {
+			return err
+		}
+		mounts = append(mounts, *m)
+	}
+	opts = append(opts, oci.WithMounts(mounts))
 
 	restartOpts, err := generateRestartOpts(clicontext.String("restart"))
 	if err != nil {
