@@ -25,6 +25,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
+	"github.com/containerd/go-cni"
 	gocni "github.com/containerd/go-cni"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
@@ -53,6 +55,10 @@ var internalOCIHookCommand = &cli.Command{
 		&cli.StringSliceFlag{
 			Name:  "dns",
 			Usage: "value of `nerdctl run --dns`",
+		},
+		&cli.StringSliceFlag{
+			Name:  "p",
+			Usage: "value of `nerdctl run -p`",
 		},
 	},
 }
@@ -114,12 +120,28 @@ func getNetNSPath(state *specs.State) string {
 	return fmt.Sprintf("/proc/%d/ns/net", state.Pid)
 }
 
+func getCNINamespaceOpts(clicontext *cli.Context) ([]cni.NamespaceOpts, error) {
+	var portMappings []cni.PortMapping
+	for _, p := range clicontext.StringSlice("p") {
+		pm, err := portutil.ParseFlagP(p)
+		if err != nil {
+			return nil, err
+		}
+		portMappings = append(portMappings, *pm)
+	}
+	return []cni.NamespaceOpts{cni.WithCapabilityPortMap(portMappings)}, nil
+}
+
 func onCreateRuntime(state *specs.State, rootfs string, clicontext *cli.Context) error {
 	ctx := context.Background()
 	switch clicontext.String("network") {
 	case "none", "host":
 		// NOP
 	default:
+		cniNSOpts, err := getCNINamespaceOpts(clicontext)
+		if err != nil {
+			return err
+		}
 		containerStateDir := clicontext.String("container-state-dir")
 		if err := os.MkdirAll(containerStateDir, 0700); err != nil {
 			return errors.Wrapf(err, "failed to create %q", containerStateDir)
@@ -156,7 +178,7 @@ func onCreateRuntime(state *specs.State, rootfs string, clicontext *cli.Context)
 		if err != nil {
 			return errors.Wrap(err, "failed to call newCNI")
 		}
-		if _, err := cni.Setup(ctx, clicontext.String("full-id"), getNetNSPath(state)); err != nil {
+		if _, err := cni.Setup(ctx, clicontext.String("full-id"), getNetNSPath(state), cniNSOpts...); err != nil {
 			return errors.Wrap(err, "failed to call cni.Setup")
 		}
 	}
@@ -169,11 +191,16 @@ func onPostStop(state *specs.State, rootfs string, clicontext *cli.Context) erro
 	case "none", "host":
 		// NOP
 	default:
+		cniNSOpts, err := getCNINamespaceOpts(clicontext)
+		if err != nil {
+			return err
+		}
+
 		cni, err := newCNI(clicontext)
 		if err != nil {
 			return err
 		}
-		if err := cni.Remove(ctx, clicontext.String("full-id"), ""); err != nil {
+		if err := cni.Remove(ctx, clicontext.String("full-id"), getNetNSPath(state), cniNSOpts...); err != nil {
 			return err
 		}
 	}

@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cmd/ctr/commands"
@@ -88,6 +89,11 @@ var runCommand = &cli.Command{
 			Name:  "dns",
 			Usage: "Set custom DNS servers (only meaningful for \"bridge\" network)",
 			Value: cli.NewStringSlice("8.8.8.8", "1.1.1.1"),
+		},
+		&cli.StringSliceFlag{
+			Name:    "publish",
+			Aliases: []string{"p"},
+			Usage:   "Publish a container's port(s) to the host (Currently TCP only)",
 		},
 		&cli.StringSliceFlag{
 			Name:  "security-opt",
@@ -190,6 +196,11 @@ func runAction(clicontext *cli.Context) error {
 		for _, dns := range clicontext.StringSlice("dns") {
 			if net.ParseIP(dns) == nil {
 				return errors.Errorf("invalid dns %q", dns)
+			}
+		}
+		for _, p := range clicontext.StringSlice("p") {
+			if _, err = portutil.ParseFlagP(p); err != nil {
+				return err
 			}
 		}
 	default:
@@ -302,6 +313,9 @@ func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecO
 	}
 	for _, dns := range clicontext.StringSlice("dns") {
 		args = append(args, "--dns="+dns)
+	}
+	for _, dns := range clicontext.StringSlice("p") {
+		args = append(args, "-p="+dns)
 	}
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
 		if s.Hooks == nil {

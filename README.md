@@ -83,6 +83,7 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
   - `--restart=(no|always)`
   - `--rm`
   - `--network=(bridge|host|none)`
+  - `--publish, -p` (WIP: currently TCP only)
   - `--dns`
   - `--pull=(always|missing|never)`
   - `--security-opt seccomp`
