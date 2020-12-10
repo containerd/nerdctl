@@ -77,6 +77,11 @@ func newApp() *cli.App {
 			EnvVars: []string{"CNI_PATH"},
 			Value:   gocni.DefaultCNIDir,
 		},
+		&cli.StringFlag{
+			Name:  "data-root",
+			Usage: "Root directory of persistent nerdctl state (managed by nerdctl, not by containerd)",
+			Value: "/var/lib/nerdctl",
+		},
 	}
 	app.Before = func(clicontext *cli.Context) error {
 		if debug {
@@ -92,6 +97,7 @@ func newApp() *cli.App {
 		buildCommand,
 		imagesCommand,
 		infoCommand,
+		internalCommand,
 		psCommand,
 		rmCommand,
 		pullCommand,
