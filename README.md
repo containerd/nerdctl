@@ -64,6 +64,8 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
   - `-q, --quiet`: Only show numeric IDs
   - `--no-trunc`: Don't truncate output
 
+- `nerdctl rmi`
+
 - `nerdctl info`
 
 - `nerdctl ps`

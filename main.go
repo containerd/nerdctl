@@ -100,6 +100,7 @@ func newApp() *cli.App {
 		internalCommand,
 		psCommand,
 		rmCommand,
+		rmiCommand,
 		pullCommand,
 		runCommand,
 		versionCommand,
