@@ -60,8 +60,9 @@ func generateSecurityOpts(securityOptsMap map[string]string) ([]oci.SpecOpts, er
 		if aaProfile != "unconfined" {
 			if !aaSupported {
 				logrus.Warnf("The host does not support AppArmor. Ignoring profile %q", aaProfile)
+			} else {
+				opts = append(opts, apparmor.WithProfile(aaProfile))
 			}
-			opts = append(opts, apparmor.WithProfile(aaProfile))
 		}
 	} else if aaSupported {
 		opts = append(opts, apparmor.WithDefaultProfile(defaultAppArmorProfileName))
