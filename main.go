@@ -94,6 +94,7 @@ func newApp() *cli.App {
 		infoCommand,
 		psCommand,
 		rmCommand,
+		rmiCommand,
 		pullCommand,
 		runCommand,
 		versionCommand,
