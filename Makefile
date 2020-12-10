@@ -21,6 +21,7 @@ PACKAGE := github.com/AkihiroSuda/nerdctl
 BINDIR ?= /usr/local/bin
 
 VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always --tags)
+VERSION_TRIMMED := $(VERSION:v%=%)
 REVISION=$(shell git rev-parse HEAD)$(shell if ! git diff --no-ext-diff --quiet --exit-code; then echo .m; fi)
 
 export GO_BUILD=GO111MODULE=on CGO_ENABLED=0 $(GO) build -ldflags "-X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
@@ -49,9 +50,18 @@ install:
 
 artifacts:
 	rm -f $(CURDIR)/_output/nerdctl
-	GOOS=linux GOARCH=amd64       $(GO_BUILD) -o $(CURDIR)/_output/nerdctl-$(VERSION)-linux-amd64 $(PACKAGE)
-	GOOS=linux GOARCH=arm64       $(GO_BUILD) -o $(CURDIR)/_output/nerdctl-$(VERSION)-linux-arm64 $(PACKAGE)
-	GOOS=linux GOARCH=arm GOARM=7 $(GO_BUILD) -o $(CURDIR)/_output/nerdctl-$(VERSION)-linux-arm-v7 $(PACKAGE)
+	GOOS=linux GOARCH=amd64       make -C $(CURDIR) binaries
+	tar czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-amd64.tar.gz  --owner=0 --group=0 -C $(CURDIR)/_output nerdctl
+
+	rm -f $(CURDIR)/_output/nerdctl
+	GOOS=linux GOARCH=arm64       make -C $(CURDIR) binaries
+	tar czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm64.tar.gz  --owner=0 --group=0 -C $(CURDIR)/_output nerdctl
+
+	rm -f $(CURDIR)/_output/nerdctl
+	GOOS=linux GOARCH=arm GOARM=7 make -C $(CURDIR) binaries
+	tar czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm-v7.tar.gz --owner=0 --group=0 -C $(CURDIR)/_output nerdctl
+
+	rm -f $(CURDIR)/_output/nerdctl
 
 .PHONY: \
 	help \

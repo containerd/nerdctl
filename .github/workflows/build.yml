@@ -23,5 +23,5 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
-      - name: Make all
-        run: make all
+      - name: Make artifacts
+        run: make artifacts
