@@ -45,6 +45,7 @@ func versionAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "Server:\n")
 	fmt.Fprintf(w, " containerd:\n")
 	fmt.Fprintf(w, "  Version:\t%s\n", daemonVersion.Version)
