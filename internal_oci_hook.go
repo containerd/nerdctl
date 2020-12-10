@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -64,6 +65,32 @@ var internalOCIHookCommand = &cli.Command{
 }
 
 func internalOCIHookAction(clicontext *cli.Context) error {
+	event := clicontext.Args().First()
+	if event == "" {
+		return errors.New("event type needs to be passed")
+	}
+	containerStateDir := clicontext.String("container-state-dir")
+	if containerStateDir == "" {
+		return errors.New("missing --container-state-dir")
+	}
+	if err := os.MkdirAll(containerStateDir, 0700); err != nil {
+		return errors.Wrapf(err, "failed to create %q", containerStateDir)
+	}
+	logFilePath := filepath.Join(containerStateDir, "oci-hook."+event+".log")
+	logFile, err := os.Create(logFilePath)
+	if err != nil {
+		return err
+	}
+	defer logFile.Close()
+	logrus.SetOutput(io.MultiWriter(clicontext.App.ErrWriter, logFile))
+	if err := internalOCIHookActionPostLogrusInit(clicontext); err != nil {
+		logrus.Error(err)
+		return err
+	}
+	return nil
+}
+
+func internalOCIHookActionPostLogrusInit(clicontext *cli.Context) error {
 	var state specs.State
 	if err := json.NewDecoder(clicontext.App.Reader).Decode(&state); err != nil {
 		return err
@@ -82,8 +109,6 @@ func internalOCIHookAction(clicontext *cli.Context) error {
 		handler = onCreateRuntime
 	case "postStop":
 		handler = onPostStop
-	case "":
-		return errors.New("event type needs to be passed")
 	default:
 		return errors.Errorf("unexpected event %q", event)
 	}
@@ -116,8 +141,15 @@ func newCNI(clicontext *cli.Context) (gocni.CNI, error) {
 	return gocni.New(gocni.WithPluginDir([]string{cniPath}), gocni.WithConfListBytes([]byte(defaultBridgeNetwork)))
 }
 
-func getNetNSPath(state *specs.State) string {
-	return fmt.Sprintf("/proc/%d/ns/net", state.Pid)
+func getNetNSPath(state *specs.State) (string, error) {
+	if state.Pid == 0 {
+		return "", errors.New("state.Pid is unset")
+	}
+	s := fmt.Sprintf("/proc/%d/ns/net", state.Pid)
+	if _, err := os.Stat(s); err != nil {
+		return "", err
+	}
+	return s, nil
 }
 
 func getCNINamespaceOpts(clicontext *cli.Context) ([]cni.NamespaceOpts, error) {
@@ -143,9 +175,6 @@ func onCreateRuntime(state *specs.State, rootfs string, clicontext *cli.Context)
 			return err
 		}
 		containerStateDir := clicontext.String("container-state-dir")
-		if err := os.MkdirAll(containerStateDir, 0700); err != nil {
-			return errors.Wrapf(err, "failed to create %q", containerStateDir)
-		}
 		stateResolvConfPath := filepath.Join(containerStateDir, "resolv.conf")
 		resolvConf, err := os.Create(stateResolvConfPath)
 		if err != nil {
@@ -171,14 +200,19 @@ func onCreateRuntime(state *specs.State, rootfs string, clicontext *cli.Context)
 				return err
 			}
 		}
-		if err := unix.Mount(stateResolvConfPath, containerResolvConfPath, "none", unix.MS_BIND, ""); err != nil {
+		if err := unix.Mount(stateResolvConfPath, containerResolvConfPath, "none", unix.MS_BIND|unix.MS_PRIVATE, ""); err != nil {
 			return errors.Wrapf(err, "failed to mount %q on %q", stateResolvConfPath, containerResolvConfPath)
 		}
+
 		cni, err := newCNI(clicontext)
 		if err != nil {
 			return errors.Wrap(err, "failed to call newCNI")
 		}
-		if _, err := cni.Setup(ctx, clicontext.String("full-id"), getNetNSPath(state), cniNSOpts...); err != nil {
+		nsPath, err := getNetNSPath(state)
+		if err != nil {
+			return err
+		}
+		if _, err := cni.Setup(ctx, clicontext.String("full-id"), nsPath, cniNSOpts...); err != nil {
 			return errors.Wrap(err, "failed to call cni.Setup")
 		}
 	}
@@ -195,21 +229,22 @@ func onPostStop(state *specs.State, rootfs string, clicontext *cli.Context) erro
 		if err != nil {
 			return err
 		}
-
 		cni, err := newCNI(clicontext)
 		if err != nil {
 			return err
 		}
-		if err := cni.Remove(ctx, clicontext.String("full-id"), getNetNSPath(state), cniNSOpts...); err != nil {
+		if err := cni.Remove(ctx, clicontext.String("full-id"), "", cniNSOpts...); err != nil {
+			logrus.WithError(err).Errorf("failed to call cni.Remove")
 			return err
 		}
-	}
-	containerResolvConfPath := filepath.Join(rootfs, "/etc/resolv.conf")
-	_ = unix.Unmount(containerResolvConfPath, unix.MNT_DETACH)
 
-	containerStateDir := clicontext.String("container-state-dir")
-	if err := os.RemoveAll(containerStateDir); err != nil {
-		logrus.WithError(err).Errorf("failed to remove %q", containerStateDir)
+		containerResolvConfPath := filepath.Join(rootfs, "/etc/resolv.conf")
+		_ = unix.Unmount(containerResolvConfPath, unix.MNT_DETACH|unix.MNT_FORCE)
+
+		containerStateDir := clicontext.String("container-state-dir")
+		if err := os.RemoveAll(containerStateDir); err != nil {
+			logrus.WithError(err).Errorf("failed to remove %q", containerStateDir)
+		}
 	}
 	return nil
 }

@@ -137,7 +137,7 @@ func runAction(clicontext *cli.Context) error {
 	if strings.Contains(ns, "/") {
 		return errors.New("namespace with '/' is unsupported")
 	}
-	stateDir := filepath.Join(dataRoot, ns, id)
+	stateDir := filepath.Join(dataRoot, "c", ns, id) // "c" stands for "containers"
 	if err := os.MkdirAll(stateDir, 0700); err != nil {
 		return err
 	}
@@ -314,8 +314,8 @@ func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecO
 	for _, dns := range clicontext.StringSlice("dns") {
 		args = append(args, "--dns="+dns)
 	}
-	for _, dns := range clicontext.StringSlice("p") {
-		args = append(args, "-p="+dns)
+	for _, p := range clicontext.StringSlice("p") {
+		args = append(args, "-p="+p)
 	}
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
 		if s.Hooks == nil {
