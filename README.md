@@ -2,6 +2,8 @@
 
 `nerdctl` is a Docker-compatible CLI for [contai**nerd**](https://containerd.io).
 
+[![asciicast](https://asciinema.org/a/378377.svg)](https://asciinema.org/a/378377)
+
 ## Examples
 
 To run a container with the default CNI network (10.4.0.0/16):
