@@ -31,8 +31,23 @@ var versionCommand = &cli.Command{
 }
 
 func versionAction(clicontext *cli.Context) error {
-	fmt.Fprintf(clicontext.App.Writer, "Client:\n")
-	fmt.Fprintf(clicontext.App.Writer, "  Version:    %s\n", version.Version)
-	fmt.Fprintf(clicontext.App.Writer, "  Git commit: %s\n", version.Revision)
+	w := clicontext.App.Writer
+	fmt.Fprintf(w, "Client:\n")
+	fmt.Fprintf(w, " Version:\t%s\n", version.Version)
+	fmt.Fprintf(w, " Git commit:\t%s\n", version.Revision)
+
+	client, ctx, cancel, err := newClient(clicontext)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	daemonVersion, err := client.Version(ctx)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(w, "Server:\n")
+	fmt.Fprintf(w, " containerd:\n")
+	fmt.Fprintf(w, "  Version:\t%s\n", daemonVersion.Version)
+	fmt.Fprintf(w, "  Revision:\t%s\n", daemonVersion.Revision)
 	return nil
 }
