@@ -19,6 +19,7 @@ package main
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 
 	"github.com/containerd/containerd"
@@ -34,8 +35,8 @@ func newClient(clicontext *cli.Context) (*containerd.Client, context.Context, co
 	ctx = namespaces.WithNamespace(ctx, namespace)
 	address := strings.TrimPrefix(clicontext.String("address"), "unix://")
 	const dockerContainerdaddress = "/run/docker/containerd/containerd.sock"
-	if err := unix.Access(address, unix.R_OK|unix.W_OK); err != nil {
-		if unix.Access(dockerContainerdaddress, unix.R_OK|unix.W_OK) == nil {
+	if err := isSocketAccessible(address); err != nil {
+		if isSocketAccessible(dockerContainerdaddress) == nil {
 			err = errors.Wrapf(err, "cannot access containerd socket %q (hint: try running with `--address %s` to connect to Docker-managed containerd)",
 				address, dockerContainerdaddress)
 		} else {
@@ -50,4 +51,13 @@ func newClient(clicontext *cli.Context) (*containerd.Client, context.Context, co
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 	return client, ctx, cancel, nil
+}
+
+func isSocketAccessible(s string) error {
+	abs, err := filepath.Abs(s)
+	if err != nil {
+		return err
+	}
+	// set AT_EACCESS to allow running nerdctl as a setuid binary
+	return unix.Faccessat(-1, abs, unix.R_OK|unix.W_OK, unix.AT_EACCESS)
 }
