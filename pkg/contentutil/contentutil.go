@@ -32,32 +32,26 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/pkg/progress"
-	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/remotes"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// FetchConfig for content fetch
-type FetchConfig struct {
+// PullConfig for content fetch
+type PullConfig struct {
 	// Resolver
 	Resolver remotes.Resolver
 	// ProgressOutput to display progress
 	ProgressOutput io.Writer
-	// Labels to set on the content
-	Labels []string
-	// PlatformMatcher matches platforms, supersedes Platforms
-	PlatformMatcher platforms.MatchComparer
-	// Platforms to fetch
-	Platforms []string
-	// Whether or not download all metadata
-	AllMetadata bool
-	// RemoteOpts is not used by ctr, but can be used by other CLI tools
+	// RemoteOpts, e.g. containerd.WithPullUnpack.
+	//
+	// Regardless to RemoteOpts, the following opts are always set:
+	// WithResolver, WithImageHandler, WithSchema1Conversion
 	RemoteOpts []containerd.RemoteOpt
 }
 
-// Fetch loads all resources into the content store and returns the image
-func Fetch(ctx context.Context, client *containerd.Client, ref string, config *FetchConfig) (images.Image, error) {
+// Pull loads all resources into the content store and returns the image
+func Pull(ctx context.Context, client *containerd.Client, ref string, config *PullConfig) (containerd.Image, error) {
 	ongoing := newJobs(ref)
 
 	pctx, stopProgress := context.WithCancel(ctx)
@@ -86,22 +80,10 @@ func Fetch(ctx context.Context, client *containerd.Client, ref string, config *F
 	}
 	opts = append(opts, config.RemoteOpts...)
 
-	if config.AllMetadata {
-		opts = append(opts, containerd.WithAllMetadata())
-	}
-
-	if config.PlatformMatcher != nil {
-		opts = append(opts, containerd.WithPlatformMatcher(config.PlatformMatcher))
-	} else {
-		for _, platform := range config.Platforms {
-			opts = append(opts, containerd.WithPlatform(platform))
-		}
-	}
-
-	img, err := client.Fetch(pctx, ref, opts...)
+	img, err := client.Pull(pctx, ref, opts...)
 	stopProgress()
 	if err != nil {
-		return images.Image{}, err
+		return nil, err
 	}
 
 	<-progress

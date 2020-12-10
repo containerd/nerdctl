@@ -19,18 +19,14 @@ package imgutil
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"strings"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/contentutil"
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/containerd/stargz-snapshotter/fs/source"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -84,42 +80,25 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 	resolver := docker.NewResolver(resovlerOpts)
 
 	var containerdImage containerd.Image
-	sgz := isStargz(snapshotter)
-	if sgz {
-		h := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-			if desc.MediaType != images.MediaTypeDockerSchema1Manifest {
-				fmt.Fprintf(stdout, "fetching %v... %v\n", desc.Digest.String()[:15], desc.MediaType)
-			}
-			return nil, nil
-		})
-		// TODO: support "skip-content-verify"
-		opts := []containerd.RemoteOpt{
-			containerd.WithResolver(resolver),
-			containerd.WithImageHandler(h),
-			containerd.WithSchema1Conversion,
+	config := &contentutil.PullConfig{
+		Resolver:       resolver,
+		ProgressOutput: stdout,
+		RemoteOpts: []containerd.RemoteOpt{
 			containerd.WithPullUnpack,
 			containerd.WithPullSnapshotter(snapshotter),
+		},
+	}
+	sgz := isStargz(snapshotter)
+	if sgz {
+		// TODO: support "skip-content-verify"
+		config.RemoteOpts = append(
+			config.RemoteOpts,
 			containerd.WithImageHandlerWrapper(source.AppendDefaultLabelsHandlerWrapper(ref, 10*1024*1024)),
-		}
-		containerdImage, err = client.Pull(ctx, ref, opts...)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		config := &contentutil.FetchConfig{
-			Resolver:        resolver,
-			ProgressOutput:  stdout,
-			PlatformMatcher: platforms.Default(),
-		}
-
-		img, err := contentutil.Fetch(ctx, client, ref, config)
-		if err != nil {
-			return nil, err
-		}
-		containerdImage = containerd.NewImageWithPlatform(client, img, config.PlatformMatcher)
-		if err := containerdImage.Unpack(ctx, snapshotter); err != nil {
-			return nil, err
-		}
+		)
+	}
+	containerdImage, err = contentutil.Pull(ctx, client, ref, config)
+	if err != nil {
+		return nil, err
 	}
 	res := &EnsuredImage{
 		Ref:         ref,
