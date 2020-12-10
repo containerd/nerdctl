@@ -107,6 +107,8 @@ func newApp() *cli.App {
 		psCommand,
 		stopCommand,
 		rmCommand,
+		pauseCommand,
+		unpauseCommand,
 		// Build
 		buildCommand,
 		// Image management

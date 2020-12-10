@@ -89,6 +89,10 @@ Container management:
 
 - `nerdctl stop`
 
+- `nerdctl pause`
+
+- `nerdctl unpause`
+
 Build:
 - `nerdctl build`
   - `-t, --tag`
@@ -116,6 +120,7 @@ Image management:
 
 System:
 - `nerdctl info`
+
 - `nerdctl version`
 
 Lots of commands and flags are currently missing. Pull requests are highly welcome.
