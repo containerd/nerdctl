@@ -27,6 +27,8 @@ import (
 	"path/filepath"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
+	"github.com/containerd/containerd/contrib/apparmor"
+	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	"github.com/containerd/go-cni"
 	gocni "github.com/containerd/go-cni"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -165,6 +167,17 @@ func getCNINamespaceOpts(clicontext *cli.Context) ([]cni.NamespaceOpts, error) {
 }
 
 func onCreateRuntime(state *specs.State, rootfs string, clicontext *cli.Context) error {
+	if pkgapparmor.HostSupports() {
+		// ensure that the default profile is loaded to the host
+		// FIXME: export loader functions in pkgapparmor
+		defaultAppArmorOpt := apparmor.WithDefaultProfile(defaultAppArmorProfileName)
+		dummySpec := &specs.Spec{
+			Process: &specs.Process{},
+		}
+		if err := defaultAppArmorOpt(context.TODO(), nil, nil, dummySpec); err != nil {
+			logrus.WithError(err).Errorf("failed to load AppArmor profile %q", defaultAppArmorProfileName)
+		}
+	}
 	ctx := context.Background()
 	switch clicontext.String("network") {
 	case "none", "host":
