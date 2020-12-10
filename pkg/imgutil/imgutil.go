@@ -23,8 +23,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/contentutil"
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cmd/ctr/commands/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
@@ -106,13 +106,13 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 			return nil, err
 		}
 	} else {
-		config := &content.FetchConfig{
+		config := &contentutil.FetchConfig{
 			Resolver:        resolver,
 			ProgressOutput:  stdout,
 			PlatformMatcher: platforms.Default(),
 		}
 
-		img, err := content.Fetch(ctx, client, ref, config)
+		img, err := contentutil.Fetch(ctx, client, ref, config)
 		if err != nil {
 			return nil, err
 		}
