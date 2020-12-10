@@ -52,7 +52,13 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 ## Implementation status of Docker-compatible commands and flags
 
 - `nerdctl build`
-  - `-t`
+  - `-t, --tag`
+  - `--target`
+  - `--build-arg`
+  - `--no-cache`
+  - `--progress`
+  - `--secret`
+  - `--ssh`
 
 - `nerdctl images`
   - `-q, --quiet`: Only show numeric IDs

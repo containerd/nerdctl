@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images/archive"
@@ -34,38 +35,55 @@ var buildCommand = &cli.Command{
 	Usage:  "Build an image from a Dockerfile. Needs buildkitd to be running.",
 	Action: buildAction,
 	Flags: []cli.Flag{
-		&cli.StringFlag{
+		&cli.StringSliceFlag{
 			Name:    "tag",
 			Aliases: []string{"t"},
 			Usage:   "Name and optionally a tag in the 'name:tag' format",
+		},
+		&cli.StringFlag{
+			Name:  "target",
+			Usage: "Set the target build stage to build",
+		},
+		&cli.StringSliceFlag{
+			Name:  "build-arg",
+			Usage: "Set build-time variables",
+		},
+		&cli.BoolFlag{
+			Name:  "no-cache",
+			Usage: "Do not use cache when building the image",
+		},
+		&cli.StringFlag{
+			Name:  "progress",
+			Usage: "Set type of progress output (auto, plain, tty). Use plain to show container output",
+			Value: "auto",
+		},
+		&cli.StringSliceFlag{
+			Name:  "secret",
+			Usage: "Secret file to expose to the build: id=mysecret,src=/local/secret",
+		},
+		&cli.StringSliceFlag{
+			Name:  "ssh",
+			Usage: "SSH agent socket or keys to expose to the build (format: default|<id>[=<socket>|<key>[,<key>]])",
 		},
 	},
 }
 
 func buildAction(clicontext *cli.Context) error {
-	if clicontext.NArg() < 1 {
-		return errors.New("context needs to be specified")
+	buildctlBinary := "buildctl"
+	buildctlArgs, err := generateBuildctlArgs(clicontext)
+	if err != nil {
+		return err
 	}
-	buildContext := clicontext.Args().First()
-	tag := clicontext.String("tag")
-	if tag == "" {
-		return errors.New("tag needs to be specified")
-	}
-	sn := clicontext.String("snapshotter")
 
-	buildctlCheckCmd := exec.Command("buildctl", "debug", "workers")
+	buildctlCheckCmd := exec.Command(buildctlBinary, "debug", "workers")
 	buildctlCheckCmd.Env = os.Environ()
 	if out, err := buildctlCheckCmd.CombinedOutput(); err != nil {
 		logrus.Error(string(out))
 		return errors.Wrap(err, "`buildctl` needs to be installed and `buildkitd` needs to be running, see https://github.com/moby/buildkit")
 	}
 
-	buildctlCmd := exec.Command("buildctl",
-		"build",
-		"--frontend=dockerfile.v0",
-		"--local=context="+buildContext,
-		"--local=dockerfile="+buildContext,
-		"--output=type=docker,name="+tag)
+	logrus.Debugf("running %s %v", buildctlBinary, buildctlArgs)
+	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
 	buildctlCmd.Env = os.Environ()
 
 	buildctlStdout, err := buildctlCmd.StdoutPipe()
@@ -85,10 +103,8 @@ func buildAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	var opts []containerd.ImportOpt
-	opts = append(opts, containerd.WithDigestRef(archive.DigestTranslator(sn)))
-
-	imgs, err := client.Import(ctx, buildctlStdout, opts...)
+	sn := clicontext.String("snapshotter")
+	imgs, err := client.Import(ctx, buildctlStdout, containerd.WithDigestRef(archive.DigestTranslator(sn)))
 	if err != nil {
 		return err
 	}
@@ -111,4 +127,53 @@ func buildAction(clicontext *cli.Context) error {
 	}
 
 	return nil
+}
+
+func generateBuildctlArgs(clicontext *cli.Context) ([]string, error) {
+	if clicontext.NArg() < 1 {
+		return nil, errors.New("context needs to be specified")
+	}
+	buildContext := clicontext.Args().First()
+	if buildContext == "-" || strings.Contains(buildContext, "://") {
+		return nil, errors.Errorf("unsupported build context: %q", buildContext)
+	}
+
+	output := "--output=type=docker"
+	if tagSlice := clicontext.StringSlice("tag"); len(tagSlice) > 0 {
+		if len(tagSlice) > 1 {
+			return nil, errors.Errorf("specifying multiple -t is not supported yet")
+		}
+		output += ",name=" + tagSlice[0]
+	}
+
+	buildctlArgs := []string{
+		"build",
+		"--progress=" + clicontext.String("progress"),
+		"--frontend=dockerfile.v0",
+		"--local=context=" + buildContext,
+		"--local=dockerfile=" + buildContext,
+		output,
+	}
+
+	if target := clicontext.String("target"); target != "" {
+		buildctlArgs = append(buildctlArgs, "--opt=target="+target)
+	}
+
+	for _, ba := range clicontext.StringSlice("build-arg") {
+		buildctlArgs = append(buildctlArgs, "--opt=build-arg:"+ba)
+	}
+
+	if clicontext.Bool("no-cache") {
+		buildctlArgs = append(buildctlArgs, "--no-cache")
+	}
+
+	for _, s := range clicontext.StringSlice("secret") {
+		buildctlArgs = append(buildctlArgs, "--secret="+s)
+	}
+
+	for _, s := range clicontext.StringSlice("ssh") {
+		buildctlArgs = append(buildctlArgs, "--ssh="+s)
+	}
+
+	return buildctlArgs, nil
 }
