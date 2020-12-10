@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
+	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
@@ -63,32 +64,12 @@ func rmiAction(clicontext *cli.Context) error {
 	var opts []images.DeleteOpt
 	var imageNotFoundError bool
 
-	if clicontext.NArg() >= 1 {
-		img := clicontext.Args().First()
-		imgFQIN := getFQIN(img)
-
-		digests, err := getImageDigests(ctx, cs, imgFQIN, imageList)
+	for _, img := range clicontext.Args().Slice() {
+		named, err := refdocker.ParseDockerRef(img)
 		if err != nil {
-			return errors.Errorf("Error in getting image digests: %v", err)
+			return err
 		}
-
-		if err := imageStore.Delete(ctx, imgFQIN, opts...); err != nil {
-			fmt.Printf("Error: No such image: %s\n", img)
-			imageNotFoundError = true
-		} else {
-			printDigests(imgFQIN, digests)
-		}
-	}
-
-	if clicontext.NArg() == 1 {
-		if imageNotFoundError {
-			os.Exit(1)
-		}
-		os.Exit(0)
-	}
-
-	for _, img := range clicontext.Args().Tail() {
-		imgFQIN := getFQIN(img)
+		imgFQIN := named.String()
 
 		digests, err := getImageDigests(ctx, cs, imgFQIN, imageList)
 		if err != nil {
@@ -97,13 +78,13 @@ func rmiAction(clicontext *cli.Context) error {
 
 		if err := imageStore.Delete(ctx, imgFQIN, opts...); err != nil {
 			if errdefs.IsNotFound(err) {
-				fmt.Printf("Error: No such image: %s\n", img)
+				fmt.Fprintf(clicontext.App.Writer, "Error: No such image: %s\n", img)
 				imageNotFoundError = true
 				continue
 			}
 			return err
 		}
-		printDigests(imgFQIN, digests)
+		printDigests(clicontext, imgFQIN, digests)
 	}
 
 	if imageNotFoundError {
@@ -115,13 +96,13 @@ func rmiAction(clicontext *cli.Context) error {
 
 // Print digests after image removal.
 // This will keep the stdout in sync with docker rmi output.
-func printDigests(imgFQIN string, digests []digest.Digest) {
+func printDigests(clicontext *cli.Context, imgFQIN string, digests []digest.Digest) {
 	if strings.Contains(imgFQIN, "docker.io/library") {
 		imgFQIN = imgFQIN[18:]
 	}
-	fmt.Printf("Untagged: %s\n", imgFQIN)
+	fmt.Fprintf(clicontext.App.Writer, "Untagged: %s\n", imgFQIN)
 	for _, digest := range digests {
-		fmt.Printf("Deleted: %s\n", digest)
+		fmt.Fprintf(clicontext.App.Writer, "Deleted: %s\n", digest)
 	}
 }
 
@@ -139,16 +120,4 @@ func getImageDigests(ctx context.Context, cs content.Store, imgFQIN string, imag
 		}
 	}
 	return digests, nil
-}
-
-// Get fully qualified image name (FQIN) for the given image.
-func getFQIN(img string) string {
-	if !strings.Contains(img, "/") {
-		img = "docker.io/library/" + img
-	}
-
-	if !strings.Contains(img, ":") {
-		img = img + ":latest"
-	}
-	return img
 }
