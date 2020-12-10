@@ -79,8 +79,8 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
   - `-f`
 
 - `nerdctl run`
-  - `-i` (WIP: currently -i needs to correspond to -t)
-  - `-t` (WIP: currently -t needs to correspond to -i)
+  - `-i`
+  - `-t` (WIP: currently -t requires -i, and conflicts with -d)
   - `-d`
   - `--restart=(no|always)`
   - `--rm`

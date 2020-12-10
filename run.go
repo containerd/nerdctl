@@ -189,12 +189,18 @@ func runAction(clicontext *cli.Context) error {
 	flagT := clicontext.Bool("t")
 	flagD := clicontext.Bool("d")
 
-	if (flagI && !flagT) || (!flagI && flagT) {
-		return errors.New("currently -i and -t need to be always set or unset together (FIXME)")
+	if flagI {
+		if flagD {
+			return errors.New("currently flag -t and -d cannot be specified together (FIXME)")
+		}
 	}
+
 	if flagT {
 		if flagD {
 			return errors.New("currently flag -t and -d cannot be specified together (FIXME)")
+		}
+		if !flagI {
+			return errors.New("currently flag -t needs -i to be specified together (FIXME)")
 		}
 		opts = append(opts, oci.WithTTY)
 	}
