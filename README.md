@@ -72,6 +72,7 @@ Run:
   - `--security-opt apparmor`
   - `--security-opt no-new-privileges`
   - `--privileged`
+  - `--runtime`
   - `-v, --volume`
   - `--read-only`
   - `-w, --workdir`

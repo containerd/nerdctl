@@ -40,6 +40,7 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime/restart"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
@@ -138,6 +139,12 @@ var runCommand = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "privileged",
 			Usage: "Give extended privileges to this container",
+		},
+		// runtime flags
+		&cli.StringFlag{
+			Name:  "runtime",
+			Usage: "Runtime to use for this container, e.g. \"crun\", or \"io.containerd.runsc.v1\"",
+			Value: plugin.RuntimeRuncV2,
 		},
 		// volume flags
 		&cli.StringSliceFlag{
@@ -344,6 +351,12 @@ func runAction(clicontext *cli.Context) error {
 	if clicontext.Bool("privileged") {
 		opts = append(opts, privilegedOpts...)
 	}
+
+	rtCOpts, err := generateRuntimeCOpts(clicontext)
+	if err != nil {
+		return err
+	}
+	cOpts = append(cOpts, rtCOpts...)
 
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)
