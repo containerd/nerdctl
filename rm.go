@@ -98,7 +98,9 @@ func removeContainer(ctx context.Context, client *containerd.Client, id string, 
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
 		if errdefs.IsNotFound(err) {
-			return container.Delete(ctx)
+			if container.Delete(ctx, containerd.WithSnapshotCleanup) != nil {
+				return container.Delete(ctx)
+			}
 		}
 		return err
 	}
@@ -126,5 +128,9 @@ func removeContainer(ctx context.Context, client *containerd.Client, id string, 
 			return errors.Wrapf(err, "failed to delete task %v", id)
 		}
 	}
-	return container.Delete(ctx)
+	var delOpts []containerd.DeleteOpts
+	if _, err := container.Image(ctx); err == nil {
+		delOpts = append(delOpts, containerd.WithSnapshotCleanup)
+	}
+	return container.Delete(ctx, delOpts...)
 }

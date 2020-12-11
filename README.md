@@ -117,6 +117,9 @@ Lots of commands and flags are currently missing. Pull requests are highly welco
 - Namespacing as in `kubectl --namespace=<NS>`: `nerdctl --namespace=<NS> ps`
 - [Lazy-pulling using Stargz Snapshotter](./docs/stargz.md): `nerdctl --snapshotter=stargz run`
 
+Features ported from Podman:
+- Specifying a non-image rootfs: `nerdctl run -it --rootfs <ROOTFS> /bin/sh`
+
 ## Compiling nerdctl from source
 
 Run `make && sudo make install`.

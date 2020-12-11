@@ -38,6 +38,7 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/runtime/restart"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -143,6 +144,11 @@ var runCommand = &cli.Command{
 			Name:  "read-only",
 			Usage: "Mount the container's root filesystem as read only",
 		},
+		// rootfs flags (from Podman)
+		&cli.BoolFlag{
+			Name:  "rootfs",
+			Usage: "The first argument is not an image but the rootfs to the exploded container",
+		},
 		// misc flags
 		&cli.StringFlag{
 			Name:    "workdir",
@@ -164,9 +170,14 @@ func runAction(clicontext *cli.Context) error {
 		return err
 	}
 	defer cancel()
-	ensured, err := imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(), clicontext.String("pull"))
-	if err != nil {
-		return err
+
+	imageless := clicontext.Bool("rootfs")
+	var ensured *imgutil.EnsuredImage
+	if !imageless {
+		ensured, err = imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(), clicontext.String("pull"))
+		if err != nil {
+			return err
+		}
 	}
 	var (
 		opts  []oci.SpecOpts
@@ -194,14 +205,23 @@ func runAction(clicontext *cli.Context) error {
 		oci.WithMounts([]specs.Mount{
 			{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro"}},
 		}),
-		oci.WithImageConfig(ensured.Image),
 	)
-	cOpts = append(cOpts,
-		containerd.WithImage(ensured.Image),
-		containerd.WithSnapshotter(ensured.Snapshotter),
-		containerd.WithNewSnapshot(id, ensured.Image),
-		containerd.WithImageStopSignal(ensured.Image, "SIGTERM"),
-	)
+
+	if imageless {
+		absRootfs, err := filepath.Abs(clicontext.Args().First())
+		if err != nil {
+			return err
+		}
+		opts = append(opts, oci.WithRootFSPath(absRootfs))
+	} else {
+		opts = append(opts, oci.WithImageConfig(ensured.Image))
+		cOpts = append(cOpts,
+			containerd.WithImage(ensured.Image),
+			containerd.WithSnapshotter(ensured.Snapshotter),
+			containerd.WithNewSnapshot(id, ensured.Image),
+			containerd.WithImageStopSignal(ensured.Image, "SIGTERM"),
+		)
+	}
 
 	if clicontext.Bool("read-only") {
 		opts = append(opts, oci.WithRootFSReadonly())
@@ -209,7 +229,11 @@ func runAction(clicontext *cli.Context) error {
 
 	if clicontext.NArg() > 1 {
 		opts = append(opts, oci.WithProcessArgs(clicontext.Args().Tail()...))
+	} else if imageless {
+		// error message is from Podman
+		return errors.New("no command or entrypoint provided, and no CMD or ENTRYPOINT from image")
 	}
+
 	if wd := clicontext.String("workdir"); wd != "" {
 		opts = append(opts, oci.WithProcessCwd(wd))
 	}
@@ -318,7 +342,13 @@ func runAction(clicontext *cli.Context) error {
 		return err
 	}
 	if clicontext.Bool("rm") && !flagD {
-		defer container.Delete(ctx, containerd.WithSnapshotCleanup)
+		defer func() {
+			if removeErr := removeContainer(ctx, client, id, true); removeErr != nil {
+				if !errdefs.IsNotFound(removeErr) {
+					logrus.WithError(removeErr).Warnf("failed to remove container %s", id)
+				}
+			}
+		}()
 	}
 
 	var con console.Console
