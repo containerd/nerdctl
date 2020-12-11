@@ -86,6 +86,8 @@ Container management:
 - `nerdctl rm`
   - `-f`
 
+- `nerdctl stop`
+
 Build:
 - `nerdctl build`
   - `-t, --tag`
