@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"context"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -109,12 +110,12 @@ func stopAction(clicontext *cli.Context) error {
 			return err
 		}
 
-		status, err := task.Status(ctx)
+		isRunning, err := isContainerRunning(task, ctx)
 		if err != nil {
 			return err
 		}
 
-		if status.Status != containerd.Running {
+		if !isRunning {
 			// Task is not running anymore, no need to SIGKILL.
 			fmt.Fprintf(clicontext.App.Writer, "%s\n", id[:12])
 			continue
@@ -132,10 +133,34 @@ func stopAction(clicontext *cli.Context) error {
 			return err
 		}
 
+		isRunning, err = isContainerRunning(task, ctx)
+		if err != nil {
+			return err
+		}
+
+		if !isRunning {
+			// Task is not running anymore, no need to SIGKILL.
+			fmt.Fprintf(clicontext.App.Writer, "%s\n", id[:12])
+			continue
+		}
+
 		if err = task.Kill(ctx, signal); err != nil {
 			return err
 		}
 		fmt.Fprintf(clicontext.App.Writer, "%s\n", id[:12])
 	}
 	return nil
+}
+
+// Check if the container is running or not.
+func isContainerRunning(task containerd.Task, ctx context.Context) (bool, error) {
+	status, err := task.Status(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if status.Status != containerd.Running {
+		return false, nil
+	}
+	return true, nil
 }
