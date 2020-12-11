@@ -138,6 +138,12 @@ var runCommand = &cli.Command{
 			Aliases: []string{"v"},
 			Usage:   "Bind mount a volume",
 		},
+		// misc flags
+		&cli.StringFlag{
+			Name:    "workdir",
+			Aliases: []string{"w"},
+			Usage:   "Working directory inside the container",
+		},
 	},
 }
 
@@ -193,6 +199,9 @@ func runAction(clicontext *cli.Context) error {
 	)
 	if clicontext.NArg() > 1 {
 		opts = append(opts, oci.WithProcessArgs(clicontext.Args().Tail()...))
+	}
+	if wd := clicontext.String("workdir"); wd != "" {
+		opts = append(opts, oci.WithProcessCwd(wd))
 	}
 
 	flagI := clicontext.Bool("i")

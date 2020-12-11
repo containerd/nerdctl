@@ -72,6 +72,7 @@ Run:
   - `--security-opt no-new-privileges`
   - `--privileged`
   - `-v, --volume`
+  - `-w, --workdir`
 
 Container management:
 - `nerdctl ps`
