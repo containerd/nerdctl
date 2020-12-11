@@ -105,6 +105,7 @@ func newApp() *cli.App {
 		runCommand,
 		// Container management
 		psCommand,
+		stopCommand,
 		rmCommand,
 		// Build
 		buildCommand,
