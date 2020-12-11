@@ -72,6 +72,7 @@ Run:
   - `--security-opt no-new-privileges`
   - `--privileged`
   - `-v, --volume`
+  - `--read-only`
   - `-w, --workdir`
 
 Container management:

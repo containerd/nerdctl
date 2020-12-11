@@ -138,6 +138,11 @@ var runCommand = &cli.Command{
 			Aliases: []string{"v"},
 			Usage:   "Bind mount a volume",
 		},
+		// rootfs flags
+		&cli.BoolFlag{
+			Name:  "read-only",
+			Usage: "Mount the container's root filesystem as read only",
+		},
 		// misc flags
 		&cli.StringFlag{
 			Name:    "workdir",
@@ -197,6 +202,11 @@ func runAction(clicontext *cli.Context) error {
 		containerd.WithNewSnapshot(id, ensured.Image),
 		containerd.WithImageStopSignal(ensured.Image, "SIGTERM"),
 	)
+
+	if clicontext.Bool("read-only") {
+		opts = append(opts, oci.WithRootFSReadonly())
+	}
+
 	if clicontext.NArg() > 1 {
 		opts = append(opts, oci.WithProcessArgs(clicontext.Args().Tail()...))
 	}
