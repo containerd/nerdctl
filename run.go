@@ -55,6 +55,11 @@ var runCommand = &cli.Command{
 	HideHelp: true, // built-in "-h" help conflicts with the short form of `--hostname`
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
+			Name: "help",
+			// No "-h" alias for "--help", because "-h" for "--hostname".
+			Usage: "show help",
+		},
+		&cli.BoolFlag{
 			Name:    "tty",
 			Aliases: []string{"t"},
 			Usage:   "(Currently -t needs to correspond to -i)",
@@ -179,6 +184,9 @@ var runCommand = &cli.Command{
 // runAction is heavily based on ctr implementation:
 // https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/run/run.go
 func runAction(clicontext *cli.Context) error {
+	if clicontext.Bool("help") {
+		return cli.ShowCommandHelp(clicontext, "run")
+	}
 	if clicontext.NArg() < 1 {
 		return errors.New("image name needs to be specified")
 	}
