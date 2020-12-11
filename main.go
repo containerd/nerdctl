@@ -94,17 +94,24 @@ func newApp() *cli.App {
 		return nil
 	}
 	app.Commands = []*cli.Command{
-		buildCommand,
-		loadCommand,
-		imagesCommand,
-		infoCommand,
-		internalCommand,
+		// Run
+		runCommand,
+		// Container management
 		psCommand,
 		rmCommand,
-		rmiCommand,
+		// Build
+		buildCommand,
+		// Image management
+		imagesCommand,
 		pullCommand,
-		runCommand,
+		loadCommand,
+		tagCommand,
+		rmiCommand,
+		// System
+		infoCommand,
 		versionCommand,
+		// Internal
+		internalCommand,
 	}
 	return app
 }

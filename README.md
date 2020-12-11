@@ -100,6 +100,8 @@ Image management:
 
 - `nerdctl load`
 
+- `nerdctl tag`
+
 - `nerdctl rmi`
 
 System:
