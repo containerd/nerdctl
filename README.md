@@ -76,6 +76,7 @@ Run:
   - `-v, --volume`
   - `--read-only`
   - `-w, --workdir`
+  - `-e, --env`
 
 Container management:
 - `nerdctl ps`

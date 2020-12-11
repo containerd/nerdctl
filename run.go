@@ -168,6 +168,11 @@ var runCommand = &cli.Command{
 			Aliases: []string{"w"},
 			Usage:   "Working directory inside the container",
 		},
+		&cli.StringSliceFlag{
+			Name:    "env",
+			Aliases: []string{"e"},
+			Usage:   "Set environment variables",
+		},
 	},
 }
 
@@ -249,6 +254,9 @@ func runAction(clicontext *cli.Context) error {
 
 	if wd := clicontext.String("workdir"); wd != "" {
 		opts = append(opts, oci.WithProcessCwd(wd))
+	}
+	if env := clicontext.StringSlice("env"); len(env) > 0 {
+		opts = append(opts, oci.WithEnv(env))
 	}
 
 	flagI := clicontext.Bool("i")
