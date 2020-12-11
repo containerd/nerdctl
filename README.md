@@ -51,35 +51,7 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 
 ## Implementation status of Docker-compatible commands and flags
 
-- `nerdctl build`
-  - `-t, --tag`
-  - `--target`
-  - `--build-arg`
-  - `--no-cache`
-  - `--progress`
-  - `--secret`
-  - `--ssh`
-
-- `nerdctl load`
-
-- `nerdctl images`
-  - `-q, --quiet`: Only show numeric IDs
-  - `--no-trunc`: Don't truncate output
-
-- `nerdctl rmi`
-
-- `nerdctl info`
-
-- `nerdctl ps`
-  - `-a, --all`: Show all containers (default shows just running)
-  - `--no-trunc`: Don't truncate output
-  - `-q, --quiet`: Only display container IDs
-
-- `nerdctl pull`
-
-- `nerdctl rm`
-  - `-f`
-
+Run:
 - `nerdctl run`
   - `-i`
   - `-t` (WIP: currently -t requires -i, and conflicts with -d)
@@ -100,6 +72,38 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
   - `--privileged`
   - `-v, --volume`
 
+Container management:
+- `nerdctl ps`
+  - `-a, --all`: Show all containers (default shows just running)
+  - `--no-trunc`: Don't truncate output
+  - `-q, --quiet`: Only display container IDs
+
+- `nerdctl rm`
+  - `-f`
+
+Build:
+- `nerdctl build`
+  - `-t, --tag`
+  - `--target`
+  - `--build-arg`
+  - `--no-cache`
+  - `--progress`
+  - `--secret`
+  - `--ssh`
+
+Image management:
+- `nerdctl images`
+  - `-q, --quiet`: Only show numeric IDs
+  - `--no-trunc`: Don't truncate output
+
+- `nerdctl pull`
+
+- `nerdctl load`
+
+- `nerdctl rmi`
+
+System:
+- `nerdctl info`
 - `nerdctl version`
 
 Lots of commands and flags are currently missing. Pull requests are highly welcome.
