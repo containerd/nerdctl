@@ -23,13 +23,13 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/mountutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
@@ -38,7 +38,6 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
-	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime/restart"
@@ -216,11 +215,10 @@ func runAction(clicontext *cli.Context) error {
 		return err
 	}
 
-	ns := clicontext.String("namespace")
-	if strings.Contains(ns, "/") {
-		return errors.New("namespace with '/' is unsupported")
+	stateDir, err := getContainerStateDirPath(clicontext, id)
+	if err != nil {
+		return err
 	}
-	stateDir := filepath.Join(dataRoot, "c", ns, id) // "c" stands for "containers"
 	if err := os.MkdirAll(stateDir, 0700); err != nil {
 		return err
 	}
@@ -309,7 +307,7 @@ func runAction(clicontext *cli.Context) error {
 	case "host":
 		opts = append(opts, oci.WithHostNamespace(specs.NetworkNamespace), oci.WithHostHostsFile, oci.WithHostResolvconf)
 	case "bridge":
-		// We only verify flags here.
+		// We only verify flags and generate resolv.conf here.
 		// The actual network is configured in the oci hook.
 		cniPath := clicontext.String("cni-path")
 		for _, f := range requiredCNIPlugins {
@@ -319,11 +317,11 @@ func runAction(clicontext *cli.Context) error {
 					f, cniPath)
 			}
 		}
-		for _, dns := range clicontext.StringSlice("dns") {
-			if net.ParseIP(dns) == nil {
-				return errors.Errorf("invalid dns %q", dns)
-			}
+		resolvConfPath := filepath.Join(stateDir, "resolv.conf")
+		if err := dnsutil.WriteResolvConfFile(resolvConfPath, clicontext.StringSlice("dns")); err != nil {
+			return err
 		}
+		opts = append(opts, withCustomResolvConf(resolvConfPath))
 		for _, p := range clicontext.StringSlice("p") {
 			if _, err = portutil.ParseFlagP(p); err != nil {
 				return err
@@ -384,10 +382,8 @@ func runAction(clicontext *cli.Context) error {
 	}
 	if clicontext.Bool("rm") && !flagD {
 		defer func() {
-			if removeErr := removeContainer(ctx, client, id, true); removeErr != nil {
-				if !errdefs.IsNotFound(removeErr) {
-					logrus.WithError(removeErr).Warnf("failed to remove container %s", id)
-				}
+			if removeErr := removeContainer(ctx, client, id, true, stateDir); removeErr != nil {
+				logrus.WithError(removeErr).Warnf("failed to remove container %s", id)
 			}
 		}()
 	}
@@ -452,6 +448,18 @@ func genID() string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+func withCustomResolvConf(src string) func(context.Context, oci.Client, *containers.Container, *oci.Spec) error {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		s.Mounts = append(s.Mounts, specs.Mount{
+			Destination: "/etc/resolv.conf",
+			Type:        "bind",
+			Source:      src,
+			Options:     []string{"bind"}, // writable
+		})
+		return nil
+	}
+}
+
 func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecOpts, error) {
 	selfExe, err := os.Readlink("/proc/self/exe")
 	if err != nil {
@@ -466,9 +474,6 @@ func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecO
 		"--full-id=" + fullID,
 		"--container-state-dir=" + stateDir,
 		"--network=" + clicontext.String("network"),
-	}
-	for _, dns := range clicontext.StringSlice("dns") {
-		args = append(args, "--dns="+dns)
 	}
 	for _, p := range clicontext.StringSlice("p") {
 		args = append(args, "-p="+p)
@@ -503,4 +508,17 @@ func generateRestartOpts(restartFlag string) ([]containerd.NewContainerOpts, err
 	default:
 		return nil, errors.Errorf("unsupported restart type %q, supported types are: \"no\",  \"always\"", restartFlag)
 	}
+}
+
+func getContainerStateDirPath(clicontext *cli.Context, id string) (string, error) {
+	dataRoot := clicontext.String("data-root")
+	ns := clicontext.String("namespace")
+	if ns == "" {
+		return "", errors.New("namespace is required")
+	}
+	if strings.Contains(ns, "/") {
+		return "", errors.New("namespace with '/' is unsupported")
+	}
+	// "c" stands for "containers"
+	return filepath.Join(dataRoot, "c", ns, id), nil
 }

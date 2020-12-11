@@ -20,6 +20,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/containerd/containerd"
@@ -81,7 +82,11 @@ func rmAction(clicontext *cli.Context) error {
 				continue
 			}
 		}
-		if err := removeContainer(ctx, client, id, force); err != nil {
+		stateDir, err := getContainerStateDirPath(clicontext, id)
+		if err != nil {
+			return err
+		}
+		if err := removeContainer(ctx, client, id, force, stateDir); err != nil {
 			return err
 		}
 		fmt.Println(id)
@@ -89,7 +94,18 @@ func rmAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func removeContainer(ctx context.Context, client *containerd.Client, id string, force bool) error {
+// removeContainer returns nil when the container cannot be found
+func removeContainer(ctx context.Context, client *containerd.Client, id string, force bool, stateDir string) (retErr error) {
+	defer func() {
+		if errdefs.IsNotFound(retErr) {
+			retErr = nil
+		}
+		if retErr == nil {
+			retErr = os.RemoveAll(stateDir)
+		} else {
+			logrus.WithError(retErr).Warnf("failed to remove container %q", id)
+		}
+	}()
 	container, err := client.LoadContainer(ctx, id)
 	if err != nil {
 		return err

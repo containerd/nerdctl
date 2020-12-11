@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -35,7 +34,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/sys/unix"
 )
 
 var internalOCIHookCommand = &cli.Command{
@@ -54,10 +52,6 @@ var internalOCIHookCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:  "network",
 			Usage: "value of `nerdctl run --network`",
-		},
-		&cli.StringSliceFlag{
-			Name:  "dns",
-			Usage: "value of `nerdctl run --dns`",
 		},
 		&cli.StringSliceFlag{
 			Name:  "p",
@@ -187,36 +181,6 @@ func onCreateRuntime(state *specs.State, rootfs string, clicontext *cli.Context)
 		if err != nil {
 			return err
 		}
-		containerStateDir := clicontext.String("container-state-dir")
-		stateResolvConfPath := filepath.Join(containerStateDir, "resolv.conf")
-		resolvConf, err := os.Create(stateResolvConfPath)
-		if err != nil {
-			return errors.Wrapf(err, "failed to create %q", stateResolvConfPath)
-		}
-		if _, err = resolvConf.Write([]byte("search localdomain\n")); err != nil {
-			return err
-		}
-		for _, dns := range clicontext.StringSlice("dns") {
-			if _, err = resolvConf.Write([]byte("nameserver " + dns + "\n")); err != nil {
-				return err
-			}
-		}
-		if err := resolvConf.Close(); err != nil {
-			return err
-		}
-		containerResolvConfPath := filepath.Join(rootfs, "/etc/resolv.conf")
-		if _, err := os.Stat(containerResolvConfPath); err != nil {
-			if err := os.MkdirAll(filepath.Join(rootfs, "etc"), 0755); err != nil {
-				return err
-			}
-			if err := ioutil.WriteFile(containerResolvConfPath, nil, 0644); err != nil {
-				return err
-			}
-		}
-		if err := unix.Mount(stateResolvConfPath, containerResolvConfPath, "none", unix.MS_BIND|unix.MS_PRIVATE, ""); err != nil {
-			return errors.Wrapf(err, "failed to mount %q on %q", stateResolvConfPath, containerResolvConfPath)
-		}
-
 		cni, err := newCNI(clicontext)
 		if err != nil {
 			return errors.Wrap(err, "failed to call newCNI")
@@ -249,14 +213,6 @@ func onPostStop(state *specs.State, rootfs string, clicontext *cli.Context) erro
 		if err := cni.Remove(ctx, clicontext.String("full-id"), "", cniNSOpts...); err != nil {
 			logrus.WithError(err).Errorf("failed to call cni.Remove")
 			return err
-		}
-
-		containerResolvConfPath := filepath.Join(rootfs, "/etc/resolv.conf")
-		_ = unix.Unmount(containerResolvConfPath, unix.MNT_DETACH|unix.MNT_FORCE)
-
-		containerStateDir := clicontext.String("container-state-dir")
-		if err := os.RemoveAll(containerStateDir); err != nil {
-			logrus.WithError(err).Errorf("failed to remove %q", containerStateDir)
 		}
 	}
 	return nil
