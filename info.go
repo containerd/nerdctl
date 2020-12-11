@@ -82,6 +82,9 @@ func infoAction(clicontext *cli.Context) error {
 	}
 	fmt.Fprintf(w, "  seccomp\n")
 	fmt.Fprintf(w, "   Profile: default\n")
+	if defaultCgroupnsMode() == "private" {
+		fmt.Fprintf(w, "  cgroupns\n")
+	}
 	fmt.Fprintf(w, " ID: %s\n", daemonIntro.UUID)
 	return nil
 }

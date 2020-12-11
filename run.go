@@ -96,6 +96,25 @@ var runCommand = &cli.Command{
 			Aliases: []string{"p"},
 			Usage:   "Publish a container's port(s) to the host (Currently TCP only)",
 		},
+		&cli.Float64Flag{
+			Name:  "cpus",
+			Usage: "Number of CPUs",
+		},
+		&cli.StringFlag{
+			Name:    "memory",
+			Aliases: []string{"m"},
+			Usage:   "Memory limit",
+		},
+		&cli.IntFlag{
+			Name:  "pids-limit",
+			Usage: "Tune container pids limit (set -1 for unlimited)",
+			Value: -1,
+		},
+		&cli.StringFlag{
+			Name:  "cgroupns",
+			Usage: "Cgroup namespace to use, the default depends on the cgroup version (\"host\"|\"private\")",
+			Value: defaultCgroupnsMode(),
+		},
 		&cli.StringSliceFlag{
 			Name:  "security-opt",
 			Usage: "Security options",
@@ -151,6 +170,9 @@ func runAction(clicontext *cli.Context) error {
 	opts = append(opts,
 		oci.WithDefaultSpec(),
 		oci.WithDefaultUnixDevices,
+		oci.WithMounts([]specs.Mount{
+			{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro"}},
+		}),
 		oci.WithImageConfig(ensured.Image),
 	)
 	cOpts = append(cOpts,
@@ -228,6 +250,12 @@ func runAction(clicontext *cli.Context) error {
 		return err
 	}
 	opts = append(opts, hookOpt)
+
+	if cgOpts, err := generateCgroupOpts(clicontext); err != nil {
+		return err
+	} else {
+		opts = append(opts, cgOpts...)
+	}
 
 	securityOptsMaps := ConvertKVStringsToMap(clicontext.StringSlice("security-opt"))
 	if secOpts, err := generateSecurityOpts(securityOptsMaps); err != nil {

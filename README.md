@@ -88,11 +88,15 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
   - `-p, --publish` (WIP: currently TCP only)
   - `--dns`
   - `--pull=(always|missing|never)`
+  - `--cpus`
+  - `--memory`
+  - `--pids-limit`
+  - `--cgroupns=(host|private)`
   - `--security-opt seccomp`
   - `--security-opt apparmor`
   - `--security-opt no-new-privileges`
   - `--privileged`
-  - `-v, --volume"
+  - `-v, --volume`
 
 - `nerdctl version`
 
