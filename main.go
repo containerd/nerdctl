@@ -32,9 +32,19 @@ import (
 )
 
 func main() {
-	if err := newApp().Run(os.Args); err != nil {
+	if err := xmain(); err != nil {
 		logrus.Fatal(err)
 	}
+}
+
+func xmain() error {
+	if len(os.Args) == 3 && os.Args[1] == internalLoggingArgKey {
+		// containerd runtime v2 logging plugin mode.
+		// "binary://BIN?KEY=VALUE" URI is parsed into Args {BIN, KEY, VALUE}.
+		return internalLoggingMain(os.Args[2])
+	}
+	// nerdctl CLI mode
+	return newApp().Run(os.Args)
 }
 
 func newApp() *cli.App {
@@ -105,6 +115,7 @@ func newApp() *cli.App {
 		runCommand,
 		// Container management
 		psCommand,
+		logsCommand,
 		stopCommand,
 		rmCommand,
 		pauseCommand,

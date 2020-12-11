@@ -84,6 +84,8 @@ Container management:
   - `--no-trunc`: Don't truncate output
   - `-q, --quiet`: Only display container IDs
 
+- `nerdctl logs`
+
 - `nerdctl rm`
   - `-f`
 
