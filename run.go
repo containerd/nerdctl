@@ -329,7 +329,7 @@ func runAction(clicontext *cli.Context) error {
 	}
 	opts = append(opts, hookOpt)
 
-	if cgOpts, err := generateCgroupOpts(clicontext); err != nil {
+	if cgOpts, err := generateCgroupOpts(clicontext, id); err != nil {
 		return err
 	} else {
 		opts = append(opts, cgOpts...)

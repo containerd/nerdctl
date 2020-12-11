@@ -26,6 +26,8 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+const defaultCgroupManager = "cgroupfs"
+
 func defaultCgroupnsMode() string {
 	if cgroups.Mode() == cgroups.Unified {
 		return "private"
@@ -33,8 +35,14 @@ func defaultCgroupnsMode() string {
 	return "host"
 }
 
-func generateCgroupOpts(clicontext *cli.Context) ([]oci.SpecOpts, error) {
+func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
+
+	if clicontext.String("cgroup-manager") == "systemd" {
+		//  "slice:prefix:name"
+		cg := "system.slice:nerdctl:" + id
+		opts = append(opts, oci.WithCgroup(cg))
+	}
 
 	// cpus: from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/run/run_unix.go#L187-L193
 	if cpus := clicontext.Float64("cpus"); cpus > 0.0 {

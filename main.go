@@ -82,6 +82,13 @@ func newApp() *cli.App {
 			Usage: "Root directory of persistent nerdctl state (managed by nerdctl, not by containerd)",
 			Value: "/var/lib/nerdctl",
 		},
+		// cgroup-manager flag is from Podman.
+		// Because Docker's equivalent is complicated: --exec-opt native.cgroupdriver=(cgroupfs|systemd)
+		&cli.StringFlag{
+			Name:  "cgroup-manager",
+			Usage: "Cgroup manager to use (\"cgroupfs\"|\"systemd\")",
+			Value: defaultCgroupManager,
+		},
 	}
 	app.Before = func(clicontext *cli.Context) error {
 		if debug {

@@ -23,6 +23,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/plugin"
 	runcoptions "github.com/containerd/containerd/runtime/v2/runc/options"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -32,10 +33,17 @@ func generateRuntimeCOpts(clicontext *cli.Context) ([]containerd.NewContainerOpt
 		runcOpts    runcoptions.Options
 		runtimeOpts interface{} = &runcOpts
 	)
+	cgm := clicontext.String("cgroup-manager")
+	if cgm == "systemd" {
+		runcOpts.SystemdCgroup = true
+	}
 	if runtimeStr := clicontext.String("runtime"); runtimeStr != "" {
 		if strings.HasPrefix(runtimeStr, "io.containerd.") {
 			runtime = runtimeStr
 			if !strings.HasPrefix(runtimeStr, "io.containerd.runc.") {
+				if cgm == "systemd" {
+					logrus.Warnf("cannot set cgroup manager to %q for runtime %q", cgm, runtimeStr)
+				}
 				runtimeOpts = nil
 			}
 		} else {
