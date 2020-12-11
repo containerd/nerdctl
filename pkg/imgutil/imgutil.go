@@ -23,9 +23,9 @@ import (
 	"strings"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/contentutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/containerd"
 	refdocker "github.com/containerd/containerd/reference/docker"
-	"github.com/containerd/containerd/remotes/docker"
 	"github.com/containerd/stargz-snapshotter/fs/source"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -70,14 +70,16 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 		return nil, errors.Errorf("image %q is not available", rawRef)
 	}
 
+	resolver, err := dockerconfigresolver.New(refdocker.Domain(named))
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, done, err := client.WithLease(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer done(ctx)
-
-	resovlerOpts := docker.ResolverOptions{}
-	resolver := docker.NewResolver(resovlerOpts)
 
 	var containerdImage containerd.Image
 	config := &contentutil.PullConfig{
