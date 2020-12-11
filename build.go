@@ -18,13 +18,10 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/images/archive"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -96,34 +93,12 @@ func buildAction(clicontext *cli.Context) error {
 		return err
 	}
 
-	// Load images from buildkit tar stream
-	client, ctx, cancel, err := newClient(clicontext)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
-	sn := clicontext.String("snapshotter")
-	imgs, err := client.Import(ctx, buildctlStdout, containerd.WithDigestRef(archive.DigestTranslator(sn)))
-	if err != nil {
+	if err = loadImage(buildctlStdout, clicontext); err != nil {
 		return err
 	}
 
-	// Wait exporting images to containerd
 	if err = buildctlCmd.Wait(); err != nil {
 		return err
-	}
-
-	for _, img := range imgs {
-		image := containerd.NewImage(client, img)
-
-		// TODO: Show unpack status
-		fmt.Fprintf(clicontext.App.Writer, "unpacking %s (%s)...", img.Name, img.Target.Digest)
-		err = image.Unpack(ctx, sn)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(clicontext.App.Writer, "done\n")
 	}
 
 	return nil

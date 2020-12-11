@@ -60,6 +60,8 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
   - `--secret`
   - `--ssh`
 
+- `nerdctl load`
+
 - `nerdctl images`
   - `-q, --quiet`: Only show numeric IDs
   - `--no-trunc`: Don't truncate output

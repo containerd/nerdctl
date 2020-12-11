@@ -95,6 +95,7 @@ func newApp() *cli.App {
 	}
 	app.Commands = []*cli.Command{
 		buildCommand,
+		loadCommand,
 		imagesCommand,
 		infoCommand,
 		internalCommand,
