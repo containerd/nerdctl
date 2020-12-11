@@ -163,12 +163,7 @@ func getCNINamespaceOpts(clicontext *cli.Context) ([]cni.NamespaceOpts, error) {
 func onCreateRuntime(state *specs.State, rootfs string, clicontext *cli.Context) error {
 	if pkgapparmor.HostSupports() {
 		// ensure that the default profile is loaded to the host
-		// FIXME: export loader functions in pkgapparmor
-		defaultAppArmorOpt := apparmor.WithDefaultProfile(defaultAppArmorProfileName)
-		dummySpec := &specs.Spec{
-			Process: &specs.Process{},
-		}
-		if err := defaultAppArmorOpt(context.TODO(), nil, nil, dummySpec); err != nil {
+		if err := apparmor.LoadDefaultProfile(defaultAppArmorProfileName); err != nil {
 			logrus.WithError(err).Errorf("failed to load AppArmor profile %q", defaultAppArmorProfileName)
 		}
 	}
