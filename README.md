@@ -66,6 +66,7 @@ Run:
   - `--memory`
   - `--pids-limit`
   - `--cgroupns=(host|private)`
+  - `-u, --user`
   - `--security-opt seccomp`
   - `--security-opt apparmor`
   - `--security-opt no-new-privileges`

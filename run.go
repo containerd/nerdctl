@@ -80,6 +80,7 @@ var runCommand = &cli.Command{
 			Usage: "Pull image before running (\"always\"|\"missing\"|\"never\")",
 			Value: "missing",
 		},
+		// network flags
 		&cli.StringFlag{
 			Name:    "network",
 			Aliases: []string{"net"},
@@ -96,6 +97,7 @@ var runCommand = &cli.Command{
 			Aliases: []string{"p"},
 			Usage:   "Publish a container's port(s) to the host (Currently TCP only)",
 		},
+		// cgroup flags
 		&cli.Float64Flag{
 			Name:  "cpus",
 			Usage: "Number of CPUs",
@@ -115,6 +117,13 @@ var runCommand = &cli.Command{
 			Usage: "Cgroup namespace to use, the default depends on the cgroup version (\"host\"|\"private\")",
 			Value: defaultCgroupnsMode(),
 		},
+		// user flags
+		&cli.StringFlag{
+			Name:    "user",
+			Aliases: []string{"u"},
+			Usage:   "Username or UID (format: <name|uid>[:<group|gid>])",
+		},
+		// security flags
 		&cli.StringSliceFlag{
 			Name:  "security-opt",
 			Usage: "Security options",
@@ -123,6 +132,7 @@ var runCommand = &cli.Command{
 			Name:  "privileged",
 			Usage: "Give extended privileges to this container",
 		},
+		// volume flags
 		&cli.StringSliceFlag{
 			Name:    "volume",
 			Aliases: []string{"v"},
@@ -261,6 +271,12 @@ func runAction(clicontext *cli.Context) error {
 		return err
 	} else {
 		opts = append(opts, cgOpts...)
+	}
+
+	if uOpts, err := generateUserOpts(clicontext); err != nil {
+		return err
+	} else {
+		opts = append(opts, uOpts...)
 	}
 
 	securityOptsMaps := ConvertKVStringsToMap(clicontext.StringSlice("security-opt"))
