@@ -61,6 +61,7 @@ Run:
   - `--network=(bridge|host|none)`
   - `-p, --publish` (WIP: currently TCP only)
   - `--dns`
+  - `-h, --hostname`
   - `--pull=(always|missing|never)`
   - `--cpus`
   - `--memory`

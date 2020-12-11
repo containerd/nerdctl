@@ -48,9 +48,10 @@ import (
 )
 
 var runCommand = &cli.Command{
-	Name:   "run",
-	Usage:  "Run a command in a new container",
-	Action: runAction,
+	Name:     "run",
+	Usage:    "Run a command in a new container",
+	Action:   runAction,
+	HideHelp: true, // built-in "-h" help conflicts with the short form of `--hostname`
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:    "tty",
@@ -97,6 +98,11 @@ var runCommand = &cli.Command{
 			Name:    "publish",
 			Aliases: []string{"p"},
 			Usage:   "Publish a container's port(s) to the host (Currently TCP only)",
+		},
+		&cli.StringFlag{
+			Name:    "hostname",
+			Aliases: []string{"h"},
+			Usage:   "Container host name",
 		},
 		// cgroup flags
 		&cli.Float64Flag{
@@ -303,6 +309,12 @@ func runAction(clicontext *cli.Context) error {
 	default:
 		return errors.Errorf("unknown network %q", netstr)
 	}
+
+	hostname := id[0:12]
+	if customHostname := clicontext.String("hostname"); customHostname != "" {
+		hostname = customHostname
+	}
+	opts = append(opts, oci.WithHostname(hostname))
 
 	hookOpt, err := withNerdctlOCIHook(clicontext, id, stateDir)
 	if err != nil {
