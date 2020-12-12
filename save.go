@@ -30,9 +30,10 @@ import (
 )
 
 var saveCommand = &cli.Command{
-	Name:   "save",
-	Usage:  "Save one or more images to a tar archive (streamed to STDOUT by default)",
-	Action: saveAction,
+	Name:        "save",
+	Usage:       "Save one or more images to a tar archive (streamed to STDOUT by default)",
+	Description: "The archive implements both Docker Image Spec v1.2 and OCI Image Spec v1.0.",
+	Action:      saveAction,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    "output",

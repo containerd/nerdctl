@@ -131,6 +131,8 @@ Lots of commands and flags are currently missing. Pull requests are highly welco
 ## Features present in `nerdctl` but not present in Docker
 - Namespacing as in `kubectl --namespace=<NS>`: `nerdctl --namespace=<NS> ps`
 - [Lazy-pulling using Stargz Snapshotter](./docs/stargz.md): `nerdctl --snapshotter=stargz run`
+- Exporting Docker/OCI dual-format archives: `nerdctl save`
+- Importing OCI archives: `nerdctl load`
 
 Features ported from Podman:
 - Specifying a non-image rootfs: `nerdctl run -it --rootfs <ROOTFS> /bin/sh`

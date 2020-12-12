@@ -28,9 +28,10 @@ import (
 )
 
 var loadCommand = &cli.Command{
-	Name:   "load",
-	Usage:  "Load an image from a tar archive or STDIN",
-	Action: loadAction,
+	Name:        "load",
+	Usage:       "Load an image from a tar archive or STDIN",
+	Description: "Supports both Docker Image Spec v1.2 and OCI Image Spec v1.0.",
+	Action:      loadAction,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    "input",
