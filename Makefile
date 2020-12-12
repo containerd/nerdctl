@@ -37,7 +37,6 @@ help:
 
 nerdctl:
 	$(GO_BUILD) -o $(CURDIR)/_output/nerdctl $(PACKAGE)
-	strip $(CURDIR)/_output/nerdctl
 
 clean:
 	find . -name \*~ -delete
