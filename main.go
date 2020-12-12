@@ -113,6 +113,7 @@ func newApp() *cli.App {
 		imagesCommand,
 		pullCommand,
 		loadCommand,
+		saveCommand,
 		tagCommand,
 		rmiCommand,
 		// System

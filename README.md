@@ -108,6 +108,8 @@ Image management:
 
 - `nerdctl load`
 
+- `nerdctl save`
+
 - `nerdctl tag`
 
 - `nerdctl rmi`

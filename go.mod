@@ -11,6 +11,7 @@ require (
 	github.com/docker/cli v20.10.0+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/gogo/protobuf v1.3.1
+	github.com/mattn/go-isatty v0.0.12
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
