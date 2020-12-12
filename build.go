@@ -38,6 +38,11 @@ var buildCommand = &cli.Command{
 			Usage:   "Name and optionally a tag in the 'name:tag' format",
 		},
 		&cli.StringFlag{
+			Name:    "file",
+			Aliases: []string{"f"},
+			Usage:   "Name of the Dockerfile",
+		},
+		&cli.StringFlag{
 			Name:  "target",
 			Usage: "Set the target build stage to build",
 		},
@@ -128,6 +133,10 @@ func generateBuildctlArgs(clicontext *cli.Context) ([]string, error) {
 		"--local=context=" + buildContext,
 		"--local=dockerfile=" + buildContext,
 		output,
+	}
+
+	if filename := clicontext.String("file"); filename != "" {
+		buildctlArgs = append(buildctlArgs, "--opt=filename="+filename)
 	}
 
 	if target := clicontext.String("target"); target != "" {

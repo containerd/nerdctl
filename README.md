@@ -98,6 +98,7 @@ Container management:
 Build:
 - `nerdctl build`
   - `-t, --tag`
+  - `-f, --file`
   - `--target`
   - `--build-arg`
   - `--no-cache`
