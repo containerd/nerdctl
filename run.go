@@ -23,6 +23,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -35,6 +36,7 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
@@ -295,7 +297,16 @@ func runAction(clicontext *cli.Context) error {
 	}
 	opts = append(opts, oci.WithMounts(mounts))
 
-	restartOpts, err := generateRestartOpts(clicontext.String("restart"))
+	var logURI string
+	if flagD {
+		if lu, err := generateLogURI(clicontext); err != nil {
+			return err
+		} else if lu != nil {
+			logURI = lu.String()
+		}
+	}
+
+	restartOpts, err := generateRestartOpts(clicontext.String("restart"), logURI)
 	if err != nil {
 		return err
 	}
@@ -397,7 +408,7 @@ func runAction(clicontext *cli.Context) error {
 		}
 	}
 
-	task, err := tasks.NewTask(ctx, client, container, "", con, flagD, "", nil)
+	task, err := newTask(ctx, client, container, flagI, flagT, flagD, con, logURI)
 	if err != nil {
 		return err
 	}
@@ -460,6 +471,18 @@ func withCustomResolvConf(src string) func(context.Context, oci.Client, *contain
 	}
 }
 
+func generateLogURI(clicontext *cli.Context) (*url.URL, error) {
+	selfExe, err := os.Readlink("/proc/self/exe")
+	if err != nil {
+		return nil, err
+	}
+	dataRoot := clicontext.String("data-root")
+	args := map[string]string{
+		internalLoggingArgKey: dataRoot,
+	}
+	return cio.LogURIGenerator("binary", selfExe, args)
+}
+
 func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecOpts, error) {
 	selfExe, err := os.Readlink("/proc/self/exe")
 	if err != nil {
@@ -499,14 +522,28 @@ func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecO
 	}, nil
 }
 
-func generateRestartOpts(restartFlag string) ([]containerd.NewContainerOpts, error) {
+func generateRestartOpts(restartFlag, logURI string) ([]containerd.NewContainerOpts, error) {
 	switch restartFlag {
 	case "", "no":
 		return nil, nil
 	case "always":
-		return []containerd.NewContainerOpts{restart.WithStatus(containerd.Running)}, nil
+		opts := []containerd.NewContainerOpts{restart.WithStatus(containerd.Running)}
+		if logURI != "" {
+			opts = append(opts, withRestartLogURIString(logURI))
+		}
+		return opts, nil
 	default:
 		return nil, errors.Errorf("unsupported restart type %q, supported types are: \"no\",  \"always\"", restartFlag)
+	}
+}
+
+func withRestartLogURIString(uriString string) containerd.NewContainerOpts {
+	return func(_ context.Context, _ *containerd.Client, c *containers.Container) error {
+		if c.Labels == nil {
+			c.Labels = make(map[string]string)
+		}
+		c.Labels[restart.LogURILabel] = uriString
+		return nil
 	}
 }
 
