@@ -104,7 +104,7 @@ var runCommand = &cli.Command{
 		&cli.StringSliceFlag{
 			Name:    "publish",
 			Aliases: []string{"p"},
-			Usage:   "Publish a container's port(s) to the host (Currently TCP only)",
+			Usage:   "Publish a container's port(s) to the host",
 		},
 		&cli.StringFlag{
 			Name:    "hostname",

@@ -59,7 +59,7 @@ Run:
   - `--restart=(no|always)`
   - `--rm`
   - `--network=(bridge|host|none)`
-  - `-p, --publish` (WIP: currently TCP only)
+  - `-p, --publish`
   - `--dns`
   - `-h, --hostname`
   - `--pull=(always|missing|never)`

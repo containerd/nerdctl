@@ -27,44 +27,60 @@ import (
 )
 
 func ParseFlagP(s string) (*gocni.PortMapping, error) {
-	if strings.Contains(s, "/") && !strings.HasSuffix(s, "/tcp") {
-		return nil, errors.New("non-TCP protocol is not implemented yet (FIXME)")
+	proto := "tcp"
+	splitBySlash := strings.Split(s, "/")
+	switch len(splitBySlash) {
+	case 1:
+	// NOP
+	case 2:
+		proto = strings.ToLower(splitBySlash[1])
+		switch proto {
+		case "tcp", "udp", "sctp":
+		default:
+			return nil, errors.Errorf("invalid protocol %q", splitBySlash[1])
+		}
+	default:
+		return nil, errors.Errorf("failed to parse %q, unexpected slashes", s)
 	}
-	split := strings.Split(s, ":")
+
 	res := &gocni.PortMapping{
-		Protocol: "tcp",
+		Protocol: proto,
 		HostIP:   "0.0.0.0",
 	}
-	switch len(split) {
+
+	splitByColon := strings.Split(splitBySlash[0], ":")
+	switch len(splitByColon) {
+	case 1:
+		return nil, errors.Errorf("automatic host port assignment is not supported yet (FIXME)")
 	case 2:
-		i, err := strconv.Atoi(split[0])
+		i, err := strconv.Atoi(splitByColon[0])
 		if err != nil {
 			return nil, err
 		}
 		res.HostPort = int32(i)
-		i, err = strconv.Atoi(split[1])
+		i, err = strconv.Atoi(splitByColon[1])
 		if err != nil {
 			return nil, err
 		}
 		res.ContainerPort = int32(i)
 		return res, nil
 	case 3:
-		res.HostIP = split[0]
+		res.HostIP = splitByColon[0]
 		if net.ParseIP(res.HostIP) == nil {
 			return nil, errors.Errorf("invalid IP %q", res.HostIP)
 		}
-		i, err := strconv.Atoi(split[1])
+		i, err := strconv.Atoi(splitByColon[1])
 		if err != nil {
 			return nil, err
 		}
 		res.HostPort = int32(i)
-		i, err = strconv.Atoi(split[2])
+		i, err = strconv.Atoi(splitByColon[2])
 		if err != nil {
 			return nil, err
 		}
 		res.ContainerPort = int32(i)
 		return res, nil
 	default:
-		return nil, errors.Errorf("failed to parse %q", s)
+		return nil, errors.Errorf("failed to parse %q, unexpected colons", s)
 	}
 }
