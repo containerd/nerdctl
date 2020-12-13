@@ -125,6 +125,7 @@ func newApp() *cli.App {
 		// Image management
 		imagesCommand,
 		pullCommand,
+		killCommand,
 		loadCommand,
 		saveCommand,
 		tagCommand,
