@@ -120,6 +120,7 @@ func newApp() *cli.App {
 		rmCommand,
 		pauseCommand,
 		unpauseCommand,
+		commitCommand,
 		// Build
 		buildCommand,
 		// Image management
