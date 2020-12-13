@@ -91,6 +91,8 @@ Container management:
 
 - `nerdctl stop`
 
+- `nerdctl kill`
+
 - `nerdctl pause`
 
 - `nerdctl unpause`
