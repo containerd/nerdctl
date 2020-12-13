@@ -18,14 +18,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"os"
 	"strings"
+	"syscall"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/idutil"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -46,6 +49,14 @@ var killCommand = &cli.Command{
 
 func killAction(clicontext *cli.Context) error {
 	killSignal := clicontext.String("signal")
+	if !strings.HasPrefix(killSignal, "SIG") {
+		killSignal = "SIG" + killSignal
+	}
+
+	signal, err := containerd.ParseSignal(killSignal)
+	if err != nil {
+		return err
+	}
 
 	if clicontext.NArg() == 0 {
 		return errors.Errorf("requires at least 1 argument")
@@ -57,83 +68,57 @@ func killAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	containers, err := client.Containers(ctx)
+	argIDs := clicontext.Args().Slice()
+
+	return idutil.WalkContainers(ctx, client, argIDs, func(ctx context.Context, client *containerd.Client, shortID, ID string) error {
+		if err := killContainer(ctx, client, shortID, ID, signal); err != nil {
+			if errdefs.IsNotFound(err) {
+				fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: Cannot kill container: %s: No such container: %s\n", shortID, shortID)
+				return nil
+			}
+			return err
+		}
+		_, err := fmt.Fprintf(clicontext.App.Writer, "%s\n", shortID)
+		return err
+	})
+	return nil
+}
+
+func killContainer(ctx context.Context, client *containerd.Client, shortID, id string, signal syscall.Signal) error {
+	container, err := client.LoadContainer(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	allIDs := make([]string, len(containers))
-	for i, c := range containers {
-		allIDs[i] = c.ID()
+	task, err := container.Task(ctx, cio.Load)
+	if err != nil {
+		return err
 	}
 
-	const idLength = 64
-	var origID string
-	var isError bool
-
-	for _, id := range clicontext.Args().Slice() {
-		// Save the original id passed from the CLI.
-		origID = id
-		if len(id) < idLength {
-			found := 0
-			for _, ctID := range allIDs {
-				if strings.HasPrefix(ctID, id) {
-					id = ctID
-					found++
-				}
-			}
-			if found == 0 || found > 1 {
-				fmt.Fprintf(clicontext.App.Writer, "Error response from daemon: Cannot kill container: %s: No such container: %s\n", origID, origID)
-				isError = true
-				continue
-			}
-		}
-
-		container, err := client.LoadContainer(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		task, err := container.Task(ctx, cio.Load)
-		if err != nil {
-			if errdefs.IsNotFound(err) {
-				fmt.Fprintf(clicontext.App.Writer, "Error response from daemon: Cannot kill container %s: No such container: %s\n", origID, origID)
-				isError = true
-				continue
-			}
-			return err
-		}
-
-		if !strings.HasPrefix(killSignal, "SIG") {
-			killSignal = "SIG" + killSignal
-		}
-
-		signal, err := containerd.ParseSignal(killSignal)
-		if err != nil {
-			return err
-		}
-
-		isRunning, err := isContainerRunning(task, ctx)
-		if err != nil {
-			return err
-		}
-
-		if !isRunning {
-			// Task is not running anymore, no need to send signal.
-			fmt.Fprintf(clicontext.App.Writer, "Error response from daemon: Cannot kill container %s: Container %s is not running\n", origID, origID)
-			isError = true
-			continue
-		}
-
-		if err = task.Kill(ctx, signal); err != nil {
-			return err
-		}
-		fmt.Fprintf(clicontext.App.Writer, "%s\n", origID)
+	status, err := task.Status(ctx)
+	if err != nil {
+		return err
 	}
 
-	if isError {
-		os.Exit(1)
+	paused := false
+
+	switch status.Status {
+	case containerd.Created, containerd.Stopped:
+		return nil
+	case containerd.Paused, containerd.Pausing:
+		paused = true
+	default:
 	}
 
+	if err := task.Kill(ctx, signal); err != nil {
+		return err
+	}
+
+	// signal will be sent once resume is finished
+	if paused {
+		if err := task.Resume(ctx); err != nil {
+			logrus.Warnf("Cannot unpause container %s: %s", shortID, err)
+		}
+	}
 	return nil
 }
