@@ -43,6 +43,7 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime/restart"
+	"github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -178,6 +179,15 @@ var runCommand = &cli.Command{
 			Name:    "env",
 			Aliases: []string{"e"},
 			Usage:   "Set environment variables",
+		},
+		&cli.StringSliceFlag{
+			Name:    "label",
+			Aliases: []string{"l"},
+			Usage:   "Set meta data on a container",
+		},
+		&cli.StringSliceFlag{
+			Name:  "label-file",
+			Usage: "Read in a line delimited file of labels",
 		},
 	},
 }
@@ -383,6 +393,12 @@ func runAction(clicontext *cli.Context) error {
 	}
 	cOpts = append(cOpts, rtCOpts...)
 
+	lCOpts, err := withContainerLabels(clicontext)
+	if err != nil {
+		return err
+	}
+	cOpts = append(cOpts, lCOpts...)
+
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)
 	cOpts = append(cOpts, spec)
@@ -558,4 +574,15 @@ func getContainerStateDirPath(clicontext *cli.Context, id string) (string, error
 	}
 	// "c" stands for "containers"
 	return filepath.Join(dataRoot, "c", ns, id), nil
+}
+
+func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts, error) {
+	labelsMap := clicontext.StringSlice("label")
+	labelsFilePath := clicontext.StringSlice("label-file")
+	labels, err := opts.ReadKVStrings(labelsFilePath, labelsMap)
+	if err != nil {
+		return nil, err
+	}
+	o := containerd.WithContainerLabels(ConvertKVStringsToMap(labels))
+	return []containerd.NewContainerOpts{o}, nil
 }
