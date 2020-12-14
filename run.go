@@ -401,6 +401,7 @@ func runAction(clicontext *cli.Context) error {
 		return err
 	}
 	cOpts = append(cOpts, lCOpts...)
+	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
 
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)
@@ -604,5 +605,11 @@ func withAdditionalContainerLabels(labels map[string]string) containerd.NewConta
 			c.Labels[k] = v
 		}
 		return nil
+	}
+}
+
+func propagateContainerdLabelsToOCIAnnotations() oci.SpecOpts {
+	return func(ctx context.Context, oc oci.Client, c *containers.Container, s *oci.Spec) error {
+		return oci.WithAnnotations(c.Labels)(ctx, oc, c, s)
 	}
 }

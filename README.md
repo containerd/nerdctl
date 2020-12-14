@@ -77,6 +77,8 @@ Run:
   - `--read-only`
   - `-w, --workdir`
   - `-e, --env`
+  - `-l, --label`
+  - `--label-file`
 
 Container management:
 - `nerdctl ps`
