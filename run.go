@@ -74,7 +74,7 @@ var runCommand = &cli.Command{
 		&cli.BoolFlag{
 			Name:    "interactive",
 			Aliases: []string{"i"},
-			Usage:   "(Currently -i needs to correspond to -t)",
+			Usage:   "Keep STDIN open even if not attached",
 		},
 		&cli.BoolFlag{
 			Name:    "detach",
@@ -288,7 +288,7 @@ func runAction(clicontext *cli.Context) error {
 
 	if flagI {
 		if flagD {
-			return errors.New("currently flag -t and -d cannot be specified together (FIXME)")
+			return errors.New("currently flag -i and -d cannot be specified together (FIXME)")
 		}
 	}
 

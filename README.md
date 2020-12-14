@@ -51,7 +51,7 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 
 ## Implementation status of Docker-compatible commands and flags
 
-Run:
+Run & Exec:
 - `nerdctl run`
   - `-i`
   - `-t` (WIP: currently -t requires -i, and conflicts with -d)
@@ -79,6 +79,14 @@ Run:
   - `-e, --env`
   - `-l, --label`
   - `--label-file`
+
+- `nerdctl exec`
+  - `-i`
+  - `-t` (WIP: currently -t requires -i, and conflicts with -d)
+  - `-d`
+  - `-w, --workdir`
+  - `-e, --env`
+  - `--privileged`
 
 Container management:
 - `nerdctl ps`

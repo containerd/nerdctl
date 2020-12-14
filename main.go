@@ -113,8 +113,9 @@ func newApp() *cli.App {
 		return nil
 	}
 	app.Commands = []*cli.Command{
-		// Run
+		// Run & Exec
 		runCommand,
+		execCommand,
 		// Container management
 		psCommand,
 		logsCommand,
