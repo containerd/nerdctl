@@ -8,6 +8,7 @@ require (
 	github.com/containerd/containerd v1.4.1-0.20201211190449-004214808a0a
 	github.com/containerd/go-cni v1.0.1
 	github.com/containerd/stargz-snapshotter v0.2.0
+	github.com/containerd/typeurl v1.0.1
 	github.com/docker/cli v20.10.0+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/gogo/protobuf v1.3.1

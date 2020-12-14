@@ -135,6 +135,7 @@ func newApp() *cli.App {
 		tagCommand,
 		rmiCommand,
 		// System
+		eventsCommand,
 		infoCommand,
 		versionCommand,
 		// Internal

@@ -132,6 +132,8 @@ Image management:
 - `nerdctl rmi`
 
 System:
+- `nerdctl events`
+
 - `nerdctl info`
 
 - `nerdctl version`
