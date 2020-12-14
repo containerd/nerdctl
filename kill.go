@@ -71,7 +71,7 @@ func killAction(clicontext *cli.Context) error {
 	argIDs := clicontext.Args().Slice()
 
 	return idutil.WalkContainers(ctx, client, argIDs, func(ctx context.Context, client *containerd.Client, shortID, ID string) error {
-		if err := killContainer(ctx, client, shortID, ID, signal); err != nil {
+		if err := killContainer(ctx, clicontext, client, shortID, ID, signal); err != nil {
 			if errdefs.IsNotFound(err) {
 				fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: Cannot kill container: %s: No such container: %s\n", shortID, shortID)
 				return nil
@@ -83,7 +83,7 @@ func killAction(clicontext *cli.Context) error {
 	})
 }
 
-func killContainer(ctx context.Context, client *containerd.Client, shortID, id string, signal syscall.Signal) error {
+func killContainer(ctx context.Context, clicontext *cli.Context, client *containerd.Client, shortID, id string, signal syscall.Signal) error {
 	container, err := client.LoadContainer(ctx, id)
 	if err != nil {
 		return err
@@ -103,6 +103,7 @@ func killContainer(ctx context.Context, client *containerd.Client, shortID, id s
 
 	switch status.Status {
 	case containerd.Created, containerd.Stopped:
+		fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: Cannot kill container: %s: Container %s is not running\n", shortID, shortID)
 		return nil
 	case containerd.Paused, containerd.Pausing:
 		paused = true
