@@ -19,11 +19,10 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"io"
 	"os"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/idutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/logging/jsonfile"
 	"github.com/containerd/containerd"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -68,32 +67,11 @@ func logsAction(clicontext *cli.Context) error {
 		}); err != nil {
 		return err
 	}
-	logJSONFilePath := getLogJSONPath(dataRoot, ns, exactID)
+	logJSONFilePath := jsonfile.Path(dataRoot, ns, exactID)
 	f, err := os.Open(logJSONFilePath)
 	if err != nil {
 		return errors.Wrapf(err, "failed to open %q, container is not created with `nerdctl logs -d`?", logJSONFilePath)
 	}
 	defer f.Close()
-	return decodeLogJSON(clicontext.App.Writer, clicontext.App.ErrWriter, f)
-}
-
-func decodeLogJSON(stdout, stderr io.Writer, logJSONReader io.Reader) error {
-	dec := json.NewDecoder(logJSONReader)
-	for {
-		var e LogJSONEntry
-		if err := dec.Decode(&e); err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
-		switch e.Stream {
-		case "stdout":
-			stdout.Write([]byte(e.Log))
-		case "stderr":
-			stderr.Write([]byte(e.Log))
-		default:
-			logrus.Errorf("unknown stream name %q, entry=%+v", e.Stream, e)
-		}
-	}
-	return nil
+	return jsonfile.Decode(clicontext.App.Writer, clicontext.App.ErrWriter, f)
 }

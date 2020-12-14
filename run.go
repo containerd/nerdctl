@@ -32,6 +32,7 @@ import (
 
 	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/logging"
 	"github.com/AkihiroSuda/nerdctl/pkg/mountutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
 	"github.com/containerd/console"
@@ -494,7 +495,7 @@ func generateLogURI(clicontext *cli.Context) (*url.URL, error) {
 	}
 	dataRoot := clicontext.String("data-root")
 	args := map[string]string{
-		internalLoggingArgKey: dataRoot,
+		logging.MagicArgv1: dataRoot,
 	}
 	return cio.LogURIGenerator("binary", selfExe, args)
 }

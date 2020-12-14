@@ -21,6 +21,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/logging"
 	"github.com/AkihiroSuda/nerdctl/pkg/version"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/defaults"
@@ -38,10 +39,10 @@ func main() {
 }
 
 func xmain() error {
-	if len(os.Args) == 3 && os.Args[1] == internalLoggingArgKey {
+	if len(os.Args) == 3 && os.Args[1] == logging.MagicArgv1 {
 		// containerd runtime v2 logging plugin mode.
 		// "binary://BIN?KEY=VALUE" URI is parsed into Args {BIN, KEY, VALUE}.
-		return internalLoggingMain(os.Args[2])
+		return logging.Main(os.Args[2])
 	}
 	// nerdctl CLI mode
 	return newApp().Run(os.Args)
