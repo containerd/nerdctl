@@ -18,19 +18,13 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/ocihook"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
-	"github.com/containerd/containerd/contrib/apparmor"
-	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
-	"github.com/containerd/go-cni"
 	gocni "github.com/containerd/go-cni"
-	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -79,137 +73,42 @@ func internalOCIHookAction(clicontext *cli.Context) error {
 	}
 	defer logFile.Close()
 	logrus.SetOutput(io.MultiWriter(clicontext.App.ErrWriter, logFile))
-	if err := internalOCIHookActionPostLogrusInit(clicontext); err != nil {
-		logrus.Error(err)
-		return err
-	}
-	return nil
-}
 
-func internalOCIHookActionPostLogrusInit(clicontext *cli.Context) error {
-	var state specs.State
-	if err := json.NewDecoder(clicontext.App.Reader).Decode(&state); err != nil {
-		return err
-	}
-	hs, err := loadSpec(state.Bundle)
-	if err != nil {
-		return err
-	}
-	rootfs := hs.Root.Path
-	if !filepath.IsAbs(rootfs) {
-		rootfs = filepath.Join(state.Bundle, rootfs)
-	}
-	var handler func(state *specs.State, rootfs string, clicontext *cli.Context) error
-	switch event := clicontext.Args().First(); event {
-	case "createRuntime":
-		handler = onCreateRuntime
-	case "postStop":
-		handler = onPostStop
+	var cni gocni.CNI
+	switch netstr := clicontext.String("network"); netstr {
+	case "none", "host":
+	case "bridge":
+		// --cni-path is a global flag
+		cniPath := clicontext.String("cni-path")
+		if cniPath == "" {
+			return errors.New("missing --cni-path")
+		}
+		cni, err = gocni.New(gocni.WithPluginDir([]string{cniPath}), gocni.WithConfListBytes([]byte(defaultBridgeNetwork)))
+		if err != nil {
+			return err
+		}
 	default:
-		return errors.Errorf("unexpected event %q", event)
+		return errors.Errorf("unknown network %q", netstr)
 	}
-	return handler(&state, rootfs, clicontext)
-}
 
-// hookSpec is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/containerd/command/oci-hook.go#L59-L64
-type hookSpec struct {
-	Root struct {
-		Path string `json:"path"`
-	} `json:"root"`
-}
-
-// loadSpec is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/containerd/command/oci-hook.go#L65-L76
-func loadSpec(bundle string) (*hookSpec, error) {
-	f, err := os.Open(filepath.Join(bundle, "config.json"))
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	var s hookSpec
-	if err := json.NewDecoder(f).Decode(&s); err != nil {
-		return nil, err
-	}
-	return &s, nil
-}
-
-func newCNI(clicontext *cli.Context) (gocni.CNI, error) {
-	cniPath := clicontext.String("cni-path")
-	return gocni.New(gocni.WithPluginDir([]string{cniPath}), gocni.WithConfListBytes([]byte(defaultBridgeNetwork)))
-}
-
-func getNetNSPath(state *specs.State) (string, error) {
-	if state.Pid == 0 {
-		return "", errors.New("state.Pid is unset")
-	}
-	s := fmt.Sprintf("/proc/%d/ns/net", state.Pid)
-	if _, err := os.Stat(s); err != nil {
-		return "", err
-	}
-	return s, nil
-}
-
-func getCNINamespaceOpts(clicontext *cli.Context) ([]cni.NamespaceOpts, error) {
 	flagPSlice := clicontext.StringSlice("p")
-	portMappings := make([]cni.PortMapping, len(flagPSlice))
+	ports := make([]gocni.PortMapping, len(flagPSlice))
 	for i, p := range flagPSlice {
 		pm, err := portutil.ParseFlagP(p)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		portMappings[i] = *pm
+		ports[i] = *pm
 	}
-	return []cni.NamespaceOpts{cni.WithCapabilityPortMap(portMappings)}, nil
-}
 
-func onCreateRuntime(state *specs.State, rootfs string, clicontext *cli.Context) error {
-	if pkgapparmor.HostSupports() {
-		// ensure that the default profile is loaded to the host
-		if err := apparmor.LoadDefaultProfile(defaultAppArmorProfileName); err != nil {
-			logrus.WithError(err).Errorf("failed to load AppArmor profile %q", defaultAppArmorProfileName)
-		}
+	opts := &ocihook.Opts{
+		Stdin:            clicontext.App.Reader,
+		Event:            event,
+		FullID:           clicontext.String("full-id"),
+		CNI:              cni,
+		Ports:            ports,
+		DefaultAAProfile: defaultAppArmorProfileName,
 	}
-	ctx := context.Background()
-	switch clicontext.String("network") {
-	case "none", "host":
-		// NOP
-	default:
-		cniNSOpts, err := getCNINamespaceOpts(clicontext)
-		if err != nil {
-			return err
-		}
-		cni, err := newCNI(clicontext)
-		if err != nil {
-			return errors.Wrap(err, "failed to call newCNI")
-		}
-		nsPath, err := getNetNSPath(state)
-		if err != nil {
-			return err
-		}
-		if _, err := cni.Setup(ctx, clicontext.String("full-id"), nsPath, cniNSOpts...); err != nil {
-			return errors.Wrap(err, "failed to call cni.Setup")
-		}
-	}
-	return nil
-}
 
-func onPostStop(state *specs.State, rootfs string, clicontext *cli.Context) error {
-	ctx := context.Background()
-	switch clicontext.String("network") {
-	case "none", "host":
-		// NOP
-	default:
-		cniNSOpts, err := getCNINamespaceOpts(clicontext)
-		if err != nil {
-			return err
-		}
-		cni, err := newCNI(clicontext)
-		if err != nil {
-			return err
-		}
-		if err := cni.Remove(ctx, clicontext.String("full-id"), "", cniNSOpts...); err != nil {
-			logrus.WithError(err).Errorf("failed to call cni.Remove")
-			return err
-		}
-	}
-	return nil
+	return ocihook.Run(opts)
 }
