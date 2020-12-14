@@ -19,16 +19,20 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
+	gocni "github.com/containerd/go-cni"
 	"github.com/docker/go-units"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -112,7 +116,7 @@ func printContainers(ctx context.Context, clicontext *cli.Context, containers []
 			containerCommand(spec, trunc),
 			timeSinceInHuman(info.CreatedAt),
 			cStatus,
-			"", // PORTS,
+			formatPorts(info.Labels),
 			"", // NAMES
 		); err != nil {
 			return err
@@ -184,4 +188,24 @@ func ellipsis(str string, maxDisplayWidth int) string {
 		return str
 	}
 	return str[:maxDisplayWidth-1] + "…"
+}
+
+func formatPorts(labelMap map[string]string) string {
+	portsJSON := labelMap[labels.Ports]
+	if portsJSON == "" {
+		return ""
+	}
+	var ports []gocni.PortMapping
+	if err := json.Unmarshal([]byte(portsJSON), &ports); err != nil {
+		logrus.WithError(err).Errorf("failed to parse label %q=%q", labels.Ports, portsJSON)
+		return ""
+	}
+	if len(ports) == 0 {
+		return ""
+	}
+	strs := make([]string, len(ports))
+	for i, p := range ports {
+		strs[i] = fmt.Sprintf("%s:%d->%d/%s", p.HostIP, p.HostPort, p.ContainerPort, p.Protocol)
+	}
+	return strings.Join(strs, ", ")
 }

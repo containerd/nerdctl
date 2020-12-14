@@ -88,6 +88,8 @@ Container management:
 
 - `nerdctl logs`
 
+- `nerdctl port`
+
 - `nerdctl rm`
   - `-f`
 

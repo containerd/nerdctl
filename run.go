@@ -22,6 +22,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -32,6 +33,7 @@ import (
 
 	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/AkihiroSuda/nerdctl/pkg/logging"
 	"github.com/AkihiroSuda/nerdctl/pkg/mountutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
@@ -44,6 +46,7 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime/restart"
+	gocni "github.com/containerd/go-cni"
 	"github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
@@ -325,6 +328,7 @@ func runAction(clicontext *cli.Context) error {
 	}
 	cOpts = append(cOpts, restartOpts...)
 
+	ports := make([]gocni.PortMapping, len(clicontext.StringSlice("p")))
 	switch netstr := clicontext.String("network"); netstr {
 	case "none":
 		// NOP
@@ -346,10 +350,12 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 		opts = append(opts, withCustomResolvConf(resolvConfPath))
-		for _, p := range clicontext.StringSlice("p") {
-			if _, err = portutil.ParseFlagP(p); err != nil {
+		for i, p := range clicontext.StringSlice("p") {
+			pm, err := portutil.ParseFlagP(p)
+			if err != nil {
 				return err
 			}
+			ports[i] = *pm
 		}
 	default:
 		return errors.Errorf("unknown network %q", netstr)
@@ -401,6 +407,13 @@ func runAction(clicontext *cli.Context) error {
 		return err
 	}
 	cOpts = append(cOpts, lCOpts...)
+
+	ilOpt, err := withInternalLabels(stateDir, ports)
+	if err != nil {
+		return err
+	}
+	cOpts = append(cOpts, ilOpt)
+
 	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
 
 	var s specs.Spec
@@ -592,6 +605,17 @@ func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts
 	}
 	o := withAdditionalContainerLabels(ConvertKVStringsToMap(labels))
 	return []containerd.NewContainerOpts{o}, nil
+}
+
+func withInternalLabels(containerStateDir string, ports []gocni.PortMapping) (containerd.NewContainerOpts, error) {
+	m := make(map[string]string)
+	m[labels.StateDir] = containerStateDir
+	portsJSON, err := json.Marshal(ports)
+	if err != nil {
+		return nil, err
+	}
+	m[labels.Ports] = string(portsJSON)
+	return withAdditionalContainerLabels(m), nil
 }
 
 // pending PR: https://github.com/containerd/containerd/pull/4840

@@ -117,6 +117,7 @@ func newApp() *cli.App {
 		// Container management
 		psCommand,
 		logsCommand,
+		portCommand,
 		stopCommand,
 		rmCommand,
 		pauseCommand,
