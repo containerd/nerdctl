@@ -15,14 +15,14 @@
    limitations under the License.
 */
 
-package main
+package defaults
 
-// defaultBridgeNetwork is the default bridge network.
+// BridgeJSON is the default "bridge" network.
 //
 // The CIDR is 10.4.0.0/16 .
 //
 // The template was copied from https://github.com/containers/podman/blob/v2.2.0/cni/87-podman-bridge.conflist
-const defaultBridgeNetwork = `{
+const BridgeJSON = `{
   "cniVersion": "0.4.0",
   "name": "nerdctl",
   "plugins": [
@@ -60,6 +60,6 @@ const defaultBridgeNetwork = `{
   ]
 }`
 
-var requiredCNIPlugins = []string{
+var RequiredCNIPlugins = []string{
 	"bridge", "portmap", "firewall", "tuning",
 }

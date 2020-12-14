@@ -20,6 +20,7 @@ package main
 import (
 	"strconv"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
 	"github.com/containerd/containerd/contrib/apparmor"
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
@@ -27,9 +28,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
-
-// defaultAppArmorProfileName corresponds to CRI's profile name.
-const defaultAppArmorProfileName = "cri-containerd.apparmor.d"
 
 var privilegedOpts = []oci.SpecOpts{
 	oci.WithPrivileged,
@@ -65,7 +63,7 @@ func generateSecurityOpts(securityOptsMap map[string]string) ([]oci.SpecOpts, er
 			}
 		}
 	} else if aaSupported {
-		opts = append(opts, apparmor.WithDefaultProfile(defaultAppArmorProfileName))
+		opts = append(opts, apparmor.WithDefaultProfile(defaults.AppArmorProfileName))
 	}
 
 	nnp := false

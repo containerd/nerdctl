@@ -31,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
 	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/labels"
@@ -95,11 +96,11 @@ var runCommand = &cli.Command{
 			Value: "missing",
 		},
 		// network flags
-		&cli.StringFlag{
+		&cli.StringSliceFlag{
 			Name:    "network",
 			Aliases: []string{"net"},
 			Usage:   "Connect a container to a network (\"bridge\"|\"host\"|\"none\")",
-			Value:   "bridge",
+			Value:   cli.NewStringSlice("bridge"),
 		},
 		&cli.StringSliceFlag{
 			Name:  "dns",
@@ -329,7 +330,10 @@ func runAction(clicontext *cli.Context) error {
 	cOpts = append(cOpts, restartOpts...)
 
 	ports := make([]gocni.PortMapping, len(clicontext.StringSlice("p")))
-	switch netstr := clicontext.String("network"); netstr {
+	if len(clicontext.StringSlice("network")) != 1 {
+		return errors.New("currently, number of networks must be 1")
+	}
+	switch netstr := clicontext.StringSlice("network")[0]; netstr {
 	case "none":
 		// NOP
 	case "host":
@@ -338,7 +342,7 @@ func runAction(clicontext *cli.Context) error {
 		// We only verify flags and generate resolv.conf here.
 		// The actual network is configured in the oci hook.
 		cniPath := clicontext.String("cni-path")
-		for _, f := range requiredCNIPlugins {
+		for _, f := range defaults.RequiredCNIPlugins {
 			p := filepath.Join(cniPath, f)
 			if _, err := exec.LookPath(p); err != nil {
 				return errors.Wrapf(err, "needs CNI plugin %q to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins/releases",
@@ -408,7 +412,7 @@ func runAction(clicontext *cli.Context) error {
 	}
 	cOpts = append(cOpts, lCOpts...)
 
-	ilOpt, err := withInternalLabels(stateDir, ports)
+	ilOpt, err := withInternalLabels(clicontext.String("namespace"), stateDir, clicontext.StringSlice("network"), ports)
 	if err != nil {
 		return err
 	}
@@ -524,18 +528,11 @@ func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecO
 	if err != nil {
 		return nil, err
 	}
-	fullID := clicontext.String("namespace") + "-" + id
 	args := []string{
 		// FIXME: How to propagate all global flags?
 		"--cni-path=" + clicontext.String("cni-path"),
 		"internal",
 		"oci-hook",
-		"--full-id=" + fullID,
-		"--container-state-dir=" + stateDir,
-		"--network=" + clicontext.String("network"),
-	}
-	for _, p := range clicontext.StringSlice("p") {
-		args = append(args, "-p="+p)
 	}
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
 		if s.Hooks == nil {
@@ -607,14 +604,22 @@ func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts
 	return []containerd.NewContainerOpts{o}, nil
 }
 
-func withInternalLabels(containerStateDir string, ports []gocni.PortMapping) (containerd.NewContainerOpts, error) {
+func withInternalLabels(ns, containerStateDir string, networks []string, ports []gocni.PortMapping) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
+	m[labels.Namespace] = ns
 	m[labels.StateDir] = containerStateDir
-	portsJSON, err := json.Marshal(ports)
+	networksJSON, err := json.Marshal(networks)
 	if err != nil {
 		return nil, err
 	}
-	m[labels.Ports] = string(portsJSON)
+	m[labels.Networks] = string(networksJSON)
+	if len(ports) > 0 {
+		portsJSON, err := json.Marshal(ports)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.Ports] = string(portsJSON)
+	}
 	return withAdditionalContainerLabels(m), nil
 }
 

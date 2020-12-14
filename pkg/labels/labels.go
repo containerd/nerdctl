@@ -15,14 +15,23 @@
    limitations under the License.
 */
 
+// Package labels defines labels that are set to containerd containers as labels.
+// The labels are also passed to OCI containers as annotations.
 package labels
 
 const (
 	// Prefix is the common prefix of nerdctl labels
 	Prefix = "nerdctl/"
 
+	// Namespace is the containerd namespace such as "default", "k8s.io"
+	Namespace = Prefix + "namespace"
+
 	// StateDir is "/var/lib/nerdctl/c/<NAMESPACE>/<ID>"
 	StateDir = Prefix + "state-dir"
+
+	// Networks is a JSON-marshalled string of []string, e.g. []string{"bridge"}.
+	// Currently, the length of the slice must be 1.
+	Networks = Prefix + "networks"
 
 	// Ports is a JSON-marshalled string of []gocni.PortMapping .
 	Ports = Prefix + "ports"

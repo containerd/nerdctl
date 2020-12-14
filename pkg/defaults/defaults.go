@@ -15,24 +15,6 @@
    limitations under the License.
 */
 
-package main
+package defaults
 
-import (
-	"github.com/AkihiroSuda/nerdctl/pkg/ocihook"
-	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
-)
-
-var internalOCIHookCommand = &cli.Command{
-	Name:   "oci-hook",
-	Usage:  "OCI hook",
-	Action: internalOCIHookAction,
-}
-
-func internalOCIHookAction(clicontext *cli.Context) error {
-	event := clicontext.Args().First()
-	if event == "" {
-		return errors.New("event type needs to be passed")
-	}
-	return ocihook.Run(clicontext.App.Reader, clicontext.App.ErrWriter, event, clicontext.String("cni-path"))
-}
+const AppArmorProfileName = "nerdctl-default"

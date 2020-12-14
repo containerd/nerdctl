@@ -25,6 +25,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
+	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/containerd/containerd/contrib/apparmor"
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	"github.com/containerd/go-cni"
@@ -34,41 +36,102 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type Opts struct {
-	Stdin            io.Reader
-	Event            string    // "createRuntime" or "postStop"
-	FullID           string    // "<NAMESPACE>-<ID>"
-	CNI              gocni.CNI // nil for non-CNI mode
-	Ports            []gocni.PortMapping
-	DefaultAAProfile string // name of the default AppArmor profile
-}
-
-func Run(opts *Opts) error {
-	if opts == nil || opts.Stdin == nil || opts.Event == "" || opts.FullID == "" {
-		return errors.Errorf("invalid Opts")
+func Run(stdin io.Reader, stderr io.Writer, event, cniPath string) error {
+	if stdin == nil || event == "" || cniPath == "" {
+		return errors.New("got insufficient args")
 	}
+
 	var state specs.State
-	if err := json.NewDecoder(opts.Stdin).Decode(&state); err != nil {
+	if err := json.NewDecoder(stdin).Decode(&state); err != nil {
 		return err
 	}
-	hs, err := loadSpec(state.Bundle)
+
+	if containerStateDir := state.Annotations[labels.StateDir]; containerStateDir == "" {
+		return errors.New("state dir must be set")
+	} else {
+		if err := os.MkdirAll(containerStateDir, 0700); err != nil {
+			return errors.Wrapf(err, "failed to create %q", containerStateDir)
+		}
+		logFilePath := filepath.Join(containerStateDir, "oci-hook."+event+".log")
+		logFile, err := os.Create(logFilePath)
+		if err != nil {
+			return err
+		}
+		defer logFile.Close()
+		logrus.SetOutput(io.MultiWriter(stderr, logFile))
+	}
+
+	opts, err := newHandlerOpts(&state, cniPath)
 	if err != nil {
 		return err
 	}
-	rootfs := hs.Root.Path
-	if !filepath.IsAbs(rootfs) {
-		rootfs = filepath.Join(state.Bundle, rootfs)
-	}
-	var handler func(state *specs.State, rootfs string, opts *Opts) error
-	switch opts.Event {
+
+	switch event {
 	case "createRuntime":
-		handler = onCreateRuntime
+		return onCreateRuntime(opts)
 	case "postStop":
-		handler = onPostStop
+		return onPostStop(opts)
 	default:
-		return errors.Errorf("unexpected event %q", opts.Event)
+		return errors.Errorf("unexpected event %q", event)
 	}
-	return handler(&state, rootfs, opts)
+}
+
+func newHandlerOpts(state *specs.State, cniPath string) (*handlerOpts, error) {
+	o := &handlerOpts{
+		state: state,
+	}
+	hs, err := loadSpec(o.state.Bundle)
+	if err != nil {
+		return nil, err
+	}
+	o.rootfs = hs.Root.Path
+	if !filepath.IsAbs(o.rootfs) {
+		o.rootfs = filepath.Join(o.state.Bundle, o.rootfs)
+	}
+
+	namespace := o.state.Annotations[labels.Namespace]
+	if namespace == "" {
+		return nil, errors.New("namespace must be set")
+	}
+	if o.state.ID == "" {
+		return nil, errors.New("state.ID must be set")
+	}
+	o.fullID = namespace + "-" + o.state.ID
+
+	networksJSON := o.state.Annotations[labels.Networks]
+	var networks []string
+	if err := json.Unmarshal([]byte(networksJSON), &networks); err != nil {
+		return nil, err
+	}
+	if len(networks) != 1 {
+		return nil, errors.New("currently, number of networks must be 1")
+	}
+
+	switch netstr := networks[0]; netstr {
+	case "none", "host":
+	case "bridge":
+		o.cni, err = gocni.New(gocni.WithPluginDir([]string{cniPath}), gocni.WithConfListBytes([]byte(defaults.BridgeJSON)))
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.Errorf("unknown network %q", netstr)
+	}
+
+	if portsJSON := o.state.Annotations[labels.Ports]; portsJSON != "" {
+		if err := json.Unmarshal([]byte(portsJSON), &o.ports); err != nil {
+			return nil, err
+		}
+	}
+	return o, nil
+}
+
+type handlerOpts struct {
+	state  *specs.State
+	fullID string
+	rootfs string
+	ports  []gocni.PortMapping
+	cni    gocni.CNI
 }
 
 // hookSpec is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/containerd/command/oci-hook.go#L59-L64
@@ -103,42 +166,45 @@ func getNetNSPath(state *specs.State) (string, error) {
 	return s, nil
 }
 
-func getCNINamespaceOpts(opts *Opts) ([]cni.NamespaceOpts, error) {
-	return []cni.NamespaceOpts{cni.WithCapabilityPortMap(opts.Ports)}, nil
+func getCNINamespaceOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
+	if len(opts.ports) > 0 {
+		return []cni.NamespaceOpts{cni.WithCapabilityPortMap(opts.ports)}, nil
+	}
+	return nil, nil
 }
 
-func onCreateRuntime(state *specs.State, rootfs string, opts *Opts) error {
-	if opts.DefaultAAProfile != "" && pkgapparmor.HostSupports() {
+func onCreateRuntime(opts *handlerOpts) error {
+	if pkgapparmor.HostSupports() {
 		// ensure that the default profile is loaded to the host
-		if err := apparmor.LoadDefaultProfile(opts.DefaultAAProfile); err != nil {
-			logrus.WithError(err).Errorf("failed to load AppArmor profile %q", opts.DefaultAAProfile)
+		if err := apparmor.LoadDefaultProfile(defaults.AppArmorProfileName); err != nil {
+			logrus.WithError(err).Errorf("failed to load AppArmor profile %q", defaults.AppArmorProfileName)
 		}
 	}
-	if opts.CNI != nil {
+	if opts.cni != nil {
 		cniNSOpts, err := getCNINamespaceOpts(opts)
 		if err != nil {
 			return err
 		}
-		nsPath, err := getNetNSPath(state)
+		nsPath, err := getNetNSPath(opts.state)
 		if err != nil {
 			return err
 		}
 		ctx := context.Background()
-		if _, err := opts.CNI.Setup(ctx, opts.FullID, nsPath, cniNSOpts...); err != nil {
+		if _, err := opts.cni.Setup(ctx, opts.fullID, nsPath, cniNSOpts...); err != nil {
 			return errors.Wrap(err, "failed to call cni.Setup")
 		}
 	}
 	return nil
 }
 
-func onPostStop(state *specs.State, rootfs string, opts *Opts) error {
+func onPostStop(opts *handlerOpts) error {
 	ctx := context.Background()
-	if opts.CNI != nil {
+	if opts.cni != nil {
 		cniNSOpts, err := getCNINamespaceOpts(opts)
 		if err != nil {
 			return err
 		}
-		if err := opts.CNI.Remove(ctx, opts.FullID, "", cniNSOpts...); err != nil {
+		if err := opts.cni.Remove(ctx, opts.fullID, "", cniNSOpts...); err != nil {
 			logrus.WithError(err).Errorf("failed to call cni.Remove")
 			return err
 		}
