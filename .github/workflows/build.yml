@@ -23,5 +23,22 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
+      - name: Test
+        run: go test ./...
       - name: Make artifacts
         run: make artifacts
+
+  golangci-lint:
+      strategy:
+            matrix:
+              os: [ubuntu-latest]
+      runs-on: ${{ matrix.os }}
+      steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.33
+          args: --verbose
