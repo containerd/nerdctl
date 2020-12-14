@@ -298,15 +298,17 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, oci.WithTTY)
 	}
 
-	var mounts []specs.Mount
-	for _, v := range clicontext.StringSlice("v") {
-		m, err := mountutil.ParseFlagV(v)
-		if err != nil {
-			return err
+	if flagVSlice := clicontext.StringSlice("v"); len(flagVSlice) > 0 {
+		mounts := make([]specs.Mount, len(flagVSlice))
+		for i, v := range flagVSlice {
+			m, err := mountutil.ParseFlagV(v)
+			if err != nil {
+				return err
+			}
+			mounts[i] = *m
 		}
-		mounts = append(mounts, *m)
+		opts = append(opts, oci.WithMounts(mounts))
 	}
-	opts = append(opts, oci.WithMounts(mounts))
 
 	var logURI string
 	if flagD {

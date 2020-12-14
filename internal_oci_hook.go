@@ -149,13 +149,14 @@ func getNetNSPath(state *specs.State) (string, error) {
 }
 
 func getCNINamespaceOpts(clicontext *cli.Context) ([]cni.NamespaceOpts, error) {
-	var portMappings []cni.PortMapping
-	for _, p := range clicontext.StringSlice("p") {
+	flagPSlice := clicontext.StringSlice("p")
+	portMappings := make([]cni.PortMapping, len(flagPSlice))
+	for i, p := range flagPSlice {
 		pm, err := portutil.ParseFlagP(p)
 		if err != nil {
 			return nil, err
 		}
-		portMappings = append(portMappings, *pm)
+		portMappings[i] = *pm
 	}
 	return []cni.NamespaceOpts{cni.WithCapabilityPortMap(portMappings)}, nil
 }

@@ -81,7 +81,6 @@ func killAction(clicontext *cli.Context) error {
 		_, err := fmt.Fprintf(clicontext.App.Writer, "%s\n", shortID)
 		return err
 	})
-	return nil
 }
 
 func killContainer(ctx context.Context, client *containerd.Client, shortID, id string, signal syscall.Signal) error {
