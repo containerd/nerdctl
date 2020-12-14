@@ -586,6 +586,20 @@ func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts
 	if err != nil {
 		return nil, err
 	}
-	o := containerd.WithContainerLabels(ConvertKVStringsToMap(labels))
+	o := withAdditionalContainerLabels(ConvertKVStringsToMap(labels))
 	return []containerd.NewContainerOpts{o}, nil
+}
+
+// pending PR: https://github.com/containerd/containerd/pull/4840
+func withAdditionalContainerLabels(labels map[string]string) containerd.NewContainerOpts {
+	return func(_ context.Context, _ *containerd.Client, c *containers.Container) error {
+		if c.Labels == nil {
+			c.Labels = labels
+			return nil
+		}
+		for k, v := range labels {
+			c.Labels[k] = v
+		}
+		return nil
+	}
 }
