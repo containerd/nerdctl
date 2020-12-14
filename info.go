@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
 	"github.com/containerd/cgroups"
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	ptypes "github.com/gogo/protobuf/types"
@@ -82,7 +83,7 @@ func infoAction(clicontext *cli.Context) error {
 	}
 	fmt.Fprintf(w, "  seccomp\n")
 	fmt.Fprintf(w, "   Profile: default\n")
-	if defaultCgroupnsMode() == "private" {
+	if defaults.CgroupnsMode() == "private" {
 		fmt.Fprintf(w, "  cgroupns\n")
 	}
 	fmt.Fprintf(w, " ID: %s\n", daemonIntro.UUID)

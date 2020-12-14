@@ -21,6 +21,7 @@ import (
 	"os"
 	"strings"
 
+	ncdefaults "github.com/AkihiroSuda/nerdctl/pkg/defaults"
 	"github.com/AkihiroSuda/nerdctl/pkg/logging"
 	"github.com/AkihiroSuda/nerdctl/pkg/version"
 	"github.com/containerd/containerd"
@@ -98,7 +99,7 @@ func newApp() *cli.App {
 		&cli.StringFlag{
 			Name:  "cgroup-manager",
 			Usage: "Cgroup manager to use (\"cgroupfs\"|\"systemd\")",
-			Value: defaultCgroupManager,
+			Value: ncdefaults.CgroupManager,
 		},
 	}
 	app.Before = func(clicontext *cli.Context) error {

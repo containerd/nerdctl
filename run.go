@@ -135,7 +135,7 @@ var runCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:  "cgroupns",
 			Usage: "Cgroup namespace to use, the default depends on the cgroup version (\"host\"|\"private\")",
-			Value: defaultCgroupnsMode(),
+			Value: defaults.CgroupnsMode(),
 		},
 		// user flags
 		&cli.StringFlag{

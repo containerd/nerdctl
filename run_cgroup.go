@@ -18,22 +18,12 @@
 package main
 
 import (
-	"github.com/containerd/cgroups"
 	"github.com/containerd/containerd/oci"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
-
-const defaultCgroupManager = "cgroupfs"
-
-func defaultCgroupnsMode() string {
-	if cgroups.Mode() == cgroups.Unified {
-		return "private"
-	}
-	return "host"
-}
 
 func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
