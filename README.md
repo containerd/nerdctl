@@ -97,6 +97,10 @@ Container management:
 
 - `nerdctl unpause`
 
+- `nerdctl commit`
+  - `-a, --author`
+  - `-m, --message`
+
 Build:
 - `nerdctl build`
   - `-t, --tag`
