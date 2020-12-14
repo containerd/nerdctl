@@ -410,7 +410,10 @@ func runAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if clicontext.Bool("rm") && !flagD {
+	if clicontext.Bool("rm") {
+		if flagD {
+			return errors.New("flag -d and --rm cannot be specified together")
+		}
 		defer func() {
 			if removeErr := removeContainer(ctx, client, id, true, stateDir); removeErr != nil {
 				logrus.WithError(removeErr).Warnf("failed to remove container %s", id)
