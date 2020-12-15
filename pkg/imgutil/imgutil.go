@@ -22,8 +22,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/contentutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/dockerconfigresolver"
+	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/pull"
 	"github.com/containerd/containerd"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/stargz-snapshotter/fs/source"
@@ -82,7 +82,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 	defer done(ctx)
 
 	var containerdImage containerd.Image
-	config := &contentutil.PullConfig{
+	config := &pull.Config{
 		Resolver:       resolver,
 		ProgressOutput: stdout,
 		RemoteOpts: []containerd.RemoteOpt{
@@ -98,7 +98,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 			containerd.WithImageHandlerWrapper(source.AppendDefaultLabelsHandlerWrapper(ref, 10*1024*1024)),
 		)
 	}
-	containerdImage, err = contentutil.Pull(ctx, client, ref, config)
+	containerdImage, err = pull.Pull(ctx, client, ref, config)
 	if err != nil {
 		return nil, err
 	}

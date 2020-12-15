@@ -15,8 +15,8 @@
    limitations under the License.
 */
 
-// Package contentutil forked from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/content/fetch.go
-package contentutil
+// Package pull forked from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/content/fetch.go
+package pull
 
 import (
 	"context"
@@ -30,8 +30,8 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// PullConfig for content fetch
-type PullConfig struct {
+// Config for content fetch
+type Config struct {
 	// Resolver
 	Resolver remotes.Resolver
 	// ProgressOutput to display progress
@@ -44,7 +44,7 @@ type PullConfig struct {
 }
 
 // Pull loads all resources into the content store and returns the image
-func Pull(ctx context.Context, client *containerd.Client, ref string, config *PullConfig) (containerd.Image, error) {
+func Pull(ctx context.Context, client *containerd.Client, ref string, config *Config) (containerd.Image, error) {
 	ongoing := ctrcontent.NewJobs(ref)
 
 	pctx, stopProgress := context.WithCancel(ctx)
