@@ -562,21 +562,11 @@ func generateRestartOpts(restartFlag, logURI string) ([]containerd.NewContainerO
 	case "always":
 		opts := []containerd.NewContainerOpts{restart.WithStatus(containerd.Running)}
 		if logURI != "" {
-			opts = append(opts, withRestartLogURIString(logURI))
+			opts = append(opts, restart.WithLogURIString(logURI))
 		}
 		return opts, nil
 	default:
 		return nil, errors.Errorf("unsupported restart type %q, supported types are: \"no\",  \"always\"", restartFlag)
-	}
-}
-
-func withRestartLogURIString(uriString string) containerd.NewContainerOpts {
-	return func(_ context.Context, _ *containerd.Client, c *containers.Container) error {
-		if c.Labels == nil {
-			c.Labels = make(map[string]string)
-		}
-		c.Labels[restart.LogURILabel] = uriString
-		return nil
 	}
 }
 
@@ -600,7 +590,7 @@ func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts
 	if err != nil {
 		return nil, err
 	}
-	o := withAdditionalContainerLabels(ConvertKVStringsToMap(labels))
+	o := containerd.WithAdditionalContainerLabels(ConvertKVStringsToMap(labels))
 	return []containerd.NewContainerOpts{o}, nil
 }
 
@@ -620,21 +610,7 @@ func withInternalLabels(ns, containerStateDir string, networks []string, ports [
 		}
 		m[labels.Ports] = string(portsJSON)
 	}
-	return withAdditionalContainerLabels(m), nil
-}
-
-// pending PR: https://github.com/containerd/containerd/pull/4840
-func withAdditionalContainerLabels(labels map[string]string) containerd.NewContainerOpts {
-	return func(_ context.Context, _ *containerd.Client, c *containers.Container) error {
-		if c.Labels == nil {
-			c.Labels = labels
-			return nil
-		}
-		for k, v := range labels {
-			c.Labels[k] = v
-		}
-		return nil
-	}
+	return containerd.WithAdditionalContainerLabels(m), nil
 }
 
 func propagateContainerdLabelsToOCIAnnotations() oci.SpecOpts {

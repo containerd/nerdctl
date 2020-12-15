@@ -5,7 +5,7 @@ go 1.15
 require (
 	github.com/containerd/cgroups v0.0.0-20200824123100-0b889c03f102
 	github.com/containerd/console v1.0.1
-	github.com/containerd/containerd v1.4.1-0.20201211190449-004214808a0a
+	github.com/containerd/containerd v1.4.1-0.20201214195303-23315f8647ee
 	github.com/containerd/go-cni v1.0.1
 	github.com/containerd/stargz-snapshotter v0.2.0
 	github.com/containerd/typeurl v1.0.1
