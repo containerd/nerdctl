@@ -31,7 +31,7 @@ import (
 
 var logsCommand = &cli.Command{
 	Name:      "logs",
-	Usage:     "Fetch the logs of a container. Currently, only containers created with `nerdctl logs -d` are supported.",
+	Usage:     "Fetch the logs of a container. Currently, only containers created with `nerdctl run -d` are supported.",
 	ArgsUsage: "[flags] CONTAINER",
 	Action:    logsAction,
 }
@@ -47,7 +47,7 @@ func logsAction(clicontext *cli.Context) error {
 	ns := clicontext.String("namespace")
 	switch ns {
 	case "moby", "k8s.io":
-		logrus.Warn("Currently, `nerdctl logs` only supports containers created with `nerdctl logs -d`")
+		logrus.Warn("Currently, `nerdctl logs` only supports containers created with `nerdctl run -d`")
 	}
 
 	client, ctx, cancel, err := newClient(clicontext)
@@ -70,7 +70,7 @@ func logsAction(clicontext *cli.Context) error {
 	logJSONFilePath := jsonfile.Path(dataRoot, ns, exactID)
 	f, err := os.Open(logJSONFilePath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to open %q, container is not created with `nerdctl logs -d`?", logJSONFilePath)
+		return errors.Wrapf(err, "failed to open %q, container is not created with `nerdctl run -d`?", logJSONFilePath)
 	}
 	defer f.Close()
 	return jsonfile.Decode(clicontext.App.Writer, clicontext.App.ErrWriter, f)
