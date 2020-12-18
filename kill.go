@@ -20,6 +20,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"syscall"
 
@@ -74,7 +75,7 @@ func killAction(clicontext *cli.Context) error {
 		if err := killContainer(ctx, clicontext, client, shortID, ID, signal); err != nil {
 			if errdefs.IsNotFound(err) {
 				fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: Cannot kill container: %s: No such container: %s\n", shortID, shortID)
-				return nil
+				os.Exit(1)
 			}
 			return err
 		}
@@ -104,7 +105,7 @@ func killContainer(ctx context.Context, clicontext *cli.Context, client *contain
 	switch status.Status {
 	case containerd.Created, containerd.Stopped:
 		fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: Cannot kill container: %s: Container %s is not running\n", shortID, shortID)
-		return nil
+		os.Exit(1)
 	case containerd.Paused, containerd.Pausing:
 		paused = true
 	default:
