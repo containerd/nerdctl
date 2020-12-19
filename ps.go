@@ -113,7 +113,7 @@ func printContainers(ctx context.Context, clicontext *cli.Context, containers []
 		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			id,
 			imageName,
-			containerCommand(spec, trunc),
+			inspectContainerCommand(spec, trunc),
 			timeSinceInHuman(info.CreatedAt),
 			cStatus,
 			formatPorts(info.Labels),
@@ -155,7 +155,7 @@ func containerStatus(ctx context.Context, c containerd.Container) string {
 	}
 }
 
-func containerCommand(spec *oci.Spec, trunc bool) string {
+func inspectContainerCommand(spec *oci.Spec, trunc bool) string {
 	if spec == nil || spec.Process == nil {
 		return ""
 	}
