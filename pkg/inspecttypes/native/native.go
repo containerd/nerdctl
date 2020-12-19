@@ -15,34 +15,22 @@
    limitations under the License.
 */
 
-package main
+package native
 
 import (
-	"github.com/urfave/cli/v2"
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/containers"
 )
 
-var containerCommand = &cli.Command{
-	Name:     "container",
-	Usage:    "Manage containers",
-	Category: CategoryManagement,
-	Subcommands: []*cli.Command{
-		runCommand,
-		execCommand,
-		containerLsCommand(),
-		containerInspectCommand,
-		logsCommand,
-		portCommand,
-		rmCommand,
-		stopCommand,
-		killCommand,
-		pauseCommand,
-		unpauseCommand,
-		commitCommand,
-	},
+// Container corresponds to a containerd-native container object.
+// Not compatible with `docker container inspect`.
+type Container struct {
+	containers.Container
+	Spec    interface{} `json:"Spec,omitempty"`
+	Process *Process    `json:"Process,omitempty"`
 }
 
-func containerLsCommand() *cli.Command {
-	x := *psCommand
-	x.Name = "ls"
-	return &x
+type Process struct {
+	Pid    int               `json:"Pid,omitempty"`
+	Status containerd.Status `json:"Status,omitempty"`
 }

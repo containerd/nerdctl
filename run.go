@@ -37,6 +37,7 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/AkihiroSuda/nerdctl/pkg/logging"
 	"github.com/AkihiroSuda/nerdctl/pkg/mountutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/namestore"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
@@ -174,7 +175,7 @@ var runCommand = &cli.Command{
 			Name:  "rootfs",
 			Usage: "The first argument is not an image but the rootfs to the exploded container",
 		},
-		// misc flags
+		// env flags
 		&cli.StringFlag{
 			Name:    "workdir",
 			Aliases: []string{"w"},
@@ -184,6 +185,11 @@ var runCommand = &cli.Command{
 			Name:    "env",
 			Aliases: []string{"e"},
 			Usage:   "Set environment variables",
+		},
+		// metadata flags
+		&cli.StringFlag{
+			Name:  "name",
+			Usage: "Assign a name to the container",
 		},
 		&cli.StringSliceFlag{
 			Name:    "label",
@@ -412,7 +418,18 @@ func runAction(clicontext *cli.Context) error {
 	}
 	cOpts = append(cOpts, lCOpts...)
 
-	ilOpt, err := withInternalLabels(clicontext.String("namespace"), stateDir, clicontext.StringSlice("network"), ports)
+	var containerNameStore namestore.NameStore
+	name := clicontext.String("name")
+	if name != "" {
+		containerNameStore, err = namestore.New(dataRoot, clicontext.String("namespace"))
+		if err != nil {
+			return err
+		}
+		if err := containerNameStore.Acquire(name, id); err != nil {
+			return err
+		}
+	}
+	ilOpt, err := withInternalLabels(clicontext.String("namespace"), name, stateDir, clicontext.StringSlice("network"), ports)
 	if err != nil {
 		return err
 	}
@@ -433,7 +450,7 @@ func runAction(clicontext *cli.Context) error {
 			return errors.New("flag -d and --rm cannot be specified together")
 		}
 		defer func() {
-			if removeErr := removeContainer(ctx, client, id, true, stateDir); removeErr != nil {
+			if removeErr := removeContainer(ctx, client, id, true, stateDir, containerNameStore); removeErr != nil {
 				logrus.WithError(removeErr).Warnf("failed to remove container %s", id)
 			}
 		}()
@@ -594,9 +611,12 @@ func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts
 	return []containerd.NewContainerOpts{o}, nil
 }
 
-func withInternalLabels(ns, containerStateDir string, networks []string, ports []gocni.PortMapping) (containerd.NewContainerOpts, error) {
+func withInternalLabels(ns, name, containerStateDir string, networks []string, ports []gocni.PortMapping) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
 	m[labels.Namespace] = ns
+	if name != "" {
+		m[labels.Name] = name
+	}
 	m[labels.StateDir] = containerStateDir
 	networksJSON, err := json.Marshal(networks)
 	if err != nil {

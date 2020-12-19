@@ -21,28 +21,10 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var containerCommand = &cli.Command{
-	Name:     "container",
-	Usage:    "Manage containers",
-	Category: CategoryManagement,
-	Subcommands: []*cli.Command{
-		runCommand,
-		execCommand,
-		containerLsCommand(),
-		containerInspectCommand,
-		logsCommand,
-		portCommand,
-		rmCommand,
-		stopCommand,
-		killCommand,
-		pauseCommand,
-		unpauseCommand,
-		commitCommand,
-	},
-}
-
-func containerLsCommand() *cli.Command {
-	x := *psCommand
-	x.Name = "ls"
-	return &x
+var inspectCommand = &cli.Command{
+	Name:        "inspect",
+	Usage:       "Return low-level information on objects. Currently, only supports container objects.",
+	Description: containerInspectCommand.Description,
+	Action:      containerInspectAction,
+	Flags:       containerInspectCommand.Flags,
 }

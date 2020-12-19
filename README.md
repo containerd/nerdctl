@@ -64,6 +64,7 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 - Exporting Docker/OCI dual-format archives: `nerdctl save` .
 - Importing OCI archives: `nerdctl load` .
 - Specifying a non-image rootfs: `nerdctl run -it --rootfs <ROOTFS> /bin/sh` . The CLI syntax conforms to Podman convention.
+- Inspecting raw OCI config: `nerdctl container inspect --mode=native` .
 
 ## Implementation status of Docker-compatible commands and flags
 
@@ -93,6 +94,7 @@ Run & Exec:
   - `--read-only`
   - `-w, --workdir`
   - `-e, --env`
+  - `--name`
   - `-l, --label`
   - `--label-file`
 
@@ -109,6 +111,8 @@ Container management:
   - `-a, --all`: Show all containers (default shows just running)
   - `--no-trunc`: Don't truncate output
   - `-q, --quiet`: Only display container IDs
+
+- `nerdctl inspect`
 
 - `nerdctl logs`
 

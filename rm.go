@@ -21,8 +21,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
+	"github.com/AkihiroSuda/nerdctl/pkg/labels"
+	"github.com/AkihiroSuda/nerdctl/pkg/namestore"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
@@ -60,42 +62,39 @@ func rmAction(clicontext *cli.Context) error {
 
 	force := clicontext.Bool("force")
 
-	containers, err := client.Containers(ctx)
+	containerNameStore, err := namestore.New(clicontext.String("data-root"), clicontext.String("namespace"))
 	if err != nil {
 		return err
 	}
-	allIDs := make([]string, len(containers))
-	for i, c := range containers {
-		allIDs[i] = c.ID()
+
+	walker := &containerwalker.ContainerWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			stateDir, err := getContainerStateDirPath(clicontext, found.Container.ID())
+			if err != nil {
+				return err
+			}
+			if err := removeContainer(ctx, client, found.Container.ID(), force, stateDir, containerNameStore); err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(clicontext.App.Writer, "%s\n", found.Req)
+			return err
+		},
 	}
-	for _, id := range clicontext.Args().Slice() {
-		if len(id) < idLength {
-			found := 0
-			for _, ctID := range allIDs {
-				if strings.HasPrefix(ctID, id) {
-					id = ctID
-					found++
-				}
-			}
-			if found > 1 {
-				logrus.Errorf("Ambiguous container ID: %s", id)
-				continue
-			}
-		}
-		stateDir, err := getContainerStateDirPath(clicontext, id)
+	for _, req := range clicontext.Args().Slice() {
+		n, err := walker.Walk(ctx, req)
 		if err != nil {
 			return err
+		} else if n == 0 {
+			return errors.Errorf("no such container %s", req)
 		}
-		if err := removeContainer(ctx, client, id, force, stateDir); err != nil {
-			return err
-		}
-		fmt.Println(id)
 	}
 	return nil
 }
 
 // removeContainer returns nil when the container cannot be found
-func removeContainer(ctx context.Context, client *containerd.Client, id string, force bool, stateDir string) (retErr error) {
+func removeContainer(ctx context.Context, client *containerd.Client, id string, force bool, stateDir string, namst namestore.NameStore) (retErr error) {
+	var name string
 	defer func() {
 		if errdefs.IsNotFound(retErr) {
 			retErr = nil
@@ -105,12 +104,23 @@ func removeContainer(ctx context.Context, client *containerd.Client, id string, 
 		} else {
 			logrus.WithError(retErr).Warnf("failed to remove container %q", id)
 		}
+		if retErr == nil {
+			if name != "" {
+				retErr = namst.Release(name, id)
+			}
+		} else {
+			logrus.WithError(retErr).Warnf("failed to remove container %q", id)
+		}
 	}()
 	container, err := client.LoadContainer(ctx, id)
 	if err != nil {
 		return err
 	}
-
+	l, err := container.Labels(ctx)
+	if err != nil {
+		return err
+	}
+	name = l[labels.Name]
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
 		if errdefs.IsNotFound(err) {

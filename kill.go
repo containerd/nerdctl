@@ -24,7 +24,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
@@ -69,27 +69,32 @@ func killAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	argIDs := clicontext.Args().Slice()
-
-	return idutil.WalkContainers(ctx, client, argIDs, func(ctx context.Context, client *containerd.Client, shortID, ID string) error {
-		if err := killContainer(ctx, clicontext, client, shortID, ID, signal); err != nil {
-			if errdefs.IsNotFound(err) {
-				fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: Cannot kill container: %s: No such container: %s\n", shortID, shortID)
-				os.Exit(1)
+	walker := &containerwalker.ContainerWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if err := killContainer(ctx, clicontext, found.Container, signal); err != nil {
+				if errdefs.IsNotFound(err) {
+					fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: Cannot kill container: %s: No such container: %s\n", found.Req, found.Req)
+					os.Exit(1)
+				}
+				return err
 			}
+			_, err := fmt.Fprintf(clicontext.App.Writer, "%s\n", found.Container.ID())
 			return err
+		},
+	}
+	for _, req := range clicontext.Args().Slice() {
+		n, err := walker.Walk(ctx, req)
+		if err != nil {
+			return err
+		} else if n == 0 {
+			return errors.Errorf("no such container %s", req)
 		}
-		_, err := fmt.Fprintf(clicontext.App.Writer, "%s\n", shortID)
-		return err
-	})
+	}
+	return nil
 }
 
-func killContainer(ctx context.Context, clicontext *cli.Context, client *containerd.Client, shortID, id string, signal syscall.Signal) error {
-	container, err := client.LoadContainer(ctx, id)
-	if err != nil {
-		return err
-	}
-
+func killContainer(ctx context.Context, clicontext *cli.Context, container containerd.Container, signal syscall.Signal) error {
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
 		return err
@@ -104,7 +109,7 @@ func killContainer(ctx context.Context, clicontext *cli.Context, client *contain
 
 	switch status.Status {
 	case containerd.Created, containerd.Stopped:
-		fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: Cannot kill container: %s: Container %s is not running\n", shortID, shortID)
+		fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: Cannot kill container: %s: Container %s is not running\n", container.ID(), container.ID())
 		os.Exit(1)
 	case containerd.Paused, containerd.Pausing:
 		paused = true
@@ -118,7 +123,7 @@ func killContainer(ctx context.Context, clicontext *cli.Context, client *contain
 	// signal will be sent once resume is finished
 	if paused {
 		if err := task.Resume(ctx); err != nil {
-			logrus.Warnf("Cannot unpause container %s: %s", shortID, err)
+			logrus.Warnf("Cannot unpause container %s: %s", container.ID(), err)
 		}
 	}
 	return nil

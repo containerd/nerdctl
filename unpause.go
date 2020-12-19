@@ -21,7 +21,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/pkg/errors"
@@ -46,16 +46,26 @@ func unpauseAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	argIDs := clicontext.Args().Slice()
+	walker := &containerwalker.ContainerWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if err := unpauseContainer(ctx, client, found.Container.ID()); err != nil {
+				return err
+			}
 
-	return idutil.WalkContainers(ctx, client, argIDs, func(ctx context.Context, client *containerd.Client, shortID, ID string) error {
-		if err := unpauseContainer(ctx, client, ID); err != nil {
+			_, err := fmt.Fprintf(clicontext.App.Writer, "%s\n", found.Req)
 			return err
+		},
+	}
+	for _, req := range clicontext.Args().Slice() {
+		n, err := walker.Walk(ctx, req)
+		if err != nil {
+			return err
+		} else if n == 0 {
+			return errors.Errorf("no such container %s", req)
 		}
-
-		_, err := fmt.Fprintf(clicontext.App.Writer, "%s\n", shortID)
-		return err
-	})
+	}
+	return nil
 }
 
 func unpauseContainer(ctx context.Context, client *containerd.Client, id string) error {
