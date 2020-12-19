@@ -68,7 +68,7 @@ func commitAction(clicontext *cli.Context) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if found.MatchIndex > 1 {
+			if found.MatchCount > 1 {
 				return errors.Errorf("ambiguous ID %q", found.Req)
 			}
 			imageID, err := commit.Commit(ctx, client, found.Container.ID(), opts)

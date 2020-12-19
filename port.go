@@ -76,7 +76,7 @@ func portAction(clicontext *cli.Context) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if found.MatchIndex > 1 {
+			if found.MatchCount > 1 {
 				return errors.Errorf("ambiguous ID %q", found.Req)
 			}
 			return printPort(ctx, clicontext, found.Container, argPort, argProto)
