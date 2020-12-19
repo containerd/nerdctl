@@ -117,7 +117,7 @@ func printContainers(ctx context.Context, clicontext *cli.Context, containers []
 			timeSinceInHuman(info.CreatedAt),
 			cStatus,
 			formatPorts(info.Labels),
-			"", // NAMES
+			info.Labels[labels.Name],
 		); err != nil {
 			return err
 		}

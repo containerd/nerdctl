@@ -93,6 +93,7 @@ Run & Exec:
   - `--read-only`
   - `-w, --workdir`
   - `-e, --env`
+  - `--name`
   - `-l, --label`
   - `--label-file`
 
