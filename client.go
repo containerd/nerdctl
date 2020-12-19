@@ -34,7 +34,7 @@ func newClient(clicontext *cli.Context) (*containerd.Client, context.Context, co
 	namespace := clicontext.String("namespace")
 	ctx = namespaces.WithNamespace(ctx, namespace)
 	address := strings.TrimPrefix(clicontext.String("address"), "unix://")
-	const dockerContainerdaddress = "/run/docker/containerd/containerd.sock"
+	const dockerContainerdaddress = "/var/run/docker/containerd/containerd.sock"
 	if err := isSocketAccessible(address); err != nil {
 		if isSocketAccessible(dockerContainerdaddress) == nil {
 			err = errors.Wrapf(err, "cannot access containerd socket %q (hint: try running with `--address %s` to connect to Docker-managed containerd)",

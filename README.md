@@ -35,7 +35,7 @@ To build an image using BuildKit:
 
 To list Docker containers:
 ```console
-# nerdctl --namespace moby ps -a
+# nerdctl --address /var/run/docker/containerd/containerd.sock --namespace moby ps -a
 ```
 
 To list Kubernetes containers:
