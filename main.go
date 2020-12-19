@@ -140,6 +140,8 @@ func newApp() *cli.App {
 		eventsCommand,
 		infoCommand,
 		versionCommand,
+		// Inspect
+		inspectCommand,
 		// Management
 		containerCommand,
 		imageCommand,
