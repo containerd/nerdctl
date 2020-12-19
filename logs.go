@@ -21,9 +21,8 @@ import (
 	"context"
 	"os"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/AkihiroSuda/nerdctl/pkg/logging/jsonfile"
-	"github.com/containerd/containerd"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -40,7 +39,6 @@ func logsAction(clicontext *cli.Context) error {
 	if clicontext.NArg() != 1 {
 		return errors.Errorf("requires exactly 1 argument")
 	}
-	argIDs := clicontext.Args().Slice()
 
 	dataRoot := clicontext.String("data-root")
 
@@ -56,22 +54,27 @@ func logsAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	var exactID string
-	if err := idutil.WalkContainers(ctx, client, argIDs,
-		func(ctx context.Context, _ *containerd.Client, shortID, id string) error {
-			if exactID != "" {
-				return errors.Errorf("ambiguous ID %q", shortID)
+	walker := &containerwalker.ContainerWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if found.MatchIndex > 1 {
+				return errors.Errorf("ambiguous ID %q", found.Req)
 			}
-			exactID = id
-			return nil
-		}); err != nil {
-		return err
+			logJSONFilePath := jsonfile.Path(dataRoot, ns, found.Container.ID())
+			f, err := os.Open(logJSONFilePath)
+			if err != nil {
+				return errors.Wrapf(err, "failed to open %q, container is not created with `nerdctl run -d`?", logJSONFilePath)
+			}
+			defer f.Close()
+			return jsonfile.Decode(clicontext.App.Writer, clicontext.App.ErrWriter, f)
+		},
 	}
-	logJSONFilePath := jsonfile.Path(dataRoot, ns, exactID)
-	f, err := os.Open(logJSONFilePath)
+	req := clicontext.Args().First()
+	n, err := walker.Walk(ctx, req)
 	if err != nil {
-		return errors.Wrapf(err, "failed to open %q, container is not created with `nerdctl run -d`?", logJSONFilePath)
+		return err
+	} else if n == 0 {
+		return errors.Errorf("no such container %s", req)
 	}
-	defer f.Close()
-	return jsonfile.Decode(clicontext.App.Writer, clicontext.App.ErrWriter, f)
+	return nil
 }

@@ -21,8 +21,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
@@ -60,36 +60,27 @@ func rmAction(clicontext *cli.Context) error {
 
 	force := clicontext.Bool("force")
 
-	containers, err := client.Containers(ctx)
-	if err != nil {
-		return err
-	}
-	allIDs := make([]string, len(containers))
-	for i, c := range containers {
-		allIDs[i] = c.ID()
-	}
-	for _, id := range clicontext.Args().Slice() {
-		if len(id) < idLength {
-			found := 0
-			for _, ctID := range allIDs {
-				if strings.HasPrefix(ctID, id) {
-					id = ctID
-					found++
-				}
+	walker := &containerwalker.ContainerWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			stateDir, err := getContainerStateDirPath(clicontext, found.Container.ID())
+			if err != nil {
+				return err
 			}
-			if found > 1 {
-				logrus.Errorf("Ambiguous container ID: %s", id)
-				continue
+			if err := removeContainer(ctx, client, found.Container.ID(), force, stateDir); err != nil {
+				return err
 			}
-		}
-		stateDir, err := getContainerStateDirPath(clicontext, id)
+			_, err = fmt.Fprintf(clicontext.App.Writer, "%s\n", found.Req)
+			return err
+		},
+	}
+	for _, req := range clicontext.Args().Slice() {
+		n, err := walker.Walk(ctx, req)
 		if err != nil {
 			return err
+		} else if n == 0 {
+			return errors.Errorf("no such container %s", req)
 		}
-		if err := removeContainer(ctx, client, id, force, stateDir); err != nil {
-			return err
-		}
-		fmt.Println(id)
 	}
 	return nil
 }

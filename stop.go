@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
@@ -67,27 +67,32 @@ func stopAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	argIDs := clicontext.Args().Slice()
-
-	return idutil.WalkContainers(ctx, client, argIDs, func(ctx context.Context, client *containerd.Client, shortID, ID string) error {
-		if err := stopContainer(ctx, client, shortID, ID, timeout); err != nil {
-			if errdefs.IsNotFound(err) {
-				fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: No such container: %s\n", shortID)
-				return nil
+	walker := &containerwalker.ContainerWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if err := stopContainer(ctx, found.Container, timeout); err != nil {
+				if errdefs.IsNotFound(err) {
+					fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: No such container: %s\n", found.Req)
+					return nil
+				}
+				return err
 			}
+			_, err := fmt.Fprintf(clicontext.App.Writer, "%s\n", found.Req)
 			return err
+		},
+	}
+	for _, req := range clicontext.Args().Slice() {
+		n, err := walker.Walk(ctx, req)
+		if err != nil {
+			return err
+		} else if n == 0 {
+			return errors.Errorf("no such container %s", req)
 		}
-		_, err := fmt.Fprintf(clicontext.App.Writer, "%s\n", shortID)
-		return err
-	})
+	}
+	return nil
 }
 
-func stopContainer(ctx context.Context, client *containerd.Client, shortID, id string, timeout time.Duration) error {
-	container, err := client.LoadContainer(ctx, id)
-	if err != nil {
-		return err
-	}
-
+func stopContainer(ctx context.Context, container containerd.Container, timeout time.Duration) error {
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
 		return err
@@ -127,7 +132,7 @@ func stopContainer(ctx context.Context, client *containerd.Client, shortID, id s
 		// signal will be sent once resume is finished
 		if paused {
 			if err := task.Resume(ctx); err != nil {
-				logrus.Warnf("Cannot unpause container %s: %s", shortID, err)
+				logrus.Warnf("Cannot unpause container %s: %s", container.ID(), err)
 			} else {
 				// no need to do it again when send sigkill signal
 				paused = false
@@ -137,7 +142,7 @@ func stopContainer(ctx context.Context, client *containerd.Client, shortID, id s
 		sigtermCtx, sigtermCtxCancel := context.WithTimeout(ctx, timeout)
 		defer sigtermCtxCancel()
 
-		err = waitContainerStop(sigtermCtx, exitCh, shortID)
+		err = waitContainerStop(sigtermCtx, exitCh, container.ID())
 		if err == nil {
 			return nil
 		}
@@ -159,10 +164,10 @@ func stopContainer(ctx context.Context, client *containerd.Client, shortID, id s
 	// signal will be sent once resume is finished
 	if paused {
 		if err := task.Resume(ctx); err != nil {
-			logrus.Warnf("Cannot unpause container %s: %s", shortID, err)
+			logrus.Warnf("Cannot unpause container %s: %s", container.ID(), err)
 		}
 	}
-	return waitContainerStop(ctx, exitCh, shortID)
+	return waitContainerStop(ctx, exitCh, container.ID())
 }
 
 func waitContainerStop(ctx context.Context, exitCh <-chan containerd.ExitStatus, id string) error {

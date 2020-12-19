@@ -22,7 +22,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -84,21 +84,26 @@ func execAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	var exactID string
-	if err := idutil.WalkContainers(ctx, client, []string{clicontext.Args().First()},
-		func(ctx context.Context, _ *containerd.Client, shortID, id string) error {
-			if exactID != "" {
-				return errors.Errorf("ambiguous ID %q", shortID)
+	walker := &containerwalker.ContainerWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if found.MatchIndex > 1 {
+				return errors.Errorf("ambiguous ID %q", found.Req)
 			}
-			exactID = id
-			return nil
-		}); err != nil {
+			return execActionWithContainer(ctx, clicontext, found.Container)
+		},
+	}
+	req := clicontext.Args().First()
+	n, err := walker.Walk(ctx, req)
+	if err != nil {
 		return err
+	} else if n == 0 {
+		return errors.Errorf("no such container %s", req)
 	}
-	if exactID == "" {
-		return errors.Errorf("no such container %q", clicontext.Args().First())
-	}
+	return nil
+}
 
+func execActionWithContainer(ctx context.Context, clicontext *cli.Context, container containerd.Container) error {
 	flagI := clicontext.Bool("i")
 	flagT := clicontext.Bool("t")
 	flagD := clicontext.Bool("d")
@@ -116,11 +121,6 @@ func execAction(clicontext *cli.Context) error {
 		if !flagI {
 			return errors.New("currently flag -t needs -i to be specified together (FIXME)")
 		}
-	}
-
-	container, err := client.LoadContainer(ctx, exactID)
-	if err != nil {
-		return err
 	}
 
 	pspec, err := generateExecProcessSpec(ctx, clicontext, container)

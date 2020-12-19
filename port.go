@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/containerd/containerd"
 	gocni "github.com/containerd/go-cni"
@@ -73,24 +73,31 @@ func portAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	var exactID string
-	if err := idutil.WalkContainers(ctx, client, []string{clicontext.Args().First()},
-		func(ctx context.Context, _ *containerd.Client, shortID, id string) error {
-			if exactID != "" {
-				return errors.Errorf("ambiguous ID %q", shortID)
+	walker := &containerwalker.ContainerWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if found.MatchIndex > 1 {
+				return errors.Errorf("ambiguous ID %q", found.Req)
 			}
-			exactID = id
-			return nil
-		}); err != nil {
-		return err
+			return printPort(ctx, clicontext, found.Container, argPort, argProto)
+		},
 	}
+	req := clicontext.Args().First()
+	n, err := walker.Walk(ctx, req)
+	if err != nil {
+		return err
+	} else if n == 0 {
+		return errors.Errorf("no such container %s", req)
+	}
+	return nil
+}
 
-	container, err := client.ContainerService().Get(ctx, exactID)
+func printPort(ctx context.Context, clicontext *cli.Context, container containerd.Container, argPort int, argProto string) error {
+	l, err := container.Labels(ctx)
 	if err != nil {
 		return err
 	}
-
-	portsJSON := container.Labels[labels.Ports]
+	portsJSON := l[labels.Ports]
 	if portsJSON == "" {
 		return nil
 	}
@@ -112,5 +119,5 @@ func portAction(clicontext *cli.Context) error {
 			return nil
 		}
 	}
-	return errors.Errorf("no public port %d/%s published for %q", argPort, argProto, exactID)
+	return errors.Errorf("no public port %d/%s published for %q", argPort, argProto, container.ID())
 }

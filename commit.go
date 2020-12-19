@@ -21,9 +21,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/commit"
-	"github.com/containerd/containerd"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
@@ -66,15 +65,28 @@ func commitAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	return idutil.WalkContainers(ctx, client, []string{clicontext.Args().First()}, func(ctx context.Context, client *containerd.Client, _, id string) error {
-		imageID, err := commit.Commit(ctx, client, id, opts)
-		if err != nil {
+	walker := &containerwalker.ContainerWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if found.MatchIndex > 1 {
+				return errors.Errorf("ambiguous ID %q", found.Req)
+			}
+			imageID, err := commit.Commit(ctx, client, found.Container.ID(), opts)
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(clicontext.App.Writer, "%s\n", imageID)
 			return err
-		}
-
-		_, err = fmt.Fprintf(clicontext.App.Writer, "%s\n", imageID)
+		},
+	}
+	req := clicontext.Args().First()
+	n, err := walker.Walk(ctx, req)
+	if err != nil {
 		return err
-	})
+	} else if n == 0 {
+		return errors.Errorf("no such container %s", req)
+	}
+	return nil
 }
 
 func newCommitOpts(clicontext *cli.Context) (*commit.Opts, error) {
