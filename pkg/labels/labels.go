@@ -26,6 +26,10 @@ const (
 	// Namespace is the containerd namespace such as "default", "k8s.io"
 	Namespace = Prefix + "namespace"
 
+	// Name is a human-friendly name.
+	// WARNING: multiple containers may have same the name label
+	Name = Prefix + "name"
+
 	// StateDir is "/var/lib/nerdctl/c/<NAMESPACE>/<ID>"
 	StateDir = Prefix + "state-dir"
 
