@@ -23,12 +23,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/containerinspector"
 	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/dockercompat"
-	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/native"
-	"github.com/containerd/typeurl"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -97,7 +95,7 @@ func (x *containerInspector) Handler(ctx context.Context, found containerwalker.
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	n, err := x.inspectNative(ctx, found)
+	n, err := containerinspector.Inspect(ctx, found.Container)
 	if err != nil {
 		return err
 	}
@@ -114,35 +112,4 @@ func (x *containerInspector) Handler(ctx context.Context, found containerwalker.
 		return errors.Errorf("unknown mode %q", x.mode)
 	}
 	return nil
-}
-
-func (x *containerInspector) inspectNative(ctx context.Context, found containerwalker.Found) (*native.Container, error) {
-	info, err := found.Container.Info(ctx)
-	if err != nil {
-		return nil, err
-	}
-	n := &native.Container{
-		Container: info,
-	}
-
-	n.Spec, err = typeurl.UnmarshalAny(info.Spec)
-	if err != nil {
-		logrus.WithError(err).WithField("id", found.Container.ID()).Warnf("failed to inspect Spec")
-		return n, nil
-	}
-	task, err := found.Container.Task(ctx, nil)
-	if err != nil {
-		logrus.WithError(err).WithField("id", found.Container.ID()).Warnf("failed to inspect Task")
-		return n, nil
-	}
-	n.Process = &native.Process{
-		Pid: int(task.Pid()),
-	}
-	st, err := task.Status(ctx)
-	if err != nil {
-		logrus.WithError(err).WithField("id", found.Container.ID()).Warnf("failed to inspect Status")
-		return n, nil
-	}
-	n.Process.Status = st
-	return n, nil
 }
