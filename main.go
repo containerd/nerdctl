@@ -121,6 +121,7 @@ func newApp() *cli.App {
 		logsCommand,
 		portCommand,
 		stopCommand,
+		killCommand,
 		rmCommand,
 		pauseCommand,
 		unpauseCommand,
@@ -130,7 +131,7 @@ func newApp() *cli.App {
 		// Image management
 		imagesCommand,
 		pullCommand,
-		killCommand,
+		pushCommand,
 		loadCommand,
 		saveCommand,
 		tagCommand,

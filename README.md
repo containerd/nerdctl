@@ -147,6 +147,8 @@ Image management:
 
 - `nerdctl pull`
 
+- `nerdctl push`
+
 - `nerdctl load`
 
 - `nerdctl save`
