@@ -18,6 +18,8 @@
 package native
 
 import (
+	"net"
+
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 )
@@ -33,4 +35,24 @@ type Container struct {
 type Process struct {
 	Pid    int               `json:"Pid,omitempty"`
 	Status containerd.Status `json:"Status,omitempty"`
+	NetNS  *NetNS            `json:"NetNS,omitempty"`
+}
+
+// NetNS is designed not to depend on CNI
+type NetNS struct {
+	// PrimaryInterface is a net.Interface.Index value, not an array index.
+	// Zero means unset.
+	PrimaryInterface int            `json:"PrimaryInterface,omitempty"`
+	Interfaces       []NetInterface `json:"Interfaces,omitempty"`
+}
+
+// NetInteface wraps net.Interface for JSON marshallability.
+// No support for unmarshalling.
+type NetInterface struct {
+	net.Interface
+	// HardwareAddr overrides Interface.HardwareAddr
+	HardwareAddr string
+	// Flags overrides Interface.Flags
+	Flags []string
+	Addrs []string
 }

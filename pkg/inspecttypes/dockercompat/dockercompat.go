@@ -20,6 +20,8 @@
 package dockercompat
 
 import (
+	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,6 +31,7 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/containerd/containerd"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/sirupsen/logrus"
 )
 
 // Container mimics a `docker container inspect` object.
@@ -60,7 +63,7 @@ type Container struct {
 
 	// TODO: Mounts          []MountPoint
 	// TODO: Config          *container.Config
-	// TODO: NetworkSettings *NetworkSettings
+	NetworkSettings *NetworkSettings
 }
 
 // ContainerState is from https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L313-L326
@@ -77,6 +80,42 @@ type ContainerState struct {
 	// TODO: StartedAt  string
 	FinishedAt string
 	// TODO: Health     *Health `json:",omitempty"`
+}
+
+type NetworkSettings struct {
+	DefaultNetworkSettings
+	Networks map[string]*NetworkEndpointSettings
+}
+
+// DefaultNetworkSettings is from https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L405-L414
+type DefaultNetworkSettings struct {
+	// TODO EndpointID          string // EndpointID uniquely represents a service endpoint in a Sandbox
+	// TODO Gateway             string // Gateway holds the gateway address for the network
+	GlobalIPv6Address   string // GlobalIPv6Address holds network's global IPv6 address
+	GlobalIPv6PrefixLen int    // GlobalIPv6PrefixLen represents mask length of network's global IPv6 address
+	IPAddress           string // IPAddress holds the IPv4 address for the network
+	IPPrefixLen         int    // IPPrefixLen represents mask length of network's IPv4 address
+	// TODO IPv6Gateway         string // IPv6Gateway holds gateway address specific for IPv6
+	MacAddress string // MacAddress holds the MAC address for the network
+}
+
+// NetworkEndpointSettings is from https://github.com/moby/moby/blob/v20.10.1/api/types/network/network.go#L49-L65
+type NetworkEndpointSettings struct {
+	// Configurations
+	// TODO IPAMConfig *EndpointIPAMConfig
+	// TODO Links      []string
+	// TODO Aliases    []string
+	// Operational data
+	// TODO NetworkID           string
+	// TODO EndpointID          string
+	// TODO Gateway             string
+	IPAddress   string
+	IPPrefixLen int
+	// TODO IPv6Gateway         string
+	GlobalIPv6Address   string
+	GlobalIPv6PrefixLen int
+	MacAddress          string
+	// TODO DriverOpts          map[string]string
 }
 
 // ContainerFromNative instantiates a Docker-compatible Container from containerd-native Container.
@@ -119,6 +158,59 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 			ExitCode:   int(n.Process.Status.ExitStatus),
 			FinishedAt: n.Process.Status.ExitTime.Format(time.RFC3339Nano),
 		}
+		c.NetworkSettings = networkSettingsFromNative(n.Process.NetNS)
 	}
 	return c, nil
+}
+
+func networkSettingsFromNative(n *native.NetNS) *NetworkSettings {
+	if n == nil {
+		return nil
+	}
+	res := &NetworkSettings{
+		Networks: make(map[string]*NetworkEndpointSettings),
+	}
+	var primary *NetworkEndpointSettings
+	for _, x := range n.Interfaces {
+		if x.Interface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		if x.Interface.Flags&net.FlagUp == 0 {
+			continue
+		}
+		nes := &NetworkEndpointSettings{}
+		nes.MacAddress = x.HardwareAddr
+		for _, a := range x.Addrs {
+			ip, ipnet, err := net.ParseCIDR(a)
+			if err != nil {
+				logrus.WithError(err).WithField("name", x.Name).Warnf("failed to parse %q", a)
+				continue
+			}
+			if ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+				continue
+			}
+			ones, _ := ipnet.Mask.Size()
+			if ip4 := ip.To4(); ip4 != nil {
+				nes.IPAddress = ip4.String()
+				nes.IPPrefixLen = ones
+			} else if ip16 := ip.To16(); ip16 != nil {
+				nes.GlobalIPv6Address = ip16.String()
+				nes.GlobalIPv6PrefixLen = ones
+			}
+		}
+		// TODO: set CNI name when possible
+		fakeDockerNetworkName := fmt.Sprintf("unknown-%s", x.Name)
+		res.Networks[fakeDockerNetworkName] = nes
+		if x.Index == n.PrimaryInterface {
+			primary = nes
+		}
+	}
+	if primary != nil {
+		res.DefaultNetworkSettings.MacAddress = primary.MacAddress
+		res.DefaultNetworkSettings.IPAddress = primary.IPAddress
+		res.DefaultNetworkSettings.IPPrefixLen = primary.IPPrefixLen
+		res.DefaultNetworkSettings.GlobalIPv6Address = primary.GlobalIPv6Address
+		res.DefaultNetworkSettings.GlobalIPv6PrefixLen = primary.GlobalIPv6PrefixLen
+	}
+	return res
 }
