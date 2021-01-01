@@ -15,27 +15,39 @@
    limitations under the License.
 */
 
-package main
+package lockutil
 
 import (
-	"github.com/AkihiroSuda/nerdctl/pkg/ocihook"
+	"os"
+
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
 
-var internalOCIHookCommand = &cli.Command{
-	Name:   "oci-hook",
-	Usage:  "OCI hook",
-	Action: internalOCIHookAction,
+func WithDirLock(dir string, fn func() error) error {
+	dirFile, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer dirFile.Close()
+	if err := Flock(dirFile, unix.LOCK_EX); err != nil {
+		return errors.Wrapf(err, "failed to lock %q", dir)
+	}
+	defer func() {
+		if err := Flock(dirFile, unix.LOCK_UN); err != nil {
+			logrus.WithError(err).Errorf("failed to unlock %q", dir)
+		}
+	}()
+	return fn()
 }
 
-func internalOCIHookAction(clicontext *cli.Context) error {
-	event := clicontext.Args().First()
-	if event == "" {
-		return errors.New("event type needs to be passed")
+func Flock(f *os.File, flags int) error {
+	fd := int(f.Fd())
+	for {
+		err := unix.Flock(fd, flags)
+		if err == nil || err != unix.EINTR {
+			return err
+		}
 	}
-	return ocihook.Run(clicontext.App.Reader, clicontext.App.ErrWriter, event,
-		clicontext.String("cni-path"),
-		clicontext.String("cni-netconfpath"),
-	)
 }

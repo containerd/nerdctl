@@ -23,9 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/lockutil"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 )
 
 func New(dataRoot, ns string) (NameStore, error) {
@@ -62,7 +61,7 @@ func (x *nameStore) Acquire(name, id string) error {
 		}
 		return ioutil.WriteFile(fileName, []byte(id), 0600)
 	}
-	return withDirLock(x.dir, fn)
+	return lockutil.WithDirLock(x.dir, fn)
 }
 
 func (x *nameStore) Release(name, id string) error {
@@ -89,7 +88,7 @@ func (x *nameStore) Release(name, id string) error {
 		}
 		return os.RemoveAll(fileName)
 	}
-	return withDirLock(x.dir, fn)
+	return lockutil.WithDirLock(x.dir, fn)
 }
 
 func verifyName(name string) error {
@@ -102,31 +101,4 @@ func verifyName(name string) error {
 		return errors.Errorf("invalid name %q", name)
 	}
 	return nil
-}
-
-func withDirLock(dir string, fn func() error) error {
-	dirFile, err := os.Open(dir)
-	if err != nil {
-		return err
-	}
-	defer dirFile.Close()
-	if err := flock(dirFile, unix.LOCK_EX); err != nil {
-		return errors.Wrapf(err, "failed to lock %q", dir)
-	}
-	defer func() {
-		if err := flock(dirFile, unix.LOCK_UN); err != nil {
-			logrus.WithError(err).Errorf("failed to unlock %q", dir)
-		}
-	}()
-	return fn()
-}
-
-func flock(f *os.File, flags int) error {
-	fd := int(f.Fd())
-	for {
-		err := unix.Flock(fd, flags)
-		if err == nil || err != unix.EINTR {
-			return err
-		}
-	}
 }

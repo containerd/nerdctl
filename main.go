@@ -84,11 +84,20 @@ func newApp() *cli.App {
 			Value:   containerd.DefaultSnapshotter,
 		},
 		&cli.StringFlag{
-			Name:    "cni-path",
-			Usage:   "Set the cni-plugins binary directory",
+			Name:  "cni-path",
+			Usage: "Set the cni-plugins binary directory",
+			// CNI_PATH is from https://www.cni.dev/docs/cnitool/
 			EnvVars: []string{"CNI_PATH"},
 			Value:   gocni.DefaultCNIDir,
 		},
+		&cli.StringFlag{
+			Name:  "cni-netconfpath",
+			Usage: "Set the CNI config directory",
+			// NETCONFPATH is from https://www.cni.dev/docs/cnitool/
+			EnvVars: []string{"NETCONFPATH"},
+			Value:   gocni.DefaultNetDir,
+		},
+
 		&cli.StringFlag{
 			Name:  "data-root",
 			Usage: "Root directory of persistent nerdctl state (managed by nerdctl, not by containerd)",
@@ -145,6 +154,7 @@ func newApp() *cli.App {
 		// Management
 		containerCommand,
 		imageCommand,
+		networkCommand,
 		systemCommand,
 		// Internal
 		internalCommand,

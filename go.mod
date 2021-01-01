@@ -10,6 +10,7 @@ require (
 	github.com/containerd/stargz-snapshotter v0.2.1-0.20210101143201-d58f43a8235e
 	github.com/containerd/stargz-snapshotter/estargz v0.0.0-00010101000000-000000000000
 	github.com/containerd/typeurl v1.0.1
+	github.com/containernetworking/cni v0.8.0
 	github.com/containernetworking/plugins v0.9.0
 	github.com/docker/cli v20.10.0+incompatible
 	github.com/docker/go-units v0.4.0
