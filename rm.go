@@ -48,8 +48,6 @@ var rmCommand = &cli.Command{
 }
 
 func rmAction(clicontext *cli.Context) error {
-	const idLength = 64
-
 	if clicontext.NArg() == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
