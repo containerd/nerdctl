@@ -20,15 +20,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"strings"
 
-	"github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/containerd/images"
+	"github.com/AkihiroSuda/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/containerd/platforms"
-	refdocker "github.com/containerd/containerd/reference/docker"
-	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
@@ -51,73 +45,34 @@ func rmiAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	var (
-		imageStore = client.ImageService()
-		cs         = client.ContentStore()
-	)
+	cs := client.ContentStore()
+	is := client.ImageService()
 
-	imageList, err := imageStore.List(ctx, "")
-	if err != nil {
-		return err
-	}
-
-	var opts []images.DeleteOpt
-	var imageNotFoundError bool
-
-	for _, img := range clicontext.Args().Slice() {
-		named, err := refdocker.ParseDockerRef(img)
-		if err != nil {
-			return err
-		}
-		imgFQIN := named.String()
-
-		digests, err := getImageDigests(ctx, cs, imgFQIN, imageList)
-		if err != nil {
-			return errors.Errorf("Error in getting image digests: %v", err)
-		}
-
-		if err := imageStore.Delete(ctx, imgFQIN, opts...); err != nil {
-			if errdefs.IsNotFound(err) {
-				fmt.Fprintf(clicontext.App.Writer, "Error: No such image: %s\n", img)
-				imageNotFoundError = true
-				continue
-			}
-			return err
-		}
-		printDigests(clicontext, imgFQIN, digests)
-	}
-
-	if imageNotFoundError {
-		os.Exit(1)
-	}
-
-	return nil
-}
-
-// Print digests after image removal.
-// This will keep the stdout in sync with docker rmi output.
-func printDigests(clicontext *cli.Context, imgFQIN string, digests []digest.Digest) {
-	if strings.Contains(imgFQIN, "docker.io/library") {
-		imgFQIN = imgFQIN[18:]
-	}
-	fmt.Fprintf(clicontext.App.Writer, "Untagged: %s\n", imgFQIN)
-	for _, digest := range digests {
-		fmt.Fprintf(clicontext.App.Writer, "Deleted: %s\n", digest)
-	}
-}
-
-// Get SHA digests for the given image.
-func getImageDigests(ctx context.Context, cs content.Store, imgFQIN string, imageList []images.Image) ([]digest.Digest, error) {
-	var digests []digest.Digest
-	var err error
-	for _, image := range imageList {
-		if imgFQIN == image.Name {
-			digests, err = image.RootFS(ctx, cs, platforms.Default())
+	walker := &imagewalker.ImageWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+			digests, err := found.Image.RootFS(ctx, cs, platforms.Default())
 			if err != nil {
-				return nil, err
+				return err
 			}
-			break
+
+			if err := is.Delete(ctx, found.Image.Name); err != nil {
+				return err
+			}
+			fmt.Fprintf(clicontext.App.Writer, "Untagged: %s@%s\n", found.Image.Name, found.Image.Target.Digest)
+			for _, digest := range digests {
+				fmt.Fprintf(clicontext.App.Writer, "Deleted: %s\n", digest)
+			}
+			return nil
+		},
+	}
+	for _, req := range clicontext.Args().Slice() {
+		n, err := walker.Walk(ctx, req)
+		if err != nil {
+			return err
+		} else if n == 0 {
+			return errors.Errorf("no such image %s", req)
 		}
 	}
-	return digests, nil
+	return nil
 }
