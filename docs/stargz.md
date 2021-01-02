@@ -64,9 +64,17 @@ sys     0m0.158s
 
 ## Enable lazy-pulling for pulling base images during `nerdctl build`
 
-- Install Stargz plugin (`containerd-stargz-grpc`) from https://github.com/containerd/stargz-snapshotter 
 - Launch `buildkitd` with `--oci-worker-snapshotter=stargz` (or `--containerd-worker-snapshotter=stargz` if you use containerd worker)
 - Launch `nerdctl build`. No need to specify `--snapshotter` for `nerdctl`.
 
 ## Building stargz images using `nerdctl build`
-Unsupported yet
+
+```console
+$ nerdctl build -t example.com/foo .
+$ nerdctl image convert --estargz --oci example.com/foo example.com/foo:estargz
+$ nerdctl push example.com/foo:estargz
+```
+
+NOTE: `--estargz` should be specified in conjunction with `--oci`
+
+Stargz Snapshotter is not needed for building stargz images.

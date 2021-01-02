@@ -35,6 +35,7 @@ var imageCommand = &cli.Command{
 		saveCommand,
 		tagCommand,
 		imageRmCommand(),
+		imageConvertCommand,
 	},
 }
 

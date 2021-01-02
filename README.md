@@ -42,6 +42,7 @@
     - [:whale: nerdctl save](#whale-nerdctl-save)
     - [:whale: nerdctl tag](#whale-nerdctl-tag)
     - [:whale: nerdctl rmi](#whale-nerdctl-rmi)
+    - [:nerd_face: nerdctl image convert](#nerd_face-nerdctl-image-convert)
   - [System](#system)
     - [:whale: nerdctl events](#whale-nerdctl-events)
     - [:whale: nerdctl info](#whale-nerdctl-info)
@@ -307,6 +308,21 @@ Create a tag TARGET\_IMAGE that refers to SOURCE\_IMAGE.
 
 ### :whale: nerdctl rmi
 Remove one or more images
+
+### :nerd_face: nerdctl image convert
+Convert an image format.
+
+e.g., `nerdctl image convert --estargz --oci example.com/foo:orig example.com/foo:esgz`
+
+Flags:
+-  `--estargz`                          : convert legacy tar(.gz) layers to eStargz for lazy pulling. Should be used in conjunction with '--oci'
+-  `--estargz-record-in=<FILE>`         : read `ctr-remote optimize --record-out=<FILE>` record file. :warning: This flag is experimental and subject to change.
+-  `--estargz-compression-level=<LEVEL>`: eStargz compression level (default: 9)
+-  `--estargz-chunk-size=<SIZE>`        : eStargz chunk size
+-  `--uncompress`                       : convert tar.gz layers to uncompressed tar layers
+-  `--oci`                              : convert Docker media types to OCI media types
+-  `--platform=<PLATFORM>`              : convert content for a specific platform
+-  `--all-platforms`                    : convert content for all platforms (default: false)
 
 ## System
 ### :whale: nerdctl events
