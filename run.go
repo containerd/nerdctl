@@ -39,6 +39,7 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/mountutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/namestore"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/util"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -200,6 +201,15 @@ var runCommand = &cli.Command{
 			Name:  "label-file",
 			Usage: "Read in a line delimited file of labels",
 		},
+		// linux capabilities
+		&cli.StringSliceFlag{
+			Name:  "cap-add",
+			Usage: "Add Linux capabilities",
+		},
+		&cli.StringSliceFlag{
+			Name:  "cap-drop",
+			Usage: "Drop Linux capabilities",
+		},
 	},
 }
 
@@ -209,6 +219,7 @@ func runAction(clicontext *cli.Context) error {
 	if clicontext.Bool("help") {
 		return cli.ShowCommandHelp(clicontext, "run")
 	}
+
 	if clicontext.NArg() < 1 {
 		return errors.New("image name needs to be specified")
 	}
@@ -284,6 +295,7 @@ func runAction(clicontext *cli.Context) error {
 	if wd := clicontext.String("workdir"); wd != "" {
 		opts = append(opts, oci.WithProcessCwd(wd))
 	}
+
 	if env := clicontext.StringSlice("env"); len(env) > 0 {
 		opts = append(opts, oci.WithEnv(env))
 	}
@@ -306,6 +318,35 @@ func runAction(clicontext *cli.Context) error {
 			return errors.New("currently flag -t needs -i to be specified together (FIXME)")
 		}
 		opts = append(opts, oci.WithTTY)
+	}
+	capAdd := clicontext.StringSlice("cap-add")
+	capDrop := clicontext.StringSlice("cap-drop")
+
+	if len(capAdd) > 0 || len(capDrop) > 0 {
+		if util.InStringSlice(capAdd, "ALL") {
+			opts = append(opts, oci.WithAllCapabilities)
+		}
+
+		if util.InStringSlice(capDrop, "ALL") {
+			opts = append(opts, oci.WithCapabilities(nil))
+		}
+		var capsAdd []string
+		for _, c := range capAdd {
+			if strings.ToUpper(c) == "ALL" {
+				continue
+			}
+			capsAdd = append(capsAdd, "CAP_"+strings.ToUpper(c))
+		}
+		opts = append(opts, oci.WithCapabilities(capsAdd))
+
+		var capsDrop []string
+		for _, c := range capDrop {
+			if strings.ToUpper(c) == "ALL" {
+				continue
+			}
+			capsDrop = append(capsDrop, "CAP_"+strings.ToUpper(c))
+		}
+		opts = append(opts, oci.WithDroppedCapabilities(capsDrop))
 	}
 
 	if flagVSlice := clicontext.StringSlice("v"); len(flagVSlice) > 0 {
