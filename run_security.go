@@ -19,6 +19,7 @@ package main
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
 	"github.com/containerd/containerd/contrib/apparmor"
@@ -80,6 +81,36 @@ func generateSecurityOpts(securityOptsMap map[string]string) ([]oci.SpecOpts, er
 	}
 	if !nnp {
 		opts = append(opts, oci.WithNewPrivileges)
+	}
+	return opts, nil
+}
+
+func generateCapOpts(capAdd, capDrop []string) ([]oci.SpecOpts, error) {
+	if len(capAdd) == 0 && len(capDrop) == 0 {
+		return nil, nil
+	}
+
+	var opts []oci.SpecOpts
+	if InStringSlice(capDrop, "ALL") {
+		opts = append(opts, oci.WithCapabilities(nil))
+	}
+
+	if InStringSlice(capAdd, "ALL") {
+		opts = append(opts, oci.WithAllCapabilities)
+	} else {
+		var capsAdd []string
+		for _, c := range capAdd {
+			capsAdd = append(capsAdd, "CAP_"+strings.ToUpper(c))
+		}
+		opts = append(opts, oci.WithCapabilities(capsAdd))
+	}
+
+	if !InStringSlice(capDrop, "ALL") {
+		var capsDrop []string
+		for _, c := range capDrop {
+			capsDrop = append(capsDrop, "CAP_"+strings.ToUpper(c))
+		}
+		opts = append(opts, oci.WithDroppedCapabilities(capsDrop))
 	}
 	return opts, nil
 }

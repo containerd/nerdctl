@@ -39,7 +39,6 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/mountutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/namestore"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/util"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -150,6 +149,14 @@ var runCommand = &cli.Command{
 			Name:  "security-opt",
 			Usage: "Security options",
 		},
+		&cli.StringSliceFlag{
+			Name:  "cap-add",
+			Usage: "Add Linux capabilities",
+		},
+		&cli.StringSliceFlag{
+			Name:  "cap-drop",
+			Usage: "Drop Linux capabilities",
+		},
 		&cli.BoolFlag{
 			Name:  "privileged",
 			Usage: "Give extended privileges to this container",
@@ -200,15 +207,6 @@ var runCommand = &cli.Command{
 		&cli.StringSliceFlag{
 			Name:  "label-file",
 			Usage: "Read in a line delimited file of labels",
-		},
-		// linux capabilities
-		&cli.StringSliceFlag{
-			Name:  "cap-add",
-			Usage: "Add Linux capabilities",
-		},
-		&cli.StringSliceFlag{
-			Name:  "cap-drop",
-			Usage: "Drop Linux capabilities",
 		},
 	},
 }
@@ -319,35 +317,6 @@ func runAction(clicontext *cli.Context) error {
 		}
 		opts = append(opts, oci.WithTTY)
 	}
-	capAdd := clicontext.StringSlice("cap-add")
-	capDrop := clicontext.StringSlice("cap-drop")
-
-	if len(capAdd) > 0 || len(capDrop) > 0 {
-		if util.InStringSlice(capAdd, "ALL") {
-			opts = append(opts, oci.WithAllCapabilities)
-		}
-
-		if util.InStringSlice(capDrop, "ALL") {
-			opts = append(opts, oci.WithCapabilities(nil))
-		}
-		var capsAdd []string
-		for _, c := range capAdd {
-			if strings.ToUpper(c) == "ALL" {
-				continue
-			}
-			capsAdd = append(capsAdd, "CAP_"+strings.ToUpper(c))
-		}
-		opts = append(opts, oci.WithCapabilities(capsAdd))
-
-		var capsDrop []string
-		for _, c := range capDrop {
-			if strings.ToUpper(c) == "ALL" {
-				continue
-			}
-			capsDrop = append(capsDrop, "CAP_"+strings.ToUpper(c))
-		}
-		opts = append(opts, oci.WithDroppedCapabilities(capsDrop))
-	}
 
 	if flagVSlice := clicontext.StringSlice("v"); len(flagVSlice) > 0 {
 		mounts := make([]specs.Mount, len(flagVSlice))
@@ -441,6 +410,12 @@ func runAction(clicontext *cli.Context) error {
 		return err
 	} else {
 		opts = append(opts, secOpts...)
+	}
+
+	if capOpts, err := generateCapOpts(clicontext.StringSlice("cap-add"), clicontext.StringSlice("cap-drop")); err != nil {
+		return err
+	} else {
+		opts = append(opts, capOpts...)
 	}
 
 	if clicontext.Bool("privileged") {

@@ -171,6 +171,8 @@ Security flags:
 - :whale: `--security-opt seccomp=<PROFILE_JSON_FILE>`: specify custom seccomp profile
 - :whale: `--security-opt apparmor=<PROFILE>`: specify custom AppArmor profile
 - :whale: `--security-opt no-new-privileges`: disallow privilege escalation, e.g., setuid and file capabilities
+- :whale: `--cap-add=<CAP>`: Add Linux capabilities
+- :whale: `--cap-drop=<CAP>`: Drop Linux capabilities
 - :whale: `--privileged`: Give extended privileges to this container
 
 Runtime flags:
