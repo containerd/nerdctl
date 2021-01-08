@@ -1,0 +1,59 @@
+name: test
+
+on:
+  push:
+    branches:
+      - master
+      - 'release/**'
+  pull_request:
+
+jobs:
+  golangci-lint:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v2
+      with:
+        version: v1.33
+        args: --verbose
+
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    - name: "Prepare test environment"
+      run: DOCKER_BUILDKIT=1 docker build -t test --target test .
+    - name: "Test"
+      run: docker run -t --rm --privileged test
+    - name: "Cross"
+      run: docker run -t --rm --privileged test make artifacts
+
+  test-docker-compatibility:
+    strategy:
+      matrix:
+        go-version: [1.15.x]
+        os: [ubuntu-20.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go-version }}
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    - name: "Ensure that the test suite is compatible with Docker"
+      run: go test -v -exec sudo -test.target=docker .

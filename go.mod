@@ -23,6 +23,7 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/sys v0.0.0-20201207223542-d4d67f95c62d
+	gotest.tools/v3 v3.0.2
 )
 
 // estargz: needs this replace because stargz-snapshotter git repo has two go.mod modules.
