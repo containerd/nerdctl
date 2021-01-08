@@ -16,6 +16,9 @@
   - [Similar tools](#similar-tools)
   - [Developer guide](#developer-guide)
     - [Compiling nerdctl from source](#compiling-nerdctl-from-source)
+    - [Test suite](#test-suite)
+      - [Running test suite against nerdctl](#running-test-suite-against-nerdctl)
+      - [Running test suite against Docker](#running-test-suite-against-docker)
     - [Contributing to nerdctl](#contributing-to-nerdctl)
 - [Command reference](#command-reference)
   - [Run & Exec](#run--exec)
@@ -82,6 +85,12 @@ In addition to containerd, the following components should be installed (optiona
 - [CNI plugins](https://github.com/containernetworking/plugins): for using `nerdctl run`.
 - [BuildKit](https://github.com/moby/buildkit): for using `nerdctl build`. BuildKit daemon (`buildkitd`) needs to be running.
 
+To run nerdctl inside Docker:
+```bash
+docker build -t nerdctl .
+docker run -it --rm --privileged nerdctl
+```
+
 ## Motivation
 
 The goal of `nerdctl` is to facilitate experimenting the cutting-edge features of containerd that are not present in Docker.
@@ -113,6 +122,18 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 Run `make && sudo make install`.
 
 Using `go get github.com/AkihiroSuda/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
+
+### Test suite
+#### Running test suite against nerdctl
+Run `go test -exec sudo -v ./...` after `make && sudo make install`.
+
+To run tests in a container:
+```bash
+docker build -t test --target test .
+docker run -t --rm --privileged test
+```
+#### Running test suite against Docker
+Run `go test -exec sudo -test.target=docker .` to ensure that the test suite is compatible with Docker.
 
 ### Contributing to nerdctl
 
