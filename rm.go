@@ -72,10 +72,7 @@ func rmAction(clicontext *cli.Context) error {
 			if err != nil {
 				return err
 			}
-			if err := removeContainer(ctx, client, found.Container.ID(), force, stateDir, containerNameStore); err != nil {
-				return err
-			}
-			_, err = fmt.Fprintf(clicontext.App.Writer, "%s\n", found.Req)
+			err = removeContainer(clicontext, ctx, client, found.Container.ID(), found.Req, force, stateDir, containerNameStore)
 			return err
 		},
 	}
@@ -91,7 +88,7 @@ func rmAction(clicontext *cli.Context) error {
 }
 
 // removeContainer returns nil when the container cannot be found
-func removeContainer(ctx context.Context, client *containerd.Client, id string, force bool, stateDir string, namst namestore.NameStore) (retErr error) {
+func removeContainer(clicontext *cli.Context, ctx context.Context, client *containerd.Client, id, req string, force bool, stateDir string, namst namestore.NameStore) (retErr error) {
 	var name string
 	defer func() {
 		if errdefs.IsNotFound(retErr) {
@@ -144,9 +141,18 @@ func removeContainer(ctx context.Context, client *containerd.Client, id string, 
 		}
 	default:
 		if !force {
-			return errors.Errorf("cannot remove a %v container %v", status.Status, id)
-		}
+			var msg string
+			if status.Status == containerd.Paused || status.Status == containerd.Running {
+				if status.Status == containerd.Paused {
+					msg = "Unpause"
+				} else if status.Status == containerd.Running {
+					msg = "Stop"
+				}
 
+				_, err := fmt.Fprintf(clicontext.App.Writer, "Error response from daemon: You cannot remove a %v container %v. %s the container before attempting removal or force remove\n", status.Status, id, msg)
+				return err
+			}
+		}
 		_, err := task.Delete(ctx, containerd.WithProcessKill)
 		if err != nil && !errdefs.IsNotFound(err) {
 			return errors.Wrapf(err, "failed to delete task %v", id)
@@ -156,5 +162,11 @@ func removeContainer(ctx context.Context, client *containerd.Client, id string, 
 	if _, err := container.Image(ctx); err == nil {
 		delOpts = append(delOpts, containerd.WithSnapshotCleanup)
 	}
-	return container.Delete(ctx, delOpts...)
+
+	if err := container.Delete(ctx, delOpts...); err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(clicontext.App.Writer, "%s\n", req)
+	return err
 }
