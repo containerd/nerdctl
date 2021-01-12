@@ -72,10 +72,7 @@ func rmAction(clicontext *cli.Context) error {
 			if err != nil {
 				return err
 			}
-			if err := removeContainer(ctx, client, found.Container.ID(), force, stateDir, containerNameStore); err != nil {
-				return err
-			}
-			_, err = fmt.Fprintf(clicontext.App.Writer, "%s\n", found.Req)
+			err = removeContainer(clicontext, ctx, client, found.Container.ID(), found.Req, force, stateDir, containerNameStore)
 			return err
 		},
 	}
@@ -91,7 +88,7 @@ func rmAction(clicontext *cli.Context) error {
 }
 
 // removeContainer returns nil when the container cannot be found
-func removeContainer(ctx context.Context, client *containerd.Client, id string, force bool, stateDir string, namst namestore.NameStore) (retErr error) {
+func removeContainer(clicontext *cli.Context, ctx context.Context, client *containerd.Client, id, req string, force bool, stateDir string, namst namestore.NameStore) (retErr error) {
 	var name string
 	defer func() {
 		if errdefs.IsNotFound(retErr) {
@@ -142,11 +139,21 @@ func removeContainer(ctx context.Context, client *containerd.Client, id string, 
 		if _, err := task.Delete(ctx); err != nil && !errdefs.IsNotFound(err) {
 			return errors.Wrapf(err, "failed to delete task %v", id)
 		}
+	case containerd.Paused:
+		if !force {
+			_, err := fmt.Fprintf(clicontext.App.Writer, "You cannot remove a %v container %v. Unpause the container before attempting removal or force remove\n", status.Status, id)
+			return err
+		}
+		_, err := task.Delete(ctx, containerd.WithProcessKill)
+		if err != nil && !errdefs.IsNotFound(err) {
+			return errors.Wrapf(err, "failed to delete task %v", id)
+		}
+	// default is the case, when status.Status = containerd.Running
 	default:
 		if !force {
-			return errors.Errorf("cannot remove a %v container %v", status.Status, id)
+			_, err := fmt.Fprintf(clicontext.App.Writer, "You cannot remove a %v container %v. Stop the container before attempting removal or force remove\n", status.Status, id)
+			return err
 		}
-
 		_, err := task.Delete(ctx, containerd.WithProcessKill)
 		if err != nil && !errdefs.IsNotFound(err) {
 			return errors.Wrapf(err, "failed to delete task %v", id)
@@ -156,5 +163,11 @@ func removeContainer(ctx context.Context, client *containerd.Client, id string, 
 	if _, err := container.Image(ctx); err == nil {
 		delOpts = append(delOpts, containerd.WithSnapshotCleanup)
 	}
-	return container.Delete(ctx, delOpts...)
+
+	if err := container.Delete(ctx, delOpts...); err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(clicontext.App.Writer, "%s\n", req)
+	return err
 }
