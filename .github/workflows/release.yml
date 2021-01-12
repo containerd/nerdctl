@@ -8,16 +8,12 @@ env:
   GO111MODULE: on
 jobs:
   release:
-    strategy:
-      matrix:
-        go-version: [1.15.x]
-        os: [ubuntu-20.04]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-20.04
     timeout-minutes: 20
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: 1.15.x
     - uses: actions/checkout@v2
       with:
         path: go/src/github.com/AkihiroSuda/nerdctl
@@ -45,10 +41,9 @@ jobs:
 
         #### About the binaries
         The binaries were built automatically on GitHub Actions.
-        See the log to verify SHA256SUMS.
-        https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        The build log is available for 90 days: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-        The sha256sum of the SHA256SUMS file itself is ${shasha} .
+        The sha256sum of the SHA256SUMS file itself is \`${shasha}\` .
         EOF
     - name: "Create release"
       working-directory:  go/src/github.com/AkihiroSuda/nerdctl
