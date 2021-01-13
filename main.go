@@ -148,6 +148,10 @@ func newApp() *cli.App {
 		systemCommand,
 		// Internal
 		internalCommand,
+		// login
+		loginCommand,
+		// Logout
+		logoutCommand,
 	}
 	return app
 }
