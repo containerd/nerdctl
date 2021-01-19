@@ -61,6 +61,11 @@ func (c *Cmd) Assert(expected icmd.Expected) {
 	c.Run().Assert(c.Base.T, expected)
 }
 
+func (c *Cmd) AssertOK() {
+	expected := icmd.Expected{}
+	c.Assert(expected)
+}
+
 func (c *Cmd) AssertOut(s string) {
 	expected := icmd.Expected{
 		Out: s,

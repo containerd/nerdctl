@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -38,6 +37,7 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/logging"
 	"github.com/AkihiroSuda/nerdctl/pkg/mountutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/namestore"
+	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
@@ -101,11 +101,11 @@ var runCommand = &cli.Command{
 			Name:    "network",
 			Aliases: []string{"net"},
 			Usage:   "Connect a container to a network (\"bridge\"|\"host\"|\"none\")",
-			Value:   cli.NewStringSlice("bridge"),
+			Value:   cli.NewStringSlice(netutil.DefaultNetworkName),
 		},
 		&cli.StringSliceFlag{
 			Name:  "dns",
-			Usage: "Set custom DNS servers (only meaningful for \"bridge\" network)",
+			Usage: "Set custom DNS servers",
 			Value: cli.NewStringSlice("8.8.8.8", "1.1.1.1"),
 		},
 		&cli.StringSliceFlag{
@@ -354,17 +354,28 @@ func runAction(clicontext *cli.Context) error {
 		// NOP
 	case "host":
 		opts = append(opts, oci.WithHostNamespace(specs.NetworkNamespace), oci.WithHostHostsFile, oci.WithHostResolvconf)
-	case "bridge":
+	default:
 		// We only verify flags and generate resolv.conf here.
 		// The actual network is configured in the oci hook.
-		cniPath := clicontext.String("cni-path")
-		for _, f := range defaults.RequiredCNIPlugins {
-			p := filepath.Join(cniPath, f)
-			if _, err := exec.LookPath(p); err != nil {
-				return errors.Wrapf(err, "needs CNI plugin %q to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins/releases",
-					f, cniPath)
+		e := &netutil.CNIEnv{
+			Path:        clicontext.String("cni-path"),
+			NetconfPath: clicontext.String("cni-netconfpath"),
+		}
+		ll, err := netutil.ConfigLists(e)
+		if err != nil {
+			return err
+		}
+		var netconflist *netutil.NetworkConfigList
+		for _, f := range ll {
+			if f.Name == netstr {
+				netconflist = f
+				break
 			}
 		}
+		if netconflist == nil {
+			return errors.Errorf("no such network: %q", netstr)
+		}
+
 		resolvConfPath := filepath.Join(stateDir, "resolv.conf")
 		if err := dnsutil.WriteResolvConfFile(resolvConfPath, clicontext.StringSlice("dns")); err != nil {
 			return err
@@ -377,8 +388,6 @@ func runAction(clicontext *cli.Context) error {
 			}
 			ports[i] = *pm
 		}
-	default:
-		return errors.Errorf("unknown network %q", netstr)
 	}
 
 	hostname := id[0:12]
@@ -564,6 +573,7 @@ func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecO
 	args := []string{
 		// FIXME: How to propagate all global flags?
 		"--cni-path=" + clicontext.String("cni-path"),
+		"--cni-netconfpath=" + clicontext.String("cni-netconfpath"),
 		"internal",
 		"oci-hook",
 	}

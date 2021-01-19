@@ -18,24 +18,17 @@
 package main
 
 import (
-	"github.com/AkihiroSuda/nerdctl/pkg/ocihook"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
 
-var internalOCIHookCommand = &cli.Command{
-	Name:   "oci-hook",
-	Usage:  "OCI hook",
-	Action: internalOCIHookAction,
-}
-
-func internalOCIHookAction(clicontext *cli.Context) error {
-	event := clicontext.Args().First()
-	if event == "" {
-		return errors.New("event type needs to be passed")
-	}
-	return ocihook.Run(clicontext.App.Reader, clicontext.App.ErrWriter, event,
-		clicontext.String("cni-path"),
-		clicontext.String("cni-netconfpath"),
-	)
+var networkCommand = &cli.Command{
+	Name:     "network",
+	Usage:    "Manage networks",
+	Category: CategoryManagement,
+	Subcommands: []*cli.Command{
+		networkLsCommand,
+		networkInspectCommand,
+		networkCreateCommand,
+		networkRmCommand,
+	},
 }

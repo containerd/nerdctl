@@ -27,11 +27,20 @@ import (
 // TestRunInternetConnectivity tests Internet connectivity with `apk update`
 func TestRunInternetConnectivity(t *testing.T) {
 	base := testutil.NewBase(t)
+	customNet := "customnet1"
+	base.Cmd("network", "create", customNet).AssertOK()
+	defer base.Cmd("network", "rm", customNet).Run()
+
 	type testCase struct {
 		args []string
 	}
 	testCases := []testCase{
-		{},
+		{
+			args: []string{"--net", "bridge"},
+		},
+		{
+			args: []string{"--net", customNet},
+		},
 		{
 			args: []string{"--net", "host"},
 		},
@@ -43,7 +52,6 @@ func TestRunInternetConnectivity(t *testing.T) {
 			name = strings.Join(tc.args, "_")
 		}
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			args := []string{"run", "--rm"}
 			args = append(args, tc.args...)
 			args = append(args, testutil.AlpineImage, "apk", "update")

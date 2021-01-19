@@ -15,27 +15,13 @@
    limitations under the License.
 */
 
-package main
+package native
 
-import (
-	"github.com/AkihiroSuda/nerdctl/pkg/ocihook"
-	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
-)
+import "encoding/json"
 
-var internalOCIHookCommand = &cli.Command{
-	Name:   "oci-hook",
-	Usage:  "OCI hook",
-	Action: internalOCIHookAction,
-}
-
-func internalOCIHookAction(clicontext *cli.Context) error {
-	event := clicontext.Args().First()
-	if event == "" {
-		return errors.New("event type needs to be passed")
-	}
-	return ocihook.Run(clicontext.App.Reader, clicontext.App.ErrWriter, event,
-		clicontext.String("cni-path"),
-		clicontext.String("cni-netconfpath"),
-	)
+// Network corresponds to pkg/netutil.NetworkConfigList
+type Network struct {
+	CNI       json.RawMessage `json:"CNI,omitempty"`
+	NerdctlID *int            `json:"NerdctlID"`
+	File      string          `json:"File,omitempty"`
 }

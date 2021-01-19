@@ -27,6 +27,7 @@ import (
 
 	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
 	"github.com/AkihiroSuda/nerdctl/pkg/labels"
+	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
 	"github.com/containerd/containerd/contrib/apparmor"
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	"github.com/containerd/go-cni"
@@ -36,8 +37,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Run(stdin io.Reader, stderr io.Writer, event, cniPath string) error {
-	if stdin == nil || event == "" || cniPath == "" {
+func Run(stdin io.Reader, stderr io.Writer, event, cniPath, cniNetconfPath string) error {
+	if stdin == nil || event == "" || cniPath == "" || cniNetconfPath == "" {
 		return errors.New("got insufficient args")
 	}
 
@@ -61,7 +62,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, cniPath string) error {
 		logrus.SetOutput(io.MultiWriter(stderr, logFile))
 	}
 
-	opts, err := newHandlerOpts(&state, cniPath)
+	opts, err := newHandlerOpts(&state, cniPath, cniNetconfPath)
 	if err != nil {
 		return err
 	}
@@ -76,7 +77,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, cniPath string) error {
 	}
 }
 
-func newHandlerOpts(state *specs.State, cniPath string) (*handlerOpts, error) {
+func newHandlerOpts(state *specs.State, cniPath, cniNetconfPath string) (*handlerOpts, error) {
 	o := &handlerOpts{
 		state: state,
 	}
@@ -109,13 +110,29 @@ func newHandlerOpts(state *specs.State, cniPath string) (*handlerOpts, error) {
 
 	switch netstr := networks[0]; netstr {
 	case "none", "host":
-	case "bridge":
-		o.cni, err = gocni.New(gocni.WithPluginDir([]string{cniPath}), gocni.WithConfListBytes([]byte(defaults.BridgeJSON)))
+	default:
+		e := &netutil.CNIEnv{
+			Path:        cniPath,
+			NetconfPath: cniNetconfPath,
+		}
+		ll, err := netutil.ConfigLists(e)
 		if err != nil {
 			return nil, err
 		}
-	default:
-		return nil, errors.Errorf("unknown network %q", netstr)
+		var netconflist *netutil.NetworkConfigList
+		for _, f := range ll {
+			if f.Name == netstr {
+				netconflist = f
+				break
+			}
+		}
+		if netconflist == nil {
+			return nil, errors.Errorf("no such network: %q", netstr)
+		}
+		o.cni, err = gocni.New(gocni.WithPluginDir([]string{cniPath}), gocni.WithConfListBytes(netconflist.Bytes))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if portsJSON := o.state.Annotations[labels.Ports]; portsJSON != "" {

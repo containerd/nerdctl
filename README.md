@@ -46,6 +46,11 @@
     - [:whale: nerdctl tag](#whale-nerdctl-tag)
     - [:whale: nerdctl rmi](#whale-nerdctl-rmi)
     - [:nerd_face: nerdctl image convert](#nerd_face-nerdctl-image-convert)
+  - [Network management](#network-management)
+    - [:whale: nerdctl network create](#whale-nerdctl-network-create)
+    - [:whale: nerdctl network ls](#whale-nerdctl-network-ls)
+    - [:whale: nerdctl network inspect](#whale-nerdctl-network-inspect)
+    - [:whale: nerdctl network rm](#whale-nerdctl-network-rm)
   - [System](#system)
     - [:whale: nerdctl events](#whale-nerdctl-events)
     - [:whale: nerdctl info](#whale-nerdctl-info)
@@ -57,7 +62,7 @@
 
 ## Examples
 
-To run a container with the default CNI network (10.4.0.0/16):
+To run a container with the default CNI network (10.4.0.0/24):
 ```console
 # nerdctl run -it --rm alpine
 ```
@@ -83,6 +88,7 @@ Binaries are available for amd64, arm64, and arm-v7: https://github.com/AkihiroS
 
 In addition to containerd, the following components should be installed (optional):
 - [CNI plugins](https://github.com/containernetworking/plugins): for using `nerdctl run`.
+- [CNI isolation plugin](https://github.com/AkihiroSuda/cni-isolation): for isolating bridge networks (`nerdctl network create`)
 - [BuildKit](https://github.com/moby/buildkit): for using `nerdctl build`. BuildKit daemon (`buildkitd`) needs to be running.
 
 To run nerdctl inside Docker:
@@ -173,7 +179,6 @@ Basic flags:
 Network flags:
 - :whale: `--network=(bridge|host|none)`: Connect a container to a network
   - Default: "bridge"
-  - :warning: No support for custom network (`nerdctl network create` yet
 - :whale: `-p, --publish`: Publish a container's port(s) to the host
 - :whale: `--dns`: Set custom DNS servers
 - :whale: `-h, --hostname`: Container host name
@@ -347,6 +352,28 @@ Flags:
 -  `--platform=<PLATFORM>`              : convert content for a specific platform
 -  `--all-platforms`                    : convert content for all platforms (default: false)
 
+## Network management
+### :whale: nerdctl network create
+Create a network
+
+:information_source: To isolate CNI bridge, [CNI isolation plugin](https://github.com/AkihiroSuda/cni-isolation) needs to be installed.
+
+:warning: No support for looking up container IPs by their names yet
+
+Flags:
+- `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16" 
+
+### :whale: nerdctl network ls
+List networks
+
+### :whale: nerdctl network inspect
+Display detailed information on one or more networks
+
+:warning: The output format is not compatible with Docker.
+
+### :whale: nerdctl network rm
+Remove one or more networks
+
 ## System
 ### :whale: nerdctl events
 Get real time events from the server.
@@ -398,7 +425,9 @@ Volume management:
 - `docker volume *`
 
 Network management:
-- `docker network *`
+- `docker network connect`
+- `docker network disconnect`
+- `docker network prune`
 
 Registry:
 - `docker login` and `docker logout`
