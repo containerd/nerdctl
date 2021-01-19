@@ -391,7 +391,8 @@ Show the nerdctl version information
 - :whale:     `-H`, `--host`: Docker-compatible alias for `-a`, `--address`
 - :nerd_face: `-n`, `--namespace`: containerd namespace
 - :nerd_face: `--snapshotter`: containerd snapshotter
-- :nerd_face: `--cni-path`: CNI binary path
+- :nerd_face: `--cni-path`: CNI binary path (default: `/opt/cni/bin`) [`$CNI_PATH`]
+- :nerd_face: `--cni-netconfpath`: CNI netconf path (default: `/etc/cni/net.d`) [`$NETCONFPATH`]
 - :nerd_face: `--data-root`: nerdctl data root, e.g. "/var/lib/nerdctl"
 - :nerd_face: `--cgroup-manager=(cgroupfs|systemd)`: cgroup manager
 
