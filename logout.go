@@ -13,18 +13,15 @@
 
 */
 
-
 package main
 
 import (
-	//"context"
 	"fmt"
-	//"io/ioutil"
-	//"strings"
-	"github.com/urfave/cli/v2"
-	"github.com/docker/docker/registry"
+
 	dockercliconfig "github.com/docker/cli/cli/config"
-	)
+	"github.com/docker/docker/registry"
+	"github.com/urfave/cli/v2"
+)
 
 var logoutCommand = &cli.Command{
 	Name:   "logout",
@@ -38,41 +35,38 @@ func logoutAction(clicontext *cli.Context) error {
 		return cli.ShowCommandHelp(clicontext, "login")
 	}
 
-    serverAddress := clicontext.Args().First()
+	serverAddress := clicontext.Args().First()
 
 	var isDefaultRegistry bool
 
 	if serverAddress == "" {
-    	serverAddress = "index.docker.io"
-    	isDefaultRegistry = true
-    }
+		serverAddress = "index.docker.io"
+		isDefaultRegistry = true
+	}
 
 	var (
 		regsToLogout    = []string{serverAddress}
 		hostnameAddress = serverAddress
 	)
 
-    if !isDefaultRegistry {
-    	hostnameAddress = registry.ConvertToHostname(serverAddress)
-    	// the tries below are kept for backward compatibility where a user could have
-    	// saved the registry in one of the following format.
-    	regsToLogout = append(regsToLogout, hostnameAddress, "http://"+hostnameAddress, "https://"+hostnameAddress)
-    }
+	if !isDefaultRegistry {
+		hostnameAddress = registry.ConvertToHostname(serverAddress)
+		// the tries below are kept for backward compatibility where a user could have
+		// saved the registry in one of the following format.
+		regsToLogout = append(regsToLogout, hostnameAddress, "http://"+hostnameAddress, "https://"+hostnameAddress)
+	}
 
-    fmt.Fprintf(clicontext.App.Writer, "Removing login credentials for %s\n", hostnameAddress)
+	fmt.Fprintf(clicontext.App.Writer, "Removing login credentials for %s\n", hostnameAddress)
 
-
-    dockerConfigFile, err := dockercliconfig.Load("")
-    if err != nil {
-        return err
-    }
+	dockerConfigFile, err := dockercliconfig.Load("")
+	if err != nil {
+		return err
+	}
 	errs := make(map[string]error)
 	for _, r := range regsToLogout {
-	    fmt.Println(dockerConfigFile.GetCredentialsStore(r).Erase(r))
-	    if err := dockerConfigFile.GetCredentialsStore(r).Erase(r); err != nil {
-	       fmt.Println(err)
-        	errs[r] = err
-        }
+		if err := dockerConfigFile.GetCredentialsStore(r).Erase(r); err != nil {
+			errs[r] = err
+		}
 	}
 
 	// if at least one removal succeeded, report success. Otherwise report errors

@@ -159,7 +159,7 @@ func newApp() *cli.App {
 		// Internal
 		internalCommand,
 		// Logout
-        logoutCommand,
+		logoutCommand,
 	}
 	return app
 }
