@@ -358,8 +358,6 @@ Create a network
 
 :information_source: To isolate CNI bridge, [CNI isolation plugin](https://github.com/AkihiroSuda/cni-isolation) needs to be installed.
 
-:warning: No support for looking up container IPs by their names yet
-
 Flags:
 - `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16" 
 

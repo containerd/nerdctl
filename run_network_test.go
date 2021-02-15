@@ -60,3 +60,77 @@ func TestRunInternetConnectivity(t *testing.T) {
 		})
 	}
 }
+
+// TestRunHostLookup tests hostname lookup
+func TestRunHostLookup(t *testing.T) {
+	base := testutil.NewBase(t)
+	// key: container name, val: network name
+	m := map[string]string{
+		"c0-in-n0":     "n0",
+		"c1-in-n0":     "n0",
+		"c2-in-n1":     "n1",
+		"c3-in-bridge": "bridge",
+	}
+	customNets := valuesOfMapStringString(m)
+	defer func() {
+		for name := range m {
+			base.Cmd("rm", "-f", name).Run()
+		}
+		for netName := range customNets {
+			if netName == "bridge" {
+				continue
+			}
+			base.Cmd("network", "rm", netName).Run()
+		}
+	}()
+
+	// Create networks
+	for netName := range customNets {
+		if netName == "bridge" {
+			continue
+		}
+		base.Cmd("network", "create", netName).AssertOK()
+	}
+
+	// Create nginx containers
+	for name, netName := range m {
+		base.Cmd("run",
+			"-d",
+			"--name", name,
+			"--hostname", name+"-foobar",
+			"--net", netName,
+			testutil.NginxAlpineImage,
+		).AssertOK()
+	}
+
+	testWget := func(srcContainer, targetHostname string, expected bool) {
+		t.Logf("resolving %q in container %q (should success: %+v)", targetHostname, srcContainer, expected)
+		cmd := base.Cmd("exec", srcContainer, "wget", "-qO-", "http://"+targetHostname)
+		if expected {
+			cmd.AssertOut("<title>Welcome to nginx!</title>")
+		} else {
+			cmd.AssertFail()
+		}
+	}
+
+	// Tests begin
+	testWget("c0-in-n0", "c1-in-n0", true)
+	testWget("c0-in-n0", "c1-in-n0.n0", true)
+	testWget("c0-in-n0", "c1-in-n0-foobar", true)
+	testWget("c0-in-n0", "c1-in-n0-foobar.n0", true)
+	testWget("c0-in-n0", "c2-in-n1", false)
+	testWget("c0-in-n0", "c2-in-n1.n1", false)
+	testWget("c0-in-n0", "c3-in-bridge", false)
+	testWget("c1-in-n0", "c0-in-n0", true)
+	testWget("c1-in-n0", "c0-in-n0.n0", true)
+	testWget("c1-in-n0", "c0-in-n0-foobar", true)
+	testWget("c1-in-n0", "c0-in-n0-foobar.n0", true)
+}
+
+func valuesOfMapStringString(m map[string]string) map[string]struct{} {
+	res := make(map[string]struct{})
+	for _, v := range m {
+		res[v] = struct{}{}
+	}
+	return res
+}

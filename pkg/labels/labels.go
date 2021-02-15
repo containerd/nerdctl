@@ -30,6 +30,9 @@ const (
 	// WARNING: multiple containers may have same the name label
 	Name = Prefix + "name"
 
+	// Hostname
+	Hostname = Prefix + "hostname"
+
 	// StateDir is "/var/lib/nerdctl/c/<NAMESPACE>/<ID>"
 	StateDir = Prefix + "state-dir"
 

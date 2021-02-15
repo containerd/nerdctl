@@ -66,6 +66,11 @@ func (c *Cmd) AssertOK() {
 	c.Assert(expected)
 }
 
+func (c *Cmd) AssertFail() {
+	res := c.Run()
+	assert.Assert(c.Base.T, res.ExitCode != 0)
+}
+
 func (c *Cmd) AssertOut(s string) {
 	expected := icmd.Expected{
 		Out: s,
@@ -132,4 +137,7 @@ func NewBase(t *testing.T) *Base {
 }
 
 // TODO: avoid using Docker Hub
-const AlpineImage = "alpine"
+const (
+	AlpineImage      = "alpine"
+	NginxAlpineImage = "nginx:1.19.6-alpine"
+)
