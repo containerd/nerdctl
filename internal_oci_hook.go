@@ -35,6 +35,7 @@ func internalOCIHookAction(clicontext *cli.Context) error {
 		return errors.New("event type needs to be passed")
 	}
 	return ocihook.Run(clicontext.App.Reader, clicontext.App.ErrWriter, event,
+		clicontext.String("data-root"),
 		clicontext.String("cni-path"),
 		clicontext.String("cni-netconfpath"),
 	)

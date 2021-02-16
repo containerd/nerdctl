@@ -32,6 +32,7 @@ import (
 
 	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
 	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/AkihiroSuda/nerdctl/pkg/logging"
@@ -380,7 +381,12 @@ func runAction(clicontext *cli.Context) error {
 		if err := dnsutil.WriteResolvConfFile(resolvConfPath, clicontext.StringSlice("dns")); err != nil {
 			return err
 		}
-		opts = append(opts, withCustomResolvConf(resolvConfPath))
+		// the content of /etc/hosts is created in OCI Hook
+		etcHostsPath, err := hostsstore.EnsureHostsFile(dataRoot, clicontext.String("namespace"), id)
+		if err != nil {
+			return err
+		}
+		opts = append(opts, withCustomResolvConf(resolvConfPath), withCustomHosts(etcHostsPath))
 		for i, p := range clicontext.StringSlice("p") {
 			pm, err := portutil.ParseFlagP(p)
 			if err != nil {
@@ -454,7 +460,7 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 	}
-	ilOpt, err := withInternalLabels(clicontext.String("namespace"), name, stateDir, clicontext.StringSlice("network"), ports)
+	ilOpt, err := withInternalLabels(clicontext.String("namespace"), name, hostname, stateDir, clicontext.StringSlice("network"), ports)
 	if err != nil {
 		return err
 	}
@@ -553,6 +559,18 @@ func withCustomResolvConf(src string) func(context.Context, oci.Client, *contain
 	}
 }
 
+func withCustomHosts(src string) func(context.Context, oci.Client, *containers.Container, *oci.Spec) error {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		s.Mounts = append(s.Mounts, specs.Mount{
+			Destination: "/etc/hosts",
+			Type:        "bind",
+			Source:      src,
+			Options:     []string{"bind"}, // writable
+		})
+		return nil
+	}
+}
+
 func generateLogURI(clicontext *cli.Context) (*url.URL, error) {
 	selfExe, err := os.Readlink("/proc/self/exe")
 	if err != nil {
@@ -637,12 +655,13 @@ func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts
 	return []containerd.NewContainerOpts{o}, nil
 }
 
-func withInternalLabels(ns, name, containerStateDir string, networks []string, ports []gocni.PortMapping) (containerd.NewContainerOpts, error) {
+func withInternalLabels(ns, name, hostname, containerStateDir string, networks []string, ports []gocni.PortMapping) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
 	m[labels.Namespace] = ns
 	if name != "" {
 		m[labels.Name] = name
 	}
+	m[labels.Hostname] = hostname
 	m[labels.StateDir] = containerStateDir
 	networksJSON, err := json.Marshal(networks)
 	if err != nil {

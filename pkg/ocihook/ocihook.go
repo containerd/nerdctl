@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
+	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
 	"github.com/containerd/containerd/contrib/apparmor"
@@ -37,8 +38,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Run(stdin io.Reader, stderr io.Writer, event, cniPath, cniNetconfPath string) error {
-	if stdin == nil || event == "" || cniPath == "" || cniNetconfPath == "" {
+func Run(stdin io.Reader, stderr io.Writer, event, dataRoot, cniPath, cniNetconfPath string) error {
+	if stdin == nil || event == "" || dataRoot == "" || cniPath == "" || cniNetconfPath == "" {
 		return errors.New("got insufficient args")
 	}
 
@@ -62,7 +63,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, cniPath, cniNetconfPath strin
 		logrus.SetOutput(io.MultiWriter(stderr, logFile))
 	}
 
-	opts, err := newHandlerOpts(&state, cniPath, cniNetconfPath)
+	opts, err := newHandlerOpts(&state, dataRoot, cniPath, cniNetconfPath)
 	if err != nil {
 		return err
 	}
@@ -77,9 +78,10 @@ func Run(stdin io.Reader, stderr io.Writer, event, cniPath, cniNetconfPath strin
 	}
 }
 
-func newHandlerOpts(state *specs.State, cniPath, cniNetconfPath string) (*handlerOpts, error) {
+func newHandlerOpts(state *specs.State, dataRoot, cniPath, cniNetconfPath string) (*handlerOpts, error) {
 	o := &handlerOpts{
-		state: state,
+		state:    state,
+		dataRoot: dataRoot,
 	}
 	hs, err := loadSpec(o.state.Bundle)
 	if err != nil {
@@ -133,6 +135,7 @@ func newHandlerOpts(state *specs.State, cniPath, cniNetconfPath string) (*handle
 		if err != nil {
 			return nil, err
 		}
+		o.cniName = netstr
 	}
 
 	if portsJSON := o.state.Annotations[labels.Ports]; portsJSON != "" {
@@ -144,11 +147,13 @@ func newHandlerOpts(state *specs.State, cniPath, cniNetconfPath string) (*handle
 }
 
 type handlerOpts struct {
-	state  *specs.State
-	fullID string
-	rootfs string
-	ports  []gocni.PortMapping
-	cni    gocni.CNI
+	state    *specs.State
+	dataRoot string
+	fullID   string
+	rootfs   string
+	ports    []gocni.PortMapping
+	cni      gocni.CNI // TODO: support multi network
+	cniName  string    // TODO: support multi network
 }
 
 // hookSpec is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/containerd/command/oci-hook.go#L59-L64
@@ -207,8 +212,25 @@ func onCreateRuntime(opts *handlerOpts) error {
 			return err
 		}
 		ctx := context.Background()
-		if _, err := opts.cni.Setup(ctx, opts.fullID, nsPath, cniNSOpts...); err != nil {
+		cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, cniNSOpts...)
+		if err != nil {
 			return errors.Wrap(err, "failed to call cni.Setup")
+		}
+		hs, err := hostsstore.NewStore(opts.dataRoot)
+		if err != nil {
+			return err
+		}
+		hsMeta := hostsstore.Meta{
+			Namespace: opts.state.Annotations[labels.Namespace],
+			ID:        opts.state.ID,
+			Networks: map[string]*cni.CNIResult{
+				opts.cniName: cniRes, // TODO: multi-network
+			},
+			Hostname: opts.state.Annotations[labels.Hostname],
+			Name:     opts.state.Annotations[labels.Name],
+		}
+		if err := hs.Acquire(hsMeta); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -223,6 +245,14 @@ func onPostStop(opts *handlerOpts) error {
 		}
 		if err := opts.cni.Remove(ctx, opts.fullID, "", cniNSOpts...); err != nil {
 			logrus.WithError(err).Errorf("failed to call cni.Remove")
+			return err
+		}
+		hs, err := hostsstore.NewStore(opts.dataRoot)
+		if err != nil {
+			return err
+		}
+		ns := opts.state.Annotations[labels.Namespace]
+		if err := hs.Release(ns, opts.state.ID); err != nil {
 			return err
 		}
 	}
