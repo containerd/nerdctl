@@ -103,11 +103,13 @@ The goal of `nerdctl` is to facilitate experimenting the cutting-edge features o
 
 Such features includes, but not limited to, [lazy-pulling](./docs/stargz.md) and [encryption of images](https://github.com/containerd/imgcrypt).
 
+Note that competing with Docker is _not_ the goal of `nerdctl`. Those cutting-edge features are expected to be eventually available in Docker as well.
+
 Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, but it is not the primary goal.
 
 ## Features present in `nerdctl` but not present in Docker
 - Namespacing `nerdctl --namespace=<NS> ps` . 
-  (NOTE: All Kubernetes containers are in the `k8s.io` containerd namespace regarless to Kubernetes namespaces)
+  (NOTE: All Kubernetes containers are in the `k8s.io` containerd namespace regardless to Kubernetes namespaces)
 - [Lazy-pulling using Stargz Snapshotter](./docs/stargz.md): `nerdctl --snapshotter=stargz run` .
 - Exporting Docker/OCI dual-format archives: `nerdctl save` .
 - Importing OCI archives as well as Docker archives: `nerdctl load` .
@@ -116,10 +118,17 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 
 ## Similar tools
 
-- `ctr`: incompatible with Docker, and not friendly to users
-- [`crictl`](https://github.com/kubernetes-sigs/cri-tools): incompatible with Docker, not friendly to users, and does not support non-CRI features
-- [k3c](https://github.com/rancher/k3c): needs an extra daemon, and does not support non-CRI features
-- [PouchContainer](https://github.com/alibaba/pouch): needs an extra daemon
+- [`ctr`](https://github.com/containerd/containerd/tree/master/cmd/ctr): incompatible with Docker CLI, and not friendly to users.
+  Notably, `ctr` lacks the equivalents of the following Docker CLI commands:
+  - `docker run -p <PORT>`
+  - `docker run --restart=always --net=bridge`
+  - `docker pull` with `~/.docker/config.json` and credential helper binaries such as `docker-credential-ecr-login`
+  - `docker logs`
+
+- [`crictl`](https://github.com/kubernetes-sigs/cri-tools): incompatible with Docker CLI, not friendly to users, and does not support non-CRI features
+- [k3c v0.2 (abandoned)](https://github.com/rancher/k3c/tree/v0.2.1): needs an extra daemon, and does not support non-CRI features
+- [Rancher Kim (nee k3c v0.3)](https://github.com/rancher/kim): needs Kubernetes, and only focuses on image management commands such as `kim build` and `kim push`
+- [PouchContainer (abandoned?)](https://github.com/alibaba/pouch): needs an extra daemon
 
 ## Developer guide
 
@@ -162,7 +171,7 @@ It does not necessarily mean that the corresponding features are missing in cont
 ### :whale: nerdctl run
 Run a command in a new container.
 
-:information_source: Uses `~/.docker/config.json` for the authentication.
+See [Image management](#image-management) for authentication with registries.
 
 Basic flags:
 - :whale: `-i, --interactive`: Keep STDIN open even if not attached"
@@ -298,6 +307,10 @@ Flags:
 - :whale: `-m, --message`: Commit message
 
 ## Image management
+
+:information_source: Nerdctl uses `${DOCKER_CONFIG}/config.json` for the authentication.
+`$DOCKER_CONFIG` defaults to `$HOME/.docker`.
+
 ### :whale: nerdctl images
 List images
 
@@ -308,12 +321,8 @@ Flags:
 ### :whale: nerdctl pull
 Pull an image from a registry.
 
-:information_source: Uses `~/.docker/config.json` for the authentication.
-
 ### :whale: nerdctl push
 Pull an image from a registry.
-
-:information_source: Uses `~/.docker/config.json` for the authentication.
 
 ### :whale: nerdctl load
 Load an image from a tar archive or STDIN.
