@@ -243,12 +243,12 @@ func runAction(clicontext *cli.Context) error {
 		id    = genID()
 	)
 
-	dataRoot := clicontext.String("data-root")
-	if err := os.MkdirAll(dataRoot, 0700); err != nil {
+	dataStore, err := getDataStore(clicontext)
+	if err != nil {
 		return err
 	}
 
-	stateDir, err := getContainerStateDirPath(clicontext, id)
+	stateDir, err := getContainerStateDirPath(clicontext, dataStore, id)
 	if err != nil {
 		return err
 	}
@@ -333,7 +333,7 @@ func runAction(clicontext *cli.Context) error {
 
 	var logURI string
 	if flagD {
-		if lu, err := generateLogURI(clicontext); err != nil {
+		if lu, err := generateLogURI(dataStore); err != nil {
 			return err
 		} else if lu != nil {
 			logURI = lu.String()
@@ -382,7 +382,7 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 		// the content of /etc/hosts is created in OCI Hook
-		etcHostsPath, err := hostsstore.EnsureHostsFile(dataRoot, clicontext.String("namespace"), id)
+		etcHostsPath, err := hostsstore.EnsureHostsFile(dataStore, clicontext.String("namespace"), id)
 		if err != nil {
 			return err
 		}
@@ -452,7 +452,7 @@ func runAction(clicontext *cli.Context) error {
 	var containerNameStore namestore.NameStore
 	name := clicontext.String("name")
 	if name != "" {
-		containerNameStore, err = namestore.New(dataRoot, clicontext.String("namespace"))
+		containerNameStore, err = namestore.New(dataStore, clicontext.String("namespace"))
 		if err != nil {
 			return err
 		}
@@ -571,14 +571,13 @@ func withCustomHosts(src string) func(context.Context, oci.Client, *containers.C
 	}
 }
 
-func generateLogURI(clicontext *cli.Context) (*url.URL, error) {
+func generateLogURI(dataStore string) (*url.URL, error) {
 	selfExe, err := os.Readlink("/proc/self/exe")
 	if err != nil {
 		return nil, err
 	}
-	dataRoot := clicontext.String("data-root")
 	args := map[string]string{
-		logging.MagicArgv1: dataRoot,
+		logging.MagicArgv1: dataStore,
 	}
 	return cio.LogURIGenerator("binary", selfExe, args)
 }
@@ -631,8 +630,7 @@ func generateRestartOpts(restartFlag, logURI string) ([]containerd.NewContainerO
 	}
 }
 
-func getContainerStateDirPath(clicontext *cli.Context, id string) (string, error) {
-	dataRoot := clicontext.String("data-root")
+func getContainerStateDirPath(clicontext *cli.Context, dataStore, id string) (string, error) {
 	ns := clicontext.String("namespace")
 	if ns == "" {
 		return "", errors.New("namespace is required")
@@ -640,7 +638,7 @@ func getContainerStateDirPath(clicontext *cli.Context, id string) (string, error
 	if strings.Contains(ns, "/") {
 		return "", errors.New("namespace with '/' is unsupported")
 	}
-	return filepath.Join(dataRoot, "containers", ns, id), nil
+	return filepath.Join(dataStore, "containers", ns, id), nil
 }
 
 func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts, error) {

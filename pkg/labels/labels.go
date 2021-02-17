@@ -33,7 +33,7 @@ const (
 	// Hostname
 	Hostname = Prefix + "hostname"
 
-	// StateDir is "/var/lib/nerdctl/c/<NAMESPACE>/<ID>"
+	// StateDir is "/var/lib/nerdctl/<ADDRHASH>/containers/<NAMESPACE>/<ID>"
 	StateDir = Prefix + "state-dir"
 
 	// Networks is a JSON-marshalled string of []string, e.g. []string{"bridge"}.

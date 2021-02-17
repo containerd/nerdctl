@@ -58,9 +58,14 @@ func rmAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
+	dataStore, err := getDataStore(clicontext)
+	if err != nil {
+		return err
+	}
+
 	force := clicontext.Bool("force")
 
-	containerNameStore, err := namestore.New(clicontext.String("data-root"), clicontext.String("namespace"))
+	containerNameStore, err := namestore.New(dataStore, clicontext.String("namespace"))
 	if err != nil {
 		return err
 	}
@@ -68,7 +73,7 @@ func rmAction(clicontext *cli.Context) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			stateDir, err := getContainerStateDirPath(clicontext, found.Container.ID())
+			stateDir, err := getContainerStateDirPath(clicontext, dataStore, found.Container.ID())
 			if err != nil {
 				return err
 			}

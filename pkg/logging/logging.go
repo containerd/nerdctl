@@ -42,15 +42,15 @@ func Main(argv2 string) error {
 	return nil
 }
 
-func getLoggerFunc(dataRoot string) (logging.LoggerFunc, error) {
-	if dataRoot == "" {
-		return nil, errors.New("got empty data-root")
+func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
+	if dataStore == "" {
+		return nil, errors.New("got empty data store")
 	}
 	return func(_ context.Context, config *logging.Config, ready func() error) error {
 		if config.Namespace == "" || config.ID == "" {
 			return errors.New("got invalid config")
 		}
-		logJSONFilePath := jsonfile.Path(dataRoot, config.Namespace, config.ID)
+		logJSONFilePath := jsonfile.Path(dataStore, config.Namespace, config.ID)
 		if err := os.MkdirAll(filepath.Dir(logJSONFilePath), 0700); err != nil {
 			return err
 		}

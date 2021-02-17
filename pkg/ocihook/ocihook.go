@@ -38,8 +38,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Run(stdin io.Reader, stderr io.Writer, event, dataRoot, cniPath, cniNetconfPath string) error {
-	if stdin == nil || event == "" || dataRoot == "" || cniPath == "" || cniNetconfPath == "" {
+func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetconfPath string) error {
+	if stdin == nil || event == "" || dataStore == "" || cniPath == "" || cniNetconfPath == "" {
 		return errors.New("got insufficient args")
 	}
 
@@ -63,7 +63,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataRoot, cniPath, cniNetconf
 		logrus.SetOutput(io.MultiWriter(stderr, logFile))
 	}
 
-	opts, err := newHandlerOpts(&state, dataRoot, cniPath, cniNetconfPath)
+	opts, err := newHandlerOpts(&state, dataStore, cniPath, cniNetconfPath)
 	if err != nil {
 		return err
 	}
@@ -78,10 +78,10 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataRoot, cniPath, cniNetconf
 	}
 }
 
-func newHandlerOpts(state *specs.State, dataRoot, cniPath, cniNetconfPath string) (*handlerOpts, error) {
+func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath string) (*handlerOpts, error) {
 	o := &handlerOpts{
-		state:    state,
-		dataRoot: dataRoot,
+		state:     state,
+		dataStore: dataStore,
 	}
 	hs, err := loadSpec(o.state.Bundle)
 	if err != nil {
@@ -147,13 +147,13 @@ func newHandlerOpts(state *specs.State, dataRoot, cniPath, cniNetconfPath string
 }
 
 type handlerOpts struct {
-	state    *specs.State
-	dataRoot string
-	fullID   string
-	rootfs   string
-	ports    []gocni.PortMapping
-	cni      gocni.CNI // TODO: support multi network
-	cniName  string    // TODO: support multi network
+	state     *specs.State
+	dataStore string
+	fullID    string
+	rootfs    string
+	ports     []gocni.PortMapping
+	cni       gocni.CNI // TODO: support multi network
+	cniName   string    // TODO: support multi network
 }
 
 // hookSpec is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/containerd/command/oci-hook.go#L59-L64
@@ -216,7 +216,7 @@ func onCreateRuntime(opts *handlerOpts) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to call cni.Setup")
 		}
-		hs, err := hostsstore.NewStore(opts.dataRoot)
+		hs, err := hostsstore.NewStore(opts.dataStore)
 		if err != nil {
 			return err
 		}
@@ -247,7 +247,7 @@ func onPostStop(opts *handlerOpts) error {
 			logrus.WithError(err).Errorf("failed to call cni.Remove")
 			return err
 		}
-		hs, err := hostsstore.NewStore(opts.dataRoot)
+		hs, err := hostsstore.NewStore(opts.dataStore)
 		if err != nil {
 			return err
 		}
