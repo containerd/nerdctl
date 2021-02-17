@@ -37,7 +37,7 @@ type Entry struct {
 
 func Path(dataRoot, ns, id string) string {
 	// the file name corresponds to Docker
-	return filepath.Join(dataRoot, "c", ns, id, id+"-json.log")
+	return filepath.Join(dataRoot, "containers", ns, id, id+"-json.log")
 }
 
 func Encode(w io.Writer, stdout, stderr io.Reader) error {

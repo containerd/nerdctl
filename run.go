@@ -640,8 +640,7 @@ func getContainerStateDirPath(clicontext *cli.Context, id string) (string, error
 	if strings.Contains(ns, "/") {
 		return "", errors.New("namespace with '/' is unsupported")
 	}
-	// "c" stands for "containers"
-	return filepath.Join(dataRoot, "c", ns, id), nil
+	return filepath.Join(dataRoot, "containers", ns, id), nil
 }
 
 func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts, error) {
