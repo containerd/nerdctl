@@ -18,10 +18,16 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/testutil"
+	"github.com/pkg/errors"
+	"gotest.tools/v3/assert"
 )
 
 // TestRunInternetConnectivity tests Internet connectivity with `apk update`
@@ -107,7 +113,7 @@ func TestRunHostLookup(t *testing.T) {
 		t.Logf("resolving %q in container %q (should success: %+v)", targetHostname, srcContainer, expected)
 		cmd := base.Cmd("exec", srcContainer, "wget", "-qO-", "http://"+targetHostname)
 		if expected {
-			cmd.AssertOut("<title>Welcome to nginx!</title>")
+			cmd.AssertOut(testutil.NginxAlpineIndexHTMLSnippet)
 		} else {
 			cmd.AssertFail()
 		}
@@ -133,4 +139,38 @@ func valuesOfMapStringString(m map[string]string) map[string]struct{} {
 		res[v] = struct{}{}
 	}
 	return res
+}
+
+func TestRunPort(t *testing.T) {
+	const (
+		hostPort          = 8080
+		testContainerName = "nerdctl-test-nginx"
+	)
+	base := testutil.NewBase(t)
+	defer base.Cmd("rm", "-f", testContainerName).Run()
+	base.Cmd("run", "-d",
+		"--name", testContainerName,
+		"-p", fmt.Sprintf("127.0.0.1:%d:80", hostPort),
+		testutil.NginxAlpineImage).AssertOK()
+
+	resp, err := httpGet(fmt.Sprintf("http://127.0.0.1:%d", hostPort), 30)
+	assert.NilError(t, err)
+	respBody, err := ioutil.ReadAll(resp.Body)
+	assert.NilError(t, err)
+	assert.Assert(t, strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet))
+}
+
+func httpGet(urlStr string, attempts int) (*http.Response, error) {
+	var (
+		resp *http.Response
+		err  error
+	)
+	for i := 0; i < attempts; i++ {
+		resp, err = http.Get(urlStr)
+		if err == nil {
+			return resp, nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return nil, errors.Wrapf(err, "error after %d attempts", attempts)
 }

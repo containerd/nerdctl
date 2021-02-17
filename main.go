@@ -23,6 +23,7 @@ import (
 
 	ncdefaults "github.com/AkihiroSuda/nerdctl/pkg/defaults"
 	"github.com/AkihiroSuda/nerdctl/pkg/logging"
+	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/version"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/defaults"
@@ -67,7 +68,7 @@ func newApp() *cli.App {
 			Aliases: []string{"a", "host", "H"},
 			Usage:   "containerd address, optionally with \"unix://\" prefix",
 			EnvVars: []string{"CONTAINERD_ADDRESS"},
-			Value:   "unix://" + defaults.DefaultAddress,
+			Value:   "unix://" + defaults.DefaultAddress, // same for rootless as well (mount-namespaced)
 		},
 		&cli.StringFlag{
 			Name:    "namespace",
@@ -81,7 +82,8 @@ func newApp() *cli.App {
 			Aliases: []string{"storage-driver"},
 			Usage:   "containerd snapshotter",
 			EnvVars: []string{"CONTAINERD_SNAPSHOTTER"},
-			Value:   containerd.DefaultSnapshotter,
+			// TODO: change the default to "native" when overlayfs is unavailable (on rootless)
+			Value: containerd.DefaultSnapshotter,
 		},
 		&cli.StringFlag{
 			Name:  "cni-path",
@@ -95,29 +97,36 @@ func newApp() *cli.App {
 			Usage: "Set the CNI config directory",
 			// NETCONFPATH is from https://www.cni.dev/docs/cnitool/
 			EnvVars: []string{"NETCONFPATH"},
-			Value:   gocni.DefaultNetDir,
+			Value:   ncdefaults.CNINetConfPath(),
 		},
-
 		&cli.StringFlag{
 			Name:  "data-root",
 			Usage: "Root directory of persistent nerdctl state (managed by nerdctl, not by containerd)",
-			Value: "/var/lib/nerdctl",
+			Value: ncdefaults.DataRoot(),
 		},
 		// cgroup-manager flag is from Podman.
 		// Because Docker's equivalent is complicated: --exec-opt native.cgroupdriver=(cgroupfs|systemd)
 		&cli.StringFlag{
 			Name:  "cgroup-manager",
 			Usage: "Cgroup manager to use (\"cgroupfs\"|\"systemd\")",
-			Value: ncdefaults.CgroupManager,
+			Value: ncdefaults.CgroupManager(),
 		},
 	}
 	app.Before = func(clicontext *cli.Context) error {
 		if debug {
 			logrus.SetLevel(logrus.DebugLevel)
 		}
+
 		address := clicontext.String("address")
 		if strings.Contains(address, "://") && !strings.HasPrefix(address, "unix://") {
 			return errors.Errorf("invalid address %q", address)
+		}
+		if rootlessutil.IsRootlessParent() {
+			// --help and --version can be executed safely without nsentering into RootlessKit
+			// TODO: allow `nerdctl <SUBCOMMAND> --help` without nsentering into RootlessKit
+			if !clicontext.Bool("help") && !clicontext.Bool("version") {
+				return rootlessutil.ParentMain()
+			}
 		}
 		return nil
 	}

@@ -15,32 +15,8 @@
    limitations under the License.
 */
 
-package defaults
+package rootlessutil
 
-import (
-	"os"
-
-	"github.com/containerd/cgroups"
-)
-
-func isSystemdAvailable() bool {
-	fi, err := os.Lstat("/run/systemd/system")
-	if err != nil {
-		return false
-	}
-	return fi.IsDir()
-}
-
-func CgroupManager() string {
-	if cgroups.Mode() == cgroups.Unified && isSystemdAvailable() {
-		return "systemd"
-	}
-	return "cgroupfs"
-}
-
-func CgroupnsMode() string {
-	if cgroups.Mode() == cgroups.Unified {
-		return "private"
-	}
-	return "host"
+func IsRootless() bool {
+	return IsRootlessParent() || IsRootlessChild()
 }

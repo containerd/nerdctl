@@ -2,7 +2,7 @@
 
 ## Data
 ### `<DATAROOT>`
-e.g. `/var/lib/nerdctl`
+**Default**: `/var/lib/nerdctl` (rootful), `~/.local/share/nerdctl` (rootless)
 
 Can be overriden with `nerdctl --data-root=<DATAROOT>` flag.
 
@@ -49,7 +49,7 @@ Data volume
 ## CNI
 
 ### `<NETCONFPATH>`
-e.g. `/etc/cni/net.d`
+**Default**: `/etc/cni/net.d` (rootful), `~/.config/cni/net.d` (rootless)
 
 Can be overriden with `nerdctl --cni-netconfpath=<NETCONFPATH>` flag and environment variable `$NETCONFPATH`.
 

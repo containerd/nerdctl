@@ -22,6 +22,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/buildkitutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -32,6 +34,13 @@ var buildCommand = &cli.Command{
 	Usage:  "Build an image from a Dockerfile. Needs buildkitd to be running.",
 	Action: buildAction,
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    "buildkit-host",
+			Usage:   "BuildKit address",
+			EnvVars: []string{"BUILDKIT_HOST"},
+			Value:   defaults.BuildKitHost(),
+		},
+
 		&cli.StringSliceFlag{
 			Name:    "tag",
 			Aliases: []string{"t"},
@@ -71,17 +80,14 @@ var buildCommand = &cli.Command{
 }
 
 func buildAction(clicontext *cli.Context) error {
-	buildctlBinary := "buildctl"
-	buildctlArgs, err := generateBuildctlArgs(clicontext)
-	if err != nil {
+	buildkitHost := clicontext.String("buildkit-host")
+	if err := buildkitutil.PingBKDaemon(buildkitHost); err != nil {
 		return err
 	}
 
-	buildctlCheckCmd := exec.Command(buildctlBinary, "debug", "workers")
-	buildctlCheckCmd.Env = os.Environ()
-	if out, err := buildctlCheckCmd.CombinedOutput(); err != nil {
-		logrus.Error(string(out))
-		return errors.Wrap(err, "`buildctl` needs to be installed and `buildkitd` needs to be running, see https://github.com/moby/buildkit")
+	buildctlBinary, buildctlArgs, err := generateBuildctlArgs(clicontext)
+	if err != nil {
+		return err
 	}
 
 	logrus.Debugf("running %s %v", buildctlBinary, buildctlArgs)
@@ -109,31 +115,38 @@ func buildAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func generateBuildctlArgs(clicontext *cli.Context) ([]string, error) {
+func generateBuildctlArgs(clicontext *cli.Context) (string, []string, error) {
 	if clicontext.NArg() < 1 {
-		return nil, errors.New("context needs to be specified")
+		return "", nil, errors.New("context needs to be specified")
 	}
 	buildContext := clicontext.Args().First()
 	if buildContext == "-" || strings.Contains(buildContext, "://") {
-		return nil, errors.Errorf("unsupported build context: %q", buildContext)
+		return "", nil, errors.Errorf("unsupported build context: %q", buildContext)
+	}
+
+	buildctlBinary, err := buildkitutil.BuildctlBinary()
+	if err != nil {
+		return "", nil, err
 	}
 
 	output := "--output=type=docker"
 	if tagSlice := clicontext.StringSlice("tag"); len(tagSlice) > 0 {
 		if len(tagSlice) > 1 {
-			return nil, errors.Errorf("specifying multiple -t is not supported yet")
+			return "", nil, errors.Errorf("specifying multiple -t is not supported yet")
 		}
 		output += ",name=" + tagSlice[0]
 	}
 
-	buildctlArgs := []string{
+	buildctlArgs := buildkitutil.BuildctlBaseArgs(clicontext.String("buildkit-host"))
+
+	buildctlArgs = append(buildctlArgs, []string{
 		"build",
 		"--progress=" + clicontext.String("progress"),
 		"--frontend=dockerfile.v0",
 		"--local=context=" + buildContext,
 		"--local=dockerfile=" + buildContext,
 		output,
-	}
+	}...)
 
 	if filename := clicontext.String("file"); filename != "" {
 		buildctlArgs = append(buildctlArgs, "--opt=filename="+filename)
@@ -159,5 +172,5 @@ func generateBuildctlArgs(clicontext *cli.Context) ([]string, error) {
 		buildctlArgs = append(buildctlArgs, "--ssh="+s)
 	}
 
-	return buildctlArgs, nil
+	return buildctlBinary, buildctlArgs, nil
 }

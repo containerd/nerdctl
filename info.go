@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
+	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/cgroups"
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	ptypes "github.com/gogo/protobuf/types"
@@ -70,6 +71,8 @@ func infoAction(clicontext *cli.Context) error {
 	fmt.Fprintf(w, " Server Version: %s\n", daemonVersion.Version)
 	// Storage Driver is not really Server concept for nerdctl, but mimics `docker info` output
 	fmt.Fprintf(w, " Storage Driver: %s\n", clicontext.String("snapshotter"))
+	fmt.Fprintf(w, " Logging Driver: json-file\n") // hard-coded
+	fmt.Fprintf(w, " Cgroup Driver: %s\n", defaults.CgroupManager())
 	cgVersion := 1
 	if cgroups.Mode() == cgroups.Unified {
 		cgVersion = 2
@@ -85,6 +88,9 @@ func infoAction(clicontext *cli.Context) error {
 	fmt.Fprintf(w, "   Profile: default\n")
 	if defaults.CgroupnsMode() == "private" {
 		fmt.Fprintf(w, "  cgroupns\n")
+	}
+	if rootlessutil.IsRootlessChild() {
+		fmt.Fprintf(w, "  rootless\n")
 	}
 	fmt.Fprintf(w, " ID: %s\n", daemonIntro.UUID)
 	return nil

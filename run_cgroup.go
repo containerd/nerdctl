@@ -18,6 +18,7 @@
 package main
 
 import (
+	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/containerd/oci"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -29,8 +30,12 @@ func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, err
 	var opts []oci.SpecOpts
 
 	if clicontext.String("cgroup-manager") == "systemd" {
+		slice := "system.slice"
+		if rootlessutil.IsRootlessChild() {
+			slice = "user.slice"
+		}
 		//  "slice:prefix:name"
-		cg := "system.slice:nerdctl:" + id
+		cg := slice + ":nerdctl:" + id
 		opts = append(opts, oci.WithCgroup(cg))
 	}
 
