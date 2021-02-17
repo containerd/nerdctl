@@ -15,7 +15,7 @@
    limitations under the License.
 */
 
-// Package hoststore provides the interface for /var/lib/nerdctl/hosts.d .
+// Package hoststore provides the interface for /var/lib/nerdctl/<ADDRHASH>/etchosts .
 // Prioritize simplicity over scalability.
 package hostsstore
 
@@ -32,18 +32,18 @@ import (
 )
 
 const (
-	// hostsDirBasename is the base name of /var/lib/nerdctl/hosts.d
-	hostsDirBasename = "hosts.d"
-	// metaJSON is stored as /var/lib/nerdctl/hosts.d/<NS>/<ID>/meta.json
+	// hostsDirBasename is the base name of /var/lib/nerdctl/<ADDRHASH>/etchosts
+	hostsDirBasename = "etchosts"
+	// metaJSON is stored as /var/lib/nerdctl/<ADDRHASH>/etchosts/<NS>/<ID>/meta.json
 	metaJSON = "meta.json"
 )
 
-// HostsPath returns "/var/lib/nerdctl/hosts.d/<NS>/<ID>/hosts"
-func HostsPath(dataRoot, ns, id string) string {
-	if dataRoot == "" || ns == "" || id == "" {
+// HostsPath returns "/var/lib/nerdctl/<ADDRHASH>/etchosts/<NS>/<ID>/hosts"
+func HostsPath(dataStore, ns, id string) string {
+	if dataStore == "" || ns == "" || id == "" {
 		panic(errdefs.ErrInvalidArgument)
 	}
-	return filepath.Join(dataRoot, hostsDirBasename, ns, id, "hosts")
+	return filepath.Join(dataStore, hostsDirBasename, ns, id, "hosts")
 }
 
 // ensureFile ensures a file with permission 0644.
@@ -66,12 +66,12 @@ func ensureFile(path string) error {
 
 // EnsureHostsFile is used for creating mount-bindable /etc/hosts file.
 // The file is initialized with no content.
-func EnsureHostsFile(dataRoot, ns, id string) (string, error) {
-	lockDir := filepath.Join(dataRoot, hostsDirBasename)
+func EnsureHostsFile(dataStore, ns, id string) (string, error) {
+	lockDir := filepath.Join(dataStore, hostsDirBasename)
 	if err := os.MkdirAll(lockDir, 0700); err != nil {
 		return "", err
 	}
-	path := HostsPath(dataRoot, ns, id)
+	path := HostsPath(dataStore, ns, id)
 	fn := func() error {
 		return ensureFile(path)
 	}
@@ -79,10 +79,10 @@ func EnsureHostsFile(dataRoot, ns, id string) (string, error) {
 	return path, err
 }
 
-func NewStore(dataRoot string) (Store, error) {
+func NewStore(dataStore string) (Store, error) {
 	store := &store{
-		dataRoot: dataRoot,
-		hostsD:   filepath.Join(dataRoot, hostsDirBasename),
+		dataStore: dataStore,
+		hostsD:    filepath.Join(dataStore, hostsDirBasename),
 	}
 	return store, os.MkdirAll(store.hostsD, 0700)
 }
@@ -101,15 +101,15 @@ type Store interface {
 }
 
 type store struct {
-	// dataRoot is /var/lib/nerdctl
-	dataRoot string
-	// hostsD is /var/lib/nerdctl/hosts.d
+	// dataStore is /var/lib/nerdctl/<ADDRHASH>
+	dataStore string
+	// hostsD is /var/lib/nerdctl/<ADDRHASH>/etchosts
 	hostsD string
 }
 
 func (x *store) Acquire(meta Meta) error {
 	fn := func() error {
-		hostsPath := HostsPath(x.dataRoot, meta.Namespace, meta.ID)
+		hostsPath := HostsPath(x.dataStore, meta.Namespace, meta.ID)
 		if err := ensureFile(hostsPath); err != nil {
 			return err
 		}

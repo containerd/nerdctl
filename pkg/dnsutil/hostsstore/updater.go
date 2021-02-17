@@ -31,7 +31,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// newUpdater creates an updater for hostsD (/var/lib/nerdctl/hosts.d)
+// newUpdater creates an updater for hostsD (/var/lib/nerdctl/<ADDRHASH>/etchosts)
 func newUpdater(hostsD string) *updater {
 	u := &updater{
 		hostsD:      hostsD,
@@ -43,9 +43,9 @@ func newUpdater(hostsD string) *updater {
 
 // updater is the struct for updater.update()
 type updater struct {
-	hostsD      string           // "/varlib/nerdctl/hosts.d"
+	hostsD      string           // "/var/lib/nerdctl/<ADDRHASH>/etchosts"
 	metaByIPStr map[string]*Meta // key: IP string
-	metaByDir   map[string]*Meta // key: "/var/lib/nerdctl/hosts.d/<NS>/<ID>"
+	metaByDir   map[string]*Meta // key: "/var/lib/nerdctl/<ADDRHASH>/etchosts/<NS>/<ID>"
 }
 
 // update updates the hostsD tree.

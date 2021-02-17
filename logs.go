@@ -40,7 +40,10 @@ func logsAction(clicontext *cli.Context) error {
 		return errors.Errorf("requires exactly 1 argument")
 	}
 
-	dataRoot := clicontext.String("data-root")
+	dataStore, err := getDataStore(clicontext)
+	if err != nil {
+		return err
+	}
 
 	ns := clicontext.String("namespace")
 	switch ns {
@@ -60,7 +63,7 @@ func logsAction(clicontext *cli.Context) error {
 			if found.MatchCount > 1 {
 				return errors.Errorf("ambiguous ID %q", found.Req)
 			}
-			logJSONFilePath := jsonfile.Path(dataRoot, ns, found.Container.ID())
+			logJSONFilePath := jsonfile.Path(dataStore, ns, found.Container.ID())
 			f, err := os.Open(logJSONFilePath)
 			if err != nil {
 				return errors.Wrapf(err, "failed to open %q, container is not created with `nerdctl run -d`?", logJSONFilePath)

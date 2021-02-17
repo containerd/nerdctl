@@ -35,9 +35,9 @@ type Entry struct {
 	Time   time.Time `json:"time"`             // e.g. "2020-12-11T20:29:41.939902251Z"
 }
 
-func Path(dataRoot, ns, id string) string {
+func Path(dataStore, ns, id string) string {
 	// the file name corresponds to Docker
-	return filepath.Join(dataRoot, "c", ns, id, id+"-json.log")
+	return filepath.Join(dataStore, "containers", ns, id, id+"-json.log")
 }
 
 func Encode(w io.Writer, stdout, stderr io.Reader) error {

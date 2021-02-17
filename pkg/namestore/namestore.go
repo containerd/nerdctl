@@ -27,8 +27,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func New(dataRoot, ns string) (NameStore, error) {
-	dir := filepath.Join(dataRoot, "names", ns)
+func New(dataStore, ns string) (NameStore, error) {
+	dir := filepath.Join(dataStore, "names", ns)
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err
 	}
