@@ -32,11 +32,10 @@ import (
 )
 
 var networkCreateCommand = &cli.Command{
-	Name:  "create",
-	Usage: "Create a network",
-	Description: "NOTE: To isolate CNI bridge, CNI isolation plugin needs to be installed: https://github.com/AkihiroSuda/cni-isolation\n" + "\n" +
-		"No support for looking up container IPs by their names yet",
-	ArgsUsage: "[flags] NETWORK",
+	Name:        "create",
+	Usage:       "Create a network",
+	Description: "NOTE: To isolate CNI bridge, CNI isolation plugin needs to be installed: https://github.com/AkihiroSuda/cni-isolation",
+	ArgsUsage:   "[flags] NETWORK",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "subnet",
