@@ -15,7 +15,7 @@
    limitations under the License.
 */
 
-// Package hoststore provides the interface for /var/lib/nerdctl/hosts.d .
+// Package hoststore provides the interface for /var/lib/nerdctl/etchosts .
 // Prioritize simplicity over scalability.
 package hostsstore
 
@@ -32,13 +32,13 @@ import (
 )
 
 const (
-	// hostsDirBasename is the base name of /var/lib/nerdctl/hosts.d
-	hostsDirBasename = "hosts.d"
-	// metaJSON is stored as /var/lib/nerdctl/hosts.d/<NS>/<ID>/meta.json
+	// hostsDirBasename is the base name of /var/lib/nerdctl/etchosts
+	hostsDirBasename = "etchosts"
+	// metaJSON is stored as /var/lib/nerdctl/etchosts/<NS>/<ID>/meta.json
 	metaJSON = "meta.json"
 )
 
-// HostsPath returns "/var/lib/nerdctl/hosts.d/<NS>/<ID>/hosts"
+// HostsPath returns "/var/lib/nerdctl/etchosts/<NS>/<ID>/hosts"
 func HostsPath(dataRoot, ns, id string) string {
 	if dataRoot == "" || ns == "" || id == "" {
 		panic(errdefs.ErrInvalidArgument)
@@ -103,7 +103,7 @@ type Store interface {
 type store struct {
 	// dataRoot is /var/lib/nerdctl
 	dataRoot string
-	// hostsD is /var/lib/nerdctl/hosts.d
+	// hostsD is /var/lib/nerdctl/etchosts
 	hostsD string
 }
 
