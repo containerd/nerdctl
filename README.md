@@ -51,6 +51,11 @@
     - [:whale: nerdctl network ls](#whale-nerdctl-network-ls)
     - [:whale: nerdctl network inspect](#whale-nerdctl-network-inspect)
     - [:whale: nerdctl network rm](#whale-nerdctl-network-rm)
+  - [Volume management](#volume-management)
+    - [:whale: nerdctl volume create](#whale-nerdctl-volume-create)
+    - [:whale: nerdctl volume ls](#whale-nerdctl-volume-ls)
+    - [:whale: nerdctl volume inspect](#whale-nerdctl-volume-inspect)
+    - [:whale: nerdctl volume rm](#whale-nerdctl-volume-rm)
   - [System](#system)
     - [:whale: nerdctl events](#whale-nerdctl-events)
     - [:whale: nerdctl info](#whale-nerdctl-info)
@@ -215,7 +220,6 @@ Runtime flags:
 
 Volume flags:
 - :whale: `-v, --volume`: Bind mount a volume
-  - :warning: Bind-mount only. Creating named volumes (`nerdctl volume create`) is not implemented yet.
 
 Rootfs flags:
 - :whale: `--read-only`: Mount the container's root filesystem as read only
@@ -381,6 +385,21 @@ Display detailed information on one or more networks
 ### :whale: nerdctl network rm
 Remove one or more networks
 
+## Volume management
+### :whale: nerdctl volume create
+Create a volume
+
+### :whale: nerdctl volume ls
+List volumes
+
+- :whale: `-q, --quiet`: Only display volume names
+
+### :whale: nerdctl volume inspect
+Display detailed information on one or more volumes
+
+### :whale: nerdctl volume rm
+Remove one or more volumes
+
 ## System
 ### :whale: nerdctl events
 Get real time events from the server.
@@ -428,9 +447,6 @@ Image:
 - `docker image prune`
 
 - `docker manifest *`
-
-Volume management:
-- `docker volume *`
 
 Network management:
 - `docker network connect`
