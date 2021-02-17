@@ -36,7 +36,6 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/AkihiroSuda/nerdctl/pkg/logging"
-	"github.com/AkihiroSuda/nerdctl/pkg/mountutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/namestore"
 	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
@@ -319,16 +318,10 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, oci.WithTTY)
 	}
 
-	if flagVSlice := clicontext.StringSlice("v"); len(flagVSlice) > 0 {
-		mounts := make([]specs.Mount, len(flagVSlice))
-		for i, v := range flagVSlice {
-			m, err := mountutil.ParseFlagV(v)
-			if err != nil {
-				return err
-			}
-			mounts[i] = *m
-		}
-		opts = append(opts, oci.WithMounts(mounts))
+	if mountOpts, err := generateMountOpts(clicontext); err != nil {
+		return err
+	} else {
+		opts = append(opts, mountOpts...)
 	}
 
 	var logURI string

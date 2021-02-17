@@ -21,19 +21,26 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/native"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
-func ParseFlagV(s string) (*specs.Mount, error) {
+func ParseFlagV(s string, volumes map[string]native.Volume) (*specs.Mount, error) {
 	split := strings.Split(s, ":")
 	if len(split) < 2 || len(split) > 3 {
 		return nil, errors.Errorf("failed to parse %q", s)
 	}
 	src, dst := split[0], split[1]
 	if !strings.Contains(src, "/") {
-		return nil, errors.Errorf("expected an absolute path, got %q (FIXME: named volume is unsupported yet)", src)
+		// assume src is a volume name
+		vol, ok := volumes[src]
+		if !ok {
+			return nil, errors.Errorf("unknown volume name %q", src)
+		}
+		// src is now full path
+		src = vol.Mountpoint
 	}
 	if !filepath.IsAbs(src) {
 		logrus.Warnf("expected an absolute path, got a relative path %q (allowed for nerdctl, but disallowed for Docker, so unrecommended)", src)

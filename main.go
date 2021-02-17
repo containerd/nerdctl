@@ -155,6 +155,7 @@ func newApp() *cli.App {
 		containerCommand,
 		imageCommand,
 		networkCommand,
+		volumeCommand,
 		systemCommand,
 		// Internal
 		internalCommand,

@@ -41,6 +41,11 @@ Files:
 
 Files must be operated with a `LOCK_EX` lock against the `<DATAROOT>/<ADDRHASH>/etchosts` directory.
 
+### `<DATAROOT>/<ADDRHASH>/volumes/<NAMESPACE>/<VOLNAME>/_data`
+e.g. `/var/lib/nerdctl/1935db59/volumes/default/foo/_data`
+
+Data volume
+
 ## CNI
 
 ### `<NETCONFPATH>`
