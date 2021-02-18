@@ -12,8 +12,8 @@ require (
 	github.com/containerd/typeurl v1.0.1
 	github.com/containernetworking/cni v0.8.0
 	github.com/containernetworking/plugins v0.9.0
-	github.com/docker/cli v20.10.0+incompatible
-	github.com/docker/docker v17.12.0-ce-rc1.0.20200730172259-9f28837c1d93+incompatible
+	github.com/docker/cli v20.10.3+incompatible
+	github.com/docker/docker v20.10.3+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/fvbommel/sortorder v1.0.2 // indirect
 	github.com/gogo/protobuf v1.3.1
