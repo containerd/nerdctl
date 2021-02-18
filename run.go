@@ -581,7 +581,10 @@ func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecO
 		return nil, err
 	}
 	args := []string{
+		os.Args[0],
 		// FIXME: How to propagate all global flags?
+		"--data-root=" + clicontext.String("data-root"),
+		"--address=" + clicontext.String("address"),
 		"--cni-path=" + clicontext.String("cni-path"),
 		"--cni-netconfpath=" + clicontext.String("cni-netconfpath"),
 		"internal",

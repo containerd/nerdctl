@@ -47,14 +47,11 @@ type loginOptions struct {
 var options = new(loginOptions)
 
 var loginCommand = &cli.Command{
-	Name:  "login",
-	Usage: "Log in to a Docker registry",
-	// customized function from runLogin function in github.com/docker/cli/cli/command/registry/login.go
+	Name:      "login",
+	Usage:     "Log in to a Docker registry",
+	ArgsUsage: "[flags] [SERVER]",
+	// customized function from runLogin function in github.com/docker/cli/cli/command/registry/login.go (v20.10.3)
 	Action: func(clicontext *cli.Context) error {
-		if clicontext.Bool("help") {
-			return cli.ShowCommandHelp(clicontext, "login")
-		}
-
 		options.serverAddress = clicontext.Args().First()
 
 		if err := verifyloginOptions(clicontext, options); err != nil {
@@ -135,7 +132,7 @@ var loginCommand = &cli.Command{
 	},
 }
 
-//copied from github.com/docker/cli/cli/command/registry/login.go
+//copied from github.com/docker/cli/cli/command/registry/login.go (v20.10.3)
 func verifyloginOptions(clicontext *cli.Context, options *loginOptions) error {
 	if options.password != "" {
 		logrus.Warn("WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
@@ -146,7 +143,7 @@ func verifyloginOptions(clicontext *cli.Context, options *loginOptions) error {
 
 	if options.passwordStdin {
 		if options.username == "" {
-			return errors.New("Must provide --username with --password-stdin")
+			return errors.New("must provide --username with --password-stdin")
 		}
 
 		contents, err := ioutil.ReadAll(clicontext.App.Reader)
@@ -161,7 +158,7 @@ func verifyloginOptions(clicontext *cli.Context, options *loginOptions) error {
 
 }
 
-// Code from github.com/cli/cli/command/registry.go
+// Code from github.com/cli/cli/command/registry.go (v20.10.3)
 // GetDefaultAuthConfig gets the default auth config given a serverAddress
 // If credentials for given serverAddress exists in the credential store, the configuration will be populated with values in it
 func GetDefaultAuthConfig(clicontext *cli.Context, checkCredStore bool, serverAddress string, isDefaultRegistry bool) (*types.AuthConfig, error) {
@@ -229,7 +226,7 @@ func ConfigureAuthentification(clicontext *cli.Context, authConfig *types.AuthCo
 	}
 
 	if options.password == "" {
-		return errors.Errorf("error: Password is Required")
+		return errors.Errorf("password is Required")
 	}
 
 	authConfig.Username = options.username
