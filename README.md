@@ -46,6 +46,9 @@
     - [:whale: nerdctl tag](#whale-nerdctl-tag)
     - [:whale: nerdctl rmi](#whale-nerdctl-rmi)
     - [:nerd_face: nerdctl image convert](#nerd_face-nerdctl-image-convert)
+  - [Registry](#registry)
+    - [:whale: nerdctl login](#whale-nerdctl-login)
+    - [:whale: nerdctl logout](#whale-nerdctl-logout)
   - [Network management](#network-management)
     - [:whale: nerdctl network create](#whale-nerdctl-network-create)
     - [:whale: nerdctl network ls](#whale-nerdctl-network-ls)
@@ -62,6 +65,7 @@
     - [:whale: nerdctl version](#whale-nerdctl-version)
   - [Global flags](#global-flags)
   - [Unimplemented Docker commands](#unimplemented-docker-commands)
+- [Additional documents](#additional-documents)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -113,7 +117,7 @@ Note that competing with Docker is _not_ the goal of `nerdctl`. Those cutting-ed
 Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, but it is not the primary goal.
 
 ## Features present in `nerdctl` but not present in Docker
-- Namespacing `nerdctl --namespace=<NS> ps` . 
+- Namespacing: `nerdctl --namespace=<NS> ps` . 
   (NOTE: All Kubernetes containers are in the `k8s.io` containerd namespace regardless to Kubernetes namespaces)
 - [Lazy-pulling using Stargz Snapshotter](./docs/stargz.md): `nerdctl --snapshotter=stargz run` .
 - Exporting Docker/OCI dual-format archives: `nerdctl save` .
@@ -175,8 +179,6 @@ It does not necessarily mean that the corresponding features are missing in cont
 ## Run & Exec
 ### :whale: nerdctl run
 Run a command in a new container.
-
-See [Image management](#image-management) for authentication with registries.
 
 Basic flags:
 - :whale: `-i, --interactive`: Keep STDIN open even if not attached"
@@ -312,9 +314,6 @@ Flags:
 
 ## Image management
 
-:information_source: Nerdctl uses `${DOCKER_CONFIG}/config.json` for the authentication.
-`$DOCKER_CONFIG` defaults to `$HOME/.docker`.
-
 ### :whale: nerdctl images
 List images
 
@@ -365,6 +364,18 @@ Flags:
 -  `--platform=<PLATFORM>`              : convert content for a specific platform
 -  `--all-platforms`                    : convert content for all platforms (default: false)
 
+## Registry
+### :whale: nerdctl login
+Log in to a Docker registry.
+
+Flags:
+- :whale: `-u, --username`:   Username
+- :whale: `-p, --password`:   Password
+- :whale: `--password-stdin`: Take the password from stdin
+
+### :whale: nerdctl logout
+Log out from a Docker registry
+
 ## Network management
 ### :whale: nerdctl network create
 Create a network
@@ -372,7 +383,7 @@ Create a network
 :information_source: To isolate CNI bridge, [CNI isolation plugin](https://github.com/AkihiroSuda/cni-isolation) needs to be installed.
 
 Flags:
-- `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16" 
+- :whale: `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16" 
 
 ### :whale: nerdctl network ls
 List networks
@@ -454,10 +465,16 @@ Network management:
 - `docker network prune`
 
 Registry:
-- `docker login` and `docker logout`
 - `docker search`
 
 Others:
 - `docker context`
 - Swarm commands are unimplemented and will not be implemented: `docker swarm|node|service|config|secret|stack *`
 - Plugin commands are unimplemented and will not be implemented: `docker plugin *`
+
+- - -
+
+# Additional documents
+- [`./docs/dir.md`](./docs/dir.md):           Directory layout (`/var/lib/nerdctl`)
+- [`./docs/registry.md`](./docs/registry.md): Registry authentication (`~/.docker/config.json`)
+- [`./docs/stargz.md`](./docs/stargz.md):     Lazy-pulling using Stargz Snapshotter

@@ -24,9 +24,10 @@ import (
 )
 
 var logoutCommand = &cli.Command{
-	Name:   "logout",
-	Usage:  "Log out from a Docker registry",
-	Action: logoutAction,
+	Name:      "logout",
+	Usage:     "Log out from a Docker registry",
+	ArgsUsage: "[flags] [SERVER]",
+	Action:    logoutAction,
 }
 
 // code inspired from XXX
