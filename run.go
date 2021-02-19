@@ -39,6 +39,7 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/namestore"
 	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -616,6 +617,12 @@ func generateRestartOpts(restartFlag, logURI string) ([]containerd.NewContainerO
 	case "", "no":
 		return nil, nil
 	case "always":
+		if rootlessutil.IsRootless() {
+			// $ systemctl --user kill -s KILL containerd
+			// $ nerdctl info
+			// FATA[0000] stat /run/user/1001/containerd-rootless/child_pid: no such file or directory
+			logrus.Warn("FIXME: --restart=always is broken on rootless")
+		}
 		opts := []containerd.NewContainerOpts{restart.WithStatus(containerd.Running)}
 		if logURI != "" {
 			opts = append(opts, restart.WithLogURIString(logURI))
