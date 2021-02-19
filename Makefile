@@ -47,21 +47,22 @@ binaries: nerdctl
 
 install:
 	install -D -m 755 $(CURDIR)/_output/nerdctl $(DESTDIR)$(BINDIR)/nerdctl
+	install -D -m 755 $(CURDIR)/extras/rootless/containerd-rootless.sh $(DESTDIR)$(BINDIR)/containerd-rootless.sh
+	install -D -m 755 $(CURDIR)/extras/rootless/containerd-rootless-setuptool.sh $(DESTDIR)$(BINDIR)/containerd-rootless-setuptool.sh
 
-artifacts:
-	rm -f $(CURDIR)/_output/nerdctl
-	GOOS=linux GOARCH=amd64       make -C $(CURDIR) binaries
-	tar czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-amd64.tar.gz  --owner=0 --group=0 -C $(CURDIR)/_output nerdctl
+TAR_FLAGS=--transform 's/.*\///g' --owner=0 --group=0
 
-	rm -f $(CURDIR)/_output/nerdctl
+artifacts: clean
+	GOOS=linux GOARCH=amd64       make -C $(CURDIR)  binaries
+	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-amd64.tar.gz  _output/nerdctl extras/rootless/*
+
 	GOOS=linux GOARCH=arm64       make -C $(CURDIR) binaries
-	tar czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm64.tar.gz  --owner=0 --group=0 -C $(CURDIR)/_output nerdctl
+	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm64.tar.gz  _output/nerdctl extras/rootless/*
 
-	rm -f $(CURDIR)/_output/nerdctl
 	GOOS=linux GOARCH=arm GOARM=7 make -C $(CURDIR) binaries
-	tar czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm-v7.tar.gz --owner=0 --group=0 -C $(CURDIR)/_output nerdctl
+	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm-v7.tar.gz _output/nerdctl extras/rootless/*
 
-	rm -f $(CURDIR)/_output/nerdctl
+	rm -f _output/nerdctl
 
 .PHONY: \
 	help \

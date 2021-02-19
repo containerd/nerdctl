@@ -110,9 +110,6 @@ func GetTarget() string {
 const Namespace = "nerdctl-test"
 
 func NewBase(t *testing.T) *Base {
-	if os.Geteuid() != 0 {
-		t.Skip("test requires root")
-	}
 	base := &Base{
 		T:      t,
 		Target: GetTarget(),
@@ -138,6 +135,7 @@ func NewBase(t *testing.T) *Base {
 
 // TODO: avoid using Docker Hub
 const (
-	AlpineImage      = "alpine"
-	NginxAlpineImage = "nginx:1.19.6-alpine"
+	AlpineImage                 = "alpine"
+	NginxAlpineImage            = "nginx:1.19.6-alpine"
+	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
 )

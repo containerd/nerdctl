@@ -29,6 +29,7 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/containerd/contrib/apparmor"
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	"github.com/containerd/go-cni"
@@ -232,6 +233,17 @@ func onCreateRuntime(opts *handlerOpts) error {
 		if err := hs.Acquire(hsMeta); err != nil {
 			return err
 		}
+		if len(opts.ports) > 0 && rootlessutil.IsRootlessChild() {
+			pm, err := rootlessutil.NewRootlessCNIPortManager()
+			if err != nil {
+				return err
+			}
+			for _, p := range opts.ports {
+				if err := pm.ExposePort(ctx, p); err != nil {
+					return err
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -239,6 +251,17 @@ func onCreateRuntime(opts *handlerOpts) error {
 func onPostStop(opts *handlerOpts) error {
 	ctx := context.Background()
 	if opts.cni != nil {
+		if len(opts.ports) > 0 && rootlessutil.IsRootlessChild() {
+			pm, err := rootlessutil.NewRootlessCNIPortManager()
+			if err != nil {
+				return err
+			}
+			for _, p := range opts.ports {
+				if err := pm.UnexposePort(ctx, p); err != nil {
+					return err
+				}
+			}
+		}
 		cniNSOpts, err := getCNINamespaceOpts(opts)
 		if err != nil {
 			return err

@@ -17,4 +17,45 @@
 
 package defaults
 
+import (
+	"fmt"
+	"path/filepath"
+
+	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
+	gocni "github.com/containerd/go-cni"
+)
+
 const AppArmorProfileName = "nerdctl-default"
+
+func DataRoot() string {
+	if !rootlessutil.IsRootless() {
+		return "/var/lib/nerdctl"
+	}
+	xdh, err := rootlessutil.XDGDataHome()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(xdh, "nerdctl")
+}
+
+func CNINetConfPath() string {
+	if !rootlessutil.IsRootless() {
+		return gocni.DefaultNetDir
+	}
+	xch, err := rootlessutil.XDGConfigHome()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(xch, "cni/net.d")
+}
+
+func BuildKitHost() string {
+	if !rootlessutil.IsRootless() {
+		return "unix:///run/buildkit/buildkitd.sock"
+	}
+	xdr, err := rootlessutil.XDGRuntimeDir()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("unix://%s/buildkit/buildkitd.sock", xdr)
+}

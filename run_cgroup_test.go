@@ -15,32 +15,24 @@
    limitations under the License.
 */
 
-package defaults
+package main
 
 import (
-	"os"
+	"testing"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/testutil"
 	"github.com/containerd/cgroups"
 )
 
-func isSystemdAvailable() bool {
-	fi, err := os.Lstat("/run/systemd/system")
-	if err != nil {
-		return false
+func TestRunCgroupV2(t *testing.T) {
+	if cgroups.Mode() != cgroups.Unified {
+		t.Skip("test requires cgroup v2")
 	}
-	return fi.IsDir()
-}
-
-func CgroupManager() string {
-	if cgroups.Mode() == cgroups.Unified && isSystemdAvailable() {
-		return "systemd"
-	}
-	return "cgroupfs"
-}
-
-func CgroupnsMode() string {
-	if cgroups.Mode() == cgroups.Unified {
-		return "private"
-	}
-	return "host"
+	base := testutil.NewBase(t)
+	const expected = `42000 100000
+44040192
+42
+`
+	base.Cmd("run", "--rm", "--cpus", "0.42", "--memory", "42m", "--pids-limit", "42", testutil.AlpineImage,
+		"sh", "-ec", "cd /sys/fs/cgroup && cat cpu.max memory.max pids.max").AssertOut(expected)
 }

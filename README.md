@@ -10,6 +10,9 @@
 
 
   - [Examples](#examples)
+    - [Basic usage](#basic-usage)
+    - [Debugging Kubernetes](#debugging-kubernetes)
+    - [Rootless mode](#rootless-mode)
   - [Install](#install)
   - [Motivation](#motivation)
   - [Features present in `nerdctl` but not present in Docker](#features-present-in-nerdctl-but-not-present-in-docker)
@@ -71,6 +74,8 @@
 
 ## Examples
 
+### Basic usage
+
 To run a container with the default CNI network (10.4.0.0/24):
 ```console
 # nerdctl run -it --rm alpine
@@ -82,15 +87,26 @@ To build an image using BuildKit:
 # nerdctl run -it --rm foo
 ```
 
-To list Docker containers:
-```console
-# nerdctl --address /var/run/docker/containerd/containerd.sock --namespace moby ps -a
-```
+### Debugging Kubernetes
 
 To list Kubernetes containers:
 ```console
 # nerdctl --namespace k8s.io ps -a
 ```
+
+### Rootless mode
+
+To launch rootless containerd:
+```console
+$ containerd-rootless-setuptool.sh install
+```
+
+To run a container with rootless containerd:
+```console
+$ nerdctl run -d -p 8080:80 --name nginx nginx:alpine
+```
+
+See [`./docs/rootless.md`](./docs/rootless.md).
 
 ## Install
 Binaries are available for amd64, arm64, and arm-v7: https://github.com/AkihiroSuda/nerdctl/releases
@@ -99,6 +115,9 @@ In addition to containerd, the following components should be installed (optiona
 - [CNI plugins](https://github.com/containernetworking/plugins): for using `nerdctl run`.
 - [CNI isolation plugin](https://github.com/AkihiroSuda/cni-isolation): for isolating bridge networks (`nerdctl network create`)
 - [BuildKit](https://github.com/moby/buildkit): for using `nerdctl build`. BuildKit daemon (`buildkitd`) needs to be running.
+- [RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns): for [Rootless mode](./docs/rootless.md)
+   - RootlessKit needs to be v0.10.0 or later
+   - slirp4netns needs toe be v0.4.0 or later
 
 To run nerdctl inside Docker:
 ```bash
@@ -150,6 +169,8 @@ Using `go get github.com/AkihiroSuda/nerdctl` is possible, but unrecommended bec
 ### Test suite
 #### Running test suite against nerdctl
 Run `go test -exec sudo -v ./...` after `make && sudo make install`.
+
+For testing rootless mode, `-exec sudo` is not needed.
 
 To run tests in a container:
 ```bash
@@ -296,6 +317,7 @@ Build an image from a Dockerfile.
 :information_source: Needs buildkitd to be running.
 
 Flags:
+- :nerd_face: `--buildkit-host=<BUILDKIT_HOST>`: BuildKit address
 - :whale: `-t, --tag`: Name and optionally a tag in the 'name:tag' format
 - :whale: `-f, --file`: Name of the Dockerfile
 - :whale: `--target`: Set the target build stage to build
@@ -477,4 +499,5 @@ Others:
 # Additional documents
 - [`./docs/dir.md`](./docs/dir.md):           Directory layout (`/var/lib/nerdctl`)
 - [`./docs/registry.md`](./docs/registry.md): Registry authentication (`~/.docker/config.json`)
+- [`./docs/rootless.md`](./docs/rootless.md): Rootless mode
 - [`./docs/stargz.md`](./docs/stargz.md):     Lazy-pulling using Stargz Snapshotter
