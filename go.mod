@@ -3,6 +3,7 @@ module github.com/AkihiroSuda/nerdctl
 go 1.15
 
 require (
+	github.com/Microsoft/hcsshim v0.8.14
 	github.com/containerd/cgroups v0.0.0-20200824123100-0b889c03f102
 	github.com/containerd/console v1.0.1
 	github.com/containerd/containerd v1.4.1-0.20201229174909-9067796ce4c8
@@ -20,6 +21,7 @@ require (
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/lib/pq v1.9.0 // indirect
 	github.com/mattn/go-isatty v0.0.12
+	github.com/moby/buildkit v0.8.1 // indirect
 	github.com/moby/sys/mount v0.2.0 // indirect
 	github.com/onsi/ginkgo v1.14.2 // indirect
 	github.com/onsi/gomega v1.10.4 // indirect
@@ -32,6 +34,8 @@ require (
 	github.com/spf13/viper v1.7.1 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/theupdateframework/notary v0.7.0 // indirect
+	github.com/tonistiigi/go-rosetta v0.0.0-20201102221648-9ba854641817 // indirect
+	github.com/urfave/cli v1.22.2
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a

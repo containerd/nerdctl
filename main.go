@@ -163,6 +163,8 @@ func newApp() *cli.App {
 		loginCommand,
 		// Logout
 		logoutCommand,
+		//stats
+		statsCommand,
 	}
 	return app
 }
