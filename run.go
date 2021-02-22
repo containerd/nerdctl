@@ -39,7 +39,6 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/namestore"
 	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -223,6 +222,8 @@ func runAction(clicontext *cli.Context) error {
 		return errors.New("image name needs to be specified")
 	}
 
+	ns := clicontext.String("namespace")
+
 	client, ctx, cancel, err := newClient(clicontext)
 	if err != nil {
 		return err
@@ -376,7 +377,7 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 		// the content of /etc/hosts is created in OCI Hook
-		etcHostsPath, err := hostsstore.EnsureHostsFile(dataStore, clicontext.String("namespace"), id)
+		etcHostsPath, err := hostsstore.AllocHostsFile(dataStore, ns, id)
 		if err != nil {
 			return err
 		}
@@ -446,7 +447,7 @@ func runAction(clicontext *cli.Context) error {
 	var containerNameStore namestore.NameStore
 	name := clicontext.String("name")
 	if name != "" {
-		containerNameStore, err = namestore.New(dataStore, clicontext.String("namespace"))
+		containerNameStore, err = namestore.New(dataStore, ns)
 		if err != nil {
 			return err
 		}
@@ -454,7 +455,7 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 	}
-	ilOpt, err := withInternalLabels(clicontext.String("namespace"), name, hostname, stateDir, clicontext.StringSlice("network"), ports)
+	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, clicontext.StringSlice("network"), ports)
 	if err != nil {
 		return err
 	}
@@ -475,7 +476,7 @@ func runAction(clicontext *cli.Context) error {
 			return errors.New("flag -d and --rm cannot be specified together")
 		}
 		defer func() {
-			if removeErr := removeContainer(clicontext, ctx, client, id, id, true, stateDir, containerNameStore); removeErr != nil {
+			if removeErr := removeContainer(clicontext, ctx, client, ns, id, id, true, dataStore, stateDir, containerNameStore); removeErr != nil {
 				logrus.WithError(removeErr).Warnf("failed to remove container %s", id)
 			}
 		}()
@@ -617,12 +618,6 @@ func generateRestartOpts(restartFlag, logURI string) ([]containerd.NewContainerO
 	case "", "no":
 		return nil, nil
 	case "always":
-		if rootlessutil.IsRootless() {
-			// $ systemctl --user kill -s KILL containerd
-			// $ nerdctl info
-			// FATA[0000] stat /run/user/1001/containerd-rootless/child_pid: no such file or directory
-			logrus.Warn("FIXME: --restart=always is broken on rootless")
-		}
 		opts := []containerd.NewContainerOpts{restart.WithStatus(containerd.Running)}
 		if logURI != "" {
 			opts = append(opts, restart.WithLogURIString(logURI))

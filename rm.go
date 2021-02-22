@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/AkihiroSuda/nerdctl/pkg/namestore"
@@ -65,7 +66,8 @@ func rmAction(clicontext *cli.Context) error {
 
 	force := clicontext.Bool("force")
 
-	containerNameStore, err := namestore.New(dataStore, clicontext.String("namespace"))
+	ns := clicontext.String("namespace")
+	containerNameStore, err := namestore.New(dataStore, ns)
 	if err != nil {
 		return err
 	}
@@ -77,7 +79,7 @@ func rmAction(clicontext *cli.Context) error {
 			if err != nil {
 				return err
 			}
-			err = removeContainer(clicontext, ctx, client, found.Container.ID(), found.Req, force, stateDir, containerNameStore)
+			err = removeContainer(clicontext, ctx, client, ns, found.Container.ID(), found.Req, force, dataStore, stateDir, containerNameStore)
 			return err
 		},
 	}
@@ -93,7 +95,8 @@ func rmAction(clicontext *cli.Context) error {
 }
 
 // removeContainer returns nil when the container cannot be found
-func removeContainer(clicontext *cli.Context, ctx context.Context, client *containerd.Client, id, req string, force bool, stateDir string, namst namestore.NameStore) (retErr error) {
+// FIXME: refactoring
+func removeContainer(clicontext *cli.Context, ctx context.Context, client *containerd.Client, ns, id, req string, force bool, dataStore, stateDir string, namst namestore.NameStore) (retErr error) {
 	var name string
 	defer func() {
 		if errdefs.IsNotFound(retErr) {
@@ -110,6 +113,11 @@ func removeContainer(clicontext *cli.Context, ctx context.Context, client *conta
 			}
 		} else {
 			logrus.WithError(retErr).Warnf("failed to remove container %q", id)
+		}
+		if retErr == nil {
+			retErr = hostsstore.DeallocHostsFile(dataStore, ns, id)
+		} else {
+			logrus.WithError(retErr).Warnf("failed to release name store for container %q", id)
 		}
 	}()
 	container, err := client.LoadContainer(ctx, id)

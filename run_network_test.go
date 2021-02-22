@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/testutil"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/pkg/errors"
 	"gotest.tools/v3/assert"
 )
@@ -165,6 +166,9 @@ func httpGet(urlStr string, attempts int) (*http.Response, error) {
 		resp *http.Response
 		err  error
 	)
+	if attempts < 1 {
+		return nil, errdefs.ErrInvalidArgument
+	}
 	for i := 0; i < attempts; i++ {
 		resp, err = http.Get(urlStr)
 		if err == nil {

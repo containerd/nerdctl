@@ -31,7 +31,7 @@ jobs:
     - name: "Prepare test environment"
       run: DOCKER_BUILDKIT=1 docker build -t test --target test .
     - name: "Test"
-      run: docker run -t --rm --privileged test
+      run: docker run -t --rm --privileged test go test -v -test.kill-daemon ./...
 
   cross:
     runs-on: ubuntu-20.04
@@ -57,7 +57,7 @@ jobs:
       with:
         fetch-depth: 1
     - name: "Ensure that the test suite is compatible with Docker"
-      run: go test -v -exec sudo -test.target=docker .
+      run: go test -v -exec sudo -test.target=docker -test.kill-daemon .
 
   test-cgroup2:
     name: "Cgroup2 + rootless"
@@ -83,6 +83,6 @@ jobs:
     - name: "Install rootless containerd"
       run: ssh default -- containerd-rootless-setuptool.sh install
     - name: "Run tests (rootless)"
-      run: ssh default -- "CONTAINERD_SNAPSHOTTER=native /vagrant/nerdctl.test -test.v"
+      run: ssh default -- "CONTAINERD_SNAPSHOTTER=native /vagrant/nerdctl.test -test.v -test.kill-daemon"
     - name: "Uninstall rootless containerd"
       run: ssh default -- containerd-rootless-setuptool.sh uninstall
