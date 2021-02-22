@@ -8,7 +8,7 @@ ARG CNI_ISOLATION_VERSION=0.0.3
 ARG BUILDKIT_VERSION=0.8.1
 ARG GO_VERSION=1.15.8
 
-FROM ubuntu:${UBUNTU_VERSION} AS base
+FROM mirror.gcr.io/library/ubuntu:${UBUNTU_VERSION} AS base
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
   apt-get install -qq -y --no-install-recommends \
