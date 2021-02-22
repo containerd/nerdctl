@@ -22,6 +22,7 @@ require (
 	github.com/docker/docker v20.10.10+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0
+	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/fatih/color v1.13.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/mattn/go-isatty v0.0.14
