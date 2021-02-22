@@ -133,9 +133,9 @@ func NewBase(t *testing.T) *Base {
 	return base
 }
 
-// TODO: avoid using Docker Hub
+// use GCR mirror to avoid hitting Docker Hub rate limit
 const (
-	AlpineImage                 = "alpine"
-	NginxAlpineImage            = "nginx:1.19.6-alpine"
+	AlpineImage                 = "mirror.gcr.io/library/alpine:3.13"
+	NginxAlpineImage            = "mirror.gcr.io/library/nginx:1.19.6-alpine"
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
 )
