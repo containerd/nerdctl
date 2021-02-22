@@ -28,7 +28,6 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/namespaces"
-	gocni "github.com/containerd/go-cni"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -90,7 +89,7 @@ func newApp() *cli.App {
 			Usage: "Set the cni-plugins binary directory",
 			// CNI_PATH is from https://www.cni.dev/docs/cnitool/
 			EnvVars: []string{"CNI_PATH"},
-			Value:   gocni.DefaultCNIDir,
+			Value:   ncdefaults.CNIPath(),
 		},
 		&cli.StringFlag{
 			Name:  "cni-netconfpath",

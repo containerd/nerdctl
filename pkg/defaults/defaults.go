@@ -19,6 +19,7 @@ package defaults
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
@@ -36,6 +37,31 @@ func DataRoot() string {
 		panic(err)
 	}
 	return filepath.Join(xdh, "nerdctl")
+}
+
+func CNIPath() string {
+	candidates := []string{
+		"/usr/local/libexec/cni",
+		"/usr/libexec/cni", // Fedora
+	}
+	if rootlessutil.IsRootless() {
+		home := os.Getenv("HOME")
+		if home == "" {
+			panic("environment variable HOME is not set")
+		}
+		candidates = append([]string{
+			filepath.Join(home, "opt/cni/bin"),
+		}, candidates...)
+	}
+
+	for _, f := range candidates {
+		if _, err := os.Stat(f); err == nil {
+			return f
+		}
+	}
+
+	// default: /opt/cni/bin
+	return gocni.DefaultCNIDir
 }
 
 func CNINetConfPath() string {
