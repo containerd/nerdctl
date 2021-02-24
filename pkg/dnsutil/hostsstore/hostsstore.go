@@ -64,9 +64,9 @@ func ensureFile(path string) error {
 	return err
 }
 
-// EnsureHostsFile is used for creating mount-bindable /etc/hosts file.
+// AllocHostsFile is used for creating mount-bindable /etc/hosts file.
 // The file is initialized with no content.
-func EnsureHostsFile(dataStore, ns, id string) (string, error) {
+func AllocHostsFile(dataStore, ns, id string) (string, error) {
 	lockDir := filepath.Join(dataStore, hostsDirBasename)
 	if err := os.MkdirAll(lockDir, 0700); err != nil {
 		return "", err
@@ -77,6 +77,18 @@ func EnsureHostsFile(dataStore, ns, id string) (string, error) {
 	}
 	err := lockutil.WithDirLock(lockDir, fn)
 	return path, err
+}
+
+func DeallocHostsFile(dataStore, ns, id string) error {
+	lockDir := filepath.Join(dataStore, hostsDirBasename)
+	if err := os.MkdirAll(lockDir, 0700); err != nil {
+		return err
+	}
+	dirToBeRemoved := filepath.Dir(HostsPath(dataStore, ns, id))
+	fn := func() error {
+		return os.RemoveAll(dirToBeRemoved)
+	}
+	return lockutil.WithDirLock(lockDir, fn)
 }
 
 func NewStore(dataStore string) (Store, error) {
@@ -128,11 +140,15 @@ func (x *store) Acquire(meta Meta) error {
 
 func (x *store) Release(ns, id string) error {
 	fn := func() error {
-		d := filepath.Join(x.hostsD, ns, id)
-		if _, err := os.Stat(d); errors.Is(err, os.ErrNotExist) {
+		metaPath := filepath.Join(x.hostsD, ns, id, metaJSON)
+		if _, err := os.Stat(metaPath); errors.Is(err, os.ErrNotExist) {
 			return nil
 		}
-		if err := os.RemoveAll(d); err != nil {
+		// We remove "meta.json" but we still retain the "hosts" file
+		// because it is needed for restarting. The "hosts" is removed on
+		// `nerdctl rm`.
+		// https://github.com/rootless-containers/rootlesskit/issues/220#issuecomment-783224610
+		if err := os.RemoveAll(metaPath); err != nil {
 			return err
 		}
 		return newUpdater(x.hostsD).update()

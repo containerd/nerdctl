@@ -23,16 +23,19 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
+	"github.com/pkg/errors"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 )
 
 type Base struct {
-	T      testing.TB
-	Target Target
-	Binary string
-	Args   []string
+	T                testing.TB
+	Target           Target
+	DaemonIsKillable bool
+	Binary           string
+	Args             []string
 }
 
 func (b *Base) Cmd(args ...string) *Cmd {
@@ -44,6 +47,67 @@ func (b *Base) Cmd(args ...string) *Cmd {
 	return cmd
 }
 
+func (b *Base) systemctlTarget() string {
+	switch b.Target {
+	case Nerdctl:
+		return "containerd.service"
+	case Docker:
+		return "docker.service"
+	default:
+		b.T.Fatalf("unexpected target %q", b.Target)
+		return ""
+	}
+}
+
+func (b *Base) systemctlArgs() []string {
+	var systemctlArgs []string
+	if os.Geteuid() != 0 {
+		systemctlArgs = append(systemctlArgs, "--user")
+	}
+	return systemctlArgs
+}
+
+func (b *Base) KillDaemon() {
+	b.T.Helper()
+	if !b.DaemonIsKillable {
+		b.T.Skip("daemon is not killable (hint: set \"-test.kill-daemon\")")
+	}
+	target := b.systemctlTarget()
+	b.T.Logf("killing %q", target)
+	cmdKill := exec.Command("systemctl",
+		append(b.systemctlArgs(),
+			[]string{"kill", "-s", "KILL", target}...)...)
+	if out, err := cmdKill.CombinedOutput(); err != nil {
+		err = errors.Wrapf(err, "cannot kill %q: %q", target, string(out))
+		b.T.Fatal(err)
+	}
+	// the daemon should restart automatically
+}
+
+func (b *Base) EnsureDaemonActive() {
+	b.T.Helper()
+	target := b.systemctlTarget()
+	b.T.Logf("checking activity of %q", target)
+	systemctlArgs := b.systemctlArgs()
+	const (
+		maxRetry = 30
+		sleep    = 3 * time.Second
+	)
+	for i := 0; i < maxRetry; i++ {
+		cmd := exec.Command("systemctl",
+			append(systemctlArgs,
+				[]string{"is-active", target}...)...)
+		out, err := cmd.CombinedOutput()
+		b.T.Logf("(retry=%d) %s", i, string(out))
+		if err == nil {
+			b.T.Logf("daemon %q is now running", target)
+			return
+		}
+		time.Sleep(sleep)
+	}
+	b.T.Fatalf("daemon %q not running", target)
+}
+
 type Cmd struct {
 	icmd.Cmd
 	*Base
@@ -51,6 +115,7 @@ type Cmd struct {
 }
 
 func (c *Cmd) Run() *icmd.Result {
+	c.Base.T.Helper()
 	if c.Base.Target == Docker && c.DockerIncompatible {
 		c.Base.T.Skip("test is incompatible with Docker")
 	}
@@ -91,10 +156,14 @@ const (
 	Docker  = Target("docker")
 )
 
-var flagTestTarget Target
+var (
+	flagTestTarget     Target
+	flagTestKillDaemon bool
+)
 
 func M(m *testing.M) {
 	flag.StringVar(&flagTestTarget, "test.target", Nerdctl, "target to test")
+	flag.BoolVar(&flagTestKillDaemon, "test.kill-daemon", false, "enable tests that kill the daemon")
 	flag.Parse()
 	fmt.Printf("test target: %q\n", flagTestTarget)
 	os.Exit(m.Run())
@@ -107,12 +176,17 @@ func GetTarget() string {
 	return flagTestTarget
 }
 
+func GetDaemonIsKillable() bool {
+	return flagTestKillDaemon
+}
+
 const Namespace = "nerdctl-test"
 
 func NewBase(t *testing.T) *Base {
 	base := &Base{
-		T:      t,
-		Target: GetTarget(),
+		T:                t,
+		Target:           GetTarget(),
+		DaemonIsKillable: GetDaemonIsKillable(),
 	}
 	var err error
 	switch base.Target {
@@ -136,6 +210,6 @@ func NewBase(t *testing.T) *Base {
 // use GCR mirror to avoid hitting Docker Hub rate limit
 const (
 	AlpineImage                 = "mirror.gcr.io/library/alpine:3.13"
-	NginxAlpineImage            = "mirror.gcr.io/library/nginx:1.19.6-alpine"
+	NginxAlpineImage            = "mirror.gcr.io/library/nginx:1.19-alpine"
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
 )
