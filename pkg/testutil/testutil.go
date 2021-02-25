@@ -111,14 +111,10 @@ func (b *Base) EnsureDaemonActive() {
 type Cmd struct {
 	icmd.Cmd
 	*Base
-	DockerIncompatible bool
 }
 
 func (c *Cmd) Run() *icmd.Result {
 	c.Base.T.Helper()
-	if c.Base.Target == Docker && c.DockerIncompatible {
-		c.Base.T.Skip("test is incompatible with Docker")
-	}
 	return icmd.RunCmd(c.Cmd)
 }
 
@@ -178,6 +174,12 @@ func GetTarget() string {
 
 func GetDaemonIsKillable() bool {
 	return flagTestKillDaemon
+}
+
+func DockerIncompatible(t testing.TB) {
+	if GetTarget() == Docker {
+		t.Skip("test is incompatible with Docker")
+	}
 }
 
 const Namespace = "nerdctl-test"
