@@ -18,6 +18,7 @@
 package dockerconfigresolver
 
 import (
+	"net"
 	"net/url"
 
 	"github.com/containerd/containerd/remotes"
@@ -78,7 +79,11 @@ func New(refHostname string) (remotes.Resolver, error) {
 					if err != nil {
 						return nil, errors.Wrapf(err, "failed to parse ac.ServerAddress %q", ac.ServerAddress)
 					}
-					if acsaHostname := acsaURL.Hostname(); acsaHostname != authConfigHostname {
+					acsaHostname := acsaURL.Hostname()
+					if acsaPort := acsaURL.Port(); acsaPort != "" {
+						acsaHostname = net.JoinHostPort(acsaHostname, acsaPort)
+					}
+					if acsaHostname != authConfigHostname {
 						return nil, errors.Errorf("expected the hostname part of ac.ServerAddress (%q) to be authConfigHostname=%q, got %q",
 							ac.ServerAddress, authConfigHostname, acsaHostname)
 					}
