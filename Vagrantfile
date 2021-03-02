@@ -45,7 +45,7 @@ Vagrant.configure("2") do |config|
     chmod +x /usr/local/sbin/runc
 
     # Install RootlessKit
-    ROOTLESSKIT_VERSION=0.13.2
+    ROOTLESSKIT_VERSION=0.14.0-beta.0
     curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v${ROOTLESSKIT_VERSION}/rootlesskit-$(uname -m).tar.gz | tar Cxzv /usr/local/bin
 
     # Delegate cgroup v2 controllers
