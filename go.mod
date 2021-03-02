@@ -27,8 +27,8 @@ require (
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
 	github.com/pkg/errors v0.9.1
-	github.com/rootless-containers/rootlesskit v0.13.1
-	github.com/sirupsen/logrus v1.7.0
+	github.com/rootless-containers/rootlesskit v0.14.0-beta.0
+	github.com/sirupsen/logrus v1.8.0
 	github.com/spf13/cobra v1.1.1 // indirect
 	github.com/spf13/viper v1.7.1 // indirect
 	github.com/theupdateframework/notary v0.7.0 // indirect
