@@ -62,7 +62,10 @@ artifacts: clean
 	GOOS=linux GOARCH=arm GOARM=7 make -C $(CURDIR) binaries
 	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm-v7.tar.gz _output/nerdctl extras/rootless/*
 
-	rm -f _output/nerdctl
+	rm -f $(CURDIR)/_output/nerdctl
+
+	DOCKER_BUILDKIT=1 docker build --output type=tar,dest=$(CURDIR)/_output/nerdctl-full-$(VERSION_TRIMMED)-linux-amd64.tar --target out-full $(CURDIR)
+	gzip -9 $(CURDIR)/_output/nerdctl-full-$(VERSION_TRIMMED)-linux-amd64.tar
 
 .PHONY: \
 	help \

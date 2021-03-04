@@ -33,13 +33,11 @@ jobs:
       run: |
         tag="${GITHUB_REF##*/}"
         shasha=$(sha256sum _output/SHA256SUMS | awk '{print $1}')
-        cat << EOF | tee /tmp/release-note.txt
+        cat <<-EOF | tee /tmp/release-note.txt
         ${tag}
 
-        #### Changes
-        (To be documented)
-
-        #### About the binaries
+        $(hack/generate-release-note.sh)
+        - - -
         The binaries were built automatically on GitHub Actions.
         The build log is available for 90 days: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 

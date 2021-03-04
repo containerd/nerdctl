@@ -50,6 +50,8 @@ func CNIPath() string {
 			panic("environment variable HOME is not set")
 		}
 		candidates = append([]string{
+			// NOTE: These user paths are not defined in XDG
+			filepath.Join(home, ".local/libexec/cni"),
 			filepath.Join(home, "opt/cni/bin"),
 		}, candidates...)
 	}
