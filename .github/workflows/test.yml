@@ -24,12 +24,17 @@ jobs:
   test:
     runs-on: ubuntu-20.04
     timeout-minutes: 20
+    strategy:
+      matrix:
+        containerd: [1.4.3, 1.5.0-beta.2]
+    env:
+      CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
     - name: "Prepare test environment"
-      run: DOCKER_BUILDKIT=1 docker build -t test --target test .
+      run: DOCKER_BUILDKIT=1 docker build -t test --target test --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
     - name: "Test"
       run: docker run -t --rm --privileged test go test -v -test.kill-daemon ./...
 
@@ -39,7 +44,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: 1.15.x
+        go-version: 1.16.x
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
@@ -52,7 +57,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: 1.15.x
+        go-version: 1.16.x
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
@@ -67,7 +72,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: 1.15.x
+        go-version: 1.16.x
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1

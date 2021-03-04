@@ -31,12 +31,15 @@ import (
 )
 
 func TestBuild(t *testing.T) {
-	buildkitHost := defaults.BuildKitHost()
-	t.Logf("buildkitHost=%q", buildkitHost)
-	if err := buildkitutil.PingBKDaemon(buildkitHost); err != nil {
-		t.Skipf("test requires buildkitd: %+v", err)
-	}
 	base := testutil.NewBase(t)
+	if base.Target == testutil.Nerdctl {
+		buildkitHost := defaults.BuildKitHost()
+		t.Logf("buildkitHost=%q", buildkitHost)
+		if err := buildkitutil.PingBKDaemon(buildkitHost); err != nil {
+			t.Skipf("test requires buildkitd: %+v", err)
+		}
+	}
+
 	const imageName = "nerdctl-build-test"
 	defer base.Cmd("rmi", imageName).Run()
 
