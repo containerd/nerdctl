@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
-	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/pkg/cap"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -224,7 +224,11 @@ func generateExecProcessSpec(ctx context.Context, clicontext *cli.Context, conta
 		if pspec.Capabilities == nil {
 			pspec.Capabilities = &specs.LinuxCapabilities{}
 		}
-		pspec.Capabilities.Bounding = oci.GetAllCapabilities()
+		allCaps, err := cap.Current()
+		if err != nil {
+			return nil, err
+		}
+		pspec.Capabilities.Bounding = allCaps
 		pspec.Capabilities.Permitted = pspec.Capabilities.Bounding
 		pspec.Capabilities.Inheritable = pspec.Capabilities.Bounding
 		pspec.Capabilities.Effective = pspec.Capabilities.Bounding

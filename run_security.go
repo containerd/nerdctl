@@ -96,7 +96,7 @@ func generateCapOpts(capAdd, capDrop []string) ([]oci.SpecOpts, error) {
 	}
 
 	if InStringSlice(capAdd, "ALL") {
-		opts = append(opts, oci.WithAllCapabilities)
+		opts = append(opts, oci.WithAllCurrentCapabilities)
 	} else {
 		var capsAdd []string
 		for _, c := range capAdd {

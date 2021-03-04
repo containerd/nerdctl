@@ -23,13 +23,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/containerd/containerd/images/converter"
+	"github.com/containerd/containerd/images/converter/uncompress"
 	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
-	"github.com/containerd/stargz-snapshotter/converter/optimizer/recorder"
 	"github.com/containerd/stargz-snapshotter/estargz"
-	"github.com/containerd/stargz-snapshotter/nativeconverter"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
-	"github.com/containerd/stargz-snapshotter/nativeconverter/uncompress"
+	"github.com/containerd/stargz-snapshotter/recorder"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -90,7 +90,7 @@ When '--all-platforms' is given all images in a manifest list must be available.
 	},
 	Action: func(context *cli.Context) error {
 		var (
-			convertOpts = []nativeconverter.ConvertOpt{}
+			convertOpts = []converter.Opt{}
 		)
 		srcRawRef := context.Args().Get(0)
 		targetRawRef := context.Args().Get(1)
@@ -120,9 +120,9 @@ When '--all-platforms' is given all images in a manifest list must be available.
 					}
 					all = append(all, p)
 				}
-				convertOpts = append(convertOpts, nativeconverter.WithPlatform(platforms.Ordered(all...)))
+				convertOpts = append(convertOpts, converter.WithPlatform(platforms.Ordered(all...)))
 			} else {
-				convertOpts = append(convertOpts, nativeconverter.WithPlatform(platforms.Default()))
+				convertOpts = append(convertOpts, converter.WithPlatform(platforms.DefaultStrict()))
 			}
 		}
 
@@ -131,7 +131,7 @@ When '--all-platforms' is given all images in a manifest list must be available.
 			if err != nil {
 				return err
 			}
-			convertOpts = append(convertOpts, nativeconverter.WithLayerConvertFunc(estargzconvert.LayerConvertFunc(esgzOpts...)))
+			convertOpts = append(convertOpts, converter.WithLayerConvertFunc(estargzconvert.LayerConvertFunc(esgzOpts...)))
 			if !context.Bool("oci") {
 				logrus.Warn("option --estargz should be used in conjunction with --oci")
 			}
@@ -141,11 +141,11 @@ When '--all-platforms' is given all images in a manifest list must be available.
 		}
 
 		if context.Bool("uncompress") {
-			convertOpts = append(convertOpts, nativeconverter.WithLayerConvertFunc(uncompress.LayerConvertFunc))
+			convertOpts = append(convertOpts, converter.WithLayerConvertFunc(uncompress.LayerConvertFunc))
 		}
 
 		if context.Bool("oci") {
-			convertOpts = append(convertOpts, nativeconverter.WithDockerToOCI(true))
+			convertOpts = append(convertOpts, converter.WithDockerToOCI(true))
 		}
 
 		client, ctx, cancel, err := newClient(context)
@@ -154,11 +154,8 @@ When '--all-platforms' is given all images in a manifest list must be available.
 		}
 		defer cancel()
 
-		conv, err := nativeconverter.New(client)
-		if err != nil {
-			return err
-		}
-		newImg, err := conv.Convert(ctx, targetRef, srcRef, convertOpts...)
+		// converter.Convert() gains the lease by itself
+		newImg, err := converter.Convert(ctx, client, targetRef, srcRef, convertOpts...)
 		if err != nil {
 			return err
 		}
