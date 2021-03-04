@@ -19,6 +19,7 @@ require (
 	github.com/fvbommel/sortorder v1.0.2 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/google/go-cmp v0.5.4 // indirect
+	github.com/jaguilar/vt100 v0.0.0-20201024211400-81de19cb81a4 // indirect
 	github.com/lib/pq v1.9.0 // indirect
 	github.com/mattn/go-isatty v0.0.12
 	github.com/moby/buildkit v0.8.1 // indirect
@@ -44,6 +45,15 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gotest.tools/v3 v3.0.2
+)
+
+replace (
+	// protobuf: corresponds to containerd
+	github.com/golang/protobuf => github.com/golang/protobuf v1.3.5
+	github.com/hashicorp/go-immutable-radix => github.com/tonistiigi/go-immutable-radix v0.0.0-20170803185627-826af9ccf0fe
+	github.com/jaguilar/vt100 => github.com/tonistiigi/vt100 v0.0.0-20190402012908-ad4c4a574305
+	// genproto: corresponds to containerd
+	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
 )
 
 // estargz: needs this replace because stargz-snapshotter git repo has two go.mod modules.
