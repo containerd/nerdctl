@@ -24,7 +24,8 @@ VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always --tags)
 VERSION_TRIMMED := $(VERSION:v%=%)
 REVISION=$(shell git rev-parse HEAD)$(shell if ! git diff --no-ext-diff --quiet --exit-code; then echo .m; fi)
 
-export GO_BUILD=GO111MODULE=on CGO_ENABLED=0 $(GO) build -ldflags "-s -w -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
+GO_BUILD_FLAGS=-ldflags "-s -w -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
+GO:=GO111MODULE=on CGO_ENABLED=0 $(GO)
 
 all: binaries
 
@@ -36,7 +37,10 @@ help:
 	@echo " * 'clean' - Clean artifacts."
 
 nerdctl:
-	$(GO_BUILD) -o $(CURDIR)/_output/nerdctl $(PACKAGE)
+	$(GO) build $(GO_BUILD_FLAGS) -o $(CURDIR)/_output/nerdctl $(PACKAGE)/cmd/nerdctl
+
+nerdctl.test:
+	$(GO) test $(GO_BUILD_FLAGS) -c -o $(CURDIR)/_output/nerdctl.test $(PACKAGE)/cmd/nerdctl
 
 clean:
 	find . -name \*~ -delete
@@ -70,6 +74,7 @@ artifacts: clean
 .PHONY: \
 	help \
 	nerdctl \
+	nerdctl.test \
 	clean \
 	binaries \
 	install \

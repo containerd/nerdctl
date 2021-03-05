@@ -20,8 +20,8 @@ Vagrant.configure("2") do |config|
       echo "Run 'GOOS=linux make' before running 'vagrant up'"
       exit 1
     fi
-    if [ ! -x /vagrant/nerdctl.test ]; then
-      echo "Run 'GOOS=linux go test -c' before running 'vagrant up'"
+    if [ ! -x /vagrant/_output/nerdctl.test ]; then
+      echo "Run 'GOOS=linux make nerdctl.test' before running 'vagrant up'"
       exit 1
     fi
 

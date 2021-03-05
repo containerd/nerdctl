@@ -164,11 +164,11 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 
 Run `make && sudo make install`.
 
-Using `go get github.com/AkihiroSuda/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
+Using `go install github.com/AkihiroSuda/nerdctl/cmd/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
 
 ### Test suite
 #### Running test suite against nerdctl
-Run `go test -exec sudo -v ./...` after `make && sudo make install`.
+Run `go test -exec sudo -v github.com/AkihiroSuda/nerdctl/cmd/nerdctl` after `make && sudo make install`.
 
 For testing rootless mode, `-exec sudo` is not needed.
 
@@ -178,7 +178,7 @@ docker build -t test --target test .
 docker run -t --rm --privileged test
 ```
 #### Running test suite against Docker
-Run `go test -exec sudo -test.target=docker .` to ensure that the test suite is compatible with Docker.
+Run `go test -exec sudo -test.target=docker github.com/AkihiroSuda/nerdctl/cmd/nerdctl` to ensure that the test suite is compatible with Docker.
 
 ### Contributing to nerdctl
 

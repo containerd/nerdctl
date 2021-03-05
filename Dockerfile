@@ -102,6 +102,6 @@ ENV PATH=/usr/local/go/bin:$PATH
 COPY . /go/src/github.com/AkihiroSuda/nerdctl
 WORKDIR /go/src/github.com/AkihiroSuda/nerdctl
 ENV CGO_ENABLED=0
-CMD ["go", "test", "-v", "./..."]
+CMD ["go", "test", "-v", "github.com/AkihiroSuda/nerdctl/..."]
 
 FROM base AS demo
