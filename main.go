@@ -174,3 +174,9 @@ func newApp() *cli.App {
 	}
 	return app
 }
+
+type Category = string
+
+const (
+	CategoryManagement = Category("Management")
+)
