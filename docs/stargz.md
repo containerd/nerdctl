@@ -1,6 +1,10 @@
 # Lazy-pulling using Stargz Snapshotter
 
-See https://github.com/containerd/stargz-snapshotter to learn what are lazy-pulling and stargz.
+Lazy-pulling is a technique to running containers before completion of pulling the images.
+
+See https://github.com/containerd/stargz-snapshotter to learn further information.
+
+[![asciicast](https://asciinema.org/a/378377.svg)](https://asciinema.org/a/378377)
 
 ## Enable lazy-pulling for `nerdctl run`
 - Install Stargz plugin (`containerd-stargz-grpc`) from https://github.com/containerd/stargz-snapshotter 

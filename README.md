@@ -1,76 +1,12 @@
+[**Download**](https://github.com/AkihiroSuda/nerdctl/releases)
+
 # nerdctl: Docker-compatible CLI for containerd
 
 `nerdctl` is a Docker-compatible CLI for [contai**nerd**](https://containerd.io).
 
-[![asciicast](https://asciinema.org/a/378377.svg)](https://asciinema.org/a/378377)
-
-
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-
-  - [Examples](#examples)
-    - [Basic usage](#basic-usage)
-    - [Debugging Kubernetes](#debugging-kubernetes)
-    - [Rootless mode](#rootless-mode)
-  - [Install](#install)
-  - [Motivation](#motivation)
-  - [Features present in `nerdctl` but not present in Docker](#features-present-in-nerdctl-but-not-present-in-docker)
-  - [Similar tools](#similar-tools)
-  - [Developer guide](#developer-guide)
-    - [Compiling nerdctl from source](#compiling-nerdctl-from-source)
-    - [Test suite](#test-suite)
-      - [Running test suite against nerdctl](#running-test-suite-against-nerdctl)
-      - [Running test suite against Docker](#running-test-suite-against-docker)
-    - [Contributing to nerdctl](#contributing-to-nerdctl)
-- [Command reference](#command-reference)
-  - [Run & Exec](#run--exec)
-    - [:whale: nerdctl run](#whale-nerdctl-run)
-    - [:whale: nerdctl exec](#whale-nerdctl-exec)
-  - [Container management](#container-management)
-    - [:whale: nerdctl ps](#whale-nerdctl-ps)
-    - [:whale: nerdctl inspect](#whale-nerdctl-inspect)
-    - [:whale: nerdctl logs](#whale-nerdctl-logs)
-    - [:whale: nerdctl port](#whale-nerdctl-port)
-    - [:whale: nerdctl rm](#whale-nerdctl-rm)
-    - [:whale: nerdctl stop](#whale-nerdctl-stop)
-    - [:whale: nerdctl kill](#whale-nerdctl-kill)
-    - [:whale: nerdctl pause](#whale-nerdctl-pause)
-    - [:whale: nerdctl unpause](#whale-nerdctl-unpause)
-  - [Build](#build)
-    - [:whale: nerdctl build](#whale-nerdctl-build)
-    - [:whale: nerdctl commit](#whale-nerdctl-commit)
-  - [Image management](#image-management)
-    - [:whale: nerdctl images](#whale-nerdctl-images)
-    - [:whale: nerdctl pull](#whale-nerdctl-pull)
-    - [:whale: nerdctl push](#whale-nerdctl-push)
-    - [:whale: nerdctl load](#whale-nerdctl-load)
-    - [:whale: nerdctl save](#whale-nerdctl-save)
-    - [:whale: nerdctl tag](#whale-nerdctl-tag)
-    - [:whale: nerdctl rmi](#whale-nerdctl-rmi)
-    - [:nerd_face: nerdctl image convert](#nerd_face-nerdctl-image-convert)
-  - [Registry](#registry)
-    - [:whale: nerdctl login](#whale-nerdctl-login)
-    - [:whale: nerdctl logout](#whale-nerdctl-logout)
-  - [Network management](#network-management)
-    - [:whale: nerdctl network create](#whale-nerdctl-network-create)
-    - [:whale: nerdctl network ls](#whale-nerdctl-network-ls)
-    - [:whale: nerdctl network inspect](#whale-nerdctl-network-inspect)
-    - [:whale: nerdctl network rm](#whale-nerdctl-network-rm)
-  - [Volume management](#volume-management)
-    - [:whale: nerdctl volume create](#whale-nerdctl-volume-create)
-    - [:whale: nerdctl volume ls](#whale-nerdctl-volume-ls)
-    - [:whale: nerdctl volume inspect](#whale-nerdctl-volume-inspect)
-    - [:whale: nerdctl volume rm](#whale-nerdctl-volume-rm)
-  - [System](#system)
-    - [:whale: nerdctl events](#whale-nerdctl-events)
-    - [:whale: nerdctl info](#whale-nerdctl-info)
-    - [:whale: nerdctl version](#whale-nerdctl-version)
-  - [Global flags](#global-flags)
-  - [Unimplemented Docker commands](#unimplemented-docker-commands)
-- [Additional documents](#additional-documents)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+- ✅ Same UI/UX as `docker`
+- ✅ Supports [rootless mode](./docs/rootless.md)
+- ✅ Supports [lazy-pulling (Stargz)](./docs/stargz.md)
 
 ## Examples
 
@@ -118,6 +54,8 @@ In addition to containerd, the following components should be installed (optiona
 - [RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns): for [Rootless mode](./docs/rootless.md)
    - RootlessKit needs to be v0.10.0 or later. v0.13.2 or later is recommended.
    - slirp4netns needs toe be v0.4.0 or later. v1.1.7 or later is recommended.
+
+These dependencies are included in `nerdctl-full-<VERSION>-<OS>-<ARCH>.tar.gz`, but not included in `nerdctl-<VERSION>-<OS>-<ARCH>.tar.gz`.
 
 To run nerdctl inside Docker:
 ```bash
@@ -196,6 +134,60 @@ Please certify your [Developer Certificate of Origin (DCO)](https://developercer
 
 Unlisted `docker` CLI flags are unimplemented yet in `nerdctl` CLI.
 It does not necessarily mean that the corresponding features are missing in containerd.
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+  - [Run & Exec](#run--exec)
+    - [:whale: nerdctl run](#whale-nerdctl-run)
+    - [:whale: nerdctl exec](#whale-nerdctl-exec)
+  - [Container management](#container-management)
+    - [:whale: nerdctl ps](#whale-nerdctl-ps)
+    - [:whale: nerdctl inspect](#whale-nerdctl-inspect)
+    - [:whale: nerdctl logs](#whale-nerdctl-logs)
+    - [:whale: nerdctl port](#whale-nerdctl-port)
+    - [:whale: nerdctl rm](#whale-nerdctl-rm)
+    - [:whale: nerdctl stop](#whale-nerdctl-stop)
+    - [:whale: nerdctl kill](#whale-nerdctl-kill)
+    - [:whale: nerdctl pause](#whale-nerdctl-pause)
+    - [:whale: nerdctl unpause](#whale-nerdctl-unpause)
+  - [Build](#build)
+    - [:whale: nerdctl build](#whale-nerdctl-build)
+    - [:whale: nerdctl commit](#whale-nerdctl-commit)
+  - [Image management](#image-management)
+    - [:whale: nerdctl images](#whale-nerdctl-images)
+    - [:whale: nerdctl pull](#whale-nerdctl-pull)
+    - [:whale: nerdctl push](#whale-nerdctl-push)
+    - [:whale: nerdctl load](#whale-nerdctl-load)
+    - [:whale: nerdctl save](#whale-nerdctl-save)
+    - [:whale: nerdctl tag](#whale-nerdctl-tag)
+    - [:whale: nerdctl rmi](#whale-nerdctl-rmi)
+    - [:nerd_face: nerdctl image convert](#nerd_face-nerdctl-image-convert)
+  - [Registry](#registry)
+    - [:whale: nerdctl login](#whale-nerdctl-login)
+    - [:whale: nerdctl logout](#whale-nerdctl-logout)
+  - [Network management](#network-management)
+    - [:whale: nerdctl network create](#whale-nerdctl-network-create)
+    - [:whale: nerdctl network ls](#whale-nerdctl-network-ls)
+    - [:whale: nerdctl network inspect](#whale-nerdctl-network-inspect)
+    - [:whale: nerdctl network rm](#whale-nerdctl-network-rm)
+  - [Volume management](#volume-management)
+    - [:whale: nerdctl volume create](#whale-nerdctl-volume-create)
+    - [:whale: nerdctl volume ls](#whale-nerdctl-volume-ls)
+    - [:whale: nerdctl volume inspect](#whale-nerdctl-volume-inspect)
+    - [:whale: nerdctl volume rm](#whale-nerdctl-volume-rm)
+  - [System](#system)
+    - [:whale: nerdctl events](#whale-nerdctl-events)
+    - [:whale: nerdctl info](#whale-nerdctl-info)
+    - [:whale: nerdctl version](#whale-nerdctl-version)
+  - [Global flags](#global-flags)
+  - [Unimplemented Docker commands](#unimplemented-docker-commands)
+- [Additional documents](#additional-documents)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+
  
 ## Run & Exec
 ### :whale: nerdctl run
