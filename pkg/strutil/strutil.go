@@ -15,7 +15,7 @@
    limitations under the License.
 */
 
-package main
+package strutil
 
 import (
 	"strings"

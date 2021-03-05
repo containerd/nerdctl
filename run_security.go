@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
+	"github.com/AkihiroSuda/nerdctl/pkg/strutil"
 	"github.com/containerd/containerd/contrib/apparmor"
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
@@ -91,11 +92,11 @@ func generateCapOpts(capAdd, capDrop []string) ([]oci.SpecOpts, error) {
 	}
 
 	var opts []oci.SpecOpts
-	if InStringSlice(capDrop, "ALL") {
+	if strutil.InStringSlice(capDrop, "ALL") {
 		opts = append(opts, oci.WithCapabilities(nil))
 	}
 
-	if InStringSlice(capAdd, "ALL") {
+	if strutil.InStringSlice(capAdd, "ALL") {
 		opts = append(opts, oci.WithAllCurrentCapabilities)
 	} else {
 		var capsAdd []string
@@ -105,7 +106,7 @@ func generateCapOpts(capAdd, capDrop []string) ([]oci.SpecOpts, error) {
 		opts = append(opts, oci.WithCapabilities(capsAdd))
 	}
 
-	if !InStringSlice(capDrop, "ALL") {
+	if !strutil.InStringSlice(capDrop, "ALL") {
 		var capsDrop []string
 		for _, c := range capDrop {
 			capsDrop = append(capsDrop, "CAP_"+strings.ToUpper(c))
