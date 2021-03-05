@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
+	"github.com/AkihiroSuda/nerdctl/pkg/taskutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -135,8 +136,8 @@ func execActionWithContainer(ctx context.Context, clicontext *cli.Context, conta
 	var (
 		ioCreator cio.Creator
 		in        io.Reader
-		stdinC    = &stdinCloser{
-			stdin: os.Stdin,
+		stdinC    = &taskutil.StdinCloser{
+			Stdin: os.Stdin,
 		}
 	)
 
@@ -154,7 +155,7 @@ func execActionWithContainer(ctx context.Context, clicontext *cli.Context, conta
 	if err != nil {
 		return err
 	}
-	stdinC.closer = func() {
+	stdinC.Closer = func() {
 		process.CloseIO(ctx, containerd.WithStdinCloser)
 	}
 	// if detach, we should not call this defer

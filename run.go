@@ -39,6 +39,8 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/namestore"
 	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/strutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/taskutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -415,7 +417,7 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, uOpts...)
 	}
 
-	securityOptsMaps := ConvertKVStringsToMap(clicontext.StringSlice("security-opt"))
+	securityOptsMaps := strutil.ConvertKVStringsToMap(clicontext.StringSlice("security-opt"))
 	if secOpts, err := generateSecurityOpts(securityOptsMaps); err != nil {
 		return err
 	} else {
@@ -491,7 +493,7 @@ func runAction(clicontext *cli.Context) error {
 		}
 	}
 
-	task, err := newTask(ctx, client, container, flagI, flagT, flagD, con, logURI)
+	task, err := taskutil.NewTask(ctx, client, container, flagI, flagT, flagD, con, logURI)
 	if err != nil {
 		return err
 	}
@@ -646,7 +648,7 @@ func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts
 	if err != nil {
 		return nil, err
 	}
-	o := containerd.WithAdditionalContainerLabels(ConvertKVStringsToMap(labels))
+	o := containerd.WithAdditionalContainerLabels(strutil.ConvertKVStringsToMap(labels))
 	return []containerd.NewContainerOpts{o}, nil
 }
 
