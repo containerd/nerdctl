@@ -36,6 +36,8 @@ ARG TARGETARCH
 ARG CONTAINERD_VERSION
 RUN curl -L https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /out && \
   rm -f /out/bin/containerd-shim /out/bin/containerd-shim-runc-v1 && \
+  mkdir -p /out/lib/systemd/system && \
+  curl -L -o /out/lib/systemd/system/containerd.service https://raw.githubusercontent.com/containerd/containerd/v${CONTAINERD_VERSION}/containerd.service && \
   echo "- containerd: v${CONTAINERD_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG RUNC_VERSION
 RUN curl -L -o /out/bin/runc https://github.com/opencontainers/runc/releases/download/v${RUNC_VERSION}/runc.${TARGETARCH:-amd64} && \
@@ -52,8 +54,15 @@ ARG BUILDKIT_VERSION
 RUN curl -L https://github.com/moby/buildkit/releases/download/v${BUILDKIT_VERSION}/buildkit-v${BUILDKIT_VERSION}.linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /out && \
   rm -f /out/bin/buildkit-qemu-* /out/bin/buildkit-runc && \
   echo "- BuildKit: v${BUILDKIT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+# NOTE: github.com/moby/buildkit/examples/systemd is not included in BuildKit v0.8.x, will be included in v0.9.x
+RUN cd /out/lib/systemd/system && \
+  sedcomm='s@bin/containerd@bin/buildkitd@g; s@(Description|Documentation)=.*@@' && \
+  sed -E "${sedcomm}" containerd.service > buildkit.service && \
+  echo "" >> buildkit.service && \
+  echo "# This file was converted from containerd.service, with \`sed -E '${sedcomm}'\`" >> buildkit.service
 ARG STARGZ_SNAPSHOTTER_VERSION
 RUN curl -L https://github.com/containerd/stargz-snapshotter/releases/download/v${STARGZ_SNAPSHOTTER_VERSION}/stargz-snapshotter-v${STARGZ_SNAPSHOTTER_VERSION}-linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /out/bin && \
+  curl -L -o /out/lib/systemd/system/stargz-snapshotter.service https://raw.githubusercontent.com/containerd/stargz-snapshotter/v${STARGZ_SNAPSHOTTER_VERSION}/script/config/etc/systemd/system/stargz-snapshotter.service && \
   echo "- Stargz Snapshotter: v${STARGZ_SNAPSHOTTER_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG ROOTLESSKIT_VERSION
 RUN curl -L https://github.com/rootless-containers/rootlesskit/releases/download/v${ROOTLESSKIT_VERSION}/rootlesskit-$(uname -m).tar.gz | tar xzvC /out/bin && \
@@ -74,19 +83,23 @@ FROM scratch AS out-full
 COPY --from=build-full /out /
 
 FROM ubuntu:${UBUNTU_VERSION} AS base
+# fuse3 is required by stargz snapshotter
 RUN apt-get update && \
   apt-get install -qq -y --no-install-recommends \
   ca-certificates curl \
   iproute2 iptables \
-  dbus systemd systemd-sysv
+  dbus systemd systemd-sysv \
+  fuse3
 ARG CONTAINERIZED_SYSTEMD_VERSION
 RUN curl -L -o /docker-entrypoint.sh https://raw.githubusercontent.com/AkihiroSuda/containerized-systemd/v${CONTAINERIZED_SYSTEMD_VERSION}/docker-entrypoint.sh && \
   chmod +x /docker-entrypoint.sh
 COPY --from=out-full / /usr/local/
-COPY Dockerfile.d/*.service /etc/systemd/system
-RUN systemctl enable containerd buildkitd
+RUN perl -pi -e 's/multi-user.target/docker-entrypoint.target/g' /usr/local/lib/systemd/system/*.service && \
+  systemctl enable containerd buildkit stargz-snapshotter
+COPY ./Dockerfile.d/etc_containerd_config.toml /etc/containerd/config.toml
 VOLUME /var/lib/containerd
 VOLUME /var/lib/buildkit
+VOLUME /var/lib/containerd-stargz-grpc
 VOLUME /var/lib/nerdctl
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["bash"]

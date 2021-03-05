@@ -7,3 +7,6 @@ build
 
 # vagrant
 /.vagrant
+
+# dockerfile itself
+Dockerfile
