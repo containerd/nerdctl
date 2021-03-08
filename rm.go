@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"syscall"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
@@ -167,9 +168,16 @@ func removeContainer(clicontext *cli.Context, ctx context.Context, client *conta
 			_, err := fmt.Fprintf(clicontext.App.Writer, "You cannot remove a %v container %v. Stop the container before attempting removal or force remove\n", status.Status, id)
 			return err
 		}
-		_, err := task.Delete(ctx, containerd.WithProcessKill)
+		if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
+			logrus.WithError(err).Warnf("failed to send SIGKILL")
+		}
+		es, err := task.Wait(ctx)
+		if err == nil {
+			<-es
+		}
+		_, err = task.Delete(ctx, containerd.WithProcessKill)
 		if err != nil && !errdefs.IsNotFound(err) {
-			return errors.Wrapf(err, "failed to delete task %v", id)
+			logrus.WithError(err).Warnf("failed to delete task %v", id)
 		}
 	}
 	var delOpts []containerd.DeleteOpts

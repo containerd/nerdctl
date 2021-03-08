@@ -128,4 +128,16 @@ WORKDIR /go/src/github.com/AkihiroSuda/nerdctl
 ENV CGO_ENABLED=0
 CMD ["go", "test", "-v", "./..."]
 
+FROM test AS test-rootless
+RUN apt-get update && \
+  apt-get install -qq -y \
+  dbus-user-session systemd-container uidmap
+RUN useradd -m -s /bin/bash rootless && \
+  mkdir -p /home/rootless/.local/share && \
+  chown -R rootless:rootless /home/rootless
+VOLUME /home/rootless/.local/share
+RUN go test -o /usr/local/bin/nerdctl.test -c .
+CMD ["machinectl", "shell", "rootless@", "/bin/sh", "-euxc", \
+  "containerd-rootless-setuptool.sh install && exec nerdctl.test -test.v -test.kill-daemon"]
+
 FROM base AS demo
