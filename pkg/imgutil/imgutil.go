@@ -27,6 +27,8 @@ import (
 	"github.com/containerd/containerd"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
+	"github.com/containerd/imgcrypt"
+	"github.com/containerd/imgcrypt/images/encryption"
 	"github.com/containerd/stargz-snapshotter/fs/source"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -133,6 +135,12 @@ func pullImage(ctx context.Context, client *containerd.Client, stdout io.Writer,
 			containerd.WithPullSnapshotter(snapshotter),
 		},
 	}
+
+	imgcryptPayload := imgcrypt.Payload{}
+	imgcryptUnpackOpt := encryption.WithUnpackConfigApplyOpts(encryption.WithDecryptedUnpack(&imgcryptPayload))
+	config.RemoteOpts = append(config.RemoteOpts,
+		containerd.WithUnpackOpts([]containerd.UnpackOpt{imgcryptUnpackOpt}))
+
 	sgz := isStargz(snapshotter)
 	if sgz {
 		// TODO: support "skip-content-verify"

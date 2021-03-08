@@ -11,6 +11,8 @@ ARG CNI_ISOLATION_VERSION=0.0.3
 ARG BUILDKIT_VERSION=0.8.2
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=0.4.1
+# Extra deps: Encryption
+ARG IMGCRYPT_VERSION=1.1.0
 # Extra deps: Rootless
 ARG ROOTLESSKIT_VERSION=0.14.0-beta.0
 ARG SLIRP4NETNS_VERSION=1.1.9
@@ -67,6 +69,11 @@ ARG STARGZ_SNAPSHOTTER_VERSION
 RUN curl -L https://github.com/containerd/stargz-snapshotter/releases/download/v${STARGZ_SNAPSHOTTER_VERSION}/stargz-snapshotter-v${STARGZ_SNAPSHOTTER_VERSION}-linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /out/bin && \
   curl -L -o /out/lib/systemd/system/stargz-snapshotter.service https://raw.githubusercontent.com/containerd/stargz-snapshotter/v${STARGZ_SNAPSHOTTER_VERSION}/script/config/etc/systemd/system/stargz-snapshotter.service && \
   echo "- Stargz Snapshotter: v${STARGZ_SNAPSHOTTER_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+ARG IMGCRYPT_VERSION
+RUN git clone https://github.com/containerd/imgcrypt.git /go/src/github.com/containerd/imgcrypt && \
+  cd /go/src/github.com/containerd/imgcrypt && \
+  CGO_ENABLED=0 make && DESTDIR=/out make install && \
+  echo "- imgcrypt: v${IMGCRYPT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG ROOTLESSKIT_VERSION
 RUN curl -L https://github.com/rootless-containers/rootlesskit/releases/download/v${ROOTLESSKIT_VERSION}/rootlesskit-$(uname -m).tar.gz | tar xzvC /out/bin && \
   rm -f /out/bin/rootlesskit-docker-proxy && \

@@ -7,6 +7,7 @@ require (
 	github.com/containerd/console v1.0.1
 	github.com/containerd/containerd v1.5.0-beta.2
 	github.com/containerd/go-cni v1.0.1
+	github.com/containerd/imgcrypt v1.1.0
 	github.com/containerd/stargz-snapshotter v0.4.1
 	github.com/containerd/stargz-snapshotter/estargz v0.4.1
 	github.com/containerd/typeurl v1.0.1
@@ -32,6 +33,6 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
-	gotest.tools/v3 v3.0.2
+	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
+	gotest.tools/v3 v3.0.3
 )
