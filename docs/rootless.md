@@ -37,6 +37,13 @@ Depending on your kernel version, you may need to enable FUSE-OverlayFS or set `
 (See below.)
 
 ## Add-ons
+### BuildKit
+To enable BuildKit, run the following command:
+
+```console
+$ containerd-rootless-setuptool.sh install-buildkit
+```
+
 ### FUSE-OverlayFS
 
 The `overlayfs` snapshotter only works on the following hosts:

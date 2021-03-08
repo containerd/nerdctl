@@ -138,6 +138,6 @@ RUN useradd -m -s /bin/bash rootless && \
 VOLUME /home/rootless/.local/share
 RUN go test -o /usr/local/bin/nerdctl.test -c .
 CMD ["machinectl", "shell", "rootless@", "/bin/sh", "-euxc", \
-  "containerd-rootless-setuptool.sh install && exec nerdctl.test -test.v -test.kill-daemon"]
+  "containerd-rootless-setuptool.sh install && containerd-rootless-setuptool.sh install-buildkit && exec nerdctl.test -test.v -test.kill-daemon"]
 
 FROM base AS demo

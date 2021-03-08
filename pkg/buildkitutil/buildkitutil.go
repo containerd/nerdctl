@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -34,7 +35,10 @@ func BuildctlBaseArgs(buildkitHost string) []string {
 }
 
 func PingBKDaemon(buildkitHost string) error {
-	const hint = "`buildctl` needs to be installed and `buildkitd` needs to be running, see https://github.com/moby/buildkit"
+	hint := "`buildctl` needs to be installed and `buildkitd` needs to be running, see https://github.com/moby/buildkit"
+	if rootlessutil.IsRootless() {
+		hint += " , and `containerd-rootless-setuptool.sh install-buildkit`"
+	}
 	buildctlBinary, err := BuildctlBinary()
 	if err != nil {
 		return errors.Wrap(err, hint)
