@@ -4,7 +4,7 @@ See https://rootlesscontaine.rs/getting-started/common/ for the prerequisites.
 
 ## Daemon (containerd)
 
-Use [`containerd-rootless-setuptool.sh`)(../extras/rootless) to set up rootless containerd.
+Use [`containerd-rootless-setuptool.sh`](../extras/rootless) to set up rootless containerd.
 
 ```console
 $ containerd-rootless-setuptool.sh install
@@ -33,8 +33,40 @@ Just execute `nerdctl`. No need to specify the socket address manually.
 $ nerdctl run -it --rm alpine
 ```
 
-Depending on your kernel version, you may need to set `export CONTAINERD_SNAPSHOTTER=native`.
-See https://rootlesscontaine.rs/how-it-works/overlayfs/ .
+Depending on your kernel version, you may need to enable FUSE-OverlayFS or set `export CONTAINERD_SNAPSHOTTER=native`.
+(See below.)
+
+## Add-ons
+### FUSE-OverlayFS
+
+The `overlayfs` snapshotter only works on the following hosts:
+- Any distro, with kernel >= 5.11
+- Ubuntu since 2015
+- Debian since 10
+
+For other hosts, [`fuse-overlayfs` snapshotter](https://github.com/AkihiroSuda/containerd-fuse-overlayfs) needs to be used instead.
+
+To enable `fuse-overlayfs` snapshotter, run the following command:
+```console
+$ containerd-rootless-setuptool.sh install-fuse-overlayfs
+```
+
+Then, add the following config to `~/.config/containerd/config.toml`:
+```toml
+[proxy_plugins]
+  [proxy_plugins."fuse-overlayfs"]
+      type = "snapshot"
+# NOTE: replace "1000" with your actual UID
+      address = "/run/user/1000/containerd-fuse-overlayfs.sock"
+```
+
+The snapshotter can be specified as `$CONTAINERD_SNAPSHOTTER`.
+```console
+$ export CONTAINERD_SNAPSHOTTER=fuse-overlayfs
+$ nerdctl run -it --rm alpine
+```
+
+If `fuse-overlayfs` does not work, try `export CONTAINERD_SNAPSHOTTER=native`.
 
 ## Troubleshooting
 
@@ -50,10 +82,9 @@ Alternatively, you may choose to use `crun` instead of `runc`:
 `nerdctl run --runtime=crun`
 
 #### OverlayFS
-You need to set `export CONTAINERD_SNAPSHOTTER=native` on Fedora 33 because Fedora 33 does not support rootless overlayfs.
-(FUSE-OverlayFS could be used instead, but you might need to recompile containerd, see https://github.com/AkihiroSuda/containerd-fuse-overlayfs)
+You need to use FUSE-OverlayFS (see above) instead of real overlayfs, because Fedora 33 does not support real overlayfs for rootless.
 
-Fedora 34 (kernel >= 5.11) will probably support rootless overlayfs.
+Fedora 34 (kernel >= 5.11) will probably support real overlayfs for rootless.
 
 #### SELinux
 If SELinux is enabled on your host, probably you need the following workaround to avoid `can't open lock file /run/xtables.lock:` error:

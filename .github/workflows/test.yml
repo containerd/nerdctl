@@ -91,8 +91,10 @@ jobs:
         vagrant up
         vagrant ssh-config >> ~/.ssh/config
     - name: "Install rootless containerd"
-      run: ssh default -- containerd-rootless-setuptool.sh install
+      run: |
+        ssh default -- containerd-rootless-setuptool.sh install
+        ssh default -- containerd-rootless-setuptool.sh install-fuse-overlayfs
     - name: "Run tests (rootless)"
-      run: ssh default -- "CONTAINERD_SNAPSHOTTER=native /vagrant/nerdctl.test -test.v -test.kill-daemon"
+      run: ssh default -- "CONTAINERD_SNAPSHOTTER=fuse-overlayfs /vagrant/nerdctl.test -test.v -test.kill-daemon"
     - name: "Uninstall rootless containerd"
       run: ssh default -- containerd-rootless-setuptool.sh uninstall
