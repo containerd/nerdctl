@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 
@@ -191,7 +192,25 @@ func getNetNSPath(state *specs.State) (string, error) {
 
 func getCNINamespaceOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 	if len(opts.ports) > 0 {
-		return []cni.NamespaceOpts{cni.WithCapabilityPortMap(opts.ports)}, nil
+		if !rootlessutil.IsRootlessChild() {
+			return []cni.NamespaceOpts{cni.WithCapabilityPortMap(opts.ports)}, nil
+		}
+		// For rootless, we need to modify the hostIP that is not bindable in the child namespace.
+		// https: //github.com/AkihiroSuda/nerdctl/issues/88
+		//
+		// We must NOT modify opts.ports here, because we use the unmodified opts.ports for
+		// interaction with RootlessKit API.
+		ports := make([]cni.PortMapping, len(opts.ports))
+		for i, p := range opts.ports {
+			if hostIP := net.ParseIP(p.HostIP); hostIP != nil {
+				// loopback address is always bindable in the child namespace, but other addresses are unlikely.
+				if !hostIP.IsLoopback() {
+					p.HostIP = "127.0.0.1"
+				}
+			}
+			ports[i] = p
+		}
+		return []cni.NamespaceOpts{cni.WithCapabilityPortMap(ports)}, nil
 	}
 	return nil, nil
 }

@@ -20,6 +20,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
@@ -143,22 +144,64 @@ func valuesOfMapStringString(m map[string]string) map[string]struct{} {
 }
 
 func TestRunPort(t *testing.T) {
-	const (
-		hostPort          = 8080
-		testContainerName = "nerdctl-test-nginx"
-	)
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainerName).Run()
-	base.Cmd("run", "-d",
-		"--name", testContainerName,
-		"-p", fmt.Sprintf("127.0.0.1:%d:80", hostPort),
-		testutil.NginxAlpineImage).AssertOK()
+	hostIP, err := getNonLoopbackIPv4()
+	assert.NilError(t, err)
+	type testCase struct {
+		listenIP  net.IP
+		connectIP net.IP
+		port      int
+		err       string
+	}
+	lo := net.ParseIP("127.0.0.1")
+	testCases := []testCase{
+		{
+			listenIP:  lo,
+			connectIP: lo,
+			port:      8080,
+		},
+		{
+			// for https://github.com/AkihiroSuda/nerdctl/issues/88
+			listenIP:  hostIP,
+			connectIP: hostIP,
+			port:      8080,
+		},
+		{
+			listenIP:  hostIP,
+			connectIP: lo,
+			port:      8080,
+			err:       "connection refused",
+		},
+		{
+			listenIP:  lo,
+			connectIP: hostIP,
+			port:      8080,
+			err:       "connection refused",
+		},
+	}
+	for i, tc := range testCases {
+		i := i
+		tc := tc
+		tcName := fmt.Sprintf("%+v", tc)
+		t.Run(tcName, func(t *testing.T) {
+			testContainerName := fmt.Sprintf("nerdctl-test-nginx-%d", i)
+			base := testutil.NewBase(t)
+			defer base.Cmd("rm", "-f", testContainerName).Run()
+			base.Cmd("run", "-d",
+				"--name", testContainerName,
+				"-p", fmt.Sprintf("%s:%d:80", tc.listenIP.String(), tc.port),
+				testutil.NginxAlpineImage).AssertOK()
 
-	resp, err := httpGet(fmt.Sprintf("http://127.0.0.1:%d", hostPort), 30)
-	assert.NilError(t, err)
-	respBody, err := ioutil.ReadAll(resp.Body)
-	assert.NilError(t, err)
-	assert.Assert(t, strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet))
+			resp, err := httpGet(fmt.Sprintf("http://%s:%d", tc.connectIP.String(), tc.port), 30)
+			if tc.err != "" {
+				assert.ErrorContains(t, err, tc.err)
+				return
+			}
+			assert.NilError(t, err)
+			respBody, err := ioutil.ReadAll(resp.Body)
+			assert.NilError(t, err)
+			assert.Assert(t, strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet))
+		})
+	}
 }
 
 func httpGet(urlStr string, attempts int) (*http.Response, error) {
