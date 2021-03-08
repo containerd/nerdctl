@@ -264,7 +264,7 @@ func runAction(clicontext *cli.Context) error {
 		oci.WithDefaultSpec(),
 		oci.WithDefaultUnixDevices,
 		oci.WithMounts([]specs.Mount{
-			{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro"}},
+			{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro", "nosuid", "noexec", "nodev"}},
 		}),
 	)
 

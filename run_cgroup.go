@@ -23,10 +23,23 @@ import (
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
 func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, error) {
+	if clicontext.String("cgroup-manager") == "none" {
+		if !rootlessutil.IsRootless() {
+			return nil, errors.New("cgroup-manager \"none\" is only supported for rootless")
+		}
+		if clicontext.Float64("cpus") > 0.0 || clicontext.String("memory") != "" ||
+			clicontext.Int("pids-limit") > 0 {
+			logrus.Warn("cgroup manager is set to \"none\", discarding resource limit requests. " +
+				"(Hint: enable cgroup v2 with systemd: https://rootlesscontaine.rs/getting-started/common/cgroup2/)")
+		}
+		return []oci.SpecOpts{oci.WithCgroup("")}, nil
+	}
+
 	var opts []oci.SpecOpts
 
 	if clicontext.String("cgroup-manager") == "systemd" {

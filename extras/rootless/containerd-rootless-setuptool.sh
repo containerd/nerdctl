@@ -102,19 +102,17 @@ init() {
 		exit 1
 	fi
 
-	# TODO: allow "cgroupless" mode when cgroup v2 is not enabled
 	INFO "Checking cgroup v2"
 	controllers="/sys/fs/cgroup/user.slice/user-${id}.slice/user@${id}.service/cgroup.controllers"
 	if [ ! -f "${controllers}" ]; then
-		ERROR "Needs cgroup v2, see https://rootlesscontaine.rs/getting-started/common/cgroup2/ "
-		exit 1
+		WARNING "Enabling cgroup v2 is highly recommended, see https://rootlesscontaine.rs/getting-started/common/cgroup2/ "
+	else
+		for f in cpu memory pids; do
+			if ! grep -qw "$f" "$controllers"; then
+				WARNING "The cgroup v2 controller \"$f\" is not delegated for the current user (\"$controllers\"), see https://rootlesscontaine.rs/getting-started/common/cgroup2/"
+			fi
+		done
 	fi
-	for f in cpu memory pids; do
-		if ! grep -qw "$f" "$controllers"; then
-			ERROR "The cgroup v2 controller \"$f\" is not delegated for the current user (\"$controllers\"), see https://rootlesscontaine.rs/getting-started/common/cgroup2/"
-			exit 1
-		fi
-	done
 
 	INFO "Checking overlayfs"
 	tmp=$(mktemp -d)

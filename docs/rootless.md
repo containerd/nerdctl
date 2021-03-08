@@ -23,7 +23,7 @@ $ containerd-rootless-setuptool.sh install
 
 The usage of `containerd-rootless-setuptool.sh` is almost same as [`dockerd-rootless-setuptool.sh`](https://rootlesscontaine.rs/getting-started/docker/) .
 
-The script currently requires systemd and cgroup v2: https://rootlesscontaine.rs/getting-started/common/cgroup2/
+Resource limitation flags such as `nerdctl run --memory` require systemd and cgroup v2: https://rootlesscontaine.rs/getting-started/common/cgroup2/
 
 ## Client (nerdctl)
 
