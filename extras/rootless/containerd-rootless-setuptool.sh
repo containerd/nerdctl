@@ -45,6 +45,7 @@ ERROR() {
 # constants
 CONTAINERD_ROOTLESS_SH="containerd-rootless.sh"
 SYSTEMD_CONTAINERD_UNIT="containerd.service"
+SYSTEMD_BUILDKIT_UNIT="buildkit.service"
 SYSTEMD_FUSE_OVERLAYFS_UNIT="containerd-fuse-overlayfs.service"
 
 # global vars
@@ -238,15 +239,49 @@ cmd_entrypoint_install() {
 	INFO "You do NOT need to specify \$CONTAINERD_ADDRESS explicitly."
 }
 
+# CLI subcommand: "install-buildkit"
+cmd_entrypoint_install_buildkit() {
+	init
+	if ! command -v "buildkitd" >/dev/null 2>&1; then
+		ERROR "buildkitd (https://github.com/moby/buildkit) needs to be present under \$PATH"
+		exit 1
+	fi
+	if ! systemctl --user --no-pager status "${SYSTEMD_CONTAINERD_UNIT}" >/dev/null 2>&1; then
+		ERROR "Install containerd first (\`$ARG0 install\`)"
+		exit 1
+	fi
+	cat <<-EOT | install_systemd_unit "${SYSTEMD_BUILDKIT_UNIT}"
+		[Unit]
+		Description=BuildKit (Rootless)
+		PartOf=${SYSTEMD_CONTAINERD_UNIT}
+
+		[Service]
+		Environment=PATH=$BIN:/sbin:/usr/sbin:$PATH
+		ExecStart="$REALPATH0" nsenter buildkitd
+		ExecReload=/bin/kill -s HUP \$MAINPID
+		RestartSec=2
+		Restart=always
+		Type=simple
+		KillMode=mixed
+
+		[Install]
+		WantedBy=default.target
+	EOT
+}
+
 # CLI subcommand: "install-fuse-overlayfs"
 cmd_entrypoint_install_fuse_overlayfs() {
 	init
-	if ! command -v "containerd-fuse-overlayfs-grpc" 2>/dev/null; then
+	if ! command -v "containerd-fuse-overlayfs-grpc" >/dev/null 2>&1; then
 		ERROR "containerd-fuse-overlayfs-grpc (https://github.com/AkihiroSuda/containerd-fuse-overlayfs) needs to be present under \$PATH"
 		exit 1
 	fi
-	if ! command -v "containerd-fuse-overlayfs-grpc" 2>/dev/null; then
+	if ! command -v "containerd-fuse-overlayfs-grpc" >/dev/null 2>&1; then
 		ERROR "fuse-overlayfs (https://github.com/containers/fuse-overlayfs) needs to be present under \$PATH"
+		exit 1
+	fi
+	if ! systemctl --user --no-pager status "${SYSTEMD_CONTAINERD_UNIT}" >/dev/null 2>&1; then
+		ERROR "Install containerd first (\`$ARG0 install\`)"
 		exit 1
 	fi
 	cat <<-EOT | install_systemd_unit "${SYSTEMD_FUSE_OVERLAYFS_UNIT}"
@@ -281,11 +316,20 @@ cmd_entrypoint_install_fuse_overlayfs() {
 # CLI subcommand: "uninstall"
 cmd_entrypoint_uninstall() {
 	init
+	uninstall_systemd_unit "${SYSTEMD_BUILDKIT_UNIT}"
 	uninstall_systemd_unit "${SYSTEMD_FUSE_OVERLAYFS_UNIT}"
 	uninstall_systemd_unit "${SYSTEMD_CONTAINERD_UNIT}"
 
 	INFO "This uninstallation tool does NOT remove containerd binaries and data."
 	INFO "To remove data, run: \`$BIN/rootlesskit rm -rf ${XDG_DATA_HOME}/containerd\`"
+}
+
+# CLI subcommand: "uninstall-buildkit"
+cmd_entrypoint_uninstall_buildkit() {
+	init
+	uninstall_systemd_unit "${SYSTEMD_BUILDKIT_UNIT}"
+	INFO "This uninstallation tool does NOT remove data."
+	INFO "To remove data, run: \`$BIN/rootlesskit rm -rf ${XDG_DATA_HOME}/buildkit"
 }
 
 # CLI subcommand: "uninstall-fuse-overlayfs"
@@ -308,7 +352,11 @@ usage() {
 	echo "  install      Install systemd unit and show how to manage the service"
 	echo "  uninstall    Uninstall systemd unit"
 	echo
-	echo "Add-on commands:"
+	echo "Add-on commands (BuildKit):"
+	echo "  install-buildkit            Install the systemd unit for BuildKit"
+	echo "  uninstall-buildkit          Uninstall the systemd unit for BuildKit"
+	echo
+	echo "Add-on commands (fuse-overlayfs):"
 	echo "  install-fuse-overlayfs      Install the systemd unit for fuse-overlayfs snapshotter"
 	echo "  uninstall-fuse-overlayfs    Uninstall the systemd unit for fuse-overlayfs snapshotter"
 }
