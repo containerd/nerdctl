@@ -1,4 +1,6 @@
-[**Download**](https://github.com/AkihiroSuda/nerdctl/releases)
+[[⬇️ **Download]**](https://github.com/AkihiroSuda/nerdctl/releases)
+[[📖 **Command reference]**](#command-reference)
+[[📚 **Additional documents]**](#additional-documents)
 
 # nerdctl: Docker-compatible CLI for containerd
 
@@ -9,6 +11,8 @@
  ✅ Supports [rootless mode](./docs/rootless.md)
 
  ✅ Supports [lazy-pulling (Stargz)](./docs/stargz.md)
+
+ ✅ Supports [encrypted images (ocicrypt)](./docs/ocicrypt.md)
 
 ## Examples
 
@@ -69,19 +73,25 @@ docker run -it --rm --privileged nerdctl
 
 The goal of `nerdctl` is to facilitate experimenting the cutting-edge features of containerd that are not present in Docker.
 
-Such features includes, but not limited to, [lazy-pulling](./docs/stargz.md) and [encryption of images](https://github.com/containerd/imgcrypt).
+Such features includes, but not limited to, [lazy-pulling](./docs/stargz.md) and [encryption of images](./docs/ocicrypt.md).
 
 Note that competing with Docker is _not_ the goal of `nerdctl`. Those cutting-edge features are expected to be eventually available in Docker as well.
 
 Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, but it is not the primary goal.
 
 ## Features present in `nerdctl` but not present in Docker
+Major:
+- [Lazy-pulling using Stargz Snapshotter](./docs/stargz.md): `nerdctl --snapshotter=stargz run` .
+- [Running encrypted images using ocicrypt (imgcrypt)](./docs/ocicrypt.md)
+
+Minor:
 - Namespacing: `nerdctl --namespace=<NS> ps` . 
   (NOTE: All Kubernetes containers are in the `k8s.io` containerd namespace regardless to Kubernetes namespaces)
-- [Lazy-pulling using Stargz Snapshotter](./docs/stargz.md): `nerdctl --snapshotter=stargz run` .
 - Exporting Docker/OCI dual-format archives: `nerdctl save` .
 - Importing OCI archives as well as Docker archives: `nerdctl load` .
 - Specifying a non-image rootfs: `nerdctl run -it --rootfs <ROOTFS> /bin/sh` . The CLI syntax conforms to Podman convention.
+
+Trivial:
 - Inspecting raw OCI config: `nerdctl container inspect --mode=native` .
 
 ## Similar tools
@@ -497,3 +507,4 @@ Others:
 - [`./docs/registry.md`](./docs/registry.md): Registry authentication (`~/.docker/config.json`)
 - [`./docs/rootless.md`](./docs/rootless.md): Rootless mode
 - [`./docs/stargz.md`](./docs/stargz.md):     Lazy-pulling using Stargz Snapshotter
+- [`./docs/ocicrypt.md`](./docs/ocicrypt.md): Running encrypted images
