@@ -81,7 +81,7 @@ func newTestRegistry(base *testutil.Base, name string) *testRegistry {
 		ip:         hostIP,
 		listenIP:   listenIP,
 		listenPort: listenPort,
-		cleanup:    func() { base.Cmd("rm", "-f", registryContainerName).Run() },
+		cleanup:    func() { base.Cmd("rm", "-f", registryContainerName).AssertOK() },
 	}
 }
 
