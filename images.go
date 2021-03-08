@@ -27,7 +27,9 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/pkg/progress"
 	"github.com/containerd/containerd/platforms"
+	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -85,15 +87,7 @@ func printImages(ctx context.Context, clicontext *cli.Context, imageList []image
 			return errors.Wrap(err, "failed to compute image size")
 		}
 
-		var repository, tag string
-
-		repositoryTag := strings.Split(img.Name, ":")
-		if strings.Contains(repositoryTag[0], "docker.io/library") {
-			repository = repositoryTag[0][18:]
-		} else {
-			repository = repositoryTag[0]
-		}
-		tag = repositoryTag[1]
+		repository, tag := parseRepoTag(img.Name)
 
 		var digest string
 		if !noTrunc {
@@ -120,4 +114,29 @@ func printImages(ctx context.Context, clicontext *cli.Context, imageList []image
 		}
 	}
 	return w.Flush()
+}
+
+func parseRepoTag(imgName string) (string, string) {
+	logrus.Debugf("raw image name=%q", imgName)
+
+	if strings.Contains(imgName, "@") {
+		logrus.Warnf("unparsable image name %q", imgName)
+		return "", ""
+	}
+
+	if _, err := refdocker.ParseDockerRef(imgName); err != nil {
+		logrus.WithError(err).Warnf("unparsable image name %q", imgName)
+		return "", ""
+	}
+
+	var tag string
+	nameWithTagSplit := strings.Split(imgName, ":")
+	if len(nameWithTagSplit) > 1 {
+		tag = nameWithTagSplit[len(nameWithTagSplit)-1]
+	}
+	repository := strings.TrimSuffix(imgName, ":"+tag)
+	repository = strings.TrimPrefix(repository, "docker.io/library/")
+	repository = strings.TrimPrefix(repository, "docker.io/")
+
+	return repository, tag
 }
