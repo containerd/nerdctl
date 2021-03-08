@@ -73,6 +73,7 @@ func Pull(ctx context.Context, client *containerd.Client, ref string, config *Co
 	}
 	opts = append(opts, config.RemoteOpts...)
 
+	// client.Pull is for single-platform (TODO: support multi)
 	img, err := client.Pull(pctx, ref, opts...)
 	stopProgress()
 	if err != nil {

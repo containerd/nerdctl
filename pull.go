@@ -40,6 +40,8 @@ func pullAction(clicontext *cli.Context) error {
 		return err
 	}
 	defer cancel()
-	_, err = imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(), "always")
+	insecure := clicontext.Bool("insecure-registry")
+	_, err = imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(),
+		"always", insecure)
 	return err
 }

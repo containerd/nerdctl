@@ -26,6 +26,7 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/pull"
 	"github.com/containerd/containerd"
 	refdocker "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/stargz-snapshotter/fs/source"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -41,7 +42,10 @@ type EnsuredImage struct {
 // PullMode is either one of "always", "missing", "never"
 type PullMode = string
 
-func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter, rawRef string, mode PullMode) (*EnsuredImage, error) {
+// EnsureImage ensures the image.
+//
+// When insecure is set, skips verifying certs, and also falls back to HTTP when the registry does not speak HTTPS
+func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool) (*EnsuredImage, error) {
 	named, err := refdocker.ParseDockerRef(rawRef)
 	if err != nil {
 		return nil, err
@@ -70,11 +74,50 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 		return nil, errors.Errorf("image %q is not available", rawRef)
 	}
 
-	resolver, err := dockerconfigresolver.New(refdocker.Domain(named))
+	refDomain := refdocker.Domain(named)
+
+	var dOpts []dockerconfigresolver.Opt
+	if insecure {
+		logrus.Warnf("skipping verifying HTTPS certs for %q", refDomain)
+		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
+	}
+	resolver, err := dockerconfigresolver.New(refDomain, dOpts...)
 	if err != nil {
 		return nil, err
 	}
 
+	img, err := pullImage(ctx, client, stdout, snapshotter, resolver, ref)
+	if err != nil {
+		if !IsErrHTTPResponseToHTTPSClient(err) {
+			return nil, err
+		}
+		if insecure {
+			logrus.WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
+			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
+			resolver, err = dockerconfigresolver.New(refDomain, dOpts...)
+			if err != nil {
+				return nil, err
+			}
+			return pullImage(ctx, client, stdout, snapshotter, resolver, ref)
+		} else {
+			logrus.WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
+			logrus.Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
+			return nil, err
+		}
+	}
+	return img, nil
+}
+
+// IsErrHTTPResponseToHTTPSClient returns whether err is
+// "http: server gave HTTP response to HTTPS client"
+func IsErrHTTPResponseToHTTPSClient(err error) bool {
+	// The error string is unexposed as of Go 1.16, so we can't use `errors.Is`.
+	// https://github.com/golang/go/issues/44855
+	const unexposed = "server gave HTTP response to HTTPS client"
+	return strings.Contains(err.Error(), unexposed)
+}
+
+func pullImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter string, resolver remotes.Resolver, ref string) (*EnsuredImage, error) {
 	ctx, done, err := client.WithLease(ctx)
 	if err != nil {
 		return nil, err
@@ -109,6 +152,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 		Remote:      sgz,
 	}
 	return res, nil
+
 }
 
 func isStargz(sn string) bool {

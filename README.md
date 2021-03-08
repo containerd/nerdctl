@@ -448,6 +448,7 @@ Show the nerdctl version information
 - :nerd_face: `--cni-netconfpath`: CNI netconf path (default: `/etc/cni/net.d`) [`$NETCONFPATH`]
 - :nerd_face: `--data-root`: nerdctl data root, e.g. "/var/lib/nerdctl"
 - :nerd_face: `--cgroup-manager=(cgroupfs|systemd)`: cgroup manager
+- :nerd_face: `--insecure-registry`: skips verifying HTTPS certs, and allows falling back to plain HTTP
 
 ## Unimplemented Docker commands
 Container management:

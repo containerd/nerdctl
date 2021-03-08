@@ -9,6 +9,8 @@ Vagrant.configure("2") do |config|
   config.vm.provider :virtualbox do |v|
     v.memory = memory
     v.cpus = cpus
+    # The default CIDR conflicts with slirp4netns CIDR (10.0.2.0/24)
+    v.customize ["modifyvm", :id, "--natnet1", "192.168.42.0/24"]
   end
   config.vm.provider :libvirt do |v|
     v.memory = memory

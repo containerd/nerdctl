@@ -214,4 +214,5 @@ const (
 	AlpineImage                 = "mirror.gcr.io/library/alpine:3.13"
 	NginxAlpineImage            = "mirror.gcr.io/library/nginx:1.19-alpine"
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
+	RegistryImage               = "mirror.gcr.io/library/registry:2"
 )
