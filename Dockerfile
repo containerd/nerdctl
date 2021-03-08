@@ -14,6 +14,9 @@ ARG STARGZ_SNAPSHOTTER_VERSION=0.4.1
 # Extra deps: Rootless
 ARG ROOTLESSKIT_VERSION=0.14.0-beta.0
 ARG SLIRP4NETNS_VERSION=1.1.9
+# Extra deps: FUSE-OverlayFS
+ARG FUSE_OVERLAYFS_VERSION=1.4.0
+ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=1.0.1
 
 # Test deps
 ARG GO_VERSION=1.16
@@ -72,9 +75,17 @@ ARG SLIRP4NETNS_VERSION
 RUN curl -L -o /out/bin/slirp4netns https://github.com/rootless-containers/slirp4netns/releases/download/v${SLIRP4NETNS_VERSION}/slirp4netns-$(uname -m) && \
   chmod +x /out/bin/slirp4netns && \
   echo "- slirp4netns: v${SLIRP4NETNS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+ARG FUSE_OVERLAYFS_VERSION
+RUN curl -L -o /out/bin/fuse-overlayfs https://github.com/containers/fuse-overlayfs/releases/download/v${FUSE_OVERLAYFS_VERSION}/fuse-overlayfs-$(uname -m) && \
+  chmod +x /out/bin/fuse-overlayfs && \
+  echo "- fuse-overlayfs: v${FUSE_OVERLAYFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+ARG CONTAINERD_FUSE_OVERLAYFS_VERSION
+RUN curl -L https://github.com/AkihiroSuda/containerd-fuse-overlayfs/releases/download/v${CONTAINERD_FUSE_OVERLAYFS_VERSION}/containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION}-linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /out/bin && \
+  echo "- containerd-fuse-overlayfs: v${CONTAINERD_FUSE_OVERLAYFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
-  echo "- bin/slirp4netns: [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/rootless-containers/slirp4netns/blob/v${SLIRP4NETNS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
+  echo "- bin/slirp4netns:    [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/rootless-containers/slirp4netns/blob/v${SLIRP4NETNS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
+  echo "- bin/fuse-overlayfs: [GNU GENERAL PUBLIC LICENSE, Version 3](https://github.com/containers/fuse-overlayfs/blob/v${FUSE_OVERLAYFS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- Other files: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)" >> /out/share/doc/nerdctl-full/README.md
 RUN (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
   mv /tmp/SHA256SUMS /out/share/doc/nerdctl-full/SHA256SUMS

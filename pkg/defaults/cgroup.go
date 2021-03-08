@@ -20,6 +20,7 @@ package defaults
 import (
 	"os"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/cgroups"
 )
 
@@ -31,9 +32,16 @@ func isSystemdAvailable() bool {
 	return fi.IsDir()
 }
 
+// CgroupManager defaults to:
+// - "systemd"  on v2 (rootful & rootless)
+// - "cgroupfs" on v1 rootful
+// - "none"     on v1 rootless
 func CgroupManager() string {
 	if cgroups.Mode() == cgroups.Unified && isSystemdAvailable() {
 		return "systemd"
+	}
+	if rootlessutil.IsRootless() {
+		return "none"
 	}
 	return "cgroupfs"
 }

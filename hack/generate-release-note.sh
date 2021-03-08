@@ -59,5 +59,5 @@ $ containerd-rootless-setuptool.sh install
 $ nerdctl run -d --name nginx -p 8080:80 nginx:alpine
 \`\`\`
 
-Rootless mode requires systemd and cgroup v2, see https://rootlesscontaine.rs/getting-started/common/cgroup2/ .
+Enabling cgroup v2 is highly recommended for rootless mode, see https://rootlesscontaine.rs/getting-started/common/cgroup2/ .
 EOX
