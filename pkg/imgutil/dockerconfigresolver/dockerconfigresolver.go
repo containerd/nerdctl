@@ -18,7 +18,9 @@
 package dockerconfigresolver
 
 import (
+	"crypto/tls"
 	"net"
+	"net/http"
 	"net/url"
 
 	"github.com/containerd/containerd/remotes"
@@ -29,12 +31,77 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type opts struct {
+	plainHTTP       bool
+	skipVerifyCerts bool
+}
+
+// Opt for New
+type Opt func(*opts)
+
+// WithPlainHTTP enables insecure plain HTTP
+func WithPlainHTTP(b bool) Opt {
+	return func(o *opts) {
+		o.plainHTTP = b
+	}
+}
+
+// WithSkipVerifyCerts skips verifying TLS certs
+func WithSkipVerifyCerts(b bool) Opt {
+	return func(o *opts) {
+		o.skipVerifyCerts = b
+	}
+}
+
 // New instantiates a resolver using $DOCKER_CONFIG/config.json .
 //
 // $DOCKER_CONFIG defaults to "~/.docker".
 //
 // refHostname is like "docker.io".
-func New(refHostname string) (remotes.Resolver, error) {
+func New(refHostname string, optFuncs ...Opt) (remotes.Resolver, error) {
+	var o opts
+	for _, of := range optFuncs {
+		of(&o)
+	}
+	var authzOpts []docker.AuthorizerOpt
+	if authCreds, err := NewAuthCreds(refHostname); err != nil {
+		return nil, err
+	} else {
+		authzOpts = append(authzOpts, docker.WithAuthCreds(authCreds))
+	}
+	authz := docker.NewDockerAuthorizer(authzOpts...)
+	plainHTTPFunc := docker.MatchLocalhost
+	if o.plainHTTP {
+		plainHTTPFunc = docker.MatchAllHosts
+	}
+	regOpts := []docker.RegistryOpt{
+		docker.WithAuthorizer(authz),
+		docker.WithPlainHTTP(plainHTTPFunc),
+	}
+	if o.skipVerifyCerts {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+		client := &http.Client{
+			Transport: tr,
+		}
+		regOpts = append(regOpts, docker.WithClient(client))
+	}
+	resovlerOpts := docker.ResolverOptions{
+		Hosts: docker.ConfigureDefaultRegistries(regOpts...),
+	}
+	resolver := docker.NewResolver(resovlerOpts)
+	return resolver, nil
+}
+
+// AuthCreds is for docker.WithAuthCreds
+type AuthCreds func(string) (string, string, error)
+
+// NewAuthCreds returns AuthCreds that uses $DOCKER_CONFIG/config.json .
+// AuthCreds can be nil.
+func NewAuthCreds(refHostname string) (AuthCreds, error) {
 	// Load does not raise an error on ENOENT
 	dockerConfigFile, err := dockercliconfig.Load("")
 	if err != nil {
@@ -48,7 +115,7 @@ func New(refHostname string) (remotes.Resolver, error) {
 		return nil, err
 	}
 
-	var credFunc func(string) (string, string, error)
+	var credFunc AuthCreds
 
 	authConfigHostnames := []string{refHostname}
 	if refHostname == "docker.io" || refHostname == "registry-1.docker.io" {
@@ -110,13 +177,8 @@ func New(refHostname string) (remotes.Resolver, error) {
 			}
 		}
 	}
-
-	resovlerOpts := docker.ResolverOptions{
-		// FIXME: Credentials is deprecated
-		Credentials: credFunc,
-	}
-	resolver := docker.NewResolver(resovlerOpts)
-	return resolver, nil
+	// credsFunc can be nil here
+	return credFunc, nil
 }
 
 func isAuthConfigEmpty(ac dockercliconfigtypes.AuthConfig) bool {

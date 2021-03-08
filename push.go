@@ -18,10 +18,13 @@
 package main
 
 import (
+	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/push"
 	refdocker "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/containerd/remotes"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 
 	"github.com/urfave/cli/v2"
 )
@@ -44,15 +47,46 @@ func pushAction(clicontext *cli.Context) error {
 		return err
 	}
 	ref := named.String()
-	resolver, err := dockerconfigresolver.New(refdocker.Domain(named))
-	if err != nil {
-		return err
-	}
+	refDomain := refdocker.Domain(named)
+
+	insecure := clicontext.Bool("insecure-registry")
 
 	client, ctx, cancel, err := newClient(clicontext)
 	if err != nil {
 		return err
 	}
 	defer cancel()
-	return push.Push(ctx, client, resolver, clicontext.App.Writer, ref, ref)
+
+	pushFunc := func(r remotes.Resolver) error {
+		return push.Push(ctx, client, r, clicontext.App.Writer, ref, ref)
+	}
+
+	var dOpts []dockerconfigresolver.Opt
+	if insecure {
+		logrus.Warnf("skipping verifying HTTPS certs for %q", refDomain)
+		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
+	}
+	resolver, err := dockerconfigresolver.New(refDomain, dOpts...)
+	if err != nil {
+		return err
+	}
+	if err = pushFunc(resolver); err != nil {
+		if !imgutil.IsErrHTTPResponseToHTTPSClient(err) {
+			return err
+		}
+		if insecure {
+			logrus.WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
+			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
+			resolver, err = dockerconfigresolver.New(refDomain, dOpts...)
+			if err != nil {
+				return err
+			}
+			return pushFunc(resolver)
+		} else {
+			logrus.WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
+			logrus.Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
+			return err
+		}
+	}
+	return nil
 }

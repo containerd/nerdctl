@@ -235,7 +235,8 @@ func runAction(clicontext *cli.Context) error {
 	imageless := clicontext.Bool("rootfs")
 	var ensured *imgutil.EnsuredImage
 	if !imageless {
-		ensured, err = imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(), clicontext.String("pull"))
+		ensured, err = imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(),
+			clicontext.String("pull"), clicontext.Bool("insecure-registry"))
 		if err != nil {
 			return err
 		}

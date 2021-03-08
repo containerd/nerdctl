@@ -110,6 +110,10 @@ func newApp() *cli.App {
 			Usage: "Cgroup manager to use (\"cgroupfs\"|\"systemd\")",
 			Value: ncdefaults.CgroupManager(),
 		},
+		&cli.BoolFlag{
+			Name:  "insecure-registry",
+			Usage: "skips verifying HTTPS certs, and allows falling back to plain HTTP",
+		},
 	}
 	app.Before = func(clicontext *cli.Context) error {
 		if debug {
