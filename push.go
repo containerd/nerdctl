@@ -18,9 +18,13 @@
 package main
 
 import (
+	"context"
+
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/push"
+	"github.com/containerd/containerd/images/converter"
+	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	"github.com/pkg/errors"
@@ -57,8 +61,20 @@ func pushAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
+	// Push fails with "400 Bad Request" when the manifest is multi-platform but we do not locally have multi-platform blobs.
+	// So we create a tmp single-platform image to avoid the error.
+	// TODO: support pushing multi-platform
+	singlePlatform := platforms.DefaultStrict()
+	singlePlatformRef := ref + "-tmp-single"
+	singlePlatformImg, err := converter.Convert(ctx, client, singlePlatformRef, ref,
+		converter.WithPlatform(singlePlatform))
+	if err != nil {
+		return errors.Wrapf(err, "failed to create a tmp single-platform image %q", singlePlatformRef)
+	}
+	defer client.ImageService().Delete(context.TODO(), singlePlatformImg.Name)
+
 	pushFunc := func(r remotes.Resolver) error {
-		return push.Push(ctx, client, r, clicontext.App.Writer, ref, ref)
+		return push.Push(ctx, client, r, clicontext.App.Writer, singlePlatformRef, ref, singlePlatform)
 	}
 
 	var dOpts []dockerconfigresolver.Opt
