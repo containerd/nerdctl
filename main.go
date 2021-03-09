@@ -18,6 +18,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -171,6 +172,7 @@ func newApp() *cli.App {
 		networkCommand,
 		volumeCommand,
 		systemCommand,
+		namespaceCommand,
 		// Internal
 		internalCommand,
 		// login
@@ -180,6 +182,7 @@ func newApp() *cli.App {
 		// Completion
 		completionCommand,
 	}
+	app.BashComplete = appBashComplete
 	return app
 }
 
@@ -188,3 +191,37 @@ type Category = string
 const (
 	CategoryManagement = Category("Management")
 )
+
+func appBashComplete(clicontext *cli.Context) {
+	if current, ok := isFlagCompletionContext(); ok {
+		switch current {
+		case "-n", "--namespace":
+			bashCompleteNamespaceNames(clicontext)
+			return
+		}
+	}
+	defaultBashComplete(clicontext)
+}
+
+func bashCompleteNamespaceNames(clicontext *cli.Context) {
+	if rootlessutil.IsRootlessParent() {
+		_ = rootlessutil.ParentMain()
+		return
+	}
+
+	client, ctx, cancel, err := newClient(clicontext)
+	if err != nil {
+		logrus.Warn(err)
+		return
+	}
+	defer cancel()
+	nsService := client.NamespaceService()
+	nsList, err := nsService.List(ctx)
+	if err != nil {
+		logrus.Warn(err)
+		return
+	}
+	for _, ns := range nsList {
+		fmt.Fprintln(clicontext.App.Writer, ns)
+	}
+}
