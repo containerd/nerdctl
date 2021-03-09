@@ -42,4 +42,7 @@ const (
 
 	// Ports is a JSON-marshalled string of []gocni.PortMapping .
 	Ports = Prefix + "ports"
+
+	// LogURI is the log URI
+	LogURI = Prefix + "log-uri"
 )

@@ -142,6 +142,7 @@ func newApp() *cli.App {
 		logsCommand,
 		portCommand,
 		stopCommand,
+		startCommand,
 		killCommand,
 		rmCommand,
 		pauseCommand,

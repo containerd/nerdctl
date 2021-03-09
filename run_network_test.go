@@ -212,8 +212,11 @@ func httpGet(urlStr string, attempts int) (*http.Response, error) {
 	if attempts < 1 {
 		return nil, errdefs.ErrInvalidArgument
 	}
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
 	for i := 0; i < attempts; i++ {
-		resp, err = http.Get(urlStr)
+		resp, err = client.Get(urlStr)
 		if err == nil {
 			return resp, nil
 		}
