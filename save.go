@@ -70,10 +70,10 @@ func saveAction(clicontext *cli.Context) error {
 			return errors.Errorf("cowardly refusing to save to a terminal. Use the -o flag or redirect")
 		}
 	}
-	return saveContainer(images, out, saveOpts, clicontext)
+	return saveImage(images, out, saveOpts, clicontext)
 }
 
-func saveContainer(images []string, out io.Writer, saveOpts []archive.ExportOpt, clicontext *cli.Context) error {
+func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, clicontext *cli.Context) error {
 	client, ctx, cancel, err := newClient(clicontext)
 	if err != nil {
 		return err
