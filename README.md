@@ -254,6 +254,7 @@ Rootfs flags:
   Corresponds to Podman CLI.
 
 Env flags:
+- :whale: `--entrypoint`: Overwrite the default ENTRYPOINT of the image
 - :whale: `-w, --workdir`: Working directory inside the container
 - :whale: `-e, --env`: Set environment variables
 

@@ -24,22 +24,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/buildkitutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
 	"github.com/AkihiroSuda/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
 
 func TestBuild(t *testing.T) {
+	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	if base.Target == testutil.Nerdctl {
-		buildkitHost := defaults.BuildKitHost()
-		t.Logf("buildkitHost=%q", buildkitHost)
-		if err := buildkitutil.PingBKDaemon(buildkitHost); err != nil {
-			t.Skipf("test requires buildkitd: %+v", err)
-		}
-	}
-
 	const imageName = "nerdctl-build-test"
 	defer base.Cmd("rmi", imageName).Run()
 

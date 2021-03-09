@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/buildkitutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
 	"github.com/pkg/errors"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
@@ -119,20 +121,24 @@ func (c *Cmd) Run() *icmd.Result {
 }
 
 func (c *Cmd) Assert(expected icmd.Expected) {
+	c.Base.T.Helper()
 	c.Run().Assert(c.Base.T, expected)
 }
 
 func (c *Cmd) AssertOK() {
+	c.Base.T.Helper()
 	expected := icmd.Expected{}
 	c.Assert(expected)
 }
 
 func (c *Cmd) AssertFail() {
+	c.Base.T.Helper()
 	res := c.Run()
 	assert.Assert(c.Base.T, res.ExitCode != 0)
 }
 
 func (c *Cmd) AssertOut(s string) {
+	c.Base.T.Helper()
 	expected := icmd.Expected{
 		Out: s,
 	}
@@ -140,6 +146,7 @@ func (c *Cmd) AssertOut(s string) {
 }
 
 func (c *Cmd) AssertOutWithFunc(fn func(stdout string) error) {
+	c.Base.T.Helper()
 	res := c.Run()
 	assert.Equal(c.Base.T, 0, res.ExitCode, res.Combined())
 	assert.NilError(c.Base.T, fn(res.Stdout()), res.Combined())
@@ -179,6 +186,16 @@ func GetDaemonIsKillable() bool {
 func DockerIncompatible(t testing.TB) {
 	if GetTarget() == Docker {
 		t.Skip("test is incompatible with Docker")
+	}
+}
+
+func RequiresBuild(t testing.TB) {
+	if GetTarget() == Nerdctl {
+		buildkitHost := defaults.BuildKitHost()
+		t.Logf("buildkitHost=%q", buildkitHost)
+		if err := buildkitutil.PingBKDaemon(buildkitHost); err != nil {
+			t.Skipf("test requires buildkitd: %+v", err)
+		}
 	}
 }
 
