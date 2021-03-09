@@ -33,10 +33,11 @@ import (
 )
 
 var startCommand = &cli.Command{
-	Name:      "start",
-	Usage:     "Start one or more running containers",
-	ArgsUsage: "[flags] CONTAINER [CONTAINER, ...]",
-	Action:    startAction,
+	Name:         "start",
+	Usage:        "Start one or more running containers",
+	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
+	Action:       startAction,
+	BashComplete: startBashComplete,
 }
 
 func startAction(clicontext *cli.Context) error {
@@ -97,4 +98,13 @@ func startContainer(ctx context.Context, container containerd.Container) error {
 		return err
 	}
 	return task.Start(ctx)
+}
+
+func startBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show container names (TODO: filter already running containers)
+	bashCompleteContainerNames(clicontext)
 }

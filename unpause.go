@@ -29,10 +29,11 @@ import (
 )
 
 var unpauseCommand = &cli.Command{
-	Name:      "unpause",
-	Usage:     "Unpause all processes within one or more containers",
-	ArgsUsage: "[flags] CONTAINER [CONTAINER, ...]",
-	Action:    unpauseAction,
+	Name:         "unpause",
+	Usage:        "Unpause all processes within one or more containers",
+	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
+	Action:       unpauseAction,
+	BashComplete: unpauseBashComplete,
 }
 
 func unpauseAction(clicontext *cli.Context) error {
@@ -90,4 +91,13 @@ func unpauseContainer(ctx context.Context, client *containerd.Client, id string)
 	default:
 		return errors.Errorf("Container %s is not paused", id)
 	}
+}
+
+func unpauseBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show container names (TODO: filter already unpaused containers)
+	bashCompleteContainerNames(clicontext)
 }

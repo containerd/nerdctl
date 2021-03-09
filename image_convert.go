@@ -162,6 +162,7 @@ When '--all-platforms' is given all images in a manifest list must be available.
 		fmt.Fprintln(context.App.Writer, newImg.Target.Digest.String())
 		return nil
 	},
+	BashComplete: imageConvertBashComplete,
 }
 
 func getESGZConvertOpts(context *cli.Context) ([]estargz.Option, error) {
@@ -202,4 +203,13 @@ func readPathsFromRecordFile(filename string) ([]string, error) {
 		}
 	}
 	return paths, nil
+}
+
+func imageConvertBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show image names
+	bashCompleteImageNames(clicontext)
 }

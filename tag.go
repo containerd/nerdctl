@@ -25,10 +25,11 @@ import (
 )
 
 var tagCommand = &cli.Command{
-	Name:      "tag",
-	Usage:     "Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE",
-	ArgsUsage: "SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]",
-	Action:    tagAction,
+	Name:         "tag",
+	Usage:        "Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE",
+	ArgsUsage:    "SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]",
+	Action:       tagAction,
+	BashComplete: tagBashComplete,
 }
 
 func tagAction(clicontext *cli.Context) error {
@@ -77,4 +78,13 @@ func tagAction(clicontext *cli.Context) error {
 		}
 	}
 	return nil
+}
+
+func tagBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show image names
+	bashCompleteImageNames(clicontext)
 }

@@ -31,11 +31,12 @@ import (
 )
 
 var containerInspectCommand = &cli.Command{
-	Name:        "inspect",
-	Usage:       "Display detailed information on one or more containers.",
-	ArgsUsage:   "[flags] CONTAINER [CONTAINER, ...]",
-	Description: "Hint: set `--mode=native` for showing the full output",
-	Action:      containerInspectAction,
+	Name:         "inspect",
+	Usage:        "Display detailed information on one or more containers.",
+	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
+	Description:  "Hint: set `--mode=native` for showing the full output",
+	Action:       containerInspectAction,
+	BashComplete: containerInspectBashComplete,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "mode",
@@ -112,4 +113,13 @@ func (x *containerInspector) Handler(ctx context.Context, found containerwalker.
 		return errors.Errorf("unknown mode %q", x.mode)
 	}
 	return nil
+}
+
+func containerInspectBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show container names
+	bashCompleteContainerNames(clicontext)
 }

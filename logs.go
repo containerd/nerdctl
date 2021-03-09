@@ -29,10 +29,11 @@ import (
 )
 
 var logsCommand = &cli.Command{
-	Name:      "logs",
-	Usage:     "Fetch the logs of a container. Currently, only containers created with `nerdctl run -d` are supported.",
-	ArgsUsage: "[flags] CONTAINER",
-	Action:    logsAction,
+	Name:         "logs",
+	Usage:        "Fetch the logs of a container. Currently, only containers created with `nerdctl run -d` are supported.",
+	ArgsUsage:    "[flags] CONTAINER",
+	Action:       logsAction,
+	BashComplete: logsBashComplete,
 }
 
 func logsAction(clicontext *cli.Context) error {
@@ -80,4 +81,13 @@ func logsAction(clicontext *cli.Context) error {
 		return errors.Errorf("no such container %s", req)
 	}
 	return nil
+}
+
+func logsBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show container names (TODO: only show containers with logs)
+	bashCompleteContainerNames(clicontext)
 }

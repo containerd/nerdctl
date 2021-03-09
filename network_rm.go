@@ -28,12 +28,13 @@ import (
 )
 
 var networkRmCommand = &cli.Command{
-	Name:        "rm",
-	Aliases:     []string{"remove"},
-	Usage:       "Remove one or more networks",
-	ArgsUsage:   "[flags] NETWORK [NETWORK, ...]",
-	Description: "NOTE: network in use is deleted without caution",
-	Action:      networkRmAction,
+	Name:         "rm",
+	Aliases:      []string{"remove"},
+	Usage:        "Remove one or more networks",
+	ArgsUsage:    "[flags] NETWORK [NETWORK, ...]",
+	Description:  "NOTE: network in use is deleted without caution",
+	Action:       networkRmAction,
+	BashComplete: networkRmBashComplete,
 }
 
 func networkRmAction(clicontext *cli.Context) error {
@@ -78,4 +79,28 @@ func networkRmAction(clicontext *cli.Context) error {
 		return nil
 	}
 	return lockutil.WithDirLock(netconfpath, fn)
+}
+
+func networkRmBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show network names
+	bashCompleteNetworkNames(clicontext)
+}
+
+func bashCompleteNetworkNames(clicontext *cli.Context) {
+	w := clicontext.App.Writer
+	e := &netutil.CNIEnv{
+		Path:        clicontext.String("cni-path"),
+		NetconfPath: clicontext.String("cni-netconfpath"),
+	}
+	ll, err := netutil.ConfigLists(e)
+	if err != nil {
+		return
+	}
+	for _, l := range ll {
+		fmt.Fprintln(w, l.Name)
+	}
 }

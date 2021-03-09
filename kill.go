@@ -34,10 +34,11 @@ import (
 )
 
 var killCommand = &cli.Command{
-	Name:      "kill",
-	Usage:     "Kill one or more running containers",
-	ArgsUsage: "[flags] CONTAINER [CONTAINER, ...]",
-	Action:    killAction,
+	Name:         "kill",
+	Usage:        "Kill one or more running containers",
+	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
+	Action:       killAction,
+	BashComplete: killBashComplete,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    "signal",
@@ -126,4 +127,13 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 		}
 	}
 	return nil
+}
+
+func killBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show container names (TODO: filter already stopped containers)
+	bashCompleteContainerNames(clicontext)
 }

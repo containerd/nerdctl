@@ -30,10 +30,11 @@ import (
 )
 
 var saveCommand = &cli.Command{
-	Name:        "save",
-	Usage:       "Save one or more images to a tar archive (streamed to STDOUT by default)",
-	Description: "The archive implements both Docker Image Spec v1.2 and OCI Image Spec v1.0.",
-	Action:      saveAction,
+	Name:         "save",
+	Usage:        "Save one or more images to a tar archive (streamed to STDOUT by default)",
+	Description:  "The archive implements both Docker Image Spec v1.2 and OCI Image Spec v1.0.",
+	Action:       saveAction,
+	BashComplete: saveBashComplete,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    "output",
@@ -93,4 +94,13 @@ func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, cli
 	}
 
 	return client.Export(ctx, out, saveOpts...)
+}
+
+func saveBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show image names
+	bashCompleteImageNames(clicontext)
 }

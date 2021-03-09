@@ -59,10 +59,11 @@ import (
 )
 
 var runCommand = &cli.Command{
-	Name:     "run",
-	Usage:    "Run a command in a new container",
-	Action:   runAction,
-	HideHelp: true, // built-in "-h" help conflicts with the short form of `--hostname`
+	Name:         "run",
+	Usage:        "Run a command in a new container",
+	Action:       runAction,
+	BashComplete: runBashComplete,
+	HideHelp:     true, // built-in "-h" help conflicts with the short form of `--hostname`
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name: "help",
@@ -719,4 +720,17 @@ func propagateContainerdLabelsToOCIAnnotations() oci.SpecOpts {
 	return func(ctx context.Context, oc oci.Client, c *containers.Container, s *oci.Spec) error {
 		return oci.WithAnnotations(c.Labels)(ctx, oc, c, s)
 	}
+}
+
+func runBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show image names, unless we have "--rootfs" flag
+	if clicontext.Bool("rootfs") {
+		defaultBashComplete(clicontext)
+		return
+	}
+	bashCompleteImageNames(clicontext)
 }

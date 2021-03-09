@@ -30,10 +30,11 @@ import (
 )
 
 var volumeInspectCommand = &cli.Command{
-	Name:      "inspect",
-	Usage:     "Display detailed information on one or more volumes",
-	ArgsUsage: "[flags] VOLUME [VOLUME, ...]",
-	Action:    volumeInspectAction,
+	Name:         "inspect",
+	Usage:        "Display detailed information on one or more volumes",
+	ArgsUsage:    "[flags] VOLUME [VOLUME, ...]",
+	Action:       volumeInspectAction,
+	BashComplete: volumeInspectBashComplete,
 }
 
 func volumeInspectAction(clicontext *cli.Context) error {
@@ -63,4 +64,13 @@ func volumeInspectAction(clicontext *cli.Context) error {
 	}
 	fmt.Fprintln(clicontext.App.Writer, string(b))
 	return nil
+}
+
+func volumeInspectBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show voume names
+	bashCompleteVolumeNames(clicontext)
 }

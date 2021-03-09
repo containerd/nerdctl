@@ -30,10 +30,11 @@ import (
 
 var (
 	commitCommand = &cli.Command{
-		Name:        "commit",
-		Usage:       "[flags] CONTAINER REPOSITORY[:TAG]",
-		Description: "Create a new image from a container's changes",
-		Action:      commitAction,
+		Name:         "commit",
+		Usage:        "[flags] CONTAINER REPOSITORY[:TAG]",
+		Description:  "Create a new image from a container's changes",
+		Action:       commitAction,
+		BashComplete: commitBashComplete,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "author",
@@ -102,4 +103,13 @@ func newCommitOpts(clicontext *cli.Context) (*commit.Opts, error) {
 		Message: clicontext.String("message"),
 		Ref:     named.String(),
 	}, nil
+}
+
+func commitBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show container names
+	bashCompleteContainerNames(clicontext)
 }

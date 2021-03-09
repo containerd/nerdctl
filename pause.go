@@ -29,10 +29,11 @@ import (
 )
 
 var pauseCommand = &cli.Command{
-	Name:      "pause",
-	Usage:     "Pause all processes within one or more containers",
-	ArgsUsage: "[flags] CONTAINER [CONTAINER, ...]",
-	Action:    pauseAction,
+	Name:         "pause",
+	Usage:        "Pause all processes within one or more containers",
+	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
+	Action:       pauseAction,
+	BashComplete: pauseBashComplete,
 }
 
 func pauseAction(clicontext *cli.Context) error {
@@ -92,4 +93,13 @@ func pauseContainer(ctx context.Context, client *containerd.Client, id string) e
 	default:
 		return task.Pause(ctx)
 	}
+}
+
+func pauseBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show container names (TODO: filter already paused containers)
+	bashCompleteContainerNames(clicontext)
 }

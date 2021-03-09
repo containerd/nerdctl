@@ -28,12 +28,13 @@ import (
 )
 
 var volumeRmCommand = &cli.Command{
-	Name:        "rm",
-	Aliases:     []string{"remove"},
-	Usage:       "Remove one or more volumes",
-	ArgsUsage:   "[flags] VOLUME [VOLUME, ...]",
-	Description: "NOTE: volume in use is deleted without caution",
-	Action:      volumeRmAction,
+	Name:         "rm",
+	Aliases:      []string{"remove"},
+	Usage:        "Remove one or more volumes",
+	ArgsUsage:    "[flags] VOLUME [VOLUME, ...]",
+	Description:  "NOTE: volume in use is deleted without caution",
+	Action:       volumeRmAction,
+	BashComplete: volumeRmBashComplete,
 }
 
 func volumeRmAction(clicontext *cli.Context) error {
@@ -57,4 +58,24 @@ func volumeRmAction(clicontext *cli.Context) error {
 	}
 	return lockutil.WithDirLock(volStore, fn)
 
+}
+
+func volumeRmBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show voume names
+	bashCompleteVolumeNames(clicontext)
+}
+
+func bashCompleteVolumeNames(clicontext *cli.Context) {
+	w := clicontext.App.Writer
+	vols, err := getVolumes(clicontext)
+	if err != nil {
+		return
+	}
+	for _, v := range vols {
+		fmt.Fprintln(w, v.Name)
+	}
 }

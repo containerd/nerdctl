@@ -34,11 +34,12 @@ import (
 )
 
 var pushCommand = &cli.Command{
-	Name:      "push",
-	Usage:     "Push an image or a repository to a registry",
-	ArgsUsage: "NAME[:TAG]",
-	Action:    pushAction,
-	Flags:     []cli.Flag{},
+	Name:         "push",
+	Usage:        "Push an image or a repository to a registry",
+	ArgsUsage:    "NAME[:TAG]",
+	Action:       pushAction,
+	BashComplete: pushBashComplete,
+	Flags:        []cli.Flag{},
 }
 
 func pushAction(clicontext *cli.Context) error {
@@ -106,4 +107,13 @@ func pushAction(clicontext *cli.Context) error {
 		}
 	}
 	return nil
+}
+
+func pushBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show image names
+	bashCompleteImageNames(clicontext)
 }
