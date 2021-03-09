@@ -51,7 +51,7 @@ func rmiAction(clicontext *cli.Context) error {
 	walker := &imagewalker.ImageWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found imagewalker.Found) error {
-			digests, err := found.Image.RootFS(ctx, cs, platforms.Default())
+			digests, err := found.Image.RootFS(ctx, cs, platforms.DefaultStrict())
 			if err != nil {
 				return err
 			}

@@ -81,7 +81,7 @@ func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, cli
 	defer cancel()
 
 	// Set the default platform
-	saveOpts = append(saveOpts, archive.WithPlatform(platforms.Default()))
+	saveOpts = append(saveOpts, archive.WithPlatform(platforms.DefaultStrict()))
 
 	imageStore := client.ImageService()
 	for _, img := range images {
