@@ -18,14 +18,68 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/testutil"
+	"github.com/pkg/errors"
 	"gotest.tools/v3/assert"
 )
+
+func TestRunEntrypointWithBuild(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	const imageName = "nerdctl-test-entrypoint-with-build"
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+ENTRYPOINT ["echo", "foo"]
+CMD ["echo", "bar"]
+	`, testutil.AlpineImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("run", "--rm", imageName).AssertOutWithFunc(func(stdout string) error {
+		expected := "foo echo bar\n"
+		if stdout != expected {
+			return errors.Errorf("expected %q, got %q", expected, stdout)
+		}
+		return nil
+	})
+	base.Cmd("run", "--rm", "--entrypoint", "", imageName).AssertFail()
+	base.Cmd("run", "--rm", "--entrypoint", "", imageName, "echo", "blah").AssertOutWithFunc(func(stdout string) error {
+		if !strings.Contains(stdout, "blah") {
+			return errors.New("echo blah was not executed?")
+		}
+		if strings.Contains(stdout, "bar") {
+			return errors.New("echo bar should not be executed")
+		}
+		if strings.Contains(stdout, "foo") {
+			return errors.New("echo foo should not be executed")
+		}
+		return nil
+	})
+	base.Cmd("run", "--rm", "--entrypoint", "time", imageName).AssertFail()
+	base.Cmd("run", "--rm", "--entrypoint", "time", imageName, "echo", "blah").AssertOutWithFunc(func(stdout string) error {
+		if !strings.Contains(stdout, "blah") {
+			return errors.New("echo blah was not executed?")
+		}
+		if strings.Contains(stdout, "bar") {
+			return errors.New("echo bar should not be executed")
+		}
+		if strings.Contains(stdout, "foo") {
+			return errors.New("echo foo should not be executed")
+		}
+		return nil
+	})
+}
 
 func TestRunWorkdir(t *testing.T) {
 	base := testutil.NewBase(t)
@@ -39,6 +93,7 @@ func TestRunCustomRootfs(t *testing.T) {
 	rootfs := prepareCustomRootfs(base, testutil.AlpineImage)
 	defer os.RemoveAll(rootfs)
 	base.Cmd("run", "--rm", "--rootfs", rootfs, "/bin/cat", "/proc/self/environ").AssertOut("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+	base.Cmd("run", "--rm", "--entrypoint", "/bin/echo", "--rootfs", rootfs, "echo", "foo").AssertOut("echo foo")
 }
 
 func prepareCustomRootfs(base *testutil.Base, imageName string) string {
