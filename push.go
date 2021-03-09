@@ -72,6 +72,7 @@ func pushAction(clicontext *cli.Context) error {
 		return errors.Wrapf(err, "failed to create a tmp single-platform image %q", singlePlatformRef)
 	}
 	defer client.ImageService().Delete(context.TODO(), singlePlatformImg.Name)
+	logrus.Infof("pushing as a single-platform image (%s, %s)", singlePlatformImg.Target.MediaType, singlePlatformImg.Target.Digest)
 
 	pushFunc := func(r remotes.Resolver) error {
 		return push.Push(ctx, client, r, clicontext.App.Writer, singlePlatformRef, ref, singlePlatform)
