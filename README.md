@@ -161,6 +161,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl port](#whale-nerdctl-port)
     - [:whale: nerdctl rm](#whale-nerdctl-rm)
     - [:whale: nerdctl stop](#whale-nerdctl-stop)
+    - [:whale: nerdctl start](#whale-nerdctl-start)
     - [:whale: nerdctl kill](#whale-nerdctl-kill)
     - [:whale: nerdctl pause](#whale-nerdctl-pause)
     - [:whale: nerdctl unpause](#whale-nerdctl-unpause)
@@ -305,6 +306,9 @@ Flags:
 
 ### :whale: nerdctl stop
 Stop one or more running containers.
+
+### :whale: nerdctl start
+Start one or more running containers.
 
 ### :whale: nerdctl kill
 Kill one or more running containers.
@@ -468,7 +472,6 @@ Container management:
 - `docker cp`
 - `docker diff`
 - `docker rename`
-- `docker start`
 - `docker wait`
 
 - `docker container prune`

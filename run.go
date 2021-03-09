@@ -435,7 +435,7 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 	}
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, clicontext.StringSlice("network"), ports)
+	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, clicontext.StringSlice("network"), ports, logURI)
 	if err != nil {
 		return err
 	}
@@ -689,7 +689,7 @@ func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts
 	return []containerd.NewContainerOpts{o}, nil
 }
 
-func withInternalLabels(ns, name, hostname, containerStateDir string, networks []string, ports []gocni.PortMapping) (containerd.NewContainerOpts, error) {
+func withInternalLabels(ns, name, hostname, containerStateDir string, networks []string, ports []gocni.PortMapping, logURI string) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
 	m[labels.Namespace] = ns
 	if name != "" {
@@ -708,6 +708,9 @@ func withInternalLabels(ns, name, hostname, containerStateDir string, networks [
 			return nil, err
 		}
 		m[labels.Ports] = string(portsJSON)
+	}
+	if logURI != "" {
+		m[labels.LogURI] = logURI
 	}
 	return containerd.WithAdditionalContainerLabels(m), nil
 }

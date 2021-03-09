@@ -72,7 +72,7 @@ func killAction(clicontext *cli.Context) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if err := killContainer(ctx, clicontext, found.Container, signal); err != nil {
+			if err := killContainer(ctx, found.Container, signal); err != nil {
 				if errdefs.IsNotFound(err) {
 					fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: Cannot kill container: %s: No such container: %s\n", found.Req, found.Req)
 					os.Exit(1)
@@ -94,7 +94,7 @@ func killAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func killContainer(ctx context.Context, clicontext *cli.Context, container containerd.Container, signal syscall.Signal) error {
+func killContainer(ctx context.Context, container containerd.Container, signal syscall.Signal) error {
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
 		return err
@@ -109,8 +109,7 @@ func killContainer(ctx context.Context, clicontext *cli.Context, container conta
 
 	switch status.Status {
 	case containerd.Created, containerd.Stopped:
-		fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: Cannot kill container: %s: Container %s is not running\n", container.ID(), container.ID())
-		os.Exit(1)
+		return errors.Errorf("cannot kill container: %s: Container %s is not running\n", container.ID(), container.ID())
 	case containerd.Paused, containerd.Pausing:
 		paused = true
 	default:
