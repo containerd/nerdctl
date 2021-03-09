@@ -190,6 +190,8 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl volume ls](#whale-nerdctl-volume-ls)
     - [:whale: nerdctl volume inspect](#whale-nerdctl-volume-inspect)
     - [:whale: nerdctl volume rm](#whale-nerdctl-volume-rm)
+  - [Namespace management](#namespace-management)
+    - [:nerd_face: nerdctl namespace ls](#nerd_face-nerdctl-namespace-ls)
   - [System](#system)
     - [:whale: nerdctl events](#whale-nerdctl-events)
     - [:whale: nerdctl info](#whale-nerdctl-info)
@@ -443,6 +445,13 @@ Display detailed information on one or more volumes
 
 ### :whale: nerdctl volume rm
 Remove one or more volumes
+
+## Namespace management
+
+### :nerd_face: nerdctl namespace ls
+List containerd namespaces such as "default", "moby", or "k8s.io".
+
+- `-q, --quiet`: Only display namespace names
 
 ## System
 ### :whale: nerdctl events
