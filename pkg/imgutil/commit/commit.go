@@ -217,7 +217,7 @@ func writeContentsForImage(ctx context.Context, cs content.Store, snName string,
 		Size:      int64(len(newConfigJSON)),
 	}
 
-	baseMfst, err := images.Manifest(ctx, cs, baseImg.Target(), platforms.Default())
+	baseMfst, err := images.Manifest(ctx, cs, baseImg.Target(), platforms.DefaultStrict())
 	if err != nil {
 		return ocispec.Descriptor{}, emptyDigest, err
 	}

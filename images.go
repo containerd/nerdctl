@@ -82,7 +82,7 @@ func printImages(ctx context.Context, clicontext *cli.Context, imageList []image
 	}
 
 	for _, img := range imageList {
-		size, err := img.Size(ctx, cs, platforms.Default())
+		size, err := img.Size(ctx, cs, platforms.DefaultStrict())
 		if err != nil {
 			return errors.Wrap(err, "failed to compute image size")
 		}
