@@ -273,7 +273,7 @@ func runAction(clicontext *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		opts = append(opts, oci.WithRootFSPath(absRootfs))
+		opts = append(opts, oci.WithRootFSPath(absRootfs), oci.WithDefaultPathEnv)
 	} else {
 		opts = append(opts, oci.WithImageConfig(ensured.Image))
 		cOpts = append(cOpts,
