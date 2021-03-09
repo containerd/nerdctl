@@ -55,6 +55,7 @@ func newApp() *cli.App {
 	app.Name = "nerdctl"
 	app.Usage = "Docker-compatible CLI for containerd"
 	app.UseShortOptionHandling = true
+	app.EnableBashCompletion = true
 	app.Version = strings.TrimPrefix(version.Version, "v")
 	app.Flags = []cli.Flag{
 		&cli.BoolFlag{
@@ -176,6 +177,8 @@ func newApp() *cli.App {
 		loginCommand,
 		// Logout
 		logoutCommand,
+		// Completion
+		completionCommand,
 	}
 	return app
 }

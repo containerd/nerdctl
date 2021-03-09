@@ -194,6 +194,8 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl events](#whale-nerdctl-events)
     - [:whale: nerdctl info](#whale-nerdctl-info)
     - [:whale: nerdctl version](#whale-nerdctl-version)
+  - [Shell completion](#shell-completion)
+    - [:nerd_face: nerdctl completion bash](#nerd_face-nerdctl-completion-bash)
   - [Global flags](#global-flags)
   - [Unimplemented Docker commands](#unimplemented-docker-commands)
 - [Additional documents](#additional-documents)
@@ -453,6 +455,17 @@ Display system-wide information
 
 ### :whale: nerdctl version
 Show the nerdctl version information
+
+## Shell completion
+
+### :nerd_face: nerdctl completion bash
+
+Show bash completion.
+
+Usage: add the following line to `~/.bash_profile`:
+```bash
+source <(nerdctl completion bash)>
+```
 
 ## Global flags
 - :nerd_face: `-a`, `--address`:  containerd address, optionally with "unix://" prefix

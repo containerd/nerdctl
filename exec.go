@@ -71,7 +71,8 @@ var execCommand = &cli.Command{
 			Usage: "Give extended privileges to the command",
 		},
 	},
-	Action: execAction,
+	Action:       execAction,
+	BashComplete: execBashComplete,
 }
 
 func execAction(clicontext *cli.Context) error {
@@ -240,4 +241,13 @@ func generateExecProcessSpec(ctx context.Context, clicontext *cli.Context, conta
 	}
 
 	return pspec, nil
+}
+
+func execBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show container names
+	bashCompleteContainerNames(clicontext)
 }

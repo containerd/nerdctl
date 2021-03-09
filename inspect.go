@@ -22,9 +22,10 @@ import (
 )
 
 var inspectCommand = &cli.Command{
-	Name:        "inspect",
-	Usage:       "Return low-level information on objects. Currently, only supports container objects.",
-	Description: containerInspectCommand.Description,
-	Action:      containerInspectAction,
-	Flags:       containerInspectCommand.Flags,
+	Name:         "inspect",
+	Usage:        "Return low-level information on objects. Currently, only supports container objects.",
+	Description:  containerInspectCommand.Description,
+	Action:       containerInspectAction,
+	BashComplete: containerInspectBashComplete,
+	Flags:        containerInspectCommand.Flags,
 }

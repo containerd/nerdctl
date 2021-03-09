@@ -32,10 +32,11 @@ import (
 )
 
 var stopCommand = &cli.Command{
-	Name:      "stop",
-	Usage:     "Stop one or more running containers",
-	ArgsUsage: "[flags] CONTAINER [CONTAINER, ...]",
-	Action:    stopAction,
+	Name:         "stop",
+	Usage:        "Stop one or more running containers",
+	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
+	Action:       stopAction,
+	BashComplete: stopBashComplete,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    "time",
@@ -177,4 +178,13 @@ func waitContainerStop(ctx context.Context, exitCh <-chan containerd.ExitStatus,
 	case status := <-exitCh:
 		return status.Error()
 	}
+}
+
+func stopBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show container names (TODO: filter already stopped containers)
+	bashCompleteContainerNames(clicontext)
 }

@@ -28,10 +28,11 @@ import (
 )
 
 var rmiCommand = &cli.Command{
-	Name:      "rmi",
-	Usage:     "Remove one or more images",
-	ArgsUsage: "[flags] IMAGE [IMAGE, ...]",
-	Action:    rmiAction,
+	Name:         "rmi",
+	Usage:        "Remove one or more images",
+	ArgsUsage:    "[flags] IMAGE [IMAGE, ...]",
+	BashComplete: rmiBashComplete,
+	Action:       rmiAction,
 }
 
 func rmiAction(clicontext *cli.Context) error {
@@ -75,4 +76,30 @@ func rmiAction(clicontext *cli.Context) error {
 		}
 	}
 	return nil
+}
+
+func rmiBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show image names
+	bashCompleteImageNames(clicontext)
+}
+
+func bashCompleteImageNames(clicontext *cli.Context) {
+	w := clicontext.App.Writer
+	client, ctx, cancel, err := newClient(clicontext)
+	if err != nil {
+		return
+	}
+	defer cancel()
+
+	imageList, err := client.ImageService().List(ctx, "")
+	if err != nil {
+		return
+	}
+	for _, img := range imageList {
+		fmt.Fprintln(w, img.Name)
+	}
 }

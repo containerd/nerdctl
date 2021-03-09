@@ -28,11 +28,12 @@ import (
 )
 
 var networkInspectCommand = &cli.Command{
-	Name:        "inspect",
-	Usage:       "Display detailed information on one or more networks",
-	ArgsUsage:   "[flags] NETWORK [NETWORK, ...]",
-	Description: "NOTE: The output format is not compatible with Docker.",
-	Action:      networkInspectAction,
+	Name:         "inspect",
+	Usage:        "Display detailed information on one or more networks",
+	ArgsUsage:    "[flags] NETWORK [NETWORK, ...]",
+	Description:  "NOTE: The output format is not compatible with Docker.",
+	Action:       networkInspectAction,
+	BashComplete: networkInspectBashComplete,
 }
 
 func networkInspectAction(clicontext *cli.Context) error {
@@ -77,4 +78,17 @@ func networkInspectAction(clicontext *cli.Context) error {
 	}
 	fmt.Fprintln(clicontext.App.Writer, string(b))
 	return nil
+}
+
+func networkInspectBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show network names
+	bashCompleteNetworkNames(clicontext)
+
+	// For `nerdctl network inspect`, print built-in "bridge" as well
+	w := clicontext.App.Writer
+	fmt.Fprintln(w, "bridge")
 }

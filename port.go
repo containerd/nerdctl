@@ -33,10 +33,11 @@ import (
 )
 
 var portCommand = &cli.Command{
-	Name:      "port",
-	Usage:     "List port mappings or a specific mapping for the container",
-	ArgsUsage: "CONTAINER [PRIVATE_PORT[/PROTO]]",
-	Action:    portAction,
+	Name:         "port",
+	Usage:        "List port mappings or a specific mapping for the container",
+	ArgsUsage:    "CONTAINER [PRIVATE_PORT[/PROTO]]",
+	Action:       portAction,
+	BashComplete: portBashComplete,
 }
 
 func portAction(clicontext *cli.Context) error {
@@ -120,4 +121,12 @@ func printPort(ctx context.Context, clicontext *cli.Context, container container
 		}
 	}
 	return errors.Errorf("no public port %d/%s published for %q", argPort, argProto, container.ID())
+}
+
+func portBashComplete(clicontext *cli.Context) {
+	if _, ok := isFlagCompletionContext(); ok {
+		defaultBashComplete(clicontext)
+		return
+	}
+	bashCompleteContainerNames(clicontext)
 }
