@@ -238,15 +238,6 @@ func runAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	imageless := clicontext.Bool("rootfs")
-	var ensured *imgutil.EnsuredImage
-	if !imageless {
-		ensured, err = imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(),
-			clicontext.String("pull"), clicontext.Bool("insecure-registry"))
-		if err != nil {
-			return err
-		}
-	}
 	var (
 		opts  []oci.SpecOpts
 		cOpts []containerd.NewContainerOpts
@@ -274,44 +265,11 @@ func runAction(clicontext *cli.Context) error {
 		}),
 	)
 
-	if !imageless {
-		cOpts = append(cOpts,
-			containerd.WithImage(ensured.Image),
-			containerd.WithSnapshotter(ensured.Snapshotter),
-			containerd.WithNewSnapshot(id, ensured.Image),
-			containerd.WithImageStopSignal(ensured.Image, "SIGTERM"),
-		)
+	if rootfsOpts, rootfsCOpts, err := generateRootfsOpts(ctx, client, clicontext, id); err != nil {
+		return err
 	} else {
-		absRootfs, err := filepath.Abs(clicontext.Args().First())
-		if err != nil {
-			return err
-		}
-		opts = append(opts, oci.WithRootFSPath(absRootfs), oci.WithDefaultPathEnv)
-	}
-
-	// NOTE: "--entrypoint" can be set to an empty string, see TestRunEntrypoint* in run_test.go .
-	if !imageless && !clicontext.IsSet("entrypoint") {
-		opts = append(opts, oci.WithImageConfigArgs(ensured.Image, clicontext.Args().Tail()))
-	} else {
-		if !imageless {
-			opts = append(opts, oci.WithImageConfig(ensured.Image))
-		}
-		var processArgs []string
-		if entrypoint := clicontext.String("entrypoint"); entrypoint != "" {
-			processArgs = append(processArgs, entrypoint)
-		}
-		if clicontext.NArg() > 1 {
-			processArgs = append(processArgs, clicontext.Args().Tail()...)
-		}
-		if len(processArgs) == 0 {
-			// error message is from Podman
-			return errors.New("no command or entrypoint provided, and no CMD or ENTRYPOINT from image")
-		}
-		opts = append(opts, oci.WithProcessArgs(processArgs...))
-	}
-
-	if clicontext.Bool("read-only") {
-		opts = append(opts, oci.WithRootFSReadonly())
+		opts = append(opts, rootfsOpts...)
+		cOpts = append(cOpts, rootfsCOpts...)
 	}
 
 	if wd := clicontext.String("workdir"); wd != "" {
@@ -554,6 +512,65 @@ func runAction(clicontext *cli.Context) error {
 		return cli.NewExitError("", int(code))
 	}
 	return nil
+}
+
+func generateRootfsOpts(ctx context.Context, client *containerd.Client, clicontext *cli.Context, id string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
+	imageless := clicontext.Bool("rootfs")
+	var (
+		ensured *imgutil.EnsuredImage
+		err     error
+	)
+	if !imageless {
+		ensured, err = imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(),
+			clicontext.String("pull"), clicontext.Bool("insecure-registry"))
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	var (
+		opts  []oci.SpecOpts
+		cOpts []containerd.NewContainerOpts
+	)
+	if !imageless {
+		cOpts = append(cOpts,
+			containerd.WithImage(ensured.Image),
+			containerd.WithSnapshotter(ensured.Snapshotter),
+			containerd.WithNewSnapshot(id, ensured.Image),
+			containerd.WithImageStopSignal(ensured.Image, "SIGTERM"),
+		)
+	} else {
+		absRootfs, err := filepath.Abs(clicontext.Args().First())
+		if err != nil {
+			return nil, nil, err
+		}
+		opts = append(opts, oci.WithRootFSPath(absRootfs), oci.WithDefaultPathEnv)
+	}
+
+	// NOTE: "--entrypoint" can be set to an empty string, see TestRunEntrypoint* in run_test.go .
+	if !imageless && !clicontext.IsSet("entrypoint") {
+		opts = append(opts, oci.WithImageConfigArgs(ensured.Image, clicontext.Args().Tail()))
+	} else {
+		if !imageless {
+			opts = append(opts, oci.WithImageConfig(ensured.Image))
+		}
+		var processArgs []string
+		if entrypoint := clicontext.String("entrypoint"); entrypoint != "" {
+			processArgs = append(processArgs, entrypoint)
+		}
+		if clicontext.NArg() > 1 {
+			processArgs = append(processArgs, clicontext.Args().Tail()...)
+		}
+		if len(processArgs) == 0 {
+			// error message is from Podman
+			return nil, nil, errors.New("no command or entrypoint provided, and no CMD or ENTRYPOINT from image")
+		}
+		opts = append(opts, oci.WithProcessArgs(processArgs...))
+	}
+
+	if clicontext.Bool("read-only") {
+		opts = append(opts, oci.WithRootFSReadonly())
+	}
+	return opts, cOpts, nil
 }
 
 func genID() string {
