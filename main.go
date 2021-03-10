@@ -126,12 +126,9 @@ func newApp() *cli.App {
 		if strings.Contains(address, "://") && !strings.HasPrefix(address, "unix://") {
 			return errors.Errorf("invalid address %q", address)
 		}
-		if rootlessutil.IsRootlessParent() {
-			// --help and --version can be executed safely without nsentering into RootlessKit
-			// TODO: allow `nerdctl <SUBCOMMAND> --help` without nsentering into RootlessKit
-			if !clicontext.Bool("help") && !clicontext.Bool("version") {
-				return rootlessutil.ParentMain()
-			}
+		if appNeedsRootlessParentMain(clicontext) {
+			// reexec /proc/self/exe with `nsenter` into RootlessKit namespaces
+			return rootlessutil.ParentMain()
 		}
 		return nil
 	}
@@ -184,6 +181,18 @@ func newApp() *cli.App {
 	}
 	app.BashComplete = appBashComplete
 	return app
+}
+
+func appNeedsRootlessParentMain(clicontext *cli.Context) bool {
+	if !rootlessutil.IsRootlessParent() {
+		return false
+	}
+	// TODO: allow `nerdctl <SUBCOMMAND> --help` without nsentering into RootlessKit
+	switch clicontext.Args().First() {
+	case "", "completion", "login", "logout":
+		return false
+	}
+	return true
 }
 
 type Category = string
