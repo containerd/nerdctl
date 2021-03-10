@@ -45,8 +45,8 @@ func completionBashAction(clicontext *cli.Context) error {
 # Autocompletion enabler for nerdctl.
 # Usage: add 'source <(nerdctl completion bash)' to ~/.bash_profile
 
-# _cli_bash_autocomplete is from https://github.com/urfave/cli/blob/v2.3.0/autocomplete/bash_autocomplete (MIT License)
-_cli_bash_autocomplete() {
+# _nerdctl_bash_autocomplete is from https://github.com/urfave/cli/blob/v2.3.0/autocomplete/bash_autocomplete (MIT License)
+_nerdctl_bash_autocomplete() {
   if [[ "${COMP_WORDS[0]}" != "source" ]]; then
     local cur opts base
     COMPREPLY=()
@@ -61,7 +61,7 @@ _cli_bash_autocomplete() {
   fi
 }
 
-complete -o bashdefault -o default -o nospace -F _cli_bash_autocomplete nerdctl
+complete -o bashdefault -o default -o nospace -F _nerdctl_bash_autocomplete nerdctl
 `
 	_, err := fmt.Fprint(clicontext.App.Writer, tmpl)
 	return err
