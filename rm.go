@@ -195,35 +195,11 @@ func removeContainer(clicontext *cli.Context, ctx context.Context, client *conta
 }
 
 func rmBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}
 	// show container names
 	bashCompleteContainerNames(clicontext)
-}
-
-func bashCompleteContainerNames(clicontext *cli.Context) {
-	w := clicontext.App.Writer
-	client, ctx, cancel, err := newClient(clicontext)
-	if err != nil {
-		return
-	}
-	defer cancel()
-	containers, err := client.Containers(ctx)
-	if err != nil {
-		return
-	}
-	for _, c := range containers {
-		lab, err := c.Labels(ctx)
-		if err != nil {
-			continue
-		}
-		name := lab[labels.Name]
-		if name != "" {
-			fmt.Fprintln(w, name)
-			continue
-		}
-		fmt.Fprintln(w, c.ID())
-	}
 }

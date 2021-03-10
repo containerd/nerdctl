@@ -79,27 +79,11 @@ func rmiAction(clicontext *cli.Context) error {
 }
 
 func rmiBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}
 	// show image names
 	bashCompleteImageNames(clicontext)
-}
-
-func bashCompleteImageNames(clicontext *cli.Context) {
-	w := clicontext.App.Writer
-	client, ctx, cancel, err := newClient(clicontext)
-	if err != nil {
-		return
-	}
-	defer cancel()
-
-	imageList, err := client.ImageService().List(ctx, "")
-	if err != nil {
-		return
-	}
-	for _, img := range imageList {
-		fmt.Fprintln(w, img.Name)
-	}
 }

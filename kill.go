@@ -130,7 +130,8 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 }
 
 func killBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}

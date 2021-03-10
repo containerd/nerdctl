@@ -181,7 +181,8 @@ func waitContainerStop(ctx context.Context, exitCh <-chan containerd.ExitStatus,
 }
 
 func stopBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}

@@ -67,7 +67,8 @@ func volumeInspectAction(clicontext *cli.Context) error {
 }
 
 func volumeInspectBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}
