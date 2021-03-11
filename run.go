@@ -278,7 +278,7 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, oci.WithProcessCwd(wd))
 	}
 
-	if env := clicontext.StringSlice("env"); len(env) > 0 {
+	if env := strutil.DedupeStrSlice(clicontext.StringSlice("env")); len(env) > 0 {
 		opts = append(opts, oci.WithEnv(env))
 	}
 
@@ -323,11 +323,17 @@ func runAction(clicontext *cli.Context) error {
 	}
 	cOpts = append(cOpts, restartOpts...)
 
-	ports := make([]gocni.PortMapping, len(clicontext.StringSlice("p")))
-	if len(clicontext.StringSlice("network")) != 1 {
+	// DedupeStrSlice is required as a workaround for urfave/cli bug
+	// https://github.com/AkihiroSuda/nerdctl/issues/108
+	// https://github.com/urfave/cli/issues/1254
+	portSlice := strutil.DedupeStrSlice(clicontext.StringSlice("p"))
+	netSlice := strutil.DedupeStrSlice(clicontext.StringSlice("net"))
+
+	ports := make([]gocni.PortMapping, len(portSlice))
+	if len(netSlice) != 1 {
 		return errors.New("currently, number of networks must be 1")
 	}
-	switch netstr := clicontext.StringSlice("network")[0]; netstr {
+	switch netstr := netSlice[0]; netstr {
 	case "none":
 		// NOP
 	case "host":
@@ -355,7 +361,7 @@ func runAction(clicontext *cli.Context) error {
 		}
 
 		resolvConfPath := filepath.Join(stateDir, "resolv.conf")
-		if err := dnsutil.WriteResolvConfFile(resolvConfPath, clicontext.StringSlice("dns")); err != nil {
+		if err := dnsutil.WriteResolvConfFile(resolvConfPath, strutil.DedupeStrSlice(clicontext.StringSlice("dns"))); err != nil {
 			return err
 		}
 		// the content of /etc/hosts is created in OCI Hook
@@ -364,7 +370,7 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 		opts = append(opts, withCustomResolvConf(resolvConfPath), withCustomHosts(etcHostsPath))
-		for i, p := range clicontext.StringSlice("p") {
+		for i, p := range portSlice {
 			pm, err := portutil.ParseFlagP(p)
 			if err != nil {
 				return err
@@ -397,14 +403,16 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, uOpts...)
 	}
 
-	securityOptsMaps := strutil.ConvertKVStringsToMap(clicontext.StringSlice("security-opt"))
+	securityOptsMaps := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(clicontext.StringSlice("security-opt")))
 	if secOpts, err := generateSecurityOpts(securityOptsMaps); err != nil {
 		return err
 	} else {
 		opts = append(opts, secOpts...)
 	}
 
-	if capOpts, err := generateCapOpts(clicontext.StringSlice("cap-add"), clicontext.StringSlice("cap-drop")); err != nil {
+	if capOpts, err := generateCapOpts(
+		strutil.DedupeStrSlice(clicontext.StringSlice("cap-add")),
+		strutil.DedupeStrSlice(clicontext.StringSlice("cap-drop"))); err != nil {
 		return err
 	} else {
 		opts = append(opts, capOpts...)
@@ -437,7 +445,7 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 	}
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, clicontext.StringSlice("network"), ports, logURI)
+	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, netSlice, ports, logURI)
 	if err != nil {
 		return err
 	}
@@ -681,8 +689,8 @@ func getContainerStateDirPath(clicontext *cli.Context, dataStore, id string) (st
 }
 
 func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts, error) {
-	labelsMap := clicontext.StringSlice("label")
-	labelsFilePath := clicontext.StringSlice("label-file")
+	labelsMap := strutil.DedupeStrSlice(clicontext.StringSlice("label"))
+	labelsFilePath := strutil.DedupeStrSlice(clicontext.StringSlice("label-file"))
 	labels, err := opts.ReadKVStrings(labelsFilePath, labelsMap)
 	if err != nil {
 		return nil, err

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/strutil"
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/images/converter/uncompress"
 	"github.com/containerd/containerd/platforms"
@@ -111,7 +112,7 @@ When '--all-platforms' is given all images in a manifest list must be available.
 		targetRef := targetNamed.String()
 
 		if !context.Bool("all-platforms") {
-			if pss := context.StringSlice("platform"); len(pss) > 0 {
+			if pss := strutil.DedupeStrSlice(context.StringSlice("platform")); len(pss) > 0 {
 				var all []ocispec.Platform
 				for _, ps := range pss {
 					p, err := platforms.Parse(ps)

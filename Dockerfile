@@ -130,9 +130,10 @@ FROM golang:${GO_VERSION}-alpine AS goversion
 RUN go env GOVERSION > /GOVERSION
 
 FROM base AS test
+# `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
 RUN apt-get update && \
   apt-get install -qq -y \
-  make git
+  expect
 COPY --from=goversion /GOVERSION /GOVERSION
 ARG TARGETARCH
 RUN curl -L https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local

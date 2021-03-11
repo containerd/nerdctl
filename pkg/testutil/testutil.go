@@ -50,6 +50,24 @@ func (b *Base) Cmd(args ...string) *Cmd {
 	return cmd
 }
 
+func (b *Base) CmdWithHelper(helper []string, args ...string) *Cmd {
+	helperBin, err := exec.LookPath(helper[0])
+	if err != nil {
+		b.T.Skipf("helper binary %q not found", helper[0])
+	}
+	helperArgs := helper[1:]
+	helperArgs = append(helperArgs, b.Binary)
+	helperArgs = append(helperArgs, b.Args...)
+	helperArgs = append(helperArgs, args...)
+
+	icmdCmd := icmd.Command(helperBin, helperArgs...)
+	cmd := &Cmd{
+		Cmd:  icmdCmd,
+		Base: b,
+	}
+	return cmd
+}
+
 func (b *Base) systemctlTarget() string {
 	switch b.Target {
 	case Nerdctl:

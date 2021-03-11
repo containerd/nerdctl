@@ -19,6 +19,7 @@ package main
 
 import (
 	"github.com/AkihiroSuda/nerdctl/pkg/mountutil"
+	"github.com/AkihiroSuda/nerdctl/pkg/strutil"
 	"github.com/containerd/containerd/oci"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli/v2"
@@ -27,7 +28,7 @@ import (
 func generateMountOpts(clicontext *cli.Context) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
 
-	if flagVSlice := clicontext.StringSlice("v"); len(flagVSlice) > 0 {
+	if flagVSlice := strutil.DedupeStrSlice(clicontext.StringSlice("v")); len(flagVSlice) > 0 {
 		volumes, err := getVolumes(clicontext)
 		if err != nil {
 			return nil, err
