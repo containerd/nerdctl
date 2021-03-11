@@ -24,6 +24,7 @@ import (
 
 	"github.com/AkihiroSuda/nerdctl/pkg/buildkitutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
+	"github.com/AkihiroSuda/nerdctl/pkg/strutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -130,7 +131,7 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, error) {
 	}
 
 	output := "--output=type=docker"
-	if tagSlice := clicontext.StringSlice("tag"); len(tagSlice) > 0 {
+	if tagSlice := strutil.DedupeStrSlice(clicontext.StringSlice("tag")); len(tagSlice) > 0 {
 		if len(tagSlice) > 1 {
 			return "", nil, errors.Errorf("specifying multiple -t is not supported yet")
 		}
@@ -156,7 +157,7 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, error) {
 		buildctlArgs = append(buildctlArgs, "--opt=target="+target)
 	}
 
-	for _, ba := range clicontext.StringSlice("build-arg") {
+	for _, ba := range strutil.DedupeStrSlice(clicontext.StringSlice("build-arg")) {
 		buildctlArgs = append(buildctlArgs, "--opt=build-arg:"+ba)
 	}
 
@@ -164,11 +165,11 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, error) {
 		buildctlArgs = append(buildctlArgs, "--no-cache")
 	}
 
-	for _, s := range clicontext.StringSlice("secret") {
+	for _, s := range strutil.DedupeStrSlice(clicontext.StringSlice("secret")) {
 		buildctlArgs = append(buildctlArgs, "--secret="+s)
 	}
 
-	for _, s := range clicontext.StringSlice("ssh") {
+	for _, s := range strutil.DedupeStrSlice(clicontext.StringSlice("ssh")) {
 		buildctlArgs = append(buildctlArgs, "--ssh="+s)
 	}
 

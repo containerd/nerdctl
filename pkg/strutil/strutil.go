@@ -50,3 +50,15 @@ func InStringSlice(ss []string, str string) bool {
 	}
 	return false
 }
+
+func DedupeStrSlice(in []string) []string {
+	m := make(map[string]struct{})
+	var res []string
+	for _, s := range in {
+		if _, ok := m[s]; !ok {
+			res = append(res, s)
+			m[s] = struct{}{}
+		}
+	}
+	return res
+}

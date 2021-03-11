@@ -26,3 +26,16 @@ import (
 func TestMain(m *testing.M) {
 	testutil.M(m)
 }
+
+// TestIssue108 tests https://github.com/AkihiroSuda/nerdctl/issues/108
+// ("`nerdctl run --net=host -it` fails while `nerdctl run -it --net=host` works")
+func TestIssue108(t *testing.T) {
+	base := testutil.NewBase(t)
+	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
+	// unbuffer(1) can be installed with `apt-get install expect`.
+	unbuffer := []string{"unbuffer"}
+	base.CmdWithHelper(unbuffer, "run", "-it", "--rm", "--net=host", testutil.AlpineImage,
+		"echo", "this was always working").AssertOK()
+	base.CmdWithHelper(unbuffer, "run", "--rm", "--net=host", "-it", testutil.AlpineImage,
+		"echo", "this was not working due to issue #108").AssertOK()
+}

@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
+	"github.com/AkihiroSuda/nerdctl/pkg/strutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/taskutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
@@ -218,7 +219,7 @@ func generateExecProcessSpec(ctx context.Context, clicontext *cli.Context, conta
 	if workdir := clicontext.String("workdir"); workdir != "" {
 		pspec.Cwd = workdir
 	}
-	for _, e := range clicontext.StringSlice("env") {
+	for _, e := range strutil.DedupeStrSlice(clicontext.StringSlice("env")) {
 		pspec.Env = append(pspec.Env, e)
 	}
 
