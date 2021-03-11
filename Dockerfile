@@ -34,6 +34,8 @@ RUN BINDIR=/out/bin make binaries install
 
 FROM build-minimal AS build-full
 RUN apk add --no-cache curl
+COPY README.md /out/share/doc/nerdctl/
+COPY docs /out/share/doc/nerdctl/docs
 RUN mkdir -p /out/share/doc/nerdctl-full && \
   echo "# nerdctl (full distribution)" > /out/share/doc/nerdctl-full/README.md && \
   echo "- nerdctl: $(cd /go/src/github.com/AkihiroSuda/nerdctl && git describe --tags)" >> /out/share/doc/nerdctl-full/README.md
