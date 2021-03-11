@@ -90,7 +90,7 @@ func infoAction(clicontext *cli.Context) error {
 		fmt.Fprintf(w, "  rootless\n")
 	}
 	fmt.Fprintf(w, " Operating System: %s\n", infoutil.DistroName())
-	fmt.Fprintf(w, " Kernel version: %s\n", infoutil.UnameR())
+	fmt.Fprintf(w, " Kernel Version: %s\n", infoutil.UnameR())
 	fmt.Fprintf(w, " ID: %s\n", daemonIntro.UUID)
 	return nil
 }
