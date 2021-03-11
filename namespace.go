@@ -19,8 +19,13 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"text/tabwriter"
 
+	"github.com/AkihiroSuda/nerdctl/pkg/mountutil/volumestore"
+	"github.com/containerd/containerd/namespaces"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -67,10 +72,44 @@ func namespaceLsAction(clicontext *cli.Context) error {
 		return nil
 	}
 
+	dataStore, err := getDataStore(clicontext)
+	if err != nil {
+		return err
+	}
+
 	w := tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
-	fmt.Fprintln(w, "NAME")
+	// no "NETWORKS", because networks are global objects
+	fmt.Fprintln(w, "NAME\tCONTAINERS\tIMAGES\tVOLUMES")
 	for _, ns := range nsList {
-		fmt.Fprintf(w, "%ss\n", ns)
+		ctx = namespaces.WithNamespace(ctx, ns)
+		var numContainers, numImages, numVolumes int
+
+		containers, err := client.Containers(ctx)
+		if err != nil {
+			logrus.Warn(err)
+		}
+		numContainers = len(containers)
+
+		images, err := client.ImageService().List(ctx)
+		if err != nil {
+			logrus.Warn(err)
+		}
+		numImages = len(images)
+
+		volStore, err := volumestore.Path(dataStore, ns)
+		if err != nil {
+			logrus.Warn(err)
+		} else {
+			volEnts, err := ioutil.ReadDir(volStore)
+			if err != nil {
+				if !os.IsNotExist(err) {
+					logrus.Warn(err)
+				}
+			}
+			numVolumes = len(volEnts)
+		}
+
+		fmt.Fprintf(w, "%s\t%d\t%d\t%d\n", ns, numContainers, numImages, numVolumes)
 	}
 	return w.Flush()
 }

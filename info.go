@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
+	"github.com/AkihiroSuda/nerdctl/pkg/infoutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/cgroups"
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
@@ -88,6 +89,8 @@ func infoAction(clicontext *cli.Context) error {
 	if rootlessutil.IsRootlessChild() {
 		fmt.Fprintf(w, "  rootless\n")
 	}
+	fmt.Fprintf(w, " Operating System: %s\n", infoutil.DistroName())
+	fmt.Fprintf(w, " Kernel version: %s\n", infoutil.UnameR())
 	fmt.Fprintf(w, " ID: %s\n", daemonIntro.UUID)
 	return nil
 }

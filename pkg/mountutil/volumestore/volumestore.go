@@ -24,12 +24,22 @@ import (
 	"github.com/containerd/containerd/errdefs"
 )
 
-// New returns a string like `/var/lib/nerdctl/1935db59/volumes/default`
-func New(dataStore, ns string) (string, error) {
+// Path returns a string like `/var/lib/nerdctl/1935db59/volumes/default`.
+func Path(dataStore, ns string) (string, error) {
 	if dataStore == "" || ns == "" {
 		return "", errdefs.ErrInvalidArgument
 	}
 	volStore := filepath.Join(dataStore, "volumes", ns)
+	return volStore, nil
+}
+
+// New returns a string like `/var/lib/nerdctl/1935db59/volumes/default`.
+// The returned directory is guaranteed to exist.
+func New(dataStore, ns string) (string, error) {
+	volStore, err := Path(dataStore, ns)
+	if err != nil {
+		return "", err
+	}
 	if err := os.MkdirAll(volStore, 0700); err != nil {
 		return "", err
 	}
