@@ -123,13 +123,17 @@ VOLUME /var/lib/nerdctl
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["bash"]
 
+# convert GO_VERSION=1.16 to the latest release such as "go1.16.1"
+FROM golang:${GO_VERSION}-alpine AS goversion
+RUN go env GOVERSION > /GOVERSION
+
 FROM base AS test
 RUN apt-get update && \
   apt-get install -qq -y \
   make git
-ARG GO_VERSION
+COPY --from=goversion /GOVERSION /GOVERSION
 ARG TARGETARCH
-RUN curl -L https://golang.org/dl/go${GO_VERSION}.linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local
+RUN curl -L https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local
 ENV PATH=/usr/local/go/bin:$PATH
 COPY . /go/src/github.com/AkihiroSuda/nerdctl
 WORKDIR /go/src/github.com/AkihiroSuda/nerdctl
