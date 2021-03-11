@@ -106,7 +106,8 @@ func newCommitOpts(clicontext *cli.Context) (*commit.Opts, error) {
 }
 
 func commitBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}

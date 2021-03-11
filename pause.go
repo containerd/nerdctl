@@ -96,7 +96,8 @@ func pauseContainer(ctx context.Context, client *containerd.Client, id string) e
 }
 
 func pauseBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}

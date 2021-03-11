@@ -24,7 +24,7 @@ import (
 	"github.com/containerd/cgroups"
 )
 
-func isSystemdAvailable() bool {
+func IsSystemdAvailable() bool {
 	fi, err := os.Lstat("/run/systemd/system")
 	if err != nil {
 		return false
@@ -37,7 +37,7 @@ func isSystemdAvailable() bool {
 // - "cgroupfs" on v1 rootful
 // - "none"     on v1 rootless
 func CgroupManager() string {
-	if cgroups.Mode() == cgroups.Unified && isSystemdAvailable() {
+	if cgroups.Mode() == cgroups.Unified && IsSystemdAvailable() {
 		return "systemd"
 	}
 	if rootlessutil.IsRootless() {

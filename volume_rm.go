@@ -61,21 +61,11 @@ func volumeRmAction(clicontext *cli.Context) error {
 }
 
 func volumeRmBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}
 	// show voume names
 	bashCompleteVolumeNames(clicontext)
-}
-
-func bashCompleteVolumeNames(clicontext *cli.Context) {
-	w := clicontext.App.Writer
-	vols, err := getVolumes(clicontext)
-	if err != nil {
-		return
-	}
-	for _, v := range vols {
-		fmt.Fprintln(w, v.Name)
-	}
 }

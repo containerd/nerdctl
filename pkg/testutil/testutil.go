@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -143,6 +144,17 @@ func (c *Cmd) AssertOut(s string) {
 		Out: s,
 	}
 	c.Assert(expected)
+}
+
+func (c *Cmd) AssertNoOut(s string) {
+	c.Base.T.Helper()
+	fn := func(stdout string) error {
+		if strings.Contains(stdout, s) {
+			return errors.Errorf("expected not to contain %q, got %q", s, stdout)
+		}
+		return nil
+	}
+	c.AssertOutWithFunc(fn)
 }
 
 func (c *Cmd) AssertOutWithFunc(fn func(stdout string) error) {

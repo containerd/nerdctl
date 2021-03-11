@@ -202,14 +202,29 @@ const (
 )
 
 func appBashComplete(clicontext *cli.Context) {
-	if current, ok := isFlagCompletionContext(); ok {
-		switch current {
-		case "-n", "--namespace":
-			bashCompleteNamespaceNames(clicontext)
-			return
+	w := clicontext.App.Writer
+	coco := parseCompletionContext(clicontext)
+	switch coco.flagName {
+	case "n", "namespace":
+		bashCompleteNamespaceNames(clicontext)
+		return
+	case "snapshotter", "storage-driver":
+		bashCompleteSnapshotterNames(clicontext)
+		return
+	case "cgroup-manager":
+		fmt.Fprintln(w, "cgroupfs")
+		if ncdefaults.IsSystemdAvailable() {
+			fmt.Fprintln(w, "systemd")
 		}
+		if rootlessutil.IsRootless() {
+			fmt.Fprintln(w, "none")
+		}
+		return
 	}
-	defaultBashComplete(clicontext)
+	cli.DefaultAppComplete(clicontext)
+	for _, subcomm := range clicontext.App.Commands {
+		fmt.Fprintln(clicontext.App.Writer, subcomm.Name)
+	}
 }
 
 func bashCompleteNamespaceNames(clicontext *cli.Context) {
@@ -220,7 +235,6 @@ func bashCompleteNamespaceNames(clicontext *cli.Context) {
 
 	client, ctx, cancel, err := newClient(clicontext)
 	if err != nil {
-		logrus.Warn(err)
 		return
 	}
 	defer cancel()
@@ -232,5 +246,25 @@ func bashCompleteNamespaceNames(clicontext *cli.Context) {
 	}
 	for _, ns := range nsList {
 		fmt.Fprintln(clicontext.App.Writer, ns)
+	}
+}
+
+func bashCompleteSnapshotterNames(clicontext *cli.Context) {
+	if rootlessutil.IsRootlessParent() {
+		_ = rootlessutil.ParentMain()
+		return
+	}
+
+	client, ctx, cancel, err := newClient(clicontext)
+	if err != nil {
+		return
+	}
+	defer cancel()
+	snapshotterPlugins, err := getSnapshotterNames(ctx, client.IntrospectionService())
+	if err != nil {
+		return
+	}
+	for _, name := range snapshotterPlugins {
+		fmt.Fprintln(clicontext.App.Writer, name)
 	}
 }

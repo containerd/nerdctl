@@ -18,6 +18,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/cgroups"
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
+	"github.com/containerd/containerd/services/introspection"
 	ptypes "github.com/gogo/protobuf/types"
 	"github.com/urfave/cli/v2"
 )
@@ -55,15 +57,9 @@ func infoAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	plugins, err := introService.Plugins(ctx, nil)
+	snapshotterPlugins, err := getSnapshotterNames(ctx, introService)
 	if err != nil {
 		return err
-	}
-	var snapshotterPlugins []string
-	for _, p := range plugins.Plugins {
-		if strings.HasPrefix(p.Type, "io.containerd.snapshotter.") && p.InitErr == nil {
-			snapshotterPlugins = append(snapshotterPlugins, p.ID)
-		}
 	}
 
 	fmt.Fprintf(w, "\n")
@@ -94,4 +90,18 @@ func infoAction(clicontext *cli.Context) error {
 	}
 	fmt.Fprintf(w, " ID: %s\n", daemonIntro.UUID)
 	return nil
+}
+
+func getSnapshotterNames(ctx context.Context, introService introspection.Service) ([]string, error) {
+	var names []string
+	plugins, err := introService.Plugins(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range plugins.Plugins {
+		if strings.HasPrefix(p.Type, "io.containerd.snapshotter.") && p.InitErr == nil {
+			names = append(names, p.ID)
+		}
+	}
+	return names, nil
 }

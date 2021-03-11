@@ -244,7 +244,8 @@ func generateExecProcessSpec(ctx context.Context, clicontext *cli.Context, conta
 }
 
 func execBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}

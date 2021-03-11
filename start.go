@@ -101,7 +101,8 @@ func startContainer(ctx context.Context, container containerd.Container) error {
 }
 
 func startBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}

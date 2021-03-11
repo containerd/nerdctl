@@ -116,7 +116,19 @@ func (x *containerInspector) Handler(ctx context.Context, found containerwalker.
 }
 
 func containerInspectBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring {
+		defaultBashComplete(clicontext)
+		return
+	}
+	if coco.flagTakesValue {
+		w := clicontext.App.Writer
+		switch coco.flagName {
+		case "mode":
+			fmt.Fprintln(w, "dockercompat")
+			fmt.Fprintln(w, "native")
+			return
+		}
 		defaultBashComplete(clicontext)
 		return
 	}

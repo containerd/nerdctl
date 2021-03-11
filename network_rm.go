@@ -82,25 +82,12 @@ func networkRmAction(clicontext *cli.Context) error {
 }
 
 func networkRmBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}
 	// show network names
-	bashCompleteNetworkNames(clicontext)
-}
-
-func bashCompleteNetworkNames(clicontext *cli.Context) {
-	w := clicontext.App.Writer
-	e := &netutil.CNIEnv{
-		Path:        clicontext.String("cni-path"),
-		NetconfPath: clicontext.String("cni-netconfpath"),
-	}
-	ll, err := netutil.ConfigLists(e)
-	if err != nil {
-		return
-	}
-	for _, l := range ll {
-		fmt.Fprintln(w, l.Name)
-	}
+	exclude := []string{netutil.DefaultNetworkName, "host", "none"}
+	bashCompleteNetworkNames(clicontext, exclude)
 }

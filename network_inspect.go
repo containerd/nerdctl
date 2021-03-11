@@ -81,14 +81,12 @@ func networkInspectAction(clicontext *cli.Context) error {
 }
 
 func networkInspectBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}
-	// show network names
-	bashCompleteNetworkNames(clicontext)
-
-	// For `nerdctl network inspect`, print built-in "bridge" as well
-	w := clicontext.App.Writer
-	fmt.Fprintln(w, "bridge")
+	// show network names, including "bridge"
+	exclude := []string{"host", "none"}
+	bashCompleteNetworkNames(clicontext, exclude)
 }

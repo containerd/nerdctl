@@ -206,7 +206,8 @@ func readPathsFromRecordFile(filename string) ([]string, error) {
 }
 
 func imageConvertBashComplete(clicontext *cli.Context) {
-	if _, ok := isFlagCompletionContext(); ok {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
 		defaultBashComplete(clicontext)
 		return
 	}
