@@ -24,6 +24,7 @@ import (
 
 	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	gocni "github.com/containerd/go-cni"
+	"github.com/sirupsen/logrus"
 )
 
 const AppArmorProfileName = "nerdctl-default"
@@ -83,7 +84,8 @@ func BuildKitHost() string {
 	}
 	xdr, err := rootlessutil.XDGRuntimeDir()
 	if err != nil {
-		panic(err)
+		logrus.Warn(err)
+		xdr = fmt.Sprintf("/run/user/%d", rootlessutil.ParentEUID())
 	}
 	return fmt.Sprintf("unix://%s/buildkit/buildkitd.sock", xdr)
 }

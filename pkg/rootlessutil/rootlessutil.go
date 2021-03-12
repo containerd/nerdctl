@@ -17,6 +17,43 @@
 
 package rootlessutil
 
+import (
+	"os"
+	"strconv"
+
+	"github.com/pkg/errors"
+)
+
 func IsRootless() bool {
 	return IsRootlessParent() || IsRootlessChild()
+}
+
+func ParentEUID() int {
+	if !IsRootlessChild() {
+		return os.Geteuid()
+	}
+	env := os.Getenv("ROOTLESSKIT_PARENT_EUID")
+	if env == "" {
+		panic("environment variable ROOTLESSKIT_PARENT_EUID is not set")
+	}
+	i, err := strconv.Atoi(env)
+	if err != nil {
+		panic(errors.Wrapf(err, "failed to parse ROOTLESSKIT_PARENT_EUID=%q", env))
+	}
+	return i
+}
+
+func ParentEGID() int {
+	if !IsRootlessChild() {
+		return os.Getegid()
+	}
+	env := os.Getenv("ROOTLESSKIT_PARENT_EGID")
+	if env == "" {
+		panic("environment variable ROOTLESSKIT_PARENT_EGID is not set")
+	}
+	i, err := strconv.Atoi(env)
+	if err != nil {
+		panic(errors.Wrapf(err, "failed to parse ROOTLESSKIT_PARENT_EGID=%q", env))
+	}
+	return i
 }
