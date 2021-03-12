@@ -33,7 +33,7 @@ func XDGRuntimeDir() (string, error) {
 	if euid := os.Getenv("ROOTLESSKIT_PARENT_EUID"); euid != "" {
 		return "/run/user/" + euid, nil
 	}
-	return "", errors.New("environment variable XDG_RUNTIME_DIR is not set")
+	return "", errors.New("environment variable XDG_RUNTIME_DIR is not set, see https://rootlesscontaine.rs/getting-started/common/login/")
 }
 
 func XDGConfigHome() (string, error) {
