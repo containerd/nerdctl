@@ -1,4 +1,4 @@
-package main
+package stats
 
 import (
 	"fmt"
@@ -10,16 +10,13 @@ import (
 )
 
 const (
-	winOSType                  = "windows"
-	defaultStatsTableFormat    = "table {{.ID}}\t{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}\t{{.PIDs}}"
-	winDefaultStatsTableFormat = "table {{.ID}}\t{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}"
+	defaultStatsTableFormat = "table {{.ID}}\t{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}\t{{.PIDs}}"
 
 	containerHeader = "CONTAINER"
 	cpuPercHeader   = "CPU %"
 	netIOHeader     = "NET I/O"
 	blockIOHeader   = "BLOCK I/O"
 	memPercHeader   = "MEM %"             // Used only on Linux
-	winMemUseHeader = "PRIV WORKING SET"  // Used only on Windows
 	memUseHeader    = "MEM USAGE / LIMIT" // Used only on Linux
 	pidsHeader      = "PIDS"              // Used only on Linux
 )
@@ -30,14 +27,14 @@ type StatsEntry struct {
 	Name             string
 	ID               string
 	CPUPercentage    float64
-	Memory           float64 // On Windows this is the private working set
-	MemoryLimit      float64 // Not used on Windows
-	MemoryPercentage float64 // Not used on Windows
+	Memory           float64
+	MemoryLimit      float64
+	MemoryPercentage float64
 	NetworkRx        float64
 	NetworkTx        float64
 	BlockRead        float64
 	BlockWrite       float64
-	PidsCurrent      uint64 // Not used on Windows
+	PidsCurrent      uint64
 	IsInvalid        bool
 }
 
@@ -100,11 +97,8 @@ func (cs *Stats) GetStatistics() StatsEntry {
 }
 
 // NewStatsFormat returns a format for rendering an CStatsContext
-func NewStatsFormat(source, osType string) formatter.Format {
+func NewStatsFormat(source string) formatter.Format {
 	if source == formatter.TableFormatKey {
-		if osType == winOSType {
-			return winDefaultStatsTableFormat
-		}
 		return defaultStatsTableFormat
 	}
 	return formatter.Format(source)
@@ -116,7 +110,7 @@ func NewStats(container string) *Stats {
 }
 
 // statsFormatWrite renders the context for a list of containers statistics
-func statsFormatWrite(ctx formatter.Context, Stats []StatsEntry, osType string, trunc bool) error {
+func StatsFormatWrite(ctx formatter.Context, Stats []StatsEntry, osType string, trunc bool) error {
 	render := func(format func(subContext formatter.SubContext) error) error {
 		for _, cstats := range Stats {
 			statsCtx := &statsContext{
@@ -131,9 +125,7 @@ func statsFormatWrite(ctx formatter.Context, Stats []StatsEntry, osType string, 
 		return nil
 	}
 	memUsage := memUseHeader
-	if osType == winOSType {
-		memUsage = winMemUseHeader
-	}
+
 	statsCtx := statsContext{}
 	statsCtx.Header = formatter.SubHeaderContext{
 		"Container": containerHeader,
@@ -190,14 +182,11 @@ func (c *statsContext) MemUsage() string {
 	if c.s.IsInvalid {
 		return fmt.Sprintf("-- / --")
 	}
-	if c.os == winOSType {
-		return units.BytesSize(c.s.Memory)
-	}
 	return fmt.Sprintf("%s / %s", units.BytesSize(c.s.Memory), units.BytesSize(c.s.MemoryLimit))
 }
 
 func (c *statsContext) MemPerc() string {
-	if c.s.IsInvalid || c.os == winOSType {
+	if c.s.IsInvalid {
 		return fmt.Sprintf("--")
 	}
 	return fmt.Sprintf("%.2f%%", c.s.MemoryPercentage)
@@ -218,7 +207,7 @@ func (c *statsContext) BlockIO() string {
 }
 
 func (c *statsContext) PIDs() string {
-	if c.s.IsInvalid || c.os == winOSType {
+	if c.s.IsInvalid {
 		return fmt.Sprintf("--")
 	}
 	return fmt.Sprintf("%d", c.s.PidsCurrent)

@@ -17,28 +17,23 @@
 package main
 
 import (
-	//"encoding/json"
-	//"errors"
+	"fmt"
+	"runtime"
 	"sync"
 	"time"
-	"fmt"
-	//"io"
-    //"strings"
-	//"os"
-   	"github.com/docker/docker/api/types"
-	//wstats "github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/stats"
+
+	formatter_stats "github.com/AkihiroSuda/nerdctl/pkg/stats"
 	v1 "github.com/containerd/containerd/metrics/types/v1"
 	v2 "github.com/containerd/containerd/metrics/types/v2"
-	//"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/typeurl"
-	"github.com/urfave/cli/v2"
-	"github.com/sirupsen/logrus"
 	"github.com/docker/cli/cli/command/formatter"
+	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
 )
 
 type stats struct {
 	mu sync.Mutex
-	cs []*Stats
+	cs []*formatter_stats.Stats
 }
 
 type statsOptions struct {
@@ -49,7 +44,7 @@ type statsOptions struct {
 	containers []string
 }
 
-var optionsStats = new (statsOptions)
+var optionsStats = new(statsOptions)
 
 var statsCommand = &cli.Command{
 	Name:      "stats",
@@ -79,108 +74,145 @@ var statsCommand = &cli.Command{
 		},
 	},
 	Action: func(clicontext *cli.Context) error {
+		optionsStats.containers = clicontext.Args().Slice()
 		showAll := len(optionsStats.containers) == 0
-	    optionsStats.containers = clicontext.Args().Slice()
-	    closeChan := make(chan error)
-	    _ = len(optionsStats.containers) == 0
+		closeChan := make(chan error)
+		var err error
 
-	    /*ctx := clicontext.Background()
+		if runtime.GOOS == "windows" {
+			fmt.Println("nerdctl do not yet support windows")
+		}
 
-        // Get the daemonOSType if not set already
-        if daemonOSType == "" {
-            svctx := clicontext.Background()
-            sv, err := dockerCli.Client().ServerVersion(svctx)
-            if err != nil {
-                return err
-            }
-            daemonOSType = sv.Os
-        }*/
-        daemonOSType := "linux"
+		// waitFirst is a WaitGroup to wait first stat data's reach for each container
+		waitFirst := &sync.WaitGroup{}
 
-	    // waitFirst is a WaitGroup to wait first stat data's reach for each container
-	    waitFirst := &sync.WaitGroup{}
+		// waitContainer is a WaitGroup to wait container
+		waitContainer := &sync.WaitGroup{}
+		client, ctx, cancel, err := newClient(clicontext)
+		if err != nil {
+			return err
+		}
+		defer cancel()
 
-	    cStats := stats{}
+		cStats := stats{}
 
-		// Artificially send creation events for the containers we were asked to
-		// monitor (same code path than we use when monitoring all containers).
-		for _, name := range optionsStats.containers {
-			s := NewStats(name)
-            			if cStats.add(s) {
-            				  waitFirst.Add(1)
-            				  go collect(clicontext, s, waitFirst)
-            				}
-        }
+		if showAll {
+			waitContainer.Add(1)
+			firstIteration := true
+			// goroutine to fetch containers list
+			go func() {
+				for {
+					time.Sleep(5 * time.Second)
+					containers, err := client.Containers(ctx)
+					if err != nil {
+						return
+					}
 
-		// We don't expect any asynchronous errors: closeChan can be closed.
-		close(closeChan)
+					for _, c := range containers {
+						optionsStats.containers = append(optionsStats.containers, c.ID())
+					}
+					if firstIteration {
+						waitContainer.Done()
+					}
+					firstIteration = false
+				}
+			}()
+			waitContainer.Wait()
+			for _, id := range optionsStats.containers {
+				s := formatter_stats.NewStats(id)
+				if cStats.add(s) {
+					waitFirst.Add(1)
+					go collect(clicontext, s, waitFirst, id, showAll)
+				}
+			}
 
-		// make sure each container get at least one valid stat data
-		waitFirst.Wait()
+			// We don't expect any asynchronous errors: closeChan can be closed.
+			close(closeChan)
 
-        format := optionsStats.format
-        if len(format) == 0 {
-            /*if len(dockerCli.ConfigFile().StatsFormat) > 0 {
-                format = dockerCli.ConfigFile().StatsFormat
-            } else {
-                format = formatter.TableFormatKey
-            }*/
-            format = formatter.TableFormatKey
-        }
-        statsCtx := formatter.Context{
-            Output: clicontext.App.Writer,
-            Format: NewStatsFormat(format, "linux"),
-        }
-        cleanScreen := func() {
-            if !optionsStats.noStream {
-                fmt.Fprint(clicontext.App.Writer, "\033[2J")
-                fmt.Fprint(clicontext.App.Writer, "\033[H")
-            }
-        }
+			// make sure each container get at least one valid stat data
+			waitFirst.Wait()
 
-        var err error
-        ticker := time.NewTicker(500 * time.Millisecond)
-        defer ticker.Stop()
-        for range ticker.C {
-            cleanScreen()
-            ccstats := []StatsEntry{}
-            cStats.mu.Lock()
-            for _, c := range cStats.cs {
-                ccstats = append(ccstats, c.GetStatistics())
-            }
-            cStats.mu.Unlock()
-            if err = statsFormatWrite(statsCtx, ccstats, daemonOSType, !optionsStats.noTrunc); err != nil {
-                break
-            }
-            if len(cStats.cs) == 0 && !showAll {
-                break
-            }
-            if optionsStats.noStream {
-                break
-            }
-            select {
-            case err, ok := <-closeChan:
-                if ok {
-                    if err != nil {
-                        return err
-                    }
-                }
-            default:
-                // just skip
-            }
-        }
+		} else {
+			// Artificially send creation events for the containers we were asked to
+			// monitor (same code path than we use when monitoring all containers).
+			for _, id := range optionsStats.containers {
+				s := formatter_stats.NewStats(id)
+				if cStats.add(s) {
+					waitFirst.Add(1)
+					go collect(clicontext, s, waitFirst, id, showAll)
+				}
+			}
 
-	return err
+			// We don't expect any asynchronous errors: closeChan can be closed.
+			close(closeChan)
+
+			// make sure each container get at least one valid stat data
+			waitFirst.Wait()
+
+		}
+
+		format := optionsStats.format
+		if len(format) == 0 {
+			/*if len(dockerCli.ConfigFile().StatsFormat) > 0 {
+			      format = dockerCli.ConfigFile().StatsFormat
+			  } else {
+			      format = formatter.TableFormatKey
+			  }*/
+			format = formatter.TableFormatKey
+		}
+		statsCtx := formatter.Context{
+			Output: clicontext.App.Writer,
+			Format: formatter_stats.NewStatsFormat(format),
+		}
+		cleanScreen := func() {
+			if !optionsStats.noStream {
+				fmt.Fprint(clicontext.App.Writer, "\033[2J")
+				fmt.Fprint(clicontext.App.Writer, "\033[H")
+			}
+		}
+
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+		for range ticker.C {
+			cleanScreen()
+			ccstats := []formatter_stats.StatsEntry{}
+			cStats.mu.Lock()
+			for _, c := range cStats.cs {
+				ccstats = append(ccstats, c.GetStatistics())
+			}
+			cStats.mu.Unlock()
+			if err = formatter_stats.StatsFormatWrite(statsCtx, ccstats, runtime.GOOS, !optionsStats.noTrunc); err != nil {
+				break
+			}
+			if len(cStats.cs) == 0 && !showAll {
+				break
+			}
+			if optionsStats.noStream {
+				break
+			}
+			select {
+			case err, ok := <-closeChan:
+				if ok {
+					if err != nil {
+						return err
+					}
+				}
+			default:
+				// just skip
+			}
+		}
+
+		return err
 	},
 }
 
-func collect(clicontext *cli.Context, s *Stats, waitFirst *sync.WaitGroup) error {
+func collect(clicontext *cli.Context, s *formatter_stats.Stats, waitFirst *sync.WaitGroup, id string, showAll bool) error {
 	logrus.Debugf("collecting stats for %s", s.Container)
 	var (
-		getFirst         bool
-		//previousCPU    uint64
-		//previousSystem uint64
-	    u  = make(chan error, 1)
+		getFirst       bool
+		previousCPU    uint64
+		previousSystem uint64
+		u              = make(chan error, 1)
 	)
 
 	client, ctx, cancel, err := newClient(clicontext)
@@ -188,7 +220,7 @@ func collect(clicontext *cli.Context, s *Stats, waitFirst *sync.WaitGroup) error
 		return err
 	}
 	defer cancel()
-	container, err := client.LoadContainer(ctx, clicontext.Args().First())
+	container, err := client.LoadContainer(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -199,80 +231,90 @@ func collect(clicontext *cli.Context, s *Stats, waitFirst *sync.WaitGroup) error
 	}
 
 	go func() {
-		for  {
-		    time.Sleep(1 * time.Second)
-            var (
-                   memPercent             float64
-                   blkRead, blkWrite      uint64 // Only used on Linux
-                   mem, memLimit          float64
-                   netRx, netTx           float64
-                   pidsStatsCurrent       uint64
-                )
+		for {
+			var (
+				memPercent, cpuPercent float64
+				blkRead, blkWrite      uint64 // Only used on Linux
+				mem, memLimit          float64
+				netRx, netTx           float64
+				pidsStatsCurrent       uint64
+				data                   *v1.Metrics
+				data2                  *v2.Metrics
+			)
+			metric, err := task.Metrics(ctx)
+			if err != nil {
+				u <- err
+			}
+			anydata, err := typeurl.UnmarshalAny(metric.Data)
+			if err != nil {
+				u <- err
+			}
 
-                	metric, err := task.Metrics(ctx)
-                	if err != nil {
-                		u <- err
-                	}
-                	anydata, err := typeurl.UnmarshalAny(metric.Data)
-                	if err != nil {
-                		u <- err
-                	}
+			switch v := anydata.(type) {
+			case *v1.Metrics:
+				data = v
+			case *v2.Metrics:
+				data2 = v
+			default:
+				//return errors.New("cannot convert metric data to cgroups.Metrics or windows.Statistics")
+				return
+			}
+			previousCPU = data.CPU.Usage.User
+			previousSystem = data.CPU.Usage.Kernel
 
-                    var (
-                        data         *v1.Metrics
-                        data2        *v2.Metrics
-                        //windowsStats *wstats.Statistics
-                    )
-                    switch v := anydata.(type) {
-                    case *v1.Metrics:
-                        data = v
-                    case *v2.Metrics:
-                        data2 = v
-                    //case *wstats.Statistics:
-                        //windowsStats = v
-                    default:
-                        //return errors.New("cannot convert metric data to cgroups.Metrics or windows.Statistics")
-                        return
-                    }
+			time.Sleep(1 * time.Second)
 
-                    daemonOSType := "linux"
-                    if daemonOSType != "windows" {
-                       if data != nil {
-                          //previousCPU = data.CPU.Usage.Total
-                          //previousSystem = data.CPU.Usage.Kernel
-                          //cpuPercent = calculateCPUPercentUnix(previousCPU, previousSystem, v)
-                          blkRead, blkWrite = calculateBlockIO(data)
-                          mem = calculateMemUsageUnixNoCache(data)
-                          memLimit = float64(data.Memory.Usage.Limit)
-                          memPercent = calculateMemPercentUnixNoCache(memLimit, mem)
-                          pidsStatsCurrent = data.Pids.Current
-                          netRx, netTx = calculateNetwork(data)
-                        }else if data2 != nil {
-                          //previousCPU = data2.CPU.UsageUsec
-                          //previousSystem = data2.CPU.SystemUsec
-                        }else { }
+			metric, err = task.Metrics(ctx)
+			if err != nil {
+				u <- err
+			}
+			anydata, err = typeurl.UnmarshalAny(metric.Data)
+			if err != nil {
+				u <- err
+			}
 
-                    } else {
-                       // do not handle windows yet
-                    }
-                    value, _ := container.Labels(ctx)
+			switch v := anydata.(type) {
+			case *v1.Metrics:
+				data = v
+			case *v2.Metrics:
+				data2 = v
+			default:
+				//return errors.New("cannot convert metric data to cgroups.Metrics or windows.Statistics")
+				return
+			}
 
-                    s.SetStatistics(StatsEntry{
-                    Name:             value["name"],
-                    ID:               container.ID(),
-                    CPUPercentage:    10,
-                    Memory:           mem,
-                    MemoryPercentage: memPercent,
-                    MemoryLimit:      memLimit,
-                    NetworkRx:        netRx,
-                    NetworkTx:        netTx,
-                    BlockRead:        float64(blkRead),
-                    BlockWrite:       float64(blkWrite),
-                    PidsCurrent:      pidsStatsCurrent,
-                    })
-                    u <- nil
-   	    }
-   	}()
+			if data != nil {
+				cpuPercent = calculateCPUPercentUnixV1(previousCPU, previousSystem, data)
+				blkRead, blkWrite = calculateBlockIO(data)
+				mem = calculateMemUsageUnixNoCache(data)
+				memLimit = float64(data.Memory.Usage.Limit)
+				memPercent = calculateMemPercentUnixNoCache(memLimit, mem)
+				pidsStatsCurrent = data.Pids.Current
+				netRx, netTx = calculateNetwork(data)
+			} else if data2 != nil {
+				//previousCPU = data2.CPU.UsageUsec
+				//previousSystem = data2.CPU.SystemUsec
+			} else {
+
+			}
+
+			value, _ := container.Labels(ctx)
+			s.SetStatistics(formatter_stats.StatsEntry{
+				Name:             value["name"],
+				ID:               container.ID(),
+				CPUPercentage:    cpuPercent,
+				Memory:           mem,
+				MemoryPercentage: memPercent,
+				MemoryLimit:      memLimit,
+				NetworkRx:        netRx,
+				NetworkTx:        netTx,
+				BlockRead:        float64(blkRead),
+				BlockWrite:       float64(blkWrite),
+				PidsCurrent:      pidsStatsCurrent,
+			})
+			u <- nil
+		}
+	}()
 	for {
 		select {
 		case <-time.After(2 * time.Second):
@@ -298,8 +340,7 @@ func collect(clicontext *cli.Context, s *Stats, waitFirst *sync.WaitGroup) error
 	}
 }
 
-
-func (s *stats) add(cs *Stats) bool {
+func (s *stats) add(cs *formatter_stats.Stats) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.isKnownContainer(cs.Container); !exists {
@@ -318,25 +359,21 @@ func (s *stats) isKnownContainer(cid string) (int, bool) {
 	return -1, false
 }
 
-func calculateCPUPercentUnix(previousCPU, previousSystem uint64, v *types.StatsJSON) float64 {
+func calculateCPUPercentUnixV1(previousCPU, previousSystem uint64, data *v1.Metrics) float64 {
 	var (
 		cpuPercent = 0.0
 		// calculate the change for the cpu usage of the container in between readings
-		cpuDelta = float64(v.CPUStats.CPUUsage.TotalUsage) - float64(previousCPU)
+		cpuDelta = float64(data.CPU.Usage.User) - float64(previousCPU)
 		// calculate the change for the entire system between readings
-		systemDelta = float64(v.CPUStats.SystemUsage) - float64(previousSystem)
-		onlineCPUs  = float64(v.CPUStats.OnlineCPUs)
+		systemDelta = float64(data.CPU.Usage.Kernel) - float64(previousSystem)
+		onlineCPUs  = float64(len(data.CPU.Usage.PerCPU))
 	)
 
-	if onlineCPUs == 0.0 {
-		onlineCPUs = float64(len(v.CPUStats.CPUUsage.PercpuUsage))
-	}
 	if systemDelta > 0.0 && cpuDelta > 0.0 {
 		cpuPercent = (cpuDelta / systemDelta) * onlineCPUs * 100.0
 	}
 	return cpuPercent
 }
-
 
 func calculateMemUsageUnixNoCache(stats *v1.Metrics) float64 {
 	// cgroup v1
@@ -345,7 +382,7 @@ func calculateMemUsageUnixNoCache(stats *v1.Metrics) float64 {
 	}
 	// cgroup v2
 	//if v := mem.Stats["inactive_file"]; v < mem.Usage {
-		//return float64(mem.Usage - v)
+	//return float64(mem.Usage - v)
 	//}
 	return float64(stats.Memory.Usage.Usage)
 }
