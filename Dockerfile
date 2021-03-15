@@ -144,15 +144,24 @@ ENV CGO_ENABLED=0
 CMD ["go", "test", "-v", "./..."]
 
 FROM test AS test-rootless
+# Install SSH for creating systemd user session.
+# (`sudo` does not work for this purpose,
+#  OTOH `machinectl shell` can create the session but does not propagate exit code)
 RUN apt-get update && \
   apt-get install -qq -y \
-  dbus-user-session systemd-container uidmap
-RUN useradd -m -s /bin/bash rootless && \
+  uidmap \
+  dbus-user-session \
+  openssh-server openssh-client
+# TODO: update containerd-systemd to enable sshd by default, or allow `systemctl wants <TARGET> sshd` here
+RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
+  useradd -m -s /bin/bash rootless && \
+  mkdir -p -m 0700 /home/rootless/.ssh && \
+  cp -a /root/.ssh/id_rsa.pub /home/rootless/.ssh/authorized_keys && \
   mkdir -p /home/rootless/.local/share && \
   chown -R rootless:rootless /home/rootless
 VOLUME /home/rootless/.local/share
 RUN go test -o /usr/local/bin/nerdctl.test -c .
-CMD ["machinectl", "shell", "rootless@", "/bin/sh", "-euxc", \
-  "containerd-rootless-setuptool.sh install && containerd-rootless-setuptool.sh install-buildkit && exec nerdctl.test -test.v -test.kill-daemon"]
+CMD ["/bin/sh", "-euxc", \
+  "systemctl start sshd && exec ssh -o StrictHostKeyChecking=no rootless@localhost \"containerd-rootless-setuptool.sh install && containerd-rootless-setuptool.sh install-buildkit && exec nerdctl.test -test.v -test.kill-daemon\""]
 
 FROM base AS demo
