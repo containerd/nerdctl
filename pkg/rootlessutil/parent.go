@@ -87,12 +87,15 @@ func ParentMain() error {
 	if err != nil {
 		return err
 	}
+	// args are compatible with both util-linux nsenter and busybox nsenter
 	args := []string{
-		"--no-fork",
-		"--wd=" + wd,
+		"-r/",     // root dir (busybox nsenter wants this to be explicitly specified),
+		"-w" + wd, // work dir
 		"--preserve-credentials",
 		"-m", "-n", "-U",
-		"-t", strconv.Itoa(childPid)}
+		"-t", strconv.Itoa(childPid),
+		"-F", // no fork
+	}
 	args = append(args, os.Args...)
 	logrus.Debugf("rootless parent main: executing %q with %v", arg0, args)
 
