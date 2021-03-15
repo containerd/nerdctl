@@ -69,7 +69,7 @@ jobs:
       run: go test -v -exec sudo -test.target=docker -test.kill-daemon .
 
   test-cgroup2:
-    name: "Cgroup2 + rootless"
+    name: "cgroup2"
     # nested virtualization is only available on macOS hosts
     runs-on: macos-10.15
     timeout-minutes: 40
@@ -94,6 +94,9 @@ jobs:
       run: |
         vagrant up
         vagrant ssh-config >> ~/.ssh/config
+    - name: "Run tests"
+      # TODO: enable -test.kill-daemon, after Fedora updates containerd to a recent version (Mar 2021)
+      run: ssh default -- "sudo /vagrant/nerdctl.test -test.v"
     - name: "Install rootless containerd"
       run: |
         ssh default -- containerd-rootless-setuptool.sh install

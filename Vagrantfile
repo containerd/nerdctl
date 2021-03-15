@@ -37,6 +37,7 @@ Vagrant.configure("2") do |config|
       slirp4netns \
       fuse-overlayfs \
       policycoreutils-python-utils
+    systemctl enable --now containerd
 
     # SELinux workaround (https://github.com/moby/moby/issues/41230)
     semanage permissive -a iptables_t
