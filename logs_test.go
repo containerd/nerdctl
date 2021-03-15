@@ -19,6 +19,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/testutil"
 )
@@ -29,6 +30,7 @@ func TestLogs(t *testing.T) {
 	defer base.Cmd("rm", containerName).Run()
 	base.Cmd("run", "-d", "--name", containerName, testutil.AlpineImage,
 		"sh", "-euxc", "echo foo; echo bar").AssertOK()
+	time.Sleep(3 * time.Second)
 	base.Cmd("logs", "-f", containerName).AssertOut("bar")
 	// Run logs twice, make sure that the logs are not removed
 	base.Cmd("logs", "-f", containerName).AssertOut("foo")
@@ -41,6 +43,7 @@ func TestLogsWithFailingContainer(t *testing.T) {
 	defer base.Cmd("rm", containerName).Run()
 	base.Cmd("run", "-d", "--name", containerName, testutil.AlpineImage,
 		"sh", "-euxc", "echo foo; echo bar; exit 42; echo baz").AssertOK()
+	time.Sleep(3 * time.Second)
 	// AssertOut also asserts that the exit code of the logs command == 0,
 	// even when the container is failing
 	base.Cmd("logs", "-f", containerName).AssertOut("bar")
