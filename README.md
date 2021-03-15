@@ -299,6 +299,9 @@ Fetch the logs of a container.
 
 :warning: Currently, only containers created with `nerdctl run -d` are supported.
 
+Flags:
+- :whale: `--f, --follow`: Follow log output
+
 ### :whale: nerdctl port
 List port mappings or a specific mapping for the container.
 
