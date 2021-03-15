@@ -99,7 +99,7 @@ func printContainers(ctx context.Context, clicontext *cli.Context, containers []
 		}
 
 		cStatus := containerStatus(ctx, c)
-		if cStatus != "Running" && !all {
+		if !strings.HasPrefix(cStatus, "Up") && !all {
 			continue
 		}
 
@@ -149,7 +149,9 @@ func containerStatus(ctx context.Context, c containerd.Container) string {
 
 	switch s := status.Status; s {
 	case containerd.Stopped:
-		return fmt.Sprintf("%s (%v) %s", strings.Title(string(s)), status.ExitStatus, timeSinceInHuman(status.ExitTime))
+		return fmt.Sprintf("Exited (%v) %s", status.ExitStatus, timeSinceInHuman(status.ExitTime))
+	case containerd.Running:
+		return "Up" // TODO: print "status.UpTime" (inexistent yet)
 	default:
 		return strings.Title(string(s))
 	}

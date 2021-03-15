@@ -18,6 +18,7 @@
 package testutil
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/AkihiroSuda/nerdctl/pkg/buildkitutil"
 	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
+	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/pkg/errors"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
@@ -129,6 +131,17 @@ func (b *Base) EnsureDaemonActive() {
 	b.T.Fatalf("daemon %q not running", target)
 }
 
+func (b *Base) InspectContainer(name string) dockercompat.Container {
+	cmdResult := b.Cmd("container", "inspect", name).Run()
+	assert.Equal(b.T, cmdResult.ExitCode, 0)
+	var dc []dockercompat.Container
+	if err := json.Unmarshal([]byte(cmdResult.Stdout()), &dc); err != nil {
+		b.T.Fatal(err)
+	}
+	assert.Equal(b.T, 1, len(dc))
+	return dc[0]
+}
+
 type Cmd struct {
 	icmd.Cmd
 	*Base
@@ -146,14 +159,19 @@ func (c *Cmd) Assert(expected icmd.Expected) {
 
 func (c *Cmd) AssertOK() {
 	c.Base.T.Helper()
-	expected := icmd.Expected{}
-	c.Assert(expected)
+	c.AssertExitCode(0)
 }
 
 func (c *Cmd) AssertFail() {
 	c.Base.T.Helper()
 	res := c.Run()
 	assert.Assert(c.Base.T, res.ExitCode != 0)
+}
+
+func (c *Cmd) AssertExitCode(exitCode int) {
+	c.Base.T.Helper()
+	res := c.Run()
+	assert.Assert(c.Base.T, res.ExitCode == exitCode)
 }
 
 func (c *Cmd) AssertOut(s string) {

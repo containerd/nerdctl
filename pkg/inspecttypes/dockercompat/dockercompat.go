@@ -151,7 +151,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	}
 	if n.Process != nil {
 		c.State = &ContainerState{
-			Status:     string(n.Process.Status.Status),
+			Status:     statusFromNative(n.Process.Status.Status),
 			Running:    n.Process.Status.Status == containerd.Running,
 			Paused:     n.Process.Status.Status == containerd.Paused,
 			Pid:        n.Process.Pid,
@@ -161,6 +161,15 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		c.NetworkSettings = networkSettingsFromNative(n.Process.NetNS)
 	}
 	return c, nil
+}
+
+func statusFromNative(x containerd.ProcessStatus) string {
+	switch x {
+	case containerd.Stopped:
+		return "exited"
+	default:
+		return string(x)
+	}
 }
 
 func networkSettingsFromNative(n *native.NetNS) *NetworkSettings {
