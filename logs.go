@@ -19,10 +19,13 @@ package main
 
 import (
 	"context"
+	"io"
 	"os"
+	"os/exec"
 
 	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/AkihiroSuda/nerdctl/pkg/logging/jsonfile"
+	"github.com/containerd/containerd"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -34,6 +37,13 @@ var logsCommand = &cli.Command{
 	ArgsUsage:    "[flags] CONTAINER",
 	Action:       logsAction,
 	BashComplete: logsBashComplete,
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "follow",
+			Aliases: []string{"f"},
+			Usage:   "Follow log output",
+		},
+	},
 }
 
 func logsAction(clicontext *cli.Context) error {
@@ -65,12 +75,32 @@ func logsAction(clicontext *cli.Context) error {
 				return errors.Errorf("ambiguous ID %q", found.Req)
 			}
 			logJSONFilePath := jsonfile.Path(dataStore, ns, found.Container.ID())
-			f, err := os.Open(logJSONFilePath)
-			if err != nil {
+			if _, err := os.Stat(logJSONFilePath); err != nil {
 				return errors.Wrapf(err, "failed to open %q, container is not created with `nerdctl run -d`?", logJSONFilePath)
 			}
-			defer f.Close()
-			return jsonfile.Decode(clicontext.App.Writer, clicontext.App.ErrWriter, f)
+			task, err := found.Container.Task(ctx, nil)
+			if err != nil {
+				return err
+			}
+			status, err := task.Status(ctx)
+			if err != nil {
+				return err
+			}
+			var reader io.Reader
+			if clicontext.Bool("follow") && status.Status == containerd.Running {
+				reader, err = newTailReader(ctx, task, logJSONFilePath)
+				if err != nil {
+					return err
+				}
+			} else {
+				f, err := os.Open(logJSONFilePath)
+				if err != nil {
+					return err
+				}
+				defer f.Close()
+				reader = f
+			}
+			return jsonfile.Decode(clicontext.App.Writer, clicontext.App.ErrWriter, reader)
 		},
 	}
 	req := clicontext.Args().First()
@@ -91,4 +121,25 @@ func logsBashComplete(clicontext *cli.Context) {
 	}
 	// show container names (TODO: only show containers with logs)
 	bashCompleteContainerNames(clicontext)
+}
+
+func newTailReader(ctx context.Context, task containerd.Task, filePath string) (io.Reader, error) {
+	cmd := exec.CommandContext(ctx, "tail", "-f", "-n", "+0", filePath)
+	cmd.Stderr = os.Stderr
+	r, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	waitCh, err := task.Wait(ctx)
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		<-waitCh
+		cmd.Process.Kill()
+	}()
+	return r, nil
 }
