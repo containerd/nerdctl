@@ -23,8 +23,8 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/mountutil/volumestore"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )

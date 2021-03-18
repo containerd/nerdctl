@@ -24,10 +24,10 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"

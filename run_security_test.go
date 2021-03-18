@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/pkg/errors"
 	"gotest.tools/v3/assert"
 )

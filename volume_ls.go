@@ -23,8 +23,8 @@ import (
 	"path/filepath"
 	"text/tabwriter"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/native"
-	"github.com/AkihiroSuda/nerdctl/pkg/mountutil/volumestore"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/urfave/cli/v2"
 )
 

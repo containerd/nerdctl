@@ -26,15 +26,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
-	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil/hostsstore"
-	"github.com/AkihiroSuda/nerdctl/pkg/labels"
-	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/containerd/contrib/apparmor"
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	"github.com/containerd/go-cni"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
+	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -196,7 +196,7 @@ func getCNINamespaceOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 			return []cni.NamespaceOpts{cni.WithCapabilityPortMap(opts.ports)}, nil
 		}
 		// For rootless, we need to modify the hostIP that is not bindable in the child namespace.
-		// https: //github.com/AkihiroSuda/nerdctl/issues/88
+		// https: //github.com/containerd/nerdctl/issues/88
 		//
 		// We must NOT modify opts.ports here, because we use the unmodified opts.ports for
 		// interaction with RootlessKit API.

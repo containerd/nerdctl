@@ -27,9 +27,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/buildkitutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
-	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/pkg/errors"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"

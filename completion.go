@@ -22,8 +22,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/labels"
-	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/urfave/cli/v2"
 )
 

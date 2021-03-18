@@ -18,8 +18,8 @@
 package main
 
 import (
-	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"

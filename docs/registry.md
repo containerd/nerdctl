@@ -18,4 +18,4 @@ $ nerdctl --insecure-registry run --rm 192.168.12.34:5000/foo
 Currently, rootless nerdctl cannot pull images from 127.0.0.1, because
 the pull operation occurs in RootlessKit's network namespace.
 
-See https://github.com/AkihiroSuda/nerdctl/issues/86 for the discussion about workarounds.
+See https://github.com/containerd/nerdctl/issues/86 for the discussion about workarounds.

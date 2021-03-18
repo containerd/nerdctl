@@ -18,7 +18,7 @@
 package main
 
 import (
-	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/pkg/errors"
 
 	"github.com/urfave/cli/v2"

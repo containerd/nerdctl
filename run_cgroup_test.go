@@ -20,8 +20,8 @@ package main
 import (
 	"testing"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/testutil"
 	"github.com/containerd/cgroups"
+	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
 func TestRunCgroupV2(t *testing.T) {

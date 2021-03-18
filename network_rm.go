@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/lockutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/pkg/lockutil"
+	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )

@@ -23,11 +23,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/strutil"
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/images/converter/uncompress"
 	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/stargz-snapshotter/estargz"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
 	"github.com/containerd/stargz-snapshotter/recorder"

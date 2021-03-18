@@ -17,7 +17,7 @@
 GO ?= go
 
 
-PACKAGE := github.com/AkihiroSuda/nerdctl
+PACKAGE := github.com/containerd/nerdctl
 BINDIR ?= /usr/local/bin
 
 VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always --tags)

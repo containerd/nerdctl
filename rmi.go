@@ -21,8 +21,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )

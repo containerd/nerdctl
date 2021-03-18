@@ -20,7 +20,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/version"
+	"github.com/containerd/nerdctl/pkg/version"
 	"github.com/urfave/cli/v2"
 )
 

@@ -26,8 +26,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/testutil"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/pkg/errors"
 	"gotest.tools/v3/assert"
 )
@@ -160,7 +160,7 @@ func TestRunPort(t *testing.T) {
 			port:      8080,
 		},
 		{
-			// for https://github.com/AkihiroSuda/nerdctl/issues/88
+			// for https://github.com/containerd/nerdctl/issues/88
 			listenIP:  hostIP,
 			connectIP: hostIP,
 			port:      8080,

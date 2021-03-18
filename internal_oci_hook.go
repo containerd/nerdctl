@@ -18,7 +18,7 @@
 package main
 
 import (
-	"github.com/AkihiroSuda/nerdctl/pkg/ocihook"
+	"github.com/containerd/nerdctl/pkg/ocihook"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )

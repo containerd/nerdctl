@@ -22,12 +22,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
-	"github.com/AkihiroSuda/nerdctl/pkg/infoutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/cgroups"
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	"github.com/containerd/containerd/services/introspection"
+	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/infoutil"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	ptypes "github.com/gogo/protobuf/types"
 	"github.com/urfave/cli/v2"
 )

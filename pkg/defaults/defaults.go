@@ -22,8 +22,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/sirupsen/logrus"
 )
 

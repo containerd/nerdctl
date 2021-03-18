@@ -18,7 +18,7 @@
 package main
 
 import (
-	"github.com/AkihiroSuda/nerdctl/pkg/mountutil/volumestore"
+	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/urfave/cli/v2"
 )
 

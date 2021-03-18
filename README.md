@@ -1,4 +1,4 @@
-[[⬇️ **Download]**](https://github.com/AkihiroSuda/nerdctl/releases)
+[[⬇️ **Download]**](https://github.com/containerd/nerdctl/releases)
 [[📖 **Command reference]**](#command-reference)
 [[📚 **Additional documents]**](#additional-documents)
 
@@ -51,7 +51,7 @@ $ nerdctl run -d -p 8080:80 --name nginx nginx:alpine
 See [`./docs/rootless.md`](./docs/rootless.md).
 
 ## Install
-Binaries are available for amd64, arm64, and arm-v7: https://github.com/AkihiroSuda/nerdctl/releases
+Binaries are available for amd64, arm64, and arm-v7: https://github.com/containerd/nerdctl/releases
 
 In addition to containerd, the following components should be installed (optional):
 - [CNI plugins](https://github.com/containernetworking/plugins): for using `nerdctl run`.
@@ -114,7 +114,7 @@ Trivial:
 
 Run `make && sudo make install`.
 
-Using `go get github.com/AkihiroSuda/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
+Using `go get github.com/containerd/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
 
 ### Test suite
 #### Running test suite against nerdctl

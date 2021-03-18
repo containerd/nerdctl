@@ -20,13 +20,13 @@ package main
 import (
 	"context"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/dockerconfigresolver"
-	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/push"
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
+	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
+	"github.com/containerd/nerdctl/pkg/imgutil/push"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 

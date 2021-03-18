@@ -23,9 +23,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/containerinspector"
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
-	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/containerinspector"
+	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )

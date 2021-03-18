@@ -1,4 +1,4 @@
-module github.com/AkihiroSuda/nerdctl
+module github.com/containerd/nerdctl
 
 go 1.16
 

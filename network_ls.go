@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/urfave/cli/v2"
 )
 

@@ -27,9 +27,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/native"
-	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 )

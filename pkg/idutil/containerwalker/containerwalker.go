@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/labels"
 )
 
 type Found struct {

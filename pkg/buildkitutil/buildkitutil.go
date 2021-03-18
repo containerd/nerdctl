@@ -21,7 +21,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )

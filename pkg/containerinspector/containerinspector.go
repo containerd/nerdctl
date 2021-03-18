@@ -23,8 +23,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/typeurl"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/sirupsen/logrus"

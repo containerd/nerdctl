@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/lockutil"
+	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/pkg/errors"
 )
 

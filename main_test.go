@@ -20,14 +20,14 @@ package main
 import (
 	"testing"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
 func TestMain(m *testing.M) {
 	testutil.M(m)
 }
 
-// TestIssue108 tests https://github.com/AkihiroSuda/nerdctl/issues/108
+// TestIssue108 tests https://github.com/containerd/nerdctl/issues/108
 // ("`nerdctl run --net=host -it` fails while `nerdctl run -it --net=host` works")
 func TestIssue108(t *testing.T) {
 	base := testutil.NewBase(t)

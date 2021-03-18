@@ -23,8 +23,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/native"
-	"github.com/AkihiroSuda/nerdctl/pkg/mountutil/volumestore"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )

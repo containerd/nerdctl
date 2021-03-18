@@ -26,9 +26,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/lockutil"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/lockutil"
 )
 
 const (

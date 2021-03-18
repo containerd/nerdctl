@@ -21,9 +21,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )

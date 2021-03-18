@@ -21,9 +21,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
-	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/commit"
 	refdocker "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/pkg/imgutil/commit"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )

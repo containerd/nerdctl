@@ -21,8 +21,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/native"
-	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )

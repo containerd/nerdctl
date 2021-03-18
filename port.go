@@ -24,10 +24,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
-	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/containerd/containerd"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )

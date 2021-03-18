@@ -20,7 +20,7 @@ package main
 import (
 	"testing"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
 func TestImageConvertEStargz(t *testing.T) {

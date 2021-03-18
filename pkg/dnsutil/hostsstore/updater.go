@@ -26,8 +26,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/sirupsen/logrus"
 )
 

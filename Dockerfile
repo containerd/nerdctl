@@ -27,8 +27,8 @@ ARG CONTAINERIZED_SYSTEMD_VERSION=0.1.1
 
 FROM golang:${GO_VERSION}-alpine AS build-minimal
 RUN apk add --no-cache make git
-COPY . /go/src/github.com/AkihiroSuda/nerdctl
-WORKDIR /go/src/github.com/AkihiroSuda/nerdctl
+COPY . /go/src/github.com/containerd/nerdctl
+WORKDIR /go/src/github.com/containerd/nerdctl
 RUN BINDIR=/out/bin make binaries install
 # We do not set CMD to `go test` here, because it requires systemd
 
@@ -38,7 +38,7 @@ COPY README.md /out/share/doc/nerdctl/
 COPY docs /out/share/doc/nerdctl/docs
 RUN mkdir -p /out/share/doc/nerdctl-full && \
   echo "# nerdctl (full distribution)" > /out/share/doc/nerdctl-full/README.md && \
-  echo "- nerdctl: $(cd /go/src/github.com/AkihiroSuda/nerdctl && git describe --tags)" >> /out/share/doc/nerdctl-full/README.md
+  echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)" >> /out/share/doc/nerdctl-full/README.md
 ARG TARGETARCH
 ARG CONTAINERD_VERSION
 RUN curl -L https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /out && \
@@ -138,8 +138,8 @@ COPY --from=goversion /GOVERSION /GOVERSION
 ARG TARGETARCH
 RUN curl -L https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local
 ENV PATH=/usr/local/go/bin:$PATH
-COPY . /go/src/github.com/AkihiroSuda/nerdctl
-WORKDIR /go/src/github.com/AkihiroSuda/nerdctl
+COPY . /go/src/github.com/containerd/nerdctl
+WORKDIR /go/src/github.com/containerd/nerdctl
 ENV CGO_ENABLED=0
 CMD ["go", "test", "-v", "./..."]
 

@@ -22,9 +22,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/buildkitutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
-	"github.com/AkihiroSuda/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
