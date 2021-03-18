@@ -14,6 +14,8 @@
 
  ✅ Supports [encrypted images (ocicrypt)](./docs/ocicrypt.md)
 
+nerdctl is a **non-core** sub-project of containerd.
+
 ## Examples
 
 ### Basic usage
@@ -109,6 +111,13 @@ Trivial:
 - [PouchContainer (abandoned?)](https://github.com/alibaba/pouch): needs an extra daemon
 
 ## Developer guide
+nerdctl is a containerd **non-core** sub-project, licensed under the [Apache 2.0 license](./LICENSE).
+As a containerd non-core sub-project, you will find the:
+ * [Project governance](https://github.com/containerd/project/blob/master/GOVERNANCE.md),
+ * [Maintainers](./MAINTAINERS),
+ * and [Contributing guidelines](https://github.com/containerd/project/blob/master/CONTRIBUTING.md)
+
+information in our [`containerd/project`](https://github.com/containerd/project) repository.
 
 ### Compiling nerdctl from source
 
