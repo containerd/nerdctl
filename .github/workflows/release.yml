@@ -15,21 +15,15 @@ jobs:
       with:
         go-version: 1.16.x
     - uses: actions/checkout@v2
-      with:
-        path: go/src/github.com/AkihiroSuda/nerdctl
     - name: "Compile binaries"
-      working-directory:  go/src/github.com/AkihiroSuda/nerdctl
       run: make artifacts
     - name: "SHA256SUMS"
-      working-directory:  go/src/github.com/AkihiroSuda/nerdctl
       run: |
         ( cd _output; sha256sum nerdctl-* ) | tee /tmp/SHA256SUMS
         mv /tmp/SHA256SUMS _output/SHA256SUMS
     - name: "The sha256sum of the SHA256SUMS file"
-      working-directory:  go/src/github.com/AkihiroSuda/nerdctl
       run: (cd _output; sha256sum SHA256SUMS)
     - name: "Prepare the release note"
-      working-directory:  go/src/github.com/AkihiroSuda/nerdctl
       run: |
         tag="${GITHUB_REF##*/}"
         shasha=$(sha256sum _output/SHA256SUMS | awk '{print $1}')
@@ -44,7 +38,6 @@ jobs:
         The sha256sum of the SHA256SUMS file itself is \`${shasha}\` .
         EOF
     - name: "Create release"
-      working-directory:  go/src/github.com/AkihiroSuda/nerdctl
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
