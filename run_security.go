@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -21,12 +20,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
-	"github.com/AkihiroSuda/nerdctl/pkg/strutil"
 	"github.com/containerd/containerd/contrib/apparmor"
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
+	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )

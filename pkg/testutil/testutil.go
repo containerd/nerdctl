@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -27,9 +26,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/buildkitutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
-	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/pkg/errors"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"

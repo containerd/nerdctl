@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -30,17 +29,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/defaults"
-	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/dnsutil/hostsstore"
-	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/labels"
-	"github.com/AkihiroSuda/nerdctl/pkg/logging"
-	"github.com/AkihiroSuda/nerdctl/pkg/namestore"
-	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/portutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/strutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/taskutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -52,6 +40,17 @@ import (
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/dnsutil"
+	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
+	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/logging"
+	"github.com/containerd/nerdctl/pkg/namestore"
+	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/pkg/portutil"
+	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
@@ -324,7 +323,7 @@ func runAction(clicontext *cli.Context) error {
 	cOpts = append(cOpts, restartOpts...)
 
 	// DedupeStrSlice is required as a workaround for urfave/cli bug
-	// https://github.com/AkihiroSuda/nerdctl/issues/108
+	// https://github.com/containerd/nerdctl/issues/108
 	// https://github.com/urfave/cli/issues/1254
 	portSlice := strutil.DedupeStrSlice(clicontext.StringSlice("p"))
 	netSlice := strutil.DedupeStrSlice(clicontext.StringSlice("net"))

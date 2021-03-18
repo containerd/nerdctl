@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -21,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
 func TestLogs(t *testing.T) {

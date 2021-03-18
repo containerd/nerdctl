@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -22,15 +21,15 @@ import (
 	"io"
 	"os"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
-	"github.com/AkihiroSuda/nerdctl/pkg/strutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/taskutil"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/pkg/cap"
+	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

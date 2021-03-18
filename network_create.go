@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -24,9 +23,9 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/lockutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/nerdctl/pkg/lockutil"
+	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )

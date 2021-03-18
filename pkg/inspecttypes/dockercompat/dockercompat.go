@@ -1,7 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
-   Copyright (C) Docker/Moby authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -16,6 +14,12 @@
    limitations under the License.
 */
 
+/*
+   Portions from https://github.com/moby/moby/blob/v20.10.1/api/types/types.go
+   Copyright (C) Docker/Moby authors.
+   Licensed under the Apache License, Version 2.0
+*/
+
 // Package dockercompat mimics `docker inspect` objects.
 package dockercompat
 
@@ -27,9 +31,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/native"
-	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 )

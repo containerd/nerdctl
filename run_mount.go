@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -18,9 +17,9 @@
 package main
 
 import (
-	"github.com/AkihiroSuda/nerdctl/pkg/mountutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/strutil"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/pkg/mountutil"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli/v2"
 )

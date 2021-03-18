@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -22,13 +21,13 @@ import (
 	"io"
 	"strings"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/dockerconfigresolver"
-	"github.com/AkihiroSuda/nerdctl/pkg/imgutil/pull"
 	"github.com/containerd/containerd"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/imgcrypt"
 	"github.com/containerd/imgcrypt/images/encryption"
+	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
+	"github.com/containerd/nerdctl/pkg/imgutil/pull"
 	"github.com/containerd/stargz-snapshotter/fs/source"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -22,13 +21,13 @@ import (
 	"os"
 	"strings"
 
-	ncdefaults "github.com/AkihiroSuda/nerdctl/pkg/defaults"
-	"github.com/AkihiroSuda/nerdctl/pkg/logging"
-	"github.com/AkihiroSuda/nerdctl/pkg/rootlessutil"
-	"github.com/AkihiroSuda/nerdctl/pkg/version"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/namespaces"
+	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/logging"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"

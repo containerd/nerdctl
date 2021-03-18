@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -23,9 +22,9 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/idutil/containerwalker"
-	"github.com/AkihiroSuda/nerdctl/pkg/logging/jsonfile"
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"

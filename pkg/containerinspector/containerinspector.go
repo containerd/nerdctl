@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -23,8 +22,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/typeurl"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/sirupsen/logrus"

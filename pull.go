@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -18,7 +17,7 @@
 package main
 
 import (
-	"github.com/AkihiroSuda/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/pkg/errors"
 
 	"github.com/urfave/cli/v2"

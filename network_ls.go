@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -22,7 +21,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/urfave/cli/v2"
 )
 

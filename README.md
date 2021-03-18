@@ -1,4 +1,4 @@
-[[⬇️ **Download]**](https://github.com/AkihiroSuda/nerdctl/releases)
+[[⬇️ **Download]**](https://github.com/containerd/nerdctl/releases)
 [[📖 **Command reference]**](#command-reference)
 [[📚 **Additional documents]**](#additional-documents)
 
@@ -13,6 +13,8 @@
  ✅ Supports [lazy-pulling (Stargz)](./docs/stargz.md)
 
  ✅ Supports [encrypted images (ocicrypt)](./docs/ocicrypt.md)
+
+nerdctl is a **non-core** sub-project of containerd.
 
 ## Examples
 
@@ -51,7 +53,7 @@ $ nerdctl run -d -p 8080:80 --name nginx nginx:alpine
 See [`./docs/rootless.md`](./docs/rootless.md).
 
 ## Install
-Binaries are available for amd64, arm64, and arm-v7: https://github.com/AkihiroSuda/nerdctl/releases
+Binaries are available for amd64, arm64, and arm-v7: https://github.com/containerd/nerdctl/releases
 
 In addition to containerd, the following components should be installed (optional):
 - [CNI plugins](https://github.com/containernetworking/plugins): for using `nerdctl run`.
@@ -109,12 +111,19 @@ Trivial:
 - [PouchContainer (abandoned?)](https://github.com/alibaba/pouch): needs an extra daemon
 
 ## Developer guide
+nerdctl is a containerd **non-core** sub-project, licensed under the [Apache 2.0 license](./LICENSE).
+As a containerd non-core sub-project, you will find the:
+ * [Project governance](https://github.com/containerd/project/blob/master/GOVERNANCE.md),
+ * [Maintainers](./MAINTAINERS),
+ * and [Contributing guidelines](https://github.com/containerd/project/blob/master/CONTRIBUTING.md)
+
+information in our [`containerd/project`](https://github.com/containerd/project) repository.
 
 ### Compiling nerdctl from source
 
 Run `make && sudo make install`.
 
-Using `go get github.com/AkihiroSuda/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
+Using `go get github.com/containerd/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
 
 ### Test suite
 #### Running test suite against nerdctl

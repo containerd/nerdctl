@@ -1,6 +1,5 @@
 /*
-   Copyright (C) nerdctl authors.
-   Copyright (C) containerd authors.
+   Copyright The containerd Authors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -26,11 +25,11 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/AkihiroSuda/nerdctl/pkg/labels"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
