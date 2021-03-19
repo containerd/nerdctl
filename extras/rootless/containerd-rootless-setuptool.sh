@@ -48,6 +48,7 @@ CONTAINERD_ROOTLESS_SH="containerd-rootless.sh"
 SYSTEMD_CONTAINERD_UNIT="containerd.service"
 SYSTEMD_BUILDKIT_UNIT="buildkit.service"
 SYSTEMD_FUSE_OVERLAYFS_UNIT="containerd-fuse-overlayfs.service"
+SYSTEMD_STARGZ_UNIT="stargz-snapshotter.service"
 
 # global vars
 ARG0="$0"
@@ -313,6 +314,50 @@ cmd_entrypoint_install_fuse_overlayfs() {
 	INFO "Set \`export CONTAINERD_SNAPSHOTTER=\"fuse-overlayfs\"\` to use the fuse-overlayfs snapshotter."
 }
 
+# CLI subcommand: "install-stargz"
+cmd_entrypoint_install_stargz() {
+	init
+	if ! command -v "containerd-stargz-grpc" >/dev/null 2>&1; then
+		ERROR "containerd-stargz-grpc (https://github.com/containerd/stargz-snapshotter) needs to be present under \$PATH"
+		exit 1
+	fi
+	if ! systemctl --user --no-pager status "${SYSTEMD_CONTAINERD_UNIT}" >/dev/null 2>&1; then
+		ERROR "Install containerd first (\`$ARG0 install\`)"
+		exit 1
+	fi
+	if [ ! -f "${XDG_CONFIG_HOME}/containerd-stargz-grpc/config.toml" ]; then
+		mkdir -p "${XDG_CONFIG_HOME}/containerd-stargz-grpc"
+		touch "${XDG_CONFIG_HOME}/containerd-stargz-grpc/config.toml"
+	fi
+	cat <<-EOT | install_systemd_unit "${SYSTEMD_STARGZ_UNIT}"
+		[Unit]
+		Description=stargz snapshotter (Rootless)
+		PartOf=${SYSTEMD_CONTAINERD_UNIT}
+
+		[Service]
+		Environment=PATH=$BIN:/sbin:/usr/sbin:$PATH
+		ExecStart="$REALPATH0" nsenter -- containerd-stargz-grpc -address "${XDG_RUNTIME_DIR}/containerd-stargz-grpc/containerd-stargz-grpc.sock" -root "${XDG_DATA_HOME}/containerd-stargz-grpc" -config "${XDG_CONFIG_HOME}/containerd-stargz-grpc/config.toml"
+		ExecReload=/bin/kill -s HUP \$MAINPID
+		RestartSec=2
+		Restart=always
+		Type=simple
+		KillMode=mixed
+
+		[Install]
+		WantedBy=default.target
+	EOT
+	INFO "Add the following lines to \"${XDG_CONFIG_HOME}/containerd/config.toml\" manually:"
+	cat <<-EOT
+		### BEGIN ###
+		[proxy_plugins]
+		  [proxy_plugins."stargz"]
+		    type = "snapshot"
+		    address = "${XDG_RUNTIME_DIR}/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+		###  END  ###
+	EOT
+	INFO "Set \`export CONTAINERD_SNAPSHOTTER=\"stargz\"\` to use the stargz snapshotter."
+}
+
 # CLI subcommand: "uninstall"
 cmd_entrypoint_uninstall() {
 	init
@@ -340,6 +385,14 @@ cmd_entrypoint_uninstall_fuse_overlayfs() {
 	INFO "To remove data, run: \`$BIN/rootlesskit rm -rf ${XDG_DATA_HOME}/containerd-fuse-overlayfs"
 }
 
+# CLI subcommand: "uninstall-stargz"
+cmd_entrypoint_uninstall_stargz() {
+	init
+	uninstall_systemd_unit "${SYSTEMD_STARGZ_UNIT}"
+	INFO "This uninstallation tool does NOT remove data."
+	INFO "To remove data, run: \`$BIN/rootlesskit rm -rf ${XDG_DATA_HOME}/containerd-stargz-grpc"
+}
+
 # text for --help
 usage() {
 	echo "Usage: ${ARG0} [OPTIONS] COMMAND"
@@ -359,6 +412,10 @@ usage() {
 	echo "Add-on commands (fuse-overlayfs):"
 	echo "  install-fuse-overlayfs      Install the systemd unit for fuse-overlayfs snapshotter"
 	echo "  uninstall-fuse-overlayfs    Uninstall the systemd unit for fuse-overlayfs snapshotter"
+	echo
+	echo "Add-on commands (stargz):"
+	echo "  install-stargz              Install the systemd unit for stargz snapshotter"
+	echo "  uninstall-stargz            Uninstall the systemd unit for stargz snapshotter"
 }
 
 # parse CLI args
