@@ -18,13 +18,12 @@ package dockerconfigresolver
 
 import (
 	"crypto/tls"
-	"net"
 	"net/http"
-	"net/url"
 
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	dockercliconfig "github.com/docker/cli/cli/config"
+	"github.com/docker/cli/cli/config/credentials"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -141,14 +140,7 @@ func NewAuthCreds(refHostname string) (AuthCreds, error) {
 					logrus.Warnf("failed to get ac.ServerAddress for authConfigHostname=%q (refHostname=%q)",
 						authConfigHostname, refHostname)
 				} else {
-					acsaURL, err := url.Parse(ac.ServerAddress)
-					if err != nil {
-						return nil, errors.Wrapf(err, "failed to parse ac.ServerAddress %q", ac.ServerAddress)
-					}
-					acsaHostname := acsaURL.Hostname()
-					if acsaPort := acsaURL.Port(); acsaPort != "" {
-						acsaHostname = net.JoinHostPort(acsaHostname, acsaPort)
-					}
+					acsaHostname := credentials.ConvertToHostname(ac.ServerAddress)
 					if acsaHostname != authConfigHostname {
 						return nil, errors.Errorf("expected the hostname part of ac.ServerAddress (%q) to be authConfigHostname=%q, got %q",
 							ac.ServerAddress, authConfigHostname, acsaHostname)
