@@ -277,7 +277,7 @@ cmd_entrypoint_install_fuse_overlayfs() {
 		ERROR "containerd-fuse-overlayfs-grpc (https://github.com/AkihiroSuda/containerd-fuse-overlayfs) needs to be present under \$PATH"
 		exit 1
 	fi
-	if ! command -v "containerd-fuse-overlayfs-grpc" >/dev/null 2>&1; then
+	if ! command -v "fuse-overlayfs" >/dev/null 2>&1; then
 		ERROR "fuse-overlayfs (https://github.com/containers/fuse-overlayfs) needs to be present under \$PATH"
 		exit 1
 	fi
