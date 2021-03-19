@@ -302,7 +302,7 @@ cmd_entrypoint_install_fuse_overlayfs() {
 		[Install]
 		WantedBy=default.target
 	EOT
-	INFO "Add the following lines to \"${XDG_CONFIG_HOME}/containerd/config.toml\" manually:"
+	INFO "Add the following lines to \"${XDG_CONFIG_HOME}/containerd/config.toml\" manually, and then run \`systemctl --user restart ${SYSTEMD_CONTAINERD_UNIT}\`:"
 	cat <<-EOT
 		### BEGIN ###
 		[proxy_plugins]
@@ -346,7 +346,7 @@ cmd_entrypoint_install_stargz() {
 		[Install]
 		WantedBy=default.target
 	EOT
-	INFO "Add the following lines to \"${XDG_CONFIG_HOME}/containerd/config.toml\" manually:"
+	INFO "Add the following lines to \"${XDG_CONFIG_HOME}/containerd/config.toml\" manually, and then run \`systemctl --user restart ${SYSTEMD_CONTAINERD_UNIT}\`:"
 	cat <<-EOT
 		### BEGIN ###
 		[proxy_plugins]

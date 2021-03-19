@@ -58,7 +58,7 @@ To enable `fuse-overlayfs` snapshotter, run the following command:
 $ containerd-rootless-setuptool.sh install-fuse-overlayfs
 ```
 
-Then, add the following config to `~/.config/containerd/config.toml`:
+Then, add the following config to `~/.config/containerd/config.toml`, and run `systemctl --user restart containerd.service`:
 ```toml
 [proxy_plugins]
   [proxy_plugins."fuse-overlayfs"]
@@ -85,7 +85,7 @@ To enable Stargz snapshotter, run the following command:
 $ containerd-rootless-setuptool.sh install-stargz
 ```
 
-Then, add the following config to `~/.config/containerd/config.toml`:
+Then, add the following config to `~/.config/containerd/config.toml` and run `systemctl --user restart containerd.service`:
 ```toml
 [proxy_plugins]
   [proxy_plugins."stargz"]
