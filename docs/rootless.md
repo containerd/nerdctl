@@ -78,7 +78,10 @@ If `fuse-overlayfs` does not work, try `export CONTAINERD_SNAPSHOTTER=native`.
 ### Stargz Snapshotter
 [Stargz Snapshotter](./stargz.md) enables lazy-pulling of images.
 
-As of Stargz Snapshotter 0.4.1, Rootless Stargz Snapshotter only works on Ubuntu and Debian kernel.
+As of Stargz Snapshotter 0.5.0, Rootless Stargz Snapshotter supports the following hosts:
+- Any distro, with kernel >= 5.11
+- Ubuntu (>= 15.XX)
+- Debian (>= 10)
 
 To enable Stargz snapshotter, run the following command:
 ```console
