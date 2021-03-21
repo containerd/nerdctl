@@ -51,7 +51,7 @@ The `overlayfs` snapshotter only works on the following hosts:
 - Ubuntu since 2015
 - Debian since 10
 
-For other hosts, [`fuse-overlayfs` snapshotter](https://github.com/AkihiroSuda/containerd-fuse-overlayfs) needs to be used instead.
+For other hosts, [`fuse-overlayfs` snapshotter](https://github.com/containerd/fuse-overlayfs-snapshotter) needs to be used instead.
 
 To enable `fuse-overlayfs` snapshotter, run the following command:
 ```console

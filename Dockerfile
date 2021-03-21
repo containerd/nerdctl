@@ -33,7 +33,7 @@ ARG ROOTLESSKIT_VERSION=0.14.0
 ARG SLIRP4NETNS_VERSION=1.1.9
 # Extra deps: FUSE-OverlayFS
 ARG FUSE_OVERLAYFS_VERSION=1.4.0
-ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=1.0.1
+ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=1.0.2
 
 # Test deps
 ARG GO_VERSION=1.16
@@ -104,7 +104,7 @@ RUN curl -L -o /out/bin/fuse-overlayfs https://github.com/containers/fuse-overla
   chmod +x /out/bin/fuse-overlayfs && \
   echo "- fuse-overlayfs: v${FUSE_OVERLAYFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION
-RUN curl -L https://github.com/AkihiroSuda/containerd-fuse-overlayfs/releases/download/v${CONTAINERD_FUSE_OVERLAYFS_VERSION}/containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION}-linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /out/bin && \
+RUN curl -L https://github.com/containerd/fuse-overlayfs-snapshotter/releases/download/v${CONTAINERD_FUSE_OVERLAYFS_VERSION}/containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION}-linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /out/bin && \
   echo "- containerd-fuse-overlayfs: v${CONTAINERD_FUSE_OVERLAYFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \

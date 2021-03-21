@@ -54,8 +54,8 @@ Vagrant.configure("2") do |config|
     curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v${ROOTLESSKIT_VERSION}/rootlesskit-$(uname -m).tar.gz | tar Cxzv /usr/local/bin
 
     # Install containerd-fuse-overlayfs (TODO: remove this after release of Fedora 34)
-    CONTAINERD_FUSE_OVERLAYFS_VERSION=1.0.1
-    curl -sSL https://github.com/AkihiroSuda/containerd-fuse-overlayfs/releases/download/v${CONTAINERD_FUSE_OVERLAYFS_VERSION}/containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION}-linux-${GOARCH}.tar.gz | tar Cxzv /usr/local/bin
+    CONTAINERD_FUSE_OVERLAYFS_VERSION=1.0.2
+    curl -sSL https://github.com/containerd/fuse-overlayfs-snapshotter/releases/download/v${CONTAINERD_FUSE_OVERLAYFS_VERSION}/containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION}-linux-${GOARCH}.tar.gz | tar Cxzv /usr/local/bin
     mkdir -p /home/vagrant/.config/containerd
     cat <<EOF >/home/vagrant/.config/containerd/config.toml
 [proxy_plugins]
