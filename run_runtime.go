@@ -17,11 +17,15 @@
 package main
 
 import (
+	"context"
 	"strings"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/containers"
+	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/plugin"
 	runcoptions "github.com/containerd/containerd/runtime/v2/runc/options"
+	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -52,4 +56,20 @@ func generateRuntimeCOpts(clicontext *cli.Context) ([]containerd.NewContainerOpt
 	}
 	o := containerd.WithRuntime(runtime, runtimeOpts)
 	return []containerd.NewContainerOpts{o}, nil
+}
+
+// WithSysctls sets the provided sysctls onto the spec
+func WithSysctls(sysctls map[string]string) oci.SpecOpts {
+	return func(ctx context.Context, client oci.Client, c *containers.Container, s *runtimespec.Spec) error {
+		if s.Linux == nil {
+			s.Linux = &runtimespec.Linux{}
+		}
+		if s.Linux.Sysctl == nil {
+			s.Linux.Sysctl = make(map[string]string)
+		}
+		for k, v := range sysctls {
+			s.Linux.Sysctl[k] = v
+		}
+		return nil
+	}
 }

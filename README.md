@@ -242,6 +242,8 @@ Network flags:
 
 Cgroup flags:
 - :whale: `--cpus`: Number of CPUs
+- :whale: `--cpu-shares`: CPU shares (relative weight)
+- :whale: `--cpuset-cpus`: CPUs in which to allow execution (0-3, 0,1)
 - :whale: `--memory`: Memory limit
 - :whale: `--pids-limit`: Tune container pids limit
 - :whale: `--cgroupns=(host|private)`: Cgroup namespace to use
@@ -260,6 +262,7 @@ Security flags:
 
 Runtime flags:
 - :whale: `--runtime`: Runtime to use for this container, e.g. \"crun\", or \"io.containerd.runsc.v1\".
+- :whale: `--sysctl`: Sysctl options, e.g \"net.ipv4.ip_forward=1\"
 
 Volume flags:
 - :whale: `-v, --volume`: Bind mount a volume

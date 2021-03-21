@@ -19,22 +19,11 @@ package main
 import (
 	"testing"
 
-	"github.com/containerd/cgroups"
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
-func TestRunCgroupV2(t *testing.T) {
-	if cgroups.Mode() != cgroups.Unified {
-		t.Skip("test requires cgroup v2")
-	}
+func TestRuntimeResources(t *testing.T) {
 	base := testutil.NewBase(t)
-	const expected = `42000 100000
-44040192
-42
-77
-0-1
-`
-	//In CgroupV2 CPUWeight replace CPUShares => weight := 1 + ((shares-2)*9999)/262142
-	base.Cmd("run", "--rm", "--cpus", "0.42", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage,
-		"sh", "-ec", "cd /sys/fs/cgroup && cat cpu.max memory.max pids.max cpu.weight cpuset.cpus").AssertOut(expected)
+	const expected = `1`
+	base.Cmd("run", "--rm", "--sysctl", "net.ipv4.ip_forward=1", testutil.AlpineImage, "sh", "-ec", "cat /proc/sys/net/ipv4/ip_forward").AssertOut(expected)
 }
