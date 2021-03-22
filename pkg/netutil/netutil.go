@@ -124,7 +124,8 @@ func GenerateConfigList(e *CNIEnv, id int, name, cidr string) (*NetworkConfigLis
 	if _, err := exec.LookPath(filepath.Join(e.Path, "isolation")); err == nil {
 		logrus.Debug("found CNI isolation plugin")
 		extraPlugins = ",\n    {\n      \"type\":\"isolation\"\n    }"
-	} else {
+	} else if name != DefaultNetworkName {
+		// the warning is suppressed for DefaultNetworkName
 		logrus.Warnf("To isolate bridge networks, CNI plugin \"isolation\" needs to be installed in CNI_PATH (%q), see https://github.com/AkihiroSuda/cni-isolation",
 			e.Path)
 	}
