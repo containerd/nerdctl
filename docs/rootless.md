@@ -58,7 +58,7 @@ To enable `fuse-overlayfs` snapshotter, run the following command:
 $ containerd-rootless-setuptool.sh install-fuse-overlayfs
 ```
 
-Then, add the following config to `~/.config/containerd/config.toml`:
+Then, add the following config to `~/.config/containerd/config.toml`, and run `systemctl --user restart containerd.service`:
 ```toml
 [proxy_plugins]
   [proxy_plugins."fuse-overlayfs"]
@@ -74,6 +74,36 @@ $ nerdctl run -it --rm alpine
 ```
 
 If `fuse-overlayfs` does not work, try `export CONTAINERD_SNAPSHOTTER=native`.
+
+### Stargz Snapshotter
+[Stargz Snapshotter](./stargz.md) enables lazy-pulling of images.
+
+As of Stargz Snapshotter 0.5.0, Rootless Stargz Snapshotter supports the following hosts:
+- Any distro, with kernel >= 5.11
+- Ubuntu (>= 15.XX)
+- Debian (>= 10)
+
+To enable Stargz snapshotter, run the following command:
+```console
+$ containerd-rootless-setuptool.sh install-stargz
+```
+
+Then, add the following config to `~/.config/containerd/config.toml` and run `systemctl --user restart containerd.service`:
+```toml
+[proxy_plugins]
+  [proxy_plugins."stargz"]
+      type = "snapshot"
+# NOTE: replace "1000" with your actual UID
+      address = "/run/user/1000/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+```
+
+The snapshotter can be specified as `$CONTAINERD_SNAPSHOTTER`.
+```console
+$ export CONTAINERD_SNAPSHOTTER=stargz
+$ nerdctl run -it --rm ghcr.io/stargz-containers/alpine:3.10.2-esgz
+```
+
+See https://github.com/containerd/stargz-snapshotter/blob/master/docs/pre-converted-images.md for the image list.
 
 ## Troubleshooting
 

@@ -7,6 +7,10 @@ See https://github.com/containerd/stargz-snapshotter to learn further informatio
 [![asciicast](https://asciinema.org/a/378377.svg)](https://asciinema.org/a/378377)
 
 ## Enable lazy-pulling for `nerdctl run`
+
+> **NOTE**
+> For rootless installation, see [`rootless.md`](./rootless.md#stargz-snapshotter)
+
 - Install Stargz plugin (`containerd-stargz-grpc`) from https://github.com/containerd/stargz-snapshotter 
 
 - Add the following to `/etc/containerd/config.toml`:
