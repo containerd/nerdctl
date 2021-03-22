@@ -548,7 +548,7 @@ Usage: `nerdctl pull [OPTIONS] NAME[:TAG|@DIGEST]`
 Unimplemented `docker pull` flags: `--all-tags`, `--disable-content-trust` (default true), `--platform`, `--quiet`
 
 ### :whale: nerdctl push
-Pull an image from a registry.
+Push an image to a registry.
 
 Usage: `nerdctl push [OPTIONS] NAME[:TAG]`
 
