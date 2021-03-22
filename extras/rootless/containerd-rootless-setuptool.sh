@@ -106,7 +106,6 @@ cmd_entrypoint_check() {
 	if ! rootlesskit \
 		--net=slirp4netns \
 		--disable-host-loopback \
-		--port-driver=builtin \
 		--copy-up=/etc --copy-up=/run --copy-up=/var/lib \
 		true; then
 		ERROR "RootlessKit failed, see the error messages and https://rootlesscontaine.rs/getting-started/common/ ."
