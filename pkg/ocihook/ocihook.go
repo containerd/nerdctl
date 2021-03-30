@@ -201,7 +201,7 @@ func getCNINamespaceOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 		// interaction with RootlessKit API.
 		ports := make([]cni.PortMapping, len(opts.ports))
 		for i, p := range opts.ports {
-			if hostIP := net.ParseIP(p.HostIP); hostIP != nil {
+			if hostIP := net.ParseIP(p.HostIP); hostIP != nil && !hostIP.IsUnspecified() {
 				// loopback address is always bindable in the child namespace, but other addresses are unlikely.
 				if !hostIP.IsLoopback() {
 					p.HostIP = "127.0.0.1"
