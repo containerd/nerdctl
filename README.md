@@ -53,7 +53,7 @@ $ nerdctl run -d -p 8080:80 --name nginx nginx:alpine
 See [`./docs/rootless.md`](./docs/rootless.md).
 
 ## Install
-Binaries are available for amd64, arm64, and arm-v7: https://github.com/containerd/nerdctl/releases
+Binaries are available here: https://github.com/containerd/nerdctl/releases
 
 In addition to containerd, the following components should be installed (optional):
 - [CNI plugins](https://github.com/containernetworking/plugins): for using `nerdctl run`.
