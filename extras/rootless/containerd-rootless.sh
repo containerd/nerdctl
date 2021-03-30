@@ -27,7 +27,7 @@
 # External dependencies:
 # * newuidmap and newgidmap needs to be installed.
 # * /etc/subuid and /etc/subgid needs to be configured for the current user.
-# * RootlessKit (>= v0.10.0) needs to be installed. RootlessKit >= v0.13.2 is recommended.
+# * RootlessKit (>= v0.10.0) needs to be installed. RootlessKit >= v0.14.1 is recommended.
 # * Either one of slirp4netns (>= v0.4.0), VPNKit, lxc-user-nic needs to be installed. slirp4netns >= v1.1.7 is recommended.
 #
 # Recognized environment variables:

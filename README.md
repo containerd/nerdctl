@@ -60,7 +60,7 @@ In addition to containerd, the following components should be installed (optiona
 - [CNI isolation plugin](https://github.com/AkihiroSuda/cni-isolation): for isolating bridge networks (`nerdctl network create`)
 - [BuildKit](https://github.com/moby/buildkit): for using `nerdctl build`. BuildKit daemon (`buildkitd`) needs to be running.
 - [RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns): for [Rootless mode](./docs/rootless.md)
-   - RootlessKit needs to be v0.10.0 or later. v0.13.2 or later is recommended.
+   - RootlessKit needs to be v0.10.0 or later. v0.14.1 or later is recommended.
    - slirp4netns needs to be v0.4.0 or later. v1.1.7 or later is recommended.
 
 These dependencies are included in `nerdctl-full-<VERSION>-<OS>-<ARCH>.tar.gz`, but not included in `nerdctl-<VERSION>-<OS>-<ARCH>.tar.gz`.
