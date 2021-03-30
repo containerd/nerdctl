@@ -58,13 +58,19 @@ TAR_FLAGS=--transform 's/.*\///g' --owner=0 --group=0
 
 artifacts: clean
 	GOOS=linux GOARCH=amd64       make -C $(CURDIR)  binaries
-	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-amd64.tar.gz  _output/nerdctl extras/rootless/*
+	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-amd64.tar.gz   _output/nerdctl extras/rootless/*
 
 	GOOS=linux GOARCH=arm64       make -C $(CURDIR) binaries
-	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm64.tar.gz  _output/nerdctl extras/rootless/*
+	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm64.tar.gz   _output/nerdctl extras/rootless/*
 
 	GOOS=linux GOARCH=arm GOARM=7 make -C $(CURDIR) binaries
-	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm-v7.tar.gz _output/nerdctl extras/rootless/*
+	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm-v7.tar.gz  _output/nerdctl extras/rootless/*
+
+	GOOS=linux GOARCH=ppc64le     make -C $(CURDIR) binaries
+	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-ppc64le.tar.gz _output/nerdctl extras/rootless/*
+
+	GOOS=linux GOARCH=s390x       make -C $(CURDIR) binaries
+	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-s390x.tar.gz   _output/nerdctl extras/rootless/*
 
 	rm -f $(CURDIR)/_output/nerdctl
 
