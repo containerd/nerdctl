@@ -18,9 +18,11 @@ package rootlessutil
 
 import (
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/pkg/errors"
+	"github.com/rootless-containers/rootlesskit/pkg/api/client"
 )
 
 func IsRootless() bool {
@@ -55,4 +57,13 @@ func ParentEGID() int {
 		panic(errors.Wrapf(err, "failed to parse ROOTLESSKIT_PARENT_EGID=%q", env))
 	}
 	return i
+}
+
+func NewRootlessKitClient() (client.Client, error) {
+	stateDir, err := RootlessKitStateDir()
+	if err != nil {
+		return nil, err
+	}
+	apiSock := filepath.Join(stateDir, "api.sock")
+	return client.New(apiSock)
 }
