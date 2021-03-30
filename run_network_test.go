@@ -152,6 +152,7 @@ func TestRunPort(t *testing.T) {
 		err       string
 	}
 	lo := net.ParseIP("127.0.0.1")
+	zeroIP := net.ParseIP("0.0.0.0")
 	testCases := []testCase{
 		{
 			listenIP:  lo,
@@ -175,6 +176,16 @@ func TestRunPort(t *testing.T) {
 			connectIP: hostIP,
 			port:      8080,
 			err:       "connection refused",
+		},
+		{
+			listenIP:  zeroIP,
+			connectIP: lo,
+			port:      8080,
+		},
+		{
+			listenIP:  zeroIP,
+			connectIP: hostIP,
+			port:      8080,
 		},
 	}
 	for i, tc := range testCases {
