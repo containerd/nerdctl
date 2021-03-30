@@ -179,4 +179,9 @@ RUN go test -o /usr/local/bin/nerdctl.test -c .
 CMD ["/bin/sh", "-euxc", \
   "systemctl start sshd && exec ssh -o StrictHostKeyChecking=no rootless@localhost \"containerd-rootless-setuptool.sh install && containerd-rootless-setuptool.sh install-buildkit && exec nerdctl.test -test.v -test.kill-daemon\""]
 
+# test for CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns
+FROM test-rootless AS test-rootless-port-slirp4netns
+COPY ./Dockerfile.d/home_rootless_.config_systemd_user_containerd.service.d_port-slirp4netns.conf /home/rootless/.config/systemd/user/containerd.service.d/port-slirp4netns.conf
+RUN chown -R rootless:rootless /home/rootless/.config
+
 FROM base AS demo
