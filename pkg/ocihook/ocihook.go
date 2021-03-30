@@ -211,7 +211,7 @@ func getCNINamespaceOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 			logrus.WithError(err).Warn("cannot call RootlessKit Info API, make sure you have RootlessKit v0.14.1 or later")
 		} else {
 			childIP = info.NetworkDriver.ChildIP
-			portDriverDisallowsLoopbackChildIP = info.PortDriver.DisallowLoopbackChildIP
+			portDriverDisallowsLoopbackChildIP = info.PortDriver.DisallowLoopbackChildIP // true for slirp4netns port driver
 		}
 		// For rootless, we need to modify the hostIP that is not bindable in the child namespace.
 		// https: //github.com/containerd/nerdctl/issues/88
@@ -232,6 +232,8 @@ func getCNINamespaceOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 							p.HostIP = "127.0.0.1"
 						}
 					}
+				} else if portDriverDisallowsLoopbackChildIP {
+					p.HostIP = childIP.String()
 				}
 			}
 			ports[i] = p
