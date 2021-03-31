@@ -17,17 +17,14 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"strings"
+	"text/template"
 
-	"github.com/containerd/cgroups"
-	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
-	"github.com/containerd/containerd/services/introspection"
-	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/infoutil"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	ptypes "github.com/gogo/protobuf/types"
+	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/docker/cli/templates"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -35,75 +32,86 @@ var infoCommand = &cli.Command{
 	Name:   "info",
 	Usage:  "Display system-wide information",
 	Action: infoAction,
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    "format",
+			Aliases: []string{"f"},
+			Usage:   "Format the output using the given Go template, e.g, '{{json .}}'",
+		},
+	},
 }
 
 func infoAction(clicontext *cli.Context) error {
 	w := clicontext.App.Writer
-	fmt.Fprintf(w, "Client:\n")
-	fmt.Fprintf(w, " Namespace:\t%s\n", clicontext.String("namespace"))
-	fmt.Fprintf(w, " Debug Mode:\t%v\n", clicontext.Bool("debug"))
+	var (
+		tmpl *template.Template
+		err  error
+	)
+	if format := clicontext.String("format"); format != "" {
+		tmpl, err = templates.Parse(format)
+		if err != nil {
+			return err
+		}
+	}
 
 	client, ctx, cancel, err := newClient(clicontext)
 	if err != nil {
 		return err
 	}
 	defer cancel()
-	daemonVersion, err := client.Version(ctx)
-	if err != nil {
-		return err
-	}
-	introService := client.IntrospectionService()
-	daemonIntro, err := introService.Server(ctx, &ptypes.Empty{})
-	if err != nil {
-		return err
-	}
-	snapshotterPlugins, err := getSnapshotterNames(ctx, introService)
+
+	info, err := infoutil.Info(ctx, client, clicontext.String("snapshotter"))
 	if err != nil {
 		return err
 	}
 
+	if tmpl != nil {
+		if err := tmpl.Execute(w, info); err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(w, "\n")
+		return err
+	}
+
+	fmt.Fprintf(w, "Client:\n")
+	fmt.Fprintf(w, " Namespace:\t%s\n", clicontext.String("namespace"))
+	fmt.Fprintf(w, " Debug Mode:\t%v\n", clicontext.Bool("debug"))
 	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "Server:\n")
-	fmt.Fprintf(w, " Server Version: %s\n", daemonVersion.Version)
+	fmt.Fprintf(w, " Server Version: %s\n", info.ServerVersion)
 	// Storage Driver is not really Server concept for nerdctl, but mimics `docker info` output
-	fmt.Fprintf(w, " Storage Driver: %s\n", clicontext.String("snapshotter"))
-	fmt.Fprintf(w, " Logging Driver: json-file\n") // hard-coded
-	fmt.Fprintf(w, " Cgroup Driver: %s\n", defaults.CgroupManager())
-	cgVersion := 1
-	if cgroups.Mode() == cgroups.Unified {
-		cgVersion = 2
-	}
-	fmt.Fprintf(w, " Cgroup Version: %d\n", cgVersion)
+	fmt.Fprintf(w, " Storage Driver: %s\n", info.Driver)
+	fmt.Fprintf(w, " Logging Driver: %s\n", info.LoggingDriver)
+	fmt.Fprintf(w, " Cgroup Driver: %s\n", info.CgroupDriver)
+	fmt.Fprintf(w, " Cgroup Version: %s\n", info.CgroupVersion)
 	fmt.Fprintf(w, " Plugins:\n")
-	fmt.Fprintf(w, "  Storage: %s\n", strings.Join(snapshotterPlugins, " "))
+	fmt.Fprintf(w, "  Log: %s\n", strings.Join(info.Plugins.Log, " "))
+	fmt.Fprintf(w, "  Storage: %s\n", strings.Join(info.Plugins.Storage, " "))
 	fmt.Fprintf(w, " Security Options:\n")
-	if pkgapparmor.HostSupports() {
-		fmt.Fprintf(w, "  apparmor\n")
-	}
-	fmt.Fprintf(w, "  seccomp\n")
-	fmt.Fprintf(w, "   Profile: default\n")
-	if defaults.CgroupnsMode() == "private" {
-		fmt.Fprintf(w, "  cgroupns\n")
-	}
-	if rootlessutil.IsRootlessChild() {
-		fmt.Fprintf(w, "  rootless\n")
-	}
-	fmt.Fprintf(w, " Operating System: %s\n", infoutil.DistroName())
-	fmt.Fprintf(w, " Kernel Version: %s\n", infoutil.UnameR())
-	fmt.Fprintf(w, " ID: %s\n", daemonIntro.UUID)
-	return nil
-}
-
-func getSnapshotterNames(ctx context.Context, introService introspection.Service) ([]string, error) {
-	var names []string
-	plugins, err := introService.Plugins(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	for _, p := range plugins.Plugins {
-		if strings.HasPrefix(p.Type, "io.containerd.snapshotter.") && p.InitErr == nil {
-			names = append(names, p.ID)
+	for _, s := range info.SecurityOptions {
+		m, err := strutil.ParseCSVMap(s)
+		if err != nil {
+			logrus.WithError(err).Warnf("unparsable security option %q", s)
+			continue
+		}
+		name := m["name"]
+		if name == "" {
+			logrus.Warnf("unparsable security option %q", s)
+			continue
+		}
+		fmt.Fprintf(w, "  %s\n", name)
+		for k, v := range m {
+			if k == "name" {
+				continue
+			}
+			fmt.Fprintf(w, "   %s: %s\n", strings.Title(k), v)
 		}
 	}
-	return names, nil
+	fmt.Fprintf(w, " Kernel Version: %s\n", info.KernelVersion)
+	fmt.Fprintf(w, " Operating System: %s\n", info.OperatingSystem)
+	fmt.Fprintf(w, " OSType: %s\n", info.OSType)
+	fmt.Fprintf(w, " Architecture: %s\n", info.Architecture)
+	fmt.Fprintf(w, " Name: %s\n", info.Name)
+	fmt.Fprintf(w, " ID: %s\n", info.ID)
+	return nil
 }

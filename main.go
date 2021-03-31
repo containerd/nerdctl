@@ -25,6 +25,7 @@ import (
 	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/namespaces"
 	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/version"
@@ -259,7 +260,7 @@ func bashCompleteSnapshotterNames(clicontext *cli.Context) {
 		return
 	}
 	defer cancel()
-	snapshotterPlugins, err := getSnapshotterNames(ctx, client.IntrospectionService())
+	snapshotterPlugins, err := infoutil.GetSnapshotterNames(ctx, client.IntrospectionService())
 	if err != nil {
 		return
 	}

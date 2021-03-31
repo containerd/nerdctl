@@ -32,3 +32,25 @@ func TestDedupeStrSlice(t *testing.T) {
 		DedupeStrSlice([]string{"apple", "apple", "banana", "chocolate", "apple"}))
 
 }
+
+func TestParseCSVMap(t *testing.T) {
+	cases := map[string]map[string]string{
+		`foo=x,bar=y,baz=z,qux`: {
+			"foo": "x",
+			"bar": "y",
+			"baz": "z",
+			"qux": "",
+		},
+		`"foo=x,bar=y",baz=z,qux`: {
+			"foo": "x,bar=y",
+			"baz": "z",
+			"qux": "",
+		},
+	}
+
+	for s, expected := range cases {
+		got, err := ParseCSVMap(s)
+		assert.NilError(t, err)
+		assert.DeepEqual(t, expected, got)
+	}
+}
