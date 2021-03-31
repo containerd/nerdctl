@@ -18,11 +18,21 @@ package infoutil
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
 
+	"github.com/containerd/cgroups"
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/pkg/apparmor"
+	"github.com/containerd/containerd/services/introspection"
+	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	ptypes "github.com/gogo/protobuf/types"
 	"golang.org/x/sys/unix"
 )
 
@@ -35,6 +45,23 @@ func UnameR() string {
 	}
 	var s string
 	for _, f := range utsname.Release {
+		if f == 0 {
+			break
+		}
+		s += string(f)
+	}
+	return s
+}
+
+// UnameM returns `uname -m`
+func UnameM() string {
+	var utsname unix.Utsname
+	if err := unix.Uname(&utsname); err != nil {
+		// error is unlikely to happen
+		return ""
+	}
+	var s string
+	for _, f := range utsname.Machine {
 		if f == 0 {
 			break
 		}
@@ -88,4 +115,67 @@ func getOSReleaseAttrib(line string) (string, string) {
 		return x[0][1], x[0][3]
 	}
 	return "", ""
+}
+
+func Info(ctx context.Context, client *containerd.Client, defaultSnapshotter string) (*dockercompat.Info, error) {
+	daemonVersion, err := client.Version(ctx)
+	if err != nil {
+		return nil, err
+	}
+	introService := client.IntrospectionService()
+	daemonIntro, err := introService.Server(ctx, &ptypes.Empty{})
+	if err != nil {
+		return nil, err
+	}
+	snapshotterPlugins, err := GetSnapshotterNames(ctx, introService)
+	if err != nil {
+		return nil, err
+	}
+
+	var info dockercompat.Info
+	info.ID = daemonIntro.UUID
+	// Storage Driver is not really Server concept for nerdctl, but mimics `docker info` output
+	info.Driver = defaultSnapshotter
+	info.Plugins.Log = []string{"json-file"}
+	info.Plugins.Storage = snapshotterPlugins
+	info.LoggingDriver = "json-file" // hard-coded
+	info.CgroupDriver = defaults.CgroupManager()
+	info.CgroupVersion = "1"
+	if cgroups.Mode() == cgroups.Unified {
+		info.CgroupVersion = "2"
+	}
+	info.KernelVersion = UnameR()
+	info.OperatingSystem = DistroName()
+	info.OSType = runtime.GOOS
+	info.Architecture = UnameM()
+	info.Name, err = os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+	info.ServerVersion = daemonVersion.Version
+	if apparmor.HostSupports() {
+		info.SecurityOptions = append(info.SecurityOptions, "name=apparmor")
+	}
+	info.SecurityOptions = append(info.SecurityOptions, "name=seccomp,profile=default")
+	if defaults.CgroupnsMode() == "private" {
+		info.SecurityOptions = append(info.SecurityOptions, "name=cgroupns")
+	}
+	if rootlessutil.IsRootlessChild() {
+		info.SecurityOptions = append(info.SecurityOptions, "name=rootless")
+	}
+	return &info, nil
+}
+
+func GetSnapshotterNames(ctx context.Context, introService introspection.Service) ([]string, error) {
+	var names []string
+	plugins, err := introService.Plugins(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range plugins.Plugins {
+		if strings.HasPrefix(p.Type, "io.containerd.snapshotter.") && p.InitErr == nil {
+			names = append(names, p.ID)
+		}
+	}
+	return names, nil
 }

@@ -694,6 +694,7 @@ List containerd namespaces such as "default", "moby", or "k8s.io".
 
 Usage: `nerdctl namespace ls [OPTIONS]`
 
+Flags:
 - `-q, --quiet`: Only display namespace names
 
 ## System
@@ -711,7 +712,8 @@ Display system-wide information
 
 Usage: `nerdctl info [OPTIONS]`
 
-Unimplemented `docker info` flags: `--format`
+Flags:
+- :whale: `-f, --format`: Format the output using the given Go template, e.g, `{{json .}}`
 
 ### :whale: nerdctl version
 Show the nerdctl version information

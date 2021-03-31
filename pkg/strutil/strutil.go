@@ -17,7 +17,11 @@
 package strutil
 
 import (
+	"encoding/csv"
 	"strings"
+
+	"github.com/containerd/containerd/errdefs"
+	"github.com/pkg/errors"
 )
 
 // ConvertKVStringsToMap is from https://github.com/moby/moby/blob/v20.10.0-rc2/runconfig/opts/parse.go
@@ -60,4 +64,27 @@ func DedupeStrSlice(in []string) []string {
 		}
 	}
 	return res
+}
+
+// ParseCSVMap parses a string like "foo=x,bar=y" into a map
+func ParseCSVMap(s string) (map[string]string, error) {
+	csvR := csv.NewReader(strings.NewReader(s))
+	ra, err := csvR.ReadAll()
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot parse %q", s)
+	}
+	if len(ra) != 1 {
+		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "expected a single line, got %d lines", len(ra))
+	}
+	fields := ra[0]
+	m := make(map[string]string)
+	for _, field := range fields {
+		kv := strings.SplitN(field, "=", 2)
+		if len(kv) == 2 {
+			m[kv[0]] = kv[1]
+		} else {
+			m[kv[0]] = ""
+		}
+	}
+	return m, nil
 }
