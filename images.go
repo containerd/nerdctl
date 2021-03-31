@@ -50,6 +50,19 @@ var imagesCommand = &cli.Command{
 }
 
 func imagesAction(clicontext *cli.Context) error {
+	var filters []string
+
+	if clicontext.NArg() > 1 {
+		return errors.New("cannot have more than one argument")
+	}
+
+	if clicontext.NArg() > 0 {
+		canonicalRef, err := refdocker.ParseDockerRef(clicontext.Args().First())
+		if err != nil {
+			return err
+		}
+		filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
+	}
 	client, ctx, cancel, err := newClient(clicontext)
 	if err != nil {
 		return err
@@ -62,8 +75,7 @@ func imagesAction(clicontext *cli.Context) error {
 	)
 
 	// To-do: Add support for --filter.
-	// Set filters to "" for now.
-	imageList, err := imageStore.List(ctx, "")
+	imageList, err := imageStore.List(ctx, filters...)
 	if err != nil {
 		return err
 	}
