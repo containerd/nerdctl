@@ -152,6 +152,7 @@ func TestRunPort(t *testing.T) {
 		err       string
 	}
 	lo := net.ParseIP("127.0.0.1")
+	zeroIP := net.ParseIP("0.0.0.0")
 	testCases := []testCase{
 		{
 			listenIP:  lo,
@@ -176,6 +177,16 @@ func TestRunPort(t *testing.T) {
 			port:      8080,
 			err:       "connection refused",
 		},
+		{
+			listenIP:  zeroIP,
+			connectIP: lo,
+			port:      8080,
+		},
+		{
+			listenIP:  zeroIP,
+			connectIP: hostIP,
+			port:      8080,
+		},
 	}
 	for i, tc := range testCases {
 		i := i
@@ -185,12 +196,15 @@ func TestRunPort(t *testing.T) {
 			testContainerName := fmt.Sprintf("nerdctl-test-nginx-%d", i)
 			base := testutil.NewBase(t)
 			defer base.Cmd("rm", "-f", testContainerName).Run()
+			pFlag := fmt.Sprintf("%s:%d:80", tc.listenIP.String(), tc.port)
+			connectURL := fmt.Sprintf("http://%s:%d", tc.connectIP.String(), tc.port)
+			t.Logf("pFlag=%q, connectURL=%q", pFlag, connectURL)
 			base.Cmd("run", "-d",
 				"--name", testContainerName,
-				"-p", fmt.Sprintf("%s:%d:80", tc.listenIP.String(), tc.port),
+				"-p", pFlag,
 				testutil.NginxAlpineImage).AssertOK()
 
-			resp, err := httpGet(fmt.Sprintf("http://%s:%d", tc.connectIP.String(), tc.port), 30)
+			resp, err := httpGet(connectURL, 30)
 			if tc.err != "" {
 				assert.ErrorContains(t, err, tc.err)
 				return

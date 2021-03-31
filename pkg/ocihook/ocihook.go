@@ -36,6 +36,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
+	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
 	"github.com/sirupsen/logrus"
 )
 
@@ -144,17 +145,24 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 			return nil, err
 		}
 	}
+	if rootlessutil.IsRootlessChild() {
+		o.rootlessKitClient, err = rootlessutil.NewRootlessKitClient()
+		if err != nil {
+			return nil, err
+		}
+	}
 	return o, nil
 }
 
 type handlerOpts struct {
-	state     *specs.State
-	dataStore string
-	fullID    string
-	rootfs    string
-	ports     []gocni.PortMapping
-	cni       gocni.CNI // TODO: support multi network
-	cniName   string    // TODO: support multi network
+	state             *specs.State
+	dataStore         string
+	fullID            string
+	rootfs            string
+	ports             []gocni.PortMapping
+	cni               gocni.CNI // TODO: support multi network
+	cniName           string    // TODO: support multi network
+	rootlessKitClient rlkclient.Client
 }
 
 // hookSpec is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/containerd/command/oci-hook.go#L59-L64
@@ -194,6 +202,17 @@ func getCNINamespaceOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 		if !rootlessutil.IsRootlessChild() {
 			return []cni.NamespaceOpts{cni.WithCapabilityPortMap(opts.ports)}, nil
 		}
+		var (
+			childIP                            net.IP
+			portDriverDisallowsLoopbackChildIP bool
+		)
+		info, err := opts.rootlessKitClient.Info(context.TODO())
+		if err != nil {
+			logrus.WithError(err).Warn("cannot call RootlessKit Info API, make sure you have RootlessKit v0.14.1 or later")
+		} else {
+			childIP = info.NetworkDriver.ChildIP
+			portDriverDisallowsLoopbackChildIP = info.PortDriver.DisallowLoopbackChildIP // true for slirp4netns port driver
+		}
 		// For rootless, we need to modify the hostIP that is not bindable in the child namespace.
 		// https: //github.com/containerd/nerdctl/issues/88
 		//
@@ -201,10 +220,20 @@ func getCNINamespaceOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 		// interaction with RootlessKit API.
 		ports := make([]cni.PortMapping, len(opts.ports))
 		for i, p := range opts.ports {
-			if hostIP := net.ParseIP(p.HostIP); hostIP != nil {
+			if hostIP := net.ParseIP(p.HostIP); hostIP != nil && !hostIP.IsUnspecified() {
 				// loopback address is always bindable in the child namespace, but other addresses are unlikely.
 				if !hostIP.IsLoopback() {
-					p.HostIP = "127.0.0.1"
+					if childIP != nil && childIP.Equal(hostIP) {
+						// this is fine
+					} else {
+						if portDriverDisallowsLoopbackChildIP {
+							p.HostIP = childIP.String()
+						} else {
+							p.HostIP = "127.0.0.1"
+						}
+					}
+				} else if portDriverDisallowsLoopbackChildIP {
+					p.HostIP = childIP.String()
 				}
 			}
 			ports[i] = p
@@ -252,7 +281,7 @@ func onCreateRuntime(opts *handlerOpts) error {
 			return err
 		}
 		if len(opts.ports) > 0 && rootlessutil.IsRootlessChild() {
-			pm, err := rootlessutil.NewRootlessCNIPortManager()
+			pm, err := rootlessutil.NewRootlessCNIPortManager(opts.rootlessKitClient)
 			if err != nil {
 				return err
 			}
@@ -270,7 +299,7 @@ func onPostStop(opts *handlerOpts) error {
 	ctx := context.Background()
 	if opts.cni != nil {
 		if len(opts.ports) > 0 && rootlessutil.IsRootlessChild() {
-			pm, err := rootlessutil.NewRootlessCNIPortManager()
+			pm, err := rootlessutil.NewRootlessCNIPortManager(opts.rootlessKitClient)
 			if err != nil {
 				return err
 			}

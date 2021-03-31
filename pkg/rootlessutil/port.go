@@ -19,22 +19,16 @@ package rootlessutil
 import (
 	"context"
 	"net"
-	"path/filepath"
 
+	"github.com/containerd/containerd/errdefs"
 	gocni "github.com/containerd/go-cni"
 	"github.com/rootless-containers/rootlesskit/pkg/api/client"
 	"github.com/rootless-containers/rootlesskit/pkg/port"
 )
 
-func NewRootlessCNIPortManager() (*RootlessCNIPortManager, error) {
-	stateDir, err := RootlessKitStateDir()
-	if err != nil {
-		return nil, err
-	}
-	apiSock := filepath.Join(stateDir, "api.sock")
-	client, err := client.New(apiSock)
-	if err != nil {
-		return nil, err
+func NewRootlessCNIPortManager(client client.Client) (*RootlessCNIPortManager, error) {
+	if client == nil {
+		return nil, errdefs.ErrInvalidArgument
 	}
 	pm := &RootlessCNIPortManager{
 		Client: client,
