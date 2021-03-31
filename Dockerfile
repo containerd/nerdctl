@@ -167,7 +167,7 @@ RUN apt-get update && \
   uidmap \
   dbus-user-session \
   openssh-server openssh-client
-# TODO: update containerd-systemd to enable sshd by default, or allow `systemctl wants <TARGET> sshd` here
+# TODO: update containerized-systemd to enable sshd by default, or allow `systemctl wants <TARGET> sshd` here
 RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
   useradd -m -s /bin/bash rootless && \
   mkdir -p -m 0700 /home/rootless/.ssh && \
@@ -176,8 +176,8 @@ RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
   chown -R rootless:rootless /home/rootless
 VOLUME /home/rootless/.local/share
 RUN go test -o /usr/local/bin/nerdctl.test -c .
-CMD ["/bin/sh", "-euxc", \
-  "systemctl start sshd && exec ssh -o StrictHostKeyChecking=no rootless@localhost \"containerd-rootless-setuptool.sh install && containerd-rootless-setuptool.sh install-buildkit && exec nerdctl.test -test.v -test.kill-daemon\""]
+COPY ./Dockerfile.d/test-rootless.sh /
+CMD ["/test-rootless.sh", "nerdctl.test" ,"-test.v", "-test.kill-daemon"]
 
 # test for CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns
 FROM test-rootless AS test-rootless-port-slirp4netns
