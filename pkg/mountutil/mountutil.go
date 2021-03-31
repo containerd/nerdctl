@@ -20,13 +20,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
-func ParseFlagV(s string, volumes map[string]native.Volume) (*specs.Mount, error) {
+func ParseFlagV(s string, volStore volumestore.VolumeStore) (*specs.Mount, error) {
 	split := strings.Split(s, ":")
 	if len(split) < 2 || len(split) > 3 {
 		return nil, errors.Errorf("failed to parse %q", s)
@@ -34,9 +34,9 @@ func ParseFlagV(s string, volumes map[string]native.Volume) (*specs.Mount, error
 	src, dst := split[0], split[1]
 	if !strings.Contains(src, "/") {
 		// assume src is a volume name
-		vol, ok := volumes[src]
-		if !ok {
-			return nil, errors.Errorf("unknown volume name %q", src)
+		vol, err := volStore.Get(src)
+		if err != nil {
+			return nil, err
 		}
 		// src is now full path
 		src = vol.Mountpoint

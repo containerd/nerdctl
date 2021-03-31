@@ -18,12 +18,8 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/containerd/containerd/identifiers"
-	"github.com/containerd/nerdctl/pkg/lockutil"
-	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
@@ -48,19 +44,9 @@ func volumeCreateAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
-	volPath := filepath.Join(volStore, name)
-	volDataPath := filepath.Join(volPath, volumestore.DataDirName)
-	fn := func() error {
-		if err := os.Mkdir(volPath, 0700); err != nil {
-			return err
-		}
-		if err := os.Mkdir(volDataPath, 0755); err != nil {
-			return err
-		}
-		fmt.Fprintf(clicontext.App.Writer, "%s\n", name)
-		return nil
+	if _, err := volStore.Create(name); err != nil {
+		return err
 	}
-
-	return lockutil.WithDirLock(volStore, fn)
+	fmt.Fprintf(clicontext.App.Writer, "%s\n", name)
+	return nil
 }

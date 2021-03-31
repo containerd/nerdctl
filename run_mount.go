@@ -28,13 +28,13 @@ func generateMountOpts(clicontext *cli.Context) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
 
 	if flagVSlice := strutil.DedupeStrSlice(clicontext.StringSlice("v")); len(flagVSlice) > 0 {
-		volumes, err := getVolumes(clicontext)
+		volStore, err := getVolumeStore(clicontext)
 		if err != nil {
 			return nil, err
 		}
 		ociMounts := make([]specs.Mount, len(flagVSlice))
 		for i, v := range flagVSlice {
-			m, err := mountutil.ParseFlagV(v, volumes)
+			m, err := mountutil.ParseFlagV(v, volStore)
 			if err != nil {
 				return nil, err
 			}

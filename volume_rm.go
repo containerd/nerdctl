@@ -18,10 +18,7 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
-	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
@@ -44,19 +41,12 @@ func volumeRmAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fn := func() error {
-		for _, name := range clicontext.Args().Slice() {
-			dir := filepath.Join(volStore, name)
-			if err := os.RemoveAll(dir); err != nil {
-				return err
-			}
-			fmt.Fprintln(clicontext.App.Writer, name)
-
-		}
-		return nil
+	names := clicontext.Args().Slice()
+	removedNames, err := volStore.Remove(names)
+	for _, removed := range removedNames {
+		fmt.Fprintln(clicontext.App.Writer, removed)
 	}
-	return lockutil.WithDirLock(volStore, fn)
-
+	return err
 }
 
 func volumeRmBashComplete(clicontext *cli.Context) {

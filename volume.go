@@ -33,11 +33,12 @@ var volumeCommand = &cli.Command{
 	},
 }
 
-// getVolumeStore returns a string like `/var/lib/nerdctl/1935db59/volumes/default`
-func getVolumeStore(clicontext *cli.Context) (string, error) {
+// getVolumeStore returns a volume store
+// that corresponds to a directory like `/var/lib/nerdctl/1935db59/volumes/default`
+func getVolumeStore(clicontext *cli.Context) (volumestore.VolumeStore, error) {
 	dataStore, err := getDataStore(clicontext)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	ns := clicontext.String("namespace")
 	return volumestore.New(dataStore, ns)
