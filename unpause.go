@@ -98,6 +98,9 @@ func unpauseBashComplete(clicontext *cli.Context) {
 		defaultBashComplete(clicontext)
 		return
 	}
-	// show container names (TODO: filter already unpaused containers)
-	bashCompleteContainerNames(clicontext)
+	// show paused container names
+	statusFilterFn := func(st containerd.ProcessStatus) bool {
+		return st == containerd.Paused
+	}
+	bashCompleteContainerNames(clicontext, statusFilterFn)
 }

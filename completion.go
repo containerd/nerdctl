@@ -17,10 +17,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/urfave/cli/v2"
@@ -154,7 +157,7 @@ func bashCompleteImageNames(clicontext *cli.Context) {
 	}
 }
 
-func bashCompleteContainerNames(clicontext *cli.Context) {
+func bashCompleteContainerNames(clicontext *cli.Context, filterFunc func(containerd.ProcessStatus) bool) {
 	w := clicontext.App.Writer
 	client, ctx, cancel, err := newClient(clicontext)
 	if err != nil {
@@ -165,7 +168,25 @@ func bashCompleteContainerNames(clicontext *cli.Context) {
 	if err != nil {
 		return
 	}
+	getStatus := func(c containerd.Container) containerd.ProcessStatus {
+		ctx2, cancel2 := context.WithTimeout(ctx, 100*time.Millisecond)
+		defer cancel2()
+		task, err := c.Task(ctx2, nil)
+		if err != nil {
+			return containerd.Unknown
+		}
+		st, err := task.Status(ctx2)
+		if err != nil {
+			return containerd.Unknown
+		}
+		return st.Status
+	}
 	for _, c := range containers {
+		if filterFunc != nil {
+			if !filterFunc(getStatus(c)) {
+				continue
+			}
+		}
 		lab, err := c.Labels(ctx)
 		if err != nil {
 			continue

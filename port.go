@@ -128,5 +128,5 @@ func portBashComplete(clicontext *cli.Context) {
 		defaultBashComplete(clicontext)
 		return
 	}
-	bashCompleteContainerNames(clicontext)
+	bashCompleteContainerNames(clicontext, nil)
 }

@@ -119,7 +119,7 @@ func logsBashComplete(clicontext *cli.Context) {
 		return
 	}
 	// show container names (TODO: only show containers with logs)
-	bashCompleteContainerNames(clicontext)
+	bashCompleteContainerNames(clicontext, nil)
 }
 
 func newTailReader(ctx context.Context, task containerd.Task, filePath string) (io.Reader, error) {

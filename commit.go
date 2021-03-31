@@ -111,5 +111,5 @@ func commitBashComplete(clicontext *cli.Context) {
 		return
 	}
 	// show container names
-	bashCompleteContainerNames(clicontext)
+	bashCompleteContainerNames(clicontext, nil)
 }
