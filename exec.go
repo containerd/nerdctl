@@ -249,6 +249,9 @@ func execBashComplete(clicontext *cli.Context) {
 		defaultBashComplete(clicontext)
 		return
 	}
-	// show container names
-	bashCompleteContainerNames(clicontext)
+	// show running container names
+	statusFilterFn := func(st containerd.ProcessStatus) bool {
+		return st == containerd.Running
+	}
+	bashCompleteContainerNames(clicontext, statusFilterFn)
 }

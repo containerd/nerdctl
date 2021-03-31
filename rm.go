@@ -200,5 +200,5 @@ func rmBashComplete(clicontext *cli.Context) {
 		return
 	}
 	// show container names
-	bashCompleteContainerNames(clicontext)
+	bashCompleteContainerNames(clicontext, nil)
 }

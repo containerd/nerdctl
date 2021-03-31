@@ -105,6 +105,9 @@ func startBashComplete(clicontext *cli.Context) {
 		defaultBashComplete(clicontext)
 		return
 	}
-	// show container names (TODO: filter already running containers)
-	bashCompleteContainerNames(clicontext)
+	// show non-running container names
+	statusFilterFn := func(st containerd.ProcessStatus) bool {
+		return st != containerd.Running && st != containerd.Unknown
+	}
+	bashCompleteContainerNames(clicontext, statusFilterFn)
 }
