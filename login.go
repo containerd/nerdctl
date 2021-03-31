@@ -21,10 +21,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime"
 	"strings"
 	"syscall"
 
-	"github.com/docker/cli/cli/command"
+	"github.com/containerd/nerdctl/pkg/version"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	clitypes "github.com/docker/cli/cli/config/types"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
@@ -186,7 +187,9 @@ func loginClientSide(ctx context.Context, auth types.AuthConfig) (registrytypes.
 		return registrytypes.AuthenticateOKBody{}, err
 	}
 
-	status, token, err := svc.Auth(ctx, &auth, command.UserAgent())
+	userAgent := fmt.Sprintf("Docker-Client/nerdctl-%s (%s)", version.Version, runtime.GOOS)
+
+	status, token, err := svc.Auth(ctx, &auth, userAgent)
 
 	return registrytypes.AuthenticateOKBody{
 		Status:        status,
