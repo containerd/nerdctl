@@ -31,6 +31,13 @@ var volumeRmCommand = &cli.Command{
 	Description:  "NOTE: volume in use is deleted without caution",
 	Action:       volumeRmAction,
 	BashComplete: volumeRmBashComplete,
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "force",
+			Aliases: []string{"f"},
+			Usage:   "(unimplemented yet)",
+		},
+	},
 }
 
 func volumeRmAction(clicontext *cli.Context) error {
