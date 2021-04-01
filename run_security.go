@@ -102,7 +102,7 @@ func generateCapOpts(capAdd, capDrop []string) ([]oci.SpecOpts, error) {
 		for _, c := range capAdd {
 			capsAdd = append(capsAdd, "CAP_"+strings.ToUpper(c))
 		}
-		opts = append(opts, oci.WithCapabilities(capsAdd))
+		opts = append(opts, oci.WithAddedCapabilities(capsAdd))
 	}
 
 	if !strutil.InStringSlice(capDrop, "ALL") {
