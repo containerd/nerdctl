@@ -273,10 +273,10 @@ func NewBase(t *testing.T) *Base {
 	return base
 }
 
-// use GCR mirror to avoid hitting Docker Hub rate limit
+// TODO: do not use Docker Hub nor GCR mirror: https://github.com/containerd/nerdctl/issues/146
 const (
-	AlpineImage                 = "mirror.gcr.io/library/alpine:3.13"
-	NginxAlpineImage            = "mirror.gcr.io/library/nginx:1.19-alpine"
+	AlpineImage                 = "alpine:3.13"
+	NginxAlpineImage            = "nginx:1.19-alpine"
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
-	RegistryImage               = "mirror.gcr.io/library/registry:2"
+	RegistryImage               = "registry:2"
 )
