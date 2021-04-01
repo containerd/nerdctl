@@ -69,11 +69,11 @@ jobs:
     - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
       run: DOCKER_BUILDKIT=1 docker build -t test-rootless --target test-rootless --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
     - name: "Test    (network driver=slirp4netns, port driver=builtin)"
-      run: docker run -t --rm --privileged --tmpfs /tmp:exec test-rootless
+      run: docker run -t --rm --privileged test-rootless
     - name: "Prepare (network driver=slirp4netns, port driver=slirp4netns)"
       run: DOCKER_BUILDKIT=1 docker build -t test-rootless-port-slirp4netns --target test-rootless-port-slirp4netns --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
     - name: "Test    (network driver=slirp4netns, port driver=slirp4netns)"
-      run: docker run -t --rm --privileged --tmpfs /tmp:exec test-rootless-port-slirp4netns
+      run: docker run -t --rm --privileged test-rootless-port-slirp4netns
 
   cross:
     runs-on: ubuntu-20.04

@@ -19,11 +19,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
-	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
@@ -45,17 +42,13 @@ func volumeInspectAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	result := make([]native.Volume, clicontext.NArg())
+	result := make([]*native.Volume, clicontext.NArg())
 	for i, name := range clicontext.Args().Slice() {
-		dataPath := filepath.Join(volStore, name, volumestore.DataDirName)
-		if _, err := os.Stat(dataPath); err != nil {
+		vol, err := volStore.Get(name)
+		if err != nil {
 			return err
 		}
-		r := native.Volume{
-			Name:       name,
-			Mountpoint: dataPath,
-		}
-		result[i] = r
+		result[i] = vol
 	}
 	b, err := json.MarshalIndent(result, "", "    ")
 	if err != nil {

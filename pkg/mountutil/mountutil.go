@@ -20,13 +20,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/containerd/sys"
+	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
 
-func ParseFlagV(s string, volumes map[string]native.Volume) (*specs.Mount, error) {
+func ParseFlagV(s string, volStore volumestore.VolumeStore) (*specs.Mount, error) {
 	split := strings.Split(s, ":")
 	if len(split) < 2 || len(split) > 3 {
 		return nil, errors.Errorf("failed to parse %q", s)
@@ -34,9 +37,9 @@ func ParseFlagV(s string, volumes map[string]native.Volume) (*specs.Mount, error
 	src, dst := split[0], split[1]
 	if !strings.Contains(src, "/") {
 		// assume src is a volume name
-		vol, ok := volumes[src]
-		if !ok {
-			return nil, errors.Errorf("unknown volume name %q", src)
+		vol, err := volStore.Get(src)
+		if err != nil {
+			return nil, err
 		}
 		// src is now full path
 		src = vol.Mountpoint
@@ -75,5 +78,46 @@ func ParseFlagV(s string, volumes map[string]native.Volume) (*specs.Mount, error
 	if ro {
 		m.Options = append(m.Options, "ro")
 	}
+	if sys.RunningInUserNS() {
+		unpriv, err := getUnprivilegedMountFlags(src)
+		if err != nil {
+			return nil, err
+		}
+		m.Options = strutil.DedupeStrSlice(append(m.Options, unpriv...))
+	}
 	return m, nil
+}
+
+// getUnprivilegedMountFlags is from https://github.com/moby/moby/blob/v20.10.5/daemon/oci_linux.go#L420-L450
+//
+// Get the set of mount flags that are set on the mount that contains the given
+// path and are locked by CL_UNPRIVILEGED. This is necessary to ensure that
+// bind-mounting "with options" will not fail with user namespaces, due to
+// kernel restrictions that require user namespace mounts to preserve
+// CL_UNPRIVILEGED locked flags.
+func getUnprivilegedMountFlags(path string) ([]string, error) {
+	var statfs unix.Statfs_t
+	if err := unix.Statfs(path, &statfs); err != nil {
+		return nil, err
+	}
+
+	// The set of keys come from https://github.com/torvalds/linux/blob/v4.13/fs/namespace.c#L1034-L1048.
+	unprivilegedFlags := map[uint64]string{
+		unix.MS_RDONLY:     "ro",
+		unix.MS_NODEV:      "nodev",
+		unix.MS_NOEXEC:     "noexec",
+		unix.MS_NOSUID:     "nosuid",
+		unix.MS_NOATIME:    "noatime",
+		unix.MS_RELATIME:   "relatime",
+		unix.MS_NODIRATIME: "nodiratime",
+	}
+
+	var flags []string
+	for mask, flag := range unprivilegedFlags {
+		if uint64(statfs.Flags)&mask == mask {
+			flags = append(flags, flag)
+		}
+	}
+
+	return flags, nil
 }

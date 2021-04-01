@@ -18,12 +18,9 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
 	"text/tabwriter"
 
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
-	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/urfave/cli/v2"
 )
 
@@ -67,22 +64,5 @@ func getVolumes(clicontext *cli.Context) (map[string]native.Volume, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	dEnts, err := ioutil.ReadDir(volStore)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make(map[string]native.Volume, len(dEnts))
-
-	for _, dEnt := range dEnts {
-		name := dEnt.Name()
-		dataPath := filepath.Join(volStore, name, volumestore.DataDirName)
-		entry := native.Volume{
-			Name:       name,
-			Mountpoint: dataPath,
-		}
-		res[name] = entry
-	}
-	return res, nil
+	return volStore.List()
 }

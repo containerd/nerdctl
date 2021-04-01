@@ -170,7 +170,7 @@ func (c *Cmd) AssertFail() {
 func (c *Cmd) AssertExitCode(exitCode int) {
 	c.Base.T.Helper()
 	res := c.Run()
-	assert.Assert(c.Base.T, res.ExitCode == exitCode)
+	assert.Assert(c.Base.T, res.ExitCode == exitCode, res.Combined())
 }
 
 func (c *Cmd) AssertOut(s string) {
