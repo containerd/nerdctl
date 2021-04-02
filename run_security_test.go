@@ -45,7 +45,8 @@ func getCapEff(base *testutil.Base, args ...string) uint64 {
 }
 
 const (
-	CAP_NET_RAW = 13
+	CAP_NET_RAW  = 13
+	CAP_IPC_LOCK = 14
 )
 
 func TestRunCap(t *testing.T) {
@@ -53,6 +54,10 @@ func TestRunCap(t *testing.T) {
 
 	// allCaps varies depending on the target version and the kernel version.
 	allCaps := getCapEff(base, "--privileged")
+
+	// https://github.com/containerd/containerd/blob/9a9bd097564b0973bfdb0b39bf8262aa1b7da6aa/oci/spec.go#L93
+	defaultCaps := uint64(0xa80425fb)
+
 	t.Logf("allCaps=%016x", allCaps)
 
 	type testCase struct {
@@ -61,11 +66,15 @@ func TestRunCap(t *testing.T) {
 	}
 	testCases := []testCase{
 		{
-			capEff: allCaps & 0xa80425fb,
+			capEff: allCaps & defaultCaps,
 		},
 		{
 			args:   []string{"--cap-add=all"},
 			capEff: allCaps,
+		},
+		{
+			args:   []string{"--cap-add=ipc_lock"},
+			capEff: (allCaps & defaultCaps) | (1 << CAP_IPC_LOCK),
 		},
 		{
 			args:   []string{"--cap-add=all", "--cap-drop=net_raw"},
