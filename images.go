@@ -33,9 +33,10 @@ import (
 )
 
 var imagesCommand = &cli.Command{
-	Name:   "images",
-	Usage:  "List images",
-	Action: imagesAction,
+	Name:         "images",
+	Usage:        "List images",
+	Action:       imagesAction,
+	BashComplete: imagesBashComplete,
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:    "quiet",
@@ -150,4 +151,14 @@ func parseRepoTag(imgName string) (string, string) {
 	repository = strings.TrimPrefix(repository, "docker.io/")
 
 	return repository, tag
+}
+
+func imagesBashComplete(clicontext *cli.Context) {
+	coco := parseCompletionContext(clicontext)
+	if coco.boring || coco.flagTakesValue {
+		defaultBashComplete(clicontext)
+		return
+	}
+	// show image names
+	bashCompleteImageNames(clicontext)
 }
