@@ -141,6 +141,14 @@ var runCommand = &cli.Command{
 			Usage: "Cgroup namespace to use, the default depends on the cgroup version (\"host\"|\"private\")",
 			Value: defaults.CgroupnsMode(),
 		},
+		&cli.StringFlag{
+			Name:  "cpuset-cpus",
+			Usage: "CPUs in which to allow execution (0-3, 0,1)",
+		},
+		&cli.IntFlag{
+			Name:  "cpu-shares",
+			Usage: "CPU shares (relative weight)",
+		},
 		// user flags
 		&cli.StringFlag{
 			Name:    "user",
@@ -169,6 +177,10 @@ var runCommand = &cli.Command{
 			Name:  "runtime",
 			Usage: "Runtime to use for this container, e.g. \"crun\", or \"io.containerd.runsc.v1\"",
 			Value: plugin.RuntimeRuncV2,
+		},
+		&cli.StringSliceFlag{
+			Name:  "sysctl",
+			Usage: "Sysctl options",
 		},
 		// volume flags
 		&cli.StringSliceFlag{
@@ -451,6 +463,8 @@ func runAction(clicontext *cli.Context) error {
 	cOpts = append(cOpts, ilOpt)
 
 	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
+
+	opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(clicontext.StringSlice("sysctl"))))
 
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)

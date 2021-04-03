@@ -60,6 +60,17 @@ func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, err
 		opts = append(opts, oci.WithCPUCFS(quota, period))
 	}
 
+	if shares := clicontext.Int("cpu-shares"); shares != 0 {
+		var (
+			shares = uint64(shares)
+		)
+		opts = append(opts, oci.WithCPUShares(shares))
+	}
+
+	if cpuset := clicontext.String("cpuset-cpus"); cpuset != "" {
+		opts = append(opts, oci.WithCPUs(cpuset))
+	}
+
 	if memStr := clicontext.String("memory"); memStr != "" {
 		mem64, err := units.RAMInBytes(memStr)
 		if err != nil {
