@@ -21,9 +21,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/pkg/errors"
@@ -49,8 +49,8 @@ func networkCreateAction(clicontext *cli.Context) error {
 		return errors.Errorf("requires exactly 1 argument")
 	}
 	name := clicontext.Args().First()
-	if !isValidNetName(name) {
-		return errors.Errorf("malformed name %s", name)
+	if err := identifiers.Validate(name); err != nil {
+		return errors.Wrapf(err, "malformed name %s", name)
 	}
 	netconfpath := clicontext.String("cni-netconfpath")
 	if err := os.MkdirAll(netconfpath, 0755); err != nil {
@@ -101,12 +101,4 @@ func networkCreateAction(clicontext *cli.Context) error {
 	}
 
 	return lockutil.WithDirLock(netconfpath, fn)
-}
-
-func isValidNetName(s string) bool {
-	ok, err := regexp.MatchString("^[a-zA-Z0-9-]+$", s)
-	if err != nil {
-		panic(err)
-	}
-	return ok
 }

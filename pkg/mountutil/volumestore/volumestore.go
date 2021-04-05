@@ -58,6 +58,7 @@ const DataDirName = "_data"
 type VolumeStore interface {
 	Dir() string
 	Create(name string) (*native.Volume, error)
+	// Get may return ErrNotFound
 	Get(name string) (*native.Volume, error)
 	List() (map[string]native.Volume, error)
 	Remove(names []string) (removedNames []string, err error)

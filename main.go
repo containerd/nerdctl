@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -51,7 +52,6 @@ func xmain() error {
 }
 
 func newApp() *cli.App {
-	debug := false
 	app := cli.NewApp()
 	app.Name = "nerdctl"
 	app.Usage = "Docker-compatible CLI for containerd"
@@ -60,9 +60,12 @@ func newApp() *cli.App {
 	app.Version = strings.TrimPrefix(version.Version, "v")
 	app.Flags = []cli.Flag{
 		&cli.BoolFlag{
-			Name:        "debug",
-			Usage:       "debug mode",
-			Destination: &debug,
+			Name:  "debug",
+			Usage: "debug mode",
+		},
+		&cli.BoolFlag{
+			Name:  "debug-full",
+			Usage: "debug mode (with full output)",
 		},
 		&cli.StringFlag{
 			Name:    "address",
@@ -118,10 +121,12 @@ func newApp() *cli.App {
 		},
 	}
 	app.Before = func(clicontext *cli.Context) error {
-		if debug {
+		if clicontext.Bool("debug-full") {
+			clicontext.Set("debug", "true")
+		}
+		if clicontext.Bool("debug") {
 			logrus.SetLevel(logrus.DebugLevel)
 		}
-
 		address := clicontext.String("address")
 		if strings.Contains(address, "://") && !strings.HasPrefix(address, "unix://") {
 			return errors.Errorf("invalid address %q", address)
@@ -176,6 +181,8 @@ func newApp() *cli.App {
 		loginCommand,
 		// Logout
 		logoutCommand,
+		// Compose
+		composeCommand,
 		// Completion
 		completionCommand,
 	}
@@ -267,4 +274,18 @@ func bashCompleteSnapshotterNames(clicontext *cli.Context) {
 	for _, name := range snapshotterPlugins {
 		fmt.Fprintln(clicontext.App.Writer, name)
 	}
+}
+
+func globalFlags(clicontext *cli.Context) (string, []string) {
+	args0, err := os.Executable()
+	if err != nil {
+		logrus.WithError(err).Warnf("cannot call os.Executable(), assuming the executable to be %q", os.Args[0])
+		args0 = os.Args[0]
+	}
+	if len(os.Args) < 2 {
+		return args0, nil
+	}
+	lineage := clicontext.Lineage()
+	top := lineage[len(lineage)-2]
+	return args0, strutil.TrimStrSliceRight(os.Args[1:], top.Args().Slice())
 }
