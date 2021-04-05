@@ -141,6 +141,16 @@ func (b *Base) InspectContainer(name string) dockercompat.Container {
 	return dc[0]
 }
 
+func (b *Base) Info() dockercompat.Info {
+	cmdResult := b.Cmd("info", "--format", "{{ json . }}").Run()
+	assert.Equal(b.T, cmdResult.ExitCode, 0)
+	var info dockercompat.Info
+	if err := json.Unmarshal([]byte(cmdResult.Stdout()), &info); err != nil {
+		b.T.Fatal(err)
+	}
+	return info
+}
+
 type Cmd struct {
 	icmd.Cmd
 	*Base
@@ -279,4 +289,5 @@ const (
 	NginxAlpineImage            = "nginx:1.19-alpine"
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
 	RegistryImage               = "registry:2"
+	FedoraESGZImage             = "ghcr.io/stargz-containers/fedora:30-esgz" // eStargz
 )
