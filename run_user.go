@@ -17,6 +17,9 @@
 package main
 
 import (
+	"context"
+
+	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/urfave/cli/v2"
 )
@@ -24,7 +27,14 @@ import (
 func generateUserOpts(clicontext *cli.Context) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
 	if u := clicontext.String("user"); u != "" {
-		opts = append(opts, oci.WithUser(u), oci.WithAdditionalGIDs(u))
+		opts = append(opts, oci.WithUser(u), withResetAdditionalGIDs(), oci.WithAdditionalGIDs(u))
 	}
 	return opts, nil
+}
+
+func withResetAdditionalGIDs() oci.SpecOpts {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		s.Process.User.AdditionalGids = nil
+		return nil
+	}
 }
