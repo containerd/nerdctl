@@ -463,8 +463,9 @@ Usage: `nerdctl rm [OPTIONS] CONTAINER [CONTAINER...]`
 
 Flags:
 - :whale: `-f, --force`: Force the removal of a running|paused|unknown container (uses SIGKILL)
+- :whale: `-v, --volumes`: Remove anonymous volumes associated with the container
 
-Unimplemented `docker rm` flags: `--link`, `--volumes`
+Unimplemented `docker rm` flags: `--link`
 
 ### :whale: nerdctl stop
 Stop one or more running containers.

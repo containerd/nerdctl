@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/pkg/cap"
+	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
@@ -151,7 +152,7 @@ func execActionWithContainer(ctx context.Context, clicontext *cli.Context, conta
 	}
 	ioCreator = cio.NewCreator(cioOpts...)
 
-	execID := "exec-" + genID()
+	execID := "exec-" + idgen.GenerateID()
 	process, err := task.Exec(ctx, execID, pspec, ioCreator)
 	if err != nil {
 		return err

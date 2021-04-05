@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd/sys"
+	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -29,63 +30,83 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func ParseFlagV(s string, volStore volumestore.VolumeStore) (*specs.Mount, error) {
+type Processed struct {
+	Mount           specs.Mount
+	AnonymousVolume string // name
+}
+
+func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error) {
+	var (
+		res      Processed
+		src, dst string
+		ro       bool
+	)
 	split := strings.Split(s, ":")
-	if len(split) < 2 || len(split) > 3 {
-		return nil, errors.Errorf("failed to parse %q", s)
-	}
-	src, dst := split[0], split[1]
-	if !strings.Contains(src, "/") {
-		// assume src is a volume name
-		vol, err := volStore.Get(src)
+	switch len(split) {
+	case 1:
+		dst = s
+		res.AnonymousVolume = idgen.GenerateID()
+		logrus.Debugf("creating anonymous volume %q, for %q", res.AnonymousVolume, s)
+		anonVol, err := volStore.Create(res.AnonymousVolume)
 		if err != nil {
 			return nil, err
 		}
-		// src is now full path
-		src = vol.Mountpoint
-	}
-	if !filepath.IsAbs(src) {
-		logrus.Warnf("expected an absolute path, got a relative path %q (allowed for nerdctl, but disallowed for Docker, so unrecommended)", src)
-		var err error
-		src, err = filepath.Abs(src)
-		if err != nil {
-			return nil, err
+		src = anonVol.Mountpoint
+	case 2, 3:
+		src, dst = split[0], split[1]
+		if !strings.Contains(src, "/") {
+			// assume src is a volume name
+			vol, err := volStore.Get(src)
+			if err != nil {
+				return nil, err
+			}
+			// src is now full path
+			src = vol.Mountpoint
 		}
-	}
-	if !filepath.IsAbs(dst) {
-		return nil, errors.Errorf("expected an absolute path, got %q", dst)
-	}
-	ro := false
-	if len(split) == 3 {
-		opts := strings.Split(split[2], ",")
-		for _, opt := range opts {
-			switch opt {
-			case "rw":
-				// NOP
-			case "ro":
-				ro = true
-			default:
-				logrus.Warnf("unsupported volume option %q", opt)
+		if !filepath.IsAbs(src) {
+			logrus.Warnf("expected an absolute path, got a relative path %q (allowed for nerdctl, but disallowed for Docker, so unrecommended)", src)
+			var err error
+			src, err = filepath.Abs(src)
+			if err != nil {
+				return nil, err
 			}
 		}
+		if !filepath.IsAbs(dst) {
+			return nil, errors.Errorf("expected an absolute path, got %q", dst)
+		}
+		if len(split) == 3 {
+			opts := strings.Split(split[2], ",")
+			for _, opt := range opts {
+				switch opt {
+				case "rw":
+					// NOP
+				case "ro":
+					ro = true
+				default:
+					logrus.Warnf("unsupported volume option %q", opt)
+				}
+			}
+		}
+	default:
+		return nil, errors.Errorf("failed to parse %q", s)
 	}
-	m := &specs.Mount{
+	res.Mount = specs.Mount{
 		Type:        "none",
 		Source:      src,
 		Destination: dst,
 		Options:     []string{"rbind"},
 	}
 	if ro {
-		m.Options = append(m.Options, "ro")
+		res.Mount.Options = append(res.Mount.Options, "ro")
 	}
 	if sys.RunningInUserNS() {
 		unpriv, err := getUnprivilegedMountFlags(src)
 		if err != nil {
 			return nil, err
 		}
-		m.Options = strutil.DedupeStrSlice(append(m.Options, unpriv...))
+		res.Mount.Options = strutil.DedupeStrSlice(append(res.Mount.Options, unpriv...))
 	}
-	return m, nil
+	return &res, nil
 }
 
 // getUnprivilegedMountFlags is from https://github.com/moby/moby/blob/v20.10.5/daemon/oci_linux.go#L420-L450

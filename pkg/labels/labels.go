@@ -44,4 +44,7 @@ const (
 
 	// LogURI is the log URI
 	LogURI = Prefix + "log-uri"
+
+	// AnonymousVolumes is a JSON-marshalled string of []string
+	AnonymousVolumes = Prefix + "anonymous-volumes"
 )

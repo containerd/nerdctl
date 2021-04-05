@@ -17,31 +17,75 @@
 package main
 
 import (
+	"path/filepath"
+
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
-func generateMountOpts(clicontext *cli.Context) ([]oci.SpecOpts, error) {
-	var opts []oci.SpecOpts
+func generateMountOpts(clicontext *cli.Context, imageVolumes map[string]struct{}) ([]oci.SpecOpts, []string, error) {
+	volStore, err := getVolumeStore(clicontext)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	//nolint:golint,prealloc
+	var (
+		opts        []oci.SpecOpts
+		anonVolumes []string
+	)
+	mounted := make(map[string]struct{})
 
 	if flagVSlice := strutil.DedupeStrSlice(clicontext.StringSlice("v")); len(flagVSlice) > 0 {
-		volStore, err := getVolumeStore(clicontext)
-		if err != nil {
-			return nil, err
-		}
 		ociMounts := make([]specs.Mount, len(flagVSlice))
 		for i, v := range flagVSlice {
-			m, err := mountutil.ParseFlagV(v, volStore)
+			x, err := mountutil.ProcessFlagV(v, volStore)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
-			ociMounts[i] = *m
+			ociMounts[i] = x.Mount
+			mounted[filepath.Clean(x.Mount.Destination)] = struct{}{}
+			if x.AnonymousVolume != "" {
+				anonVolumes = append(anonVolumes, x.AnonymousVolume)
+			}
 		}
 		opts = append(opts, oci.WithMounts(ociMounts))
 	}
 
-	return opts, nil
+	// imageVolumes are defined in Dockerfile "VOLUME" instruction
+	for imgVolRaw := range imageVolumes {
+		imgVol := filepath.Clean(imgVolRaw)
+		switch imgVol {
+		case "/", "/dev", "/sys", "proc":
+			return nil, nil, errors.Errorf("invalid VOLUME: %q", imgVolRaw)
+		}
+		if _, ok := mounted[imgVol]; ok {
+			continue
+		}
+		anonVolName := idgen.GenerateID()
+		logrus.Debugf("creating anonymous volume %q, for \"VOLUME %s\"",
+			anonVolName, imgVolRaw)
+		anonVol, err := volStore.Create(anonVolName)
+		if err != nil {
+			return nil, nil, err
+		}
+		m := []specs.Mount{
+			{
+				Type:        "none",
+				Source:      anonVol.Mountpoint,
+				Destination: imgVol,
+				Options:     []string{"rbind"},
+			},
+		}
+		opts = append(opts, oci.WithMounts(m))
+		anonVolumes = append(anonVolumes, anonVolName)
+	}
+
+	return opts, anonVolumes, nil
 }

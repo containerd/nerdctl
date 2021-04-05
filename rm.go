@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"syscall"
@@ -46,6 +47,11 @@ var rmCommand = &cli.Command{
 			Aliases: []string{"f"},
 			Usage:   "Force the removal of a running|paused|unknown container (uses SIGKILL)",
 		},
+		&cli.BoolFlag{
+			Name:    "volumes",
+			Aliases: []string{"v"},
+			Usage:   "Remove anonymous volumes associated with the container",
+		},
 	},
 }
 
@@ -66,6 +72,7 @@ func rmAction(clicontext *cli.Context) error {
 	}
 
 	force := clicontext.Bool("force")
+	removeAnonVolumes := clicontext.Bool("volumes")
 
 	ns := clicontext.String("namespace")
 	containerNameStore, err := namestore.New(dataStore, ns)
@@ -80,7 +87,7 @@ func rmAction(clicontext *cli.Context) error {
 			if err != nil {
 				return err
 			}
-			err = removeContainer(clicontext, ctx, client, ns, found.Container.ID(), found.Req, force, dataStore, stateDir, containerNameStore)
+			err = removeContainer(clicontext, ctx, client, ns, found.Container.ID(), found.Req, force, dataStore, stateDir, containerNameStore, removeAnonVolumes)
 			return err
 		},
 	}
@@ -97,7 +104,7 @@ func rmAction(clicontext *cli.Context) error {
 
 // removeContainer returns nil when the container cannot be found
 // FIXME: refactoring
-func removeContainer(clicontext *cli.Context, ctx context.Context, client *containerd.Client, ns, id, req string, force bool, dataStore, stateDir string, namst namestore.NameStore) (retErr error) {
+func removeContainer(clicontext *cli.Context, ctx context.Context, client *containerd.Client, ns, id, req string, force bool, dataStore, stateDir string, namst namestore.NameStore, removeAnonVolumes bool) (retErr error) {
 	var name string
 	defer func() {
 		if errdefs.IsNotFound(retErr) {
@@ -130,6 +137,22 @@ func removeContainer(clicontext *cli.Context, ctx context.Context, client *conta
 		return err
 	}
 	name = l[labels.Name]
+	if anonVolumesJSON, ok := l[labels.AnonymousVolumes]; ok && removeAnonVolumes {
+		var anonVolumes []string
+		if err := json.Unmarshal([]byte(anonVolumesJSON), &anonVolumes); err != nil {
+			return err
+		}
+		volStore, err := getVolumeStore(clicontext)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if _, err := volStore.Remove(anonVolumes); err != nil {
+				logrus.WithError(err).Warnf("failed to remove anonymous volumes %v", anonVolumes)
+			}
+		}()
+	}
+
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
 		if errdefs.IsNotFound(err) {

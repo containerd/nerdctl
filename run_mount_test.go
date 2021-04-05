@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"gotest.tools/v3/assert"
 )
 
 func TestRunVolume(t *testing.T) {
@@ -69,4 +70,31 @@ func TestRunVolume(t *testing.T) {
 		testutil.AlpineImage,
 		"sh", "-exc", "cat /mnt1/file1 /mnt3/file3",
 	).AssertOut("str1str3")
+}
+
+func TestRunAnonymousVolume(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	base.Cmd("run", "--rm", "-v", "/foo", testutil.AlpineImage,
+		"mountpoint", "-q", "/foo").AssertOK()
+}
+
+func TestRunAnonymousVolumeWithBuild(t *testing.T) {
+	t.Parallel()
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	const imageName = "nerdctl-test-anonymous-volume-with-build"
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+VOLUME /foo
+        `, testutil.AlpineImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("run", "--rm", "-v", "/foo", testutil.AlpineImage,
+		"mountpoint", "-q", "/foo").AssertOK()
 }

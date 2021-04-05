@@ -18,16 +18,12 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
@@ -43,6 +39,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/dnsutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
+	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
@@ -254,7 +251,7 @@ func runAction(clicontext *cli.Context) error {
 	var (
 		opts  []oci.SpecOpts
 		cOpts []containerd.NewContainerOpts
-		id    = genID()
+		id    = idgen.GenerateID()
 	)
 
 	dataStore, err := getDataStore(clicontext)
@@ -278,12 +275,12 @@ func runAction(clicontext *cli.Context) error {
 		}),
 	)
 
-	if rootfsOpts, rootfsCOpts, err := generateRootfsOpts(ctx, client, clicontext, id); err != nil {
+	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, clicontext, id)
+	if err != nil {
 		return err
-	} else {
-		opts = append(opts, rootfsOpts...)
-		cOpts = append(cOpts, rootfsCOpts...)
 	}
+	opts = append(opts, rootfsOpts...)
+	cOpts = append(cOpts, rootfsCOpts...)
 
 	if wd := clicontext.String("workdir"); wd != "" {
 		opts = append(opts, oci.WithProcessCwd(wd))
@@ -313,7 +310,12 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, oci.WithTTY)
 	}
 
-	if mountOpts, err := generateMountOpts(clicontext); err != nil {
+	var imageVolumes map[string]struct{}
+	if ensuredImage != nil {
+		imageVolumes = ensuredImage.ImageConfig.Volumes
+	}
+	mountOpts, anonVolumes, err := generateMountOpts(clicontext, imageVolumes)
+	if err != nil {
 		return err
 	} else {
 		opts = append(opts, mountOpts...)
@@ -456,7 +458,7 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 	}
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, netSlice, ports, logURI)
+	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, netSlice, ports, logURI, anonVolumes)
 	if err != nil {
 		return err
 	}
@@ -479,7 +481,8 @@ func runAction(clicontext *cli.Context) error {
 			return errors.New("flag -d and --rm cannot be specified together")
 		}
 		defer func() {
-			if removeErr := removeContainer(clicontext, ctx, client, ns, id, id, true, dataStore, stateDir, containerNameStore); removeErr != nil {
+			const removeAnonVolumes = true
+			if removeErr := removeContainer(clicontext, ctx, client, ns, id, id, true, dataStore, stateDir, containerNameStore, removeAnonVolumes); removeErr != nil {
 				logrus.WithError(removeErr).Warnf("failed to remove container %s", id)
 			}
 		}()
@@ -538,7 +541,7 @@ func runAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func generateRootfsOpts(ctx context.Context, client *containerd.Client, clicontext *cli.Context, id string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
+func generateRootfsOpts(ctx context.Context, client *containerd.Client, clicontext *cli.Context, id string) ([]oci.SpecOpts, []containerd.NewContainerOpts, *imgutil.EnsuredImage, error) {
 	imageless := clicontext.Bool("rootfs")
 	var (
 		ensured *imgutil.EnsuredImage
@@ -548,7 +551,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cliconte
 		ensured, err = imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(),
 			clicontext.String("pull"), clicontext.Bool("insecure-registry"))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 	var (
@@ -565,7 +568,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cliconte
 	} else {
 		absRootfs, err := filepath.Abs(clicontext.Args().First())
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		opts = append(opts, oci.WithRootFSPath(absRootfs), oci.WithDefaultPathEnv)
 	}
@@ -586,7 +589,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cliconte
 		}
 		if len(processArgs) == 0 {
 			// error message is from Podman
-			return nil, nil, errors.New("no command or entrypoint provided, and no CMD or ENTRYPOINT from image")
+			return nil, nil, nil, errors.New("no command or entrypoint provided, and no CMD or ENTRYPOINT from image")
 		}
 		opts = append(opts, oci.WithProcessArgs(processArgs...))
 	}
@@ -594,15 +597,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cliconte
 	if clicontext.Bool("read-only") {
 		opts = append(opts, oci.WithRootFSReadonly())
 	}
-	return opts, cOpts, nil
-}
-
-func genID() string {
-	h := sha256.New()
-	if err := binary.Write(h, binary.LittleEndian, time.Now().UnixNano()); err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(h.Sum(nil))
+	return opts, cOpts, ensured, nil
 }
 
 func withCustomResolvConf(src string) func(context.Context, oci.Client, *containers.Container, *oci.Spec) error {
@@ -713,7 +708,7 @@ func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts
 	return []containerd.NewContainerOpts{o}, nil
 }
 
-func withInternalLabels(ns, name, hostname, containerStateDir string, networks []string, ports []gocni.PortMapping, logURI string) (containerd.NewContainerOpts, error) {
+func withInternalLabels(ns, name, hostname, containerStateDir string, networks []string, ports []gocni.PortMapping, logURI string, anonVolumes []string) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
 	m[labels.Namespace] = ns
 	if name != "" {
@@ -735,6 +730,13 @@ func withInternalLabels(ns, name, hostname, containerStateDir string, networks [
 	}
 	if logURI != "" {
 		m[labels.LogURI] = logURI
+	}
+	if len(anonVolumes) > 0 {
+		anonVolumeJSON, err := json.Marshal(anonVolumes)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.AnonymousVolumes] = string(anonVolumeJSON)
 	}
 	return containerd.WithAdditionalContainerLabels(m), nil
 }
