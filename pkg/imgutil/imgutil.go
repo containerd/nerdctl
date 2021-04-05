@@ -18,10 +18,13 @@ package imgutil
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"strings"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/images"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/imgcrypt"
@@ -29,6 +32,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/pkg/imgutil/pull"
 	"github.com/containerd/stargz-snapshotter/fs/source"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -36,6 +40,7 @@ import (
 type EnsuredImage struct {
 	Ref         string
 	Image       containerd.Image
+	ImageConfig ocispec.ImageConfig
 	Snapshotter string
 	Remote      bool // true for stargz
 }
@@ -56,9 +61,14 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 	if mode != "always" {
 		if i, err := client.ImageService().Get(ctx, ref); err == nil {
 			image := containerd.NewImage(client, i)
+			imgConfig, err := getImageConfig(ctx, image)
+			if err != nil {
+				return nil, err
+			}
 			res := &EnsuredImage{
 				Ref:         ref,
 				Image:       image,
+				ImageConfig: *imgConfig,
 				Snapshotter: snapshotter,
 				Remote:      isStargz(snapshotter),
 			}
@@ -152,9 +162,14 @@ func pullImage(ctx context.Context, client *containerd.Client, stdout io.Writer,
 	if err != nil {
 		return nil, err
 	}
+	imgConfig, err := getImageConfig(ctx, containerdImage)
+	if err != nil {
+		return nil, err
+	}
 	res := &EnsuredImage{
 		Ref:         ref,
 		Image:       containerdImage,
+		ImageConfig: *imgConfig,
 		Snapshotter: snapshotter,
 		Remote:      sgz,
 	}
@@ -170,4 +185,26 @@ func isStargz(sn string) bool {
 		logrus.Debugf("assuming %q to be a stargz-compatible snapshotter", sn)
 	}
 	return true
+}
+
+func getImageConfig(ctx context.Context, image containerd.Image) (*ocispec.ImageConfig, error) {
+	desc, err := image.Config(ctx)
+	if err != nil {
+		return nil, err
+	}
+	switch desc.MediaType {
+	case ocispec.MediaTypeImageConfig, images.MediaTypeDockerSchema2Config:
+		var ocispecImage ocispec.Image
+		b, err := content.ReadBlob(ctx, image.ContentStore(), desc)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := json.Unmarshal(b, &ocispecImage); err != nil {
+			return nil, err
+		}
+		return &ocispecImage.Config, nil
+	default:
+		return nil, errors.Errorf("unknown media type %q", desc.MediaType)
+	}
 }
