@@ -16,6 +16,7 @@ require (
 	github.com/containernetworking/plugins v0.9.1
 	github.com/docker/cli v20.10.5+incompatible
 	github.com/docker/docker v20.10.5+incompatible
+	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/fatih/color v1.10.0

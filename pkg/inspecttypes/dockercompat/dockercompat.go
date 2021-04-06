@@ -24,16 +24,20 @@
 package dockercompat
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/containerd/containerd"
+	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/docker/go-connections/nat"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 )
@@ -87,6 +91,7 @@ type ContainerState struct {
 }
 
 type NetworkSettings struct {
+	Ports *nat.PortMap `json:",omitempty"`
 	DefaultNetworkSettings
 	Networks map[string]*NetworkEndpointSettings
 }
@@ -162,7 +167,11 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 			ExitCode:   int(n.Process.Status.ExitStatus),
 			FinishedAt: n.Process.Status.ExitTime.Format(time.RFC3339Nano),
 		}
-		c.NetworkSettings = networkSettingsFromNative(n.Process.NetNS)
+		nSettings, err := networkSettingsFromNative(n.Process.NetNS, n.Spec.(*specs.Spec))
+		if err != nil {
+			return nil, err
+		}
+		c.NetworkSettings = nSettings
 	}
 	return c, nil
 }
@@ -176,9 +185,9 @@ func statusFromNative(x containerd.ProcessStatus) string {
 	}
 }
 
-func networkSettingsFromNative(n *native.NetNS) *NetworkSettings {
+func networkSettingsFromNative(n *native.NetNS, sp *specs.Spec) (*NetworkSettings, error) {
 	if n == nil {
-		return nil
+		return nil, nil
 	}
 	res := &NetworkSettings{
 		Networks: make(map[string]*NetworkEndpointSettings),
@@ -193,6 +202,7 @@ func networkSettingsFromNative(n *native.NetNS) *NetworkSettings {
 		}
 		nes := &NetworkEndpointSettings{}
 		nes.MacAddress = x.HardwareAddr
+
 		for _, a := range x.Addrs {
 			ip, ipnet, err := net.ParseCIDR(a)
 			if err != nil {
@@ -214,9 +224,23 @@ func networkSettingsFromNative(n *native.NetNS) *NetworkSettings {
 		// TODO: set CNI name when possible
 		fakeDockerNetworkName := fmt.Sprintf("unknown-%s", x.Name)
 		res.Networks[fakeDockerNetworkName] = nes
+
+		if portsLabel, ok := sp.Annotations[labels.Ports]; ok {
+			var ports []gocni.PortMapping
+			err := json.Unmarshal([]byte(portsLabel), &ports)
+			if err != nil {
+				return nil, err
+			}
+			nports, err := convertToNatPort(ports)
+			if err != nil {
+				return nil, err
+			}
+			res.Ports = nports
+		}
 		if x.Index == n.PrimaryInterface {
 			primary = nes
 		}
+
 	}
 	if primary != nil {
 		res.DefaultNetworkSettings.MacAddress = primary.MacAddress
@@ -225,5 +249,23 @@ func networkSettingsFromNative(n *native.NetNS) *NetworkSettings {
 		res.DefaultNetworkSettings.GlobalIPv6Address = primary.GlobalIPv6Address
 		res.DefaultNetworkSettings.GlobalIPv6PrefixLen = primary.GlobalIPv6PrefixLen
 	}
-	return res
+	return res, nil
+}
+
+func convertToNatPort(portMappings []gocni.PortMapping) (*nat.PortMap, error) {
+	portMap := make(nat.PortMap)
+	for _, portMapping := range portMappings {
+		ports := []nat.PortBinding{}
+		p := nat.PortBinding{
+			HostIP:   portMapping.HostIP,
+			HostPort: strconv.FormatInt(int64(portMapping.HostPort), 10),
+		}
+		newP, err := nat.NewPort(portMapping.Protocol, strconv.FormatInt(int64(portMapping.ContainerPort), 10))
+		if err != nil {
+			return nil, err
+		}
+		ports = append(ports, p)
+		portMap[newP] = ports
+	}
+	return &portMap, nil
 }
