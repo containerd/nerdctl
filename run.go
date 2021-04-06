@@ -273,6 +273,7 @@ func runAction(clicontext *cli.Context) error {
 		oci.WithMounts([]specs.Mount{
 			{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro", "nosuid", "noexec", "nodev"}},
 		}),
+		WithoutRunMount, // unmount default tmpfs on "/run": https://github.com/containerd/nerdctl/issues/157
 	)
 
 	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, clicontext, id)
