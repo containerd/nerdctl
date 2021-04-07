@@ -343,7 +343,7 @@ func runAction(clicontext *cli.Context) error {
 	portSlice := strutil.DedupeStrSlice(clicontext.StringSlice("p"))
 	netSlice := strutil.DedupeStrSlice(clicontext.StringSlice("net"))
 
-	ports := make([]gocni.PortMapping, len(portSlice))
+	ports := make([]gocni.PortMapping, 0)
 	if len(netSlice) != 1 {
 		return errors.New("currently, number of networks must be 1")
 	}
@@ -384,12 +384,12 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 		opts = append(opts, withCustomResolvConf(resolvConfPath), withCustomHosts(etcHostsPath))
-		for i, p := range portSlice {
+		for _, p := range portSlice {
 			pm, err := portutil.ParseFlagP(p)
 			if err != nil {
 				return err
 			}
-			ports[i] = *pm
+			ports = append(ports, pm...)
 		}
 	}
 
