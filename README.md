@@ -8,6 +8,8 @@
 
  ✅ Same UI/UX as `docker`
 
+ ✅ Supports Docker Compose (`nerdctl compose up`)
+
  ✅ Supports [rootless mode](./docs/rootless.md)
 
  ✅ Supports [lazy-pulling (Stargz)](./docs/stargz.md)
@@ -30,6 +32,13 @@ To build an image using BuildKit:
 # nerdctl build -t foo .
 # nerdctl run -it --rm foo
 ```
+
+To run containers from `docker-compose.yaml`:
+```console
+# nerdctl compose -f ./examples/compose-wordpress/docker-compose.yaml up
+```
+
+See also [`./examples/compose-wordpress`](./examples/compose-wordpress).
 
 ### Debugging Kubernetes
 
@@ -207,6 +216,10 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl version](#whale-nerdctl-version)
   - [Shell completion](#shell-completion)
     - [:nerd_face: nerdctl completion bash](#nerd_face-nerdctl-completion-bash)
+  - [Compose](#compose)
+    - [:whale: nerdctl compose](#whale-nerdctl-compose)
+    - [:whale: nerdctl compose up](#whale-nerdctl-compose-up)
+    - [:whale: nerdctl compose down](#whale-nerdctl-compose-down)
   - [Global flags](#global-flags)
   - [Unimplemented Docker commands](#unimplemented-docker-commands)
 - [Additional documents](#additional-documents)
@@ -737,6 +750,39 @@ Usage: add the following line to `~/.bash_profile`:
 source <(nerdctl completion bash)
 ```
 
+## Compose
+
+### :whale: nerdctl compose
+Compose
+
+Usage: `nerdctl compose [OPTIONS] [COMMAND]`
+
+Flags:
+- :whale: `-f, --file`: Specify an alternate compose file
+- :whale: `-p, --project-name`: Specify an alternate project name
+
+### :whale: nerdctl compose up
+Create and start containers
+
+Usage: `nerdctl compose up [OPTIONS] [SERVICE...]`
+
+Flags:
+- :whale: `-d, --detach`: Detached mode: Run containers in the background
+
+Unimplemented `docker-compose up` flags: `--no-color`, `--quiet-pull`, `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
+`--no-start`, `--build`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--remove-orphans`, `--exit-code-from`,
+`--scale`, `--no-log-prefix`
+
+### :whale: nerdctl compose down
+Remove containers and associated resources
+
+Usage: `nerdctl compose up [OPTIONS] [SERVICE...]`
+
+Flags:
+- :whale: `-v, --volumes`: Remove named volumes declared in the volumes section of the Compose file and anonymous volumes attached to containers
+
+Unimplemented `docker-compose down` flags: `--rmi`, `--remove-orphans`, `--timeout`
+
 ## Global flags
 - :nerd_face: `-a`, `--address`:  containerd address, optionally with "unix://" prefix
 - :whale:     `-H`, `--host`: Docker-compatible alias for `-a`, `--address`
@@ -783,6 +829,9 @@ Network management:
 
 Registry:
 - `docker search`
+
+Compose:
+- `docker-compose build|config|create|events|exec|images|kill|logs|pause|port|ps|pull|push|restart|rm|run|scale|start|stop|top|unpause`
 
 Others:
 - `docker system df`

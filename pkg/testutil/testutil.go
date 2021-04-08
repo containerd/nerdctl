@@ -39,11 +39,33 @@ type Base struct {
 	Target           Target
 	DaemonIsKillable bool
 	Binary           string
+	ComposeBinary    string // "docker-compose"
 	Args             []string
 }
 
 func (b *Base) Cmd(args ...string) *Cmd {
 	icmdCmd := icmd.Command(b.Binary, append(b.Args, args...)...)
+	cmd := &Cmd{
+		Cmd:  icmdCmd,
+		Base: b,
+	}
+	return cmd
+}
+
+// ComposeCmd executes `nerdctl -n nerdctl-test compose` or `docker-compose`
+func (b *Base) ComposeCmd(args ...string) *Cmd {
+	var (
+		binary     string
+		binaryArgs []string
+	)
+	if b.ComposeBinary != "" {
+		binary = b.ComposeBinary
+		binaryArgs = append(b.Args, args...)
+	} else {
+		binary = b.Binary
+		binaryArgs = append(b.Args, append([]string{"compose"}, args...)...)
+	}
+	icmdCmd := icmd.Command(binary, binaryArgs...)
 	cmd := &Cmd{
 		Cmd:  icmdCmd,
 		Base: b,
@@ -272,8 +294,13 @@ func NewBase(t *testing.T) *Base {
 			t.Fatal(err)
 		}
 		base.Args = []string{"--namespace=" + Namespace}
+		base.ComposeBinary = ""
 	case Docker:
 		base.Binary, err = exec.LookPath("docker")
+		if err != nil {
+			t.Fatal(err)
+		}
+		base.ComposeBinary, err = exec.LookPath("docker-compose")
 		if err != nil {
 			t.Fatal(err)
 		}
