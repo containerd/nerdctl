@@ -637,20 +637,8 @@ func generateLogURI(dataStore string) (*url.URL, error) {
 }
 
 func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecOpts, error) {
-	selfExe, err := os.Readlink("/proc/self/exe")
-	if err != nil {
-		return nil, err
-	}
-	args := []string{
-		os.Args[0],
-		// FIXME: How to propagate all global flags?
-		"--data-root=" + clicontext.String("data-root"),
-		"--address=" + clicontext.String("address"),
-		"--cni-path=" + clicontext.String("cni-path"),
-		"--cni-netconfpath=" + clicontext.String("cni-netconfpath"),
-		"internal",
-		"oci-hook",
-	}
+	selfExe, f := globalFlags(clicontext)
+	args := append([]string{selfExe}, append(f, "internal", "oci-hook")...)
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
 		if s.Hooks == nil {
 			s.Hooks = &specs.Hooks{}
