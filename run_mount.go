@@ -17,16 +17,13 @@
 package main
 
 import (
-	"context"
 	"path/filepath"
 
-	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -91,23 +88,4 @@ func generateMountOpts(clicontext *cli.Context, imageVolumes map[string]struct{}
 	}
 
 	return opts, anonVolumes, nil
-}
-
-// WithoutRunMount is from https://github.com/containerd/containerd/blob/f201b78b9065f167071bf472a9708b3921c3d5d1/pkg/cri/opts/spec_linux.go#L80-L94
-//
-// WithoutRunMount removes the `/run` inside the spec
-func WithoutRunMount(_ context.Context, _ oci.Client, c *containers.Container, s *runtimespec.Spec) error {
-	//nolint:golint,prealloc
-	var (
-		mounts  []runtimespec.Mount
-		current = s.Mounts
-	)
-	for _, m := range current {
-		if filepath.Clean(m.Destination) == "/run" {
-			continue
-		}
-		mounts = append(mounts, m)
-	}
-	s.Mounts = mounts
-	return nil
 }
