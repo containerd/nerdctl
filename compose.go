@@ -88,15 +88,16 @@ func getComposer(clicontext *cli.Context, client *containerd.Client) (*composer.
 			return true, nil
 		} else if errors.Is(volGetErr, errdefs.ErrNotFound) {
 			return false, nil
+		} else {
+			return false, volGetErr
 		}
-		return false, err
 	}
 
 	insecure := clicontext.Bool("insecure-registry")
 	o.EnsureImage = func(ctx context.Context, imageName, pullMode string) error {
-		_, err = imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), imageName,
+		_, imgErr := imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), imageName,
 			pullMode, insecure)
-		return err
+		return imgErr
 	}
 
 	return composer.New(o)

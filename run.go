@@ -273,7 +273,7 @@ func runAction(clicontext *cli.Context) error {
 		oci.WithMounts([]specs.Mount{
 			{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro", "nosuid", "noexec", "nodev"}},
 		}),
-		WithoutRunMount, // unmount default tmpfs on "/run": https://github.com/containerd/nerdctl/issues/157
+		oci.WithoutRunMount, // unmount default tmpfs on "/run": https://github.com/containerd/nerdctl/issues/157
 	)
 
 	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, clicontext, id)
@@ -637,20 +637,8 @@ func generateLogURI(dataStore string) (*url.URL, error) {
 }
 
 func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecOpts, error) {
-	selfExe, err := os.Readlink("/proc/self/exe")
-	if err != nil {
-		return nil, err
-	}
-	args := []string{
-		os.Args[0],
-		// FIXME: How to propagate all global flags?
-		"--data-root=" + clicontext.String("data-root"),
-		"--address=" + clicontext.String("address"),
-		"--cni-path=" + clicontext.String("cni-path"),
-		"--cni-netconfpath=" + clicontext.String("cni-netconfpath"),
-		"internal",
-		"oci-hook",
-	}
+	selfExe, f := globalFlags(clicontext)
+	args := append([]string{selfExe}, append(f, "internal", "oci-hook")...)
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
 		if s.Hooks == nil {
 			s.Hooks = &specs.Hooks{}

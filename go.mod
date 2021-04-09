@@ -6,7 +6,7 @@ require (
 	github.com/compose-spec/compose-go v0.0.0-20210408102153-fe76f8471db2
 	github.com/containerd/cgroups v0.0.0-20210114181951-8a68de567b68
 	github.com/containerd/console v1.0.1
-	github.com/containerd/containerd v1.5.0-beta.4
+	github.com/containerd/containerd v1.5.0-rc.0
 	github.com/containerd/go-cni v1.0.1
 	github.com/containerd/imgcrypt v1.1.1-0.20210312161619-7ed62a527887
 	github.com/containerd/stargz-snapshotter v0.5.0
