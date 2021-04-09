@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/pkg/errors"
 )
@@ -47,8 +48,8 @@ type nameStore struct {
 }
 
 func (x *nameStore) Acquire(name, id string) error {
-	if err := verifyName(name); err != nil {
-		return err
+	if err := identifiers.Validate(name); err != nil {
+		return errors.Wrapf(err, "invalid name %q", name)
 	}
 	if strings.TrimSpace(id) != id {
 		return errors.Errorf("untrimmed ID %q", id)
@@ -67,8 +68,8 @@ func (x *nameStore) Release(name, id string) error {
 	if name == "" {
 		return nil
 	}
-	if err := verifyName(name); err != nil {
-		return err
+	if err := identifiers.Validate(name); err != nil {
+		return errors.Wrapf(err, "invalid name %q", name)
 	}
 	if strings.TrimSpace(id) != id {
 		return errors.Errorf("untrimmed ID %q", id)
@@ -88,16 +89,4 @@ func (x *nameStore) Release(name, id string) error {
 		return os.RemoveAll(fileName)
 	}
 	return lockutil.WithDirLock(x.dir, fn)
-}
-
-func verifyName(name string) error {
-	if name == "" {
-		return errors.New("name is empty")
-	}
-
-	// TODO: find out docker-compatible regex
-	if strings.ContainsAny(name, "/:\\") {
-		return errors.Errorf("invalid name %q", name)
-	}
-	return nil
 }
