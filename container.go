@@ -36,6 +36,7 @@ var containerCommand = &cli.Command{
 		startCommand,
 		killCommand,
 		pauseCommand,
+		waitCommand,
 		unpauseCommand,
 		commitCommand,
 	},
