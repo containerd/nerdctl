@@ -81,7 +81,7 @@ func containerInspectAction(clicontext *cli.Context) error {
 	fmt.Fprintln(clicontext.App.Writer, string(b))
 
 	if len(errs) > 0 {
-		return errors.Errorf("%d errors: %+v", len(errs), errs)
+		return errors.Errorf("%d errors: %v", len(errs), errs)
 	}
 	return nil
 }
