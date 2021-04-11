@@ -19,7 +19,7 @@
 # -----------------------------------------------------------------------------
 
 GO ?= go
-
+GOOS := $(shell go env GOOS)
 
 PACKAGE := github.com/containerd/nerdctl
 BINDIR ?= /usr/local/bin
@@ -28,7 +28,7 @@ VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always --tags)
 VERSION_TRIMMED := $(VERSION:v%=%)
 REVISION=$(shell git rev-parse HEAD)$(shell if ! git diff --no-ext-diff --quiet --exit-code; then echo .m; fi)
 
-export GO_BUILD=GO111MODULE=on CGO_ENABLED=0 $(GO) build -ldflags "-s -w -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
+export GO_BUILD=GO111MODULE=on CGO_ENABLED=0 GOOS=$(GOOS) $(GO) build -ldflags "-s -w -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
 
 all: binaries
 
@@ -57,19 +57,19 @@ install:
 TAR_FLAGS=--transform 's/.*\///g' --owner=0 --group=0
 
 artifacts: clean
-	GOOS=linux GOARCH=amd64       make -C $(CURDIR)  binaries
+	GOOS=$(GOOS) GOARCH=amd64       make -C $(CURDIR)  binaries
 	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-amd64.tar.gz   _output/nerdctl extras/rootless/*
 
-	GOOS=linux GOARCH=arm64       make -C $(CURDIR) binaries
+	GOOS=$(GOOS) GOARCH=arm64       make -C $(CURDIR) binaries
 	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm64.tar.gz   _output/nerdctl extras/rootless/*
 
-	GOOS=linux GOARCH=arm GOARM=7 make -C $(CURDIR) binaries
+	GOOS=$(GOOS) GOARCH=arm GOARM=7 make -C $(CURDIR) binaries
 	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-arm-v7.tar.gz  _output/nerdctl extras/rootless/*
 
-	GOOS=linux GOARCH=ppc64le     make -C $(CURDIR) binaries
+	GOOS=$(GOOS) GOARCH=ppc64le     make -C $(CURDIR) binaries
 	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-ppc64le.tar.gz _output/nerdctl extras/rootless/*
 
-	GOOS=linux GOARCH=s390x       make -C $(CURDIR) binaries
+	GOOS=$(GOOS) GOARCH=s390x       make -C $(CURDIR) binaries
 	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-s390x.tar.gz   _output/nerdctl extras/rootless/*
 
 	rm -f $(CURDIR)/_output/nerdctl

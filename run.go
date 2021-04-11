@@ -32,7 +32,6 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/pkg/cap"
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
@@ -59,7 +58,7 @@ var runCommand = &cli.Command{
 	Name:         "run",
 	Usage:        "Run a command in a new container",
 	Action:       runAction,
-	BashComplete: runBashComplete,
+	BashComplete: runComplete,
 	HideHelp:     true, // built-in "-h" help conflicts with the short form of `--hostname`
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
@@ -746,53 +745,4 @@ func propagateContainerdLabelsToOCIAnnotations() oci.SpecOpts {
 	return func(ctx context.Context, oc oci.Client, c *containers.Container, s *oci.Spec) error {
 		return oci.WithAnnotations(c.Labels)(ctx, oc, c, s)
 	}
-}
-
-func runBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring {
-		defaultBashComplete(clicontext)
-		return
-	}
-	if coco.flagTakesValue {
-		w := clicontext.App.Writer
-		switch coco.flagName {
-		case "restart":
-			fmt.Fprintln(w, "always")
-			fmt.Fprintln(w, "no")
-			return
-		case "pull":
-			fmt.Fprintln(w, "always")
-			fmt.Fprintln(w, "missing")
-			fmt.Fprintln(w, "never")
-			return
-		case "cgroupns":
-			fmt.Fprintln(w, "host")
-			fmt.Fprintln(w, "private")
-			return
-		case "security-opt":
-			fmt.Fprintln(w, "seccomp=")
-			fmt.Fprintln(w, "apparmor="+defaults.AppArmorProfileName)
-			fmt.Fprintln(w, "no-new-privileges")
-			return
-		case "cap-add", "cap-drop":
-			for _, c := range cap.Known() {
-				// "CAP_SYS_ADMIN" -> "sys_admin"
-				s := strings.ToLower(strings.TrimPrefix(c, "CAP_"))
-				fmt.Fprintln(w, s)
-			}
-			return
-		case "net", "network":
-			bashCompleteNetworkNames(clicontext, nil)
-			return
-		}
-		defaultBashComplete(clicontext)
-		return
-	}
-	// show image names, unless we have "--rootfs" flag
-	if clicontext.Bool("rootfs") {
-		defaultBashComplete(clicontext)
-		return
-	}
-	bashCompleteImageNames(clicontext)
 }

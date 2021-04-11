@@ -25,11 +25,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/containerd/containerd/contrib/apparmor"
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	"github.com/containerd/go-cni"
 	gocni "github.com/containerd/go-cni"
-	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/netutil"
@@ -245,10 +243,7 @@ func getCNINamespaceOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 
 func onCreateRuntime(opts *handlerOpts) error {
 	if pkgapparmor.HostSupports() {
-		// ensure that the default profile is loaded to the host
-		if err := apparmor.LoadDefaultProfile(defaults.AppArmorProfileName); err != nil {
-			logrus.WithError(err).Errorf("failed to load AppArmor profile %q", defaults.AppArmorProfileName)
-		}
+		loadapparmor()
 	}
 	if opts.cni != nil {
 		cniNSOpts, err := getCNINamespaceOpts(opts)

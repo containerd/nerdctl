@@ -26,7 +26,6 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
-	"github.com/containerd/containerd/pkg/cap"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -224,21 +223,7 @@ func generateExecProcessSpec(ctx context.Context, clicontext *cli.Context, conta
 	}
 
 	if clicontext.Bool("privileged") {
-		if pspec.Capabilities == nil {
-			pspec.Capabilities = &specs.LinuxCapabilities{}
-		}
-		allCaps, err := cap.Current()
-		if err != nil {
-			return nil, err
-		}
-		pspec.Capabilities.Bounding = allCaps
-		pspec.Capabilities.Permitted = pspec.Capabilities.Bounding
-		pspec.Capabilities.Inheritable = pspec.Capabilities.Bounding
-		pspec.Capabilities.Effective = pspec.Capabilities.Bounding
-
-		// https://github.com/moby/moby/pull/36466/files
-		// > `docker exec --privileged` does not currently disable AppArmor
-		// > profiles. Privileged configuration of the container is inherited
+		setCapabilities(pspec)
 	}
 
 	return pspec, nil

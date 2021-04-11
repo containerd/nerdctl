@@ -91,6 +91,10 @@ type containerInspector struct {
 	entries []interface{}
 }
 
+type Inspector interface {
+	Inspect(context.Context, containerwalker.ContainerWalker)
+}
+
 func (x *containerInspector) Handler(ctx context.Context, found containerwalker.Found) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
