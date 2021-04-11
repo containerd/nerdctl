@@ -20,10 +20,8 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"runtime"
 	"strings"
-	"syscall"
 
 	"github.com/containerd/nerdctl/pkg/version"
 	dockercliconfig "github.com/docker/cli/cli/config"
@@ -35,7 +33,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/term"
 )
 
 type loginOptions struct {
@@ -210,22 +207,11 @@ func ConfigureAuthentification(clicontext *cli.Context, authConfig *types.AuthCo
 	if options.password == "" {
 
 		fmt.Print("Enter Password: ")
-		var fd int
-		if term.IsTerminal(syscall.Stdin) {
-			fd = syscall.Stdin
-		} else {
-			tty, err := os.Open("/dev/tty")
-			if err != nil {
-				return errors.Wrap(err, "error allocating terminal")
-			}
-			defer tty.Close()
-			fd = int(tty.Fd())
-		}
-		bytePassword, err := term.ReadPassword(fd)
+		pwd, err := readPassword()
 		if err != nil {
-			return errors.Wrap(err, "error reading password")
+			return err
 		}
-		options.password = string(bytePassword)
+		options.password = pwd
 	}
 
 	if options.password == "" {

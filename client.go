@@ -20,14 +20,15 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/opencontainers/go-digest"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/sys/unix"
 )
 
 func newClient(clicontext *cli.Context) (*containerd.Client, context.Context, context.CancelFunc, error) {
@@ -54,15 +55,6 @@ func newClient(clicontext *cli.Context) (*containerd.Client, context.Context, co
 	return client, ctx, cancel, nil
 }
 
-func isSocketAccessible(s string) error {
-	abs, err := filepath.Abs(s)
-	if err != nil {
-		return err
-	}
-	// set AT_EACCESS to allow running nerdctl as a setuid binary
-	return unix.Faccessat(-1, abs, unix.R_OK|unix.W_OK, unix.AT_EACCESS)
-}
-
 // getDataStore returns a string like "/var/lib/nerdctl/1935db59".
 // "1935db9" is from `$(echo -n "/run/containerd/containerd.sock" | sha256sum | cut -c1-8)``
 func getDataStore(clicontext *cli.Context) (string, error) {
@@ -84,7 +76,10 @@ func getDataStore(clicontext *cli.Context) (string, error) {
 func getAddrHash(addr string) (string, error) {
 	const addrHashLen = 8
 
-	addr = strings.TrimPrefix(addr, "unix://")
+	if runtime.GOOS != "windows" {
+		addr = strings.TrimPrefix(addr, "unix://")
+	}
+
 	var err error
 	addr, err = filepath.EvalSymlinks(addr)
 	if err != nil {
