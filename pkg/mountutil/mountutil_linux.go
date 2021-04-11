@@ -17,15 +17,6 @@
 package mountutil
 
 import (
-	"path/filepath"
-	"strings"
-
-	"github.com/containerd/containerd/sys"
-	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
-	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 

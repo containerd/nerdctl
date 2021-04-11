@@ -223,7 +223,10 @@ func generateExecProcessSpec(ctx context.Context, clicontext *cli.Context, conta
 	}
 
 	if clicontext.Bool("privileged") {
-		setCapabilities(pspec)
+		err = setCapabilities(pspec)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return pspec, nil

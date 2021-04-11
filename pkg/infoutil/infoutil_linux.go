@@ -18,21 +18,13 @@ package infoutil
 
 import (
 	"bufio"
-	"context"
+
 	"io"
 	"os"
 	"regexp"
-	"runtime"
+
 	"strings"
 
-	"github.com/containerd/cgroups"
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/pkg/apparmor"
-	"github.com/containerd/containerd/services/introspection"
-	"github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	ptypes "github.com/gogo/protobuf/types"
 	"golang.org/x/sys/unix"
 )
 
@@ -69,8 +61,6 @@ func UnameM() string {
 	}
 	return s
 }
-
-const UnameO = "GNU/Linux"
 
 func DistroName() string {
 	f, err := os.Open("/etc/os-release")

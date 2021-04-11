@@ -3,6 +3,7 @@ module github.com/containerd/nerdctl
 go 1.16
 
 require (
+	github.com/Microsoft/hcsshim v0.8.16
 	github.com/containerd/cgroups v0.0.0-20210114181951-8a68de567b68
 	github.com/containerd/console v1.0.1
 	github.com/containerd/containerd v1.5.0-beta.4
@@ -30,6 +31,6 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20210228012217-479acdf4ea46
+	golang.org/x/sys v0.0.0-20210324051608-47abb6519492
 	gotest.tools/v3 v3.0.3
 )

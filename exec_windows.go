@@ -20,6 +20,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func setCapabilities(pspec *specs.Process) {
+func setCapabilities(pspec *specs.Process) error {
 	//no op windows
+	return nil
 }

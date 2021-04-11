@@ -17,38 +17,24 @@
 package main
 
 import (
-	"context"
-	"io"
-	"os"
-
-	"github.com/containerd/console"
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/cmd/ctr/commands"
-	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/pkg/cap"
-	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
 )
 
-func setCapabilities(pspec *specs.Process) {
+func setCapabilities(pspec *specs.Process) error {
 	if pspec.Capabilities == nil {
 		pspec.Capabilities = &specs.LinuxCapabilities{}
 	}
 	allCaps, err := cap.Current()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	pspec.Capabilities.Bounding = allCaps
 	pspec.Capabilities.Permitted = pspec.Capabilities.Bounding
 	pspec.Capabilities.Inheritable = pspec.Capabilities.Bounding
 	pspec.Capabilities.Effective = pspec.Capabilities.Bounding
 
+	return nil
 	// https://github.com/moby/moby/pull/36466/files
 	// > `docker exec --privileged` does not currently disable AppArmor
 	// > profiles. Privileged configuration of the container is inherited

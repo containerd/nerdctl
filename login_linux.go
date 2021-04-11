@@ -16,6 +16,13 @@
 
 package main
 
+import (
+	"github.com/pkg/errors"
+	"golang.org/x/crypto/ssh/terminal"
+	"os"
+	"syscall"
+)
+
 func readPassword() (string, error) {
 	var fd int
 	if terminal.IsTerminal(syscall.Stdin) {

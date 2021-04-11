@@ -22,15 +22,12 @@ import (
 	"net"
 	"strings"
 
-	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
-	"github.com/containerd/typeurl"
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/sirupsen/logrus"
 )
 
 func inspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
-	netNSPath := fmt.Sprintf("/proc/%d/ns/net", pid)
+	nsPath := fmt.Sprintf("/proc/%d/ns/net", pid)
 	res := &native.NetNS{}
 	fn := func(_ ns.NetNS) error {
 		intf, err := net.Interfaces()

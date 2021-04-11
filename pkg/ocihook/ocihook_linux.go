@@ -17,26 +17,8 @@
 package ocihook
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net"
-	"os"
-	"path/filepath"
-
 	"github.com/containerd/containerd/contrib/apparmor"
-	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
-	"github.com/containerd/go-cni"
-	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
-	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
-	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
 	"github.com/sirupsen/logrus"
 )
 

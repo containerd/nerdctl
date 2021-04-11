@@ -20,31 +20,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/containerd/nerdctl/pkg/dnsutil"
-	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/containerd/nerdctl/pkg/portutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/docker/cli/opts"
@@ -172,7 +165,7 @@ var runCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:  "runtime",
 			Usage: "Runtime to use for this container, e.g. \"crun\", or \"io.containerd.runsc.v1\"",
-			Value: plugin.RuntimeRuncV2,
+			Value: "io.containerd.runhcs.v1",
 		},
 		&cli.StringSliceFlag{
 			Name:  "sysctl",
@@ -240,6 +233,9 @@ func runAction(clicontext *cli.Context) error {
 	}
 
 	ns := clicontext.String("namespace")
+	flagI := clicontext.Bool("i")
+	flagT := clicontext.Bool("t")
+	flagD := clicontext.Bool("d")
 
 	client, ctx, cancel, err := newClient(clicontext)
 	if err != nil {
@@ -247,17 +243,12 @@ func runAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	var (
-		opts  []oci.SpecOpts
-		cOpts []containerd.NewContainerOpts
-		id    = idgen.GenerateID()
-	)
-
 	dataStore, err := getDataStore(clicontext)
 	if err != nil {
 		return err
 	}
 
+	id := idgen.GenerateID()
 	stateDir, err := getContainerStateDirPath(clicontext, dataStore, id)
 	if err != nil {
 		return err
@@ -265,187 +256,6 @@ func runAction(clicontext *cli.Context) error {
 	if err := os.MkdirAll(stateDir, 0700); err != nil {
 		return err
 	}
-
-	opts = append(opts,
-		oci.WithDefaultSpec(),
-		oci.WithDefaultUnixDevices,
-		oci.WithMounts([]specs.Mount{
-			{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro", "nosuid", "noexec", "nodev"}},
-		}),
-		WithoutRunMount, // unmount default tmpfs on "/run": https://github.com/containerd/nerdctl/issues/157
-	)
-
-	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, clicontext, id)
-	if err != nil {
-		return err
-	}
-	opts = append(opts, rootfsOpts...)
-	cOpts = append(cOpts, rootfsCOpts...)
-
-	if wd := clicontext.String("workdir"); wd != "" {
-		opts = append(opts, oci.WithProcessCwd(wd))
-	}
-
-	if env := strutil.DedupeStrSlice(clicontext.StringSlice("env")); len(env) > 0 {
-		opts = append(opts, oci.WithEnv(env))
-	}
-
-	flagI := clicontext.Bool("i")
-	flagT := clicontext.Bool("t")
-	flagD := clicontext.Bool("d")
-
-	if flagI {
-		if flagD {
-			return errors.New("currently flag -i and -d cannot be specified together (FIXME)")
-		}
-	}
-
-	if flagT {
-		if flagD {
-			return errors.New("currently flag -t and -d cannot be specified together (FIXME)")
-		}
-		if !flagI {
-			return errors.New("currently flag -t needs -i to be specified together (FIXME)")
-		}
-		opts = append(opts, oci.WithTTY)
-	}
-
-	var imageVolumes map[string]struct{}
-	if ensuredImage != nil {
-		imageVolumes = ensuredImage.ImageConfig.Volumes
-	}
-	mountOpts, anonVolumes, err := generateMountOpts(clicontext, imageVolumes)
-	if err != nil {
-		return err
-	} else {
-		opts = append(opts, mountOpts...)
-	}
-
-	var logURI string
-	if flagD {
-		if lu, err := generateLogURI(dataStore); err != nil {
-			return err
-		} else if lu != nil {
-			logURI = lu.String()
-		}
-	}
-
-	restartOpts, err := generateRestartOpts(clicontext.String("restart"), logURI)
-	if err != nil {
-		return err
-	}
-	cOpts = append(cOpts, restartOpts...)
-
-	// DedupeStrSlice is required as a workaround for urfave/cli bug
-	// https://github.com/containerd/nerdctl/issues/108
-	// https://github.com/urfave/cli/issues/1254
-	portSlice := strutil.DedupeStrSlice(clicontext.StringSlice("p"))
-	netSlice := strutil.DedupeStrSlice(clicontext.StringSlice("net"))
-
-	ports := make([]gocni.PortMapping, len(portSlice))
-	if len(netSlice) != 1 {
-		return errors.New("currently, number of networks must be 1")
-	}
-	switch netstr := netSlice[0]; netstr {
-	case "none":
-		// NOP
-	case "host":
-		opts = append(opts, oci.WithHostNamespace(specs.NetworkNamespace), oci.WithHostHostsFile, oci.WithHostResolvconf)
-	default:
-		// We only verify flags and generate resolv.conf here.
-		// The actual network is configured in the oci hook.
-		e := &netutil.CNIEnv{
-			Path:        clicontext.String("cni-path"),
-			NetconfPath: clicontext.String("cni-netconfpath"),
-		}
-		ll, err := netutil.ConfigLists(e)
-		if err != nil {
-			return err
-		}
-		var netconflist *netutil.NetworkConfigList
-		for _, f := range ll {
-			if f.Name == netstr {
-				netconflist = f
-				break
-			}
-		}
-		if netconflist == nil {
-			return errors.Errorf("no such network: %q", netstr)
-		}
-
-		resolvConfPath := filepath.Join(stateDir, "resolv.conf")
-		if err := dnsutil.WriteResolvConfFile(resolvConfPath, strutil.DedupeStrSlice(clicontext.StringSlice("dns"))); err != nil {
-			return err
-		}
-		// the content of /etc/hosts is created in OCI Hook
-		etcHostsPath, err := hostsstore.AllocHostsFile(dataStore, ns, id)
-		if err != nil {
-			return err
-		}
-		opts = append(opts, withCustomResolvConf(resolvConfPath), withCustomHosts(etcHostsPath))
-		for i, p := range portSlice {
-			pm, err := portutil.ParseFlagP(p)
-			if err != nil {
-				return err
-			}
-			ports[i] = *pm
-		}
-	}
-
-	hostname := id[0:12]
-	if customHostname := clicontext.String("hostname"); customHostname != "" {
-		hostname = customHostname
-	}
-	opts = append(opts, oci.WithHostname(hostname))
-
-	hookOpt, err := withNerdctlOCIHook(clicontext, id, stateDir)
-	if err != nil {
-		return err
-	}
-	opts = append(opts, hookOpt)
-
-	if cgOpts, err := generateCgroupOpts(clicontext, id); err != nil {
-		return err
-	} else {
-		opts = append(opts, cgOpts...)
-	}
-
-	if uOpts, err := generateUserOpts(clicontext); err != nil {
-		return err
-	} else {
-		opts = append(opts, uOpts...)
-	}
-
-	securityOptsMaps := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(clicontext.StringSlice("security-opt")))
-	if secOpts, err := generateSecurityOpts(securityOptsMaps); err != nil {
-		return err
-	} else {
-		opts = append(opts, secOpts...)
-	}
-
-	if capOpts, err := generateCapOpts(
-		strutil.DedupeStrSlice(clicontext.StringSlice("cap-add")),
-		strutil.DedupeStrSlice(clicontext.StringSlice("cap-drop"))); err != nil {
-		return err
-	} else {
-		opts = append(opts, capOpts...)
-	}
-
-	if clicontext.Bool("privileged") {
-		opts = append(opts, privilegedOpts...)
-	}
-
-	rtCOpts, err := generateRuntimeCOpts(clicontext)
-	if err != nil {
-		return err
-	}
-	cOpts = append(cOpts, rtCOpts...)
-
-	lCOpts, err := withContainerLabels(clicontext)
-	if err != nil {
-		return err
-	}
-	cOpts = append(cOpts, lCOpts...)
 
 	var containerNameStore namestore.NameStore
 	name := clicontext.String("name")
@@ -458,21 +268,8 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 	}
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, netSlice, ports, logURI, anonVolumes)
-	if err != nil {
-		return err
-	}
-	cOpts = append(cOpts, ilOpt)
 
-	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
-
-	opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(clicontext.StringSlice("sysctl"))))
-
-	var s specs.Spec
-	spec := containerd.WithSpec(&s, opts...)
-	cOpts = append(cOpts, spec)
-
-	container, err := client.NewContainer(ctx, id, cOpts...)
+	container, err := NewContainer(ctx, clicontext, client, dataStore, id)
 	if err != nil {
 		return err
 	}
@@ -495,6 +292,11 @@ func runAction(clicontext *cli.Context) error {
 		if err := con.SetRaw(); err != nil {
 			return err
 		}
+	}
+
+	logURI, err := generateLogUri(flagD, dataStore)
+	if err != nil {
+		return err
 	}
 
 	task, err := taskutil.NewTask(ctx, client, container, flagI, flagT, flagD, con, logURI)
@@ -622,17 +424,6 @@ func withCustomHosts(src string) func(context.Context, oci.Client, *containers.C
 		})
 		return nil
 	}
-}
-
-func generateLogURI(dataStore string) (*url.URL, error) {
-	selfExe, err := os.Readlink("/proc/self/exe")
-	if err != nil {
-		return nil, err
-	}
-	args := map[string]string{
-		logging.MagicArgv1: dataStore,
-	}
-	return cio.LogURIGenerator("binary", selfExe, args)
 }
 
 func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecOpts, error) {
