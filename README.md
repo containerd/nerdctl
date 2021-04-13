@@ -180,6 +180,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl rm](#whale-nerdctl-rm)
     - [:whale: nerdctl stop](#whale-nerdctl-stop)
     - [:whale: nerdctl start](#whale-nerdctl-start)
+    - [:whale: nerdctl wait](#whale-nerdctl-wait)
     - [:whale: nerdctl kill](#whale-nerdctl-kill)
     - [:whale: nerdctl pause](#whale-nerdctl-pause)
     - [:whale: nerdctl unpause](#whale-nerdctl-unpause)
@@ -494,6 +495,11 @@ Usage: `nerdctl start [OPTIONS] CONTAINER [CONTAINER...]`
 
 Unimplemented `docker start` flags: `--attach`, `--checkpoint`, `--checkpoint-dir`, `--detach-keys`, `--interactive`
 
+### :whale: nerdctl wait
+Block until one or more containers stop, then print their exit codes.
+
+Usage: `nerdctl wait CONTAINER [CONTAINER...]`
+
 ### :whale: nerdctl kill
 Kill one or more running containers.
 
@@ -802,7 +808,6 @@ Container management:
 - `docker cp`
 - `docker diff`
 - `docker rename`
-- `docker wait`
 
 - `docker container prune`
 
