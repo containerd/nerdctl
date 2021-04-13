@@ -30,8 +30,8 @@ require (
 	github.com/rootless-containers/rootlesskit v0.14.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
-	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210228012217-479acdf4ea46
+	golang.org/x/term v0.0.0-20210406210042-72f3dc4e9b72
 	gotest.tools/v3 v3.0.3
 )
