@@ -26,6 +26,7 @@ import (
 	compose "github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/composer/projectloader"
+	"github.com/containerd/nerdctl/pkg/reflectutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -74,6 +75,18 @@ func New(o Options) (*Composer, error) {
 		projectJSON, _ := json.MarshalIndent(project, "", "    ")
 		logrus.Debug("printing project JSON")
 		logrus.Debugf("%s", projectJSON)
+	}
+
+	if unknown := reflectutil.UnknownNonEmptyFields(project,
+		"Name",
+		"WorkingDir",
+		"Services",
+		"Networks",
+		"Volumes",
+		"Secrets",
+		"Configs",
+		"ComposeFiles"); len(unknown) > 0 {
+		logrus.Warnf("Ignoring: %+v", unknown)
 	}
 
 	c := &Composer{

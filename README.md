@@ -843,6 +843,7 @@ Others:
 - - -
 
 # Additional documents
+- [`./docs/compose.md`](./docs/compose.md):   Compose
 - [`./docs/dir.md`](./docs/dir.md):           Directory layout (`/var/lib/nerdctl`)
 - [`./docs/registry.md`](./docs/registry.md): Registry authentication (`~/.docker/config.json`)
 - [`./docs/rootless.md`](./docs/rootless.md): Rootless mode

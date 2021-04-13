@@ -23,6 +23,7 @@ import (
 
 	"github.com/compose-spec/compose-go/types"
 	compose "github.com/compose-spec/compose-go/types"
+	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -37,6 +38,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		"CPUSet",
 		"CPUShares",
 		"Command",
+		"Configs",
 		"ContainerName",
 		"DependsOn",
 		"Deploy",
@@ -56,6 +58,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		"ReadOnly",
 		"Restart",
 		"Runtime",
+		"Secrets",
 		"Scale",
 		"SecurityOpt",
 		"Sysctls",
@@ -427,7 +430,25 @@ func newContainer(project *compose.Project, svc compose.ServiceConfig, i int) (*
 	}
 
 	for _, v := range svc.Volumes {
-		vStr, err := serviceVolumeConfigToFlagV(v, project.Volumes, project.WorkingDir)
+		vStr, err := serviceVolumeConfigToFlagV(v, project)
+		if err != nil {
+			return nil, err
+		}
+		c.RunArgs = append(c.RunArgs, "-v="+vStr)
+	}
+
+	for _, config := range svc.Configs {
+		fileRef := types.FileReferenceConfig(config)
+		vStr, err := fileReferenceConfigToFlagV(fileRef, project, false)
+		if err != nil {
+			return nil, err
+		}
+		c.RunArgs = append(c.RunArgs, "-v="+vStr)
+	}
+
+	for _, secret := range svc.Secrets {
+		fileRef := types.FileReferenceConfig(secret)
+		vStr, err := fileReferenceConfigToFlagV(fileRef, project, true)
 		if err != nil {
 			return nil, err
 		}
@@ -478,7 +499,7 @@ func servicePortConfigToFlagP(c types.ServicePortConfig) (string, error) {
 	return s, nil
 }
 
-func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, volumes types.Volumes, projectDir string) (string, error) {
+func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Project) (string, error) {
 	if unknown := reflectutil.UnknownNonEmptyFields(&c,
 		"Type",
 		"Source",
@@ -501,23 +522,18 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, volumes types.Volum
 	var src string
 	switch c.Type {
 	case "volume":
-		vol, ok := volumes[c.Source]
+		vol, ok := project.Volumes[c.Source]
 		if !ok {
 			return "", errors.Errorf("invalid volume %q", c.Source)
 		}
 		// c.Source is like "db_data", vol.Name is like "compose-wordpress_db_data"
 		src = vol.Name
 	case "bind":
-		if filepath.IsAbs(c.Source) {
-			src = c.Source
-		} else {
-			// Source can be "../../../../foo", but we do NOT need to use securejoin here.
-			src = filepath.Join(projectDir, c.Source)
-			var err error
-			src, err = filepath.Abs(src)
-			if err != nil {
-				return "", errors.Wrapf(err, "invalid relative path %q", c.Source)
-			}
+		src = project.RelativePath(c.Source)
+		var err error
+		src, err = filepath.Abs(src)
+		if err != nil {
+			return "", errors.Wrapf(err, "invalid relative path %q", c.Source)
 		}
 	default:
 		return "", errors.Errorf("unsupported volume type: %q", c.Type)
@@ -526,5 +542,74 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, volumes types.Volum
 	if c.ReadOnly {
 		s += ":ro"
 	}
+	return s, nil
+}
+
+func fileReferenceConfigToFlagV(c types.FileReferenceConfig, project *types.Project, secret bool) (string, error) {
+	objType := "config"
+	if secret {
+		objType = "secret"
+	}
+	if unknown := reflectutil.UnknownNonEmptyFields(&c,
+		"Source", "Target", "UID", "GID", "Mode",
+	); len(unknown) > 0 {
+		logrus.Warnf("Ignoring: %s: %+v", objType, unknown)
+	}
+
+	if err := identifiers.Validate(c.Source); err != nil {
+		return "", errors.Wrapf(err, "%s source %q is invalid", objType, c.Source)
+	}
+
+	var obj types.FileObjectConfig
+	if secret {
+		secret, ok := project.Secrets[c.Source]
+		if !ok {
+			return "", errors.Errorf("secret %s is undefined", c.Source)
+		}
+		obj = types.FileObjectConfig(secret)
+	} else {
+		config, ok := project.Configs[c.Source]
+		if !ok {
+			return "", errors.Errorf("config %s is undefined", c.Source)
+		}
+		obj = types.FileObjectConfig(config)
+	}
+	src := project.RelativePath(obj.File)
+	var err error
+	src, err = filepath.Abs(src)
+	if err != nil {
+		return "", errors.Wrapf(err, "%s %s: invalid relative path %q", objType, c.Source, src)
+	}
+
+	target := c.Target
+	if target == "" {
+		if secret {
+			target = filepath.Join("/run/secrets", c.Source)
+		} else {
+			target = filepath.Join("/", c.Source)
+		}
+	} else {
+		target = filepath.Clean(target)
+		if !filepath.IsAbs(target) {
+			if secret {
+				target = filepath.Join("/run/secrets", target)
+			} else {
+				return "", errors.Errorf("config %s: target %q must be an absolute path", c.Source, c.Target)
+			}
+		}
+	}
+
+	if c.UID != "" {
+		// Raise an error rather than ignoring the value, for avoiding any security issue
+		return "", errors.Errorf("%s %s: unsupported field: UID", objType, c.Source)
+	}
+	if c.GID != "" {
+		return "", errors.Errorf("%s %s: unsupported field: GID", objType, c.Source)
+	}
+	if c.Mode != nil {
+		return "", errors.Errorf("%s %s: unsupported field: Mode", objType, c.Source)
+	}
+
+	s := fmt.Sprintf("%s:%s:ro", src, target)
 	return s, nil
 }

@@ -21,7 +21,6 @@ import (
 
 	compose "github.com/compose-spec/compose-go/types"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
-	"github.com/containerd/nerdctl/pkg/reflectutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -31,10 +30,6 @@ type DownOptions struct {
 }
 
 func (c *Composer) Down(ctx context.Context, downOptions DownOptions) error {
-	if unknown := reflectutil.UnknownNonEmptyFields(c.project, "Name", "WorkingDir", "Services", "Networks", "Volumes", "ComposeFiles"); len(unknown) > 0 {
-		logrus.Warnf("Ignoring: %+v", unknown)
-	}
-
 	for _, svc := range c.project.Services {
 		if err := c.downService(ctx, svc, downOptions.RemoveVolumes); err != nil {
 			return err
