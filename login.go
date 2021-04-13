@@ -35,7 +35,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 type loginOptions struct {
@@ -211,7 +211,7 @@ func ConfigureAuthentification(clicontext *cli.Context, authConfig *types.AuthCo
 
 		fmt.Print("Enter Password: ")
 		var fd int
-		if terminal.IsTerminal(syscall.Stdin) {
+		if term.IsTerminal(syscall.Stdin) {
 			fd = syscall.Stdin
 		} else {
 			tty, err := os.Open("/dev/tty")
@@ -221,7 +221,7 @@ func ConfigureAuthentification(clicontext *cli.Context, authConfig *types.AuthCo
 			defer tty.Close()
 			fd = int(tty.Fd())
 		}
-		bytePassword, err := terminal.ReadPassword(fd)
+		bytePassword, err := term.ReadPassword(fd)
 		if err != nil {
 			return errors.Wrap(err, "error reading password")
 		}
