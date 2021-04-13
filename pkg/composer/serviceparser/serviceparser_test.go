@@ -18,6 +18,7 @@ package serviceparser
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"testing"
 
@@ -306,5 +307,61 @@ services:
 	t.Logf("foo: %+v", foo)
 	for _, c := range foo.Containers {
 		assert.Assert(t, in(c.RunArgs, "--net=host"))
+	}
+}
+
+func TestParseConfigs(t *testing.T) {
+	t.Parallel()
+	const dockerComposeYAML = `
+services:
+  foo:
+    image: nginx:alpine
+    secrets:
+    - secret1
+    - source: secret2
+      target: secret2-foo
+    - source: secret3
+      target: /mnt/secret3-foo
+    configs:
+    - config1
+    - source: config2
+      target: /mnt/config2-foo
+secrets:
+  secret1:
+    file: ./secret1
+  secret2:
+    file: ./secret2
+  secret3:
+    file: ./secret3
+configs:
+  config1:
+    file: ./config1
+  config2:
+    file: ./config2
+`
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName())
+	assert.NilError(t, err)
+
+	for _, f := range []string{"secret1", "secret2", "secret3", "config1", "config2"} {
+		err = ioutil.WriteFile(filepath.Join(project.WorkingDir, f), []byte("content-"+f), 0444)
+		assert.NilError(t, err)
+	}
+
+	fooSvc, err := project.GetService("foo")
+	assert.NilError(t, err)
+
+	foo, err := Parse(project, fooSvc)
+	assert.NilError(t, err)
+
+	t.Logf("foo: %+v", foo)
+	for _, c := range foo.Containers {
+		assert.Assert(t, in(c.RunArgs, fmt.Sprintf("-v=%s:/run/secrets/secret1:ro", filepath.Join(project.WorkingDir, "secret1"))))
+		assert.Assert(t, in(c.RunArgs, fmt.Sprintf("-v=%s:/run/secrets/secret2-foo:ro", filepath.Join(project.WorkingDir, "secret2"))))
+		assert.Assert(t, in(c.RunArgs, fmt.Sprintf("-v=%s:/mnt/secret3-foo:ro", filepath.Join(project.WorkingDir, "secret3"))))
+		assert.Assert(t, in(c.RunArgs, fmt.Sprintf("-v=%s:/config1:ro", filepath.Join(project.WorkingDir, "config1"))))
+		assert.Assert(t, in(c.RunArgs, fmt.Sprintf("-v=%s:/mnt/config2-foo:ro", filepath.Join(project.WorkingDir, "config2"))))
 	}
 }
