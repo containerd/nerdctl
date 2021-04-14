@@ -28,7 +28,9 @@ import (
 )
 
 type UpOptions struct {
-	Detach bool
+	Detach      bool
+	NoColor     bool
+	NoLogPrefix bool
 }
 
 func (c *Composer) Up(ctx context.Context, uo UpOptions) error {

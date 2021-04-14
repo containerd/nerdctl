@@ -18,18 +18,19 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/composer"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
 
-var composeUpCommand = &cli.Command{
-	Name:   "up",
-	Usage:  "Create and start containers",
-	Action: composeUpAction,
+var composeLogsCommand = &cli.Command{
+	Name:   "logs",
+	Usage:  "View output from containers.",
+	Action: composeLogsAction,
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:    "detach",
-			Aliases: []string{"d"},
-			Usage:   "Detached mode: Run containers in the background",
+			Name:    "follow",
+			Aliases: []string{"f"},
+			Usage:   "Follow log output.",
 		},
 		&cli.BoolFlag{
 			Name:  "no-color",
@@ -42,7 +43,12 @@ var composeUpCommand = &cli.Command{
 	},
 }
 
-func composeUpAction(clicontext *cli.Context) error {
+func composeLogsAction(clicontext *cli.Context) error {
+	if clicontext.NArg() != 0 {
+		// TODO: support specifying service names as args
+		return errors.Errorf("arguments %v not supported", clicontext.Args())
+	}
+
 	client, ctx, cancel, err := newClient(clicontext)
 	if err != nil {
 		return err
@@ -53,10 +59,10 @@ func composeUpAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	uo := composer.UpOptions{
-		Detach:      clicontext.Bool("detach"),
+	lo := composer.LogsOptions{
+		Follow:      clicontext.Bool("follow"),
 		NoColor:     clicontext.Bool("no-color"),
 		NoLogPrefix: clicontext.Bool("no-log-prefix"),
 	}
-	return c.Up(ctx, uo)
+	return c.Logs(ctx, lo)
 }

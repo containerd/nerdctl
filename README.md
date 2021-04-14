@@ -220,6 +220,7 @@ It does not necessarily mean that the corresponding features are missing in cont
   - [Compose](#compose)
     - [:whale: nerdctl compose](#whale-nerdctl-compose)
     - [:whale: nerdctl compose up](#whale-nerdctl-compose-up)
+    - [:whale: nerdctl compose logs](#whale-nerdctl-compose-logs)
     - [:whale: nerdctl compose down](#whale-nerdctl-compose-down)
   - [Global flags](#global-flags)
   - [Unimplemented Docker commands](#unimplemented-docker-commands)
@@ -774,10 +775,23 @@ Usage: `nerdctl compose up [OPTIONS] [SERVICE...]`
 
 Flags:
 - :whale: `-d, --detach`: Detached mode: Run containers in the background
+- :whale: `--no-color`: Produce monochrome output
+- :whale: `--no-log-prefix`: Don't print prefix in logs
 
-Unimplemented `docker-compose up` flags: `--no-color`, `--quiet-pull`, `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
+Unimplemented `docker-compose up` flags: `--quiet-pull`, `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
 `--no-start`, `--build`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--remove-orphans`, `--exit-code-from`,
-`--scale`, `--no-log-prefix`
+`--scale`
+
+### :whale: nerdctl compose logs
+Create and start containers
+
+Usage: `nerdctl compose logs [OPTIONS]`
+
+Flags:
+- :whale: `--no-color`: Produce monochrome output
+- :whale: `--no-log-prefix`: Don't print prefix in logs
+
+Unimplemented `docker-compose logs` flags:  `--timestamps`, `--tail`
 
 ### :whale: nerdctl compose down
 Remove containers and associated resources

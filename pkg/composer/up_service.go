@@ -19,12 +19,9 @@ package composer
 import (
 	"context"
 	"os"
-	"os/exec"
-	"os/signal"
 	"strings"
 	"sync"
 
-	"github.com/containerd/nerdctl/pkg/composer/pipetagger"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -72,7 +69,12 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 	}
 
 	logrus.Info("Attaching to logs")
-	if err := c.showLogs(ctx, containers); err != nil {
+	lo := LogsOptions{
+		Follow:      true,
+		NoColor:     uo.NoColor,
+		NoLogPrefix: uo.NoLogPrefix,
+	}
+	if err := c.logs(ctx, containers, lo); err != nil {
 		return err
 	}
 
@@ -91,87 +93,6 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 		}()
 	}
 	rmWG.Wait()
-	return nil
-}
-
-func (c *Composer) showLogs(ctx context.Context, containers map[string]serviceparser.Container) error {
-	var logTagMaxLen int
-	type containerState struct {
-		name   string
-		logTag string
-		logCmd *exec.Cmd
-	}
-
-	containerStates := make(map[string]containerState, len(containers)) // key: containerID
-	for id, container := range containers {
-		logTag := strings.TrimPrefix(container.Name, c.project.Name+"_")
-		if l := len(logTag); l > logTagMaxLen {
-			logTagMaxLen = l
-		}
-		containerStates[id] = containerState{
-			name:   container.Name,
-			logTag: logTag,
-		}
-	}
-
-	logsEOFChan := make(chan string) // value: container name
-	for id, state := range containerStates {
-		// TODO: show logs without executing `nerdctl logs`
-		state.logCmd = c.createNerdctlCmd(ctx, "logs", "-f", id)
-		stdout, err := state.logCmd.StdoutPipe()
-		if err != nil {
-			return err
-		}
-		stdoutTagger := pipetagger.New(os.Stdout, stdout, state.logTag, logTagMaxLen+1)
-		stderr, err := state.logCmd.StderrPipe()
-		if err != nil {
-			return err
-		}
-		stderrTagger := pipetagger.New(os.Stderr, stderr, state.logTag, logTagMaxLen+1)
-		if c.DebugPrintFull {
-			logrus.Debugf("Running %v", state.logCmd.Args)
-		}
-		if err := state.logCmd.Start(); err != nil {
-			return err
-		}
-		containerName := state.name
-		go func() {
-			stdoutTagger.Run()
-			logsEOFChan <- containerName
-		}()
-		go stderrTagger.Run()
-	}
-
-	interruptChan := make(chan os.Signal, 1)
-	signal.Notify(interruptChan, os.Interrupt)
-
-	exited := make(map[string]struct{}) // key: container name
-selectLoop:
-	for {
-		// Wait for Ctrl-C, or `nerdctl compose down` in another terminal
-		select {
-		case sig := <-interruptChan:
-			logrus.Debugf("Received signal: %s", sig)
-			break selectLoop
-		case containerName := <-logsEOFChan:
-			// When `nerdctl logs -f` has exited, we can assume that the container has exited
-			logrus.Infof("Container %q exited", containerName)
-			exited[containerName] = struct{}{}
-			if len(exited) == len(containerStates) {
-				logrus.Info("All the containers have exited")
-				break selectLoop
-			}
-		}
-	}
-
-	for _, state := range containerStates {
-		if state.logCmd != nil && state.logCmd.Process != nil {
-			if err := state.logCmd.Process.Kill(); err != nil {
-				logrus.Warn(err)
-			}
-		}
-	}
-
 	return nil
 }
 
