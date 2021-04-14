@@ -7,6 +7,6 @@ Usage:
 
 ## eStargz version
 
-eStargz version enables lazy-pulling. See [`../docs/stargz.md`](../docs/stargz.md).
+eStargz version enables lazy-pulling. See [`../../docs/stargz.md`](../../docs/stargz.md).
 
 Usage: `nerdctl --snapshotter=stargz compose -f docker-compose.stargz.yaml up`
