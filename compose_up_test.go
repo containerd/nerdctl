@@ -30,13 +30,13 @@ import (
 func TestComposeUp(t *testing.T) {
 	base := testutil.NewBase(t)
 
-	const dockerComposeYAML = `
+	var dockerComposeYAML = fmt.Sprintf(`
 version: '3.1'
 
 services:
 
   wordpress:
-    image: wordpress:5.7
+    image: %s
     restart: always
     ports:
       - 8080:80
@@ -49,7 +49,7 @@ services:
       - wordpress:/var/www/html
 
   db:
-    image: mariadb:10.5
+    image: %s
     restart: always
     environment:
       MYSQL_DATABASE: exampledb
@@ -62,9 +62,7 @@ services:
 volumes:
   wordpress:
   db:
-`
-	const wordpressIndexHTMLSnippet = "<title>WordPress &rsaquo; Installation</title>"
-
+`, testutil.WordpressImage, testutil.MariaDBImage)
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
@@ -86,8 +84,8 @@ volumes:
 			return err
 		}
 		t.Logf("respBody=%q", respBody)
-		if !strings.Contains(string(respBody), wordpressIndexHTMLSnippet) {
-			return errors.Errorf("respBody does not contain %q", wordpressIndexHTMLSnippet)
+		if !strings.Contains(string(respBody), testutil.WordpressIndexHTMLSnippet) {
+			return errors.Errorf("respBody does not contain %q", testutil.WordpressIndexHTMLSnippet)
 		}
 		return nil
 	}
