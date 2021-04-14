@@ -8,7 +8,7 @@ require (
 	github.com/containerd/console v1.0.2
 	github.com/containerd/containerd v1.5.0-rc.1
 	github.com/containerd/go-cni v1.0.1
-	github.com/containerd/imgcrypt v1.1.1-0.20210412181126-0bed51b9522c
+	github.com/containerd/imgcrypt v1.1.1
 	github.com/containerd/stargz-snapshotter v0.5.0
 	github.com/containerd/stargz-snapshotter/estargz v0.5.0
 	github.com/containerd/typeurl v1.0.1
