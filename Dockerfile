@@ -16,7 +16,7 @@
 # Usage: `docker run -it --privileged <IMAGE>`. Make sure to add `-t` and `--privileged`.
 
 # Basic deps
-ARG CONTAINERD_VERSION=1.5.0-rc.0
+ARG CONTAINERD_VERSION=1.5.0-rc.1
 ARG RUNC_VERSION=1.0.0-rc93
 ARG CNI_PLUGINS_VERSION=0.9.1
 
