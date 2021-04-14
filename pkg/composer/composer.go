@@ -50,12 +50,17 @@ func New(o Options) (*Composer, error) {
 		return nil, errors.New("got empty functions")
 	}
 
+	var err error
 	if o.File == "" {
-		var err error
 		o.File, err = findComposeYAML()
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	o.File, err = filepath.Abs(o.File)
+	if err != nil {
+		return nil, err
 	}
 
 	if o.Project == "" {

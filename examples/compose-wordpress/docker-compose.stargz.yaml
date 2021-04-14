@@ -1,0 +1,19 @@
+# # Docker Compose stack for Wordpress (eStargz version)
+
+# Usage: nerdctl --snapshotter=stargz compose -f docker-compose.stargz.yaml up
+services:
+  wordpress:
+    image: ghcr.io/stargz-containers/wordpress:5.7-esgz
+    extends:
+      file: docker-compose.yaml
+      service: wordpress
+
+  db:
+    image: ghcr.io/stargz-containers/mariadb:10.5-esgz
+    extends:
+      file: docker-compose.yaml
+      service: db
+
+volumes:
+  wordpress:
+  db:

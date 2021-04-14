@@ -310,11 +310,21 @@ func NewBase(t *testing.T) *Base {
 	return base
 }
 
-// TODO: do not use Docker Hub nor GCR mirror: https://github.com/containerd/nerdctl/issues/146
-const (
-	AlpineImage                 = "alpine:3.13"
-	NginxAlpineImage            = "nginx:1.19-alpine"
+func mirrorOf(s string) string {
+	// plain mirror, NOT stargz-converted images
+	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
+}
+
+var (
+	AlpineImage                 = mirrorOf("alpine:3.13")
+	NginxAlpineImage            = mirrorOf("nginx:1.19-alpine")
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
-	RegistryImage               = "registry:2"
-	FedoraESGZImage             = "ghcr.io/stargz-containers/fedora:30-esgz" // eStargz
+	RegistryImage               = mirrorOf("registry:2")
+	WordpressImage              = mirrorOf("wordpress:5.7")
+	WordpressIndexHTMLSnippet   = "<title>WordPress &rsaquo; Installation</title>"
+	MariaDBImage                = mirrorOf("mariadb:10.5")
+)
+
+const (
+	FedoraESGZImage = "ghcr.io/stargz-containers/fedora:30-esgz" // eStargz
 )
