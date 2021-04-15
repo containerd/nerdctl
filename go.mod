@@ -3,7 +3,7 @@ module github.com/containerd/nerdctl
 go 1.16
 
 require (
-	github.com/compose-spec/compose-go v0.0.0-20210408102153-fe76f8471db2
+	github.com/compose-spec/compose-go v0.0.0-20210415072938-109132373677
 	github.com/containerd/cgroups v0.0.0-20210114181951-8a68de567b68
 	github.com/containerd/console v1.0.2
 	github.com/containerd/containerd v1.5.0-rc.1

@@ -221,6 +221,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose](#whale-nerdctl-compose)
     - [:whale: nerdctl compose up](#whale-nerdctl-compose-up)
     - [:whale: nerdctl compose logs](#whale-nerdctl-compose-logs)
+    - [:whale: nerdctl compose build](#whale-nerdctl-compose-build)
     - [:whale: nerdctl compose down](#whale-nerdctl-compose-down)
   - [Global flags](#global-flags)
   - [Unimplemented Docker commands](#unimplemented-docker-commands)
@@ -777,9 +778,10 @@ Flags:
 - :whale: `-d, --detach`: Detached mode: Run containers in the background
 - :whale: `--no-color`: Produce monochrome output
 - :whale: `--no-log-prefix`: Don't print prefix in logs
+- :whale: `build`: Build images before starting containers.
 
 Unimplemented `docker-compose up` flags: `--quiet-pull`, `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
-`--no-start`, `--build`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--remove-orphans`, `--exit-code-from`,
+`--no-start`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--remove-orphans`, `--exit-code-from`,
 `--scale`
 
 ### :whale: nerdctl compose logs
@@ -792,6 +794,18 @@ Flags:
 - :whale: `--no-log-prefix`: Don't print prefix in logs
 
 Unimplemented `docker-compose logs` flags:  `--timestamps`, `--tail`
+
+### :whale: nerdctl compose build
+Build or rebuild services.
+
+Usage: `nerdctl compose build [OPTIONS]`
+
+Flags:
+- :whale: `--build-arg`: Set build-time variables for services
+- :whale: `--no-cache`: Do not use cache when building the image
+- :whale: `--progress`: Set type of progress output (auto, plain, tty)
+
+Unimplemented `docker-compose build` flags:  `--compress`, `--force-rm`, `--memory`, `--no-rm`, `--parallel`, `--pull`, `--quiet`
 
 ### :whale: nerdctl compose down
 Remove containers and associated resources
@@ -850,7 +864,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose build|config|create|events|exec|images|kill|logs|pause|port|ps|pull|push|restart|rm|run|scale|start|stop|top|unpause`
+- `docker-compose config|create|events|exec|images|kill|pause|port|ps|pull|push|restart|rm|run|scale|start|stop|top|unpause`
 
 Others:
 - `docker system df`

@@ -21,6 +21,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
+	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
@@ -34,6 +35,7 @@ var composeCommand = &cli.Command{
 	Subcommands: []*cli.Command{
 		composeUpCommand,
 		composeLogsCommand,
+		composeBuildCommand,
 		composeDownCommand,
 	},
 
@@ -92,6 +94,21 @@ func getComposer(clicontext *cli.Context, client *containerd.Client) (*composer.
 		} else {
 			return false, volGetErr
 		}
+	}
+
+	o.ImageExists = func(ctx context.Context, rawRef string) (bool, error) {
+		named, err := refdocker.ParseDockerRef(rawRef)
+		if err != nil {
+			return false, err
+		}
+		ref := named.String()
+		if _, err := client.ImageService().Get(ctx, ref); err != nil {
+			if errors.Is(err, errdefs.ErrNotFound) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
 	}
 
 	insecure := clicontext.Bool("insecure-registry")

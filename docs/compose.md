@@ -18,7 +18,7 @@ which was derived from [Docker Compose file version 3 specification](https://doc
 
 ### Unimplemented YAML fields
 - Fields that correspond to unimplemented `docker run` flags, e.g., `services.<SERVICE>.links` (corresponds to `docker run --link`)
-- `services.<SERVICE>.build`
+- Fields that correspond to unimplemented `docker build` flags, e.g., `services.<SERVICE>.build.labels` (corresponds to `docker build --label`)
 - `services.<SERVICE>.credential_spec`
 - `services.<SERVICE>.deploy.update_config`
 - `services.<SERVICE>.deploy.rollback_config`
@@ -33,6 +33,9 @@ which was derived from [Docker Compose file version 3 specification](https://doc
 - `secrets.<SECRET>.external`
 
 ### Incompatibility
+#### `services.<SERVICE>.build.context`
+- The value must be a local directory path, not a URL.
+
 #### `services.<SERVICE>.entrypoint`
 - Multiple entrypoint strings cannot be specified.
 

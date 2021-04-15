@@ -25,6 +25,7 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/pkg/errors"
+	"gotest.tools/v3/assert"
 )
 
 func TestComposeUp(t *testing.T) {
@@ -111,4 +112,37 @@ volumes:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
 	base.Cmd("volume", "inspect", fmt.Sprintf("%s_db", projectName)).AssertFail()
 	base.Cmd("network", "inspect", fmt.Sprintf("%s_default", projectName)).AssertFail()
+}
+
+func TestComposeUpBuild(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+
+	const dockerComposeYAML = `
+services:
+  web:
+    build: .
+    ports:
+    - 8080:80
+`
+	dockerfile := fmt.Sprintf(`FROM %s
+COPY index.html /usr/share/nginx/html/index.html
+`, testutil.NginxAlpineImage)
+	indexHTML := t.Name()
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	comp.WriteFile("Dockerfile", dockerfile)
+	comp.WriteFile("index.html", indexHTML)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--build").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	resp, err := httpGet("http://127.0.0.1:8080", 50)
+	assert.NilError(t, err)
+	respBody, err := ioutil.ReadAll(resp.Body)
+	assert.NilError(t, err)
+	t.Logf("respBody=%q", respBody)
+	assert.Assert(t, strings.Contains(string(respBody), indexHTML))
 }

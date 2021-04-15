@@ -31,6 +31,7 @@ type UpOptions struct {
 	Detach      bool
 	NoColor     bool
 	NoLogPrefix bool
+	ForceBuild  bool
 }
 
 func (c *Composer) Up(ctx context.Context, uo UpOptions) error {

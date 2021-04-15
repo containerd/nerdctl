@@ -32,6 +32,7 @@ import (
 func warnUnknownFields(svc compose.ServiceConfig) {
 	if unknown := reflectutil.UnknownNonEmptyFields(&svc,
 		"Name",
+		"Build",
 		"CapAdd",
 		"CapDrop",
 		"CPUS",
@@ -42,6 +43,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		"ContainerName",
 		"DependsOn",
 		"Deploy",
+		"Dockerfile", // handled by the loader (normalizer)
 		"DNS",
 		"Entrypoint",
 		"Environment",
@@ -51,6 +53,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		"Labels",
 		"MemLimit",
 		"Networks",
+		"NetworkMode",
 		"PidsLimit",
 		"Ports",
 		"Privileged",
@@ -112,6 +115,8 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 			}
 		}
 	}
+
+	// unknown fields of Build is checked in parseBuild().
 }
 
 type Container struct {
@@ -119,10 +124,17 @@ type Container struct {
 	RunArgs []string // {"-d", "--pull=never", ...}
 }
 
+type Build struct {
+	Force     bool     // force build even if already present
+	BuildArgs []string // {"-t", "example.com/foo", "--target", "foo", "/path/to/ctx"}
+	// TODO: call BuildKit API directly without executing `nerdctl build`
+}
+
 type Service struct {
 	Image      string
 	PullMode   string
 	Containers []Container // length = replicas
+	Build      *Build
 	Unparsed   *compose.ServiceConfig
 }
 
@@ -264,10 +276,6 @@ func getNetworks(project *compose.Project, svc compose.ServiceConfig) ([]string,
 func Parse(project *compose.Project, svc compose.ServiceConfig) (*Service, error) {
 	warnUnknownFields(svc)
 
-	if svc.Image == "" {
-		return nil, errors.Errorf("service %s: missing image", svc.Name)
-	}
-
 	replicas, err := getReplicas(svc)
 	if err != nil {
 		return nil, err
@@ -280,17 +288,37 @@ func Parse(project *compose.Project, svc compose.ServiceConfig) (*Service, error
 		Unparsed:   &svc,
 	}
 
+	if svc.Build == nil {
+		if parsed.Image == "" {
+			return nil, errors.Errorf("service %s: missing image", svc.Name)
+		}
+	} else {
+		if parsed.Image == "" {
+			parsed.Image = fmt.Sprintf("%s_%s", project.Name, svc.Name)
+		}
+		parsed.Build, err = parseBuildConfig(svc.Build, project, parsed.Image)
+		if err != nil {
+			return nil, errors.Wrapf(err, "service %s: failed to parse build", svc.Name)
+		}
+	}
+
 	switch svc.PullPolicy {
 	case "", types.PullPolicyMissing, types.PullPolicyIfNotPresent:
 		// NOP
 	case types.PullPolicyAlways, types.PullPolicyNever:
 		parsed.PullMode = svc.PullPolicy
+	case types.PullPolicyBuild:
+		if parsed.Build == nil {
+			return nil, errors.Errorf("service %s: pull_policy \"build\" requires build config", svc.Name)
+		}
+		parsed.Build.Force = true
+		parsed.PullMode = "never"
 	default:
 		logrus.Warnf("Ignoring: service %s: pull_policy: %q", svc.Name, svc.PullPolicy)
 	}
 
 	for i := 0; i < replicas; i++ {
-		container, err := newContainer(project, svc, i)
+		container, err := newContainer(project, parsed, i)
 		if err != nil {
 			return nil, err
 		}
@@ -300,7 +328,8 @@ func Parse(project *compose.Project, svc compose.ServiceConfig) (*Service, error
 	return parsed, nil
 }
 
-func newContainer(project *compose.Project, svc compose.ServiceConfig, i int) (*Container, error) {
+func newContainer(project *compose.Project, parsed *Service, i int) (*Container, error) {
+	svc := *parsed.Unparsed
 	var c Container
 	c.Name = fmt.Sprintf("%s_%s_%d", project.Name, svc.Name, i+1)
 	if svc.ContainerName != "" {
@@ -459,7 +488,7 @@ func newContainer(project *compose.Project, svc compose.ServiceConfig, i int) (*
 		c.RunArgs = append(c.RunArgs, "-w="+svc.WorkingDir)
 	}
 
-	c.RunArgs = append(c.RunArgs, svc.Image)
+	c.RunArgs = append(c.RunArgs, parsed.Image) // NOT svc.Image
 	c.RunArgs = append(c.RunArgs, svc.Command...)
 	return &c, nil
 }
