@@ -29,6 +29,12 @@ type ComposeDir struct {
 	yamlBasePath string
 }
 
+func (cd *ComposeDir) WriteFile(name, content string) {
+	if err := ioutil.WriteFile(filepath.Join(cd.dir, name), []byte(content), 0644); err != nil {
+		cd.t.Fatal(err)
+	}
+}
+
 func (cd *ComposeDir) YAMLFullPath() string {
 	return filepath.Join(cd.dir, cd.yamlBasePath)
 }
@@ -46,12 +52,11 @@ func NewComposeDir(t testing.TB, dockerComposeYAML string) *ComposeDir {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = ioutil.WriteFile(filepath.Join(tmpDir, "docker-compose.yaml"), []byte(dockerComposeYAML), 0644); err != nil {
-		t.Fatal(err)
-	}
-	return &ComposeDir{
+	cd := &ComposeDir{
 		t:            t,
 		dir:          tmpDir,
 		yamlBasePath: "docker-compose.yaml",
 	}
+	cd.WriteFile(cd.yamlBasePath, dockerComposeYAML)
+	return cd
 }

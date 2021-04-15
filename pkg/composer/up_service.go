@@ -35,7 +35,7 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 
 	// TODO: parallelize loop for ensuring images (make sure not to mess up tty)
 	for _, ps := range parsedServices {
-		if err := c.ensureServiceImage(ctx, ps); err != nil {
+		if err := c.ensureServiceImage(ctx, ps, uo.ForceBuild); err != nil {
 			return err
 		}
 	}
@@ -96,7 +96,23 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 	return nil
 }
 
-func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Service) error {
+func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Service, force bool) error {
+	if ps.Build != nil {
+		var bo BuildOptions
+		if ps.Build.Force || force {
+			return c.buildServiceImage(ctx, ps.Image, ps.Build, bo)
+		}
+		if ok, err := c.ImageExists(ctx, ps.Image); err != nil {
+			return err
+		} else if ok {
+			logrus.Debugf("Image %s already exists, not building", ps.Image)
+		} else {
+			return c.buildServiceImage(ctx, ps.Image, ps.Build, bo)
+		}
+	}
+
+	// even when c.ImageExists returns true, we need to call c.EnsureImage
+	// because ps.PullMode can be "always".
 	logrus.Infof("Ensuring image %s", ps.Image)
 	if err := c.EnsureImage(ctx, ps.Image, ps.PullMode); err != nil {
 		return err

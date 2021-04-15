@@ -18,35 +18,36 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/composer"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
 
-var composeUpCommand = &cli.Command{
-	Name:   "up",
-	Usage:  "Create and start containers",
-	Action: composeUpAction,
+var composeBuildCommand = &cli.Command{
+	Name:   "build",
+	Usage:  "Build or rebuild services",
+	Action: composeBuildAction,
 	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "detach",
-			Aliases: []string{"d"},
-			Usage:   "Detached mode: Run containers in the background",
+		&cli.StringSliceFlag{
+			Name:  "build-arg",
+			Usage: "Set build-time variables for services.",
 		},
 		&cli.BoolFlag{
-			Name:  "no-color",
-			Usage: "Produce monochrome output",
+			Name:  "no-cache",
+			Usage: "Do not use cache when building the image.",
 		},
-		&cli.BoolFlag{
-			Name:  "no-log-prefix",
-			Usage: "Don't print prefix in logs",
-		},
-		&cli.BoolFlag{
-			Name:  "build",
-			Usage: "Build images before starting containers.",
+		&cli.StringFlag{
+			Name:  "progress",
+			Usage: "Set type of progress output",
 		},
 	},
 }
 
-func composeUpAction(clicontext *cli.Context) error {
+func composeBuildAction(clicontext *cli.Context) error {
+	if clicontext.NArg() != 0 {
+		// TODO: support specifying service names as args
+		return errors.Errorf("arguments %v not supported", clicontext.Args())
+	}
+
 	client, ctx, cancel, err := newClient(clicontext)
 	if err != nil {
 		return err
@@ -57,11 +58,10 @@ func composeUpAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	uo := composer.UpOptions{
-		Detach:      clicontext.Bool("detach"),
-		NoColor:     clicontext.Bool("no-color"),
-		NoLogPrefix: clicontext.Bool("no-log-prefix"),
-		ForceBuild:  clicontext.Bool("build"),
+	bo := composer.BuildOptions{
+		Args:     clicontext.StringSlice("build-arg"),
+		NoCache:  clicontext.Bool("no-cache"),
+		Progress: clicontext.String("progress"),
 	}
-	return c.Up(ctx, uo)
+	return c.Build(ctx, bo)
 }
