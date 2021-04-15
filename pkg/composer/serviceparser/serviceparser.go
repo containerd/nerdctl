@@ -517,8 +517,14 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 	}
 
 	if c.Source == "" {
-		return "", errors.New("volume source is missing")
+		// anonymous volume
+		s := c.Target
+		if c.ReadOnly {
+			s += ":ro"
+		}
+		return s, nil
 	}
+
 	var src string
 	switch c.Type {
 	case "volume":
