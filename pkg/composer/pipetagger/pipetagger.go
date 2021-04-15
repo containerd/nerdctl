@@ -69,14 +69,19 @@ func ChooseColorAttrs(tag string) []color.Attribute {
 	return attrs
 }
 
-func New(w io.Writer, r io.Reader, tag string, width int) *PipeTagger {
-	c := color.New(ChooseColorAttrs(tag)...)
+// New create a PipeTagger.
+// Set width = -1 to disable tagging.
+func New(w io.Writer, r io.Reader, tag string, width int, noColor bool) *PipeTagger {
+	var attrs []color.Attribute
+	if !noColor {
+		attrs = ChooseColorAttrs(tag)
+	}
 	return &PipeTagger{
 		w:     w,
 		r:     r,
 		tag:   tag,
 		width: width,
-		color: c,
+		color: color.New(attrs...),
 	}
 }
 
@@ -92,11 +97,15 @@ func (x *PipeTagger) Run() error {
 	scanner := bufio.NewScanner(x.r)
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Fprintf(x.w, "%s%s|%s\n",
-			x.color.Sprint(x.tag),
-			strings.Repeat(" ", x.width-len(x.tag)),
-			line,
-		)
+		if x.width < 0 {
+			fmt.Fprintln(x.w, line)
+		} else {
+			fmt.Fprintf(x.w, "%s%s|%s\n",
+				x.color.Sprint(x.tag),
+				strings.Repeat(" ", x.width-len(x.tag)),
+				line,
+			)
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		return err

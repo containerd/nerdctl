@@ -33,6 +33,7 @@ var composeCommand = &cli.Command{
 	Usage: "Compose",
 	Subcommands: []*cli.Command{
 		composeUpCommand,
+		composeLogsCommand,
 		composeDownCommand,
 	},
 
