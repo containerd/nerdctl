@@ -778,7 +778,7 @@ Flags:
 - :whale: `-d, --detach`: Detached mode: Run containers in the background
 - :whale: `--no-color`: Produce monochrome output
 - :whale: `--no-log-prefix`: Don't print prefix in logs
-- :whale: `build`: Build images before starting containers.
+- :whale: `--build`: Build images before starting containers.
 
 Unimplemented `docker-compose up` flags: `--quiet-pull`, `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
 `--no-start`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--remove-orphans`, `--exit-code-from`,
