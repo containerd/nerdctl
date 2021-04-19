@@ -31,6 +31,8 @@ import (
 
 type LogsOptions struct {
 	Follow      bool
+	Timestamps  bool
+	Tail        string
 	NoColor     bool
 	NoLogPrefix bool
 }
@@ -80,6 +82,18 @@ func (c *Composer) logs(ctx context.Context, containers map[string]serviceparser
 		if lo.Follow {
 			args = append(args, "-f")
 		}
+		if lo.Timestamps {
+			args = append(args, "-t")
+		}
+		if lo.Tail != "" {
+			args = append(args, "-n")
+			if lo.Tail == "all" {
+				args = append(args, "+0")
+			} else {
+			}
+			args = append(args, lo.Tail)
+		}
+
 		args = append(args, id)
 		state.logCmd = c.createNerdctlCmd(ctx, args...)
 		stdout, err := state.logCmd.StdoutPipe()

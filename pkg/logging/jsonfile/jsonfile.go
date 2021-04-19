@@ -21,9 +21,13 @@ import (
 	"encoding/json"
 	"io"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	timetypes "github.com/docker/docker/api/types/time"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -73,20 +77,62 @@ func Encode(w io.Writer, stdout, stderr io.Reader) error {
 	return nil
 }
 
-func Decode(stdout, stderr io.Writer, r io.Reader) error {
+func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string, until string, logsEOFChan chan<- struct{}) error {
 	dec := json.NewDecoder(r)
+	now := time.Now()
 	for {
 		var e Entry
 		if err := dec.Decode(&e); err == io.EOF {
+			logsEOFChan <- struct{}{}
 			break
 		} else if err != nil {
 			return err
 		}
+
+		output := []byte{}
+
+		if since != "" {
+			ts, err := timetypes.GetTimestamp(since, now)
+			if err != nil {
+				return errors.Wrap(err, `invalid value for "since"`)
+			}
+			v := strings.Split(ts, ".")
+			i, err := strconv.ParseInt(v[0], 10, 64)
+			if err != nil {
+				return err
+			}
+			if !e.Time.After(time.Unix(i, 0)) {
+				continue
+			}
+		}
+
+		if until != "" {
+			ts, err := timetypes.GetTimestamp(until, now)
+			if err != nil {
+				return errors.Wrap(err, `invalid value for "until"`)
+			}
+			v := strings.Split(ts, ".")
+			i, err := strconv.ParseInt(v[0], 10, 64)
+			if err != nil {
+				return err
+			}
+			if !e.Time.Before(time.Unix(i, 0)) {
+				continue
+			}
+		}
+
+		if timestamps {
+			output = append(output, []byte(e.Time.String())...)
+			output = append(output, ' ')
+		}
+
+		output = append(output, []byte(e.Log)...)
+
 		switch e.Stream {
 		case "stdout":
-			stdout.Write([]byte(e.Log))
+			stdout.Write(output)
 		case "stderr":
-			stderr.Write([]byte(e.Log))
+			stderr.Write(output)
 		default:
 			logrus.Errorf("unknown stream name %q, entry=%+v", e.Stream, e)
 		}

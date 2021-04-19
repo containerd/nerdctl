@@ -40,7 +40,7 @@ func TestRunUserGID(t *testing.T) {
 				cmd = append(cmd, "--user", userStr)
 			}
 			cmd = append(cmd, testutil.AlpineImage, "id", "-nG")
-			base.Cmd(cmd...).AssertOut(expected)
+			base.Cmd(cmd...).AssertOutContains(expected)
 		})
 	}
 }

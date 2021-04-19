@@ -42,6 +42,25 @@ var logsCommand = &cli.Command{
 			Aliases: []string{"f"},
 			Usage:   "Follow log output",
 		},
+		&cli.BoolFlag{
+			Name:    "timestamps",
+			Aliases: []string{"t"},
+			Usage:   "Show timestamps",
+		},
+		&cli.StringFlag{
+			Name:    "tail",
+			Aliases: []string{"n"},
+			Value:   "all",
+			Usage:   "Number of lines to show from the end of the logs",
+		},
+		&cli.StringFlag{
+			Name:  "since",
+			Usage: "Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)",
+		},
+		&cli.StringFlag{
+			Name:  "until",
+			Usage: "Show logs before a timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)",
+		},
 	},
 }
 
@@ -86,20 +105,47 @@ func logsAction(clicontext *cli.Context) error {
 				return err
 			}
 			var reader io.Reader
+			var cmd *exec.Cmd
+			//chan for non-follow tail to check the logsEOF
+			logsEOFChan := make(chan struct{})
 			if clicontext.Bool("follow") && status.Status == containerd.Running {
-				reader, err = newTailReader(ctx, task, logJSONFilePath)
+				waitCh, err := task.Wait(ctx)
 				if err != nil {
 					return err
 				}
+				reader, cmd, err = newTailReader(ctx, task, logJSONFilePath, clicontext.Bool("follow"), clicontext.String("tail"))
+				if err != nil {
+					return err
+				}
+
+				go func() {
+					<-waitCh
+					cmd.Process.Kill()
+				}()
 			} else {
-				f, err := os.Open(logJSONFilePath)
-				if err != nil {
-					return err
+				if clicontext.String("tail") != "" {
+					reader, cmd, err = newTailReader(ctx, task, logJSONFilePath, false, clicontext.String("tail"))
+					if err != nil {
+						return err
+					}
+					go func() {
+						<-logsEOFChan
+						cmd.Process.Kill()
+					}()
+
+				} else {
+					f, err := os.Open(logJSONFilePath)
+					if err != nil {
+						return err
+					}
+					defer f.Close()
+					reader = f
+					go func() {
+						<-logsEOFChan
+					}()
 				}
-				defer f.Close()
-				reader = f
 			}
-			return jsonfile.Decode(clicontext.App.Writer, clicontext.App.ErrWriter, reader)
+			return jsonfile.Decode(clicontext.App.Writer, clicontext.App.ErrWriter, reader, clicontext.Bool("timestamps"), clicontext.String("since"), clicontext.String("until"), logsEOFChan)
 		},
 	}
 	req := clicontext.Args().First()
@@ -122,23 +168,34 @@ func logsBashComplete(clicontext *cli.Context) {
 	bashCompleteContainerNames(clicontext, nil)
 }
 
-func newTailReader(ctx context.Context, task containerd.Task, filePath string) (io.Reader, error) {
-	cmd := exec.CommandContext(ctx, "tail", "-f", "-n", "+0", filePath)
+func newTailReader(ctx context.Context, task containerd.Task, filePath string, follow bool, tail string) (io.Reader, *exec.Cmd, error) {
+
+	var args []string
+
+	if tail != "" {
+		args = append(args, "-n")
+		if tail == "all" {
+			args = append(args, "+0")
+		} else {
+			args = append(args, tail)
+		}
+	} else {
+		args = append(args, "-n")
+		args = append(args, "+0")
+	}
+
+	if follow {
+		args = append(args, "-f")
+	}
+	args = append(args, filePath)
+	cmd := exec.CommandContext(ctx, "tail", args...)
 	cmd.Stderr = os.Stderr
 	r, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := cmd.Start(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	waitCh, err := task.Wait(ctx)
-	if err != nil {
-		return nil, err
-	}
-	go func() {
-		<-waitCh
-		cmd.Process.Kill()
-	}()
-	return r, nil
+	return r, cmd, nil
 }

@@ -205,7 +205,7 @@ func (c *Cmd) AssertExitCode(exitCode int) {
 	assert.Assert(c.Base.T, res.ExitCode == exitCode, res.Combined())
 }
 
-func (c *Cmd) AssertOut(s string) {
+func (c *Cmd) AssertOutContains(s string) {
 	c.Base.T.Helper()
 	expected := icmd.Expected{
 		Out: s,
