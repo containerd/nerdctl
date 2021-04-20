@@ -50,7 +50,7 @@ Vagrant.configure("2") do |config|
     chmod +x /usr/local/sbin/runc
 
     # Install RootlessKit
-    ROOTLESSKIT_VERSION=0.14.1
+    ROOTLESSKIT_VERSION=0.14.2
     curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v${ROOTLESSKIT_VERSION}/rootlesskit-$(uname -m).tar.gz | tar Cxzv /usr/local/bin
 
     # Install containerd-fuse-overlayfs (TODO: remove this after release of Fedora 34)

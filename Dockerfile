@@ -16,7 +16,7 @@
 # Usage: `docker run -it --privileged <IMAGE>`. Make sure to add `-t` and `--privileged`.
 
 # Basic deps
-ARG CONTAINERD_VERSION=1.5.0-rc.1
+ARG CONTAINERD_VERSION=1.5.0-rc.2
 ARG RUNC_VERSION=1.0.0-rc93
 ARG CNI_PLUGINS_VERSION=0.9.1
 
@@ -29,7 +29,7 @@ ARG STARGZ_SNAPSHOTTER_VERSION=0.5.0
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=1.1.1
 # Extra deps: Rootless
-ARG ROOTLESSKIT_VERSION=0.14.1
+ARG ROOTLESSKIT_VERSION=0.14.2
 ARG SLIRP4NETNS_VERSION=1.1.9
 # Extra deps: FUSE-OverlayFS
 ARG FUSE_OVERLAYFS_VERSION=1.5.0
