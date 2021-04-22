@@ -25,6 +25,8 @@ import (
 )
 
 func TestContainerInspectContainsPortConfig(t *testing.T) {
+	//nerdctl do not support yet ipv6
+	testutil.DockerIncompatible(t)
 	const (
 		testContainer0 = "nerdctl-test-inspect-with-port-config"
 	)
