@@ -101,6 +101,7 @@ Minor:
 - Exporting Docker/OCI dual-format archives: `nerdctl save` .
 - Importing OCI archives as well as Docker archives: `nerdctl load` .
 - Specifying a non-image rootfs: `nerdctl run -it --rootfs <ROOTFS> /bin/sh` . The CLI syntax conforms to Podman convention.
+- Connecting a container to multiple networks at once: `nerdctl run --net foo --net bar`
 
 Trivial:
 - Inspecting raw OCI config: `nerdctl container inspect --mode=native` .
@@ -252,8 +253,9 @@ Basic flags:
   - Default: "missing"
 
 Network flags:
-- :whale: `--network=(bridge|host|none)`: Connect a container to a network
+- :whale: `--net, --network=(bridge|host|none|<CNI>)`: Connect a container to a network
   - Default: "bridge"
+  - :nerd_face: Unlike Docker, this flag can be specified multiple times (`--net foo --net bar`)
 - :whale: `-p, --publish`: Publish a container's port(s) to the host
 - :whale: `--dns`: Set custom DNS servers
 - :whale: `-h, --hostname`: Container host name

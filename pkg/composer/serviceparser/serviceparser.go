@@ -266,11 +266,6 @@ func getNetworks(project *compose.Project, svc compose.ServiceConfig) ([]string,
 		fullNames = append(fullNames, net.Name)
 	}
 
-	if len(fullNames) > 1 {
-		return nil, errors.Errorf("service %s: specifying multiple networks (%v) is not supported yet",
-			svc.Name, fullNames)
-	}
-
 	return fullNames, nil
 }
 

@@ -146,3 +146,52 @@ COPY index.html /usr/share/nginx/html/index.html
 	t.Logf("respBody=%q", respBody)
 	assert.Assert(t, strings.Contains(string(respBody), indexHTML))
 }
+
+func TestComposeUpMultiNet(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = fmt.Sprintf(`
+version: '3.1'
+
+services:
+  svc0:
+    image: %s
+    networks:
+      - net0
+      - net1
+      - net2
+  svc1:
+    image: %s
+    networks:
+      - net0
+      - net1
+  svc2:
+    image: %s
+    networks:
+      - net2
+
+networks:
+  net0: {}
+  net1: {}
+  net2: {}
+`, testutil.NginxAlpineImage, testutil.NginxAlpineImage, testutil.NginxAlpineImage)
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	svc0 := fmt.Sprintf("%s_svc0_1", projectName)
+	svc1 := fmt.Sprintf("%s_svc1_1", projectName)
+	svc2 := fmt.Sprintf("%s_svc2_1", projectName)
+
+	base.Cmd("exec", svc0, "ping", "-c", "1", "svc0").AssertOK()
+	base.Cmd("exec", svc0, "ping", "-c", "1", "svc1").AssertOK()
+	base.Cmd("exec", svc0, "ping", "-c", "1", "svc2").AssertOK()
+	base.Cmd("exec", svc1, "ping", "-c", "1", "svc0").AssertOK()
+	base.Cmd("exec", svc2, "ping", "-c", "1", "svc0").AssertOK()
+	base.Cmd("exec", svc1, "ping", "-c", "1", "svc2").AssertFail()
+}

@@ -20,7 +20,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/containerd/go-cni"
+	"github.com/containernetworking/cni/pkg/types/current"
 	"gotest.tools/v3/assert"
 )
 
@@ -75,15 +75,16 @@ func TestCreateLine(t *testing.T) {
 		thatMeta := &Meta{
 			Namespace: "default",
 			ID:        "984d63ce45ae",
-			Networks: map[string]*cni.CNIResult{
+			Networks: map[string]*current.Result{
 				tc.thatNetwork: {
-					Interfaces: map[string]*cni.Config{
-						"eth0": {
-							IPConfigs: []*cni.IPConfig{
-								{
-									IP: net.ParseIP(tc.thatIP),
-								},
-							},
+					Interfaces: []*current.Interface{
+						{
+							Name: "eth0",
+						},
+					},
+					IPs: []*current.IPConfig{
+						{
+							Address: net.IPNet{IP: net.ParseIP(tc.thatIP)},
 						},
 					},
 				},
@@ -95,7 +96,7 @@ func TestCreateLine(t *testing.T) {
 		myNetworks := map[string]struct{}{
 			tc.myNetwork: {},
 		}
-		line := createLine(tc.thatIP, thatMeta, myNetworks)
+		line := createLine(tc.thatIP, tc.thatNetwork, thatMeta, myNetworks)
 		t.Logf("tc=%+v, line=%q", tc, line)
 		assert.Equal(t, tc.expected, line)
 	}

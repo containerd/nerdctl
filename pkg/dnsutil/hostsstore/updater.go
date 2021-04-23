@@ -33,18 +33,20 @@ import (
 // newUpdater creates an updater for hostsD (/var/lib/nerdctl/<ADDRHASH>/etchosts)
 func newUpdater(hostsD string) *updater {
 	u := &updater{
-		hostsD:      hostsD,
-		metaByIPStr: make(map[string]*Meta),
-		metaByDir:   make(map[string]*Meta),
+		hostsD:        hostsD,
+		metaByIPStr:   make(map[string]*Meta),
+		nwNameByIPStr: make(map[string]string),
+		metaByDir:     make(map[string]*Meta),
 	}
 	return u
 }
 
 // updater is the struct for updater.update()
 type updater struct {
-	hostsD      string           // "/var/lib/nerdctl/<ADDRHASH>/etchosts"
-	metaByIPStr map[string]*Meta // key: IP string
-	metaByDir   map[string]*Meta // key: "/var/lib/nerdctl/<ADDRHASH>/etchosts/<NS>/<ID>"
+	hostsD        string            // "/var/lib/nerdctl/<ADDRHASH>/etchosts"
+	metaByIPStr   map[string]*Meta  // key: IP string
+	nwNameByIPStr map[string]string // key: IP string, value: key of Meta.Networks
+	metaByDir     map[string]*Meta  // key: "/var/lib/nerdctl/<ADDRHASH>/etchosts/<NS>/<ID>"
 }
 
 // update updates the hostsD tree.
@@ -79,15 +81,15 @@ func (u *updater) phase1() error {
 			return err
 		}
 		u.metaByDir[filepath.Dir(path)] = &meta
-		for _, cniRes := range meta.Networks {
-			for _, cfg := range cniRes.Interfaces {
-				for _, ipCfg := range cfg.IPConfigs {
-					if ip := ipCfg.IP; ip != nil {
-						if ip.IsLoopback() || ip.IsUnspecified() {
-							continue
-						}
-						u.metaByIPStr[ip.String()] = &meta
+		for nwName, cniRes := range meta.Networks {
+			for _, ipCfg := range cniRes.IPs {
+				if ip := ipCfg.Address.IP; ip != nil {
+					if ip.IsLoopback() || ip.IsUnspecified() {
+						continue
 					}
+					ipStr := ip.String()
+					u.metaByIPStr[ipStr] = &meta
+					u.nwNameByIPStr[ipStr] = nwName
 				}
 			}
 		}
@@ -129,8 +131,9 @@ func (u *updater) phase2() error {
 		buf.WriteString("127.0.0.1	localhost localhost.localdomain\n")
 		buf.WriteString(":1		localhost localhost.localdomain\n")
 		// TODO: cut off entries for the containers in other networks
-		for ip, meta := range u.metaByIPStr {
-			if line := createLine(ip, meta, myNetworks); line != "" {
+		for ip, nwName := range u.nwNameByIPStr {
+			meta := u.metaByIPStr[ip]
+			if line := createLine(ip, nwName, meta, myNetworks); line != "" {
 				if _, err := buf.WriteString(line); err != nil {
 					return err
 				}
@@ -152,25 +155,22 @@ func (u *updater) phase2() error {
 // for `nerdctl --name=foo --hostname=bar --network=n0`.
 //
 // May return an empty string
-func createLine(ip string, meta *Meta, myNetworks map[string]struct{}) string {
+func createLine(thatIP, thatNetwork string, meta *Meta, myNetworks map[string]struct{}) string {
+	if _, ok := myNetworks[thatNetwork]; !ok {
+		// Do not add lines for other networks
+		return ""
+	}
 	baseHostnames := []string{meta.Hostname}
 	if meta.Name != "" {
 		baseHostnames = append(baseHostnames, meta.Name)
 	}
 
-	line := ip + "\t"
+	line := thatIP + "\t"
 	for _, baseHostname := range baseHostnames {
 		line += baseHostname + " "
-		for nwName := range meta.Networks {
-			if _, ok := myNetworks[nwName]; !ok {
-				// Do not add lines for other networks
-				return ""
-			}
-			if nwName == netutil.DefaultNetworkName {
-				// Do not add a entry like "foo.bridge"
-				continue
-			}
-			line += baseHostname + "." + nwName + " "
+		if thatNetwork != netutil.DefaultNetworkName {
+			// Do not add a entry like "foo.bridge"
+			line += baseHostname + "." + thatNetwork + " "
 		}
 	}
 	line = strings.TrimSpace(line) + "\n"
