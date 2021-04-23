@@ -118,11 +118,6 @@ jobs:
       run: |
         GOOS=linux make binaries
         GOOS=linux go test -c .
-    - name: "Cache ~/.vagrant.d/boxes"
-      uses: actions/cache@v2
-      with:
-        path: ~/.vagrant.d/boxes
-        key: vagrant-${{ hashFiles('Vagrantfile*') }}
     - name: "Boot VM"
       run: |
         vagrant up
