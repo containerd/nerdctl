@@ -17,24 +17,25 @@
 package main
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/docker/go-connections/nat"
 	"gotest.tools/v3/assert"
 )
 
 func TestContainerInspectContainsPortConfig(t *testing.T) {
-	const (
-		testContainer0 = "nerdctl-test-inspect-with-port-config"
-	)
+	const testContainer = "nerdctl-test-inspect-with-port-config"
 
 	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer0).Run()
+	defer base.Cmd("rm", "-f", testContainer).Run()
 
-	const expected = `{"80/tcp":[{"HostIp":"0.0.0.0","HostPort":"8080"}]}`
-	base.Cmd("run", "-d", "--name", testContainer0, "-p", "8080:80", testutil.NginxAlpineImage).AssertOK()
-	inspect0 := base.InspectContainer(testContainer0)
-	returnedJson, _ := json.Marshal(inspect0.NetworkSettings.Ports)
-	assert.Equal(base.T, expected, string(returnedJson))
+	base.Cmd("run", "-d", "--name", testContainer, "-p", "8080:80", testutil.NginxAlpineImage).AssertOK()
+	inspect := base.InspectContainer(testContainer)
+	inspect80TCP := (*inspect.NetworkSettings.Ports)["80/tcp"]
+	expected := nat.PortBinding{
+		HostIP:   "0.0.0.0",
+		HostPort: "8080",
+	}
+	assert.Equal(base.T, expected, inspect80TCP[0])
 }
