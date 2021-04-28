@@ -51,3 +51,11 @@ func CgroupnsMode() string {
 	}
 	return "host"
 }
+
+func CgroupsVersion() string {
+	if cgroups.Mode() == cgroups.Unified {
+		return "2"
+	}
+
+	return "1"
+}

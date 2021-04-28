@@ -18,14 +18,10 @@ package containerinspector
 
 import (
 	"context"
-	"fmt"
-	"net"
-	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/typeurl"
-	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/sirupsen/logrus"
 )
 
@@ -58,58 +54,11 @@ func Inspect(ctx context.Context, container containerd.Container) (*native.Conta
 		return n, nil
 	}
 	n.Process.Status = st
-	netNSPath := fmt.Sprintf("/proc/%d/ns/net", n.Process.Pid)
-	netNS, err := inspectNetNS(ctx, netNSPath)
+	netNS, err := inspectNetNS(ctx, n.Process.Pid)
 	if err != nil {
 		logrus.WithError(err).WithField("id", id).Warnf("failed to inspect NetNS")
 		return n, nil
 	}
 	n.Process.NetNS = netNS
 	return n, nil
-}
-
-func inspectNetNS(ctx context.Context, nsPath string) (*native.NetNS, error) {
-	res := &native.NetNS{}
-	fn := func(_ ns.NetNS) error {
-		intf, err := net.Interfaces()
-		if err != nil {
-			return err
-		}
-		res.Interfaces = make([]native.NetInterface, len(intf))
-		for i, f := range intf {
-			x := native.NetInterface{
-				Interface: f,
-			}
-			if f.HardwareAddr != nil {
-				x.HardwareAddr = f.HardwareAddr.String()
-			}
-			if x.Interface.Flags.String() != "0" {
-				x.Flags = strings.Split(x.Interface.Flags.String(), "|")
-			}
-			if addrs, err := x.Interface.Addrs(); err == nil {
-				x.Addrs = make([]string, len(addrs))
-				for j, a := range addrs {
-					x.Addrs[j] = a.String()
-				}
-			}
-			res.Interfaces[i] = x
-		}
-		res.PrimaryInterface = determinePrimaryInterface(res.Interfaces)
-		return nil
-	}
-	if err := ns.WithNetNSPath(nsPath, fn); err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-// determinePrimaryInterface returns a net.Interface.Index value, not a slice index.
-// Zero means no priary interface was detected.
-func determinePrimaryInterface(interfaces []native.NetInterface) int {
-	for _, f := range interfaces {
-		if f.Interface.Flags&net.FlagLoopback == 0 && f.Interface.Flags&net.FlagUp != 0 && !strings.HasPrefix(f.Name, "lo") {
-			return f.Index
-		}
-	}
-	return 0
 }

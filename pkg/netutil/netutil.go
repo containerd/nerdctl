@@ -39,12 +39,6 @@ type NetworkConfigList struct {
 	File      string
 }
 
-const (
-	DefaultNetworkName = "bridge"
-	DefaultID          = 0
-	DefaultCIDR        = "10.4.0.0/24"
-)
-
 type CNIEnv struct {
 	Path        string
 	NetconfPath string
@@ -61,49 +55,6 @@ type ConfigListTemplateOpts struct {
 	Gateway      string // e.g. "10.4.0.1"
 	ExtraPlugins string // e.g. `,{"type":"isolation"}`
 }
-
-// basicPlugins is used by ConfigListTemplate
-var basicPlugins = []string{"bridge", "portmap", "firewall", "tuning"}
-
-// ConfigListTemplate was copied from https://github.com/containers/podman/blob/v2.2.0/cni/87-podman-bridge.conflist
-const ConfigListTemplate = `{
-  "cniVersion": "0.4.0",
-  "name": "{{.Name}}",
-  "nerdctlID": {{.ID}},
-  "plugins": [
-    {
-      "type": "bridge",
-      "bridge": "nerdctl{{.ID}}",
-      "isGateway": true,
-      "ipMasq": true,
-      "hairpinMode": true,
-      "ipam": {
-        "type": "host-local",
-        "routes": [{ "dst": "0.0.0.0/0" }],
-        "ranges": [
-          [
-            {
-              "subnet": "{{.Subnet}}",
-              "gateway": "{{.Gateway}}"
-            }
-          ]
-        ]
-      }
-    },
-    {
-      "type": "portmap",
-      "capabilities": {
-        "portMappings": true
-      }
-    },
-    {
-      "type": "firewall"
-    },
-    {
-      "type": "tuning"
-    }{{.ExtraPlugins}}
-  ]
-}`
 
 // GenerateConfigList creates NetworkConfigList.
 // GenerateConfigList does not fill "File" field.
