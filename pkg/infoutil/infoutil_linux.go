@@ -24,6 +24,7 @@ import (
 
 	"strings"
 
+	"github.com/containerd/cgroups"
 	"golang.org/x/sys/unix"
 )
 
@@ -106,4 +107,12 @@ func getOSReleaseAttrib(line string) (string, string) {
 		return x[0][1], x[0][3]
 	}
 	return "", ""
+}
+
+func CgroupsVersion() string {
+	if cgroups.Mode() == cgroups.Unified {
+		return "2"
+	}
+
+	return "1"
 }

@@ -54,7 +54,7 @@ func Info(ctx context.Context, client *containerd.Client, defaultSnapshotter str
 	info.Plugins.Storage = snapshotterPlugins
 	info.LoggingDriver = "json-file" // hard-coded
 	info.CgroupDriver = defaults.CgroupManager()
-	info.CgroupVersion = defaults.CgroupsVersion()
+	info.CgroupVersion = CgroupsVersion()
 	info.KernelVersion = UnameR()
 	info.OperatingSystem = DistroName()
 	info.OSType = runtime.GOOS
