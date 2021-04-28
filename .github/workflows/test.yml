@@ -66,6 +66,10 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
+    - name: "Info"
+      run: uname -a
+    - name: "Modprobe"
+      run: modprobe overlay
     - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
       run: DOCKER_BUILDKIT=1 docker build -t test-rootless --target test-rootless --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
     - name: "Test    (network driver=slirp4netns, port driver=builtin)"
