@@ -29,3 +29,7 @@ func UnameM() string {
 func DistroName() string {
 	return ""
 }
+
+func CgroupsVersion() string {
+	return ""
+}

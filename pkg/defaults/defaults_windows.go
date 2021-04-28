@@ -48,10 +48,6 @@ func CgroupManager() string {
 	return ""
 }
 
-func CgroupsVersion() string {
-	return ""
-}
-
 func CgroupnsMode() string {
 	return ""
 }
