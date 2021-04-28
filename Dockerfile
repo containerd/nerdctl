@@ -195,6 +195,7 @@ RUN curl -L https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.t
 ENV PATH=/usr/local/go/bin:$PATH
 COPY . /go/src/github.com/containerd/nerdctl
 WORKDIR /go/src/github.com/containerd/nerdctl
+VOLUME /tmp
 ENV CGO_ENABLED=0
 CMD ["go", "test", "-v", "./..."]
 
