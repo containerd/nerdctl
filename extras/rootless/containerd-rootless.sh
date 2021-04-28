@@ -97,6 +97,15 @@ if [ -z $_CONTAINERD_ROOTLESS_CHILD ]; then
 
 	_CONTAINERD_ROOTLESS_CHILD=1
 	export _CONTAINERD_ROOTLESS_CHILD
+
+	# `selinuxenabled` always returns false in RootlessKit child, so we execute `selinuxenabled` in the parent.
+	# https://github.com/rootless-containers/rootlesskit/issues/94
+	if command -v selinuxenabled >/dev/null 2>&1; then
+		if selinuxenabled; then
+			_CONTAINERD_ROOTLESS_SELINUX=1
+			export _CONTAINERD_ROOTLESS_SELINUX
+		fi
+	fi
 	# Re-exec the script via RootlessKit, so as to create unprivileged {user,mount,network} namespaces.
 	#
 	# --copy-up allows removing/creating files in the directories by creating tmpfs and symlinks
@@ -134,6 +143,13 @@ else
 	# Bind-mount /etc/containerd
 	mkdir -p "${XDG_CONFIG_HOME}/containerd" "/etc/containerd"
 	mount --bind "${XDG_CONFIG_HOME}/containerd" "/etc/containerd"
+
+	if [ -n "$_CONTAINERD_ROOTLESS_SELINUX" ]; then
+		# iptables requires /run in the child to be relabeled. The actual /run in the parent is unaffected.
+		# https://github.com/containers/podman/blob/e6fc34b71aa9d876b1218efe90e14f8b912b0603/libpod/networking_linux.go#L396-L401
+		# https://github.com/moby/moby/issues/41230
+		chcon system_u:object_r:iptables_var_run_t:s0 /run
+	fi
 
 	exec containerd $@
 fi
