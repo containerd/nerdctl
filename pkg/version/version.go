@@ -19,6 +19,6 @@ package version
 var (
 	// Version is filled via Makefile
 	Version = "<unknown>"
-	// Revison is filled via Makefile
+	// Revision is filled via Makefile
 	Revision = "<unknown>"
 )

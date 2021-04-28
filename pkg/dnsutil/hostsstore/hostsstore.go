@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-// Package hoststore provides the interface for /var/lib/nerdctl/<ADDRHASH>/etchosts .
+// Package hostsstore provides the interface for /var/lib/nerdctl/<ADDRHASH>/etchosts .
 // Prioritize simplicity over scalability.
 package hostsstore
 

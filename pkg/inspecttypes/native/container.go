@@ -45,7 +45,7 @@ type NetNS struct {
 	Interfaces       []NetInterface `json:"Interfaces,omitempty"`
 }
 
-// NetInteface wraps net.Interface for JSON marshallability.
+// NetInterface wraps net.Interface for JSON marshallability.
 // No support for unmarshalling.
 type NetInterface struct {
 	net.Interface
