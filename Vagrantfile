@@ -3,7 +3,7 @@
 
 # Vagrant box for testing cgroup v2
 Vagrant.configure("2") do |config|
-  config.vm.box = "fedora/33-cloud-base"
+  config.vm.box = "fedora/34-cloud-base"
   memory = 4096
   cpus = 2
   config.vm.provider :virtualbox do |v|
@@ -35,25 +35,14 @@ Vagrant.configure("2") do |config|
       containernetworking-plugins \
       iptables \
       slirp4netns \
-      fuse-overlayfs \
-      policycoreutils-python-utils
+      fuse-overlayfs
     systemctl enable --now containerd
-
-    # SELinux workaround (https://github.com/moby/moby/issues/41230)
-    semanage permissive -a iptables_t
-
-    # Install runc
-    RUNC_VERSION=1.0.0-rc93
-    # remove rpm version of runc, which doesn't support cgroup v2 (TODO: remove this after release of Fedora 34)
-    rm -f /usr/bin/runc
-    curl -o /usr/local/sbin/runc -fsSL https://github.com/opencontainers/runc/releases/download/v${RUNC_VERSION}/runc.${GOARCH}
-    chmod +x /usr/local/sbin/runc
 
     # Install RootlessKit
     ROOTLESSKIT_VERSION=0.14.2
     curl -sSL https://github.com/rootless-containers/rootlesskit/releases/download/v${ROOTLESSKIT_VERSION}/rootlesskit-$(uname -m).tar.gz | tar Cxzv /usr/local/bin
 
-    # Install containerd-fuse-overlayfs (TODO: remove this after release of Fedora 34)
+    # Install containerd-fuse-overlayfs (required on SELinux hosts: https://github.com/moby/moby/issues/42333)
     CONTAINERD_FUSE_OVERLAYFS_VERSION=1.0.2
     curl -sSL https://github.com/containerd/fuse-overlayfs-snapshotter/releases/download/v${CONTAINERD_FUSE_OVERLAYFS_VERSION}/containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION}-linux-${GOARCH}.tar.gz | tar Cxzv /usr/local/bin
     mkdir -p /home/vagrant/.config/containerd

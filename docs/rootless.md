@@ -47,7 +47,7 @@ $ containerd-rootless-setuptool.sh install-buildkit
 ### FUSE-OverlayFS
 
 The `overlayfs` snapshotter only works on the following hosts:
-- Any distro, with kernel >= 5.11
+- Any distro, with kernel >= 5.11, and without SELinux
 - Ubuntu since 2015
 - Debian since 10
 
@@ -107,28 +107,5 @@ See https://github.com/containerd/stargz-snapshotter/blob/master/docs/pre-conver
 
 ## Troubleshooting
 
-### Hint to Fedora 33 users
-
-#### runc rpm
-The runc package of Fedora 33 does not support cgroup v2.
-Use the upstream runc binary: https://github.com/opencontainers/runc/releases
-
-The runc package of Fedora 34 will probably support cgroup v2.
-
-Alternatively, you may choose to use `crun` instead of `runc`:
-`nerdctl run --runtime=crun`
-
-#### OverlayFS
-You need to use FUSE-OverlayFS (see above) instead of real overlayfs, because Fedora 33 does not support real overlayfs for rootless.
-
-Fedora 34 (kernel >= 5.11) will probably support real overlayfs for rootless.
-
-#### SELinux
-If SELinux is enabled on your host, probably you need the following workaround to avoid `can't open lock file /run/xtables.lock:` error:
-```bash
-sudo dnf install -y policycoreutils-python-utils
-sudo semanage permissive -a iptables_t
-```
-
-See https://github.com/moby/moby/issues/41230 .
-This workaround will no longer be needed after the release of Fedora 34.
+### Hint to Fedora users
+- If SELinux is enabled on your host, you need to use [`fuse-overlayfs` instead of `overlayfs`](#fuse-overlayfs).
