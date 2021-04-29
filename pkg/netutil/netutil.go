@@ -90,7 +90,7 @@ func GenerateConfigList(e *CNIEnv, id int, name, cidr string) (*NetworkConfigLis
 	}
 	gateway := make(net.IP, len(subnet.IP))
 	copy(gateway, subnet.IP)
-	gateway[3] += 1
+	gateway[3]++
 	opts := &ConfigListTemplateOpts{
 		ID:           id,
 		Name:         name,
