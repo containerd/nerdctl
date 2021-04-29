@@ -18,9 +18,10 @@ package main
 
 import (
 	"context"
-
+	"fmt"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
+	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 )
 
@@ -36,4 +37,32 @@ func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 
 func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return nil, cobra.ShellCompDirectiveNoFileComp
+}
+
+func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
+	cpus, err := cmd.Flags().GetFloat64("cpus")
+	if err != nil {
+		return nil, err
+	}
+	if cpus > 0.0 {
+		opts = append(opts, oci.WithWindowsCPUCount(uint64(cpus)))
+	}
+
+	memStr, err := cmd.Flags().GetString("memory")
+	if err != nil {
+		return nil, err
+	}
+	if memStr != "" {
+		mem64, err := units.RAMInBytes(memStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse memory bytes %q: %w", memStr, err)
+		}
+		opts = append(opts, oci.WithMemoryLimit(uint64(mem64)))
+	}
+
+	opts = append(opts,
+		oci.WithWindowNetworksAllowUnqualifiedDNSQuery(),
+		oci.WithWindowsIgnoreFlushesDuringBoot())
+
+	return opts, nil
 }

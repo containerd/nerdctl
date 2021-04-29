@@ -96,7 +96,7 @@ See [`./docs/freebsd.md`](docs/freebsd.md).
 ### Windows
 
 - Linux containers: Known to work on WSL2
-- Windows containers: WIP, see [PR #197](https://github.com/containerd/nerdctl/pull/197)
+- Windows containers: experimental support for Windows (see below for features that are currently known to work)
 
 ### Docker
 
@@ -194,6 +194,8 @@ Please certify your [Developer Certificate of Origin (DCO)](https://developercer
 
 :nerd_face: = nerdctl specific
 
+:window: = Windows enabled
+
 Unlisted `docker` CLI flags are unimplemented yet in `nerdctl` CLI.
 It does not necessarily mean that the corresponding features are missing in containerd.
 
@@ -202,10 +204,10 @@ It does not necessarily mean that the corresponding features are missing in cont
 
 
   - [Run & Exec](#run--exec)
-    - [:whale: nerdctl run](#whale-nerdctl-run)
-    - [:whale: nerdctl exec](#whale-nerdctl-exec)
+    - [:whale: :window: nerdctl run](#whale-nerdctl-run)
+    - [:whale: :window: nerdctl exec](#whale-nerdctl-exec)
   - [Container management](#container-management)
-    - [:whale: nerdctl ps](#whale-nerdctl-ps)
+    - [:whale: :window: nerdctl ps](#whale-nerdctl-ps)
     - [:whale: nerdctl inspect](#whale-nerdctl-inspect)
     - [:whale: nerdctl logs](#whale-nerdctl-logs)
     - [:whale: nerdctl port](#whale-nerdctl-port)
@@ -221,8 +223,8 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl build](#whale-nerdctl-build)
     - [:whale: nerdctl commit](#whale-nerdctl-commit)
   - [Image management](#image-management)
-    - [:whale: nerdctl images](#whale-nerdctl-images)
-    - [:whale: nerdctl pull](#whale-nerdctl-pull)
+    - [:whale: :window: nerdctl images](#whale-nerdctl-images)
+    - [:whale: :window: nerdctl pull](#whale-nerdctl-pull)
     - [:whale: nerdctl push](#whale-nerdctl-push)
     - [:whale: nerdctl load](#whale-nerdctl-load)
     - [:whale: nerdctl save](#whale-nerdctl-save)
@@ -246,7 +248,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl volume inspect](#whale-nerdctl-volume-inspect)
     - [:whale: nerdctl volume rm](#whale-nerdctl-volume-rm)
   - [Namespace management](#namespace-management)
-    - [:nerd_face: nerdctl namespace ls](#nerd_face-nerdctl-namespace-ls)
+    - [:nerd_face: :window: nerdctl namespace ls](#nerd_face-nerdctl-namespace-ls)
   - [System](#system)
     - [:whale: nerdctl events](#whale-nerdctl-events)
     - [:whale: nerdctl info](#whale-nerdctl-info)
@@ -280,10 +282,10 @@ Run a command in a new container.
 Usage: `nerdctl run [OPTIONS] IMAGE [COMMAND] [ARG...]`
 
 Basic flags:
-- :whale: `-i, --interactive`: Keep STDIN open even if not attached"
-- :whale: `-t, --tty`: Allocate a pseudo-TTY
+- :whale: :window: `-i, --interactive`: Keep STDIN open even if not attached"
+- :whale: :window: `-t, --tty`: Allocate a pseudo-TTY
   - :warning: WIP: currently `-t` requires `-i`, and conflicts with `-d`
-- :whale: `-d, --detach`: Run container in background and print container ID
+- :whale: :window: `-d, --detach`: Run container in background and print container ID
 - :whale: `--restart=(no|always)`: Restart policy to apply when a container exits
   - Default: "no"
   - :warning: No support for `on-failure` and `unless-stopped`
@@ -317,7 +319,7 @@ Cgroup flags:
 - :whale: `--device`: Add a host device to the container
 
 User flags:
-- :whale: `-u, --user`: Username or UID (format: <name|uid>[:<group|gid>])
+- :whale: :window: `-u, --user`: Username or UID (format: <name|uid>[:<group|gid>])
 
 Security flags:
 - :whale: `--security-opt seccomp=<PROFILE_JSON_FILE>`: specify custom seccomp profile
@@ -332,7 +334,7 @@ Runtime flags:
 - :whale: `--sysctl`: Sysctl options, e.g \"net.ipv4.ip_forward=1\"
 
 Volume flags:
-- :whale: `-v, --volume`: Bind mount a volume
+- :whale: :window: `-v, --volume`: Bind mount a volume
 - :whale: `--tmpfs`: Mount a tmpfs directory
 
 Rootfs flags:
@@ -341,16 +343,16 @@ Rootfs flags:
   Corresponds to Podman CLI.
 
 Env flags:
-- :whale: `--entrypoint`: Overwrite the default ENTRYPOINT of the image
-- :whale: `-w, --workdir`: Working directory inside the container
-- :whale: `-e, --env`: Set environment variables
-- :whale: `--env-file`: Set environment variables from file
+- :whale: :window: `--entrypoint`: Overwrite the default ENTRYPOINT of the image
+- :whale: :window: `-w, --workdir`: Working directory inside the container
+- :whale: :window: `-e, --env`: Set environment variables
+- :whale: :window: `--env-file`: Set environment variables from file
 
 Metadata flags:
-- :whale: `--name`: Assign a name to the container
-- :whale: `-l, --label`: Set meta data on a container
-- :whale: `--label-file`: Read in a line delimited file of labels
-- :whale: `--cidfile`: Write the container ID to the file
+- :whale: :window: `--name`: Assign a name to the container
+- :whale: :window: `-l, --label`: Set meta data on a container
+- :whale: :window: `--label-file`: Read in a line delimited file of labels
+- :whale: :window: `--cidfile`: Write the container ID to the file
 - :nerd_face: `--pidfile`: file path to write the task's pid. The CLI syntax conforms to Podman convention.
 
 Shared memory flags:
@@ -480,7 +482,7 @@ Options:
 
 </details>
 
-### :whale: nerdctl exec
+### :whale: :window: nerdctl exec
 Run a command in a running container.
 
 Usage: `nerdctl exec [OPTIONS] CONTAINER COMMAND [ARG...]`
@@ -511,7 +513,7 @@ Flags:
 
 Unimplemented `docker ps` flags: `--filter`, `--last`, `--size`
 
-### :whale: nerdctl inspect
+### :whale: :window: nerdctl inspect
 Display detailed information on one or more containers.
 
 Usage: `nerdctl inspect [OPTIONS] NAME|ID [NAME|ID...]`
@@ -895,7 +897,7 @@ Usage: `nerdctl volume rm [OPTIONS] VOLUME [VOLUME...]`
 
 ## Namespace management
 
-### :nerd_face: nerdctl namespace ls
+### :nerd_face: :window: nerdctl namespace ls
 List containerd namespaces such as "default", "moby", or "k8s.io".
 
 Usage: `nerdctl namespace ls [OPTIONS]`
@@ -1039,13 +1041,13 @@ Unimplemented `docker-compose ps` (V1) flags: `--quiet`, `--services`, `--filter
 Unimplemented `docker compose ps` (V2) flags: `--format`, `--status`
 
 ## Global flags
-- :nerd_face: `-a`, `--address`:  containerd address, optionally with "unix://" prefix
+- :nerd_face: :window: `-a`, `--address`:  containerd address, optionally with "unix://" prefix
 - :whale:     `-H`, `--host`: Docker-compatible alias for `-a`, `--address`
-- :nerd_face: `-n`, `--namespace`: containerd namespace
-- :nerd_face: `--snapshotter`: containerd snapshotter
-- :nerd_face: `--cni-path`: CNI binary path (default: `/opt/cni/bin`) [`$CNI_PATH`]
-- :nerd_face: `--cni-netconfpath`: CNI netconf path (default: `/etc/cni/net.d`) [`$NETCONFPATH`]
-- :nerd_face: `--data-root`: nerdctl data root, e.g. "/var/lib/nerdctl"
+- :nerd_face: :window: `-n`, `--namespace`: containerd namespace
+- :nerd_face: :window: `--snapshotter`: containerd snapshotter
+- :nerd_face: :window: `--cni-path`: CNI binary path (default: `/opt/cni/bin`) [`$CNI_PATH`]
+- :nerd_face: :window: `--cni-netconfpath`: CNI netconf path (default: `/etc/cni/net.d`) [`$NETCONFPATH`]
+- :nerd_face: :window: `--data-root`: nerdctl data root, e.g. "/var/lib/nerdctl"
 - :nerd_face: `--cgroup-manager=(cgroupfs|systemd|none)`: cgroup manager
   - Default: "systemd" on cgroup v2 (rootful & rootless), "cgroupfs" on v1 rootful, "none" on v1 rootless
 - :nerd_face: `--insecure-registry`: skips verifying HTTPS certs, and allows falling back to plain HTTP

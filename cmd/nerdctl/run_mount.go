@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
@@ -122,16 +123,37 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 			return nil, nil, err
 		}
 
-		// We should do defer first, if not we will not do Unmount when only a part of Mounts are failed.
-		defer func() {
-			err = mount.UnmountAll(tempDir, 0)
-		}()
+		// windows has additional steps for mounting see
+		// https://github.com/containerd/containerd/commit/791e175c79930a34cfbb2048fbcaa8493fd2c86b
+		unmounter := func(mountPath string) {
+			if uerr := mount.Unmount(mountPath, 0); uerr != nil {
+				logrus.Debugf("Failed to unmount snapshot %q", tempDir)
+				if err == nil {
+					err = uerr
+				}
+			}
+		}
 
-		if err := mount.All(mounts, tempDir); err != nil {
-			if err := s.Remove(ctx, tempDir); err != nil && !errdefs.IsNotFound(err) {
+		if runtime.GOOS == "windows" {
+			for _, m := range mounts {
+				defer unmounter(m.Source)
+				// appending the layerID to the root.
+				mountPath := filepath.Join(tempDir, filepath.Base(m.Source))
+				if err := m.Mount(mountPath); err != nil {
+					if err := s.Remove(ctx, tempDir); err != nil && !errdefs.IsNotFound(err) {
+						return nil, nil, err
+					}
+					return nil, nil, err
+				}
+			}
+		} else {
+			defer unmounter(tempDir)
+			if err := mount.All(mounts, tempDir); err != nil {
+				if err := s.Remove(ctx, tempDir); err != nil && !errdefs.IsNotFound(err) {
+					return nil, nil, err
+				}
 				return nil, nil, err
 			}
-			return nil, nil, err
 		}
 	}
 

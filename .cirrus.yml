@@ -12,3 +12,16 @@ task:
     - go test -v ./pkg/...
     - cd cmd/nerdctl
     - sudo go run . run $NERDCTL_RUN_ARGS | grep running
+
+docker_builder:
+  name: windows
+  platform: windows
+  os_version: 2019
+  env:
+    CGO_ENABLED: 0
+  build_script:
+    - mkdir "C:\Windows\system32\config\systemprofile\AppData\Local\Temp\"
+    - powershell hack/configure-windows-ci.ps1
+    - refreshenv
+    - go install .\cmd\nerdctl\
+    - go test -v -run "^(TestRunWorkdir|TestRunWithDoubleDash|TestRunExitCode|TestRunCIDFile|TestRunEnvFile|TestRunEnv|TestExec|ImageInspect|TestRunUserName)$" ./cmd/...

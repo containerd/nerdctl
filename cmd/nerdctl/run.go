@@ -57,7 +57,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/docker/cli/opts"
-	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/sirupsen/logrus"
@@ -294,15 +293,11 @@ func runAction(cmd *cobra.Command, args []string) error {
 
 	opts = append(opts,
 		oci.WithDefaultSpec(),
-		oci.WithDefaultUnixDevices,
-		WithoutRunMount(), // unmount default tmpfs on "/run": https://github.com/containerd/nerdctl/issues/157
 	)
 
-	if runtime.GOOS == "linux" {
-		opts = append(opts,
-			oci.WithMounts([]specs.Mount{
-				{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro", "nosuid", "noexec", "nodev"}},
-			}))
+	opts, err = setPlatformOptions(opts, cmd, id)
+	if err != nil {
+		return err
 	}
 
 	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, platform, cmd, args, id)
@@ -452,42 +447,45 @@ func runAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		conf, err := resolvconf.Get()
-		if err != nil {
-			return err
-		}
-		slirp4Dns := []string{}
-		if rootlessutil.IsRootlessChild() {
-			slirp4Dns, err = dnsutil.GetSlirp4netnsDns()
+		if runtime.GOOS == "linux" {
+			conf, err := resolvconf.Get()
 			if err != nil {
 				return err
 			}
-		}
-		conf, err = resolvconf.FilterResolvDNS(conf.Content, true)
-		if err != nil {
-			return err
-		}
-		searchDomains := resolvconf.GetSearchDomains(conf.Content)
-		dnsOptions := resolvconf.GetOptions(conf.Content)
-		nameServers := strutil.DedupeStrSlice(dnsValue)
-		if len(nameServers) == 0 {
-			nameServers = resolvconf.GetNameservers(conf.Content, resolvconf.IPv4)
-		}
-		if _, err := resolvconf.Build(resolvConfPath, append(slirp4Dns, nameServers...), searchDomains, dnsOptions); err != nil {
-			return err
-		}
-		// the content of /etc/hosts is created in OCI Hook
-		etcHostsPath, err := hostsstore.AllocHostsFile(dataStore, ns, id)
-		if err != nil {
-			return err
-		}
-		opts = append(opts, withCustomResolvConf(resolvConfPath), withCustomHosts(etcHostsPath))
-		for _, p := range portSlice {
-			pm, err := portutil.ParseFlagP(p)
+			slirp4Dns := []string{}
+			if rootlessutil.IsRootlessChild() {
+				slirp4Dns, err = dnsutil.GetSlirp4netnsDns()
+				if err != nil {
+					return err
+				}
+			}
+			conf, err = resolvconf.FilterResolvDNS(conf.Content, true)
 			if err != nil {
 				return err
 			}
-			ports = append(ports, pm...)
+			searchDomains := resolvconf.GetSearchDomains(conf.Content)
+			dnsOptions := resolvconf.GetOptions(conf.Content)
+			nameServers := strutil.DedupeStrSlice(dnsValue)
+			if len(nameServers) == 0 {
+				nameServers = resolvconf.GetNameservers(conf.Content, resolvconf.IPv4)
+			}
+			if _, err := resolvconf.Build(resolvConfPath, append(slirp4Dns, nameServers...), searchDomains, dnsOptions); err != nil {
+				return err
+			}
+
+			// the content of /etc/hosts is created in OCI Hook
+			etcHostsPath, err := hostsstore.AllocHostsFile(dataStore, ns, id)
+			if err != nil {
+				return err
+			}
+			opts = append(opts, withCustomResolvConf(resolvConfPath), withCustomHosts(etcHostsPath))
+			for _, p := range portSlice {
+				pm, err := portutil.ParseFlagP(p)
+				if err != nil {
+					return err
+				}
+				ports = append(ports, pm...)
+			}
 		}
 	default:
 		return fmt.Errorf("unexpected network type %v", netType)
@@ -517,86 +515,11 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 	opts = append(opts, hookOpt)
 
-	if cgOpts, err := generateCgroupOpts(cmd, id); err != nil {
-		return err
-	} else {
-		opts = append(opts, cgOpts...)
-	}
-
 	if uOpts, err := generateUserOpts(cmd); err != nil {
 		return err
 	} else {
 		opts = append(opts, uOpts...)
 	}
-
-	securityOpt, err := cmd.Flags().GetStringArray("security-opt")
-	if err != nil {
-		return err
-	}
-	securityOptsMaps := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(securityOpt))
-	if secOpts, err := generateSecurityOpts(securityOptsMaps); err != nil {
-		return err
-	} else {
-		opts = append(opts, secOpts...)
-	}
-
-	capAdd, err := cmd.Flags().GetStringSlice("cap-add")
-	if err != nil {
-		return err
-	}
-	capDrop, err := cmd.Flags().GetStringSlice("cap-drop")
-	if err != nil {
-		return err
-	}
-	if capOpts, err := generateCapOpts(
-		strutil.DedupeStrSlice(capAdd),
-		strutil.DedupeStrSlice(capDrop)); err != nil {
-		return err
-	} else {
-		opts = append(opts, capOpts...)
-	}
-
-	privileged, err := cmd.Flags().GetBool("privileged")
-	if err != nil {
-		return err
-	}
-	if privileged {
-		opts = append(opts, privilegedOpts...)
-	}
-
-	shmSize, err := cmd.Flags().GetString("shm-size")
-	if err != nil {
-		return err
-	}
-	if len(shmSize) > 0 {
-		shmBytes, err := units.RAMInBytes(shmSize)
-		if err != nil {
-			return err
-		}
-		opts = append(opts, oci.WithDevShmSize(shmBytes/1024))
-	}
-
-	pidNs, err := cmd.Flags().GetString("pid")
-	if err != nil {
-		return err
-	}
-	pidNs = strings.ToLower(pidNs)
-	if pidNs != "" {
-		if pidNs != "host" {
-			return fmt.Errorf("Invalid pid namespace. Set --pid=host to enable host pid namespace.")
-		} else {
-			opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
-			if rootlessutil.IsRootless() {
-				opts = append(opts, withBindMountHostProcfs)
-			}
-		}
-	}
-
-	ulimitOpts, err := generateUlimitsOpts(cmd)
-	if err != nil {
-		return err
-	}
-	opts = append(opts, ulimitOpts...)
 
 	rtCOpts, err := generateRuntimeCOpts(cmd)
 	if err != nil {
@@ -645,22 +568,6 @@ func runAction(cmd *cobra.Command, args []string) error {
 	cOpts = append(cOpts, ilOpt)
 
 	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
-
-	sysctl, err := cmd.Flags().GetStringArray("sysctl")
-	if err != nil {
-		return err
-	}
-	opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(sysctl)))
-
-	gpus, err := cmd.Flags().GetStringArray("gpus")
-	if err != nil {
-		return err
-	}
-	gpuOpt, err := parseGPUOpts(gpus)
-	if err != nil {
-		return err
-	}
-	opts = append(opts, gpuOpt...)
 
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)
@@ -951,6 +858,10 @@ func generateLogURI(dataStore string) (*url.URL, error) {
 	args := map[string]string{
 		logging.MagicArgv1: dataStore,
 	}
+	if runtime.GOOS == "windows" {
+		return nil, nil
+	}
+
 	return cio.LogURIGenerator("binary", selfExe, args)
 }
 

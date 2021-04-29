@@ -23,13 +23,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/containerd/cgroups"
 	"github.com/containerd/nerdctl/pkg/testutil"
-
 	"gotest.tools/v3/assert"
 )
 
@@ -86,7 +85,11 @@ CMD ["echo", "bar"]
 
 func TestRunWorkdir(t *testing.T) {
 	base := testutil.NewBase(t)
-	cmd := base.Cmd("run", "--rm", "--workdir=/foo", testutil.AlpineImage, "pwd")
+	dir := "/foo"
+	if runtime.GOOS == "windows" {
+		dir = "c:" + dir
+	}
+	cmd := base.Cmd("run", "--rm", "--workdir="+dir, testutil.AlpineImage, "pwd")
 	cmd.AssertOutContains("/foo")
 }
 
@@ -199,27 +202,6 @@ func TestRunPidHost(t *testing.T) {
 	base.Cmd("run", "--rm", "--pid=host", testutil.AlpineImage, "ps", "auxw").AssertOutContains(strconv.Itoa(pid))
 }
 
-func TestRunCgroupConf(t *testing.T) {
-	if cgroups.Mode() != cgroups.Unified {
-		t.Skip("test requires cgroup v2")
-	}
-	base := testutil.NewBase(t)
-
-	base.Cmd("run", "--rm", "--cgroup-conf", "memory.high=33554432", testutil.AlpineImage,
-		"sh", "-ec", "cd /sys/fs/cgroup && cat memory.high").AssertOutContains("33554432")
-}
-
-func TestRunBlkioWeightCgroupV2(t *testing.T) {
-	if cgroups.Mode() != cgroups.Unified {
-		t.Skip("test requires cgroup v2")
-	}
-	base := testutil.NewBase(t)
-
-	// when bfq io scheduler is used, the io.weight knob is exposed as io.bfq.weight
-	base.Cmd("run", "--rm", "--blkio-weight", "300", testutil.AlpineImage,
-		"sh", "-ec", "cd /sys/fs/cgroup && cat io.bfq.weight").AssertOutContains("300")
-}
-
 func TestRunAddHost(t *testing.T) {
 	base := testutil.NewBase(t)
 	base.Cmd("run", "--rm", "--add-host", "testing.example.com:10.0.0.1", testutil.AlpineImage, "sh", "-c", "cat /etc/hosts").AssertOutWithFunc(func(stdout string) error {
@@ -264,7 +246,7 @@ func TestRunEnv(t *testing.T) {
 		if !strings.Contains(stdout, "\nBAR=bar1 bar2\n") {
 			return errors.New("got bad BAR")
 		}
-		if !strings.Contains(stdout, "\nBAZ=\n") {
+		if !strings.Contains(stdout, "\nBAZ=\n") && runtime.GOOS != "windows" {
 			return errors.New("got bad BAZ")
 		}
 		if strings.Contains(stdout, "QUX") {

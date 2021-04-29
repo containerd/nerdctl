@@ -23,7 +23,7 @@ import (
 )
 
 const AppArmorProfileName = ""
-const Runtime = ""
+const Runtime = "io.containerd.runhcs.v1"
 
 func DataRoot() string {
 	return filepath.Join(os.Getenv("ProgramData"), "nerdctl")
