@@ -23,7 +23,7 @@ ARG CNI_PLUGINS_VERSION=0.9.1
 # Extra deps: CNI isolation
 ARG CNI_ISOLATION_VERSION=0.0.3
 # Extra deps: Build
-ARG BUILDKIT_VERSION=0.8.2
+ARG BUILDKIT_VERSION=0.8.3
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=0.5.0
 # Extra deps: Encryption
