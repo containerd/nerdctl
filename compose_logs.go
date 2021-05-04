@@ -33,6 +33,16 @@ var composeLogsCommand = &cli.Command{
 			Usage:   "Follow log output.",
 		},
 		&cli.BoolFlag{
+			Name:    "timestamps",
+			Aliases: []string{"t"},
+			Usage:   "Show timestamps",
+		},
+		&cli.StringFlag{
+			Name:  "tail",
+			Value: "all",
+			Usage: "Number of lines to show from the end of the logs",
+		},
+		&cli.BoolFlag{
 			Name:  "no-color",
 			Usage: "Produce monochrome output",
 		},
@@ -61,6 +71,8 @@ func composeLogsAction(clicontext *cli.Context) error {
 	}
 	lo := composer.LogsOptions{
 		Follow:      clicontext.Bool("follow"),
+		Timestamps:  clicontext.Bool("timestamps"),
+		Tail:        clicontext.String("tail"),
 		NoColor:     clicontext.Bool("no-color"),
 		NoLogPrefix: clicontext.Bool("no-log-prefix"),
 	}

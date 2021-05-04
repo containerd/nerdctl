@@ -42,7 +42,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 	defer os.RemoveAll(buildCtx)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
-	base.Cmd("run", "--rm", imageName).AssertOut("nerdctl-build-test-string")
+	base.Cmd("run", "--rm", imageName).AssertOutContains("nerdctl-build-test-string")
 }
 
 func createBuildContext(dockerfile string) (string, error) {

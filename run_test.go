@@ -83,7 +83,7 @@ CMD ["echo", "bar"]
 func TestRunWorkdir(t *testing.T) {
 	base := testutil.NewBase(t)
 	cmd := base.Cmd("run", "--rm", "--workdir=/foo", testutil.AlpineImage, "pwd")
-	cmd.AssertOut("/foo")
+	cmd.AssertOutContains("/foo")
 }
 
 func TestRunCustomRootfs(t *testing.T) {
@@ -91,8 +91,8 @@ func TestRunCustomRootfs(t *testing.T) {
 	base := testutil.NewBase(t)
 	rootfs := prepareCustomRootfs(base, testutil.AlpineImage)
 	defer os.RemoveAll(rootfs)
-	base.Cmd("run", "--rm", "--rootfs", rootfs, "/bin/cat", "/proc/self/environ").AssertOut("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
-	base.Cmd("run", "--rm", "--entrypoint", "/bin/echo", "--rootfs", rootfs, "echo", "foo").AssertOut("echo foo")
+	base.Cmd("run", "--rm", "--rootfs", rootfs, "/bin/cat", "/proc/self/environ").AssertOutContains("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+	base.Cmd("run", "--rm", "--entrypoint", "/bin/echo", "--rootfs", rootfs, "echo", "foo").AssertOutContains("echo foo")
 }
 
 func prepareCustomRootfs(base *testutil.Base, imageName string) string {

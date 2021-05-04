@@ -42,6 +42,6 @@ func TestWait(t *testing.T) {
 
 	base.Cmd("run", "--name", testContainerName3, testutil.AlpineImage, "sh", "-euxc", "sleep 3; exit 123").AssertExitCode(123)
 
-	base.Cmd("wait", testContainerName1, testContainerName2, testContainerName3).AssertOut(expected)
+	base.Cmd("wait", testContainerName1, testContainerName2, testContainerName3).AssertOutContains(expected)
 
 }

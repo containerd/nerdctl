@@ -168,7 +168,6 @@ It does not necessarily mean that the corresponding features are missing in cont
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
   - [Run & Exec](#run--exec)
     - [:whale: nerdctl run](#whale-nerdctl-run)
     - [:whale: nerdctl exec](#whale-nerdctl-exec)
@@ -464,8 +463,12 @@ Usage: `nerctl logs [OPTIONS] CONTAINER`
 
 Flags:
 - :whale: `--f, --follow`: Follow log output
+- :whale: `--since`: Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)
+- :whale: `--until`: Show logs before a timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)
+- :whale: `-t, --timestamps`: Show timestamps
+- :whale: `-n, --tail`: Number of lines to show from the end of the logs (default "all")
 
-Unimplemented `docker logs` flags: `--details`, `--since`, `--tail`, `--timestamps`, `--until`
+Unimplemented `docker logs` flags: `--details`
 
 ### :whale: nerdctl port
 List port mappings or a specific mapping for the container.
@@ -792,8 +795,9 @@ Usage: `nerdctl compose logs [OPTIONS]`
 Flags:
 - :whale: `--no-color`: Produce monochrome output
 - :whale: `--no-log-prefix`: Don't print prefix in logs
+- :whale: `--timestamps`: Show timestamps
+- :whale: `--tail`: Number of lines to show from the end of the logs
 
-Unimplemented `docker-compose logs` flags:  `--timestamps`, `--tail`
 
 ### :whale: nerdctl compose build
 Build or rebuild services.

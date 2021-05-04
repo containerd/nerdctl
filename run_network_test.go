@@ -63,7 +63,7 @@ func TestRunInternetConnectivity(t *testing.T) {
 			args = append(args, tc.args...)
 			args = append(args, testutil.AlpineImage, "apk", "update")
 			cmd := base.Cmd(args...)
-			cmd.AssertOut("OK")
+			cmd.AssertOutContains("OK")
 		})
 	}
 }
@@ -114,7 +114,7 @@ func TestRunHostLookup(t *testing.T) {
 		t.Logf("resolving %q in container %q (should success: %+v)", targetHostname, srcContainer, expected)
 		cmd := base.Cmd("exec", srcContainer, "wget", "-qO-", "http://"+targetHostname)
 		if expected {
-			cmd.AssertOut(testutil.NginxAlpineIndexHTMLSnippet)
+			cmd.AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
 		} else {
 			cmd.AssertFail()
 		}

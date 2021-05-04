@@ -36,5 +36,5 @@ func TestRunCgroupV2(t *testing.T) {
 `
 	//In CgroupV2 CPUWeight replace CPUShares => weight := 1 + ((shares-2)*9999)/262142
 	base.Cmd("run", "--rm", "--cpus", "0.42", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage,
-		"sh", "-ec", "cd /sys/fs/cgroup && cat cpu.max memory.max pids.max cpu.weight cpuset.cpus").AssertOut(expected)
+		"sh", "-ec", "cd /sys/fs/cgroup && cat cpu.max memory.max pids.max cpu.weight cpuset.cpus").AssertOutContains(expected)
 }
