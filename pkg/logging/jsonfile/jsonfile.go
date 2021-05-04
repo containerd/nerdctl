@@ -122,7 +122,7 @@ func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string
 		}
 
 		if timestamps {
-			output = append(output, []byte(e.Time.String())...)
+			output = append(output, []byte(e.Time.Format(time.RFC3339Nano))...)
 			output = append(output, ' ')
 		}
 
