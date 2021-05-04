@@ -5,9 +5,9 @@ go 1.16
 require (
 	github.com/Microsoft/go-winio v0.4.17
 	github.com/compose-spec/compose-go v0.0.0-20210420125800-01e9e6b4c64c
-	github.com/containerd/cgroups v1.0.0
+	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console v1.0.2
-	github.com/containerd/containerd v1.5.0-rc.2
+	github.com/containerd/containerd v1.5.0
 	github.com/containerd/go-cni v1.0.2
 	github.com/containerd/imgcrypt v1.1.1
 	github.com/containerd/stargz-snapshotter v0.5.0
