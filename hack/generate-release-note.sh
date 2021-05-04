@@ -14,8 +14,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-minimal_amd64tgz="$(find _output -name '*amd64.tar.gz*' -and ! -name '*full*')"
-full_amd64tgz="$(find _output -name '*amd64.tar.gz*' -and -name '*full*')"
+minimal_amd64tgz="$(find _output -name '*linux-amd64.tar.gz*' -and ! -name '*full*')"
+full_amd64tgz="$(find _output -name '*linux-amd64.tar.gz*' -and -name '*full*')"
 
 minimal_amd64tgz_basename="$(basename ${minimal_amd64tgz})"
 full_amd64tgz_basename="$(basename ${full_amd64tgz})"
