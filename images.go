@@ -22,11 +22,12 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/pkg/progress"
-	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
+	"github.com/opencontainers/image-spec/identity"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -81,10 +82,10 @@ func imagesAction(clicontext *cli.Context) error {
 		return err
 	}
 
-	return printImages(ctx, clicontext, imageList, cs)
+	return printImages(ctx, clicontext, client, imageList, cs)
 }
 
-func printImages(ctx context.Context, clicontext *cli.Context, imageList []images.Image, cs content.Store) error {
+func printImages(ctx context.Context, clicontext *cli.Context, client *containerd.Client, imageList []images.Image, cs content.Store) error {
 	quiet := clicontext.Bool("quiet")
 	noTrunc := clicontext.Bool("no-trunc")
 
@@ -93,12 +94,12 @@ func printImages(ctx context.Context, clicontext *cli.Context, imageList []image
 		fmt.Fprintln(w, "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE")
 	}
 
+	var errs []error
 	for _, img := range imageList {
-		size, err := img.Size(ctx, cs, platforms.DefaultStrict())
+		size, err := unpackedImageSize(ctx, clicontext, client, img)
 		if err != nil {
-			return errors.Wrap(err, "failed to compute image size")
+			errs = append(errs, err)
 		}
-
 		repository, tag := parseRepoTag(img.Name)
 
 		var digest string
@@ -124,6 +125,9 @@ func printImages(ctx context.Context, clicontext *cli.Context, imageList []image
 		); err != nil {
 			return err
 		}
+	}
+	if len(errs) > 0 {
+		logrus.Warn("failed to compute image(s) size")
 	}
 	return w.Flush()
 }
@@ -161,4 +165,21 @@ func imagesBashComplete(clicontext *cli.Context) {
 	}
 	// show image names
 	bashCompleteImageNames(clicontext)
+}
+
+func unpackedImageSize(ctx context.Context, clicontext *cli.Context, client *containerd.Client, i images.Image) (int64, error) {
+	img := containerd.NewImage(client, i)
+
+	diffIDs, err := img.RootFS(ctx)
+	if err != nil {
+		return 0, err
+	}
+	chainID := identity.ChainID(diffIDs).String()
+	s := client.SnapshotService(clicontext.String("snapshotter"))
+	usage, err := s.Usage(ctx, chainID)
+	if err != nil {
+		return 0, err
+	}
+
+	return usage.Size, nil
 }
