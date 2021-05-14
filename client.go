@@ -78,14 +78,14 @@ func getAddrHash(addr string) (string, error) {
 
 	if runtime.GOOS != "windows" {
 		addr = strings.TrimPrefix(addr, "unix://")
-	}
 
-	var err error
-	addr, err = filepath.EvalSymlinks(addr)
-	if err != nil {
-		return "", err
+		var err error
+		addr, err = filepath.EvalSymlinks(addr)
+		if err != nil {
+			return "", err
+		}
 	}
-
+	
 	d := digest.SHA256.FromString(addr)
 	h := d.Encoded()[0:addrHashLen]
 	return h, nil

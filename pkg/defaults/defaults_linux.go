@@ -88,3 +88,7 @@ func BuildKitHost() string {
 	}
 	return fmt.Sprintf("unix://%s/buildkit/buildkitd.sock", xdr)
 }
+
+func Runtime() string {
+	return "io.containerd.runhcs.v1"
+}

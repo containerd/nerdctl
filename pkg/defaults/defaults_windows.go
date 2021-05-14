@@ -51,3 +51,7 @@ func CgroupManager() string {
 func CgroupnsMode() string {
 	return ""
 }
+
+func Runtime() string {
+	return "io.containerd.runhcs.v1"
+}
