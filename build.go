@@ -21,6 +21,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"path/filepath"
+
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -149,7 +151,11 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, error) {
 	}...)
 
 	if filename := clicontext.String("file"); filename != "" {
-		buildctlArgs = append(buildctlArgs, "--opt=filename="+filename)
+		dir, file := filepath.Split(filename)
+		if dir != "" {
+			buildctlArgs = append(buildctlArgs, "--local=dockerfile="+dir)
+		}
+		buildctlArgs = append(buildctlArgs, "--opt=filename="+file)
 	}
 
 	if target := clicontext.String("target"); target != "" {
