@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/urfave/cli/v2"
@@ -29,5 +30,5 @@ func runBashComplete(clicontext *cli.Context) {
 
 func WithoutRunMount() func(ctx context.Context, client oci.Client, c *containers.Container, s *oci.Spec) error {
 	// not valid on windows
-	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error { return nil}
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error { return nil }
 }
