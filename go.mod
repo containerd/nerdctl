@@ -24,9 +24,6 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/mattn/go-isatty v0.0.12
 	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/nxadm/tail v1.4.8 // indirect
-	github.com/onsi/ginkgo v1.15.0 // indirect
-	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210303205135-43e4633e40c1
@@ -34,10 +31,8 @@ require (
 	github.com/rootless-containers/rootlesskit v0.14.2
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
-	go.opencensus.io v0.22.4 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210420072515-93ed5bcd2bfe
 	golang.org/x/term v0.0.0-20210406210042-72f3dc4e9b72
-	golang.org/x/text v0.3.5 // indirect
 	gotest.tools/v3 v3.0.3
 )
