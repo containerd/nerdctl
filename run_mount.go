@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
@@ -32,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
@@ -109,7 +109,10 @@ func generateMountOpts(clicontext *cli.Context, ctx context.Context, client *con
 			//copying up initial contents of the mount point directory
 			for imgVolRaw := range imageVolumes {
 				imgVol := filepath.Clean(imgVolRaw)
-				target := strings.Join([]string{tempDir, imgVol}, "")
+				target, err := securejoin.SecureJoin(tempDir, imgVol)
+				if err != nil {
+					return nil, nil, err
+				}
 
 				//Coyping content in AnonymousVolume and namedVolume
 				if x.Mount.Destination == imgVol && x.Type == "volume" {
@@ -144,7 +147,11 @@ func generateMountOpts(clicontext *cli.Context, ctx context.Context, client *con
 			return nil, nil, err
 		}
 
-		target := strings.Join([]string{tempDir, imgVol}, "")
+		target, err := securejoin.SecureJoin(tempDir, imgVol)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		//copying up initial contents of the mount point directory
 		if err := copyExistingContents(target, anonVol.Mountpoint); err != nil {
 			return nil, nil, err
