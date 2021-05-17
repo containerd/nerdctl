@@ -40,27 +40,45 @@ ARG GO_VERSION=1.16
 ARG UBUNTU_VERSION=20.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=0.1.1
 
-FROM golang:${GO_VERSION}-alpine AS build-minimal
-RUN apk add --no-cache make git
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-buster AS build-runc
+RUN dpkg --add-architecture arm64 && \
+  apt-get update && \
+  apt-get install -y crossbuild-essential-arm64 git libseccomp-dev libseccomp-dev:arm64
+ARG RUNC_VERSION
+RUN git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc
+WORKDIR /go/src/github.com/opencontainers/runc
+RUN git checkout v${RUNC_VERSION} && \
+  mkdir -p /out
+RUN GOARCH=amd64 CC=x86_64-linux-gnu-gcc make runc && \
+  cp -a runc /out/runc.amd64
+RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make runc && \
+  cp -a runc /out/runc.arm64
+
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS build-base
+RUN apk add --no-cache make git curl
 COPY . /go/src/github.com/containerd/nerdctl
 WORKDIR /go/src/github.com/containerd/nerdctl
+
+FROM build-base AS build-minimal
 RUN BINDIR=/out/bin make binaries install
 # We do not set CMD to `go test` here, because it requires systemd
 
-FROM build-minimal AS build-full
+FROM build-base AS build-full
+ARG TARGETARCH
+ENV GOARCH=${TARGETARCH}
+RUN BINDIR=/out/bin make binaries install
 WORKDIR /nowhere
-RUN apk add --no-cache curl
 COPY ./Dockerfile.d/SHA256SUMS.d/ /SHA256SUMS.d
 COPY README.md /out/share/doc/nerdctl/
 COPY docs /out/share/doc/nerdctl/docs
+RUN echo "${TARGETARCH:-amd64}" | sed -e s/amd64/x86_64/ -e s/arm64/aarch64/ | tee /target_uname_m
 RUN mkdir -p /out/share/doc/nerdctl-full && \
   echo "# nerdctl (full distribution)" > /out/share/doc/nerdctl-full/README.md && \
   echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)" >> /out/share/doc/nerdctl-full/README.md
-ARG TARGETARCH
 ARG CONTAINERD_VERSION
-RUN fname="containerd-${CONTAINERD_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
-  curl -o "${fname}" -fsSL "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/${fname}" && \
-  curl -o "containerd.service" -fsSL "https://raw.githubusercontent.com/containerd/containerd/v${CONTAINERD_VERSION}/containerd.service" && \
+RUN fname="containerd-${CONTAINERD_VERSION}.${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
+  curl -o "${fname}" -fSL "https://github.com/kind-ci/containerd-nightlies/releases/download/containerd-${CONTAINERD_VERSION}/${fname}" && \
+  curl -o "containerd.service" -fSL "https://raw.githubusercontent.com/containerd/containerd/v${CONTAINERD_VERSION}/containerd.service" && \
   grep "${fname}" "/SHA256SUMS.d/containerd-${CONTAINERD_VERSION}" | sha256sum -c - && \
   grep "containerd.service" "/SHA256SUMS.d/containerd-${CONTAINERD_VERSION}" | sha256sum -c - && \
   tar xzf "${fname}" -C /out && \
@@ -69,15 +87,11 @@ RUN fname="containerd-${CONTAINERD_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd
   mv containerd.service /out/lib/systemd/system/containerd.service && \
   echo "- containerd: v${CONTAINERD_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG RUNC_VERSION
-RUN fname="runc.${TARGETARCH:-amd64}" && \
-  curl -o "${fname}" -fsSL "https://github.com/opencontainers/runc/releases/download/v${RUNC_VERSION}/${fname}" && \
-  grep "${fname}" "/SHA256SUMS.d/runc-${RUNC_VERSION}" | sha256sum -c && \
-  mv "${fname}" /out/bin/runc && \
-  chmod +x /out/bin/runc && \
-  echo "- runc: v${RUNC_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+COPY --from=build-runc /out/runc.${TARGETARCH:-amd64} /out/bin/runc
+RUN echo "- runc: v${RUNC_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG CNI_PLUGINS_VERSION
 RUN fname="cni-plugins-${TARGETOS:-linux}-${TARGETARCH:-amd64}-v${CNI_PLUGINS_VERSION}.tgz" && \
-  curl -o "${fname}" -fsSL "https://github.com/containernetworking/plugins/releases/download/v${CNI_PLUGINS_VERSION}/${fname}" && \
+  curl -o "${fname}" -fSL "https://github.com/containernetworking/plugins/releases/download/v${CNI_PLUGINS_VERSION}/${fname}" && \
   grep "${fname}" "/SHA256SUMS.d/cni-plugins-${CNI_PLUGINS_VERSION}" | sha256sum -c && \
   mkdir -p /out/libexec/cni && \
   tar xzf "${fname}" -C /out/libexec/cni && \
@@ -85,14 +99,14 @@ RUN fname="cni-plugins-${TARGETOS:-linux}-${TARGETARCH:-amd64}-v${CNI_PLUGINS_VE
   echo "- CNI plugins: v${CNI_PLUGINS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG CNI_ISOLATION_VERSION
 RUN fname="cni-isolation-${TARGETARCH:-amd64}.tgz" && \
-  curl -o "${fname}" -fsSL "https://github.com/AkihiroSuda/cni-isolation/releases/download/v${CNI_ISOLATION_VERSION}/${fname}" && \
+  curl -o "${fname}" -fSL "https://github.com/AkihiroSuda/cni-isolation/releases/download/v${CNI_ISOLATION_VERSION}/${fname}" && \
   grep "${fname}" "/SHA256SUMS.d/cni-isolation-${CNI_ISOLATION_VERSION}" | sha256sum -c && \
   tar xzf "${fname}" -C /out/libexec/cni && \
   rm -f "${fname}" && \
   echo "- CNI isolation plugin: v${CNI_ISOLATION_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG BUILDKIT_VERSION
 RUN fname="buildkit-v${BUILDKIT_VERSION}.${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
-  curl -o "${fname}" -fsSL "https://github.com/moby/buildkit/releases/download/v${BUILDKIT_VERSION}/${fname}" && \
+  curl -o "${fname}" -fSL "https://github.com/moby/buildkit/releases/download/v${BUILDKIT_VERSION}/${fname}" && \
   grep "${fname}" "/SHA256SUMS.d/buildkit-${BUILDKIT_VERSION}" | sha256sum -c && \
   tar xzf "${fname}" -C /out && \
   rm -f "${fname}" /out/bin/buildkit-qemu-* /out/bin/buildkit-runc && \
@@ -105,8 +119,8 @@ RUN cd /out/lib/systemd/system && \
   echo "# This file was converted from containerd.service, with \`sed -E '${sedcomm}'\`" >> buildkit.service
 ARG STARGZ_SNAPSHOTTER_VERSION
 RUN fname="stargz-snapshotter-v${STARGZ_SNAPSHOTTER_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
-  curl -o "${fname}" -fsSL "https://github.com/containerd/stargz-snapshotter/releases/download/v${STARGZ_SNAPSHOTTER_VERSION}/${fname}" && \
-  curl -o "stargz-snapshotter.service" -fsSL "https://raw.githubusercontent.com/containerd/stargz-snapshotter/v${STARGZ_SNAPSHOTTER_VERSION}/script/config/etc/systemd/system/stargz-snapshotter.service" && \
+  curl -o "${fname}" -fSL "https://github.com/containerd/stargz-snapshotter/releases/download/v${STARGZ_SNAPSHOTTER_VERSION}/${fname}" && \
+  curl -o "stargz-snapshotter.service" -fSL "https://raw.githubusercontent.com/containerd/stargz-snapshotter/v${STARGZ_SNAPSHOTTER_VERSION}/script/config/etc/systemd/system/stargz-snapshotter.service" && \
   grep "${fname}" "/SHA256SUMS.d/stargz-snapshotter-${STARGZ_SNAPSHOTTER_VERSION}" | sha256sum -c - && \
   grep "stargz-snapshotter.service" "/SHA256SUMS.d/stargz-snapshotter-${STARGZ_SNAPSHOTTER_VERSION}" | sha256sum -c - && \
   tar xzf "${fname}" -C /out/bin && \
@@ -119,29 +133,29 @@ RUN git clone https://github.com/containerd/imgcrypt.git /go/src/github.com/cont
   CGO_ENABLED=0 make && DESTDIR=/out make install && \
   echo "- imgcrypt: v${IMGCRYPT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG ROOTLESSKIT_VERSION
-RUN fname="rootlesskit-$(uname -m).tar.gz" && \
-  curl -o "${fname}" -fsSL "https://github.com/rootless-containers/rootlesskit/releases/download/v${ROOTLESSKIT_VERSION}/${fname}" && \
+RUN fname="rootlesskit-$(cat /target_uname_m).tar.gz" && \
+  curl -o "${fname}" -fSL "https://github.com/rootless-containers/rootlesskit/releases/download/v${ROOTLESSKIT_VERSION}/${fname}" && \
   grep "${fname}" "/SHA256SUMS.d/rootlesskit-${ROOTLESSKIT_VERSION}" | sha256sum -c && \
   tar xzf "${fname}" -C /out/bin && \
   rm -f "${fname}" /out/bin/rootlesskit-docker-proxy && \
   echo "- RootlessKit: v${ROOTLESSKIT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG SLIRP4NETNS_VERSION
-RUN fname="slirp4netns-$(uname -m)" && \
-  curl -o "${fname}" -fsSL "https://github.com/rootless-containers/slirp4netns/releases/download/v${SLIRP4NETNS_VERSION}/${fname}" && \
+RUN fname="slirp4netns-$(cat /target_uname_m)" && \
+  curl -o "${fname}" -fSL "https://github.com/rootless-containers/slirp4netns/releases/download/v${SLIRP4NETNS_VERSION}/${fname}" && \
   grep "${fname}" "/SHA256SUMS.d/slirp4netns-${SLIRP4NETNS_VERSION}" | sha256sum -c && \
   mv "${fname}" /out/bin/slirp4netns && \
   chmod +x /out/bin/slirp4netns && \
   echo "- slirp4netns: v${SLIRP4NETNS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG FUSE_OVERLAYFS_VERSION
-RUN fname="fuse-overlayfs-$(uname -m)" && \
-  curl -o "${fname}" -fsSL "https://github.com/containers/fuse-overlayfs/releases/download/v${FUSE_OVERLAYFS_VERSION}/${fname}" && \
+RUN fname="fuse-overlayfs-$(cat /target_uname_m)" && \
+  curl -o "${fname}" -fSL "https://github.com/containers/fuse-overlayfs/releases/download/v${FUSE_OVERLAYFS_VERSION}/${fname}" && \
   grep "${fname}" "/SHA256SUMS.d/fuse-overlayfs-${FUSE_OVERLAYFS_VERSION}" | sha256sum -c && \
   mv "${fname}" /out/bin/fuse-overlayfs && \
   chmod +x /out/bin/fuse-overlayfs && \
   echo "- fuse-overlayfs: v${FUSE_OVERLAYFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION
 RUN fname="containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
-  curl -o "${fname}" -fsSL "https://github.com/containerd/fuse-overlayfs-snapshotter/releases/download/v${CONTAINERD_FUSE_OVERLAYFS_VERSION}/${fname}" && \
+  curl -o "${fname}" -fSL "https://github.com/containerd/fuse-overlayfs-snapshotter/releases/download/v${CONTAINERD_FUSE_OVERLAYFS_VERSION}/${fname}" && \
   grep "${fname}" "/SHA256SUMS.d/containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION}" | sha256sum -c && \
   tar xzf "${fname}" -C /out/bin && \
   rm -f "${fname}" && \
