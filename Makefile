@@ -59,6 +59,11 @@ install:
 
 TAR_FLAGS=--transform 's/.*\///g' --owner=0 --group=0
 
+define make_artifact_full_linux
+	DOCKER_BUILDKIT=1 docker build --output type=tar,dest=$(CURDIR)/_output/nerdctl-full-$(VERSION_TRIMMED)-linux-$(1).tar --target out-full --platform $(1) $(CURDIR)
+	gzip -9 $(CURDIR)/_output/nerdctl-full-$(VERSION_TRIMMED)-linux-$(1).tar
+endef
+
 artifacts: clean
 	GOOS=linux GOARCH=amd64       make -C $(CURDIR)  binaries
 	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-amd64.tar.gz   _output/nerdctl extras/rootless/*
@@ -75,13 +80,13 @@ artifacts: clean
 	GOOS=linux GOARCH=s390x       make -C $(CURDIR) binaries
 	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-s390x.tar.gz   _output/nerdctl extras/rootless/*
 
-	GOOS=windows GOARCH=amd64       make -C $(CURDIR) binaries
+	GOOS=windows GOARCH=amd64     make -C $(CURDIR) binaries
 	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-windows-amd64.tar.gz _output/nerdctl.exe
 
 	rm -f $(CURDIR)/_output/nerdctl $(CURDIR)/_output/nerdctl.exe
 
-	DOCKER_BUILDKIT=1 docker build --output type=tar,dest=$(CURDIR)/_output/nerdctl-full-$(VERSION_TRIMMED)-linux-amd64.tar --target out-full $(CURDIR)
-	gzip -9 $(CURDIR)/_output/nerdctl-full-$(VERSION_TRIMMED)-linux-amd64.tar
+	$(call make_artifact_full_linux,amd64)
+	$(call make_artifact_full_linux,arm64)
 
 .PHONY: \
 	help \
