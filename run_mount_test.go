@@ -98,3 +98,62 @@ VOLUME /foo
 	base.Cmd("run", "--rm", "-v", "/foo", testutil.AlpineImage,
 		"mountpoint", "-q", "/foo").AssertOK()
 }
+
+func TestCopyingUpInitialContentsOnVolume(t *testing.T) {
+	t.Parallel()
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	const imageName = "nerdctl-test-copying-initial-content"
+	defer base.Cmd("rmi", imageName).Run()
+	defer base.Cmd("volume", "rm", "copying-initial-content").Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+RUN mkdir -p /mnt && echo hi > /mnt/initial_file
+VOLUME /mnt
+CMD ["cat", "/mnt/initial_file"]
+        `, testutil.AlpineImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	//AnonymousVolume
+	base.Cmd("run", "--rm", imageName).AssertOutContains("hi")
+	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains("hi")
+
+	//NamedVolume
+	base.Cmd("volume", "create", "copying-initial-content").AssertOK()
+	base.Cmd("run", "-v", "copying-initial-content:/mnt", "--rm", imageName).AssertOutContains("hi")
+
+	//mount bind
+	tmpDir, err := ioutil.TempDir("", "hostDir")
+	assert.NilError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	base.Cmd("run", "-v", fmt.Sprintf("%s:/mnt", tmpDir), "--rm", imageName).AssertFail()
+}
+
+func TestCopyingUpInitialContentsOnVolumeShouldRetainSymlink(t *testing.T) {
+	t.Parallel()
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	const imageName = "nerdctl-test-copy-up-retain-symlink"
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+RUN ln -s ../../../../../../../../../../../../../../../../../../etc/passwd /mnt/passwd
+VOLUME /mnt
+CMD ["readlink", "/mnt/passwd"]
+        `, testutil.AlpineImage)
+	const expected = "../../../../../../../../../../../../../../../../../../etc/passwd"
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+
+	base.Cmd("run", "--rm", imageName).AssertOutContains(expected)
+	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains(expected)
+}

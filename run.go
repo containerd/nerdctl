@@ -310,11 +310,7 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, oci.WithTTY)
 	}
 
-	var imageVolumes map[string]struct{}
-	if ensuredImage != nil {
-		imageVolumes = ensuredImage.ImageConfig.Volumes
-	}
-	mountOpts, anonVolumes, err := generateMountOpts(clicontext, imageVolumes)
+	mountOpts, anonVolumes, err := generateMountOpts(clicontext, ctx, client, ensuredImage)
 	if err != nil {
 		return err
 	} else {

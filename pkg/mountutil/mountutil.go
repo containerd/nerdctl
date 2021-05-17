@@ -29,9 +29,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	Bind   = "bind"
+	Volume = "volume"
+)
+
 type Processed struct {
 	Mount           specs.Mount
 	AnonymousVolume string // name
+	Type            string
 }
 
 func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error) {
@@ -51,7 +57,9 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 			return nil, err
 		}
 		src = anonVol.Mountpoint
+		res.Type = Volume
 	case 2, 3:
+		res.Type = Bind
 		src, dst = split[0], split[1]
 		if !strings.Contains(src, "/") {
 			// assume src is a volume name
@@ -61,6 +69,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 			}
 			// src is now full path
 			src = vol.Mountpoint
+			res.Type = Volume
 		}
 		if !filepath.IsAbs(src) {
 			logrus.Warnf("expected an absolute path, got a relative path %q (allowed for nerdctl, but disallowed for Docker, so unrecommended)", src)

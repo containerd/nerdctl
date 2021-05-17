@@ -8,6 +8,7 @@ require (
 	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console v1.0.2
 	github.com/containerd/containerd v1.5.1
+	github.com/containerd/continuity v0.1.0
 	github.com/containerd/go-cni v1.0.3-0.20210427061315-4efee5f0b4db
 	github.com/containerd/imgcrypt v1.1.1
 	github.com/containerd/stargz-snapshotter v0.6.0
@@ -15,6 +16,7 @@ require (
 	github.com/containerd/typeurl v1.0.2
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
+	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/docker/cli v20.10.6+incompatible
 	github.com/docker/docker v20.10.6+incompatible
 	github.com/docker/go-connections v0.4.0
