@@ -133,3 +133,27 @@ CMD ["cat", "/mnt/initial_file"]
 
 	base.Cmd("run", "-v", fmt.Sprintf("%s:/mnt", tmpDir), "--rm", imageName).AssertFail()
 }
+
+func TestCopyingUpInitialContentsOnVolumeShouldRetainSymlink(t *testing.T) {
+	t.Parallel()
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	const imageName = "nerdctl-test-copy-up-retain-symlink"
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+RUN ln -s ../../../../../../../../../../../../../../../../../../etc/passwd /mnt/passwd
+VOLUME /mnt
+CMD ["readlink", "/mnt/passwd"]
+        `, testutil.AlpineImage)
+	const expected = "../../../../../../../../../../../../../../../../../../etc/passwd"
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+
+	base.Cmd("run", "--rm", imageName).AssertOutContains(expected)
+	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains(expected)
+}
