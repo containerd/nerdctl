@@ -51,6 +51,12 @@ jobs:
         fetch-depth: 1
     - name: "Prepare test environment"
       run: DOCKER_BUILDKIT=1 docker build -t test --target test --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+    - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
+      run: |
+        sudo systemctl disable --now snapd.service snapd.socket
+        sudo apt-get purge -y snapd
+        sudo losetup -Dv
+        sudo losetup -lv
     - name: "Test"
       run: docker run -t --rm --privileged test go test -v -test.kill-daemon ./...
 

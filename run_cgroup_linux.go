@@ -17,6 +17,9 @@
 package main
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-units"
@@ -39,7 +42,7 @@ func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, err
 		return []oci.SpecOpts{oci.WithCgroup("")}, nil
 	}
 
-	var opts []oci.SpecOpts
+	var opts []oci.SpecOpts // nolint: prealloc
 
 	if clicontext.String("cgroup-manager") == "systemd" {
 		slice := "system.slice"
@@ -94,5 +97,62 @@ func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, err
 	default:
 		return nil, errors.Errorf("unknown cgroupns mode %q", cgroupns)
 	}
+
+	for _, f := range clicontext.StringSlice("device") {
+		devPath, mode, err := parseDevice(f)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to parse device %q", f)
+		}
+		opts = append(opts, oci.WithLinuxDevice(devPath, mode))
+	}
 	return opts, nil
+}
+
+func parseDevice(s string) (hostDevPath string, mode string, err error) {
+	mode = "rwm"
+	split := strings.Split(s, ":")
+	var containerDevPath string
+	switch len(split) {
+	case 1: // e.g. "/dev/sda1"
+		hostDevPath = split[0]
+		containerDevPath = hostDevPath
+	case 2: // e.g., "/dev/sda1:rwm", or "/dev/sda1:/dev/sda1
+		hostDevPath = split[0]
+		if !strings.Contains(split[1], "/") {
+			containerDevPath = hostDevPath
+			mode = split[1]
+		} else {
+			containerDevPath = split[1]
+		}
+	case 3: // e.g., "/dev/sda1:/dev/sda1:rwm"
+		hostDevPath = split[0]
+		containerDevPath = split[1]
+		mode = split[2]
+	default:
+		return "", "", errors.New("too many `:` symbols")
+	}
+
+	if containerDevPath != hostDevPath {
+		return "", "", errors.New("changing the path inside the container is not supported yet")
+	}
+
+	if !filepath.IsAbs(hostDevPath) {
+		return "", "", errors.Errorf("%q is not an absolute path", hostDevPath)
+	}
+
+	if err := validateDeviceMode(mode); err != nil {
+		return "", "", err
+	}
+	return hostDevPath, mode, nil
+}
+
+func validateDeviceMode(mode string) error {
+	for _, r := range mode {
+		switch r {
+		case 'r', 'w', 'm':
+		default:
+			return errors.Errorf("invalid mode %q: unexpected rune %v", mode, r)
+		}
+	}
+	return nil
 }
