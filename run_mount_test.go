@@ -157,3 +157,27 @@ CMD ["readlink", "/mnt/passwd"]
 	base.Cmd("run", "--rm", imageName).AssertOutContains(expected)
 	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains(expected)
 }
+
+func TestCopyingUpInitialContentsOnVolumeShouldRetainHardlink(t *testing.T) {
+	t.Parallel()
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	const imageName = "nerdctl-test-copy-up-retain-hardlink"
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+RUN ln   ../../../../../../../../../../../../../../../../../../etc/passwd /mnt/passwd
+VOLUME /mnt
+CMD ["stat","-c","%s","../../../../../../../../../../../../../../../../../../etc/passwd"]
+        `, testutil.AlpineImage, "%h")
+	const expected = "2"
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+
+	base.Cmd("run", "--rm", imageName).AssertOutContains(expected)
+	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains(expected)
+}
