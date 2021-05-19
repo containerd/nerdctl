@@ -43,6 +43,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		"ContainerName",
 		"DependsOn",
 		"Deploy",
+		"Devices",
 		"Dockerfile", // handled by the loader (normalizer)
 		"DNS",
 		"Entrypoint",
@@ -365,6 +366,10 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 
 	if svc.CPUShares != 0 {
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--cpu-shares=%d", svc.CPUShares))
+	}
+
+	for _, v := range svc.Devices {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--device=%s", v))
 	}
 
 	for _, v := range svc.DNS {

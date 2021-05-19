@@ -263,6 +263,7 @@ Cgroup flags:
 - :whale: `--pids-limit`: Tune container pids limit
 - :whale: `--cgroupns=(host|private)`: Cgroup namespace to use
   - Default: "private" on cgroup v2 hosts, "host" on cgroup v1 hosts
+- :whale: `--device`: Add a host device to the container
 
 User flags:
 - :whale: `-u, --user`: Username or UID (format: <name|uid>[:<group|gid>])

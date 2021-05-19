@@ -145,6 +145,10 @@ var runCommand = &cli.Command{
 			Name:  "cpu-shares",
 			Usage: "CPU shares (relative weight)",
 		},
+		&cli.StringSliceFlag{
+			Name:  "device",
+			Usage: "Add a host device to the container",
+		},
 		// user flags
 		&cli.StringFlag{
 			Name:    "user",
