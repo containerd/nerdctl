@@ -4,7 +4,7 @@
 ### `<DATAROOT>`
 **Default**: `/var/lib/nerdctl` (rootful), `~/.local/share/nerdctl` (rootless)
 
-Can be overriden with `nerdctl --data-root=<DATAROOT>` flag.
+Can be overridden with `nerdctl --data-root=<DATAROOT>` flag.
 
 The directory is solely managed by nerdctl, not by containerd.
 The directory has nothing to do with containerd data root `/var/lib/containerd`.
