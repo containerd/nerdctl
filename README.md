@@ -214,6 +214,8 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl events](#whale-nerdctl-events)
     - [:whale: nerdctl info](#whale-nerdctl-info)
     - [:whale: nerdctl version](#whale-nerdctl-version)
+  - [Stats management](#stats-management)
+    - [:whale: nerdctl top](#whale-nerdctl-top)
   - [Shell completion](#shell-completion)
     - [:nerd_face: nerdctl completion bash](#nerd_face-nerdctl-completion-bash)
   - [Compose](#compose)
@@ -752,6 +754,14 @@ Usage: `nerdctl version [OPTIONS]`
 
 Unimplemented `docker version` flags: `--format`
 
+## Stats management
+### :whale: nerdctl top
+Display the running processes of a container.
+
+
+Usage: `nerdctl top CONTAINER [ps OPTIONS]`
+
+
 ## Shell completion
 
 ### :nerd_face: nerdctl completion bash
@@ -848,7 +858,6 @@ Container management:
 
 Stats:
 - `docker stats`
-- `docker top`
 
 Image:
 - `docker export` and `docker import`

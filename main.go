@@ -173,6 +173,8 @@ func newApp() *cli.App {
 		versionCommand,
 		// Inspect
 		inspectCommand,
+		// stats
+		topCommand,
 		// Management
 		containerCommand,
 		imageCommand,
