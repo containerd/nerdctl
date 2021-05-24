@@ -297,6 +297,7 @@ Metadata flags:
 - :whale: `--name`: Assign a name to the container
 - :whale: `-l, --label`: Set meta data on a container
 - :whale: `--label-file`: Read in a line delimited file of labels
+- :whale: `--cidfile`: Write the container ID to the file
 
 Other `docker run` flags are on plan but unimplemented yet.
 <details>

@@ -227,6 +227,10 @@ var runCommand = &cli.Command{
 			Name:  "label-file",
 			Usage: "Read in a line delimited file of labels",
 		},
+		&cli.StringFlag{
+			Name:  "cidfile",
+			Usage: "Write the container ID to the file",
+		},
 	},
 }
 
@@ -256,6 +260,12 @@ func runAction(clicontext *cli.Context) error {
 		cOpts []containerd.NewContainerOpts
 		id    = idgen.GenerateID()
 	)
+
+	if cidfile := clicontext.String("cidfile"); cidfile != "" {
+		if err := writeCIDFile(cidfile, id); err != nil {
+			return err
+		}
+	}
 
 	dataStore, err := getDataStore(clicontext)
 	if err != nil {
@@ -732,5 +742,23 @@ func withInternalLabels(ns, name, hostname, containerStateDir string, networks [
 func propagateContainerdLabelsToOCIAnnotations() oci.SpecOpts {
 	return func(ctx context.Context, oc oci.Client, c *containers.Container, s *oci.Spec) error {
 		return oci.WithAnnotations(c.Labels)(ctx, oc, c, s)
+	}
+}
+
+func writeCIDFile(path, id string) error {
+	if _, err := os.Stat(path); err == nil {
+		return errors.Errorf("container ID file found, make sure the other container isn't running or delete %s", path)
+	} else if errors.Is(err, os.ErrNotExist) {
+		f, err := os.Create(path)
+		defer f.Close()
+		if err != nil {
+			return errors.Errorf("failed to create the container ID file: %s", err)
+		}
+		if _, err := f.WriteString(id); err != nil {
+			return err
+		}
+		return nil
+	} else {
+		return err
 	}
 }
