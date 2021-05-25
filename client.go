@@ -31,7 +31,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func newClient(clicontext *cli.Context) (*containerd.Client, context.Context, context.CancelFunc, error) {
+func newClient(clicontext *cli.Context, opts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
 	ctx := context.Background()
 	namespace := clicontext.String("namespace")
 	ctx = namespaces.WithNamespace(ctx, namespace)
@@ -46,7 +46,7 @@ func newClient(clicontext *cli.Context) (*containerd.Client, context.Context, co
 		}
 		return nil, nil, nil, err
 	}
-	client, err := containerd.New(address)
+	client, err := containerd.New(address, opts...)
 	if err != nil {
 		return nil, nil, nil, err
 	}

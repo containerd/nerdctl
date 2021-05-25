@@ -23,6 +23,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images/archive"
+	"github.com/containerd/containerd/platforms"
 	"github.com/urfave/cli/v2"
 )
 
@@ -54,7 +55,7 @@ func loadAction(clicontext *cli.Context) error {
 }
 
 func loadImage(in io.Reader, clicontext *cli.Context) error {
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(clicontext, containerd.WithDefaultPlatform(platforms.DefaultStrict()))
 	if err != nil {
 		return err
 	}
