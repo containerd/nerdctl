@@ -137,3 +137,16 @@ func TestRunExitCode(t *testing.T) {
 	assert.Equal(base.T, "exited", inspect123.State.Status)
 	assert.Equal(base.T, 123, inspect123.State.ExitCode)
 }
+
+func TestRunCIDFile(t *testing.T) {
+	base := testutil.NewBase(t)
+	const fileName = "cid.file"
+
+	base.Cmd("run", "--rm", "--cidfile", fileName, testutil.AlpineImage).AssertOK()
+	defer os.Remove(fileName)
+
+	_, err := os.Stat(fileName)
+	assert.NilError(base.T, err)
+
+	base.Cmd("run", "--rm", "--cidfile", fileName, testutil.AlpineImage).AssertFail()
+}
