@@ -513,13 +513,6 @@ func runAction(clicontext *cli.Context) error {
 	}
 	var statusC <-chan containerd.ExitStatus
 	if !flagD {
-		defer func() {
-			if clicontext.Bool("rm") {
-				if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
-					logrus.Error(taskDeleteErr)
-				}
-			}
-		}()
 		statusC, err = task.Wait(ctx)
 		if err != nil {
 			return err
@@ -543,6 +536,9 @@ func runAction(clicontext *cli.Context) error {
 	status := <-statusC
 	code, _, err := status.Result()
 	if err != nil {
+		return err
+	}
+	if _, err := task.Delete(ctx); err != nil {
 		return err
 	}
 	if code != 0 {
