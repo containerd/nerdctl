@@ -14,6 +14,14 @@
    limitations under the License.
 */
 
+/*
+   Portions from:
+   - https://github.com/moby/moby/blob/v20.10.6/api/types/container/container_top.go
+   - https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go
+   Copyright (C) The Moby authors.
+   Licensed under the Apache License, Version 2.0
+*/
+
 package main
 
 import (
@@ -34,6 +42,8 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// ContainerTopOKBody is from https://github.com/moby/moby/blob/v20.10.6/api/types/container/container_top.go
+//
 // ContainerTopOKBody OK response to ContainerTop operation
 type ContainerTopOKBody struct {
 
@@ -65,7 +75,11 @@ func topAction(clicontext *cli.Context) error {
 	// NOTE: rootless container does not rely on cgroupv1.
 	// more details about possible ways to resolve this concern: #223
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
-		return fmt.Errorf("top is not supported for rootless container and cgroupv1")
+		return errors.Errorf("top requires cgroup v2 for rootless containers, see https://rootlesscontaine.rs/getting-started/common/cgroup2/")
+	}
+
+	if clicontext.String("cgroup-manager") == "none" {
+		return errors.New("cgroup manager must not be \"none\"")
 	}
 
 	client, ctx, cancel, err := newClient(clicontext)
@@ -93,7 +107,7 @@ func topAction(clicontext *cli.Context) error {
 	return nil
 }
 
-//function from moby/moby/daemon/top_unix.go
+// appendProcess2ProcList is from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L49-L55
 func appendProcess2ProcList(procList *ContainerTopOKBody, fields []string) {
 	// Make sure number of fields equals number of header titles
 	// merging "overhanging" fields
@@ -102,7 +116,8 @@ func appendProcess2ProcList(procList *ContainerTopOKBody, fields []string) {
 	procList.Processes = append(procList.Processes, process)
 }
 
-//function from moby/moby/daemon/top_unix.go
+// psPidsArg is from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L119-L131
+//
 // psPidsArg converts a slice of PIDs to a string consisting
 // of comma-separated list of PIDs prepended by "-q".
 // For example, psPidsArg([]uint32{1,2,3}) returns "-q1,2,3".
@@ -117,7 +132,7 @@ func psPidsArg(pids []uint32) string {
 	return string(b)
 }
 
-//function from moby/moby/daemon/top_unix.go
+// validatePSArgs is from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L19-L35
 func validatePSArgs(psArgs string) error {
 	// NOTE: \\s does not detect unicode whitespaces.
 	// So we use fieldsASCII instead of strings.Fields in parsePSOutput.
@@ -136,7 +151,8 @@ func validatePSArgs(psArgs string) error {
 	return nil
 }
 
-//function from moby/moby/daemon/top_unix.go
+// fieldsASCII is from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L37-L47
+//
 // fieldsASCII is similar to strings.Fields but only allows ASCII whitespaces
 func fieldsASCII(s string) []string {
 	fn := func(r rune) bool {
@@ -149,7 +165,7 @@ func fieldsASCII(s string) []string {
 	return strings.FieldsFunc(s, fn)
 }
 
-//function from moby/moby/daemon/top_unix.go
+// hasPid is from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L57-L64
 func hasPid(procs []uint32, pid int) bool {
 	for _, p := range procs {
 		if int(p) == pid {
@@ -159,7 +175,7 @@ func hasPid(procs []uint32, pid int) bool {
 	return false
 }
 
-//function from moby/moby/daemon/top_unix.go
+// parsePSOutput is from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L66-L117
 func parsePSOutput(output []byte, procs []uint32) (*ContainerTopOKBody, error) {
 	procList := &ContainerTopOKBody{}
 
@@ -213,7 +229,8 @@ func parsePSOutput(output []byte, procs []uint32) (*ContainerTopOKBody, error) {
 	return procList, nil
 }
 
-// function inspired from moby/moby/daemon/top_unix.go
+// containerTop was inspired from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L133-L189
+//
 // ContainerTop lists the processes running inside of the given
 // container by calling ps with the given args, or with the flags
 // "-ef" if no args are given.  An error is returned if the container
@@ -298,6 +315,10 @@ func topBashComplete(clicontext *cli.Context) {
 		defaultBashComplete(clicontext)
 		return
 	}
-	// show container names (TODO: only running containers)
-	bashCompleteContainerNames(clicontext, nil)
+
+	// show running container names
+	statusFilterFn := func(st containerd.ProcessStatus) bool {
+		return st == containerd.Running
+	}
+	bashCompleteContainerNames(clicontext, statusFilterFn)
 }

@@ -168,6 +168,7 @@ It does not necessarily mean that the corresponding features are missing in cont
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
   - [Run & Exec](#run--exec)
     - [:whale: nerdctl run](#whale-nerdctl-run)
     - [:whale: nerdctl exec](#whale-nerdctl-exec)
@@ -214,7 +215,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl events](#whale-nerdctl-events)
     - [:whale: nerdctl info](#whale-nerdctl-info)
     - [:whale: nerdctl version](#whale-nerdctl-version)
-  - [Stats management](#stats-management)
+  - [Stats](#stats)
     - [:whale: nerdctl top](#whale-nerdctl-top)
   - [Shell completion](#shell-completion)
     - [:nerd_face: nerdctl completion bash](#nerd_face-nerdctl-completion-bash)
@@ -755,7 +756,7 @@ Usage: `nerdctl version [OPTIONS]`
 
 Unimplemented `docker version` flags: `--format`
 
-## Stats management
+## Stats
 ### :whale: nerdctl top
 Display the running processes of a container.
 
