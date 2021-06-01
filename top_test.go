@@ -27,7 +27,7 @@ import (
 func TestTop(t *testing.T) {
 	//more details https://github.com/containerd/nerdctl/pull/223#issuecomment-851395178
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
-		t.Skip("test skipped for rootless container with cgroup v1")
+		t.Skip("test skipped for rootless containers on cgroup v1")
 	}
 	const (
 		testContainerName = "nerdctl-test-top"
