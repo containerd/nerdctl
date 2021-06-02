@@ -90,8 +90,8 @@ func (c *Composer) logs(ctx context.Context, containers map[string]serviceparser
 			if lo.Tail == "all" {
 				args = append(args, "+0")
 			} else {
+				args = append(args, lo.Tail)
 			}
-			args = append(args, lo.Tail)
 		}
 
 		args = append(args, id)
