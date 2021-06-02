@@ -14,39 +14,17 @@
    limitations under the License.
 */
 
-package main
+package native
 
 import (
-	"github.com/urfave/cli/v2"
+	"github.com/containerd/containerd/images"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-var imageCommand = &cli.Command{
-	Name:     "image",
-	Usage:    "Manage images",
-	Category: CategoryManagement,
-	Subcommands: []*cli.Command{
-		buildCommand,
-		// commitCommand is in "container", not in "image"
-		imageLsCommand(),
-		pullCommand,
-		pushCommand,
-		loadCommand,
-		saveCommand,
-		tagCommand,
-		imageRmCommand(),
-		imageConvertCommand,
-		imageInspectCommand,
-	},
-}
-
-func imageLsCommand() *cli.Command {
-	x := *imagesCommand
-	x.Name = "ls"
-	return &x
-}
-
-func imageRmCommand() *cli.Command {
-	x := *rmiCommand
-	x.Name = "rm"
-	return &x
+// Image corresponds to a containerd-native image object.
+// Not compatible with `docker image inspect`.
+type Image struct {
+	images.Image
+	ImageSpec  ocispec.Image      `json:"ImageSpec"`
+	Descriptor ocispec.Descriptor `json:"Descriptor"`
 }

@@ -208,3 +208,46 @@ func getImageConfig(ctx context.Context, image containerd.Image) (*ocispec.Image
 		return nil, errors.Errorf("unknown media type %q", desc.MediaType)
 	}
 }
+
+// readImageConfig reads config spec from content store.
+func ReadImageConfig(ctx context.Context, img containerd.Image) (ocispec.Image, error) {
+	var config ocispec.Image
+
+	configDesc, err := img.Config(ctx)
+	if err != nil {
+		return config, err
+	}
+	p, err := content.ReadBlob(ctx, img.ContentStore(), configDesc)
+	if err != nil {
+		return config, err
+	}
+	if err := json.Unmarshal(p, &config); err != nil {
+		return config, err
+	}
+	return config, nil
+}
+
+func ParseRepoTag(imgName string) (string, string) {
+	logrus.Debugf("raw image name=%q", imgName)
+
+	if strings.Contains(imgName, "@") {
+		logrus.Warnf("unparsable image name %q", imgName)
+		return "", ""
+	}
+
+	if _, err := refdocker.ParseDockerRef(imgName); err != nil {
+		logrus.WithError(err).Warnf("unparsable image name %q", imgName)
+		return "", ""
+	}
+
+	var tag string
+	nameWithTagSplit := strings.Split(imgName, ":")
+	if len(nameWithTagSplit) > 1 {
+		tag = nameWithTagSplit[len(nameWithTagSplit)-1]
+	}
+	repository := strings.TrimSuffix(imgName, ":"+tag)
+	repository = strings.TrimPrefix(repository, "docker.io/library/")
+	repository = strings.TrimPrefix(repository, "docker.io/")
+
+	return repository, tag
+}

@@ -22,20 +22,20 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/containerd/nerdctl/pkg/containerinspector"
-	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
+	"github.com/containerd/nerdctl/pkg/imageinspector"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
 
-var containerInspectCommand = &cli.Command{
+var imageInspectCommand = &cli.Command{
 	Name:         "inspect",
-	Usage:        "Display detailed information on one or more containers.",
-	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
+	Usage:        "Display detailed information on one or more images.",
+	ArgsUsage:    "[OPTIONS] IMAGE [IMAGE...]",
 	Description:  "Hint: set `--mode=native` for showing the full output",
-	Action:       ContainerInspectAction,
-	BashComplete: containerInspectBashComplete,
+	Action:       ImageInspectAction,
+	BashComplete: imageInspectBashComplete,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "mode",
@@ -45,7 +45,7 @@ var containerInspectCommand = &cli.Command{
 	},
 }
 
-func ContainerInspectAction(clicontext *cli.Context) error {
+func ImageInspectAction(clicontext *cli.Context) error {
 	if clicontext.NArg() == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
@@ -56,12 +56,33 @@ func ContainerInspectAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	f := &containerInspector{
+	f := &imageInspector{
 		mode: clicontext.String("mode"),
 	}
-	walker := &containerwalker.ContainerWalker{
-		Client:  client,
-		OnFound: f.Handler,
+	walker := &imagewalker.ImageWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			n, err := imageinspector.Inspect(ctx, client, found.Image)
+			if err != nil {
+				return err
+			}
+			switch f.mode {
+			case "native":
+				f.entries = append(f.entries, n)
+			case "dockercompat":
+				d, err := dockercompat.ImageFromNative(n)
+				if err != nil {
+					return err
+				}
+				f.entries = append(f.entries, d)
+			default:
+				return errors.Errorf("unknown mode %q", f.mode)
+			}
+			return nil
+		},
 	}
 
 	var errs []error
@@ -86,35 +107,12 @@ func ContainerInspectAction(clicontext *cli.Context) error {
 	return nil
 }
 
-type containerInspector struct {
+type imageInspector struct {
 	mode    string
 	entries []interface{}
 }
 
-func (x *containerInspector) Handler(ctx context.Context, found containerwalker.Found) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	n, err := containerinspector.Inspect(ctx, found.Container)
-	if err != nil {
-		return err
-	}
-	switch x.mode {
-	case "native":
-		x.entries = append(x.entries, n)
-	case "dockercompat":
-		d, err := dockercompat.ContainerFromNative(n)
-		if err != nil {
-			return err
-		}
-		x.entries = append(x.entries, d)
-	default:
-		return errors.Errorf("unknown mode %q", x.mode)
-	}
-	return nil
-}
-
-func containerInspectBashComplete(clicontext *cli.Context) {
+func imageInspectBashComplete(clicontext *cli.Context) {
 	coco := parseCompletionContext(clicontext)
 	if coco.boring {
 		defaultBashComplete(clicontext)
@@ -131,6 +129,6 @@ func containerInspectBashComplete(clicontext *cli.Context) {
 		defaultBashComplete(clicontext)
 		return
 	}
-	// show container names
-	bashCompleteContainerNames(clicontext, nil)
+	// show image names
+	bashCompleteImageNames(clicontext)
 }

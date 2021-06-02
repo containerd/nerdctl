@@ -35,12 +35,48 @@ import (
 
 	"github.com/containerd/containerd"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/docker/go-connections/nat"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 )
+
+// Image mimics a `docker image inspect` object.
+// From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L340-L374
+type Image struct {
+	ID          string `json:"Id"`
+	RepoTags    []string
+	RepoDigests []string
+	// TODO: Parent      string
+	Comment string
+	Created string
+	// TODO: Container   string
+	// TODO: ContainerConfig *container.Config
+	// TDOO: DockerVersion string
+	Author       string
+	Config       *Config
+	Architecture string
+	// TODO: Variant       string `json:",omitempty"`
+	Os string
+	// TODO: OsVersion     string `json:",omitempty"`
+	// TODO: Size          int64
+	// TODO: VirtualSize   int64
+	// TODO: GraphDriver     GraphDriverData
+	RootFS   RootFS
+	Metadata ImageMetadata
+}
+
+type RootFS struct {
+	Type      string
+	Layers    []string `json:",omitempty"`
+	BaseLayer string   `json:",omitempty"`
+}
+
+type ImageMetadata struct {
+	LastTagTime time.Time `json:",omitempty"`
+}
 
 // Container mimics a `docker container inspect` object.
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L340-L374
@@ -72,6 +108,35 @@ type Container struct {
 	// TODO: Mounts          []MountPoint
 	// TODO: Config          *container.Config
 	NetworkSettings *NetworkSettings
+}
+
+//config is from https://github.com/moby/moby/blob/8dbd90ec00daa26dc45d7da2431c965dec99e8b4/api/types/container/config.go#L37-L69
+type Config struct {
+	// TODO: Hostname     string      // Hostname
+	// TODO: Domainname   string      // Domainname
+	User string // User that will run the command(s) inside the container, also support user:group
+	// TODO: AttachStdin  bool        // Attach the standard input, makes possible user interaction
+	// TODO: AttachStdout bool        // Attach the standard output
+	// TODO: AttachStderr bool        // Attach the standard error
+	ExposedPorts nat.PortSet `json:",omitempty"` // List of exposed ports
+	// TODO: Tty          bool        // Attach standard streams to a tty, including stdin if it is not closed.
+	// TODO: OpenStdin    bool        // Open stdin
+	// TODO: StdinOnce    bool        // If true, close stdin after the 1 attached client disconnects.
+	Env []string // List of environment variable to set in the container
+	Cmd []string // Command to run when starting the container
+	// TODO Healthcheck     *HealthConfig       `json:",omitempty"` // Healthcheck describes how to check the container is healthy
+	// TODO: ArgsEscaped     bool                `json:",omitempty"` // True if command is already escaped (meaning treat as a command line) (Windows specific).
+	// TODO: Image           string              // Name of the image as it was passed by the operator (e.g. could be symbolic)
+	Volumes    map[string]struct{} // List of volumes (mounts) used for the container
+	WorkingDir string              // Current directory (PWD) in the command will be launched
+	Entrypoint []string            // Entrypoint to run when starting the container
+	// TODO: NetworkDisabled bool                `json:",omitempty"` // Is network disabled
+	// TODO: MacAddress      string              `json:",omitempty"` // Mac Address of the container
+	// TODO: OnBuild         []string            // ONBUILD metadata that were defined on the image Dockerfile
+	Labels map[string]string // List of labels set to this container
+	// TODO: StopSignal      string              `json:",omitempty"` // Signal to stop a container
+	// TODO: StopTimeout     *int                `json:",omitempty"` // Timeout (in seconds) to stop a container
+	// TODO: Shell           []string            `json:",omitempty"` // Shell for shell-form of RUN, CMD, ENTRYPOINT
 }
 
 // ContainerState is from https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L313-L326
@@ -176,6 +241,47 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	return c, nil
 }
 
+func ImageFromNative(n *native.Image) (*Image, error) {
+	i := &Image{}
+
+	imgoci := n.ImageSpec
+
+	i.RootFS.Type = imgoci.RootFS.Type
+	diffIDs := imgoci.RootFS.DiffIDs
+	for _, d := range diffIDs {
+		i.RootFS.Layers = append(i.RootFS.Layers, d.String())
+	}
+	i.Comment = imgoci.History[len(imgoci.History)-1].Comment
+	i.Created = imgoci.History[len(imgoci.History)-1].Created.String()
+	i.Author = imgoci.History[len(imgoci.History)-1].Author
+	i.Architecture = imgoci.Architecture
+	i.Os = imgoci.OS
+
+	portSet := make(nat.PortSet)
+	for k := range imgoci.Config.ExposedPorts {
+		portSet[nat.Port(k)] = struct{}{}
+	}
+
+	i.Config = &Config{
+		Cmd:          imgoci.Config.Cmd,
+		Volumes:      imgoci.Config.Volumes,
+		Env:          imgoci.Config.Env,
+		User:         imgoci.Config.User,
+		WorkingDir:   imgoci.Config.WorkingDir,
+		Entrypoint:   imgoci.Config.Entrypoint,
+		Labels:       imgoci.Config.Labels,
+		ExposedPorts: portSet,
+	}
+
+	i.ID = n.Descriptor.Digest.String()
+
+	repository, tag := imgutil.ParseRepoTag(n.Image.Name)
+
+	i.RepoTags = []string{fmt.Sprintf("%s:%s", repository, tag)}
+	i.RepoDigests = []string{fmt.Sprintf("%s@%s", repository, n.Image.Target.Digest.String())}
+
+	return i, nil
+}
 func statusFromNative(x containerd.ProcessStatus) string {
 	switch x {
 	case containerd.Stopped:

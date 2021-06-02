@@ -163,6 +163,17 @@ func (b *Base) InspectContainer(name string) dockercompat.Container {
 	return dc[0]
 }
 
+func (b *Base) InspectImage(name string) dockercompat.Image {
+	cmdResult := b.Cmd("image", "inspect", name).Run()
+	assert.Equal(b.T, cmdResult.ExitCode, 0)
+	var dc []dockercompat.Image
+	if err := json.Unmarshal([]byte(cmdResult.Stdout()), &dc); err != nil {
+		b.T.Fatal(err)
+	}
+	assert.Equal(b.T, 1, len(dc))
+	return dc[0]
+}
+
 func (b *Base) Info() dockercompat.Info {
 	cmdResult := b.Cmd("info", "--format", "{{ json . }}").Run()
 	assert.Equal(b.T, cmdResult.ExitCode, 0)

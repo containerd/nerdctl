@@ -17,36 +17,20 @@
 package main
 
 import (
-	"github.com/urfave/cli/v2"
+	"testing"
+
+	"github.com/containerd/nerdctl/pkg/testutil"
+	"gotest.tools/v3/assert"
 )
 
-var imageCommand = &cli.Command{
-	Name:     "image",
-	Usage:    "Manage images",
-	Category: CategoryManagement,
-	Subcommands: []*cli.Command{
-		buildCommand,
-		// commitCommand is in "container", not in "image"
-		imageLsCommand(),
-		pullCommand,
-		pushCommand,
-		loadCommand,
-		saveCommand,
-		tagCommand,
-		imageRmCommand(),
-		imageConvertCommand,
-		imageInspectCommand,
-	},
-}
+func TestImageInspectContainsSomeStuff(t *testing.T) {
+	base := testutil.NewBase(t)
+	defer base.Cmd("rmi", "-f", testutil.NginxAlpineImage).Run()
 
-func imageLsCommand() *cli.Command {
-	x := *imagesCommand
-	x.Name = "ls"
-	return &x
-}
+	base.Cmd("pull", testutil.NginxAlpineImage).AssertOK()
+	inspect := base.InspectImage(testutil.NginxAlpineImage)
 
-func imageRmCommand() *cli.Command {
-	x := *rmiCommand
-	x.Name = "rm"
-	return &x
+	assert.Assert(base.T, len(inspect.RootFS.Layers) > 0)
+	assert.Assert(base.T, inspect.RootFS.Type != "")
+	assert.Assert(base.T, inspect.Architecture != "")
 }
