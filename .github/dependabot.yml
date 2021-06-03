@@ -1,0 +1,28 @@
+# -----------------------------------------------------------------------------
+# Forked from https://raw.githubusercontent.com/opencontainers/runc/2888e6e54339e52ae45710daa9e47cdb2e1926f9/.github/dependabot.yml
+# Copyright The runc Authors.
+# Licensed under the Apache License, Version 2.0
+# -----------------------------------------------------------------------------
+
+# Please see the documentation for all configuration options:
+# https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+  # Dependencies listed in go.mod
+  - package-ecosystem: "gomod"
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "daily"
+
+  # Dependencies listed in .github/workflows/*.yml
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+
+  # Dependencies listed in Dockerfile
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "daily"
