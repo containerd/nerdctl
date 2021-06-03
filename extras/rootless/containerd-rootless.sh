@@ -132,6 +132,14 @@ else
 	rm -f /run/containerd /run/xtables.lock \
 		/var/lib/containerd /var/lib/cni /etc/containerd
 
+	# Bind-mount /etc/ssl.
+	# Workaround for "x509: certificate signed by unknown authority" on openSUSE Tumbleweed.
+	# https://github.com/rootless-containers/rootlesskit/issues/225
+	realpath_etc_ssl=$(realpath /etc/ssl)
+	rm -f /etc/ssl
+	mkdir /etc/ssl
+	mount --rbind "${realpath_etc_ssl}" /etc/ssl
+
 	# Bind-mount /var/lib/containerd
 	mkdir -p "${XDG_DATA_HOME}/containerd" "/var/lib/containerd"
 	mount --bind "${XDG_DATA_HOME}/containerd" "/var/lib/containerd"
