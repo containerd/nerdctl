@@ -48,6 +48,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/docker/cli/opts"
+	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -230,6 +231,11 @@ var runCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:  "cidfile",
 			Usage: "Write the container ID to the file",
+		},
+		// shared memory flags
+		&cli.StringFlag{
+			Name:  "shm-size",
+			Usage: "Size of /dev/shm",
 		},
 	},
 }
@@ -443,6 +449,14 @@ func runAction(clicontext *cli.Context) error {
 
 	if clicontext.Bool("privileged") {
 		opts = append(opts, privilegedOpts...)
+	}
+
+	if shmSize := clicontext.String("shm-size"); len(shmSize) > 0 {
+		shmBytes, err := units.RAMInBytes(shmSize)
+		if err != nil {
+			return err
+		}
+		opts = append(opts, oci.WithDevShmSize(shmBytes/1024))
 	}
 
 	rtCOpts, err := generateRuntimeCOpts(clicontext)

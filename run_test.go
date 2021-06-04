@@ -150,3 +150,10 @@ func TestRunCIDFile(t *testing.T) {
 
 	base.Cmd("run", "--rm", "--cidfile", fileName, testutil.AlpineImage).AssertFail()
 }
+
+func TestRunShmSize(t *testing.T) {
+	base := testutil.NewBase(t)
+	const shmSize = "32m"
+
+	base.Cmd("run", "--rm", "--shm-size", shmSize, testutil.AlpineImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
+}

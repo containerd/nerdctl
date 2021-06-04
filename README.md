@@ -302,6 +302,9 @@ Metadata flags:
 - :whale: `--label-file`: Read in a line delimited file of labels
 - :whale: `--cidfile`: Write the container ID to the file
 
+Shared memory flags:
+- :whale: `--shm-size`: Size of `/dev/shm`
+
 Other `docker run` flags are on plan but unimplemented yet.
 <details>
 <summary> Clicke here to show all the `docker run` flags (Docker 20.10)</summary>
