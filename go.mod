@@ -18,7 +18,7 @@ require (
 	github.com/containernetworking/plugins v0.9.1
 	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/docker/cli v20.10.6+incompatible
-	github.com/docker/docker v20.10.6+incompatible
+	github.com/docker/docker v20.10.7+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.10.0
