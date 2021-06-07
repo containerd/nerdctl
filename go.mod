@@ -21,7 +21,7 @@ require (
 	github.com/docker/docker v20.10.7+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0
-	github.com/fatih/color v1.10.0
+	github.com/fatih/color v1.12.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/mattn/go-isatty v0.0.13
 	github.com/morikuni/aec v1.0.0 // indirect
