@@ -39,9 +39,6 @@ which was derived from [Docker Compose file version 3 specification](https://doc
 #### `services.<SERVICE>.entrypoint`
 - Multiple entrypoint strings cannot be specified.
 
-#### `services.<SERVICE>.networks`
-- Multiple networks cannot be specified.
-
 #### `services.<SERVICE>.secrets`, `services.<SERVICE>.configs`
 - `uid`, `gid`: Cannot be specified. The default value is not propagated from `USER` instruction of Dockerfile.
   The file owner corresponds to the original file on the host.

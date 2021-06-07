@@ -26,8 +26,8 @@ import (
 	"path/filepath"
 
 	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/lockutil"
+	"github.com/containernetworking/cni/pkg/types/current"
 )
 
 const (
@@ -101,7 +101,7 @@ func NewStore(dataStore string) (Store, error) {
 type Meta struct {
 	Namespace string
 	ID        string
-	Networks  map[string]*cni.CNIResult
+	Networks  map[string]*current.Result
 	Hostname  string
 	Name      string
 }

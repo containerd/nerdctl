@@ -44,6 +44,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/portutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
@@ -359,15 +360,17 @@ func runAction(clicontext *cli.Context) error {
 	netSlice := strutil.DedupeStrSlice(clicontext.StringSlice("net"))
 
 	ports := make([]gocni.PortMapping, 0)
-	if len(netSlice) != 1 {
-		return errors.New("currently, number of networks must be 1")
+	netType, err := nettype.Detect(netSlice)
+	if err != nil {
+		return err
 	}
-	switch netstr := netSlice[0]; netstr {
-	case "none":
+
+	switch netType {
+	case nettype.None:
 		// NOP
-	case "host":
+	case nettype.Host:
 		opts = append(opts, oci.WithHostNamespace(specs.NetworkNamespace), oci.WithHostHostsFile, oci.WithHostResolvconf)
-	default:
+	case nettype.CNI:
 		// We only verify flags and generate resolv.conf here.
 		// The actual network is configured in the oci hook.
 		e := &netutil.CNIEnv{
@@ -378,15 +381,17 @@ func runAction(clicontext *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		var netconflist *netutil.NetworkConfigList
-		for _, f := range ll {
-			if f.Name == netstr {
-				netconflist = f
-				break
+		for _, netstr := range netSlice {
+			var netconflist *netutil.NetworkConfigList
+			for _, f := range ll {
+				if f.Name == netstr {
+					netconflist = f
+					break
+				}
 			}
-		}
-		if netconflist == nil {
-			return errors.Errorf("no such network: %q", netstr)
+			if netconflist == nil {
+				return errors.Errorf("no such network: %q", netstr)
+			}
 		}
 
 		resolvConfPath := filepath.Join(stateDir, "resolv.conf")
@@ -406,6 +411,8 @@ func runAction(clicontext *cli.Context) error {
 			}
 			ports = append(ports, pm...)
 		}
+	default:
+		return errors.Errorf("unexpected network type %v", netType)
 	}
 
 	hostname := id[0:12]

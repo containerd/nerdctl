@@ -26,12 +26,13 @@ import (
 	"path/filepath"
 
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
-	"github.com/containerd/go-cni"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containernetworking/cni/pkg/types/current"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
@@ -106,13 +107,16 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 	if err := json.Unmarshal([]byte(networksJSON), &networks); err != nil {
 		return nil, err
 	}
-	if len(networks) != 1 {
-		return nil, errors.New("currently, number of networks must be 1")
+
+	netType, err := nettype.Detect(networks)
+	if err != nil {
+		return nil, err
 	}
 
-	switch netstr := networks[0]; netstr {
-	case "none", "host":
-	default:
+	switch netType {
+	case nettype.Host, nettype.None:
+		// NOP
+	case nettype.CNI:
 		e := &netutil.CNIEnv{
 			Path:        cniPath,
 			NetconfPath: cniNetconfPath,
@@ -121,21 +125,29 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 		if err != nil {
 			return nil, err
 		}
-		var netconflist *netutil.NetworkConfigList
-		for _, f := range ll {
-			if f.Name == netstr {
-				netconflist = f
-				break
+		cniOpts := []gocni.Opt{
+			gocni.WithPluginDir([]string{cniPath}),
+		}
+		for _, netstr := range networks {
+			var netconflist *netutil.NetworkConfigList
+			for _, f := range ll {
+				if f.Name == netstr {
+					netconflist = f
+					break
+				}
 			}
+			if netconflist == nil {
+				return nil, errors.Errorf("no such network: %q", netstr)
+			}
+			cniOpts = append(cniOpts, gocni.WithConfListBytes(netconflist.Bytes))
+			o.cniNames = append(o.cniNames, netstr)
 		}
-		if netconflist == nil {
-			return nil, errors.Errorf("no such network: %q", netstr)
-		}
-		o.cni, err = gocni.New(gocni.WithPluginDir([]string{cniPath}), gocni.WithConfListBytes(netconflist.Bytes))
+		o.cni, err = gocni.New(cniOpts...)
 		if err != nil {
 			return nil, err
 		}
-		o.cniName = netstr
+	default:
+		return nil, errors.Errorf("unexpected network type %v", netType)
 	}
 
 	if portsJSON := o.state.Annotations[labels.Ports]; portsJSON != "" {
@@ -155,11 +167,11 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 type handlerOpts struct {
 	state             *specs.State
 	dataStore         string
-	fullID            string
 	rootfs            string
 	ports             []gocni.PortMapping
-	cni               gocni.CNI // TODO: support multi network
-	cniName           string    // TODO: support multi network
+	cni               gocni.CNI
+	cniNames          []string
+	fullID            string
 	rootlessKitClient rlkclient.Client
 }
 
@@ -195,10 +207,10 @@ func getNetNSPath(state *specs.State) (string, error) {
 	return s, nil
 }
 
-func getCNINamespaceOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
+func getPortMapOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 	if len(opts.ports) > 0 {
 		if !rootlessutil.IsRootlessChild() {
-			return []cni.NamespaceOpts{cni.WithCapabilityPortMap(opts.ports)}, nil
+			return []gocni.NamespaceOpts{gocni.WithCapabilityPortMap(opts.ports)}, nil
 		}
 		var (
 			childIP                            net.IP
@@ -216,7 +228,7 @@ func getCNINamespaceOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 		//
 		// We must NOT modify opts.ports here, because we use the unmodified opts.ports for
 		// interaction with RootlessKit API.
-		ports := make([]cni.PortMapping, len(opts.ports))
+		ports := make([]gocni.PortMapping, len(opts.ports))
 		for i, p := range opts.ports {
 			if hostIP := net.ParseIP(p.HostIP); hostIP != nil && !hostIP.IsUnspecified() {
 				// loopback address is always bindable in the child namespace, but other addresses are unlikely.
@@ -236,7 +248,7 @@ func getCNINamespaceOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 			}
 			ports[i] = p
 		}
-		return []cni.NamespaceOpts{cni.WithCapabilityPortMap(ports)}, nil
+		return []gocni.NamespaceOpts{gocni.WithCapabilityPortMap(ports)}, nil
 	}
 	return nil, nil
 }
@@ -246,7 +258,7 @@ func onCreateRuntime(opts *handlerOpts) error {
 		loadAppArmor()
 	}
 	if opts.cni != nil {
-		cniNSOpts, err := getCNINamespaceOpts(opts)
+		portMapOpts, err := getPortMapOpts(opts)
 		if err != nil {
 			return err
 		}
@@ -255,10 +267,6 @@ func onCreateRuntime(opts *handlerOpts) error {
 			return err
 		}
 		ctx := context.Background()
-		cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, cniNSOpts...)
-		if err != nil {
-			return errors.Wrap(err, "failed to call cni.Setup")
-		}
 		hs, err := hostsstore.NewStore(opts.dataStore)
 		if err != nil {
 			return err
@@ -266,12 +274,19 @@ func onCreateRuntime(opts *handlerOpts) error {
 		hsMeta := hostsstore.Meta{
 			Namespace: opts.state.Annotations[labels.Namespace],
 			ID:        opts.state.ID,
-			Networks: map[string]*cni.CNIResult{
-				opts.cniName: cniRes, // TODO: multi-network
-			},
-			Hostname: opts.state.Annotations[labels.Hostname],
-			Name:     opts.state.Annotations[labels.Name],
+			Networks:  make(map[string]*current.Result, len(opts.cniNames)),
+			Hostname:  opts.state.Annotations[labels.Hostname],
+			Name:      opts.state.Annotations[labels.Name],
 		}
+		cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, portMapOpts...)
+		if err != nil {
+			return errors.Wrap(err, "failed to call cni.Setup")
+		}
+		cniResRaw := cniRes.Raw()
+		for i, cniName := range opts.cniNames {
+			hsMeta.Networks[cniName] = cniResRaw[i]
+		}
+
 		if err := hs.Acquire(hsMeta); err != nil {
 			return err
 		}
@@ -304,11 +319,11 @@ func onPostStop(opts *handlerOpts) error {
 				}
 			}
 		}
-		cniNSOpts, err := getCNINamespaceOpts(opts)
+		portMapOpts, err := getPortMapOpts(opts)
 		if err != nil {
 			return err
 		}
-		if err := opts.cni.Remove(ctx, opts.fullID, "", cniNSOpts...); err != nil {
+		if err := opts.cni.Remove(ctx, opts.fullID, "", portMapOpts...); err != nil {
 			logrus.WithError(err).Errorf("failed to call cni.Remove")
 			return err
 		}
