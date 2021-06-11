@@ -297,6 +297,7 @@ Env flags:
 - :whale: `--entrypoint`: Overwrite the default ENTRYPOINT of the image
 - :whale: `-w, --workdir`: Working directory inside the container
 - :whale: `-e, --env`: Set environment variables
+- :whale: `--env-file`: Set environment variables from file
 
 Metadata flags:
 - :whale: `--name`: Assign a name to the container
