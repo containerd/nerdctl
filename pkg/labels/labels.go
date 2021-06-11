@@ -29,6 +29,12 @@ const (
 	// WARNING: multiple containers may have same the name label
 	Name = Prefix + "name"
 
+	//Compose Project Name
+	ComposeProject = "com.docker.compose.project"
+
+	//Compose Service Name
+	ComposeService = "com.docker.compose.service"
+
 	// Hostname
 	Hostname = Prefix + "hostname"
 
