@@ -18,11 +18,13 @@ package composer
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -49,7 +51,7 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 		for _, container := range ps.Containers {
 			container := container
 			runEG.Go(func() error {
-				id, err := c.upServiceContainer(ctx, container)
+				id, err := c.upServiceContainer(ctx, ps, container)
 				if err != nil {
 					return err
 				}
@@ -122,8 +124,15 @@ func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Ser
 
 // upServiceContainer must be called after ensureServiceImage
 // upServiceContainer returns container ID
-func (c *Composer) upServiceContainer(ctx context.Context, container serviceparser.Container) (string, error) {
+func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparser.Service, container serviceparser.Container) (string, error) {
 	logrus.Infof("Creating container %s", container.Name)
+
+	//add metadata labels to container https://github.com/compose-spec/compose-spec/blob/master/spec.md#labels
+	container.RunArgs = append([]string{
+		fmt.Sprintf("-l=%s=%s", labels.ComposeProject, c.Options.Project),
+		fmt.Sprintf("-l=%s=%s", labels.ComposeService, service.Unparsed.Name),
+	}, container.RunArgs...)
+
 	cmd := c.createNerdctlCmd(ctx, append([]string{"run"}, container.RunArgs...)...)
 	if c.DebugPrintFull {
 		logrus.Debugf("Running %v", cmd.Args)
