@@ -198,11 +198,24 @@ services:
     image: nginx:alpine
     deploy:
       restart_policy: {}
+      resources:
+        reservations:
+          devices:
+          - capabilities: ["gpu", "utility", "compute"]
+            driver: nvidia
+            count: 2
+          - capabilities: ["nvidia"]
+            device_ids: ["dummy", "dummy2"]
   baz: # restart=no
     image: nginx:alpine
     deploy:
       restart_policy:
         condition: none
+      resources:
+        reservations:
+          devices:
+          - capabilities: ["utility"]
+            count: all
 `
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -237,6 +250,8 @@ services:
 	assert.Assert(t, len(bar.Containers) == 1)
 	for _, c := range bar.Containers {
 		assert.Assert(t, in(c.RunArgs, "--restart=always"))
+		assert.Assert(t, in(c.RunArgs, `--gpus="capabilities=gpu,utility,compute",driver=nvidia,count=2`))
+		assert.Assert(t, in(c.RunArgs, `--gpus=capabilities=nvidia,"device=dummy,dummy2"`))
 	}
 
 	bazSvc, err := project.GetService("baz")
@@ -249,6 +264,7 @@ services:
 	assert.Assert(t, len(baz.Containers) == 1)
 	for _, c := range baz.Containers {
 		assert.Assert(t, in(c.RunArgs, "--restart=no"))
+		assert.Assert(t, in(c.RunArgs, `--gpus=capabilities=utility,count=-1`))
 	}
 }
 
