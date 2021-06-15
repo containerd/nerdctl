@@ -17,12 +17,15 @@
 package serviceparser
 
 import (
+	"bytes"
+	"encoding/csv"
 	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/compose-spec/compose-go/types"
 	compose "github.com/compose-spec/compose-go/types"
+	"github.com/containerd/containerd/contrib/nvidia"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
 	"github.com/pkg/errors"
@@ -104,6 +107,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		}
 		if unknown := reflectutil.UnknownNonEmptyFields(svc.Deploy.Resources,
 			"Limits",
+			"Reservations",
 		); len(unknown) > 0 {
 			logrus.Warnf("Ignoring: service %s: deploy.resources: %+v", svc.Name, unknown)
 		}
@@ -113,6 +117,24 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 				"MemoryBytes",
 			); len(unknown) > 0 {
 				logrus.Warnf("Ignoring: service %s: deploy.resources.resources: %+v", svc.Name, unknown)
+			}
+		}
+		if svc.Deploy.Resources.Reservations != nil {
+			if unknown := reflectutil.UnknownNonEmptyFields(svc.Deploy.Resources.Reservations,
+				"Devices",
+			); len(unknown) > 0 {
+				logrus.Warnf("Ignoring: service %s: deploy.resources.resources.reservations: %+v", svc.Name, unknown)
+			}
+			for i, dev := range svc.Deploy.Resources.Reservations.Devices {
+				if unknown := reflectutil.UnknownNonEmptyFields(dev,
+					"Capabilities",
+					"Driver",
+					"Count",
+					"IDs",
+				); len(unknown) > 0 {
+					logrus.Warnf("Ignoring: service %s: deploy.resources.resources.reservations.devices[%d]: %+v",
+						svc.Name, i, unknown)
+				}
 			}
 		}
 	}
@@ -191,6 +213,60 @@ func getMemLimit(svc compose.ServiceConfig) (types.UnitBytes, error) {
 		}
 	}
 	return limit, nil
+}
+
+func getGPUs(svc compose.ServiceConfig) (reqs []string, _ error) {
+	// "gpu" and "nvidia" are also allowed capabilities (but not used as nvidia driver capabilities)
+	// https://github.com/moby/moby/blob/v20.10.7/daemon/nvidia_linux.go#L37
+	capset := map[string]struct{}{"gpu": {}, "nvidia": {}}
+	for _, c := range nvidia.AllCaps() {
+		capset[string(c)] = struct{}{}
+	}
+	if svc.Deploy != nil && svc.Deploy.Resources.Reservations != nil {
+		for _, dev := range svc.Deploy.Resources.Reservations.Devices {
+			if len(dev.Capabilities) == 0 {
+				// "capabilities" is required.
+				// https://github.com/compose-spec/compose-spec/blob/74b933db994109616580eab8f47bf2ba226e0faa/deploy.md#devices
+				return nil, fmt.Errorf("service %s: specifying \"capabilities\" is required for resource reservations", svc.Name)
+			}
+
+			var requiresGPU bool
+			for _, c := range dev.Capabilities {
+				if _, ok := capset[c]; ok {
+					requiresGPU = true
+				}
+			}
+			if !requiresGPU {
+				continue
+			}
+
+			var e []string
+			if len(dev.Capabilities) > 0 {
+				e = append(e, fmt.Sprintf("capabilities=%s", strings.Join(dev.Capabilities, ",")))
+			}
+			if dev.Driver != "" {
+				e = append(e, fmt.Sprintf("driver=%s", dev.Driver))
+			}
+			if len(dev.IDs) > 0 {
+				e = append(e, fmt.Sprintf("device=%s", strings.Join(dev.IDs, ",")))
+			}
+			if dev.Count != 0 {
+				e = append(e, fmt.Sprintf("count=%d", dev.Count))
+			}
+
+			buf := new(bytes.Buffer)
+			w := csv.NewWriter(buf)
+			if err := w.Write(e); err != nil {
+				return nil, err
+			}
+			w.Flush()
+			o := buf.Bytes()
+			if len(o) > 0 {
+				reqs = append(reqs, string(o[:len(o)-1])) // remove carriage return
+			}
+		}
+	}
+	return reqs, nil
 }
 
 // getRestart returns `nerdctl run --restart` flag string ("no" or "always")
@@ -398,6 +474,14 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 		return nil, err
 	} else if memLimit > 0 {
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("-m=%d", memLimit))
+	}
+
+	if gpuReqs, err := getGPUs(svc); err != nil {
+		return nil, err
+	} else if len(gpuReqs) > 0 {
+		for _, gpus := range gpuReqs {
+			c.RunArgs = append(c.RunArgs, fmt.Sprintf("--gpus=%s", gpus))
+		}
 	}
 
 	for k, v := range svc.Labels {

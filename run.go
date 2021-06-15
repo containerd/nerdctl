@@ -184,6 +184,10 @@ var runCommand = &cli.Command{
 			Name:  "sysctl",
 			Usage: "Sysctl options",
 		},
+		&cli.StringSliceFlag{
+			Name:  "gpus",
+			Usage: "GPU devices to add to the container ('all' to pass all GPUs)",
+		},
 		// volume flags
 		&cli.StringSliceFlag{
 			Name:    "volume",
@@ -498,6 +502,12 @@ func runAction(clicontext *cli.Context) error {
 	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
 
 	opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(clicontext.StringSlice("sysctl"))))
+
+	gpuOpt, err := parseGPUOpts(clicontext.StringSlice("gpus"))
+	if err != nil {
+		return err
+	}
+	opts = append(opts, gpuOpt...)
 
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)

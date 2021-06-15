@@ -307,6 +307,9 @@ Metadata flags:
 Shared memory flags:
 - :whale: `--shm-size`: Size of `/dev/shm`
 
+GPU flags:
+- :whale: `--gpus`: GPU devices to add to the container ('all' to pass all GPUs). Please see also [./docs/gpu.md](./docs/gpu.md) for details.
+
 Other `docker run` flags are on plan but unimplemented yet.
 <details>
 <summary> Clicke here to show all the `docker run` flags (Docker 20.10)</summary>
@@ -899,6 +902,7 @@ Others:
 # Additional documents
 - [`./docs/compose.md`](./docs/compose.md):   Compose
 - [`./docs/dir.md`](./docs/dir.md):           Directory layout (`/var/lib/nerdctl`)
+- [`./docs/gpu.md`](./docs/gpu.md):            Using GPUs inside containers
 - [`./docs/registry.md`](./docs/registry.md): Registry authentication (`~/.docker/config.json`)
 - [`./docs/rootless.md`](./docs/rootless.md): Rootless mode
 - [`./docs/stargz.md`](./docs/stargz.md):     Lazy-pulling using Stargz Snapshotter
