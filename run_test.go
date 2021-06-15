@@ -157,3 +157,27 @@ func TestRunShmSize(t *testing.T) {
 
 	base.Cmd("run", "--rm", "--shm-size", shmSize, testutil.AlpineImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
 }
+
+func TestRunEnvFile(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	const pattern = "env-file"
+	file1, err := ioutil.TempFile("", pattern)
+	assert.NilError(base.T, err)
+	path1 := file1.Name()
+	defer file1.Close()
+	defer os.Remove(path1)
+	err = ioutil.WriteFile(path1, []byte("# this is a comment line\nTESTKEY1=TESTVAL1"), 0666)
+	assert.NilError(base.T, err)
+
+	file2, err := ioutil.TempFile("", pattern)
+	assert.NilError(base.T, err)
+	path2 := file2.Name()
+	defer file2.Close()
+	defer os.Remove(path2)
+	err = ioutil.WriteFile(path2, []byte("# this is a comment line\nTESTKEY2=TESTVAL2"), 0666)
+	assert.NilError(base.T, err)
+
+	base.Cmd("run", "--rm", "--env-file", path1, "--env-file", path2, testutil.AlpineImage, "sh", "-c", "echo $TESTKEY1").AssertOutContains("TESTVAL1")
+	base.Cmd("run", "--rm", "--env-file", path1, "--env-file", path2, testutil.AlpineImage, "sh", "-c", "echo $TESTKEY2").AssertOutContains("TESTVAL2")
+}

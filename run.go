@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -219,6 +220,10 @@ var runCommand = &cli.Command{
 			Aliases: []string{"e"},
 			Usage:   "Set environment variables",
 		},
+		&cli.StringSliceFlag{
+			Name:  "env-file",
+			Usage: "Set environment variables from file",
+		},
 		// metadata flags
 		&cli.StringFlag{
 			Name:  "name",
@@ -309,6 +314,14 @@ func runAction(clicontext *cli.Context) error {
 
 	if wd := clicontext.String("workdir"); wd != "" {
 		opts = append(opts, oci.WithProcessCwd(wd))
+	}
+
+	if envFiles := strutil.DedupeStrSlice(clicontext.StringSlice("env-file")); len(envFiles) > 0 {
+		env, err := parseEnvVars(envFiles)
+		if err != nil {
+			return err
+		}
+		opts = append(opts, oci.WithEnv(env))
 	}
 
 	if env := strutil.DedupeStrSlice(clicontext.StringSlice("env")); len(env) > 0 {
@@ -792,4 +805,29 @@ func writeCIDFile(path, id string) error {
 	} else {
 		return err
 	}
+}
+
+func parseEnvVars(paths []string) ([]string, error) {
+	vars := make([]string, 0)
+	for _, path := range paths {
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to open env file %s", path)
+		}
+		defer f.Close()
+
+		sc := bufio.NewScanner(f)
+		for sc.Scan() {
+			line := strings.TrimSpace(sc.Text())
+			// skip comment lines
+			if strings.HasPrefix(line, "#") {
+				continue
+			}
+			vars = append(vars, line)
+		}
+		if err = sc.Err(); err != nil {
+			return nil, err
+		}
+	}
+	return vars, nil
 }
