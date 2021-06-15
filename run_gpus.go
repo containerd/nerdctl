@@ -24,6 +24,7 @@ import (
 
 	"github.com/containerd/containerd/contrib/nvidia"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/pkg/errors"
 )
 
@@ -80,6 +81,12 @@ func parseGPUOpt(value string) (oci.SpecOpts, error) {
 		// Add "utility" capability if unset.
 		// Please see also: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/user-guide.html#driver-capabilities
 		gpuOpts = append(gpuOpts, nvidia.WithCapabilities(nvidia.Utility))
+	}
+
+	if rootlessutil.IsRootless() {
+		// "--no-cgroups" option is needed to nvidia-container-cli in rootless environment
+		// Please see also: https://github.com/moby/moby/issues/38729#issuecomment-463493866
+		gpuOpts = append(gpuOpts, nvidia.WithNoCgroups)
 	}
 
 	return nvidia.WithGPUs(gpuOpts...), nil
