@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/pkg/progress"
 	refdocker "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -100,7 +101,7 @@ func printImages(ctx context.Context, clicontext *cli.Context, client *container
 		if err != nil {
 			errs = append(errs, err)
 		}
-		repository, tag := parseRepoTag(img.Name)
+		repository, tag := imgutil.ParseRepoTag(img.Name)
 
 		var digest string
 		if !noTrunc {
@@ -130,31 +131,6 @@ func printImages(ctx context.Context, clicontext *cli.Context, client *container
 		logrus.Warn("failed to compute image(s) size")
 	}
 	return w.Flush()
-}
-
-func parseRepoTag(imgName string) (string, string) {
-	logrus.Debugf("raw image name=%q", imgName)
-
-	if strings.Contains(imgName, "@") {
-		logrus.Warnf("unparsable image name %q", imgName)
-		return "", ""
-	}
-
-	if _, err := refdocker.ParseDockerRef(imgName); err != nil {
-		logrus.WithError(err).Warnf("unparsable image name %q", imgName)
-		return "", ""
-	}
-
-	var tag string
-	nameWithTagSplit := strings.Split(imgName, ":")
-	if len(nameWithTagSplit) > 1 {
-		tag = nameWithTagSplit[len(nameWithTagSplit)-1]
-	}
-	repository := strings.TrimSuffix(imgName, ":"+tag)
-	repository = strings.TrimPrefix(repository, "docker.io/library/")
-	repository = strings.TrimPrefix(repository, "docker.io/")
-
-	return repository, tag
 }
 
 func imagesBashComplete(clicontext *cli.Context) {

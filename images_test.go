@@ -19,6 +19,7 @@ package main
 import (
 	"testing"
 
+	"github.com/containerd/nerdctl/pkg/imgutil"
 	"gotest.tools/v3/assert"
 )
 
@@ -51,7 +52,7 @@ func TestParseRepoTag(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		repo, tag := parseRepoTag(tc.imgName)
+		repo, tag := imgutil.ParseRepoTag(tc.imgName)
 		assert.Equal(t, tc.repo, repo)
 		assert.Equal(t, tc.tag, tag)
 	}

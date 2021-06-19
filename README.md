@@ -196,6 +196,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl save](#whale-nerdctl-save)
     - [:whale: nerdctl tag](#whale-nerdctl-tag)
     - [:whale: nerdctl rmi](#whale-nerdctl-rmi)
+    - [:whale: nerdctl image inspect](#whale-nerdctl-image-inspect)
     - [:nerd_face: nerdctl image convert](#nerd_face-nerdctl-image-convert)
   - [Registry](#registry)
     - [:whale: nerdctl login](#whale-nerdctl-login)
@@ -630,6 +631,16 @@ Usage: `nerdctl rmi [OPTIONS] IMAGE [IMAGE...]`
 
 Unimplemented `docker rmi` flags: `--force`, `--no-prune`
 
+### :whale: nerdctl image inspect
+Display detailed information on one or more images.
+
+Usage: `nerctl image inspect [OPTIONS] NAME|ID [NAME|ID...]`
+
+Flags:
+- :nerd_face: `--mode=(dockercompat|native)`: Inspection mode. "native" produces more information.
+
+Unimplemented `docker image inspect` flags: `--format`
+
 ### :nerd_face: nerdctl image convert
 Convert an image format.
 
@@ -874,7 +885,6 @@ Image:
 - `docker export` and `docker import`
 - `docker history`
 
-- `docker image inspect`
 - `docker image prune`
 
 - `docker trust *`

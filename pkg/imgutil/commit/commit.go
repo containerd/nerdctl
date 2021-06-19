@@ -37,6 +37,7 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/rootfs"
 	"github.com/containerd/containerd/snapshots"
+	imgutil "github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/opencontainers/image-spec/specs-go"
@@ -74,7 +75,7 @@ func Commit(ctx context.Context, client *containerd.Client, id string, opts *Opt
 		return emptyDigest, err
 	}
 
-	baseImgConfig, err := readImageConfig(ctx, baseImg)
+	baseImgConfig, err := imgutil.ReadImageConfig(ctx, baseImg)
 	if err != nil {
 		return emptyDigest, err
 	}
@@ -168,7 +169,7 @@ func generateCommitImageConfig(ctx context.Context, container containerd.Contain
 		return ocispec.Image{}, err
 	}
 
-	baseConfig, err := readImageConfig(ctx, img)
+	baseConfig, err := imgutil.ReadImageConfig(ctx, img)
 	if err != nil {
 		return ocispec.Image{}, err
 	}
@@ -334,26 +335,6 @@ func applyDiffLayer(ctx context.Context, name string, baseImg ocispec.Image, sn 
 		return err
 	}
 	return nil
-}
-
-// readImageConfig reads config spec from content store.
-func readImageConfig(ctx context.Context, img containerd.Image) (ocispec.Image, error) {
-	var config ocispec.Image
-
-	configDesc, err := img.Config(ctx)
-	if err != nil {
-		return config, err
-	}
-
-	p, err := content.ReadBlob(ctx, img.ContentStore(), configDesc)
-	if err != nil {
-		return config, err
-	}
-
-	if err := json.Unmarshal(p, &config); err != nil {
-		return config, err
-	}
-	return config, nil
 }
 
 // copied from github.com/containerd/containerd/rootfs/apply.go
