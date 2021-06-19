@@ -24,7 +24,8 @@ import (
 // Image corresponds to a containerd-native image object.
 // Not compatible with `docker image inspect`.
 type Image struct {
-	images.Image
-	ImageSpec  ocispec.Image      `json:"ImageSpec"`
-	Descriptor ocispec.Descriptor `json:"Descriptor"`
+	Image images.Image `json:"Image"`
+	// e.g., "application/vnd.docker.container.image.v1+json"
+	ImageConfigDesc ocispec.Descriptor `json:"ImageConfigDesc"`
+	ImageConfig     ocispec.Image      `json:"ImageConfig"`
 }

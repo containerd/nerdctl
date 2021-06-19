@@ -37,7 +37,7 @@ func Inspect(ctx context.Context, client *containerd.Client, image images.Image)
 		logrus.WithError(err).WithField("id", image.Name).Warnf("failed to inspect Rootfs")
 		return nil, err
 	}
-	n.ImageSpec = imageConfig
+	n.ImageConfig = imageConfig
 
 	cs := client.ContentStore()
 	config, err := image.Config(ctx, cs, platforms.DefaultStrict())
@@ -46,7 +46,7 @@ func Inspect(ctx context.Context, client *containerd.Client, image images.Image)
 		return nil, err
 	}
 
-	n.Descriptor = config
+	n.ImageConfigDesc = config
 	n.Image = image
 
 	return n, nil

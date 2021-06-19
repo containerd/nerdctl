@@ -244,7 +244,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 func ImageFromNative(n *native.Image) (*Image, error) {
 	i := &Image{}
 
-	imgoci := n.ImageSpec
+	imgoci := n.ImageConfig
 
 	i.RootFS.Type = imgoci.RootFS.Type
 	diffIDs := imgoci.RootFS.DiffIDs
@@ -273,7 +273,7 @@ func ImageFromNative(n *native.Image) (*Image, error) {
 		ExposedPorts: portSet,
 	}
 
-	i.ID = n.Descriptor.Digest.String()
+	i.ID = n.ImageConfigDesc.Digest.String()
 
 	repository, tag := imgutil.ParseRepoTag(n.Image.Name)
 
