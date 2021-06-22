@@ -14,12 +14,11 @@
    limitations under the License.
 */
 
-package main
+package imgutil
 
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/pkg/imgutil"
 	"gotest.tools/v3/assert"
 )
 
@@ -52,7 +51,7 @@ func TestParseRepoTag(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		repo, tag := imgutil.ParseRepoTag(tc.imgName)
+		repo, tag := ParseRepoTag(tc.imgName)
 		assert.Equal(t, tc.repo, repo)
 		assert.Equal(t, tc.tag, tag)
 	}
