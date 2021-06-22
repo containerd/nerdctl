@@ -26,22 +26,18 @@ func TestWait(t *testing.T) {
 	const (
 		testContainerName1 = "nerdctl-test-wait-1"
 		testContainerName2 = "nerdctl-test-wait-2"
-		testContainerName3 = "nerdctl-test-wait-3"
 	)
 
 	const expected = `0
 0
-123
 `
 	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainerName1, testContainerName2, testContainerName3).Run()
+	defer base.Cmd("rm", "-f", testContainerName1, testContainerName2).Run()
 
 	base.Cmd("run", "-d", "--name", testContainerName1, testutil.AlpineImage, "sleep", "2").AssertOK()
 
 	base.Cmd("run", "-d", "--name", testContainerName2, testutil.AlpineImage, "sleep", "2").AssertOK()
 
-	base.Cmd("run", "--name", testContainerName3, testutil.AlpineImage, "sh", "-euxc", "sleep 3; exit 123").AssertExitCode(123)
-
-	base.Cmd("wait", testContainerName1, testContainerName2, testContainerName3).AssertOutContains(expected)
+	base.Cmd("wait", testContainerName1, testContainerName2).AssertOutContains(expected)
 
 }

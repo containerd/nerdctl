@@ -119,23 +119,23 @@ func TestRunExitCode(t *testing.T) {
 
 	base.Cmd("run", "--name", testContainer0, testutil.AlpineImage, "sh", "-euxc", "exit 0").AssertOK()
 	base.Cmd("run", "--name", testContainer123, testutil.AlpineImage, "sh", "-euxc", "exit 123").AssertExitCode(123)
-	base.Cmd("ps", "-a").AssertOutWithFunc(func(stdout string) error {
-		if !strings.Contains(stdout, "Exited (0)") {
-			return errors.Errorf("no entry for %q", testContainer0)
-		}
-		if !strings.Contains(stdout, "Exited (123)") {
-			return errors.Errorf("no entry for %q", testContainer123)
-		}
-		return nil
-	})
+}
 
-	inspect0 := base.InspectContainer(testContainer0)
-	assert.Equal(base.T, "exited", inspect0.State.Status)
-	assert.Equal(base.T, 0, inspect0.State.ExitCode)
+func TestRunStatus(t *testing.T) {
+	base := testutil.NewBase(t)
+	const (
+		testContainerDetach123 = "nerdctl-test-run-exit-code-detach-123"
+	)
+	defer base.Cmd("rm", "-f", testContainerDetach123).Run()
 
-	inspect123 := base.InspectContainer(testContainer123)
-	assert.Equal(base.T, "exited", inspect123.State.Status)
-	assert.Equal(base.T, 123, inspect123.State.ExitCode)
+	base.Cmd("run", "-d", "--name", testContainerDetach123, testutil.AlpineImage, "sh", "-euxc", "sleep 5; exit 123").AssertExitCode(0)
+
+	inspect := base.InspectContainer(testContainerDetach123)
+	assert.Equal(base.T, "running", inspect.State.Status)
+
+	// check wait status
+	const expectedWaitResponse = "123"
+	base.Cmd("wait", testContainerDetach123).AssertOutContains(expectedWaitResponse)
 }
 
 func TestRunCIDFile(t *testing.T) {
