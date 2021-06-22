@@ -235,19 +235,18 @@ func ParseRepoTag(imgName string) (string, string) {
 		return "", ""
 	}
 
-	if _, err := refdocker.ParseDockerRef(imgName); err != nil {
+	ref, err := refdocker.ParseDockerRef(imgName)
+	if err != nil {
 		logrus.WithError(err).Warnf("unparsable image name %q", imgName)
 		return "", ""
 	}
 
 	var tag string
-	nameWithTagSplit := strings.Split(imgName, ":")
-	if len(nameWithTagSplit) > 1 {
-		tag = nameWithTagSplit[len(nameWithTagSplit)-1]
+
+	if tagged, ok := ref.(refdocker.Tagged); ok {
+		tag = tagged.Tag()
 	}
-	repository := strings.TrimSuffix(imgName, ":"+tag)
-	repository = strings.TrimPrefix(repository, "docker.io/library/")
-	repository = strings.TrimPrefix(repository, "docker.io/")
+	repository := refdocker.FamiliarName(ref)
 
 	return repository, tag
 }
