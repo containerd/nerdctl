@@ -103,6 +103,33 @@ func TestCopyingUpInitialContentsOnVolume(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
+	const imageName = "nerdctl-test-copying-on-volume"
+	defer base.Cmd("rmi", imageName).Run()
+	defer base.Cmd("volume", "rm", "copying-initial-content-on-volume").Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+RUN mkdir -p /mnt && echo hi > /mnt/initial_file
+CMD ["cat", "/mnt/initial_file"]
+        `, testutil.AlpineImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+
+	//AnonymousVolume
+	base.Cmd("run", "--rm", imageName).AssertOutContains("hi")
+	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains("hi")
+
+	//NamedVolume should be automatically created
+	base.Cmd("run", "-v", "copying-initial-content-on-volume:/mnt", "--rm", imageName).AssertOutContains("hi")
+}
+
+func TestCopyingUpInitialContentsOnDockerfileVolume(t *testing.T) {
+	t.Parallel()
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
 	const imageName = "nerdctl-test-copying-initial-content"
 	defer base.Cmd("rmi", imageName).Run()
 	defer base.Cmd("volume", "rm", "copying-initial-content").Run()
