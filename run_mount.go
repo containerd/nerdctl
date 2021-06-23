@@ -20,6 +20,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"path/filepath"
 
 	"github.com/containerd/containerd"
@@ -56,6 +57,8 @@ func generateMountOpts(clicontext *cli.Context, ctx context.Context, client *con
 
 	if ensuredImage != nil {
 		imageVolumes = ensuredImage.ImageConfig.Volumes
+		c := make(chan os.Signal)
+		signal.Notify(c, os.Interrupt)
 
 		if err := ensuredImage.Image.Unpack(ctx, clicontext.String("snapshotter")); err != nil {
 			return nil, nil, errors.Wrap(err, "error unpacking image")
@@ -83,15 +86,32 @@ func generateMountOpts(clicontext *cli.Context, ctx context.Context, client *con
 			return nil, nil, err
 		}
 
+		defer func() {
+			if defErr := s.Remove(ctx, tempDir); defErr != nil && !errdefs.IsNotFound(err) {
+				logrus.Warn(defErr)
+			}
+		}()
+
 		// We should do defer first, if not we will not do Unmount when only a part of Mounts are failed.
 		defer func() {
-			err = mount.UnmountAll(tempDir, 0)
+			if defErr := mount.UnmountAll(tempDir, 0); defErr != nil {
+				logrus.Warn(defErr)
+			}
+		}()
+
+		go func() {
+			<-c
+			if err := mount.UnmountAll(tempDir, 0); err != nil {
+				logrus.Warn(err)
+			}
+			if err := s.Remove(ctx, tempDir); err != nil && !errdefs.IsNotFound(err) {
+				logrus.Warn(err)
+			}
+			os.Remove(tempDir)
+			os.Exit(1)
 		}()
 
 		if err := mount.All(mounts, tempDir); err != nil {
-			if err := s.Remove(ctx, tempDir); err != nil && !errdefs.IsNotFound(err) {
-				return nil, nil, err
-			}
 			return nil, nil, err
 		}
 	}
