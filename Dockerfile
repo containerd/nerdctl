@@ -49,6 +49,7 @@ RUN git clone https://github.com/opencontainers/runc.git /go/src/github.com/open
 WORKDIR /go/src/github.com/opencontainers/runc
 RUN git checkout v${RUNC_VERSION} && \
   mkdir -p /out
+ENV CGO_ENABLED=1
 RUN GOARCH=amd64 CC=x86_64-linux-gnu-gcc make runc && \
   cp -a runc /out/runc.amd64
 RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make runc && \
