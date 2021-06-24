@@ -50,9 +50,9 @@ WORKDIR /go/src/github.com/opencontainers/runc
 RUN git checkout v${RUNC_VERSION} && \
   mkdir -p /out
 ENV CGO_ENABLED=1
-RUN GOARCH=amd64 CC=x86_64-linux-gnu-gcc make runc && \
+RUN GOARCH=amd64 CC=x86_64-linux-gnu-gcc make static && \
   cp -a runc /out/runc.amd64
-RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make runc && \
+RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make static && \
   cp -a runc /out/runc.arm64
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS build-base
@@ -165,6 +165,7 @@ RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/slirp4netns:    [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/rootless-containers/slirp4netns/blob/v${SLIRP4NETNS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/fuse-overlayfs: [GNU GENERAL PUBLIC LICENSE, Version 3](https://github.com/containers/fuse-overlayfs/blob/v${FUSE_OVERLAYFS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
+  echo "- bin/runc (Apache License 2.0) is statically linked with libseccomp ([LGPL 2.1](https://github.com/seccomp/libseccomp/blob/main/LICENSE))" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- Other files: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)" >> /out/share/doc/nerdctl-full/README.md && \
   (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
   mv /tmp/SHA256SUMS /out/share/doc/nerdctl-full/SHA256SUMS && \
