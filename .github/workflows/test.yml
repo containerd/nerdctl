@@ -37,7 +37,20 @@ jobs:
         version: v1.35
         args: --verbose
 
-  test:
+  test-unit:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: 1.16.x
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    - name: "Run unit tests"
+      run: go test -v ./pkg/...
+
+  test-integration:
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     strategy:
@@ -49,18 +62,18 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
-    - name: "Prepare test environment"
-      run: DOCKER_BUILDKIT=1 docker build -t test --target test --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+    - name: "Prepare integration test environment"
+      run: DOCKER_BUILDKIT=1 docker build -t test-integration --target test-integration --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
     - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
       run: |
         sudo systemctl disable --now snapd.service snapd.socket
         sudo apt-get purge -y snapd
         sudo losetup -Dv
         sudo losetup -lv
-    - name: "Test"
-      run: docker run -t --rm --privileged test go test -v -test.kill-daemon ./...
+    - name: "Run integration tests"
+      run: docker run -t --rm --privileged test-integration go test -v ./cmd/nerdctl/... -args -test.kill-daemon
 
-  test-rootless:
+  test-integration-rootless:
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     strategy:
@@ -73,13 +86,13 @@ jobs:
       with:
         fetch-depth: 1
     - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
-      run: DOCKER_BUILDKIT=1 docker build -t test-rootless --target test-rootless --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+      run: DOCKER_BUILDKIT=1 docker build -t test-integration-rootless --target test-integration-rootless --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
     - name: "Test    (network driver=slirp4netns, port driver=builtin)"
-      run: docker run -t --rm --privileged test-rootless
+      run: docker run -t --rm --privileged test-integration-rootless
     - name: "Prepare (network driver=slirp4netns, port driver=slirp4netns)"
-      run: DOCKER_BUILDKIT=1 docker build -t test-rootless-port-slirp4netns --target test-rootless-port-slirp4netns --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+      run: DOCKER_BUILDKIT=1 docker build -t test-integration-rootless-port-slirp4netns --target test-integration-rootless-port-slirp4netns --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
     - name: "Test    (network driver=slirp4netns, port driver=slirp4netns)"
-      run: docker run -t --rm --privileged test-rootless-port-slirp4netns
+      run: docker run -t --rm --privileged test-integration-rootless-port-slirp4netns
 
   cross:
     runs-on: ubuntu-20.04
@@ -94,7 +107,7 @@ jobs:
     - name: "Cross"
       run: make artifacts
 
-  test-docker-compatibility:
+  test-integration-docker-compatibility:
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     steps:
@@ -104,11 +117,10 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
-    - name: "Ensure that the test suite is compatible with Docker"
-      run: go test -v -exec sudo -test.target=docker -test.kill-daemon .
+    - name: "Ensure that the integration test suite is compatible with Docker"
+      run: go test -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon
 
-  test-cgroup2:
-    name: "cgroup2"
+  test-integration-cgroup2:
     # nested virtualization is only available on macOS hosts
     runs-on: macos-10.15
     timeout-minutes: 40
@@ -123,7 +135,7 @@ jobs:
     - name: "Build binaries"
       run: |
         GOOS=linux make binaries
-        GOOS=linux go test -c .
+        GOOS=linux go test -c ./cmd/nerdctl
     - name: "Boot VM"
       run: |
         vagrant up

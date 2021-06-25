@@ -200,7 +200,7 @@ CMD ["bash"]
 FROM golang:${GO_VERSION}-alpine AS goversion
 RUN go env GOVERSION > /GOVERSION
 
-FROM base AS test
+FROM base AS test-integration
 # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
 RUN apt-get update && \
   apt-get install -qq -y \
@@ -213,9 +213,9 @@ COPY . /go/src/github.com/containerd/nerdctl
 WORKDIR /go/src/github.com/containerd/nerdctl
 VOLUME /tmp
 ENV CGO_ENABLED=0
-CMD ["go", "test", "-v", "./..."]
+CMD ["go", "test", "-v", "./cmd/nerdctl/..."]
 
-FROM test AS test-rootless
+FROM test-integration AS test-integration-rootless
 # Install SSH for creating systemd user session.
 # (`sudo` does not work for this purpose,
 #  OTOH `machinectl shell` can create the session but does not propagate exit code)
@@ -232,12 +232,12 @@ RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
   mkdir -p /home/rootless/.local/share && \
   chown -R rootless:rootless /home/rootless
 VOLUME /home/rootless/.local/share
-RUN go test -o /usr/local/bin/nerdctl.test -c .
-COPY ./Dockerfile.d/test-rootless.sh /
-CMD ["/test-rootless.sh", "nerdctl.test" ,"-test.v", "-test.kill-daemon"]
+RUN go test -o /usr/local/bin/nerdctl.test -c ./cmd/nerdctl
+COPY ./Dockerfile.d/test-integration-rootless.sh /
+CMD ["/test-integration-rootless.sh", "nerdctl.test" ,"-test.v", "-test.kill-daemon"]
 
 # test for CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns
-FROM test-rootless AS test-rootless-port-slirp4netns
+FROM test-integration-rootless AS test-integration-rootless-port-slirp4netns
 COPY ./Dockerfile.d/home_rootless_.config_systemd_user_containerd.service.d_port-slirp4netns.conf /home/rootless/.config/systemd/user/containerd.service.d/port-slirp4netns.conf
 RUN chown -R rootless:rootless /home/rootless/.config
 

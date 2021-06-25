@@ -43,7 +43,7 @@ help:
 	@echo " * 'clean' - Clean artifacts."
 
 nerdctl:
-	$(GO_BUILD) -o $(CURDIR)/_output/nerdctl$(BIN_EXT) $(PACKAGE)
+	$(GO_BUILD) -o $(CURDIR)/_output/nerdctl$(BIN_EXT) $(PACKAGE)/cmd/nerdctl
 
 clean:
 	find . -name \*~ -delete

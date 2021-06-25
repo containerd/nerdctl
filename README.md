@@ -133,21 +133,24 @@ information in our [`containerd/project`](https://github.com/containerd/project)
 
 Run `make && sudo make install`.
 
-Using `go get github.com/containerd/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
+Using `go install github.com/containerd/nerdctl/cmd/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
 
 ### Test suite
-#### Running test suite against nerdctl
-Run `go test -exec sudo -v ./...` after `make && sudo make install`.
+#### Running unit tests
+Run `go test -v ./pkg/...`
+
+#### Running integration test suite against nerdctl
+Run `go test -exec sudo -v ./cmd/nerdctl/...` after `make && sudo make install`.
 
 For testing rootless mode, `-exec sudo` is not needed.
 
 To run tests in a container:
 ```bash
-docker build -t test --target test .
-docker run -t --rm --privileged test
+docker build -t test-integration --target test-integration .
+docker run -t --rm --privileged test-integration
 ```
-#### Running test suite against Docker
-Run `go test -exec sudo -test.target=docker .` to ensure that the test suite is compatible with Docker.
+#### Running integration test suite against Docker
+Run `go test -exec sudo -v ./cmd/nerdctl/... -args test.target=docker` to ensure that the test suite is compatible with Docker.
 
 ### Contributing to nerdctl
 
