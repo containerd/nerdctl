@@ -23,7 +23,7 @@ Vagrant.configure("2") do |config|
       exit 1
     fi
     if [ ! -x /vagrant/nerdctl.test ]; then
-      echo "Run 'GOOS=linux go test -c' before running 'vagrant up'"
+      echo "Run 'GOOS=linux go test -c ./cmd/nerdctl' before running 'vagrant up'"
       exit 1
     fi
     GOARCH=amd64
