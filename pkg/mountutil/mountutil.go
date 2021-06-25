@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/sys"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
@@ -38,13 +39,14 @@ type Processed struct {
 	Mount           specs.Mount
 	AnonymousVolume string // name
 	Type            string
+	Opts            []oci.SpecOpts
 }
 
 func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error) {
 	var (
 		res      Processed
 		src, dst string
-		ro       bool
+		options  []string
 	)
 	split := strings.Split(s, ":")
 	switch len(split) {
@@ -82,19 +84,19 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 		if !filepath.IsAbs(dst) {
 			return nil, errors.Errorf("expected an absolute path, got %q", dst)
 		}
+		rawOpts := ""
 		if len(split) == 3 {
-			opts := strings.Split(split[2], ",")
-			for _, opt := range opts {
-				switch opt {
-				case "rw":
-					// NOP
-				case "ro":
-					ro = true
-				default:
-					logrus.Warnf("unsupported volume option %q", opt)
-				}
-			}
+			rawOpts = split[2]
 		}
+
+		// always call parseVolumeOptions for bind mount to allow the parser to add some default options
+		var err error
+		var specOpts []oci.SpecOpts
+		options, specOpts, err = parseVolumeOptions(res.Type, src, rawOpts)
+		if err != nil {
+			return nil, err
+		}
+		res.Opts = append(res.Opts, specOpts...)
 	default:
 		return nil, errors.Errorf("failed to parse %q", s)
 	}
@@ -102,10 +104,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 		Type:        "none",
 		Source:      src,
 		Destination: dst,
-		Options:     []string{"rbind"},
-	}
-	if ro {
-		res.Mount.Options = append(res.Mount.Options, "ro")
+		Options:     append([]string{"rbind"}, options...),
 	}
 	if sys.RunningInUserNS() {
 		unpriv, err := getUnprivilegedMountFlags(src)

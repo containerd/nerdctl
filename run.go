@@ -43,6 +43,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
+	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
@@ -660,7 +661,7 @@ func withCustomResolvConf(src string) func(context.Context, oci.Client, *contain
 			Destination: "/etc/resolv.conf",
 			Type:        "bind",
 			Source:      src,
-			Options:     []string{"bind"}, // writable
+			Options:     []string{"bind", mountutil.DefaultPropagationMode}, // writable
 		})
 		return nil
 	}
@@ -672,7 +673,7 @@ func withCustomHosts(src string) func(context.Context, oci.Client, *containers.C
 			Destination: "/etc/hosts",
 			Type:        "bind",
 			Source:      src,
-			Options:     []string{"bind"}, // writable
+			Options:     []string{"bind", mountutil.DefaultPropagationMode}, // writable
 		})
 		return nil
 	}

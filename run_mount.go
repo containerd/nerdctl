@@ -124,6 +124,7 @@ func generateMountOpts(clicontext *cli.Context, ctx context.Context, client *con
 			if x.AnonymousVolume != "" {
 				anonVolumes = append(anonVolumes, x.AnonymousVolume)
 			}
+			opts = append(opts, x.Opts...)
 		}
 		opts = append(opts, oci.WithMounts(ociMounts))
 	}
