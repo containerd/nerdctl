@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/sys"
 	"github.com/containerd/nerdctl/pkg/idgen"
@@ -67,7 +68,14 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 			// assume src is a volume name
 			vol, err := volStore.Get(src)
 			if err != nil {
-				return nil, err
+				if errors.Is(err, errdefs.ErrNotFound) {
+					vol, err = volStore.Create(src)
+					if err != nil {
+						return nil, err
+					}
+				} else {
+					return nil, err
+				}
 			}
 			// src is now full path
 			src = vol.Mountpoint

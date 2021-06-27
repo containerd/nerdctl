@@ -107,18 +107,15 @@ func generateMountOpts(clicontext *cli.Context, ctx context.Context, client *con
 			mounted[filepath.Clean(x.Mount.Destination)] = struct{}{}
 
 			//copying up initial contents of the mount point directory
-			for imgVolRaw := range imageVolumes {
-				imgVol := filepath.Clean(imgVolRaw)
-				target, err := securejoin.SecureJoin(tempDir, imgVol)
-				if err != nil {
-					return nil, nil, err
-				}
+			target, err := securejoin.SecureJoin(tempDir, x.Mount.Destination)
+			if err != nil {
+				return nil, nil, err
+			}
 
-				//Coyping content in AnonymousVolume and namedVolume
-				if x.Mount.Destination == imgVol && x.Type == "volume" {
-					if err := copyExistingContents(target, x.Mount.Source); err != nil {
-						return nil, nil, err
-					}
+			//Coyping content in AnonymousVolume and namedVolume
+			if x.Type == "volume" {
+				if err := copyExistingContents(target, x.Mount.Source); err != nil {
+					return nil, nil, err
 				}
 			}
 			if x.AnonymousVolume != "" {
