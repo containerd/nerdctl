@@ -26,6 +26,7 @@ import (
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
@@ -39,6 +40,10 @@ var networkCreateCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:  "subnet",
 			Usage: "Subnet in CIDR format that represents a network segment, e.g. \"10.5.0.0/16\"",
+		},
+		&cli.StringSliceFlag{
+			Name:  "label",
+			Usage: "Set metadata for a volume",
 		},
 	},
 	Action: networkCreateAction,
@@ -85,7 +90,8 @@ func networkCreateAction(clicontext *cli.Context) error {
 			subnet = fmt.Sprintf("10.4.%d.0/24", id)
 		}
 
-		l, err := netutil.GenerateConfigList(e, id, name, subnet)
+		labels := strutil.DedupeStrSlice(clicontext.StringSlice("label"))
+		l, err := netutil.GenerateConfigList(e, labels, id, name, subnet)
 		if err != nil {
 			return err
 		}

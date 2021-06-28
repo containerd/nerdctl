@@ -17,6 +17,7 @@
 package volumestore
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -25,6 +26,7 @@ import (
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/lockutil"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/pkg/errors"
 )
 
@@ -55,9 +57,11 @@ func New(dataStore, ns string) (VolumeStore, error) {
 // DataDirName is "_data"
 const DataDirName = "_data"
 
+const volumeJSONFileName = "volume.json"
+
 type VolumeStore interface {
 	Dir() string
-	Create(name string) (*native.Volume, error)
+	Create(name string, labels []string) (*native.Volume, error)
 	// Get may return ErrNotFound
 	Get(name string) (*native.Volume, error)
 	List() (map[string]native.Volume, error)
@@ -74,7 +78,7 @@ func (vs *volumeStore) Dir() string {
 	return vs.dir
 }
 
-func (vs *volumeStore) Create(name string) (*native.Volume, error) {
+func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, error) {
 	if err := identifiers.Validate(name); err != nil {
 		return nil, errors.Wrapf(err, "malformed name %s", name)
 	}
@@ -85,6 +89,26 @@ func (vs *volumeStore) Create(name string) (*native.Volume, error) {
 			return err
 		}
 		if err := os.Mkdir(volDataPath, 0755); err != nil {
+			return err
+		}
+
+		type volumeOpts struct {
+			Labels map[string]string `json:"labels"`
+		}
+
+		labelsMap := strutil.ConvertKVStringsToMap(labels)
+
+		volOpts := volumeOpts{
+			Labels: labelsMap,
+		}
+
+		labelsJson, err := json.MarshalIndent(volOpts, "", "    ")
+		if err != nil {
+			return err
+		}
+
+		volFilePath := filepath.Join(volPath, volumeJSONFileName)
+		if err := ioutil.WriteFile(volFilePath, labelsJson, 0644); err != nil {
 			return err
 		}
 		return nil
@@ -112,9 +136,21 @@ func (vs *volumeStore) Get(name string) (*native.Volume, error) {
 		}
 		return nil, err
 	}
+
+	volFilePath := filepath.Join(vs.dir, name, volumeJSONFileName)
+	volumeDataBytes, err := ioutil.ReadFile(volFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			//volume.json does not exists should not be blocking for inspect operation
+		} else {
+			return nil, err
+		}
+	}
+
 	entry := native.Volume{
 		Name:       name,
 		Mountpoint: dataPath,
+		Labels:     Labels(volumeDataBytes),
 	}
 	return &entry, nil
 }
@@ -154,4 +190,15 @@ func (vs *volumeStore) Remove(names []string) ([]string, error) {
 	}
 	err := lockutil.WithDirLock(vs.dir, fn)
 	return removed, err
+}
+
+func Labels(b []byte) *map[string]string {
+	type volumeOpts struct {
+		Labels *map[string]string `json:"labels,omitempty"`
+	}
+	var vo volumeOpts
+	if err := json.Unmarshal(b, &vo); err != nil {
+		return nil
+	}
+	return vo.Labels
 }

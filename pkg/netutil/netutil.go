@@ -28,6 +28,7 @@ import (
 	"text/template"
 
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containernetworking/cni/libcni"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -35,8 +36,9 @@ import (
 
 type NetworkConfigList struct {
 	*libcni.NetworkConfigList
-	NerdctlID *int
-	File      string
+	NerdctlID     *int
+	NerdctlLabels *map[string]string
+	File          string
 }
 
 type CNIEnv struct {
@@ -45,12 +47,13 @@ type CNIEnv struct {
 }
 
 func DefaultConfigList(e *CNIEnv) (*NetworkConfigList, error) {
-	return GenerateConfigList(e, DefaultID, DefaultNetworkName, DefaultCIDR)
+	return GenerateConfigList(e, nil, DefaultID, DefaultNetworkName, DefaultCIDR)
 }
 
 type ConfigListTemplateOpts struct {
 	ID           int
 	Name         string // e.g. "nerdctl"
+	Labels       string // e.g. `{"version":"1.1.0"}`
 	Subnet       string // e.g. "10.4.0.0/16"
 	Gateway      string // e.g. "10.4.0.1"
 	ExtraPlugins string // e.g. `,{"type":"isolation"}`
@@ -60,7 +63,7 @@ type ConfigListTemplateOpts struct {
 // GenerateConfigList does not fill "File" field.
 //
 // TODO: enable CNI isolation plugin
-func GenerateConfigList(e *CNIEnv, id int, name, cidr string) (*NetworkConfigList, error) {
+func GenerateConfigList(e *CNIEnv, labels []string, id int, name, cidr string) (*NetworkConfigList, error) {
 	if e == nil || id < 0 || name == "" || cidr == "" {
 		return nil, errdefs.ErrInvalidArgument
 	}
@@ -91,13 +94,22 @@ func GenerateConfigList(e *CNIEnv, id int, name, cidr string) (*NetworkConfigLis
 	gateway := make(net.IP, len(subnet.IP))
 	copy(gateway, subnet.IP)
 	gateway[3] += 1
+
+	labelsMap := strutil.ConvertKVStringsToMap(labels)
+	labelsJson, err := json.Marshal(labelsMap)
+	if err != nil {
+		return nil, err
+	}
+
 	opts := &ConfigListTemplateOpts{
 		ID:           id,
 		Name:         name,
+		Labels:       string(labelsJson),
 		Subnet:       subnet.String(),
 		Gateway:      gateway.String(),
 		ExtraPlugins: extraPlugins,
 	}
+
 	tmpl, err := template.New("").Parse(ConfigListTemplate)
 	if err != nil {
 		return nil, err
@@ -114,6 +126,7 @@ func GenerateConfigList(e *CNIEnv, id int, name, cidr string) (*NetworkConfigLis
 	return &NetworkConfigList{
 		NetworkConfigList: l,
 		NerdctlID:         &id,
+		NerdctlLabels:     &labelsMap,
 		File:              "",
 	}, nil
 }
@@ -157,6 +170,7 @@ func ConfigLists(e *CNIEnv) ([]*NetworkConfigList, error) {
 		l = append(l, &NetworkConfigList{
 			NetworkConfigList: lcl,
 			NerdctlID:         NerdctlID(lcl.Bytes),
+			NerdctlLabels:     NerdctlLabels(lcl.Bytes),
 			File:              fileName,
 		})
 	}
@@ -185,4 +199,15 @@ func NerdctlID(b []byte) *int {
 		return nil
 	}
 	return ncl.NerdctlID
+}
+
+func NerdctlLabels(b []byte) *map[string]string {
+	type nerdctlConfigList struct {
+		NerdctlLabels *map[string]string `json:"nerdctlLabels,omitempty"`
+	}
+	var ncl nerdctlConfigList
+	if err := json.Unmarshal(b, &ncl); err != nil {
+		return nil
+	}
+	return ncl.NerdctlLabels
 }

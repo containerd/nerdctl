@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd/identifiers"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
@@ -29,6 +30,12 @@ var volumeCreateCommand = &cli.Command{
 	Usage:     "Create a volume",
 	ArgsUsage: "[flags] VOLUME",
 	Action:    volumeCreateAction,
+	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:  "label",
+			Usage: "Set metadata for a volume",
+		},
+	},
 }
 
 func volumeCreateAction(clicontext *cli.Context) error {
@@ -44,7 +51,8 @@ func volumeCreateAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if _, err := volStore.Create(name); err != nil {
+	labels := strutil.DedupeStrSlice(clicontext.StringSlice("label"))
+	if _, err := volStore.Create(name, labels); err != nil {
 		return err
 	}
 	fmt.Fprintf(clicontext.App.Writer, "%s\n", name)

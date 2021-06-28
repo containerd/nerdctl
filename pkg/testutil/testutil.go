@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/pkg/errors"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
@@ -167,6 +168,28 @@ func (b *Base) InspectImage(name string) dockercompat.Image {
 	cmdResult := b.Cmd("image", "inspect", name).Run()
 	assert.Equal(b.T, cmdResult.ExitCode, 0)
 	var dc []dockercompat.Image
+	if err := json.Unmarshal([]byte(cmdResult.Stdout()), &dc); err != nil {
+		b.T.Fatal(err)
+	}
+	assert.Equal(b.T, 1, len(dc))
+	return dc[0]
+}
+
+func (b *Base) InspectNetwork(name string) native.Network {
+	cmdResult := b.Cmd("network", "inspect", name).Run()
+	assert.Equal(b.T, cmdResult.ExitCode, 0)
+	var dc []native.Network
+	if err := json.Unmarshal([]byte(cmdResult.Stdout()), &dc); err != nil {
+		b.T.Fatal(err)
+	}
+	assert.Equal(b.T, 1, len(dc))
+	return dc[0]
+}
+
+func (b *Base) InspectVolume(name string) native.Volume {
+	cmdResult := b.Cmd("volume", "inspect", name).Run()
+	assert.Equal(b.T, cmdResult.ExitCode, 0)
+	var dc []native.Volume
 	if err := json.Unmarshal([]byte(cmdResult.Stdout()), &dc); err != nil {
 		b.T.Fatal(err)
 	}

@@ -31,6 +31,7 @@ const ConfigListTemplate = `{
   "cniVersion": "0.4.0",
   "name": "{{.Name}}",
   "nerdctlID": {{.ID}},
+  "nerdctlLabels": {{.Labels}},
   "plugins": [
     {
       "type": "nat",

@@ -35,6 +35,12 @@ const (
 	//Compose Service Name
 	ComposeService = "com.docker.compose.service"
 
+	//Compose Network Name
+	ComposeNetwork = "com.docker.compose.network"
+
+	//Compose Volume Name
+	ComposeVolume = "com.docker.compose.volume"
+
 	// Hostname
 	Hostname = Prefix + "hostname"
 
