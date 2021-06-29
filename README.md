@@ -255,6 +255,7 @@ Basic flags:
 - :whale: `--rm`: Automatically remove the container when it exits
 - :whale: `--pull=(always|missing|never)`: Pull image before running
   - Default: "missing"
+- :whale: `--pid=(host)`: PID namespace to use
 
 Network flags:
 - :whale: `--net, --network=(bridge|host|none|<CNI>)`: Connect a container to a network

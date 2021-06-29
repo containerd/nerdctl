@@ -131,6 +131,11 @@ var runCommand = &cli.Command{
 			Aliases: []string{"m"},
 			Usage:   "Memory limit",
 		},
+		// Enable host pid namespace
+		&cli.StringFlag{
+			Name:  "pid",
+			Usage: "PID namespace to use",
+		},
 		&cli.IntFlag{
 			Name:  "pids-limit",
 			Usage: "Tune container pids limit (set -1 for unlimited)",
@@ -482,6 +487,15 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 		opts = append(opts, oci.WithDevShmSize(shmBytes/1024))
+	}
+
+	pidNs := strings.ToLower(clicontext.String("pid"))
+	if pidNs != "" {
+		if pidNs != "host" {
+			return fmt.Errorf("Invalid pid namespace. Set --pid=host to enable host pid namespace.")
+		} else {
+			opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
+		}
 	}
 
 	rtCOpts, err := generateRuntimeCOpts(clicontext)
