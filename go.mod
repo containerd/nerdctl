@@ -16,7 +16,7 @@ require (
 	github.com/containerd/typeurl v1.0.2
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
-	github.com/cyphar/filepath-securejoin v0.2.2
+	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/docker/cli v20.10.7+incompatible
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v20.10.7+incompatible
