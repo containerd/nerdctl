@@ -29,7 +29,7 @@ To run a container with the default CNI network (10.4.0.0/24):
 
 To build an image using BuildKit:
 ```console
-# nerdctl build -t foo .
+# nerdctl build -t foo /some-dockerfile-directory
 # nerdctl run -it --rm foo
 ```
 
@@ -74,7 +74,26 @@ In addition to containerd, the following components should be installed (optiona
 
 These dependencies are included in `nerdctl-full-<VERSION>-<OS>-<ARCH>.tar.gz`, but not included in `nerdctl-<VERSION>-<OS>-<ARCH>.tar.gz`.
 
-To run nerdctl inside Docker:
+### macOS
+
+[Lima](https://github.com/AkihiroSuda/lima) project provides Linux virtual machines with built-in integration for nerdctl.
+
+```console
+$ brew install lima
+$ limactl start
+$ lima nerdctl run -d -p 8080:80 --name nginx:alpine
+```
+
+NOTE: ARM Mac requires installing a patched version of QEMU, see [Lima](https://github.com/AkihiroSuda/lima) documentation.
+
+### Windows
+
+- Linux containers: Known to work on WSL2
+- Windows containers: WIP, see [PR #197](https://github.com/containerd/nerdctl/pull/197)
+
+### Docker
+
+To run containerd and nerdctl inside Docker:
 ```bash
 docker build -t nerdctl .
 docker run -it --rm --privileged nerdctl
