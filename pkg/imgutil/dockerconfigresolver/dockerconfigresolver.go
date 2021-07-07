@@ -62,6 +62,11 @@ func New(refHostname string, optFuncs ...Opt) (remotes.Resolver, error) {
 		of(&o)
 	}
 	var authzOpts []docker.AuthorizerOpt
+	var insecureClient *http.Client
+	if o.skipVerifyCerts {
+		insecureClient = newInsecureClient()
+		authzOpts = append(authzOpts, docker.WithAuthClient(insecureClient))
+	}
 	if authCreds, err := NewAuthCreds(refHostname); err != nil {
 		return nil, err
 	} else {
@@ -77,21 +82,24 @@ func New(refHostname string, optFuncs ...Opt) (remotes.Resolver, error) {
 		docker.WithPlainHTTP(plainHTTPFunc),
 	}
 	if o.skipVerifyCerts {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		}
-		client := &http.Client{
-			Transport: tr,
-		}
-		regOpts = append(regOpts, docker.WithClient(client))
+		regOpts = append(regOpts, docker.WithClient(insecureClient))
 	}
 	resovlerOpts := docker.ResolverOptions{
 		Hosts: docker.ConfigureDefaultRegistries(regOpts...),
 	}
 	resolver := docker.NewResolver(resovlerOpts)
 	return resolver, nil
+}
+
+func newInsecureClient() *http.Client {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+	return &http.Client{
+		Transport: tr,
+	}
 }
 
 // AuthCreds is for docker.WithAuthCreds
