@@ -721,8 +721,6 @@ Unimplemented `docker network ls` flags: `--filter`, `--format`, `--no-trunc`, `
 ### :whale: nerdctl network inspect
 Display detailed information on one or more networks
 
-:warning: The output format is not compatible with Docker.
-
 Usage: `nerdctl network inspect [OPTIONS] NETWORK [NETWORK...]`
 
 Unimplemented `docker network inspect` flags: `--format`, `--verbose`

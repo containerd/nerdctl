@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/pkg/errors"
@@ -30,9 +31,15 @@ var networkInspectCommand = &cli.Command{
 	Name:         "inspect",
 	Usage:        "Display detailed information on one or more networks",
 	ArgsUsage:    "[flags] NETWORK [NETWORK, ...]",
-	Description:  "NOTE: The output format is not compatible with Docker.",
 	Action:       networkInspectAction,
 	BashComplete: networkInspectBashComplete,
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "mode",
+			Usage: "Inspect mode, \"dockercompat\" for Docker-compatible output, \"native\" for containerd-native output",
+			Value: "dockercompat",
+		},
+	},
 }
 
 func networkInspectAction(clicontext *cli.Context) error {
@@ -55,7 +62,7 @@ func networkInspectAction(clicontext *cli.Context) error {
 		llMap[l.Name] = l
 	}
 
-	result := make([]native.Network, clicontext.NArg())
+	result := make([]interface{}, clicontext.NArg())
 	for i, name := range clicontext.Args().Slice() {
 		if name == "host" || name == "none" {
 			return errors.Errorf("pseudo network %q cannot be inspected", name)
@@ -65,13 +72,24 @@ func networkInspectAction(clicontext *cli.Context) error {
 			return errors.Errorf("no such network: %s", name)
 		}
 
-		r := native.Network{
+		r := &native.Network{
 			CNI:           json.RawMessage(l.Bytes),
 			NerdctlID:     l.NerdctlID,
 			NerdctlLabels: l.NerdctlLabels,
 			File:          l.File,
 		}
-		result[i] = r
+		switch mode := clicontext.String("mode"); mode {
+		case "native":
+			result[i] = r
+		case "dockercompat":
+			compat, err := dockercompat.NetworkFromNative(r)
+			if err != nil {
+				return err
+			}
+			result[i] = compat
+		default:
+			return errors.Errorf("unknown mode %q", mode)
+		}
 	}
 	b, err := json.MarshalIndent(result, "", "    ")
 	if err != nil {
@@ -83,7 +101,18 @@ func networkInspectAction(clicontext *cli.Context) error {
 
 func networkInspectBashComplete(clicontext *cli.Context) {
 	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
+	if coco.boring {
+		defaultBashComplete(clicontext)
+		return
+	}
+	if coco.flagTakesValue {
+		w := clicontext.App.Writer
+		switch coco.flagName {
+		case "mode":
+			fmt.Fprintln(w, "dockercompat")
+			fmt.Fprintln(w, "native")
+			return
+		}
 		defaultBashComplete(clicontext)
 		return
 	}

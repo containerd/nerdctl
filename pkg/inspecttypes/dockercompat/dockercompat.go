@@ -41,6 +41,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
+	"github.com/tidwall/gjson"
 )
 
 // Image mimics a `docker image inspect` object.
@@ -374,4 +375,58 @@ func convertToNatPort(portMappings []gocni.PortMapping) (*nat.PortMap, error) {
 		portMap[newP] = ports
 	}
 	return &portMap, nil
+}
+
+type IPAMConfig struct {
+	Subnet  string `json:"Subnet,omitempty"`
+	Gateway string `json:"Gateway,omitempty"`
+	// TODO: IPRange
+}
+
+type IPAM struct {
+	// Driver is omitted
+	Config []IPAMConfig `json:"Config,omitempty"`
+}
+
+// Network mimics a `docker network inspect` object.
+// From https://github.com/moby/moby/blob/v20.10.7/api/types/types.go#L430-L448
+type Network struct {
+	Name   string            `json:"Name"`
+	ID     string            `json:"Id,omitempty"` // optional in nerdctl
+	IPAM   IPAM              `json:"IPAM,omitempty"`
+	Labels map[string]string `json:"Labels"`
+	// Scope, Driver, etc. are omitted
+}
+
+func NetworkFromNative(n *native.Network) (*Network, error) {
+	var res Network
+
+	nameResult := gjson.GetBytes(n.CNI, "name")
+	if s, ok := nameResult.Value().(string); ok {
+		res.Name = s
+	}
+
+	// flatten twice to get ipamRangesResult=[{ "subnet": "10.4.19.0/24", "gateway": "10.4.19.1" }]
+	ipamRangesResult := gjson.GetBytes(n.CNI, "plugins.#.ipam.ranges|@flatten|@flatten")
+	for _, f := range ipamRangesResult.Array() {
+		m := f.Map()
+		var cfg IPAMConfig
+		if x, ok := m["subnet"]; ok {
+			cfg.Subnet = x.String()
+		}
+		if x, ok := m["gateway"]; ok {
+			cfg.Gateway = x.String()
+		}
+		res.IPAM.Config = append(res.IPAM.Config, cfg)
+	}
+
+	if n.NerdctlID != nil {
+		res.ID = strconv.Itoa(*n.NerdctlID)
+	}
+
+	if n.NerdctlLabels != nil {
+		res.Labels = *n.NerdctlLabels
+	}
+
+	return &res, nil
 }
