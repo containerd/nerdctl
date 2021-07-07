@@ -64,10 +64,12 @@ func networkInspectAction(clicontext *cli.Context) error {
 		if !ok {
 			return errors.Errorf("no such network: %s", name)
 		}
+
 		r := native.Network{
-			CNI:       json.RawMessage(l.Bytes),
-			NerdctlID: l.NerdctlID,
-			File:      l.File,
+			CNI:           json.RawMessage(l.Bytes),
+			NerdctlID:     l.NerdctlID,
+			NerdctlLabels: l.NerdctlLabels,
+			File:          l.File,
 		}
 		result[i] = r
 	}

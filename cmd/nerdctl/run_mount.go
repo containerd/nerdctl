@@ -140,7 +140,7 @@ func generateMountOpts(clicontext *cli.Context, ctx context.Context, client *con
 
 		logrus.Debugf("creating anonymous volume %q, for \"VOLUME %s\"",
 			anonVolName, imgVolRaw)
-		anonVol, err := volStore.Create(anonVolName)
+		anonVol, err := volStore.Create(anonVolName, []string{})
 		if err != nil {
 			return nil, nil, err
 		}

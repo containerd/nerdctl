@@ -18,7 +18,9 @@ package composer
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -45,7 +47,13 @@ func (c *Composer) upVolume(ctx context.Context, shortName string) error {
 		return err
 	} else if !volExists {
 		logrus.Infof("Creating volume %s", fullName)
-		if err := c.runNerdctlCmd(ctx, "volume", "create", fullName); err != nil {
+		//add metadata labels to volume https://github.com/compose-spec/compose-spec/blob/master/spec.md#labels-2
+		createArgs := []string{
+			fmt.Sprintf("--label=%s=%s", labels.ComposeProject, c.Options.Project),
+			fmt.Sprintf("--label=%s=%s", labels.ComposeVolume, shortName),
+			fullName,
+		}
+		if err := c.runNerdctlCmd(ctx, append([]string{"volume", "create"}, createArgs...)...); err != nil {
 			return err
 		}
 	}

@@ -18,6 +18,7 @@ package native
 
 // Volume is also compatible with Docker
 type Volume struct {
-	Name       string `json:"Name"`
-	Mountpoint string `json:"Mountpoint"`
+	Name       string             `json:"Name"`
+	Mountpoint string             `json:"Mountpoint"`
+	Labels     *map[string]string `json:"Labels,omitempty"`
 }

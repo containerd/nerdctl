@@ -55,7 +55,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 		dst = s
 		res.AnonymousVolume = idgen.GenerateID()
 		logrus.Debugf("creating anonymous volume %q, for %q", res.AnonymousVolume, s)
-		anonVol, err := volStore.Create(res.AnonymousVolume)
+		anonVol, err := volStore.Create(res.AnonymousVolume, []string{})
 		if err != nil {
 			return nil, err
 		}
@@ -69,7 +69,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 			vol, err := volStore.Get(src)
 			if err != nil {
 				if errors.Is(err, errdefs.ErrNotFound) {
-					vol, err = volStore.Create(src)
+					vol, err = volStore.Create(src, nil)
 					if err != nil {
 						return nil, err
 					}
