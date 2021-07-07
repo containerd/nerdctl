@@ -707,8 +707,9 @@ Usage: `nerdctl network create [OPTIONS] NETWORK`
 
 Flags:
 - :whale: `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16" 
+- :whale: `--label`: Set metadata on a network
 
-Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--driver`, `--gateway`, `--ingress`, `--internal`, `--ip-range`, `--ipam-driver`, `--ipam-opt`, `--ipv6`, `--label`, `--opt`, `--scope`
+Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--driver`, `--gateway`, `--ingress`, `--internal`, `--ip-range`, `--ipam-driver`, `--ipam-opt`, `--ipv6`, `--opt`, `--scope`
 
 ### :whale: nerdctl network ls
 List networks
@@ -737,7 +738,10 @@ Create a volume
 
 Usage: `nerdctl volume create [OPTIONS] [VOLUME]`
 
-Unimplemented `docker volume create` flags: `--driver`, `--label`, `--opt`
+Flags:
+- :whale: `--label`: Set metadata for a volume
+
+Unimplemented `docker volume create` flags: `--driver`, `--opt`
 
 ### :whale: nerdctl volume ls
 List volumes
