@@ -175,10 +175,10 @@ func (b *Base) InspectImage(name string) dockercompat.Image {
 	return dc[0]
 }
 
-func (b *Base) InspectNetwork(name string) native.Network {
+func (b *Base) InspectNetwork(name string) dockercompat.Network {
 	cmdResult := b.Cmd("network", "inspect", name).Run()
 	assert.Equal(b.T, cmdResult.ExitCode, 0)
-	var dc []native.Network
+	var dc []dockercompat.Network
 	if err := json.Unmarshal([]byte(cmdResult.Stdout()), &dc); err != nil {
 		b.T.Fatal(err)
 	}
