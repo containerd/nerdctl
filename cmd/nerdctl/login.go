@@ -73,7 +73,7 @@ var loginCommand = &cli.Command{
 		}
 		if err == nil && authConfig.Username != "" && authConfig.Password != "" {
 			//login With StoreCreds
-			response, err = loginClientSide(ctx, *authConfig)
+			response, err = loginClientSide(ctx, clicontext, *authConfig)
 		}
 
 		if err != nil || authConfig.Username == "" || authConfig.Password == "" {
@@ -82,7 +82,7 @@ var loginCommand = &cli.Command{
 				return err
 			}
 
-			response, err = loginClientSide(ctx, *authConfig)
+			response, err = loginClientSide(ctx, clicontext, *authConfig)
 			if err != nil {
 				return err
 			}
@@ -178,8 +178,16 @@ func GetDefaultAuthConfig(clicontext *cli.Context, checkCredStore bool, serverAd
 }
 
 // Code from github.com/cli/cli/command/registry/login.go
-func loginClientSide(ctx context.Context, auth types.AuthConfig) (registrytypes.AuthenticateOKBody, error) {
-	svc, err := registry.NewService(registry.ServiceOptions{})
+func loginClientSide(ctx context.Context, clicontext *cli.Context, auth types.AuthConfig) (registrytypes.AuthenticateOKBody, error) {
+
+	var insecureRegistries []string
+	if clicontext.Bool("insecure-registry") {
+		insecureRegistries = append(insecureRegistries, auth.ServerAddress)
+	}
+	svc, err := registry.NewService(registry.ServiceOptions{
+		InsecureRegistries: insecureRegistries,
+	})
+
 	if err != nil {
 		return registrytypes.AuthenticateOKBody{}, err
 	}
