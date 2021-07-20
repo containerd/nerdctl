@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -48,6 +49,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/portutil"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/docker/cli/opts"
@@ -495,6 +497,9 @@ func runAction(clicontext *cli.Context) error {
 			return fmt.Errorf("Invalid pid namespace. Set --pid=host to enable host pid namespace.")
 		} else {
 			opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
+			if rootlessutil.IsRootless() {
+				opts = append(opts, withBindMountHostProcfs)
+			}
 		}
 	}
 
@@ -667,6 +672,36 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cliconte
 		opts = append(opts, oci.WithRootFSReadonly())
 	}
 	return opts, cOpts, ensured, nil
+}
+
+// withBindMountHostProcfs replaces procfs mount with rbind.
+// Required for --pid=host on rootless.
+//
+// https://github.com/moby/moby/pull/41893/files
+// https://github.com/containers/podman/blob/v3.0.0-rc1/pkg/specgen/generate/oci.go#L248-L257
+func withBindMountHostProcfs(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+	for i, m := range s.Mounts {
+		if path.Clean(m.Destination) == "/proc" {
+			newM := specs.Mount{
+				Destination: "/proc",
+				Type:        "bind",
+				Source:      "/proc",
+				Options:     []string{"rbind", "nosuid", "noexec", "nodev"},
+			}
+			s.Mounts[i] = newM
+		}
+	}
+
+	// Remove ReadonlyPaths for /proc/*
+	newROP := s.Linux.ReadonlyPaths[:0]
+	for _, x := range s.Linux.ReadonlyPaths {
+		x = path.Clean(x)
+		if !strings.HasPrefix(x, "/proc/") {
+			newROP = append(newROP, x)
+		}
+	}
+	s.Linux.ReadonlyPaths = newROP
+	return nil
 }
 
 func withCustomResolvConf(src string) func(context.Context, oci.Client, *containers.Container, *oci.Spec) error {
