@@ -4,15 +4,15 @@ go 1.16
 
 require (
 	github.com/Microsoft/go-winio v0.5.0
-	github.com/compose-spec/compose-go v0.0.0-20210420125800-01e9e6b4c64c
+	github.com/compose-spec/compose-go v0.0.0-20210716132856-efad24e892ce
 	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console v1.0.2
-	github.com/containerd/containerd v1.5.2
+	github.com/containerd/containerd v1.5.4
 	github.com/containerd/continuity v0.1.0
 	github.com/containerd/go-cni v1.0.3-0.20210427061315-4efee5f0b4db
 	github.com/containerd/imgcrypt v1.1.1
-	github.com/containerd/stargz-snapshotter v0.6.4
-	github.com/containerd/stargz-snapshotter/estargz v0.6.4
+	github.com/containerd/stargz-snapshotter v0.7.0
+	github.com/containerd/stargz-snapshotter/estargz v0.7.0
 	github.com/containerd/typeurl v1.0.2
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
@@ -35,9 +35,9 @@ require (
 	github.com/tidwall/gjson v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
-	golang.org/x/term v0.0.0-20210406210042-72f3dc4e9b72
+	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
 	gotest.tools/v3 v3.0.3
 )
 
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.5.1-0.20210614183500-0a3a77bc4453
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.5.1-0.20210617170851-f0a32c66dad1
