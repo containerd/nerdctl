@@ -4,8 +4,8 @@
 # Vagrant box for testing cgroup v2
 Vagrant.configure("2") do |config|
   config.vm.box = "fedora/34-cloud-base"
-  memory = 4096
-  cpus = 2
+  memory = 16384
+  cpus = 4
   config.vm.provider :virtualbox do |v|
     v.memory = memory
     v.cpus = cpus

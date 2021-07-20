@@ -1,0 +1,79 @@
+#   Copyright The containerd Authors.
+
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+
+#       http://www.apache.org/licenses/LICENSE-2.0
+
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+# -----------------------------------------------------------------------------
+# Portions from https://github.com/opencontainers/runc/blob/87bfd20fbdf0c3ba06de3151cce427aefd35af75/.cirrus.yml
+# Copyright The runc Authors.
+# Licensed under the Apache License, Version 2.0
+# -----------------------------------------------------------------------------
+
+---
+# We use Cirrus for Vagrant tests, because macOS instances of GHA
+# are too slow and flaky, and Linux instances of GHA do not support KVM.
+
+compute_engine_instance:
+  image_project: cirrus-images
+  image: family/docker-kvm
+  platform: linux
+  nested_virtualization: true
+  # CPU limit: `16 / NTASK`: see https://cirrus-ci.org/faq/#are-there-any-limits
+  # (But seems 8 CPUs at maximum when NTASK is 1)
+  cpu: 8
+  # Memory limit: `4GB * NCPU`
+  memory: 32G
+
+# cgroup2 tests using Vagrant
+cgroup2_task:
+  timeout_in: 30m
+  env:
+    DEBIAN_FRONTEND: noninteractive
+    HOME: /root
+  host_info_script: |
+    uname -a
+    echo "-----"
+    cat /etc/os-release
+    echo "-----"
+    cat /proc/cpuinfo
+    echo "-----"
+    df -T
+  go_cache:
+    fingerprint_script: uname -s ; cat go.sum
+    folder: /go-pkg-mod
+  # Vagrant is slow, so we build binaries outside Vagrant
+  build_script: |
+    mkdir -p /go-pkg-mod
+    docker run --rm -v $(pwd):/vagrant -v /go-pkg-mod:/go/pkg/mod -w /vagrant golang:1.16 sh -euxc "make binaries && go test -c ./cmd/nerdctl"
+  install_libvirt_vagrant_script: |
+    apt-get update
+    apt-get install -y libvirt-daemon libvirt-daemon-system vagrant vagrant-libvirt
+    systemctl enable --now libvirtd
+  vagrant_cache:
+    fingerprint_script: uname -s ; cat Vagrantfile
+    folder: /root/.vagrant.d
+  vagrant_up_script: |
+    vagrant up
+    mkdir -p -m 0700 /root/.ssh
+    vagrant ssh-config >> /root/.ssh/config
+  guest_info_script: |
+    ssh default -- 'sh -exc "uname -a && systemctl --version && df -T && cat /etc/os-release"'
+  integration_script: |
+    # TODO: enable -test.kill-daemon, after Fedora updates containerd to a recent version (Mar 2021)
+    ssh default -- 'sudo /vagrant/nerdctl.test -test.v'
+  install_rootless_containerd_script: |
+    ssh default -- 'containerd-rootless-setuptool.sh install'
+    ssh default -- 'containerd-rootless-setuptool.sh install-fuse-overlayfs'
+  rootless_integration_script:
+    ssh default -- "CONTAINERD_SNAPSHOTTER=fuse-overlayfs /vagrant/nerdctl.test -test.v -test.kill-daemon"
+  uninstall_rootless_containerd_script: |
+    ssh default -- 'containerd-rootless-setuptool.sh uninstall'
