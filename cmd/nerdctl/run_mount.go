@@ -39,6 +39,8 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// generateMountOpts generates volume-related mount opts.
+// Other mounts such as procfs mount are not handled here.
 func generateMountOpts(clicontext *cli.Context, ctx context.Context, client *containerd.Client, ensuredImage *imgutil.EnsuredImage) ([]oci.SpecOpts, []string, error) {
 	volStore, err := getVolumeStore(clicontext)
 	if err != nil {
