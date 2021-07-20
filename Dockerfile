@@ -16,16 +16,16 @@
 # Usage: `docker run -it --privileged <IMAGE>`. Make sure to add `-t` and `--privileged`.
 
 # Basic deps
-ARG CONTAINERD_VERSION=1.5.2
-ARG RUNC_VERSION=1.0.0
+ARG CONTAINERD_VERSION=1.5.4
+ARG RUNC_VERSION=1.0.1
 ARG CNI_PLUGINS_VERSION=0.9.1
 
 # Extra deps: CNI isolation
 ARG CNI_ISOLATION_VERSION=0.0.3
 # Extra deps: Build
-ARG BUILDKIT_VERSION=0.8.3
+ARG BUILDKIT_VERSION=0.9.0
 # Extra deps: Lazy-pulling
-ARG STARGZ_SNAPSHOTTER_VERSION=0.6.4
+ARG STARGZ_SNAPSHOTTER_VERSION=0.7.0
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=1.1.1
 # Extra deps: Rootless
