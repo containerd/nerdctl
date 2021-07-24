@@ -357,6 +357,7 @@ var (
 	WordpressImage              = mirrorOf("wordpress:5.7")
 	WordpressIndexHTMLSnippet   = "<title>WordPress &rsaquo; Installation</title>"
 	MariaDBImage                = mirrorOf("mariadb:10.5")
+	DockerAuthImage             = mirrorOf("cesanta/docker_auth:1.7")
 )
 
 const (

@@ -34,6 +34,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/tidwall/gjson v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
