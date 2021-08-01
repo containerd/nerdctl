@@ -45,7 +45,7 @@ services:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName())
+	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	fooSvc, err := project.GetService("foo")

@@ -24,12 +24,8 @@ import (
 	compose "github.com/compose-spec/compose-go/types"
 )
 
-func Load(fileName, projectName string) (*compose.Project, error) {
+func Load(fileName, projectName string, envMap map[string]string) (*compose.Project, error) {
 	b, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-	config, err := loader.ParseYAML(b)
 	if err != nil {
 		return nil, err
 	}
@@ -39,10 +35,11 @@ func Load(fileName, projectName string) (*compose.Project, error) {
 		return nil, err
 	}
 	var files []compose.ConfigFile
-	files = append(files, compose.ConfigFile{Filename: fileName, Config: config})
+	files = append(files, compose.ConfigFile{Filename: fileName, Content: b})
 	return loader.Load(compose.ConfigDetails{
 		WorkingDir:  wd,
 		ConfigFiles: files,
+		Environment: envMap,
 	}, withProjectName(projectName))
 }
 

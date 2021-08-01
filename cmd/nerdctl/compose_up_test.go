@@ -195,3 +195,46 @@ networks:
 	base.Cmd("exec", svc2, "ping", "-c", "1", "svc0").AssertOK()
 	base.Cmd("exec", svc1, "ping", "-c", "1", "svc2").AssertFail()
 }
+
+func TestDotEnvFile(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = `
+version: '3.1'
+
+services:
+  svc3:
+    image: ghcr.io/stargz-containers/nginx:$TAG
+`
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	envFile := `TAG=1.19-alpine-org`
+	comp.WriteFile(".env", envFile)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+}
+
+func TestEnvFileNotFoundError(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = `
+version: '3.1'
+
+services:
+  svc4:
+    image: ghcr.io/stargz-containers/nginx:$TAG
+`
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	envFile := `TAG=1.19-alpine-org`
+	comp.WriteFile("envFile", envFile)
+
+	//env-file is relative to the current working directory and not the project directory
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "--env-file", "envFile", "up", "-d").AssertFail()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+}

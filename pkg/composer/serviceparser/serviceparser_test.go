@@ -108,7 +108,7 @@ volumes:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName())
+	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	wpSvc, err := project.GetService("wordpress")
@@ -163,7 +163,7 @@ services:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName())
+	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	fooSvc, err := project.GetService("foo")
@@ -220,7 +220,7 @@ services:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName())
+	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	fooSvc, err := project.GetService("foo")
@@ -283,7 +283,7 @@ services:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName())
+	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	fooSvc, err := project.GetService("foo")
@@ -311,7 +311,7 @@ services:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName())
+	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	fooSvc, err := project.GetService("foo")
@@ -358,7 +358,7 @@ configs:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName())
+	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	for _, f := range []string{"secret1", "secret2", "secret3", "config1", "config2"} {
