@@ -7,7 +7,8 @@ require (
 	github.com/compose-spec/compose-go v0.0.0-20210716132856-efad24e892ce
 	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console v1.0.2
-	github.com/containerd/containerd v1.5.4
+	github.com/containerd/containerd v1.5.5
+	github.com/containerd/containerd/api v0.0.0
 	github.com/containerd/continuity v0.1.0
 	github.com/containerd/go-cni v1.0.3-0.20210427061315-4efee5f0b4db
 	github.com/containerd/imgcrypt v1.1.1
@@ -30,7 +31,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/pkg/errors v0.9.1
-	github.com/rootless-containers/rootlesskit v0.14.2
+	github.com/rootless-containers/rootlesskit v0.14.4
 	github.com/sirupsen/logrus v1.8.1
 	github.com/tidwall/gjson v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
@@ -41,4 +42,7 @@ require (
 	gotest.tools/v3 v3.0.3
 )
 
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.5.1-0.20210617170851-f0a32c66dad1
+replace (
+	github.com/containerd/containerd => github.com/containerd/containerd v1.5.1-0.20210802172229-7d4891783aac
+	github.com/containerd/containerd/api => github.com/containerd/containerd/api v0.0.0-20210802172229-7d4891783aac
+)
