@@ -57,6 +57,8 @@ const (
 	// LogURI is the log URI
 	LogURI = Prefix + "log-uri"
 
+	PIDFile = Prefix + "pidfile"
+
 	// AnonymousVolumes is a JSON-marshalled string of []string
 	AnonymousVolumes = Prefix + "anonymous-volumes"
 )
