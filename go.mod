@@ -6,7 +6,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.0
 	github.com/compose-spec/compose-go v0.0.0-20210716132856-efad24e892ce
 	github.com/containerd/cgroups v1.0.1
-	github.com/containerd/console v1.0.2
+	github.com/containerd/console v1.0.3
 	github.com/containerd/containerd v1.5.5
 	github.com/containerd/containerd/api v0.0.0
 	github.com/containerd/continuity v0.1.0
