@@ -38,6 +38,10 @@ var loadCommand = &cli.Command{
 			Aliases: []string{"i"},
 			Usage:   "Read from tar archive file, instead of STDIN",
 		},
+		&cli.BoolFlag{
+			Name:  "all-platforms",
+			Usage: "Imports content for all platforms",
+		},
 	},
 }
 
@@ -62,7 +66,7 @@ func loadImage(in io.Reader, clicontext *cli.Context) error {
 	defer cancel()
 
 	sn := clicontext.String("snapshotter")
-	imgs, err := client.Import(ctx, in, containerd.WithDigestRef(archive.DigestTranslator(sn)))
+	imgs, err := client.Import(ctx, in, containerd.WithDigestRef(archive.DigestTranslator(sn)), containerd.WithAllPlatforms(clicontext.Bool("all-platforms")))
 	if err != nil {
 		return err
 	}
