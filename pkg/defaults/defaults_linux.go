@@ -43,6 +43,7 @@ func CNIPath() string {
 	candidates := []string{
 		"/usr/local/libexec/cni",
 		"/usr/libexec/cni", // Fedora
+		"/usr/lib/cni",     // debian (containernetworking-plugins)
 	}
 	if rootlessutil.IsRootless() {
 		home := os.Getenv("HOME")
