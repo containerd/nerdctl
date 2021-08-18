@@ -57,7 +57,9 @@ const (
 	// LogURI is the log URI
 	LogURI = Prefix + "log-uri"
 
-	PIDFile = Prefix + "pidfile"
+	// PIDFile is the `nerdctl run --pidfile`
+	// (CLI flag is "pidfile", not "pid-file", for Podman compatibility)
+	PIDFile = Prefix + "pid-file"
 
 	// AnonymousVolumes is a JSON-marshalled string of []string
 	AnonymousVolumes = Prefix + "anonymous-volumes"
