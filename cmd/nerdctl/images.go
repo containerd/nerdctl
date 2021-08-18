@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/pkg/progress"
 	refdocker "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/pkg/errors"
@@ -95,9 +96,11 @@ func printImages(ctx context.Context, clicontext *cli.Context, client *container
 		fmt.Fprintln(w, "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE")
 	}
 
+	s := client.SnapshotService(clicontext.String("snapshotter"))
+
 	var errs []error
 	for _, img := range imageList {
-		size, err := unpackedImageSize(ctx, clicontext, client, img)
+		size, err := unpackedImageSize(ctx, clicontext, client, s, img)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -143,19 +146,51 @@ func imagesBashComplete(clicontext *cli.Context) {
 	bashCompleteImageNames(clicontext)
 }
 
-func unpackedImageSize(ctx context.Context, clicontext *cli.Context, client *containerd.Client, i images.Image) (int64, error) {
+type snapshotKey string
+
+// recursive function to calculate total usage of key's parent
+func (key snapshotKey) add(ctx context.Context, s snapshots.Snapshotter, usage *snapshots.Usage) error {
+	if key == "" {
+		return nil
+	}
+	u, err := s.Usage(ctx, string(key))
+	if err != nil {
+		return err
+	}
+
+	usage.Add(u)
+
+	info, err := s.Stat(ctx, string(key))
+	if err != nil {
+		return err
+	}
+
+	key = snapshotKey(info.Parent)
+	return key.add(ctx, s, usage)
+}
+
+func unpackedImageSize(ctx context.Context, clicontext *cli.Context, client *containerd.Client, s snapshots.Snapshotter, i images.Image) (int64, error) {
 	img := containerd.NewImage(client, i)
 
 	diffIDs, err := img.RootFS(ctx)
 	if err != nil {
 		return 0, err
 	}
+
 	chainID := identity.ChainID(diffIDs).String()
-	s := client.SnapshotService(clicontext.String("snapshotter"))
 	usage, err := s.Usage(ctx, chainID)
 	if err != nil {
 		return 0, err
 	}
 
+	info, err := s.Stat(ctx, chainID)
+	if err != nil {
+		return 0, err
+	}
+
+	//add ChainID's parent usage to the total usage
+	if err := snapshotKey(info.Parent).add(ctx, s, &usage); err != nil {
+		return 0, err
+	}
 	return usage.Size, nil
 }
