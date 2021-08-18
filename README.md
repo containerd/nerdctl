@@ -328,6 +328,7 @@ Metadata flags:
 - :whale: `-l, --label`: Set meta data on a container
 - :whale: `--label-file`: Read in a line delimited file of labels
 - :whale: `--cidfile`: Write the container ID to the file
+- :nerd_face: `--pidfile`: file path to write the task's pid. The CLI syntax conforms to Podman convention.
 
 Shared memory flags:
 - :whale: `--shm-size`: Size of `/dev/shm`

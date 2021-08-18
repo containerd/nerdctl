@@ -255,6 +255,10 @@ var runCommand = &cli.Command{
 			Name:  "shm-size",
 			Usage: "Size of /dev/shm",
 		},
+		&cli.StringFlag{
+			Name:  "pidfile",
+			Usage: "file path to write the task's pid",
+		},
 	},
 }
 
@@ -526,7 +530,13 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 	}
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, netSlice, ports, logURI, anonVolumes)
+
+	var pidFile string
+	if clicontext.IsSet("pidfile") {
+		pidFile = clicontext.String("pidfile")
+	}
+
+	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, netSlice, ports, logURI, anonVolumes, pidFile)
 	if err != nil {
 		return err
 	}
@@ -589,9 +599,11 @@ func runAction(clicontext *cli.Context) error {
 			return err
 		}
 	}
+
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
+
 	if flagD {
 		fmt.Fprintf(clicontext.App.Writer, "%s\n", id)
 		return nil
@@ -800,7 +812,7 @@ func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts
 	return []containerd.NewContainerOpts{o}, nil
 }
 
-func withInternalLabels(ns, name, hostname, containerStateDir string, networks []string, ports []gocni.PortMapping, logURI string, anonVolumes []string) (containerd.NewContainerOpts, error) {
+func withInternalLabels(ns, name, hostname, containerStateDir string, networks []string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile string) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
 	m[labels.Namespace] = ns
 	if name != "" {
@@ -830,6 +842,11 @@ func withInternalLabels(ns, name, hostname, containerStateDir string, networks [
 		}
 		m[labels.AnonymousVolumes] = string(anonVolumeJSON)
 	}
+
+	if pidFile != "" {
+		m[labels.PIDFile] = pidFile
+	}
+
 	return containerd.WithAdditionalContainerLabels(m), nil
 }
 

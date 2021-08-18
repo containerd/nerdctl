@@ -25,6 +25,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/containerd/containerd/cmd/ctr/commands"
+
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
@@ -148,6 +150,12 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 		}
 	default:
 		return nil, errors.Errorf("unexpected network type %v", netType)
+	}
+
+	if pidFile := o.state.Annotations[labels.PIDFile]; pidFile != "" {
+		if err := commands.WritePidFile(pidFile, state.Pid); err != nil {
+			return nil, err
+		}
 	}
 
 	if portsJSON := o.state.Annotations[labels.Ports]; portsJSON != "" {
