@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 
+	composecli "github.com/compose-spec/compose-go/cli"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	refdocker "github.com/containerd/containerd/reference/docker"
@@ -46,9 +47,17 @@ var composeCommand = &cli.Command{
 			Usage:   "Specify an alternate compose file",
 		},
 		&cli.StringFlag{
+			Name:  "project-directory",
+			Usage: "Specify an alternate working directory",
+		},
+		&cli.StringFlag{
 			Name:    "project-name",
 			Aliases: []string{"p"},
 			Usage:   "Specify an alternate project name",
+		},
+		&cli.StringFlag{
+			Name:  "env-file",
+			Usage: "Specify an alternate environment file",
 		},
 	},
 }
@@ -56,13 +65,21 @@ var composeCommand = &cli.Command{
 func getComposer(clicontext *cli.Context, client *containerd.Client) (*composer.Composer, error) {
 	nerdctlCmd, nerdctlArgs := globalFlags(clicontext)
 	o := composer.Options{
-		File:           clicontext.String("file"),
+		ProjectOptions: composecli.ProjectOptions{
+			WorkingDir:  clicontext.String("project-directory"),
+			ConfigPaths: []string{},
+			Environment: map[string]string{},
+			EnvFile:     clicontext.String("env-file"),
+		},
 		Project:        clicontext.String("project-name"),
 		NerdctlCmd:     nerdctlCmd,
 		NerdctlArgs:    nerdctlArgs,
 		DebugPrintFull: clicontext.Bool("debug-full"),
 	}
 
+	if file := clicontext.String("file"); file != "" {
+		o.ProjectOptions.ConfigPaths = append([]string{file}, o.ProjectOptions.ConfigPaths...)
+	}
 	cniEnv := &netutil.CNIEnv{
 		Path:        clicontext.String("cni-path"),
 		NetconfPath: clicontext.String("cni-netconfpath"),
