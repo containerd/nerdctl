@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/pkg/version"
 	ptypes "github.com/gogo/protobuf/types"
 )
 
@@ -89,4 +90,33 @@ func GetSnapshotterNames(ctx context.Context, introService introspection.Service
 		}
 	}
 	return names, nil
+}
+
+func ClientVersion() dockercompat.ClientVersion {
+	return dockercompat.ClientVersion{
+		Version:   version.Version,
+		GitCommit: version.Revision,
+		GoVersion: runtime.Version(),
+		Os:        runtime.GOOS,
+		Arch:      runtime.GOARCH,
+	}
+}
+
+func ServerVersion(ctx context.Context, client *containerd.Client) (*dockercompat.ServerVersion, error) {
+	daemonVersion, err := client.Version(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	v := &dockercompat.ServerVersion{
+		Components: []dockercompat.ComponentVersion{
+			{
+				Name:    "containerd",
+				Version: daemonVersion.Version,
+				Details: map[string]string{"GitCommit": daemonVersion.Revision},
+			},
+		},
+		// TODO: add runc version
+	}
+	return v, nil
 }

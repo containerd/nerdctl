@@ -17,10 +17,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
 	"text/tabwriter"
+	"text/template"
+	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
@@ -29,6 +32,7 @@ import (
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/docker/cli/templates"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -49,6 +53,11 @@ var imagesCommand = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "no-trunc",
 			Usage: "Don't truncate output",
+		},
+		&cli.StringFlag{
+			Name: "format",
+			// Alias "-f" is reserved for "--filter"
+			Usage: "Format the output using the given Go template, e.g, '{{json .}}'",
 		},
 	},
 }
@@ -87,13 +96,40 @@ func imagesAction(clicontext *cli.Context) error {
 	return printImages(ctx, clicontext, client, imageList, cs)
 }
 
+type imagePrintable struct {
+	// TODO: "Containers"
+	CreatedAt    string
+	CreatedSince string
+	// TODO: "Digest" (only when --digests is set)
+	ID         string
+	Repository string
+	Tag        string
+	Size       string
+	// TODO: "SharedSize", "UniqueSize", "VirtualSize"
+}
+
 func printImages(ctx context.Context, clicontext *cli.Context, client *containerd.Client, imageList []images.Image, cs content.Store) error {
 	quiet := clicontext.Bool("quiet")
 	noTrunc := clicontext.Bool("no-trunc")
-
-	w := tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
-	if !quiet {
-		fmt.Fprintln(w, "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE")
+	w := clicontext.App.Writer
+	var tmpl *template.Template
+	switch format := clicontext.String("format"); format {
+	case "", "table":
+		w = tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
+		if !quiet {
+			fmt.Fprintln(w, "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE")
+		}
+	case "raw":
+		return errors.New("unsupported format: \"raw\"")
+	default:
+		if quiet {
+			return errors.New("format and quiet must not be specified together")
+		}
+		var err error
+		tmpl, err = templates.Parse(format)
+		if err != nil {
+			return err
+		}
 	}
 
 	s := client.SnapshotService(clicontext.String("snapshotter"))
@@ -106,34 +142,48 @@ func printImages(ctx context.Context, clicontext *cli.Context, client *container
 		}
 		repository, tag := imgutil.ParseRepoTag(img.Name)
 
-		var digest string
-		if !noTrunc {
-			digest = strings.Split(img.Target.Digest.String(), ":")[1][:12]
-		} else {
-			digest = img.Target.Digest.String()
+		p := imagePrintable{
+			CreatedAt:    img.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
+			CreatedSince: timeSinceInHuman(img.CreatedAt),
+			ID:           img.Target.Digest.String(),
+			Repository:   repository,
+			Tag:          tag,
+			Size:         progress.Bytes(size).String(),
 		}
-
-		if quiet {
-			if _, err := fmt.Fprintf(w, "%s\n", digest); err != nil {
+		if !noTrunc {
+			p.ID = strings.Split(img.Target.Digest.String(), ":")[1][:12]
+		}
+		if tmpl != nil {
+			var b bytes.Buffer
+			if err := tmpl.Execute(&b, p); err != nil {
 				return err
 			}
-			continue
-		}
-
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-			repository,
-			tag,
-			digest,
-			timeSinceInHuman(img.CreatedAt),
-			progress.Bytes(size),
-		); err != nil {
-			return err
+			if _, err = fmt.Fprintf(w, b.String()+"\n"); err != nil {
+				return err
+			}
+		} else if quiet {
+			if _, err := fmt.Fprintf(w, "%s\n", p.ID); err != nil {
+				return err
+			}
+		} else {
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+				repository,
+				tag,
+				p.ID,
+				p.CreatedSince,
+				p.Size,
+			); err != nil {
+				return err
+			}
 		}
 	}
 	if len(errs) > 0 {
 		logrus.Warn("failed to compute image(s) size")
 	}
-	return w.Flush()
+	if f, ok := w.(Flusher); ok {
+		return f.Flush()
+	}
+	return nil
 }
 
 func imagesBashComplete(clicontext *cli.Context) {
