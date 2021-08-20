@@ -42,6 +42,7 @@ func DataRoot() string {
 func CNIPath() string {
 	candidates := []string{
 		"/usr/local/libexec/cni",
+		"/usr/local/lib/cni",
 		"/usr/libexec/cni", // Fedora
 		"/usr/lib/cni",     // debian (containernetworking-plugins)
 	}
@@ -53,6 +54,7 @@ func CNIPath() string {
 		candidates = append([]string{
 			// NOTE: These user paths are not defined in XDG
 			filepath.Join(home, ".local/libexec/cni"),
+			filepath.Join(home, ".local/lib/cni"),
 			filepath.Join(home, "opt/cni/bin"),
 		}, candidates...)
 	}
