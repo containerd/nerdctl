@@ -10,7 +10,15 @@ See https://github.com/containerd/imgcrypt
 ## Decryption
 
 ### Configuration
-Add the following configuration to `/etc/containerd/config.toml` (for rootless `~/.config/containerd/config.toml`):
+Put the private key files to `/etc/containerd/ocicrypt/keys` (for rootless `~/.config/containerd/ocicrypt/keys`).
+
+<details>
+<summary>Extra step for containerd 1.4 and older</summary>
+
+<p>
+
+containerd 1.4 and older requires adding the following configuration to `/etc/containerd/config.toml`
+(for rootless `~/.config/containerd/config.toml`):
 
 ```toml
 version = 2
@@ -30,9 +38,9 @@ version = 2
 # NOTE: On rootless, ~/.config/containerd is mounted as /etc/containerd in the namespace.
 ```
 
-Future version of containerd may have this configuration by default: https://github.com/containerd/containerd/pull/5135
+</p>
 
-Then, put the private key files to `/etc/containerd/ocicrypt/keys` (for rootless `~/.config/containerd/ocicrypt/keys`).
+</details>
 
 ### nerdctl run
 
