@@ -17,12 +17,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"text/tabwriter"
+	"text/template"
 	"time"
 
 	"github.com/containerd/containerd"
@@ -30,7 +32,9 @@ import (
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/docker/cli/templates"
 	"github.com/docker/go-units"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -54,6 +58,11 @@ var psCommand = &cli.Command{
 			Aliases: []string{"q"},
 			Usage:   "Only display container IDs",
 		},
+		&cli.StringFlag{
+			Name: "format",
+			// Alias "-f" is reserved for "--filter"
+			Usage: "Format the output using the given Go template, e.g, '{{json .}}'",
+		},
 	},
 }
 
@@ -70,14 +79,40 @@ func psAction(clicontext *cli.Context) error {
 	return printContainers(ctx, clicontext, containers)
 }
 
+type containerPrintable struct {
+	Command   string
+	CreatedAt string
+	ID        string
+	Image     string
+	Names     string
+	Ports     string
+	Status    string
+	// TODO: "Labels", "LocalVolumes", "Mounts", "Networks", "RunningFor", "Size", "State"
+}
+
 func printContainers(ctx context.Context, clicontext *cli.Context, containers []containerd.Container) error {
 	trunc := !clicontext.Bool("no-trunc")
 	all := clicontext.Bool("all")
 	quiet := clicontext.Bool("quiet")
-
-	w := tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
-	if !quiet {
-		fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+	w := clicontext.App.Writer
+	var tmpl *template.Template
+	switch format := clicontext.String("format"); format {
+	case "", "table":
+		w = tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
+		if !quiet {
+			fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+		}
+	case "raw":
+		return errors.New("unsupported format: \"raw\"")
+	default:
+		if quiet {
+			return errors.New("format and quiet must not be specified together")
+		}
+		var err error
+		tmpl, err = templates.Parse(format)
+		if err != nil {
+			return err
+		}
 	}
 
 	for _, c := range containers {
@@ -102,26 +137,46 @@ func printContainers(ctx context.Context, clicontext *cli.Context, containers []
 			continue
 		}
 
-		if quiet {
+		p := containerPrintable{
+			Command:   inspectContainerCommand(spec, trunc),
+			CreatedAt: info.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
+			ID:        id,
+			Image:     imageName,
+			Names:     info.Labels[labels.Name],
+			Ports:     formatPorts(info.Labels),
+			Status:    cStatus,
+		}
+
+		if tmpl != nil {
+			var b bytes.Buffer
+			if err := tmpl.Execute(&b, p); err != nil {
+				return err
+			}
+			if _, err = fmt.Fprintf(w, b.String()+"\n"); err != nil {
+				return err
+			}
+		} else if quiet {
 			if _, err := fmt.Fprintf(w, "%s\n", id); err != nil {
 				return err
 			}
-			continue
-		}
-
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-			id,
-			imageName,
-			inspectContainerCommand(spec, trunc),
-			timeSinceInHuman(info.CreatedAt),
-			cStatus,
-			formatPorts(info.Labels),
-			info.Labels[labels.Name],
-		); err != nil {
-			return err
+		} else {
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+				p.ID,
+				p.Image,
+				p.Command,
+				timeSinceInHuman(info.CreatedAt),
+				p.Status,
+				p.Ports,
+				p.Names,
+			); err != nil {
+				return err
+			}
 		}
 	}
-	return w.Flush()
+	if f, ok := w.(Flusher); ok {
+		return f.Flush()
+	}
+	return nil
 }
 
 func containerStatus(ctx context.Context, c containerd.Container) string {

@@ -480,8 +480,9 @@ Flags:
 - :whale: `-a, --all`: Show all containers (default shows just running)
 - :whale: `--no-trunc`: Don't truncate output
 - :whale: `-q, --quiet`: Only display container IDs
+- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 
-Unimplemented `docker ps` flags: `--filter`, `--format`, `--last`, `--size`
+Unimplemented `docker ps` flags: `--filter`, `--last`, `--size`
 
 ### :whale: nerdctl inspect
 Display detailed information on one or more containers.
@@ -604,8 +605,9 @@ Usage: `nerdctl images [OPTIONS] [REPOSITORY[:TAG]]`
 Flags:
 - :whale: `-q, --quiet`: Only show numeric IDs
 - :whale: `--no-trunc`: Don't truncate output
+- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 
-Unimplemented `docker images` flags: `--all`, `--digests`, `--filter`, `--format`
+Unimplemented `docker images` flags: `--all`, `--digests`, `--filter`
 
 ### :whale: nerdctl pull
 Pull an image from a registry.
@@ -717,7 +719,11 @@ List networks
 
 Usage: `nerdctl network ls [OPTIONS]`
 
-Unimplemented `docker network ls` flags: `--filter`, `--format`, `--no-trunc`, `--quiet`
+Flags:
+- :whale: `-q, --quiet`: Only display network IDs
+- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+
+Unimplemented `docker network ls` flags: `--filter`, `--no-trunc`
 
 ### :whale: nerdctl network inspect
 Display detailed information on one or more networks
@@ -749,8 +755,9 @@ Usage: `nerdctl volume ls [OPTIONS]`
 
 Flags:
 - :whale: `-q, --quiet`: Only display volume names
+- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 
-Unimplemented `docker volume ls` flags: `--filter`, `--format`
+Unimplemented `docker volume ls` flags: `--filter`
 
 ### :whale: nerdctl volume inspect
 Display detailed information on one or more volumes
@@ -800,7 +807,8 @@ Show the nerdctl version information
 
 Usage: `nerdctl version [OPTIONS]`
 
-Unimplemented `docker version` flags: `--format`
+Flags:
+- :whale: `-f, --format`: Format the output using the given Go template, e.g, `{{json .}}`
 
 ## Stats
 ### :whale: nerdctl top

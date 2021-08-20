@@ -17,11 +17,15 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"text/tabwriter"
+	"text/template"
 
 	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/docker/cli/templates"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
 
@@ -30,9 +34,51 @@ var networkLsCommand = &cli.Command{
 	Aliases: []string{"list"},
 	Usage:   "List networks",
 	Action:  networkLsAction,
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "quiet",
+			Aliases: []string{"q"},
+			Usage:   "Only display network IDs",
+		},
+		&cli.StringFlag{
+			Name: "format",
+			// Alias "-f" is reserved for "--filter"
+			Usage: "Format the output using the given Go template, e.g, '{{json .}}'",
+		},
+	},
+}
+
+type networkPrintable struct {
+	ID     string // empty for non-nerdctl networks
+	Name   string
+	Labels string
+	// TODO: "CreatedAt", "Driver", "IPv6", "Internal", "Scope"
+	file string `json:"-"`
 }
 
 func networkLsAction(clicontext *cli.Context) error {
+	quiet := clicontext.Bool("quiet")
+	w := clicontext.App.Writer
+	var tmpl *template.Template
+	switch format := clicontext.String("format"); format {
+	case "", "table":
+		w = tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
+		if !quiet {
+			fmt.Fprintln(w, "NETWORK ID\tNAME\tFILE")
+		}
+	case "raw":
+		return errors.New("unsupported format: \"raw\"")
+	default:
+		if quiet {
+			return errors.New("format and quiet must not be specified together")
+		}
+		var err error
+		tmpl, err = templates.Parse(format)
+		if err != nil {
+			return err
+		}
+	}
+
 	e := &netutil.CNIEnv{
 		Path:        clicontext.String("cni-path"),
 		NetconfPath: clicontext.String("cni-netconfpath"),
@@ -41,17 +87,50 @@ func networkLsAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	w := tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
-	fmt.Fprintln(w, "NETWORK ID\tNAME\tFILE")
-	for _, l := range ll {
-		var idStr string
-		if l.NerdctlID != nil {
-			idStr = strconv.Itoa(*l.NerdctlID)
+	pp := make([]networkPrintable, len(ll))
+	for i, l := range ll {
+		p := networkPrintable{
+			Name: l.Name,
+			file: l.File,
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n", idStr, l.Name, l.File)
+		if l.NerdctlID != nil {
+			p.ID = strconv.Itoa(*l.NerdctlID)
+		}
+		if l.NerdctlLabels != nil {
+			p.Labels = formatLabels(*l.NerdctlLabels)
+		}
+		pp[i] = p
 	}
-	// pseudo networks
-	fmt.Fprintf(w, "\thost\t\n")
-	fmt.Fprintf(w, "\tnone\t\n")
-	return w.Flush()
+
+	// append pseudo networks
+	pp = append(pp, []networkPrintable{
+		{
+			Name: "host",
+		},
+		{
+			Name: "none",
+		},
+	}...)
+
+	for _, p := range pp {
+		if tmpl != nil {
+			var b bytes.Buffer
+			if err := tmpl.Execute(&b, p); err != nil {
+				return err
+			}
+			if _, err = fmt.Fprintf(w, b.String()+"\n"); err != nil {
+				return err
+			}
+		} else if quiet {
+			if p.ID != "" {
+				fmt.Fprintln(w, p.ID)
+			}
+		} else {
+			fmt.Fprintf(w, "%s\t%s\t%s\n", p.ID, p.Name, p.file)
+		}
+	}
+	if f, ok := w.(Flusher); ok {
+		return f.Flush()
+	}
+	return nil
 }
