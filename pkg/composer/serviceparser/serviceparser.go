@@ -52,6 +52,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		"Entrypoint",
 		"Environment",
 		"Extends", // handled by the loader
+		"ExtraHosts",
 		"Hostname",
 		"Image",
 		"Labels",
@@ -463,6 +464,9 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 		} else {
 			c.RunArgs = append(c.RunArgs, fmt.Sprintf("-e=%s=%s", k, *v))
 		}
+	}
+	for _, v := range svc.ExtraHosts {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--add-host=%s", v))
 	}
 
 	hostname := svc.Hostname

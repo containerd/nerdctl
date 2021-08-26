@@ -229,6 +229,10 @@ var runCommand = &cli.Command{
 			Usage:   "Set environment variables",
 		},
 		&cli.StringSliceFlag{
+			Name:  "add-host",
+			Usage: "Add a custom host-to-IP mapping (host:ip)",
+		},
+		&cli.StringSliceFlag{
 			Name:  "env-file",
 			Usage: "Set environment variables from file",
 		},
@@ -536,7 +540,9 @@ func runAction(clicontext *cli.Context) error {
 		pidFile = clicontext.String("pidfile")
 	}
 
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, netSlice, ports, logURI, anonVolumes, pidFile)
+	extraHosts := strutil.DedupeStrSlice(clicontext.StringSlice("add-host"))
+
+	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ports, logURI, anonVolumes, pidFile)
 	if err != nil {
 		return err
 	}
@@ -812,13 +818,18 @@ func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts
 	return []containerd.NewContainerOpts{o}, nil
 }
 
-func withInternalLabels(ns, name, hostname, containerStateDir string, networks []string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile string) (containerd.NewContainerOpts, error) {
+func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile string) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
 	m[labels.Namespace] = ns
 	if name != "" {
 		m[labels.Name] = name
 	}
 	m[labels.Hostname] = hostname
+	extraHostsJSON, err := json.Marshal(extraHosts)
+	if err != nil {
+		return nil, err
+	}
+	m[labels.ExtraHosts] = string(extraHostsJSON)
 	m[labels.StateDir] = containerStateDir
 	networksJSON, err := json.Marshal(networks)
 	if err != nil {
