@@ -17,14 +17,17 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"text/template"
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/containerinspector"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/docker/cli/templates"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
@@ -41,6 +44,11 @@ var containerInspectCommand = &cli.Command{
 			Name:  "mode",
 			Usage: "Inspect mode, \"dockercompat\" for Docker-compatible output, \"native\" for containerd-native output",
 			Value: "dockercompat",
+		},
+		&cli.StringFlag{
+			Name:    "format",
+			Aliases: []string{"f"},
+			Usage:   "Format the output using the given Go template, e.g, '{{json .}}'",
 		},
 	},
 }
@@ -74,12 +82,38 @@ func ContainerInspectAction(clicontext *cli.Context) error {
 		}
 	}
 
-	b, err := json.MarshalIndent(f.entries, "", "    ")
-	if err != nil {
-		return err
+	var tmpl *template.Template
+	switch format := clicontext.String("format"); format {
+	case "":
+		b, err := json.MarshalIndent(f.entries, "", "    ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(clicontext.App.Writer, string(b))
+	case "raw", "table":
+		return errors.New("unsupported format: \"raw\" and \"table\"")
+	default:
+		var err error
+		tmpl, err = templates.Parse(format)
+		if err != nil {
+			return err
+		}
+		if tmpl != nil {
+			for _, value := range f.entries {
+				c, ok := value.(*dockercompat.Container)
+				if !ok {
+					return errors.Errorf("%v trans to  Container  error", value)
+				}
+				var b bytes.Buffer
+				if err := tmpl.Execute(&b, c); err != nil {
+					return err
+				}
+				if _, err = fmt.Fprintf(clicontext.App.Writer, b.String()+"\n"); err != nil {
+					return err
+				}
+			}
+		}
 	}
-	fmt.Fprintln(clicontext.App.Writer, string(b))
-
 	if len(errs) > 0 {
 		return errors.Errorf("%d errors: %v", len(errs), errs)
 	}

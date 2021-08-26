@@ -491,8 +491,9 @@ Usage: `nerctl inspect [OPTIONS] NAME|ID [NAME|ID...]`
 
 Flags:
 - :nerd_face: `--mode=(dockercompat|native)`: Inspection mode. "native" produces more information.
+- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 
-Unimplemented `docker inspect` flags: `--format`, `--size`, `--type`
+Unimplemented `docker inspect` flags:  `--size`, `--type`
 
 ### :whale: nerdctl logs
 Fetch the logs of a container. 
