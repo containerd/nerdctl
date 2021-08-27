@@ -70,7 +70,7 @@ func inspectAction(clicontext *cli.Context) error {
 			return err
 		}
 
-		if ni != 0 && nc != 0 {
+		if ni != 0 && nc != 0 && nc > 1 {
 			return errors.Errorf("multiple IDs found with provided prefix: %s", req)
 		}
 
