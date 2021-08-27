@@ -17,12 +17,16 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"text/template"
+	"time"
 
 	"github.com/containerd/containerd/events"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/typeurl"
+	"github.com/docker/cli/templates"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
@@ -35,6 +39,19 @@ var eventsCommand = &cli.Command{
 	Usage:       "Get real time events from the server",
 	Description: "NOTE: The output format is not compatible with Docker.",
 	Action:      eventsAction,
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "format",
+			Usage: "Format the output using the given Go template, e.g, '{{json .}}'",
+		},
+	},
+}
+
+type Out struct {
+	Timestamp time.Time
+	Namespace string
+	Topic     string
+	Event     string
 }
 
 // eventsActions is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/events/events.go
@@ -50,6 +67,19 @@ func eventsAction(clicontext *cli.Context) error {
 	defer cancel()
 	eventsClient := client.EventService()
 	eventsCh, errCh := eventsClient.Subscribe(ctx)
+
+	var tmpl *template.Template
+	switch format := clicontext.String("format"); format {
+	case "":
+		tmpl = nil
+	case "raw", "table":
+		return errors.New("unsupported format: \"raw\" and \"table\"")
+	default:
+		tmpl, err = templates.Parse(format)
+		if err != nil {
+			return err
+		}
+	}
 	for {
 		var e *events.Envelope
 		select {
@@ -71,14 +101,25 @@ func eventsAction(clicontext *cli.Context) error {
 					continue
 				}
 			}
-			if _, err := fmt.Fprintln(
-				clicontext.App.Writer,
-				e.Timestamp,
-				e.Namespace,
-				e.Topic,
-				string(out),
-			); err != nil {
-				return err
+			if tmpl != nil {
+				out := Out{e.Timestamp, e.Namespace, e.Topic, string(out)}
+				var b bytes.Buffer
+				if err := tmpl.Execute(&b, out); err != nil {
+					return err
+				}
+				if _, err := fmt.Fprintln(clicontext.App.Writer, b.String()+"\n"); err != nil {
+					return err
+				}
+			} else {
+				if _, err := fmt.Fprintln(
+					clicontext.App.Writer,
+					e.Timestamp,
+					e.Namespace,
+					e.Topic,
+					string(out),
+				); err != nil {
+					return err
+				}
 			}
 		}
 	}
