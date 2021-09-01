@@ -81,7 +81,7 @@ These dependencies are included in `nerdctl-full-<VERSION>-<OS>-<ARCH>.tar.gz`, 
 ```console
 $ brew install lima
 $ limactl start
-$ lima nerdctl run -d -p 8080:80 --name nginx:alpine
+$ lima nerdctl run -d --name nginx -p 127.0.0.1:8080:80 nginx:alpine
 ```
 
 NOTE: ARM Mac requires installing a patched version of QEMU, see [Lima](https://github.com/AkihiroSuda/lima) documentation.
