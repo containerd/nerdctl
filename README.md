@@ -491,8 +491,9 @@ Usage: `nerctl inspect [OPTIONS] NAME|ID [NAME|ID...]`
 
 Flags:
 - :nerd_face: `--mode=(dockercompat|native)`: Inspection mode. "native" produces more information.
+- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 
-Unimplemented `docker inspect` flags: `--format`, `--size`, `--type`
+Unimplemented `docker inspect` flags:  `--size`, `--type`
 
 ### :whale: nerdctl logs
 Fetch the logs of a container. 
@@ -664,8 +665,7 @@ Usage: `nerctl image inspect [OPTIONS] NAME|ID [NAME|ID...]`
 
 Flags:
 - :nerd_face: `--mode=(dockercompat|native)`: Inspection mode. "native" produces more information.
-
-Unimplemented `docker image inspect` flags: `--format`
+- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 
 ### :nerd_face: nerdctl image convert
 Convert an image format.
