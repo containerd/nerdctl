@@ -623,8 +623,22 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 		"Source",
 		"Target",
 		"ReadOnly",
+		"Bind",
+		"Volume",
 	); len(unknown) > 0 {
 		logrus.Warnf("Ignoring: volume: %+v", unknown)
+	}
+	if c.Bind != nil {
+		// c.Bind is expected to be a non-nil reference to an empty Bind struct
+		if unknown := reflectutil.UnknownNonEmptyFields(c.Bind); len(unknown) > 0 {
+			logrus.Warnf("Ignoring: volume: Bind: %+v", unknown)
+		}
+	}
+	if c.Volume != nil {
+		// c.Volume is expected to be a non-nil reference to an empty Volume struct
+		if unknown := reflectutil.UnknownNonEmptyFields(c.Volume); len(unknown) > 0 {
+			logrus.Warnf("Ignoring: volume: Volume: %+v", unknown)
+		}
 	}
 
 	if c.Target == "" {
