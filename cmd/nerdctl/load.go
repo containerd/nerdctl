@@ -22,8 +22,11 @@ import (
 	"os"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/archive"
 	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/nerdctl/pkg/contentutil"
+	digest "github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 )
 
@@ -81,9 +84,34 @@ func loadImage(in io.Reader, cmd *cobra.Command, args []string, allPlatforms boo
 	if err != nil {
 		return err
 	}
-	for _, img := range imgs {
-		image := containerd.NewImage(client, img)
 
+	for _, img := range imgs {
+		var configDigests []digest.Digest
+		if allPlatforms {
+			pms, err := images.Platforms(ctx, client.ContentStore(), img.Target)
+			if err != nil {
+				return err
+			}
+			for _, p := range pms {
+				d, err := images.Config(ctx, client.ContentStore(), img.Target, platforms.OnlyStrict(p))
+				if err != nil {
+					return err
+				}
+				configDigests = append(configDigests, d.Digest)
+			}
+		} else {
+			d, err := images.Config(ctx, client.ContentStore(), img.Target, platforms.DefaultStrict())
+			if err != nil {
+				return err
+			}
+			configDigests = append(configDigests, d.Digest)
+		}
+
+		if err := contentutil.WithConfigBlobLabel(ctx, client, img.Target.Digest, configDigests); err != nil {
+			return err
+		}
+
+		image := containerd.NewImage(client, img)
 		// TODO: Show unpack status
 		if !quiet {
 			fmt.Fprintf(cmd.OutOrStdout(), "unpacking %s (%s)...", img.Name, img.Target.Digest)

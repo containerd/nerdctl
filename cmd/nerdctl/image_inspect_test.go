@@ -34,3 +34,19 @@ func TestImageInspectContainsSomeStuff(t *testing.T) {
 	assert.Assert(base.T, inspect.RootFS.Type != "")
 	assert.Assert(base.T, inspect.Architecture != "")
 }
+
+func TestImageInspectWithImageID(t *testing.T) {
+	base := testutil.NewBase(t)
+	defer base.Cmd("rmi", "-f", testutil.NginxAlpineImage).Run()
+
+	base.Cmd("pull", testutil.NginxAlpineImage).AssertOK()
+	//fetch the Image ID
+	inspect := base.InspectImage(testutil.NginxAlpineImage)
+
+	//Make an inspect with the Image ID
+	inspectWithImageId := base.InspectImage(inspect.ID)
+
+	assert.Assert(base.T, len(inspectWithImageId.RootFS.Layers) > 0)
+	assert.Assert(base.T, inspectWithImageId.RootFS.Type != "")
+	assert.Assert(base.T, inspectWithImageId.Architecture != "")
+}

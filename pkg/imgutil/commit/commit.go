@@ -37,6 +37,7 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/rootfs"
 	"github.com/containerd/containerd/snapshots"
+	"github.com/containerd/nerdctl/pkg/contentutil"
 	imgutil "github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/identity"
@@ -133,7 +134,7 @@ func Commit(ctx context.Context, client *containerd.Client, id string, opts *Opt
 		return emptyDigest, errors.Wrap(err, "failed to apply diff")
 	}
 
-	commitManifestDesc, configDigest, err := writeContentsForImage(ctx, cs, snName, baseImg, imageConfig, diffLayerDesc)
+	commitManifestDesc, configDigest, err := writeContentsForImage(ctx, client, cs, snName, baseImg, imageConfig, diffLayerDesc)
 	if err != nil {
 		return emptyDigest, err
 	}
@@ -205,7 +206,7 @@ func generateCommitImageConfig(ctx context.Context, container containerd.Contain
 }
 
 // writeContentsForImage will commit oci image config and manifest into containerd's content store.
-func writeContentsForImage(ctx context.Context, cs content.Store, snName string, baseImg containerd.Image, newConfig ocispec.Image, diffLayerDesc ocispec.Descriptor) (ocispec.Descriptor, digest.Digest, error) {
+func writeContentsForImage(ctx context.Context, client *containerd.Client, cs content.Store, snName string, baseImg containerd.Image, newConfig ocispec.Image, diffLayerDesc ocispec.Descriptor) (ocispec.Descriptor, digest.Digest, error) {
 	newConfigJSON, err := json.Marshal(newConfig)
 	if err != nil {
 		return ocispec.Descriptor{}, emptyDigest, err
@@ -267,6 +268,10 @@ func writeContentsForImage(ctx context.Context, cs content.Store, snName string,
 	})
 	err = content.WriteBlob(ctx, cs, configDesc.Digest.String(), bytes.NewReader(newConfigJSON), configDesc, labelOpt)
 	if err != nil {
+		return ocispec.Descriptor{}, emptyDigest, err
+	}
+
+	if err := contentutil.WithConfigBlobLabel(ctx, client, newMfstDesc.Digest, []digest.Digest{configDesc.Digest}); err != nil {
 		return ocispec.Descriptor{}, emptyDigest, err
 	}
 

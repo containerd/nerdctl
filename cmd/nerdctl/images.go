@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/pkg/progress"
+	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/nerdctl/pkg/formatter"
@@ -156,16 +157,21 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 		}
 		repository, tag := imgutil.ParseRepoTag(img.Name)
 
+		config, err := img.Config(ctx, cs, platforms.DefaultStrict())
+		if err != nil {
+			return err
+		}
+
 		p := imagePrintable{
 			CreatedAt:    img.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
 			CreatedSince: formatter.TimeSinceInHuman(img.CreatedAt),
-			ID:           img.Target.Digest.String(),
+			ID:           config.Digest.String(),
 			Repository:   repository,
 			Tag:          tag,
 			Size:         progress.Bytes(size).String(),
 		}
 		if !noTrunc {
-			p.ID = strings.Split(img.Target.Digest.String(), ":")[1][:12]
+			p.ID = strings.Split(config.Digest.String(), ":")[1][:12]
 		}
 		if tmpl != nil {
 			var b bytes.Buffer

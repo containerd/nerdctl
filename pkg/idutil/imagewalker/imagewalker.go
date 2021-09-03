@@ -20,8 +20,10 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	refdocker "github.com/containerd/containerd/reference/docker"
 )
@@ -44,14 +46,25 @@ type ImageWalker struct {
 // Req is name, short ID, or long ID.
 // Returns the number of the found entries.
 func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
+
 	var filters []string
 	if canonicalRef, err := refdocker.ParseDockerRef(req); err == nil {
 		filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
 	}
-	filters = append(filters,
-		fmt.Sprintf("target.digest~=^sha256:%s.*$", regexp.QuoteMeta(req)),
-		fmt.Sprintf("target.digest~=^%s.*$", regexp.QuoteMeta(req)),
-	)
+	//Using Walk API to fetch long ID(s) from contentStore
+	cs := w.Client.ContentStore()
+	kPrefix := "containerd.io/blobref.index."
+	if err := cs.Walk(ctx, func(info content.Info) error {
+		for k, v := range info.Labels {
+			if strings.HasPrefix(k, kPrefix) {
+				filters = append(filters, fmt.Sprintf("target.digest==%s", v))
+			}
+		}
+		return nil
+	}, []string{fmt.Sprintf("digest~=^%s.*$", regexp.QuoteMeta(req)),
+		fmt.Sprintf("digest~=^sha256:%s.*$", regexp.QuoteMeta(req))}...); err != nil {
+		return -1, err
+	}
 
 	images, err := w.Client.ImageService().List(ctx, filters...)
 	if err != nil {

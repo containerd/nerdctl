@@ -26,6 +26,8 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/remotes"
+	"github.com/containerd/nerdctl/pkg/contentutil"
+	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -57,7 +59,15 @@ func Pull(ctx context.Context, client *containerd.Client, ref string, config *Co
 		close(progress)
 	}()
 
+	var indexDigest digest.Digest
+	var configDigests []digest.Digest
 	h := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		if images.IsKnownConfig(desc.MediaType) {
+			configDigests = append(configDigests, desc.Digest)
+		}
+		if images.IsIndexType(desc.MediaType) {
+			indexDigest = desc.Digest
+		}
 		if desc.MediaType != images.MediaTypeDockerSchema1Manifest {
 			ongoing.Add(desc)
 		}
@@ -80,5 +90,10 @@ func Pull(ctx context.Context, client *containerd.Client, ref string, config *Co
 	}
 
 	<-progress
+
+	if err := contentutil.WithConfigBlobLabel(ctx, client, indexDigest, configDigests); err != nil {
+		return nil, err
+	}
+
 	return img, nil
 }
