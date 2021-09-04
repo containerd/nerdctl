@@ -791,8 +791,10 @@ Get real time events from the server.
 :warning: The output format is not compatible with Docker.
 
 Usage: `nerdctl events [OPTIONS]`
+Flags:
+- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 
-Unimplemented `docker events` flags: `--filter`, `--format`, `--since`, `--until`
+Unimplemented `docker events` flags: `--filter`, `--since`, `--until`
 
 ### :whale: nerdctl info
 Display system-wide information
