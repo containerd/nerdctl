@@ -25,7 +25,7 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.12.0
 	github.com/gogo/protobuf v1.3.2
-	github.com/mattn/go-isatty v0.0.13
+	github.com/mattn/go-isatty v0.0.14
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.2-0.20210819154149-5ad6f50d6283
