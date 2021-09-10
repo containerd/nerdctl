@@ -44,6 +44,9 @@ const (
 	// Hostname
 	Hostname = Prefix + "hostname"
 
+	// ExtraHosts are HostIPs to appended to /etc/hosts
+	ExtraHosts = Prefix + "extraHosts"
+
 	// StateDir is "/var/lib/nerdctl/<ADDRHASH>/containers/<NAMESPACE>/<ID>"
 	StateDir = Prefix + "state-dir"
 

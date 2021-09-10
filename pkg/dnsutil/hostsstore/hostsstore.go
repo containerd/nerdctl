@@ -99,11 +99,12 @@ func NewStore(dataStore string) (Store, error) {
 }
 
 type Meta struct {
-	Namespace string
-	ID        string
-	Networks  map[string]*current.Result
-	Hostname  string
-	Name      string
+	Namespace  string
+	ID         string
+	Networks   map[string]*current.Result
+	Hostname   string
+	ExtraHosts []string
+	Name       string
 }
 
 type Store interface {
@@ -132,7 +133,7 @@ func (x *store) Acquire(meta Meta) error {
 		if err := ioutil.WriteFile(metaPath, metaB, 0644); err != nil {
 			return err
 		}
-		return newUpdater(x.hostsD).update()
+		return newUpdater(x.hostsD, meta.ExtraHosts).update()
 	}
 	return lockutil.WithDirLock(x.hostsD, fn)
 }
@@ -150,7 +151,7 @@ func (x *store) Release(ns, id string) error {
 		if err := os.RemoveAll(metaPath); err != nil {
 			return err
 		}
-		return newUpdater(x.hostsD).update()
+		return newUpdater(x.hostsD, nil).update()
 	}
 	return lockutil.WithDirLock(x.hostsD, fn)
 }

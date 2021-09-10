@@ -17,6 +17,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -188,4 +190,25 @@ func TestRunPidHost(t *testing.T) {
 	pid := os.Getpid()
 
 	base.Cmd("run", "--rm", "--pid=host", testutil.AlpineImage, "ps", "auxw").AssertOutContains(strconv.Itoa(pid))
+}
+
+func TestRunAddHost(t *testing.T) {
+	base := testutil.NewBase(t)
+	base.Cmd("run", "--rm", "--add-host", "testing.example.com:10.0.0.1", testutil.AlpineImage, "sh", "-c", "cat /etc/hosts").AssertOutWithFunc(func(stdout string) error {
+		var found bool
+		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
+		for sc.Scan() {
+			//removing spaces and tabs separating items
+			line := strings.ReplaceAll(sc.Text(), " ", "")
+			line = strings.ReplaceAll(line, "\t", "")
+			if strings.Contains(line, "10.0.0.1testing.example.com") {
+				found = true
+			}
+		}
+		if !found {
+			return errors.New("host was not added")
+		}
+		return nil
+	})
+	base.Cmd("run", "--rm", "--add-host", "10.0.0.1:testing.example.com", testutil.AlpineImage, "sh", "-c", "cat /etc/hosts").AssertFail()
 }

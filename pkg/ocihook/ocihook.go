@@ -24,9 +24,9 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/containerd/containerd/cmd/ctr/commands"
-
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containernetworking/cni/pkg/types/current"
+	dopts "github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
@@ -86,6 +87,33 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 		state:     state,
 		dataStore: dataStore,
 	}
+
+	extraHostsJSON := o.state.Annotations[labels.ExtraHosts]
+	var extraHosts []string
+	if err := json.Unmarshal([]byte(extraHostsJSON), &extraHosts); err != nil {
+		return nil, err
+	}
+
+	//validate and format extraHosts
+	ensureExtraHosts := func(extraHosts []string) ([]string, error) {
+		hosts := []string{}
+		for _, host := range extraHosts {
+			hostIP, err := dopts.ValidateExtraHost(host)
+			if err != nil {
+				return nil, err
+			}
+			if v := strings.SplitN(hostIP, ":", 2); len(v) == 2 {
+				hosts = append(hosts, fmt.Sprintf("%s   %s", v[1], v[0]))
+			}
+		}
+		return hosts, nil
+	}
+
+	var err error
+	if o.extraHosts, err = ensureExtraHosts(extraHosts); err != nil {
+		return nil, err
+	}
+
 	hs, err := loadSpec(o.state.Bundle)
 	if err != nil {
 		return nil, err
@@ -181,6 +209,7 @@ type handlerOpts struct {
 	cniNames          []string
 	fullID            string
 	rootlessKitClient rlkclient.Client
+	extraHosts        []string
 }
 
 // hookSpec is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/containerd/command/oci-hook.go#L59-L64
@@ -265,6 +294,7 @@ func onCreateRuntime(opts *handlerOpts) error {
 	if pkgapparmor.HostSupports() {
 		loadAppArmor()
 	}
+
 	if opts.cni != nil {
 		portMapOpts, err := getPortMapOpts(opts)
 		if err != nil {
@@ -280,11 +310,12 @@ func onCreateRuntime(opts *handlerOpts) error {
 			return err
 		}
 		hsMeta := hostsstore.Meta{
-			Namespace: opts.state.Annotations[labels.Namespace],
-			ID:        opts.state.ID,
-			Networks:  make(map[string]*current.Result, len(opts.cniNames)),
-			Hostname:  opts.state.Annotations[labels.Hostname],
-			Name:      opts.state.Annotations[labels.Name],
+			Namespace:  opts.state.Annotations[labels.Namespace],
+			ID:         opts.state.ID,
+			Networks:   make(map[string]*current.Result, len(opts.cniNames)),
+			Hostname:   opts.state.Annotations[labels.Hostname],
+			ExtraHosts: opts.extraHosts,
+			Name:       opts.state.Annotations[labels.Name],
 		}
 		cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, portMapOpts...)
 		if err != nil {
