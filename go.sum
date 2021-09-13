@@ -121,10 +121,10 @@ github.com/containerd/console v1.0.1/go.mod h1:XUsP6YE/mKtz6bxc+I8UiKKTP04qjQL4q
 github.com/containerd/console v1.0.2/go.mod h1:ytZPjGgY2oeTkAONYafi2kSj0aYggsf8acV1PGKCbzQ=
 github.com/containerd/console v1.0.3 h1:lIr7SlA5PxZyMV30bDW0MGbiOPXwc63yRuCP0ARubLw=
 github.com/containerd/console v1.0.3/go.mod h1:7LqA/THxQ86k76b8c/EMSiaJ3h1eZkMkXar0TQ1gf3U=
-github.com/containerd/containerd v1.5.1-0.20210916012622-7d6e9773acbe h1:iEr1DVGf1qibtZmVgUs6ebZ4GJIEl56As6EXs7+fLZo=
-github.com/containerd/containerd v1.5.1-0.20210916012622-7d6e9773acbe/go.mod h1:3gPXKAj4WYXzXU2jH3zqutFERZWVg0Qjb5NFaMv+8c8=
-github.com/containerd/containerd/api v0.0.0-20210916012622-7d6e9773acbe h1:0/A9R09QpcawL75DDAF3nM3o/P5ATUGY/x/ZcUHbex4=
-github.com/containerd/containerd/api v0.0.0-20210916012622-7d6e9773acbe/go.mod h1:ysm3V7pK5ZnQfXrrHZDUNNih/ZXnZwLPygddnlsrGBA=
+github.com/containerd/containerd v1.5.1-0.20210921144419-90c6ff97a88f h1:Akq16Bac+2NWpDxkL6mEXINhMuDMSGMwH72P0m8rktc=
+github.com/containerd/containerd v1.5.1-0.20210921144419-90c6ff97a88f/go.mod h1:mW3yB5jVGVxB2X9N3dVJwOQh6b0Sgtxsi1/IkEa1ec0=
+github.com/containerd/containerd/api v0.0.0-20210921144419-90c6ff97a88f h1:2cTy8gwJFkbGJZ6Kp8CVrivPGusT4GJrujCOczumDZY=
+github.com/containerd/containerd/api v0.0.0-20210921144419-90c6ff97a88f/go.mod h1:ysm3V7pK5ZnQfXrrHZDUNNih/ZXnZwLPygddnlsrGBA=
 github.com/containerd/continuity v0.0.0-20210208174643-50096c924a4e/go.mod h1:EXlVlkqNba9rJe3j7w3Xa924itAMLgZH4UD/Q4PExuQ=
 github.com/containerd/continuity v0.1.0/go.mod h1:ICJu0PwR54nI0yPEnJ6jcS+J7CZAUXrLh8lPo2knzsM=
 github.com/containerd/continuity v0.1.1-0.20210910181051-2e0898a8e801/go.mod h1:51Oa4sEFsAGujlzNbDPNB0hC1utY7N91xOzW161q5nE=

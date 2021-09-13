@@ -66,7 +66,7 @@ func loadImage(in io.Reader, clicontext *cli.Context) error {
 	defer cancel()
 
 	sn := clicontext.String("snapshotter")
-	imgs, err := client.Import(ctx, in, containerd.WithDigestRef(archive.DigestTranslator(sn)), containerd.WithAllPlatforms(clicontext.Bool("all-platforms")))
+	imgs, err := client.Import(ctx, in, containerd.WithDigestRef(archive.DigestTranslator(sn)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithAllPlatforms(clicontext.Bool("all-platforms")))
 	if err != nil {
 		return err
 	}
