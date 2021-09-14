@@ -34,7 +34,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/containernetworking/cni/pkg/types/current"
+	types100 "github.com/containernetworking/cni/pkg/types/100"
 	dopts "github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
@@ -312,7 +312,7 @@ func onCreateRuntime(opts *handlerOpts) error {
 		hsMeta := hostsstore.Meta{
 			Namespace:  opts.state.Annotations[labels.Namespace],
 			ID:         opts.state.ID,
-			Networks:   make(map[string]*current.Result, len(opts.cniNames)),
+			Networks:   make(map[string]*types100.Result, len(opts.cniNames)),
 			Hostname:   opts.state.Annotations[labels.Hostname],
 			ExtraHosts: opts.extraHosts,
 			Name:       opts.state.Annotations[labels.Name],
