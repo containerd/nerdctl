@@ -27,7 +27,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/lockutil"
-	"github.com/containernetworking/cni/pkg/types/current"
+	types100 "github.com/containernetworking/cni/pkg/types/100"
 )
 
 const (
@@ -101,7 +101,7 @@ func NewStore(dataStore string) (Store, error) {
 type Meta struct {
 	Namespace  string
 	ID         string
-	Networks   map[string]*current.Result
+	Networks   map[string]*types100.Result
 	Hostname   string
 	ExtraHosts []string
 	Name       string

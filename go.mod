@@ -10,13 +10,13 @@ require (
 	github.com/containerd/containerd v1.5.5
 	github.com/containerd/containerd/api v0.0.0
 	github.com/containerd/continuity v0.1.0
-	github.com/containerd/go-cni v1.0.3-0.20210427061315-4efee5f0b4db
+	github.com/containerd/go-cni v1.1.0
 	github.com/containerd/imgcrypt v1.1.1
 	github.com/containerd/stargz-snapshotter v0.8.0
 	github.com/containerd/stargz-snapshotter/estargz v0.8.0
 	github.com/containerd/typeurl v1.0.2
-	github.com/containernetworking/cni v0.8.1
-	github.com/containernetworking/plugins v0.9.1
+	github.com/containernetworking/cni v1.0.1
+	github.com/containernetworking/plugins v1.0.1
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/docker/cli v20.10.8+incompatible
 	github.com/docker/distribution v2.7.1+incompatible // indirect
@@ -37,7 +37,7 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+	golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
 	gotest.tools/v3 v3.0.3
 )

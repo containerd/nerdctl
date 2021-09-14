@@ -20,7 +20,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/containernetworking/cni/pkg/types/current"
+	types100 "github.com/containernetworking/cni/pkg/types/100"
 	"gotest.tools/v3/assert"
 )
 
@@ -75,14 +75,14 @@ func TestCreateLine(t *testing.T) {
 		thatMeta := &Meta{
 			Namespace: "default",
 			ID:        "984d63ce45ae",
-			Networks: map[string]*current.Result{
+			Networks: map[string]*types100.Result{
 				tc.thatNetwork: {
-					Interfaces: []*current.Interface{
+					Interfaces: []*types100.Interface{
 						{
 							Name: "eth0",
 						},
 					},
-					IPs: []*current.IPConfig{
+					IPs: []*types100.IPConfig{
 						{
 							Address: net.IPNet{IP: net.ParseIP(tc.thatIP)},
 						},
