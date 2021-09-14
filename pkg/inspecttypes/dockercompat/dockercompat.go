@@ -201,7 +201,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		Image:    n.Image,
 		Name:     n.Labels[labels.Name],
 		Driver:   n.Snapshotter,
-		Platform: runtime.GOOS,
+		Platform: runtime.GOOS, // for Docker compatibility, this Platform string does NOT contain arch like "/amd64"
 	}
 	if sp, ok := n.Spec.(*specs.Spec); ok {
 		if p := sp.Process; p != nil {
@@ -256,9 +256,11 @@ func ImageFromNative(n *native.Image) (*Image, error) {
 	for _, d := range diffIDs {
 		i.RootFS.Layers = append(i.RootFS.Layers, d.String())
 	}
-	i.Comment = imgoci.History[len(imgoci.History)-1].Comment
-	i.Created = imgoci.History[len(imgoci.History)-1].Created.String()
-	i.Author = imgoci.History[len(imgoci.History)-1].Author
+	if len(imgoci.History) > 0 {
+		i.Comment = imgoci.History[len(imgoci.History)-1].Comment
+		i.Created = imgoci.History[len(imgoci.History)-1].Created.String()
+		i.Author = imgoci.History[len(imgoci.History)-1].Author
+	}
 	i.Architecture = imgoci.Architecture
 	i.Os = imgoci.OS
 
@@ -278,7 +280,7 @@ func ImageFromNative(n *native.Image) (*Image, error) {
 		ExposedPorts: portSet,
 	}
 
-	i.ID = n.ImageConfigDesc.Digest.String() // Docker ID (digest of config), not containerd ID (digest of index or manifest)
+	i.ID = n.ImageConfigDesc.Digest.String() // Docker ID (digest of platform-specific config), not containerd ID (digest of multi-platform index or manifest)
 
 	repository, tag := imgutil.ParseRepoTag(n.Image.Name)
 

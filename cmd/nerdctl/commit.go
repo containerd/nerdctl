@@ -63,7 +63,7 @@ func commitAction(cmd *cobra.Command, args []string) error {
 			if found.MatchCount > 1 {
 				return errors.Errorf("ambiguous ID %q", found.Req)
 			}
-			imageID, err := commit.Commit(ctx, client, found.Container.ID(), opts)
+			imageID, err := commit.Commit(ctx, client, found.Container, opts)
 			if err != nil {
 				return err
 			}

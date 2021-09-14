@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -32,6 +33,13 @@ func newPullCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+
+	// #region platform flags
+	pullCommand.PersistentFlags().StringSlice("platform", nil, "Pull content for a specific platform")
+	pullCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	pullCommand.PersistentFlags().Bool("all-platforms", false, "Pull content for all platforms")
+	// #endregion
+
 	return pullCommand
 }
 
@@ -52,7 +60,20 @@ func pullAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
+	if err != nil {
+		return err
+	}
+	platform, err := cmd.Flags().GetStringSlice("platform")
+	if err != nil {
+		return err
+	}
+	ocispecPlatforms, err := platformutil.NewOCISpecPlatformSlice(allPlatforms, platform)
+	if err != nil {
+		return err
+	}
+
 	_, err = imgutil.EnsureImage(ctx, client, os.Stdout, snapshotter, args[0],
-		"always", insecure)
+		"always", insecure, ocispecPlatforms)
 	return err
 }

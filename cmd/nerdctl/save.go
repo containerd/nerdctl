@@ -21,8 +21,8 @@ import (
 	"os"
 
 	"github.com/containerd/containerd/images/archive"
-	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/mattn/go-isatty"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -40,6 +40,13 @@ func newSaveCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 	saveCommand.Flags().StringP("output", "o", "", "Write to a file, instead of STDOUT")
+
+	// #region platform flags
+	saveCommand.Flags().StringSlice("platform", []string{}, "Export content for a specific platform")
+	saveCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	saveCommand.Flags().Bool("all-platforms", false, "Export content for all platforms")
+	// #endregion
+
 	return saveCommand
 }
 
@@ -84,8 +91,20 @@ func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, cmd
 	}
 	defer cancel()
 
-	// Set the default platform
-	saveOpts = append(saveOpts, archive.WithPlatform(platforms.DefaultStrict()))
+	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
+	if err != nil {
+		return err
+	}
+	platform, err := cmd.Flags().GetStringSlice("platform")
+	if err != nil {
+		return err
+	}
+	platMC, err := platformutil.NewMatchComparer(allPlatforms, platform)
+	if err != nil {
+		return err
+	}
+
+	saveOpts = append(saveOpts, archive.WithPlatform(platMC))
 
 	imageStore := client.ImageService()
 	for _, img := range images {

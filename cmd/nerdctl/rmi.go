@@ -23,6 +23,7 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -57,9 +58,10 @@ func rmiAction(cmd *cobra.Command, args []string) error {
 	walker := &imagewalker.ImageWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+			// digests is used only for emulating human-readable output of `docker rmi`
 			digests, err := found.Image.RootFS(ctx, cs, platforms.DefaultStrict())
 			if err != nil {
-				return err
+				logrus.WithError(err).Warning("failed to enumerate rootfs")
 			}
 
 			if err := is.Delete(ctx, found.Image.Name); err != nil {

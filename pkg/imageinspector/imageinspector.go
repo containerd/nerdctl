@@ -26,6 +26,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Inspect inspects the image, for the platform specified in image.platform.
 func Inspect(ctx context.Context, client *containerd.Client, image images.Image) (*native.Image, error) {
 
 	n := &native.Image{}

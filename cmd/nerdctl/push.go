@@ -17,15 +17,13 @@
 package main
 
 import (
-	"context"
-
 	"github.com/containerd/containerd/images/converter"
-	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/pkg/imgutil/push"
+	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -40,6 +38,12 @@ func newPushCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
+	// #region platform flags
+	pushCommand.Flags().StringSlice("platform", []string{}, "Push content for a specific platform")
+	pushCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	pushCommand.Flags().Bool("all-platforms", false, "Push content for all platforms")
+	// #endregion
+
 	return pushCommand
 }
 
@@ -65,21 +69,36 @@ func pushAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	// Push fails with "400 Bad Request" when the manifest is multi-platform but we do not locally have multi-platform blobs.
-	// So we create a tmp single-platform image to avoid the error.
-	// TODO: support pushing multi-platform
-	singlePlatform := platforms.DefaultStrict()
-	singlePlatformRef := ref + "-tmp-single"
-	singlePlatformImg, err := converter.Convert(ctx, client, singlePlatformRef, ref,
-		converter.WithPlatform(singlePlatform))
+	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
 	if err != nil {
-		return errors.Wrapf(err, "failed to create a tmp single-platform image %q", singlePlatformRef)
+		return err
 	}
-	defer client.ImageService().Delete(context.TODO(), singlePlatformImg.Name)
-	logrus.Infof("pushing as a single-platform image (%s, %s)", singlePlatformImg.Target.MediaType, singlePlatformImg.Target.Digest)
+	platform, err := cmd.Flags().GetStringSlice("platform")
+	if err != nil {
+		return err
+	}
+	platMC, err := platformutil.NewMatchComparer(allPlatforms, platform)
+	if err != nil {
+		return err
+	}
+	platRef := ref
+	if !allPlatforms {
+		platRef = ref + "-tmp-reduced-platform"
+		// Push fails with "400 Bad Request" when the manifest is multi-platform but we do not locally have multi-platform blobs.
+		// So we create a tmp reduced-platform image to avoid the error.
+		platImg, err := converter.Convert(ctx, client, platRef, ref, converter.WithPlatform(platMC))
+		if err != nil {
+			if len(platform) == 0 {
+				return errors.Wrapf(err, "failed to create a tmp single-platform image %q", platRef)
+			}
+			return errors.Wrapf(err, "failed to create a tmp reduced-platform image %q (platform=%v)", platRef, platform)
+		}
+		defer client.ImageService().Delete(ctx, platImg.Name)
+		logrus.Infof("pushing as a reduced-platform image (%s, %s)", platImg.Target.MediaType, platImg.Target.Digest)
+	}
 
 	pushFunc := func(r remotes.Resolver) error {
-		return push.Push(ctx, client, r, cmd.OutOrStdout(), singlePlatformRef, ref, singlePlatform)
+		return push.Push(ctx, client, r, cmd.OutOrStdout(), platRef, ref, platMC)
 	}
 
 	var dOpts []dockerconfigresolver.Opt

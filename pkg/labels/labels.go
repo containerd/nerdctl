@@ -66,4 +66,7 @@ const (
 
 	// AnonymousVolumes is a JSON-marshalled string of []string
 	AnonymousVolumes = Prefix + "anonymous-volumes"
+
+	// Platform is the normalized platform string like "linux/ppc64le".
+	Platform = Prefix + "platform"
 )

@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/defaults"
@@ -48,6 +49,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
+	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/portutil"
 	"github.com/containerd/nerdctl/pkg/resolvconf"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
@@ -100,6 +102,11 @@ func newRunCommand() *cobra.Command {
 	runCommand.RegisterFlagCompletionFunc("pull", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"always", "missing", "never"}, cobra.ShellCompDirectiveNoFileComp
 	})
+
+	// #region platform flags
+	runCommand.Flags().String("platform", "", "Set platform (e.g. \"amd64\", \"arm64\")") // not a slice, and there is no --all-platforms
+	runCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	// #endregion
 
 	// #region network flags
 	runCommand.Flags().StringSlice("network", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none")`)
@@ -209,7 +216,29 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client, ctx, cancel, err := newClient(cmd)
+	var clientOpts []containerd.ClientOpt
+	platform, err := cmd.Flags().GetString("platform")
+	if err != nil {
+		return err
+	}
+	if platform != "" {
+		if canExec, canExecErr := platformutil.CanExecProbably(platform); !canExec {
+			warn := fmt.Sprintf("Platform %q seems incompatible with the host platform %q. If you see \"exec format error\", see https://github.com/containerd/nerdctl/blob/master/docs/multi-platform.md",
+				platform, platforms.DefaultString())
+			if canExecErr != nil {
+				logrus.WithError(canExecErr).Warn(warn)
+			} else {
+				logrus.Warn(warn)
+			}
+		}
+		platformParsed, err := platforms.Parse(platform)
+		if err != nil {
+			return err
+		}
+		platformM := platforms.Only(platformParsed)
+		clientOpts = append(clientOpts, containerd.WithDefaultPlatform(platformM))
+	}
+	client, ctx, cancel, err := newClient(cmd, clientOpts...)
 	if err != nil {
 		return err
 	}
@@ -257,7 +286,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 			}))
 	}
 
-	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, cmd, args, id)
+	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, platform, cmd, args, id)
 	if err != nil {
 		return err
 	}
@@ -593,7 +622,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	extraHosts = strutil.DedupeStrSlice(extraHosts)
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ports, logURI, anonVolumes, pidFile)
+	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ports, logURI, anonVolumes, pidFile, platform)
 	if err != nil {
 		return err
 	}
@@ -729,7 +758,7 @@ func getNetworkSlice(cmd *cobra.Command) ([]string, error) {
 	return netSlice, nil
 }
 
-func generateRootfsOpts(ctx context.Context, client *containerd.Client, cmd *cobra.Command, args []string, id string) ([]oci.SpecOpts, []containerd.NewContainerOpts, *imgutil.EnsuredImage, error) {
+func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform string, cmd *cobra.Command, args []string, id string) ([]oci.SpecOpts, []containerd.NewContainerOpts, *imgutil.EnsuredImage, error) {
 	var (
 		ensured *imgutil.EnsuredImage
 		err     error
@@ -751,8 +780,16 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cmd *cob
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		var platformSS []string // len: 0 or 1
+		if platform != "" {
+			platformSS = append(platformSS, platform)
+		}
+		ocispecPlatforms, err := platformutil.NewOCISpecPlatformSlice(false, platformSS)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		ensured, err = imgutil.EnsureImage(ctx, client, os.Stdout, snapshotter, args[0],
-			pull, insecureRegistry)
+			pull, insecureRegistry, ocispecPlatforms)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -973,7 +1010,7 @@ func withContainerLabels(cmd *cobra.Command) ([]containerd.NewContainerOpts, err
 	return []containerd.NewContainerOpts{o}, nil
 }
 
-func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile string) (containerd.NewContainerOpts, error) {
+func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
 	m[labels.Namespace] = ns
 	if name != "" {
@@ -1013,6 +1050,10 @@ func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts
 		m[labels.PIDFile] = pidFile
 	}
 
+	m[labels.Platform], err = platformutil.NormalizeString(platform)
+	if err != nil {
+		return nil, err
+	}
 	return containerd.WithAdditionalContainerLabels(m), nil
 }
 

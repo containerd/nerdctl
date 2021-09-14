@@ -61,6 +61,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		"NetworkMode",
 		"Pid",
 		"PidsLimit",
+		"Platform",
 		"Ports",
 		"Privileged",
 		"PullPolicy",
@@ -507,6 +508,10 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 
 	if svc.PidsLimit > 0 {
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--pids-limit=%d", svc.PidsLimit))
+	}
+
+	if svc.Platform != "" {
+		c.RunArgs = append(c.RunArgs, "--platform="+svc.Platform)
 	}
 
 	for _, p := range svc.Ports {
