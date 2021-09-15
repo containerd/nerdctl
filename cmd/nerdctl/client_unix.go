@@ -1,3 +1,6 @@
+//go:build freebsd || linux
+// +build freebsd linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,39 +17,19 @@
    limitations under the License.
 */
 
-package lockutil
+package main
 
 import (
-	"os"
+	"path/filepath"
 
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
-func WithDirLock(dir string, fn func() error) error {
-	dirFile, err := os.Open(dir)
+func isSocketAccessible(s string) error {
+	abs, err := filepath.Abs(s)
 	if err != nil {
 		return err
 	}
-	defer dirFile.Close()
-	if err := Flock(dirFile, unix.LOCK_EX); err != nil {
-		return errors.Wrapf(err, "failed to lock %q", dir)
-	}
-	defer func() {
-		if err := Flock(dirFile, unix.LOCK_UN); err != nil {
-			logrus.WithError(err).Errorf("failed to unlock %q", dir)
-		}
-	}()
-	return fn()
-}
-
-func Flock(f *os.File, flags int) error {
-	fd := int(f.Fd())
-	for {
-		err := unix.Flock(fd, flags)
-		if err == nil || err != unix.EINTR {
-			return err
-		}
-	}
+	// set AT_EACCESS to allow running nerdctl as a setuid binary
+	return unix.Faccessat(-1, abs, unix.R_OK|unix.W_OK, unix.AT_EACCESS)
 }

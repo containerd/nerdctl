@@ -1,3 +1,6 @@
+//go:build freebsd
+// +build freebsd
+
 /*
    Copyright The containerd Authors.
 
@@ -17,29 +20,13 @@
 package main
 
 import (
-	"os"
-	"syscall"
-
-	"github.com/pkg/errors"
-	"golang.org/x/term"
+	"github.com/urfave/cli/v2"
 )
 
-func readPassword() (string, error) {
-	var fd int
-	if term.IsTerminal(syscall.Stdin) {
-		fd = syscall.Stdin
-	} else {
-		tty, err := os.Open("/dev/tty")
-		if err != nil {
-			return "", errors.Wrap(err, "error allocating terminal")
-		}
-		defer tty.Close()
-		fd = int(tty.Fd())
-	}
-	bytePassword, err := term.ReadPassword(fd)
-	if err != nil {
-		return "", errors.Wrap(err, "error reading password")
-	}
+func appNeedsRootlessParentMain(clicontext *cli.Context) bool {
+	return false
+}
 
-	return string(bytePassword), nil
+func appBashComplete(clicontext *cli.Context) {
+	return
 }

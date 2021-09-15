@@ -1,3 +1,6 @@
+//go:build freebsd
+// +build freebsd
+
 /*
    Copyright The containerd Authors.
 
@@ -17,16 +20,10 @@
 package main
 
 import (
-	"path/filepath"
-
-	"golang.org/x/sys/unix"
+	"github.com/containerd/containerd/oci"
+	"github.com/urfave/cli/v2"
 )
 
-func isSocketAccessible(s string) error {
-	abs, err := filepath.Abs(s)
-	if err != nil {
-		return err
-	}
-	// set AT_EACCESS to allow running nerdctl as a setuid binary
-	return unix.Faccessat(-1, abs, unix.R_OK|unix.W_OK, unix.AT_EACCESS)
+func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, error) {
+	return []oci.SpecOpts{}, nil
 }

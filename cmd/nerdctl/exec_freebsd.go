@@ -1,3 +1,6 @@
+//go:build freebsd
+// +build freebsd
+
 /*
    Copyright The containerd Authors.
 
@@ -14,18 +17,13 @@
    limitations under the License.
 */
 
-package infoutil
+package main
 
 import (
-	"github.com/containerd/cgroups"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-const UnameO = "GNU/Linux"
-
-func CgroupsVersion() string {
-	if cgroups.Mode() == cgroups.Unified {
-		return "2"
-	}
-
-	return "1"
+func setExecCapabilities(pspec *specs.Process) error {
+	//no op freebsd
+	return nil
 }

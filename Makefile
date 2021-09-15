@@ -82,8 +82,10 @@ artifacts: clean
 
 	GOOS=windows GOARCH=amd64     make -C $(CURDIR) binaries
 	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-windows-amd64.tar.gz _output/nerdctl.exe
-
 	rm -f $(CURDIR)/_output/nerdctl $(CURDIR)/_output/nerdctl.exe
+
+	GOOS=freebsd GOARCH=amd64       make -C $(CURDIR)  binaries
+	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-freebsd-amd64.tar.gz   _output/nerdctl extras/rootless/*
 
 	$(call make_artifact_full_linux,amd64)
 	$(call make_artifact_full_linux,arm64)

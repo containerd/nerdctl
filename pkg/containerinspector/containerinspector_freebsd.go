@@ -1,3 +1,6 @@
+//go:build freebsd
+// +build freebsd
+
 /*
    Copyright The containerd Authors.
 
@@ -14,18 +17,16 @@
    limitations under the License.
 */
 
-package infoutil
+package containerinspector
 
 import (
-	"github.com/containerd/cgroups"
+	"context"
+
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 )
 
-const UnameO = "GNU/Linux"
+func inspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
+	r := &native.NetNS{}
 
-func CgroupsVersion() string {
-	if cgroups.Mode() == cgroups.Unified {
-		return "2"
-	}
-
-	return "1"
+	return r, nil
 }

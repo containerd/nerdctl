@@ -18,6 +18,7 @@ package mountutil
 
 import (
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/containerd/containerd/errdefs"
@@ -108,11 +109,17 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 	default:
 		return nil, errors.Errorf("failed to parse %q", s)
 	}
+
+	fstype := "nullfs"
+	if runtime.GOOS != "freebsd" {
+		fstype = "none"
+		options = append(options, "rbind")
+	}
 	res.Mount = specs.Mount{
-		Type:        "none",
+		Type:        fstype,
 		Source:      src,
 		Destination: dst,
-		Options:     append([]string{"rbind"}, options...),
+		Options:     options,
 	}
 	if sys.RunningInUserNS() {
 		unpriv, err := getUnprivilegedMountFlags(src)

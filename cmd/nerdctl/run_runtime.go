@@ -41,7 +41,7 @@ func generateRuntimeCOpts(clicontext *cli.Context) ([]containerd.NewContainerOpt
 		runcOpts.SystemdCgroup = true
 	}
 	if runtimeStr := clicontext.String("runtime"); runtimeStr != "" {
-		if strings.HasPrefix(runtimeStr, "io.containerd.") {
+		if strings.HasPrefix(runtimeStr, "io.containerd.") || runtimeStr == "wtf.sbk.runj.v1" {
 			runtime = runtimeStr
 			if !strings.HasPrefix(runtimeStr, "io.containerd.runc.") {
 				if cgm == "systemd" {

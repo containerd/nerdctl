@@ -23,6 +23,7 @@ import (
 )
 
 const AppArmorProfileName = ""
+const Runtime = ""
 
 func DataRoot() string {
 	return filepath.Join(os.Getenv("ProgramData"), "nerdctl")

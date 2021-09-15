@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/containerd/console"
@@ -34,7 +35,6 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/defaults"
@@ -187,7 +187,7 @@ var runCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:  "runtime",
 			Usage: "Runtime to use for this container, e.g. \"crun\", or \"io.containerd.runsc.v1\"",
-			Value: plugin.RuntimeRuncV2,
+			Value: defaults.Runtime,
 		},
 		&cli.StringSliceFlag{
 			Name:  "sysctl",
@@ -319,11 +319,15 @@ func runAction(clicontext *cli.Context) error {
 	opts = append(opts,
 		oci.WithDefaultSpec(),
 		oci.WithDefaultUnixDevices,
-		oci.WithMounts([]specs.Mount{
-			{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro", "nosuid", "noexec", "nodev"}},
-		}),
 		WithoutRunMount(), // unmount default tmpfs on "/run": https://github.com/containerd/nerdctl/issues/157
 	)
+
+	if runtime.GOOS == "linux" {
+		opts = append(opts,
+			oci.WithMounts([]specs.Mount{
+				{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro", "nosuid", "noexec", "nodev"}},
+			}))
+	}
 
 	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, clicontext, id)
 	if err != nil {
@@ -757,7 +761,7 @@ func withCustomHosts(src string) func(context.Context, oci.Client, *containers.C
 }
 
 func generateLogURI(dataStore string) (*url.URL, error) {
-	selfExe, err := os.Readlink("/proc/self/exe")
+	selfExe, err := os.Executable()
 	if err != nil {
 		return nil, err
 	}

@@ -21,12 +21,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/containerd/containerd/plugin"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/sirupsen/logrus"
 )
 
 const AppArmorProfileName = "nerdctl-default"
+const Runtime = plugin.RuntimeRuncV2
 
 func DataRoot() string {
 	if !rootlessutil.IsRootless() {
