@@ -7,8 +7,8 @@ require (
 	github.com/compose-spec/compose-go v0.0.0-20210827054550-c78dcffd54c5
 	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.5.5
-	github.com/containerd/containerd/api v0.0.0
+	github.com/containerd/containerd v1.5.5 // replaced, see the bottom of this file
+	github.com/containerd/containerd/api v0.0.0 // replaced, see the bottom of this file
 	github.com/containerd/continuity v0.2.0
 	github.com/containerd/go-cni v1.1.0
 	github.com/containerd/imgcrypt v1.1.1
@@ -43,6 +43,6 @@ require (
 )
 
 replace (
-	github.com/containerd/containerd => github.com/containerd/containerd v1.5.1-0.20210802172229-7d4891783aac
-	github.com/containerd/containerd/api => github.com/containerd/containerd/api v0.0.0-20210802172229-7d4891783aac
+	github.com/containerd/containerd => github.com/containerd/containerd v1.5.1-0.20210916012622-7d6e9773acbe
+	github.com/containerd/containerd/api => github.com/containerd/containerd/api v0.0.0-20210916012622-7d6e9773acbe
 )
