@@ -263,6 +263,10 @@ var runCommand = &cli.Command{
 			Name:  "pidfile",
 			Usage: "file path to write the task's pid",
 		},
+		&cli.StringSliceFlag{
+			Name:  "ulimit",
+			Usage: "Ulimit options",
+		},
 	},
 }
 
@@ -510,6 +514,12 @@ func runAction(clicontext *cli.Context) error {
 			}
 		}
 	}
+
+	ulimitOpts, err := generateUlimitsOpts(clicontext)
+	if err != nil {
+		return err
+	}
+	opts = append(opts, ulimitOpts...)
 
 	rtCOpts, err := generateRuntimeCOpts(clicontext)
 	if err != nil {

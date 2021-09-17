@@ -212,3 +212,10 @@ func TestRunAddHost(t *testing.T) {
 	})
 	base.Cmd("run", "--rm", "--add-host", "10.0.0.1:testing.example.com", testutil.AlpineImage, "sh", "-c", "cat /etc/hosts").AssertFail()
 }
+
+func TestRunUlimit(t *testing.T) {
+	base := testutil.NewBase(t)
+	ulimit := "nofile=622:622"
+
+	base.Cmd("run", "--rm", "--ulimit", ulimit, testutil.AlpineImage, "sh", "-c", "ulimit -n").AssertOutContains("622")
+}

@@ -337,6 +337,9 @@ Shared memory flags:
 GPU flags:
 - :whale: `--gpus`: GPU devices to add to the container ('all' to pass all GPUs). Please see also [./docs/gpu.md](./docs/gpu.md) for details.
 
+Ulimit flags:
+- :whale: `--ulimit`: Set ulimit
+
 Other `docker run` flags are on plan but unimplemented yet.
 <details>
 <summary> Clicke here to show all the `docker run` flags (Docker 20.10)</summary>
