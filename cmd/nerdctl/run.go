@@ -336,6 +336,16 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, oci.WithProcessCwd(wd))
 	}
 
+	for ind, env := range ensuredImage.ImageConfig.Env {
+		if strings.HasPrefix(env, "PATH=") {
+			break
+		} else {
+			if ind == len(ensuredImage.ImageConfig.Env)-1 {
+				opts = append(opts, oci.WithEnv([]string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}))
+			}
+		}
+	}
+
 	if envFiles := strutil.DedupeStrSlice(clicontext.StringSlice("env-file")); len(envFiles) > 0 {
 		env, err := parseEnvVars(envFiles)
 		if err != nil {
