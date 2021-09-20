@@ -49,6 +49,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/portutil"
+	"github.com/containerd/nerdctl/pkg/resolvconf"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
@@ -111,7 +112,6 @@ var runCommand = &cli.Command{
 		&cli.StringSliceFlag{
 			Name:  "dns",
 			Usage: "Set custom DNS servers",
-			Value: cli.NewStringSlice("8.8.8.8", "1.1.1.1"),
 		},
 		&cli.StringSliceFlag{
 			Name:    "publish",
@@ -432,7 +432,28 @@ func runAction(clicontext *cli.Context) error {
 		}
 
 		resolvConfPath := filepath.Join(stateDir, "resolv.conf")
-		if err := dnsutil.WriteResolvConfFile(resolvConfPath, strutil.DedupeStrSlice(clicontext.StringSlice("dns"))); err != nil {
+		conf, err := resolvconf.Get()
+		if err != nil {
+			return err
+		}
+		slirp4Dns := []string{}
+		if rootlessutil.IsRootlessChild() {
+			slirp4Dns, err = dnsutil.GetSlirp4netnsDns()
+			if err != nil {
+				return err
+			}
+		}
+		conf, err = resolvconf.FilterResolvDNS(conf.Content, true)
+		if err != nil {
+			return err
+		}
+		searchDomains := resolvconf.GetSearchDomains(conf.Content)
+		dnsOptions := resolvconf.GetOptions(conf.Content)
+		nameServers := strutil.DedupeStrSlice(clicontext.StringSlice("dns"))
+		if len(nameServers) == 0 {
+			nameServers = resolvconf.GetNameservers(conf.Content, resolvconf.IPv4)
+		}
+		if _, err := resolvconf.Build(resolvConfPath, append(slirp4Dns, nameServers...), searchDomains, dnsOptions); err != nil {
 			return err
 		}
 		// the content of /etc/hosts is created in OCI Hook

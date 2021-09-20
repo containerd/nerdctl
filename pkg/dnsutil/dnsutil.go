@@ -17,25 +17,25 @@
 package dnsutil
 
 import (
-	"bytes"
-	"io/ioutil"
-	"net"
+	"context"
 
-	"github.com/pkg/errors"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 )
 
-func WriteResolvConfFile(path string, dns []string) error {
-	var b bytes.Buffer
-	if _, err := b.Write([]byte("search localdomain\n")); err != nil {
-		return err
+func GetSlirp4netnsDns() ([]string, error) {
+	var dns []string
+	rkClient, err := rootlessutil.NewRootlessKitClient()
+	if err != nil {
+		return dns, err
 	}
-	for _, entry := range dns {
-		if net.ParseIP(entry) == nil {
-			return errors.Errorf("invalid dns %q", entry)
-		}
-		if _, err := b.Write([]byte("nameserver " + entry + "\n")); err != nil {
-			return err
+	info, err := rkClient.Info(context.TODO())
+	if err != nil {
+		return dns, err
+	}
+	if info != nil && info.NetworkDriver != nil {
+		for _, dnsIp := range info.NetworkDriver.DNS {
+			dns = append(dns, dnsIp.String())
 		}
 	}
-	return ioutil.WriteFile(path, b.Bytes(), 0644)
+	return dns, nil
 }
