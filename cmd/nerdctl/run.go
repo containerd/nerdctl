@@ -688,6 +688,10 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cliconte
 			containerd.WithNewSnapshot(id, ensured.Image),
 			containerd.WithImageStopSignal(ensured.Image, "SIGTERM"),
 		)
+
+		if len(ensured.ImageConfig.Env) == 0 {
+			opts = append(opts, oci.WithDefaultPathEnv)
+		}
 		for ind, env := range ensured.ImageConfig.Env {
 			if strings.HasPrefix(env, "PATH=") {
 				break
