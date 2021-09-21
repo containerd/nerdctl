@@ -16,16 +16,8 @@
 
 package infoutil
 
-import (
-	"github.com/containerd/cgroups"
-)
-
-const UnameO = "GNU/Linux"
+const UnameO = "FreeBSD"
 
 func CgroupsVersion() string {
-	if cgroups.Mode() == cgroups.Unified {
-		return "2"
-	}
-
-	return "1"
+	return ""
 }

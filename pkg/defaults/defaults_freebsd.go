@@ -14,18 +14,36 @@
    limitations under the License.
 */
 
-package infoutil
+package defaults
 
 import (
-	"github.com/containerd/cgroups"
+	gocni "github.com/containerd/go-cni"
 )
 
-const UnameO = "GNU/Linux"
+const AppArmorProfileName = ""
+const Runtime = "wtf.sbk.runj.v1"
 
-func CgroupsVersion() string {
-	if cgroups.Mode() == cgroups.Unified {
-		return "2"
-	}
+func DataRoot() string {
+	return "/var/lib/nerdctl"
+}
 
-	return "1"
+func CNIPath() string {
+	// default: /opt/cni/bin
+	return gocni.DefaultCNIDir
+}
+
+func CNINetConfPath() string {
+	return gocni.DefaultNetDir
+}
+
+func BuildKitHost() string {
+	return "unix:///run/buildkit/buildkitd.sock"
+}
+
+func CgroupManager() string {
+	return ""
+}
+
+func CgroupnsMode() string {
+	return ""
 }

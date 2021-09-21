@@ -1,3 +1,6 @@
+//go:build freebsd || linux
+// +build freebsd linux
+
 /*
    Copyright The containerd Authors.
 
@@ -17,29 +20,16 @@
 package main
 
 import (
-	"os"
-	"syscall"
+	"path/filepath"
 
-	"github.com/pkg/errors"
-	"golang.org/x/term"
+	"golang.org/x/sys/unix"
 )
 
-func readPassword() (string, error) {
-	var fd int
-	if term.IsTerminal(syscall.Stdin) {
-		fd = syscall.Stdin
-	} else {
-		tty, err := os.Open("/dev/tty")
-		if err != nil {
-			return "", errors.Wrap(err, "error allocating terminal")
-		}
-		defer tty.Close()
-		fd = int(tty.Fd())
-	}
-	bytePassword, err := term.ReadPassword(fd)
+func isSocketAccessible(s string) error {
+	abs, err := filepath.Abs(s)
 	if err != nil {
-		return "", errors.Wrap(err, "error reading password")
+		return err
 	}
-
-	return string(bytePassword), nil
+	// set AT_EACCESS to allow running nerdctl as a setuid binary
+	return unix.Faccessat(-1, abs, unix.R_OK|unix.W_OK, unix.AT_EACCESS)
 }

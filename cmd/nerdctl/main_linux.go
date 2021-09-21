@@ -20,10 +20,8 @@ import (
 	"fmt"
 
 	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/containerd/nerdctl/pkg/infoutil"
 
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -62,47 +60,5 @@ func appBashComplete(clicontext *cli.Context) {
 	cli.DefaultAppComplete(clicontext)
 	for _, subcomm := range clicontext.App.Commands {
 		fmt.Fprintln(clicontext.App.Writer, subcomm.Name)
-	}
-}
-
-func bashCompleteNamespaceNames(clicontext *cli.Context) {
-	if rootlessutil.IsRootlessParent() {
-		_ = rootlessutil.ParentMain()
-		return
-	}
-
-	client, ctx, cancel, err := newClient(clicontext)
-	if err != nil {
-		return
-	}
-	defer cancel()
-	nsService := client.NamespaceService()
-	nsList, err := nsService.List(ctx)
-	if err != nil {
-		logrus.Warn(err)
-		return
-	}
-	for _, ns := range nsList {
-		fmt.Fprintln(clicontext.App.Writer, ns)
-	}
-}
-
-func bashCompleteSnapshotterNames(clicontext *cli.Context) {
-	if rootlessutil.IsRootlessParent() {
-		_ = rootlessutil.ParentMain()
-		return
-	}
-
-	client, ctx, cancel, err := newClient(clicontext)
-	if err != nil {
-		return
-	}
-	defer cancel()
-	snapshotterPlugins, err := infoutil.GetSnapshotterNames(ctx, client.IntrospectionService())
-	if err != nil {
-		return
-	}
-	for _, name := range snapshotterPlugins {
-		fmt.Fprintln(clicontext.App.Writer, name)
 	}
 }

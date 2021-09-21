@@ -14,18 +14,13 @@
    limitations under the License.
 */
 
-package infoutil
+package main
 
 import (
-	"github.com/containerd/cgroups"
+	"github.com/containerd/containerd/oci"
+	"github.com/urfave/cli/v2"
 )
 
-const UnameO = "GNU/Linux"
-
-func CgroupsVersion() string {
-	if cgroups.Mode() == cgroups.Unified {
-		return "2"
-	}
-
-	return "1"
+func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, error) {
+	return []oci.SpecOpts{}, nil
 }

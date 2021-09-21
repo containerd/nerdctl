@@ -17,16 +17,13 @@
 package main
 
 import (
-	"path/filepath"
-
-	"golang.org/x/sys/unix"
+	"github.com/urfave/cli/v2"
 )
 
-func isSocketAccessible(s string) error {
-	abs, err := filepath.Abs(s)
-	if err != nil {
-		return err
-	}
-	// set AT_EACCESS to allow running nerdctl as a setuid binary
-	return unix.Faccessat(-1, abs, unix.R_OK|unix.W_OK, unix.AT_EACCESS)
+func appNeedsRootlessParentMain(clicontext *cli.Context) bool {
+	return false
+}
+
+func appBashComplete(clicontext *cli.Context) {
+	return
 }
