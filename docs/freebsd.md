@@ -4,7 +4,7 @@
 | :zap:        FreeBSD runtimes are at the very early stage of development |
 |--------------------------------------------------------------------------|
 
-nerdctl provides experimental support for running FreeBSD jails.
+nerdctl provides experimental support for running FreeBSD jails on FreeBSD hosts.
 
 ## Installation
 
