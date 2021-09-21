@@ -667,6 +667,15 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cliconte
 			containerd.WithNewSnapshot(id, ensured.Image),
 			containerd.WithImageStopSignal(ensured.Image, "SIGTERM"),
 		)
+		for ind, env := range ensured.ImageConfig.Env {
+			if strings.HasPrefix(env, "PATH=") {
+				break
+			} else {
+				if ind == len(ensured.ImageConfig.Env)-1 {
+					opts = append(opts, oci.WithDefaultPathEnv)
+				}
+			}
+		}
 	} else {
 		absRootfs, err := filepath.Abs(clicontext.Args().First())
 		if err != nil {
