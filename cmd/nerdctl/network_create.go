@@ -43,7 +43,7 @@ var networkCreateCommand = &cli.Command{
 		},
 		&cli.StringSliceFlag{
 			Name:  "label",
-			Usage: "Set metadata for a volume",
+			Usage: "Set metadata for a network",
 		},
 	},
 	Action: networkCreateAction,
