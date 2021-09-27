@@ -33,6 +33,11 @@ To build an image using BuildKit:
 # nerdctl run -it --rm foo
 ```
 
+To build and send output to a local directory using BuildKit:
+```console
+# nerdctl build -o type=local,dest=. /some-dockerfile-directory
+```
+
 To run containers from `docker-compose.yaml`:
 ```console
 # nerdctl compose -f ./examples/compose-wordpress/docker-compose.yaml up
@@ -119,7 +124,7 @@ Major:
 - [Running encrypted images using ocicrypt (imgcrypt)](./docs/ocicrypt.md)
 
 Minor:
-- Namespacing: `nerdctl --namespace=<NS> ps` . 
+- Namespacing: `nerdctl --namespace=<NS> ps` .
   (NOTE: All Kubernetes containers are in the `k8s.io` containerd namespace regardless to Kubernetes namespaces)
 - Exporting Docker/OCI dual-format archives: `nerdctl save` .
 - Importing OCI archives as well as Docker archives: `nerdctl load` .
@@ -261,7 +266,7 @@ It does not necessarily mean that the corresponding features are missing in cont
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 
- 
+
 ## Run & Exec
 ### :whale: nerdctl run
 Run a command in a new container.
@@ -505,7 +510,7 @@ Flags:
 Unimplemented `docker inspect` flags:  `--size`, `--type`
 
 ### :whale: nerdctl logs
-Fetch the logs of a container. 
+Fetch the logs of a container.
 
 :warning: Currently, only containers created with `nerdctl run -d` are supported.
 
@@ -718,7 +723,7 @@ Create a network
 Usage: `nerdctl network create [OPTIONS] NETWORK`
 
 Flags:
-- :whale: `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16" 
+- :whale: `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"
 - :whale: `--label`: Set metadata on a network
 
 Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--driver`, `--gateway`, `--ingress`, `--internal`, `--ip-range`, `--ipam-driver`, `--ipam-opt`, `--ipv6`, `--opt`, `--scope`
