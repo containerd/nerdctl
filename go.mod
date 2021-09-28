@@ -43,6 +43,6 @@ require (
 )
 
 replace (
-	github.com/containerd/containerd => github.com/containerd/containerd v1.5.1-0.20210916012622-7d6e9773acbe
-	github.com/containerd/containerd/api => github.com/containerd/containerd/api v0.0.0-20210916012622-7d6e9773acbe
+	github.com/containerd/containerd => github.com/containerd/containerd v1.5.1-0.20210921144419-90c6ff97a88f
+	github.com/containerd/containerd/api => github.com/containerd/containerd/api v0.0.0-20210921144419-90c6ff97a88f
 )
