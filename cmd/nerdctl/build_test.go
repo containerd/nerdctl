@@ -45,6 +45,38 @@ CMD ["echo", "nerdctl-build-test-string"]
 	base.Cmd("run", "--rm", imageName).AssertOutContains("nerdctl-build-test-string")
 }
 
+func TestBuildLocal(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	const testFileName = "nerdctl-build-test"
+	const testContent = "nerdctl"
+	outputDir, err := os.MkdirTemp("", "nerdctl-build-test-")
+	assert.NilError(t, err)
+	defer os.RemoveAll(outputDir)
+
+	dockerfile := fmt.Sprintf(`FROM scratch
+COPY %s /`,
+		testFileName)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	if err := ioutil.WriteFile(filepath.Join(buildCtx, testFileName), []byte(testContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	testFilePath := filepath.Join(outputDir, testFileName)
+	base.Cmd("build", "-o", fmt.Sprintf("type=local,dest=%s", outputDir), buildCtx).AssertOK()
+	if _, err := os.Stat(testFilePath); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(testFilePath)
+	assert.NilError(t, err)
+	assert.Equal(t, string(data), testContent)
+}
+
 func createBuildContext(dockerfile string) (string, error) {
 	tmpDir, err := ioutil.TempDir("", "nerdctl-build-test")
 	if err != nil {

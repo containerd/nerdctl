@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -66,6 +67,11 @@ var buildCommand = &cli.Command{
 			Usage: "Do not use cache when building the image",
 		},
 		&cli.StringFlag{
+			Name:    "output",
+			Aliases: []string{"o"},
+			Value:   "type=docker",
+		},
+		&cli.StringFlag{
 			Name:  "progress",
 			Usage: "Set type of progress output (auto, plain, tty). Use plain to show container output",
 			Value: "auto",
@@ -106,8 +112,14 @@ func buildAction(clicontext *cli.Context) error {
 		return err
 	}
 
-	if err = loadImage(buildctlStdout, clicontext); err != nil {
+	localBuild, err := isLocalBuild(clicontext)
+	if err != nil {
 		return err
+	}
+	if !localBuild {
+		if err = loadImage(buildctlStdout, clicontext); err != nil {
+			return err
+		}
 	}
 
 	if err = buildctlCmd.Wait(); err != nil {
@@ -131,7 +143,7 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, error) {
 		return "", nil, err
 	}
 
-	output := "--output=type=docker"
+	output := fmt.Sprintf("--output=%s", clicontext.String("output"))
 	if tagSlice := strutil.DedupeStrSlice(clicontext.StringSlice("tag")); len(tagSlice) > 0 {
 		if len(tagSlice) > 1 {
 			return "", nil, errors.Errorf("specifying multiple -t is not supported yet")
@@ -179,4 +191,17 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, error) {
 	}
 
 	return buildctlBinary, buildctlArgs, nil
+}
+
+func isLocalBuild(clicontext *cli.Context) (bool, error) {
+	opts, err := strutil.ParseCSVMap(clicontext.String("output"))
+	if err != nil {
+		return false, err
+	}
+	if v, ok := opts["type"]; ok {
+		if strings.TrimSpace(strings.ToLower(v)) == "local" {
+			return true, nil
+		}
+	}
+	return false, nil
 }
