@@ -13,7 +13,7 @@ require (
 	github.com/containerd/go-cni v1.1.0
 	github.com/containerd/imgcrypt v1.1.1
 	github.com/containerd/stargz-snapshotter v0.8.0
-	github.com/containerd/stargz-snapshotter/estargz v0.8.0
+	github.com/containerd/stargz-snapshotter/estargz v0.9.0
 	github.com/containerd/typeurl v1.0.2
 	github.com/containernetworking/cni v1.0.1
 	github.com/containernetworking/plugins v1.0.1
