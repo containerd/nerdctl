@@ -55,10 +55,10 @@ func loadAction(clicontext *cli.Context) error {
 		defer f.Close()
 		in = f
 	}
-	return loadImage(in, clicontext)
+	return loadImage(in, clicontext, false)
 }
 
-func loadImage(in io.Reader, clicontext *cli.Context) error {
+func loadImage(in io.Reader, clicontext *cli.Context, quiet bool) error {
 	client, ctx, cancel, err := newClient(clicontext, containerd.WithDefaultPlatform(platforms.DefaultStrict()))
 	if err != nil {
 		return err
@@ -74,12 +74,18 @@ func loadImage(in io.Reader, clicontext *cli.Context) error {
 		image := containerd.NewImage(client, img)
 
 		// TODO: Show unpack status
-		fmt.Fprintf(clicontext.App.Writer, "unpacking %s (%s)...", img.Name, img.Target.Digest)
+		if !quiet {
+			fmt.Fprintf(clicontext.App.Writer, "unpacking %s (%s)...", img.Name, img.Target.Digest)
+		}
 		err = image.Unpack(ctx, sn)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(clicontext.App.Writer, "done\n")
+		if quiet {
+			fmt.Fprintln(clicontext.App.Writer, img.Target.Digest)
+		} else {
+			fmt.Fprintf(clicontext.App.Writer, "done\n")
+		}
 	}
 
 	return nil

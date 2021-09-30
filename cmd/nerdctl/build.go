@@ -84,6 +84,11 @@ var buildCommand = &cli.Command{
 			Name:  "ssh",
 			Usage: "SSH agent socket or keys to expose to the build (format: default|<id>[=<socket>|<key>[,<key>]])",
 		},
+		&cli.BoolFlag{
+			Name:    "quiet",
+			Aliases: []string{"q"},
+			Usage:   "Suppress the build output and print image ID on success",
+		},
 	},
 }
 
@@ -98,6 +103,8 @@ func buildAction(clicontext *cli.Context) error {
 		return err
 	}
 
+	quiet := clicontext.Bool("quiet")
+
 	logrus.Debugf("running %s %v", buildctlBinary, buildctlArgs)
 	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
 	buildctlCmd.Env = os.Environ()
@@ -111,14 +118,17 @@ func buildAction(clicontext *cli.Context) error {
 	} else {
 		buildctlCmd.Stdout = clicontext.App.Writer
 	}
-	buildctlCmd.Stderr = clicontext.App.ErrWriter
+
+	if !quiet {
+		buildctlCmd.Stderr = clicontext.App.ErrWriter
+	}
 
 	if err := buildctlCmd.Start(); err != nil {
 		return err
 	}
 
 	if needsLoading {
-		if err = loadImage(buildctlStdout, clicontext); err != nil {
+		if err = loadImage(buildctlStdout, clicontext, quiet); err != nil {
 			return err
 		}
 	}
