@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"path/filepath"
@@ -88,6 +89,14 @@ var buildCommand = &cli.Command{
 			Name:    "quiet",
 			Aliases: []string{"q"},
 			Usage:   "Suppress the build output and print image ID on success",
+		},
+		&cli.StringSliceFlag{
+			Name:  "cache-from",
+			Usage: "External cache sources (eg. user/app:cache, type=local,src=path/to/dir)",
+		},
+		&cli.StringSliceFlag{
+			Name:  "cache-to",
+			Usage: "Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir)",
 		},
 	},
 }
@@ -192,6 +201,20 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, bool, erro
 
 	for _, ba := range strutil.DedupeStrSlice(clicontext.StringSlice("build-arg")) {
 		buildctlArgs = append(buildctlArgs, "--opt=build-arg:"+ba)
+
+		// Support `--build-arg BUILDKIT_INLINE_CACHE=1` for compatibility with `docker buildx build`
+		// https://github.com/docker/buildx/blob/v0.6.3/docs/reference/buildx_build.md#-export-build-cache-to-an-external-cache-destination---cache-to
+		if strings.HasPrefix(ba, "BUILDKIT_INLINE_CACHE=") {
+			bic := strings.TrimPrefix(ba, "BUILDKIT_INLINE_CACHE=")
+			bicParsed, err := strconv.ParseBool(bic)
+			if err == nil {
+				if bicParsed {
+					buildctlArgs = append(buildctlArgs, "--export-cache=type=inline")
+				}
+			} else {
+				logrus.WithError(err).Warnf("invalid BUILDKIT_INLINE_CACHE: %q", bic)
+			}
+		}
 	}
 
 	if clicontext.Bool("no-cache") {
@@ -204,6 +227,20 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, bool, erro
 
 	for _, s := range strutil.DedupeStrSlice(clicontext.StringSlice("ssh")) {
 		buildctlArgs = append(buildctlArgs, "--ssh="+s)
+	}
+
+	for _, s := range strutil.DedupeStrSlice(clicontext.StringSlice("cache-from")) {
+		if !strings.Contains(s, "type=") {
+			s = "type=registry,ref=" + s
+		}
+		buildctlArgs = append(buildctlArgs, "--import-cache="+s)
+	}
+
+	for _, s := range strutil.DedupeStrSlice(clicontext.StringSlice("cache-to")) {
+		if !strings.Contains(s, "type=") {
+			s = "type=registry,ref=" + s
+		}
+		buildctlArgs = append(buildctlArgs, "--export-cache="+s)
 	}
 
 	return buildctlBinary, buildctlArgs, needsLoading, nil

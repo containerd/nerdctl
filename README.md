@@ -603,8 +603,10 @@ Flags:
 - :whale: `--secret`: Secret file to expose to the build: id=mysecret,src=/local/secret
 - :whale: `--ssh`: SSH agent socket or keys to expose to the build (format: `default|<id>[=<socket>|<key>[,<key>]]`)
 - :whale: `-q, --quiet`: Suppress the build output and print image ID on success
+- :whale: `--cache-from=CACHE`: External cache sources (eg. user/app:cache, type=local,src=path/to/dir) (compatible with `docker buildx build`)
+- :whale: `--cache-to=CACHE`: Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir) (compatible with `docker buildx build`)
 
-Unimplemented `docker build` flags: `--add-host`, `--cache-from`, `--iidfile`, `--label`, `--network`, `--platform`, `--squash`
+Unimplemented `docker build` flags: `--add-host`, `--iidfile`, `--label`, `--network`, `--platform`, `--squash`
 
 ### :whale: nerdctl commit
 Create a new image from a container's changes
