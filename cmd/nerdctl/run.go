@@ -67,6 +67,16 @@ var runCommand = &cli.Command{
 	Action:       runAction,
 	BashComplete: runBashComplete,
 	HideHelp:     true, // built-in "-h" help conflicts with the short form of `--hostname`
+	Description: func() string {
+		var description string
+		switch runtime.GOOS {
+		case "windows":
+			description += "WARNING: `nerdctl run` is experimental on Windows and currently broken (https://github.com/containerd/nerdctl/issues/28)"
+		case "freebsd":
+			description += "WARNING: `nerdctl run` is experimental on FreeBSD and currently requires `--net=none` (https://github.com/containerd/nerdctl/blob/master/docs/freebsd.md)"
+		}
+		return description
+	}(),
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name: "help",

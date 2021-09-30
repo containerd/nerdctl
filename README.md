@@ -969,3 +969,4 @@ Others:
 - [`./docs/stargz.md`](./docs/stargz.md):     Lazy-pulling using Stargz Snapshotter
 - [`./docs/ocicrypt.md`](./docs/ocicrypt.md): Running encrypted images
 - [`./docs/freebsd.md`](./docs/freebsd.md):  Running FreeBSD jails
+- [`./docs/experimental.md`](./docs/experimental.md):  Experimental features
