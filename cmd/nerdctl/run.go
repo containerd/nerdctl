@@ -482,6 +482,14 @@ func runAction(clicontext *cli.Context) error {
 		hostname = customHostname
 	}
 	opts = append(opts, oci.WithHostname(hostname))
+	// `/etc/hostname` does not exist on FreeBSD
+	if runtime.GOOS == "linux" {
+		hostnamePath := filepath.Join(stateDir, "hostname")
+		if err := os.WriteFile(hostnamePath, []byte(hostname+"\n"), 0644); err != nil {
+			return err
+		}
+		opts = append(opts, withCustomEtcHostname(hostnamePath))
+	}
 
 	hookOpt, err := withNerdctlOCIHook(clicontext, id, stateDir)
 	if err != nil {
@@ -774,6 +782,18 @@ func withCustomResolvConf(src string) func(context.Context, oci.Client, *contain
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
 		s.Mounts = append(s.Mounts, specs.Mount{
 			Destination: "/etc/resolv.conf",
+			Type:        "bind",
+			Source:      src,
+			Options:     []string{"bind", mountutil.DefaultPropagationMode}, // writable
+		})
+		return nil
+	}
+}
+
+func withCustomEtcHostname(src string) func(context.Context, oci.Client, *containers.Container, *oci.Spec) error {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		s.Mounts = append(s.Mounts, specs.Mount{
+			Destination: "/etc/hostname",
 			Type:        "bind",
 			Source:      src,
 			Options:     []string{"bind", mountutil.DefaultPropagationMode}, // writable

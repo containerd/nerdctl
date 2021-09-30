@@ -89,7 +89,7 @@ type Container struct {
 	State          *ContainerState
 	Image          string
 	ResolvConfPath string
-	// TODO: HostnamePath   string
+	HostnamePath   string
 	// TODO: HostsPath      string
 	LogPath string
 	// Unimplemented: Node            *ContainerNode `json:",omitempty"` // Node is only propagated by Docker Swarm standalone API
@@ -218,6 +218,10 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		c.ResolvConfPath = filepath.Join(nerdctlStateDir, "resolv.conf")
 		if _, err := os.Stat(c.ResolvConfPath); err != nil {
 			c.ResolvConfPath = ""
+		}
+		c.HostnamePath = filepath.Join(nerdctlStateDir, "hostname")
+		if _, err := os.Stat(c.HostnamePath); err != nil {
+			c.HostnamePath = ""
 		}
 		c.LogPath = filepath.Join(nerdctlStateDir, n.ID+"-json.log")
 		if _, err := os.Stat(c.LogPath); err != nil {
