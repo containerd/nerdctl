@@ -165,15 +165,11 @@ type Service struct {
 
 func getReplicas(svc compose.ServiceConfig) (int, error) {
 	replicas := 1
-	if svc.Scale > 0 {
-		logrus.Warn("scale is deprecated, use deploy.replicas")
-		replicas = svc.Scale
-	}
+
+	// No need to check svc.Scale, as it is automatically transformed to svc.Deploy.Replicas by compose-go
+	// https://github.com/compose-spec/compose-go/commit/958cb4f953330a3d1303961796d826b7f79132d7
 
 	if svc.Deploy != nil && svc.Deploy.Replicas != nil {
-		if svc.Scale > 0 && int(*svc.Deploy.Replicas) != svc.Scale {
-			return 0, errors.New("deploy.replicas and scale (deprecated) must not be set together")
-		}
 		replicas = int(*svc.Deploy.Replicas)
 	}
 
