@@ -17,7 +17,7 @@
 package main
 
 import (
-	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -69,7 +69,7 @@ var buildCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:    "output",
 			Aliases: []string{"o"},
-			Value:   "type=docker",
+			Usage:   "Output destination (format: type=local,dest=path)",
 		},
 		&cli.StringFlag{
 			Name:  "progress",
@@ -93,7 +93,7 @@ func buildAction(clicontext *cli.Context) error {
 		return err
 	}
 
-	buildctlBinary, buildctlArgs, err := generateBuildctlArgs(clicontext)
+	buildctlBinary, buildctlArgs, needsLoading, err := generateBuildctlArgs(clicontext)
 	if err != nil {
 		return err
 	}
@@ -102,9 +102,14 @@ func buildAction(clicontext *cli.Context) error {
 	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
 	buildctlCmd.Env = os.Environ()
 
-	buildctlStdout, err := buildctlCmd.StdoutPipe()
-	if err != nil {
-		return err
+	var buildctlStdout io.Reader
+	if needsLoading {
+		buildctlStdout, err = buildctlCmd.StdoutPipe()
+		if err != nil {
+			return err
+		}
+	} else {
+		buildctlCmd.Stdout = clicontext.App.Writer
 	}
 	buildctlCmd.Stderr = clicontext.App.ErrWriter
 
@@ -112,11 +117,7 @@ func buildAction(clicontext *cli.Context) error {
 		return err
 	}
 
-	localBuild, err := isLocalBuild(clicontext)
-	if err != nil {
-		return err
-	}
-	if !localBuild {
+	if needsLoading {
 		if err = loadImage(buildctlStdout, clicontext); err != nil {
 			return err
 		}
@@ -129,24 +130,29 @@ func buildAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func generateBuildctlArgs(clicontext *cli.Context) (string, []string, error) {
+func generateBuildctlArgs(clicontext *cli.Context) (string, []string, bool, error) {
+	var needsLoading bool
 	if clicontext.NArg() < 1 {
-		return "", nil, errors.New("context needs to be specified")
+		return "", nil, false, errors.New("context needs to be specified")
 	}
 	buildContext := clicontext.Args().First()
 	if buildContext == "-" || strings.Contains(buildContext, "://") {
-		return "", nil, errors.Errorf("unsupported build context: %q", buildContext)
+		return "", nil, false, errors.Errorf("unsupported build context: %q", buildContext)
 	}
 
 	buildctlBinary, err := buildkitutil.BuildctlBinary()
 	if err != nil {
-		return "", nil, err
+		return "", nil, false, err
 	}
 
-	output := fmt.Sprintf("--output=%s", clicontext.String("output"))
+	output := clicontext.String("output")
+	if output == "" {
+		output = "type=docker"
+		needsLoading = true
+	}
 	if tagSlice := strutil.DedupeStrSlice(clicontext.StringSlice("tag")); len(tagSlice) > 0 {
 		if len(tagSlice) > 1 {
-			return "", nil, errors.Errorf("specifying multiple -t is not supported yet")
+			return "", nil, false, errors.Errorf("specifying multiple -t is not supported yet")
 		}
 		output += ",name=" + tagSlice[0]
 	}
@@ -159,7 +165,7 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, error) {
 		"--frontend=dockerfile.v0",
 		"--local=context=" + buildContext,
 		"--local=dockerfile=" + buildContext,
-		output,
+		"--output=" + output,
 	}...)
 
 	if filename := clicontext.String("file"); filename != "" {
@@ -190,18 +196,5 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, error) {
 		buildctlArgs = append(buildctlArgs, "--ssh="+s)
 	}
 
-	return buildctlBinary, buildctlArgs, nil
-}
-
-func isLocalBuild(clicontext *cli.Context) (bool, error) {
-	opts, err := strutil.ParseCSVMap(clicontext.String("output"))
-	if err != nil {
-		return false, err
-	}
-	if v, ok := opts["type"]; ok {
-		if strings.TrimSpace(strings.ToLower(v)) == "local" {
-			return true, nil
-		}
-	}
-	return false, nil
+	return buildctlBinary, buildctlArgs, needsLoading, nil
 }

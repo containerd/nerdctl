@@ -593,11 +593,18 @@ Flags:
 - :whale: `--target`: Set the target build stage to build
 - :whale: `--build-arg`: Set build-time variables
 - :whale: `--no-cache`: Do not use cache when building the image
+- :whale: `--output=OUTPUT`: Output destination (format: type=local,dest=path)
+  - :whale: `type=local,dest=path/to/output-dir`: Local directory
+  - :whale: `type=oci[,dest=path/to/output.tar]`: Docker/OCI dual-format tar ball (compatible with `docker buildx build`)
+  - :whale: `type=docker[,dest=path/to/output.tar]`: Docker format tar ball (compatible with `docker buildx build`)
+  - :whale: `type=tar[,dest=path/to/output.tar]`: Raw tar ball
+  - :whale: `type=image,name=example.com/image,push=true`: Push to a registry (see [`buildctl build`](https://github.com/moby/buildkit/tree/v0.9.0#imageregistry) documentation)
 - :whale: `--progress=(auto|plain|tty)`: Set type of progress output (auto, plain, tty). Use plain to show container output
 - :whale: `--secret`: Secret file to expose to the build: id=mysecret,src=/local/secret
 - :whale: `--ssh`: SSH agent socket or keys to expose to the build (format: `default|<id>[=<socket>|<key>[,<key>]]`)
+- :whale: `-q, --quiet`: Suppress the build output and print image ID on success
 
-Unimplemented `docker build` flags: `--add-host`, `--cache-from`, `--iidfile`, `--label`, `--network`, `--platform`, `--quiet`, `--squash`
+Unimplemented `docker build` flags: `--add-host`, `--cache-from`, `--iidfile`, `--label`, `--network`, `--platform`, `--squash`
 
 ### :whale: nerdctl commit
 Create a new image from a container's changes
