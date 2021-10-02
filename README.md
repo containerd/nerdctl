@@ -501,7 +501,7 @@ Unimplemented `docker ps` flags: `--filter`, `--last`, `--size`
 ### :whale: nerdctl inspect
 Display detailed information on one or more containers.
 
-Usage: `nerctl inspect [OPTIONS] NAME|ID [NAME|ID...]`
+Usage: `nerdctl inspect [OPTIONS] NAME|ID [NAME|ID...]`
 
 Flags:
 - :nerd_face: `--mode=(dockercompat|native)`: Inspection mode. "native" produces more information.
@@ -514,7 +514,7 @@ Fetch the logs of a container.
 
 :warning: Currently, only containers created with `nerdctl run -d` are supported.
 
-Usage: `nerctl logs [OPTIONS] CONTAINER`
+Usage: `nerdctl logs [OPTIONS] CONTAINER`
 
 Flags:
 - :whale: `--f, --follow`: Follow log output
@@ -684,7 +684,7 @@ Unimplemented `docker rmi` flags: `--force`, `--no-prune`
 ### :whale: nerdctl image inspect
 Display detailed information on one or more images.
 
-Usage: `nerctl image inspect [OPTIONS] NAME|ID [NAME|ID...]`
+Usage: `nerdctl image inspect [OPTIONS] NAME|ID [NAME|ID...]`
 
 Flags:
 - :nerd_face: `--mode=(dockercompat|native)`: Inspection mode. "native" produces more information.
