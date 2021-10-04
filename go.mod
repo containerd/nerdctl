@@ -7,7 +7,7 @@ require (
 	github.com/compose-spec/compose-go v1.0.2
 	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.5.6 // replaced, see the bottom of this file
+	github.com/containerd/containerd v1.5.7 // replaced, see the bottom of this file
 	github.com/containerd/containerd/api v0.0.0 // replaced, see the bottom of this file
 	github.com/containerd/continuity v0.2.0
 	github.com/containerd/go-cni v1.1.0
