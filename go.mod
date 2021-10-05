@@ -7,7 +7,7 @@ require (
 	github.com/compose-spec/compose-go v1.0.2
 	github.com/containerd/cgroups v1.0.1
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.5.6 // replaced, see the bottom of this file
+	github.com/containerd/containerd v1.5.7 // replaced, see the bottom of this file
 	github.com/containerd/containerd/api v0.0.0 // replaced, see the bottom of this file
 	github.com/containerd/continuity v0.2.0
 	github.com/containerd/go-cni v1.1.0
@@ -29,20 +29,20 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.2-0.20210819154149-5ad6f50d6283
-	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
+	github.com/opencontainers/runtime-spec v1.0.3-0.20210910115017-0d6cc581aeea
 	github.com/pkg/errors v0.9.1
 	github.com/rootless-containers/rootlesskit v0.14.5
 	github.com/sirupsen/logrus v1.8.1
 	github.com/tidwall/gjson v1.9.2
 	github.com/urfave/cli/v2 v2.3.0
-	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e
-	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
+	golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	gotest.tools/v3 v3.0.3
 )
 
 replace (
-	github.com/containerd/containerd => github.com/containerd/containerd v1.5.1-0.20210921144419-90c6ff97a88f
-	github.com/containerd/containerd/api => github.com/containerd/containerd/api v0.0.0-20210921144419-90c6ff97a88f
+	github.com/containerd/containerd => github.com/containerd/containerd v1.5.1-0.20211004173205-d193dc2b8afb
+	github.com/containerd/containerd/api => github.com/containerd/containerd/api v0.0.0-20211004173205-d193dc2b8afb
 )
