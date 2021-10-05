@@ -66,6 +66,10 @@ var execCommand = &cli.Command{
 			Aliases: []string{"e"},
 			Usage:   "Set environment variables",
 		},
+		&cli.StringSliceFlag{
+			Name:  "env-file",
+			Usage: "Set environment variables from file",
+		},
 		&cli.BoolFlag{
 			Name:  "privileged",
 			Usage: "Give extended privileges to the command",
@@ -217,6 +221,13 @@ func generateExecProcessSpec(ctx context.Context, clicontext *cli.Context, conta
 
 	if workdir := clicontext.String("workdir"); workdir != "" {
 		pspec.Cwd = workdir
+	}
+	if envFiles := strutil.DedupeStrSlice(clicontext.StringSlice("env-file")); len(envFiles) > 0 {
+		env, err := parseEnvVars(envFiles)
+		if err != nil {
+			return nil, err
+		}
+		pspec.Env = append(pspec.Env, env...)
 	}
 	for _, e := range strutil.DedupeStrSlice(clicontext.StringSlice("env")) {
 		pspec.Env = append(pspec.Env, e)
