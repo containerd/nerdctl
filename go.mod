@@ -33,7 +33,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rootless-containers/rootlesskit v0.14.5
 	github.com/sirupsen/logrus v1.8.1
-	github.com/tidwall/gjson v1.9.1
+	github.com/tidwall/gjson v1.9.2
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
