@@ -480,9 +480,10 @@ Flags:
 - :whale: `-d, --detach`: Detached mode: run command in the background
 - :whale: `-w, --workdir`: Working directory inside the container
 - :whale: `-e, --env`: Set environment variables
+- :whale: `--env-file`: Set environment variables from file
 - :whale: `--privileged`: Give extended privileges to the command
 
-Unimplemented `docker exec` flags: `--detach-keys`, `--env-file`, `--user`
+Unimplemented `docker exec` flags: `--detach-keys`, `--user`
 
 ## Container management
 ### :whale: nerdctl ps
