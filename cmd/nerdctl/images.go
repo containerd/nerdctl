@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/containerd/pkg/progress"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/snapshots"
+	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/docker/cli/templates"
 	"github.com/opencontainers/image-spec/identity"
@@ -144,7 +145,7 @@ func printImages(ctx context.Context, clicontext *cli.Context, client *container
 
 		p := imagePrintable{
 			CreatedAt:    img.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
-			CreatedSince: timeSinceInHuman(img.CreatedAt),
+			CreatedSince: formatter.TimeSinceInHuman(img.CreatedAt),
 			ID:           img.Target.Digest.String(),
 			Repository:   repository,
 			Tag:          tag,
