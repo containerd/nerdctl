@@ -34,6 +34,7 @@ var completionCommand = &cli.Command{
 	Usage: "Show shell completion",
 	Subcommands: []*cli.Command{
 		completionBashCommand,
+		completionZshCommand,
 	},
 }
 
@@ -69,6 +70,46 @@ _nerdctl_bash_autocomplete() {
 }
 
 complete -o bashdefault -o default -o nospace -F _nerdctl_bash_autocomplete nerdctl
+`
+	_, err := fmt.Fprint(clicontext.App.Writer, tmpl)
+	return err
+}
+
+var completionZshCommand = &cli.Command{
+	Name:        "zsh",
+	Usage:       "Show zsh completion (use with `source <(nerdctl completion zsh)`)",
+	Description: "Usage: add `source <(nerdctl completion zsh)` to ~/.zsh_profile",
+	Action:      completionZshAction,
+}
+
+func completionZshAction(clicontext *cli.Context) error {
+	tmpl := `#!/bin/zsh
+# Autocompletion enabler for nerdctl.
+# Usage: add 'source <(nerdctl completion zsh)' to ~/.zsh_profile
+
+# _nerdctl_zsh_autocomplete is forked from https://github.com/urfave/cli/blob/v2.3.0/autocomplete/zsh_autocomplete (MIT License)
+_nerdctl_zsh_autocomplete() {
+  if [[ "${COMP_WORDS[0]}" != "source" ]]; then
+	local -a opts
+	local cur
+	cur=${words[-1]}
+	if [[ "$cur" == "-"* ]]; then
+		opts=("${(@f)$(_CLI_ZSH_AUTOCOMPLETE_HACK=1 ${words[@]:0:#words[@]-1} ${cur} --generate-bash-completion)}")
+	else
+		opts=("${(@f)$(_CLI_ZSH_AUTOCOMPLETE_HACK=1 ${words[@]:0:#words[@]-1} --generate-bash-completion)}")
+	fi
+
+	if [[ "${opts[1]}" != "" ]]; then
+		_describe 'values' opts
+	else
+		_files
+	fi
+
+	return 0
+  fi
+}
+
+complete -o zshdefault -o default -o nospace -F _nerdctl_zsh_autocomplete nerdctl
 `
 	_, err := fmt.Fprint(clicontext.App.Writer, tmpl)
 	return err
