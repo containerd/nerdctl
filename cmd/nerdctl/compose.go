@@ -38,6 +38,7 @@ var composeCommand = &cli.Command{
 		composeLogsCommand,
 		composeBuildCommand,
 		composeDownCommand,
+		composePsCommand,
 	},
 
 	Flags: []cli.Flag{

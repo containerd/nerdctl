@@ -259,6 +259,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose logs](#whale-nerdctl-compose-logs)
     - [:whale: nerdctl compose build](#whale-nerdctl-compose-build)
     - [:whale: nerdctl compose down](#whale-nerdctl-compose-down)
+    - [:whale: nerdctl compose ps](#whale-nerdctl-compose-ps)
   - [Global flags](#global-flags)
   - [Unimplemented Docker commands](#unimplemented-docker-commands)
 - [Additional documents](#additional-documents)
@@ -913,6 +914,11 @@ Flags:
 - :whale: `-v, --volumes`: Remove named volumes declared in the volumes section of the Compose file and anonymous volumes attached to containers
 
 Unimplemented `docker-compose down` flags: `--rmi`, `--remove-orphans`, `--timeout`
+
+### :whale: nerdctl compose ps
+List containers of services
+
+Usage: `nerdctl compose ps`
 
 ## Global flags
 - :nerd_face: `-a`, `--address`:  containerd address, optionally with "unix://" prefix
