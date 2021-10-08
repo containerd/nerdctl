@@ -150,6 +150,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSlice("device", nil, "Add a host device to the container")
 	// ulimit is defined as StringSlice, not StringArray, to allow specifying "--ulimit=ULIMIT1,ULIMIT2" (compatible with Podman)
 	cmd.Flags().StringSlice("ulimit", nil, "Ulimit options")
+	cmd.Flags().String("rdt-class", "", "Name of the RDT class (or CLOS) to associate the container with")
 	// #endregion
 
 	// user flags
