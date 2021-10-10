@@ -55,6 +55,7 @@ binaries: nerdctl
 install:
 	install -D -m 755 $(CURDIR)/_output/nerdctl $(DESTDIR)$(BINDIR)/nerdctl
 	install -D -m 755 $(CURDIR)/extras/rootless/containerd-rootless.sh $(DESTDIR)$(BINDIR)/containerd-rootless.sh
+	install -D -m 755 $(CURDIR)/extras/rootless/buildkitd-rootless.sh $(DESTDIR)$(BINDIR)/buildkitd-rootless.sh
 	install -D -m 755 $(CURDIR)/extras/rootless/containerd-rootless-setuptool.sh $(DESTDIR)$(BINDIR)/containerd-rootless-setuptool.sh
 
 TAR_FLAGS=--transform 's/.*\///g' --owner=0 --group=0
