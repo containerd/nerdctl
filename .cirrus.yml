@@ -1,0 +1,14 @@
+freebsd_instance:
+  image_family: freebsd-13-0
+
+task:
+  name: test-freebsd-amd64
+  env:
+    NERDCTL_RUN_ARGS: --net none knast/freebsd:13-STABLE echo "Nerdctl is up and running."
+  install_script:
+    - pkg install -y go containerd runj
+    - daemon -o containerd.out containerd
+  test_script:
+    - go test -v ./pkg/...
+    - cd cmd/nerdctl
+    - sudo go run . run $NERDCTL_RUN_ARGS | grep running

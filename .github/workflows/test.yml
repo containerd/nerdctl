@@ -163,24 +163,3 @@ jobs:
         command: ssh default -- "CONTAINERD_SNAPSHOTTER=fuse-overlayfs /vagrant/nerdctl.test -test.v -test.kill-daemon"
     - name: "Uninstall rootless containerd"
       run: ssh default -- containerd-rootless-setuptool.sh uninstall
-
-  test-freebsd-amd64:
-    runs-on: macos-latest
-    env:
-      VAGRANT_VAGRANTFILE: hack/Vagrantfile.freebsd13
-      NERDCTL_RUN_ARGS: --net none knast/freebsd:13-STABLE echo "Nerdctl is up and running."
-    steps:
-      - name: Cache Vagrant boxes
-        uses: actions/cache@v2
-        with:
-          path: ~/.vagrant.d/boxes
-          key: ${{ runner.os }}-vagrant-${{ hashFiles('hack/Vagrantfile.freebsd13') }}
-          restore-keys: |
-            ${{ runner.os }}-vagrant-
-      - uses: actions/checkout@v2
-      - name: Set up vagrant
-        run: vagrant up
-      - name: "Run unit tests"
-        run: vagrant ssh -- "cd /vagrant; go test -v ./pkg/..."
-      - name: "Integration smoke test"
-        run: vagrant ssh -- "cd /vagrant/cmd/nerdctl; sudo go run . run $NERDCTL_RUN_ARGS | grep running"
