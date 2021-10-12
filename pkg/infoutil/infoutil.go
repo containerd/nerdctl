@@ -21,6 +21,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/pkg/apparmor"
@@ -53,6 +54,7 @@ func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupMan
 	info.Driver = snapshotter
 	info.Plugins.Log = []string{"json-file"}
 	info.Plugins.Storage = snapshotterPlugins
+	info.SystemTime = time.Now().Format(time.RFC3339Nano)
 	info.LoggingDriver = "json-file" // hard-coded
 	info.CgroupDriver = cgroupManager
 	info.CgroupVersion = CgroupsVersion()
@@ -75,6 +77,7 @@ func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupMan
 	if rootlessutil.IsRootlessChild() {
 		info.SecurityOptions = append(info.SecurityOptions, "name=rootless")
 	}
+	fulfillPlatformInfo(&info)
 	return &info, nil
 }
 

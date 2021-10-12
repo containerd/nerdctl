@@ -16,6 +16,8 @@
 
 package infoutil
 
+import "github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+
 // UnameR returns `uname -r`
 func UnameR() string {
 	return ""
@@ -32,4 +34,8 @@ func DistroName() string {
 
 func CgroupsVersion() string {
 	return ""
+}
+
+func fulfillPlatformInfo(info *dockercompat.Info) {
+	// unimplemented
 }
