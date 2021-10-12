@@ -24,6 +24,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/cli/templates"
+	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -60,7 +61,7 @@ func infoAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	info, err := infoutil.Info(ctx, client, clicontext.String("snapshotter"))
+	info, err := infoutil.Info(ctx, client, clicontext.String("snapshotter"), clicontext.String("cgroup-manager"))
 	if err != nil {
 		return err
 	}
@@ -111,7 +112,15 @@ func infoAction(clicontext *cli.Context) error {
 	fmt.Fprintf(w, " Operating System: %s\n", info.OperatingSystem)
 	fmt.Fprintf(w, " OSType: %s\n", info.OSType)
 	fmt.Fprintf(w, " Architecture: %s\n", info.Architecture)
+	fmt.Fprintf(w, " CPUs: %d\n", info.NCPU)
+	fmt.Fprintf(w, " Total Memory: %s\n", units.BytesSize(float64(info.MemTotal)))
 	fmt.Fprintf(w, " Name: %s\n", info.Name)
 	fmt.Fprintf(w, " ID: %s\n", info.ID)
+
+	fmt.Fprintln(w)
+	if len(info.Warnings) > 0 {
+		fmt.Fprintln(clicontext.App.ErrWriter, strings.Join(info.Warnings, "\n"))
+	}
+
 	return nil
 }

@@ -16,8 +16,14 @@
 
 package infoutil
 
+import "github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+
 const UnameO = "FreeBSD"
 
 func CgroupsVersion() string {
 	return ""
+}
+
+func fulfillPlatformInfo(info *dockercompat.Info) {
+	// unimplemented
 }

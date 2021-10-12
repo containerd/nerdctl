@@ -26,19 +26,39 @@ package dockercompat
 // Info mimics a `docker info` object.
 // From https://github.com/moby/moby/blob/v20.10.8/api/types/types.go#L146-L216
 type Info struct {
-	ID              string
-	Driver          string
-	Plugins         PluginsInfo
-	LoggingDriver   string
-	CgroupDriver    string
-	CgroupVersion   string `json:",omitempty"`
+	ID          string
+	Driver      string
+	Plugins     PluginsInfo
+	MemoryLimit bool
+	SwapLimit   bool
+	// KernelMemory is omitted because it is deprecated in the Moby
+	CPUCfsPeriod      bool `json:"CpuCfsPeriod"`
+	CPUCfsQuota       bool `json:"CpuCfsQuota"`
+	CPUShares         bool
+	CPUSet            bool
+	PidsLimit         bool
+	IPv4Forwarding    bool
+	BridgeNfIptables  bool
+	BridgeNfIP6tables bool `json:"BridgeNfIp6tables"`
+	// Nfd is omitted because it does not make sense for nerdctl
+	OomKillDisable bool
+	// NGoroutines is omitted because it does not make sense for nerdctl
+	SystemTime    string
+	LoggingDriver string
+	CgroupDriver  string
+	CgroupVersion string `json:",omitempty"`
+	// NEventsListener is omitted because it does not make sense for nerdctl
 	KernelVersion   string
 	OperatingSystem string
 	OSType          string
 	Architecture    string // e.g., "x86_64", not "amd64" (Corresponds to Docker)
+	NCPU            int
+	MemTotal        int64
 	Name            string
 	ServerVersion   string
 	SecurityOptions []string
+
+	Warnings []string
 }
 
 type PluginsInfo struct {

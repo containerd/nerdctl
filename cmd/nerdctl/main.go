@@ -18,6 +18,7 @@ package main
 
 import (
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/containerd/containerd"
@@ -134,6 +135,13 @@ func newApp() *cli.App {
 		address := clicontext.String("address")
 		if strings.Contains(address, "://") && !strings.HasPrefix(address, "unix://") {
 			return errors.Errorf("invalid address %q", address)
+		}
+		if runtime.GOOS == "linux" {
+			switch cgroupManager := clicontext.String("cgroup-manager"); cgroupManager {
+			case "systemd", "cgroupfs", "none":
+			default:
+				return errors.Errorf("invalid cgroup-manager %q (supported values: \"systemd\", \"cgroupfs\", \"none\")", cgroupManager)
+			}
 		}
 		if appNeedsRootlessParentMain(clicontext) {
 			// reexec /proc/self/exe with `nsenter` into RootlessKit namespaces

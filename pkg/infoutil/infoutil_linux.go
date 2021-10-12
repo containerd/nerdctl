@@ -17,7 +17,13 @@
 package infoutil
 
 import (
+	"fmt"
+
 	"github.com/containerd/cgroups"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/docker/docker/pkg/sysinfo"
+	"github.com/docker/docker/pkg/system"
 )
 
 const UnameO = "GNU/Linux"
@@ -28,4 +34,78 @@ func CgroupsVersion() string {
 	}
 
 	return "1"
+}
+
+// fulfillPlatformInfo fulfills cgroup and kernel info.
+//
+// fulfillPlatformInfo requires the following fields to be set:
+// CgroupDriver, CgroupVersion
+func fulfillPlatformInfo(info *dockercompat.Info) {
+	var mobySysInfoOpts []sysinfo.Opt
+	if info.CgroupDriver == "systemd" && info.CgroupVersion == "2" && rootlessutil.IsRootless() {
+		g := fmt.Sprintf("/user.slice/user-%d.slice", rootlessutil.ParentEUID())
+		mobySysInfoOpts = append(mobySysInfoOpts, sysinfo.WithCgroup2GroupPath(g))
+	}
+	mobySysInfo := sysinfo.New(true, mobySysInfoOpts...)
+
+	if info.CgroupDriver == "none" {
+		if info.CgroupVersion == "2" {
+			info.Warnings = append(info.Warnings, "WARNING: Running in rootless-mode without cgroups. Systemd is required to enable cgroups in rootless-mode.")
+		} else {
+			info.Warnings = append(info.Warnings, "WARNING: Running in rootless-mode without cgroups. To enable cgroups in rootless-mode, you need to boot the system in cgroup v2 mode.")
+		}
+	} else {
+		info.MemoryLimit = mobySysInfo.MemoryLimit
+		if !info.MemoryLimit {
+			info.Warnings = append(info.Warnings, "WARNING: No memory limit support")
+		}
+		info.SwapLimit = mobySysInfo.SwapLimit
+		if !info.SwapLimit {
+			info.Warnings = append(info.Warnings, "WARNING: No swap limit support")
+		}
+		info.CPUCfsPeriod = mobySysInfo.CPUCfs
+		if !info.CPUCfsPeriod {
+			info.Warnings = append(info.Warnings, "WARNING: No cpu cfs period support")
+		}
+		info.CPUCfsQuota = mobySysInfo.CPUCfs
+		if !info.CPUCfsQuota {
+			info.Warnings = append(info.Warnings, "WARNING: No cpu cfs quota support")
+		}
+		info.CPUShares = mobySysInfo.CPUShares
+		if !info.CPUShares {
+			info.Warnings = append(info.Warnings, "WARNING: No cpu shares support")
+		}
+		info.CPUSet = mobySysInfo.Cpuset
+		if !info.CPUSet {
+			info.Warnings = append(info.Warnings, "WARNING: No cpuset support")
+		}
+		info.PidsLimit = mobySysInfo.PidsLimit
+		if !info.PidsLimit {
+			info.Warnings = append(info.Warnings, "WARNING: No pids limit support")
+		}
+		info.OomKillDisable = mobySysInfo.OomKillDisable
+		if !info.OomKillDisable && info.CgroupVersion == "1" {
+			// no warning for cgroup v2
+			info.Warnings = append(info.Warnings, "WARNING: No oom kill disable support")
+		}
+	}
+	info.IPv4Forwarding = !mobySysInfo.IPv4ForwardingDisabled
+	if !info.IPv4Forwarding {
+		info.Warnings = append(info.Warnings, "WARNING: IPv4 forwarding is disabled")
+	}
+	info.BridgeNfIptables = !mobySysInfo.BridgeNFCallIPTablesDisabled
+	if !info.BridgeNfIptables {
+		info.Warnings = append(info.Warnings, "WARNING: bridge-nf-call-iptables is disabled")
+	}
+	info.BridgeNfIP6tables = !mobySysInfo.BridgeNFCallIP6TablesDisabled
+	if !info.BridgeNfIP6tables {
+		info.Warnings = append(info.Warnings, "WARNING: bridge-nf-call-ip6tables is disabled")
+	}
+	info.NCPU = sysinfo.NumCPU()
+	memLimit, err := system.ReadMemInfo()
+	if err != nil {
+		info.Warnings = append(info.Warnings, fmt.Sprintf("failed to read mem info: %v", err))
+	} else {
+		info.MemTotal = memLimit.MemTotal
+	}
 }
