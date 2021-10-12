@@ -60,7 +60,7 @@ func infoAction(clicontext *cli.Context) error {
 	}
 	defer cancel()
 
-	info, err := infoutil.Info(ctx, client, clicontext.String("snapshotter"))
+	info, err := infoutil.Info(ctx, client, clicontext.String("snapshotter"), clicontext.String("cgroup-manager"))
 	if err != nil {
 		return err
 	}

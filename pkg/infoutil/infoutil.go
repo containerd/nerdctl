@@ -32,7 +32,7 @@ import (
 	ptypes "github.com/gogo/protobuf/types"
 )
 
-func Info(ctx context.Context, client *containerd.Client, defaultSnapshotter string) (*dockercompat.Info, error) {
+func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupManager string) (*dockercompat.Info, error) {
 	daemonVersion, err := client.Version(ctx)
 	if err != nil {
 		return nil, err
@@ -50,11 +50,11 @@ func Info(ctx context.Context, client *containerd.Client, defaultSnapshotter str
 	var info dockercompat.Info
 	info.ID = daemonIntro.UUID
 	// Storage Driver is not really Server concept for nerdctl, but mimics `docker info` output
-	info.Driver = defaultSnapshotter
+	info.Driver = snapshotter
 	info.Plugins.Log = []string{"json-file"}
 	info.Plugins.Storage = snapshotterPlugins
 	info.LoggingDriver = "json-file" // hard-coded
-	info.CgroupDriver = defaults.CgroupManager()
+	info.CgroupDriver = cgroupManager
 	info.CgroupVersion = CgroupsVersion()
 	info.KernelVersion = UnameR()
 	info.OperatingSystem = DistroName()
