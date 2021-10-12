@@ -24,9 +24,11 @@ import (
 	"path/filepath"
 
 	composecli "github.com/compose-spec/compose-go/cli"
+	"github.com/compose-spec/compose-go/types"
 	compose "github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/composer/projectloader"
+	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -157,4 +159,19 @@ func findComposeYAML(o *Options) (string, error) {
 		}
 		pwd = parent
 	}
+}
+
+func (c *Composer) Services(ctx context.Context) ([]*serviceparser.Service, error) {
+	var services []*serviceparser.Service
+	if err := c.project.WithServices(nil, func(svc types.ServiceConfig) error {
+		parsed, err := serviceparser.Parse(c.project, svc)
+		if err != nil {
+			return err
+		}
+		services = append(services, parsed)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return services, nil
 }

@@ -259,6 +259,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose logs](#whale-nerdctl-compose-logs)
     - [:whale: nerdctl compose build](#whale-nerdctl-compose-build)
     - [:whale: nerdctl compose down](#whale-nerdctl-compose-down)
+    - [:whale: nerdctl compose ps](#whale-nerdctl-compose-ps)
   - [Global flags](#global-flags)
   - [Unimplemented Docker commands](#unimplemented-docker-commands)
 - [Additional documents](#additional-documents)
@@ -876,9 +877,11 @@ Flags:
 - :whale: `--no-log-prefix`: Don't print prefix in logs
 - :whale: `--build`: Build images before starting containers.
 
-Unimplemented `docker-compose up` flags: `--quiet-pull`, `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
+Unimplemented `docker-compose up` (V1) flags: `--quiet-pull`, `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
 `--no-start`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--remove-orphans`, `--exit-code-from`,
 `--scale`
+
+Unimplemented `docker compose up` (V2) flags: `--environment`
 
 ### :whale: nerdctl compose logs
 Create and start containers
@@ -891,6 +894,7 @@ Flags:
 - :whale: `--timestamps`: Show timestamps
 - :whale: `--tail`: Number of lines to show from the end of the logs
 
+Unimplemented `docker compose build` (V2) flags:  `--since`, `--until`
 
 ### :whale: nerdctl compose build
 Build or rebuild services.
@@ -902,7 +906,7 @@ Flags:
 - :whale: `--no-cache`: Do not use cache when building the image
 - :whale: `--progress`: Set type of progress output (auto, plain, tty)
 
-Unimplemented `docker-compose build` flags:  `--compress`, `--force-rm`, `--memory`, `--no-rm`, `--parallel`, `--pull`, `--quiet`
+Unimplemented `docker-compose build` (V1) flags:  `--compress`, `--force-rm`, `--memory`, `--no-rm`, `--parallel`, `--pull`, `--quiet`
 
 ### :whale: nerdctl compose down
 Remove containers and associated resources
@@ -912,7 +916,16 @@ Usage: `nerdctl compose up [OPTIONS] [SERVICE...]`
 Flags:
 - :whale: `-v, --volumes`: Remove named volumes declared in the volumes section of the Compose file and anonymous volumes attached to containers
 
-Unimplemented `docker-compose down` flags: `--rmi`, `--remove-orphans`, `--timeout`
+Unimplemented `docker-compose down` (V1) flags: `--rmi`, `--remove-orphans`, `--timeout`
+
+### :whale: nerdctl compose ps
+List containers of services
+
+Usage: `nerdctl compose ps`
+
+Unimplemented `docker-compose ps` (V1) flags: `--quiet`, `--services`, `--filter`, `--all`
+
+Unimplemented `docker compose ps` (V2) flags: `--format`, `--status`
 
 ## Global flags
 - :nerd_face: `-a`, `--address`:  containerd address, optionally with "unix://" prefix
@@ -959,7 +972,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose config|create|events|exec|images|kill|pause|port|ps|pull|push|restart|rm|run|scale|start|stop|top|unpause`
+- `docker-compose config|create|events|exec|images|kill|pause|port|pull|push|restart|rm|run|scale|start|stop|top|unpause`
 
 Others:
 - `docker system df`
