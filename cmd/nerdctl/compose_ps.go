@@ -81,11 +81,15 @@ func composePsAction(clicontext *cli.Context) error {
 			if err != nil {
 				return err
 			}
+			status := formatter.ContainerStatus(ctx, containersGot[0])
+			if status == "Up" {
+				status = "running" // corresponds to Docker Compose v2.0.1
+			}
 			p := containerPrintable{
 				Name:    container.Name,
 				Command: formatter.InspectContainerCommandTrunc(spec),
 				Service: svc.Unparsed.Name,
-				Status:  "running", // FIXME
+				Status:  status,
 				Ports:   formatter.FormatPorts(info.Labels),
 			}
 			containersPrintable = append(containersPrintable, p)
