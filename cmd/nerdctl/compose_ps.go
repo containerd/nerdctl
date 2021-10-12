@@ -17,16 +17,12 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"text/tabwriter"
-	"text/template"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/docker/cli/templates"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
 
@@ -53,6 +49,8 @@ func composePsAction(clicontext *cli.Context) error {
 		return err
 	}
 
+	// TODO: make JSON-printable.
+	// The JSON format must correspond to `docker compose ps --json` (Docker Compose v2)
 	type containerPrintable struct {
 		Name    string
 		Command string
@@ -96,46 +94,20 @@ func composePsAction(clicontext *cli.Context) error {
 		}
 	}
 
-	w := clicontext.App.Writer
-	var tmpl *template.Template
-	switch format := clicontext.String("format"); format {
-	case "", "table":
-		w = tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
-		fmt.Fprintln(w, "NAME\tCOMMAND\tSERVICE\tSTATUS\tPORTS")
-	case "raw":
-		return errors.New("unsupported format: \"raw\"")
-	default:
-		var err error
-		tmpl, err = templates.Parse(format)
-		if err != nil {
+	w := tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
+	fmt.Fprintln(w, "NAME\tCOMMAND\tSERVICE\tSTATUS\tPORTS")
+
+	for _, p := range containersPrintable {
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+			p.Name,
+			p.Command,
+			p.Service,
+			p.Status,
+			p.Ports,
+		); err != nil {
 			return err
 		}
 	}
 
-	for _, p := range containersPrintable {
-		if tmpl != nil {
-			var b bytes.Buffer
-			if err := tmpl.Execute(&b, p); err != nil {
-				return err
-			}
-			if _, err := fmt.Fprintf(w, b.String()+"\n"); err != nil {
-				return err
-			}
-		} else {
-			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-				p.Name,
-				p.Command,
-				p.Service,
-				p.Status,
-				p.Ports,
-			); err != nil {
-				return err
-			}
-		}
-	}
-
-	if f, ok := w.(Flusher); ok {
-		return f.Flush()
-	}
-	return nil
+	return w.Flush()
 }
