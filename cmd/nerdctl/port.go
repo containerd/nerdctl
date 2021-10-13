@@ -28,26 +28,35 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var portCommand = &cli.Command{
-	Name:         "port",
-	Usage:        "List port mappings or a specific mapping for the container",
-	ArgsUsage:    "CONTAINER [PRIVATE_PORT[/PROTO]]",
-	Action:       portAction,
-	BashComplete: portBashComplete,
+func newPortCommand() *cobra.Command {
+	var portCommand = &cobra.Command{
+		Use:               "port CONTAINER [PRIVATE_PORT[/PROTO]]",
+		Args:              cobra.RangeArgs(1, 2),
+		Short:             "List port mappings or a specific mapping for the container",
+		RunE:              portAction,
+		ValidArgsFunction: portShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	return portCommand
 }
 
-func portAction(clicontext *cli.Context) error {
-	if clicontext.NArg() != 1 && clicontext.NArg() != 2 {
+func portAction(cmd *cobra.Command, args []string) error {
+	if len(args) != 1 && len(args) != 2 {
 		return errors.Errorf("requires at least 1 and at most 2 arguments")
 	}
 
 	argPort := -1
 	argProto := ""
+	portProto := ""
+	if len(args) == 2 {
+		portProto = args[1]
+	}
 
-	if portProto := clicontext.Args().Get(1); portProto != "" {
+	if portProto != "" {
 		splitBySlash := strings.Split(portProto, "/")
 		var err error
 		argPort, err = strconv.Atoi(splitBySlash[0])
@@ -67,7 +76,7 @@ func portAction(clicontext *cli.Context) error {
 		}
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -79,10 +88,10 @@ func portAction(clicontext *cli.Context) error {
 			if found.MatchCount > 1 {
 				return errors.Errorf("ambiguous ID %q", found.Req)
 			}
-			return printPort(ctx, clicontext, found.Container, argPort, argProto)
+			return printPort(ctx, cmd, found.Container, argPort, argProto)
 		},
 	}
-	req := clicontext.Args().First()
+	req := args[0]
 	n, err := walker.Walk(ctx, req)
 	if err != nil {
 		return err
@@ -92,7 +101,7 @@ func portAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func printPort(ctx context.Context, clicontext *cli.Context, container containerd.Container, argPort int, argProto string) error {
+func printPort(ctx context.Context, cmd *cobra.Command, container containerd.Container, argPort int, argProto string) error {
 	l, err := container.Labels(ctx)
 	if err != nil {
 		return err
@@ -108,25 +117,20 @@ func printPort(ctx context.Context, clicontext *cli.Context, container container
 
 	if argPort < 0 {
 		for _, p := range ports {
-			fmt.Fprintf(clicontext.App.Writer, "%d/%s -> %s:%d\n", p.ContainerPort, p.Protocol, p.HostIP, p.HostPort)
+			fmt.Fprintf(cmd.OutOrStdout(), "%d/%s -> %s:%d\n", p.ContainerPort, p.Protocol, p.HostIP, p.HostPort)
 		}
 		return nil
 	}
 
 	for _, p := range ports {
 		if p.ContainerPort == int32(argPort) && strings.ToLower(p.Protocol) == argProto {
-			fmt.Fprintf(clicontext.App.Writer, "%s:%d\n", p.HostIP, p.HostPort)
+			fmt.Fprintf(cmd.OutOrStdout(), "%s:%d\n", p.HostIP, p.HostPort)
 			return nil
 		}
 	}
 	return errors.Errorf("no public port %d/%s published for %q", argPort, argProto, container.ID())
 }
 
-func portBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
-	bashCompleteContainerNames(clicontext, nil)
+func portShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return shellCompleteContainerNames(cmd, nil)
 }

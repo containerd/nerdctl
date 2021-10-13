@@ -28,24 +28,26 @@ import (
 	"github.com/containerd/nerdctl/pkg/imgutil/push"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var pushCommand = &cli.Command{
-	Name:         "push",
-	Usage:        "Push an image or a repository to a registry",
-	ArgsUsage:    "NAME[:TAG]",
-	Action:       pushAction,
-	BashComplete: pushBashComplete,
-	Flags:        []cli.Flag{},
+func newPushCommand() *cobra.Command {
+	var pushCommand = &cobra.Command{
+		Use:               "push NAME[:TAG]",
+		Short:             "Push an image or a repository to a registry",
+		RunE:              pushAction,
+		ValidArgsFunction: pushShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	return pushCommand
 }
 
-func pushAction(clicontext *cli.Context) error {
-	if clicontext.NArg() != 1 {
+func pushAction(cmd *cobra.Command, args []string) error {
+	if len(args) != 1 {
 		return errors.New("image name needs to be specified")
 	}
-	rawRef := clicontext.Args().First()
+	rawRef := args[0]
 	named, err := refdocker.ParseDockerRef(rawRef)
 	if err != nil {
 		return err
@@ -53,9 +55,11 @@ func pushAction(clicontext *cli.Context) error {
 	ref := named.String()
 	refDomain := refdocker.Domain(named)
 
-	insecure := clicontext.Bool("insecure-registry")
-
-	client, ctx, cancel, err := newClient(clicontext)
+	insecure, err := cmd.Flags().GetBool("insecure-registry")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -75,7 +79,7 @@ func pushAction(clicontext *cli.Context) error {
 	logrus.Infof("pushing as a single-platform image (%s, %s)", singlePlatformImg.Target.MediaType, singlePlatformImg.Target.Digest)
 
 	pushFunc := func(r remotes.Resolver) error {
-		return push.Push(ctx, client, r, clicontext.App.Writer, singlePlatformRef, ref, singlePlatform)
+		return push.Push(ctx, client, r, cmd.OutOrStdout(), singlePlatformRef, ref, singlePlatform)
 	}
 
 	var dOpts []dockerconfigresolver.Opt
@@ -108,12 +112,7 @@ func pushAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func pushBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func pushShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	bashCompleteImageNames(clicontext)
+	return shellCompleteImageNames(cmd)
 }

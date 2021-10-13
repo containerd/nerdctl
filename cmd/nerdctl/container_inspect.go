@@ -30,43 +30,41 @@ import (
 	"github.com/docker/cli/templates"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var containerInspectCommand = &cli.Command{
-	Name:         "inspect",
-	Usage:        "Display detailed information on one or more containers.",
-	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
-	Description:  "Hint: set `--mode=native` for showing the full output",
-	Action:       ContainerInspectAction,
-	BashComplete: containerInspectBashComplete,
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "mode",
-			Usage: "Inspect mode, \"dockercompat\" for Docker-compatible output, \"native\" for containerd-native output",
-			Value: "dockercompat",
-		},
-		&cli.StringFlag{
-			Name:    "format",
-			Aliases: []string{"f"},
-			Usage:   "Format the output using the given Go template, e.g, '{{json .}}'",
-		},
-	},
+func newContainerInspectCommand() *cobra.Command {
+	var containerInspectCommand = &cobra.Command{
+		Use:               "inspect [flags] CONTAINER [CONTAINER, ...]",
+		Short:             "Display detailed information on one or more containers.",
+		Long:              "Hint: set `--mode=native` for showing the full output",
+		RunE:              containerInspectAction,
+		ValidArgsFunction: containerInspectShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	containerInspectCommand.Flags().String("mode", "dockercompat", `Inspect mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
+	containerInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	return containerInspectCommand
 }
 
-func ContainerInspectAction(clicontext *cli.Context) error {
-	if clicontext.NArg() == 0 {
+func containerInspectAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
+	mode, err := cmd.Flags().GetString("mode")
+	if err != nil {
+		return err
+	}
 	f := &containerInspector{
-		mode: clicontext.String("mode"),
+		mode: mode,
 	}
 	walker := &containerwalker.ContainerWalker{
 		Client:  client,
@@ -74,7 +72,7 @@ func ContainerInspectAction(clicontext *cli.Context) error {
 	}
 
 	var errs []error
-	for _, req := range clicontext.Args().Slice() {
+	for _, req := range args {
 		n, err := walker.Walk(ctx, req)
 		if err != nil {
 			errs = append(errs, err)
@@ -84,13 +82,17 @@ func ContainerInspectAction(clicontext *cli.Context) error {
 	}
 
 	var tmpl *template.Template
-	switch format := clicontext.String("format"); format {
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	switch format {
 	case "":
 		b, err := json.MarshalIndent(f.entries, "", "    ")
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(clicontext.App.Writer, string(b))
+		fmt.Fprintln(cmd.OutOrStdout(), string(b))
 	case "raw", "table":
 		return errors.New("unsupported format: \"raw\" and \"table\"")
 	default:
@@ -109,7 +111,7 @@ func ContainerInspectAction(clicontext *cli.Context) error {
 				if err := tmpl.Execute(&b, c); err != nil {
 					return err
 				}
-				if _, err = fmt.Fprintf(clicontext.App.Writer, b.String()+"\n"); err != nil {
+				if _, err = fmt.Fprintf(cmd.OutOrStdout(), b.String()+"\n"); err != nil {
 					return err
 				}
 			}
@@ -149,23 +151,7 @@ func (x *containerInspector) Handler(ctx context.Context, found containerwalker.
 	return nil
 }
 
-func containerInspectBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring {
-		defaultBashComplete(clicontext)
-		return
-	}
-	if coco.flagTakesValue {
-		w := clicontext.App.Writer
-		switch coco.flagName {
-		case "mode":
-			fmt.Fprintln(w, "dockercompat")
-			fmt.Fprintln(w, "native")
-			return
-		}
-		defaultBashComplete(clicontext)
-		return
-	}
+func containerInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show container names
-	bashCompleteContainerNames(clicontext, nil)
+	return shellCompleteContainerNames(cmd, nil)
 }

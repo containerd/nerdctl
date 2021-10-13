@@ -39,7 +39,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
 // ContainerTopOKBody is from https://github.com/moby/moby/blob/v20.10.6/api/types/container/container_top.go
@@ -58,17 +58,23 @@ type ContainerTopOKBody struct {
 	Titles []string `json:"Titles"`
 }
 
-var topCommand = &cli.Command{
-	Name:         "top",
-	Usage:        "Display the running processes of a container",
-	ArgsUsage:    "CONTAINER [ps OPTIONS]",
-	Action:       topAction,
-	BashComplete: topBashComplete,
+func newTopCommand() *cobra.Command {
+	var topCommand = &cobra.Command{
+		Use:               "top CONTAINER [ps OPTIONS]",
+		Args:              cobra.MinimumNArgs(1),
+		Short:             "Display the running processes of a container",
+		RunE:              topAction,
+		ValidArgsFunction: topShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	topCommand.Flags().SetInterspersed(false)
+	return topCommand
 }
 
-func topAction(clicontext *cli.Context) error {
+func topAction(cmd *cobra.Command, args []string) error {
 
-	if clicontext.NArg() < 1 {
+	if len(args) < 1 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
@@ -78,11 +84,15 @@ func topAction(clicontext *cli.Context) error {
 		return errors.Errorf("top requires cgroup v2 for rootless containers, see https://rootlesscontaine.rs/getting-started/common/cgroup2/")
 	}
 
-	if clicontext.String("cgroup-manager") == "none" {
+	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
+	if err != nil {
+		return err
+	}
+	if cgroupManager == "none" {
 		return errors.New("cgroup manager must not be \"none\"")
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -91,18 +101,18 @@ func topAction(clicontext *cli.Context) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if err := containerTop(ctx, clicontext, client, found.Container.ID(), strings.Join(clicontext.Args().Tail(), " ")); err != nil {
+			if err := containerTop(ctx, cmd, client, found.Container.ID(), strings.Join(args[1:], " ")); err != nil {
 				return err
 			}
 			return nil
 		},
 	}
 
-	n, err := walker.Walk(ctx, clicontext.Args().First())
+	n, err := walker.Walk(ctx, args[0])
 	if err != nil {
 		return err
 	} else if n == 0 {
-		return errors.Errorf("no such container %s", clicontext.Args().First())
+		return errors.Errorf("no such container %s", args[0])
 	}
 	return nil
 }
@@ -236,7 +246,7 @@ func parsePSOutput(output []byte, procs []uint32) (*ContainerTopOKBody, error) {
 // "-ef" if no args are given.  An error is returned if the container
 // is not found, or is not running, or if there are any problems
 // running ps, or parsing the output.
-func containerTop(ctx context.Context, clicontext *cli.Context, client *containerd.Client, id string, psArgs string) error {
+func containerTop(ctx context.Context, cmd *cobra.Command, client *containerd.Client, id string, psArgs string) error {
 	if psArgs == "" {
 		psArgs = "-ef"
 	}
@@ -299,7 +309,7 @@ func containerTop(ctx context.Context, clicontext *cli.Context, client *containe
 		return err
 	}
 
-	w := tabwriter.NewWriter(clicontext.App.Writer, 20, 1, 3, ' ', 0)
+	w := tabwriter.NewWriter(cmd.OutOrStdout(), 20, 1, 3, ' ', 0)
 	fmt.Fprintln(w, strings.Join(procList.Titles, "\t"))
 
 	for _, proc := range procList.Processes {
@@ -309,16 +319,10 @@ func containerTop(ctx context.Context, clicontext *cli.Context, client *containe
 	return w.Flush()
 }
 
-func topBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
-
+func topShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show running container names
 	statusFilterFn := func(st containerd.ProcessStatus) bool {
 		return st == containerd.Running
 	}
-	bashCompleteContainerNames(clicontext, statusFilterFn)
+	return shellCompleteContainerNames(cmd, statusFilterFn)
 }

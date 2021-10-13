@@ -17,48 +17,39 @@
 package main
 
 import (
-	"fmt"
-
 	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
-
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/urfave/cli/v2"
+	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/spf13/cobra"
 )
 
-func appNeedsRootlessParentMain(clicontext *cli.Context) bool {
+func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
+	commands := []string{}
+	for tcmd := cmd; tcmd != nil; tcmd = tcmd.Parent() {
+		commands = append(commands, tcmd.Name())
+	}
+	commands = strutil.ReverseStrSlice(commands)
+
 	if !rootlessutil.IsRootlessParent() {
 		return false
 	}
-	// TODO: allow `nerdctl <SUBCOMMAND> --help` without nsentering into RootlessKit
-	switch clicontext.Args().First() {
+	if len(commands) < 2 {
+		return true
+	}
+	switch commands[1] {
 	case "", "completion", "login", "logout":
 		return false
 	}
 	return true
 }
 
-func appBashComplete(clicontext *cli.Context) {
-	w := clicontext.App.Writer
-	coco := parseCompletionContext(clicontext)
-	switch coco.flagName {
-	case "n", "namespace":
-		bashCompleteNamespaceNames(clicontext)
-		return
-	case "snapshotter", "storage-driver":
-		bashCompleteSnapshotterNames(clicontext)
-		return
-	case "cgroup-manager":
-		fmt.Fprintln(w, "cgroupfs")
-		if ncdefaults.IsSystemdAvailable() {
-			fmt.Fprintln(w, "systemd")
-		}
-		if rootlessutil.IsRootless() {
-			fmt.Fprintln(w, "none")
-		}
-		return
+func shellCompleteCgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	candidates := []string{"cgroupfs"}
+	if ncdefaults.IsSystemdAvailable() {
+		candidates = append(candidates, "systemd")
 	}
-	cli.DefaultAppComplete(clicontext)
-	for _, subcomm := range clicontext.App.Commands {
-		fmt.Fprintln(clicontext.App.Writer, subcomm.Name)
+	if rootlessutil.IsRootless() {
+		candidates = append(candidates, "none")
 	}
+	return candidates, cobra.ShellCompDirectiveNoFileComp
 }

@@ -18,6 +18,8 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"text/template"
 
@@ -26,42 +28,55 @@ import (
 	"github.com/docker/cli/templates"
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var infoCommand = &cli.Command{
-	Name:   "info",
-	Usage:  "Display system-wide information",
-	Action: infoAction,
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "format",
-			Aliases: []string{"f"},
-			Usage:   "Format the output using the given Go template, e.g, '{{json .}}'",
-		},
-	},
+func newInfoCommand() *cobra.Command {
+	var infoCommand = &cobra.Command{
+		Use:           "info",
+		Args:          cobra.NoArgs,
+		Short:         "Display system-wide information",
+		RunE:          infoAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	infoCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	return infoCommand
 }
 
-func infoAction(clicontext *cli.Context) error {
-	w := clicontext.App.Writer
+func infoAction(cmd *cobra.Command, args []string) error {
+	var w io.Writer
+	w = os.Stdout
 	var (
 		tmpl *template.Template
 		err  error
 	)
-	if format := clicontext.String("format"); format != "" {
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	if format != "" {
 		tmpl, err = templates.Parse(format)
 		if err != nil {
 			return err
 		}
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	info, err := infoutil.Info(ctx, client, clicontext.String("snapshotter"), clicontext.String("cgroup-manager"))
+	snapshotter, err := cmd.Flags().GetString("snapshotter")
+	if err != nil {
+		return err
+	}
+	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
+	if err != nil {
+		return err
+	}
+	info, err := infoutil.Info(ctx, client, snapshotter, cgroupManager)
 	if err != nil {
 		return err
 	}
@@ -74,9 +89,18 @@ func infoAction(clicontext *cli.Context) error {
 		return err
 	}
 
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	debug, err := cmd.Flags().GetBool("debug")
+	if err != nil {
+		return err
+	}
+
 	fmt.Fprintf(w, "Client:\n")
-	fmt.Fprintf(w, " Namespace:\t%s\n", clicontext.String("namespace"))
-	fmt.Fprintf(w, " Debug Mode:\t%v\n", clicontext.Bool("debug"))
+	fmt.Fprintf(w, " Namespace:\t%s\n", namespace)
+	fmt.Fprintf(w, " Debug Mode:\t%v\n", debug)
 	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "Server:\n")
 	fmt.Fprintf(w, " Server Version: %s\n", info.ServerVersion)
@@ -119,8 +143,7 @@ func infoAction(clicontext *cli.Context) error {
 
 	fmt.Fprintln(w)
 	if len(info.Warnings) > 0 {
-		fmt.Fprintln(clicontext.App.ErrWriter, strings.Join(info.Warnings, "\n"))
+		fmt.Fprintln(cmd.ErrOrStderr(), strings.Join(info.Warnings, "\n"))
 	}
-
 	return nil
 }

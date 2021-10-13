@@ -33,144 +33,166 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-// imageConvertCommand is from https://github.com/containerd/stargz-snapshotter/blob/d58f43a8235e46da73fb94a1a35280cb4d607b2c/cmd/ctr-remote/commands/convert.go
-var imageConvertCommand = &cli.Command{
-	Name:      "convert",
-	Usage:     "convert an image",
-	ArgsUsage: "[flags] <source_ref> <target_ref>...",
-	Description: `Convert an image format.
+const imageConvertHelp = `Convert an image format.
 
 e.g., 'nerdctl image convert --estargz --oci example.com/foo:orig example.com/foo:esgz'
 
 Use '--platform' to define the output platform.
 When '--all-platforms' is given all images in a manifest list must be available.
-`,
-	Flags: []cli.Flag{
-		// estargz flags
-		&cli.BoolFlag{
-			Name:  "estargz",
-			Usage: "Convert legacy tar(.gz) layers to eStargz for lazy pulling. Should be used in conjunction with '--oci'",
-		},
-		&cli.StringFlag{
-			Name:  "estargz-record-in",
-			Usage: "Read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)",
-		},
-		&cli.IntFlag{
-			Name:  "estargz-compression-level",
-			Usage: "eStargz compression level",
-			Value: gzip.BestCompression,
-		},
-		&cli.IntFlag{
-			Name:  "estargz-chunk-size",
-			Usage: "eStargz chunk size",
-			Value: 0,
-		},
-		// generic flags
-		&cli.BoolFlag{
-			Name:  "uncompress",
-			Usage: "Convert tar.gz layers to uncompressed tar layers",
-		},
-		&cli.BoolFlag{
-			Name:  "oci",
-			Usage: "Convert Docker media types to OCI media types",
-		},
-		// platform flags
-		&cli.StringSliceFlag{
-			Name:  "platform",
-			Usage: "Convert content for a specific platform",
-			Value: &cli.StringSlice{},
-		},
-		&cli.BoolFlag{
-			Name:  "all-platforms",
-			Usage: "Convert content for all platforms",
-		},
-	},
-	Action: func(context *cli.Context) error {
-		var (
-			convertOpts = []converter.Opt{}
-		)
-		srcRawRef := context.Args().Get(0)
-		targetRawRef := context.Args().Get(1)
-		if srcRawRef == "" || targetRawRef == "" {
-			return errors.New("src and target image need to be specified")
-		}
+`
 
-		srcNamed, err := refdocker.ParseDockerRef(srcRawRef)
-		if err != nil {
-			return err
-		}
-		srcRef := srcNamed.String()
+// imageConvertCommand is from https://github.com/containerd/stargz-snapshotter/blob/d58f43a8235e46da73fb94a1a35280cb4d607b2c/cmd/ctr-remote/commands/convert.go
+func newImageConvertCommand() *cobra.Command {
+	imageConvertCommand := &cobra.Command{
+		Use:               "convert [flags] <source_ref> <target_ref>...",
+		Short:             "convert an image",
+		Long:              imageConvertHelp,
+		Args:              cobra.MinimumNArgs(2),
+		RunE:              imageConvertAction,
+		ValidArgsFunction: imageConvertShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
 
-		targetNamed, err := refdocker.ParseDockerRef(targetRawRef)
-		if err != nil {
-			return err
-		}
-		targetRef := targetNamed.String()
+	// #region estargz flags
+	imageConvertCommand.Flags().Bool("estargz", false, "Convert legacy tar(.gz) layers to eStargz for lazy pulling. Should be used in conjunction with '--oci'")
+	imageConvertCommand.Flags().String("estargz-record-in", "", "Read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)")
+	imageConvertCommand.Flags().Int("estargz-compression-level", gzip.BestCompression, "eStargz compression level")
+	imageConvertCommand.Flags().Int("estargz-chunk-size", 0, "eStargz chunk size")
+	// #endregion
 
-		if !context.Bool("all-platforms") {
-			if pss := strutil.DedupeStrSlice(context.StringSlice("platform")); len(pss) > 0 {
-				var all []ocispec.Platform
-				for _, ps := range pss {
-					p, err := platforms.Parse(ps)
-					if err != nil {
-						return errors.Wrapf(err, "invalid platform %q", ps)
-					}
-					all = append(all, p)
-				}
-				convertOpts = append(convertOpts, converter.WithPlatform(platforms.Ordered(all...)))
-			} else {
-				convertOpts = append(convertOpts, converter.WithPlatform(platforms.DefaultStrict()))
-			}
-		}
+	// #region generic flags
+	imageConvertCommand.Flags().Bool("uncompress", false, "Convert tar.gz layers to uncompressed tar layers")
+	imageConvertCommand.Flags().Bool("oci", false, "Convert Docker media types to OCI media types")
+	// #endregion
 
-		if context.Bool("estargz") {
-			esgzOpts, err := getESGZConvertOpts(context)
-			if err != nil {
-				return err
-			}
-			convertOpts = append(convertOpts, converter.WithLayerConvertFunc(estargzconvert.LayerConvertFunc(esgzOpts...)))
-			if !context.Bool("oci") {
-				logrus.Warn("option --estargz should be used in conjunction with --oci")
-			}
-			if context.Bool("uncompress") {
-				return errors.New("option --estargz conflicts with --uncompress")
-			}
-		}
+	// #region platform flags
+	imageConvertCommand.Flags().StringSlice("platform", []string{}, "Convert content for a specific platform")
+	imageConvertCommand.Flags().Bool("all-platforms", false, "Convert content for all platforms")
+	// #endregion
 
-		if context.Bool("uncompress") {
-			convertOpts = append(convertOpts, converter.WithLayerConvertFunc(uncompress.LayerConvertFunc))
-		}
-
-		if context.Bool("oci") {
-			convertOpts = append(convertOpts, converter.WithDockerToOCI(true))
-		}
-
-		client, ctx, cancel, err := newClient(context)
-		if err != nil {
-			return err
-		}
-		defer cancel()
-
-		// converter.Convert() gains the lease by itself
-		newImg, err := converter.Convert(ctx, client, targetRef, srcRef, convertOpts...)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(context.App.Writer, newImg.Target.Digest.String())
-		return nil
-	},
-	BashComplete: imageConvertBashComplete,
+	return imageConvertCommand
 }
 
-func getESGZConvertOpts(context *cli.Context) ([]estargz.Option, error) {
-	esgzOpts := []estargz.Option{
-		estargz.WithCompressionLevel(context.Int("estargz-compression-level")),
-		estargz.WithChunkSize(context.Int("estargz-chunk-size")),
+func imageConvertAction(cmd *cobra.Command, args []string) error {
+	var (
+		convertOpts = []converter.Opt{}
+	)
+	srcRawRef := args[0]
+	targetRawRef := args[1]
+	if srcRawRef == "" || targetRawRef == "" {
+		return errors.New("src and target image need to be specified")
 	}
-	if estargzRecordIn := context.String("estargz-record-in"); estargzRecordIn != "" {
+
+	srcNamed, err := refdocker.ParseDockerRef(srcRawRef)
+	if err != nil {
+		return err
+	}
+	srcRef := srcNamed.String()
+
+	targetNamed, err := refdocker.ParseDockerRef(targetRawRef)
+	if err != nil {
+		return err
+	}
+	targetRef := targetNamed.String()
+
+	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
+	if err != nil {
+		return err
+	}
+	platform, err := cmd.Flags().GetStringSlice("platform")
+	if err != nil {
+		return err
+	}
+
+	if !allPlatforms {
+		if pss := strutil.DedupeStrSlice(platform); len(pss) > 0 {
+			var all []ocispec.Platform
+			for _, ps := range pss {
+				p, err := platforms.Parse(ps)
+				if err != nil {
+					return errors.Wrapf(err, "invalid platform %q", ps)
+				}
+				all = append(all, p)
+			}
+			convertOpts = append(convertOpts, converter.WithPlatform(platforms.Ordered(all...)))
+		} else {
+			convertOpts = append(convertOpts, converter.WithPlatform(platforms.DefaultStrict()))
+		}
+	}
+
+	estargz, err := cmd.Flags().GetBool("estargz")
+	if err != nil {
+		return err
+	}
+	oci, err := cmd.Flags().GetBool("oci")
+	if err != nil {
+		return err
+	}
+	uncompressValue, err := cmd.Flags().GetBool("uncompress")
+	if err != nil {
+		return err
+	}
+
+	if estargz {
+		esgzOpts, err := getESGZConvertOpts(cmd)
+		if err != nil {
+			return err
+		}
+		convertOpts = append(convertOpts, converter.WithLayerConvertFunc(estargzconvert.LayerConvertFunc(esgzOpts...)))
+		if !oci {
+			logrus.Warn("option --estargz should be used in conjunction with --oci")
+		}
+		if uncompressValue {
+			return errors.New("option --estargz conflicts with --uncompress")
+		}
+	}
+
+	if uncompressValue {
+		convertOpts = append(convertOpts, converter.WithLayerConvertFunc(uncompress.LayerConvertFunc))
+	}
+
+	if oci {
+		convertOpts = append(convertOpts, converter.WithDockerToOCI(true))
+	}
+
+	client, ctx, cancel, err := newClient(cmd)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	// converter.Convert() gains the lease by itself
+	newImg, err := converter.Convert(ctx, client, targetRef, srcRef, convertOpts...)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(cmd.OutOrStdout(), newImg.Target.Digest.String())
+	return nil
+}
+
+func getESGZConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
+	estargzCompressionLevel, err := cmd.Flags().GetInt("estargz-compression-level")
+	if err != nil {
+		return nil, err
+	}
+	estargzChunkSize, err := cmd.Flags().GetInt("estargz-chunk-size")
+	if err != nil {
+		return nil, err
+	}
+	estargzRecordIn, err := cmd.Flags().GetString("estargz-record-in")
+	if err != nil {
+		return nil, err
+	}
+
+	esgzOpts := []estargz.Option{
+		estargz.WithCompressionLevel(estargzCompressionLevel),
+		estargz.WithChunkSize(estargzChunkSize),
+	}
+	if estargzRecordIn != "" {
 		logrus.Warn("--estargz-record-in flag is experimental and subject to change")
 		paths, err := readPathsFromRecordFile(estargzRecordIn)
 		if err != nil {
@@ -205,12 +227,7 @@ func readPathsFromRecordFile(filename string) ([]string, error) {
 	return paths, nil
 }
 
-func imageConvertBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func imageConvertShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	bashCompleteImageNames(clicontext)
+	return shellCompleteImageNames(cmd)
 }

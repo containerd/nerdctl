@@ -36,13 +36,13 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
 // generateMountOpts generates volume-related mount opts.
 // Other mounts such as procfs mount are not handled here.
-func generateMountOpts(clicontext *cli.Context, ctx context.Context, client *containerd.Client, ensuredImage *imgutil.EnsuredImage) ([]oci.SpecOpts, []string, error) {
-	volStore, err := getVolumeStore(clicontext)
+func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containerd.Client, ensuredImage *imgutil.EnsuredImage) ([]oci.SpecOpts, []string, error) {
+	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -59,7 +59,12 @@ func generateMountOpts(clicontext *cli.Context, ctx context.Context, client *con
 	if ensuredImage != nil {
 		imageVolumes = ensuredImage.ImageConfig.Volumes
 
-		if err := ensuredImage.Image.Unpack(ctx, clicontext.String("snapshotter")); err != nil {
+		snapshotter, err := cmd.Flags().GetString("snapshotter")
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if err := ensuredImage.Image.Unpack(ctx, snapshotter); err != nil {
 			return nil, nil, errors.Wrap(err, "error unpacking image")
 		}
 
@@ -69,7 +74,7 @@ func generateMountOpts(clicontext *cli.Context, ctx context.Context, client *con
 		}
 		chainID := identity.ChainID(diffIDs).String()
 
-		s := client.SnapshotService(clicontext.String("snapshotter"))
+		s := client.SnapshotService(snapshotter)
 		tempDir, err = ioutil.TempDir("", "initialC")
 		if err != nil {
 			return nil, nil, err
@@ -98,7 +103,11 @@ func generateMountOpts(clicontext *cli.Context, ctx context.Context, client *con
 		}
 	}
 
-	if flagVSlice := strutil.DedupeStrSlice(clicontext.StringSlice("v")); len(flagVSlice) > 0 {
+	flagVSlice, err := cmd.Flags().GetStringSlice("volume")
+	if err != nil {
+		return nil, nil, err
+	}
+	if flagVSlice := strutil.DedupeStrSlice(flagVSlice); len(flagVSlice) > 0 {
 		ociMounts := make([]specs.Mount, len(flagVSlice))
 		for i, v := range flagVSlice {
 			x, err := mountutil.ProcessFlagV(v, volStore)

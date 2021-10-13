@@ -21,14 +21,19 @@ import (
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
-
-func runBashComplete(clicontext *cli.Context) {
-	// noop
-}
 
 func WithoutRunMount() func(ctx context.Context, client oci.Client, c *containers.Container, s *oci.Spec) error {
 	// not valid on windows
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error { return nil }
+}
+
+func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	candidates := []string{}
+	return candidates, cobra.ShellCompDirectiveNoFileComp
+}
+
+func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }

@@ -30,89 +30,59 @@ import (
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
-var buildCommand = &cli.Command{
-	Name:   "build",
-	Usage:  "Build an image from a Dockerfile. Needs buildkitd to be running.",
-	Action: buildAction,
-	Flags: []cli.Flag{
-		&cli.StringFlag{
+func newBuildCommand() *cobra.Command {
+	var buildCommand = &cobra.Command{
+		Use:           "build",
+		Short:         "Build an image from a Dockerfile. Needs buildkitd to be running.",
+		RunE:          buildAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	buildCommand.Flags().AddFlag(
+		&pflag.Flag{
 			Name:    "buildkit-host",
-			Usage:   "BuildKit address",
+			Usage:   `BuildKit address`,
 			EnvVars: []string{"BUILDKIT_HOST"},
-			Value:   defaults.BuildKitHost(),
+			Value:   pflag.NewStringValue(defaults.BuildKitHost(), new(string)),
 		},
+	)
+	buildCommand.Flags().StringSliceP("tag", "t", nil, "Name and optionally a tag in the 'name:tag' format")
+	buildCommand.Flags().StringP("file", "f", "", "Name of the Dockerfile")
+	buildCommand.Flags().String("target", "", "Set the target build stage to build")
+	buildCommand.Flags().StringSlice("build-arg", nil, "Set build-time variables")
+	buildCommand.Flags().Bool("no-cache", false, "Do not use cache when building the image")
+	buildCommand.Flags().StringP("output", "o", "", "Output destination (format: type=local,dest=path)")
+	buildCommand.Flags().String("progress", "auto", "Set type of progress output (auto, plain, tty). Use plain to show container output")
+	buildCommand.Flags().StringSlice("secret", nil, "Secret file to expose to the build: id=mysecret,src=/local/secret")
+	buildCommand.Flags().StringSlice("ssh", nil, "SSH agent socket or keys to expose to the build (format: default|<id>[=<socket>|<key>[,<key>]])")
+	buildCommand.Flags().BoolP("quiet", "q", false, "Suppress the build output and print image ID on success")
+	buildCommand.Flags().StringSlice("cache-from", nil, "External cache sources (eg. user/app:cache, type=local,src=path/to/dir)")
+	buildCommand.Flags().StringSlice("cache-to", nil, "Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir)")
 
-		&cli.StringSliceFlag{
-			Name:    "tag",
-			Aliases: []string{"t"},
-			Usage:   "Name and optionally a tag in the 'name:tag' format",
-		},
-		&cli.StringFlag{
-			Name:    "file",
-			Aliases: []string{"f"},
-			Usage:   "Name of the Dockerfile",
-		},
-		&cli.StringFlag{
-			Name:  "target",
-			Usage: "Set the target build stage to build",
-		},
-		&cli.StringSliceFlag{
-			Name:  "build-arg",
-			Usage: "Set build-time variables",
-		},
-		&cli.BoolFlag{
-			Name:  "no-cache",
-			Usage: "Do not use cache when building the image",
-		},
-		&cli.StringFlag{
-			Name:    "output",
-			Aliases: []string{"o"},
-			Usage:   "Output destination (format: type=local,dest=path)",
-		},
-		&cli.StringFlag{
-			Name:  "progress",
-			Usage: "Set type of progress output (auto, plain, tty). Use plain to show container output",
-			Value: "auto",
-		},
-		&cli.StringSliceFlag{
-			Name:  "secret",
-			Usage: "Secret file to expose to the build: id=mysecret,src=/local/secret",
-		},
-		&cli.StringSliceFlag{
-			Name:  "ssh",
-			Usage: "SSH agent socket or keys to expose to the build (format: default|<id>[=<socket>|<key>[,<key>]])",
-		},
-		&cli.BoolFlag{
-			Name:    "quiet",
-			Aliases: []string{"q"},
-			Usage:   "Suppress the build output and print image ID on success",
-		},
-		&cli.StringSliceFlag{
-			Name:  "cache-from",
-			Usage: "External cache sources (eg. user/app:cache, type=local,src=path/to/dir)",
-		},
-		&cli.StringSliceFlag{
-			Name:  "cache-to",
-			Usage: "Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir)",
-		},
-	},
+	return buildCommand
 }
 
-func buildAction(clicontext *cli.Context) error {
-	buildkitHost := clicontext.String("buildkit-host")
+func buildAction(cmd *cobra.Command, args []string) error {
+	buildkitHost, err := cmd.Flags().GetString("buildkit-host")
+	if err != nil {
+		return err
+	}
 	if err := buildkitutil.PingBKDaemon(buildkitHost); err != nil {
 		return err
 	}
 
-	buildctlBinary, buildctlArgs, needsLoading, err := generateBuildctlArgs(clicontext)
+	buildctlBinary, buildctlArgs, needsLoading, err := generateBuildctlArgs(cmd, args)
 	if err != nil {
 		return err
 	}
-
-	quiet := clicontext.Bool("quiet")
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return err
+	}
 
 	logrus.Debugf("running %s %v", buildctlBinary, buildctlArgs)
 	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
@@ -125,11 +95,10 @@ func buildAction(clicontext *cli.Context) error {
 			return err
 		}
 	} else {
-		buildctlCmd.Stdout = clicontext.App.Writer
+		buildctlCmd.Stdout = cmd.OutOrStdout()
 	}
-
 	if !quiet {
-		buildctlCmd.Stderr = clicontext.App.ErrWriter
+		buildctlCmd.Stderr = cmd.ErrOrStderr()
 	}
 
 	if err := buildctlCmd.Start(); err != nil {
@@ -137,7 +106,7 @@ func buildAction(clicontext *cli.Context) error {
 	}
 
 	if needsLoading {
-		if err = loadImage(buildctlStdout, clicontext, quiet); err != nil {
+		if err = loadImage(buildctlStdout, cmd, args, false, quiet); err != nil {
 			return err
 		}
 	}
@@ -149,12 +118,12 @@ func buildAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func generateBuildctlArgs(clicontext *cli.Context) (string, []string, bool, error) {
+func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, bool, error) {
 	var needsLoading bool
-	if clicontext.NArg() < 1 {
+	if len(args) < 1 {
 		return "", nil, false, errors.New("context needs to be specified")
 	}
-	buildContext := clicontext.Args().First()
+	buildContext := args[0]
 	if buildContext == "-" || strings.Contains(buildContext, "://") {
 		return "", nil, false, errors.Errorf("unsupported build context: %q", buildContext)
 	}
@@ -164,30 +133,51 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, bool, erro
 		return "", nil, false, err
 	}
 
-	output := clicontext.String("output")
+	output, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return "", nil, false, err
+	}
 	if output == "" {
 		output = "type=docker"
 		needsLoading = true
 	}
-	if tagSlice := strutil.DedupeStrSlice(clicontext.StringSlice("tag")); len(tagSlice) > 0 {
+	tagValue, err := cmd.Flags().GetStringSlice("tag")
+	if err != nil {
+		return "", nil, false, err
+	}
+	if tagSlice := strutil.DedupeStrSlice(tagValue); len(tagSlice) > 0 {
 		if len(tagSlice) > 1 {
 			return "", nil, false, errors.Errorf("specifying multiple -t is not supported yet")
 		}
 		output += ",name=" + tagSlice[0]
 	}
 
-	buildctlArgs := buildkitutil.BuildctlBaseArgs(clicontext.String("buildkit-host"))
+	buildkitHost, err := cmd.Flags().GetString("buildkit-host")
+	if err != nil {
+		return "", nil, false, err
+	}
+
+	buildctlArgs := buildkitutil.BuildctlBaseArgs(buildkitHost)
+
+	progressValue, err := cmd.Flags().GetString("progress")
+	if err != nil {
+		return "", nil, false, err
+	}
 
 	buildctlArgs = append(buildctlArgs, []string{
 		"build",
-		"--progress=" + clicontext.String("progress"),
+		"--progress=" + progressValue,
 		"--frontend=dockerfile.v0",
 		"--local=context=" + buildContext,
 		"--local=dockerfile=" + buildContext,
 		"--output=" + output,
 	}...)
 
-	if filename := clicontext.String("file"); filename != "" {
+	filename, err := cmd.Flags().GetString("file")
+	if err != nil {
+		return "", nil, false, err
+	}
+	if filename != "" {
 		dir, file := filepath.Split(filename)
 		if dir != "" {
 			buildctlArgs = append(buildctlArgs, "--local=dockerfile="+dir)
@@ -195,11 +185,19 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, bool, erro
 		buildctlArgs = append(buildctlArgs, "--opt=filename="+file)
 	}
 
-	if target := clicontext.String("target"); target != "" {
+	target, err := cmd.Flags().GetString("target")
+	if err != nil {
+		return "", nil, false, err
+	}
+	if target != "" {
 		buildctlArgs = append(buildctlArgs, "--opt=target="+target)
 	}
 
-	for _, ba := range strutil.DedupeStrSlice(clicontext.StringSlice("build-arg")) {
+	buildArgsValue, err := cmd.Flags().GetStringSlice("build-arg")
+	if err != nil {
+		return "", nil, false, err
+	}
+	for _, ba := range strutil.DedupeStrSlice(buildArgsValue) {
 		buildctlArgs = append(buildctlArgs, "--opt=build-arg:"+ba)
 
 		// Support `--build-arg BUILDKIT_INLINE_CACHE=1` for compatibility with `docker buildx build`
@@ -217,26 +215,46 @@ func generateBuildctlArgs(clicontext *cli.Context) (string, []string, bool, erro
 		}
 	}
 
-	if clicontext.Bool("no-cache") {
+	noCache, err := cmd.Flags().GetBool("no-cache")
+	if err != nil {
+		return "", nil, false, err
+	}
+	if noCache {
 		buildctlArgs = append(buildctlArgs, "--no-cache")
 	}
 
-	for _, s := range strutil.DedupeStrSlice(clicontext.StringSlice("secret")) {
+	secretValue, err := cmd.Flags().GetStringSlice("secret")
+	if err != nil {
+		return "", nil, false, err
+	}
+	for _, s := range strutil.DedupeStrSlice(secretValue) {
 		buildctlArgs = append(buildctlArgs, "--secret="+s)
 	}
 
-	for _, s := range strutil.DedupeStrSlice(clicontext.StringSlice("ssh")) {
+	sshValue, err := cmd.Flags().GetStringSlice("ssh")
+	if err != nil {
+		return "", nil, false, err
+	}
+	for _, s := range strutil.DedupeStrSlice(sshValue) {
 		buildctlArgs = append(buildctlArgs, "--ssh="+s)
 	}
 
-	for _, s := range strutil.DedupeStrSlice(clicontext.StringSlice("cache-from")) {
+	cacheFrom, err := cmd.Flags().GetStringSlice("cache-from")
+	if err != nil {
+		return "", nil, false, err
+	}
+	for _, s := range strutil.DedupeStrSlice(cacheFrom) {
 		if !strings.Contains(s, "type=") {
 			s = "type=registry,ref=" + s
 		}
 		buildctlArgs = append(buildctlArgs, "--import-cache="+s)
 	}
 
-	for _, s := range strutil.DedupeStrSlice(clicontext.StringSlice("cache-to")) {
+	cacheTo, err := cmd.Flags().GetStringSlice("cache-to")
+	if err != nil {
+		return "", nil, false, err
+	}
+	for _, s := range strutil.DedupeStrSlice(cacheTo) {
 		if !strings.Contains(s, "type=") {
 			s = "type=registry,ref=" + s
 		}

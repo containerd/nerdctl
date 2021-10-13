@@ -17,36 +17,41 @@
 package main
 
 import (
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var imageCommand = &cli.Command{
-	Name:     "image",
-	Usage:    "Manage images",
-	Category: CategoryManagement,
-	Subcommands: []*cli.Command{
-		buildCommand,
+func newImageCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Category:      CategoryManagement,
+		Use:           "image",
+		Short:         "Manage images",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	cmd.AddCommand(
+		newBuildCommand(),
 		// commitCommand is in "container", not in "image"
 		imageLsCommand(),
-		pullCommand,
-		pushCommand,
-		loadCommand,
-		saveCommand,
-		tagCommand,
+		newPullCommand(),
+		newPushCommand(),
+		newLoadCommand(),
+		newSaveCommand(),
+		newTagCommand(),
 		imageRmCommand(),
-		imageConvertCommand,
-		imageInspectCommand,
-	},
+		newImageConvertCommand(),
+		newImageInspectCommand(),
+	)
+	return cmd
 }
 
-func imageLsCommand() *cli.Command {
-	x := *imagesCommand
-	x.Name = "ls"
-	return &x
+func imageLsCommand() *cobra.Command {
+	x := newImagesCommand()
+	x.Use = "ls"
+	return x
 }
 
-func imageRmCommand() *cli.Command {
-	x := *rmiCommand
-	x.Name = "rm"
-	return &x
+func imageRmCommand() *cobra.Command {
+	x := newRmiCommand()
+	x.Use = "rm"
+	return x
 }

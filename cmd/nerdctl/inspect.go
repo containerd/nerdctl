@@ -22,24 +22,35 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var inspectCommand = &cli.Command{
-	Name:         "inspect",
-	Usage:        "Return low-level information on objects.",
-	Description:  containerInspectCommand.Description,
-	Action:       inspectAction,
-	BashComplete: containerInspectBashComplete,
-	Flags:        containerInspectCommand.Flags,
+func newInspectCommand() *cobra.Command {
+	var inspectCommand = &cobra.Command{
+		Use:               "inspect",
+		Short:             "Return low-level information on objects.",
+		RunE:              inspectAction,
+		ValidArgsFunction: inspectShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+
+	addInspectFlags(inspectCommand)
+
+	return inspectCommand
 }
 
-func inspectAction(clicontext *cli.Context) error {
-	if clicontext.NArg() == 0 {
+func addInspectFlags(cmd *cobra.Command) {
+	cmd.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	cmd.Flags().String("mode", "dockercompat", `Inspect mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
+}
+
+func inspectAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -59,7 +70,7 @@ func inspectAction(clicontext *cli.Context) error {
 		},
 	}
 
-	for _, req := range clicontext.Args().Slice() {
+	for _, req := range args {
 		ni, err := imagewalker.Walk(ctx, req)
 		if err != nil {
 			return err
@@ -78,15 +89,23 @@ func inspectAction(clicontext *cli.Context) error {
 			return errors.Errorf("no such object %s", req)
 		}
 		if ni != 0 {
-			if err := ImageInspectAction(clicontext); err != nil {
+			if err := imageInspectAction(cmd, args); err != nil {
 				return err
 			}
 		} else {
-			if err := ContainerInspectAction(clicontext); err != nil {
+			if err := containerInspectAction(cmd, args); err != nil {
 				return err
 			}
 		}
 	}
 
 	return nil
+}
+
+func inspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	// show container names
+	continaers, _ := shellCompleteContainerNames(cmd, nil)
+	// show image names
+	images, _ := shellCompleteImageNames(cmd)
+	return append(continaers, images...), cobra.ShellCompDirectiveNoFileComp
 }

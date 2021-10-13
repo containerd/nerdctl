@@ -28,44 +28,56 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var networkCreateCommand = &cli.Command{
-	Name:        "create",
-	Usage:       "Create a network",
-	Description: "NOTE: To isolate CNI bridge, CNI isolation plugin needs to be installed: https://github.com/AkihiroSuda/cni-isolation",
-	ArgsUsage:   "[flags] NETWORK",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "subnet",
-			Usage: "Subnet in CIDR format that represents a network segment, e.g. \"10.5.0.0/16\"",
-		},
-		&cli.StringSliceFlag{
-			Name:  "label",
-			Usage: "Set metadata for a network",
-		},
-	},
-	Action: networkCreateAction,
+func newNetworkCreateCommand() *cobra.Command {
+	var networkCreateCommand = &cobra.Command{
+		Use:           "create [flags] NETWORK",
+		Short:         "Create a network",
+		Long:          "NOTE: To isolate CNI bridge, CNI isolation plugin needs to be installed: https://github.com/AkihiroSuda/cni-isolation",
+		Args:          cobra.ExactArgs(1),
+		RunE:          networkCreateAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	networkCreateCommand.Flags().String("subnet", "", `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
+	networkCreateCommand.Flags().StringSlice("label", nil, "Set metadata for a network")
+	return networkCreateCommand
 }
 
-func networkCreateAction(clicontext *cli.Context) error {
-	if clicontext.NArg() != 1 {
+func networkCreateAction(cmd *cobra.Command, args []string) error {
+	if len(args) != 1 {
 		return errors.Errorf("requires exactly 1 argument")
 	}
-	name := clicontext.Args().First()
+	name := args[0]
 	if err := identifiers.Validate(name); err != nil {
 		return errors.Wrapf(err, "malformed name %s", name)
 	}
-	netconfpath := clicontext.String("cni-netconfpath")
-	if err := os.MkdirAll(netconfpath, 0755); err != nil {
+	cniPath, err := cmd.Flags().GetString("cni-path")
+	if err != nil {
+		return err
+	}
+	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(cniNetconfpath, 0755); err != nil {
+		return err
+	}
+	subnet, err := cmd.Flags().GetString("subnet")
+	if err != nil {
+		return err
+	}
+	labels, err := cmd.Flags().GetStringSlice("label")
+	if err != nil {
 		return err
 	}
 
 	fn := func() error {
 		e := &netutil.CNIEnv{
-			Path:        clicontext.String("cni-path"),
-			NetconfPath: netconfpath,
+			Path:        cniPath,
+			NetconfPath: cniNetconfpath,
 		}
 		ll, err := netutil.ConfigLists(e)
 		if err != nil {
@@ -82,7 +94,6 @@ func networkCreateAction(clicontext *cli.Context) error {
 			return err
 		}
 
-		subnet := clicontext.String("subnet")
 		if subnet == "" {
 			if id > 255 {
 				return errors.Errorf("cannot determine subnet for ID %d, specify --subnet manually", id)
@@ -90,21 +101,21 @@ func networkCreateAction(clicontext *cli.Context) error {
 			subnet = fmt.Sprintf("10.4.%d.0/24", id)
 		}
 
-		labels := strutil.DedupeStrSlice(clicontext.StringSlice("label"))
+		labels := strutil.DedupeStrSlice(labels)
 		l, err := netutil.GenerateConfigList(e, labels, id, name, subnet)
 		if err != nil {
 			return err
 		}
-		filename := filepath.Join(netconfpath, "nerdctl-"+name+".conflist")
+		filename := filepath.Join(cniNetconfpath, "nerdctl-"+name+".conflist")
 		if _, err := os.Stat(filename); err == nil {
 			return errdefs.ErrAlreadyExists
 		}
 		if err := ioutil.WriteFile(filename, l.Bytes, 0644); err != nil {
 			return err
 		}
-		fmt.Fprintf(clicontext.App.Writer, "%d\n", id)
+		fmt.Fprintf(cmd.OutOrStdout(), "%d\n", id)
 		return nil
 	}
 
-	return lockutil.WithDirLock(netconfpath, fn)
+	return lockutil.WithDirLock(cniNetconfpath, fn)
 }

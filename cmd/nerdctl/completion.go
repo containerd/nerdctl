@@ -18,155 +18,42 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var completionCommand = &cli.Command{
-	Name:  "completion",
-	Usage: "Show shell completion",
-	Subcommands: []*cli.Command{
-		completionBashCommand,
-	},
-}
-
-var completionBashCommand = &cli.Command{
-	Name:        "bash",
-	Usage:       "Show bash completion (use with `source <(nerdctl completion bash)`)",
-	Description: "Usage: add `source <(nerdctl completion bash)` to ~/.bash_profile",
-	Action:      completionBashAction,
-}
-
-func completionBashAction(clicontext *cli.Context) error {
-	tmpl := `#!/bin/bash
-# Autocompletion enabler for nerdctl.
-# Usage: add 'source <(nerdctl completion bash)' to ~/.bash_profile
-
-# _nerdctl_bash_autocomplete is forked from https://github.com/urfave/cli/blob/v2.3.0/autocomplete/bash_autocomplete (MIT License)
-_nerdctl_bash_autocomplete() {
-  if [[ "${COMP_WORDS[0]}" != "source" ]]; then
-    local cur opts base
-    COMPREPLY=()
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    local args="${COMP_WORDS[@]:0:$COMP_CWORD}"
-    # make {"nerdctl", "--namespace", "=", "foo"} into {"nerdctl", "--namespace=foo"}
-    args="$(echo $args | sed -e 's/ = /=/g')"
-    if [[ "$cur" == "-"* ]]; then
-      opts=$( ${args} ${cur} --generate-bash-completion )
-    else
-      opts=$( ${args} --generate-bash-completion )
-    fi
-    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
-    return 0
-  fi
-}
-
-complete -o bashdefault -o default -o nospace -F _nerdctl_bash_autocomplete nerdctl
-`
-	_, err := fmt.Fprint(clicontext.App.Writer, tmpl)
-	return err
-}
-
-type completionContext struct {
-	flagName       string
-	flagTakesValue bool
-	boring         bool // should call the default completer
-}
-
-func parseCompletionContext(clicontext *cli.Context) (coco completionContext) {
-	args := os.Args // not clicontext.Args().Slice()
-	// args[len(args)-2] == the current key stroke, e.g. "--net"
-	if len(args) <= 2 {
-		coco.boring = true
-		return
-	}
-	userTyping := args[len(args)-2]
-	if strings.HasPrefix(userTyping, "-") {
-		flagNameCandidate := strings.TrimLeft(userTyping, "-")
-		if !strings.HasPrefix(userTyping, "--") {
-			// when userTyping is like "-it", we take "-t"
-			flagNameCandidate = string(userTyping[len(userTyping)-1])
-		}
-		isFlagName, flagTakesValue := checkFlagName(clicontext, flagNameCandidate)
-		if !isFlagName {
-			coco.boring = true
-			return
-		}
-		coco.flagName = flagNameCandidate
-		coco.flagTakesValue = flagTakesValue
-	}
-	return
-}
-
-// checkFlagName returns (isFlagName, flagTakesValue)
-func checkFlagName(clicontext *cli.Context, flagName string) (bool, bool) {
-	visibleFlags := clicontext.App.VisibleFlags()
-	if clicontext.Command != nil && clicontext.Command.Name != "" {
-		visibleFlags = clicontext.Command.VisibleFlags()
-	}
-	for _, visi := range visibleFlags {
-		for _, visiName := range visi.Names() {
-			if visiName == flagName {
-				type valueTaker interface {
-					TakesValue() bool
-				}
-				vt, ok := visi.(valueTaker)
-				if !ok {
-					return true, false
-				}
-				return true, vt.TakesValue()
-			}
-		}
-	}
-	return false, false
-}
-
-func defaultBashComplete(clicontext *cli.Context) {
-	if clicontext.Command == nil {
-		cli.DefaultCompleteWithFlags(nil)(clicontext)
-	}
-
-	// Dirty hack to hide global app flags such as "--namespace" , "--cgroup-manager"
-	dummyApp := cli.NewApp()
-	dummyApp.Writer = clicontext.App.Writer
-	dummyCliContext := cli.NewContext(dummyApp, nil, nil)
-	cli.DefaultCompleteWithFlags(clicontext.Command)(dummyCliContext)
-}
-
-func bashCompleteImageNames(clicontext *cli.Context) {
-	w := clicontext.App.Writer
-	client, ctx, cancel, err := newClient(clicontext)
+func shellCompleteImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
-		return
+		return nil, cobra.ShellCompDirectiveError
 	}
 	defer cancel()
 
 	imageList, err := client.ImageService().List(ctx, "")
+
 	if err != nil {
-		return
+		return nil, cobra.ShellCompDirectiveError
 	}
+	candidates := []string{}
 	for _, img := range imageList {
-		fmt.Fprintln(w, img.Name)
+		candidates = append(candidates, img.Name)
 	}
+	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-func bashCompleteContainerNames(clicontext *cli.Context, filterFunc func(containerd.ProcessStatus) bool) {
-	w := clicontext.App.Writer
-	client, ctx, cancel, err := newClient(clicontext)
+func shellCompleteContainerNames(cmd *cobra.Command, filterFunc func(containerd.ProcessStatus) bool) ([]string, cobra.ShellCompDirective) {
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
-		return
+		return nil, cobra.ShellCompDirectiveError
 	}
 	defer cancel()
 	containers, err := client.Containers(ctx)
 	if err != nil {
-		return
+		return nil, cobra.ShellCompDirectiveError
 	}
 	getStatus := func(c containerd.Container) containerd.ProcessStatus {
 		ctx2, cancel2 := context.WithTimeout(ctx, 100*time.Millisecond)
@@ -181,6 +68,7 @@ func bashCompleteContainerNames(clicontext *cli.Context, filterFunc func(contain
 		}
 		return st.Status
 	}
+	candidates := []string{}
 	for _, c := range containers {
 		if filterFunc != nil {
 			if !filterFunc(getStatus(c)) {
@@ -193,56 +81,60 @@ func bashCompleteContainerNames(clicontext *cli.Context, filterFunc func(contain
 		}
 		name := lab[labels.Name]
 		if name != "" {
-			fmt.Fprintln(w, name)
+			candidates = append(candidates, name)
 			continue
 		}
-		fmt.Fprintln(w, c.ID())
+		candidates = append(candidates, c.ID())
 	}
+	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-// bashCompleteNetworkNames includes {"bridge","host","none"}
-func bashCompleteNetworkNames(clicontext *cli.Context, exclude []string) {
+// shellCompleteNetworkNames includes {"bridge","host","none"}
+func shellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, cobra.ShellCompDirective) {
 	excludeMap := make(map[string]struct{}, len(exclude))
 	for _, ex := range exclude {
 		excludeMap[ex] = struct{}{}
 	}
 
-	// To avoid nil panic during clicontext.String(),
-	// it seems we have to use globalcontext.String()
-	lineage := clicontext.Lineage()
-	if len(lineage) < 2 {
-		return
+	cniPath, err := cmd.Flags().GetString("cni-path")
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
 	}
-	globalContext := lineage[len(lineage)-2]
+	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
 	e := &netutil.CNIEnv{
-		Path:        globalContext.String("cni-path"),
-		NetconfPath: globalContext.String("cni-netconfpath"),
+		Path:        cniPath,
+		NetconfPath: cniNetconfpath,
 	}
 
 	configLists, err := netutil.ConfigLists(e)
 	if err != nil {
-		return
+		return nil, cobra.ShellCompDirectiveError
 	}
-	w := clicontext.App.Writer
+	candidates := []string{}
 	for _, configList := range configLists {
 		if _, ok := excludeMap[configList.Name]; !ok {
-			fmt.Fprintln(w, configList.Name)
+			candidates = append(candidates, configList.Name)
 		}
 	}
 	for _, s := range []string{"host", "none"} {
 		if _, ok := excludeMap[s]; !ok {
-			fmt.Fprintln(w, s)
+			candidates = append(candidates, s)
 		}
 	}
+	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-func bashCompleteVolumeNames(clicontext *cli.Context) {
-	w := clicontext.App.Writer
-	vols, err := getVolumes(clicontext)
+func shellCompleteVolumeNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
+	vols, err := getVolumes(cmd)
 	if err != nil {
-		return
+		return nil, cobra.ShellCompDirectiveError
 	}
+	candidates := []string{}
 	for _, v := range vols {
-		fmt.Fprintln(w, v.Name)
+		candidates = append(candidates, v.Name)
 	}
+	return candidates, cobra.ShellCompDirectiveNoFileComp
 }

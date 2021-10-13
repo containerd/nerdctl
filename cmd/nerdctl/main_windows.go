@@ -17,21 +17,21 @@
 package main
 
 import (
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-func appNeedsRootlessParentMain(clicontext *cli.Context) bool {
+func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
 	return false
 }
 
-func appBashComplete(clicontext *cli.Context) {
-	return
+func shellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
-func bashCompleteNamespaceNames(clicontext *cli.Context) {
-	return
+func shellCompleteSnapshotterNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
-func bashCompleteSnapshotterNames(clicontext *cli.Context) {
-	return
+func shellCompleteCgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }

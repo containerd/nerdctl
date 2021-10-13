@@ -24,32 +24,42 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var networkInspectCommand = &cli.Command{
-	Name:         "inspect",
-	Usage:        "Display detailed information on one or more networks",
-	ArgsUsage:    "[flags] NETWORK [NETWORK, ...]",
-	Action:       networkInspectAction,
-	BashComplete: networkInspectBashComplete,
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "mode",
-			Usage: "Inspect mode, \"dockercompat\" for Docker-compatible output, \"native\" for containerd-native output",
-			Value: "dockercompat",
-		},
-	},
+func newNetworkInspectCommand() *cobra.Command {
+	networkInspectCommand := &cobra.Command{
+		Use:               "inspect [flags] NETWORK [NETWORK, ...]",
+		Short:             "Display detailed information on one or more networks",
+		Args:              cobra.MinimumNArgs(1),
+		RunE:              networkInspectAction,
+		ValidArgsFunction: networkInspectShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	networkInspectCommand.Flags().String("mode", "dockercompat", `Inspect mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
+	networkInspectCommand.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"dockercompat", "native"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	return networkInspectCommand
 }
 
-func networkInspectAction(clicontext *cli.Context) error {
-	if clicontext.NArg() == 0 {
+func networkInspectAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
+	cniPath, err := cmd.Flags().GetString("cni-path")
+	if err != nil {
+		return err
+	}
+	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	if err != nil {
+		return err
+	}
 	e := &netutil.CNIEnv{
-		Path:        clicontext.String("cni-path"),
-		NetconfPath: clicontext.String("cni-netconfpath"),
+		Path:        cniPath,
+		NetconfPath: cniNetconfpath,
 	}
 
 	ll, err := netutil.ConfigLists(e)
@@ -62,8 +72,8 @@ func networkInspectAction(clicontext *cli.Context) error {
 		llMap[l.Name] = l
 	}
 
-	result := make([]interface{}, clicontext.NArg())
-	for i, name := range clicontext.Args().Slice() {
+	result := make([]interface{}, len(args))
+	for i, name := range args {
 		if name == "host" || name == "none" {
 			return errors.Errorf("pseudo network %q cannot be inspected", name)
 		}
@@ -78,7 +88,11 @@ func networkInspectAction(clicontext *cli.Context) error {
 			NerdctlLabels: l.NerdctlLabels,
 			File:          l.File,
 		}
-		switch mode := clicontext.String("mode"); mode {
+		mode, err := cmd.Flags().GetString("mode")
+		if err != nil {
+			return err
+		}
+		switch mode {
 		case "native":
 			result[i] = r
 		case "dockercompat":
@@ -95,28 +109,12 @@ func networkInspectAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(clicontext.App.Writer, string(b))
+	fmt.Fprintln(cmd.OutOrStdout(), string(b))
 	return nil
 }
 
-func networkInspectBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring {
-		defaultBashComplete(clicontext)
-		return
-	}
-	if coco.flagTakesValue {
-		w := clicontext.App.Writer
-		switch coco.flagName {
-		case "mode":
-			fmt.Fprintln(w, "dockercompat")
-			fmt.Fprintln(w, "native")
-			return
-		}
-		defaultBashComplete(clicontext)
-		return
-	}
+func networkInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show network names, including "bridge"
 	exclude := []string{"host", "none"}
-	bashCompleteNetworkNames(clicontext, exclude)
+	return shellCompleteNetworkNames(cmd, exclude)
 }

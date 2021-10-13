@@ -25,35 +25,37 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var namespaceCommand = &cli.Command{
-	Name:        "namespace",
-	Usage:       "Manage containerd namespaces",
-	Description: "Unrelated to Linux namespaces and Kubernetes namespaces",
-	Category:    CategoryManagement,
-	Subcommands: []*cli.Command{
-		namespaceLsCommand,
-	},
+func newNamespaceCommand() *cobra.Command {
+	namespaceCommand := &cobra.Command{
+		Category:      CategoryManagement,
+		Use:           "namespace",
+		Short:         "Manage containerd namespaces",
+		Long:          "Unrelated to Linux namespaces and Kubernetes namespaces",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	namespaceCommand.AddCommand(newNamespaceLsCommand())
+	return namespaceCommand
 }
 
-var namespaceLsCommand = &cli.Command{
-	Name:    "ls",
-	Aliases: []string{"list"},
-	Usage:   "List containerd namespaces",
-	Action:  namespaceLsAction,
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "quiet",
-			Aliases: []string{"q"},
-			Usage:   "Only display namespace names",
-		},
-	},
+func newNamespaceLsCommand() *cobra.Command {
+	namespaceLsCommand := &cobra.Command{
+		Use:           "ls",
+		Aliases:       []string{"list"},
+		Short:         "List containerd namespaces",
+		RunE:          namespaceLsAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	namespaceLsCommand.Flags().BoolP("quiet", "q", false, "Only display names")
+	return namespaceLsCommand
 }
 
-func namespaceLsAction(clicontext *cli.Context) error {
-	client, ctx, cancel, err := newClient(clicontext)
+func namespaceLsAction(cmd *cobra.Command, args []string) error {
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -64,19 +66,23 @@ func namespaceLsAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if clicontext.Bool("q") {
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return err
+	}
+	if quiet {
 		for _, ns := range nsList {
-			fmt.Fprintln(clicontext.App.Writer, ns)
+			fmt.Fprintln(cmd.OutOrStdout(), ns)
 		}
 		return nil
 	}
 
-	dataStore, err := getDataStore(clicontext)
+	dataStore, err := getDataStore(cmd)
 	if err != nil {
 		return err
 	}
 
-	w := tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
+	w := tabwriter.NewWriter(cmd.OutOrStdout(), 4, 8, 4, ' ', 0)
 	// no "NETWORKS", because networks are global objects
 	fmt.Fprintln(w, "NAME\tCONTAINERS\tIMAGES\tVOLUMES")
 	for _, ns := range nsList {

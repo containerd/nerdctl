@@ -25,12 +25,17 @@ import (
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-func generateUlimitsOpts(clicontext *cli.Context) ([]oci.SpecOpts, error) {
+func generateUlimitsOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
-	if ulimits := strutil.DedupeStrSlice(clicontext.StringSlice("ulimit")); len(ulimits) > 0 {
+	ulimits, err := cmd.Flags().GetStringSlice("ulimit")
+	if err != nil {
+		return nil, err
+	}
+	ulimits = strutil.DedupeStrSlice(ulimits)
+	if len(ulimits) > 0 {
 		var rlimits []specs.POSIXRlimit
 		for _, ulimit := range ulimits {
 			l, err := units.ParseUlimit(ulimit)

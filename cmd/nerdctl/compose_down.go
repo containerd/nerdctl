@@ -18,35 +18,39 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/composer"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var composeDownCommand = &cli.Command{
-	Name:   "down",
-	Usage:  "Remove containers and associated resources",
-	Action: composeDownAction,
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "volumes",
-			Aliases: []string{"v"},
-			Usage:   "Remove named volumes declared in the `volumes` section of the Compose file and anonymous volumes attached to containers.",
-		},
-	},
+func newComposeDownCommand() *cobra.Command {
+	var composeDownCommand = &cobra.Command{
+		Use:           "down",
+		Short:         "Remove containers and associated resources",
+		Args:          cobra.NoArgs,
+		RunE:          composeDownAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	composeDownCommand.Flags().BoolP("volumes", "v", false, "Remove named volumes declared in the `volumes` section of the Compose file and anonymous volumes attached to containers.")
+	return composeDownCommand
 }
 
-func composeDownAction(clicontext *cli.Context) error {
-	client, ctx, cancel, err := newClient(clicontext)
+func composeDownAction(cmd *cobra.Command, args []string) error {
+	volumes, err := cmd.Flags().GetBool("volumes")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	c, err := getComposer(clicontext, client)
+	c, err := getComposer(cmd, client)
 	if err != nil {
 		return err
 	}
 	downOpts := composer.DownOptions{
-		RemoveVolumes: clicontext.Bool("v"),
+		RemoveVolumes: volumes,
 	}
 	return c.Down(ctx, downOpts)
 }

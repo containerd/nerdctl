@@ -98,3 +98,11 @@ func TrimStrSliceRight(base, extra []string) []string {
 	}
 	return base
 }
+
+func ReverseStrSlice(in []string) []string {
+	out := make([]string, len(in))
+	for i, v := range in {
+		out[len(in)-i-1] = v
+	}
+	return out
+}

@@ -17,40 +17,62 @@
 package main
 
 import (
+	"context"
+
 	"github.com/containerd/containerd/errdefs"
 	refdocker "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var tagCommand = &cli.Command{
-	Name:         "tag",
-	Usage:        "Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE",
-	ArgsUsage:    "SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]",
-	Action:       tagAction,
-	BashComplete: tagBashComplete,
+func newTagCommand() *cobra.Command {
+	var tagCommand = &cobra.Command{
+		Use:               "tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]",
+		Short:             "Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE",
+		Args:              cobra.ExactArgs(2),
+		RunE:              tagAction,
+		ValidArgsFunction: tagShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	return tagCommand
 }
 
-func tagAction(clicontext *cli.Context) error {
-	if clicontext.NArg() != 2 {
+func tagAction(cmd *cobra.Command, args []string) error {
+	if len(args) != 2 {
 		return errors.Errorf("requires exactly 2 arguments")
 	}
 
-	src, err := refdocker.ParseDockerRef(clicontext.Args().Get(0))
-	if err != nil {
-		return err
-	}
-
-	target, err := refdocker.ParseDockerRef(clicontext.Args().Get(1))
-	if err != nil {
-		return err
-	}
-
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
 	defer cancel()
+
+	imageService := client.ImageService()
+	var srcName string
+	imagewalker := &imagewalker.ImageWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+			if srcName == "" {
+				srcName = found.Image.Name
+			}
+			return nil
+		},
+	}
+	matchCount, err := imagewalker.Walk(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	if matchCount < 1 {
+		return errors.Errorf("%s: not found", args[0])
+	}
+
+	target, err := refdocker.ParseDockerRef(args[1])
+	if err != nil {
+		return err
+	}
 
 	ctx, done, err := client.WithLease(ctx)
 	if err != nil {
@@ -58,8 +80,7 @@ func tagAction(clicontext *cli.Context) error {
 	}
 	defer done(ctx)
 
-	imageService := client.ImageService()
-	image, err := imageService.Get(ctx, src.String())
+	image, err := imageService.Get(ctx, srcName)
 	if err != nil {
 		return err
 	}
@@ -79,12 +100,11 @@ func tagAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func tagBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
+func tagShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) < 2 {
+		// show image names
+		return shellCompleteImageNames(cmd)
+	} else {
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	// show image names
-	bashCompleteImageNames(clicontext)
 }

@@ -58,244 +58,153 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var runCommand = &cli.Command{
-	Name:         "run",
-	Usage:        "Run a command in a new container",
-	Action:       runAction,
-	BashComplete: runBashComplete,
-	HideHelp:     true, // built-in "-h" help conflicts with the short form of `--hostname`
-	Description: func() string {
-		var description string
-		switch runtime.GOOS {
-		case "windows":
-			description += "WARNING: `nerdctl run` is experimental on Windows and currently broken (https://github.com/containerd/nerdctl/issues/28)"
-		case "freebsd":
-			description += "WARNING: `nerdctl run` is experimental on FreeBSD and currently requires `--net=none` (https://github.com/containerd/nerdctl/blob/master/docs/freebsd.md)"
-		}
-		return description
-	}(),
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name: "help",
-			// No "-h" alias for "--help", because "-h" for "--hostname".
-			Usage: "show help",
-		},
-		&cli.BoolFlag{
-			Name:    "tty",
-			Aliases: []string{"t"},
-			Usage:   "(Currently -t needs to correspond to -i)",
-		},
-		&cli.BoolFlag{
-			Name:    "interactive",
-			Aliases: []string{"i"},
-			Usage:   "Keep STDIN open even if not attached",
-		},
-		&cli.BoolFlag{
-			Name:    "detach",
-			Aliases: []string{"d"},
-			Usage:   "Run container in background and print container ID",
-		},
-		&cli.StringFlag{
-			Name:  "restart",
-			Usage: "Restart policy to apply when a container exits (implemented values: \"no\"|\"always\")",
-			Value: "no",
-		},
-		&cli.BoolFlag{
-			Name:  "rm",
-			Usage: "Automatically remove the container when it exits",
-		},
-		&cli.StringFlag{
-			Name:  "pull",
-			Usage: "Pull image before running (\"always\"|\"missing\"|\"never\")",
-			Value: "missing",
-		},
-		// network flags
-		&cli.StringSliceFlag{
-			Name:    "network",
-			Aliases: []string{"net"},
-			Usage:   "Connect a container to a network (\"bridge\"|\"host\"|\"none\")",
-			Value:   cli.NewStringSlice(netutil.DefaultNetworkName),
-		},
-		&cli.StringSliceFlag{
-			Name:  "dns",
-			Usage: "Set custom DNS servers",
-		},
-		&cli.StringSliceFlag{
-			Name:    "publish",
-			Aliases: []string{"p"},
-			Usage:   "Publish a container's port(s) to the host",
-		},
-		&cli.StringFlag{
-			Name:    "hostname",
-			Aliases: []string{"h"},
-			Usage:   "Container host name",
-		},
-		// cgroup flags
-		&cli.Float64Flag{
-			Name:  "cpus",
-			Usage: "Number of CPUs",
-		},
-		&cli.StringFlag{
-			Name:    "memory",
-			Aliases: []string{"m"},
-			Usage:   "Memory limit",
-		},
-		// Enable host pid namespace
-		&cli.StringFlag{
-			Name:  "pid",
-			Usage: "PID namespace to use",
-		},
-		&cli.IntFlag{
-			Name:  "pids-limit",
-			Usage: "Tune container pids limit (set -1 for unlimited)",
-			Value: -1,
-		},
-		&cli.StringFlag{
-			Name:  "cgroupns",
-			Usage: "Cgroup namespace to use, the default depends on the cgroup version (\"host\"|\"private\")",
-			Value: defaults.CgroupnsMode(),
-		},
-		&cli.StringFlag{
-			Name:  "cpuset-cpus",
-			Usage: "CPUs in which to allow execution (0-3, 0,1)",
-		},
-		&cli.IntFlag{
-			Name:  "cpu-shares",
-			Usage: "CPU shares (relative weight)",
-		},
-		&cli.StringSliceFlag{
-			Name:  "device",
-			Usage: "Add a host device to the container",
-		},
-		// user flags
-		&cli.StringFlag{
-			Name:    "user",
-			Aliases: []string{"u"},
-			Usage:   "Username or UID (format: <name|uid>[:<group|gid>])",
-		},
-		// security flags
-		&cli.StringSliceFlag{
-			Name:  "security-opt",
-			Usage: "Security options",
-		},
-		&cli.StringSliceFlag{
-			Name:  "cap-add",
-			Usage: "Add Linux capabilities",
-		},
-		&cli.StringSliceFlag{
-			Name:  "cap-drop",
-			Usage: "Drop Linux capabilities",
-		},
-		&cli.BoolFlag{
-			Name:  "privileged",
-			Usage: "Give extended privileges to this container",
-		},
-		// runtime flags
-		&cli.StringFlag{
-			Name:  "runtime",
-			Usage: "Runtime to use for this container, e.g. \"crun\", or \"io.containerd.runsc.v1\"",
-			Value: defaults.Runtime,
-		},
-		&cli.StringSliceFlag{
-			Name:  "sysctl",
-			Usage: "Sysctl options",
-		},
-		&cli.StringSliceFlag{
-			Name:  "gpus",
-			Usage: "GPU devices to add to the container ('all' to pass all GPUs)",
-		},
-		// volume flags
-		&cli.StringSliceFlag{
-			Name:    "volume",
-			Aliases: []string{"v"},
-			Usage:   "Bind mount a volume",
-		},
-		// rootfs flags
-		&cli.BoolFlag{
-			Name:  "read-only",
-			Usage: "Mount the container's root filesystem as read only",
-		},
-		// rootfs flags (from Podman)
-		&cli.BoolFlag{
-			Name:  "rootfs",
-			Usage: "The first argument is not an image but the rootfs to the exploded container",
-		},
-		// env flags
-		&cli.StringFlag{
-			Name:  "entrypoint",
-			Usage: "Overwrite the default ENTRYPOINT of the image",
-		},
-		&cli.StringFlag{
-			Name:    "workdir",
-			Aliases: []string{"w"},
-			Usage:   "Working directory inside the container",
-		},
-		&cli.StringSliceFlag{
-			Name:    "env",
-			Aliases: []string{"e"},
-			Usage:   "Set environment variables",
-		},
-		&cli.StringSliceFlag{
-			Name:  "add-host",
-			Usage: "Add a custom host-to-IP mapping (host:ip)",
-		},
-		&cli.StringSliceFlag{
-			Name:  "env-file",
-			Usage: "Set environment variables from file",
-		},
-		// metadata flags
-		&cli.StringFlag{
-			Name:  "name",
-			Usage: "Assign a name to the container",
-		},
-		&cli.StringSliceFlag{
-			Name:    "label",
-			Aliases: []string{"l"},
-			Usage:   "Set meta data on a container",
-		},
-		&cli.StringSliceFlag{
-			Name:  "label-file",
-			Usage: "Read in a line delimited file of labels",
-		},
-		&cli.StringFlag{
-			Name:  "cidfile",
-			Usage: "Write the container ID to the file",
-		},
-		// shared memory flags
-		&cli.StringFlag{
-			Name:  "shm-size",
-			Usage: "Size of /dev/shm",
-		},
-		&cli.StringFlag{
-			Name:  "pidfile",
-			Usage: "file path to write the task's pid",
-		},
-		&cli.StringSliceFlag{
-			Name:  "ulimit",
-			Usage: "Ulimit options",
-		},
-	},
+func newRunCommand() *cobra.Command {
+	shortHelp := "Run a command in a new container"
+	longHelp := shortHelp
+	switch runtime.GOOS {
+	case "windows":
+		longHelp += "\n"
+		longHelp += "WARNING: `nerdctl run` is experimental on Windows and currently broken (https://github.com/containerd/nerdctl/issues/28)"
+	case "freebsd":
+		longHelp += "\n"
+		longHelp += "WARNING: `nerdctl run` is experimental on FreeBSD and currently requires `--net=none` (https://github.com/containerd/nerdctl/blob/master/docs/freebsd.md)"
+	}
+	var runCommand = &cobra.Command{
+		Use:               "run IMAGE [COMMAND] [ARG...]",
+		Args:              cobra.MinimumNArgs(1),
+		Short:             shortHelp,
+		Long:              longHelp,
+		RunE:              runAction,
+		ValidArgsFunction: runShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+
+	runCommand.Flags().SetInterspersed(false)
+
+	// No "-h" alias for "--help", because "-h" for "--hostname".
+	runCommand.Flags().Bool("help", false, "show help")
+
+	runCommand.Flags().BoolP("tty", "t", false, "(Currently -t needs to correspond to -i)")
+	runCommand.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
+	runCommand.Flags().BoolP("detach", "d", false, "Run container in background and print container ID")
+	runCommand.Flags().String("restart", "no", `Restart policy to apply when a container exits (implemented values: "no"|"always")`)
+	runCommand.RegisterFlagCompletionFunc("restart", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"no", "always"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	runCommand.Flags().Bool("rm", false, "Automatically remove the container when it exits")
+	runCommand.Flags().String("pull", "missing", `Pull image before running ("always"|"missing"|"never")`)
+	runCommand.RegisterFlagCompletionFunc("pull", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"always", "missing", "never"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	// #region network flags
+	runCommand.Flags().StringSlice("network", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none")`)
+	runCommand.RegisterFlagCompletionFunc("network", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return shellCompleteNetworkNames(cmd, []string{})
+	})
+	runCommand.Flags().StringSlice("net", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none")`)
+	runCommand.RegisterFlagCompletionFunc("net", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return shellCompleteNetworkNames(cmd, []string{})
+	})
+	runCommand.Flags().StringSlice("dns", nil, "Set custom DNS servers")
+	runCommand.Flags().StringSliceP("publish", "p", nil, "Publish a container's port(s) to the host")
+	runCommand.Flags().StringP("hostname", "h", "", "Container host name")
+	// #endregion
+
+	// #region cgroup flags
+	runCommand.Flags().Float64("cpus", 0.0, "Number of CPUs")
+	runCommand.Flags().StringP("memory", "m", "", "Memory limit")
+	// #endregion
+
+	// Enable host pid namespace
+	runCommand.Flags().String("pid", "", "PID namespace to use")
+	runCommand.Flags().Int("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
+	runCommand.Flags().String("cgroupns", defaults.CgroupnsMode(), `Cgroup namespace to use, the default depends on the cgroup version ("host"|"private")`)
+	runCommand.RegisterFlagCompletionFunc("cgroupns", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"host", "private"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	runCommand.Flags().String("cpuset-cpus", "", "CPUs in which to allow execution (0-3, 0,1)")
+	runCommand.Flags().Int("cpu-shares", 0, "CPU shares (relative weight)")
+	runCommand.Flags().StringSlice("device", nil, "Add a host device to the container")
+	// #endregion
+
+	// user flags
+	runCommand.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
+
+	// #region security flags
+	runCommand.Flags().StringSlice("security-opt", []string{}, "Security options")
+	runCommand.RegisterFlagCompletionFunc("security-opt", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"seccomp=", "apparmor=" + defaults.AppArmorProfileName, "no-new-privileges"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	runCommand.Flags().StringSlice("cap-add", []string{}, "Add Linux capabilities")
+	runCommand.RegisterFlagCompletionFunc("cap-add", capShellComplete)
+	runCommand.Flags().StringSlice("cap-drop", []string{}, "Drop Linux capabilities")
+	runCommand.RegisterFlagCompletionFunc("cap-drop", capShellComplete)
+	runCommand.Flags().Bool("privileged", false, "Give extended privileges to this container")
+	// #endregion
+
+	// #region runtime flags
+	runCommand.Flags().String("runtime", defaults.Runtime, "Runtime to use for this container, e.g. \"crun\", or \"io.containerd.runsc.v1\"")
+	runCommand.Flags().StringSlice("sysctl", nil, "Sysctl options")
+	runCommand.Flags().StringSlice("gpus", nil, "GPU devices to add to the container ('all' to pass all GPUs)")
+	runCommand.Flags().StringSliceP("volume", "v", nil, "Bind mount a volume")
+	// #endregion
+
+	// rootfs flags
+	runCommand.Flags().Bool("read-only", false, "Mount the container's root filesystem as read only")
+	// rootfs flags (from Podman)
+	runCommand.Flags().String("rootfs", "", "Custom the rootfs to the exploded container")
+
+	// #region env flags
+	runCommand.Flags().String("entrypoint", "", "Overwrite the default ENTRYPOINT of the image")
+	runCommand.Flags().StringP("workdir", "w", "", "Working directory inside the container")
+	runCommand.Flags().StringSliceP("env", "e", nil, "Set environment variables")
+	runCommand.Flags().StringSlice("add-host", nil, "Add a custom host-to-IP mapping (host:ip)")
+	runCommand.Flags().StringSlice("env-file", nil, "Set environment variables from file")
+
+	// #region metadata flags
+	runCommand.Flags().String("name", "", "Assign a name to the container")
+	runCommand.Flags().StringSliceP("label", "l", nil, "Set metadata on container")
+	runCommand.Flags().StringSlice("label-file", nil, "Set metadata on container from file")
+	runCommand.Flags().String("cidfile", "", "Write the container ID to the file")
+	// #endregion
+
+	// shared memory flags
+	runCommand.Flags().String("shm-size", "", "Size of /dev/shm")
+
+	runCommand.Flags().String("pidfile", "", "file path to write the task's pid")
+	runCommand.Flags().StringSlice("ulimit", nil, "Ulimit options")
+
+	return runCommand
 }
 
 // runAction is heavily based on ctr implementation:
 // https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/run/run.go
 //
 // FIXME: split to smaller functions
-func runAction(clicontext *cli.Context) error {
-	if clicontext.Bool("help") {
-		return cli.ShowCommandHelp(clicontext, "run")
+func runAction(cmd *cobra.Command, args []string) error {
+	// simulate the behavior of double dash
+	newArg := []string{}
+	if len(args) >= 2 && args[1] == "--" {
+		newArg = append(newArg, args[:1]...)
+		newArg = append(newArg, args[2:]...)
+		args = newArg
 	}
 
-	if clicontext.NArg() < 1 {
+	if len(args) < 1 {
 		return errors.New("image name needs to be specified")
 	}
 
-	ns := clicontext.String("namespace")
+	ns, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -307,18 +216,22 @@ func runAction(clicontext *cli.Context) error {
 		id    = idgen.GenerateID()
 	)
 
-	if cidfile := clicontext.String("cidfile"); cidfile != "" {
+	cidfile, err := cmd.Flags().GetString("cidfile")
+	if err != nil {
+		return err
+	}
+	if cidfile != "" {
 		if err := writeCIDFile(cidfile, id); err != nil {
 			return err
 		}
 	}
 
-	dataStore, err := getDataStore(clicontext)
+	dataStore, err := getDataStore(cmd)
 	if err != nil {
 		return err
 	}
 
-	stateDir, err := getContainerStateDirPath(clicontext, dataStore, id)
+	stateDir, err := getContainerStateDirPath(cmd, dataStore, id)
 	if err != nil {
 		return err
 	}
@@ -339,18 +252,26 @@ func runAction(clicontext *cli.Context) error {
 			}))
 	}
 
-	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, clicontext, id)
+	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, cmd, args, id)
 	if err != nil {
 		return err
 	}
 	opts = append(opts, rootfsOpts...)
 	cOpts = append(cOpts, rootfsCOpts...)
 
-	if wd := clicontext.String("workdir"); wd != "" {
+	wd, err := cmd.Flags().GetString("workdir")
+	if err != nil {
+		return err
+	}
+	if wd != "" {
 		opts = append(opts, oci.WithProcessCwd(wd))
 	}
 
-	if envFiles := strutil.DedupeStrSlice(clicontext.StringSlice("env-file")); len(envFiles) > 0 {
+	envFile, err := cmd.Flags().GetStringSlice("env-file")
+	if err != nil {
+		return err
+	}
+	if envFiles := strutil.DedupeStrSlice(envFile); len(envFiles) > 0 {
 		env, err := parseEnvVars(envFiles)
 		if err != nil {
 			return err
@@ -358,13 +279,26 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, oci.WithEnv(env))
 	}
 
-	if env := strutil.DedupeStrSlice(clicontext.StringSlice("env")); len(env) > 0 {
+	env, err := cmd.Flags().GetStringSlice("env")
+	if err != nil {
+		return err
+	}
+	if env := strutil.DedupeStrSlice(env); len(env) > 0 {
 		opts = append(opts, oci.WithEnv(env))
 	}
 
-	flagI := clicontext.Bool("i")
-	flagT := clicontext.Bool("t")
-	flagD := clicontext.Bool("d")
+	flagI, err := cmd.Flags().GetBool("interactive")
+	if err != nil {
+		return err
+	}
+	flagT, err := cmd.Flags().GetBool("tty")
+	if err != nil {
+		return err
+	}
+	flagD, err := cmd.Flags().GetBool("detach")
+	if err != nil {
+		return err
+	}
 
 	if flagI {
 		if flagD {
@@ -382,7 +316,7 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, oci.WithTTY)
 	}
 
-	mountOpts, anonVolumes, err := generateMountOpts(clicontext, ctx, client, ensuredImage)
+	mountOpts, anonVolumes, err := generateMountOpts(cmd, ctx, client, ensuredImage)
 	if err != nil {
 		return err
 	} else {
@@ -398,7 +332,11 @@ func runAction(clicontext *cli.Context) error {
 		}
 	}
 
-	restartOpts, err := generateRestartOpts(clicontext.String("restart"), logURI)
+	restartValue, err := cmd.Flags().GetString("restart")
+	if err != nil {
+		return err
+	}
+	restartOpts, err := generateRestartOpts(restartValue, logURI)
 	if err != nil {
 		return err
 	}
@@ -407,8 +345,14 @@ func runAction(clicontext *cli.Context) error {
 	// DedupeStrSlice is required as a workaround for urfave/cli bug
 	// https://github.com/containerd/nerdctl/issues/108
 	// https://github.com/urfave/cli/issues/1254
-	portSlice := strutil.DedupeStrSlice(clicontext.StringSlice("p"))
-	netSlice := strutil.DedupeStrSlice(clicontext.StringSlice("net"))
+	portSlice, err := cmd.Flags().GetStringSlice("publish")
+	if err != nil {
+		return err
+	}
+	netSlice, err := getNetworkSlice(cmd)
+	if err != nil {
+		return err
+	}
 
 	ports := make([]gocni.PortMapping, 0)
 	netType, err := nettype.Detect(netSlice)
@@ -424,9 +368,17 @@ func runAction(clicontext *cli.Context) error {
 	case nettype.CNI:
 		// We only verify flags and generate resolv.conf here.
 		// The actual network is configured in the oci hook.
+		cniPath, err := cmd.Flags().GetString("cni-path")
+		if err != nil {
+			return err
+		}
+		cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+		if err != nil {
+			return err
+		}
 		e := &netutil.CNIEnv{
-			Path:        clicontext.String("cni-path"),
-			NetconfPath: clicontext.String("cni-netconfpath"),
+			Path:        cniPath,
+			NetconfPath: cniNetconfpath,
 		}
 		ll, err := netutil.ConfigLists(e)
 		if err != nil {
@@ -446,6 +398,10 @@ func runAction(clicontext *cli.Context) error {
 		}
 
 		resolvConfPath := filepath.Join(stateDir, "resolv.conf")
+		dnsValue, err := cmd.Flags().GetStringSlice("dns")
+		if err != nil {
+			return err
+		}
 		conf, err := resolvconf.Get()
 		if err != nil {
 			return err
@@ -463,7 +419,7 @@ func runAction(clicontext *cli.Context) error {
 		}
 		searchDomains := resolvconf.GetSearchDomains(conf.Content)
 		dnsOptions := resolvconf.GetOptions(conf.Content)
-		nameServers := strutil.DedupeStrSlice(clicontext.StringSlice("dns"))
+		nameServers := strutil.DedupeStrSlice(dnsValue)
 		if len(nameServers) == 0 {
 			nameServers = resolvconf.GetNameservers(conf.Content, resolvconf.IPv4)
 		}
@@ -488,7 +444,11 @@ func runAction(clicontext *cli.Context) error {
 	}
 
 	hostname := id[0:12]
-	if customHostname := clicontext.String("hostname"); customHostname != "" {
+	customHostname, err := cmd.Flags().GetString("hostname")
+	if err != nil {
+		return err
+	}
+	if customHostname != "" {
 		hostname = customHostname
 	}
 	opts = append(opts, oci.WithHostname(hostname))
@@ -501,44 +461,64 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, withCustomEtcHostname(hostnamePath))
 	}
 
-	hookOpt, err := withNerdctlOCIHook(clicontext, id, stateDir)
+	hookOpt, err := withNerdctlOCIHook(cmd, id, stateDir)
 	if err != nil {
 		return err
 	}
 	opts = append(opts, hookOpt)
 
-	if cgOpts, err := generateCgroupOpts(clicontext, id); err != nil {
+	if cgOpts, err := generateCgroupOpts(cmd, id); err != nil {
 		return err
 	} else {
 		opts = append(opts, cgOpts...)
 	}
 
-	if uOpts, err := generateUserOpts(clicontext); err != nil {
+	if uOpts, err := generateUserOpts(cmd); err != nil {
 		return err
 	} else {
 		opts = append(opts, uOpts...)
 	}
 
-	securityOptsMaps := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(clicontext.StringSlice("security-opt")))
+	securityOpt, err := cmd.Flags().GetStringSlice("security-opt")
+	if err != nil {
+		return err
+	}
+	securityOptsMaps := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(securityOpt))
 	if secOpts, err := generateSecurityOpts(securityOptsMaps); err != nil {
 		return err
 	} else {
 		opts = append(opts, secOpts...)
 	}
 
+	capAdd, err := cmd.Flags().GetStringSlice("cap-add")
+	if err != nil {
+		return err
+	}
+	capDrop, err := cmd.Flags().GetStringSlice("cap-drop")
+	if err != nil {
+		return err
+	}
 	if capOpts, err := generateCapOpts(
-		strutil.DedupeStrSlice(clicontext.StringSlice("cap-add")),
-		strutil.DedupeStrSlice(clicontext.StringSlice("cap-drop"))); err != nil {
+		strutil.DedupeStrSlice(capAdd),
+		strutil.DedupeStrSlice(capDrop)); err != nil {
 		return err
 	} else {
 		opts = append(opts, capOpts...)
 	}
 
-	if clicontext.Bool("privileged") {
+	privileged, err := cmd.Flags().GetBool("privileged")
+	if err != nil {
+		return err
+	}
+	if privileged {
 		opts = append(opts, privilegedOpts...)
 	}
 
-	if shmSize := clicontext.String("shm-size"); len(shmSize) > 0 {
+	shmSize, err := cmd.Flags().GetString("shm-size")
+	if err != nil {
+		return err
+	}
+	if len(shmSize) > 0 {
 		shmBytes, err := units.RAMInBytes(shmSize)
 		if err != nil {
 			return err
@@ -546,7 +526,11 @@ func runAction(clicontext *cli.Context) error {
 		opts = append(opts, oci.WithDevShmSize(shmBytes/1024))
 	}
 
-	pidNs := strings.ToLower(clicontext.String("pid"))
+	pidNs, err := cmd.Flags().GetString("pid")
+	if err != nil {
+		return err
+	}
+	pidNs = strings.ToLower(pidNs)
 	if pidNs != "" {
 		if pidNs != "host" {
 			return fmt.Errorf("Invalid pid namespace. Set --pid=host to enable host pid namespace.")
@@ -558,26 +542,29 @@ func runAction(clicontext *cli.Context) error {
 		}
 	}
 
-	ulimitOpts, err := generateUlimitsOpts(clicontext)
+	ulimitOpts, err := generateUlimitsOpts(cmd)
 	if err != nil {
 		return err
 	}
 	opts = append(opts, ulimitOpts...)
 
-	rtCOpts, err := generateRuntimeCOpts(clicontext)
+	rtCOpts, err := generateRuntimeCOpts(cmd)
 	if err != nil {
 		return err
 	}
 	cOpts = append(cOpts, rtCOpts...)
 
-	lCOpts, err := withContainerLabels(clicontext)
+	lCOpts, err := withContainerLabels(cmd)
 	if err != nil {
 		return err
 	}
 	cOpts = append(cOpts, lCOpts...)
 
 	var containerNameStore namestore.NameStore
-	name := clicontext.String("name")
+	name, err := cmd.Flags().GetString("name")
+	if err != nil {
+		return err
+	}
 	if name != "" {
 		containerNameStore, err = namestore.New(dataStore, ns)
 		if err != nil {
@@ -589,12 +576,18 @@ func runAction(clicontext *cli.Context) error {
 	}
 
 	var pidFile string
-	if clicontext.IsSet("pidfile") {
-		pidFile = clicontext.String("pidfile")
+	if cmd.Flags().Lookup("pidfile").Changed {
+		pidFile, err = cmd.Flags().GetString("pidfile")
+		if err != nil {
+			return err
+		}
 	}
 
-	extraHosts := strutil.DedupeStrSlice(clicontext.StringSlice("add-host"))
-
+	extraHosts, err := cmd.Flags().GetStringSlice("add-host")
+	if err != nil {
+		return err
+	}
+	extraHosts = strutil.DedupeStrSlice(extraHosts)
 	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ports, logURI, anonVolumes, pidFile)
 	if err != nil {
 		return err
@@ -603,9 +596,17 @@ func runAction(clicontext *cli.Context) error {
 
 	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
 
-	opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(clicontext.StringSlice("sysctl"))))
+	sysctl, err := cmd.Flags().GetStringSlice("sysctl")
+	if err != nil {
+		return err
+	}
+	opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(sysctl)))
 
-	gpuOpt, err := parseGPUOpts(clicontext.StringSlice("gpus"))
+	gpus, err := cmd.Flags().GetStringSlice("gpus")
+	if err != nil {
+		return err
+	}
+	gpuOpt, err := parseGPUOpts(gpus)
 	if err != nil {
 		return err
 	}
@@ -615,17 +616,22 @@ func runAction(clicontext *cli.Context) error {
 	spec := containerd.WithSpec(&s, opts...)
 	cOpts = append(cOpts, spec)
 
+	logrus.Debugf("final cOpts is %v", cOpts)
 	container, err := client.NewContainer(ctx, id, cOpts...)
 	if err != nil {
 		return err
 	}
-	if clicontext.Bool("rm") {
+	rm, err := cmd.Flags().GetBool("rm")
+	if err != nil {
+		return err
+	}
+	if rm {
 		if flagD {
 			return errors.New("flag -d and --rm cannot be specified together")
 		}
 		defer func() {
 			const removeAnonVolumes = true
-			if removeErr := removeContainer(clicontext, ctx, client, ns, id, id, true, dataStore, stateDir, containerNameStore, removeAnonVolumes); removeErr != nil {
+			if removeErr := removeContainer(cmd, ctx, client, ns, id, id, true, dataStore, stateDir, containerNameStore, removeAnonVolumes); removeErr != nil {
 				logrus.WithError(removeErr).Warnf("failed to remove container %s", id)
 			}
 		}()
@@ -647,7 +653,7 @@ func runAction(clicontext *cli.Context) error {
 	var statusC <-chan containerd.ExitStatus
 	if !flagD {
 		defer func() {
-			if clicontext.Bool("rm") {
+			if rm {
 				if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
 					logrus.Error(taskDeleteErr)
 				}
@@ -664,7 +670,7 @@ func runAction(clicontext *cli.Context) error {
 	}
 
 	if flagD {
-		fmt.Fprintf(clicontext.App.Writer, "%s\n", id)
+		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", id)
 		return nil
 	}
 	if flagT {
@@ -681,20 +687,67 @@ func runAction(clicontext *cli.Context) error {
 		return err
 	}
 	if code != 0 {
-		return cli.NewExitError("", int(code))
+		return ExitCodeError{
+			exitCode: int(code),
+		}
 	}
 	return nil
 }
 
-func generateRootfsOpts(ctx context.Context, client *containerd.Client, clicontext *cli.Context, id string) ([]oci.SpecOpts, []containerd.NewContainerOpts, *imgutil.EnsuredImage, error) {
-	imageless := clicontext.Bool("rootfs")
+func getNetworkSlice(cmd *cobra.Command) ([]string, error) {
+	var netSlice = []string{}
+	var networkSet = false
+	if cmd.Flags().Lookup("network").Changed {
+		network, err := cmd.Flags().GetStringSlice("network")
+		if err != nil {
+			return nil, err
+		}
+		netSlice = append(netSlice, network...)
+		networkSet = true
+	}
+	if cmd.Flags().Lookup("net").Changed {
+		net, err := cmd.Flags().GetStringSlice("net")
+		if err != nil {
+			return nil, err
+		}
+		netSlice = append(netSlice, net...)
+		networkSet = true
+	}
+
+	if !networkSet {
+		network, err := cmd.Flags().GetStringSlice("network")
+		if err != nil {
+			return nil, err
+		}
+		netSlice = append(netSlice, network...)
+	}
+	return netSlice, nil
+}
+
+func generateRootfsOpts(ctx context.Context, client *containerd.Client, cmd *cobra.Command, args []string, id string) ([]oci.SpecOpts, []containerd.NewContainerOpts, *imgutil.EnsuredImage, error) {
 	var (
 		ensured *imgutil.EnsuredImage
 		err     error
 	)
-	if !imageless {
-		ensured, err = imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(),
-			clicontext.String("pull"), clicontext.Bool("insecure-registry"))
+	rootfs, err := cmd.Flags().GetString("rootfs")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if rootfs == "" {
+		snapshotter, err := cmd.Flags().GetString("snapshotter")
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		pull, err := cmd.Flags().GetString("pull")
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		insecureRegistry, err := cmd.Flags().GetBool("insecure-registry")
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		ensured, err = imgutil.EnsureImage(ctx, client, os.Stdout, snapshotter, args[0],
+			pull, insecureRegistry)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -703,7 +756,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cliconte
 		opts  []oci.SpecOpts
 		cOpts []containerd.NewContainerOpts
 	)
-	if !imageless {
+	if rootfs == "" {
 		cOpts = append(cOpts,
 			containerd.WithImage(ensured.Image),
 			containerd.WithSnapshotter(ensured.Snapshotter),
@@ -724,26 +777,30 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cliconte
 			}
 		}
 	} else {
-		absRootfs, err := filepath.Abs(clicontext.Args().First())
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		opts = append(opts, oci.WithRootFSPath(absRootfs), oci.WithDefaultPathEnv)
+		opts = append(opts, oci.WithRootFSPath(rootfs), oci.WithDefaultPathEnv)
 	}
 
 	// NOTE: "--entrypoint" can be set to an empty string, see TestRunEntrypoint* in run_test.go .
-	if !imageless && !clicontext.IsSet("entrypoint") {
-		opts = append(opts, oci.WithImageConfigArgs(ensured.Image, clicontext.Args().Tail()))
+	entrypoint, err := cmd.Flags().GetString("entrypoint")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if rootfs == "" && !cmd.Flag("entrypoint").Changed {
+		opts = append(opts, oci.WithImageConfigArgs(ensured.Image, args[1:]))
 	} else {
-		if !imageless {
+		if rootfs == "" {
 			opts = append(opts, oci.WithImageConfig(ensured.Image))
 		}
 		var processArgs []string
-		if entrypoint := clicontext.String("entrypoint"); entrypoint != "" {
+		if entrypoint != "" {
 			processArgs = append(processArgs, entrypoint)
 		}
-		if clicontext.NArg() > 1 {
-			processArgs = append(processArgs, clicontext.Args().Tail()...)
+		if len(args) > 1 {
+			if rootfs == "" {
+				processArgs = append(processArgs, args[1:]...)
+			} else {
+				processArgs = append(processArgs, args...)
+			}
 		}
 		if len(processArgs) == 0 {
 			// error message is from Podman
@@ -752,7 +809,11 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cliconte
 		opts = append(opts, oci.WithProcessArgs(processArgs...))
 	}
 
-	if clicontext.Bool("read-only") {
+	readonly, err := cmd.Flags().GetBool("read-only")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if readonly {
 		opts = append(opts, oci.WithRootFSReadonly())
 	}
 	return opts, cOpts, ensured, nil
@@ -835,8 +896,8 @@ func generateLogURI(dataStore string) (*url.URL, error) {
 	return cio.LogURIGenerator("binary", selfExe, args)
 }
 
-func withNerdctlOCIHook(clicontext *cli.Context, id, stateDir string) (oci.SpecOpts, error) {
-	selfExe, f := globalFlags(clicontext)
+func withNerdctlOCIHook(cmd *cobra.Command, id, stateDir string) (oci.SpecOpts, error) {
+	selfExe, f := globalFlags(cmd)
 	args := append([]string{selfExe}, append(f, "internal", "oci-hook")...)
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
 		if s.Hooks == nil {
@@ -874,8 +935,11 @@ func generateRestartOpts(restartFlag, logURI string) ([]containerd.NewContainerO
 	}
 }
 
-func getContainerStateDirPath(clicontext *cli.Context, dataStore, id string) (string, error) {
-	ns := clicontext.String("namespace")
+func getContainerStateDirPath(cmd *cobra.Command, dataStore, id string) (string, error) {
+	ns, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return "", err
+	}
 	if ns == "" {
 		return "", errors.New("namespace is required")
 	}
@@ -885,9 +949,17 @@ func getContainerStateDirPath(clicontext *cli.Context, dataStore, id string) (st
 	return filepath.Join(dataStore, "containers", ns, id), nil
 }
 
-func withContainerLabels(clicontext *cli.Context) ([]containerd.NewContainerOpts, error) {
-	labelsMap := strutil.DedupeStrSlice(clicontext.StringSlice("label"))
-	labelsFilePath := strutil.DedupeStrSlice(clicontext.StringSlice("label-file"))
+func withContainerLabels(cmd *cobra.Command) ([]containerd.NewContainerOpts, error) {
+	labelsMap, err := cmd.Flags().GetStringSlice("label")
+	if err != nil {
+		return nil, err
+	}
+	labelsMap = strutil.DedupeStrSlice(labelsMap)
+	labelsFilePath, err := cmd.Flags().GetStringSlice("label-file")
+	if err != nil {
+		return nil, err
+	}
+	labelsFilePath = strutil.DedupeStrSlice(labelsFilePath)
 	labels, err := opts.ReadKVStrings(labelsFilePath, labelsMap)
 	if err != nil {
 		return nil, err

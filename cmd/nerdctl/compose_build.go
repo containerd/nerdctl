@@ -19,49 +19,55 @@ package main
 import (
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var composeBuildCommand = &cli.Command{
-	Name:   "build",
-	Usage:  "Build or rebuild services",
-	Action: composeBuildAction,
-	Flags: []cli.Flag{
-		&cli.StringSliceFlag{
-			Name:  "build-arg",
-			Usage: "Set build-time variables for services.",
-		},
-		&cli.BoolFlag{
-			Name:  "no-cache",
-			Usage: "Do not use cache when building the image.",
-		},
-		&cli.StringFlag{
-			Name:  "progress",
-			Usage: "Set type of progress output",
-		},
-	},
+func newComposeBuildCommand() *cobra.Command {
+	var composeBuildCommand = &cobra.Command{
+		Use:           "build",
+		Short:         "Build or rebuild services",
+		RunE:          composeBuildAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	composeBuildCommand.Flags().StringSlice("build-arg", nil, "Set build-time variables for services.")
+	composeBuildCommand.Flags().Bool("no-cache", false, "Do not use cache when building the image.")
+	composeBuildCommand.Flags().String("progress", "", "Set type of progress output")
+	return composeBuildCommand
 }
 
-func composeBuildAction(clicontext *cli.Context) error {
-	if clicontext.NArg() != 0 {
+func composeBuildAction(cmd *cobra.Command, args []string) error {
+	if len(args) != 0 {
 		// TODO: support specifying service names as args
-		return errors.Errorf("arguments %v not supported", clicontext.Args())
+		return errors.Errorf("arguments %v not supported", args)
+	}
+	buildArg, err := cmd.Flags().GetStringSlice("build-arg")
+	if err != nil {
+		return err
+	}
+	noCache, err := cmd.Flags().GetBool("no-cache")
+	if err != nil {
+		return err
+	}
+	progress, err := cmd.Flags().GetString("progress")
+	if err != nil {
+		return err
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	c, err := getComposer(clicontext, client)
+	c, err := getComposer(cmd, client)
 	if err != nil {
 		return err
 	}
 	bo := composer.BuildOptions{
-		Args:     clicontext.StringSlice("build-arg"),
-		NoCache:  clicontext.Bool("no-cache"),
-		Progress: clicontext.String("progress"),
+		Args:     buildArg,
+		NoCache:  noCache,
+		Progress: progress,
 	}
 	return c.Build(ctx, bo)
 }

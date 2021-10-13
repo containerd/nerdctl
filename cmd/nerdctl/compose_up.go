@@ -18,50 +18,57 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/composer"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var composeUpCommand = &cli.Command{
-	Name:   "up",
-	Usage:  "Create and start containers",
-	Action: composeUpAction,
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "detach",
-			Aliases: []string{"d"},
-			Usage:   "Detached mode: Run containers in the background",
-		},
-		&cli.BoolFlag{
-			Name:  "no-color",
-			Usage: "Produce monochrome output",
-		},
-		&cli.BoolFlag{
-			Name:  "no-log-prefix",
-			Usage: "Don't print prefix in logs",
-		},
-		&cli.BoolFlag{
-			Name:  "build",
-			Usage: "Build images before starting containers.",
-		},
-	},
+func newComposeUpCommand() *cobra.Command {
+	var composeUpCommand = &cobra.Command{
+		Use:           "up",
+		Short:         "Create and start containers",
+		RunE:          composeUpAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	composeUpCommand.Flags().BoolP("detach", "d", false, "Detached mode: Run containers in the background")
+	composeUpCommand.Flags().Bool("no-color", false, "Produce monochrome output")
+	composeUpCommand.Flags().Bool("no-log-prefix", false, "Don't print prefix in logs")
+	composeUpCommand.Flags().Bool("build", false, "Build images before starting containers.")
+	return composeUpCommand
 }
 
-func composeUpAction(clicontext *cli.Context) error {
-	client, ctx, cancel, err := newClient(clicontext)
+func composeUpAction(cmd *cobra.Command, args []string) error {
+	detach, err := cmd.Flags().GetBool("detach")
+	if err != nil {
+		return err
+	}
+	noColor, err := cmd.Flags().GetBool("no-color")
+	if err != nil {
+		return err
+	}
+	noLogPrefix, err := cmd.Flags().GetBool("no-log-prefix")
+	if err != nil {
+		return err
+	}
+	build, err := cmd.Flags().GetBool("build")
+	if err != nil {
+		return err
+	}
+
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	c, err := getComposer(clicontext, client)
+	c, err := getComposer(cmd, client)
 	if err != nil {
 		return err
 	}
 	uo := composer.UpOptions{
-		Detach:      clicontext.Bool("detach"),
-		NoColor:     clicontext.Bool("no-color"),
-		NoLogPrefix: clicontext.Bool("no-log-prefix"),
-		ForceBuild:  clicontext.Bool("build"),
+		Detach:      detach,
+		NoColor:     noColor,
+		NoLogPrefix: noLogPrefix,
+		ForceBuild:  build,
 	}
 	return c.Up(ctx, uo)
 }

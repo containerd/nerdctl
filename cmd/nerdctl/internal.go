@@ -17,14 +17,21 @@
 package main
 
 import (
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var internalCommand = &cli.Command{
-	Name:   "internal",
-	Usage:  "DO NOT EXECUTE MANUALLY",
-	Hidden: true,
-	Subcommands: []*cli.Command{
-		internalOCIHookCommand,
-	},
+func newInternalCommand() *cobra.Command {
+	var internalCommand = &cobra.Command{
+		Use:           "internal",
+		Short:         "DO NOT EXECUTE MANUALLY",
+		Hidden:        true,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+
+	internalCommand.AddCommand(
+		newInternalOCIHookCommandCommand(),
+	)
+
+	return internalCommand
 }

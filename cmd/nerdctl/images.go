@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"text/tabwriter"
 	"text/template"
@@ -37,47 +39,43 @@ import (
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var imagesCommand = &cli.Command{
-	Name:         "images",
-	Usage:        "List images",
-	Action:       imagesAction,
-	BashComplete: imagesBashComplete,
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "quiet",
-			Aliases: []string{"q"},
-			Usage:   "Only show numeric IDs",
-		},
-		&cli.BoolFlag{
-			Name:  "no-trunc",
-			Usage: "Don't truncate output",
-		},
-		&cli.StringFlag{
-			Name: "format",
-			// Alias "-f" is reserved for "--filter"
-			Usage: "Format the output using the given Go template, e.g, '{{json .}}'",
-		},
-	},
+func newImagesCommand() *cobra.Command {
+	var imagesCommand = &cobra.Command{
+		Use:               "images",
+		Short:             "List images",
+		Args:              cobra.MaximumNArgs(1),
+		RunE:              imagesAction,
+		ValidArgsFunction: imagesShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+
+	imagesCommand.Flags().BoolP("quiet", "q", false, "Only show numeric IDs")
+	imagesCommand.Flags().Bool("no-trunc", false, "Don't truncate output")
+	// Alias "-f" is reserved for "--filter"
+	imagesCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+
+	return imagesCommand
 }
 
-func imagesAction(clicontext *cli.Context) error {
+func imagesAction(cmd *cobra.Command, args []string) error {
 	var filters []string
 
-	if clicontext.NArg() > 1 {
+	if len(args) > 1 {
 		return errors.New("cannot have more than one argument")
 	}
 
-	if clicontext.NArg() > 0 {
-		canonicalRef, err := refdocker.ParseDockerRef(clicontext.Args().First())
+	if len(args) > 0 {
+		canonicalRef, err := refdocker.ParseDockerRef(args[0])
 		if err != nil {
 			return err
 		}
 		filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
 	}
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -94,7 +92,7 @@ func imagesAction(clicontext *cli.Context) error {
 		return err
 	}
 
-	return printImages(ctx, clicontext, client, imageList, cs)
+	return printImages(ctx, cmd, client, imageList, cs)
 }
 
 type imagePrintable struct {
@@ -109,14 +107,25 @@ type imagePrintable struct {
 	// TODO: "SharedSize", "UniqueSize", "VirtualSize"
 }
 
-func printImages(ctx context.Context, clicontext *cli.Context, client *containerd.Client, imageList []images.Image, cs content.Store) error {
-	quiet := clicontext.Bool("quiet")
-	noTrunc := clicontext.Bool("no-trunc")
-	w := clicontext.App.Writer
+func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Client, imageList []images.Image, cs content.Store) error {
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return err
+	}
+	noTrunc, err := cmd.Flags().GetBool("no-trunc")
+	if err != nil {
+		return err
+	}
+	var w io.Writer
+	w = os.Stdout
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
 	var tmpl *template.Template
-	switch format := clicontext.String("format"); format {
+	switch format {
 	case "", "table":
-		w = tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
+		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
 		if !quiet {
 			fmt.Fprintln(w, "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE")
 		}
@@ -133,11 +142,15 @@ func printImages(ctx context.Context, clicontext *cli.Context, client *container
 		}
 	}
 
-	s := client.SnapshotService(clicontext.String("snapshotter"))
+	snapshotter, err := cmd.Flags().GetString("snapshotter")
+	if err != nil {
+		return err
+	}
+	s := client.SnapshotService(snapshotter)
 
 	var errs []error
 	for _, img := range imageList {
-		size, err := unpackedImageSize(ctx, clicontext, client, s, img)
+		size, err := unpackedImageSize(ctx, cmd, client, s, img)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -187,14 +200,13 @@ func printImages(ctx context.Context, clicontext *cli.Context, client *container
 	return nil
 }
 
-func imagesBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
+func imagesShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) == 0 {
+		// show image names
+		return shellCompleteImageNames(cmd)
+	} else {
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	// show image names
-	bashCompleteImageNames(clicontext)
 }
 
 type snapshotKey string
@@ -220,7 +232,7 @@ func (key snapshotKey) add(ctx context.Context, s snapshots.Snapshotter, usage *
 	return key.add(ctx, s, usage)
 }
 
-func unpackedImageSize(ctx context.Context, clicontext *cli.Context, client *containerd.Client, s snapshots.Snapshotter, i images.Image) (int64, error) {
+func unpackedImageSize(ctx context.Context, cmd *cobra.Command, client *containerd.Client, s snapshots.Snapshotter, i images.Image) (int64, error) {
 	img := containerd.NewImage(client, i)
 
 	diffIDs, err := img.RootFS(ctx)

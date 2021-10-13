@@ -32,49 +32,53 @@ import (
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var rmCommand = &cli.Command{
-	Name:         "rm",
-	Usage:        "Remove one or more containers",
-	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
-	Action:       rmAction,
-	BashComplete: rmBashComplete,
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "force",
-			Aliases: []string{"f"},
-			Usage:   "Force the removal of a running|paused|unknown container (uses SIGKILL)",
-		},
-		&cli.BoolFlag{
-			Name:    "volumes",
-			Aliases: []string{"v"},
-			Usage:   "Remove anonymous volumes associated with the container",
-		},
-	},
+func newRmCommand() *cobra.Command {
+	var rmCommand = &cobra.Command{
+		Use:               "rm [flags] CONTAINER [CONTAINER, ...]",
+		Args:              cobra.MinimumNArgs(1),
+		Short:             "Remove one or more containers",
+		RunE:              rmAction,
+		ValidArgsFunction: rmShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	rmCommand.Flags().BoolP("force", "f", false, "Force the removal of a running|paused|unknown container (uses SIGKILL)")
+	rmCommand.Flags().BoolP("volumes", "v", false, "Remove volumes associated with the container")
+	return rmCommand
 }
 
-func rmAction(clicontext *cli.Context) error {
-	if clicontext.NArg() == 0 {
+func rmAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	dataStore, err := getDataStore(clicontext)
+	dataStore, err := getDataStore(cmd)
 	if err != nil {
 		return err
 	}
 
-	force := clicontext.Bool("force")
-	removeAnonVolumes := clicontext.Bool("volumes")
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return err
+	}
+	removeAnonVolumes, err := cmd.Flags().GetBool("volumes")
+	if err != nil {
+		return err
+	}
 
-	ns := clicontext.String("namespace")
+	ns, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
 	containerNameStore, err := namestore.New(dataStore, ns)
 	if err != nil {
 		return err
@@ -83,15 +87,15 @@ func rmAction(clicontext *cli.Context) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			stateDir, err := getContainerStateDirPath(clicontext, dataStore, found.Container.ID())
+			stateDir, err := getContainerStateDirPath(cmd, dataStore, found.Container.ID())
 			if err != nil {
 				return err
 			}
-			err = removeContainer(clicontext, ctx, client, ns, found.Container.ID(), found.Req, force, dataStore, stateDir, containerNameStore, removeAnonVolumes)
+			err = removeContainer(cmd, ctx, client, ns, found.Container.ID(), found.Req, force, dataStore, stateDir, containerNameStore, removeAnonVolumes)
 			return err
 		},
 	}
-	for _, req := range clicontext.Args().Slice() {
+	for _, req := range args {
 		n, err := walker.Walk(ctx, req)
 		if err != nil {
 			return err
@@ -104,7 +108,7 @@ func rmAction(clicontext *cli.Context) error {
 
 // removeContainer returns nil when the container cannot be found
 // FIXME: refactoring
-func removeContainer(clicontext *cli.Context, ctx context.Context, client *containerd.Client, ns, id, req string, force bool, dataStore, stateDir string, namst namestore.NameStore, removeAnonVolumes bool) (retErr error) {
+func removeContainer(cmd *cobra.Command, ctx context.Context, client *containerd.Client, ns, id, req string, force bool, dataStore, stateDir string, namst namestore.NameStore, removeAnonVolumes bool) (retErr error) {
 	var name string
 	defer func() {
 		if errdefs.IsNotFound(retErr) {
@@ -142,7 +146,7 @@ func removeContainer(clicontext *cli.Context, ctx context.Context, client *conta
 		if err := json.Unmarshal([]byte(anonVolumesJSON), &anonVolumes); err != nil {
 			return err
 		}
-		volStore, err := getVolumeStore(clicontext)
+		volStore, err := getVolumeStore(cmd)
 		if err != nil {
 			return err
 		}
@@ -178,7 +182,7 @@ func removeContainer(clicontext *cli.Context, ctx context.Context, client *conta
 		}
 	case containerd.Paused:
 		if !force {
-			_, err := fmt.Fprintf(clicontext.App.Writer, "You cannot remove a %v container %v. Unpause the container before attempting removal or force remove\n", status.Status, id)
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "You cannot remove a %v container %v. Unpause the container before attempting removal or force remove\n", status.Status, id)
 			return err
 		}
 		_, err := task.Delete(ctx, containerd.WithProcessKill)
@@ -188,7 +192,7 @@ func removeContainer(clicontext *cli.Context, ctx context.Context, client *conta
 	// default is the case, when status.Status = containerd.Running
 	default:
 		if !force {
-			_, err := fmt.Fprintf(clicontext.App.Writer, "You cannot remove a %v container %v. Stop the container before attempting removal or force remove\n", status.Status, id)
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "You cannot remove a %v container %v. Stop the container before attempting removal or force remove\n", status.Status, id)
 			return err
 		}
 		if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
@@ -212,16 +216,11 @@ func removeContainer(clicontext *cli.Context, ctx context.Context, client *conta
 		return err
 	}
 
-	_, err = fmt.Fprintf(clicontext.App.Writer, "%s\n", req)
+	_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", req)
 	return err
 }
 
-func rmBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func rmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show container names
-	bashCompleteContainerNames(clicontext, nil)
+	return shellCompleteContainerNames(cmd, nil)
 }

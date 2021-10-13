@@ -17,17 +17,22 @@
 package main
 
 import (
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var networkCommand = &cli.Command{
-	Name:     "network",
-	Usage:    "Manage networks",
-	Category: CategoryManagement,
-	Subcommands: []*cli.Command{
-		networkLsCommand,
-		networkInspectCommand,
-		networkCreateCommand,
-		networkRmCommand,
-	},
+func newNetworkCommand() *cobra.Command {
+	networkCommand := &cobra.Command{
+		Category:      CategoryManagement,
+		Use:           "network",
+		Short:         "Manage networks",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	networkCommand.AddCommand(
+		newNetworkLsCommand(),
+		newNetworkInspectCommand(),
+		newNetworkCreateCommand(),
+		newNetworkRmCommand(),
+	)
+	return networkCommand
 }

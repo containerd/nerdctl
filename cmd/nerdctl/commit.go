@@ -24,42 +24,34 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/imgutil/commit"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var (
-	commitCommand = &cli.Command{
-		Name:         "commit",
-		Usage:        "[flags] CONTAINER REPOSITORY[:TAG]",
-		Description:  "Create a new image from a container's changes",
-		Action:       commitAction,
-		BashComplete: commitBashComplete,
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "author",
-				Aliases: []string{"a"},
-				Usage:   `Author (e.g., "nerdctl contributor <nerdctl-dev@example.com>")`,
-			},
-			&cli.StringFlag{
-				Name:    "message",
-				Aliases: []string{"m"},
-				Usage:   `Commit message`,
-			},
-		},
+func newCommitCommand() *cobra.Command {
+	var commitCommand = &cobra.Command{
+		Use:               "commit [flags] CONTAINER REPOSITORY[:TAG]",
+		Short:             "Create a new image from a container's changes",
+		RunE:              commitAction,
+		ValidArgsFunction: commitShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
 	}
-)
+	commitCommand.Flags().StringP("author", "a", "", `Author (e.g., "nerdctl contributor <nerdctl-dev@example.com>")`)
+	commitCommand.Flags().StringP("message", "m", "", "Commit message")
+	return commitCommand
+}
 
-func commitAction(clicontext *cli.Context) error {
-	if clicontext.NArg() != 2 {
+func commitAction(cmd *cobra.Command, args []string) error {
+	if len(args) != 2 {
 		return errors.New("need container and commit image name")
 	}
 
-	opts, err := newCommitOpts(clicontext)
+	opts, err := newCommitOpts(cmd, args)
 	if err != nil {
 		return err
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -75,11 +67,11 @@ func commitAction(clicontext *cli.Context) error {
 			if err != nil {
 				return err
 			}
-			_, err = fmt.Fprintf(clicontext.App.Writer, "%s\n", imageID)
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", imageID)
 			return err
 		},
 	}
-	req := clicontext.Args().First()
+	req := args[0]
 	n, err := walker.Walk(ctx, req)
 	if err != nil {
 		return err
@@ -89,27 +81,34 @@ func commitAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func newCommitOpts(clicontext *cli.Context) (*commit.Opts, error) {
-	rawRef := clicontext.Args().Get(1)
+func newCommitOpts(cmd *cobra.Command, args []string) (*commit.Opts, error) {
+	rawRef := args[1]
 
 	named, err := refdocker.ParseDockerRef(rawRef)
 	if err != nil {
 		return nil, err
 	}
 
+	author, err := cmd.Flags().GetString("author")
+	if err != nil {
+		return nil, err
+	}
+	message, err := cmd.Flags().GetString("message")
+	if err != nil {
+		return nil, err
+	}
+
 	return &commit.Opts{
-		Author:  clicontext.String("author"),
-		Message: clicontext.String("message"),
+		Author:  author,
+		Message: message,
 		Ref:     named.String(),
 	}, nil
 }
 
-func commitBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
+func commitShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) == 0 {
+		return shellCompleteContainerNames(cmd, nil)
+	} else {
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	// show container names
-	bashCompleteContainerNames(clicontext, nil)
 }

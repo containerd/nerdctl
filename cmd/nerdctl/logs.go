@@ -27,60 +27,47 @@ import (
 	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var logsCommand = &cli.Command{
-	Name:         "logs",
-	Usage:        "Fetch the logs of a container. Currently, only containers created with `nerdctl run -d` are supported.",
-	ArgsUsage:    "[flags] CONTAINER",
-	Action:       logsAction,
-	BashComplete: logsBashComplete,
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "follow",
-			Aliases: []string{"f"},
-			Usage:   "Follow log output",
-		},
-		&cli.BoolFlag{
-			Name:    "timestamps",
-			Aliases: []string{"t"},
-			Usage:   "Show timestamps",
-		},
-		&cli.StringFlag{
-			Name:    "tail",
-			Aliases: []string{"n"},
-			Value:   "all",
-			Usage:   "Number of lines to show from the end of the logs",
-		},
-		&cli.StringFlag{
-			Name:  "since",
-			Usage: "Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)",
-		},
-		&cli.StringFlag{
-			Name:  "until",
-			Usage: "Show logs before a timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)",
-		},
-	},
+func newLogsCommand() *cobra.Command {
+	var logsCommand = &cobra.Command{
+		Use:               "logs [flags] CONTAINER",
+		Args:              cobra.ExactArgs(1),
+		Short:             "Fetch the logs of a container. Currently, only containers created with `nerdctl run -d` are supported.",
+		RunE:              logsAction,
+		ValidArgsFunction: logsShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	logsCommand.Flags().BoolP("follow", "f", false, "Follow log output")
+	logsCommand.Flags().BoolP("timestamps", "t", false, "Show timestamps")
+	logsCommand.Flags().StringP("tail", "n", "all", "Number of lines to show from the end of the logs")
+	logsCommand.Flags().String("since", "", "Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)")
+	logsCommand.Flags().String("until", "", "Show logs before a timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)")
+	return logsCommand
 }
 
-func logsAction(clicontext *cli.Context) error {
-	if clicontext.NArg() != 1 {
+func logsAction(cmd *cobra.Command, args []string) error {
+	if len(args) != 1 {
 		return errors.Errorf("requires exactly 1 argument")
 	}
 
-	dataStore, err := getDataStore(clicontext)
+	dataStore, err := getDataStore(cmd)
 	if err != nil {
 		return err
 	}
 
-	ns := clicontext.String("namespace")
+	ns, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
 	switch ns {
 	case "moby", "k8s.io":
 		logrus.Warn("Currently, `nerdctl logs` only supports containers created with `nerdctl run -d`")
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -105,32 +92,40 @@ func logsAction(clicontext *cli.Context) error {
 				return err
 			}
 			var reader io.Reader
-			var cmd *exec.Cmd
+			var execCmd *exec.Cmd
 			//chan for non-follow tail to check the logsEOF
 			logsEOFChan := make(chan struct{})
-			if clicontext.Bool("follow") && status.Status == containerd.Running {
+			follow, err := cmd.Flags().GetBool("follow")
+			if err != nil {
+				return err
+			}
+			tail, err := cmd.Flags().GetString("tail")
+			if err != nil {
+				return err
+			}
+			if follow && status.Status == containerd.Running {
 				waitCh, err := task.Wait(ctx)
 				if err != nil {
 					return err
 				}
-				reader, cmd, err = newTailReader(ctx, task, logJSONFilePath, clicontext.Bool("follow"), clicontext.String("tail"))
+				reader, execCmd, err = newTailReader(ctx, task, logJSONFilePath, follow, tail)
 				if err != nil {
 					return err
 				}
 
 				go func() {
 					<-waitCh
-					cmd.Process.Kill()
+					execCmd.Process.Kill()
 				}()
 			} else {
-				if clicontext.String("tail") != "" {
-					reader, cmd, err = newTailReader(ctx, task, logJSONFilePath, false, clicontext.String("tail"))
+				if tail != "" {
+					reader, execCmd, err = newTailReader(ctx, task, logJSONFilePath, false, tail)
 					if err != nil {
 						return err
 					}
 					go func() {
 						<-logsEOFChan
-						cmd.Process.Kill()
+						execCmd.Process.Kill()
 					}()
 
 				} else {
@@ -145,10 +140,22 @@ func logsAction(clicontext *cli.Context) error {
 					}()
 				}
 			}
-			return jsonfile.Decode(clicontext.App.Writer, clicontext.App.ErrWriter, reader, clicontext.Bool("timestamps"), clicontext.String("since"), clicontext.String("until"), logsEOFChan)
+			timestamps, err := cmd.Flags().GetBool("timestamps")
+			if err != nil {
+				return err
+			}
+			since, err := cmd.Flags().GetString("since")
+			if err != nil {
+				return err
+			}
+			until, err := cmd.Flags().GetString("until")
+			if err != nil {
+				return err
+			}
+			return jsonfile.Decode(os.Stdout, os.Stderr, reader, timestamps, since, until, logsEOFChan)
 		},
 	}
-	req := clicontext.Args().First()
+	req := args[0]
 	n, err := walker.Walk(ctx, req)
 	if err != nil {
 		return err
@@ -158,14 +165,9 @@ func logsAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func logsBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func logsShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show container names (TODO: only show containers with logs)
-	bashCompleteContainerNames(clicontext, nil)
+	return shellCompleteContainerNames(cmd, nil)
 }
 
 func newTailReader(ctx context.Context, task containerd.Task, filePath string, follow bool, tail string) (io.Reader, *exec.Cmd, error) {

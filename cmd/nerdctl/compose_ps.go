@@ -23,24 +23,28 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var composePsCommand = &cli.Command{
-	Name:   "ps",
-	Usage:  "List containers of services",
-	Action: composePsAction,
-	Flags:  []cli.Flag{},
+func newComposePsCommand() *cobra.Command {
+	var composePsCommand = &cobra.Command{
+		Use:           "ps",
+		Short:         "List containers of services",
+		RunE:          composePsAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	return composePsCommand
 }
 
-func composePsAction(clicontext *cli.Context) error {
-	client, ctx, cancel, err := newClient(clicontext)
+func composePsAction(cmd *cobra.Command, args []string) error {
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	c, err := getComposer(clicontext, client)
+	c, err := getComposer(cmd, client)
 	if err != nil {
 		return err
 	}
@@ -94,7 +98,7 @@ func composePsAction(clicontext *cli.Context) error {
 		}
 	}
 
-	w := tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
+	w := tabwriter.NewWriter(cmd.OutOrStdout(), 4, 8, 4, ' ', 0)
 	fmt.Fprintln(w, "NAME\tCOMMAND\tSERVICE\tSTATUS\tPORTS")
 
 	for _, p := range containersPrintable {

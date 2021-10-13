@@ -29,27 +29,27 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var killCommand = &cli.Command{
-	Name:         "kill",
-	Usage:        "Kill one or more running containers",
-	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
-	Action:       killAction,
-	BashComplete: killBashComplete,
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "signal",
-			Aliases: []string{"s"},
-			Usage:   "Signal to send to the container",
-			Value:   "KILL",
-		},
-	},
+func newKillCommand() *cobra.Command {
+	var killCommand = &cobra.Command{
+		Use:               "kill [flags] CONTAINER [CONTAINER, ...]",
+		Short:             "Kill one or more running containers",
+		RunE:              killAction,
+		ValidArgsFunction: killShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	killCommand.Flags().StringP("signal", "s", "KILL", "Signal to send to the container")
+	return killCommand
 }
 
-func killAction(clicontext *cli.Context) error {
-	killSignal := clicontext.String("signal")
+func killAction(cmd *cobra.Command, args []string) error {
+	killSignal, err := cmd.Flags().GetString("signal")
+	if err != nil {
+		return err
+	}
 	if !strings.HasPrefix(killSignal, "SIG") {
 		killSignal = "SIG" + killSignal
 	}
@@ -59,11 +59,11 @@ func killAction(clicontext *cli.Context) error {
 		return err
 	}
 
-	if clicontext.NArg() == 0 {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -74,16 +74,16 @@ func killAction(clicontext *cli.Context) error {
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
 			if err := killContainer(ctx, found.Container, signal); err != nil {
 				if errdefs.IsNotFound(err) {
-					fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: Cannot kill container: %s: No such container: %s\n", found.Req, found.Req)
+					fmt.Fprintf(cmd.ErrOrStderr(), "Error response from daemon: Cannot kill container: %s: No such container: %s\n", found.Req, found.Req)
 					os.Exit(1)
 				}
 				return err
 			}
-			_, err := fmt.Fprintf(clicontext.App.Writer, "%s\n", found.Container.ID())
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Container.ID())
 			return err
 		},
 	}
-	for _, req := range clicontext.Args().Slice() {
+	for _, req := range args {
 		n, err := walker.Walk(ctx, req)
 		if err != nil {
 			return err
@@ -128,15 +128,11 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 	return nil
 }
 
-func killBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func killShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show non-stopped container names
 	statusFilterFn := func(st containerd.ProcessStatus) bool {
 		return st != containerd.Stopped && st != containerd.Created && st != containerd.Unknown
 	}
-	bashCompleteContainerNames(clicontext, statusFilterFn)
+	return shellCompleteContainerNames(cmd, statusFilterFn)
+
 }

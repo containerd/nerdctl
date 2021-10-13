@@ -26,16 +26,32 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, error) {
-	if clicontext.String("cgroup-manager") == "none" {
+func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
+	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
+	if err != nil {
+		return nil, err
+	}
+	cpus, err := cmd.Flags().GetFloat64("cpus")
+	if err != nil {
+		return nil, err
+	}
+	memStr, err := cmd.Flags().GetString("memory")
+	if err != nil {
+		return nil, err
+	}
+	pidsLimit, err := cmd.Flags().GetInt("pids-limit")
+	if err != nil {
+		return nil, err
+	}
+	if cgroupManager == "none" {
 		if !rootlessutil.IsRootless() {
 			return nil, errors.New("cgroup-manager \"none\" is only supported for rootless")
 		}
-		if clicontext.Float64("cpus") > 0.0 || clicontext.String("memory") != "" ||
-			clicontext.Int("pids-limit") > 0 {
+
+		if cpus > 0.0 || memStr != "" || pidsLimit > 0 {
 			logrus.Warn("cgroup manager is set to \"none\", discarding resource limit requests. " +
 				"(Hint: enable cgroup v2 with systemd: https://rootlesscontaine.rs/getting-started/common/cgroup2/)")
 		}
@@ -44,7 +60,7 @@ func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, err
 
 	var opts []oci.SpecOpts // nolint: prealloc
 
-	if clicontext.String("cgroup-manager") == "systemd" {
+	if cgroupManager == "systemd" {
 		slice := "system.slice"
 		if rootlessutil.IsRootlessChild() {
 			slice = "user.slice"
@@ -55,7 +71,7 @@ func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, err
 	}
 
 	// cpus: from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/run/run_unix.go#L187-L193
-	if cpus := clicontext.Float64("cpus"); cpus > 0.0 {
+	if cpus > 0.0 {
 		var (
 			period = uint64(100000)
 			quota  = int64(cpus * 100000.0)
@@ -63,18 +79,26 @@ func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, err
 		opts = append(opts, oci.WithCPUCFS(quota, period))
 	}
 
-	if shares := clicontext.Int("cpu-shares"); shares != 0 {
+	shares, err := cmd.Flags().GetInt("cpu-shares")
+	if err != nil {
+		return nil, err
+	}
+	if shares != 0 {
 		var (
 			shares = uint64(shares)
 		)
 		opts = append(opts, oci.WithCPUShares(shares))
 	}
 
-	if cpuset := clicontext.String("cpuset-cpus"); cpuset != "" {
+	cpuset, err := cmd.Flags().GetString("cpuset-cpus")
+	if err != nil {
+		return nil, err
+	}
+	if cpuset != "" {
 		opts = append(opts, oci.WithCPUs(cpuset))
 	}
 
-	if memStr := clicontext.String("memory"); memStr != "" {
+	if memStr != "" {
 		mem64, err := units.RAMInBytes(memStr)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse memory bytes %q", memStr)
@@ -82,11 +106,15 @@ func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, err
 		opts = append(opts, oci.WithMemoryLimit(uint64(mem64)))
 	}
 
-	if pidsLimit := clicontext.Int("pids-limit"); pidsLimit > 0 {
+	if pidsLimit > 0 {
 		opts = append(opts, oci.WithPidsLimit(int64(pidsLimit)))
 	}
 
-	switch cgroupns := clicontext.String("cgroupns"); cgroupns {
+	cgroupns, err := cmd.Flags().GetString("cgroupns")
+	if err != nil {
+		return nil, err
+	}
+	switch cgroupns {
 	case "private":
 		ns := specs.LinuxNamespace{
 			Type: specs.CgroupNamespace,
@@ -98,7 +126,11 @@ func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, err
 		return nil, errors.Errorf("unknown cgroupns mode %q", cgroupns)
 	}
 
-	for _, f := range clicontext.StringSlice("device") {
+	device, err := cmd.Flags().GetStringSlice("device")
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range device {
 		devPath, mode, err := parseDevice(f)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse device %q", f)
