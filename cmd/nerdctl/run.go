@@ -138,7 +138,7 @@ func newRunCommand() *cobra.Command {
 	// #region security flags
 	runCommand.Flags().StringSlice("security-opt", []string{}, "Security options")
 	runCommand.RegisterFlagCompletionFunc("security-opt", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"seccomp=", "apparmor=" + defaults.AppArmorProfileName, "no-new-privileges"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"seccomp=", "seccomp=unconfined", "apparmor=", "apparmor=" + defaults.AppArmorProfileName, "apparmor=unconfined", "no-new-privileges"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	runCommand.Flags().StringSlice("cap-add", []string{}, "Add Linux capabilities")
 	runCommand.RegisterFlagCompletionFunc("cap-add", capShellComplete)
