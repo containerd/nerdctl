@@ -115,12 +115,9 @@ func newRunCommand() *cobra.Command {
 	runCommand.Flags().StringP("hostname", "h", "", "Container host name")
 	// #endregion
 
-	// #region cgroup flags
+	// #region cgroups, namespaces, and ulimits flags
 	runCommand.Flags().Float64("cpus", 0.0, "Number of CPUs")
 	runCommand.Flags().StringP("memory", "m", "", "Memory limit")
-	// #endregion
-
-	// Enable host pid namespace
 	runCommand.Flags().String("pid", "", "PID namespace to use")
 	runCommand.RegisterFlagCompletionFunc("pid", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"host"}, cobra.ShellCompDirectiveNoFileComp
@@ -133,6 +130,7 @@ func newRunCommand() *cobra.Command {
 	runCommand.Flags().String("cpuset-cpus", "", "CPUs in which to allow execution (0-3, 0,1)")
 	runCommand.Flags().Int("cpu-shares", 0, "CPU shares (relative weight)")
 	runCommand.Flags().StringSlice("device", nil, "Add a host device to the container")
+	runCommand.Flags().StringSlice("ulimit", nil, "Ulimit options")
 	// #endregion
 
 	// user flags
@@ -157,7 +155,9 @@ func newRunCommand() *cobra.Command {
 	runCommand.RegisterFlagCompletionFunc("gpus", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"all"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	// #endregion
 
+	// #region mount flags
 	runCommand.Flags().StringSliceP("volume", "v", nil, "Bind mount a volume")
 	// #endregion
 
@@ -178,13 +178,11 @@ func newRunCommand() *cobra.Command {
 	runCommand.Flags().StringSliceP("label", "l", nil, "Set metadata on container")
 	runCommand.Flags().StringSlice("label-file", nil, "Set metadata on container from file")
 	runCommand.Flags().String("cidfile", "", "Write the container ID to the file")
+	runCommand.Flags().String("pidfile", "", "file path to write the task's pid")
 	// #endregion
 
 	// shared memory flags
 	runCommand.Flags().String("shm-size", "", "Size of /dev/shm")
-
-	runCommand.Flags().String("pidfile", "", "file path to write the task's pid")
-	runCommand.Flags().StringSlice("ulimit", nil, "Ulimit options")
 
 	return runCommand
 }
