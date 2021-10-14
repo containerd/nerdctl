@@ -28,23 +28,28 @@ import (
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var startCommand = &cli.Command{
-	Name:         "start",
-	Usage:        "Start one or more running containers",
-	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
-	Action:       startAction,
-	BashComplete: startBashComplete,
+func newStartCommand() *cobra.Command {
+	var startCommand = &cobra.Command{
+		Use:               "start [flags] CONTAINER [CONTAINER, ...]",
+		Args:              cobra.MinimumNArgs(1),
+		Short:             "Start one or more running containers",
+		RunE:              startAction,
+		ValidArgsFunction: startShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	return startCommand
 }
 
-func startAction(clicontext *cli.Context) error {
-	if clicontext.NArg() == 0 {
+func startAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -56,11 +61,11 @@ func startAction(clicontext *cli.Context) error {
 			if err := startContainer(ctx, found.Container); err != nil {
 				return err
 			}
-			_, err := fmt.Fprintf(clicontext.App.Writer, "%s\n", found.Req)
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
 			return err
 		},
 	}
-	for _, req := range clicontext.Args().Slice() {
+	for _, req := range args {
 		n, err := walker.Walk(ctx, req)
 		if err != nil {
 			return err
@@ -99,15 +104,10 @@ func startContainer(ctx context.Context, container containerd.Container) error {
 	return task.Start(ctx)
 }
 
-func startBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func startShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show non-running container names
 	statusFilterFn := func(st containerd.ProcessStatus) bool {
 		return st != containerd.Running && st != containerd.Unknown
 	}
-	bashCompleteContainerNames(clicontext, statusFilterFn)
+	return shellCompleteContainerNames(cmd, statusFilterFn)
 }

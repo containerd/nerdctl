@@ -24,30 +24,32 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images/archive"
 	"github.com/containerd/containerd/platforms"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var loadCommand = &cli.Command{
-	Name:        "load",
-	Usage:       "Load an image from a tar archive or STDIN",
-	Description: "Supports both Docker Image Spec v1.2 and OCI Image Spec v1.0.",
-	Action:      loadAction,
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "input",
-			Aliases: []string{"i"},
-			Usage:   "Read from tar archive file, instead of STDIN",
-		},
-		&cli.BoolFlag{
-			Name:  "all-platforms",
-			Usage: "Imports content for all platforms",
-		},
-	},
+func newLoadCommand() *cobra.Command {
+	var loadCommand = &cobra.Command{
+		Use:           "load",
+		Args:          cobra.NoArgs,
+		Short:         "Load an image from a tar archive or STDIN",
+		Long:          "Supports both Docker Image Spec v1.2 and OCI Image Spec v1.0.",
+		RunE:          loadAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+
+	loadCommand.Flags().StringP("input", "i", "", "Read from tar archive file, instead of STDIN")
+	loadCommand.Flags().Bool("all-platforms", false, "Imports content for all platforms")
+	return loadCommand
 }
 
-func loadAction(clicontext *cli.Context) error {
-	in := clicontext.App.Reader
-	if input := clicontext.String("input"); input != "" {
+func loadAction(cmd *cobra.Command, args []string) error {
+	in := cmd.InOrStdin()
+	input, err := cmd.Flags().GetString("input")
+	if err != nil {
+		return err
+	}
+	if input != "" {
 		f, err := os.Open(input)
 		if err != nil {
 			return err
@@ -55,18 +57,27 @@ func loadAction(clicontext *cli.Context) error {
 		defer f.Close()
 		in = f
 	}
-	return loadImage(in, clicontext, false)
+
+	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
+	if err != nil {
+		return err
+	}
+
+	return loadImage(in, cmd, args, allPlatforms, false)
 }
 
-func loadImage(in io.Reader, clicontext *cli.Context, quiet bool) error {
-	client, ctx, cancel, err := newClient(clicontext, containerd.WithDefaultPlatform(platforms.DefaultStrict()))
+func loadImage(in io.Reader, cmd *cobra.Command, args []string, allPlatforms bool, quiet bool) error {
+	client, ctx, cancel, err := newClient(cmd, containerd.WithDefaultPlatform(platforms.DefaultStrict()))
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	sn := clicontext.String("snapshotter")
-	imgs, err := client.Import(ctx, in, containerd.WithDigestRef(archive.DigestTranslator(sn)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithAllPlatforms(clicontext.Bool("all-platforms")))
+	sn, err := cmd.Flags().GetString("snapshotter")
+	if err != nil {
+		return err
+	}
+	imgs, err := client.Import(ctx, in, containerd.WithDigestRef(archive.DigestTranslator(sn)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithAllPlatforms(allPlatforms))
 	if err != nil {
 		return err
 	}
@@ -75,16 +86,16 @@ func loadImage(in io.Reader, clicontext *cli.Context, quiet bool) error {
 
 		// TODO: Show unpack status
 		if !quiet {
-			fmt.Fprintf(clicontext.App.Writer, "unpacking %s (%s)...", img.Name, img.Target.Digest)
+			fmt.Fprintf(cmd.OutOrStdout(), "unpacking %s (%s)...", img.Name, img.Target.Digest)
 		}
 		err = image.Unpack(ctx, sn)
 		if err != nil {
 			return err
 		}
 		if quiet {
-			fmt.Fprintln(clicontext.App.Writer, img.Target.Digest)
+			fmt.Fprintln(cmd.OutOrStdout(), img.Target.Digest)
 		} else {
-			fmt.Fprintf(clicontext.App.Writer, "done\n")
+			fmt.Fprintf(cmd.OutOrStdout(), "done\n")
 		}
 	}
 

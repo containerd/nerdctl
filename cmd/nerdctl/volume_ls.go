@@ -25,26 +25,23 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/docker/cli/templates"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var volumeLsCommand = &cli.Command{
-	Name:    "ls",
-	Aliases: []string{"list"},
-	Usage:   "List volumes",
-	Action:  volumeLsAction,
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "quiet",
-			Aliases: []string{"q"},
-			Usage:   "Only display volume names",
-		},
-		&cli.StringFlag{
-			Name: "format",
-			// Alias "-f" is reserved for "--filter"
-			Usage: "Format the output using the given Go template, e.g, '{{json .}}'",
-		},
-	},
+func newVolumeLsCommand() *cobra.Command {
+	volumeLsCommand := &cobra.Command{
+		Use:           "ls",
+		Aliases:       []string{"list"},
+		Short:         "List volumes",
+		RunE:          volumeLsAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+
+	volumeLsCommand.Flags().BoolP("quiet", "q", false, "Only display volume names")
+	// Alias "-f" is reserved for "--filter"
+	volumeLsCommand.Flags().String("format", "", "Format the output using the given go template")
+	return volumeLsCommand
 }
 
 type volumePrintable struct {
@@ -56,13 +53,20 @@ type volumePrintable struct {
 	// TODO: "Links", "Size"
 }
 
-func volumeLsAction(clicontext *cli.Context) error {
-	quiet := clicontext.Bool("quiet")
-	w := clicontext.App.Writer
+func volumeLsAction(cmd *cobra.Command, args []string) error {
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return err
+	}
+	w := cmd.OutOrStdout()
 	var tmpl *template.Template
-	switch format := clicontext.String("format"); format {
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	switch format {
 	case "", "table":
-		w = tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
+		w = tabwriter.NewWriter(cmd.OutOrStdout(), 4, 8, 4, ' ', 0)
 		if !quiet {
 			fmt.Fprintln(w, "VOLUME NAME\tDIRECTORY")
 		}
@@ -79,7 +83,7 @@ func volumeLsAction(clicontext *cli.Context) error {
 		}
 	}
 
-	vols, err := getVolumes(clicontext)
+	vols, err := getVolumes(cmd)
 	if err != nil {
 		return err
 	}
@@ -115,8 +119,8 @@ func volumeLsAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func getVolumes(clicontext *cli.Context) (map[string]native.Volume, error) {
-	volStore, err := getVolumeStore(clicontext)
+func getVolumes(cmd *cobra.Command) (map[string]native.Volume, error) {
+	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return nil, err
 	}

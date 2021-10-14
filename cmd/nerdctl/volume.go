@@ -18,28 +18,36 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var volumeCommand = &cli.Command{
-	Name:     "volume",
-	Usage:    "Manage volumes",
-	Category: CategoryManagement,
-	Subcommands: []*cli.Command{
-		volumeLsCommand,
-		volumeInspectCommand,
-		volumeCreateCommand,
-		volumeRmCommand,
-	},
+func newVolumeCommand() *cobra.Command {
+	volumeCommand := &cobra.Command{
+		Category:      CategoryManagement,
+		Use:           "volume",
+		Short:         "Manage volumes",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	volumeCommand.AddCommand(
+		newVolumeLsCommand(),
+		newVolumeInspectCommand(),
+		newVolumeCreateCommand(),
+		newVolumeRmCommand(),
+	)
+	return volumeCommand
 }
 
 // getVolumeStore returns a volume store
 // that corresponds to a directory like `/var/lib/nerdctl/1935db59/volumes/default`
-func getVolumeStore(clicontext *cli.Context) (volumestore.VolumeStore, error) {
-	dataStore, err := getDataStore(clicontext)
+func getVolumeStore(cmd *cobra.Command) (volumestore.VolumeStore, error) {
+	ns, err := cmd.Flags().GetString("namespace")
 	if err != nil {
 		return nil, err
 	}
-	ns := clicontext.String("namespace")
+	dataStore, err := getDataStore(cmd)
+	if err != nil {
+		return nil, err
+	}
 	return volumestore.New(dataStore, ns)
 }

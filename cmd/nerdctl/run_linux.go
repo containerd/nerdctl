@@ -18,65 +18,32 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/pkg/cap"
-	"github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
 func WithoutRunMount() func(ctx context.Context, client oci.Client, c *containers.Container, s *oci.Spec) error {
 	return oci.WithoutRunMount
 }
 
-func runBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring {
-		defaultBashComplete(clicontext)
-		return
+func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	candidates := []string{}
+	for _, c := range cap.Known() {
+		// "CAP_SYS_ADMIN" -> "sys_admin"
+		s := strings.ToLower(strings.TrimPrefix(c, "CAP_"))
+		candidates = append(candidates, s)
 	}
-	if coco.flagTakesValue {
-		w := clicontext.App.Writer
-		switch coco.flagName {
-		case "restart":
-			fmt.Fprintln(w, "always")
-			fmt.Fprintln(w, "no")
-			return
-		case "pull":
-			fmt.Fprintln(w, "always")
-			fmt.Fprintln(w, "missing")
-			fmt.Fprintln(w, "never")
-			return
-		case "cgroupns":
-			fmt.Fprintln(w, "host")
-			fmt.Fprintln(w, "private")
-			return
-		case "security-opt":
-			fmt.Fprintln(w, "seccomp=")
-			fmt.Fprintln(w, "apparmor="+defaults.AppArmorProfileName)
-			fmt.Fprintln(w, "no-new-privileges")
-			return
-		case "cap-add", "cap-drop":
-			for _, c := range cap.Known() {
-				// "CAP_SYS_ADMIN" -> "sys_admin"
-				s := strings.ToLower(strings.TrimPrefix(c, "CAP_"))
-				fmt.Fprintln(w, s)
-			}
-			return
-		case "net", "network":
-			bashCompleteNetworkNames(clicontext, nil)
-			return
-		}
-		defaultBashComplete(clicontext)
-		return
+	return candidates, cobra.ShellCompDirectiveNoFileComp
+}
+
+func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) == 0 {
+		return shellCompleteImageNames(cmd)
+	} else {
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	// show image names, unless we have "--rootfs" flag
-	if clicontext.Bool("rootfs") {
-		defaultBashComplete(clicontext)
-		return
-	}
-	bashCompleteImageNames(clicontext)
 }

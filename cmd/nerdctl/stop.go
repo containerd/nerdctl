@@ -27,32 +27,33 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var stopCommand = &cli.Command{
-	Name:         "stop",
-	Usage:        "Stop one or more running containers",
-	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
-	Action:       stopAction,
-	BashComplete: stopBashComplete,
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "time",
-			Aliases: []string{"t"},
-			Usage:   "Seconds to wait for stop before killing it",
-			Value:   "10",
-		},
-	},
+func newStopCommand() *cobra.Command {
+	var stopCommand = &cobra.Command{
+		Use:               "stop [flags] CONTAINER [CONTAINER, ...]",
+		Args:              cobra.MinimumNArgs(1),
+		Short:             "Stop one or more running containers",
+		RunE:              stopAction,
+		ValidArgsFunction: stopShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	stopCommand.Flags().StringP("time", "f", "10", "Seconds to wait for stop before killing it")
+	return stopCommand
 }
 
-func stopAction(clicontext *cli.Context) error {
+func stopAction(cmd *cobra.Command, args []string) error {
 	// Time to wait after sending a SIGTERM and before sending a SIGKILL.
 	// Default is 10 seconds.
-	timeoutStr := clicontext.String("time")
+	timeoutStr, err := cmd.Flags().GetString("time")
+	if err != nil {
+		return err
+	}
 	timeoutStr = timeoutStr + "s"
 
-	if clicontext.NArg() == 0 {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
@@ -61,7 +62,7 @@ func stopAction(clicontext *cli.Context) error {
 		return err
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -72,16 +73,16 @@ func stopAction(clicontext *cli.Context) error {
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
 			if err := stopContainer(ctx, found.Container, timeout); err != nil {
 				if errdefs.IsNotFound(err) {
-					fmt.Fprintf(clicontext.App.ErrWriter, "Error response from daemon: No such container: %s\n", found.Req)
+					fmt.Fprintf(cmd.ErrOrStderr(), "Error response from daemon: No such container: %s\n", found.Req)
 					return nil
 				}
 				return err
 			}
-			_, err := fmt.Fprintf(clicontext.App.Writer, "%s\n", found.Req)
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
 			return err
 		},
 	}
-	for _, req := range clicontext.Args().Slice() {
+	for _, req := range args {
 		n, err := walker.Walk(ctx, req)
 		if err != nil {
 			return err
@@ -179,15 +180,10 @@ func waitContainerStop(ctx context.Context, exitCh <-chan containerd.ExitStatus,
 	}
 }
 
-func stopBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func stopShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show non-stopped container names
 	statusFilterFn := func(st containerd.ProcessStatus) bool {
 		return st != containerd.Stopped && st != containerd.Created && st != containerd.Unknown
 	}
-	bashCompleteContainerNames(clicontext, statusFilterFn)
+	return shellCompleteContainerNames(cmd, statusFilterFn)
 }

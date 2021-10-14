@@ -76,3 +76,9 @@ func TestTrimStrSliceRight(t *testing.T) {
 		TrimStrSliceRight([]string{"foo", "bar", "baz", "qux", "quux"}, []string{"quux"}))
 
 }
+
+func TestReverseStrSlice(t *testing.T) {
+	assert.DeepEqual(t,
+		[]string{"foo", "bar", "baz"},
+		ReverseStrSlice([]string{"baz", "bar", "foo"}))
+}

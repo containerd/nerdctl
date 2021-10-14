@@ -32,7 +32,7 @@ import (
 	"github.com/docker/docker/registry"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
 type loginOptions struct {
@@ -44,94 +44,85 @@ type loginOptions struct {
 
 var options = new(loginOptions)
 
-var loginCommand = &cli.Command{
-	Name:      "login",
-	Usage:     "Log in to a Docker registry",
-	ArgsUsage: "[flags] [SERVER]",
-	// customized function from runLogin function in github.com/docker/cli/cli/command/registry/login.go (v20.10.3)
-	Action: func(clicontext *cli.Context) error {
-		options.serverAddress = clicontext.Args().First()
+func newLoginCommand() *cobra.Command {
+	var loginCommand = &cobra.Command{
+		Use:           "login [flags] [SERVER]",
+		Args:          cobra.MaximumNArgs(1),
+		Short:         "Log in to a Docker registry",
+		RunE:          loginAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	loginCommand.Flags().StringVarP(&options.username, "username", "u", "", "Username")
+	loginCommand.Flags().StringVarP(&options.password, "password", "p", "", "Password")
+	loginCommand.Flags().BoolVar(&options.passwordStdin, "password-stdin", false, "Take the password from stdin")
+	return loginCommand
+}
 
-		if err := verifyloginOptions(clicontext, options); err != nil {
-			return err
-		}
+func loginAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 1 {
+		options.serverAddress = args[0]
+	}
+	if err := verifyloginOptions(cmd, options); err != nil {
+		return err
+	}
 
-		var serverAddress string
+	var serverAddress string
 
-		if options.serverAddress == "" {
-			serverAddress = registry.IndexServer
-		} else {
-			serverAddress = options.serverAddress
-		}
+	if options.serverAddress == "" {
+		serverAddress = registry.IndexServer
+	} else {
+		serverAddress = options.serverAddress
+	}
 
-		var response registrytypes.AuthenticateOKBody
-		_, ctx, _, _ := newClient(clicontext)
-		isDefaultRegistry := serverAddress == registry.IndexServer
-		authConfig, err := GetDefaultAuthConfig(clicontext, options.username == "" && options.password == "", serverAddress, isDefaultRegistry)
-		if &authConfig == nil {
-			authConfig = &types.AuthConfig{}
-		}
-		if err == nil && authConfig.Username != "" && authConfig.Password != "" {
-			//login With StoreCreds
-			response, err = loginClientSide(ctx, clicontext, *authConfig)
-		}
+	var response registrytypes.AuthenticateOKBody
+	ctx := cmd.Context()
+	isDefaultRegistry := serverAddress == registry.IndexServer
+	authConfig, err := GetDefaultAuthConfig(options.username == "" && options.password == "", serverAddress, isDefaultRegistry)
+	if &authConfig == nil {
+		authConfig = &types.AuthConfig{}
+	}
+	if err == nil && authConfig.Username != "" && authConfig.Password != "" {
+		//login With StoreCreds
+		response, err = loginClientSide(ctx, cmd, *authConfig)
+	}
 
-		if err != nil || authConfig.Username == "" || authConfig.Password == "" {
-			err = ConfigureAuthentification(clicontext, authConfig, options)
-			if err != nil {
-				return err
-			}
-
-			response, err = loginClientSide(ctx, clicontext, *authConfig)
-			if err != nil {
-				return err
-			}
-
-		}
-
-		if response.IdentityToken != "" {
-			authConfig.Password = ""
-			authConfig.IdentityToken = response.IdentityToken
-		}
-
-		dockerConfigFile, err := dockercliconfig.Load("")
+	if err != nil || authConfig.Username == "" || authConfig.Password == "" {
+		err = ConfigureAuthentification(authConfig, options)
 		if err != nil {
 			return err
 		}
 
-		if err := dockerConfigFile.GetCredentialsStore(serverAddress).Store(clitypes.AuthConfig(*(authConfig))); err != nil {
-			return errors.Errorf("error saving credentials: %v", err)
+		response, err = loginClientSide(ctx, cmd, *authConfig)
+		if err != nil {
+			return err
 		}
 
-		if response.Status != "" {
-			fmt.Fprintln(clicontext.App.Writer, response.Status)
-		}
+	}
 
-		return nil
-	},
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:        "username",
-			Aliases:     []string{"u"},
-			Usage:       "Username",
-			Destination: &options.username,
-		},
-		&cli.StringFlag{
-			Name:        "password",
-			Aliases:     []string{"p"},
-			Usage:       "Password",
-			Destination: &options.password,
-		},
-		&cli.BoolFlag{
-			Name:        "password-stdin",
-			Usage:       "Take the password from stdin",
-			Destination: &options.passwordStdin,
-		},
-	},
+	if response.IdentityToken != "" {
+		authConfig.Password = ""
+		authConfig.IdentityToken = response.IdentityToken
+	}
+
+	dockerConfigFile, err := dockercliconfig.Load("")
+	if err != nil {
+		return err
+	}
+
+	if err := dockerConfigFile.GetCredentialsStore(serverAddress).Store(clitypes.AuthConfig(*(authConfig))); err != nil {
+		return errors.Errorf("error saving credentials: %v", err)
+	}
+
+	if response.Status != "" {
+		fmt.Fprintln(cmd.OutOrStdout(), response.Status)
+	}
+
+	return nil
 }
 
 //copied from github.com/docker/cli/cli/command/registry/login.go (v20.10.3)
-func verifyloginOptions(clicontext *cli.Context, options *loginOptions) error {
+func verifyloginOptions(cmd *cobra.Command, options *loginOptions) error {
 	if options.password != "" {
 		logrus.Warn("WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
 		if options.passwordStdin {
@@ -144,7 +135,7 @@ func verifyloginOptions(clicontext *cli.Context, options *loginOptions) error {
 			return errors.New("must provide --username with --password-stdin")
 		}
 
-		contents, err := ioutil.ReadAll(clicontext.App.Reader)
+		contents, err := ioutil.ReadAll(cmd.InOrStdin())
 		if err != nil {
 			return err
 		}
@@ -159,7 +150,7 @@ func verifyloginOptions(clicontext *cli.Context, options *loginOptions) error {
 // Code from github.com/cli/cli/command/registry.go (v20.10.3)
 // GetDefaultAuthConfig gets the default auth config given a serverAddress
 // If credentials for given serverAddress exists in the credential store, the configuration will be populated with values in it
-func GetDefaultAuthConfig(clicontext *cli.Context, checkCredStore bool, serverAddress string, isDefaultRegistry bool) (*types.AuthConfig, error) {
+func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRegistry bool) (*types.AuthConfig, error) {
 	var authconfig = dockercliconfigtypes.AuthConfig{}
 	if checkCredStore {
 		dockerConfigFile, err := dockercliconfig.Load("")
@@ -178,10 +169,14 @@ func GetDefaultAuthConfig(clicontext *cli.Context, checkCredStore bool, serverAd
 }
 
 // Code from github.com/cli/cli/command/registry/login.go
-func loginClientSide(ctx context.Context, clicontext *cli.Context, auth types.AuthConfig) (registrytypes.AuthenticateOKBody, error) {
+func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthConfig) (registrytypes.AuthenticateOKBody, error) {
 
 	var insecureRegistries []string
-	if clicontext.Bool("insecure-registry") {
+	insecureRegistry, err := cmd.Flags().GetBool("insecure-registry")
+	if err != nil {
+		return registrytypes.AuthenticateOKBody{}, err
+	}
+	if insecureRegistry {
 		insecureRegistries = append(insecureRegistries, auth.ServerAddress)
 	}
 	svc, err := registry.NewService(registry.ServiceOptions{
@@ -202,7 +197,7 @@ func loginClientSide(ctx context.Context, clicontext *cli.Context, auth types.Au
 	}, err
 }
 
-func ConfigureAuthentification(clicontext *cli.Context, authConfig *types.AuthConfig, options *loginOptions) error {
+func ConfigureAuthentification(authConfig *types.AuthConfig, options *loginOptions) error {
 	authConfig.Username = strings.TrimSpace(authConfig.Username)
 	if options.username = strings.TrimSpace(options.username); options.username == "" {
 		options.username = authConfig.Username
@@ -216,6 +211,7 @@ func ConfigureAuthentification(clicontext *cli.Context, authConfig *types.AuthCo
 
 		fmt.Print("Enter Password: ")
 		pwd, err := readPassword()
+		fmt.Println()
 		if err != nil {
 			return err
 		}

@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"text/tabwriter"
 	"text/template"
@@ -30,38 +32,28 @@ import (
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/docker/cli/templates"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var psCommand = &cli.Command{
-	Name:   "ps",
-	Usage:  "List containers",
-	Action: psAction,
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "all",
-			Aliases: []string{"a"},
-			Usage:   "Show all containers (default shows just running)",
-		},
-		&cli.BoolFlag{
-			Name:  "no-trunc",
-			Usage: "Don't truncate output",
-		},
-		&cli.BoolFlag{
-			Name:    "quiet",
-			Aliases: []string{"q"},
-			Usage:   "Only display container IDs",
-		},
-		&cli.StringFlag{
-			Name: "format",
-			// Alias "-f" is reserved for "--filter"
-			Usage: "Format the output using the given Go template, e.g, '{{json .}}'",
-		},
-	},
+func newPsCommand() *cobra.Command {
+	var psCommand = &cobra.Command{
+		Use:           "ps",
+		Args:          cobra.NoArgs,
+		Short:         "List containers",
+		RunE:          psAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	psCommand.Flags().BoolP("all", "a", false, "Show all containers (default shows just running)")
+	psCommand.Flags().Bool("no-trunc", false, "Don't truncate output")
+	psCommand.Flags().BoolP("quiet", "q", false, "Only display container IDs")
+	// Alias "-f" is reserved for "--filter"
+	psCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	return psCommand
 }
 
-func psAction(clicontext *cli.Context) error {
-	client, ctx, cancel, err := newClient(clicontext)
+func psAction(cmd *cobra.Command, args []string) error {
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -70,7 +62,7 @@ func psAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	return printContainers(ctx, clicontext, containers)
+	return printContainers(ctx, cmd, containers)
 }
 
 type containerPrintable struct {
@@ -84,15 +76,30 @@ type containerPrintable struct {
 	// TODO: "Labels", "LocalVolumes", "Mounts", "Networks", "RunningFor", "Size", "State"
 }
 
-func printContainers(ctx context.Context, clicontext *cli.Context, containers []containerd.Container) error {
-	trunc := !clicontext.Bool("no-trunc")
-	all := clicontext.Bool("all")
-	quiet := clicontext.Bool("quiet")
-	w := clicontext.App.Writer
+func printContainers(ctx context.Context, cmd *cobra.Command, containers []containerd.Container) error {
+	noTrunc, err := cmd.Flags().GetBool("no-trunc")
+	if err != nil {
+		return err
+	}
+	trunc := !noTrunc
+	all, err := cmd.Flags().GetBool("all")
+	if err != nil {
+		return err
+	}
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return err
+	}
+	var w io.Writer
+	w = os.Stdout
 	var tmpl *template.Template
-	switch format := clicontext.String("format"); format {
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	switch format {
 	case "", "table":
-		w = tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
+		w = tabwriter.NewWriter(os.Stdout, 4, 8, 4, ' ', 0)
 		if !quiet {
 			fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
 		}

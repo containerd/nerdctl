@@ -21,13 +21,17 @@ import (
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-func generateUserOpts(clicontext *cli.Context) ([]oci.SpecOpts, error) {
+func generateUserOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
-	if u := clicontext.String("user"); u != "" {
-		opts = append(opts, oci.WithUser(u), withResetAdditionalGIDs(), oci.WithAdditionalGIDs(u))
+	user, err := cmd.Flags().GetString("user")
+	if err != nil {
+		return nil, err
+	}
+	if user != "" {
+		opts = append(opts, oci.WithUser(user), withResetAdditionalGIDs(), oci.WithAdditionalGIDs(user))
 	}
 	return opts, nil
 }

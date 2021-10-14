@@ -28,23 +28,26 @@ import (
 	"github.com/containerd/typeurl"
 	"github.com/docker/cli/templates"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 
 	// Register grpc event types
 	_ "github.com/containerd/containerd/api/events"
 )
 
-var eventsCommand = &cli.Command{
-	Name:        "events",
-	Usage:       "Get real time events from the server",
-	Description: "NOTE: The output format is not compatible with Docker.",
-	Action:      eventsAction,
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "format",
-			Usage: "Format the output using the given Go template, e.g, '{{json .}}'",
-		},
-	},
+func newEventsCommand() *cobra.Command {
+	shortHelp := `Get real time events from the server`
+	longHelp := shortHelp + "\nNOTE: The output format is not compatible with Docker."
+	var eventsCommand = &cobra.Command{
+		Use:           "events",
+		Args:          cobra.NoArgs,
+		Short:         shortHelp,
+		Long:          longHelp,
+		RunE:          eventsAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	eventsCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	return eventsCommand
 }
 
 type Out struct {
@@ -55,12 +58,12 @@ type Out struct {
 }
 
 // eventsActions is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/events/events.go
-func eventsAction(clicontext *cli.Context) error {
-	if clicontext.NArg() != 0 {
+func eventsAction(cmd *cobra.Command, args []string) error {
+	if len(args) != 0 {
 		return errors.Errorf("accepts no arguments")
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -69,7 +72,11 @@ func eventsAction(clicontext *cli.Context) error {
 	eventsCh, errCh := eventsClient.Subscribe(ctx)
 
 	var tmpl *template.Template
-	switch format := clicontext.String("format"); format {
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	switch format {
 	case "":
 		tmpl = nil
 	case "raw", "table":
@@ -107,12 +114,12 @@ func eventsAction(clicontext *cli.Context) error {
 				if err := tmpl.Execute(&b, out); err != nil {
 					return err
 				}
-				if _, err := fmt.Fprintln(clicontext.App.Writer, b.String()+"\n"); err != nil {
+				if _, err := fmt.Fprintln(cmd.OutOrStdout(), b.String()+"\n"); err != nil {
 					return err
 				}
 			} else {
 				if _, err := fmt.Fprintln(
-					clicontext.App.Writer,
+					cmd.OutOrStdout(),
 					e.Timestamp,
 					e.Namespace,
 					e.Topic,

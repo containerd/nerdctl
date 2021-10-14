@@ -89,6 +89,12 @@ func TestRunWorkdir(t *testing.T) {
 	cmd.AssertOutContains("/foo")
 }
 
+func TestRunWithDoubleDash(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	base.Cmd("run", "--rm", testutil.AlpineImage, "--", "sh", "-euxc", "exit 0").AssertOK()
+}
+
 func TestRunCustomRootfs(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)

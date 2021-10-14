@@ -17,33 +17,38 @@
 package main
 
 import (
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var containerCommand = &cli.Command{
-	Name:     "container",
-	Usage:    "Manage containers",
-	Category: CategoryManagement,
-	Subcommands: []*cli.Command{
-		runCommand,
-		execCommand,
+func newContainerCommand() *cobra.Command {
+	containerCommand := &cobra.Command{
+		Category:      CategoryManagement,
+		Use:           "container",
+		Short:         "Manage containers",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	containerCommand.AddCommand(
+		newRunCommand(),
+		newExecCommand(),
 		containerLsCommand(),
-		containerInspectCommand,
-		logsCommand,
-		portCommand,
-		rmCommand,
-		stopCommand,
-		startCommand,
-		killCommand,
-		pauseCommand,
-		waitCommand,
-		unpauseCommand,
-		commitCommand,
-	},
+		newContainerInspectCommand(),
+		newLogsCommand(),
+		newPortCommand(),
+		newRmCommand(),
+		newStopCommand(),
+		newStartCommand(),
+		newKillCommand(),
+		newPauseCommand(),
+		newWaitCommand(),
+		newUnpauseCommand(),
+		newCommitCommand(),
+	)
+	return containerCommand
 }
 
-func containerLsCommand() *cli.Command {
-	x := *psCommand
-	x.Name = "ls"
-	return &x
+func containerLsCommand() *cobra.Command {
+	x := newPsCommand()
+	x.Use = "ls"
+	return x
 }

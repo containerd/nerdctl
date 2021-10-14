@@ -23,28 +23,40 @@ import (
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var networkRmCommand = &cli.Command{
-	Name:         "rm",
-	Aliases:      []string{"remove"},
-	Usage:        "Remove one or more networks",
-	ArgsUsage:    "[flags] NETWORK [NETWORK, ...]",
-	Description:  "NOTE: network in use is deleted without caution",
-	Action:       networkRmAction,
-	BashComplete: networkRmBashComplete,
+func newNetworkRmCommand() *cobra.Command {
+	networkRmCommand := &cobra.Command{
+		Use:               "rm [flags] NETWORK [NETWORK, ...]",
+		Aliases:           []string{"remove"},
+		Short:             "Remove one or more networks",
+		Long:              "NOTE: network in use is deleted without caution",
+		Args:              cobra.MinimumNArgs(1),
+		RunE:              networkRmAction,
+		ValidArgsFunction: networkRmShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	return networkRmCommand
 }
 
-func networkRmAction(clicontext *cli.Context) error {
-	if clicontext.NArg() == 0 {
+func networkRmAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
-	e := &netutil.CNIEnv{
-		Path:        clicontext.String("cni-path"),
-		NetconfPath: clicontext.String("cni-netconfpath"),
+	cniPath, err := cmd.Flags().GetString("cni-path")
+	if err != nil {
+		return err
 	}
-	netconfpath := clicontext.String("cni-netconfpath")
+	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	if err != nil {
+		return err
+	}
+	e := &netutil.CNIEnv{
+		Path:        cniPath,
+		NetconfPath: cniNetconfpath,
+	}
 	fn := func() error {
 		ll, err := netutil.ConfigLists(e)
 		if err != nil {
@@ -56,7 +68,7 @@ func networkRmAction(clicontext *cli.Context) error {
 			llMap[l.Name] = l
 		}
 
-		for _, name := range clicontext.Args().Slice() {
+		for _, name := range args {
 			if name == "host" || name == "none" {
 				return errors.Errorf("pseudo network %q cannot be removed", name)
 			}
@@ -73,20 +85,15 @@ func networkRmAction(clicontext *cli.Context) error {
 			if err := os.RemoveAll(l.File); err != nil {
 				return err
 			}
-			fmt.Fprintln(clicontext.App.Writer, name)
+			fmt.Fprintln(cmd.OutOrStdout(), name)
 		}
 		return nil
 	}
-	return lockutil.WithDirLock(netconfpath, fn)
+	return lockutil.WithDirLock(cniNetconfpath, fn)
 }
 
-func networkRmBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
-	// show network names
+func networkRmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	// show network names, including "bridge"
 	exclude := []string{netutil.DefaultNetworkName, "host", "none"}
-	bashCompleteNetworkNames(clicontext, exclude)
+	return shellCompleteNetworkNames(cmd, exclude)
 }

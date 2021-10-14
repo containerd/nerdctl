@@ -17,29 +17,47 @@
 package main
 
 import (
+	"os"
+
 	"github.com/containerd/nerdctl/pkg/ocihook"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var internalOCIHookCommand = &cli.Command{
-	Name:   "oci-hook",
-	Usage:  "OCI hook",
-	Action: internalOCIHookAction,
+func newInternalOCIHookCommandCommand() *cobra.Command {
+	var internalOCIHookCommand = &cobra.Command{
+		Use:           "oci-hook",
+		Short:         "OCI hook",
+		RunE:          internalOCIHookAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	return internalOCIHookCommand
 }
 
-func internalOCIHookAction(clicontext *cli.Context) error {
-	event := clicontext.Args().First()
+func internalOCIHookAction(cmd *cobra.Command, args []string) error {
+	event := ""
+	if len(args) > 0 {
+		event = args[0]
+	}
 	if event == "" {
 		return errors.New("event type needs to be passed")
 	}
-	dataStore, err := getDataStore(clicontext)
+	dataStore, err := getDataStore(cmd)
 	if err != nil {
 		return err
 	}
-	return ocihook.Run(clicontext.App.Reader, clicontext.App.ErrWriter, event,
+	cniPath, err := cmd.Flags().GetString("cni-path")
+	if err != nil {
+		return err
+	}
+	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	if err != nil {
+		return err
+	}
+	return ocihook.Run(os.Stdin, os.Stderr, event,
 		dataStore,
-		clicontext.String("cni-path"),
-		clicontext.String("cni-netconfpath"),
+		cniPath,
+		cniNetconfpath,
 	)
 }

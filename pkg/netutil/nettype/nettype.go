@@ -27,6 +27,13 @@ const (
 	CNI
 )
 
+var netTypeToName = map[interface{}]string{
+	Invalid: "invalid",
+	None:    "none",
+	Host:    "host",
+	CNI:     "cni",
+}
+
 func Detect(names []string) (Type, error) {
 	var res Type
 
@@ -41,7 +48,7 @@ func Detect(names []string) (Type, error) {
 			tmp = CNI
 		}
 		if res != Invalid && res != tmp {
-			return Invalid, errors.Errorf("mixed network types: %v and %v", res, tmp)
+			return Invalid, errors.Errorf("mixed network types: %v and %v", netTypeToName[res], netTypeToName[tmp])
 		}
 		res = tmp
 	}

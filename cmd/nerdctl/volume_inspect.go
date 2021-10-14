@@ -22,28 +22,33 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var volumeInspectCommand = &cli.Command{
-	Name:         "inspect",
-	Usage:        "Display detailed information on one or more volumes",
-	ArgsUsage:    "[flags] VOLUME [VOLUME, ...]",
-	Action:       volumeInspectAction,
-	BashComplete: volumeInspectBashComplete,
+func newVolumeInspectCommand() *cobra.Command {
+	volumeInspectCommand := &cobra.Command{
+		Use:               "inspect [flags] VOLUME [VOLUME...]",
+		Short:             "Display detailed information on one or more volumes",
+		Args:              cobra.MinimumNArgs(1),
+		RunE:              volumeInspectAction,
+		ValidArgsFunction: volumeInspectShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	return volumeInspectCommand
 }
 
-func volumeInspectAction(clicontext *cli.Context) error {
-	if clicontext.NArg() == 0 {
+func volumeInspectAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
-	volStore, err := getVolumeStore(clicontext)
+	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return err
 	}
-	result := make([]*native.Volume, clicontext.NArg())
-	for i, name := range clicontext.Args().Slice() {
+	result := make([]*native.Volume, len(args))
+	for i, name := range args {
 		vol, err := volStore.Get(name)
 		if err != nil {
 			return err
@@ -54,16 +59,11 @@ func volumeInspectAction(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(clicontext.App.Writer, string(b))
+	fmt.Fprintln(cmd.OutOrStdout(), string(b))
 	return nil
 }
 
-func volumeInspectBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func volumeInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show voume names
-	bashCompleteVolumeNames(clicontext)
+	return shellCompleteVolumeNames(cmd)
 }

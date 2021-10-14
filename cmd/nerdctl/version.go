@@ -19,31 +19,38 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"text/template"
 
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/docker/cli/templates"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var versionCommand = &cli.Command{
-	Name:   "version",
-	Usage:  "Show the nerdctl version information",
-	Action: versionAction,
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "format",
-			Aliases: []string{"f"},
-			Usage:   "Format the output using the given Go template, e.g, '{{json .}}'",
-		},
-	},
+func newVersionCommand() *cobra.Command {
+	var versionCommand = &cobra.Command{
+		Use:           "version",
+		Args:          cobra.NoArgs,
+		Short:         "Show the nerdctl version information",
+		RunE:          versionAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	versionCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	return versionCommand
 }
 
-func versionAction(clicontext *cli.Context) error {
-	w := clicontext.App.Writer
+func versionAction(cmd *cobra.Command, args []string) error {
+	var w io.Writer = os.Stdout
 	var tmpl *template.Template
-	if format := clicontext.String("format"); format != "" {
+
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	if format != "" {
 		var err error
 		tmpl, err = templates.Parse(format)
 		if err != nil {
@@ -51,7 +58,7 @@ func versionAction(clicontext *cli.Context) error {
 		}
 	}
 
-	v, vErr := versionInfo(clicontext)
+	v, vErr := versionInfo(cmd)
 	if tmpl != nil {
 		var b bytes.Buffer
 		if err := tmpl.Execute(&b, v); err != nil {
@@ -80,11 +87,11 @@ func versionAction(clicontext *cli.Context) error {
 }
 
 // versionInfo may return partial VersionInfo on error
-func versionInfo(clicontext *cli.Context) (dockercompat.VersionInfo, error) {
+func versionInfo(cmd *cobra.Command) (dockercompat.VersionInfo, error) {
 	v := dockercompat.VersionInfo{
 		Client: infoutil.ClientVersion(),
 	}
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return v, err
 	}

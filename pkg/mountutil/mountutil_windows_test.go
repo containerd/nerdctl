@@ -17,9 +17,11 @@
 package mountutil
 
 import (
-	"reflect"
 	"strings"
 	"testing"
+
+	"gotest.tools/v3/assert"
+	is "gotest.tools/v3/assert/cmp"
 )
 
 func TestParseVolumeOptions(t *testing.T) {

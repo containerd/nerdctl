@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/infoutil"
@@ -39,4 +40,15 @@ func TestInfo(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+func TestInfoWithNamespace(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	base.Args = nil // unset "--namespace=nerdctl-test"
+
+	base.Cmd("info").AssertOutContains("Namespace:	default")
+
+	base.Env = append(os.Environ(), "CONTAINERD_NAMESPACE=test")
+	base.Cmd("info").AssertOutContains("Namespace:	test")
 }

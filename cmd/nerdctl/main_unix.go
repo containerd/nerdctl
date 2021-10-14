@@ -20,53 +20,53 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/containerd/nerdctl/pkg/infoutil"
-
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-func bashCompleteNamespaceNames(clicontext *cli.Context) {
+func shellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if rootlessutil.IsRootlessParent() {
 		_ = rootlessutil.ParentMain()
-		return
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
-		return
+		return nil, cobra.ShellCompDirectiveError
 	}
 	defer cancel()
 	nsService := client.NamespaceService()
 	nsList, err := nsService.List(ctx)
 	if err != nil {
 		logrus.Warn(err)
-		return
+		return nil, cobra.ShellCompDirectiveError
 	}
+	candidates := []string{}
 	for _, ns := range nsList {
-		fmt.Fprintln(clicontext.App.Writer, ns)
+		candidates = append(candidates, ns)
 	}
+	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-func bashCompleteSnapshotterNames(clicontext *cli.Context) {
+func shellCompleteSnapshotterNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if rootlessutil.IsRootlessParent() {
 		_ = rootlessutil.ParentMain()
-		return
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
-		return
+		return nil, cobra.ShellCompDirectiveError
 	}
 	defer cancel()
 	snapshotterPlugins, err := infoutil.GetSnapshotterNames(ctx, client.IntrospectionService())
 	if err != nil {
-		return
+		return nil, cobra.ShellCompDirectiveError
 	}
+	candidates := []string{}
 	for _, name := range snapshotterPlugins {
-		fmt.Fprintln(clicontext.App.Writer, name)
+		candidates = append(candidates, name)
 	}
+	return candidates, cobra.ShellCompDirectiveNoFileComp
 }

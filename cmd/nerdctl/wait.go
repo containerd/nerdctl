@@ -24,23 +24,29 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
 
-var waitCommand = &cli.Command{
-	Name:         "wait",
-	Usage:        "Block until one or more containers stop, then print their exit codes.",
-	Action:       containerWaitAction,
-	BashComplete: waitBashComplete,
+func newWaitCommand() *cobra.Command {
+	var waitCommand = &cobra.Command{
+		Use:               "wait [flags] CONTAINER [CONTAINER, ...]",
+		Args:              cobra.MinimumNArgs(1),
+		Short:             "Block until one or more containers stop, then print their exit codes.",
+		RunE:              containerWaitAction,
+		ValidArgsFunction: waitShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	return waitCommand
 }
 
-func containerWaitAction(clicontext *cli.Context) error {
-	if clicontext.NArg() == 0 {
+func containerWaitAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -51,12 +57,12 @@ func containerWaitAction(clicontext *cli.Context) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			waitContainer(ctx, clicontext, client, found.Container.ID(), &g)
+			waitContainer(ctx, cmd, client, found.Container.ID(), &g)
 			return nil
 		},
 	}
 
-	for _, req := range clicontext.Args().Slice() {
+	for _, req := range args {
 		n, _ := walker.Walk(ctx, req)
 		if n == 0 {
 			return errors.Errorf("no such container: %s", req)
@@ -69,7 +75,7 @@ func containerWaitAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func waitContainer(ctx context.Context, clicontext *cli.Context, client *containerd.Client, id string, g *errgroup.Group) error {
+func waitContainer(ctx context.Context, cmd *cobra.Command, client *containerd.Client, id string, g *errgroup.Group) error {
 	container, err := client.LoadContainer(ctx, id)
 	if err != nil {
 		return err
@@ -91,22 +97,17 @@ func waitContainer(ctx context.Context, clicontext *cli.Context, client *contain
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(clicontext.App.Writer, "%d\n", int(code))
+		fmt.Fprintf(cmd.OutOrStdout(), "%d\n", int(code))
 		return nil
 	})
 
 	return nil
 }
 
-func waitBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func waitShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show running container names
 	statusFilterFn := func(st containerd.ProcessStatus) bool {
 		return st == containerd.Running
 	}
-	bashCompleteContainerNames(clicontext, statusFilterFn)
+	return shellCompleteContainerNames(cmd, statusFilterFn)
 }

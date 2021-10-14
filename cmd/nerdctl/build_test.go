@@ -42,6 +42,8 @@ CMD ["echo", "nerdctl-build-test-string"]
 	defer os.RemoveAll(buildCtx)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
+
 	base.Cmd("run", "--rm", imageName).AssertOutContains("nerdctl-build-test-string")
 }
 

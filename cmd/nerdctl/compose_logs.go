@@ -19,62 +19,68 @@ package main
 import (
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var composeLogsCommand = &cli.Command{
-	Name:   "logs",
-	Usage:  "View output from containers.",
-	Action: composeLogsAction,
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "follow",
-			Aliases: []string{"f"},
-			Usage:   "Follow log output.",
-		},
-		&cli.BoolFlag{
-			Name:    "timestamps",
-			Aliases: []string{"t"},
-			Usage:   "Show timestamps",
-		},
-		&cli.StringFlag{
-			Name:  "tail",
-			Value: "all",
-			Usage: "Number of lines to show from the end of the logs",
-		},
-		&cli.BoolFlag{
-			Name:  "no-color",
-			Usage: "Produce monochrome output",
-		},
-		&cli.BoolFlag{
-			Name:  "no-log-prefix",
-			Usage: "Don't print prefix in logs",
-		},
-	},
+func newComposeLogsCommand() *cobra.Command {
+	var composeLogsCommand = &cobra.Command{
+		Use:           "logs",
+		Short:         "Show logs of a running container",
+		Args:          cobra.NoArgs,
+		RunE:          composeLogsAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	composeLogsCommand.Flags().BoolP("follow", "f", false, "Follow log output.")
+	composeLogsCommand.Flags().BoolP("timestamps", "t", false, "Show timestamps")
+	composeLogsCommand.Flags().String("tail", "all", "Number of lines to show from the end of the logs")
+	composeLogsCommand.Flags().Bool("no-color", false, "Produce monochrome output")
+	composeLogsCommand.Flags().Bool("no-log-prefix", false, "Don't print prefix in logs")
+	return composeLogsCommand
 }
 
-func composeLogsAction(clicontext *cli.Context) error {
-	if clicontext.NArg() != 0 {
+func composeLogsAction(cmd *cobra.Command, args []string) error {
+	if len(args) != 0 {
 		// TODO: support specifying service names as args
-		return errors.Errorf("arguments %v not supported", clicontext.Args())
+		return errors.Errorf("arguments %v not supported", args)
+	}
+	follow, err := cmd.Flags().GetBool("follow")
+	if err != nil {
+		return err
+	}
+	timestamps, err := cmd.Flags().GetBool("timestamps")
+	if err != nil {
+		return err
+	}
+	tail, err := cmd.Flags().GetString("tail")
+	if err != nil {
+		return err
+	}
+	noColor, err := cmd.Flags().GetBool("no-color")
+	if err != nil {
+		return err
+	}
+	noLogPrefix, err := cmd.Flags().GetBool("no-log-prefix")
+	if err != nil {
+		return err
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	c, err := getComposer(clicontext, client)
+	c, err := getComposer(cmd, client)
 	if err != nil {
 		return err
 	}
 	lo := composer.LogsOptions{
-		Follow:      clicontext.Bool("follow"),
-		Timestamps:  clicontext.Bool("timestamps"),
-		Tail:        clicontext.String("tail"),
-		NoColor:     clicontext.Bool("no-color"),
-		NoLogPrefix: clicontext.Bool("no-log-prefix"),
+		Follow:      follow,
+		Timestamps:  timestamps,
+		Tail:        tail,
+		NoColor:     noColor,
+		NoLogPrefix: noLogPrefix,
 	}
 	return c.Logs(ctx, lo)
 }

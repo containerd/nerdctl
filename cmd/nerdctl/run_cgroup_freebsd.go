@@ -18,9 +18,9 @@ package main
 
 import (
 	"github.com/containerd/containerd/oci"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-func generateCgroupOpts(clicontext *cli.Context, id string) ([]oci.SpecOpts, error) {
+func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	return []oci.SpecOpts{}, nil
 }

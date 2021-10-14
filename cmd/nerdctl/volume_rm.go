@@ -20,48 +20,42 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var volumeRmCommand = &cli.Command{
-	Name:         "rm",
-	Aliases:      []string{"remove"},
-	Usage:        "Remove one or more volumes",
-	ArgsUsage:    "[flags] VOLUME [VOLUME, ...]",
-	Description:  "NOTE: volume in use is deleted without caution",
-	Action:       volumeRmAction,
-	BashComplete: volumeRmBashComplete,
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "force",
-			Aliases: []string{"f"},
-			Usage:   "(unimplemented yet)",
-		},
-	},
+func newVolumeRmCommand() *cobra.Command {
+	volumeRmCommand := &cobra.Command{
+		Use:               "rm [flags] VOLUME [VOLUME...]",
+		Aliases:           []string{"remove"},
+		Short:             "Remove one or more volumes",
+		Long:              "NOTE: volume in use is deleted without caution",
+		Args:              cobra.MinimumNArgs(1),
+		RunE:              volumeRmAction,
+		ValidArgsFunction: volumeRmShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	volumeRmCommand.Flags().BoolP("force", "f", false, "(unimplemented yet)")
+	return volumeRmCommand
 }
 
-func volumeRmAction(clicontext *cli.Context) error {
-	if clicontext.NArg() == 0 {
+func volumeRmAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
-	volStore, err := getVolumeStore(clicontext)
+	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return err
 	}
-	names := clicontext.Args().Slice()
+	names := args
 	removedNames, err := volStore.Remove(names)
 	for _, removed := range removedNames {
-		fmt.Fprintln(clicontext.App.Writer, removed)
+		fmt.Fprintln(cmd.OutOrStdout(), removed)
 	}
 	return err
 }
 
-func volumeRmBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func volumeRmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show voume names
-	bashCompleteVolumeNames(clicontext)
+	return shellCompleteVolumeNames(cmd)
 }

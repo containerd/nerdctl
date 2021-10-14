@@ -17,30 +17,42 @@
 package main
 
 import (
+	"os"
+
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/pkg/errors"
-
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var pullCommand = &cli.Command{
-	Name:   "pull",
-	Usage:  "Pull an image from a registry",
-	Action: pullAction,
-	Flags:  []cli.Flag{},
+func newPullCommand() *cobra.Command {
+	var pullCommand = &cobra.Command{
+		Use:           "pull",
+		Short:         "Pull an image from a registry",
+		RunE:          pullAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	return pullCommand
 }
 
-func pullAction(clicontext *cli.Context) error {
-	if clicontext.NArg() < 1 {
+func pullAction(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
 		return errors.New("image name needs to be specified")
 	}
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
 	defer cancel()
-	insecure := clicontext.Bool("insecure-registry")
-	_, err = imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), clicontext.Args().First(),
+	insecure, err := cmd.Flags().GetBool("insecure-registry")
+	if err != nil {
+		return err
+	}
+	snapshotter, err := cmd.Flags().GetString("snapshotter")
+	if err != nil {
+		return err
+	}
+	_, err = imgutil.EnsureImage(ctx, client, os.Stdout, snapshotter, args[0],
 		"always", insecure)
 	return err
 }

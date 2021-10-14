@@ -25,31 +25,31 @@ import (
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/mattn/go-isatty"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var saveCommand = &cli.Command{
-	Name:         "save",
-	Usage:        "Save one or more images to a tar archive (streamed to STDOUT by default)",
-	Description:  "The archive implements both Docker Image Spec v1.2 and OCI Image Spec v1.0.",
-	Action:       saveAction,
-	BashComplete: saveBashComplete,
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "output",
-			Aliases: []string{"o"},
-			Usage:   "Write to a file, instead of STDOUT",
-		},
-	},
+func newSaveCommand() *cobra.Command {
+	var saveCommand = &cobra.Command{
+		Use:               "save",
+		Args:              cobra.MinimumNArgs(1),
+		Short:             "Save one or more images to a tar archive (streamed to STDOUT by default)",
+		Long:              "The archive implements both Docker Image Spec v1.2 and OCI Image Spec v1.0.",
+		RunE:              saveAction,
+		ValidArgsFunction: saveShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	saveCommand.Flags().StringP("output", "o", "", "Write to a file, instead of STDOUT")
+	return saveCommand
 }
 
-func saveAction(clicontext *cli.Context) error {
-	if clicontext.NArg() == 0 {
+func saveAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
 	var (
-		images   = clicontext.Args().Slice()
+		images   = args
 		saveOpts = []archive.ExportOpt{}
 	)
 
@@ -57,8 +57,12 @@ func saveAction(clicontext *cli.Context) error {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
-	out := clicontext.App.Writer
-	if output := clicontext.String("output"); output != "" {
+	out := cmd.OutOrStdout()
+	output, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return err
+	}
+	if output != "" {
 		f, err := os.OpenFile(output, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return err
@@ -70,11 +74,11 @@ func saveAction(clicontext *cli.Context) error {
 			return errors.Errorf("cowardly refusing to save to a terminal. Use the -o flag or redirect")
 		}
 	}
-	return saveImage(images, out, saveOpts, clicontext)
+	return saveImage(images, out, saveOpts, cmd)
 }
 
-func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, clicontext *cli.Context) error {
-	client, ctx, cancel, err := newClient(clicontext)
+func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, cmd *cobra.Command) error {
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -95,12 +99,7 @@ func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, cli
 	return client.Export(ctx, out, saveOpts...)
 }
 
-func saveBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func saveShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	bashCompleteImageNames(clicontext)
+	return shellCompleteImageNames(cmd)
 }

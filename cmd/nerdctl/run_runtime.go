@@ -27,20 +27,27 @@ import (
 	runcoptions "github.com/containerd/containerd/runtime/v2/runc/options"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-func generateRuntimeCOpts(clicontext *cli.Context) ([]containerd.NewContainerOpts, error) {
+func generateRuntimeCOpts(cmd *cobra.Command) ([]containerd.NewContainerOpts, error) {
 	runtime := plugin.RuntimeRuncV2
 	var (
 		runcOpts    runcoptions.Options
 		runtimeOpts interface{} = &runcOpts
 	)
-	cgm := clicontext.String("cgroup-manager")
+	cgm, err := cmd.Flags().GetString("cgroup-manager")
+	if err != nil {
+		return nil, err
+	}
 	if cgm == "systemd" {
 		runcOpts.SystemdCgroup = true
 	}
-	if runtimeStr := clicontext.String("runtime"); runtimeStr != "" {
+	runtimeStr, err := cmd.Flags().GetString("runtime")
+	if err != nil {
+		return nil, err
+	}
+	if runtimeStr != "" {
 		if strings.HasPrefix(runtimeStr, "io.containerd.") || runtimeStr == "wtf.sbk.runj.v1" {
 			runtime = runtimeStr
 			if !strings.HasPrefix(runtimeStr, "io.containerd.runc.") {

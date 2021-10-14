@@ -17,16 +17,21 @@
 package main
 
 import (
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var systemCommand = &cli.Command{
-	Name:     "system",
-	Usage:    "Manage containerd",
-	Category: CategoryManagement,
-	Subcommands: []*cli.Command{
-		eventsCommand,
-		infoCommand,
-		// versionCommand is not here
-	},
+func newSystemCommand() *cobra.Command {
+	var systemCommand = &cobra.Command{
+		Category:      CategoryManagement,
+		Use:           "system",
+		Short:         "Manage containerd",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	// versionCommand is not here
+	systemCommand.AddCommand(
+		newEventsCommand(),
+		newInfoCommand(),
+	)
+	return systemCommand
 }

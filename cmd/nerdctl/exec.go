@@ -33,58 +33,44 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var execCommand = &cli.Command{
-	Name:      "exec",
-	Usage:     "Run a command in a running container",
-	ArgsUsage: "[flags] CONTAINER",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "tty",
-			Aliases: []string{"t"},
-			Usage:   "(Currently -t needs to correspond to -i)",
-		},
-		&cli.BoolFlag{
-			Name:    "interactive",
-			Aliases: []string{"i"},
-			Usage:   "Keep STDIN open even if not attached",
-		},
-		&cli.BoolFlag{
-			Name:    "detach",
-			Aliases: []string{"d"},
-			Usage:   "Detached mode: run command in the background",
-		},
-		&cli.StringFlag{
-			Name:    "workdir",
-			Aliases: []string{"w"},
-			Usage:   "Working directory inside the container",
-		},
-		&cli.StringSliceFlag{
-			Name:    "env",
-			Aliases: []string{"e"},
-			Usage:   "Set environment variables",
-		},
-		&cli.StringSliceFlag{
-			Name:  "env-file",
-			Usage: "Set environment variables from file",
-		},
-		&cli.BoolFlag{
-			Name:  "privileged",
-			Usage: "Give extended privileges to the command",
-		},
-	},
-	Action:       execAction,
-	BashComplete: execBashComplete,
+func newExecCommand() *cobra.Command {
+	var execCommand = &cobra.Command{
+		Use:               "exec [OPTIONS] CONTAINER COMMAND [ARG...]",
+		Args:              cobra.MinimumNArgs(2),
+		Short:             "Run a command in a running container",
+		RunE:              execAction,
+		ValidArgsFunction: execShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	execCommand.Flags().SetInterspersed(false)
+
+	execCommand.Flags().BoolP("tty", "t", false, "(Currently -t needs to correspond to -i)")
+	execCommand.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
+	execCommand.Flags().BoolP("detach", "d", false, "Detached mode: run command in the background")
+	execCommand.Flags().StringP("workdir", "w", "", "Working directory inside the container")
+	execCommand.Flags().StringSliceP("env", "e", nil, "Set environment variables")
+	execCommand.Flags().StringSlice("env-file", nil, "Set environment variables from file")
+	execCommand.Flags().Bool("privileged", false, "Give extended privileges to the command")
+	return execCommand
 }
 
-func execAction(clicontext *cli.Context) error {
-	if clicontext.NArg() < 2 {
+func execAction(cmd *cobra.Command, args []string) error {
+	// simulate the behavior of double dash
+	newArg := []string{}
+	if len(args) >= 2 && args[1] == "--" {
+		newArg = append(newArg, args[:1]...)
+		newArg = append(newArg, args[2:]...)
+		args = newArg
+	}
+	if len(args) < 2 {
 		return errors.Errorf("requires at least 2 arguments")
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -96,10 +82,10 @@ func execAction(clicontext *cli.Context) error {
 			if found.MatchCount > 1 {
 				return errors.Errorf("ambiguous ID %q", found.Req)
 			}
-			return execActionWithContainer(ctx, clicontext, found.Container)
+			return execActionWithContainer(ctx, cmd, args, found.Container)
 		},
 	}
-	req := clicontext.Args().First()
+	req := args[0]
 	n, err := walker.Walk(ctx, req)
 	if err != nil {
 		return err
@@ -109,10 +95,19 @@ func execAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func execActionWithContainer(ctx context.Context, clicontext *cli.Context, container containerd.Container) error {
-	flagI := clicontext.Bool("i")
-	flagT := clicontext.Bool("t")
-	flagD := clicontext.Bool("d")
+func execActionWithContainer(ctx context.Context, cmd *cobra.Command, args []string, container containerd.Container) error {
+	flagI, err := cmd.Flags().GetBool("interactive")
+	if err != nil {
+		return err
+	}
+	flagT, err := cmd.Flags().GetBool("tty")
+	if err != nil {
+		return err
+	}
+	flagD, err := cmd.Flags().GetBool("detach")
+	if err != nil {
+		return err
+	}
 
 	if flagI {
 		if flagD {
@@ -129,7 +124,7 @@ func execActionWithContainer(ctx context.Context, clicontext *cli.Context, conta
 		}
 	}
 
-	pspec, err := generateExecProcessSpec(ctx, clicontext, container)
+	pspec, err := generateExecProcessSpec(ctx, cmd, args, container)
 	if err != nil {
 		return err
 	}
@@ -204,36 +199,56 @@ func execActionWithContainer(ctx context.Context, clicontext *cli.Context, conta
 		return err
 	}
 	if code != 0 {
-		return cli.NewExitError("", int(code))
+		return errors.Errorf("exec failed with exit code %d", code)
 	}
 	return nil
 }
 
-func generateExecProcessSpec(ctx context.Context, clicontext *cli.Context, container containerd.Container) (*specs.Process, error) {
+func generateExecProcessSpec(ctx context.Context, cmd *cobra.Command, args []string, container containerd.Container) (*specs.Process, error) {
 	spec, err := container.Spec(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	pspec := spec.Process
-	pspec.Terminal = clicontext.Bool("t")
-	pspec.Args = clicontext.Args().Tail()
+	flagT, err := cmd.Flags().GetBool("tty")
+	if err != nil {
+		return nil, err
+	}
+	pspec.Terminal = flagT
+	pspec.Args = args[1:]
 
-	if workdir := clicontext.String("workdir"); workdir != "" {
+	workdir, err := cmd.Flags().GetString("workdir")
+	if err != nil {
+		return nil, err
+	}
+	if workdir != "" {
 		pspec.Cwd = workdir
 	}
-	if envFiles := strutil.DedupeStrSlice(clicontext.StringSlice("env-file")); len(envFiles) > 0 {
+	envFile, err := cmd.Flags().GetStringSlice("env-file")
+	if err != nil {
+		return nil, err
+	}
+	if envFiles := strutil.DedupeStrSlice(envFile); len(envFiles) > 0 {
 		env, err := parseEnvVars(envFiles)
 		if err != nil {
 			return nil, err
 		}
 		pspec.Env = append(pspec.Env, env...)
 	}
-	for _, e := range strutil.DedupeStrSlice(clicontext.StringSlice("env")) {
+	env, err := cmd.Flags().GetStringSlice("env")
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range strutil.DedupeStrSlice(env) {
 		pspec.Env = append(pspec.Env, e)
 	}
 
-	if clicontext.Bool("privileged") {
+	privileged, err := cmd.Flags().GetBool("privileged")
+	if err != nil {
+		return nil, err
+	}
+	if privileged {
 		err = setExecCapabilities(pspec)
 		if err != nil {
 			return nil, err
@@ -243,15 +258,14 @@ func generateExecProcessSpec(ctx context.Context, clicontext *cli.Context, conta
 	return pspec, nil
 }
 
-func execBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
+func execShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) == 0 {
+		// show running container names
+		statusFilterFn := func(st containerd.ProcessStatus) bool {
+			return st == containerd.Running
+		}
+		return shellCompleteContainerNames(cmd, statusFilterFn)
+	} else {
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	// show running container names
-	statusFilterFn := func(st containerd.ProcessStatus) bool {
-		return st == containerd.Running
-	}
-	bashCompleteContainerNames(clicontext, statusFilterFn)
 }

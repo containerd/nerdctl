@@ -24,23 +24,28 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var pauseCommand = &cli.Command{
-	Name:         "pause",
-	Usage:        "Pause all processes within one or more containers",
-	ArgsUsage:    "[flags] CONTAINER [CONTAINER, ...]",
-	Action:       pauseAction,
-	BashComplete: pauseBashComplete,
+func newPauseCommand() *cobra.Command {
+	var pauseCommand = &cobra.Command{
+		Use:               "pause [flags] CONTAINER [CONTAINER, ...]",
+		Args:              cobra.MinimumNArgs(1),
+		Short:             "Pause all processes within one or more containers",
+		RunE:              pauseAction,
+		ValidArgsFunction: pauseShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	return pauseCommand
 }
 
-func pauseAction(clicontext *cli.Context) error {
-	if clicontext.NArg() == 0 {
+func pauseAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -53,11 +58,11 @@ func pauseAction(clicontext *cli.Context) error {
 				return err
 			}
 
-			_, err := fmt.Fprintf(clicontext.App.Writer, "%s\n", found.Req)
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
 			return err
 		},
 	}
-	for _, req := range clicontext.Args().Slice() {
+	for _, req := range args {
 		n, err := walker.Walk(ctx, req)
 		if err != nil {
 			return err
@@ -94,15 +99,10 @@ func pauseContainer(ctx context.Context, client *containerd.Client, id string) e
 	}
 }
 
-func pauseBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func pauseShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show running container names
 	statusFilterFn := func(st containerd.ProcessStatus) bool {
 		return st == containerd.Running
 	}
-	bashCompleteContainerNames(clicontext, statusFilterFn)
+	return shellCompleteContainerNames(cmd, statusFilterFn)
 }

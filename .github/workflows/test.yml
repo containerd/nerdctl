@@ -183,4 +183,4 @@ jobs:
       - name: "Run unit tests"
         run: vagrant ssh -- "cd /vagrant; go test -v ./pkg/..."
       - name: "Integration smoke test"
-        run: vagrant ssh -- "cd /vagrant/cmd/nerdctl; sudo go run . -- run $NERDCTL_RUN_ARGS | grep running"
+        run: vagrant ssh -- "cd /vagrant/cmd/nerdctl; sudo go run . run $NERDCTL_RUN_ARGS | grep running"

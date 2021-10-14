@@ -27,63 +27,89 @@ import (
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var composeCommand = &cli.Command{
-	Name:  "compose",
-	Usage: "Compose",
-	Subcommands: []*cli.Command{
-		composeUpCommand,
-		composeLogsCommand,
-		composeBuildCommand,
-		composeDownCommand,
-		composePsCommand,
-	},
+func newComposeCommand() *cobra.Command {
+	var composeCommand = &cobra.Command{
+		Use:           "compose",
+		Short:         "Compose",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	composeCommand.PersistentFlags().StringP("file", "f", "", "Specify an alternate compose file")
+	composeCommand.PersistentFlags().String("project-directory", "", "Specify an alternate working directory")
+	composeCommand.PersistentFlags().StringP("project-name", "p", "", "Specify an alternate project name")
+	composeCommand.PersistentFlags().String("env-file", "", "Specify an alternate environment file")
 
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "file",
-			Aliases: []string{"f"},
-			Usage:   "Specify an alternate compose file",
-		},
-		&cli.StringFlag{
-			Name:  "project-directory",
-			Usage: "Specify an alternate working directory",
-		},
-		&cli.StringFlag{
-			Name:    "project-name",
-			Aliases: []string{"p"},
-			Usage:   "Specify an alternate project name",
-		},
-		&cli.StringFlag{
-			Name:  "env-file",
-			Usage: "Specify an alternate environment file",
-		},
-	},
+	composeCommand.AddCommand(
+		newComposeUpCommand(),
+		newComposeLogsCommand(),
+		newComposeBuildCommand(),
+		newComposeDownCommand(),
+		newComposePsCommand(),
+	)
+
+	return composeCommand
 }
 
-func getComposer(clicontext *cli.Context, client *containerd.Client) (*composer.Composer, error) {
-	nerdctlCmd, nerdctlArgs := globalFlags(clicontext)
+func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Composer, error) {
+	nerdctlCmd, nerdctlArgs := globalFlags(cmd)
+	projectDirectory, err := cmd.Flags().GetString("project-directory")
+	if err != nil {
+		return nil, err
+	}
+	envFile, err := cmd.Flags().GetString("env-file")
+	if err != nil {
+		return nil, err
+	}
+	projectName, err := cmd.Flags().GetString("project-name")
+	if err != nil {
+		return nil, err
+	}
+	debugFull, err := cmd.Flags().GetBool("debug-full")
+	if err != nil {
+		return nil, err
+	}
+	file, err := cmd.Flags().GetString("file")
+	if err != nil {
+		return nil, err
+	}
+	insecure, err := cmd.Flags().GetBool("insecure-registry")
+	if err != nil {
+		return nil, err
+	}
+	cniPath, err := cmd.Flags().GetString("cni-path")
+	if err != nil {
+		return nil, err
+	}
+	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	if err != nil {
+		return nil, err
+	}
+	snapshotter, err := cmd.Flags().GetString("snapshotter")
+	if err != nil {
+		return nil, err
+	}
 	o := composer.Options{
 		ProjectOptions: composecli.ProjectOptions{
-			WorkingDir:  clicontext.String("project-directory"),
+			WorkingDir:  projectDirectory,
 			ConfigPaths: []string{},
 			Environment: map[string]string{},
-			EnvFile:     clicontext.String("env-file"),
+			EnvFile:     envFile,
 		},
-		Project:        clicontext.String("project-name"),
+		Project:        projectName,
 		NerdctlCmd:     nerdctlCmd,
 		NerdctlArgs:    nerdctlArgs,
-		DebugPrintFull: clicontext.Bool("debug-full"),
+		DebugPrintFull: debugFull,
 	}
 
-	if file := clicontext.String("file"); file != "" {
+	if file != "" {
 		o.ProjectOptions.ConfigPaths = append([]string{file}, o.ProjectOptions.ConfigPaths...)
 	}
 	cniEnv := &netutil.CNIEnv{
-		Path:        clicontext.String("cni-path"),
-		NetconfPath: clicontext.String("cni-netconfpath"),
+		Path:        cniPath,
+		NetconfPath: cniNetconfpath,
 	}
 	configLists, err := netutil.ConfigLists(cniEnv)
 	if err != nil {
@@ -99,7 +125,7 @@ func getComposer(clicontext *cli.Context, client *containerd.Client) (*composer.
 		return false, nil
 	}
 
-	volStore, err := getVolumeStore(clicontext)
+	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -129,9 +155,8 @@ func getComposer(clicontext *cli.Context, client *containerd.Client) (*composer.
 		return true, nil
 	}
 
-	insecure := clicontext.Bool("insecure-registry")
 	o.EnsureImage = func(ctx context.Context, imageName, pullMode string) error {
-		_, imgErr := imgutil.EnsureImage(ctx, client, clicontext.App.Writer, clicontext.String("snapshotter"), imageName,
+		_, imgErr := imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), snapshotter, imageName,
 			pullMode, insecure)
 		return imgErr
 	}

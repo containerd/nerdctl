@@ -23,23 +23,29 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var rmiCommand = &cli.Command{
-	Name:         "rmi",
-	Usage:        "Remove one or more images",
-	ArgsUsage:    "[flags] IMAGE [IMAGE, ...]",
-	BashComplete: rmiBashComplete,
-	Action:       rmiAction,
+func newRmiCommand() *cobra.Command {
+	var rmiCommand = &cobra.Command{
+		Use:               "rmi [flags] IMAGE [IMAGE, ...]",
+		Short:             "Remove one or more images",
+		Args:              cobra.MinimumNArgs(1),
+		RunE:              rmiAction,
+		ValidArgsFunction: rmiShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+
+	return rmiCommand
 }
 
-func rmiAction(clicontext *cli.Context) error {
-	if clicontext.NArg() == 0 {
+func rmiAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
-	client, ctx, cancel, err := newClient(clicontext)
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -59,14 +65,14 @@ func rmiAction(clicontext *cli.Context) error {
 			if err := is.Delete(ctx, found.Image.Name); err != nil {
 				return err
 			}
-			fmt.Fprintf(clicontext.App.Writer, "Untagged: %s@%s\n", found.Image.Name, found.Image.Target.Digest)
+			fmt.Fprintf(cmd.OutOrStdout(), "Untagged: %s@%s\n", found.Image.Name, found.Image.Target.Digest)
 			for _, digest := range digests {
-				fmt.Fprintf(clicontext.App.Writer, "Deleted: %s\n", digest)
+				fmt.Fprintf(cmd.OutOrStdout(), "Deleted: %s\n", digest)
 			}
 			return nil
 		},
 	}
-	for _, req := range clicontext.Args().Slice() {
+	for _, req := range args {
 		n, err := walker.Walk(ctx, req)
 		if err != nil {
 			return err
@@ -77,12 +83,7 @@ func rmiAction(clicontext *cli.Context) error {
 	return nil
 }
 
-func rmiBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring || coco.flagTakesValue {
-		defaultBashComplete(clicontext)
-		return
-	}
+func rmiShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	bashCompleteImageNames(clicontext)
+	return shellCompleteImageNames(cmd)
 }

@@ -21,29 +21,29 @@ import (
 
 	dockercliconfig "github.com/docker/cli/cli/config"
 	"github.com/docker/docker/registry"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var logoutCommand = &cli.Command{
-	Name:      "logout",
-	Usage:     "Log out from a Docker registry",
-	ArgsUsage: "[flags] [SERVER]",
-	Action:    logoutAction,
+func newLogoutCommand() *cobra.Command {
+	var logoutCommand = &cobra.Command{
+		Use:               "logout [flags] [SERVER]",
+		Args:              cobra.MaximumNArgs(1),
+		Short:             "Log out from a Docker registry",
+		RunE:              logoutAction,
+		ValidArgsFunction: logoutShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+	}
+	return logoutCommand
 }
 
 // code inspired from XXX
-func logoutAction(clicontext *cli.Context) error {
-	if clicontext.Bool("help") {
-		return cli.ShowCommandHelp(clicontext, "login")
-	}
-
-	serverAddress := clicontext.Args().First()
-
-	var isDefaultRegistry bool
-
-	if serverAddress == "" {
-		serverAddress = registry.IndexServer
-		isDefaultRegistry = true
+func logoutAction(cmd *cobra.Command, args []string) error {
+	serverAddress := registry.IndexServer
+	isDefaultRegistry := true
+	if len(args) >= 1 {
+		serverAddress = args[0]
+		isDefaultRegistry = false
 	}
 
 	var (
@@ -58,7 +58,7 @@ func logoutAction(clicontext *cli.Context) error {
 		regsToLogout = append(regsToLogout, hostnameAddress, "http://"+hostnameAddress, "https://"+hostnameAddress)
 	}
 
-	fmt.Fprintf(clicontext.App.Writer, "Removing login credentials for %s\n", hostnameAddress)
+	fmt.Fprintf(cmd.OutOrStdout(), "Removing login credentials for %s\n", hostnameAddress)
 
 	dockerConfigFile, err := dockercliconfig.Load("")
 	if err != nil {
@@ -73,12 +73,23 @@ func logoutAction(clicontext *cli.Context) error {
 
 	// if at least one removal succeeded, report success. Otherwise report errors
 	if len(errs) == len(regsToLogout) {
-		fmt.Fprintln(clicontext.App.Writer, "WARNING: could not erase credentials:")
+		fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: could not erase credentials:")
 		for k, v := range errs {
-			fmt.Fprintf(clicontext.App.Writer, "%s: %s\n", k, v)
+			fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", k, v)
 		}
 	}
 
 	return nil
+}
 
+func logoutShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	dockerConfigFile, err := dockercliconfig.Load("")
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	candidates := []string{}
+	for key := range dockerConfigFile.AuthConfigs {
+		candidates = append(candidates, key)
+	}
+	return candidates, cobra.ShellCompDirectiveNoFileComp
 }

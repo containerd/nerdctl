@@ -26,26 +26,23 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/docker/cli/templates"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var networkLsCommand = &cli.Command{
-	Name:    "ls",
-	Aliases: []string{"list"},
-	Usage:   "List networks",
-	Action:  networkLsAction,
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "quiet",
-			Aliases: []string{"q"},
-			Usage:   "Only display network IDs",
-		},
-		&cli.StringFlag{
-			Name: "format",
-			// Alias "-f" is reserved for "--filter"
-			Usage: "Format the output using the given Go template, e.g, '{{json .}}'",
-		},
-	},
+func newNetworkLsCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:           "ls",
+		Aliases:       []string{"list"},
+		Short:         "List networks",
+		Args:          cobra.NoArgs,
+		RunE:          networkLsAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	cmd.Flags().BoolP("quiet", "q", false, "Only display network IDs")
+	// Alias "-f" is reserved for "--filter"
+	cmd.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	return cmd
 }
 
 type networkPrintable struct {
@@ -56,13 +53,20 @@ type networkPrintable struct {
 	file string `json:"-"`
 }
 
-func networkLsAction(clicontext *cli.Context) error {
-	quiet := clicontext.Bool("quiet")
-	w := clicontext.App.Writer
+func networkLsAction(cmd *cobra.Command, args []string) error {
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return err
+	}
+	w := cmd.OutOrStdout()
 	var tmpl *template.Template
-	switch format := clicontext.String("format"); format {
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	switch format {
 	case "", "table":
-		w = tabwriter.NewWriter(clicontext.App.Writer, 4, 8, 4, ' ', 0)
+		w = tabwriter.NewWriter(cmd.OutOrStdout(), 4, 8, 4, ' ', 0)
 		if !quiet {
 			fmt.Fprintln(w, "NETWORK ID\tNAME\tFILE")
 		}
@@ -79,9 +83,17 @@ func networkLsAction(clicontext *cli.Context) error {
 		}
 	}
 
+	cniPath, err := cmd.Flags().GetString("cni-path")
+	if err != nil {
+		return err
+	}
+	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	if err != nil {
+		return err
+	}
 	e := &netutil.CNIEnv{
-		Path:        clicontext.String("cni-path"),
-		NetconfPath: clicontext.String("cni-netconfpath"),
+		Path:        cniPath,
+		NetconfPath: cniNetconfpath,
 	}
 	ll, err := netutil.ConfigLists(e)
 	if err != nil {

@@ -42,10 +42,12 @@ type Base struct {
 	Binary           string
 	ComposeBinary    string // "docker-compose"
 	Args             []string
+	Env              []string
 }
 
 func (b *Base) Cmd(args ...string) *Cmd {
 	icmdCmd := icmd.Command(b.Binary, append(b.Args, args...)...)
+	icmdCmd.Env = b.Env
 	cmd := &Cmd{
 		Cmd:  icmdCmd,
 		Base: b,

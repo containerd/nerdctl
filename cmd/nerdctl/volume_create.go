@@ -22,39 +22,43 @@ import (
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
 
-var volumeCreateCommand = &cli.Command{
-	Name:      "create",
-	Usage:     "Create a volume",
-	ArgsUsage: "[flags] VOLUME",
-	Action:    volumeCreateAction,
-	Flags: []cli.Flag{
-		&cli.StringSliceFlag{
-			Name:  "label",
-			Usage: "Set metadata for a volume",
-		},
-	},
+func newVolumeCreateCommand() *cobra.Command {
+	volumeCreateCommand := &cobra.Command{
+		Use:           "create [flags] VOLUME",
+		Short:         "Create a volume",
+		Args:          cobra.ExactArgs(1),
+		RunE:          volumeCreateAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	volumeCreateCommand.Flags().StringSlice("label", nil, "Set a label on the volume")
+	return volumeCreateCommand
 }
 
-func volumeCreateAction(clicontext *cli.Context) error {
-	if clicontext.NArg() != 1 {
+func volumeCreateAction(cmd *cobra.Command, args []string) error {
+	if len(args) != 1 {
 		return errors.Errorf("requires exactly 1 argument")
 	}
-	name := clicontext.Args().First()
+	name := args[0]
 	if err := identifiers.Validate(name); err != nil {
 		return errors.Wrapf(err, "malformed name %s", name)
 	}
 
-	volStore, err := getVolumeStore(clicontext)
+	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return err
 	}
-	labels := strutil.DedupeStrSlice(clicontext.StringSlice("label"))
+	labels, err := cmd.Flags().GetStringSlice("label")
+	if err != nil {
+		return err
+	}
+	labels = strutil.DedupeStrSlice(labels)
 	if _, err := volStore.Create(name, labels); err != nil {
 		return err
 	}
-	fmt.Fprintf(clicontext.App.Writer, "%s\n", name)
+	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", name)
 	return nil
 }

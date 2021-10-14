@@ -18,47 +18,22 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
 )
-
-func runBashComplete(clicontext *cli.Context) {
-	coco := parseCompletionContext(clicontext)
-	if coco.boring {
-		defaultBashComplete(clicontext)
-		return
-	}
-	if coco.flagTakesValue {
-		w := clicontext.App.Writer
-		switch coco.flagName {
-		case "restart":
-			fmt.Fprintln(w, "always")
-			fmt.Fprintln(w, "no")
-			return
-		case "pull":
-			fmt.Fprintln(w, "always")
-			fmt.Fprintln(w, "missing")
-			fmt.Fprintln(w, "never")
-			return
-		case "net", "network":
-			bashCompleteNetworkNames(clicontext, nil)
-			return
-		}
-		defaultBashComplete(clicontext)
-		return
-	}
-	// show image names, unless we have "--rootfs" flag
-	if clicontext.Bool("rootfs") {
-		defaultBashComplete(clicontext)
-		return
-	}
-	bashCompleteImageNames(clicontext)
-}
 
 func WithoutRunMount() func(ctx context.Context, client oci.Client, c *containers.Container, s *oci.Spec) error {
 	// not valid on freebsd
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error { return nil }
+}
+
+func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	candidates := []string{}
+	return candidates, cobra.ShellCompDirectiveNoFileComp
+}
+
+func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }

@@ -68,6 +68,7 @@ func ParentMain() error {
 		return errors.New("should not be called when !IsRootlessParent()")
 	}
 	stateDir, err := RootlessKitStateDir()
+	logrus.Debugf("stateDir: %s", stateDir)
 	if err != nil {
 		return errors.Wrap(err, "rootless containerd not running? (hint: use `containerd-rootless-setuptool.sh install` to start rootless containerd)")
 	}
