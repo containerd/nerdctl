@@ -115,13 +115,13 @@ func newRunCommand() *cobra.Command {
 	runCommand.Flags().StringP("hostname", "h", "", "Container host name")
 	// #endregion
 
-	// #region cgroup flags
+	// #region cgroups, namespaces, and ulimits flags
 	runCommand.Flags().Float64("cpus", 0.0, "Number of CPUs")
 	runCommand.Flags().StringP("memory", "m", "", "Memory limit")
-	// #endregion
-
-	// Enable host pid namespace
 	runCommand.Flags().String("pid", "", "PID namespace to use")
+	runCommand.RegisterFlagCompletionFunc("pid", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"host"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	runCommand.Flags().Int("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
 	runCommand.Flags().String("cgroupns", defaults.CgroupnsMode(), `Cgroup namespace to use, the default depends on the cgroup version ("host"|"private")`)
 	runCommand.RegisterFlagCompletionFunc("cgroupns", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -130,6 +130,7 @@ func newRunCommand() *cobra.Command {
 	runCommand.Flags().String("cpuset-cpus", "", "CPUs in which to allow execution (0-3, 0,1)")
 	runCommand.Flags().Int("cpu-shares", 0, "CPU shares (relative weight)")
 	runCommand.Flags().StringSlice("device", nil, "Add a host device to the container")
+	runCommand.Flags().StringSlice("ulimit", nil, "Ulimit options")
 	// #endregion
 
 	// user flags
@@ -138,7 +139,7 @@ func newRunCommand() *cobra.Command {
 	// #region security flags
 	runCommand.Flags().StringSlice("security-opt", []string{}, "Security options")
 	runCommand.RegisterFlagCompletionFunc("security-opt", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"seccomp=", "apparmor=" + defaults.AppArmorProfileName, "no-new-privileges"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"seccomp=", "seccomp=unconfined", "apparmor=", "apparmor=" + defaults.AppArmorProfileName, "apparmor=unconfined", "no-new-privileges"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	runCommand.Flags().StringSlice("cap-add", []string{}, "Add Linux capabilities")
 	runCommand.RegisterFlagCompletionFunc("cap-add", capShellComplete)
@@ -151,6 +152,12 @@ func newRunCommand() *cobra.Command {
 	runCommand.Flags().String("runtime", defaults.Runtime, "Runtime to use for this container, e.g. \"crun\", or \"io.containerd.runsc.v1\"")
 	runCommand.Flags().StringSlice("sysctl", nil, "Sysctl options")
 	runCommand.Flags().StringSlice("gpus", nil, "GPU devices to add to the container ('all' to pass all GPUs)")
+	runCommand.RegisterFlagCompletionFunc("gpus", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"all"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	// #endregion
+
+	// #region mount flags
 	runCommand.Flags().StringSliceP("volume", "v", nil, "Bind mount a volume")
 	// #endregion
 
@@ -171,13 +178,11 @@ func newRunCommand() *cobra.Command {
 	runCommand.Flags().StringSliceP("label", "l", nil, "Set metadata on container")
 	runCommand.Flags().StringSlice("label-file", nil, "Set metadata on container from file")
 	runCommand.Flags().String("cidfile", "", "Write the container ID to the file")
+	runCommand.Flags().String("pidfile", "", "file path to write the task's pid")
 	// #endregion
 
 	// shared memory flags
 	runCommand.Flags().String("shm-size", "", "Size of /dev/shm")
-
-	runCommand.Flags().String("pidfile", "", "file path to write the task's pid")
-	runCommand.Flags().StringSlice("ulimit", nil, "Ulimit options")
 
 	return runCommand
 }

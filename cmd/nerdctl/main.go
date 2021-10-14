@@ -115,6 +115,7 @@ func newApp() *cobra.Command {
 			},
 		)
 		rootCmd.RegisterFlagCompletionFunc("snapshotter", shellCompleteSnapshotterNames)
+		rootCmd.RegisterFlagCompletionFunc("storage-driver", shellCompleteSnapshotterNames)
 	}
 
 	rootCmd.PersistentFlags().AddFlag(
