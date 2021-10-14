@@ -253,6 +253,9 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl top](#whale-nerdctl-top)
   - [Shell completion](#shell-completion)
     - [:nerd_face: nerdctl completion bash](#nerd_face-nerdctl-completion-bash)
+    - [:nerd_face: nerdctl completion zsh](#nerd_face-nerdctl-completion-zsh)
+    - [:nerd_face: nerdctl completion fish](#nerd_face-nerdctl-completion-fish)
+    - [:nerd_face: nerdctl completion powershell](#nerd_face-nerdctl-completion-powershell)
   - [Compose](#compose)
     - [:whale: nerdctl compose](#whale-nerdctl-compose)
     - [:whale: nerdctl compose up](#whale-nerdctl-compose-up)
@@ -848,12 +851,29 @@ Usage: `nerdctl top CONTAINER [ps OPTIONS]`
 ## Shell completion
 
 ### :nerd_face: nerdctl completion bash
-Show bash completion.
+Generate the autocompletion script for bash.
 
 Usage: add the following line to `~/.bash_profile`:
 ```bash
 source <(nerdctl completion bash)
 ```
+
+Or run `nerdctl completion bash > /etc/bash_completion.d/nerdctl` as the root.
+
+### :nerd_face: nerdctl completion zsh
+Generate the autocompletion script for zsh.
+
+Usage: see `nerdctl completion zsh --help`
+
+### :nerd_face: nerdctl completion fish
+Generate the autocompletion script for fish.
+
+Usage: see `nerdctl completion fish --help`
+
+### :nerd_face: nerdctl completion powershell
+Generate the autocompletion script for powershell.
+
+Usage: see `nerdctl completion powershell --help`
 
 ## Compose
 
