@@ -151,6 +151,10 @@ func newRunCommand() *cobra.Command {
 	runCommand.Flags().String("runtime", defaults.Runtime, "Runtime to use for this container, e.g. \"crun\", or \"io.containerd.runsc.v1\"")
 	runCommand.Flags().StringSlice("sysctl", nil, "Sysctl options")
 	runCommand.Flags().StringSlice("gpus", nil, "GPU devices to add to the container ('all' to pass all GPUs)")
+	runCommand.RegisterFlagCompletionFunc("gpus", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"all"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
 	runCommand.Flags().StringSliceP("volume", "v", nil, "Bind mount a volume")
 	// #endregion
 
