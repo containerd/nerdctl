@@ -26,6 +26,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/pkg/errors"
 	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
 )
 
 func TestComposeUp(t *testing.T) {
@@ -237,4 +238,35 @@ services:
 	//env-file is relative to the current working directory and not the project directory
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "--env-file", "envFile", "up", "-d").AssertFail()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+}
+
+func TestIPAMConfig(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = `
+services:
+  foo:
+    image: alpine
+    command: "sleep 600"
+    networks:
+      default:
+        ipv4_address: 10.1.0.100  # <-- Fixed IP address
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.1.0.0/16
+`
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	res := base.Cmd("inspect", "-f", `{{json .NetworkSettings.Networks }}`, projectName+"_foo_1").Run()
+	res.Assert(t, icmd.Expected{Out: "10.1.0.100"})
 }

@@ -113,6 +113,8 @@ func newRunCommand() *cobra.Command {
 	runCommand.Flags().StringSlice("dns", nil, "Set custom DNS servers")
 	runCommand.Flags().StringSliceP("publish", "p", nil, "Publish a container's port(s) to the host")
 	runCommand.Flags().StringP("hostname", "h", "", "Container host name")
+	runCommand.Flags().StringSlice("ip", nil, "IPv4 address")
+	runCommand.Flags().StringSlice("ip6", nil, "IPv6 address")
 	// #endregion
 
 	// #region cgroups, namespaces, and ulimits flags

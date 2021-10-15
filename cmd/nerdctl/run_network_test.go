@@ -343,3 +343,17 @@ func httpGet(urlStr string, attempts int) (*http.Response, error) {
 	}
 	return nil, errors.Wrapf(err, "error after %d attempts", attempts)
 }
+
+func TestRunIp(t *testing.T) {
+	const (
+		testSubnet = "10.1.0.0/24"
+		testIPV4   = "10.1.0.100"
+	)
+
+	base := testutil.NewBase(t)
+	customNet := "customnet1"
+	base.Cmd("network", "create", "--subnet", testSubnet, customNet).AssertOK()
+	defer base.Cmd("network", "rm", customNet).Run()
+
+	base.Cmd("run", "--rm", "--net", customNet, "--ip", testIPV4, testutil.AlpineImage, "ifconfig").AssertOutContains("inet addr:10.1.0.100")
+}

@@ -499,6 +499,14 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 		for _, net := range networks {
 			c.RunArgs = append(c.RunArgs, "--net="+net)
 		}
+		for _, config := range svc.Networks {
+			if config.Ipv4Address != "" {
+				c.RunArgs = append(c.RunArgs, "--ip="+config.Ipv4Address)
+			}
+			if config.Ipv6Address != "" {
+				c.RunArgs = append(c.RunArgs, "--ip6="+config.Ipv6Address)
+			}
+		}
 	}
 
 	if svc.Pid != "" {

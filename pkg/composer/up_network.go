@@ -36,7 +36,7 @@ func (c *Composer) upNetwork(ctx context.Context, shortName string) error {
 		return nil
 	}
 
-	if unknown := reflectutil.UnknownNonEmptyFields(&net, "Name"); len(unknown) > 0 {
+	if unknown := reflectutil.UnknownNonEmptyFields(&net, "Name", "Ipam"); len(unknown) > 0 {
 		logrus.Warnf("Ignoring: network %s: %+v", shortName, unknown)
 	}
 
@@ -51,8 +51,14 @@ func (c *Composer) upNetwork(ctx context.Context, shortName string) error {
 		createArgs := []string{
 			fmt.Sprintf("--label=%s=%s", labels.ComposeProject, c.Options.Project),
 			fmt.Sprintf("--label=%s=%s", labels.ComposeNetwork, shortName),
-			fullName,
 		}
+
+		for _, ipamConfig := range net.Ipam.Config {
+			createArgs = append(createArgs, fmt.Sprintf("--subnet=%s", ipamConfig.Subnet))
+		}
+
+		createArgs = append(createArgs, fullName)
+
 		if err := c.runNerdctlCmd(ctx, append([]string{"network", "create"}, createArgs...)...); err != nil {
 			return err
 		}
