@@ -146,8 +146,9 @@ github.com/containerd/containerd v1.5.1-0.20211004173205-d193dc2b8afb/go.mod h1:
 github.com/containerd/containerd/api v0.0.0-20211004173205-d193dc2b8afb h1:3jCIQAUY6mfm3K8NbJKoHTG13DA6Nx6ltOgs64RJx4g=
 github.com/containerd/containerd/api v0.0.0-20211004173205-d193dc2b8afb/go.mod h1:CWCxseMljwyTggNJL5GNIaCU0WTPvrEWyQFaJVIfS1E=
 github.com/containerd/continuity v0.0.0-20210208174643-50096c924a4e/go.mod h1:EXlVlkqNba9rJe3j7w3Xa924itAMLgZH4UD/Q4PExuQ=
-github.com/containerd/continuity v0.2.0 h1:j/9Wnn+hrEWjLvHuIxUU1YI5JjEjVlT2AA68cse9rwY=
 github.com/containerd/continuity v0.2.0/go.mod h1:wCYX+dRqZdImhGucXOqTQn05AhX6EUDaGEMUzTFFpLg=
+github.com/containerd/continuity v0.2.1 h1:/EeEo2EtN3umhbbgCveyjifoMYg0pS+nMMEemaYw634=
+github.com/containerd/continuity v0.2.1/go.mod h1:wCYX+dRqZdImhGucXOqTQn05AhX6EUDaGEMUzTFFpLg=
 github.com/containerd/fifo v1.0.0 h1:6PirWBr9/L7GDamKr+XM0IeUFXu5mf3M/BPpH9gaLBU=
 github.com/containerd/fifo v1.0.0/go.mod h1:ocF/ME1SX5b1AOlWi9r677YJmCPSwwWnQ9O123vzpE4=
 github.com/containerd/go-cni v1.0.2/go.mod h1:nrNABBHzu0ZwCug9Ije8hL2xBCYh/pjfMb1aZGrrohk=
