@@ -3,7 +3,7 @@ module github.com/containerd/nerdctl
 go 1.16
 
 require (
-	github.com/Microsoft/go-winio v0.5.0
+	github.com/Microsoft/go-winio v0.5.1
 	github.com/compose-spec/compose-go v1.0.3
 	github.com/containerd/cgroups v1.0.2
 	github.com/containerd/console v1.0.3
