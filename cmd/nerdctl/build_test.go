@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -45,6 +46,19 @@ CMD ["echo", "nerdctl-build-test-string"]
 	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
 
 	base.Cmd("run", "--rm", imageName).AssertOutContains("nerdctl-build-test-string")
+}
+
+func TestBuildFromStdin(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	const imageName = "nerdctl-build-stdin-test"
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-stdin"]
+	`, testutil.AlpineImage)
+
+	base.Cmd("build", "-t", imageName, "-f", "-", ".").CmdOption(testutil.WithStdin(strings.NewReader(dockerfile))).AssertOutContains("nerdctl-build-stdin-test")
 }
 
 func TestBuildLocal(t *testing.T) {

@@ -75,10 +75,14 @@ func buildAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	buildctlBinary, buildctlArgs, needsLoading, err := generateBuildctlArgs(cmd, args)
+	buildctlBinary, buildctlArgs, needsLoading, cleanup, err := generateBuildctlArgs(cmd, args)
 	if err != nil {
 		return err
 	}
+	if cleanup != nil {
+		defer cleanup()
+	}
+
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return err
@@ -118,24 +122,24 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, bool, error) {
+func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, bool, func(), error) {
 	var needsLoading bool
 	if len(args) < 1 {
-		return "", nil, false, errors.New("context needs to be specified")
+		return "", nil, false, nil, errors.New("context needs to be specified")
 	}
 	buildContext := args[0]
 	if buildContext == "-" || strings.Contains(buildContext, "://") {
-		return "", nil, false, errors.Errorf("unsupported build context: %q", buildContext)
+		return "", nil, false, nil, errors.Errorf("unsupported build context: %q", buildContext)
 	}
 
 	buildctlBinary, err := buildkitutil.BuildctlBinary()
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, nil, err
 	}
 
 	output, err := cmd.Flags().GetString("output")
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, nil, err
 	}
 	if output == "" {
 		output = "type=docker"
@@ -143,25 +147,25 @@ func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, 
 	}
 	tagValue, err := cmd.Flags().GetStringSlice("tag")
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, nil, err
 	}
 	if tagSlice := strutil.DedupeStrSlice(tagValue); len(tagSlice) > 0 {
 		if len(tagSlice) > 1 {
-			return "", nil, false, errors.Errorf("specifying multiple -t is not supported yet")
+			return "", nil, false, nil, errors.Errorf("specifying multiple -t is not supported yet")
 		}
 		output += ",name=" + tagSlice[0]
 	}
 
 	buildkitHost, err := cmd.Flags().GetString("buildkit-host")
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, nil, err
 	}
 
 	buildctlArgs := buildkitutil.BuildctlBaseArgs(buildkitHost)
 
 	progressValue, err := cmd.Flags().GetString("progress")
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, nil, err
 	}
 
 	buildctlArgs = append(buildctlArgs, []string{
@@ -175,10 +179,27 @@ func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, 
 
 	filename, err := cmd.Flags().GetString("file")
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, nil, err
 	}
+
+	var dir, file string
+	var cleanup func()
+
 	if filename != "" {
-		dir, file := filepath.Split(filename)
+		if filename == "-" {
+			var err error
+			dir, err = buildkitutil.WriteTempDockerfile(cmd.InOrStdin())
+			if err != nil {
+				return "", nil, false, nil, err
+			}
+			file = buildkitutil.DefaultDockerfileName
+			cleanup = func() {
+				os.RemoveAll(dir)
+			}
+		} else {
+			dir, file = filepath.Split(filename)
+		}
+
 		if dir != "" {
 			buildctlArgs = append(buildctlArgs, "--local=dockerfile="+dir)
 		}
@@ -187,7 +208,7 @@ func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, 
 
 	target, err := cmd.Flags().GetString("target")
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, cleanup, err
 	}
 	if target != "" {
 		buildctlArgs = append(buildctlArgs, "--opt=target="+target)
@@ -195,7 +216,7 @@ func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, 
 
 	buildArgsValue, err := cmd.Flags().GetStringSlice("build-arg")
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, cleanup, err
 	}
 	for _, ba := range strutil.DedupeStrSlice(buildArgsValue) {
 		buildctlArgs = append(buildctlArgs, "--opt=build-arg:"+ba)
@@ -217,7 +238,7 @@ func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, 
 
 	noCache, err := cmd.Flags().GetBool("no-cache")
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, cleanup, err
 	}
 	if noCache {
 		buildctlArgs = append(buildctlArgs, "--no-cache")
@@ -225,7 +246,7 @@ func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, 
 
 	secretValue, err := cmd.Flags().GetStringSlice("secret")
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, cleanup, err
 	}
 	for _, s := range strutil.DedupeStrSlice(secretValue) {
 		buildctlArgs = append(buildctlArgs, "--secret="+s)
@@ -233,7 +254,7 @@ func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, 
 
 	sshValue, err := cmd.Flags().GetStringSlice("ssh")
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, cleanup, err
 	}
 	for _, s := range strutil.DedupeStrSlice(sshValue) {
 		buildctlArgs = append(buildctlArgs, "--ssh="+s)
@@ -241,7 +262,7 @@ func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, 
 
 	cacheFrom, err := cmd.Flags().GetStringSlice("cache-from")
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, cleanup, err
 	}
 	for _, s := range strutil.DedupeStrSlice(cacheFrom) {
 		if !strings.Contains(s, "type=") {
@@ -252,7 +273,7 @@ func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, 
 
 	cacheTo, err := cmd.Flags().GetStringSlice("cache-to")
 	if err != nil {
-		return "", nil, false, err
+		return "", nil, false, cleanup, err
 	}
 	for _, s := range strutil.DedupeStrSlice(cacheTo) {
 		if !strings.Contains(s, "type=") {
@@ -261,5 +282,5 @@ func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, 
 		buildctlArgs = append(buildctlArgs, "--export-cache="+s)
 	}
 
-	return buildctlBinary, buildctlArgs, needsLoading, nil
+	return buildctlBinary, buildctlArgs, needsLoading, cleanup, nil
 }
