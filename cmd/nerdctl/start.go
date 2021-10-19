@@ -20,10 +20,10 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"syscall"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/pkg/errors"
@@ -89,8 +89,10 @@ func startContainer(ctx context.Context, container containerd.Container) error {
 		}
 		taskCIO = cio.LogURI(logURI)
 	}
-	if err = killContainer(ctx, container, syscall.SIGKILL); err != nil {
-		logrus.WithError(err).Debug("failed to kill container (negligible in most case)")
+	cStatus := formatter.ContainerStatus(ctx, container)
+	if cStatus == "Up" {
+		logrus.Warnf("container %s is already running", container.ID())
+		return nil
 	}
 	if oldTask, err := container.Task(ctx, nil); err == nil {
 		if _, err := oldTask.Delete(ctx); err != nil {
