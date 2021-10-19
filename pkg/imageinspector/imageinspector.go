@@ -21,7 +21,6 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/platforms"
 	imgutil "github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/sirupsen/logrus"
@@ -32,21 +31,29 @@ func Inspect(ctx context.Context, client *containerd.Client, image images.Image)
 	n := &native.Image{}
 
 	img := containerd.NewImage(client, image)
-	imageConfig, err := imgutil.ReadImageConfig(ctx, img)
+	idx, idxDesc, err := imgutil.ReadIndex(ctx, img)
 	if err != nil {
-		logrus.WithError(err).WithField("id", image.Name).Warnf("failed to inspect Rootfs")
-		return nil, err
-	}
-	n.ImageConfig = imageConfig
-
-	cs := client.ContentStore()
-	config, err := image.Config(ctx, cs, platforms.DefaultStrict())
-	if err != nil {
-		logrus.WithError(err).WithField("id", image.Name).Warnf("failed to inspect Rootfs")
-		return nil, err
+		logrus.WithError(err).WithField("id", image.Name).Warnf("failed to inspect index")
+	} else {
+		n.IndexDesc = idxDesc
+		n.Index = idx
 	}
 
-	n.ImageConfigDesc = config
+	mani, maniDesc, err := imgutil.ReadManifest(ctx, img)
+	if err != nil {
+		logrus.WithError(err).WithField("id", image.Name).Warnf("failed to inspect manifest")
+	} else {
+		n.ManifestDesc = maniDesc
+		n.Manifest = mani
+	}
+
+	imageConfig, imageConfigDesc, err := imgutil.ReadImageConfig(ctx, img)
+	if err != nil {
+		logrus.WithError(err).WithField("id", image.Name).Warnf("failed to inspect image config")
+	} else {
+		n.ImageConfigDesc = imageConfigDesc
+		n.ImageConfig = imageConfig
+	}
 	n.Image = image
 
 	return n, nil
