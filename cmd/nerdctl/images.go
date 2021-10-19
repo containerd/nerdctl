@@ -106,7 +106,7 @@ type imagePrintable struct {
 	Digest       string // "<none>" or image target digest (i.e., index digest or manifest digest)
 	ID           string // image target digest (not config digest, unlike Docker), or its short form
 	Repository   string
-	Tag          string
+	Tag          string // "<none>" or tag
 	Size         string
 	// TODO: "SharedSize", "UniqueSize", "VirtualSize"
 }
@@ -177,6 +177,9 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 			Tag:          tag,
 			Size:         progress.Bytes(size).String(),
 		}
+		if p.Tag == "" {
+			p.Tag = "<none>" // for Docker compatibility
+		}
 		if !noTrunc {
 			// p.Digest does not need to be truncated
 			p.ID = strings.Split(p.ID, ":")[1][:12]
@@ -196,8 +199,8 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 		} else {
 			if digestsFlag {
 				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-					repository,
-					tag,
+					p.Repository,
+					p.Tag,
 					p.Digest,
 					p.ID,
 					p.CreatedSince,
@@ -207,8 +210,8 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 				}
 			} else {
 				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-					repository,
-					tag,
+					p.Repository,
+					p.Tag,
 					p.ID,
 					p.CreatedSince,
 					p.Size,

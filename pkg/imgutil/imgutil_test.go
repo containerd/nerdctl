@@ -45,8 +45,9 @@ func TestParseRepoTag(t *testing.T) {
 			tag:     "baz",
 		},
 		{
+			// created by BuildKit
 			imgName: "overlayfs@sha256:da203733d47434b9e8b4d3f70e1c0c3ea59438353252fe600cb9eb1a1e808c4f",
-			repo:    "",
+			repo:    "overlayfs",
 			tag:     "",
 		},
 	}
