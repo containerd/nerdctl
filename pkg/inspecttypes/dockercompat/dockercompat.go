@@ -278,7 +278,7 @@ func ImageFromNative(n *native.Image) (*Image, error) {
 		ExposedPorts: portSet,
 	}
 
-	i.ID = n.ImageConfigDesc.Digest.String()
+	i.ID = n.ImageConfigDesc.Digest.String() // Docker ID (digest of config), not containerd ID (digest of index or manifest)
 
 	repository, tag := imgutil.ParseRepoTag(n.Image.Name)
 
