@@ -230,11 +230,6 @@ func ReadImageConfig(ctx context.Context, img containerd.Image) (ocispec.Image, 
 func ParseRepoTag(imgName string) (string, string) {
 	logrus.Debugf("raw image name=%q", imgName)
 
-	if strings.Contains(imgName, "@") {
-		logrus.Warnf("unparsable image name %q", imgName)
-		return "", ""
-	}
-
 	ref, err := refdocker.ParseDockerRef(imgName)
 	if err != nil {
 		logrus.WithError(err).Warnf("unparsable image name %q", imgName)

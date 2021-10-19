@@ -629,14 +629,17 @@ Unimplemented `docker commit` flags: `--change`, `--pause`
 ### :whale: nerdctl images
 List images
 
+:warning: The image ID is usually different from Docker image ID.
+
 Usage: `nerdctl images [OPTIONS] [REPOSITORY[:TAG]]`
 
 Flags:
 - :whale: `-q, --quiet`: Only show numeric IDs
 - :whale: `--no-trunc`: Don't truncate output
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :whale: `--digests`: Show digests (compatible with Docker, unlike ID)
 
-Unimplemented `docker images` flags: `--all`, `--digests`, `--filter`
+Unimplemented `docker images` flags: `--all`, `--filter`
 
 ### :whale: nerdctl pull
 Pull an image from a registry.
