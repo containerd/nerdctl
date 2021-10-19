@@ -43,9 +43,12 @@ import (
 )
 
 func newImagesCommand() *cobra.Command {
+	shortHelp := "List images"
+	longHelp := shortHelp + "\nNOTE: The image ID is usually different from Docker image ID."
 	var imagesCommand = &cobra.Command{
 		Use:               "images",
-		Short:             "List images",
+		Short:             shortHelp,
+		Long:              longHelp,
 		Args:              cobra.MaximumNArgs(1),
 		RunE:              imagesAction,
 		ValidArgsFunction: imagesShellComplete,
@@ -57,6 +60,7 @@ func newImagesCommand() *cobra.Command {
 	imagesCommand.Flags().Bool("no-trunc", false, "Don't truncate output")
 	// Alias "-f" is reserved for "--filter"
 	imagesCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	imagesCommand.Flags().Bool("digests", false, "Show digests (compatible with Docker, unlike ID)")
 
 	return imagesCommand
 }
@@ -99,11 +103,11 @@ type imagePrintable struct {
 	// TODO: "Containers"
 	CreatedAt    string
 	CreatedSince string
-	// TODO: "Digest" (only when --digests is set)
-	ID         string
-	Repository string
-	Tag        string
-	Size       string
+	Digest       string // "<none>" or image target digest (i.e., index digest or manifest digest)
+	ID           string // image target digest (not config digest, unlike Docker), or its short form
+	Repository   string
+	Tag          string // "<none>" or tag
+	Size         string
 	// TODO: "SharedSize", "UniqueSize", "VirtualSize"
 }
 
@@ -113,6 +117,10 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 		return err
 	}
 	noTrunc, err := cmd.Flags().GetBool("no-trunc")
+	if err != nil {
+		return err
+	}
+	digestsFlag, err := cmd.Flags().GetBool("digests")
 	if err != nil {
 		return err
 	}
@@ -127,7 +135,11 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 	case "", "table":
 		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
 		if !quiet {
-			fmt.Fprintln(w, "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE")
+			if digestsFlag {
+				fmt.Fprintln(w, "REPOSITORY\tTAG\tDIGEST\tIMAGE ID\tCREATED\tSIZE")
+			} else {
+				fmt.Fprintln(w, "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE")
+			}
 		}
 	case "raw":
 		return errors.New("unsupported format: \"raw\"")
@@ -159,13 +171,18 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 		p := imagePrintable{
 			CreatedAt:    img.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
 			CreatedSince: formatter.TimeSinceInHuman(img.CreatedAt),
+			Digest:       img.Target.Digest.String(),
 			ID:           img.Target.Digest.String(),
 			Repository:   repository,
 			Tag:          tag,
 			Size:         progress.Bytes(size).String(),
 		}
+		if p.Tag == "" {
+			p.Tag = "<none>" // for Docker compatibility
+		}
 		if !noTrunc {
-			p.ID = strings.Split(img.Target.Digest.String(), ":")[1][:12]
+			// p.Digest does not need to be truncated
+			p.ID = strings.Split(p.ID, ":")[1][:12]
 		}
 		if tmpl != nil {
 			var b bytes.Buffer
@@ -180,14 +197,27 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 				return err
 			}
 		} else {
-			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-				repository,
-				tag,
-				p.ID,
-				p.CreatedSince,
-				p.Size,
-			); err != nil {
-				return err
+			if digestsFlag {
+				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+					p.Repository,
+					p.Tag,
+					p.Digest,
+					p.ID,
+					p.CreatedSince,
+					p.Size,
+				); err != nil {
+					return err
+				}
+			} else {
+				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+					p.Repository,
+					p.Tag,
+					p.ID,
+					p.CreatedSince,
+					p.Size,
+				); err != nil {
+					return err
+				}
 			}
 		}
 	}
