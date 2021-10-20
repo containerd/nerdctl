@@ -38,6 +38,7 @@ func newContainerCommand() *cobra.Command {
 		newRmCommand(),
 		newStopCommand(),
 		newStartCommand(),
+		newRestartCommand(),
 		newKillCommand(),
 		newPauseCommand(),
 		newWaitCommand(),
