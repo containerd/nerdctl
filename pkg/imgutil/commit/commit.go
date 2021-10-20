@@ -75,7 +75,7 @@ func Commit(ctx context.Context, client *containerd.Client, id string, opts *Opt
 		return emptyDigest, err
 	}
 
-	baseImgConfig, err := imgutil.ReadImageConfig(ctx, baseImg)
+	baseImgConfig, _, err := imgutil.ReadImageConfig(ctx, baseImg)
 	if err != nil {
 		return emptyDigest, err
 	}
@@ -169,7 +169,7 @@ func generateCommitImageConfig(ctx context.Context, container containerd.Contain
 		return ocispec.Image{}, err
 	}
 
-	baseConfig, err := imgutil.ReadImageConfig(ctx, img)
+	baseConfig, _, err := imgutil.ReadImageConfig(ctx, img)
 	if err != nil {
 		return ocispec.Image{}, err
 	}

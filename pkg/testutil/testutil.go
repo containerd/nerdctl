@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -43,6 +44,13 @@ type Base struct {
 	ComposeBinary    string // "docker-compose"
 	Args             []string
 	Env              []string
+}
+
+// WithStdin sets the standard input of Cmd to the specified reader
+func WithStdin(r io.Reader) func(*Cmd) {
+	return func(i *Cmd) {
+		i.Cmd.Stdin = r
+	}
 }
 
 func (b *Base) Cmd(args ...string) *Cmd {
@@ -217,6 +225,13 @@ type Cmd struct {
 func (c *Cmd) Run() *icmd.Result {
 	c.Base.T.Helper()
 	return icmd.RunCmd(c.Cmd)
+}
+
+func (c *Cmd) CmdOption(cmdOptions ...func(*Cmd)) *Cmd {
+	for _, opt := range cmdOptions {
+		opt(c)
+	}
+	return c
 }
 
 func (c *Cmd) Assert(expected icmd.Expected) {

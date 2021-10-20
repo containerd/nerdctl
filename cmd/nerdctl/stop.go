@@ -40,7 +40,7 @@ func newStopCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	stopCommand.Flags().StringP("time", "f", "10", "Seconds to wait for stop before killing it")
+	stopCommand.Flags().StringP("time", "t", "10", "Seconds to wait for stop before killing it")
 	return stopCommand
 }
 
