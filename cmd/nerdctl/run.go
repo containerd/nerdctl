@@ -164,7 +164,7 @@ func newRunCommand() *cobra.Command {
 	// rootfs flags
 	runCommand.Flags().Bool("read-only", false, "Mount the container's root filesystem as read only")
 	// rootfs flags (from Podman)
-	runCommand.Flags().String("rootfs", "", "Custom the rootfs to the exploded container")
+	runCommand.Flags().Bool("rootfs", false, "The first agument is not an image but the rootfs to the exploded container")
 
 	// #region env flags
 	runCommand.Flags().String("entrypoint", "", "Overwrite the default ENTRYPOINT of the image")
@@ -734,11 +734,11 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cmd *cob
 		ensured *imgutil.EnsuredImage
 		err     error
 	)
-	rootfs, err := cmd.Flags().GetString("rootfs")
+	imageless, err := cmd.Flags().GetBool("rootfs")
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if rootfs == "" {
+	if !imageless {
 		snapshotter, err := cmd.Flags().GetString("snapshotter")
 		if err != nil {
 			return nil, nil, nil, err
@@ -761,7 +761,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cmd *cob
 		opts  []oci.SpecOpts
 		cOpts []containerd.NewContainerOpts
 	)
-	if rootfs == "" {
+	if !imageless {
 		cOpts = append(cOpts,
 			containerd.WithImage(ensured.Image),
 			containerd.WithSnapshotter(ensured.Snapshotter),
@@ -782,7 +782,11 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cmd *cob
 			}
 		}
 	} else {
-		opts = append(opts, oci.WithRootFSPath(rootfs), oci.WithDefaultPathEnv)
+		absRootfs, err := filepath.Abs(args[0])
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		opts = append(opts, oci.WithRootFSPath(absRootfs), oci.WithDefaultPathEnv)
 	}
 
 	// NOTE: "--entrypoint" can be set to an empty string, see TestRunEntrypoint* in run_test.go .
@@ -790,10 +794,10 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cmd *cob
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if rootfs == "" && !cmd.Flag("entrypoint").Changed {
+	if !imageless && !cmd.Flag("entrypoint").Changed {
 		opts = append(opts, oci.WithImageConfigArgs(ensured.Image, args[1:]))
 	} else {
-		if rootfs == "" {
+		if !imageless {
 			opts = append(opts, oci.WithImageConfig(ensured.Image))
 		}
 		var processArgs []string
@@ -801,11 +805,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, cmd *cob
 			processArgs = append(processArgs, entrypoint)
 		}
 		if len(args) > 1 {
-			if rootfs == "" {
-				processArgs = append(processArgs, args[1:]...)
-			} else {
-				processArgs = append(processArgs, args...)
-			}
+			processArgs = append(processArgs, args[1:]...)
 		}
 		if len(processArgs) == 0 {
 			// error message is from Podman
