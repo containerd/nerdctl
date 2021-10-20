@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"reflect"
 	"strings"
 
 	"github.com/containerd/containerd"
@@ -209,22 +210,87 @@ func getImageConfig(ctx context.Context, image containerd.Image) (*ocispec.Image
 	}
 }
 
-// readImageConfig reads config spec from content store.
-func ReadImageConfig(ctx context.Context, img containerd.Image) (ocispec.Image, error) {
+// ReadIndex returns the index .
+// ReadIndex returns nil for non-indexed image.
+func ReadIndex(ctx context.Context, img containerd.Image) (*ocispec.Index, *ocispec.Descriptor, error) {
+	desc := img.Target()
+	if !images.IsIndexType(desc.MediaType) {
+		return nil, nil, nil
+	}
+	b, err := content.ReadBlob(ctx, img.ContentStore(), desc)
+	if err != nil {
+		return nil, &desc, err
+	}
+	var idx ocispec.Index
+	if err := json.Unmarshal(b, &idx); err != nil {
+		return nil, &desc, err
+	}
+
+	return &idx, &desc, nil
+}
+
+// ReadManifest returns the manifest for img.platform.
+// ReadManifest returns nil if no manifest was found.
+func ReadManifest(ctx context.Context, img containerd.Image) (*ocispec.Manifest, *ocispec.Descriptor, error) {
+	cs := img.ContentStore()
+	targetDesc := img.Target()
+	if images.IsManifestType(targetDesc.MediaType) {
+		b, err := content.ReadBlob(ctx, img.ContentStore(), targetDesc)
+		if err != nil {
+			return nil, &targetDesc, err
+		}
+		var mani ocispec.Manifest
+		if err := json.Unmarshal(b, &mani); err != nil {
+			return nil, &targetDesc, err
+		}
+		return &mani, &targetDesc, nil
+	}
+	if images.IsIndexType(targetDesc.MediaType) {
+		idx, _, err := ReadIndex(ctx, img)
+		if err != nil {
+			return nil, nil, err
+		}
+		configDesc, err := img.Config(ctx) // aware of img.platform
+		if err != nil {
+			return nil, nil, err
+		}
+		// We can't access the private `img.platform` variable.
+		// So, we find the manifest object by comparing the config desc.
+		for _, maniDesc := range idx.Manifests {
+			maniDesc := maniDesc
+			b, err := content.ReadBlob(ctx, cs, maniDesc)
+			if err != nil {
+				return nil, nil, err
+			}
+			var mani ocispec.Manifest
+			if err := json.Unmarshal(b, &mani); err != nil {
+				return nil, nil, err
+			}
+			if reflect.DeepEqual(configDesc, mani.Config) {
+				return &mani, &maniDesc, nil
+			}
+		}
+	}
+	// no manifest was found
+	return nil, nil, nil
+}
+
+// ReadImageConfig reads the config spec (`application/vnd.oci.image.config.v1+json`) for img.platform from content store.
+func ReadImageConfig(ctx context.Context, img containerd.Image) (ocispec.Image, ocispec.Descriptor, error) {
 	var config ocispec.Image
 
-	configDesc, err := img.Config(ctx)
+	configDesc, err := img.Config(ctx) // aware of img.platform
 	if err != nil {
-		return config, err
+		return config, configDesc, err
 	}
 	p, err := content.ReadBlob(ctx, img.ContentStore(), configDesc)
 	if err != nil {
-		return config, err
+		return config, configDesc, err
 	}
 	if err := json.Unmarshal(p, &config); err != nil {
-		return config, err
+		return config, configDesc, err
 	}
-	return config, nil
+	return config, configDesc, nil
 }
 
 func ParseRepoTag(imgName string) (string, string) {
