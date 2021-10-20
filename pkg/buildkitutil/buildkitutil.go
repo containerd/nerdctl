@@ -63,7 +63,7 @@ func PingBKDaemon(buildkitHost string) error {
 	return nil
 }
 
-// WriteTempDockerfile is from https://github.com/docker/cli/blob/master/cli/command/image/build/context.go#L118
+// WriteTempDockerfile is from https://github.com/docker/cli/blob/v20.10.9/cli/command/image/build/context.go#L118
 func WriteTempDockerfile(rc io.Reader) (dockerfileDir string, err error) {
 	// err is a named return value, due to the defer call below.
 	dockerfileDir, err = ioutil.TempDir("", TempDockerfileName)
