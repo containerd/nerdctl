@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/imgcrypt"
 	"github.com/containerd/imgcrypt/images/encryption"
+	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/pkg/imgutil/pull"
 	"github.com/containerd/stargz-snapshotter/fs/source"
@@ -53,31 +54,39 @@ type PullMode = string
 //
 // When insecure is set, skips verifying certs, and also falls back to HTTP when the registry does not speak HTTPS
 func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool) (*EnsuredImage, error) {
-	named, err := refdocker.ParseDockerRef(rawRef)
-	if err != nil {
-		return nil, err
-	}
-	ref := named.String()
-
 	if mode != "always" {
-		if i, err := client.ImageService().Get(ctx, ref); err == nil {
-			image := containerd.NewImage(client, i)
-			imgConfig, err := getImageConfig(ctx, image)
-			if err != nil {
-				return nil, err
-			}
-			res := &EnsuredImage{
-				Ref:         ref,
-				Image:       image,
-				ImageConfig: *imgConfig,
-				Snapshotter: snapshotter,
-				Remote:      isStargz(snapshotter),
-			}
-			if unpacked, err := image.IsUnpacked(ctx, snapshotter); err == nil && !unpacked {
-				if err := image.Unpack(ctx, snapshotter); err != nil {
-					return nil, err
+		var res *EnsuredImage
+		imagewalker := &imagewalker.ImageWalker{
+			Client: client,
+			OnFound: func(ctx context.Context, found imagewalker.Found) error {
+				if res != nil {
+					return nil
 				}
-			}
+				image := containerd.NewImage(client, found.Image)
+				imgConfig, err := getImageConfig(ctx, image)
+				if err != nil {
+					return err
+				}
+				res = &EnsuredImage{
+					Ref:         found.Image.Name,
+					Image:       image,
+					ImageConfig: *imgConfig,
+					Snapshotter: snapshotter,
+					Remote:      isStargz(snapshotter),
+				}
+				if unpacked, err := image.IsUnpacked(ctx, snapshotter); err == nil && !unpacked {
+					if err := image.Unpack(ctx, snapshotter); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		}
+		_, err := imagewalker.Walk(ctx, rawRef)
+		if err != nil {
+			return nil, err
+		}
+		if res != nil {
 			return res, nil
 		}
 	}
@@ -86,6 +95,11 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 		return nil, errors.Errorf("image %q is not available", rawRef)
 	}
 
+	named, err := refdocker.ParseDockerRef(rawRef)
+	if err != nil {
+		return nil, err
+	}
+	ref := named.String()
 	refDomain := refdocker.Domain(named)
 
 	var dOpts []dockerconfigresolver.Opt
