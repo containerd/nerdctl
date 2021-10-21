@@ -23,7 +23,7 @@ import (
 
 func newComposeUpCommand() *cobra.Command {
 	var composeUpCommand = &cobra.Command{
-		Use:           "up",
+		Use:           "up [SERVICE...]",
 		Short:         "Create and start containers",
 		RunE:          composeUpAction,
 		SilenceUsage:  true,
@@ -36,7 +36,7 @@ func newComposeUpCommand() *cobra.Command {
 	return composeUpCommand
 }
 
-func composeUpAction(cmd *cobra.Command, args []string) error {
+func composeUpAction(cmd *cobra.Command, services []string) error {
 	detach, err := cmd.Flags().GetBool("detach")
 	if err != nil {
 		return err
@@ -70,5 +70,5 @@ func composeUpAction(cmd *cobra.Command, args []string) error {
 		NoLogPrefix: noLogPrefix,
 		ForceBuild:  build,
 	}
-	return c.Up(ctx, uo)
+	return c.Up(ctx, uo, services)
 }

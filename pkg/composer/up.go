@@ -34,7 +34,7 @@ type UpOptions struct {
 	ForceBuild  bool
 }
 
-func (c *Composer) Up(ctx context.Context, uo UpOptions) error {
+func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) error {
 	for shortName := range c.project.Networks {
 		if err := c.upNetwork(ctx, shortName); err != nil {
 			return err
@@ -63,7 +63,7 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions) error {
 
 	var parsedServices []*serviceparser.Service
 	// use WithServices to sort the services in dependency order
-	if err := c.project.WithServices(nil, func(svc types.ServiceConfig) error {
+	if err := c.project.WithServices(services, func(svc types.ServiceConfig) error {
 		ps, err := serviceparser.Parse(c.project, svc)
 		if err != nil {
 			return err
