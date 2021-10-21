@@ -67,7 +67,7 @@ func loadAction(cmd *cobra.Command, args []string) error {
 }
 
 func loadImage(in io.Reader, cmd *cobra.Command, args []string, allPlatforms bool, quiet bool) error {
-	client, ctx, cancel, err := newClient(cmd, containerd.WithDefaultPlatform(platforms.DefaultStrict()))
+	client, ctx, cancel, err := newClient(cmd, containerd.WithDefaultPlatform(platforms.Default()))
 	if err != nil {
 		return err
 	}
