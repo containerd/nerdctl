@@ -213,6 +213,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl rm](#whale-nerdctl-rm)
     - [:whale: nerdctl stop](#whale-nerdctl-stop)
     - [:whale: nerdctl start](#whale-nerdctl-start)
+    - [:whale: nerdctl restart](#whale-nerdctl-restart)
     - [:whale: nerdctl wait](#whale-nerdctl-wait)
     - [:whale: nerdctl kill](#whale-nerdctl-kill)
     - [:whale: nerdctl pause](#whale-nerdctl-pause)
@@ -551,7 +552,8 @@ Stop one or more running containers.
 
 Usage: `nerdctl stop [OPTIONS] CONTAINER [CONTAINER...]`
 
-Unimplemented `docker stop` flags: `--time`
+Flags:
+- :whale: `-t, --time=SECONDS`: Seconds to wait for stop before killing it (default "10")
 
 ### :whale: nerdctl start
 Start one or more running containers.
@@ -559,6 +561,14 @@ Start one or more running containers.
 Usage: `nerdctl start [OPTIONS] CONTAINER [CONTAINER...]`
 
 Unimplemented `docker start` flags: `--attach`, `--checkpoint`, `--checkpoint-dir`, `--detach-keys`, `--interactive`
+
+### :whale: nerdctl restart
+Restart one or more running containers.
+
+Usage: `nerdctl restart [OPTIONS] CONTAINER [CONTAINER...]`
+
+Flags:
+- :whale: `-t, --time=SECONDS`: Seconds to wait for stop before killing it (default "10")
 
 ### :whale: nerdctl wait
 Block until one or more containers stop, then print their exit codes.
