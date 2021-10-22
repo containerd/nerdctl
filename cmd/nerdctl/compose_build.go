@@ -18,13 +18,12 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/composer"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
 func newComposeBuildCommand() *cobra.Command {
 	var composeBuildCommand = &cobra.Command{
-		Use:           "build",
+		Use:           "build [SERVICE...]",
 		Short:         "Build or rebuild services",
 		RunE:          composeBuildAction,
 		SilenceUsage:  true,
@@ -36,11 +35,7 @@ func newComposeBuildCommand() *cobra.Command {
 	return composeBuildCommand
 }
 
-func composeBuildAction(cmd *cobra.Command, args []string) error {
-	if len(args) != 0 {
-		// TODO: support specifying service names as args
-		return errors.Errorf("arguments %v not supported", args)
-	}
+func composeBuildAction(cmd *cobra.Command, services []string) error {
 	buildArg, err := cmd.Flags().GetStringSlice("build-arg")
 	if err != nil {
 		return err
@@ -69,5 +64,5 @@ func composeBuildAction(cmd *cobra.Command, args []string) error {
 		NoCache:  noCache,
 		Progress: progress,
 	}
-	return c.Build(ctx, bo)
+	return c.Build(ctx, bo, services)
 }

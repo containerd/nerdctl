@@ -32,8 +32,8 @@ type BuildOptions struct {
 	Progress string
 }
 
-func (c *Composer) Build(ctx context.Context, bo BuildOptions) error {
-	return c.project.WithServices(nil, func(svc types.ServiceConfig) error {
+func (c *Composer) Build(ctx context.Context, bo BuildOptions, services []string) error {
+	return c.project.WithServices(services, func(svc types.ServiceConfig) error {
 		ps, err := serviceparser.Parse(c.project, svc)
 		if err != nil {
 			return err
