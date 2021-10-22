@@ -238,3 +238,72 @@ services:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "--env-file", "envFile", "up", "-d").AssertFail()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 }
+
+func TestComposeUpServices(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = fmt.Sprintf(`
+version: '3.1'
+
+services:
+
+  whoami0:
+    image: %s
+	ports:
+      - 8080:80
+    restart: always
+    
+  whoami1:
+    image: %s
+	ports:
+      - 8081:80
+    restart: always
+
+`, testutil.WhoamiImage, testutil.WhoamiImage)
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "nonexistent").AssertFail()
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "whoami0").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	checkWhoami := func() error {
+		resp, err := httpGet("http://127.0.0.1:8080", 10)
+		if err != nil {
+			return err
+		}
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		t.Logf("respBody=%q", respBody)
+		if !strings.Contains(string(respBody), "whoami0") {
+			return errors.Errorf("respBody does not contain whoami0")
+		}
+		return nil
+	}
+
+	var whoamiWorking bool
+	for i := 0; i < 30; i++ {
+		t.Logf("(retry %d)", i)
+		err := checkWhoami()
+		if err == nil {
+			whoamiWorking = true
+			break
+		}
+		t.Log(err)
+		time.Sleep(3 * time.Second)
+	}
+
+	if !whoamiWorking {
+		t.Fatal("whoami is not working")
+	}
+	t.Log("whoami seems functional and hostname matches service name")
+
+	base.Cmd("inspect", fmt.Sprintf("%s_whoami1_1", projectName)).AssertFail()
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+	base.Cmd("network", "inspect", fmt.Sprintf("%s_default", projectName)).AssertFail()
+}
