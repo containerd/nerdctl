@@ -252,7 +252,7 @@ services:
 	ports:
       - 8080:80
     restart: always
-    
+
   whoami1:
     image: %s
 	ports:
