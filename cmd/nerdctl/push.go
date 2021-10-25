@@ -17,6 +17,9 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/containerd/containerd/images/converter"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
@@ -24,7 +27,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/pkg/imgutil/push"
 	"github.com/containerd/nerdctl/pkg/platformutil"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -89,9 +91,9 @@ func pushAction(cmd *cobra.Command, args []string) error {
 		platImg, err := converter.Convert(ctx, client, platRef, ref, converter.WithPlatform(platMC))
 		if err != nil {
 			if len(platform) == 0 {
-				return errors.Wrapf(err, "failed to create a tmp single-platform image %q", platRef)
+				return fmt.Errorf("failed to create a tmp single-platform image %q: %w", platRef, err)
 			}
-			return errors.Wrapf(err, "failed to create a tmp reduced-platform image %q (platform=%v)", platRef, platform)
+			return fmt.Errorf("failed to create a tmp reduced-platform image %q (platform=%v): %w", platRef, platform, err)
 		}
 		defer client.ImageService().Delete(ctx, platImg.Name)
 		logrus.Infof("pushing as a reduced-platform image (%s, %s)", platImg.Target.MediaType, platImg.Target.Digest)

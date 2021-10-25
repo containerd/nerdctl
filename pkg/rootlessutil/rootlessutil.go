@@ -17,11 +17,11 @@
 package rootlessutil
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 
-	"github.com/pkg/errors"
 	"github.com/rootless-containers/rootlesskit/pkg/api/client"
 )
 
@@ -39,7 +39,7 @@ func ParentEUID() int {
 	}
 	i, err := strconv.Atoi(env)
 	if err != nil {
-		panic(errors.Wrapf(err, "failed to parse ROOTLESSKIT_PARENT_EUID=%q", env))
+		panic(fmt.Errorf("failed to parse ROOTLESSKIT_PARENT_EUID=%q: %w", env, err))
 	}
 	return i
 }
@@ -54,7 +54,7 @@ func ParentEGID() int {
 	}
 	i, err := strconv.Atoi(env)
 	if err != nil {
-		panic(errors.Wrapf(err, "failed to parse ROOTLESSKIT_PARENT_EGID=%q", env))
+		panic(fmt.Errorf("failed to parse ROOTLESSKIT_PARENT_EGID=%q: %w", env, err))
 	}
 	return i
 }

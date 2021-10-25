@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 	"text/tabwriter"
@@ -25,7 +26,7 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/docker/cli/templates"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 

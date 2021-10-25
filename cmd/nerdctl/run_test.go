@@ -19,6 +19,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -28,7 +29,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
+
 	"gotest.tools/v3/assert"
 )
 
@@ -51,7 +52,7 @@ CMD ["echo", "bar"]
 	base.Cmd("run", "--rm", imageName).AssertOutWithFunc(func(stdout string) error {
 		expected := "foo echo bar\n"
 		if stdout != expected {
-			return errors.Errorf("expected %q, got %q", expected, stdout)
+			return fmt.Errorf("expected %q, got %q", expected, stdout)
 		}
 		return nil
 	})
@@ -130,10 +131,10 @@ func TestRunExitCode(t *testing.T) {
 	base.Cmd("run", "--name", testContainer123, testutil.AlpineImage, "sh", "-euxc", "exit 123").AssertExitCode(123)
 	base.Cmd("ps", "-a").AssertOutWithFunc(func(stdout string) error {
 		if !strings.Contains(stdout, "Exited (0)") {
-			return errors.Errorf("no entry for %q", testContainer0)
+			return fmt.Errorf("no entry for %q", testContainer0)
 		}
 		if !strings.Contains(stdout, "Exited (123)") {
-			return errors.Errorf("no entry for %q", testContainer123)
+			return fmt.Errorf("no entry for %q", testContainer123)
 		}
 		return nil
 	})

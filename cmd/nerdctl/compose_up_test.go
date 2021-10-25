@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
+
 	"gotest.tools/v3/assert"
 )
 
@@ -86,7 +86,7 @@ volumes:
 		}
 		t.Logf("respBody=%q", respBody)
 		if !strings.Contains(string(respBody), testutil.WordpressIndexHTMLSnippet) {
-			return errors.Errorf("respBody does not contain %q", testutil.WordpressIndexHTMLSnippet)
+			return fmt.Errorf("respBody does not contain %q", testutil.WordpressIndexHTMLSnippet)
 		}
 		return nil
 	}

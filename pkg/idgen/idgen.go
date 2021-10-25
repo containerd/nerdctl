@@ -19,8 +19,7 @@ package idgen
 import (
 	"crypto/rand"
 	"encoding/hex"
-
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 const IDLength = 64
@@ -33,7 +32,7 @@ func GenerateID() string {
 		panic(err)
 	}
 	if n != bytesLength {
-		panic(errors.Errorf("expected %d bytes, got %d bytes", bytesLength, n))
+		panic(fmt.Errorf("expected %d bytes, got %d bytes", bytesLength, n))
 	}
 	return hex.EncodeToString(b)
 }

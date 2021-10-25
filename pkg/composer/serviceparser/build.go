@@ -17,13 +17,15 @@
 package serviceparser
 
 import (
+	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -38,7 +40,7 @@ func parseBuildConfig(c *types.BuildConfig, project *types.Project, imageName st
 		return nil, errors.New("build: context must be specified")
 	}
 	if strings.Contains(c.Context, "://") {
-		return nil, errors.Wrapf(errdefs.ErrNotImplemented, "build: URL-style context (%q) is not supported yet", c.Context)
+		return nil, fmt.Errorf("build: URL-style context (%q) is not supported yet: %w", c.Context, errdefs.ErrNotImplemented)
 	}
 	if filepath.IsAbs(c.Context) {
 		logrus.Warnf("build.config should be relative path, got %q", c.Context)

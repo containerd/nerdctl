@@ -18,6 +18,7 @@ package composer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -25,7 +26,7 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -140,7 +141,7 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
 	if err != nil {
-		return "", errors.Wrapf(err, "error while creating container %s", container.Name)
+		return "", fmt.Errorf("error while creating container %s: %w", container.Name, err)
 	}
 	return strings.TrimSpace(string(out)), nil
 }

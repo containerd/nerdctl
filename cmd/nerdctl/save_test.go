@@ -18,6 +18,8 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -26,7 +28,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
+
 	"gotest.tools/v3/assert"
 )
 
@@ -72,7 +74,7 @@ func extractDockerArchive(archiveTarPath, rootfsPath string) error {
 		return err
 	}
 	if len(mani) > 1 {
-		return errors.Errorf("multi-image archive cannot be extracted: contains %d images", len(mani))
+		return fmt.Errorf("multi-image archive cannot be extracted: contains %d images", len(mani))
 	}
 	if len(mani) < 1 {
 		return errors.New("invalid archive")
@@ -98,9 +100,7 @@ type DockerArchiveManifestJSONEntry struct {
 func extractTarFile(dirPath, tarFilePath string) error {
 	cmd := exec.Command("tar", "Cxf", dirPath, tarFilePath)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return errors.Wrapf(err, "failed to run %v: %q",
-			cmd.Args,
-			string(out))
+		return fmt.Errorf("failed to run %v: %q: %w", cmd.Args, string(out), err)
 	}
 	return nil
 }

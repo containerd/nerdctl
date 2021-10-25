@@ -16,7 +16,7 @@
 
 package nettype
 
-import "github.com/pkg/errors"
+import "fmt"
 
 type Type int
 
@@ -48,7 +48,7 @@ func Detect(names []string) (Type, error) {
 			tmp = CNI
 		}
 		if res != Invalid && res != tmp {
-			return Invalid, errors.Errorf("mixed network types: %v and %v", netTypeToName[res], netTypeToName[tmp])
+			return Invalid, fmt.Errorf("mixed network types: %v and %v", netTypeToName[res], netTypeToName[tmp])
 		}
 		res = tmp
 	}

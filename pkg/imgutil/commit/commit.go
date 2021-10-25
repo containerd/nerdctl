@@ -43,7 +43,7 @@ import (
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -103,7 +103,7 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 	case containerd.Paused, containerd.Created, containerd.Stopped:
 	default:
 		if err := task.Pause(ctx); err != nil {
-			return emptyDigest, errors.Wrapf(err, "failed to pause container")
+			return emptyDigest, fmt.Errorf("failed to pause container: %w", err)
 		}
 
 		defer func() {
@@ -122,23 +122,23 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 	// Don't gc me and clean the dirty data after 1 hour!
 	ctx, done, err := client.WithLease(ctx, leases.WithRandomID(), leases.WithExpiration(1*time.Hour))
 	if err != nil {
-		return emptyDigest, errors.Wrapf(err, "failed to create lease for commit")
+		return emptyDigest, fmt.Errorf("failed to create lease for commit: %w", err)
 	}
 	defer done(ctx)
 
 	diffLayerDesc, diffID, err := createDiff(ctx, id, sn, client.ContentStore(), differ)
 	if err != nil {
-		return emptyDigest, errors.Wrap(err, "failed to export layer")
+		return emptyDigest, fmt.Errorf("failed to export layer: %w", err)
 	}
 
 	imageConfig, err := generateCommitImageConfig(ctx, container, baseImg, diffID, opts)
 	if err != nil {
-		return emptyDigest, errors.Wrap(err, "failed to generate commit image config")
+		return emptyDigest, fmt.Errorf("failed to generate commit image config: %w", err)
 	}
 
 	rootfsID := identity.ChainID(imageConfig.RootFS.DiffIDs).String()
 	if err := applyDiffLayer(ctx, rootfsID, baseImgConfig, sn, differ, diffLayerDesc); err != nil {
-		return emptyDigest, errors.Wrap(err, "failed to apply diff")
+		return emptyDigest, fmt.Errorf("failed to apply diff: %w", err)
 	}
 
 	commitManifestDesc, configDigest, err := writeContentsForImage(ctx, snName, baseImg, imageConfig, diffLayerDesc)
@@ -159,7 +159,7 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 		}
 
 		if _, err := client.ImageService().Create(ctx, img); err != nil {
-			return emptyDigest, errors.Wrapf(err, "failed to create new image %s", opts.Ref)
+			return emptyDigest, fmt.Errorf("failed to create new image %s: %w", opts.Ref, err)
 		}
 	}
 	return configDigest, nil
@@ -303,7 +303,7 @@ func createDiff(ctx context.Context, name string, sn snapshots.Snapshotter, cs c
 
 	diffIDStr, ok := info.Labels["containerd.io/uncompressed"]
 	if !ok {
-		return ocispec.Descriptor{}, digest.Digest(""), errors.Errorf("invalid differ response with no diffID")
+		return ocispec.Descriptor{}, digest.Digest(""), fmt.Errorf("invalid differ response with no diffID")
 	}
 
 	diffID, err := digest.Parse(diffIDStr)

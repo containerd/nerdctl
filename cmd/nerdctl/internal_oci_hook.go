@@ -17,10 +17,11 @@
 package main
 
 import (
+	"errors"
 	"os"
 
 	"github.com/containerd/nerdctl/pkg/ocihook"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 

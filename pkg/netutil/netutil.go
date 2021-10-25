@@ -19,6 +19,7 @@ package netutil
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -30,7 +31,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containernetworking/cni/libcni"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -70,8 +71,7 @@ func GenerateConfigList(e *CNIEnv, labels []string, id int, name, cidr string) (
 	for _, f := range basicPlugins {
 		p := filepath.Join(e.Path, f)
 		if _, err := exec.LookPath(p); err != nil {
-			return nil, errors.Wrapf(err, "needs CNI plugin %q to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins/releases",
-				f, e.Path)
+			return nil, fmt.Errorf("needs CNI plugin %q to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins/releases: %w", f, e.Path, err)
 		}
 	}
 	var extraPlugins string
@@ -86,10 +86,10 @@ func GenerateConfigList(e *CNIEnv, labels []string, id int, name, cidr string) (
 
 	subnetIP, subnet, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return nil, errors.Errorf("failed to parse CIDR %q", cidr)
+		return nil, fmt.Errorf("failed to parse CIDR %q", cidr)
 	}
 	if !subnet.IP.Equal(subnetIP) {
-		return nil, errors.Errorf("unexpected CIDR %q, maybe you meant %q?", cidr, subnet.String())
+		return nil, fmt.Errorf("unexpected CIDR %q, maybe you meant %q?", cidr, subnet.String())
 	}
 	gateway := make(net.IP, len(subnet.IP))
 	copy(gateway, subnet.IP)

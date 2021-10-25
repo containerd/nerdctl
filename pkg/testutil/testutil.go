@@ -32,7 +32,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/platformutil"
-	"github.com/pkg/errors"
+
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 )
@@ -134,7 +134,7 @@ func (b *Base) KillDaemon() {
 		append(b.systemctlArgs(),
 			[]string{"kill", "-s", "KILL", target}...)...)
 	if out, err := cmdKill.CombinedOutput(); err != nil {
-		err = errors.Wrapf(err, "cannot kill %q: %q", target, string(out))
+		err = fmt.Errorf("cannot kill %q: %q: %w", target, string(out), err)
 		b.T.Fatal(err)
 	}
 	// the daemon should restart automatically
@@ -269,7 +269,7 @@ func (c *Cmd) AssertNoOut(s string) {
 	c.Base.T.Helper()
 	fn := func(stdout string) error {
 		if strings.Contains(stdout, s) {
-			return errors.Errorf("expected not to contain %q, got %q", s, stdout)
+			return fmt.Errorf("expected not to contain %q, got %q", s, stdout)
 		}
 		return nil
 	}

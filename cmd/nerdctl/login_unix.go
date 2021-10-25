@@ -20,10 +20,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"syscall"
 
-	"github.com/pkg/errors"
 	"golang.org/x/term"
 )
 
@@ -34,14 +34,14 @@ func readPassword() (string, error) {
 	} else {
 		tty, err := os.Open("/dev/tty")
 		if err != nil {
-			return "", errors.Wrap(err, "error allocating terminal")
+			return "", fmt.Errorf("error allocating terminal: %w", err)
 		}
 		defer tty.Close()
 		fd = int(tty.Fd())
 	}
 	bytePassword, err := term.ReadPassword(fd)
 	if err != nil {
-		return "", errors.Wrap(err, "error reading password")
+		return "", fmt.Errorf("error reading password: %w", err)
 	}
 
 	return string(bytePassword), nil

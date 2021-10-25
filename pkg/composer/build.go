@@ -18,11 +18,12 @@ package composer
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -70,7 +71,7 @@ func (c *Composer) buildServiceImage(ctx context.Context, image string, b *servi
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "error while building image %s", image)
+		return fmt.Errorf("error while building image %s: %w", image, err)
 	}
 	return nil
 }

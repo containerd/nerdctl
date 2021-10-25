@@ -18,13 +18,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
 )
 
 func TestInfo(t *testing.T) {
@@ -36,7 +36,7 @@ func TestInfo(t *testing.T) {
 		}
 		unameM := infoutil.UnameM()
 		if info.Architecture != unameM {
-			return errors.Errorf("expected info.Architecture to be %q, got %q", unameM, info.Architecture)
+			return fmt.Errorf("expected info.Architecture to be %q, got %q", unameM, info.Architecture)
 		}
 		return nil
 	})

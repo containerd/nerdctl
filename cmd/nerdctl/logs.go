@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -25,7 +26,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -50,7 +51,7 @@ func newLogsCommand() *cobra.Command {
 
 func logsAction(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		return errors.Errorf("requires exactly 1 argument")
+		return fmt.Errorf("requires exactly 1 argument")
 	}
 
 	dataStore, err := getDataStore(cmd)
@@ -77,11 +78,11 @@ func logsAction(cmd *cobra.Command, args []string) error {
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
 			if found.MatchCount > 1 {
-				return errors.Errorf("ambiguous ID %q", found.Req)
+				return fmt.Errorf("ambiguous ID %q", found.Req)
 			}
 			logJSONFilePath := jsonfile.Path(dataStore, ns, found.Container.ID())
 			if _, err := os.Stat(logJSONFilePath); err != nil {
-				return errors.Wrapf(err, "failed to open %q, container is not created with `nerdctl run -d`?", logJSONFilePath)
+				return fmt.Errorf("failed to open %q, container is not created with `nerdctl run -d`?: %w", logJSONFilePath, err)
 			}
 			task, err := found.Container.Task(ctx, nil)
 			if err != nil {
@@ -160,7 +161,7 @@ func logsAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	} else if n == 0 {
-		return errors.Errorf("no such container %s", req)
+		return fmt.Errorf("no such container %s", req)
 	}
 	return nil
 }

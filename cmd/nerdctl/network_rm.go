@@ -22,7 +22,7 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +43,7 @@ func newNetworkRmCommand() *cobra.Command {
 
 func networkRmAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.Errorf("requires at least 1 argument")
+		return fmt.Errorf("requires at least 1 argument")
 	}
 	cniPath, err := cmd.Flags().GetString("cni-path")
 	if err != nil {
@@ -70,17 +70,17 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 
 		for _, name := range args {
 			if name == "host" || name == "none" {
-				return errors.Errorf("pseudo network %q cannot be removed", name)
+				return fmt.Errorf("pseudo network %q cannot be removed", name)
 			}
 			l, ok := llMap[name]
 			if !ok {
-				return errors.Errorf("no such network: %s", name)
+				return fmt.Errorf("no such network: %s", name)
 			}
 			if l.NerdctlID == nil {
-				return errors.Errorf("%s is managed outside nerdctl and cannot be removed", name)
+				return fmt.Errorf("%s is managed outside nerdctl and cannot be removed", name)
 			}
 			if l.File == "" {
-				return errors.Errorf("%s is a pre-defined network and cannot be removed", name)
+				return fmt.Errorf("%s is a pre-defined network and cannot be removed", name)
 			}
 			if err := os.RemoveAll(l.File); err != nil {
 				return err

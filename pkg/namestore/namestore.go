@@ -17,6 +17,7 @@
 package namestore
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -24,7 +25,6 @@ import (
 
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/lockutil"
-	"github.com/pkg/errors"
 )
 
 func New(dataStore, ns string) (NameStore, error) {
@@ -49,15 +49,15 @@ type nameStore struct {
 
 func (x *nameStore) Acquire(name, id string) error {
 	if err := identifiers.Validate(name); err != nil {
-		return errors.Wrapf(err, "invalid name %q", name)
+		return fmt.Errorf("invalid name %q: %w", name, err)
 	}
 	if strings.TrimSpace(id) != id {
-		return errors.Errorf("untrimmed ID %q", id)
+		return fmt.Errorf("untrimmed ID %q", id)
 	}
 	fn := func() error {
 		fileName := filepath.Join(x.dir, name)
 		if b, err := ioutil.ReadFile(fileName); err == nil {
-			return errors.Errorf("name %q is already used by ID %q", name, string(b))
+			return fmt.Errorf("name %q is already used by ID %q", name, string(b))
 		}
 		return ioutil.WriteFile(fileName, []byte(id), 0600)
 	}
@@ -69,10 +69,10 @@ func (x *nameStore) Release(name, id string) error {
 		return nil
 	}
 	if err := identifiers.Validate(name); err != nil {
-		return errors.Wrapf(err, "invalid name %q", name)
+		return fmt.Errorf("invalid name %q: %w", name, err)
 	}
 	if strings.TrimSpace(id) != id {
-		return errors.Errorf("untrimmed ID %q", id)
+		return fmt.Errorf("untrimmed ID %q", id)
 	}
 	fn := func() error {
 		fileName := filepath.Join(x.dir, name)
@@ -84,7 +84,7 @@ func (x *nameStore) Release(name, id string) error {
 			return err
 		}
 		if s := strings.TrimSpace(string(b)); s != id {
-			return errors.Errorf("name %q is used by ID %q, not by %q", name, s, id)
+			return fmt.Errorf("name %q is used by ID %q, not by %q", name, s, id)
 		}
 		return os.RemoveAll(fileName)
 	}

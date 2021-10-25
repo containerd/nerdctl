@@ -18,10 +18,11 @@ package composer
 
 import (
 	"context"
+	"fmt"
 
 	compose "github.com/compose-spec/compose-go/types"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -56,7 +57,7 @@ func (c *Composer) Down(ctx context.Context, downOptions DownOptions) error {
 func (c *Composer) downNetwork(ctx context.Context, shortName string) error {
 	net, ok := c.project.Networks[shortName]
 	if !ok {
-		return errors.Errorf("invalid network name %q", shortName)
+		return fmt.Errorf("invalid network name %q", shortName)
 	}
 	if net.External.External {
 		// NOP
@@ -79,7 +80,7 @@ func (c *Composer) downNetwork(ctx context.Context, shortName string) error {
 func (c *Composer) downVolume(ctx context.Context, shortName string) error {
 	vol, ok := c.project.Volumes[shortName]
 	if !ok {
-		return errors.Errorf("invalid volume name %q", shortName)
+		return fmt.Errorf("invalid volume name %q", shortName)
 	}
 	if vol.External.External {
 		// NOP

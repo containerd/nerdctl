@@ -19,6 +19,7 @@ package ocihook
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -37,7 +38,7 @@ import (
 	types100 "github.com/containernetworking/cni/pkg/types/100"
 	dopts "github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
+
 	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
 	"github.com/sirupsen/logrus"
 )
@@ -56,7 +57,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 		return errors.New("state dir must be set")
 	} else {
 		if err := os.MkdirAll(containerStateDir, 0700); err != nil {
-			return errors.Wrapf(err, "failed to create %q", containerStateDir)
+			return fmt.Errorf("failed to create %q: %w", containerStateDir, err)
 		}
 		logFilePath := filepath.Join(containerStateDir, "oci-hook."+event+".log")
 		logFile, err := os.Create(logFilePath)
@@ -78,7 +79,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	case "postStop":
 		return onPostStop(opts)
 	default:
-		return errors.Errorf("unexpected event %q", event)
+		return fmt.Errorf("unexpected event %q", event)
 	}
 }
 
@@ -167,7 +168,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 				}
 			}
 			if netconflist == nil {
-				return nil, errors.Errorf("no such network: %q", netstr)
+				return nil, fmt.Errorf("no such network: %q", netstr)
 			}
 			cniOpts = append(cniOpts, gocni.WithConfListBytes(netconflist.Bytes))
 			o.cniNames = append(o.cniNames, netstr)
@@ -177,7 +178,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 			return nil, err
 		}
 	default:
-		return nil, errors.Errorf("unexpected network type %v", netType)
+		return nil, fmt.Errorf("unexpected network type %v", netType)
 	}
 
 	if pidFile := o.state.Annotations[labels.PIDFile]; pidFile != "" {
@@ -319,7 +320,7 @@ func onCreateRuntime(opts *handlerOpts) error {
 		}
 		cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, portMapOpts...)
 		if err != nil {
-			return errors.Wrap(err, "failed to call cni.Setup")
+			return fmt.Errorf("failed to call cni.Setup: %w", err)
 		}
 		cniResRaw := cniRes.Raw()
 		for i, cniName := range opts.cniNames {

@@ -17,11 +17,12 @@
 package main
 
 import (
+	"errors"
 	"os"
 
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 

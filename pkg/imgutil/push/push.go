@@ -20,6 +20,7 @@ package push
 import (
 	"context"
 	gocontext "context"
+	"fmt"
 	"io"
 	"sync"
 	"text/tabwriter"
@@ -35,7 +36,7 @@ import (
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
+
 	"golang.org/x/sync/errgroup"
 )
 
@@ -43,7 +44,7 @@ func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resol
 	localRef, remoteRef string, platform platforms.MatchComparer) error {
 	img, err := client.ImageService().Get(ctx, localRef)
 	if err != nil {
-		return errors.Wrap(err, "unable to resolve image to manifest")
+		return fmt.Errorf("unable to resolve image to manifest: %w", err)
 	}
 	desc := img.Target
 

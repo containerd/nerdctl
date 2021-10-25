@@ -17,6 +17,8 @@
 package mountutil
 
 import (
+	"errors"
+	"fmt"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -28,7 +30,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -91,7 +93,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 			}
 		}
 		if !filepath.IsAbs(dst) {
-			return nil, errors.Errorf("expected an absolute path, got %q", dst)
+			return nil, fmt.Errorf("expected an absolute path, got %q", dst)
 		}
 		rawOpts := ""
 		if len(split) == 3 {
@@ -107,7 +109,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 		}
 		res.Opts = append(res.Opts, specOpts...)
 	default:
-		return nil, errors.Errorf("failed to parse %q", s)
+		return nil, fmt.Errorf("failed to parse %q", s)
 	}
 
 	fstype := "nullfs"

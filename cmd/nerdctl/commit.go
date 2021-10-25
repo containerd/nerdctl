@@ -18,12 +18,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/imgutil/commit"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -61,7 +62,7 @@ func commitAction(cmd *cobra.Command, args []string) error {
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
 			if found.MatchCount > 1 {
-				return errors.Errorf("ambiguous ID %q", found.Req)
+				return fmt.Errorf("ambiguous ID %q", found.Req)
 			}
 			imageID, err := commit.Commit(ctx, client, found.Container, opts)
 			if err != nil {
@@ -76,7 +77,7 @@ func commitAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	} else if n == 0 {
-		return errors.Errorf("no such container %s", req)
+		return fmt.Errorf("no such container %s", req)
 	}
 	return nil
 }

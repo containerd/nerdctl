@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"syscall"
 
-	"github.com/pkg/errors"
 	"golang.org/x/term"
 )
 
@@ -33,7 +32,7 @@ func readPassword() (string, error) {
 	}
 	bytePassword, err := term.ReadPassword(fd)
 	if err != nil {
-		return "", errors.Wrap(err, "error reading password")
+		return "", fmt.Errorf("error reading password: %w", err)
 	}
 
 	return string(bytePassword), nil

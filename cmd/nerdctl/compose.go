@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"errors"
 
 	composecli "github.com/compose-spec/compose-go/cli"
 	"github.com/containerd/containerd"
@@ -28,7 +29,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 

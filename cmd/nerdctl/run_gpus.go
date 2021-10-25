@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -25,7 +26,6 @@ import (
 	"github.com/containerd/containerd/contrib/nvidia"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/pkg/errors"
 )
 
 type gpuReq struct {
@@ -158,5 +158,8 @@ func parseCount(s string) (int, error) {
 		return -1, nil
 	}
 	i, err := strconv.Atoi(s)
-	return i, errors.Wrap(err, "count must be an integer")
+	if err != nil {
+		return i, fmt.Errorf("count must be an integer: %w", err)
+	}
+	return i, nil
 }

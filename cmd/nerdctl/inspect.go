@@ -18,10 +18,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +51,7 @@ func addInspectFlags(cmd *cobra.Command) {
 
 func inspectAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.Errorf("requires at least 1 argument")
+		return fmt.Errorf("requires at least 1 argument")
 	}
 
 	client, ctx, cancel, err := newClient(cmd)
@@ -85,11 +86,11 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 		}
 
 		if ni != 0 && nc != 0 || nc > 1 {
-			return errors.Errorf("multiple IDs found with provided prefix: %s", req)
+			return fmt.Errorf("multiple IDs found with provided prefix: %s", req)
 		}
 
 		if nc == 0 && ni == 0 {
-			return errors.Errorf("no such object %s", req)
+			return fmt.Errorf("no such object %s", req)
 		}
 		if ni != 0 {
 			if err := imageInspectAction(cmd, args); err != nil {

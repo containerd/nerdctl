@@ -18,12 +18,12 @@ package logging
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
-	"github.com/pkg/errors"
 )
 
 // MagicArgv1 is the magic argv1 for the containerd runtime v2 logging plugin mode.

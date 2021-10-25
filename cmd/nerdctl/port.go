@@ -27,7 +27,7 @@ import (
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +46,7 @@ func newPortCommand() *cobra.Command {
 
 func portAction(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 && len(args) != 2 {
-		return errors.Errorf("requires at least 1 and at most 2 arguments")
+		return fmt.Errorf("requires at least 1 and at most 2 arguments")
 	}
 
 	argPort := -1
@@ -64,7 +64,7 @@ func portAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if argPort <= 0 {
-			return errors.Errorf("unexpected port %d", argPort)
+			return fmt.Errorf("unexpected port %d", argPort)
 		}
 		switch len(splitBySlash) {
 		case 1:
@@ -72,7 +72,7 @@ func portAction(cmd *cobra.Command, args []string) error {
 		case 2:
 			argProto = strings.ToLower(splitBySlash[1])
 		default:
-			return errors.Errorf("failed to parse %q", portProto)
+			return fmt.Errorf("failed to parse %q", portProto)
 		}
 	}
 
@@ -86,7 +86,7 @@ func portAction(cmd *cobra.Command, args []string) error {
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
 			if found.MatchCount > 1 {
-				return errors.Errorf("ambiguous ID %q", found.Req)
+				return fmt.Errorf("ambiguous ID %q", found.Req)
 			}
 			return printPort(ctx, cmd, found.Container, argPort, argProto)
 		},
@@ -96,7 +96,7 @@ func portAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	} else if n == 0 {
-		return errors.Errorf("no such container %s", req)
+		return fmt.Errorf("no such container %s", req)
 	}
 	return nil
 }
@@ -128,7 +128,7 @@ func printPort(ctx context.Context, cmd *cobra.Command, container containerd.Con
 			return nil
 		}
 	}
-	return errors.Errorf("no public port %d/%s published for %q", argPort, argProto, container.ID())
+	return fmt.Errorf("no public port %d/%s published for %q", argPort, argProto, container.ID())
 }
 
 func portShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

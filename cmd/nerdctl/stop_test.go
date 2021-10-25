@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
+
 	"gotest.tools/v3/assert"
 )
 
@@ -51,7 +51,7 @@ func TestStopStart(t *testing.T) {
 			return err
 		}
 		if !strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet) {
-			return errors.Errorf("expected contain %q, got %q",
+			return fmt.Errorf("expected contain %q, got %q",
 				testutil.NginxAlpineIndexHTMLSnippet, string(respBody))
 		}
 		return nil

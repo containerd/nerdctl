@@ -18,6 +18,7 @@ package taskutil
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/url"
 	"os"
@@ -25,7 +26,6 @@ import (
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
-	"github.com/pkg/errors"
 )
 
 // NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108

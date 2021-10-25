@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -24,7 +25,7 @@ import (
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/mattn/go-isatty"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +53,7 @@ func newSaveCommand() *cobra.Command {
 
 func saveAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.Errorf("requires at least 1 argument")
+		return fmt.Errorf("requires at least 1 argument")
 	}
 
 	var (
@@ -61,7 +62,7 @@ func saveAction(cmd *cobra.Command, args []string) error {
 	)
 
 	if len(images) == 0 {
-		return errors.Errorf("requires at least 1 argument")
+		return fmt.Errorf("requires at least 1 argument")
 	}
 
 	out := cmd.OutOrStdout()
@@ -78,7 +79,7 @@ func saveAction(cmd *cobra.Command, args []string) error {
 		out = f
 	} else {
 		if isatty.IsTerminal(os.Stdout.Fd()) {
-			return errors.Errorf("cowardly refusing to save to a terminal. Use the -o flag or redirect")
+			return fmt.Errorf("cowardly refusing to save to a terminal. Use the -o flag or redirect")
 		}
 	}
 	return saveImage(images, out, saveOpts, cmd)

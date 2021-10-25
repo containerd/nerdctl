@@ -17,12 +17,12 @@
 package portutil
 
 import (
+	"fmt"
 	"net"
 	"strings"
 
 	gocni "github.com/containerd/go-cni"
 	"github.com/docker/go-connections/nat"
-	"github.com/pkg/errors"
 )
 
 //return respectively ip, hostPort, containerPort
@@ -54,10 +54,10 @@ func ParseFlagP(s string) ([]gocni.PortMapping, error) {
 		switch proto {
 		case "tcp", "udp", "sctp":
 		default:
-			return nil, errors.Errorf("invalid protocol %q", splitBySlash[1])
+			return nil, fmt.Errorf("invalid protocol %q", splitBySlash[1])
 		}
 	default:
-		return nil, errors.Errorf("failed to parse %q, unexpected slashes", s)
+		return nil, fmt.Errorf("failed to parse %q, unexpected slashes", s)
 	}
 
 	res := gocni.PortMapping{
@@ -69,26 +69,26 @@ func ParseFlagP(s string) ([]gocni.PortMapping, error) {
 	ip, hostPort, containerPort := splitParts(splitBySlash[0])
 
 	if containerPort == "" {
-		return nil, errors.Errorf("no port specified: %s", splitBySlash[0])
+		return nil, fmt.Errorf("no port specified: %s", splitBySlash[0])
 	}
 
 	if hostPort == "" {
-		return nil, errors.Errorf("automatic host port assignment is not supported yet (FIXME)")
+		return nil, fmt.Errorf("automatic host port assignment is not supported yet (FIXME)")
 	}
 
 	startHostPort, endHostPort, err := nat.ParsePortRange(hostPort)
 	if err != nil {
-		return nil, errors.Errorf("invalid hostPort: %s", hostPort)
+		return nil, fmt.Errorf("invalid hostPort: %s", hostPort)
 	}
 
 	startPort, endPort, err := nat.ParsePortRange(containerPort)
 	if err != nil {
-		return nil, errors.Errorf("invalid containerPort: %s", containerPort)
+		return nil, fmt.Errorf("invalid containerPort: %s", containerPort)
 	}
 
 	if hostPort != "" && (endPort-startPort) != (endHostPort-startHostPort) {
 		if endPort != startPort {
-			return nil, errors.Errorf("invalid ranges specified for container and host Ports: %s and %s", containerPort, hostPort)
+			return nil, fmt.Errorf("invalid ranges specified for container and host Ports: %s and %s", containerPort, hostPort)
 		}
 	}
 
@@ -102,7 +102,7 @@ func ParseFlagP(s string) ([]gocni.PortMapping, error) {
 		} else {
 			// TODO handle ipv6
 			if net.ParseIP(ip) == nil {
-				return nil, errors.Errorf("invalid ip address: %s", ip)
+				return nil, fmt.Errorf("invalid ip address: %s", ip)
 			}
 			res.HostIP = ip
 		}

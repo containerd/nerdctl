@@ -18,12 +18,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/containerd"
@@ -46,10 +46,9 @@ func newClient(cmd *cobra.Command, opts ...containerd.ClientOpt) (*containerd.Cl
 	const dockerContainerdaddress = "/var/run/docker/containerd/containerd.sock"
 	if err := isSocketAccessible(address); err != nil {
 		if isSocketAccessible(dockerContainerdaddress) == nil {
-			err = errors.Wrapf(err, "cannot access containerd socket %q (hint: try running with `--address %s` to connect to Docker-managed containerd)",
-				address, dockerContainerdaddress)
+			err = fmt.Errorf("cannot access containerd socket %q (hint: try running with `--address %s` to connect to Docker-managed containerd): %w", address, dockerContainerdaddress, err)
 		} else {
-			err = errors.Wrapf(err, "cannot access containerd socket %q", address)
+			err = fmt.Errorf("cannot access containerd socket %q: %w", address, err)
 		}
 		return nil, nil, nil, err
 	}

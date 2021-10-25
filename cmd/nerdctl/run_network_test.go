@@ -27,7 +27,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
+
 	"gotest.tools/v3/assert"
 )
 
@@ -341,5 +341,5 @@ func httpGet(urlStr string, attempts int) (*http.Response, error) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	return nil, errors.Wrapf(err, "error after %d attempts", attempts)
+	return nil, fmt.Errorf("error after %d attempts: %w", attempts, err)
 }

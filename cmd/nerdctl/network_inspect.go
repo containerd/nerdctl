@@ -23,7 +23,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +46,7 @@ func newNetworkInspectCommand() *cobra.Command {
 
 func networkInspectAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.Errorf("requires at least 1 argument")
+		return fmt.Errorf("requires at least 1 argument")
 	}
 
 	cniPath, err := cmd.Flags().GetString("cni-path")
@@ -75,11 +75,11 @@ func networkInspectAction(cmd *cobra.Command, args []string) error {
 	result := make([]interface{}, len(args))
 	for i, name := range args {
 		if name == "host" || name == "none" {
-			return errors.Errorf("pseudo network %q cannot be inspected", name)
+			return fmt.Errorf("pseudo network %q cannot be inspected", name)
 		}
 		l, ok := llMap[name]
 		if !ok {
-			return errors.Errorf("no such network: %s", name)
+			return fmt.Errorf("no such network: %s", name)
 		}
 
 		r := &native.Network{
@@ -102,7 +102,7 @@ func networkInspectAction(cmd *cobra.Command, args []string) error {
 			}
 			result[i] = compat
 		default:
-			return errors.Errorf("unknown mode %q", mode)
+			return fmt.Errorf("unknown mode %q", mode)
 		}
 	}
 	b, err := json.MarshalIndent(result, "", "    ")

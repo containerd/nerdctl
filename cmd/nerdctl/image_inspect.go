@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"text/template"
 	"time"
@@ -30,7 +31,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/imageinspector"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/docker/cli/templates"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -62,7 +63,7 @@ func newImageInspectCommand() *cobra.Command {
 
 func imageInspectAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.Errorf("requires at least 1 argument")
+		return fmt.Errorf("requires at least 1 argument")
 	}
 
 	var clientOpts []containerd.ClientOpt
@@ -112,7 +113,7 @@ func imageInspectAction(cmd *cobra.Command, args []string) error {
 				}
 				f.entries = append(f.entries, d)
 			default:
-				return errors.Errorf("unknown mode %q", f.mode)
+				return fmt.Errorf("unknown mode %q", f.mode)
 			}
 			return nil
 		},
@@ -124,7 +125,7 @@ func imageInspectAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			errs = append(errs, err)
 		} else if n == 0 {
-			errs = append(errs, errors.Errorf("no such object: %s", req))
+			errs = append(errs, fmt.Errorf("no such object: %s", req))
 		}
 	}
 
@@ -166,7 +167,7 @@ func imageInspectAction(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(errs) > 0 {
-		return errors.Errorf("%d errors: %v", len(errs), errs)
+		return fmt.Errorf("%d errors: %v", len(errs), errs)
 	}
 	return nil
 }

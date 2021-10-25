@@ -18,6 +18,7 @@ package volumestore
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -27,7 +28,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/pkg/errors"
 )
 
 // Path returns a string like `/var/lib/nerdctl/1935db59/volumes/default`.
@@ -80,7 +80,7 @@ func (vs *volumeStore) Dir() string {
 
 func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, error) {
 	if err := identifiers.Validate(name); err != nil {
-		return nil, errors.Wrapf(err, "malformed name %s", name)
+		return nil, fmt.Errorf("malformed name %s: %w", name, err)
 	}
 	volPath := filepath.Join(vs.dir, name)
 	volDataPath := filepath.Join(volPath, DataDirName)
@@ -127,12 +127,12 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 
 func (vs *volumeStore) Get(name string) (*native.Volume, error) {
 	if err := identifiers.Validate(name); err != nil {
-		return nil, errors.Wrapf(err, "malformed name %s", name)
+		return nil, fmt.Errorf("malformed name %s: %w", name, err)
 	}
 	dataPath := filepath.Join(vs.dir, name, DataDirName)
 	if _, err := os.Stat(dataPath); err != nil {
 		if os.IsNotExist(err) {
-			return nil, errors.Wrapf(errdefs.ErrNotFound, "volume %q not found", name)
+			return nil, fmt.Errorf("volume %q not found: %w", name, errdefs.ErrNotFound)
 		}
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func (vs *volumeStore) Remove(names []string) ([]string, error) {
 	fn := func() error {
 		for _, name := range names {
 			if err := identifiers.Validate(name); err != nil {
-				return errors.Wrapf(err, "malformed name %s", name)
+				return fmt.Errorf("malformed name %s: %w", name, err)
 			}
 			dir := filepath.Join(vs.dir, name)
 			if err := os.RemoveAll(dir); err != nil {

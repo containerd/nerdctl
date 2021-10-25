@@ -35,7 +35,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
+
 	"golang.org/x/crypto/bcrypt"
 	"gotest.tools/v3/assert"
 )
@@ -59,7 +59,7 @@ func getNonLoopbackIPv4() (net.IP, error) {
 		}
 		return ipv4, nil
 	}
-	return nil, errors.Wrapf(errdefs.ErrNotFound, "non-loopback IPv4 address not found, attempted=%+v", addrs)
+	return nil, fmt.Errorf("non-loopback IPv4 address not found, attempted=%+v: %w", addrs, errdefs.ErrNotFound)
 }
 
 type testRegistry struct {
@@ -324,5 +324,5 @@ func httpInsecureGet(urlStr string, attempts int) (*http.Response, error) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	return nil, errors.Wrapf(err, "error after %d attempts", attempts)
+	return nil, fmt.Errorf("error after %d attempts: %w", attempts, err)
 }
