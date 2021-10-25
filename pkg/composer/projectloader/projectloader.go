@@ -17,7 +17,7 @@
 package projectloader
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/compose-spec/compose-go/loader"
@@ -25,7 +25,7 @@ import (
 )
 
 func Load(fileName, projectName string, envMap map[string]string) (*compose.Project, error) {
-	b, err := ioutil.ReadFile(fileName)
+	b, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, err
 	}

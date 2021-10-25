@@ -21,7 +21,6 @@ package hostsstore
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -130,7 +129,7 @@ func (x *store) Acquire(meta Meta) error {
 			return err
 		}
 		metaPath := filepath.Join(x.hostsD, meta.Namespace, meta.ID, metaJSON)
-		if err := ioutil.WriteFile(metaPath, metaB, 0644); err != nil {
+		if err := os.WriteFile(metaPath, metaB, 0644); err != nil {
 			return err
 		}
 		return newUpdater(x.hostsD, meta.ExtraHosts).update()

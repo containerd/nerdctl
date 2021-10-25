@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,7 +73,7 @@ func (u *updater) phase1() error {
 		if filepath.Base(path) != metaJSON {
 			return nil
 		}
-		metaB, err := ioutil.ReadFile(path)
+		metaB, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -147,7 +146,7 @@ func (u *updater) phase2() error {
 		buf.WriteString(fmt.Sprintf("# %s\n", markerEnd))
 		// FIXME: retain custom /etc/hosts entries outside <nerdctl></nerdctl>
 		// See https://github.com/norouter/norouter/blob/v0.6.2/pkg/agent/etchosts/etchosts.go#L113-L152
-		return ioutil.WriteFile(path, buf.Bytes(), 0644)
+		return os.WriteFile(path, buf.Bytes(), 0644)
 	}
 	if err := filepath.Walk(u.hostsD, writeHostsWF); err != nil {
 		return err

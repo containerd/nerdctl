@@ -18,7 +18,7 @@ package serviceparser
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -362,7 +362,7 @@ configs:
 	assert.NilError(t, err)
 
 	for _, f := range []string{"secret1", "secret2", "secret3", "config1", "config2"} {
-		err = ioutil.WriteFile(filepath.Join(project.WorkingDir, f), []byte("content-"+f), 0444)
+		err = os.WriteFile(filepath.Join(project.WorkingDir, f), []byte("content-"+f), 0444)
 		assert.NilError(t, err)
 	}
 

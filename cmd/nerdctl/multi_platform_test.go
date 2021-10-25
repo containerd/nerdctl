@@ -18,7 +18,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -133,7 +133,7 @@ RUN uname -m > /usr/share/nginx/html/index.html
 	for testURL, expectedIndexHTML := range testCases {
 		resp, err := httpGet(testURL, 50)
 		assert.NilError(t, err)
-		respBody, err := ioutil.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
 		assert.NilError(t, err)
 		t.Logf("respBody=%q", respBody)
 		assert.Assert(t, strings.Contains(string(respBody), expectedIndexHTML))

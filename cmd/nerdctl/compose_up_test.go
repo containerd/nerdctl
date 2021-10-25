@@ -18,7 +18,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -80,7 +80,7 @@ volumes:
 		if err != nil {
 			return err
 		}
-		respBody, err := ioutil.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
@@ -141,7 +141,7 @@ COPY index.html /usr/share/nginx/html/index.html
 
 	resp, err := httpGet("http://127.0.0.1:8080", 50)
 	assert.NilError(t, err)
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	assert.NilError(t, err)
 	t.Logf("respBody=%q", respBody)
 	assert.Assert(t, strings.Contains(string(respBody), indexHTML))

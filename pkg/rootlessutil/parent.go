@@ -19,7 +19,6 @@ package rootlessutil
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -56,7 +55,7 @@ func RootlessKitChildPid(stateDir string) (int, error) {
 		return 0, err
 	}
 
-	pidFileBytes, err := ioutil.ReadFile(pidFilePath)
+	pidFileBytes, err := os.ReadFile(pidFilePath)
 	if err != nil {
 		return 0, err
 	}

@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,7 +78,7 @@ COPY %s /`,
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
-	if err := ioutil.WriteFile(filepath.Join(buildCtx, testFileName), []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(buildCtx, testFileName), []byte(testContent), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -94,11 +93,11 @@ COPY %s /`,
 }
 
 func createBuildContext(dockerfile string) (string, error) {
-	tmpDir, err := ioutil.TempDir("", "nerdctl-build-test")
+	tmpDir, err := os.MkdirTemp("", "nerdctl-build-test")
 	if err != nil {
 		return "", err
 	}
-	if err = ioutil.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644); err != nil {
+	if err = os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644); err != nil {
 		return "", err
 	}
 	return tmpDir, nil

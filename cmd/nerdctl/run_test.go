@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -107,12 +106,12 @@ func TestRunCustomRootfs(t *testing.T) {
 
 func prepareCustomRootfs(base *testutil.Base, imageName string) string {
 	base.Cmd("pull", imageName).AssertOK()
-	tmpDir, err := ioutil.TempDir("", "test-save")
+	tmpDir, err := os.MkdirTemp("", "test-save")
 	assert.NilError(base.T, err)
 	defer os.RemoveAll(tmpDir)
 	archiveTarPath := filepath.Join(tmpDir, "a.tar")
 	base.Cmd("save", "-o", archiveTarPath, imageName).AssertOK()
-	rootfs, err := ioutil.TempDir("", "rootfs")
+	rootfs, err := os.MkdirTemp("", "rootfs")
 	assert.NilError(base.T, err)
 	err = extractDockerArchive(archiveTarPath, rootfs)
 	assert.NilError(base.T, err)
@@ -172,20 +171,20 @@ func TestRunEnvFile(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	const pattern = "env-file"
-	file1, err := ioutil.TempFile("", pattern)
+	file1, err := os.CreateTemp("", pattern)
 	assert.NilError(base.T, err)
 	path1 := file1.Name()
 	defer file1.Close()
 	defer os.Remove(path1)
-	err = ioutil.WriteFile(path1, []byte("# this is a comment line\nTESTKEY1=TESTVAL1"), 0666)
+	err = os.WriteFile(path1, []byte("# this is a comment line\nTESTKEY1=TESTVAL1"), 0666)
 	assert.NilError(base.T, err)
 
-	file2, err := ioutil.TempFile("", pattern)
+	file2, err := os.CreateTemp("", pattern)
 	assert.NilError(base.T, err)
 	path2 := file2.Name()
 	defer file2.Close()
 	defer os.Remove(path2)
-	err = ioutil.WriteFile(path2, []byte("# this is a comment line\nTESTKEY2=TESTVAL2"), 0666)
+	err = os.WriteFile(path2, []byte("# this is a comment line\nTESTKEY2=TESTVAL2"), 0666)
 	assert.NilError(base.T, err)
 
 	base.Cmd("run", "--rm", "--env-file", path1, "--env-file", path2, testutil.AlpineImage, "sh", "-c", "echo $TESTKEY1").AssertOutContains("TESTVAL1")

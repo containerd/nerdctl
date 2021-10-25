@@ -19,7 +19,6 @@ package buildkitutil
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -67,7 +66,7 @@ func PingBKDaemon(buildkitHost string) error {
 // WriteTempDockerfile is from https://github.com/docker/cli/blob/v20.10.9/cli/command/image/build/context.go#L118
 func WriteTempDockerfile(rc io.Reader) (dockerfileDir string, err error) {
 	// err is a named return value, due to the defer call below.
-	dockerfileDir, err = ioutil.TempDir("", TempDockerfileName)
+	dockerfileDir, err = os.MkdirTemp("", TempDockerfileName)
 	if err != nil {
 		return "", fmt.Errorf("unable to create temporary context directory: %v", err)
 	}

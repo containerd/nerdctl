@@ -20,7 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"runtime"
 	"strings"
 
@@ -136,7 +136,7 @@ func verifyloginOptions(cmd *cobra.Command, options *loginOptions) error {
 			return errors.New("must provide --username with --password-stdin")
 		}
 
-		contents, err := ioutil.ReadAll(cmd.InOrStdin())
+		contents, err := io.ReadAll(cmd.InOrStdin())
 		if err != nil {
 			return err
 		}

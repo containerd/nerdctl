@@ -19,7 +19,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -62,7 +61,7 @@ func TestRunDevice(t *testing.T) {
 		t.Logf("lo[%d] = %+v", i, lo[i])
 		defer lo[i].Close()
 		loContent[i] = fmt.Sprintf("lo%d-content", i)
-		assert.NilError(t, ioutil.WriteFile(lo[i].Device, []byte(loContent[i]), 0700))
+		assert.NilError(t, os.WriteFile(lo[i].Device, []byte(loContent[i]), 0700))
 	}
 
 	base := testutil.NewBase(t)
@@ -83,7 +82,7 @@ func TestRunDevice(t *testing.T) {
 	base.Cmd("exec", containerName, "cat", lo[2].Device).AssertFail()
 	base.Cmd("exec", containerName, "sh", "-ec", "echo -n \"overwritten-lo0-content\">"+lo[0].Device).AssertFail()
 	base.Cmd("exec", containerName, "sh", "-ec", "echo -n \"overwritten-lo1-content\">"+lo[1].Device).AssertOK()
-	lo1Read, err := ioutil.ReadFile(lo[1].Device)
+	lo1Read, err := os.ReadFile(lo[1].Device)
 	assert.NilError(t, err)
 	assert.Equal(t, string(bytes.Trim(lo1Read, "\x00")), "overwritten-lo1-content")
 }

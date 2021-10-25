@@ -19,7 +19,6 @@ package volumestore
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -108,7 +107,7 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 		}
 
 		volFilePath := filepath.Join(volPath, volumeJSONFileName)
-		if err := ioutil.WriteFile(volFilePath, labelsJson, 0644); err != nil {
+		if err := os.WriteFile(volFilePath, labelsJson, 0644); err != nil {
 			return err
 		}
 		return nil
@@ -138,7 +137,7 @@ func (vs *volumeStore) Get(name string) (*native.Volume, error) {
 	}
 
 	volFilePath := filepath.Join(vs.dir, name, volumeJSONFileName)
-	volumeDataBytes, err := ioutil.ReadFile(volFilePath)
+	volumeDataBytes, err := os.ReadFile(volFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			//volume.json does not exists should not be blocking for inspect operation
@@ -156,7 +155,7 @@ func (vs *volumeStore) Get(name string) (*native.Volume, error) {
 }
 
 func (vs *volumeStore) List() (map[string]native.Volume, error) {
-	dEnts, err := ioutil.ReadDir(vs.dir)
+	dEnts, err := os.ReadDir(vs.dir)
 	if err != nil {
 		return nil, err
 	}

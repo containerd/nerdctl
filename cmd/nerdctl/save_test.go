@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -35,7 +34,7 @@ import (
 func TestSave(t *testing.T) {
 	base := testutil.NewBase(t)
 	base.Cmd("pull", testutil.AlpineImage).AssertOK()
-	tmpDir, err := ioutil.TempDir("", "test-save")
+	tmpDir, err := os.MkdirTemp("", "test-save")
 	assert.NilError(t, err)
 	defer os.RemoveAll(tmpDir)
 	archiveTarPath := filepath.Join(tmpDir, "a.tar")
@@ -44,7 +43,7 @@ func TestSave(t *testing.T) {
 	err = extractDockerArchive(archiveTarPath, rootfsPath)
 	assert.NilError(t, err)
 	etcOSReleasePath := filepath.Join(rootfsPath, "/etc/os-release")
-	etcOSReleaseBytes, err := ioutil.ReadFile(etcOSReleasePath)
+	etcOSReleaseBytes, err := os.ReadFile(etcOSReleasePath)
 	assert.NilError(t, err)
 	etcOSRelease := string(etcOSReleaseBytes)
 	t.Logf("read %q, extracted from %q", etcOSReleasePath, testutil.AlpineImage)
@@ -56,7 +55,7 @@ func extractDockerArchive(archiveTarPath, rootfsPath string) error {
 	if err := os.MkdirAll(rootfsPath, 0755); err != nil {
 		return err
 	}
-	workDir, err := ioutil.TempDir("", "extract-docker-archive")
+	workDir, err := os.MkdirTemp("", "extract-docker-archive")
 	if err != nil {
 		return err
 	}
@@ -65,7 +64,7 @@ func extractDockerArchive(archiveTarPath, rootfsPath string) error {
 		return err
 	}
 	manifestJSONPath := filepath.Join(workDir, "manifest.json")
-	manifestJSONBytes, err := ioutil.ReadFile(manifestJSONPath)
+	manifestJSONBytes, err := os.ReadFile(manifestJSONPath)
 	if err != nil {
 		return err
 	}

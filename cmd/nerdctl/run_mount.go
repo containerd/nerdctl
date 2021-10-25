@@ -19,7 +19,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -76,7 +75,7 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 		chainID := identity.ChainID(diffIDs).String()
 
 		s := client.SnapshotService(snapshotter)
-		tempDir, err = ioutil.TempDir("", "initialC")
+		tempDir, err = os.MkdirTemp("", "initialC")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -189,7 +188,7 @@ func copyExistingContents(source, destination string) error {
 	if _, err := os.Stat(source); os.IsNotExist(err) {
 		return nil
 	}
-	dstList, err := ioutil.ReadDir(destination)
+	dstList, err := os.ReadDir(destination)
 	if err != nil {
 		return err
 	}

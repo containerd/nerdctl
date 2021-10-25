@@ -18,7 +18,6 @@ package namestore
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,10 +55,10 @@ func (x *nameStore) Acquire(name, id string) error {
 	}
 	fn := func() error {
 		fileName := filepath.Join(x.dir, name)
-		if b, err := ioutil.ReadFile(fileName); err == nil {
+		if b, err := os.ReadFile(fileName); err == nil {
 			return fmt.Errorf("name %q is already used by ID %q", name, string(b))
 		}
-		return ioutil.WriteFile(fileName, []byte(id), 0600)
+		return os.WriteFile(fileName, []byte(id), 0600)
 	}
 	return lockutil.WithDirLock(x.dir, fn)
 }
@@ -76,7 +75,7 @@ func (x *nameStore) Release(name, id string) error {
 	}
 	fn := func() error {
 		fileName := filepath.Join(x.dir, name)
-		b, err := ioutil.ReadFile(fileName)
+		b, err := os.ReadFile(fileName)
 		if err != nil {
 			if os.IsNotExist(err) {
 				err = nil

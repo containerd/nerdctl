@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -110,7 +109,7 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		if _, err := os.Stat(filename); err == nil {
 			return errdefs.ErrAlreadyExists
 		}
-		if err := ioutil.WriteFile(filename, l.Bytes, 0644); err != nil {
+		if err := os.WriteFile(filename, l.Bytes, 0644); err != nil {
 			return err
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "%d\n", id)
