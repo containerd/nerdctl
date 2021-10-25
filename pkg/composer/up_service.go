@@ -102,21 +102,21 @@ func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Ser
 	if ps.Build != nil {
 		var bo BuildOptions
 		if ps.Build.Force || force {
-			return c.buildServiceImage(ctx, ps.Image, ps.Build, bo)
+			return c.buildServiceImage(ctx, ps.Image, ps.Build, ps.Unparsed.Platform, bo)
 		}
 		if ok, err := c.ImageExists(ctx, ps.Image); err != nil {
 			return err
 		} else if ok {
 			logrus.Debugf("Image %s already exists, not building", ps.Image)
 		} else {
-			return c.buildServiceImage(ctx, ps.Image, ps.Build, bo)
+			return c.buildServiceImage(ctx, ps.Image, ps.Build, ps.Unparsed.Platform, bo)
 		}
 	}
 
 	// even when c.ImageExists returns true, we need to call c.EnsureImage
 	// because ps.PullMode can be "always".
 	logrus.Infof("Ensuring image %s", ps.Image)
-	if err := c.EnsureImage(ctx, ps.Image, ps.PullMode); err != nil {
+	if err := c.EnsureImage(ctx, ps.Image, ps.PullMode, ps.Unparsed.Platform); err != nil {
 		return err
 	}
 	return nil

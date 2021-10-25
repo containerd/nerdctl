@@ -19,6 +19,7 @@ package imgutil
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/imgcrypt"
@@ -34,6 +36,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/pkg/imgutil/pull"
 	"github.com/containerd/stargz-snapshotter/fs/source"
+	"github.com/docker/docker/errdefs"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -50,44 +53,68 @@ type EnsuredImage struct {
 // PullMode is either one of "always", "missing", "never"
 type PullMode = string
 
+// getExistingImage may return errdefs.NotFound()
+func getExistingImage(ctx context.Context, client *containerd.Client, snapshotter, rawRef string, platform ocispec.Platform) (*EnsuredImage, error) {
+	var res *EnsuredImage
+	imagewalker := &imagewalker.ImageWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+			if res != nil {
+				return nil
+			}
+			image := containerd.NewImageWithPlatform(client, found.Image, platforms.OnlyStrict(platform))
+			imgConfig, err := getImageConfig(ctx, image)
+			if err != nil {
+				// Image found but blob not found for foreign arch
+				// Ignore err and return nil, so that the walker can visit the next candidate.
+				return nil
+			}
+			res = &EnsuredImage{
+				Ref:         found.Image.Name,
+				Image:       image,
+				ImageConfig: *imgConfig,
+				Snapshotter: snapshotter,
+				Remote:      isStargz(snapshotter),
+			}
+			if unpacked, err := image.IsUnpacked(ctx, snapshotter); err == nil && !unpacked {
+				if err := image.Unpack(ctx, snapshotter); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+	count, err := imagewalker.Walk(ctx, rawRef)
+	if err != nil {
+		return nil, err
+	}
+	if count == 0 {
+		return nil, errdefs.NotFound(fmt.Errorf("got count 0 after walking"))
+	}
+	if res == nil {
+		return nil, errdefs.NotFound(fmt.Errorf("got nil res after walking"))
+	}
+	return res, nil
+}
+
 // EnsureImage ensures the image.
 //
 // When insecure is set, skips verifying certs, and also falls back to HTTP when the registry does not speak HTTPS
-func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool) (*EnsuredImage, error) {
-	if mode != "always" {
-		var res *EnsuredImage
-		imagewalker := &imagewalker.ImageWalker{
-			Client: client,
-			OnFound: func(ctx context.Context, found imagewalker.Found) error {
-				if res != nil {
-					return nil
-				}
-				image := containerd.NewImage(client, found.Image)
-				imgConfig, err := getImageConfig(ctx, image)
-				if err != nil {
-					return err
-				}
-				res = &EnsuredImage{
-					Ref:         found.Image.Name,
-					Image:       image,
-					ImageConfig: *imgConfig,
-					Snapshotter: snapshotter,
-					Remote:      isStargz(snapshotter),
-				}
-				if unpacked, err := image.IsUnpacked(ctx, snapshotter); err == nil && !unpacked {
-					if err := image.Unpack(ctx, snapshotter); err != nil {
-						return err
-					}
-				}
-				return nil
-			},
-		}
-		_, err := imagewalker.Walk(ctx, rawRef)
-		if err != nil {
-			return nil, err
-		}
-		if res != nil {
+func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool, ocispecPlatforms []ocispec.Platform) (*EnsuredImage, error) {
+	switch mode {
+	case "always", "missing", "never":
+		// NOP
+	default:
+		return nil, fmt.Errorf("unexpected pull mode: %q", mode)
+	}
+
+	if mode != "always" && len(ocispecPlatforms) == 1 {
+		res, err := getExistingImage(ctx, client, snapshotter, rawRef, ocispecPlatforms[0])
+		if err == nil {
 			return res, nil
+		}
+		if !errdefs.IsNotFound(err) {
+			return nil, err
 		}
 	}
 
@@ -112,7 +139,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 		return nil, err
 	}
 
-	img, err := pullImage(ctx, client, stdout, snapshotter, resolver, ref)
+	img, err := pullImage(ctx, client, stdout, snapshotter, resolver, ref, ocispecPlatforms)
 	if err != nil {
 		if !IsErrHTTPResponseToHTTPSClient(err) {
 			return nil, err
@@ -124,7 +151,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 			if err != nil {
 				return nil, err
 			}
-			return pullImage(ctx, client, stdout, snapshotter, resolver, ref)
+			return pullImage(ctx, client, stdout, snapshotter, resolver, ref, ocispecPlatforms)
 		} else {
 			logrus.WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
 			logrus.Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
@@ -143,7 +170,7 @@ func IsErrHTTPResponseToHTTPSClient(err error) bool {
 	return strings.Contains(err.Error(), unexposed)
 }
 
-func pullImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter string, resolver remotes.Resolver, ref string) (*EnsuredImage, error) {
+func pullImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter string, resolver remotes.Resolver, ref string, ocispecPlatforms []ocispec.Platform) (*EnsuredImage, error) {
 	ctx, done, err := client.WithLease(ctx)
 	if err != nil {
 		return nil, err
@@ -154,24 +181,31 @@ func pullImage(ctx context.Context, client *containerd.Client, stdout io.Writer,
 	config := &pull.Config{
 		Resolver:       resolver,
 		ProgressOutput: stdout,
-		RemoteOpts: []containerd.RemoteOpt{
-			containerd.WithPullUnpack,
-			containerd.WithPullSnapshotter(snapshotter),
-		},
+		RemoteOpts:     []containerd.RemoteOpt{},
+		Platforms:      ocispecPlatforms, // empty for all-platforms
 	}
 
-	imgcryptPayload := imgcrypt.Payload{}
-	imgcryptUnpackOpt := encryption.WithUnpackConfigApplyOpts(encryption.WithDecryptedUnpack(&imgcryptPayload))
-	config.RemoteOpts = append(config.RemoteOpts,
-		containerd.WithUnpackOpts([]containerd.UnpackOpt{imgcryptUnpackOpt}))
+	var sgz bool
+	// unpacking is possible only for single-platform mode
+	if len(ocispecPlatforms) == 1 {
+		logrus.Debugf("Single-platform mode. The image will be unpacked for platform %q, snapshotter %q.", ocispecPlatforms[0], snapshotter)
+		imgcryptPayload := imgcrypt.Payload{}
+		imgcryptUnpackOpt := encryption.WithUnpackConfigApplyOpts(encryption.WithDecryptedUnpack(&imgcryptPayload))
+		config.RemoteOpts = append(config.RemoteOpts,
+			containerd.WithPullUnpack,
+			containerd.WithPullSnapshotter(snapshotter),
+			containerd.WithUnpackOpts([]containerd.UnpackOpt{imgcryptUnpackOpt}))
 
-	sgz := isStargz(snapshotter)
-	if sgz {
-		// TODO: support "skip-content-verify"
-		config.RemoteOpts = append(
-			config.RemoteOpts,
-			containerd.WithImageHandlerWrapper(source.AppendDefaultLabelsHandlerWrapper(ref, 10*1024*1024)),
-		)
+		sgz = isStargz(snapshotter)
+		if sgz {
+			// TODO: support "skip-content-verify"
+			config.RemoteOpts = append(
+				config.RemoteOpts,
+				containerd.WithImageHandlerWrapper(source.AppendDefaultLabelsHandlerWrapper(ref, 10*1024*1024)),
+			)
+		}
+	} else {
+		logrus.Debugf("Multi-platform mode. The image will not be unpacked. Platforms=%v.", ocispecPlatforms)
 	}
 	containerdImage, err = pull.Pull(ctx, client, ref, config)
 	if err != nil {
@@ -272,16 +306,15 @@ func ReadManifest(ctx context.Context, img containerd.Image) (*ocispec.Manifest,
 		// So, we find the manifest object by comparing the config desc.
 		for _, maniDesc := range idx.Manifests {
 			maniDesc := maniDesc
-			b, err := content.ReadBlob(ctx, cs, maniDesc)
-			if err != nil {
-				return nil, nil, err
-			}
-			var mani ocispec.Manifest
-			if err := json.Unmarshal(b, &mani); err != nil {
-				return nil, nil, err
-			}
-			if reflect.DeepEqual(configDesc, mani.Config) {
-				return &mani, &maniDesc, nil
+			// ignore non-nil err
+			if b, err := content.ReadBlob(ctx, cs, maniDesc); err == nil {
+				var mani ocispec.Manifest
+				if err := json.Unmarshal(b, &mani); err != nil {
+					return nil, nil, err
+				}
+				if reflect.DeepEqual(configDesc, mani.Config) {
+					return &mani, &maniDesc, nil
+				}
 			}
 		}
 	}

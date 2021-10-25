@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/pkg/errors"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
@@ -326,6 +327,17 @@ func RequiresBuild(t testing.TB) {
 		if err := buildkitutil.PingBKDaemon(buildkitHost); err != nil {
 			t.Skipf("test requires buildkitd: %+v", err)
 		}
+	}
+}
+
+func RequireExecPlatform(t testing.TB, ss ...string) {
+	ok, err := platformutil.CanExecProbably(ss...)
+	if !ok {
+		msg := fmt.Sprintf("test requires platform %v", ss)
+		if err != nil {
+			msg += fmt.Sprintf(": %v", err)
+		}
+		t.Skip(msg)
 	}
 }
 

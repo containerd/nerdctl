@@ -17,13 +17,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/archive"
 	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +42,13 @@ func newLoadCommand() *cobra.Command {
 	}
 
 	loadCommand.Flags().StringP("input", "i", "", "Read from tar archive file, instead of STDIN")
-	loadCommand.Flags().Bool("all-platforms", false, "Imports content for all platforms")
+
+	// #region platform flags
+	loadCommand.Flags().StringSlice("platform", []string{}, "Import content for a specific platform")
+	loadCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	loadCommand.Flags().Bool("all-platforms", false, "Import content for all platforms")
+	// #endregion
+
 	return loadCommand
 }
 
@@ -62,12 +71,22 @@ func loadAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	platform, err := cmd.Flags().GetStringSlice("platform")
+	if err != nil {
+		return err
+	}
+	platMC, err := platformutil.NewMatchComparer(allPlatforms, platform)
+	if err != nil {
+		return err
+	}
 
-	return loadImage(in, cmd, args, allPlatforms, false)
+	return loadImage(in, cmd, args, platMC, false)
 }
 
-func loadImage(in io.Reader, cmd *cobra.Command, args []string, allPlatforms bool, quiet bool) error {
-	client, ctx, cancel, err := newClient(cmd, containerd.WithDefaultPlatform(platforms.DefaultStrict()))
+func loadImage(in io.Reader, cmd *cobra.Command, args []string, platMC platforms.MatchComparer, quiet bool) error {
+	// In addition to passing WithImagePlatform() to client.Import(), we also need to pass WithDefaultPlatform() to newClient().
+	// Otherwise unpacking may fail.
+	client, ctx, cancel, err := newClient(cmd, containerd.WithDefaultPlatform(platMC))
 	if err != nil {
 		return err
 	}
@@ -77,12 +96,15 @@ func loadImage(in io.Reader, cmd *cobra.Command, args []string, allPlatforms boo
 	if err != nil {
 		return err
 	}
-	imgs, err := client.Import(ctx, in, containerd.WithDigestRef(archive.DigestTranslator(sn)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithAllPlatforms(allPlatforms))
+	imgs, err := client.Import(ctx, in, containerd.WithDigestRef(archive.DigestTranslator(sn)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithImportPlatform(platMC))
 	if err != nil {
+		if errors.Is(err, images.ErrEmptyWalk) {
+			err = fmt.Errorf("%w (Hint: set `--platform=PLATFORM` or `--all-platforms`)", err)
+		}
 		return err
 	}
 	for _, img := range imgs {
-		image := containerd.NewImage(client, img)
+		image := containerd.NewImageWithPlatform(client, img, platMC)
 
 		// TODO: Show unpack status
 		if !quiet {

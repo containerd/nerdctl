@@ -39,16 +39,19 @@ func (c *Composer) Build(ctx context.Context, bo BuildOptions) error {
 			return err
 		}
 		if ps.Build != nil {
-			return c.buildServiceImage(ctx, ps.Image, ps.Build, bo)
+			return c.buildServiceImage(ctx, ps.Image, ps.Build, ps.Unparsed.Platform, bo)
 		}
 		return nil
 	})
 }
 
-func (c *Composer) buildServiceImage(ctx context.Context, image string, b *serviceparser.Build, bo BuildOptions) error {
+func (c *Composer) buildServiceImage(ctx context.Context, image string, b *serviceparser.Build, platform string, bo BuildOptions) error {
 	logrus.Infof("Building image %s", image)
 
 	var args []string // nolint: prealloc
+	if platform != "" {
+		args = append(args, "--platform="+platform)
+	}
 	for _, a := range bo.Args {
 		args = append(args, "--build-arg="+a)
 	}

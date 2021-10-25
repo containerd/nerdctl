@@ -38,6 +38,7 @@ import (
 	"github.com/containerd/containerd/rootfs"
 	"github.com/containerd/containerd/snapshots"
 	imgutil "github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/opencontainers/image-spec/specs-go"
@@ -57,12 +58,8 @@ var (
 	emptyDigest  = digest.Digest("")
 )
 
-func Commit(ctx context.Context, client *containerd.Client, id string, opts *Opts) (digest.Digest, error) {
-	container, err := client.LoadContainer(ctx, id)
-	if err != nil {
-		return emptyDigest, err
-	}
-
+func Commit(ctx context.Context, client *containerd.Client, container containerd.Container, opts *Opts) (digest.Digest, error) {
+	id := container.ID()
 	info, err := container.Info(ctx)
 	if err != nil {
 		return emptyDigest, err
@@ -70,10 +67,22 @@ func Commit(ctx context.Context, client *containerd.Client, id string, opts *Opt
 
 	// NOTE: Moby uses provided rootfs to run container. It doesn't support
 	// to commit container created by moby.
-	baseImg, err := container.Image(ctx)
+	baseImgWithoutPlatform, err := client.ImageService().Get(ctx, info.Image)
+	if err != nil {
+		return emptyDigest, fmt.Errorf("container %q lacks image (wasn't created by nerdctl?): %w", id, err)
+	}
+	platformLabel := info.Labels[labels.Platform]
+	if platformLabel == "" {
+		platformLabel = platforms.DefaultString()
+		logrus.Warnf("Image lacks label %q, assuming the platform to be %q", labels.Platform, platformLabel)
+	}
+	ocispecPlatform, err := platforms.Parse(platformLabel)
 	if err != nil {
 		return emptyDigest, err
 	}
+	logrus.Debugf("ocispecPlatform=%q", platforms.Format(ocispecPlatform))
+	platformMC := platforms.Only(ocispecPlatform)
+	baseImg := containerd.NewImageWithPlatform(client, baseImgWithoutPlatform, platformMC)
 
 	baseImgConfig, _, err := imgutil.ReadImageConfig(ctx, baseImg)
 	if err != nil {
@@ -105,7 +114,6 @@ func Commit(ctx context.Context, client *containerd.Client, id string, opts *Opt
 	}
 
 	var (
-		cs     = client.ContentStore()
 		differ = client.DiffService()
 		snName = info.Snapshotter
 		sn     = client.SnapshotService(snName)
@@ -118,12 +126,12 @@ func Commit(ctx context.Context, client *containerd.Client, id string, opts *Opt
 	}
 	defer done(ctx)
 
-	diffLayerDesc, diffID, err := createDiff(ctx, id, sn, cs, differ)
+	diffLayerDesc, diffID, err := createDiff(ctx, id, sn, client.ContentStore(), differ)
 	if err != nil {
 		return emptyDigest, errors.Wrap(err, "failed to export layer")
 	}
 
-	imageConfig, err := generateCommitImageConfig(ctx, container, diffID, opts)
+	imageConfig, err := generateCommitImageConfig(ctx, container, baseImg, diffID, opts)
 	if err != nil {
 		return emptyDigest, errors.Wrap(err, "failed to generate commit image config")
 	}
@@ -133,7 +141,7 @@ func Commit(ctx context.Context, client *containerd.Client, id string, opts *Opt
 		return emptyDigest, errors.Wrap(err, "failed to apply diff")
 	}
 
-	commitManifestDesc, configDigest, err := writeContentsForImage(ctx, cs, snName, baseImg, imageConfig, diffLayerDesc)
+	commitManifestDesc, configDigest, err := writeContentsForImage(ctx, snName, baseImg, imageConfig, diffLayerDesc)
 	if err != nil {
 		return emptyDigest, err
 	}
@@ -158,18 +166,13 @@ func Commit(ctx context.Context, client *containerd.Client, id string, opts *Opt
 }
 
 // generateCommitImageConfig returns commit oci image config based on the container's image.
-func generateCommitImageConfig(ctx context.Context, container containerd.Container, diffID digest.Digest, opts *Opts) (ocispec.Image, error) {
+func generateCommitImageConfig(ctx context.Context, container containerd.Container, img containerd.Image, diffID digest.Digest, opts *Opts) (ocispec.Image, error) {
 	spec, err := container.Spec(ctx)
 	if err != nil {
 		return ocispec.Image{}, err
 	}
 
-	img, err := container.Image(ctx)
-	if err != nil {
-		return ocispec.Image{}, err
-	}
-
-	baseConfig, _, err := imgutil.ReadImageConfig(ctx, img)
+	baseConfig, _, err := imgutil.ReadImageConfig(ctx, img) // aware of img.platform
 	if err != nil {
 		return ocispec.Image{}, err
 	}
@@ -184,12 +187,24 @@ func generateCommitImageConfig(ctx context.Context, container containerd.Contain
 	}
 
 	createdTime := time.Now()
+	arch := baseConfig.Architecture
+	if arch == "" {
+		arch = runtime.GOARCH
+		logrus.Warnf("assuming arch=%q", arch)
+	}
+	os := baseConfig.OS
+	if os == "" {
+		os = runtime.GOOS
+		logrus.Warnf("assuming os=%q", os)
+	}
+	logrus.Debugf("generateCommitImageConfig(): arch=%q, os=%q", arch, os)
 	return ocispec.Image{
-		Architecture: runtime.GOARCH,
-		OS:           runtime.GOOS,
-		Created:      &createdTime,
-		Author:       opts.Author,
-		Config:       baseConfig.Config, // TODO(fuweid): how to update the USER/ENV/CMD/... fields?
+		Architecture: arch,
+		OS:           os,
+
+		Created: &createdTime,
+		Author:  opts.Author,
+		Config:  baseConfig.Config, // TODO(fuweid): how to update the USER/ENV/CMD/... fields?
 		RootFS: ocispec.RootFS{
 			Type:    "layers",
 			DiffIDs: append(baseConfig.RootFS.DiffIDs, diffID),
@@ -205,7 +220,7 @@ func generateCommitImageConfig(ctx context.Context, container containerd.Contain
 }
 
 // writeContentsForImage will commit oci image config and manifest into containerd's content store.
-func writeContentsForImage(ctx context.Context, cs content.Store, snName string, baseImg containerd.Image, newConfig ocispec.Image, diffLayerDesc ocispec.Descriptor) (ocispec.Descriptor, digest.Digest, error) {
+func writeContentsForImage(ctx context.Context, snName string, baseImg containerd.Image, newConfig ocispec.Image, diffLayerDesc ocispec.Descriptor) (ocispec.Descriptor, digest.Digest, error) {
 	newConfigJSON, err := json.Marshal(newConfig)
 	if err != nil {
 		return ocispec.Descriptor{}, emptyDigest, err
@@ -217,7 +232,8 @@ func writeContentsForImage(ctx context.Context, cs content.Store, snName string,
 		Size:      int64(len(newConfigJSON)),
 	}
 
-	baseMfst, err := images.Manifest(ctx, cs, baseImg.Target(), platforms.DefaultStrict())
+	cs := baseImg.ContentStore()
+	baseMfst, _, err := imgutil.ReadManifest(ctx, baseImg)
 	if err != nil {
 		return ocispec.Descriptor{}, emptyDigest, err
 	}

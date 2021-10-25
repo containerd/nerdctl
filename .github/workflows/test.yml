@@ -70,6 +70,8 @@ jobs:
         sudo apt-get purge -y snapd
         sudo losetup -Dv
         sudo losetup -lv
+    - name: "Register QEMU (tonistiigi/binfmt)"
+      run: docker run --privileged --rm tonistiigi/binfmt --install all
     - name: "Run integration tests"
       run: docker run -t --rm --privileged test-integration go test -v ./cmd/nerdctl/... -args -test.kill-daemon
 
@@ -85,6 +87,8 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
+    - name: "Register QEMU (tonistiigi/binfmt)"
+      run: docker run --privileged --rm tonistiigi/binfmt --install all
     - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
       run: DOCKER_BUILDKIT=1 docker build -t test-integration-rootless --target test-integration-rootless --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
     - name: "Test    (network driver=slirp4netns, port driver=builtin)"
@@ -117,6 +121,8 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
+    - name: "Register QEMU (tonistiigi/binfmt)"
+      run: docker run --privileged --rm tonistiigi/binfmt --install all
     - name: "Ensure that the integration test suite is compatible with Docker"
       run: go test -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon
 

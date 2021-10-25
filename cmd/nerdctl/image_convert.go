@@ -24,13 +24,11 @@ import (
 
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/images/converter/uncompress"
-	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
-	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/stargz-snapshotter/estargz"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
 	"github.com/containerd/stargz-snapshotter/recorder"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -71,6 +69,7 @@ func newImageConvertCommand() *cobra.Command {
 
 	// #region platform flags
 	imageConvertCommand.Flags().StringSlice("platform", []string{}, "Convert content for a specific platform")
+	imageConvertCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 	imageConvertCommand.Flags().Bool("all-platforms", false, "Convert content for all platforms")
 	// #endregion
 
@@ -107,22 +106,11 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	if !allPlatforms {
-		if pss := strutil.DedupeStrSlice(platform); len(pss) > 0 {
-			var all []ocispec.Platform
-			for _, ps := range pss {
-				p, err := platforms.Parse(ps)
-				if err != nil {
-					return errors.Wrapf(err, "invalid platform %q", ps)
-				}
-				all = append(all, p)
-			}
-			convertOpts = append(convertOpts, converter.WithPlatform(platforms.Ordered(all...)))
-		} else {
-			convertOpts = append(convertOpts, converter.WithPlatform(platforms.DefaultStrict()))
-		}
+	platMC, err := platformutil.NewMatchComparer(allPlatforms, platform)
+	if err != nil {
+		return err
 	}
+	convertOpts = append(convertOpts, converter.WithPlatform(platMC))
 
 	estargz, err := cmd.Flags().GetBool("estargz")
 	if err != nil {

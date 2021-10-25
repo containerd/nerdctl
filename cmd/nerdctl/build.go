@@ -27,6 +27,7 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -63,10 +64,21 @@ func newBuildCommand() *cobra.Command {
 	buildCommand.Flags().StringSlice("cache-from", nil, "External cache sources (eg. user/app:cache, type=local,src=path/to/dir)")
 	buildCommand.Flags().StringSlice("cache-to", nil, "Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir)")
 
+	// #region platform flags
+	buildCommand.Flags().StringSlice("platform", []string{}, "Set target platform for build (e.g., \"amd64\", \"arm64\")")
+	buildCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	// #endregion
+
 	return buildCommand
 }
 
 func buildAction(cmd *cobra.Command, args []string) error {
+	platform, err := cmd.Flags().GetStringSlice("platform")
+	if err != nil {
+		return err
+	}
+	platform = strutil.DedupeStrSlice(platform)
+
 	buildkitHost, err := cmd.Flags().GetString("buildkit-host")
 	if err != nil {
 		return err
@@ -75,7 +87,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	buildctlBinary, buildctlArgs, needsLoading, cleanup, err := generateBuildctlArgs(cmd, args)
+	buildctlBinary, buildctlArgs, needsLoading, cleanup, err := generateBuildctlArgs(cmd, platform, args)
 	if err != nil {
 		return err
 	}
@@ -110,7 +122,11 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	}
 
 	if needsLoading {
-		if err = loadImage(buildctlStdout, cmd, args, false, quiet); err != nil {
+		platMC, err := platformutil.NewMatchComparer(false, platform)
+		if err != nil {
+			return err
+		}
+		if err = loadImage(buildctlStdout, cmd, args, platMC, quiet); err != nil {
 			return err
 		}
 	}
@@ -122,7 +138,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, bool, func(), error) {
+func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, []string, bool, func(), error) {
 	var needsLoading bool
 	if len(args) < 1 {
 		return "", nil, false, nil, errors.New("context needs to be specified")
@@ -143,6 +159,11 @@ func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, 
 	}
 	if output == "" {
 		output = "type=docker"
+		if len(platform) > 1 {
+			// For avoiding `error: failed to solve: docker exporter does not currently support exporting manifest lists`
+			// TODO: consider using type=oci for single-platform build too
+			output = "type=oci"
+		}
 		needsLoading = true
 	}
 	tagValue, err := cmd.Flags().GetStringSlice("tag")
@@ -212,6 +233,10 @@ func generateBuildctlArgs(cmd *cobra.Command, args []string) (string, []string, 
 	}
 	if target != "" {
 		buildctlArgs = append(buildctlArgs, "--opt=target="+target)
+	}
+
+	if len(platform) > 0 {
+		buildctlArgs = append(buildctlArgs, "--opt=platform="+strings.Join(platform, ","))
 	}
 
 	buildArgsValue, err := cmd.Flags().GetStringSlice("build-arg")

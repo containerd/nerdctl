@@ -1,0 +1,11 @@
+services:
+  svc0:
+    build: .
+    platform: s390x
+    ports:
+      - 8080:80
+  svc1:
+    build: .
+    platform: ppc64le
+    ports:
+      - 8081:80

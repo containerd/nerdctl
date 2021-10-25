@@ -22,10 +22,12 @@ import (
 	composecli "github.com/compose-spec/compose-go/cli"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -155,9 +157,17 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 		return true, nil
 	}
 
-	o.EnsureImage = func(ctx context.Context, imageName, pullMode string) error {
+	o.EnsureImage = func(ctx context.Context, imageName, pullMode, platform string) error {
+		ocispecPlatforms := []ocispec.Platform{platforms.DefaultSpec()}
+		if platform != "" {
+			parsed, err := platforms.Parse(platform)
+			if err != nil {
+				return err
+			}
+			ocispecPlatforms = []ocispec.Platform{parsed} // no append
+		}
 		_, imgErr := imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), snapshotter, imageName,
-			pullMode, insecure)
+			pullMode, insecure, ocispecPlatforms)
 		return imgErr
 	}
 

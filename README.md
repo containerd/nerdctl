@@ -89,8 +89,6 @@ $ limactl start
 $ lima nerdctl run -d --name nginx -p 127.0.0.1:8080:80 nginx:alpine
 ```
 
-NOTE: ARM Mac requires installing a patched version of QEMU, see [Lima](https://github.com/AkihiroSuda/lima) documentation.
-
 ### FreeBSD
 
 See [`./docs/freebsd.md`](docs/freebsd.md).
@@ -131,6 +129,7 @@ Minor:
 - Specifying a non-image rootfs: `nerdctl run -it --rootfs <ROOTFS> /bin/sh` . The CLI syntax conforms to Podman convention.
 - Connecting a container to multiple networks at once: `nerdctl run --net foo --net bar`
 - Running [FreeBSD jails](./docs/freebsd.md).
+- Better multi-platform support, e.g., `nerdctl pull --all-platforms IMAGE`
 
 Trivial:
 - Inspecting raw OCI config: `nerdctl container inspect --mode=native` .
@@ -290,6 +289,9 @@ Basic flags:
 - :whale: `--pull=(always|missing|never)`: Pull image before running
   - Default: "missing"
 - :whale: `--pid=(host)`: PID namespace to use
+
+Platform flags:
+- :whale: `--platform=(amd64|arm64|...)`: Set platform
 
 Network flags:
 - :whale: `--net, --network=(bridge|host|none|<CNI>)`: Connect a container to a network
@@ -620,8 +622,9 @@ Flags:
 - :whale: `-q, --quiet`: Suppress the build output and print image ID on success
 - :whale: `--cache-from=CACHE`: External cache sources (eg. user/app:cache, type=local,src=path/to/dir) (compatible with `docker buildx build`)
 - :whale: `--cache-to=CACHE`: Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir) (compatible with `docker buildx build`)
+- :whale: `--platform=(amd64|arm64|...)`: Set target platform for build (compatible with `docker buildx build`)
 
-Unimplemented `docker build` flags: `--add-host`, `--iidfile`, `--label`, `--network`, `--platform`, `--squash`
+Unimplemented `docker build` flags: `--add-host`, `--iidfile`, `--label`, `--network`, `--squash`
 
 ### :whale: nerdctl commit
 Create a new image from a container's changes
@@ -656,12 +659,21 @@ Pull an image from a registry.
 
 Usage: `nerdctl pull [OPTIONS] NAME[:TAG|@DIGEST]`
 
-Unimplemented `docker pull` flags: `--all-tags`, `--disable-content-trust` (default true), `--platform`, `--quiet`
+Flags:
+- :whale: `--platform=(amd64|arm64|...)`: Pull content for a specific platform
+  - :nerd_face: Unlike Docker, this flag can be specified multiple times (`--platform=amd64 --platform=arm64`)
+- :nerd_face: `--all-platforms`: Pull content for all platforms
+
+Unimplemented `docker pull` flags: `--all-tags`, `--disable-content-trust` (default true), `--quiet`
 
 ### :whale: nerdctl push
 Push an image to a registry.
 
 Usage: `nerdctl push [OPTIONS] NAME[:TAG]`
+
+Flags:
+- :nerd_face: `--platform=(amd64|arm64|...)`: Push content for a specific platform
+- :nerd_face: `--all-platforms`: Push content for all platforms
 
 Unimplemented `docker push` flags: `--all-tags`, `--disable-content-trust` (default true), `--quiet`
 
@@ -674,6 +686,8 @@ Usage: `nerdctl load [OPTIONS]`
 
 Flags:
 - :whale: `-i, --input`: Read from tar archive file, instead of STDIN
+- :nerd_face: `--platform=(amd64|arm64|...)`: Import content for a specific platform
+- :nerd_face: `--all-platforms`: Import content for all platforms
 
 Unimplemented `docker load` flags: `--quiet`
 
@@ -686,6 +700,8 @@ Usage: `nerdctl save [OPTIONS] IMAGE [IMAGE...]`
 
 Flags:
 - :whale: `-o, --output`: Write to a file, instead of STDOUT
+- :nerd_face: `--platform=(amd64|arm64|...)`: Export content for a specific platform
+- :nerd_face: `--all-platforms`: Export content for all platforms
 
 ### :whale: nerdctl tag
 Create a tag TARGET\_IMAGE that refers to SOURCE\_IMAGE.
@@ -707,6 +723,7 @@ Usage: `nerdctl image inspect [OPTIONS] NAME|ID [NAME|ID...]`
 Flags:
 - :nerd_face: `--mode=(dockercompat|native)`: Inspection mode. "native" produces more information.
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :nerd_face: `--platform=(amd64|arm64|...)`: Inspect a specific platform
 
 ### :nerd_face: nerdctl image convert
 Convert an image format.
@@ -1025,4 +1042,5 @@ Others:
 - [`./docs/stargz.md`](./docs/stargz.md):     Lazy-pulling using Stargz Snapshotter
 - [`./docs/ocicrypt.md`](./docs/ocicrypt.md): Running encrypted images
 - [`./docs/freebsd.md`](./docs/freebsd.md):  Running FreeBSD jails
+- [`./docs/multi-platform.md`](./docs/multi-platform.md):  Multi-platform mode
 - [`./docs/experimental.md`](./docs/experimental.md):  Experimental features

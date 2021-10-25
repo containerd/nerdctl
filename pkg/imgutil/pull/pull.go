@@ -26,6 +26,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/remotes"
+	"github.com/containerd/nerdctl/pkg/platformutil"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -39,7 +40,10 @@ type Config struct {
 	//
 	// Regardless to RemoteOpts, the following opts are always set:
 	// WithResolver, WithImageHandler, WithSchema1Conversion
+	//
+	// RemoteOpts related to unpacking can be set only when len(Platforms) is 1.
 	RemoteOpts []containerd.RemoteOpt
+	Platforms  []ocispec.Platform // empty for all-platforms
 }
 
 // Pull loads all resources into the content store and returns the image
@@ -65,15 +69,28 @@ func Pull(ctx context.Context, client *containerd.Client, ref string, config *Co
 	})
 
 	log.G(pctx).WithField("image", ref).Debug("fetching")
+	platformMC := platformutil.NewMatchComparerFromOCISpecPlatformSlice(config.Platforms)
 	opts := []containerd.RemoteOpt{
 		containerd.WithResolver(config.Resolver),
 		containerd.WithImageHandler(h),
 		containerd.WithSchema1Conversion,
+		containerd.WithPlatformMatcher(platformMC),
 	}
 	opts = append(opts, config.RemoteOpts...)
 
-	// client.Pull is for single-platform (TODO: support multi)
-	img, err := client.Pull(pctx, ref, opts...)
+	var (
+		img containerd.Image
+		err error
+	)
+	if len(config.Platforms) == 1 {
+		// client.Pull is for single-platform (w/ unpacking)
+		img, err = client.Pull(pctx, ref, opts...)
+	} else {
+		// client.Fetch is for multi-platform (w/o unpacking)
+		var imagesImg images.Image
+		imagesImg, err = client.Fetch(pctx, ref, opts...)
+		img = containerd.NewImageWithPlatform(client, imagesImg, platformMC)
+	}
 	stopProgress()
 	if err != nil {
 		return nil, err

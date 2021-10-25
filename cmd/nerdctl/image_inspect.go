@@ -24,6 +24,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/imageinspector"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -49,6 +51,12 @@ func newImageInspectCommand() *cobra.Command {
 		return []string{"dockercompat", "native"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	imageInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+
+	// #region platform flags
+	imageInspectCommand.Flags().String("platform", "", "Inspect a specific platform") // not a slice, and there is no --all-platforms
+	imageInspectCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	// #endregion
+
 	return imageInspectCommand
 }
 
@@ -57,7 +65,20 @@ func imageInspectAction(cmd *cobra.Command, args []string) error {
 		return errors.Errorf("requires at least 1 argument")
 	}
 
-	client, ctx, cancel, err := newClient(cmd)
+	var clientOpts []containerd.ClientOpt
+	platform, err := cmd.Flags().GetString("platform")
+	if err != nil {
+		return err
+	}
+	if platform != "" {
+		platformParsed, err := platforms.Parse(platform)
+		if err != nil {
+			return err
+		}
+		platformM := platforms.Only(platformParsed)
+		clientOpts = append(clientOpts, containerd.WithDefaultPlatform(platformM))
+	}
+	client, ctx, cancel, err := newClient(cmd, clientOpts...)
 	if err != nil {
 		return err
 	}
