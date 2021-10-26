@@ -71,6 +71,7 @@ type containerPrintable struct {
 	CreatedAt string
 	ID        string
 	Image     string
+	Platform  string // nerdctl extension
 	Names     string
 	Ports     string
 	Status    string
@@ -102,7 +103,7 @@ func printContainers(ctx context.Context, cmd *cobra.Command, containers []conta
 	case "", "table":
 		w = tabwriter.NewWriter(os.Stdout, 4, 8, 4, ' ', 0)
 		if !quiet {
-			fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+			fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tPLATFORM\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
 		}
 	case "raw":
 		return errors.New("unsupported format: \"raw\"")
@@ -144,6 +145,7 @@ func printContainers(ctx context.Context, cmd *cobra.Command, containers []conta
 			CreatedAt: info.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
 			ID:        id,
 			Image:     imageName,
+			Platform:  info.Labels[labels.Platform],
 			Names:     info.Labels[labels.Name],
 			Ports:     formatter.FormatPorts(info.Labels),
 			Status:    cStatus,
@@ -162,9 +164,10 @@ func printContainers(ctx context.Context, cmd *cobra.Command, containers []conta
 				return err
 			}
 		} else {
-			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 				p.ID,
 				p.Image,
+				p.Platform,
 				p.Command,
 				formatter.TimeSinceInHuman(info.CreatedAt),
 				p.Status,
