@@ -30,22 +30,24 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/pkg/progress"
+	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/docker/cli/templates"
 	"github.com/opencontainers/image-spec/identity"
-
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 func newImagesCommand() *cobra.Command {
 	shortHelp := "List images"
-	longHelp := shortHelp + "\nNOTE: The image ID is usually different from Docker image ID."
+	longHelp := shortHelp + "\nNOTE: The image ID is usually different from Docker image ID. The image ID is shared for multi-platform images."
 	var imagesCommand = &cobra.Command{
 		Use:               "images",
 		Short:             shortHelp,
@@ -110,6 +112,7 @@ type imagePrintable struct {
 	Tag          string // "<none>" or tag
 	Size         string
 	// TODO: "SharedSize", "UniqueSize", "VirtualSize"
+	Platform string // nerdctl extension
 }
 
 func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Client, imageList []images.Image, cs content.Store) error {
@@ -137,9 +140,9 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
 		if !quiet {
 			if digestsFlag {
-				fmt.Fprintln(w, "REPOSITORY\tTAG\tDIGEST\tIMAGE ID\tCREATED\tSIZE")
+				fmt.Fprintln(w, "REPOSITORY\tTAG\tDIGEST\tIMAGE ID\tCREATED\tPLATFORM\tSIZE")
 			} else {
-				fmt.Fprintln(w, "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE")
+				fmt.Fprintln(w, "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tPLATFORM\tSIZE")
 			}
 		}
 	case "raw":
@@ -159,74 +162,118 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 	if err != nil {
 		return err
 	}
-	s := client.SnapshotService(snapshotter)
 
-	var errs []error
-	for _, img := range imageList {
-		size, err := unpackedImageSize(ctx, cmd, client, s, img)
-		if err != nil {
-			errs = append(errs, err)
-		}
-		repository, tag := imgutil.ParseRepoTag(img.Name)
-
-		p := imagePrintable{
-			CreatedAt:    img.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
-			CreatedSince: formatter.TimeSinceInHuman(img.CreatedAt),
-			Digest:       img.Target.Digest.String(),
-			ID:           img.Target.Digest.String(),
-			Repository:   repository,
-			Tag:          tag,
-			Size:         progress.Bytes(size).String(),
-		}
-		if p.Tag == "" {
-			p.Tag = "<none>" // for Docker compatibility
-		}
-		if !noTrunc {
-			// p.Digest does not need to be truncated
-			p.ID = strings.Split(p.ID, ":")[1][:12]
-		}
-		if tmpl != nil {
-			var b bytes.Buffer
-			if err := tmpl.Execute(&b, p); err != nil {
-				return err
-			}
-			if _, err = fmt.Fprintf(w, b.String()+"\n"); err != nil {
-				return err
-			}
-		} else if quiet {
-			if _, err := fmt.Fprintf(w, "%s\n", p.ID); err != nil {
-				return err
-			}
-		} else {
-			if digestsFlag {
-				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-					p.Repository,
-					p.Tag,
-					p.Digest,
-					p.ID,
-					p.CreatedSince,
-					p.Size,
-				); err != nil {
-					return err
-				}
-			} else {
-				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-					p.Repository,
-					p.Tag,
-					p.ID,
-					p.CreatedSince,
-					p.Size,
-				); err != nil {
-					return err
-				}
-			}
-		}
+	printer := &imagePrinter{
+		w:            w,
+		quiet:        quiet,
+		noTrunc:      noTrunc,
+		digestsFlag:  digestsFlag,
+		tmpl:         tmpl,
+		client:       client,
+		contentStore: client.ContentStore(),
+		snapshotter:  client.SnapshotService(snapshotter),
 	}
-	if len(errs) > 0 {
-		logrus.Warn("failed to compute image(s) size")
+
+	for _, img := range imageList {
+		if err := printer.printImage(ctx, img); err != nil {
+			logrus.Warn(err)
+		}
 	}
 	if f, ok := w.(Flusher); ok {
 		return f.Flush()
+	}
+	return nil
+}
+
+type imagePrinter struct {
+	w                           io.Writer
+	quiet, noTrunc, digestsFlag bool
+	tmpl                        *template.Template
+	client                      *containerd.Client
+	contentStore                content.Store
+	snapshotter                 snapshots.Snapshotter
+}
+
+func (x *imagePrinter) printImage(ctx context.Context, img images.Image) error {
+	ociPlatforms, err := images.Platforms(ctx, x.contentStore, img.Target)
+	if err != nil {
+		logrus.WithError(err).Warnf("failed to get the platform list of image %q", img.Name)
+		return x.printImageSinglePlatform(ctx, img, platforms.DefaultSpec())
+	}
+	for _, ociPlatform := range ociPlatforms {
+		if err := x.printImageSinglePlatform(ctx, img, ociPlatform); err != nil {
+			logrus.WithError(err).Warnf("failed to get platform %q of image %q", platforms.Format(ociPlatform), img.Name)
+		}
+	}
+	return nil
+}
+
+func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.Image, ociPlatform v1.Platform) error {
+	platMC := platforms.OnlyStrict(ociPlatform)
+	if avail, _, _, _, availErr := images.Check(ctx, x.contentStore, img.Target, platMC); !avail {
+		logrus.WithError(availErr).Debugf("skipping printing image %q for platform %q", img.Name, platforms.Format(ociPlatform))
+		return nil
+	}
+	size, err := unpackedImageSize(ctx, x.client, x.snapshotter, img, platMC)
+	if err != nil {
+		logrus.WithError(err).Warnf("failed to get size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
+	}
+	repository, tag := imgutil.ParseRepoTag(img.Name)
+
+	p := imagePrintable{
+		CreatedAt:    img.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
+		CreatedSince: formatter.TimeSinceInHuman(img.CreatedAt),
+		Digest:       img.Target.Digest.String(),
+		ID:           img.Target.Digest.String(),
+		Repository:   repository,
+		Tag:          tag,
+		Size:         progress.Bytes(size).String(),
+		Platform:     platforms.Format(ociPlatform),
+	}
+	if p.Tag == "" {
+		p.Tag = "<none>" // for Docker compatibility
+	}
+	if !x.noTrunc {
+		// p.Digest does not need to be truncated
+		p.ID = strings.Split(p.ID, ":")[1][:12]
+	}
+	if x.tmpl != nil {
+		var b bytes.Buffer
+		if err := x.tmpl.Execute(&b, p); err != nil {
+			return err
+		}
+		if _, err = fmt.Fprintf(x.w, b.String()+"\n"); err != nil {
+			return err
+		}
+	} else if x.quiet {
+		if _, err := fmt.Fprintf(x.w, "%s\n", p.ID); err != nil {
+			return err
+		}
+	} else {
+		if x.digestsFlag {
+			if _, err := fmt.Fprintf(x.w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+				p.Repository,
+				p.Tag,
+				p.Digest,
+				p.ID,
+				p.CreatedSince,
+				p.Platform,
+				p.Size,
+			); err != nil {
+				return err
+			}
+		} else {
+			if _, err := fmt.Fprintf(x.w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+				p.Repository,
+				p.Tag,
+				p.ID,
+				p.CreatedSince,
+				p.Platform,
+				p.Size,
+			); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -263,8 +310,10 @@ func (key snapshotKey) add(ctx context.Context, s snapshots.Snapshotter, usage *
 	return key.add(ctx, s, usage)
 }
 
-func unpackedImageSize(ctx context.Context, cmd *cobra.Command, client *containerd.Client, s snapshots.Snapshotter, i images.Image) (int64, error) {
-	img := containerd.NewImage(client, i)
+// unpackedImageSize is the size of the unpacked snapshots.
+// Does not contain the size of the blobs in the content store. (Corresponds to Docker).
+func unpackedImageSize(ctx context.Context, client *containerd.Client, s snapshots.Snapshotter, i images.Image, platMC platforms.MatchComparer) (int64, error) {
+	img := containerd.NewImageWithPlatform(client, i, platMC)
 
 	diffIDs, err := img.RootFS(ctx)
 	if err != nil {
@@ -274,6 +323,10 @@ func unpackedImageSize(ctx context.Context, cmd *cobra.Command, client *containe
 	chainID := identity.ChainID(diffIDs).String()
 	usage, err := s.Usage(ctx, chainID)
 	if err != nil {
+		if errdefs.IsNotFound(err) {
+			logrus.WithError(err).Debugf("image %q seems not unpacked", i.Name)
+			return 0, nil
+		}
 		return 0, err
 	}
 
