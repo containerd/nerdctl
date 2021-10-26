@@ -159,74 +159,94 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 	if err != nil {
 		return err
 	}
-	s := client.SnapshotService(snapshotter)
 
-	var errs []error
-	for _, img := range imageList {
-		size, err := unpackedImageSize(ctx, cmd, client, s, img)
-		if err != nil {
-			errs = append(errs, err)
-		}
-		repository, tag := imgutil.ParseRepoTag(img.Name)
-
-		p := imagePrintable{
-			CreatedAt:    img.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
-			CreatedSince: formatter.TimeSinceInHuman(img.CreatedAt),
-			Digest:       img.Target.Digest.String(),
-			ID:           img.Target.Digest.String(),
-			Repository:   repository,
-			Tag:          tag,
-			Size:         progress.Bytes(size).String(),
-		}
-		if p.Tag == "" {
-			p.Tag = "<none>" // for Docker compatibility
-		}
-		if !noTrunc {
-			// p.Digest does not need to be truncated
-			p.ID = strings.Split(p.ID, ":")[1][:12]
-		}
-		if tmpl != nil {
-			var b bytes.Buffer
-			if err := tmpl.Execute(&b, p); err != nil {
-				return err
-			}
-			if _, err = fmt.Fprintf(w, b.String()+"\n"); err != nil {
-				return err
-			}
-		} else if quiet {
-			if _, err := fmt.Fprintf(w, "%s\n", p.ID); err != nil {
-				return err
-			}
-		} else {
-			if digestsFlag {
-				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-					p.Repository,
-					p.Tag,
-					p.Digest,
-					p.ID,
-					p.CreatedSince,
-					p.Size,
-				); err != nil {
-					return err
-				}
-			} else {
-				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-					p.Repository,
-					p.Tag,
-					p.ID,
-					p.CreatedSince,
-					p.Size,
-				); err != nil {
-					return err
-				}
-			}
-		}
+	printer := &imagePrinter{
+		w:           w,
+		quiet:       quiet,
+		noTrunc:     noTrunc,
+		digestsFlag: digestsFlag,
+		tmpl:        tmpl,
+		client:      client,
+		snapshotter: client.SnapshotService(snapshotter),
 	}
-	if len(errs) > 0 {
-		logrus.Warn("failed to compute image(s) size")
+
+	for _, img := range imageList {
+		if err := printer.printImage(ctx, img); err != nil {
+			logrus.Warn(err)
+		}
 	}
 	if f, ok := w.(Flusher); ok {
 		return f.Flush()
+	}
+	return nil
+}
+
+type imagePrinter struct {
+	w                           io.Writer
+	quiet, noTrunc, digestsFlag bool
+	tmpl                        *template.Template
+	client                      *containerd.Client
+	snapshotter                 snapshots.Snapshotter
+}
+
+func (x *imagePrinter) printImage(ctx context.Context, img images.Image) error {
+	size, err := unpackedImageSize(ctx, x.client, x.snapshotter, img)
+	if err != nil {
+		logrus.WithError(err).Warnf("failed to get size of image %q", img.Name)
+	}
+	repository, tag := imgutil.ParseRepoTag(img.Name)
+
+	p := imagePrintable{
+		CreatedAt:    img.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
+		CreatedSince: formatter.TimeSinceInHuman(img.CreatedAt),
+		Digest:       img.Target.Digest.String(),
+		ID:           img.Target.Digest.String(),
+		Repository:   repository,
+		Tag:          tag,
+		Size:         progress.Bytes(size).String(),
+	}
+	if p.Tag == "" {
+		p.Tag = "<none>" // for Docker compatibility
+	}
+	if !x.noTrunc {
+		// p.Digest does not need to be truncated
+		p.ID = strings.Split(p.ID, ":")[1][:12]
+	}
+	if x.tmpl != nil {
+		var b bytes.Buffer
+		if err := x.tmpl.Execute(&b, p); err != nil {
+			return err
+		}
+		if _, err = fmt.Fprintf(x.w, b.String()+"\n"); err != nil {
+			return err
+		}
+	} else if x.quiet {
+		if _, err := fmt.Fprintf(x.w, "%s\n", p.ID); err != nil {
+			return err
+		}
+	} else {
+		if x.digestsFlag {
+			if _, err := fmt.Fprintf(x.w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+				p.Repository,
+				p.Tag,
+				p.Digest,
+				p.ID,
+				p.CreatedSince,
+				p.Size,
+			); err != nil {
+				return err
+			}
+		} else {
+			if _, err := fmt.Fprintf(x.w, "%s\t%s\t%s\t%s\t%s\n",
+				p.Repository,
+				p.Tag,
+				p.ID,
+				p.CreatedSince,
+				p.Size,
+			); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -263,7 +283,7 @@ func (key snapshotKey) add(ctx context.Context, s snapshots.Snapshotter, usage *
 	return key.add(ctx, s, usage)
 }
 
-func unpackedImageSize(ctx context.Context, cmd *cobra.Command, client *containerd.Client, s snapshots.Snapshotter, i images.Image) (int64, error) {
+func unpackedImageSize(ctx context.Context, client *containerd.Client, s snapshots.Snapshotter, i images.Image) (int64, error) {
 	img := containerd.NewImage(client, i)
 
 	diffIDs, err := img.RootFS(ctx)
