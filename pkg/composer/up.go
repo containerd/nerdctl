@@ -18,12 +18,13 @@ package composer
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -82,14 +83,14 @@ func validateFileObjectConfig(obj types.FileObjectConfig, shortName, objType str
 		logrus.Warnf("Ignoring: %s %s: %+v", objType, shortName, unknown)
 	}
 	if obj.External.External || obj.External.Name != "" {
-		return errors.Errorf("%s %q: external object is not supported", objType, shortName)
+		return fmt.Errorf("%s %q: external object is not supported", objType, shortName)
 	}
 	if obj.File == "" {
-		return errors.Errorf("%s %q: lacks file path", objType, shortName)
+		return fmt.Errorf("%s %q: lacks file path", objType, shortName)
 	}
 	fullPath := project.RelativePath(obj.File)
 	if _, err := os.Stat(fullPath); err != nil {
-		return errors.Wrapf(err, "%s %q: failed to open file %q", objType, shortName, fullPath)
+		return fmt.Errorf("%s %q: failed to open file %q: %w", objType, shortName, fullPath, err)
 	}
 	return nil
 }

@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +40,7 @@ func newVolumeRmCommand() *cobra.Command {
 
 func volumeRmAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.Errorf("requires at least 1 argument")
+		return fmt.Errorf("requires at least 1 argument")
 	}
 	volStore, err := getVolumeStore(cmd)
 	if err != nil {

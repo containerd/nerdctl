@@ -18,11 +18,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/containerd/containerd/errdefs"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +42,7 @@ func newTagCommand() *cobra.Command {
 
 func tagAction(cmd *cobra.Command, args []string) error {
 	if len(args) != 2 {
-		return errors.Errorf("requires exactly 2 arguments")
+		return fmt.Errorf("requires exactly 2 arguments")
 	}
 
 	client, ctx, cancel, err := newClient(cmd)
@@ -66,7 +67,7 @@ func tagAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if matchCount < 1 {
-		return errors.Errorf("%s: not found", args[0])
+		return fmt.Errorf("%s: not found", args[0])
 	}
 
 	target, err := refdocker.ParseDockerRef(args[1])

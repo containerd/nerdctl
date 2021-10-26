@@ -17,6 +17,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -26,7 +28,7 @@ import (
 	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -75,7 +77,7 @@ func generateSecurityOpts(securityOptsMap map[string]string) ([]oci.SpecOpts, er
 			var err error
 			nnp, err = strconv.ParseBool(nnpStr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "invalid \"no-new-privileges\" value: %q", nnpStr)
+				return nil, fmt.Errorf("invalid \"no-new-privileges\" value: %q: %w", nnpStr, err)
 			}
 		}
 	}

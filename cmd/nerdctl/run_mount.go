@@ -18,7 +18,7 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -34,7 +34,7 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -65,7 +65,7 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 		}
 
 		if err := ensuredImage.Image.Unpack(ctx, snapshotter); err != nil {
-			return nil, nil, errors.Wrap(err, "error unpacking image")
+			return nil, nil, fmt.Errorf("error unpacking image: %w", err)
 		}
 
 		diffIDs, err := ensuredImage.Image.RootFS(ctx)
@@ -75,7 +75,7 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 		chainID := identity.ChainID(diffIDs).String()
 
 		s := client.SnapshotService(snapshotter)
-		tempDir, err = ioutil.TempDir("", "initialC")
+		tempDir, err = os.MkdirTemp("", "initialC")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -142,7 +142,7 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 		imgVol := filepath.Clean(imgVolRaw)
 		switch imgVol {
 		case "/", "/dev", "/sys", "proc":
-			return nil, nil, errors.Errorf("invalid VOLUME: %q", imgVolRaw)
+			return nil, nil, fmt.Errorf("invalid VOLUME: %q", imgVolRaw)
 		}
 		if _, ok := mounted[imgVol]; ok {
 			continue
@@ -188,7 +188,7 @@ func copyExistingContents(source, destination string) error {
 	if _, err := os.Stat(source); os.IsNotExist(err) {
 		return nil
 	}
-	dstList, err := ioutil.ReadDir(destination)
+	dstList, err := os.ReadDir(destination)
 	if err != nil {
 		return err
 	}

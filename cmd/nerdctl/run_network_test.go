@@ -18,7 +18,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -27,7 +27,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
+
 	"gotest.tools/v3/assert"
 )
 
@@ -315,7 +315,7 @@ func TestRunPort(t *testing.T) {
 				return
 			}
 			assert.NilError(t, err)
-			respBody, err := ioutil.ReadAll(resp.Body)
+			respBody, err := io.ReadAll(resp.Body)
 			assert.NilError(t, err)
 			assert.Assert(t, strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet))
 		})
@@ -341,5 +341,5 @@ func httpGet(urlStr string, attempts int) (*http.Response, error) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	return nil, errors.Wrapf(err, "error after %d attempts", attempts)
+	return nil, fmt.Errorf("error after %d attempts: %w", attempts, err)
 }

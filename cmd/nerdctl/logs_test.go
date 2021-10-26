@@ -17,11 +17,11 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
 )
 
 func TestLogs(t *testing.T) {
@@ -47,7 +47,7 @@ bar`
 	base.Cmd("logs", "-n", "all", containerName).AssertOutContains(expected)
 	base.Cmd("logs", "-n", "1", containerName).AssertOutWithFunc(func(stdout string) error {
 		if !(stdout == "bar\n" || stdout == "") {
-			return errors.Errorf("expected %q or %q, got %q", "bar", "", stdout)
+			return fmt.Errorf("expected %q or %q, got %q", "bar", "", stdout)
 		}
 		return nil
 	})

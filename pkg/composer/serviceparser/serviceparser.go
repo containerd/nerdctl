@@ -19,6 +19,7 @@ package serviceparser
 import (
 	"bytes"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -28,7 +29,7 @@ import (
 	"github.com/containerd/containerd/contrib/nvidia"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -175,7 +176,7 @@ func getReplicas(svc compose.ServiceConfig) (int, error) {
 	}
 
 	if replicas < 1 {
-		return 0, errors.Errorf("invalid replicas: %d", replicas)
+		return 0, fmt.Errorf("invalid replicas: %d", replicas)
 	}
 	return replicas, nil
 }
@@ -293,11 +294,11 @@ func getRestart(svc compose.ServiceConfig) (string, error) {
 		case "", "any":
 			restartFlag = "always"
 		case "always":
-			return "", errors.Errorf("deploy.restart_policy.condition: \"always\" is invalid, did you mean \"any\"?")
+			return "", fmt.Errorf("deploy.restart_policy.condition: \"always\" is invalid, did you mean \"any\"?")
 		case "none":
 			restartFlag = "no"
 		case "no":
-			return "", errors.Errorf("deploy.restart_policy.condition: \"no\" is invalid, did you mean \"none\"?")
+			return "", fmt.Errorf("deploy.restart_policy.condition: \"no\" is invalid, did you mean \"none\"?")
 		case "on-failure":
 			logrus.Warnf("Ignoring: service %s: deploy.restart_policy.condition=%q (unimplemented)", svc.Name, cond)
 		default:
@@ -328,7 +329,7 @@ func getNetworks(project *compose.Project, svc compose.ServiceConfig) ([]string,
 			return nil, errors.New("net and network_mode must not be set together")
 		}
 		if strings.Contains(svc.NetworkMode, ":") {
-			return nil, errors.Errorf("unsupported network_mode: %q", svc.NetworkMode)
+			return nil, fmt.Errorf("unsupported network_mode: %q", svc.NetworkMode)
 		}
 		fullNames = append(fullNames, svc.NetworkMode)
 	}
@@ -336,7 +337,7 @@ func getNetworks(project *compose.Project, svc compose.ServiceConfig) ([]string,
 	for shortName := range svc.Networks {
 		net, ok := project.Networks[shortName]
 		if !ok {
-			return nil, errors.Errorf("invalid network %q", shortName)
+			return nil, fmt.Errorf("invalid network %q", shortName)
 		}
 		fullNames = append(fullNames, net.Name)
 	}
@@ -361,7 +362,7 @@ func Parse(project *compose.Project, svc compose.ServiceConfig) (*Service, error
 
 	if svc.Build == nil {
 		if parsed.Image == "" {
-			return nil, errors.Errorf("service %s: missing image", svc.Name)
+			return nil, fmt.Errorf("service %s: missing image", svc.Name)
 		}
 	} else {
 		if parsed.Image == "" {
@@ -369,7 +370,7 @@ func Parse(project *compose.Project, svc compose.ServiceConfig) (*Service, error
 		}
 		parsed.Build, err = parseBuildConfig(svc.Build, project, parsed.Image)
 		if err != nil {
-			return nil, errors.Wrapf(err, "service %s: failed to parse build", svc.Name)
+			return nil, fmt.Errorf("service %s: failed to parse build: %w", svc.Name, err)
 		}
 	}
 
@@ -380,7 +381,7 @@ func Parse(project *compose.Project, svc compose.ServiceConfig) (*Service, error
 		parsed.PullMode = svc.PullPolicy
 	case types.PullPolicyBuild:
 		if parsed.Build == nil {
-			return nil, errors.Errorf("service %s: pull_policy \"build\" requires build config", svc.Name)
+			return nil, fmt.Errorf("service %s: pull_policy \"build\" requires build config", svc.Name)
 		}
 		parsed.Build.Force = true
 		parsed.PullMode = "never"
@@ -447,7 +448,7 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 	}
 
 	if len(svc.Entrypoint) > 1 {
-		return nil, errors.Errorf("service %s: specifying entrypoint with multiple strings (%v) is not supported yet",
+		return nil, fmt.Errorf("service %s: specifying entrypoint with multiple strings (%v) is not supported yet",
 			svc.Name, svc.Entrypoint)
 	}
 
@@ -600,13 +601,13 @@ func servicePortConfigToFlagP(c types.ServicePortConfig) (string, error) {
 	switch c.Mode {
 	case "", "ingress":
 	default:
-		return "", errors.Errorf("unsupported port mode: %s", c.Mode)
+		return "", fmt.Errorf("unsupported port mode: %s", c.Mode)
 	}
 	if c.Published <= 0 {
-		return "", errors.Errorf("unsupported port number: %d", c.Published)
+		return "", fmt.Errorf("unsupported port number: %d", c.Published)
 	}
 	if c.Target <= 0 {
-		return "", errors.Errorf("unsupported port number: %d", c.Target)
+		return "", fmt.Errorf("unsupported port number: %d", c.Target)
 	}
 	s := fmt.Sprintf("%d:%d", c.Published, c.Target)
 	if c.HostIP != "" {
@@ -650,7 +651,7 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 		return "", errors.New("volume target is missing")
 	}
 	if !filepath.IsAbs(c.Target) {
-		return "", errors.Errorf("volume target must be an absolute path, got %q", c.Target)
+		return "", fmt.Errorf("volume target must be an absolute path, got %q", c.Target)
 	}
 
 	if c.Source == "" {
@@ -667,7 +668,7 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 	case "volume":
 		vol, ok := project.Volumes[c.Source]
 		if !ok {
-			return "", errors.Errorf("invalid volume %q", c.Source)
+			return "", fmt.Errorf("invalid volume %q", c.Source)
 		}
 		// c.Source is like "db_data", vol.Name is like "compose-wordpress_db_data"
 		src = vol.Name
@@ -676,10 +677,10 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 		var err error
 		src, err = filepath.Abs(src)
 		if err != nil {
-			return "", errors.Wrapf(err, "invalid relative path %q", c.Source)
+			return "", fmt.Errorf("invalid relative path %q: %w", c.Source, err)
 		}
 	default:
-		return "", errors.Errorf("unsupported volume type: %q", c.Type)
+		return "", fmt.Errorf("unsupported volume type: %q", c.Type)
 	}
 	s := fmt.Sprintf("%s:%s", src, c.Target)
 	if c.ReadOnly {
@@ -700,20 +701,20 @@ func fileReferenceConfigToFlagV(c types.FileReferenceConfig, project *types.Proj
 	}
 
 	if err := identifiers.Validate(c.Source); err != nil {
-		return "", errors.Wrapf(err, "%s source %q is invalid", objType, c.Source)
+		return "", fmt.Errorf("%s source %q is invalid: %w", objType, c.Source, err)
 	}
 
 	var obj types.FileObjectConfig
 	if secret {
 		secret, ok := project.Secrets[c.Source]
 		if !ok {
-			return "", errors.Errorf("secret %s is undefined", c.Source)
+			return "", fmt.Errorf("secret %s is undefined", c.Source)
 		}
 		obj = types.FileObjectConfig(secret)
 	} else {
 		config, ok := project.Configs[c.Source]
 		if !ok {
-			return "", errors.Errorf("config %s is undefined", c.Source)
+			return "", fmt.Errorf("config %s is undefined", c.Source)
 		}
 		obj = types.FileObjectConfig(config)
 	}
@@ -721,7 +722,7 @@ func fileReferenceConfigToFlagV(c types.FileReferenceConfig, project *types.Proj
 	var err error
 	src, err = filepath.Abs(src)
 	if err != nil {
-		return "", errors.Wrapf(err, "%s %s: invalid relative path %q", objType, c.Source, src)
+		return "", fmt.Errorf("%s %s: invalid relative path %q: %w", objType, c.Source, src, err)
 	}
 
 	target := c.Target
@@ -737,20 +738,20 @@ func fileReferenceConfigToFlagV(c types.FileReferenceConfig, project *types.Proj
 			if secret {
 				target = filepath.Join("/run/secrets", target)
 			} else {
-				return "", errors.Errorf("config %s: target %q must be an absolute path", c.Source, c.Target)
+				return "", fmt.Errorf("config %s: target %q must be an absolute path", c.Source, c.Target)
 			}
 		}
 	}
 
 	if c.UID != "" {
 		// Raise an error rather than ignoring the value, for avoiding any security issue
-		return "", errors.Errorf("%s %s: unsupported field: UID", objType, c.Source)
+		return "", fmt.Errorf("%s %s: unsupported field: UID", objType, c.Source)
 	}
 	if c.GID != "" {
-		return "", errors.Errorf("%s %s: unsupported field: GID", objType, c.Source)
+		return "", fmt.Errorf("%s %s: unsupported field: GID", objType, c.Source)
 	}
 	if c.Mode != nil {
-		return "", errors.Errorf("%s %s: unsupported field: Mode", objType, c.Source)
+		return "", fmt.Errorf("%s %s: unsupported field: Mode", objType, c.Source)
 	}
 
 	s := fmt.Sprintf("%s:%s:ro", src, target)

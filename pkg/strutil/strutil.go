@@ -18,11 +18,11 @@ package strutil
 
 import (
 	"encoding/csv"
+	"fmt"
 	"reflect"
 	"strings"
 
 	"github.com/containerd/containerd/errdefs"
-	"github.com/pkg/errors"
 )
 
 // ConvertKVStringsToMap is from https://github.com/moby/moby/blob/v20.10.0-rc2/runconfig/opts/parse.go
@@ -72,10 +72,10 @@ func ParseCSVMap(s string) (map[string]string, error) {
 	csvR := csv.NewReader(strings.NewReader(s))
 	ra, err := csvR.ReadAll()
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot parse %q", s)
+		return nil, fmt.Errorf("cannot parse %q: %w", s, err)
 	}
 	if len(ra) != 1 {
-		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "expected a single line, got %d lines", len(ra))
+		return nil, fmt.Errorf("expected a single line, got %d lines: %w", len(ra), errdefs.ErrInvalidArgument)
 	}
 	fields := ra[0]
 	m := make(map[string]string)

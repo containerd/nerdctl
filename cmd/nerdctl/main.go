@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -28,7 +29,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/version"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -155,7 +156,7 @@ func newApp() *cobra.Command {
 		}
 		address := cmd.Flags().Lookup("address").Value.String()
 		if strings.Contains(address, "://") && !strings.HasPrefix(address, "unix://") {
-			return errors.Errorf("invalid address %q", address)
+			return fmt.Errorf("invalid address %q", address)
 		}
 		cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
 		if err != nil {
@@ -165,7 +166,7 @@ func newApp() *cobra.Command {
 			switch cgroupManager {
 			case "systemd", "cgroupfs", "none":
 			default:
-				return errors.Errorf("invalid cgroup-manager %q (supported values: \"systemd\", \"cgroupfs\", \"none\")", cgroupManager)
+				return fmt.Errorf("invalid cgroup-manager %q (supported values: \"systemd\", \"cgroupfs\", \"none\")", cgroupManager)
 			}
 		}
 		if appNeedsRootlessParentMain(cmd, args) {

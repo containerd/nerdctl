@@ -27,7 +27,7 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -60,7 +60,7 @@ func killAction(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		return errors.Errorf("requires at least 1 argument")
+		return fmt.Errorf("requires at least 1 argument")
 	}
 
 	client, ctx, cancel, err := newClient(cmd)
@@ -88,7 +88,7 @@ func killAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		} else if n == 0 {
-			return errors.Errorf("no such container %s", req)
+			return fmt.Errorf("no such container %s", req)
 		}
 	}
 	return nil
@@ -109,7 +109,7 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 
 	switch status.Status {
 	case containerd.Created, containerd.Stopped:
-		return errors.Errorf("cannot kill container: %s: Container %s is not running\n", container.ID(), container.ID())
+		return fmt.Errorf("cannot kill container: %s: Container %s is not running\n", container.ID(), container.ID())
 	case containerd.Paused, containerd.Pausing:
 		paused = true
 	default:

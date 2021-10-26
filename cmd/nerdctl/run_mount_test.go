@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -29,12 +28,12 @@ import (
 func TestRunVolume(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	rwDir, err := ioutil.TempDir("", "nerdctl-"+t.Name()+"-rw")
+	rwDir, err := os.MkdirTemp("", "nerdctl-"+t.Name()+"-rw")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(rwDir)
-	roDir, err := ioutil.TempDir("", "nerdctl-"+t.Name()+"-ro")
+	roDir, err := os.MkdirTemp("", "nerdctl-"+t.Name()+"-ro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +153,7 @@ CMD ["cat", "/mnt/initial_file"]
 	base.Cmd("run", "-v", "copying-initial-content:/mnt", "--rm", imageName).AssertOutContains("hi")
 
 	//mount bind
-	tmpDir, err := ioutil.TempDir("", "hostDir")
+	tmpDir, err := os.MkdirTemp("", "hostDir")
 	assert.NilError(t, err)
 	defer os.RemoveAll(tmpDir)
 

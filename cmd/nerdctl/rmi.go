@@ -22,7 +22,7 @@ import (
 
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -43,7 +43,7 @@ func newRmiCommand() *cobra.Command {
 
 func rmiAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.Errorf("requires at least 1 argument")
+		return fmt.Errorf("requires at least 1 argument")
 	}
 
 	client, ctx, cancel, err := newClient(cmd)
@@ -79,7 +79,7 @@ func rmiAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		} else if n == 0 {
-			return errors.Errorf("no such image %s", req)
+			return fmt.Errorf("no such image %s", req)
 		}
 	}
 	return nil

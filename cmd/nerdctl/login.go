@@ -18,8 +18,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"runtime"
 	"strings"
 
@@ -30,7 +31,7 @@ import (
 	"github.com/docker/docker/api/types"
 	registrytypes "github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/registry"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -111,7 +112,7 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := dockerConfigFile.GetCredentialsStore(serverAddress).Store(clitypes.AuthConfig(*(authConfig))); err != nil {
-		return errors.Errorf("error saving credentials: %v", err)
+		return fmt.Errorf("error saving credentials: %w", err)
 	}
 
 	if response.Status != "" {
@@ -135,7 +136,7 @@ func verifyloginOptions(cmd *cobra.Command, options *loginOptions) error {
 			return errors.New("must provide --username with --password-stdin")
 		}
 
-		contents, err := ioutil.ReadAll(cmd.InOrStdin())
+		contents, err := io.ReadAll(cmd.InOrStdin())
 		if err != nil {
 			return err
 		}
@@ -204,7 +205,7 @@ func ConfigureAuthentification(authConfig *types.AuthConfig, options *loginOptio
 	}
 
 	if options.username == "" {
-		return errors.Errorf("error: Username is Required")
+		return fmt.Errorf("error: Username is Required")
 	}
 
 	if options.password == "" {
@@ -219,7 +220,7 @@ func ConfigureAuthentification(authConfig *types.AuthConfig, options *loginOptio
 	}
 
 	if options.password == "" {
-		return errors.Errorf("password is Required")
+		return fmt.Errorf("password is Required")
 	}
 
 	authConfig.Username = options.username

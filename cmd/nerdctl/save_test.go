@@ -18,7 +18,8 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,14 +27,14 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
+
 	"gotest.tools/v3/assert"
 )
 
 func TestSave(t *testing.T) {
 	base := testutil.NewBase(t)
 	base.Cmd("pull", testutil.AlpineImage).AssertOK()
-	tmpDir, err := ioutil.TempDir("", "test-save")
+	tmpDir, err := os.MkdirTemp("", "test-save")
 	assert.NilError(t, err)
 	defer os.RemoveAll(tmpDir)
 	archiveTarPath := filepath.Join(tmpDir, "a.tar")
@@ -42,7 +43,7 @@ func TestSave(t *testing.T) {
 	err = extractDockerArchive(archiveTarPath, rootfsPath)
 	assert.NilError(t, err)
 	etcOSReleasePath := filepath.Join(rootfsPath, "/etc/os-release")
-	etcOSReleaseBytes, err := ioutil.ReadFile(etcOSReleasePath)
+	etcOSReleaseBytes, err := os.ReadFile(etcOSReleasePath)
 	assert.NilError(t, err)
 	etcOSRelease := string(etcOSReleaseBytes)
 	t.Logf("read %q, extracted from %q", etcOSReleasePath, testutil.AlpineImage)
@@ -54,7 +55,7 @@ func extractDockerArchive(archiveTarPath, rootfsPath string) error {
 	if err := os.MkdirAll(rootfsPath, 0755); err != nil {
 		return err
 	}
-	workDir, err := ioutil.TempDir("", "extract-docker-archive")
+	workDir, err := os.MkdirTemp("", "extract-docker-archive")
 	if err != nil {
 		return err
 	}
@@ -63,7 +64,7 @@ func extractDockerArchive(archiveTarPath, rootfsPath string) error {
 		return err
 	}
 	manifestJSONPath := filepath.Join(workDir, "manifest.json")
-	manifestJSONBytes, err := ioutil.ReadFile(manifestJSONPath)
+	manifestJSONBytes, err := os.ReadFile(manifestJSONPath)
 	if err != nil {
 		return err
 	}
@@ -72,7 +73,7 @@ func extractDockerArchive(archiveTarPath, rootfsPath string) error {
 		return err
 	}
 	if len(mani) > 1 {
-		return errors.Errorf("multi-image archive cannot be extracted: contains %d images", len(mani))
+		return fmt.Errorf("multi-image archive cannot be extracted: contains %d images", len(mani))
 	}
 	if len(mani) < 1 {
 		return errors.New("invalid archive")
@@ -98,9 +99,7 @@ type DockerArchiveManifestJSONEntry struct {
 func extractTarFile(dirPath, tarFilePath string) error {
 	cmd := exec.Command("tar", "Cxf", dirPath, tarFilePath)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return errors.Wrapf(err, "failed to run %v: %q",
-			cmd.Args,
-			string(out))
+		return fmt.Errorf("failed to run %v: %q: %w", cmd.Args, string(out), err)
 	}
 	return nil
 }

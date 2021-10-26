@@ -18,13 +18,14 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"text/tabwriter"
 	"text/template"
 
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/docker/cli/templates"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 

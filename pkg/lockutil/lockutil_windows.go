@@ -17,11 +17,11 @@
 package lockutil
 
 import (
+	"fmt"
 	"os"
 	"syscall"
 	"unsafe"
 
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -41,7 +41,7 @@ func WithDirLock(dir string, fn func() error) error {
 	// see https://msdn.microsoft.com/en-us/library/windows/desktop/aa365203(v=vs.85).aspx
 	// 1 lock immediately
 	if err := lockFileEx(syscall.Handle(dirFile.Fd()), 1, 0, 1, 0, &syscall.Overlapped{}); err != nil {
-		return errors.Wrapf(err, "failed to lock %q", dir)
+		return fmt.Errorf("failed to lock %q: %w", dir, err)
 	}
 
 	defer func() {

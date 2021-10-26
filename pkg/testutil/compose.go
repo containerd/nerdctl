@@ -17,7 +17,6 @@
 package testutil
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -30,7 +29,7 @@ type ComposeDir struct {
 }
 
 func (cd *ComposeDir) WriteFile(name, content string) {
-	if err := ioutil.WriteFile(filepath.Join(cd.dir, name), []byte(content), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(cd.dir, name), []byte(content), 0644); err != nil {
 		cd.t.Fatal(err)
 	}
 }
@@ -48,7 +47,7 @@ func (cd *ComposeDir) CleanUp() {
 }
 
 func NewComposeDir(t testing.TB, dockerComposeYAML string) *ComposeDir {
-	tmpDir, err := ioutil.TempDir("", "nerdctl-compose-test")
+	tmpDir, err := os.MkdirTemp("", "nerdctl-compose-test")
 	if err != nil {
 		t.Fatal(err)
 	}

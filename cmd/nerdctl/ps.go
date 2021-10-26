@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -31,7 +32,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/docker/cli/templates"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 

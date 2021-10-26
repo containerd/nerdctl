@@ -31,7 +31,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.2-0.20210819154149-5ad6f50d6283
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210910115017-0d6cc581aeea
-	github.com/pkg/errors v0.9.1
 	github.com/rootless-containers/rootlesskit v0.14.5
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.2.1 // replaced, see the bottom of this file

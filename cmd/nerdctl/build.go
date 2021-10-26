@@ -17,6 +17,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -29,7 +31,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -145,7 +147,7 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 	}
 	buildContext := args[0]
 	if buildContext == "-" || strings.Contains(buildContext, "://") {
-		return "", nil, false, nil, errors.Errorf("unsupported build context: %q", buildContext)
+		return "", nil, false, nil, fmt.Errorf("unsupported build context: %q", buildContext)
 	}
 
 	buildctlBinary, err := buildkitutil.BuildctlBinary()
@@ -172,7 +174,7 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 	}
 	if tagSlice := strutil.DedupeStrSlice(tagValue); len(tagSlice) > 0 {
 		if len(tagSlice) > 1 {
-			return "", nil, false, nil, errors.Errorf("specifying multiple -t is not supported yet")
+			return "", nil, false, nil, fmt.Errorf("specifying multiple -t is not supported yet")
 		}
 		output += ",name=" + tagSlice[0]
 	}

@@ -17,12 +17,13 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
+
 	"gotest.tools/v3/assert"
 )
 
@@ -137,10 +138,10 @@ func TestRunSecurityOptSeccomp(t *testing.T) {
 					s = strings.TrimSpace(s)
 					i, err := strconv.Atoi(s)
 					if err != nil {
-						return errors.Wrapf(err, "failed to parse line %q", stdout)
+						return fmt.Errorf("failed to parse line %q: %w", stdout, err)
 					}
 					if i != expectedSeccomp {
-						return errors.Errorf("expected Seccomp to be %d, got %d", expectedSeccomp, i)
+						return fmt.Errorf("expected Seccomp to be %d, got %d", expectedSeccomp, i)
 					}
 					return nil
 				}

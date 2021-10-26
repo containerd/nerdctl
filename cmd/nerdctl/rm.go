@@ -30,7 +30,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/namestore"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -52,7 +52,7 @@ func newRmCommand() *cobra.Command {
 
 func rmAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.Errorf("requires at least 1 argument")
+		return fmt.Errorf("requires at least 1 argument")
 	}
 
 	client, ctx, cancel, err := newClient(cmd)
@@ -100,7 +100,7 @@ func rmAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		} else if n == 0 {
-			return errors.Errorf("no such container %s", req)
+			return fmt.Errorf("no such container %s", req)
 		}
 	}
 	return nil
@@ -178,7 +178,7 @@ func removeContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 	switch status.Status {
 	case containerd.Created, containerd.Stopped:
 		if _, err := task.Delete(ctx); err != nil && !errdefs.IsNotFound(err) {
-			return errors.Wrapf(err, "failed to delete task %v", id)
+			return fmt.Errorf("failed to delete task %v: %w", id, err)
 		}
 	case containerd.Paused:
 		if !force {
@@ -187,7 +187,7 @@ func removeContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		}
 		_, err := task.Delete(ctx, containerd.WithProcessKill)
 		if err != nil && !errdefs.IsNotFound(err) {
-			return errors.Wrapf(err, "failed to delete task %v", id)
+			return fmt.Errorf("failed to delete task %v: %w", id, err)
 		}
 	// default is the case, when status.Status = containerd.Running
 	default:

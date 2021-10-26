@@ -17,7 +17,8 @@
 package rootlessutil
 
 import (
-	"io/ioutil"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,7 +26,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -55,7 +55,7 @@ func RootlessKitChildPid(stateDir string) (int, error) {
 		return 0, err
 	}
 
-	pidFileBytes, err := ioutil.ReadFile(pidFilePath)
+	pidFileBytes, err := os.ReadFile(pidFilePath)
 	if err != nil {
 		return 0, err
 	}
@@ -70,7 +70,7 @@ func ParentMain() error {
 	stateDir, err := RootlessKitStateDir()
 	logrus.Debugf("stateDir: %s", stateDir)
 	if err != nil {
-		return errors.Wrap(err, "rootless containerd not running? (hint: use `containerd-rootless-setuptool.sh install` to start rootless containerd)")
+		return fmt.Errorf("rootless containerd not running? (hint: use `containerd-rootless-setuptool.sh install` to start rootless containerd): %w", err)
 	}
 	childPid, err := RootlessKitChildPid(stateDir)
 	if err != nil {

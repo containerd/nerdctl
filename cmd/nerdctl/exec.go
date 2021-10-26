@@ -18,6 +18,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 
@@ -31,7 +33,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -67,7 +69,7 @@ func execAction(cmd *cobra.Command, args []string) error {
 		args = newArg
 	}
 	if len(args) < 2 {
-		return errors.Errorf("requires at least 2 arguments")
+		return fmt.Errorf("requires at least 2 arguments")
 	}
 
 	client, ctx, cancel, err := newClient(cmd)
@@ -80,7 +82,7 @@ func execAction(cmd *cobra.Command, args []string) error {
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
 			if found.MatchCount > 1 {
-				return errors.Errorf("ambiguous ID %q", found.Req)
+				return fmt.Errorf("ambiguous ID %q", found.Req)
 			}
 			return execActionWithContainer(ctx, cmd, args, found.Container)
 		},
@@ -90,7 +92,7 @@ func execAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	} else if n == 0 {
-		return errors.Errorf("no such container %s", req)
+		return fmt.Errorf("no such container %s", req)
 	}
 	return nil
 }
@@ -199,7 +201,7 @@ func execActionWithContainer(ctx context.Context, cmd *cobra.Command, args []str
 		return err
 	}
 	if code != 0 {
-		return errors.Errorf("exec failed with exit code %d", code)
+		return fmt.Errorf("exec failed with exit code %d", code)
 	}
 	return nil
 }

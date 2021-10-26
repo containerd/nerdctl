@@ -24,7 +24,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"net/http"
@@ -35,7 +34,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
+
 	"golang.org/x/crypto/bcrypt"
 	"gotest.tools/v3/assert"
 )
@@ -59,7 +58,7 @@ func getNonLoopbackIPv4() (net.IP, error) {
 		}
 		return ipv4, nil
 	}
-	return nil, errors.Wrapf(errdefs.ErrNotFound, "non-loopback IPv4 address not found, attempted=%+v", addrs)
+	return nil, fmt.Errorf("non-loopback IPv4 address not found, attempted=%+v: %w", addrs, errdefs.ErrNotFound)
 }
 
 type testRegistry struct {
@@ -110,7 +109,7 @@ func newTestInsecureRegistry(base *testutil.Base, name, user, pass string) *test
 
 	// Prepare configuration file for authentication server
 	// Details: https://github.com/cesanta/docker_auth/blob/1.7.1/examples/simple.yml
-	authConfigFile, err := ioutil.TempFile("", "authconfig")
+	authConfigFile, err := os.CreateTemp("", "authconfig")
 	assert.NilError(base.T, err)
 	bpass, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
 	assert.NilError(base.T, err)
@@ -254,9 +253,9 @@ func TestPushInsecureWithLogin(t *testing.T) {
 }
 
 func generateTestCert(base *testutil.Base, host string) (crtPath, keyPath string, closeFn func() error) {
-	certF, err := ioutil.TempFile("", "certtemp")
+	certF, err := os.CreateTemp("", "certtemp")
 	assert.NilError(base.T, err)
-	keyF, err := ioutil.TempFile("", "keytemp")
+	keyF, err := os.CreateTemp("", "keytemp")
 	assert.NilError(base.T, err)
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 60)
@@ -324,5 +323,5 @@ func httpInsecureGet(urlStr string, attempts int) (*http.Response, error) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	return nil, errors.Wrapf(err, "error after %d attempts", attempts)
+	return nil, fmt.Errorf("error after %d attempts: %w", attempts, err)
 }

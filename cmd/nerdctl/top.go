@@ -27,6 +27,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -38,7 +39,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -75,13 +76,13 @@ func newTopCommand() *cobra.Command {
 func topAction(cmd *cobra.Command, args []string) error {
 
 	if len(args) < 1 {
-		return errors.Errorf("requires at least 1 argument")
+		return fmt.Errorf("requires at least 1 argument")
 	}
 
 	// NOTE: rootless container does not rely on cgroupv1.
 	// more details about possible ways to resolve this concern: #223
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
-		return errors.Errorf("top requires cgroup v2 for rootless containers, see https://rootlesscontaine.rs/getting-started/common/cgroup2/")
+		return fmt.Errorf("top requires cgroup v2 for rootless containers, see https://rootlesscontaine.rs/getting-started/common/cgroup2/")
 	}
 
 	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
@@ -112,7 +113,7 @@ func topAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	} else if n == 0 {
-		return errors.Errorf("no such container %s", args[0])
+		return fmt.Errorf("no such container %s", args[0])
 	}
 	return nil
 }

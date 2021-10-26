@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -37,7 +38,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/docker/cli/templates"
 	"github.com/opencontainers/image-spec/identity"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

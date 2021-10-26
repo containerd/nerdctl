@@ -17,14 +17,14 @@
 package buildkitutil
 
 import (
+	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -50,7 +50,7 @@ func PingBKDaemon(buildkitHost string) error {
 	}
 	buildctlBinary, err := BuildctlBinary()
 	if err != nil {
-		return errors.Wrap(err, hint)
+		return fmt.Errorf(hint+": %w", err)
 	}
 	args := BuildctlBaseArgs(buildkitHost)
 	args = append(args, "debug", "workers")
@@ -58,7 +58,7 @@ func PingBKDaemon(buildkitHost string) error {
 	buildctlCheckCmd.Env = os.Environ()
 	if out, err := buildctlCheckCmd.CombinedOutput(); err != nil {
 		logrus.Error(string(out))
-		return errors.Wrap(err, hint)
+		return fmt.Errorf(hint+": %w", err)
 	}
 	return nil
 }
@@ -66,9 +66,9 @@ func PingBKDaemon(buildkitHost string) error {
 // WriteTempDockerfile is from https://github.com/docker/cli/blob/v20.10.9/cli/command/image/build/context.go#L118
 func WriteTempDockerfile(rc io.Reader) (dockerfileDir string, err error) {
 	// err is a named return value, due to the defer call below.
-	dockerfileDir, err = ioutil.TempDir("", TempDockerfileName)
+	dockerfileDir, err = os.MkdirTemp("", TempDockerfileName)
 	if err != nil {
-		return "", errors.Errorf("unable to create temporary context directory: %v", err)
+		return "", fmt.Errorf("unable to create temporary context directory: %v", err)
 	}
 	defer func() {
 		if err != nil {

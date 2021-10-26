@@ -21,7 +21,7 @@ import (
 
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -40,11 +40,11 @@ func newVolumeCreateCommand() *cobra.Command {
 
 func volumeCreateAction(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		return errors.Errorf("requires exactly 1 argument")
+		return fmt.Errorf("requires exactly 1 argument")
 	}
 	name := args[0]
 	if err := identifiers.Validate(name); err != nil {
-		return errors.Wrapf(err, "malformed name %s", name)
+		return fmt.Errorf("malformed name %s: %w", name, err)
 	}
 
 	volStore, err := getVolumeStore(cmd)

@@ -22,14 +22,14 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
 func (c *Composer) upNetwork(ctx context.Context, shortName string) error {
 	net, ok := c.project.Networks[shortName]
 	if !ok {
-		return errors.Errorf("invalid network name %q", shortName)
+		return fmt.Errorf("invalid network name %q", shortName)
 	}
 	if net.External.External {
 		// NOP

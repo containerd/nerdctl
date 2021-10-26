@@ -17,6 +17,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -24,7 +26,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -101,7 +103,7 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	if memStr != "" {
 		mem64, err := units.RAMInBytes(memStr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse memory bytes %q", memStr)
+			return nil, fmt.Errorf("failed to parse memory bytes %q: %w", memStr, err)
 		}
 		opts = append(opts, oci.WithMemoryLimit(uint64(mem64)))
 	}
@@ -123,7 +125,7 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	case "host":
 		opts = append(opts, oci.WithHostNamespace(specs.CgroupNamespace))
 	default:
-		return nil, errors.Errorf("unknown cgroupns mode %q", cgroupns)
+		return nil, fmt.Errorf("unknown cgroupns mode %q", cgroupns)
 	}
 
 	device, err := cmd.Flags().GetStringSlice("device")
@@ -133,7 +135,7 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	for _, f := range device {
 		devPath, mode, err := parseDevice(f)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse device %q", f)
+			return nil, fmt.Errorf("failed to parse device %q: %w", f, err)
 		}
 		opts = append(opts, oci.WithLinuxDevice(devPath, mode))
 	}
@@ -169,7 +171,7 @@ func parseDevice(s string) (hostDevPath string, mode string, err error) {
 	}
 
 	if !filepath.IsAbs(hostDevPath) {
-		return "", "", errors.Errorf("%q is not an absolute path", hostDevPath)
+		return "", "", fmt.Errorf("%q is not an absolute path", hostDevPath)
 	}
 
 	if err := validateDeviceMode(mode); err != nil {
@@ -183,7 +185,7 @@ func validateDeviceMode(mode string) error {
 		switch r {
 		case 'r', 'w', 'm':
 		default:
-			return errors.Errorf("invalid mode %q: unexpected rune %v", mode, r)
+			return fmt.Errorf("invalid mode %q: unexpected rune %v", mode, r)
 		}
 	}
 	return nil

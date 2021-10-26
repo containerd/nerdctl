@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -27,7 +26,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -48,11 +47,11 @@ func newNetworkCreateCommand() *cobra.Command {
 
 func networkCreateAction(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		return errors.Errorf("requires exactly 1 argument")
+		return fmt.Errorf("requires exactly 1 argument")
 	}
 	name := args[0]
 	if err := identifiers.Validate(name); err != nil {
-		return errors.Wrapf(err, "malformed name %s", name)
+		return fmt.Errorf("malformed name %s: %w", name, err)
 	}
 	cniPath, err := cmd.Flags().GetString("cni-path")
 	if err != nil {
@@ -85,7 +84,7 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		}
 		for _, l := range ll {
 			if l.Name == name {
-				return errors.Errorf("network with name %s already exists", name)
+				return fmt.Errorf("network with name %s already exists", name)
 			}
 			// TODO: check CIDR collision
 		}
@@ -96,7 +95,7 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 
 		if subnet == "" {
 			if id > 255 {
-				return errors.Errorf("cannot determine subnet for ID %d, specify --subnet manually", id)
+				return fmt.Errorf("cannot determine subnet for ID %d, specify --subnet manually", id)
 			}
 			subnet = fmt.Sprintf("10.4.%d.0/24", id)
 		}
@@ -110,7 +109,7 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		if _, err := os.Stat(filename); err == nil {
 			return errdefs.ErrAlreadyExists
 		}
-		if err := ioutil.WriteFile(filename, l.Bytes, 0644); err != nil {
+		if err := os.WriteFile(filename, l.Bytes, 0644); err != nil {
 			return err
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "%d\n", id)

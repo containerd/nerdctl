@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"text/tabwriter"
 
@@ -105,7 +104,7 @@ func namespaceLsAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			logrus.Warn(err)
 		} else {
-			volEnts, err := ioutil.ReadDir(volStore)
+			volEnts, err := os.ReadDir(volStore)
 			if err != nil {
 				if !os.IsNotExist(err) {
 					logrus.Warn(err)

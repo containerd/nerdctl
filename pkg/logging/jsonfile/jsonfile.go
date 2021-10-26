@@ -19,6 +19,7 @@ package jsonfile
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"path/filepath"
 	"strconv"
@@ -27,7 +28,7 @@ import (
 	"time"
 
 	timetypes "github.com/docker/docker/api/types/time"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -94,7 +95,7 @@ func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string
 		if since != "" {
 			ts, err := timetypes.GetTimestamp(since, now)
 			if err != nil {
-				return errors.Wrap(err, `invalid value for "since"`)
+				return fmt.Errorf("invalid value for \"since\": %w", err)
 			}
 			v := strings.Split(ts, ".")
 			i, err := strconv.ParseInt(v[0], 10, 64)
@@ -109,7 +110,7 @@ func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string
 		if until != "" {
 			ts, err := timetypes.GetTimestamp(until, now)
 			if err != nil {
-				return errors.Wrap(err, `invalid value for "until"`)
+				return fmt.Errorf("invalid value for \"until\": %w", err)
 			}
 			v := strings.Split(ts, ".")
 			i, err := strconv.ParseInt(v[0], 10, 64)

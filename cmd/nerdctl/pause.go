@@ -23,7 +23,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +42,7 @@ func newPauseCommand() *cobra.Command {
 
 func pauseAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.Errorf("requires at least 1 argument")
+		return fmt.Errorf("requires at least 1 argument")
 	}
 
 	client, ctx, cancel, err := newClient(cmd)
@@ -67,7 +67,7 @@ func pauseAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		} else if n == 0 {
-			return errors.Errorf("no such container %s", req)
+			return fmt.Errorf("no such container %s", req)
 		}
 	}
 	return nil
@@ -91,9 +91,9 @@ func pauseContainer(ctx context.Context, client *containerd.Client, id string) e
 
 	switch status.Status {
 	case containerd.Paused:
-		return errors.Errorf("Container %s is already paused", id)
+		return fmt.Errorf("Container %s is already paused", id)
 	case containerd.Created, containerd.Stopped:
-		return errors.Errorf("Container %s is not running", id)
+		return fmt.Errorf("Container %s is not running", id)
 	default:
 		return task.Pause(ctx)
 	}

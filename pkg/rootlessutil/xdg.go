@@ -17,10 +17,9 @@
 package rootlessutil
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 )
 
 func XDGRuntimeDir() (string, error) {

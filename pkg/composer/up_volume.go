@@ -22,14 +22,14 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
 func (c *Composer) upVolume(ctx context.Context, shortName string) error {
 	vol, ok := c.project.Volumes[shortName]
 	if !ok {
-		return errors.Errorf("invalid volume name %q", shortName)
+		return fmt.Errorf("invalid volume name %q", shortName)
 	}
 	if vol.External.External {
 		// NOP

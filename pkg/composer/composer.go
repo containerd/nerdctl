@@ -19,6 +19,8 @@ package composer
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,7 +32,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/composer/projectloader"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -82,7 +84,7 @@ func New(o Options) (*Composer, error) {
 	}
 
 	if err := identifiers.Validate(o.Project); err != nil {
-		return nil, errors.Wrapf(err, "got invalid project name %q", o.Project)
+		return nil, fmt.Errorf("got invalid project name %q: %w", o.Project, err)
 	}
 
 	project, err := projectloader.Load(o.ProjectOptions.ConfigPaths[0], o.Project, o.ProjectOptions.Environment)
@@ -132,7 +134,7 @@ func (c *Composer) runNerdctlCmd(ctx context.Context, args ...string) error {
 		logrus.Debugf("Running %v", cmd.Args)
 	}
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return errors.Wrapf(err, "error while executing %v: %q", cmd.Args, string(out))
+		return fmt.Errorf("error while executing %v: %q: %w", cmd.Args, string(out), err)
 	}
 	return nil
 }
@@ -155,7 +157,7 @@ func findComposeYAML(o *Options) (string, error) {
 		}
 		parent := filepath.Dir(pwd)
 		if parent == pwd {
-			return "", errors.Errorf("cannot find a compose YAML, supported file names: %+v in this directory or any parent", yamlNames)
+			return "", fmt.Errorf("cannot find a compose YAML, supported file names: %+v in this directory or any parent", yamlNames)
 		}
 		pwd = parent
 	}

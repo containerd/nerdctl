@@ -18,6 +18,7 @@ package dockerconfigresolver
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net/http"
 
 	"github.com/containerd/containerd/remotes"
@@ -25,7 +26,7 @@ import (
 	dockercliconfig "github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/credentials"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -150,7 +151,7 @@ func NewAuthCreds(refHostname string) (AuthCreds, error) {
 				} else {
 					acsaHostname := credentials.ConvertToHostname(ac.ServerAddress)
 					if acsaHostname != authConfigHostname {
-						return nil, errors.Errorf("expected the hostname part of ac.ServerAddress (%q) to be authConfigHostname=%q, got %q",
+						return nil, fmt.Errorf("expected the hostname part of ac.ServerAddress (%q) to be authConfigHostname=%q, got %q",
 							ac.ServerAddress, authConfigHostname, acsaHostname)
 					}
 				}
@@ -164,7 +165,7 @@ func NewAuthCreds(refHostname string) (AuthCreds, error) {
 				credFunc = func(credFuncArg string) (string, string, error) {
 					// credFuncArg should be like "registry-1.docker.io"
 					if credFuncArg != credFuncExpectedHostname {
-						return "", "", errors.Errorf("expected credFuncExpectedHostname=%q (refHostname=%q), got credFuncArg=%q",
+						return "", "", fmt.Errorf("expected credFuncExpectedHostname=%q (refHostname=%q), got credFuncArg=%q",
 							credFuncExpectedHostname, refHostname, credFuncArg)
 					}
 					if ac.IdentityToken != "" {

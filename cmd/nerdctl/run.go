@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -58,7 +59,7 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -427,7 +428,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 				}
 			}
 			if netconflist == nil {
-				return errors.Errorf("no such network: %q", netstr)
+				return fmt.Errorf("no such network: %q", netstr)
 			}
 		}
 
@@ -474,7 +475,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 			ports = append(ports, pm...)
 		}
 	default:
-		return errors.Errorf("unexpected network type %v", netType)
+		return fmt.Errorf("unexpected network type %v", netType)
 	}
 
 	hostname := id[0:12]
@@ -973,7 +974,7 @@ func generateRestartOpts(restartFlag, logURI string) ([]containerd.NewContainerO
 		}
 		return opts, nil
 	default:
-		return nil, errors.Errorf("unsupported restart type %q, supported types are: \"no\",  \"always\"", restartFlag)
+		return nil, fmt.Errorf("unsupported restart type %q, supported types are: \"no\",  \"always\"", restartFlag)
 	}
 }
 
@@ -1065,12 +1066,12 @@ func propagateContainerdLabelsToOCIAnnotations() oci.SpecOpts {
 
 func writeCIDFile(path, id string) error {
 	if _, err := os.Stat(path); err == nil {
-		return errors.Errorf("container ID file found, make sure the other container isn't running or delete %s", path)
+		return fmt.Errorf("container ID file found, make sure the other container isn't running or delete %s", path)
 	} else if errors.Is(err, os.ErrNotExist) {
 		f, err := os.Create(path)
 		defer f.Close()
 		if err != nil {
-			return errors.Errorf("failed to create the container ID file: %s", err)
+			return fmt.Errorf("failed to create the container ID file: %s", err)
 		}
 		if _, err := f.WriteString(id); err != nil {
 			return err
@@ -1086,7 +1087,7 @@ func parseEnvVars(paths []string) ([]string, error) {
 	for _, path := range paths {
 		f, err := os.Open(path)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to open env file %s", path)
+			return nil, fmt.Errorf("failed to open env file %s: %w", path, err)
 		}
 		defer f.Close()
 

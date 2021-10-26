@@ -18,13 +18,13 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/pkg/errors"
+
 	"gotest.tools/v3/assert"
 )
 
@@ -80,13 +80,13 @@ volumes:
 		if err != nil {
 			return err
 		}
-		respBody, err := ioutil.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
 		t.Logf("respBody=%q", respBody)
 		if !strings.Contains(string(respBody), testutil.WordpressIndexHTMLSnippet) {
-			return errors.Errorf("respBody does not contain %q", testutil.WordpressIndexHTMLSnippet)
+			return fmt.Errorf("respBody does not contain %q", testutil.WordpressIndexHTMLSnippet)
 		}
 		return nil
 	}
@@ -141,7 +141,7 @@ COPY index.html /usr/share/nginx/html/index.html
 
 	resp, err := httpGet("http://127.0.0.1:8080", 50)
 	assert.NilError(t, err)
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	assert.NilError(t, err)
 	t.Logf("respBody=%q", respBody)
 	assert.Assert(t, strings.Contains(string(respBody), indexHTML))

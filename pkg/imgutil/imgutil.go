@@ -38,7 +38,7 @@ import (
 	"github.com/containerd/stargz-snapshotter/fs/source"
 	"github.com/docker/docker/errdefs"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -119,7 +119,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 	}
 
 	if mode == "never" {
-		return nil, errors.Errorf("image %q is not available", rawRef)
+		return nil, fmt.Errorf("image %q is not available", rawRef)
 	}
 
 	named, err := refdocker.ParseDockerRef(rawRef)
@@ -254,7 +254,7 @@ func getImageConfig(ctx context.Context, image containerd.Image) (*ocispec.Image
 		}
 		return &ocispecImage.Config, nil
 	default:
-		return nil, errors.Errorf("unknown media type %q", desc.MediaType)
+		return nil, fmt.Errorf("unknown media type %q", desc.MediaType)
 	}
 }
 

@@ -17,9 +17,8 @@
 package reflectutil
 
 import (
+	"fmt"
 	"reflect"
-
-	"github.com/pkg/errors"
 )
 
 func UnknownNonEmptyFields(structOrStructPtr interface{}, knownNames ...string) []string {
@@ -36,7 +35,7 @@ func UnknownNonEmptyFields(structOrStructPtr interface{}, knownNames ...string) 
 	case reflect.Struct:
 		val = origVal
 	default:
-		panic(errors.Errorf("expected Ptr or Struct, got %+v", kind))
+		panic(fmt.Errorf("expected Ptr or Struct, got %+v", kind))
 	}
 	for i := 0; i < val.NumField(); i++ {
 		iField := val.Field(i)

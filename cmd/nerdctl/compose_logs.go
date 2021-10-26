@@ -17,8 +17,9 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/containerd/nerdctl/pkg/composer"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +43,7 @@ func newComposeLogsCommand() *cobra.Command {
 func composeLogsAction(cmd *cobra.Command, args []string) error {
 	if len(args) != 0 {
 		// TODO: support specifying service names as args
-		return errors.Errorf("arguments %v not supported", args)
+		return fmt.Errorf("arguments %v not supported", args)
 	}
 	follow, err := cmd.Flags().GetBool("follow")
 	if err != nil {

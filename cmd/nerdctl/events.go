@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"text/template"
 	"time"
@@ -27,7 +28,7 @@ import (
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/typeurl"
 	"github.com/docker/cli/templates"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
 	// Register grpc event types
@@ -60,7 +61,7 @@ type Out struct {
 // eventsActions is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/events/events.go
 func eventsAction(cmd *cobra.Command, args []string) error {
 	if len(args) != 0 {
-		return errors.Errorf("accepts no arguments")
+		return fmt.Errorf("accepts no arguments")
 	}
 
 	client, ctx, cancel, err := newClient(cmd)
