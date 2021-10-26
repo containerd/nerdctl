@@ -25,6 +25,7 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/plugin"
 	runcoptions "github.com/containerd/containerd/runtime/v2/runc/options"
+	"github.com/containerd/nerdctl/pkg/defaults"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -36,7 +37,7 @@ func generateRuntimeCOpts(cmd *cobra.Command) ([]containerd.NewContainerOpts, er
 		runcOpts    runcoptions.Options
 		runtimeOpts interface{} = &runcOpts
 	)
-	cgm, err := cmd.Flags().GetString("cgroup-manager")
+	cgm, err := defaults.GetglobalString(cmd, "cgroup-manager")
 	if err != nil {
 		return nil, err
 	}

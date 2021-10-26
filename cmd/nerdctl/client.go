@@ -28,17 +28,18 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/opencontainers/go-digest"
 )
 
 func newClient(cmd *cobra.Command, opts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
 	ctx := cmd.Context()
-	namespace, err := cmd.Flags().GetString("namespace")
+	namespace, err := defaults.GetglobalString(cmd, "namespace")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	ctx = namespaces.WithNamespace(ctx, namespace)
-	address, err := cmd.Flags().GetString("address")
+	address, err := defaults.GetglobalString(cmd, "address")
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -65,14 +66,14 @@ func newClient(cmd *cobra.Command, opts ...containerd.ClientOpt) (*containerd.Cl
 // "1935db9" is from `$(echo -n "/run/containerd/containerd.sock" | sha256sum | cut -c1-8)``
 // on Windows it will return "%PROGRAMFILES%/nerdctl/1935db59"
 func getDataStore(cmd *cobra.Command) (string, error) {
-	dataRoot, err := cmd.Flags().GetString("data-root")
+	dataRoot, err := defaults.GetglobalString(cmd, "data-root")
 	if err != nil {
 		return "", err
 	}
 	if err := os.MkdirAll(dataRoot, 0700); err != nil {
 		return "", err
 	}
-	address, err := cmd.Flags().GetString("address")
+	address, err := defaults.GetglobalString(cmd, "address")
 	if err != nil {
 		return "", err
 	}

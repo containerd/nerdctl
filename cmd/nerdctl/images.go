@@ -28,6 +28,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/containerd/nerdctl/pkg/defaults"
+
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/errdefs"
@@ -164,7 +166,7 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 		}
 	}
 
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
+	snapshotter, err := defaults.GetglobalString(cmd, "snapshotter")
 	if err != nil {
 		return err
 	}

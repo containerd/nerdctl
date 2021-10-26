@@ -82,6 +82,17 @@ func CNINetConfPath() string {
 	return filepath.Join(xch, "cni/net.d")
 }
 
+func NerdctlConfigPath() string {
+	if !rootlessutil.IsRootless() {
+		return "/etc/nerdctl/nerdctl.toml"
+	}
+	xch, err := rootlessutil.XDGConfigHome()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(xch, "nerdctl/nerdctl.toml")
+}
+
 func BuildKitHost() string {
 	if !rootlessutil.IsRootless() {
 		return "unix:///run/buildkit/buildkitd.sock"

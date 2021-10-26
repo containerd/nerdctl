@@ -20,6 +20,8 @@ import (
 	"errors"
 	"os"
 
+	"github.com/containerd/nerdctl/pkg/defaults"
+
 	"github.com/containerd/nerdctl/pkg/ocihook"
 
 	"github.com/spf13/cobra"
@@ -48,11 +50,11 @@ func internalOCIHookAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	cniPath, err := cmd.Flags().GetString("cni-path")
+	cniPath, err := defaults.GetglobalString(cmd, "cni-path")
 	if err != nil {
 		return err
 	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	cniNetconfpath, err := defaults.GetglobalString(cmd, "cni-netconfpath")
 	if err != nil {
 		return err
 	}

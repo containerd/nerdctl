@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/containerd/nerdctl/pkg/defaults"
+
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images/converter"
 	refdocker "github.com/containerd/containerd/reference/docker"
@@ -121,7 +123,7 @@ func pushAction(cmd *cobra.Command, args []string) error {
 	ref := named.String()
 	refDomain := refdocker.Domain(named)
 
-	insecure, err := cmd.Flags().GetBool("insecure-registry")
+	insecure, err := defaults.GetglobalBool(cmd, "insecure-registry")
 	if err != nil {
 		return err
 	}

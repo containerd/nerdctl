@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/containerd/nerdctl/pkg/defaults"
+
 	composecli "github.com/compose-spec/compose-go/cli"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
@@ -78,7 +80,7 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 	if err != nil {
 		return nil, err
 	}
-	debugFull, err := cmd.Flags().GetBool("debug-full")
+	debugFull, err := defaults.GetglobalBool(cmd, "debug-full")
 	if err != nil {
 		return nil, err
 	}
@@ -86,19 +88,19 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 	if err != nil {
 		return nil, err
 	}
-	insecure, err := cmd.Flags().GetBool("insecure-registry")
+	insecure, err := defaults.GetglobalBool(cmd, "insecure-registry")
 	if err != nil {
 		return nil, err
 	}
-	cniPath, err := cmd.Flags().GetString("cni-path")
+	cniPath, err := defaults.GetglobalString(cmd, "cni-path")
 	if err != nil {
 		return nil, err
 	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	cniNetconfpath, err := defaults.GetglobalString(cmd, "cni-netconfpath")
 	if err != nil {
 		return nil, err
 	}
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
+	snapshotter, err := defaults.GetglobalString(cmd, "snapshotter")
 	if err != nil {
 		return nil, err
 	}

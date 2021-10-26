@@ -24,6 +24,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/containerd/nerdctl/pkg/defaults"
+
 	"github.com/containerd/nerdctl/pkg/version"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	clitypes "github.com/docker/cli/cli/config/types"
@@ -173,7 +175,7 @@ func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRe
 func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthConfig) (registrytypes.AuthenticateOKBody, error) {
 
 	var insecureRegistries []string
-	insecureRegistry, err := cmd.Flags().GetBool("insecure-registry")
+	insecureRegistry, err := defaults.GetglobalBool(cmd, "insecure-registry")
 	if err != nil {
 		return registrytypes.AuthenticateOKBody{}, err
 	}

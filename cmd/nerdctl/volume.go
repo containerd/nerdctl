@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +43,7 @@ func newVolumeCommand() *cobra.Command {
 // getVolumeStore returns a volume store
 // that corresponds to a directory like `/var/lib/nerdctl/1935db59/volumes/default`
 func getVolumeStore(cmd *cobra.Command) (volumestore.VolumeStore, error) {
-	ns, err := cmd.Flags().GetString("namespace")
+	ns, err := defaults.GetglobalString(cmd, "namespace")
 	if err != nil {
 		return nil, err
 	}

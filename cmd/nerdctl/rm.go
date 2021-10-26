@@ -23,6 +23,8 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/containerd/nerdctl/pkg/defaults"
+
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
@@ -75,7 +77,7 @@ func rmAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ns, err := cmd.Flags().GetString("namespace")
+	ns, err := defaults.GetglobalString(cmd, "namespace")
 	if err != nil {
 		return err
 	}

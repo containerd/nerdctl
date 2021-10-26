@@ -24,6 +24,7 @@ import (
 	"os/exec"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
 
@@ -59,7 +60,7 @@ func logsAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ns, err := cmd.Flags().GetString("namespace")
+	ns, err := defaults.GetglobalString(cmd, "namespace")
 	if err != nil {
 		return err
 	}

@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/containerd/nerdctl/pkg/defaults"
+
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/mount"
@@ -92,7 +94,7 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 	if ensuredImage != nil {
 		imageVolumes = ensuredImage.ImageConfig.Volumes
 
-		snapshotter, err := cmd.Flags().GetString("snapshotter")
+		snapshotter, err := defaults.GetglobalString(cmd, "snapshotter")
 		if err != nil {
 			return nil, nil, err
 		}

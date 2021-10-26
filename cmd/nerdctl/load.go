@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/archive"
 	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/spf13/cobra"
 )
@@ -99,7 +100,7 @@ func loadImage(in io.Reader, cmd *cobra.Command, args []string, platMC platforms
 	}
 	defer cancel()
 
-	sn, err := cmd.Flags().GetString("snapshotter")
+	sn, err := defaults.GetglobalString(cmd, "snapshotter")
 	if err != nil {
 		return err
 	}

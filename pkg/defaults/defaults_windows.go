@@ -37,6 +37,14 @@ func CNINetConfPath() string {
 	return filepath.Join(os.Getenv("ProgramFiles"), "containerd", "cni", "conf")
 }
 
+func NerdctlConfigPath() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(homeDir, "", "nerdctl.toml")
+}
+
 func BuildKitHost() string {
 	return fmt.Sprint("\\\\.\\pipe\\buildkit")
 }

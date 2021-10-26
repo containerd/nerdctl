@@ -23,6 +23,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/identifiers"
+	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -53,11 +54,11 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 	if err := identifiers.Validate(name); err != nil {
 		return fmt.Errorf("malformed name %s: %w", name, err)
 	}
-	cniPath, err := cmd.Flags().GetString("cni-path")
+	cniPath, err := defaults.GetglobalString(cmd, "cni-path")
 	if err != nil {
 		return err
 	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	cniNetconfpath, err := defaults.GetglobalString(cmd, "cni-netconfpath")
 	if err != nil {
 		return err
 	}

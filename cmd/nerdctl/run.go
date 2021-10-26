@@ -232,7 +232,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return errors.New("image name needs to be specified")
 	}
 
-	ns, err := cmd.Flags().GetString("namespace")
+	ns, err := defaults.GetglobalString(cmd, "namespace")
 	if err != nil {
 		return err
 	}
@@ -416,11 +416,11 @@ func runAction(cmd *cobra.Command, args []string) error {
 	case nettype.CNI:
 		// We only verify flags and generate resolv.conf here.
 		// The actual network is configured in the oci hook.
-		cniPath, err := cmd.Flags().GetString("cni-path")
+		cniPath, err := defaults.GetglobalString(cmd, "cni-path")
 		if err != nil {
 			return err
 		}
-		cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+		cniNetconfpath, err := defaults.GetglobalString(cmd, "cni-netconfpath")
 		if err != nil {
 			return err
 		}
@@ -694,7 +694,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 		return nil, nil, nil, err
 	}
 	if !imageless {
-		snapshotter, err := cmd.Flags().GetString("snapshotter")
+		snapshotter, err := defaults.GetglobalString(cmd, "snapshotter")
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -702,7 +702,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		insecureRegistry, err := cmd.Flags().GetBool("insecure-registry")
+		insecureRegistry, err := defaults.GetglobalBool(cmd, "insecure-registry")
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -919,7 +919,7 @@ func generateRestartOpts(restartFlag, logURI string) ([]containerd.NewContainerO
 }
 
 func getContainerStateDirPath(cmd *cobra.Command, dataStore, id string) (string, error) {
-	ns, err := cmd.Flags().GetString("namespace")
+	ns, err := defaults.GetglobalString(cmd, "namespace")
 	if err != nil {
 		return "", err
 	}

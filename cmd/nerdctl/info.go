@@ -23,6 +23,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/containerd/nerdctl/pkg/defaults"
+
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
@@ -70,11 +72,11 @@ func infoAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
+	snapshotter, err := defaults.GetglobalString(cmd, "snapshotter")
 	if err != nil {
 		return err
 	}
-	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
+	cgroupManager, err := defaults.GetglobalString(cmd, "cgroup-manager")
 	if err != nil {
 		return err
 	}
@@ -91,11 +93,11 @@ func infoAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	namespace, err := cmd.Flags().GetString("namespace")
+	namespace, err := defaults.GetglobalString(cmd, "namespace")
 	if err != nil {
 		return err
 	}
-	debug, err := cmd.Flags().GetBool("debug")
+	debug, err := defaults.GetglobalBool(cmd, "debug")
 	if err != nil {
 		return err
 	}

@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -34,6 +35,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -88,6 +90,7 @@ func newApp() *cobra.Command {
 		SilenceErrors:    true,
 		TraverseChildren: true, // required for global short hands like -a, -H, -n
 	}
+	rootCmd.PersistentFlags().String("config-file", ncdefaults.NerdctlConfigPath(), "config file")
 	rootCmd.SetUsageTemplate(mainHelpTemplate)
 	rootCmd.PersistentFlags().Bool("debug", false, "debug mode")
 	rootCmd.PersistentFlags().Bool("debug-full", false, "debug mode (with full output)")
@@ -107,12 +110,16 @@ func newApp() *cobra.Command {
 	rootCmd.PersistentFlags().Bool("insecure-registry", false, "skips verifying HTTPS certs, and allows falling back to plain HTTP")
 
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		debug, err := cmd.Flags().GetBool("debug-full")
+		err := InitConfig(rootCmd)
+		if err != nil {
+			return err
+		}
+		debug, err := ncdefaults.GetglobalBool(cmd, "debug-full")
 		if err != nil {
 			return err
 		}
 		if !debug {
-			debug, err = cmd.Flags().GetBool("debug")
+			debug, err = ncdefaults.GetglobalBool(cmd, "debug")
 			if err != nil {
 				return err
 			}
@@ -120,11 +127,14 @@ func newApp() *cobra.Command {
 		if debug {
 			logrus.SetLevel(logrus.DebugLevel)
 		}
-		address := cmd.Flags().Lookup("address").Value.String()
+		address, err := ncdefaults.GetglobalString(cmd, "address")
+		if err != nil {
+			return err
+		}
 		if strings.Contains(address, "://") && !strings.HasPrefix(address, "unix://") {
 			return fmt.Errorf("invalid address %q", address)
 		}
-		cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
+		cgroupManager, err := ncdefaults.GetglobalString(cmd, "cgroup-manager")
 		if err != nil {
 			return err
 		}
@@ -134,6 +144,14 @@ func newApp() *cobra.Command {
 			default:
 				return fmt.Errorf("invalid cgroup-manager %q (supported values: \"systemd\", \"cgroupfs\", \"none\")", cgroupManager)
 			}
+		}
+		storageDriver, err := ncdefaults.GetglobalString(rootCmd, "storage-driver")
+		if err != nil {
+			rootCmd.PersistentFlags().Set("storage-driver", storageDriver)
+		}
+		host, err := ncdefaults.GetglobalString(rootCmd, "host")
+		if err != nil {
+			rootCmd.PersistentFlags().Set("host", host)
 		}
 		if appNeedsRootlessParentMain(cmd, args) {
 			// reexec /proc/self/exe with `nsenter` into RootlessKit namespaces
@@ -336,4 +354,22 @@ func AddPersistentStringFlag(cmd *cobra.Command, name string, aliases, nonPersis
 			persistentFlags.StringVar(p, a, value, aliasesUsage)
 		}
 	}
+}
+
+func InitConfig(cmd *cobra.Command) (err error) {
+	cfgFile, err := cmd.Flags().GetString("config-file")
+	if err != nil {
+		return err
+	}
+	viper.AddConfigPath(filepath.Dir(cfgFile))
+	viper.SetConfigName(filepath.Base(cfgFile))
+	viper.SetConfigType("toml")
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			return nil
+		} else {
+			return err
+		}
+	}
+	return nil
 }

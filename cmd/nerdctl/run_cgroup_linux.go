@@ -26,6 +26,8 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd/containers"
+	"github.com/containerd/nerdctl/pkg/defaults"
+
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
@@ -37,7 +39,7 @@ import (
 )
 
 func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
-	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
+	cgroupManager, err := defaults.GetglobalString(cmd, "cgroup-manager")
 	if err != nil {
 		return nil, err
 	}

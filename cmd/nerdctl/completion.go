@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/spf13/cobra"
@@ -96,11 +97,11 @@ func shellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, 
 		excludeMap[ex] = struct{}{}
 	}
 
-	cniPath, err := cmd.Flags().GetString("cni-path")
+	cniPath, err := defaults.GetglobalString(cmd, "cni-path")
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	cniNetconfpath, err := defaults.GetglobalString(cmd, "cni-netconfpath")
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}

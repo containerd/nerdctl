@@ -19,6 +19,8 @@ package main
 import (
 	"errors"
 
+	"github.com/containerd/nerdctl/pkg/defaults"
+
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/platformutil"
@@ -61,11 +63,11 @@ func pullAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer cancel()
-	insecure, err := cmd.Flags().GetBool("insecure-registry")
+	insecure, err := defaults.GetglobalBool(cmd, "insecure-registry")
 	if err != nil {
 		return err
 	}
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
+	snapshotter, err := defaults.GetglobalString(cmd, "snapshotter")
 	if err != nil {
 		return err
 	}

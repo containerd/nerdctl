@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/containerd/nerdctl/pkg/defaults"
+
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/netutil"
@@ -53,11 +55,11 @@ func networkInspectAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("requires at least 1 argument")
 	}
 
-	cniPath, err := cmd.Flags().GetString("cni-path")
+	cniPath, err := defaults.GetglobalString(cmd, "cni-path")
 	if err != nil {
 		return err
 	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	cniNetconfpath, err := defaults.GetglobalString(cmd, "cni-netconfpath")
 	if err != nil {
 		return err
 	}

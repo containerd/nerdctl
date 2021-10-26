@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
-
 	"github.com/spf13/cobra"
 )
 
@@ -45,11 +45,11 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("requires at least 1 argument")
 	}
-	cniPath, err := cmd.Flags().GetString("cni-path")
+	cniPath, err := defaults.GetglobalString(cmd, "cni-path")
 	if err != nil {
 		return err
 	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	cniNetconfpath, err := defaults.GetglobalString(cmd, "cni-netconfpath")
 	if err != nil {
 		return err
 	}

@@ -36,6 +36,10 @@ func CNINetConfPath() string {
 	return gocni.DefaultNetDir
 }
 
+func NerdctlConfigPath() string {
+	return "/etc/nerdctl/nerdctl.toml"
+}
+
 func BuildKitHost() string {
 	return "unix:///run/buildkit/buildkitd.sock"
 }
