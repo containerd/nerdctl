@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
 	"github.com/sirupsen/logrus"
 )
@@ -55,4 +56,8 @@ func parseVolumeOptions(vType, src, optsRaw string) ([]string, []oci.SpecOpts, e
 		opts = append(opts, "ro")
 	} // No need to return option when "rw"
 	return opts, nil, nil
+}
+
+func ProcessFlagTmpfs(s string) (*Processed, error) {
+	return nil, errdefs.ErrNotImplemented
 }

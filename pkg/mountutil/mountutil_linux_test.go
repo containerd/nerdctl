@@ -187,3 +187,15 @@ func TestParseVolumeOptions(t *testing.T) {
 		})
 	}
 }
+
+func TestProcessTmpfs(t *testing.T) {
+	testCases := map[string][]string{
+		"/tmp":               {"noexec", "nosuid", "nodev"},
+		"/tmp:size=64m,exec": {"nosuid", "nodev", "size=64m", "exec"},
+	}
+	for k, expected := range testCases {
+		x, err := ProcessFlagTmpfs(k)
+		assert.NilError(t, err)
+		assert.DeepEqual(t, expected, x.Mount.Options)
+	}
+}

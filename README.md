@@ -329,6 +329,7 @@ Runtime flags:
 
 Volume flags:
 - :whale: `-v, --volume`: Bind mount a volume
+- :whale: `--tmpfs`: Mount a tmpfs directory
 
 Rootfs flags:
 - :whale: `--read-only`: Mount the container's root filesystem as read only

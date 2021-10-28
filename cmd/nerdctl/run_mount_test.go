@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -182,4 +183,26 @@ CMD ["readlink", "/mnt/passwd"]
 
 	base.Cmd("run", "--rm", imageName).AssertOutContains(expected)
 	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains(expected)
+}
+
+func TestRunTmpfs(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	f := func(allow, deny []string) func(stdout string) error {
+		return func(stdout string) error {
+			for _, s := range allow {
+				if !strings.Contains(stdout, s) {
+					return fmt.Errorf("expected stdout to contain %q, got %q", s, stdout)
+				}
+			}
+			for _, s := range deny {
+				if strings.Contains(stdout, s) {
+					return fmt.Errorf("expected stdout not to contain %q, got %q", s, stdout)
+				}
+			}
+			return nil
+		}
+	}
+	base.Cmd("run", "--rm", "--tmpfs", "/tmp", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "noexec"}, nil))
+	base.Cmd("run", "--rm", "--tmpfs", "/tmp:size=64m,exec", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=65536k"}, []string{"noexec"}))
 }
