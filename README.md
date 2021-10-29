@@ -789,7 +789,10 @@ Display detailed information on one or more networks
 
 Usage: `nerdctl network inspect [OPTIONS] NETWORK [NETWORK...]`
 
-Unimplemented `docker network inspect` flags: `--format`, `--verbose`
+Flags:
+- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+
+Unimplemented `docker network inspect` flags: `--verbose`
 
 ### :whale: nerdctl network rm
 Remove one or more networks
