@@ -225,3 +225,32 @@ func TestRunUlimit(t *testing.T) {
 
 	base.Cmd("run", "--rm", "--ulimit", ulimit, testutil.AlpineImage, "sh", "-c", "ulimit -n").AssertOutContains("622")
 }
+
+func TestRunEnv(t *testing.T) {
+	base := testutil.NewBase(t)
+	base.Cmd("run", "--rm",
+		"--env", "FOO=foo1,foo2",
+		"--env", "BAR=bar1 bar2",
+		"--env", "BAZ=",
+		"--env", "QUX",
+		"--env", "QUUX=quux1",
+		"--env", "QUUX=quux2",
+		testutil.AlpineImage, "env").AssertOutWithFunc(func(stdout string) error {
+		if !strings.Contains(stdout, "\nFOO=foo1,foo2\n") {
+			return errors.New("got bad FOO")
+		}
+		if !strings.Contains(stdout, "\nBAR=bar1 bar2\n") {
+			return errors.New("got bad BAR")
+		}
+		if !strings.Contains(stdout, "\nBAZ=\n") {
+			return errors.New("got bad BAZ")
+		}
+		if strings.Contains(stdout, "QUX") {
+			return errors.New("got bad QUX (should not be set)")
+		}
+		if !strings.Contains(stdout, "\nQUUX=quux2\n") {
+			return errors.New("got bad QUUX")
+		}
+		return nil
+	})
+}

@@ -53,20 +53,21 @@ func newBuildCommand() *cobra.Command {
 			Value:   pflag.NewStringValue(defaults.BuildKitHost(), new(string)),
 		},
 	)
-	buildCommand.Flags().StringSliceP("tag", "t", nil, "Name and optionally a tag in the 'name:tag' format")
+	buildCommand.Flags().StringArrayP("tag", "t", nil, "Name and optionally a tag in the 'name:tag' format")
 	buildCommand.Flags().StringP("file", "f", "", "Name of the Dockerfile")
 	buildCommand.Flags().String("target", "", "Set the target build stage to build")
-	buildCommand.Flags().StringSlice("build-arg", nil, "Set build-time variables")
+	buildCommand.Flags().StringArray("build-arg", nil, "Set build-time variables")
 	buildCommand.Flags().Bool("no-cache", false, "Do not use cache when building the image")
 	buildCommand.Flags().StringP("output", "o", "", "Output destination (format: type=local,dest=path)")
 	buildCommand.Flags().String("progress", "auto", "Set type of progress output (auto, plain, tty). Use plain to show container output")
-	buildCommand.Flags().StringSlice("secret", nil, "Secret file to expose to the build: id=mysecret,src=/local/secret")
-	buildCommand.Flags().StringSlice("ssh", nil, "SSH agent socket or keys to expose to the build (format: default|<id>[=<socket>|<key>[,<key>]])")
+	buildCommand.Flags().StringArray("secret", nil, "Secret file to expose to the build: id=mysecret,src=/local/secret")
+	buildCommand.Flags().StringArray("ssh", nil, "SSH agent socket or keys to expose to the build (format: default|<id>[=<socket>|<key>[,<key>]])")
 	buildCommand.Flags().BoolP("quiet", "q", false, "Suppress the build output and print image ID on success")
-	buildCommand.Flags().StringSlice("cache-from", nil, "External cache sources (eg. user/app:cache, type=local,src=path/to/dir)")
-	buildCommand.Flags().StringSlice("cache-to", nil, "Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir)")
+	buildCommand.Flags().StringArray("cache-from", nil, "External cache sources (eg. user/app:cache, type=local,src=path/to/dir)")
+	buildCommand.Flags().StringArray("cache-to", nil, "Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir)")
 
 	// #region platform flags
+	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	buildCommand.Flags().StringSlice("platform", []string{}, "Set target platform for build (e.g., \"amd64\", \"arm64\")")
 	buildCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 	// #endregion
@@ -168,7 +169,7 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 		}
 		needsLoading = true
 	}
-	tagValue, err := cmd.Flags().GetStringSlice("tag")
+	tagValue, err := cmd.Flags().GetStringArray("tag")
 	if err != nil {
 		return "", nil, false, nil, err
 	}
@@ -241,7 +242,7 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 		buildctlArgs = append(buildctlArgs, "--opt=platform="+strings.Join(platform, ","))
 	}
 
-	buildArgsValue, err := cmd.Flags().GetStringSlice("build-arg")
+	buildArgsValue, err := cmd.Flags().GetStringArray("build-arg")
 	if err != nil {
 		return "", nil, false, cleanup, err
 	}
@@ -271,7 +272,7 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 		buildctlArgs = append(buildctlArgs, "--no-cache")
 	}
 
-	secretValue, err := cmd.Flags().GetStringSlice("secret")
+	secretValue, err := cmd.Flags().GetStringArray("secret")
 	if err != nil {
 		return "", nil, false, cleanup, err
 	}
@@ -279,7 +280,7 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 		buildctlArgs = append(buildctlArgs, "--secret="+s)
 	}
 
-	sshValue, err := cmd.Flags().GetStringSlice("ssh")
+	sshValue, err := cmd.Flags().GetStringArray("ssh")
 	if err != nil {
 		return "", nil, false, cleanup, err
 	}
@@ -287,7 +288,7 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 		buildctlArgs = append(buildctlArgs, "--ssh="+s)
 	}
 
-	cacheFrom, err := cmd.Flags().GetStringSlice("cache-from")
+	cacheFrom, err := cmd.Flags().GetStringArray("cache-from")
 	if err != nil {
 		return "", nil, false, cleanup, err
 	}
@@ -298,7 +299,7 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 		buildctlArgs = append(buildctlArgs, "--import-cache="+s)
 	}
 
-	cacheTo, err := cmd.Flags().GetStringSlice("cache-to")
+	cacheTo, err := cmd.Flags().GetStringArray("cache-to")
 	if err != nil {
 		return "", nil, false, cleanup, err
 	}

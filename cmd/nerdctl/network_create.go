@@ -41,7 +41,7 @@ func newNetworkCreateCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	networkCreateCommand.Flags().String("subnet", "", `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
-	networkCreateCommand.Flags().StringSlice("label", nil, "Set metadata for a network")
+	networkCreateCommand.Flags().StringArray("label", nil, "Set metadata for a network")
 	return networkCreateCommand
 }
 
@@ -68,7 +68,7 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	labels, err := cmd.Flags().GetStringSlice("label")
+	labels, err := cmd.Flags().GetStringArray("label")
 	if err != nil {
 		return err
 	}

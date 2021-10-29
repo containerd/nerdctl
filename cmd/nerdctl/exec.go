@@ -54,7 +54,9 @@ func newExecCommand() *cobra.Command {
 	execCommand.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
 	execCommand.Flags().BoolP("detach", "d", false, "Detached mode: run command in the background")
 	execCommand.Flags().StringP("workdir", "w", "", "Working directory inside the container")
-	execCommand.Flags().StringSliceP("env", "e", nil, "Set environment variables")
+	// env needs to be StringArray, not StringSlice, to prevent "FOO=foo1,foo2" from being split to {"FOO=foo1", "foo2"}
+	execCommand.Flags().StringArrayP("env", "e", nil, "Set environment variables")
+	// env-file is defined as StringSlice, not StringArray, to allow specifying "--env-file=FILE1,FILE2" (compatible with Podman)
 	execCommand.Flags().StringSlice("env-file", nil, "Set environment variables from file")
 	execCommand.Flags().Bool("privileged", false, "Give extended privileges to the command")
 	return execCommand
@@ -238,7 +240,7 @@ func generateExecProcessSpec(ctx context.Context, cmd *cobra.Command, args []str
 		}
 		pspec.Env = append(pspec.Env, env...)
 	}
-	env, err := cmd.Flags().GetStringSlice("env")
+	env, err := cmd.Flags().GetStringArray("env")
 	if err != nil {
 		return nil, err
 	}

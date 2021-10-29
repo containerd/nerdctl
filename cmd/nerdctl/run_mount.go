@@ -44,7 +44,7 @@ import (
 // parseMountFlags will also parse --mount in a future release.
 func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*mountutil.Processed, error) {
 	var parsed []*mountutil.Processed
-	if flagVSlice, err := cmd.Flags().GetStringSlice("volume"); err != nil {
+	if flagVSlice, err := cmd.Flags().GetStringArray("volume"); err != nil {
 		return nil, err
 	} else {
 		for _, v := range strutil.DedupeStrSlice(flagVSlice) {

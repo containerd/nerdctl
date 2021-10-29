@@ -44,6 +44,7 @@ func newLoadCommand() *cobra.Command {
 	loadCommand.Flags().StringP("input", "i", "", "Read from tar archive file, instead of STDIN")
 
 	// #region platform flags
+	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	loadCommand.Flags().StringSlice("platform", []string{}, "Import content for a specific platform")
 	loadCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 	loadCommand.Flags().Bool("all-platforms", false, "Import content for all platforms")

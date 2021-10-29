@@ -31,7 +31,7 @@ func newComposeBuildCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeBuildCommand.Flags().StringSlice("build-arg", nil, "Set build-time variables for services.")
+	composeBuildCommand.Flags().StringArray("build-arg", nil, "Set build-time variables for services.")
 	composeBuildCommand.Flags().Bool("no-cache", false, "Do not use cache when building the image.")
 	composeBuildCommand.Flags().String("progress", "", "Set type of progress output")
 	return composeBuildCommand
@@ -42,7 +42,7 @@ func composeBuildAction(cmd *cobra.Command, args []string) error {
 		// TODO: support specifying service names as args
 		return fmt.Errorf("arguments %v not supported", args)
 	}
-	buildArg, err := cmd.Flags().GetStringSlice("build-arg")
+	buildArg, err := cmd.Flags().GetStringArray("build-arg")
 	if err != nil {
 		return err
 	}
