@@ -823,7 +823,8 @@ Display detailed information on one or more volumes
 
 Usage: `nerdctl volume inspect [OPTIONS] VOLUME [VOLUME...]`
 
-Unimplemented `docker volume inspect` flags: `--format`
+Flags:
+- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 
 ### :whale: nerdctl volume rm
 Remove one or more volumes
