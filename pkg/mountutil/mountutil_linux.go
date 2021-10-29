@@ -25,6 +25,8 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/oci"
+	mobymount "github.com/moby/sys/mount"
+	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
@@ -218,4 +220,28 @@ func ensureMountOptionalValue(mi mount.Info, vals ...string) error {
 		return fmt.Errorf("mountpoint %q doesn't have optional field neither of %+v", mi.Mountpoint, vals)
 	}
 	return nil
+}
+
+func ProcessFlagTmpfs(s string) (*Processed, error) {
+	split := strings.SplitN(s, ":", 2)
+	dst := split[0]
+	options := []string{"noexec", "nosuid", "nodev"}
+	if len(split) == 2 {
+		raw := append(options, strings.Split(split[1], ",")...)
+		var err error
+		options, err = mobymount.MergeTmpfsOptions(raw)
+		if err != nil {
+			return nil, err
+		}
+	}
+	res := &Processed{
+		Mount: specs.Mount{
+			Type:        "tmpfs",
+			Source:      "tmpfs",
+			Destination: dst,
+			Options:     options,
+		},
+		Type: Tmpfs,
+	}
+	return res, nil
 }

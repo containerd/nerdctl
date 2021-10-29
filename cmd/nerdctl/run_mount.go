@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/mountutil"
+	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/opencontainers/image-spec/identity"
@@ -38,6 +39,37 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+// parseMountFlags parses --volume and --tmpfs.
+// parseMountFlags will also parse --mount in a future release.
+func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*mountutil.Processed, error) {
+	var parsed []*mountutil.Processed
+	if flagVSlice, err := cmd.Flags().GetStringSlice("volume"); err != nil {
+		return nil, err
+	} else {
+		for _, v := range strutil.DedupeStrSlice(flagVSlice) {
+			x, err := mountutil.ProcessFlagV(v, volStore)
+			if err != nil {
+				return nil, err
+			}
+			parsed = append(parsed, x)
+		}
+	}
+
+	// tmpfs needs to be StringArray, not StringSlice, to prevent "/foo:size=64m,exec" from being split to {"/foo:size=64m", "exec"}
+	if tmpfsSlice, err := cmd.Flags().GetStringArray("tmpfs"); err != nil {
+		return nil, err
+	} else {
+		for _, v := range strutil.DedupeStrSlice(tmpfsSlice) {
+			x, err := mountutil.ProcessFlagTmpfs(v)
+			if err != nil {
+				return nil, err
+			}
+			parsed = append(parsed, x)
+		}
+	}
+	return parsed, nil
+}
 
 // generateMountOpts generates volume-related mount opts.
 // Other mounts such as procfs mount are not handled here.
@@ -103,21 +135,14 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 		}
 	}
 
-	flagVSlice, err := cmd.Flags().GetStringSlice("volume")
-	if err != nil {
+	if parsed, err := parseMountFlags(cmd, volStore); err != nil {
 		return nil, nil, err
-	}
-	if flagVSlice := strutil.DedupeStrSlice(flagVSlice); len(flagVSlice) > 0 {
-		ociMounts := make([]specs.Mount, len(flagVSlice))
-		for i, v := range flagVSlice {
-			x, err := mountutil.ProcessFlagV(v, volStore)
-			if err != nil {
-				return nil, nil, err
-			}
+	} else if len(parsed) > 0 {
+		ociMounts := make([]specs.Mount, len(parsed))
+		for i, x := range parsed {
 			ociMounts[i] = x.Mount
 			mounted[filepath.Clean(x.Mount.Destination)] = struct{}{}
 
-			//copying up initial contents of the mount point directory
 			target, err := securejoin.SecureJoin(tempDir, x.Mount.Destination)
 			if err != nil {
 				return nil, nil, err

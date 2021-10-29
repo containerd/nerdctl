@@ -37,6 +37,7 @@ import (
 const (
 	Bind   = "bind"
 	Volume = "volume"
+	Tmpfs  = "tmpfs"
 )
 
 type Processed struct {

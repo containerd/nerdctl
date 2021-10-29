@@ -73,6 +73,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		"Scale",
 		"SecurityOpt",
 		"Sysctls",
+		"Tmpfs",
 		"User",
 		"WorkingDir",
 		"Volumes",
@@ -577,6 +578,10 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 			return nil, err
 		}
 		c.RunArgs = append(c.RunArgs, "-v="+vStr)
+	}
+
+	for _, tmpfs := range svc.Tmpfs {
+		c.RunArgs = append(c.RunArgs, "--tmpfs="+tmpfs)
 	}
 
 	if svc.WorkingDir != "" {

@@ -167,6 +167,8 @@ func newRunCommand() *cobra.Command {
 
 	// #region mount flags
 	runCommand.Flags().StringSliceP("volume", "v", nil, "Bind mount a volume")
+	// tmpfs needs to be StringArray, not StringSlice, to prevent "/foo:size=64m,exec" from being split to {"/foo:size=64m", "exec"}
+	runCommand.Flags().StringArray("tmpfs", nil, "Mount a tmpfs directory")
 	// #endregion
 
 	// rootfs flags
