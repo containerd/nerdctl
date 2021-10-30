@@ -34,7 +34,7 @@ func newVolumeCreateCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	volumeCreateCommand.Flags().StringSlice("label", nil, "Set a label on the volume")
+	volumeCreateCommand.Flags().StringArray("label", nil, "Set a label on the volume")
 	return volumeCreateCommand
 }
 
@@ -51,7 +51,7 @@ func volumeCreateAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	labels, err := cmd.Flags().GetStringSlice("label")
+	labels, err := cmd.Flags().GetStringArray("label")
 	if err != nil {
 		return err
 	}

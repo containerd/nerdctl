@@ -41,6 +41,7 @@ func newPushCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 	// #region platform flags
+	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	pushCommand.Flags().StringSlice("platform", []string{}, "Push content for a specific platform")
 	pushCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 	pushCommand.Flags().Bool("all-platforms", false, "Push content for all platforms")

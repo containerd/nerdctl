@@ -110,6 +110,7 @@ func newRunCommand() *cobra.Command {
 	// #endregion
 
 	// #region network flags
+	// network (net) is defined as StringSlice, not StringArray, to allow specifying "--network=cni1,cni2"
 	runCommand.Flags().StringSlice("network", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none")`)
 	runCommand.RegisterFlagCompletionFunc("network", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return shellCompleteNetworkNames(cmd, []string{})
@@ -118,7 +119,9 @@ func newRunCommand() *cobra.Command {
 	runCommand.RegisterFlagCompletionFunc("net", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return shellCompleteNetworkNames(cmd, []string{})
 	})
+	// dns is defined as StringSlice, not StringArray, to allow specifying "--dns=1.1.1.1,8.8.8.8" (compatible with Podman)
 	runCommand.Flags().StringSlice("dns", nil, "Set custom DNS servers")
+	// publish is defined as StringSlice, not StringArray, to allow specifying "--publish=80:80,443:443" (compatible with Podman)
 	runCommand.Flags().StringSliceP("publish", "p", nil, "Publish a container's port(s) to the host")
 	runCommand.Flags().StringP("hostname", "h", "", "Container host name")
 	// #endregion
@@ -137,7 +140,9 @@ func newRunCommand() *cobra.Command {
 	})
 	runCommand.Flags().String("cpuset-cpus", "", "CPUs in which to allow execution (0-3, 0,1)")
 	runCommand.Flags().Int("cpu-shares", 0, "CPU shares (relative weight)")
+	// device is defined as StringSlice, not StringArray, to allow specifying "--device=DEV1,DEV2" (compatible with Podman)
 	runCommand.Flags().StringSlice("device", nil, "Add a host device to the container")
+	// ulimit is defined as StringSlice, not StringArray, to allow specifying "--ulimit=ULIMIT1,ULIMIT2" (compatible with Podman)
 	runCommand.Flags().StringSlice("ulimit", nil, "Ulimit options")
 	// #endregion
 
@@ -145,10 +150,11 @@ func newRunCommand() *cobra.Command {
 	runCommand.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
 
 	// #region security flags
-	runCommand.Flags().StringSlice("security-opt", []string{}, "Security options")
+	runCommand.Flags().StringArray("security-opt", []string{}, "Security options")
 	runCommand.RegisterFlagCompletionFunc("security-opt", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"seccomp=", "seccomp=unconfined", "apparmor=", "apparmor=" + defaults.AppArmorProfileName, "apparmor=unconfined", "no-new-privileges"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	// cap-add and cap-drop are defined as StringSlice, not StringArray, to allow specifying "--cap-add=CAP_SYS_ADMIN,CAP_NET_ADMIN" (compatible with Podman)
 	runCommand.Flags().StringSlice("cap-add", []string{}, "Add Linux capabilities")
 	runCommand.RegisterFlagCompletionFunc("cap-add", capShellComplete)
 	runCommand.Flags().StringSlice("cap-drop", []string{}, "Drop Linux capabilities")
@@ -158,15 +164,18 @@ func newRunCommand() *cobra.Command {
 
 	// #region runtime flags
 	runCommand.Flags().String("runtime", defaults.Runtime, "Runtime to use for this container, e.g. \"crun\", or \"io.containerd.runsc.v1\"")
-	runCommand.Flags().StringSlice("sysctl", nil, "Sysctl options")
-	runCommand.Flags().StringSlice("gpus", nil, "GPU devices to add to the container ('all' to pass all GPUs)")
+	// sysctl needs to be StringArray, not StringSlice, to prevent "foo=foo1,foo2" from being split to {"foo=foo1", "foo2"}
+	runCommand.Flags().StringArray("sysctl", nil, "Sysctl options")
+	// gpus needs to be StringArray, not StringSlice, to prevent "capabilities=utility,device=DEV" from being split to {"capabilities=utility", "device=DEV"}
+	runCommand.Flags().StringArray("gpus", nil, "GPU devices to add to the container ('all' to pass all GPUs)")
 	runCommand.RegisterFlagCompletionFunc("gpus", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"all"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	// #endregion
 
 	// #region mount flags
-	runCommand.Flags().StringSliceP("volume", "v", nil, "Bind mount a volume")
+	// volume needs to be StringArray, not StringSlice, to prevent "/foo:/foo:ro,Z" from being split to {"/foo:/foo:ro", "Z"}
+	runCommand.Flags().StringArrayP("volume", "v", nil, "Bind mount a volume")
 	// tmpfs needs to be StringArray, not StringSlice, to prevent "/foo:size=64m,exec" from being split to {"/foo:size=64m", "exec"}
 	runCommand.Flags().StringArray("tmpfs", nil, "Mount a tmpfs directory")
 	// #endregion
@@ -179,13 +188,18 @@ func newRunCommand() *cobra.Command {
 	// #region env flags
 	runCommand.Flags().String("entrypoint", "", "Overwrite the default ENTRYPOINT of the image")
 	runCommand.Flags().StringP("workdir", "w", "", "Working directory inside the container")
-	runCommand.Flags().StringSliceP("env", "e", nil, "Set environment variables")
+	// env needs to be StringArray, not StringSlice, to prevent "FOO=foo1,foo2" from being split to {"FOO=foo1", "foo2"}
+	runCommand.Flags().StringArrayP("env", "e", nil, "Set environment variables")
+	// add-host is defined as StringSlice, not StringArray, to allow specifying "--add-host=HOST1:IP1,HOST2:IP2" (compatible with Podman)
 	runCommand.Flags().StringSlice("add-host", nil, "Add a custom host-to-IP mapping (host:ip)")
+	// env-file is defined as StringSlice, not StringArray, to allow specifying "--env-file=FILE1,FILE2" (compatible with Podman)
 	runCommand.Flags().StringSlice("env-file", nil, "Set environment variables from file")
 
 	// #region metadata flags
 	runCommand.Flags().String("name", "", "Assign a name to the container")
-	runCommand.Flags().StringSliceP("label", "l", nil, "Set metadata on container")
+	// label needs to be StringArray, not StringSlice, to prevent "foo=foo1,foo2" from being split to {"foo=foo1", "foo2"}
+	runCommand.Flags().StringArrayP("label", "l", nil, "Set metadata on container")
+	// label-file is defined as StringSlice, not StringArray, to allow specifying "--env-file=FILE1,FILE2" (compatible with Podman)
 	runCommand.Flags().StringSlice("label-file", nil, "Set metadata on container from file")
 	runCommand.Flags().String("cidfile", "", "Write the container ID to the file")
 	runCommand.Flags().String("pidfile", "", "file path to write the task's pid")
@@ -316,7 +330,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 		opts = append(opts, oci.WithEnv(env))
 	}
 
-	env, err := cmd.Flags().GetStringSlice("env")
+	env, err := cmd.Flags().GetStringArray("env")
 	if err != nil {
 		return err
 	}
@@ -379,9 +393,6 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 	cOpts = append(cOpts, restartOpts...)
 
-	// DedupeStrSlice is required as a workaround for urfave/cli bug
-	// https://github.com/containerd/nerdctl/issues/108
-	// https://github.com/urfave/cli/issues/1254
 	portSlice, err := cmd.Flags().GetStringSlice("publish")
 	if err != nil {
 		return err
@@ -516,7 +527,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 		opts = append(opts, uOpts...)
 	}
 
-	securityOpt, err := cmd.Flags().GetStringSlice("security-opt")
+	securityOpt, err := cmd.Flags().GetStringArray("security-opt")
 	if err != nil {
 		return err
 	}
@@ -633,13 +644,13 @@ func runAction(cmd *cobra.Command, args []string) error {
 
 	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
 
-	sysctl, err := cmd.Flags().GetStringSlice("sysctl")
+	sysctl, err := cmd.Flags().GetStringArray("sysctl")
 	if err != nil {
 		return err
 	}
 	opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(sysctl)))
 
-	gpus, err := cmd.Flags().GetStringSlice("gpus")
+	gpus, err := cmd.Flags().GetStringArray("gpus")
 	if err != nil {
 		return err
 	}
@@ -995,7 +1006,7 @@ func getContainerStateDirPath(cmd *cobra.Command, dataStore, id string) (string,
 }
 
 func withContainerLabels(cmd *cobra.Command) ([]containerd.NewContainerOpts, error) {
-	labelsMap, err := cmd.Flags().GetStringSlice("label")
+	labelsMap, err := cmd.Flags().GetStringArray("label")
 	if err != nil {
 		return nil, err
 	}

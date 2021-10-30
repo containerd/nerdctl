@@ -43,6 +43,7 @@ func newSaveCommand() *cobra.Command {
 	saveCommand.Flags().StringP("output", "o", "", "Write to a file, instead of STDOUT")
 
 	// #region platform flags
+	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	saveCommand.Flags().StringSlice("platform", []string{}, "Export content for a specific platform")
 	saveCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 	saveCommand.Flags().Bool("all-platforms", false, "Export content for all platforms")
