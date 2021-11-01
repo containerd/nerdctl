@@ -17,14 +17,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"text/template"
 
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
-	"github.com/docker/cli/templates"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +45,7 @@ func volumeInspectAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	result := make([]*native.Volume, len(args))
+	result := make([]interface{}, len(args))
 	for i, name := range args {
 		vol, err := volStore.Get(name)
 		if err != nil {
@@ -60,37 +54,7 @@ func volumeInspectAction(cmd *cobra.Command, args []string) error {
 		result[i] = vol
 	}
 
-	var tmpl *template.Template
-	format, err := cmd.Flags().GetString("format")
-	if err != nil {
-		return err
-	}
-	switch format {
-	case "":
-		b, err := json.MarshalIndent(result, "", "    ")
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(cmd.OutOrStdout(), string(b))
-	case "raw", "table":
-		return errors.New("unsupported format: \"raw\" and \"table\"")
-	default:
-		var err error
-		tmpl, err = templates.Parse(format)
-		if err != nil {
-			return err
-		}
-		for _, f := range result {
-			var b bytes.Buffer
-			if err := tmpl.Execute(&b, f); err != nil {
-				return err
-			}
-			if _, err = fmt.Fprintf(cmd.OutOrStdout(), b.String()+"\n"); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return formatSlice(cmd, result)
 }
 
 func volumeInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

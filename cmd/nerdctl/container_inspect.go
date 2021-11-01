@@ -17,20 +17,14 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"text/template"
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/containerinspector"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
-	"github.com/docker/cli/templates"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -84,47 +78,10 @@ func containerInspectAction(cmd *cobra.Command, args []string) error {
 			errs = append(errs, fmt.Errorf("no such object: %s", req))
 		}
 	}
-
-	var tmpl *template.Template
-	format, err := cmd.Flags().GetString("format")
-	if err != nil {
-		return err
-	}
-	switch format {
-	case "":
-		b, err := json.MarshalIndent(f.entries, "", "    ")
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(cmd.OutOrStdout(), string(b))
-	case "raw", "table":
-		return errors.New("unsupported format: \"raw\" and \"table\"")
-	default:
-		var err error
-		tmpl, err = templates.Parse(format)
-		if err != nil {
-			return err
-		}
-		if tmpl != nil {
-			for _, value := range f.entries {
-				c, ok := value.(*dockercompat.Container)
-				if !ok {
-					logrus.Warnf("%v failed to convert to  Container", value)
-				}
-				var b bytes.Buffer
-				if err := tmpl.Execute(&b, c); err != nil {
-					return err
-				}
-				if _, err = fmt.Fprintf(cmd.OutOrStdout(), b.String()+"\n"); err != nil {
-					return err
-				}
-			}
-		}
-	}
 	if len(errs) > 0 {
 		return fmt.Errorf("%d errors: %v", len(errs), errs)
 	}
-	return nil
+	return formatSlice(cmd, f.entries)
 }
 
 type containerInspector struct {

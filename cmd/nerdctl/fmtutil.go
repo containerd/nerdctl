@@ -16,6 +16,17 @@
 
 package main
 
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"text/template"
+
+	"github.com/docker/cli/templates"
+	"github.com/spf13/cobra"
+)
+
 // Flusher is implemented by text/tabwriter.Writer
 type Flusher interface {
 	Flush() error
@@ -32,4 +43,44 @@ func formatLabels(labels map[string]string) string {
 		}
 	}
 	return res
+}
+
+// formatSlice formats the slice with `--format` flag.
+//
+// --format='' (default): JSON
+// --format='{{json .}}': JSON lines
+//
+// formatSlice is expected to be only used for `nerdctl OBJECT inspect` commands.
+func formatSlice(cmd *cobra.Command, x []interface{}) error {
+	var tmpl *template.Template
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	switch format {
+	case "":
+		b, err := json.MarshalIndent(x, "", "    ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), string(b))
+	case "raw", "table":
+		return errors.New("unsupported format: \"raw\" and \"table\"")
+	default:
+		var err error
+		tmpl, err = templates.Parse(format)
+		if err != nil {
+			return err
+		}
+		for _, f := range x {
+			var b bytes.Buffer
+			if err := tmpl.Execute(&b, f); err != nil {
+				return err
+			}
+			if _, err = fmt.Fprintf(cmd.OutOrStdout(), b.String()+"\n"); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
