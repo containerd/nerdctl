@@ -24,7 +24,6 @@ import (
 	"text/template"
 
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
-	"github.com/docker/cli/templates"
 
 	"github.com/spf13/cobra"
 )
@@ -42,6 +41,9 @@ func newVolumeLsCommand() *cobra.Command {
 	volumeLsCommand.Flags().BoolP("quiet", "q", false, "Only display volume names")
 	// Alias "-f" is reserved for "--filter"
 	volumeLsCommand.Flags().String("format", "", "Format the output using the given go template")
+	volumeLsCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	return volumeLsCommand
 }
 
@@ -78,7 +80,7 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 			return errors.New("format and quiet must not be specified together")
 		}
 		var err error
-		tmpl, err = templates.Parse(format)
+		tmpl, err = parseTemplate(format)
 		if err != nil {
 			return err
 		}

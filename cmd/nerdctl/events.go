@@ -27,7 +27,6 @@ import (
 	"github.com/containerd/containerd/events"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/typeurl"
-	"github.com/docker/cli/templates"
 
 	"github.com/spf13/cobra"
 
@@ -48,6 +47,9 @@ func newEventsCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	eventsCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	eventsCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	return eventsCommand
 }
 
@@ -83,7 +85,7 @@ func eventsAction(cmd *cobra.Command, args []string) error {
 	case "raw", "table":
 		return errors.New("unsupported format: \"raw\" and \"table\"")
 	default:
-		tmpl, err = templates.Parse(format)
+		tmpl, err = parseTemplate(format)
 		if err != nil {
 			return err
 		}

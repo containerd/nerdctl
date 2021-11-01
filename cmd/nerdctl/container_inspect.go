@@ -43,6 +43,9 @@ func newContainerInspectCommand() *cobra.Command {
 		return []string{"dockercompat", "native"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	containerInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	containerInspectCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	return containerInspectCommand
 }
 
