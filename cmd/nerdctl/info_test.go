@@ -27,19 +27,27 @@ import (
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
+func testInfoJSON(stdout string) error {
+	var info dockercompat.Info
+	if err := json.Unmarshal([]byte(stdout), &info); err != nil {
+		return err
+	}
+	unameM := infoutil.UnameM()
+	if info.Architecture != unameM {
+		return fmt.Errorf("expected info.Architecture to be %q, got %q", unameM, info.Architecture)
+	}
+	return nil
+}
+
 func TestInfo(t *testing.T) {
 	base := testutil.NewBase(t)
-	base.Cmd("info", "--format", "{{json .}}").AssertOutWithFunc(func(stdout string) error {
-		var info dockercompat.Info
-		if err := json.Unmarshal([]byte(stdout), &info); err != nil {
-			return err
-		}
-		unameM := infoutil.UnameM()
-		if info.Architecture != unameM {
-			return fmt.Errorf("expected info.Architecture to be %q, got %q", unameM, info.Architecture)
-		}
-		return nil
-	})
+	base.Cmd("info", "--format", "{{json .}}").AssertOutWithFunc(testInfoJSON)
+}
+
+func TestInfoConvenienceForm(t *testing.T) {
+	testutil.DockerIncompatible(t) // until https://github.com/docker/cli/pull/3355 gets merged
+	base := testutil.NewBase(t)
+	base.Cmd("info", "--format", "json").AssertOutWithFunc(testInfoJSON)
 }
 
 func TestInfoWithNamespace(t *testing.T) {

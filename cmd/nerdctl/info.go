@@ -25,7 +25,6 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/docker/cli/templates"
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -41,6 +40,9 @@ func newInfoCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	infoCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	infoCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	return infoCommand
 }
 
@@ -56,7 +58,7 @@ func infoAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if format != "" {
-		tmpl, err = templates.Parse(format)
+		tmpl, err = parseTemplate(format)
 		if err != nil {
 			return err
 		}

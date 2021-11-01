@@ -38,7 +38,6 @@ import (
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/imgutil"
-	"github.com/docker/cli/templates"
 	"github.com/opencontainers/image-spec/identity"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
@@ -63,6 +62,9 @@ func newImagesCommand() *cobra.Command {
 	imagesCommand.Flags().Bool("no-trunc", false, "Don't truncate output")
 	// Alias "-f" is reserved for "--filter"
 	imagesCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	imagesCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	imagesCommand.Flags().Bool("digests", false, "Show digests (compatible with Docker, unlike ID)")
 
 	return imagesCommand
@@ -152,7 +154,7 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 			return errors.New("format and quiet must not be specified together")
 		}
 		var err error
-		tmpl, err = templates.Parse(format)
+		tmpl, err = parseTemplate(format)
 		if err != nil {
 			return err
 		}

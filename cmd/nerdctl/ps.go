@@ -31,7 +31,6 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/docker/cli/templates"
 
 	"github.com/spf13/cobra"
 )
@@ -50,6 +49,9 @@ func newPsCommand() *cobra.Command {
 	psCommand.Flags().BoolP("quiet", "q", false, "Only display container IDs")
 	// Alias "-f" is reserved for "--filter"
 	psCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	psCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	return psCommand
 }
 
@@ -112,7 +114,7 @@ func printContainers(ctx context.Context, cmd *cobra.Command, containers []conta
 			return errors.New("format and quiet must not be specified together")
 		}
 		var err error
-		tmpl, err = templates.Parse(format)
+		tmpl, err = parseTemplate(format)
 		if err != nil {
 			return err
 		}

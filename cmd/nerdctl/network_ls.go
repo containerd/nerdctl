@@ -25,7 +25,6 @@ import (
 	"text/template"
 
 	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/docker/cli/templates"
 
 	"github.com/spf13/cobra"
 )
@@ -43,6 +42,9 @@ func newNetworkLsCommand() *cobra.Command {
 	cmd.Flags().BoolP("quiet", "q", false, "Only display network IDs")
 	// Alias "-f" is reserved for "--filter"
 	cmd.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	return cmd
 }
 
@@ -78,7 +80,7 @@ func networkLsAction(cmd *cobra.Command, args []string) error {
 			return errors.New("format and quiet must not be specified together")
 		}
 		var err error
-		tmpl, err = templates.Parse(format)
+		tmpl, err = parseTemplate(format)
 		if err != nil {
 			return err
 		}

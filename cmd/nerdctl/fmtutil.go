@@ -68,7 +68,7 @@ func formatSlice(cmd *cobra.Command, x []interface{}) error {
 		return errors.New("unsupported format: \"raw\" and \"table\"")
 	default:
 		var err error
-		tmpl, err = templates.Parse(format)
+		tmpl, err = parseTemplate(format)
 		if err != nil {
 			return err
 		}
@@ -83,4 +83,16 @@ func formatSlice(cmd *cobra.Command, x []interface{}) error {
 		}
 	}
 	return nil
+}
+
+// parseTemplate wraps github.com/docker/cli/templates.Parse() to allow `json` as an alias of `{{json .}}`.
+// parseTemplate can be removed when https://github.com/docker/cli/pull/3355 gets merged and tagged (Docker 22.XX).
+func parseTemplate(format string) (*template.Template, error) {
+	aliases := map[string]string{
+		"json": "{{json .}}",
+	}
+	if alias, ok := aliases[format]; ok {
+		format = alias
+	}
+	return templates.Parse(format)
 }

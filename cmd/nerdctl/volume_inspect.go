@@ -33,6 +33,9 @@ func newVolumeInspectCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 	volumeInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	volumeInspectCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	return volumeInspectCommand
 }
 
