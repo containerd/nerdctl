@@ -22,6 +22,7 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
+	"github.com/containerd/nerdctl/pkg/strutil"
 
 	"github.com/spf13/cobra"
 )
@@ -34,6 +35,10 @@ func newPullCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	pullCommand.PersistentFlags().String("unpack", "auto", "Unpack the image for the current single platform (auto/true/false)")
+	pullCommand.RegisterFlagCompletionFunc("unpack", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"auto", "true", "false"}, cobra.ShellCompDirectiveNoFileComp
+	})
 
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
@@ -75,7 +80,15 @@ func pullAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	unpackStr, err := cmd.Flags().GetString("unpack")
+	if err != nil {
+		return err
+	}
+	unpack, err := strutil.ParseBoolOrAuto(unpackStr)
+	if err != nil {
+		return err
+	}
 	_, err = imgutil.EnsureImage(ctx, client, os.Stdout, snapshotter, args[0],
-		"always", insecure, ocispecPlatforms)
+		"always", insecure, ocispecPlatforms, unpack)
 	return err
 }

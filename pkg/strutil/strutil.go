@@ -20,6 +20,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/containerd/containerd/errdefs"
@@ -105,4 +106,14 @@ func ReverseStrSlice(in []string) []string {
 		out[len(in)-i-1] = v
 	}
 	return out
+}
+
+// ParseBoolOrAuto returns (nil, nil) if s is "auto"
+// https://github.com/moby/buildkit/blob/v0.9.1/cmd/buildkitd/config.go#L35-L42
+func ParseBoolOrAuto(s string) (*bool, error) {
+	if s == "" || strings.ToLower(s) == "auto" {
+		return nil, nil
+	}
+	b, err := strconv.ParseBool(s)
+	return &b, err
 }

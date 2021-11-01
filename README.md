@@ -664,6 +664,7 @@ Flags:
 - :whale: `--platform=(amd64|arm64|...)`: Pull content for a specific platform
   - :nerd_face: Unlike Docker, this flag can be specified multiple times (`--platform=amd64 --platform=arm64`)
 - :nerd_face: `--all-platforms`: Pull content for all platforms
+- :nerd_face: `--unpack`: Unpack the image for the current single platform (auto/true/false)
 
 Unimplemented `docker pull` flags: `--all-tags`, `--disable-content-trust` (default true), `--quiet`
 

@@ -803,7 +803,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 			return nil, nil, nil, err
 		}
 		ensured, err = imgutil.EnsureImage(ctx, client, os.Stdout, snapshotter, args[0],
-			pull, insecureRegistry, ocispecPlatforms)
+			pull, insecureRegistry, ocispecPlatforms, nil)
 		if err != nil {
 			return nil, nil, nil, err
 		}
