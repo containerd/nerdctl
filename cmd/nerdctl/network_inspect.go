@@ -41,6 +41,7 @@ func newNetworkInspectCommand() *cobra.Command {
 	networkInspectCommand.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"dockercompat", "native"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	networkInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
 	return networkInspectCommand
 }
 
@@ -105,12 +106,8 @@ func networkInspectAction(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unknown mode %q", mode)
 		}
 	}
-	b, err := json.MarshalIndent(result, "", "    ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(b))
-	return nil
+
+	return formatSlice(cmd, result)
 }
 
 func networkInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

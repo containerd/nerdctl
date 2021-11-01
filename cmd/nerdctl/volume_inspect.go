@@ -17,10 +17,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 
 	"github.com/spf13/cobra"
 )
@@ -35,6 +32,7 @@ func newVolumeInspectCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
+	volumeInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
 	return volumeInspectCommand
 }
 
@@ -47,7 +45,7 @@ func volumeInspectAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	result := make([]*native.Volume, len(args))
+	result := make([]interface{}, len(args))
 	for i, name := range args {
 		vol, err := volStore.Get(name)
 		if err != nil {
@@ -55,12 +53,8 @@ func volumeInspectAction(cmd *cobra.Command, args []string) error {
 		}
 		result[i] = vol
 	}
-	b, err := json.MarshalIndent(result, "", "    ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(b))
-	return nil
+
+	return formatSlice(cmd, result)
 }
 
 func volumeInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
