@@ -715,6 +715,9 @@ Remove one or more images
 
 Usage: `nerdctl rmi [OPTIONS] IMAGE [IMAGE...]`
 
+Flags:
+- :nerd_face: `--async`: Asynchronous mode
+
 Unimplemented `docker rmi` flags: `--force`, `--no-prune`
 
 ### :whale: nerdctl image inspect
