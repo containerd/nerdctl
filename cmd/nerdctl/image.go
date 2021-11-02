@@ -25,6 +25,7 @@ func newImageCommand() *cobra.Command {
 		Category:      CategoryManagement,
 		Use:           "image",
 		Short:         "Manage images",
+		RunE:          unknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

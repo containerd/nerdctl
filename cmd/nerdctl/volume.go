@@ -26,6 +26,7 @@ func newVolumeCommand() *cobra.Command {
 		Category:      CategoryManagement,
 		Use:           "volume",
 		Short:         "Manage volumes",
+		RunE:          unknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

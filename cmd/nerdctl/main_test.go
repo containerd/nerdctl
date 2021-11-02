@@ -26,6 +26,19 @@ func TestMain(m *testing.M) {
 	testutil.M(m)
 }
 
+// TestUnknownCommand tests https://github.com/containerd/nerdctl/issues/487
+func TestUnknownCommand(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	base.Cmd("non-existent-command").AssertFail()
+	base.Cmd("non-existent-command", "info").AssertFail()
+	base.Cmd("system", "non-existent-command").AssertFail()
+	base.Cmd("system", "non-existent-command", "info").AssertFail()
+	base.Cmd("system").AssertOK() // show help without error
+	base.Cmd("system", "info").AssertOutContains("Kernel Version:")
+	base.Cmd("info").AssertOutContains("Kernel Version:")
+}
+
 // TestIssue108 tests https://github.com/containerd/nerdctl/issues/108
 // ("`nerdctl run --net=host -it` fails while `nerdctl run -it --net=host` works")
 func TestIssue108(t *testing.T) {

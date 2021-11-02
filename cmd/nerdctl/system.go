@@ -25,6 +25,7 @@ func newSystemCommand() *cobra.Command {
 		Category:      CategoryManagement,
 		Use:           "system",
 		Short:         "Manage containerd",
+		RunE:          unknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
