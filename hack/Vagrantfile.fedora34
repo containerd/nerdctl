@@ -35,7 +35,8 @@ Vagrant.configure("2") do |config|
       containernetworking-plugins \
       iptables \
       slirp4netns \
-      fuse-overlayfs
+      fuse-overlayfs \
+      openssl
     systemctl enable --now containerd
 
     # Install RootlessKit

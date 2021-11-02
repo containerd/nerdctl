@@ -168,7 +168,7 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 			ocispecPlatforms = []ocispec.Platform{parsed} // no append
 		}
 		_, imgErr := imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), snapshotter, imageName,
-			pullMode, insecure, ocispecPlatforms)
+			pullMode, insecure, ocispecPlatforms, nil)
 		return imgErr
 	}
 

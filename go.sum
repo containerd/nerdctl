@@ -157,8 +157,9 @@ github.com/containerd/go-cni v1.1.0 h1:kAe75MdTddsLCZDqP2BJn6e1ovD+il9oFkNlfGULE
 github.com/containerd/go-cni v1.1.0/go.mod h1:Rflh2EJ/++BA2/vY5ao3K6WJRR/bZKsX123aPk+kUtA=
 github.com/containerd/go-runc v0.0.0-20201020171139-16b287bc67d0/go.mod h1:cNU0ZbCgCQVZK4lgG3P+9tn9/PaJNmoDXPpoJhDR+Ok=
 github.com/containerd/go-runc v1.0.0/go.mod h1:cNU0ZbCgCQVZK4lgG3P+9tn9/PaJNmoDXPpoJhDR+Ok=
-github.com/containerd/imgcrypt v1.1.1 h1:LBwiTfoUsdiEGAR1TpvxE+Gzt7469oVu87iR3mv3Byc=
 github.com/containerd/imgcrypt v1.1.1/go.mod h1:xpLnwiQmEUJPvQoAapeb2SNCxz7Xr6PJrXQb0Dpc4ms=
+github.com/containerd/imgcrypt v1.1.2 h1:UpzJWNIXynv55M1TNAP7kwUwSSbNbo89aAilpvWUJu0=
+github.com/containerd/imgcrypt v1.1.2/go.mod h1:maqDE8PxC8IpBdEIXVe5Y0nghLVMv6wkAbcFRyvO+1M=
 github.com/containerd/nri v0.1.0/go.mod h1:lmxnXF6oMkbqs39FiCt1s0R2HSMhcLel9vNL3m4AaeY=
 github.com/containerd/stargz-snapshotter v0.9.0 h1:J69Orkr6I1p6zJS6MFBa+xB9HebjQIxQEpvJkLxcWvw=
 github.com/containerd/stargz-snapshotter v0.9.0/go.mod h1:m5KYAX74rwuLdV7KZswDNINvVSPYJkA+kE/adANzpPw=

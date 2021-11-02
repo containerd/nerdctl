@@ -110,7 +110,7 @@ docker run -it --rm --privileged nerdctl
 
 The goal of `nerdctl` is to facilitate experimenting the cutting-edge features of containerd that are not present in Docker.
 
-Such features includes, but not limited to, [lazy-pulling](./docs/stargz.md) and [encryption of images](./docs/ocicrypt.md).
+Such features include, but not limited to, [on-demand image pulling (lazy-pulling)](./docs/stargz.md) and [image encryption/decryption](./docs/ocicrypt.md).
 
 Note that competing with Docker is _not_ the goal of `nerdctl`. Those cutting-edge features are expected to be eventually available in Docker as well.
 
@@ -118,8 +118,8 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 
 ## Features present in `nerdctl` but not present in Docker
 Major:
-- [Lazy-pulling using Stargz Snapshotter](./docs/stargz.md): `nerdctl --snapshotter=stargz run` .
-- [Running encrypted images using ocicrypt (imgcrypt)](./docs/ocicrypt.md)
+- [On-demand image pulling (lazy-pulling) using Stargz Snapshotter](./docs/stargz.md): `nerdctl --snapshotter=stargz run IMAGE` .
+- [Image encryption and decryption using ocicrypt (imgcrypt)](./docs/ocicrypt.md): `nerdctl image (encrypt|decrypt) SRC DST`
 
 Minor:
 - Namespacing: `nerdctl --namespace=<NS> ps` .
@@ -230,6 +230,8 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl rmi](#whale-nerdctl-rmi)
     - [:whale: nerdctl image inspect](#whale-nerdctl-image-inspect)
     - [:nerd_face: nerdctl image convert](#nerd_face-nerdctl-image-convert)
+    - [:nerd_face: nerdctl image encrypt](#nerd_face-nerdctl-image-encrypt)
+    - [:nerd_face: nerdctl image decrypt](#nerd_face-nerdctl-image-decrypt)
   - [Registry](#registry)
     - [:whale: nerdctl login](#whale-nerdctl-login)
     - [:whale: nerdctl logout](#whale-nerdctl-logout)
@@ -648,12 +650,13 @@ List images
 Usage: `nerdctl images [OPTIONS] [REPOSITORY[:TAG]]`
 
 Flags:
+- :whale: `-a, --all`: Show all images (unimplemented)
 - :whale: `-q, --quiet`: Only show numeric IDs
 - :whale: `--no-trunc`: Don't truncate output
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 - :whale: `--digests`: Show digests (compatible with Docker, unlike ID)
 
-Unimplemented `docker images` flags: `--all`, `--filter`
+Unimplemented `docker images` flags: `--filter`
 
 ### :whale: nerdctl pull
 Pull an image from a registry.
@@ -664,6 +667,7 @@ Flags:
 - :whale: `--platform=(amd64|arm64|...)`: Pull content for a specific platform
   - :nerd_face: Unlike Docker, this flag can be specified multiple times (`--platform=amd64 --platform=arm64`)
 - :nerd_face: `--all-platforms`: Pull content for all platforms
+- :nerd_face: `--unpack`: Unpack the image for the current single platform (auto/true/false)
 
 Unimplemented `docker pull` flags: `--all-tags`, `--disable-content-trust` (default true), `--quiet`
 
@@ -714,7 +718,12 @@ Remove one or more images
 
 Usage: `nerdctl rmi [OPTIONS] IMAGE [IMAGE...]`
 
-Unimplemented `docker rmi` flags: `--force`, `--no-prune`
+Flags:
+- :nerd_face: `--async`: Asynchronous mode
+- :whale: `-f, --force`: Ignore removal errors
+  - :warning: WIP: currently, images are always forcibly removed, even when `--force` is not specified.
+
+Unimplemented `docker rmi` flags: `--no-prune`
 
 ### :whale: nerdctl image inspect
 Display detailed information on one or more images.
@@ -742,6 +751,51 @@ Flags:
 -  `--oci`                              : convert Docker media types to OCI media types
 -  `--platform=<PLATFORM>`              : convert content for a specific platform
 -  `--all-platforms`                    : convert content for all platforms (default: false)
+
+### :nerd_face: nerdctl image encrypt
+Encrypt image layers. See [`./docs/ocicrypt.md`](./docs/ocicrypt.md).
+
+Usage: `nerdctl image encrypt [OPTIONS] SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]`
+
+Example:
+```bash
+openssl genrsa -out mykey.pem
+openssl rsa -in mykey.pem -pubout -out mypubkey.pem
+nerdctl image encrypt --recipient=jwe:mypubkey.pem --platform=linux/amd64,linux/arm64 foo example.com/foo:encrypted
+nerdctl push example.com/foo:encrypted
+```
+
+:warning: CAUTION: This command only encrypts image layers, but does NOT encrypt [container configuration such as `Env` and `Cmd`](https://github.com/opencontainers/image-spec/blob/v1.0.1/config.md#example).
+To see non-encrypted information, run `nerdctl image inspect --mode=native --platform=PLATFORM example.com/foo:encrypted` .
+
+Flags:
+-  `--recipient=<RECIPIENT>`      : Recipient of the image is the person who can decrypt (e.g., `jwe:mypubkey.pem`)
+-  `--dec-recipient=<RECIPIENT>`  : Recipient of the image; used only for PKCS7 and must be an x509 certificate
+-  `--key=<KEY>[:<PWDESC>]`       : A secret key's filename and an optional password separated by colon, PWDDESC=<password>|pass:<password>|fd=<file descriptor>|filename
+-  `--gpg-homedir=<DIR>`          : The GPG homedir to use; by default gpg uses ~/.gnupg
+-  `--gpg-version=<VERSION>`      : The GPG version ("v1" or "v2"), default will make an educated guess
+-  `--platform=<PLATFORM>`        : Convert content for a specific platform
+-  `--all-platforms`              : Convert content for all platforms (default: false)
+
+
+### :nerd_face: nerdctl image decrypt
+Decrypt image layers. See [`./docs/ocicrypt.md`](./docs/ocicrypt.md).
+
+Usage: `nerdctl image decrypt [OPTIONS] SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]`
+
+Example:
+```bash
+nerdctl pull --unpack=false example.com/foo:encrypted
+nerdctl image decrypt --key=mykey.pem example.com/foo:encrypted foo:decrypted
+```
+
+Flags:
+-  `--dec-recipient=<RECIPIENT>`  : Recipient of the image; used only for PKCS7 and must be an x509 certificate
+-  `--key=<KEY>[:<PWDESC>]`       : A secret key's filename and an optional password separated by colon, PWDDESC=<password>|pass:<password>|fd=<file descriptor>|filename
+-  `--gpg-homedir=<DIR>`          : The GPG homedir to use; by default gpg uses ~/.gnupg
+-  `--gpg-version=<VERSION>`      : The GPG version ("v1" or "v2"), default will make an educated guess
+-  `--platform=<PLATFORM>`        : Convert content for a specific platform
+-  `--all-platforms`              : Convert content for all platforms (default: false)
 
 ## Registry
 ### :whale: nerdctl login

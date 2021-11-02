@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -37,13 +37,27 @@ func newRmiCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-
+	rmiCommand.Flags().BoolP("force", "f", false, "Ignore removal errors")
+	// Alias `-a` is reserved for `--all`. Should be compatible with `podman rmi --all`.
+	rmiCommand.Flags().Bool("async", false, "Asynchronous mode")
 	return rmiCommand
 }
 
 func rmiAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("requires at least 1 argument")
+	}
+
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return err
+	}
+
+	var delOpts []images.DeleteOpt
+	if async, err := cmd.Flags().GetBool("async"); err != nil {
+		return err
+	} else if !async {
+		delOpts = append(delOpts, images.SynchronousDelete())
 	}
 
 	client, ctx, cancel, err := newClient(cmd)
@@ -64,7 +78,7 @@ func rmiAction(cmd *cobra.Command, args []string) error {
 				logrus.WithError(err).Warning("failed to enumerate rootfs")
 			}
 
-			if err := is.Delete(ctx, found.Image.Name); err != nil {
+			if err := is.Delete(ctx, found.Image.Name, delOpts...); err != nil {
 				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "Untagged: %s@%s\n", found.Image.Name, found.Image.Target.Digest)
@@ -76,10 +90,15 @@ func rmiAction(cmd *cobra.Command, args []string) error {
 	}
 	for _, req := range args {
 		n, err := walker.Walk(ctx, req)
+		if err == nil && n == 0 {
+			err = fmt.Errorf("no such image %s", req)
+		}
 		if err != nil {
-			return err
-		} else if n == 0 {
-			return fmt.Errorf("no such image %s", req)
+			if force {
+				logrus.Error(err)
+			} else {
+				return err
+			}
 		}
 	}
 	return nil

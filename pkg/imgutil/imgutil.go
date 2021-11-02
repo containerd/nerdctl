@@ -100,7 +100,7 @@ func getExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 // EnsureImage ensures the image.
 //
 // When insecure is set, skips verifying certs, and also falls back to HTTP when the registry does not speak HTTPS
-func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool, ocispecPlatforms []ocispec.Platform) (*EnsuredImage, error) {
+func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool, ocispecPlatforms []ocispec.Platform, unpack *bool) (*EnsuredImage, error) {
 	switch mode {
 	case "always", "missing", "never":
 		// NOP
@@ -139,7 +139,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 		return nil, err
 	}
 
-	img, err := pullImage(ctx, client, stdout, snapshotter, resolver, ref, ocispecPlatforms)
+	img, err := pullImage(ctx, client, stdout, snapshotter, resolver, ref, ocispecPlatforms, unpack)
 	if err != nil {
 		if !IsErrHTTPResponseToHTTPSClient(err) {
 			return nil, err
@@ -151,7 +151,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 			if err != nil {
 				return nil, err
 			}
-			return pullImage(ctx, client, stdout, snapshotter, resolver, ref, ocispecPlatforms)
+			return pullImage(ctx, client, stdout, snapshotter, resolver, ref, ocispecPlatforms, unpack)
 		} else {
 			logrus.WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
 			logrus.Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
@@ -170,7 +170,7 @@ func IsErrHTTPResponseToHTTPSClient(err error) bool {
 	return strings.Contains(err.Error(), unexposed)
 }
 
-func pullImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter string, resolver remotes.Resolver, ref string, ocispecPlatforms []ocispec.Platform) (*EnsuredImage, error) {
+func pullImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter string, resolver remotes.Resolver, ref string, ocispecPlatforms []ocispec.Platform, unpack *bool) (*EnsuredImage, error) {
 	ctx, done, err := client.WithLease(ctx)
 	if err != nil {
 		return nil, err
@@ -185,10 +185,19 @@ func pullImage(ctx context.Context, client *containerd.Client, stdout io.Writer,
 		Platforms:      ocispecPlatforms, // empty for all-platforms
 	}
 
+	var unpackB bool
+	if unpack != nil {
+		unpackB = *unpack
+		if unpackB && len(ocispecPlatforms) != 1 {
+			return nil, fmt.Errorf("unpacking requires a single platform to be specified (e.g., --platform=amd64)")
+		}
+	} else {
+		unpackB = len(ocispecPlatforms) == 1
+	}
+
 	var sgz bool
-	// unpacking is possible only for single-platform mode
-	if len(ocispecPlatforms) == 1 {
-		logrus.Debugf("Single-platform mode. The image will be unpacked for platform %q, snapshotter %q.", ocispecPlatforms[0], snapshotter)
+	if unpackB {
+		logrus.Debugf("The image will be unpacked for platform %q, snapshotter %q.", ocispecPlatforms[0], snapshotter)
 		imgcryptPayload := imgcrypt.Payload{}
 		imgcryptUnpackOpt := encryption.WithUnpackConfigApplyOpts(encryption.WithDecryptedUnpack(&imgcryptPayload))
 		config.RemoteOpts = append(config.RemoteOpts,
@@ -205,7 +214,7 @@ func pullImage(ctx context.Context, client *containerd.Client, stdout io.Writer,
 			)
 		}
 	} else {
-		logrus.Debugf("Multi-platform mode. The image will not be unpacked. Platforms=%v.", ocispecPlatforms)
+		logrus.Debugf("The image will not be unpacked. Platforms=%v.", ocispecPlatforms)
 	}
 	containerdImage, err = pull.Pull(ctx, client, ref, config)
 	if err != nil {
