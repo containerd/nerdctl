@@ -265,6 +265,17 @@ func (c *Cmd) AssertOutContains(s string) {
 	c.Assert(expected)
 }
 
+func (c *Cmd) AssertOutExactly(s string) {
+	c.Base.T.Helper()
+	fn := func(stdout string) error {
+		if stdout != s {
+			return fmt.Errorf("expected %q, got %q", s, stdout)
+		}
+		return nil
+	}
+	c.AssertOutWithFunc(fn)
+}
+
 func (c *Cmd) AssertNoOut(s string) {
 	c.Base.T.Helper()
 	fn := func(stdout string) error {
@@ -281,6 +292,20 @@ func (c *Cmd) AssertOutWithFunc(fn func(stdout string) error) {
 	res := c.Run()
 	assert.Equal(c.Base.T, 0, res.ExitCode, res.Combined())
 	assert.NilError(c.Base.T, fn(res.Stdout()), res.Combined())
+}
+
+func (c *Cmd) Out() string {
+	c.Base.T.Helper()
+	res := c.Run()
+	assert.Equal(c.Base.T, 0, res.ExitCode, res.Combined())
+	return res.Stdout()
+}
+
+func (c *Cmd) OutLines() []string {
+	c.Base.T.Helper()
+	out := c.Out()
+	// FIXME: improve memory efficiency
+	return strings.Split(out, "\n")
 }
 
 type Target = string

@@ -41,6 +41,8 @@ e.g., 'nerdctl image convert --estargz --oci example.com/foo:orig example.com/fo
 
 Use '--platform' to define the output platform.
 When '--all-platforms' is given all images in a manifest list must be available.
+
+For encryption and decryption, use 'nerdctl image (encrypt|decrypt)' command.
 `
 
 // imageConvertCommand is from https://github.com/containerd/stargz-snapshotter/blob/d58f43a8235e46da73fb94a1a35280cb4d607b2c/cmd/ctr-remote/commands/convert.go
