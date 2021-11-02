@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -43,6 +44,9 @@ type ContainerWalker struct {
 // Req is name, short ID, or long ID.
 // Returns the number of the found entries.
 func (w *ContainerWalker) Walk(ctx context.Context, req string) (int, error) {
+	if strings.HasPrefix(req, "k8s://") {
+		return -1, fmt.Errorf("specifying \"k8s://...\" form is not supported (Hint: specify ID instead): %q", req)
+	}
 	filters := []string{
 		fmt.Sprintf("labels.%q==%s", labels.Name, req),
 		fmt.Sprintf("id~=^%s.*$", regexp.QuoteMeta(req)),

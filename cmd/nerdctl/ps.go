@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/labels/k8slabels"
 
 	"github.com/spf13/cobra"
 )
@@ -148,7 +149,7 @@ func printContainers(ctx context.Context, cmd *cobra.Command, containers []conta
 			ID:        id,
 			Image:     imageName,
 			Platform:  info.Labels[labels.Platform],
-			Names:     info.Labels[labels.Name],
+			Names:     getPrintableContainerName(info.Labels),
 			Ports:     formatter.FormatPorts(info.Labels),
 			Status:    cStatus,
 		}
@@ -184,4 +185,23 @@ func printContainers(ctx context.Context, cmd *cobra.Command, containers []conta
 		return f.Flush()
 	}
 	return nil
+}
+
+func getPrintableContainerName(containerLabels map[string]string) string {
+	if name, ok := containerLabels[labels.Name]; ok {
+		return name
+	}
+
+	if ns, ok := containerLabels[k8slabels.PodNamespace]; ok {
+		if podName, ok := containerLabels[k8slabels.PodName]; ok {
+			if containerName, ok := containerLabels[k8slabels.ContainerName]; ok {
+				// Container
+				return fmt.Sprintf("k8s://%s/%s/%s", ns, podName, containerName)
+			} else {
+				// Pod sandbox
+				return fmt.Sprintf("k8s://%s/%s", ns, podName)
+			}
+		}
+	}
+	return ""
 }
