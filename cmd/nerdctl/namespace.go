@@ -33,6 +33,7 @@ func newNamespaceCommand() *cobra.Command {
 		Use:           "namespace",
 		Short:         "Manage containerd namespaces",
 		Long:          "Unrelated to Linux namespaces and Kubernetes namespaces",
+		RunE:          unknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

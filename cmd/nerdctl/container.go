@@ -25,6 +25,7 @@ func newContainerCommand() *cobra.Command {
 		Category:      CategoryManagement,
 		Use:           "container",
 		Short:         "Manage containers",
+		RunE:          unknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

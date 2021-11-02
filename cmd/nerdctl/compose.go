@@ -37,6 +37,7 @@ func newComposeCommand() *cobra.Command {
 	var composeCommand = &cobra.Command{
 		Use:           "compose",
 		Short:         "Compose",
+		RunE:          unknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

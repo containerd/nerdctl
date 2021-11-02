@@ -25,6 +25,7 @@ func newNetworkCommand() *cobra.Command {
 		Category:      CategoryManagement,
 		Use:           "network",
 		Short:         "Manage networks",
+		RunE:          unknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
