@@ -125,7 +125,7 @@ RUN fname="stargz-snapshotter-v${STARGZ_SNAPSHOTTER_VERSION}-${TARGETOS:-linux}-
   grep "${fname}" "/SHA256SUMS.d/stargz-snapshotter-${STARGZ_SNAPSHOTTER_VERSION}" | sha256sum -c - && \
   grep "stargz-snapshotter.service" "/SHA256SUMS.d/stargz-snapshotter-${STARGZ_SNAPSHOTTER_VERSION}" | sha256sum -c - && \
   tar xzf "${fname}" -C /out/bin && \
-  rm -f "${fname}" && \
+  rm -f "${fname}" /out/bin/stargz-store && \
   mv stargz-snapshotter.service /out/lib/systemd/system/stargz-snapshotter.service && \
   echo "- Stargz Snapshotter: v${STARGZ_SNAPSHOTTER_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG IMGCRYPT_VERSION
