@@ -648,12 +648,13 @@ List images
 Usage: `nerdctl images [OPTIONS] [REPOSITORY[:TAG]]`
 
 Flags:
+- :whale: `-a, --all`: Show all images (unimplemented)
 - :whale: `-q, --quiet`: Only show numeric IDs
 - :whale: `--no-trunc`: Don't truncate output
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 - :whale: `--digests`: Show digests (compatible with Docker, unlike ID)
 
-Unimplemented `docker images` flags: `--all`, `--filter`
+Unimplemented `docker images` flags: `--filter`
 
 ### :whale: nerdctl pull
 Pull an image from a registry.
@@ -717,8 +718,10 @@ Usage: `nerdctl rmi [OPTIONS] IMAGE [IMAGE...]`
 
 Flags:
 - :nerd_face: `--async`: Asynchronous mode
+- :whale: `-f, --force`: Ignore removal errors
+  - :warning: WIP: currently, images are always forcibly removed, even when `--force` is not specified.
 
-Unimplemented `docker rmi` flags: `--force`, `--no-prune`
+Unimplemented `docker rmi` flags: `--no-prune`
 
 ### :whale: nerdctl image inspect
 Display detailed information on one or more images.

@@ -66,6 +66,7 @@ func newImagesCommand() *cobra.Command {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	imagesCommand.Flags().Bool("digests", false, "Show digests (compatible with Docker, unlike ID)")
+	imagesCommand.Flags().BoolP("all", "a", true, "(unimplemented yet, always true)")
 
 	return imagesCommand
 }

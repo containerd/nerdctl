@@ -37,6 +37,7 @@ func newRmiCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
+	rmiCommand.Flags().BoolP("force", "f", false, "Ignore removal errors")
 	// Alias `-a` is reserved for `--all`. Should be compatible with `podman rmi --all`.
 	rmiCommand.Flags().Bool("async", false, "Asynchronous mode")
 	return rmiCommand
@@ -45,6 +46,11 @@ func newRmiCommand() *cobra.Command {
 func rmiAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("requires at least 1 argument")
+	}
+
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return err
 	}
 
 	var delOpts []images.DeleteOpt
@@ -84,10 +90,15 @@ func rmiAction(cmd *cobra.Command, args []string) error {
 	}
 	for _, req := range args {
 		n, err := walker.Walk(ctx, req)
+		if err == nil && n == 0 {
+			err = fmt.Errorf("no such image %s", req)
+		}
 		if err != nil {
-			return err
-		} else if n == 0 {
-			return fmt.Errorf("no such image %s", req)
+			if force {
+				logrus.Error(err)
+			} else {
+				return err
+			}
 		}
 	}
 	return nil
