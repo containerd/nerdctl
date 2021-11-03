@@ -52,5 +52,6 @@ func newContainerCommand() *cobra.Command {
 func containerLsCommand() *cobra.Command {
 	x := newPsCommand()
 	x.Use = "ls"
+	x.Aliases = []string{"list"}
 	return x
 }
