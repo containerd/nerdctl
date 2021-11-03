@@ -1020,7 +1020,7 @@ Unimplemented `docker-compose build` (V1) flags:  `--compress`, `--force-rm`, `-
 ### :whale: nerdctl compose down
 Remove containers and associated resources
 
-Usage: `nerdctl compose up [OPTIONS] [SERVICE...]`
+Usage: `nerdctl compose down [OPTIONS]`
 
 Flags:
 - :whale: `-v, --volumes`: Remove named volumes declared in the volumes section of the Compose file and anonymous volumes attached to containers
