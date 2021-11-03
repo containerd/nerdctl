@@ -44,14 +44,18 @@ To enable BuildKit, run the following command:
 $ containerd-rootless-setuptool.sh install-buildkit
 ```
 
-### FUSE-OverlayFS
+## Snapshotters
 
-The `overlayfs` snapshotter only works on the following hosts:
-- Any distro, with kernel >= 5.11, and without SELinux
+### OverlayFS
+
+The default `overlayfs` snapshotter only works on the following hosts:
+- Any distro, with kernel >= 5.13
+- Non-SELinux distro, with kernel >= 5.11
 - Ubuntu since 2015
-- Debian since 10
 
 For other hosts, [`fuse-overlayfs` snapshotter](https://github.com/containerd/fuse-overlayfs-snapshotter) needs to be used instead.
+
+### FUSE-OverlayFS
 
 To enable `fuse-overlayfs` snapshotter, run the following command:
 ```console
@@ -78,11 +82,6 @@ If `fuse-overlayfs` does not work, try `export CONTAINERD_SNAPSHOTTER=native`.
 ### Stargz Snapshotter
 [Stargz Snapshotter](./stargz.md) enables lazy-pulling of images.
 
-As of Stargz Snapshotter 0.5.0, Rootless Stargz Snapshotter supports the following hosts:
-- Any distro, with kernel >= 5.11
-- Ubuntu (>= 15.XX)
-- Debian (>= 10)
-
 To enable Stargz snapshotter, run the following command:
 ```console
 $ containerd-rootless-setuptool.sh install-stargz
@@ -108,4 +107,4 @@ See https://github.com/containerd/stargz-snapshotter/blob/master/docs/pre-conver
 ## Troubleshooting
 
 ### Hint to Fedora users
-- If SELinux is enabled on your host, you need to use [`fuse-overlayfs` instead of `overlayfs`](#fuse-overlayfs).
+- If SELinux is enabled on your host and your kernel is older than 5.13, you need to use [`fuse-overlayfs` instead of `overlayfs`](#fuse-overlayfs).
