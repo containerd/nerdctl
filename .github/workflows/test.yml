@@ -131,7 +131,7 @@ jobs:
     runs-on: macos-10.15
     timeout-minutes: 40
     env:
-      VAGRANT_VAGRANTFILE: hack/Vagrantfile.fedora34
+      VAGRANT_VAGRANTFILE: hack/Vagrantfile.fedora
     steps:
     - uses: actions/setup-go@v2
       with:
@@ -148,24 +148,27 @@ jobs:
       run: |
         vagrant up
         vagrant ssh-config >> ~/.ssh/config
+    - name: "Show info"
+      run: ssh default -- sudo nerdctl info
     - name: "Run tests"
       uses: nick-invision/retry@v2
       with:
         timeout_minutes: 10
         retry_on: error
         max_attempts: 2
-        # TODO: enable -test.kill-daemon, after Fedora updates containerd to a recent version (Mar 2021)
+        # TODO: enable -test.kill-daemon
         command: ssh default -- "sudo /vagrant/nerdctl.test -test.v"
     - name: "Install rootless containerd"
       run: |
         ssh default -- containerd-rootless-setuptool.sh install
-        ssh default -- containerd-rootless-setuptool.sh install-fuse-overlayfs
+    - name: "Show info (rootless)"
+      run: ssh default -- nerdctl info
     - name: "Run tests (rootless)"
       uses: nick-invision/retry@v2
       with:
         timeout_minutes: 10
         retry_on: error
         max_attempts: 2
-        command: ssh default -- "CONTAINERD_SNAPSHOTTER=fuse-overlayfs /vagrant/nerdctl.test -test.v -test.kill-daemon"
+        command: ssh default -- "/vagrant/nerdctl.test -test.v -test.kill-daemon"
     - name: "Uninstall rootless containerd"
       run: ssh default -- containerd-rootless-setuptool.sh uninstall

@@ -6,6 +6,8 @@ e.g., ARM on Intel, and vice versa.
 ## Preparation: Register QEMU to `/proc/sys/fs/binfmt_misc`
 
 ```console
+$ sudo systemctl start containerd
+
 $ sudo nerdctl run --privileged --rm tonistiigi/binfmt --install all
 
 $ ls -1 /proc/sys/fs/binfmt_misc/qemu*
@@ -18,7 +20,10 @@ $ ls -1 /proc/sys/fs/binfmt_misc/qemu*
 /proc/sys/fs/binfmt_misc/qemu-s390x
 ```
 
-The `tonistiigi/binfmt` container must be executed with `--privileged`.
+The `tonistiigi/binfmt` container must be executed with `--privileged`, and with rootful mode (`sudo`).
+
+This container is not a daemon, and exits immediately after registering QEMU to `/proc/sys/fs/binfmt_misc`.
+Run `ls -1 /proc/sys/fs/binfmt_misc/qemu*` to confirm registration.
 
 See also https://github.com/tonistiigi/binfmt
 

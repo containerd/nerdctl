@@ -50,11 +50,13 @@ func newImageCommand() *cobra.Command {
 func imageLsCommand() *cobra.Command {
 	x := newImagesCommand()
 	x.Use = "ls"
+	x.Aliases = []string{"list"}
 	return x
 }
 
 func imageRmCommand() *cobra.Command {
 	x := newRmiCommand()
 	x.Use = "rm"
+	x.Aliases = []string{"remove"}
 	return x
 }
