@@ -134,6 +134,7 @@ func newRunCommand() *cobra.Command {
 		return []string{"host"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	runCommand.Flags().Int("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
+	runCommand.Flags().StringSlice("cgroup-conf", nil, "Configure cgroup v2 (key=value)")
 	runCommand.Flags().String("cgroupns", defaults.CgroupnsMode(), `Cgroup namespace to use, the default depends on the cgroup version ("host"|"private")`)
 	runCommand.RegisterFlagCompletionFunc("cgroupns", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"host", "private"}, cobra.ShellCompDirectiveNoFileComp

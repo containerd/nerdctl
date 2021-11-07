@@ -17,12 +17,15 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 
+	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -112,6 +115,24 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 		opts = append(opts, oci.WithPidsLimit(int64(pidsLimit)))
 	}
 
+	cgroupConf, err := cmd.Flags().GetStringSlice("cgroup-conf")
+	if err != nil {
+		return nil, err
+	}
+	if len(cgroupConf) > 0 && infoutil.CgroupsVersion() == "1" {
+		return nil, errors.New("cannot use --cgroup-conf without cgroup v2")
+	}
+
+	unifieds := make(map[string]string)
+	for _, unified := range cgroupConf {
+		splitUnified := strings.SplitN(unified, "=", 2)
+		if len(splitUnified) < 2 {
+			return nil, errors.New("--cgroup-conf must be formatted KEY=VALUE")
+		}
+		unifieds[splitUnified[0]] = splitUnified[1]
+	}
+	opts = append(opts, withUnified(unifieds))
+
 	cgroupns, err := cmd.Flags().GetString("cgroupns")
 	if err != nil {
 		return nil, err
@@ -189,4 +210,17 @@ func validateDeviceMode(mode string) error {
 		}
 	}
 	return nil
+}
+
+func withUnified(unified map[string]string) oci.SpecOpts {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) (err error) {
+		if unified == nil {
+			return nil
+		}
+		s.Linux.Resources.Unified = make(map[string]string)
+		for k, v := range unified {
+			s.Linux.Resources.Unified[k] = v
+		}
+		return nil
+	}
 }

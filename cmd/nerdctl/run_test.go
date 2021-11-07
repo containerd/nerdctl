@@ -27,6 +27,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/containerd/cgroups"
 	"github.com/containerd/nerdctl/pkg/testutil"
 
 	"gotest.tools/v3/assert"
@@ -196,6 +197,16 @@ func TestRunPidHost(t *testing.T) {
 	pid := os.Getpid()
 
 	base.Cmd("run", "--rm", "--pid=host", testutil.AlpineImage, "ps", "auxw").AssertOutContains(strconv.Itoa(pid))
+}
+
+func TestRunCgroupConf(t *testing.T) {
+	if cgroups.Mode() != cgroups.Unified {
+		t.Skip("test requires cgroup v2")
+	}
+	base := testutil.NewBase(t)
+
+	base.Cmd("run", "--rm", "--cgroup-conf", "memory.high=33554432", testutil.AlpineImage,
+		"sh", "-ec", "cd /sys/fs/cgroup && cat memory.high").AssertOutContains("33554432")
 }
 
 func TestRunAddHost(t *testing.T) {
