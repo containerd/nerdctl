@@ -78,6 +78,7 @@ type containerPrintable struct {
 	Names     string
 	Ports     string
 	Status    string
+	Runtime   string // nerdctl extension
 	// TODO: "Labels", "LocalVolumes", "Mounts", "Networks", "RunningFor", "Size", "State"
 }
 
@@ -86,6 +87,7 @@ func printContainers(ctx context.Context, cmd *cobra.Command, containers []conta
 	if err != nil {
 		return err
 	}
+	var wide bool
 	trunc := !noTrunc
 	all, err := cmd.Flags().GetBool("all")
 	if err != nil {
@@ -106,10 +108,16 @@ func printContainers(ctx context.Context, cmd *cobra.Command, containers []conta
 	case "", "table":
 		w = tabwriter.NewWriter(os.Stdout, 4, 8, 4, ' ', 0)
 		if !quiet {
-			fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tPLATFORM\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+			fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
 		}
 	case "raw":
 		return errors.New("unsupported format: \"raw\"")
+	case "wide":
+		w = tabwriter.NewWriter(os.Stdout, 4, 8, 4, ' ', 0)
+		if !quiet {
+			fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tPLATFORM\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\tRUNTIME")
+			wide = true
+		}
 	default:
 		if quiet {
 			return errors.New("format and quiet must not be specified together")
@@ -152,6 +160,7 @@ func printContainers(ctx context.Context, cmd *cobra.Command, containers []conta
 			Names:     getPrintableContainerName(info.Labels),
 			Ports:     formatter.FormatPorts(info.Labels),
 			Status:    cStatus,
+			Runtime:   info.Runtime.Name,
 		}
 
 		if tmpl != nil {
@@ -167,17 +176,32 @@ func printContainers(ctx context.Context, cmd *cobra.Command, containers []conta
 				return err
 			}
 		} else {
-			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-				p.ID,
-				p.Image,
-				p.Platform,
-				p.Command,
-				formatter.TimeSinceInHuman(info.CreatedAt),
-				p.Status,
-				p.Ports,
-				p.Names,
-			); err != nil {
-				return err
+			if wide {
+				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+					p.ID,
+					p.Image,
+					p.Platform,
+					p.Command,
+					formatter.TimeSinceInHuman(info.CreatedAt),
+					p.Status,
+					p.Ports,
+					p.Names,
+					p.Runtime,
+				); err != nil {
+					return err
+				}
+			} else {
+				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n",
+					p.ID,
+					p.Image,
+					p.Command,
+					formatter.TimeSinceInHuman(info.CreatedAt),
+					p.Status,
+					p.Ports,
+					p.Names,
+				); err != nil {
+					return err
+				}
 			}
 		}
 	}
