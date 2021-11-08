@@ -310,6 +310,7 @@ Cgroup flags:
 - :whale: `--cpuset-cpus`: CPUs in which to allow execution (0-3, 0,1)
 - :whale: `--memory`: Memory limit
 - :whale: `--pids-limit`: Tune container pids limit
+- :nerd_face: `--cgroup-conf`: Configure cgroup v2 (key=value)
 - :whale: `--cgroupns=(host|private)`: Cgroup namespace to use
   - Default: "private" on cgroup v2 hosts, "host" on cgroup v1 hosts
 - :whale: `--device`: Add a host device to the container
