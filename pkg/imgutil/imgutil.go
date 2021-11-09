@@ -53,8 +53,8 @@ type EnsuredImage struct {
 // PullMode is either one of "always", "missing", "never"
 type PullMode = string
 
-// getExistingImage may return errdefs.NotFound()
-func getExistingImage(ctx context.Context, client *containerd.Client, snapshotter, rawRef string, platform ocispec.Platform) (*EnsuredImage, error) {
+// GetExistingImage returns the specified image if exists in containerd. May return errdefs.NotFound() if not exists.
+func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotter, rawRef string, platform ocispec.Platform) (*EnsuredImage, error) {
 	var res *EnsuredImage
 	imagewalker := &imagewalker.ImageWalker{
 		Client: client,
@@ -109,7 +109,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 	}
 
 	if mode != "always" && len(ocispecPlatforms) == 1 {
-		res, err := getExistingImage(ctx, client, snapshotter, rawRef, ocispecPlatforms[0])
+		res, err := GetExistingImage(ctx, client, snapshotter, rawRef, ocispecPlatforms[0])
 		if err == nil {
 			return res, nil
 		}
@@ -139,7 +139,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 		return nil, err
 	}
 
-	img, err := pullImage(ctx, client, stdout, snapshotter, resolver, ref, ocispecPlatforms, unpack)
+	img, err := PullImage(ctx, client, stdout, snapshotter, resolver, ref, ocispecPlatforms, unpack)
 	if err != nil {
 		if !IsErrHTTPResponseToHTTPSClient(err) {
 			return nil, err
@@ -151,7 +151,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout io.Write
 			if err != nil {
 				return nil, err
 			}
-			return pullImage(ctx, client, stdout, snapshotter, resolver, ref, ocispecPlatforms, unpack)
+			return PullImage(ctx, client, stdout, snapshotter, resolver, ref, ocispecPlatforms, unpack)
 		} else {
 			logrus.WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
 			logrus.Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
@@ -170,7 +170,8 @@ func IsErrHTTPResponseToHTTPSClient(err error) bool {
 	return strings.Contains(err.Error(), unexposed)
 }
 
-func pullImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter string, resolver remotes.Resolver, ref string, ocispecPlatforms []ocispec.Platform, unpack *bool) (*EnsuredImage, error) {
+// PullImage pulls an image using the specified resolver.
+func PullImage(ctx context.Context, client *containerd.Client, stdout io.Writer, snapshotter string, resolver remotes.Resolver, ref string, ocispecPlatforms []ocispec.Platform, unpack *bool) (*EnsuredImage, error) {
 	ctx, done, err := client.WithLease(ctx)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,8 @@
+[Unit]
+Description=ipfs daemon for integration test (offline)
+
+[Service]
+ExecStart=ipfs daemon --init --offline
+
+[Install]
+WantedBy=docker-entrypoint.target

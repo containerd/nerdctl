@@ -23,10 +23,10 @@ import (
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images/converter"
-	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/imgcrypt/images/encryption"
 	"github.com/containerd/imgcrypt/images/encryption/parsehelpers"
 	"github.com/containerd/nerdctl/pkg/platformutil"
+	"github.com/containerd/nerdctl/pkg/referenceutil"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 )
@@ -105,13 +105,13 @@ func getImgcryptAction(encrypt bool) func(cmd *cobra.Command, args []string) err
 			return errors.New("src and target image need to be specified")
 		}
 
-		srcNamed, err := refdocker.ParseDockerRef(srcRawRef)
+		srcNamed, err := referenceutil.ParseAny(srcRawRef)
 		if err != nil {
 			return err
 		}
 		srcRef := srcNamed.String()
 
-		targetNamed, err := refdocker.ParseDockerRef(targetRawRef)
+		targetNamed, err := referenceutil.ParseDockerRef(targetRawRef)
 		if err != nil {
 			return err
 		}

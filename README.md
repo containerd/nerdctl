@@ -281,6 +281,8 @@ Run a command in a new container.
 
 Usage: `nerdctl run [OPTIONS] IMAGE [COMMAND] [ARG...]`
 
+:nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IFPS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
+
 Basic flags:
 - :whale: :window: `-i, --interactive`: Keep STDIN open even if not attached"
 - :whale: :window: `-t, --tty`: Allocate a pseudo-TTY
@@ -667,6 +669,8 @@ Pull an image from a registry.
 
 Usage: `nerdctl pull [OPTIONS] NAME[:TAG|@DIGEST]`
 
+:nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IFPS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
+
 Flags:
 - :whale: `--platform=(amd64|arm64|...)`: Pull content for a specific platform
   - :nerd_face: Unlike Docker, this flag can be specified multiple times (`--platform=amd64 --platform=arm64`)
@@ -679,6 +683,8 @@ Unimplemented `docker pull` flags: `--all-tags`, `--disable-content-trust` (defa
 Push an image to a registry.
 
 Usage: `nerdctl push [OPTIONS] NAME[:TAG]`
+
+:nerd_face: `ipfs://` prefix can be used for `IMAGE` to push it to IFPS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Flags:
 - :nerd_face: `--platform=(amd64|arm64|...)`: Push content for a specific platform
@@ -1110,3 +1116,4 @@ Others:
 - [`./docs/freebsd.md`](./docs/freebsd.md):  Running FreeBSD jails
 - [`./docs/multi-platform.md`](./docs/multi-platform.md):  Multi-platform mode
 - [`./docs/experimental.md`](./docs/experimental.md):  Experimental features
+- [`./docs/ipfs.md`](./docs/ipfs.md): Distributing images on IPFS

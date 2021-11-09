@@ -21,8 +21,11 @@ import (
 	"os"
 
 	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/platformutil"
+	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
+	httpapi "github.com/ipfs/go-ipfs-http-client"
 
 	"github.com/spf13/cobra"
 )
@@ -30,7 +33,7 @@ import (
 func newPullCommand() *cobra.Command {
 	var pullCommand = &cobra.Command{
 		Use:           "pull",
-		Short:         "Pull an image from a registry",
+		Short:         "Pull an image from a registry. Optionally specify \"ipfs://\" or \"ipns://\" scheme to pull image from IPFS.",
 		RunE:          pullAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -88,6 +91,17 @@ func pullAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(args[0]); err == nil {
+		ipfsClient, err := httpapi.NewLocalApi()
+		if err != nil {
+			return err
+		}
+		_, err = ipfs.EnsureImage(ctx, client, ipfsClient, os.Stdout, snapshotter, scheme, ref,
+			"always", ocispecPlatforms, unpack)
+		return err
+	}
+
 	_, err = imgutil.EnsureImage(ctx, client, os.Stdout, snapshotter, args[0],
 		"always", insecure, ocispecPlatforms, unpack)
 	return err
