@@ -239,11 +239,11 @@ github.com/containerd/containerd v1.5.0-rc.0/go.mod h1:V/IXoMqNGgBlabz3tHD2TWDoT
 github.com/containerd/containerd v1.5.1/go.mod h1:0DOxVqwDy2iZvrZp2JUx/E+hS0UNTVn7dJnIOwtYR4g=
 github.com/containerd/containerd v1.5.7/go.mod h1:gyvv6+ugqY25TiXxcZC3L5yOeYgEw0QMhscqVp1AR9c=
 github.com/containerd/containerd v1.6.0-beta.1.0.20211101005050-f0d3ea96cf8c/go.mod h1:IpMnlp3lTTcEXqfpc/bTpvq8jAS/BWhbfb2N1QAK9m8=
-github.com/containerd/containerd v1.6.0-beta.2 h1:vGPOMIfbInmhBtD2inCTfVYf/aMzhDkOwIbcQtv77Lo=
-github.com/containerd/containerd v1.6.0-beta.2/go.mod h1:0AwP8LDBKEIaCT48IETmHkY1+YX7c/ALcN1kkLGBLtk=
+github.com/containerd/containerd v1.6.0-beta.2.0.20211112054404-aa1b0736165c h1:5aOUfQNGPCZVc84x1umuPD+J2FyMAOJ7rDoduUVJxmg=
+github.com/containerd/containerd v1.6.0-beta.2.0.20211112054404-aa1b0736165c/go.mod h1:0AwP8LDBKEIaCT48IETmHkY1+YX7c/ALcN1kkLGBLtk=
 github.com/containerd/containerd/api v1.6.0-beta.1/go.mod h1:XDzkCoLyj2hn24f13Jcuq/U2bHb2LjJ2qWlklgL0Ofg=
-github.com/containerd/containerd/api v1.6.0-beta.1.0.20211112054404-aa1b0736165c h1:hViOeD/l7vAatK87rOYv26H6aPUjlufbB7gLbU2Ukfk=
-github.com/containerd/containerd/api v1.6.0-beta.1.0.20211112054404-aa1b0736165c/go.mod h1:fkctx1jj7m92mQDI6mIEXF+SH3tt2Rv/azUHqrOxYPc=
+github.com/containerd/containerd/api v1.6.0-beta.2.0.20211112054404-aa1b0736165c h1:hvX/D+EF67AV5315BBfQPhRusu997q9Fiqm4K+2KR20=
+github.com/containerd/containerd/api v1.6.0-beta.2.0.20211112054404-aa1b0736165c/go.mod h1:fkctx1jj7m92mQDI6mIEXF+SH3tt2Rv/azUHqrOxYPc=
 github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc/go.mod h1:GL3xCUCBDV3CZiTSEKksMWbLE66hEyuu9qyDOOqM47Y=
 github.com/containerd/continuity v0.0.0-20190815185530-f2a389ac0a02/go.mod h1:GL3xCUCBDV3CZiTSEKksMWbLE66hEyuu9qyDOOqM47Y=
 github.com/containerd/continuity v0.0.0-20191127005431-f65d91d395eb/go.mod h1:GL3xCUCBDV3CZiTSEKksMWbLE66hEyuu9qyDOOqM47Y=
@@ -622,6 +622,7 @@ github.com/hanwen/go-fuse/v2 v2.1.1-0.20210825171523-3ab5d95a30ae/go.mod h1:B1nG
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
 github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
 github.com/hashicorp/errwrap v0.0.0-20141028054710-7554cd9344ce/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
+github.com/hashicorp/errwrap v1.0.0 h1:hLrqtEDnRye3+sgx6z4qVLNuviH3MR5aQ0ykNJa/UYA=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/go-cleanhttp v0.5.1/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtngrth3wmdIIUrZ80=
 github.com/hashicorp/go-hclog v0.9.2/go.mod h1:5CU+agLiy3J7N7QjHK5d05KxGsuXiQLrjA0H7acj2lQ=
@@ -629,6 +630,7 @@ github.com/hashicorp/go-immutable-radix v1.0.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjh
 github.com/hashicorp/go-msgpack v0.5.3/go.mod h1:ahLV/dePpqEmjfWmKiqvPkv/twdG7iPBM1vqhUKIvfM=
 github.com/hashicorp/go-multierror v0.0.0-20161216184304-ed905158d874/go.mod h1:JMRHfdO9jKNzS/+BTlxCjKNQHg/jZAft8U7LloJvN7I=
 github.com/hashicorp/go-multierror v1.0.0/go.mod h1:dHtQlpGsu+cZNNAkkCN/P3hoUDHhCYQXV3UM06sGGrk=
+github.com/hashicorp/go-multierror v1.1.1 h1:H5DkEtf6CXdFp0N0Em5UCwQpXMWke8IA0+lD48awMYo=
 github.com/hashicorp/go-multierror v1.1.1/go.mod h1:iw975J/qwKPdAO1clOe2L8331t/9/fmwbPZ6JB6eMoM=
 github.com/hashicorp/go-retryablehttp v0.7.0/go.mod h1:vAew36LZh98gCBJNLH42IQ1ER/9wtLZZ8meHqQvEYWY=
 github.com/hashicorp/go-rootcerts v1.0.0/go.mod h1:K6zTfqpRlCUIjkwsN4Z+hiSfzSTQa6eBIzfwKfwNnHU=

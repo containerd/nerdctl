@@ -279,6 +279,10 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose build](#whale-nerdctl-compose-build)
     - [:whale: nerdctl compose down](#whale-nerdctl-compose-down)
     - [:whale: nerdctl compose ps](#whale-nerdctl-compose-ps)
+  - [IPFS management](#ipfs-management)
+    - [:nerd_face: nerdctl ipfs registry up](#nerd_face-nerdctl-ipfs-registry-up)
+    - [:nerd_face: nerdctl ipfs registry down](#nerd_face-nerdctl-ipfs-registry-down)
+    - [:nerd_face: nerdctl ipfs registry serve](#nerd_face-nerdctl-ipfs-registry-serve)
   - [Global flags](#global-flags)
   - [Unimplemented Docker commands](#unimplemented-docker-commands)
 - [Additional documents](#additional-documents)
@@ -650,6 +654,7 @@ Flags:
 - :whale: `--cache-from=CACHE`: External cache sources (eg. user/app:cache, type=local,src=path/to/dir) (compatible with `docker buildx build`)
 - :whale: `--cache-to=CACHE`: Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir) (compatible with `docker buildx build`)
 - :whale: `--platform=(amd64|arm64|...)`: Set target platform for build (compatible with `docker buildx build`)
+- :nerd_face: `--ipfs`: Build image with pulling base images from IFPS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Unimplemented `docker build` flags: `--add-host`, `--iidfile`, `--label`, `--network`, `--squash`
 
@@ -1051,6 +1056,7 @@ Flags:
 - :whale: `--no-color`: Produce monochrome output
 - :whale: `--no-log-prefix`: Don't print prefix in logs
 - :whale: `--build`: Build images before starting containers.
+- :nerd_face: `--ipfs`: Build images with pulling base images from IFPS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Unimplemented `docker-compose up` (V1) flags: `--quiet-pull`, `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
 `--no-start`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--remove-orphans`, `--exit-code-from`,
@@ -1080,6 +1086,7 @@ Flags:
 - :whale: `--build-arg`: Set build-time variables for services
 - :whale: `--no-cache`: Do not use cache when building the image
 - :whale: `--progress`: Set type of progress output (auto, plain, tty)
+- :nerd_face: `--ipfs`: Build images with pulling base images from IFPS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Unimplemented `docker-compose build` (V1) flags:  `--compress`, `--force-rm`, `--memory`, `--no-rm`, `--parallel`, `--pull`, `--quiet`
 
@@ -1101,6 +1108,33 @@ Usage: `nerdctl compose ps`
 Unimplemented `docker-compose ps` (V1) flags: `--quiet`, `--services`, `--filter`, `--all`
 
 Unimplemented `docker compose ps` (V2) flags: `--format`, `--status`
+
+## IPFS management
+
+### :nerd_face: nerdctl ipfs registry up
+Start read-only local registry backed by IPFS.
+See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
+
+Usage: `nerdctl ipfs registry up [OPTIONS]`
+
+Flags:
+- :nerd_face: `--listen-registry`: Address to listen (default `localhost:5050`)
+
+### :nerd_face: nerdctl ipfs registry down
+Stop and remove read-only local registry backed by IPFS.
+See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
+
+Usage: `nerdctl ipfs registry down`
+
+### :nerd_face: nerdctl ipfs registry serve
+Serve read-only registry backed by IPFS on localhost.
+Use `nerdctl ipfs registry up`.
+
+Usage: `nerdctl ipfs registry serve [OPTIONS]`
+
+Flags:
+- :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default is pulled from `$IPFS_PATH/api` file. If `$IPFS_PATH` env var is not present, it defaults to `~/.ipfs`).
+- :nerd_face: `--listen-registry`: Address to listen (default `localhost:5050`).
 
 ## Global flags
 - :nerd_face: :blue_square: `--address`:  containerd address, optionally with "unix://" prefix

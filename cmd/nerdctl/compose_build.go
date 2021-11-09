@@ -34,6 +34,9 @@ func newComposeBuildCommand() *cobra.Command {
 	composeBuildCommand.Flags().StringArray("build-arg", nil, "Set build-time variables for services.")
 	composeBuildCommand.Flags().Bool("no-cache", false, "Do not use cache when building the image.")
 	composeBuildCommand.Flags().String("progress", "", "Set type of progress output")
+
+	composeBuildCommand.Flags().Bool("ipfs", false, "Allow pulling base images from IPFS during build")
+
 	return composeBuildCommand
 }
 
@@ -54,6 +57,10 @@ func composeBuildAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	enableIPFS, err := cmd.Flags().GetBool("ipfs")
+	if err != nil {
+		return err
+	}
 
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
@@ -69,6 +76,7 @@ func composeBuildAction(cmd *cobra.Command, args []string) error {
 		Args:     buildArg,
 		NoCache:  noCache,
 		Progress: progress,
+		IPFS:     enableIPFS,
 	}
 	return c.Build(ctx, bo)
 }

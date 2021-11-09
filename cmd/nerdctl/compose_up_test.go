@@ -222,6 +222,44 @@ COPY index.html /usr/share/nginx/html/index.html
 	assert.Assert(t, strings.Contains(string(respBody), indexHTML))
 }
 
+func TestIPFSComposeUpBuild(t *testing.T) {
+	requiresIPFS(t)
+	testutil.DockerIncompatible(t)
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	ipfsCID := pushImageToIPFS(t, base, testutil.NginxAlpineImage)
+	ipfsCIDBase := strings.TrimPrefix(ipfsCID, "ipfs://")
+
+	const dockerComposeYAML = `
+services:
+  web:
+    build: .
+    ports:
+    - 8080:80
+`
+	dockerfile := fmt.Sprintf(`FROM localhost:5050/ipfs/%s
+COPY index.html /usr/share/nginx/html/index.html
+`, ipfsCIDBase)
+	indexHTML := t.Name()
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	comp.WriteFile("Dockerfile", dockerfile)
+	comp.WriteFile("index.html", indexHTML)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--build", "--ipfs").AssertOK()
+	defer base.Cmd("ipfs", "registry", "down").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	resp, err := httpGet("http://127.0.0.1:8080", 50)
+	assert.NilError(t, err)
+	respBody, err := io.ReadAll(resp.Body)
+	assert.NilError(t, err)
+	t.Logf("respBody=%q", respBody)
+	assert.Assert(t, strings.Contains(string(respBody), indexHTML))
+}
+
 func TestComposeUpMultiNet(t *testing.T) {
 	base := testutil.NewBase(t)
 

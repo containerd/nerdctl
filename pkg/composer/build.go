@@ -31,6 +31,7 @@ type BuildOptions struct {
 	Args     []string // --build-arg strings
 	NoCache  bool
 	Progress string
+	IPFS     bool
 }
 
 func (c *Composer) Build(ctx context.Context, bo BuildOptions) error {
@@ -61,6 +62,9 @@ func (c *Composer) buildServiceImage(ctx context.Context, image string, b *servi
 	}
 	if bo.Progress != "" {
 		args = append(args, "--progress="+bo.Progress)
+	}
+	if bo.IPFS {
+		args = append(args, "--ipfs")
 	}
 	args = append(args, b.BuildArgs...)
 

@@ -93,9 +93,75 @@ The pushed image can run on other (IPFS-agnostic) runtimes.
 hello
 ```
 
-:information_source: Note that though the IPFS-enabled image is OCI compatible, some runtimes including [containerd](https://github.com/containerd/containerd/pull/6221) and [podman](https://github.com/containers/image/pull/1403) had bugs and failed to pull that image. Containerd has already fixed this.
+:information_source: Note that though the IPFS-enabled image is OCI compatible, some runtimes including [containerd](https://github.com/containerd/containerd/pull/6221) and [podman](https://github.com/containers/image/pull/1403) had bugs and failed to pull that image. Containerd fixed this since v1.5.8, podman fixed this since commit [`b55fb86c28b7d743cf59701332cd78d4294c7c54`](https://github.com/containers/image/commit/b55fb86c28b7d743cf59701332cd78d4294c7c54).
 
-### compose on IPFS
+### `nerdctl build` and `localhost:5050/ipfs/<CID>` image reference
+
+You can build images using base images on IPFS.
+BuildKit >= v0.9.3 is needed.
+
+In Dockerfile, instead of `ipfs://` prefix, you need to use the following image reference to point to an image on IPFS.
+
+```
+localhost:5050/ipfs/<CID>
+```
+
+Here, `CID` is the IPFS CID of the image.
+
+:information_source: In the futural version of nerdctl and BuildKit, `ipfs://` prefix should be supported in Dockerfile.
+
+Using this image reference, you can build an image on IPFS.
+
+```dockerfile
+FROM localhost:5050/ipfs/bafkreicq4dg6nkef5ju422ptedcwfz6kcvpvvhuqeykfrwq5krazf3muze
+RUN echo hello > /hello
+```
+
+You can enable builds on IPFS using `--ipfs` option for `nerdctl build`.
+
+```console
+> nerdctl build --ipfs -t hello .
+[+] Building 5.3s (6/6) FINISHED
+ => [internal] load build definition from Dockerfile                                                                                              0.0s
+ => => transferring dockerfile: 146B                                                                                                              0.0s
+ => [internal] load .dockerignore                                                                                                                 0.0s
+ => => transferring context: 2B                                                                                                                   0.0s
+ => [internal] load metadata for localhost:5050/ipfs/bafkreicq4dg6nkef5ju422ptedcwfz6kcvpvvhuqeykfrwq5krazf3muze:latest                           0.1s
+ => [1/2] FROM localhost:5050/ipfs/bafkreicq4dg6nkef5ju422ptedcwfz6kcvpvvhuqeykfrwq5krazf3muze@sha256:28bfa1fc6d491d3bee91bab451cab29c747e72917e  3.8s
+ => => resolve localhost:5050/ipfs/bafkreicq4dg6nkef5ju422ptedcwfz6kcvpvvhuqeykfrwq5krazf3muze@sha256:28bfa1fc6d491d3bee91bab451cab29c747e72917e  0.0s
+ => => sha256:7b1a6ab2e44dbac178598dabe7cff59bd67233dba0b27e4fbd1f9d4b3c877a54 28.57MB / 28.57MB                                                  2.1s
+ => => extracting sha256:7b1a6ab2e44dbac178598dabe7cff59bd67233dba0b27e4fbd1f9d4b3c877a54                                                         1.7s
+ => [2/2] RUN echo hello > /hello                                                                                                                 0.6s
+ => exporting to oci image format                                                                                                                 0.6s
+ => => exporting layers                                                                                                                           0.1s
+ => => exporting manifest sha256:b96d490d134221ab121af91a42b13195dd8c5bf941012d7bfe07eabcf5259eda                                                 0.0s
+ => => exporting config sha256:bd706574eab19009585b98826b06e63cf6eacf8d7193504dae75caa760332ca2                                                   0.0s
+ => => sending tarball                                                                                                                            0.5s
+unpacking docker.io/library/hello:latest (sha256:b96d490d134221ab121af91a42b13195dd8c5bf941012d7bfe07eabcf5259eda)...done
+> nerdctl run --rm -it hello cat /hello
+hello
+```
+
+#### Details about `localhost:5050/ipfs/<CID>`
+
+As of now, BuildKit doesn't support `ipfs://` prefix so nerdctl achieves builds on IPFS by having a read-only local registry backed by IPFS.
+This registry converts registry API requests to IPFS operations.
+So IPFS-agnostic tools can pull images from IPFS via this registry.
+
+When you specify `--ipfs` option to `nerdctl bulid`, it automatically starts the registry backed by the IPFS repo of the current `$IPFS_PATH`.
+By default, nerdctl exposes the registry at `localhost:5050`.
+You can change the address and can manually restart the registry using `nerdctl ipfs registry up` and `nerdctl ipfs registry down`.
+
+The following example changes the registry API address to `localhost:5555` instead of `localhost:5050`.
+
+```
+nerdctl ipfs registry down
+nerdctl ipfs registry up --listen-registry=localhost:5555
+```
+
+You'll also need to restart the registry when you change `$IPFS_PATH` to use.
+
+### Compose on IPFS
 
 `nerdctl compose` supports same image name syntax to pull images from IPFS.
 
@@ -107,7 +173,18 @@ services:
     command: echo hello
 ```
 
-### encryption
+When you build images using base images on IPFS, you can use `localhost:5050/ipfs/<CID>` image reference in Dockerfile as mentioned above.
+You need to specify `--ipfs` option to `nerdctl compose build` or `nerdctl compose up` to enable builds on IPFS.
+
+```
+nerdctl compose up --build --ipfs
+```
+
+```
+nerdctl compose build --ipfs
+```
+
+### Encryption
 
 You can distribute [encrypted images](./ocicrypt.md) on IPFS using OCIcrypt.
 Please see [`/docs/ocycrypt.md`](./ocicrypt.md) for details about how to ecrypt and decrypt an image.
