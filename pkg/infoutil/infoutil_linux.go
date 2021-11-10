@@ -18,8 +18,11 @@ package infoutil
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/containerd/cgroups"
+	"github.com/containerd/nerdctl/pkg/apparmorutil"
+	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/docker/pkg/sysinfo"
@@ -36,11 +39,31 @@ func CgroupsVersion() string {
 	return "1"
 }
 
+func fulfillSecurityOptions(info *dockercompat.Info) {
+	if apparmorutil.CanApplyExistingProfile() {
+		info.SecurityOptions = append(info.SecurityOptions, "name=apparmor")
+		if rootlessutil.IsRootless() && !apparmorutil.CanApplySpecificExistingProfile(defaults.AppArmorProfileName) {
+			info.Warnings = append(info.Warnings, fmt.Sprintf(strings.TrimSpace(`
+WARNING: AppArmor profile %q is not loaded.
+         Use 'sudo nerdctl apparmor load' if you prefer to use AppArmor with rootless mode.
+         This warning is negligible if you do not intend to use AppArmor.`), defaults.AppArmorProfileName))
+		}
+	}
+	info.SecurityOptions = append(info.SecurityOptions, "name=seccomp,profile=default")
+	if defaults.CgroupnsMode() == "private" {
+		info.SecurityOptions = append(info.SecurityOptions, "name=cgroupns")
+	}
+	if rootlessutil.IsRootlessChild() {
+		info.SecurityOptions = append(info.SecurityOptions, "name=rootless")
+	}
+}
+
 // fulfillPlatformInfo fulfills cgroup and kernel info.
 //
 // fulfillPlatformInfo requires the following fields to be set:
-// CgroupDriver, CgroupVersion
+// SecurityOptions, CgroupDriver, CgroupVersion
 func fulfillPlatformInfo(info *dockercompat.Info) {
+	fulfillSecurityOptions(info)
 	var mobySysInfoOpts []sysinfo.Opt
 	if info.CgroupDriver == "systemd" && info.CgroupVersion == "2" && rootlessutil.IsRootless() {
 		g := fmt.Sprintf("/user.slice/user-%d.slice", rootlessutil.ParentEUID())

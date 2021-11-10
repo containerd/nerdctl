@@ -20,14 +20,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
-	return false
-}
-
-func shellCompleteCgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return nil, cobra.ShellCompDirectiveNoFileComp
-}
-
-func addApparmorCommand(rootCmd *cobra.Command) {
-	// NOP
+func newApparmorCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Category:      CategoryManagement,
+		Use:           "apparmor",
+		Short:         "Manage AppArmor profiles",
+		RunE:          unknownSubcommandAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	cmd.AddCommand(
+		newApparmorLsCommand(),
+		newApparmorInspectCommand(),
+		newApparmorLoadCommand(),
+		newApparmorUnloadCommand(),
+	)
+	return cmd
 }

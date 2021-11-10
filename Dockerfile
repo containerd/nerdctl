@@ -189,6 +189,7 @@ FROM ubuntu:${UBUNTU_VERSION} AS base
 # fuse3 is required by stargz snapshotter
 RUN apt-get update && \
   apt-get install -qq -y --no-install-recommends \
+  apparmor \
   ca-certificates curl \
   iproute2 iptables \
   dbus systemd systemd-sysv \

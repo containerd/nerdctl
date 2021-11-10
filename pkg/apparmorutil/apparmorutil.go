@@ -14,20 +14,8 @@
    limitations under the License.
 */
 
-package main
+// Package apparmorutil provides utilities for AppArmor
+package apparmorutil
 
-import (
-	"github.com/spf13/cobra"
-)
-
-func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
-	return false
-}
-
-func shellCompleteCgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return nil, cobra.ShellCompDirectiveNoFileComp
-}
-
-func addApparmorCommand(rootCmd *cobra.Command) {
-	// NOP
-}
+// This apparmor.go is split from apparmorutil_linux.go, to avoid
+// "build constraints exclude all Go files" error on non-Linux

@@ -28,7 +28,6 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd/cmd/ctr/commands"
-	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -292,9 +291,7 @@ func getPortMapOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 }
 
 func onCreateRuntime(opts *handlerOpts) error {
-	if pkgapparmor.HostSupports() {
-		loadAppArmor()
-	}
+	loadAppArmor()
 
 	if opts.cni != nil {
 		portMapOpts, err := getPortMapOpts(opts)

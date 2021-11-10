@@ -17,17 +17,18 @@
 package main
 
 import (
+	"github.com/containerd/nerdctl/pkg/apparmorutil"
 	"github.com/spf13/cobra"
 )
 
-func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
-	return false
-}
-
-func shellCompleteCgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return nil, cobra.ShellCompDirectiveNoFileComp
-}
-
-func addApparmorCommand(rootCmd *cobra.Command) {
-	// NOP
+func shellCompleteApparmorProfiles(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
+	profiles, err := apparmorutil.Profiles()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	var names []string // nolint: prealloc
+	for _, f := range profiles {
+		names = append(names, f.Name)
+	}
+	return names, cobra.ShellCompDirectiveNoFileComp
 }
