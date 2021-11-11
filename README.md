@@ -123,6 +123,8 @@ Major:
 - [On-demand image pulling (lazy-pulling) using Stargz Snapshotter](./docs/stargz.md): `nerdctl --snapshotter=stargz run IMAGE` .
 - [Image encryption and decryption using ocicrypt (imgcrypt)](./docs/ocicrypt.md): `nerdctl image (encrypt|decrypt) SRC DST`
 - [P2P image distribution using IPFS](./docs/ipfs.md): `nerdctl run ipfs://CID`
+- Recursive read-only (RRO) bind-mount: `nerdctl run -v /mnt:/mnt:rro` (make children such as `/mnt/usb` to be read-only, too).
+  Requires kernel >= 5.12, and crun >= 1.4 or runc >= 1.1 (PR [#3272](https://github.com/opencontainers/runc/pull/3272)).
 
 Minor:
 - Namespacing: `nerdctl --namespace=<NS> ps` .
@@ -339,7 +341,13 @@ Runtime flags:
 - :whale: `--sysctl`: Sysctl options, e.g \"net.ipv4.ip_forward=1\"
 
 Volume flags:
-- :whale: :blue_square: `-v, --volume`: Bind mount a volume
+- :whale: :blue_square: `-v, --volume <SRC>:<DST>[:<OPT>]`: Bind mount a volume, e.g., `-v /mnt:/mnt:rro,rprivate`
+  - :whale:     option `rw` : Read/Write (when writable)
+  - :whale:     option `ro` : Non-recursive read-only
+  - :nerd_face: option `rro`: Recursive read-only. Should be used in conjunction with `rprivate`. e.g., `-v /mnt:/mnt:rro,rprivate` makes children such as `/mnt/usb` to be read-only, too.
+    Requires kernel >= 5.12, and crun >= 1.4 or runc >= 1.1 (PR [#3272](https://github.com/opencontainers/runc/pull/3272)). With older runc, `rro` just works as `ro`.
+  - :whale:     option `shared`, `slave`, `private`: Non-recursive "shared" / "slave" / "private" propagation
+  - :whale:     option `rshared`, `rslave`, `rprivate`: Recursive "shared" / "slave" / "private" propagation
 - :whale: `--tmpfs`: Mount a tmpfs directory
 
 Rootfs flags:

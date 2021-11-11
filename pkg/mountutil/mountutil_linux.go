@@ -94,9 +94,7 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 	)
 	for _, opt := range strings.Split(optsRaw, ",") {
 		switch opt {
-		case "rw":
-			writeModeRawOpts = append(writeModeRawOpts, opt)
-		case "ro":
+		case "rw", "ro", "rro":
 			writeModeRawOpts = append(writeModeRawOpts, opt)
 		case "private", "rprivate", "shared", "rshared", "slave", "rslave":
 			propagationRawOpts = append(propagationRawOpts, opt)
@@ -112,9 +110,24 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 
 	if len(writeModeRawOpts) > 1 {
 		return nil, nil, fmt.Errorf("duplicated read/write volume option: %+v", writeModeRawOpts)
-	} else if len(writeModeRawOpts) > 0 && writeModeRawOpts[0] == "ro" {
-		opts = append(opts, "ro")
-	} // No need to return option when "rw"
+	} else if len(writeModeRawOpts) > 0 {
+		switch writeModeRawOpts[0] {
+		case "ro":
+			opts = append(opts, "ro")
+		case "rro":
+			// Mount option "rro" is supported since crun v1.4 / runc v1.1 (https://github.com/opencontainers/runc/pull/3272), with kernel >= 5.12.
+			// Older version of runc just ignores "rro", so we have to add "ro" too, to our best effort.
+			opts = append(opts, "ro", "rro")
+			if len(propagationRawOpts) != 1 || propagationRawOpts[0] != "rprivate" {
+				logrus.Warn("Mount option \"rro\" should be used in conjunction with \"rprivate\"")
+			}
+		case "rw":
+			// NOP
+		default:
+			// NOTREACHED
+			return nil, nil, fmt.Errorf("unexpected writeModeRawOpts[0]=%q", writeModeRawOpts[0])
+		}
+	}
 
 	if len(propagationRawOpts) > 1 {
 		return nil, nil, fmt.Errorf("duplicated volume propagation option: %+v", propagationRawOpts)
