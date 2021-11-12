@@ -37,6 +37,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 	if unknown := reflectutil.UnknownNonEmptyFields(&svc,
 		"Name",
 		"Build",
+		"BlkioConfig",
 		"CapAdd",
 		"CapDrop",
 		"CPUS",
@@ -79,6 +80,14 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		"Volumes",
 	); len(unknown) > 0 {
 		logrus.Warnf("Ignoring: service %s: %+v", svc.Name, unknown)
+	}
+
+	if svc.BlkioConfig != nil {
+		if unknown := reflectutil.UnknownNonEmptyFields(svc.BlkioConfig,
+			"Weight",
+		); len(unknown) > 0 {
+			logrus.Warnf("Ignoring: service %s: blkio_config: %+v", svc.Name, unknown)
+		}
 	}
 
 	for depName, dep := range svc.DependsOn {
@@ -416,6 +425,10 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 		"--name=" + c.Name,
 		"-d",
 		"--pull=never", // because image will be ensured before running replicas with `nerdctl run`.
+	}
+
+	if svc.BlkioConfig != nil && svc.BlkioConfig.Weight != 0 {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--blkio-weight=%d", svc.BlkioConfig.Weight))
 	}
 
 	for _, v := range svc.CapAdd {
