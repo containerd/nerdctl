@@ -7,10 +7,10 @@ require (
 	github.com/compose-spec/compose-go v1.0.4
 	github.com/containerd/cgroups v1.0.2
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.0-beta.1.0.20211101005050-f0d3ea96cf8c
-	github.com/containerd/containerd/api v1.6.0-beta.1.0.20211101005050-f0d3ea96cf8c
+	github.com/containerd/containerd v1.6.0-beta.2
+	github.com/containerd/containerd/api v1.6.0-beta.1.0.20211112054404-aa1b0736165c
 	github.com/containerd/continuity v0.2.1
-	github.com/containerd/go-cni v1.1.0
+	github.com/containerd/go-cni v1.1.1-0.20211026134925-aa8bf14323a5
 	github.com/containerd/imgcrypt v1.1.2
 	github.com/containerd/stargz-snapshotter v0.10.0
 	github.com/containerd/stargz-snapshotter/estargz v0.10.0
