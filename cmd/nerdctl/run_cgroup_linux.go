@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -133,6 +135,27 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	}
 	opts = append(opts, withUnified(unifieds))
 
+	blkioWeight, err := cmd.Flags().GetUint16("blkio-weight")
+	if err != nil {
+		return nil, err
+	}
+	if infoutil.CgroupsVersion() == "1" {
+		blkioController := "/sys/fs/cgroup/blkio"
+		blkioWeightPath := filepath.Join(blkioController, "blkio.weight")
+		if _, err := os.Stat(blkioWeightPath); errors.Is(err, fs.ErrNotExist) {
+			// if bfq io scheduler is used, the blkio.weight knob will be exposed as blkio.bfq.weight
+			blkioBfqWeightPath := filepath.Join(blkioController, "blkio.bfq.weight")
+			if _, err := os.Stat(blkioBfqWeightPath); errors.Is(err, fs.ErrNotExist) {
+				logrus.Warn("kernel support for cgroup blkio weight missing, weight discarded")
+				blkioWeight = 0
+			}
+		}
+	}
+	if blkioWeight > 0 && blkioWeight < 10 || blkioWeight > 1000 {
+		return nil, errors.New("range of blkio weight is from 10 to 1000")
+	}
+	opts = append(opts, withBlkioWeight(blkioWeight))
+
 	cgroupns, err := cmd.Flags().GetString("cgroupns")
 	if err != nil {
 		return nil, err
@@ -221,6 +244,16 @@ func withUnified(unified map[string]string) oci.SpecOpts {
 		for k, v := range unified {
 			s.Linux.Resources.Unified[k] = v
 		}
+		return nil
+	}
+}
+
+func withBlkioWeight(blkioWeight uint16) oci.SpecOpts {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		if blkioWeight == 0 {
+			return nil
+		}
+		s.Linux.Resources.BlockIO = &specs.LinuxBlockIO{Weight: &blkioWeight}
 		return nil
 	}
 }
