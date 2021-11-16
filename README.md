@@ -934,6 +934,12 @@ Flags:
 - :whale: `-f, --format`: Format the output using the given Go template, e.g, `{{json .}}`
 
 ## Stats
+### :whale: nerdctl stats
+Display a live stream of container(s) resource usage statistics.
+
+
+Usage: `nerdctl stats [flags]`
+
 ### :whale: nerdctl top
 Display the running processes of a container.
 
@@ -1063,9 +1069,6 @@ Container management:
 - `docker container prune`
 
 - `docker checkpoint *`
-
-Stats:
-- `docker stats`
 
 Image:
 - `docker export` and `docker import`
