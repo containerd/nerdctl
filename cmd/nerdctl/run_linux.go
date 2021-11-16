@@ -18,7 +18,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strings"
+
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/docker/go-units"
+	"github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
@@ -46,4 +52,109 @@ func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 	} else {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
+}
+
+func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
+	opts = append(opts,
+		oci.WithDefaultUnixDevices,
+		WithoutRunMount(), // unmount default tmpfs on "/run": https://github.com/containerd/nerdctl/issues/157)
+	)
+
+	opts = append(opts,
+		oci.WithMounts([]specs.Mount{
+			{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro", "nosuid", "noexec", "nodev"}},
+		}))
+
+	if cgOpts, err := generateCgroupOpts(cmd, id); err != nil {
+		return nil, err
+	} else {
+		opts = append(opts, cgOpts...)
+	}
+
+	securityOpt, err := cmd.Flags().GetStringArray("security-opt")
+	if err != nil {
+		return nil, err
+	}
+	securityOptsMaps := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(securityOpt))
+	if secOpts, err := generateSecurityOpts(securityOptsMaps); err != nil {
+		return nil, err
+	} else {
+		opts = append(opts, secOpts...)
+	}
+
+	capAdd, err := cmd.Flags().GetStringSlice("cap-add")
+	if err != nil {
+		return nil, err
+	}
+	capDrop, err := cmd.Flags().GetStringSlice("cap-drop")
+	if err != nil {
+		return nil, err
+	}
+	if capOpts, err := generateCapOpts(
+		strutil.DedupeStrSlice(capAdd),
+		strutil.DedupeStrSlice(capDrop)); err != nil {
+		return nil, err
+	} else {
+		opts = append(opts, capOpts...)
+	}
+
+	privileged, err := cmd.Flags().GetBool("privileged")
+	if err != nil {
+		return nil, err
+	}
+	if privileged {
+		opts = append(opts, privilegedOpts...)
+	}
+
+	shmSize, err := cmd.Flags().GetString("shm-size")
+	if err != nil {
+		return nil, err
+	}
+	if len(shmSize) > 0 {
+		shmBytes, err := units.RAMInBytes(shmSize)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, oci.WithDevShmSize(shmBytes/1024))
+	}
+
+	pidNs, err := cmd.Flags().GetString("pid")
+	if err != nil {
+		return nil, err
+	}
+	pidNs = strings.ToLower(pidNs)
+	if pidNs != "" {
+		if pidNs != "host" {
+			return nil, fmt.Errorf("Invalid pid namespace. Set --pid=host to enable host pid namespace.")
+		} else {
+			opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
+			if rootlessutil.IsRootless() {
+				opts = append(opts, withBindMountHostProcfs)
+			}
+		}
+	}
+
+	ulimitOpts, err := generateUlimitsOpts(cmd)
+	if err != nil {
+		return nil, err
+	}
+	opts = append(opts, ulimitOpts...)
+
+	sysctl, err := cmd.Flags().GetStringArray("sysctl")
+	if err != nil {
+		return nil, err
+	}
+	opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(sysctl)))
+
+	gpus, err := cmd.Flags().GetStringArray("gpus")
+	if err != nil {
+		return nil, err
+	}
+	gpuOpt, err := parseGPUOpts(gpus)
+	if err != nil {
+		return nil, err
+	}
+	opts = append(opts, gpuOpt...)
+
+	return opts, nil
 }

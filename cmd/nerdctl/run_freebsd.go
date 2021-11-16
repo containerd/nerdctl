@@ -37,3 +37,7 @@ func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
+
+func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
+	return opts, nil
+}

@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -399,6 +400,14 @@ func NewBase(t *testing.T) *Base {
 }
 
 func mirrorOf(s string) string {
+	if runtime.GOOS == "windows" {
+		// More work needs to be done to support windows containers in test framework
+		// for the tests that are run now this image (used in k8s upstream testing) meets the needs
+		// use gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2-windows-amd64-ltsc2022 locally on windows 11
+		// https://github.com/microsoft/Windows-Containers/issues/179
+		return "gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2"
+	}
+
 	// plain mirror, NOT stargz-converted images
 	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
 }
@@ -412,6 +421,7 @@ var (
 	WordpressIndexHTMLSnippet   = "<title>WordPress &rsaquo; Installation</title>"
 	MariaDBImage                = mirrorOf("mariadb:10.5")
 	DockerAuthImage             = mirrorOf("cesanta/docker_auth:1.7")
+	WindowsNano                 = "gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2"
 )
 
 const (

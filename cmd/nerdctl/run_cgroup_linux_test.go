@@ -142,3 +142,24 @@ func TestParseDevice(t *testing.T) {
 	}
 
 }
+
+func TestRunCgroupConf(t *testing.T) {
+	if cgroups.Mode() != cgroups.Unified {
+		t.Skip("test requires cgroup v2")
+	}
+	base := testutil.NewBase(t)
+
+	base.Cmd("run", "--rm", "--cgroup-conf", "memory.high=33554432", testutil.AlpineImage,
+		"sh", "-ec", "cd /sys/fs/cgroup && cat memory.high").AssertOutContains("33554432")
+}
+
+func TestRunBlkioWeightCgroupV2(t *testing.T) {
+	if cgroups.Mode() != cgroups.Unified {
+		t.Skip("test requires cgroup v2")
+	}
+	base := testutil.NewBase(t)
+
+	// when bfq io scheduler is used, the io.weight knob is exposed as io.bfq.weight
+	base.Cmd("run", "--rm", "--blkio-weight", "300", testutil.AlpineImage,
+		"sh", "-ec", "cd /sys/fs/cgroup && cat io.bfq.weight").AssertOutContains("300")
+}
