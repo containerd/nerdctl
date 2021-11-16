@@ -943,8 +943,15 @@ Flags:
 ### :whale: nerdctl stats
 Display a live stream of container(s) resource usage statistics.
 
+NOTE: no support for network I/O on cgroup v2 hosts (yet), see issue [#516](https://github.com/containerd/nerdctl/issues/516)
 
 Usage: `nerdctl stats [flags]`
+
+Flags:
+- :whale: `-a, --all`: Show all containers (default shows just running)
+- :whale: `--format=FORMAT`: Pretty-print images using a Go template, e.g., `{{json .}}`
+- :whale: `--no-stream`: Disable streaming stats and only pull the first result
+- :whale: `--no-trunc `: Do not truncate output
 
 ### :whale: nerdctl top
 Display the running processes of a container.
