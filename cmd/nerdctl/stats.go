@@ -38,7 +38,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/statsutil"
 	"github.com/containerd/typeurl"
-	"github.com/docker/cli/templates"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -315,7 +314,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 		case "raw":
 			return errors.New("unsupported format: \"raw\"")
 		default:
-			tmpl, err = templates.Parse(format)
+			tmpl, err = parseTemplate(format)
 			if err != nil {
 				break
 			}
