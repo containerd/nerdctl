@@ -101,7 +101,7 @@ func newTestInsecureRegistry(base *testutil.Base, name, user, pass string) *test
 	// listen on 0.0.0.0 to enable 127.0.0.1
 	listenIP := net.ParseIP("0.0.0.0")
 	const listenPort = 5000 // TODO: choose random empty port
-	const authPort = 5001   // TODO: choose random empty port
+	const authPort = 5100   // TODO: choose random empty port
 	base.T.Logf("hostIP=%q, listenIP=%q, listenPort=%d, authPort=%d", hostIP, listenIP, listenPort, authPort)
 
 	registryCert, registryKey, registryClose := generateTestCert(base, hostIP.String())
@@ -116,7 +116,7 @@ func newTestInsecureRegistry(base *testutil.Base, name, user, pass string) *test
 	authConfigFileName := authConfigFile.Name()
 	_, err = authConfigFile.Write([]byte(fmt.Sprintf(`
 server:
-  addr: ":5001"
+  addr: ":5100"
   certificate: "/auth/domain.crt"
   key: "/auth/domain.key"
 token:
@@ -135,7 +135,7 @@ acl:
 	authContainerName := "auth-" + name
 	cmd := base.Cmd("run",
 		"-d",
-		"-p", fmt.Sprintf("%s:%d:5001", listenIP, authPort),
+		"-p", fmt.Sprintf("%s:%d:5100", listenIP, authPort),
 		"--name", authContainerName,
 		"-v", authCert+":/auth/domain.crt",
 		"-v", authKey+":/auth/domain.key",

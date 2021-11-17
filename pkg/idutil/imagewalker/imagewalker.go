@@ -23,7 +23,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
-	refdocker "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/nerdctl/pkg/referenceutil"
 )
 
 type Found struct {
@@ -45,7 +45,7 @@ type ImageWalker struct {
 // Returns the number of the found entries.
 func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 	var filters []string
-	if canonicalRef, err := refdocker.ParseDockerRef(req); err == nil {
+	if canonicalRef, err := referenceutil.ParseAny(req); err == nil {
 		filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
 	}
 	filters = append(filters,

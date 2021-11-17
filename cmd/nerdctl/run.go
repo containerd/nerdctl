@@ -44,6 +44,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/mountutil"
@@ -52,11 +53,13 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/portutil"
+	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/resolvconf"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/docker/cli/opts"
+	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/sirupsen/logrus"
@@ -64,7 +67,7 @@ import (
 )
 
 func newRunCommand() *cobra.Command {
-	shortHelp := "Run a command in a new container"
+	shortHelp := "Run a command in a new container. Optionally specify \"ipfs://\" or \"ipns://\" scheme to pull image from IPFS."
 	longHelp := shortHelp
 	switch runtime.GOOS {
 	case "windows":
@@ -711,10 +714,21 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		ensured, err = imgutil.EnsureImage(ctx, client, os.Stdout, snapshotter, args[0],
-			pull, insecureRegistry, ocispecPlatforms, nil)
-		if err != nil {
-			return nil, nil, nil, err
+		if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(args[0]); err == nil {
+			ipfsClient, err := httpapi.NewLocalApi()
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			ensured, err = ipfs.EnsureImage(ctx, client, ipfsClient, os.Stdout, snapshotter, scheme, ref, pull, ocispecPlatforms, nil)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+		} else {
+			ensured, err = imgutil.EnsureImage(ctx, client, os.Stdout, snapshotter, args[0],
+				pull, insecureRegistry, ocispecPlatforms, nil)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 		}
 	}
 	var (

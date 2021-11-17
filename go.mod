@@ -14,6 +14,7 @@ require (
 	github.com/containerd/imgcrypt v1.1.2
 	github.com/containerd/stargz-snapshotter v0.10.0
 	github.com/containerd/stargz-snapshotter/estargz v0.10.0
+	github.com/containerd/stargz-snapshotter/ipfs v0.10.0
 	github.com/containerd/typeurl v1.0.2
 	github.com/containernetworking/cni v1.0.1
 	github.com/containernetworking/plugins v1.0.1
@@ -25,6 +26,10 @@ require (
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/fatih/color v1.13.0
 	github.com/gogo/protobuf v1.3.2
+	github.com/ipfs/go-cid v0.1.0
+	github.com/ipfs/go-ipfs-files v0.0.9
+	github.com/ipfs/go-ipfs-http-client v0.1.0
+	github.com/ipfs/interface-go-ipfs-core v0.5.2
 	github.com/mattn/go-isatty v0.0.14
 	github.com/moby/sys/mount v0.2.0
 	github.com/opencontainers/go-digest v1.0.0
@@ -43,6 +48,8 @@ require (
 )
 
 replace (
+	// Temporary fork for avoiding importing patent-protected code: https://github.com/hashicorp/golang-lru/issues/73
+	github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c
 	github.com/spf13/cobra => github.com/robberphex/cobra v1.2.2-0.20211012081327-8e3ac9400ac4 // https://github.com/spf13/cobra/pull/1503
 	github.com/spf13/pflag => github.com/robberphex/pflag v1.0.6-0.20211014094653-9df3e45100fd // https://github.com/spf13/pflag/pull/333
 )

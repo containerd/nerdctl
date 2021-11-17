@@ -34,6 +34,8 @@ ARG SLIRP4NETNS_VERSION=1.1.12
 # Extra deps: FUSE-OverlayFS
 ARG FUSE_OVERLAYFS_VERSION=1.7.1
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=1.0.3
+# Extra deps: IPFS
+ARG IPFS_VERSION=0.10.0
 
 # Test deps
 ARG GO_VERSION=1.17
@@ -161,6 +163,15 @@ RUN fname="containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION}-${TARG
   tar xzf "${fname}" -C /out/bin && \
   rm -f "${fname}" && \
   echo "- containerd-fuse-overlayfs: v${CONTAINERD_FUSE_OVERLAYFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+ARG IPFS_VERSION
+RUN fname="go-ipfs_v${IPFS_VERSION}_${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
+  curl -o "${fname}" -fSL "https://github.com/ipfs/go-ipfs/releases/download/v${IPFS_VERSION}/${fname}" && \
+  grep "${fname}" "/SHA256SUMS.d/go-ipfs-${IPFS_VERSION}" | sha512sum -c && \
+  tmpout=$(mktemp -d) && \
+  tar -C ${tmpout} -xzf "${fname}" go-ipfs/ipfs && \
+  mv ${tmpout}/go-ipfs/ipfs /out/bin/ && \
+  echo "- IPFS: v${IPFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/slirp4netns:    [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/rootless-containers/slirp4netns/blob/v${SLIRP4NETNS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
@@ -213,6 +224,14 @@ COPY . /go/src/github.com/containerd/nerdctl
 WORKDIR /go/src/github.com/containerd/nerdctl
 VOLUME /tmp
 ENV CGO_ENABLED=0
+# enable offline ipfs for integration test
+COPY ./Dockerfile.d/test-integration-etc_containerd-stargz-grpc_config.toml /etc/containerd-stargz-grpc/config.toml
+COPY ./Dockerfile.d/test-integration-ipfs-offline.service /usr/local/lib/systemd/system/
+# install ipfs service. avoid using 5001(api)/8080(gateway) which are reserved by tests.
+RUN systemctl enable test-integration-ipfs-offline && \
+    ipfs init && \
+    ipfs config Addresses.API "/ip4/127.0.0.1/tcp/5888" && \
+    ipfs config Addresses.Gateway "/ip4/127.0.0.1/tcp/5889"
 CMD ["go", "test", "-v", "./cmd/nerdctl/..."]
 
 FROM test-integration AS test-integration-rootless
@@ -231,6 +250,8 @@ RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
   cp -a /root/.ssh/id_rsa.pub /home/rootless/.ssh/authorized_keys && \
   mkdir -p /home/rootless/.local/share && \
   chown -R rootless:rootless /home/rootless
+# ipfs daemon for rootless containerd will be enabled in /test-integration-rootless.sh
+RUN systemctl disable test-integration-ipfs-offline
 VOLUME /home/rootless/.local/share
 RUN go test -o /usr/local/bin/nerdctl.test -c ./cmd/nerdctl
 COPY ./Dockerfile.d/test-integration-rootless.sh /

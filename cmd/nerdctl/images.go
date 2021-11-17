@@ -34,10 +34,10 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/pkg/progress"
 	"github.com/containerd/containerd/platforms"
-	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/opencontainers/image-spec/identity"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
@@ -79,7 +79,7 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) > 0 {
-		canonicalRef, err := refdocker.ParseDockerRef(args[0])
+		canonicalRef, err := referenceutil.ParseAny(args[0])
 		if err != nil {
 			return err
 		}

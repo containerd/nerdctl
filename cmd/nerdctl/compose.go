@@ -24,10 +24,12 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/platforms"
-	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/pkg/referenceutil"
+	httpapi "github.com/ipfs/go-ipfs-http-client"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/spf13/cobra"
@@ -145,11 +147,11 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 	}
 
 	o.ImageExists = func(ctx context.Context, rawRef string) (bool, error) {
-		named, err := refdocker.ParseDockerRef(rawRef)
+		refNamed, err := referenceutil.ParseAny(rawRef)
 		if err != nil {
 			return false, err
 		}
-		ref := named.String()
+		ref := refNamed.String()
 		if _, err := client.ImageService().Get(ctx, ref); err != nil {
 			if errors.Is(err, errdefs.ErrNotFound) {
 				return false, nil
@@ -168,8 +170,18 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 			}
 			ocispecPlatforms = []ocispec.Platform{parsed} // no append
 		}
-		_, imgErr := imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), snapshotter, imageName,
-			pullMode, insecure, ocispecPlatforms, nil)
+		var imgErr error
+		if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(imageName); err == nil {
+			ipfsClient, err := httpapi.NewLocalApi()
+			if err != nil {
+				return err
+			}
+			_, imgErr = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), snapshotter, scheme, ref,
+				pullMode, ocispecPlatforms, nil)
+		} else {
+			_, imgErr = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), snapshotter, imageName,
+				pullMode, insecure, ocispecPlatforms, nil)
+		}
 		return imgErr
 	}
 

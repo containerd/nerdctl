@@ -6,3 +6,4 @@ The following features are experimental and subject to change:
 - [FreeBSD containers](./freebsd.md)
 - Importing an external eStargz record JSON file with `nerdctl image convert --estargz-record-in=FILE` .
   eStargz itself is out of experimental.
+- [Image Distribution on IPFS](./ipfs.md)

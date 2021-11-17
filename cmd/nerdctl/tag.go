@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd/errdefs"
-	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
+	"github.com/containerd/nerdctl/pkg/referenceutil"
 
 	"github.com/spf13/cobra"
 )
@@ -70,7 +70,7 @@ func tagAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%s: not found", args[0])
 	}
 
-	target, err := refdocker.ParseDockerRef(args[1])
+	target, err := referenceutil.ParseDockerRef(args[1])
 	if err != nil {
 		return err
 	}

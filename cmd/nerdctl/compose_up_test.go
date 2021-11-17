@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -30,8 +31,7 @@ import (
 
 func TestComposeUp(t *testing.T) {
 	base := testutil.NewBase(t)
-
-	var dockerComposeYAML = fmt.Sprintf(`
+	testComposeUp(t, base, fmt.Sprintf(`
 version: '3.1'
 
 services:
@@ -63,7 +63,82 @@ services:
 volumes:
   wordpress:
   db:
-`, testutil.WordpressImage, testutil.MariaDBImage)
+`, testutil.WordpressImage, testutil.MariaDBImage))
+}
+
+func TestIPFSComposeUp(t *testing.T) {
+	requiresIPFS(t)
+	testutil.DockerIncompatible(t)
+	tests := []struct {
+		name           string
+		snapshotter    string
+		pushOptions    []string
+		requiresStargz bool
+	}{
+		{
+			name:        "overlayfs",
+			snapshotter: "overlayfs",
+		},
+		{
+			name:           "stargz",
+			snapshotter:    "stargz",
+			pushOptions:    []string{"--estargz"},
+			requiresStargz: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := testutil.NewBase(t)
+			if tt.requiresStargz {
+				requiresStargz(base)
+			}
+			ipfsImgs := make([]string, 2)
+			for i, img := range []string{testutil.WordpressImage, testutil.MariaDBImage} {
+				ipfsImgs[i] = pushImageToIPFS(t, base, img, tt.pushOptions...)
+			}
+			base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER="+tt.snapshotter)
+			testComposeUp(t, base, fmt.Sprintf(`
+version: '3.1'
+
+services:
+
+  wordpress:
+    image: %s
+    restart: always
+    ports:
+      - 8080:80
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: exampleuser
+      WORDPRESS_DB_PASSWORD: examplepass
+      WORDPRESS_DB_NAME: exampledb
+    volumes:
+      # workaround for https://github.com/containerd/stargz-snapshotter/issues/444
+      - "/run"
+      - wordpress:/var/www/html
+
+  db:
+    image: %s
+    restart: always
+    environment:
+      MYSQL_DATABASE: exampledb
+      MYSQL_USER: exampleuser
+      MYSQL_PASSWORD: examplepass
+      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+    volumes:
+      # workaround for https://github.com/containerd/stargz-snapshotter/issues/444
+      - "/run"
+      - db:/var/lib/mysql
+
+volumes:
+  wordpress:
+  db:
+`, ipfsImgs[0], ipfsImgs[1]))
+		})
+	}
+}
+
+func testComposeUp(t *testing.T, base *testutil.Base, dockerComposeYAML string) {
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 

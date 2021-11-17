@@ -22,8 +22,8 @@ import (
 	"os"
 
 	"github.com/containerd/containerd/images/archive"
-	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/platformutil"
+	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/mattn/go-isatty"
 
 	"github.com/spf13/cobra"
@@ -110,7 +110,7 @@ func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, cmd
 
 	imageStore := client.ImageService()
 	for _, img := range images {
-		named, err := refdocker.ParseDockerRef(img)
+		named, err := referenceutil.ParseAny(img)
 		if err != nil {
 			return err
 		}

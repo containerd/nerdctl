@@ -21,9 +21,9 @@ import (
 	"errors"
 	"fmt"
 
-	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/imgutil/commit"
+	"github.com/containerd/nerdctl/pkg/referenceutil"
 
 	"github.com/spf13/cobra"
 )
@@ -85,7 +85,7 @@ func commitAction(cmd *cobra.Command, args []string) error {
 func newCommitOpts(cmd *cobra.Command, args []string) (*commit.Opts, error) {
 	rawRef := args[1]
 
-	named, err := refdocker.ParseDockerRef(rawRef)
+	named, err := referenceutil.ParseDockerRef(rawRef)
 	if err != nil {
 		return nil, err
 	}
