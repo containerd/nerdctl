@@ -22,7 +22,7 @@ import (
 
 func newSystemCommand() *cobra.Command {
 	var systemCommand = &cobra.Command{
-		Category:      CategoryManagement,
+		Annotations:   map[string]string{Category: Management},
 		Use:           "system",
 		Short:         "Manage containerd",
 		RunE:          unknownSubcommandAction,

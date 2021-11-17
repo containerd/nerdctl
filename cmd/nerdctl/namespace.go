@@ -29,7 +29,7 @@ import (
 
 func newNamespaceCommand() *cobra.Command {
 	namespaceCommand := &cobra.Command{
-		Category:      CategoryManagement,
+		Annotations:   map[string]string{Category: Management},
 		Use:           "namespace",
 		Short:         "Manage containerd namespaces",
 		Long:          "Unrelated to Linux namespaces and Kubernetes namespaces",

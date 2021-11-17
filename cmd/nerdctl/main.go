@@ -36,11 +36,31 @@ import (
 	"github.com/spf13/pflag"
 )
 
-type Category = string
-
 const (
-	CategoryManagement = Category("Management")
+	Category   = "category"
+	Management = "management"
 )
+
+// mainHelpTemplate was derived from https://github.com/spf13/cobra/blob/v1.2.1/command.go#L491-L514
+const mainHelpTemplate = `Usage:{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+Examples:
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+Management commands:{{range .Commands}}{{if (eq (index .Annotations "category") "management")}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+Commands:{{range .Commands}}{{if (eq (index .Annotations "category") "")}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
 
 func main() {
 	if err := xmain(); err != nil {
@@ -61,81 +81,26 @@ func xmain() error {
 
 func newApp() *cobra.Command {
 	var rootCmd = &cobra.Command{
-		Use:           "nerdctl",
-		Short:         "nerdctl is a command line interface for containerd",
-		Version:       strings.TrimPrefix(version.Version, "v"),
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		Use:              "nerdctl",
+		Short:            "nerdctl is a command line interface for containerd",
+		Version:          strings.TrimPrefix(version.Version, "v"),
+		SilenceUsage:     true,
+		SilenceErrors:    true,
+		TraverseChildren: true, // required for global short hands like -a, -H, -n
 	}
+	rootCmd.SetHelpTemplate(mainHelpTemplate)
 	rootCmd.PersistentFlags().Bool("debug", false, "debug mode")
 	rootCmd.PersistentFlags().Bool("debug-full", false, "debug mode (with full output)")
-	{
-		address := new(string)
-		rootCmd.PersistentFlags().AddFlag(
-			&pflag.Flag{
-				Name:      "address",
-				Shorthand: "a",
-				Usage:     `containerd address, optionally with "unix://" prefix`,
-				EnvVars:   []string{"CONTAINERD_ADDRESS"},
-				Value:     pflag.NewStringValue(defaults.DefaultAddress, address),
-			},
-		)
-		rootCmd.PersistentFlags().AddFlag(
-			&pflag.Flag{
-				Name:      "host",
-				Shorthand: "H",
-				Usage:     `alias of --address`,
-				Value:     pflag.NewStringValue(defaults.DefaultAddress, address),
-			},
-		)
-	}
-	rootCmd.PersistentFlags().AddFlag(
-		&pflag.Flag{
-			Name:      "namespace",
-			Shorthand: "n",
-			Usage:     `containerd namespace, such as "moby" for Docker, "k8s.io" for Kubernetes`,
-			EnvVars:   []string{"CONTAINERD_NAMESPACE"},
-			Value:     pflag.NewStringValue(namespaces.Default, new(string)),
-		},
-	)
+	// -a is nonPersistentAlias (conflicts with nerdctl images -a)
+	AddPersistentStringFlag(rootCmd, "address", []string{"host"}, []string{"a", "H"}, defaults.DefaultAddress, "CONTAINERD_ADDRESS", `containerd address, optionally with "unix://" prefix`)
+	// -n is nonPersistentAlias (conflicts with nerdctl logs -n)
+	AddPersistentStringFlag(rootCmd, "namespace", nil, []string{"n"}, namespaces.Default, "CONTAINERD_NAMESPACE", `containerd namespace, such as "moby" for Docker, "k8s.io" for Kubernetes`)
 	rootCmd.RegisterFlagCompletionFunc("namespace", shellCompleteNamespaceNames)
-	{
-		snapshotter := new(string)
-		rootCmd.PersistentFlags().AddFlag(
-			&pflag.Flag{
-				Name:    "snapshotter",
-				Usage:   "containerd snapshotter",
-				EnvVars: []string{"CONTAINERD_SNAPSHOTTER"},
-				Value:   pflag.NewStringValue(containerd.DefaultSnapshotter, snapshotter),
-			},
-		)
-		rootCmd.PersistentFlags().AddFlag(
-			&pflag.Flag{
-				Name:  "storage-driver",
-				Usage: "alias of --snapshotter",
-				Value: pflag.NewStringValue(containerd.DefaultSnapshotter, snapshotter),
-			},
-		)
-		rootCmd.RegisterFlagCompletionFunc("snapshotter", shellCompleteSnapshotterNames)
-		rootCmd.RegisterFlagCompletionFunc("storage-driver", shellCompleteSnapshotterNames)
-	}
-
-	rootCmd.PersistentFlags().AddFlag(
-		&pflag.Flag{
-			Name:    "cni-path",
-			Usage:   "Set the cni-plugins binary directory",
-			EnvVars: []string{"CNI_PATH"},
-			Value:   pflag.NewStringValue(ncdefaults.CNIPath(), new(string)),
-		},
-	)
-	rootCmd.PersistentFlags().AddFlag(
-		&pflag.Flag{
-			Name:    "cni-netconfpath",
-			Usage:   "Set the CNI config directory",
-			EnvVars: []string{"NETCONFPATH"},
-			Value:   pflag.NewStringValue(ncdefaults.CNINetConfPath(), new(string)),
-		},
-	)
+	AddPersistentStringFlag(rootCmd, "snapshotter", []string{"storage-driver"}, nil, containerd.DefaultSnapshotter, "CONTAINERD_SNAPSHOTTER", "containerd snapshotter")
+	rootCmd.RegisterFlagCompletionFunc("snapshotter", shellCompleteSnapshotterNames)
+	rootCmd.RegisterFlagCompletionFunc("storage-driver", shellCompleteSnapshotterNames)
+	AddPersistentStringFlag(rootCmd, "cni-path", nil, nil, ncdefaults.CNIPath(), "CNI_PATH", "cni plugins binary directory")
+	AddPersistentStringFlag(rootCmd, "cni-netconfpath", nil, nil, ncdefaults.CNINetConfPath(), "NETCONFPATH", "cni config directory")
 	rootCmd.PersistentFlags().String("data-root", ncdefaults.DataRoot(), "Root directory of persistent nerdctl state (managed by nerdctl, not by containerd)")
 	rootCmd.PersistentFlags().String("cgroup-manager", ncdefaults.CgroupManager(), `Cgroup manager to use ("cgroupfs"|"systemd")`)
 	rootCmd.RegisterFlagCompletionFunc("cgroup-manager", shellCompleteCgroupManagerNames)
@@ -176,6 +141,7 @@ func newApp() *cobra.Command {
 		}
 		return nil
 	}
+	rootCmd.RunE = unknownSubcommandAction
 	rootCmd.AddCommand(
 		// #region Run & Exec
 		newRunCommand(),
@@ -312,4 +278,59 @@ func unknownSubcommandAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return errors.New(msg)
+}
+
+// AddStringFlag is similar to cmd.Flags().String but supports aliases and env var
+func AddStringFlag(cmd *cobra.Command, name string, aliases []string, value string, env, usage string) {
+	if env != "" {
+		usage = fmt.Sprintf("%s [$%s]", usage, env)
+	}
+	if envV, ok := os.LookupEnv(env); ok {
+		value = envV
+	}
+	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
+	p := new(string)
+	flags := cmd.Flags()
+	flags.StringVar(p, name, value, usage)
+	for _, a := range aliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			flags.StringVarP(p, a, a, value, aliasesUsage)
+		} else {
+			flags.StringVar(p, a, value, aliasesUsage)
+		}
+	}
+}
+
+// AddPersistentStringFlag is similar to AddStringFlag but persistent.
+// See https://github.com/spf13/cobra/blob/master/user_guide.md#persistent-flags to learn what is "persistent".
+func AddPersistentStringFlag(cmd *cobra.Command, name string, aliases, nonPersistentAliases []string, value string, env, usage string) {
+	if env != "" {
+		usage = fmt.Sprintf("%s [$%s]", usage, env)
+	}
+	if envV, ok := os.LookupEnv(env); ok {
+		value = envV
+	}
+	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
+	p := new(string)
+	flags := cmd.Flags()
+	for _, a := range nonPersistentAliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			flags.StringVarP(p, a, a, value, aliasesUsage)
+		} else {
+			flags.StringVar(p, a, value, aliasesUsage)
+		}
+	}
+
+	persistentFlags := cmd.PersistentFlags()
+	persistentFlags.StringVar(p, name, value, usage)
+	for _, a := range aliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			persistentFlags.StringVarP(p, a, a, value, aliasesUsage)
+		} else {
+			persistentFlags.StringVar(p, a, value, aliasesUsage)
+		}
+	}
 }

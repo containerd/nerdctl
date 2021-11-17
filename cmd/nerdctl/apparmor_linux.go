@@ -22,7 +22,7 @@ import (
 
 func newApparmorCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Category:      CategoryManagement,
+		Annotations:   map[string]string{Category: Management},
 		Use:           "apparmor",
 		Short:         "Manage AppArmor profiles",
 		RunE:          unknownSubcommandAction,

@@ -22,7 +22,7 @@ import (
 
 func newImageCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Category:      CategoryManagement,
+		Annotations:   map[string]string{Category: Management},
 		Use:           "image",
 		Short:         "Manage images",
 		RunE:          unknownSubcommandAction,

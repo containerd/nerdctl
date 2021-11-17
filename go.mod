@@ -37,8 +37,8 @@ require (
 	github.com/opencontainers/runtime-spec v1.0.3-0.20211101234015-a3c33d663ebc
 	github.com/rootless-containers/rootlesskit v0.14.6
 	github.com/sirupsen/logrus v1.8.1
-	github.com/spf13/cobra v1.2.1 // replaced, see the bottom of this file
-	github.com/spf13/pflag v1.0.5 // replaced, see the bottom of this file
+	github.com/spf13/cobra v1.2.1
+	github.com/spf13/pflag v1.0.5
 	github.com/tidwall/gjson v1.11.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -47,9 +47,5 @@ require (
 	gotest.tools/v3 v3.0.3
 )
 
-replace (
-	// Temporary fork for avoiding importing patent-protected code: https://github.com/hashicorp/golang-lru/issues/73
-	github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c
-	github.com/spf13/cobra => github.com/robberphex/cobra v1.2.2-0.20211012081327-8e3ac9400ac4 // https://github.com/spf13/cobra/pull/1503
-	github.com/spf13/pflag => github.com/robberphex/pflag v1.0.6-0.20211014094653-9df3e45100fd // https://github.com/spf13/pflag/pull/333
-)
+// Temporary fork for avoiding importing patent-protected code: https://github.com/hashicorp/golang-lru/issues/73
+replace github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c
