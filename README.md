@@ -1116,14 +1116,23 @@ Others:
 - - -
 
 # Additional documents
-- [`./docs/compose.md`](./docs/compose.md):   Compose
-- [`./docs/dir.md`](./docs/dir.md):           Directory layout (`/var/lib/nerdctl`)
-- [`./docs/gpu.md`](./docs/gpu.md):            Using GPUs inside containers
+Configuration guide:
 - [`./docs/registry.md`](./docs/registry.md): Registry authentication (`~/.docker/config.json`)
+
+Basic features:
+- [`./docs/compose.md`](./docs/compose.md):   Compose
 - [`./docs/rootless.md`](./docs/rootless.md): Rootless mode
+
+Advanced features:
 - [`./docs/stargz.md`](./docs/stargz.md):     Lazy-pulling using Stargz Snapshotter
 - [`./docs/ocicrypt.md`](./docs/ocicrypt.md): Running encrypted images
-- [`./docs/freebsd.md`](./docs/freebsd.md):  Running FreeBSD jails
+- [`./docs/gpu.md`](./docs/gpu.md):           Using GPUs inside containers
 - [`./docs/multi-platform.md`](./docs/multi-platform.md):  Multi-platform mode
+
+Experimental features:
 - [`./docs/experimental.md`](./docs/experimental.md):  Experimental features
+- [`./docs/freebsd.md`](./docs/freebsd.md):  Running FreeBSD jails
 - [`./docs/ipfs.md`](./docs/ipfs.md): Distributing images on IPFS
+
+Implementation details:
+- [`./docs/dir.md`](./docs/dir.md):           Directory layout (`/var/lib/nerdctl`)
