@@ -16,6 +16,8 @@
 
  ✅ Supports [encrypted images (ocicrypt)](./docs/ocicrypt.md)
 
+ ✅ Supports [P2P image distribution (IPFS)](./docs/ipfs.md)
+
 nerdctl is a **non-core** sub-project of containerd.
 
 ## Examples
@@ -120,6 +122,7 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 Major:
 - [On-demand image pulling (lazy-pulling) using Stargz Snapshotter](./docs/stargz.md): `nerdctl --snapshotter=stargz run IMAGE` .
 - [Image encryption and decryption using ocicrypt (imgcrypt)](./docs/ocicrypt.md): `nerdctl image (encrypt|decrypt) SRC DST`
+- [P2P image distribution using IPFS](./docs/ipfs.md): `nerdctl run ipfs://CID`
 
 Minor:
 - Namespacing: `nerdctl --namespace=<NS> ps` .
