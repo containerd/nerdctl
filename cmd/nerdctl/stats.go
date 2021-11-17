@@ -38,15 +38,17 @@ import (
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/statsutil"
 	"github.com/containerd/typeurl"
-	"github.com/docker/cli/templates"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 func newStatsCommand() *cobra.Command {
+	short := "Display a live stream of container(s) resource usage statistics."
+	long := short + "\nNOTE: no support for network I/O on cgroup v2 hosts (yet), see https://github.com/containerd/nerdctl/issues/516"
 	var statsCommand = &cobra.Command{
 		Use:               "stats",
-		Short:             "Display a live stream of container(s) resource usage statistics.",
+		Short:             short,
+		Long:              long,
 		RunE:              statsAction,
 		ValidArgsFunction: statsShellComplete,
 		SilenceUsage:      true,
@@ -60,7 +62,7 @@ func newStatsCommand() *cobra.Command {
 
 func addStatsFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolP("all", "a", false, "Show all containers (default shows just running)")
-	cmd.Flags().String("format", "", "Pretty-print images using a Go template")
+	cmd.Flags().String("format", "", "Pretty-print images using a Go template, e.g, '{{json .}}'")
 	cmd.Flags().Bool("no-stream", false, "Disable streaming stats and only pull the first result")
 	cmd.Flags().Bool("no-trunc", false, "Do not truncate output")
 }
@@ -312,7 +314,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 		case "raw":
 			return errors.New("unsupported format: \"raw\"")
 		default:
-			tmpl, err = templates.Parse(format)
+			tmpl, err = parseTemplate(format)
 			if err != nil {
 				break
 			}
