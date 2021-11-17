@@ -33,6 +33,10 @@ REVISION=$(shell git rev-parse HEAD)$(shell if ! git diff --no-ext-diff --quiet 
 
 export GO_BUILD=GO111MODULE=on CGO_ENABLED=0 GOOS=$(GOOS) $(GO) build -ldflags "-s -w -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
 
+ifdef VERBOSE
+	VERBOSE_FLAG := -v
+endif
+
 all: binaries
 
 help:
@@ -43,7 +47,7 @@ help:
 	@echo " * 'clean' - Clean artifacts."
 
 nerdctl:
-	$(GO_BUILD) -o $(CURDIR)/_output/nerdctl$(BIN_EXT) $(PACKAGE)/cmd/nerdctl
+	$(GO_BUILD) $(VERBOSE_FLAG) -o $(CURDIR)/_output/nerdctl$(BIN_EXT) $(PACKAGE)/cmd/nerdctl
 
 clean:
 	find . -name \*~ -delete
