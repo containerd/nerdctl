@@ -672,7 +672,7 @@ Pull an image from a registry.
 
 Usage: `nerdctl pull [OPTIONS] NAME[:TAG|@DIGEST]`
 
-:nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IFPS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
+:nerd_face: `ipfs://` prefix can be used for `NAME` to pull it from IFPS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Flags:
 - :whale: `--platform=(amd64|arm64|...)`: Pull content for a specific platform
@@ -687,7 +687,7 @@ Push an image to a registry.
 
 Usage: `nerdctl push [OPTIONS] NAME[:TAG]`
 
-:nerd_face: `ipfs://` prefix can be used for `IMAGE` to push it to IFPS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
+:nerd_face: `ipfs://` prefix can be used for `NAME` to push it to IFPS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Flags:
 - :nerd_face: `--platform=(amd64|arm64|...)`: Push content for a specific platform
