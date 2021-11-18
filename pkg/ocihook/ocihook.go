@@ -95,15 +95,15 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 	}
 
 	//validate and format extraHosts
-	ensureExtraHosts := func(extraHosts []string) ([]string, error) {
-		hosts := []string{}
+	ensureExtraHosts := func(extraHosts []string) (map[string]string, error) {
+		hosts := make(map[string]string)
 		for _, host := range extraHosts {
 			hostIP, err := dopts.ValidateExtraHost(host)
 			if err != nil {
 				return nil, err
 			}
 			if v := strings.SplitN(hostIP, ":", 2); len(v) == 2 {
-				hosts = append(hosts, fmt.Sprintf("%s   %s", v[1], v[0]))
+				hosts[v[1]] = v[0]
 			}
 		}
 		return hosts, nil
@@ -209,7 +209,7 @@ type handlerOpts struct {
 	cniNames          []string
 	fullID            string
 	rootlessKitClient rlkclient.Client
-	extraHosts        []string
+	extraHosts        map[string]string // ip:host
 }
 
 // hookSpec is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/containerd/command/oci-hook.go#L59-L64
