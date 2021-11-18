@@ -88,7 +88,7 @@ func newApp() *cobra.Command {
 		SilenceErrors:    true,
 		TraverseChildren: true, // required for global short hands like -a, -H, -n
 	}
-	rootCmd.SetHelpTemplate(mainHelpTemplate)
+	rootCmd.SetUsageTemplate(mainHelpTemplate)
 	rootCmd.PersistentFlags().Bool("debug", false, "debug mode")
 	rootCmd.PersistentFlags().Bool("debug-full", false, "debug mode (with full output)")
 	// -a is nonPersistentAlias (conflicts with nerdctl images -a)
