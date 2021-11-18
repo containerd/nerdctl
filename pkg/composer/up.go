@@ -33,6 +33,7 @@ type UpOptions struct {
 	NoColor     bool
 	NoLogPrefix bool
 	ForceBuild  bool
+	IPFS        bool
 }
 
 func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) error {

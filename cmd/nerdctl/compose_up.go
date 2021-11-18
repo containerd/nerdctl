@@ -33,6 +33,7 @@ func newComposeUpCommand() *cobra.Command {
 	composeUpCommand.Flags().Bool("no-color", false, "Produce monochrome output")
 	composeUpCommand.Flags().Bool("no-log-prefix", false, "Don't print prefix in logs")
 	composeUpCommand.Flags().Bool("build", false, "Build images before starting containers.")
+	composeUpCommand.Flags().Bool("ipfs", false, "Allow pulling base images from IPFS during build")
 	return composeUpCommand
 }
 
@@ -53,6 +54,10 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 	if err != nil {
 		return err
 	}
+	enableIPFS, err := cmd.Flags().GetBool("ipfs")
+	if err != nil {
+		return err
+	}
 
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
@@ -69,6 +74,7 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		NoColor:     noColor,
 		NoLogPrefix: noLogPrefix,
 		ForceBuild:  build,
+		IPFS:        enableIPFS,
 	}
 	return c.Up(ctx, uo, services)
 }

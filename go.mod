@@ -7,8 +7,8 @@ require (
 	github.com/compose-spec/compose-go v1.0.4
 	github.com/containerd/cgroups v1.0.2
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.0-beta.2
-	github.com/containerd/containerd/api v1.6.0-beta.1.0.20211112054404-aa1b0736165c
+	github.com/containerd/containerd v1.6.0-beta.2.0.20211112054404-aa1b0736165c
+	github.com/containerd/containerd/api v1.6.0-beta.2.0.20211112054404-aa1b0736165c
 	github.com/containerd/continuity v0.2.1
 	github.com/containerd/go-cni v1.1.1-0.20211026134925-aa8bf14323a5
 	github.com/containerd/imgcrypt v1.1.2
@@ -26,12 +26,14 @@ require (
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/fatih/color v1.13.0
 	github.com/gogo/protobuf v1.3.2
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-ipfs-files v0.0.9
 	github.com/ipfs/go-ipfs-http-client v0.1.0
 	github.com/ipfs/interface-go-ipfs-core v0.5.2
 	github.com/mattn/go-isatty v0.0.14
 	github.com/moby/sys/mount v0.2.0
+	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.2-0.20211102003311-9a7a9876500e
 	github.com/opencontainers/runtime-spec v1.0.3-0.20211101234015-a3c33d663ebc

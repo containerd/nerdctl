@@ -209,6 +209,9 @@ func newApp() *cobra.Command {
 
 		// Compose
 		newComposeCommand(),
+
+		// IPFS
+		newIPFSCommand(),
 	)
 	addApparmorCommand(rootCmd)
 	return rootCmd

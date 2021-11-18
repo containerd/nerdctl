@@ -94,6 +94,7 @@ func TestIPFSWithLazyPulling(t *testing.T) {
 	requiresIPFS(t)
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
+	requiresStargz(base)
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, "--estargz")
 
 	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=stargz")
@@ -109,6 +110,7 @@ func TestIPFSWithLazyPullingCommit(t *testing.T) {
 	}
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
+	requiresStargz(base)
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, "--estargz")
 
 	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=stargz")
