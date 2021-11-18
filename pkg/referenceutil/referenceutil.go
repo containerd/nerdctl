@@ -49,7 +49,7 @@ func ParseDockerRef(rawRef string) (refdocker.Named, error) {
 	return refdocker.ParseDockerRef(rawRef)
 }
 
-// ParseIPFSSRefWithScheme parses the passed reference with assuming it's an IPFS reference with scheme prefix.
+// ParseIPFSRefWithScheme parses the passed reference with assuming it's an IPFS reference with scheme prefix.
 func ParseIPFSRefWithScheme(name string) (scheme, ref string, err error) {
 	if strings.HasPrefix(name, "ipfs://") || strings.HasPrefix(name, "ipns://") {
 		return name[:4], name[7:], nil
