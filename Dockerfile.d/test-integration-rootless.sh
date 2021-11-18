@@ -16,6 +16,12 @@
 
 set -eux -o pipefail
 if [[ "$(id -u)" = "0" ]]; then
+	if [ -e /sys/kernel/security/apparmor/profiles ]; then
+		# Load the "nerdctl-default" profile for TestRunApparmor
+		nerdctl apparmor load
+	fi
+
+	# Switch to the rootless user via SSH
 	systemctl start sshd
 	exec ssh -o StrictHostKeyChecking=no rootless@localhost "$0" "$@"
 else

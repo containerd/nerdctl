@@ -18,10 +18,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/containerd/nerdctl/pkg/apparmorutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 
 	"gotest.tools/v3/assert"
@@ -149,4 +151,21 @@ func TestRunSecurityOptSeccomp(t *testing.T) {
 			cmd.AssertOutWithFunc(f(tc.seccomp))
 		})
 	}
+}
+
+func TestRunApparmor(t *testing.T) {
+	base := testutil.NewBase(t)
+	defaultProfile := fmt.Sprintf("%s-default", base.Target)
+	if !apparmorutil.CanLoadNewProfile() && !apparmorutil.CanApplySpecificExistingProfile(defaultProfile) {
+		t.Skipf("needs to be able to apply %q profile", defaultProfile)
+	}
+	attrCurrentPath := "/proc/self/attr/apparmor/current"
+	if _, err := os.Stat(attrCurrentPath); err != nil {
+		attrCurrentPath = "/proc/self/attr/current"
+	}
+	attrCurrentEnforceExpected := fmt.Sprintf("%s (enforce)\n", defaultProfile)
+	base.Cmd("run", "--rm", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly(attrCurrentEnforceExpected)
+	base.Cmd("run", "--rm", "--security-opt", "apparmor="+defaultProfile, testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly(attrCurrentEnforceExpected)
+	base.Cmd("run", "--rm", "--security-opt", "apparmor=unconfined", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly("unconfined\n")
+	base.Cmd("run", "--rm", "--privileged", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly("unconfined\n")
 }

@@ -244,6 +244,7 @@ func newApp() *cobra.Command {
 		// Compose
 		newComposeCommand(),
 	)
+	addApparmorCommand(rootCmd)
 	return rootCmd
 }
 

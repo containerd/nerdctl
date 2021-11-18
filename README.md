@@ -135,6 +135,8 @@ Minor:
 - Connecting a container to multiple networks at once: `nerdctl run --net foo --net bar`
 - Running [FreeBSD jails](./docs/freebsd.md).
 - Better multi-platform support, e.g., `nerdctl pull --all-platforms IMAGE`
+- Applying an (existing) AppArmor profile to rootless containers: `nerdctl run --security-opt apparmor=<PROFILE>`.
+  Use `sudo nerdctl apparmor load` to load the `nerdctl-default` profile.
 
 Trivial:
 - Inspecting raw OCI config: `nerdctl container inspect --mode=native` .
@@ -253,6 +255,11 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl volume rm](#whale-nerdctl-volume-rm)
   - [Namespace management](#namespace-management)
     - [:nerd_face: :blue_square: nerdctl namespace ls](#nerd_face-blue_square-nerdctl-namespace-ls)
+  - [AppArmor profile management](#apparmor-profile-management)
+    - [:nerd_face: nerdctl apparmor inspect](#nerd_face-nerdctl-apparmor-inspect)
+    - [:nerd_face: nerdctl apparmor load](#nerd_face-nerdctl-apparmor-load)
+    - [:nerd_face: nerdctl apparmor ls](#nerd_face-nerdctl-apparmor-ls)
+    - [:nerd_face: nerdctl apparmor unload](#nerd_face-nerdctl-apparmor-unload)
   - [System](#system)
     - [:whale: nerdctl events](#whale-nerdctl-events)
     - [:whale: nerdctl info](#whale-nerdctl-info)
@@ -921,6 +928,31 @@ Usage: `nerdctl namespace ls [OPTIONS]`
 
 Flags:
 - `-q, --quiet`: Only display namespace names
+
+## AppArmor profile management
+### :nerd_face: nerdctl apparmor inspect
+Display the default AppArmor profile "nerdctl-default". Other profiles cannot be displayed with this command.
+
+Usage: `nerdctl apparmor inspect`
+
+### :nerd_face: nerdctl apparmor load
+Load the default AppArmor profile "nerdctl-default". Requires root.
+
+Usage: `nerdctl apparmor load`
+
+### :nerd_face: nerdctl apparmor ls
+List the loaded AppArmor profile
+
+Usage: `nerdctl apparmor ls [OPTIONS]`
+
+Flags:
+- `-q, --quiet`: Only display volume names
+- `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+
+### :nerd_face: nerdctl apparmor unload
+Unload an AppArmor profile. The target profile name defaults to "nerdctl-default". Requires root.
+
+Usage: `nerdctl apparmor unload [PROFILE]`
 
 ## System
 ### :whale: nerdctl events

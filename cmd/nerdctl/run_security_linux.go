@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/containerd/contrib/apparmor"
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
-	pkgapparmor "github.com/containerd/containerd/pkg/apparmor"
+	"github.com/containerd/nerdctl/pkg/apparmorutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/strutil"
 
@@ -53,20 +53,28 @@ func generateSecurityOpts(securityOptsMap map[string]string) ([]oci.SpecOpts, er
 		opts = append(opts, seccomp.WithDefaultProfile())
 	}
 
-	aaSupported := pkgapparmor.HostSupports()
+	canLoadNewAppArmor := apparmorutil.CanLoadNewProfile()
+	canApplyExistingProfile := apparmorutil.CanApplyExistingProfile()
 	if aaProfile, ok := securityOptsMap["apparmor"]; ok {
 		if aaProfile == "" {
 			return nil, errors.New("invalid security-opt \"apparmor\"")
 		}
 		if aaProfile != "unconfined" {
-			if !aaSupported {
+			if !canApplyExistingProfile {
 				logrus.Warnf("The host does not support AppArmor. Ignoring profile %q", aaProfile)
 			} else {
 				opts = append(opts, apparmor.WithProfile(aaProfile))
 			}
 		}
-	} else if aaSupported {
-		opts = append(opts, apparmor.WithDefaultProfile(defaults.AppArmorProfileName))
+	} else {
+		if canLoadNewAppArmor {
+			if err := apparmor.LoadDefaultProfile(defaults.AppArmorProfileName); err != nil {
+				return nil, err
+			}
+		}
+		if apparmorutil.CanApplySpecificExistingProfile(defaults.AppArmorProfileName) {
+			opts = append(opts, apparmor.WithProfile(defaults.AppArmorProfileName))
+		}
 	}
 
 	nnp := false

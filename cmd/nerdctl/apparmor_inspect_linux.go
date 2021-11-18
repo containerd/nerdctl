@@ -14,26 +14,33 @@
    limitations under the License.
 */
 
-package ocihook
+package main
 
 import (
-	"github.com/containerd/containerd/contrib/apparmor"
-	"github.com/containerd/nerdctl/pkg/apparmorutil"
-	"github.com/containerd/nerdctl/pkg/defaults"
+	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/containerd/contrib/apparmor"
+	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/spf13/cobra"
 )
 
-func loadAppArmor() {
-	if !apparmorutil.CanLoadNewProfile() {
-		return
+func newApparmorInspectCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:           "inspect",
+		Short:         fmt.Sprintf("Display the default AppArmor profile %q. Other profiles cannot be displayed with this command.", defaults.AppArmorProfileName),
+		Args:          cobra.NoArgs,
+		RunE:          apparmorInspectAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
-	// ensure that the default profile is loaded to the host
-	if err := apparmor.LoadDefaultProfile(defaults.AppArmorProfileName); err != nil {
-		logrus.WithError(err).Errorf("failed to load AppArmor profile %q", defaults.AppArmorProfileName)
-		// We do not abort here. This is by design, and not a security issue.
-		//
-		// If the container is configured to use the default AppArmor profile
-		// but the profile was not actually loaded, runc will fail.
+	return cmd
+}
+
+func apparmorInspectAction(cmd *cobra.Command, args []string) error {
+	b, err := apparmor.DumpDefaultProfile(defaults.AppArmorProfileName)
+	if err != nil {
+		return err
 	}
+	_, err = fmt.Fprintf(cmd.OutOrStdout(), b)
+	return err
 }

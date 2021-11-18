@@ -24,11 +24,8 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/pkg/apparmor"
 	"github.com/containerd/containerd/services/introspection"
-	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/version"
 	ptypes "github.com/gogo/protobuf/types"
 )
@@ -67,16 +64,6 @@ func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupMan
 		return nil, err
 	}
 	info.ServerVersion = daemonVersion.Version
-	if apparmor.HostSupports() {
-		info.SecurityOptions = append(info.SecurityOptions, "name=apparmor")
-	}
-	info.SecurityOptions = append(info.SecurityOptions, "name=seccomp,profile=default")
-	if defaults.CgroupnsMode() == "private" {
-		info.SecurityOptions = append(info.SecurityOptions, "name=cgroupns")
-	}
-	if rootlessutil.IsRootlessChild() {
-		info.SecurityOptions = append(info.SecurityOptions, "name=rootless")
-	}
 	fulfillPlatformInfo(&info)
 	return &info, nil
 }

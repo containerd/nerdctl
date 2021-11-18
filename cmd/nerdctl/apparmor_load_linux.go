@@ -14,26 +14,30 @@
    limitations under the License.
 */
 
-package ocihook
+package main
 
 import (
-	"github.com/containerd/containerd/contrib/apparmor"
-	"github.com/containerd/nerdctl/pkg/apparmorutil"
-	"github.com/containerd/nerdctl/pkg/defaults"
+	"fmt"
 
+	"github.com/containerd/containerd/contrib/apparmor"
+	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
-func loadAppArmor() {
-	if !apparmorutil.CanLoadNewProfile() {
-		return
+func newApparmorLoadCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:           "load",
+		Short:         fmt.Sprintf("Load the default AppArmor profile %q. Requires root.", defaults.AppArmorProfileName),
+		Args:          cobra.NoArgs,
+		RunE:          apparmorLoadAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
-	// ensure that the default profile is loaded to the host
-	if err := apparmor.LoadDefaultProfile(defaults.AppArmorProfileName); err != nil {
-		logrus.WithError(err).Errorf("failed to load AppArmor profile %q", defaults.AppArmorProfileName)
-		// We do not abort here. This is by design, and not a security issue.
-		//
-		// If the container is configured to use the default AppArmor profile
-		// but the profile was not actually loaded, runc will fail.
-	}
+	return cmd
+}
+
+func apparmorLoadAction(cmd *cobra.Command, args []string) error {
+	logrus.Infof("Loading profile %q", defaults.AppArmorProfileName)
+	return apparmor.LoadDefaultProfile(defaults.AppArmorProfileName)
 }

@@ -37,7 +37,9 @@ func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
 		return true
 	}
 	switch commands[1] {
-	case "", "completion", "login", "logout":
+	// completion, login, logout: false, because it shouldn't require the daemon to be running
+	// apparmor: false, because it requires the initial mount namespace to access /sys/kernel/security
+	case "", "completion", "login", "logout", "apparmor":
 		return false
 	}
 	return true
@@ -52,4 +54,8 @@ func shellCompleteCgroupManagerNames(cmd *cobra.Command, args []string, toComple
 		candidates = append(candidates, "none")
 	}
 	return candidates, cobra.ShellCompDirectiveNoFileComp
+}
+
+func addApparmorCommand(rootCmd *cobra.Command) {
+	rootCmd.AddCommand(newApparmorCommand())
 }
