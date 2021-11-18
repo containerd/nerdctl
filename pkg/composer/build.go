@@ -30,6 +30,7 @@ import (
 type BuildOptions struct {
 	Args     []string // --build-arg strings
 	NoCache  bool
+	Output   string
 	Progress string
 	IPFS     bool
 }
@@ -59,6 +60,9 @@ func (c *Composer) buildServiceImage(ctx context.Context, image string, b *servi
 	}
 	if bo.NoCache {
 		args = append(args, "--no-cache")
+	}
+	if bo.Output != "" {
+		args = append(args, "--output="+bo.Output)
 	}
 	if bo.Progress != "" {
 		args = append(args, "--progress="+bo.Progress)
