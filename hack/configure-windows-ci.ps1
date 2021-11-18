@@ -4,8 +4,7 @@ $ErrorActionPreference = "Stop"
 choco install --limitoutput --no-progress -y golang
 
 #install containerd
-$Version="1.5.7"
-curl.exe -L https://github.com/containerd/containerd/releases/download/v$Version/containerd-$Version-windows-amd64.tar.gz -o containerd-windows-amd64.tar.gz
+curl.exe -L https://github.com/containerd/containerd/releases/download/v$Env:ContainerdVersion/containerd-$Env:ContainerdVersion-windows-amd64.tar.gz -o containerd-windows-amd64.tar.gz
 tar xvf containerd-windows-amd64.tar.gz
 mkdir -force "$Env:ProgramFiles\containerd"
 mv ./bin/* "$Env:ProgramFiles\containerd"

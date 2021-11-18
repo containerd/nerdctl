@@ -19,9 +19,24 @@ docker_builder:
   os_version: 2019
   env:
     CGO_ENABLED: 0
+    # yamllint disable rule:key-duplicates
+    matrix:
+      ContainerdVersion: 1.5.7
+      ContainerdVersion: 1.5.8
+      ContainerdVersion: 1.6.0-beta.3
   build_script:
     - mkdir "C:\Windows\system32\config\systemprofile\AppData\Local\Temp\"
     - powershell hack/configure-windows-ci.ps1
     - refreshenv
     - go install .\cmd\nerdctl\
-    - go test -v -run "^(TestRunWorkdir|TestRunWithDoubleDash|TestRunExitCode|TestRunCIDFile|TestRunEnvFile|TestRunEnv|TestExec|ImageInspect|TestRunUserName)$" ./cmd/...
+
+    - nerdctl run --rm gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2 echo hello
+    - nerdctl run --rm gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2 sh -euxc "echo hello2"
+
+    - nerdctl run -d --name nerdctl-test-exec gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2 sleep 1h
+    - nerdctl exec nerdctl-test-exec echo hello3
+    - nerdctl rm -f nerdctl-test-exec
+
+    - nerdctl run -d --name nerdctl-test-exec gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2 sh -euxc "sleep 1h"
+    - nerdctl exec nerdctl-test-exec sh -euxc "echo hello4"
+    - nerdctl rm -f nerdctl-test-exec
