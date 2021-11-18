@@ -34,7 +34,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 func newBuildCommand() *cobra.Command {
@@ -45,14 +44,7 @@ func newBuildCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	buildCommand.Flags().AddFlag(
-		&pflag.Flag{
-			Name:    "buildkit-host",
-			Usage:   `BuildKit address`,
-			EnvVars: []string{"BUILDKIT_HOST"},
-			Value:   pflag.NewStringValue(defaults.BuildKitHost(), new(string)),
-		},
-	)
+	AddStringFlag(buildCommand, "buildkit-host", nil, defaults.BuildKitHost(), "BUILDKIT_HOST", "BuildKit address")
 	buildCommand.Flags().StringArrayP("tag", "t", nil, "Name and optionally a tag in the 'name:tag' format")
 	buildCommand.Flags().StringP("file", "f", "", "Name of the Dockerfile")
 	buildCommand.Flags().String("target", "", "Set the target build stage to build")

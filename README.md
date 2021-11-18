@@ -1103,10 +1103,12 @@ Unimplemented `docker-compose ps` (V1) flags: `--quiet`, `--services`, `--filter
 Unimplemented `docker compose ps` (V2) flags: `--format`, `--status`
 
 ## Global flags
-- :nerd_face: :blue_square: `-a`, `--address`:  containerd address, optionally with "unix://" prefix
-- :whale:     `-H`, `--host`: Docker-compatible alias for `-a`, `--address`
-- :nerd_face: :blue_square: `-n`, `--namespace`: containerd namespace
+- :nerd_face: :blue_square: `--address`:  containerd address, optionally with "unix://" prefix
+- :nerd_face: :blue_square: `-a`, `--host`, `-H`: deprecated aliases of `--address`
+- :nerd_face: :blue_square: `--namespace`: containerd namespace
+- :nerd_face: :blue_square: `-n`: deprecated alias of `--namespace`
 - :nerd_face: :blue_square: `--snapshotter`: containerd snapshotter
+- :nerd_face: :blue_square: `--storage-driver`: deprecated alias of `--snapshotter`
 - :nerd_face: :blue_square: `--cni-path`: CNI binary path (default: `/opt/cni/bin`) [`$CNI_PATH`]
 - :nerd_face: :blue_square: `--cni-netconfpath`: CNI netconf path (default: `/etc/cni/net.d`) [`$NETCONFPATH`]
 - :nerd_face: :blue_square: `--data-root`: nerdctl data root, e.g. "/var/lib/nerdctl"

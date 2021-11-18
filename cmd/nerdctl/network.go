@@ -22,7 +22,7 @@ import (
 
 func newNetworkCommand() *cobra.Command {
 	networkCommand := &cobra.Command{
-		Category:      CategoryManagement,
+		Annotations:   map[string]string{Category: Management},
 		Use:           "network",
 		Short:         "Manage networks",
 		RunE:          unknownSubcommandAction,

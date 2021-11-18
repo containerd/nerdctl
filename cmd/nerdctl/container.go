@@ -22,7 +22,7 @@ import (
 
 func newContainerCommand() *cobra.Command {
 	containerCommand := &cobra.Command{
-		Category:      CategoryManagement,
+		Annotations:   map[string]string{Category: Management},
 		Use:           "container",
 		Short:         "Manage containers",
 		RunE:          unknownSubcommandAction,

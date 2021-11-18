@@ -38,16 +38,16 @@ func newPullCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	pullCommand.PersistentFlags().String("unpack", "auto", "Unpack the image for the current single platform (auto/true/false)")
+	pullCommand.Flags().String("unpack", "auto", "Unpack the image for the current single platform (auto/true/false)")
 	pullCommand.RegisterFlagCompletionFunc("unpack", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"auto", "true", "false"}, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
-	pullCommand.PersistentFlags().StringSlice("platform", nil, "Pull content for a specific platform")
+	pullCommand.Flags().StringSlice("platform", nil, "Pull content for a specific platform")
 	pullCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
-	pullCommand.PersistentFlags().Bool("all-platforms", false, "Pull content for all platforms")
+	pullCommand.Flags().Bool("all-platforms", false, "Pull content for all platforms")
 	// #endregion
 
 	return pullCommand

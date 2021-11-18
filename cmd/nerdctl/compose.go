@@ -37,13 +37,15 @@ import (
 
 func newComposeCommand() *cobra.Command {
 	var composeCommand = &cobra.Command{
-		Use:           "compose",
-		Short:         "Compose",
-		RunE:          unknownSubcommandAction,
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		Use:              "compose",
+		Short:            "Compose",
+		RunE:             unknownSubcommandAction,
+		SilenceUsage:     true,
+		SilenceErrors:    true,
+		TraverseChildren: true, // required for global short hands like -f
 	}
-	composeCommand.PersistentFlags().StringP("file", "f", "", "Specify an alternate compose file")
+	// `-f` is a nonPersistentAlias, as it conflicts with `nerdctl compose logs --follow`
+	AddPersistentStringFlag(composeCommand, "file", nil, []string{"f"}, "", "", "Specify an alternate compose file")
 	composeCommand.PersistentFlags().String("project-directory", "", "Specify an alternate working directory")
 	composeCommand.PersistentFlags().StringP("project-name", "p", "", "Specify an alternate project name")
 	composeCommand.PersistentFlags().String("env-file", "", "Specify an alternate environment file")

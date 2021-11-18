@@ -23,7 +23,7 @@ import (
 
 func newVolumeCommand() *cobra.Command {
 	volumeCommand := &cobra.Command{
-		Category:      CategoryManagement,
+		Annotations:   map[string]string{Category: Management},
 		Use:           "volume",
 		Short:         "Manage volumes",
 		RunE:          unknownSubcommandAction,

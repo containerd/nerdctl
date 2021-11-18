@@ -58,8 +58,8 @@ func newPushCommand() *cobra.Command {
 	pushCommand.Flags().Bool("all-platforms", false, "Push content for all platforms")
 	// #endregion
 
-	pushCommand.PersistentFlags().Bool("estargz", false, "Convert the image into eStargz")
-	pushCommand.PersistentFlags().Bool("ipfs-ensure-image", true, "Ensure the entire contents of the image is locally available before push")
+	pushCommand.Flags().Bool("estargz", false, "Convert the image into eStargz")
+	pushCommand.Flags().Bool("ipfs-ensure-image", true, "Ensure the entire contents of the image is locally available before push")
 
 	return pushCommand
 }
