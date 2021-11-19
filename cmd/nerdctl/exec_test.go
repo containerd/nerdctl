@@ -27,9 +27,9 @@ func TestExec(t *testing.T) {
 	const testContainer = "nerdctl-test-exec"
 	defer base.Cmd("rm", "-f", testContainer).Run()
 
-	base.Cmd("run", "-d", "--name", testContainer, testutil.AlpineImage, "sh", "-euxc", "sleep 1h").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainer, testutil.AlpineImage, "sleep 1h").AssertOK()
 
-	base.Cmd("exec", testContainer, "sh", "-euxc", "echo success").AssertOutContains("success")
+	base.Cmd("exec", testContainer, "echo success").AssertOutContains("success")
 }
 
 func TestExecWithDoubleDash(t *testing.T) {
