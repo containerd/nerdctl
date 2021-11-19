@@ -43,6 +43,8 @@ func splitParts(rawport string) (string, string, string) {
 	}
 }
 
+// ParseFlagP parse port mapping pair, like "127.0.0.1:3000:8080/tcp",
+// "127.0.0.1:3000-3001:8080-8081/tcp" and "3000:8080" ...
 func ParseFlagP(s string) ([]gocni.PortMapping, error) {
 	proto := "tcp"
 	splitBySlash := strings.Split(s, "/")
