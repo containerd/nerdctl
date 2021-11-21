@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"sync"
 
-	v1 "github.com/containerd/cgroups/stats/v1"
 	units "github.com/docker/go-units"
 )
 
@@ -121,16 +120,6 @@ func calculateMemPercent(limit float64, usedNo float64) float64 {
 		return usedNo / limit * 100.0
 	}
 	return 0
-}
-
-func calculateNetwork(metrics *v1.Metrics) (float64, float64) {
-	var rx, tx float64
-
-	for _, v := range metrics.Network {
-		rx += float64(v.RxBytes)
-		tx += float64(v.TxBytes)
-	}
-	return rx, tx
 }
 
 // Rendering a FormattedStatsEntry from StatsEntry

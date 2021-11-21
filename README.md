@@ -1009,8 +1009,6 @@ Flags:
 ### :whale: nerdctl stats
 Display a live stream of container(s) resource usage statistics.
 
-NOTE: no support for network I/O on cgroup v2 hosts (yet), see issue [#516](https://github.com/containerd/nerdctl/issues/516)
-
 Usage: `nerdctl stats [flags]`
 
 Flags:

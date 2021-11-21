@@ -54,7 +54,7 @@ func Inspect(ctx context.Context, container containerd.Container) (*native.Conta
 		return n, nil
 	}
 	n.Process.Status = st
-	netNS, err := inspectNetNS(ctx, n.Process.Pid)
+	netNS, err := InspectNetNS(ctx, n.Process.Pid)
 	if err != nil {
 		logrus.WithError(err).WithField("id", id).Warnf("failed to inspect NetNS")
 		return n, nil
