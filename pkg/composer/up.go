@@ -30,6 +30,7 @@ import (
 
 type UpOptions struct {
 	Detach      bool
+	NoBuild     bool
 	NoColor     bool
 	NoLogPrefix bool
 	ForceBuild  bool

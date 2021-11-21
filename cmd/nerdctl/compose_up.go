@@ -30,6 +30,7 @@ func newComposeUpCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	composeUpCommand.Flags().BoolP("detach", "d", false, "Detached mode: Run containers in the background")
+	composeUpCommand.Flags().Bool("no-build", false, "Don't build an image, even if it's missing.")
 	composeUpCommand.Flags().Bool("no-color", false, "Produce monochrome output")
 	composeUpCommand.Flags().Bool("no-log-prefix", false, "Don't print prefix in logs")
 	composeUpCommand.Flags().Bool("build", false, "Build images before starting containers.")
@@ -39,6 +40,10 @@ func newComposeUpCommand() *cobra.Command {
 
 func composeUpAction(cmd *cobra.Command, services []string) error {
 	detach, err := cmd.Flags().GetBool("detach")
+	if err != nil {
+		return err
+	}
+	noBuild, err := cmd.Flags().GetBool("no-build")
 	if err != nil {
 		return err
 	}
@@ -71,6 +76,7 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 	}
 	uo := composer.UpOptions{
 		Detach:      detach,
+		NoBuild:     noBuild,
 		NoColor:     noColor,
 		NoLogPrefix: noLogPrefix,
 		ForceBuild:  build,
