@@ -38,7 +38,7 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 
 	// TODO: parallelize loop for ensuring images (make sure not to mess up tty)
 	for _, ps := range parsedServices {
-		if err := c.ensureServiceImage(ctx, ps, uo.ForceBuild, BuildOptions{IPFS: uo.IPFS}); err != nil {
+		if err := c.ensureServiceImage(ctx, ps, !uo.NoBuild, uo.ForceBuild, BuildOptions{IPFS: uo.IPFS}); err != nil {
 			return err
 		}
 	}
@@ -99,9 +99,9 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 	return nil
 }
 
-func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Service, force bool, bo BuildOptions) error {
-	if ps.Build != nil {
-		if ps.Build.Force || force {
+func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Service, allowBuild, forceBuild bool, bo BuildOptions) error {
+	if ps.Build != nil && allowBuild {
+		if ps.Build.Force || forceBuild {
 			return c.buildServiceImage(ctx, ps.Image, ps.Build, ps.Unparsed.Platform, bo)
 		}
 		if ok, err := c.ImageExists(ctx, ps.Image); err != nil {
