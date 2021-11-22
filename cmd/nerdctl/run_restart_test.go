@@ -83,5 +83,6 @@ func TestRunRestart(t *testing.T) {
 		}
 		time.Sleep(sleep)
 	}
+	base.DumpDaemonLogs(10)
 	t.Fatalf("the container does not seem to be restarted")
 }

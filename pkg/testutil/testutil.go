@@ -157,12 +157,35 @@ func (b *Base) EnsureDaemonActive() {
 		out, err := cmd.CombinedOutput()
 		b.T.Logf("(retry=%d) %s", i, string(out))
 		if err == nil {
-			b.T.Logf("daemon %q is now running", target)
-			return
+			// The daemon is now running, but the daemon may still refuse connections to containerd.sock
+			b.T.Logf("daemon %q is now running, checking whether the daemon can handle requests", target)
+			infoRes := b.Cmd("info").Run()
+			if infoRes.ExitCode == 0 {
+				b.T.Logf("daemon %q can now handle requests", target)
+				return
+			}
+			b.T.Logf("(retry=%d) %s", i, infoRes.Combined())
 		}
 		time.Sleep(sleep)
 	}
-	b.T.Fatalf("daemon %q not running", target)
+	b.T.Fatalf("daemon %q not running?", target)
+}
+
+func (b *Base) DumpDaemonLogs(minutes int) {
+	b.T.Helper()
+	target := b.systemctlTarget()
+	cmd := exec.Command("journalctl",
+		append(b.systemctlArgs(),
+			[]string{"-u", target,
+				"--no-pager",
+				"-S", fmt.Sprintf("%d min ago", minutes)}...)...)
+	b.T.Logf("===== %v =====", cmd.Args)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		b.T.Fatal(err)
+	}
+	b.T.Log(string(out))
+	b.T.Log("==========")
 }
 
 func (b *Base) InspectContainer(name string) dockercompat.Container {
