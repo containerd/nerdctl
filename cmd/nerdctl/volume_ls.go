@@ -42,7 +42,7 @@ func newVolumeLsCommand() *cobra.Command {
 	// Alias "-f" is reserved for "--filter"
 	volumeLsCommand.Flags().String("format", "", "Format the output using the given go template")
 	volumeLsCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"json", "table", "wide"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	return volumeLsCommand
 }
@@ -68,7 +68,7 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	switch format {
-	case "", "table":
+	case "", "table", "wide":
 		w = tabwriter.NewWriter(cmd.OutOrStdout(), 4, 8, 4, ' ', 0)
 		if !quiet {
 			fmt.Fprintln(w, "VOLUME NAME\tDIRECTORY")

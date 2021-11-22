@@ -43,7 +43,7 @@ func newNetworkLsCommand() *cobra.Command {
 	// Alias "-f" is reserved for "--filter"
 	cmd.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
 	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"json", "table", "wide"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	return cmd
 }
@@ -68,7 +68,7 @@ func networkLsAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	switch format {
-	case "", "table":
+	case "", "table", "wide":
 		w = tabwriter.NewWriter(cmd.OutOrStdout(), 4, 8, 4, ' ', 0)
 		if !quiet {
 			fmt.Fprintln(w, "NETWORK ID\tNAME\tFILE")
