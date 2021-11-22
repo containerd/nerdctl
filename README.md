@@ -1116,10 +1116,14 @@ Pull service images
 
 Usage: `nerdctl compose pull`
 
+Unimplemented `docker-compose pull` (V1) flags: `--ignore-pull-failures`, `--parallel`, `--no-parallel`, `quiet`, `include-deps`
+
 ### :whale: nerdctl compose push
 Push service images
 
 Usage: `nerdctl compose push`
+
+Unimplemented `docker-compose pull` (V1) flags: `--ignore-push-failures`
 
 ## IPFS management
 
