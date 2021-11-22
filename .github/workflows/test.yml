@@ -55,7 +55,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        containerd: [1.4.5, 1.5.7, 1.6.0-beta.2]
+        containerd: [1.4.5, 1.5.8, 1.6.0-beta.2]
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
@@ -80,7 +80,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        containerd: [1.4.5, 1.5.7, 1.6.0-beta.2]
+        containerd: [1.4.5, 1.5.8, 1.6.0-beta.2]
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:

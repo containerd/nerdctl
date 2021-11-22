@@ -16,7 +16,7 @@
 # Usage: `docker run -it --privileged <IMAGE>`. Make sure to add `-t` and `--privileged`.
 
 # Basic deps
-ARG CONTAINERD_VERSION=1.5.7
+ARG CONTAINERD_VERSION=1.5.8
 ARG RUNC_VERSION=1.0.2
 ARG CNI_PLUGINS_VERSION=1.0.1
 
@@ -25,7 +25,7 @@ ARG CNI_ISOLATION_VERSION=0.0.4
 # Extra deps: Build
 ARG BUILDKIT_VERSION=0.9.3
 # Extra deps: Lazy-pulling
-ARG STARGZ_SNAPSHOTTER_VERSION=0.10.0
+ARG STARGZ_SNAPSHOTTER_VERSION=0.10.1
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=1.1.2
 # Extra deps: Rootless
@@ -33,7 +33,7 @@ ARG ROOTLESSKIT_VERSION=0.14.6
 ARG SLIRP4NETNS_VERSION=1.1.12
 # Extra deps: FUSE-OverlayFS
 ARG FUSE_OVERLAYFS_VERSION=1.7.1
-ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=1.0.3
+ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=1.0.4
 # Extra deps: IPFS
 ARG IPFS_VERSION=0.10.0
 
@@ -79,8 +79,13 @@ RUN mkdir -p /out/share/doc/nerdctl-full && \
   echo "# nerdctl (full distribution)" > /out/share/doc/nerdctl-full/README.md && \
   echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)" >> /out/share/doc/nerdctl-full/README.md
 ARG CONTAINERD_VERSION
+# github.com/containerd/containerd provides arm64 binaries only for containerd >= 1.6
 RUN fname="containerd-${CONTAINERD_VERSION}.${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
-  curl -o "${fname}" -fSL "https://github.com/kind-ci/containerd-nightlies/releases/download/containerd-${CONTAINERD_VERSION}/${fname}" && \
+  url="https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/${fname}" && \
+  if echo "${CONTAINERD_VERSION}" | egrep -qe '^1\.[012345]'; then  \
+    url="https://github.com/kind-ci/containerd-nightlies/releases/download/containerd-${CONTAINERD_VERSION}/${fname}" ; \
+  fi && \
+  curl -o "${fname}" -fSL "${url}" && \
   curl -o "containerd.service" -fSL "https://raw.githubusercontent.com/containerd/containerd/v${CONTAINERD_VERSION}/containerd.service" && \
   grep "${fname}" "/SHA256SUMS.d/containerd-${CONTAINERD_VERSION}" | sha256sum -c - && \
   grep "containerd.service" "/SHA256SUMS.d/containerd-${CONTAINERD_VERSION}" | sha256sum -c - && \
