@@ -18,6 +18,7 @@ package hostsstore
 
 import (
 	"net"
+	"strings"
 	"testing"
 
 	types100 "github.com/containernetworking/cni/pkg/types/100"
@@ -40,14 +41,14 @@ func TestCreateLine(t *testing.T) {
 			thatHostname: "bar",
 			thatName:     "foo",
 			myNetwork:    "n1",
-			expected:     "10.4.2.2\tbar bar.n1 foo foo.n1\n",
+			expected:     "bar bar.n1 foo foo.n1",
 		},
 		{
 			thatIP:       "10.4.2.3",
 			thatNetwork:  "n1",
 			thatHostname: "bar",
 			myNetwork:    "n1",
-			expected:     "10.4.2.3\tbar bar.n1\n",
+			expected:     "bar bar.n1",
 		},
 		{
 			thatIP:       "10.4.2.4",
@@ -96,7 +97,8 @@ func TestCreateLine(t *testing.T) {
 		myNetworks := map[string]struct{}{
 			tc.myNetwork: {},
 		}
-		line := createLine(tc.thatIP, tc.thatNetwork, thatMeta, myNetworks)
+		lines := createLine(tc.thatNetwork, thatMeta, myNetworks)
+		line := strings.Join(lines, " ")
 		t.Logf("tc=%+v, line=%q", tc, line)
 		assert.Equal(t, tc.expected, line)
 	}

@@ -20,18 +20,21 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/jaytaylor/go-hostsfile"
 	"github.com/sirupsen/logrus"
 )
 
 // newUpdater creates an updater for hostsD (/var/lib/nerdctl/<ADDRHASH>/etchosts)
-func newUpdater(hostsD string, extraHosts []string) *updater {
+func newUpdater(id, hostsD string, extraHosts map[string]string) *updater {
 	u := &updater{
+		id:            id,
 		hostsD:        hostsD,
 		metaByIPStr:   make(map[string]*Meta),
 		nwNameByIPStr: make(map[string]string),
@@ -43,11 +46,12 @@ func newUpdater(hostsD string, extraHosts []string) *updater {
 
 // updater is the struct for updater.update()
 type updater struct {
+	id            string
 	hostsD        string            // "/var/lib/nerdctl/<ADDRHASH>/etchosts"
 	metaByIPStr   map[string]*Meta  // key: IP string
 	nwNameByIPStr map[string]string // key: IP string, value: key of Meta.Networks
 	metaByDir     map[string]*Meta  // key: "/var/lib/nerdctl/<ADDRHASH>/etchosts/<NS>/<ID>"
-	extraHosts    []string
+	extraHosts    map[string]string
 }
 
 // update updates the hostsD tree.
@@ -127,26 +131,41 @@ func (u *updater) phase2() error {
 			myNetworks[nwName] = struct{}{}
 		}
 
-		var buf bytes.Buffer
-		buf.WriteString(fmt.Sprintf("# %s\n", markerBegin))
-		buf.WriteString("127.0.0.1	localhost localhost.localdomain\n")
-		buf.WriteString(":1		localhost localhost.localdomain\n")
-		for _, h := range u.extraHosts {
-			buf.WriteString(fmt.Sprintf("%s\n", h))
+		// parse the hosts file, keep the original host record
+		hosts, err := hostsfile.ParseHosts(ioutil.ReadFile(path))
+		if err != nil {
+			return err
 		}
+		// rewrite the import entries
+		hosts["127.0.0.1"] = []string{"localhost", "localhost.localdomain"}
+		hosts[":1"] = []string{"localhost", "localhost.localdomain"}
+
+		if u.id == myMeta.ID {
+			for ip, host := range u.extraHosts {
+				hosts[ip] = []string{host}
+			}
+		}
+
 		// TODO: cut off entries for the containers in other networks
 		for ip, nwName := range u.nwNameByIPStr {
 			meta := u.metaByIPStr[ip]
-			if line := createLine(ip, nwName, meta, myNetworks); line != "" {
-				if _, err := buf.WriteString(line); err != nil {
-					return err
-				}
+			if line := createLine(nwName, meta, myNetworks); len(line) != 0 {
+				hosts[ip] = line
 			}
 		}
+		var buf bytes.Buffer
+		buf.WriteString(fmt.Sprintf("# %s\n", markerBegin))
+		for ip, host := range hosts {
+			buf.WriteString(fmt.Sprintf("%-15s    %s\n", ip, strings.Join(host, " ")))
+		}
 		buf.WriteString(fmt.Sprintf("# %s\n", markerEnd))
+		err = os.WriteFile(path, buf.Bytes(), 0644)
+		if err != nil {
+			return err
+		}
 		// FIXME: retain custom /etc/hosts entries outside <nerdctl></nerdctl>
 		// See https://github.com/norouter/norouter/blob/v0.6.2/pkg/agent/etchosts/etchosts.go#L113-L152
-		return os.WriteFile(path, buf.Bytes(), 0644)
+		return nil
 	}
 	if err := filepath.Walk(u.hostsD, writeHostsWF); err != nil {
 		return err
@@ -154,29 +173,28 @@ func (u *updater) phase2() error {
 	return nil
 }
 
-// createLine returns a line string.
-// line is like "10.4.2.2        foo foo.nw0 bar bar.nw0\n"
+// createLine returns a line string slice.
+// line is like "foo foo.nw0 bar bar.nw0\n"
 // for `nerdctl --name=foo --hostname=bar --network=n0`.
 //
-// May return an empty string
-func createLine(thatIP, thatNetwork string, meta *Meta, myNetworks map[string]struct{}) string {
+// May return an empty string slice
+func createLine(thatNetwork string, meta *Meta, myNetworks map[string]struct{}) []string {
+	line := []string{}
 	if _, ok := myNetworks[thatNetwork]; !ok {
 		// Do not add lines for other networks
-		return ""
+		return line
 	}
 	baseHostnames := []string{meta.Hostname}
 	if meta.Name != "" {
 		baseHostnames = append(baseHostnames, meta.Name)
 	}
 
-	line := thatIP + "\t"
 	for _, baseHostname := range baseHostnames {
-		line += baseHostname + " "
+		line = append(line, baseHostname)
 		if thatNetwork != netutil.DefaultNetworkName {
 			// Do not add a entry like "foo.bridge"
-			line += baseHostname + "." + thatNetwork + " "
+			line = append(line, baseHostname+"."+thatNetwork)
 		}
 	}
-	line = strings.TrimSpace(line) + "\n"
 	return line
 }
