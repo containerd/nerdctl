@@ -99,9 +99,9 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 	return nil
 }
 
-func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Service, build bool, force bool, bo BuildOptions) error {
-	if ps.Build != nil && build {
-		if ps.Build.Force || force {
+func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Service, allowBuild, forceBuild bool, bo BuildOptions) error {
+	if ps.Build != nil && allowBuild {
+		if ps.Build.Force || forceBuild {
 			return c.buildServiceImage(ctx, ps.Image, ps.Build, ps.Unparsed.Platform, bo)
 		}
 		if ok, err := c.ImageExists(ctx, ps.Image); err != nil {

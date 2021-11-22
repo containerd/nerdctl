@@ -17,6 +17,8 @@
 package main
 
 import (
+	"errors"
+
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
@@ -58,6 +60,9 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 	build, err := cmd.Flags().GetBool("build")
 	if err != nil {
 		return err
+	}
+	if build && noBuild {
+		return errors.New("--build and --no-build can not be combined")
 	}
 	enableIPFS, err := cmd.Flags().GetBool("ipfs")
 	if err != nil {
