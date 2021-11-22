@@ -49,9 +49,9 @@ func newPsCommand() *cobra.Command {
 	psCommand.Flags().Bool("no-trunc", false, "Don't truncate output")
 	psCommand.Flags().BoolP("quiet", "q", false, "Only display container IDs")
 	// Alias "-f" is reserved for "--filter"
-	psCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	psCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}', 'wide'")
 	psCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"json", "table", "wide"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	return psCommand
 }

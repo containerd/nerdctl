@@ -61,9 +61,9 @@ func newImagesCommand() *cobra.Command {
 	imagesCommand.Flags().BoolP("quiet", "q", false, "Only show numeric IDs")
 	imagesCommand.Flags().Bool("no-trunc", false, "Don't truncate output")
 	// Alias "-f" is reserved for "--filter"
-	imagesCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	imagesCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}', 'wide'")
 	imagesCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"json", "table", "wide"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	imagesCommand.Flags().Bool("digests", false, "Show digests (compatible with Docker, unlike ID)")
 	imagesCommand.Flags().BoolP("all", "a", true, "(unimplemented yet, always true)")
@@ -137,9 +137,12 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 	if err != nil {
 		return err
 	}
+	if format == "wide" {
+		digestsFlag = true
+	}
 	var tmpl *template.Template
 	switch format {
-	case "", "table":
+	case "", "table", "wide":
 		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
 		if !quiet {
 			if digestsFlag {

@@ -82,8 +82,8 @@ func eventsAction(cmd *cobra.Command, args []string) error {
 	switch format {
 	case "":
 		tmpl = nil
-	case "raw", "table":
-		return errors.New("unsupported format: \"raw\" and \"table\"")
+	case "raw", "table", "wide":
+		return errors.New("unsupported format: \"raw\", \"table\", and \"wide\"")
 	default:
 		tmpl, err = parseTemplate(format)
 		if err != nil {

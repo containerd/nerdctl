@@ -533,7 +533,11 @@ Flags:
 - :whale: `-a, --all`: Show all containers (default shows just running)
 - :whale: `--no-trunc`: Don't truncate output
 - :whale: `-q, --quiet`: Only display container IDs
-- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :whale: `--format`: Format the output using the given Go template
+  - :whale: `--format=table` (default): Table
+  - :whale: `--format='{{json .}}'`: JSON
+  - :nerd_face: `--format=wide`: Wide table
+  - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
 
 Unimplemented `docker ps` flags: `--filter`, `--last`, `--size`
 
@@ -682,7 +686,11 @@ Flags:
 - :whale: `-a, --all`: Show all images (unimplemented)
 - :whale: `-q, --quiet`: Only show numeric IDs
 - :whale: `--no-trunc`: Don't truncate output
-- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :whale: `--format`: Format the output using the given Go template
+  - :whale: `--format=table` (default): Table
+  - :whale: `--format='{{json .}}'`: JSON
+  - :nerd_face: `--format=wide`: Wide table
+  - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
 - :whale: `--digests`: Show digests (compatible with Docker, unlike ID)
 
 Unimplemented `docker images` flags: `--filter`
@@ -867,7 +875,11 @@ Usage: `nerdctl network ls [OPTIONS]`
 
 Flags:
 - :whale: `-q, --quiet`: Only display network IDs
-- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :whale: `--format`: Format the output using the given Go template
+  - :whale: `--format=table` (default): Table
+  - :whale: `--format='{{json .}}'`: JSON
+  - :nerd_face: `--format=wide`: Alias of `--format=table`
+  - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
 
 Unimplemented `docker network ls` flags: `--filter`, `--no-trunc`
 
@@ -904,7 +916,11 @@ Usage: `nerdctl volume ls [OPTIONS]`
 
 Flags:
 - :whale: `-q, --quiet`: Only display volume names
-- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :whale: `--format`: Format the output using the given Go template
+  - :whale: `--format=table` (default): Table
+  - :whale: `--format='{{json .}}'`: JSON
+  - :nerd_face: `--format=wide`: Alias of `--format=table`
+  - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
 
 Unimplemented `docker volume ls` flags: `--filter`
 

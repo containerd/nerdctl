@@ -64,8 +64,8 @@ func formatSlice(cmd *cobra.Command, x []interface{}) error {
 			return err
 		}
 		fmt.Fprintln(cmd.OutOrStdout(), string(b))
-	case "raw", "table":
-		return errors.New("unsupported format: \"raw\" and \"table\"")
+	case "raw", "table", "wide":
+		return errors.New("unsupported format: \"raw\", \"table\", and \"wide\"")
 	default:
 		var err error
 		tmpl, err = parseTemplate(format)
