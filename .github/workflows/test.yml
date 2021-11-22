@@ -54,8 +54,9 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
-        containerd: [1.4.5, 1.5.8, 1.6.0-beta.2]
+        containerd: [1.4.5, 1.5.8, 1.6.0-beta.2, 1.6.0-beta.3]
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
@@ -79,8 +80,9 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
-        containerd: [1.4.5, 1.5.8, 1.6.0-beta.2]
+        containerd: [1.4.5, 1.5.8, 1.6.0-beta.2, 1.6.0-beta.3]
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:

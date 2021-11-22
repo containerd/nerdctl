@@ -80,11 +80,18 @@ RUN mkdir -p /out/share/doc/nerdctl-full && \
   echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)" >> /out/share/doc/nerdctl-full/README.md
 ARG CONTAINERD_VERSION
 # github.com/containerd/containerd provides arm64 binaries only for containerd >= 1.6
-RUN fname="containerd-${CONTAINERD_VERSION}.${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
+# File name convention was changed in 1.6.0-beta.3
+RUN fname="containerd-${CONTAINERD_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
   url="https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/${fname}" && \
+  if [ "${CONTAINERD_VERSION}" = "1.6.0-beta.2" ]; then  \
+    fname="containerd-${CONTAINERD_VERSION}.${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" ; \
+    url="https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/${fname}" ;\
+  fi && \
   if echo "${CONTAINERD_VERSION}" | egrep -qe '^1\.[012345]'; then  \
+    fname="containerd-${CONTAINERD_VERSION}.${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" ; \
     url="https://github.com/kind-ci/containerd-nightlies/releases/download/containerd-${CONTAINERD_VERSION}/${fname}" ; \
   fi && \
+  echo "URL=${url}" && \
   curl -o "${fname}" -fSL "${url}" && \
   curl -o "containerd.service" -fSL "https://raw.githubusercontent.com/containerd/containerd/v${CONTAINERD_VERSION}/containerd.service" && \
   grep "${fname}" "/SHA256SUMS.d/containerd-${CONTAINERD_VERSION}" | sha256sum -c - && \
