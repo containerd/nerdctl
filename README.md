@@ -19,6 +19,8 @@
 
  ✅ Supports [P2P image distribution (IPFS)](./docs/ipfs.md)
 
+ ✅ Supports [container image signing and verifying (cosign)](./docs/cosign.md)
+
 nerdctl is a **non-core** sub-project of containerd.
 
 ## Examples

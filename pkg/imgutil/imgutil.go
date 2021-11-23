@@ -161,6 +161,32 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 	return img, nil
 }
 
+func ResolveDigest(ctx context.Context, rawRef string, insecure bool) (string, error) {
+	named, err := refdocker.ParseDockerRef(rawRef)
+	if err != nil {
+		return "", err
+	}
+	ref := named.String()
+	refDomain := refdocker.Domain(named)
+
+	var dOpts []dockerconfigresolver.Opt
+	if insecure {
+		logrus.Warnf("skipping verifying HTTPS certs for %q", refDomain)
+		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
+	}
+	resolver, err := dockerconfigresolver.New(refDomain, dOpts...)
+	if err != nil {
+		return "", err
+	}
+
+	_, desc, err := resolver.Resolve(ctx, ref)
+	if err != nil {
+		return "", err
+	}
+
+	return desc.Digest.String(), nil
+}
+
 // IsErrHTTPResponseToHTTPSClient returns whether err is
 // "http: server gave HTTP response to HTTPS client"
 func IsErrHTTPResponseToHTTPSClient(err error) bool {

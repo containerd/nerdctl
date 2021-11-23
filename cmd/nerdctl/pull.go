@@ -17,7 +17,12 @@
 package main
 
 import (
+	"bufio"
+	"context"
 	"errors"
+	"fmt"
+	"os"
+	"os/exec"
 
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/ipfs"
@@ -25,6 +30,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 )
@@ -38,6 +44,9 @@ func newPullCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	pullCommand.Flags().String("unpack", "auto", "Unpack the image for the current single platform (auto/true/false)")
+	pullCommand.Flags().String("cosign-key", "",
+		"path to the public key file, KMS, URI or Kubernetes Secret")
+
 	pullCommand.RegisterFlagCompletionFunc("unpack", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"auto", "true", "false"}, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -47,6 +56,7 @@ func newPullCommand() *cobra.Command {
 	pullCommand.Flags().StringSlice("platform", nil, "Pull content for a specific platform")
 	pullCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 	pullCommand.Flags().Bool("all-platforms", false, "Pull content for all platforms")
+	pullCommand.Flags().String("verify", "none", "Verify the image with none|cosign. Default none")
 	// #endregion
 	pullCommand.Flags().BoolP("quiet", "q", false, "Suppress verbose output")
 
@@ -57,6 +67,7 @@ func pullAction(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return errors.New("image name needs to be specified")
 	}
+	rawRef := args[0]
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
@@ -96,7 +107,16 @@ func pullAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	verifier, err := cmd.Flags().GetString("verify")
+	if err != nil {
+		return err
+	}
+
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(args[0]); err == nil {
+		if verifier != "none" {
+			return errors.New("--verify flag is not supported on IPFS as of now")
+		}
+
 		ipfsClient, err := httpapi.NewLocalApi()
 		if err != nil {
 			return err
@@ -108,5 +128,78 @@ func pullAction(cmd *cobra.Command, args []string) error {
 
 	_, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, args[0],
 		"always", insecure, ocispecPlatforms, unpack, quiet)
-	return err
+
+	if err != nil {
+		return err
+	}
+
+	switch verifier {
+	case "cosign":
+		keyRef, err := cmd.Flags().GetString("cosign-key")
+		if err != nil {
+			return err
+		}
+
+		if err := verifyCosign(ctx, rawRef, keyRef); err != nil {
+			return err
+		}
+	case "none":
+		logrus.Debugf("verification process skipped")
+	default:
+		return fmt.Errorf("no verifier found: %s", verifier)
+	}
+	return nil
+}
+
+func verifyCosign(ctx context.Context, rawRef string, keyRef string) error {
+	digest, err := imgutil.ResolveDigest(ctx, rawRef, false)
+	rawRef = rawRef + "@" + digest
+	if err != nil {
+		logrus.WithError(err).Errorf("unable to resolve digest for an image %s: %v", rawRef, err)
+		return err
+	}
+
+	logrus.Debugf("verifying image: %s", rawRef)
+
+	cosignExecutable, err := exec.LookPath("cosign")
+	if err != nil {
+		logrus.WithError(err).Error("cosign executable not found in path $PATH")
+		logrus.Info("you might consider installing cosign from: https://docs.sigstore.dev/cosign/installation")
+		return err
+	}
+
+	cosignCmd := exec.Command(cosignExecutable, []string{"verify"}...)
+	cosignCmd.Env = os.Environ()
+
+	if keyRef != "" {
+		cosignCmd.Args = append(cosignCmd.Args, "--key", keyRef)
+	} else {
+		cosignCmd.Env = append(cosignCmd.Env, "COSIGN_EXPERIMENTAL=true")
+	}
+
+	cosignCmd.Args = append(cosignCmd.Args, rawRef)
+
+	logrus.Debugf("running %s %v", cosignExecutable, cosignCmd.Args)
+
+	stdout, _ := cosignCmd.StdoutPipe()
+	stderr, _ := cosignCmd.StderrPipe()
+	if err := cosignCmd.Start(); err != nil {
+		return err
+	}
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		logrus.Info("cosign: " + scanner.Text())
+	}
+
+	errScanner := bufio.NewScanner(stderr)
+	for errScanner.Scan() {
+		logrus.Info("cosign: " + errScanner.Text())
+	}
+
+	if err := cosignCmd.Wait(); err != nil {
+		return err
+	}
+
+	return nil
 }
