@@ -17,6 +17,8 @@ In rootless mode, you need to install ipfs daemon using `containerd-rootless-set
 containerd-rootless-setuptool.sh -- install-ipfs --init
 ```
 
+:information_source: If you want to expose some ports of ipfs daemon (e.g. 4001), you can install rootless containerd using `containerd-rootless-setuptool.sh install` with `CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS="--publish=0.0.0.0:4001:4001/tcp"` environment variable.
+
 :information_source: If you don't want IPFS to communicate with nodes on the internet, you can run IPFS daemon in offline mode using `--offline` flag or you can create a private IPFS network as described [here](https://github.com/containerd/stargz-snapshotter/blob/main/docs/ipfs.md#appendix-1-creating-ipfs-private-network).
 
 ## IPFS-enabled image and OCI Compatibility

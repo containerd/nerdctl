@@ -216,6 +216,7 @@ cmd_entrypoint_install() {
 
 		[Service]
 		Environment=PATH=$BIN:/sbin:/usr/sbin:$PATH
+		Environment=CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS=${CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS:-}
 		ExecStart=$BIN/${CONTAINERD_ROOTLESS_SH}
 		ExecReload=/bin/kill -s HUP \$MAINPID
 		TimeoutSec=0
@@ -407,6 +408,7 @@ cmd_entrypoint_install_ipfs() {
 		ipfs = true
 		###  END  ###
 	EOT
+	INFO "If you want to expose the port 4001 of ipfs daemon, re-install rootless containerd with CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS=\"--publish=0.0.0.0:4001:4001/tcp\" environment variable."
 	INFO "Set \`export IPFS_PATH=\"${IPFS_PATH}\"\` to use ipfs."
 }
 
