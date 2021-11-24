@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/go-connections/nat"
+
 	"github.com/containerd/nerdctl/pkg/testutil"
 
 	"gotest.tools/v3/assert"
@@ -307,6 +309,37 @@ networks:
 	base.Cmd("exec", svc1, "ping", "-c", "1", "svc0").AssertOK()
 	base.Cmd("exec", svc2, "ping", "-c", "1", "svc0").AssertOK()
 	base.Cmd("exec", svc1, "ping", "-c", "1", "svc2").AssertFail()
+}
+
+func TestLoadingOsEnvVar(t *testing.T) {
+	base := testutil.NewBase(t)
+	const containerName = "nginxAlpine"
+	var dockerComposeYAML = fmt.Sprintf(`
+version: '3.1'
+
+services:
+  svc1:
+    image: %s
+    container_name: %s
+    ports:
+      - ${ADDRESS:-127.0.0.1}:8080:80
+`, testutil.NginxAlpineImage, containerName)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	base.Env = append(os.Environ(), "ADDRESS=0.0.0.0")
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	inspect := base.InspectContainer(containerName)
+	inspect80TCP := (*inspect.NetworkSettings.Ports)["80/tcp"]
+	expected := nat.PortBinding{
+		HostIP:   "0.0.0.0",
+		HostPort: "8080",
+	}
+	assert.Equal(base.T, expected, inspect80TCP[0])
 }
 
 func TestDotEnvFile(t *testing.T) {
