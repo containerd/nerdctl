@@ -21,25 +21,18 @@ import (
 
 	v1 "github.com/containerd/cgroups/stats/v1"
 	v2 "github.com/containerd/cgroups/v2/stats"
+	"github.com/vishvananda/netlink"
 )
 
-var (
-	memPercent, cpuPercent float64
-	blkRead, blkWrite      uint64 // Only used on Linux
-	mem, memLimit          float64
-	netRx, netTx           float64
-	pidsStatsCurrent       uint64
-)
+func SetCgroupStatsFields(previousCgroupCPU, previousCgroupSystem uint64, data *v1.Metrics, links []netlink.Link) (StatsEntry, error) {
 
-func SetCgroupStatsFields(previousCgroupCPU, previousCgroupSystem uint64, data *v1.Metrics) (StatsEntry, error) {
-
-	cpuPercent = calculateCgroupCPUPercent(previousCgroupCPU, previousCgroupSystem, data)
-	blkRead, blkWrite = calculateCgroupBlockIO(data)
-	mem = calculateCgroupMemUsage(data)
-	memLimit = float64(data.Memory.Usage.Limit)
-	memPercent = calculateMemPercent(memLimit, mem)
-	pidsStatsCurrent = data.Pids.Current
-	netRx, netTx = calculateNetwork(data)
+	cpuPercent := calculateCgroupCPUPercent(previousCgroupCPU, previousCgroupSystem, data)
+	blkRead, blkWrite := calculateCgroupBlockIO(data)
+	mem := calculateCgroupMemUsage(data)
+	memLimit := float64(data.Memory.Usage.Limit)
+	memPercent := calculateMemPercent(memLimit, mem)
+	pidsStatsCurrent := data.Pids.Current
+	netRx, netTx := calculateCgroupNetwork(links)
 
 	return StatsEntry{
 		CPUPercentage:    cpuPercent,
@@ -55,20 +48,23 @@ func SetCgroupStatsFields(previousCgroupCPU, previousCgroupSystem uint64, data *
 
 }
 
-func SetCgroup2StatsFields(previousCgroup2CPU, previousCgroup2System uint64, metrics *v2.Metrics) (StatsEntry, error) {
+func SetCgroup2StatsFields(previousCgroup2CPU, previousCgroup2System uint64, metrics *v2.Metrics, links []netlink.Link) (StatsEntry, error) {
 
-	cpuPercent = calculateCgroup2CPUPercent(previousCgroup2CPU, previousCgroup2System, metrics)
-	blkRead, blkWrite = calculateCgroup2IO(metrics)
-	mem = calculateCgroup2MemUsage(metrics)
-	memLimit = float64(metrics.Memory.UsageLimit)
-	memPercent = calculateMemPercent(memLimit, mem)
-	pidsStatsCurrent = metrics.Pids.Current
+	cpuPercent := calculateCgroup2CPUPercent(previousCgroup2CPU, previousCgroup2System, metrics)
+	blkRead, blkWrite := calculateCgroup2IO(metrics)
+	mem := calculateCgroup2MemUsage(metrics)
+	memLimit := float64(metrics.Memory.UsageLimit)
+	memPercent := calculateMemPercent(memLimit, mem)
+	pidsStatsCurrent := metrics.Pids.Current
+	netRx, netTx := calculateCgroupNetwork(links)
 
 	return StatsEntry{
 		CPUPercentage:    cpuPercent,
 		Memory:           mem,
 		MemoryPercentage: memPercent,
 		MemoryLimit:      memLimit,
+		NetworkRx:        netRx,
+		NetworkTx:        netTx,
 		BlockRead:        float64(blkRead),
 		BlockWrite:       float64(blkWrite),
 		PidsCurrent:      pidsStatsCurrent,
@@ -157,4 +153,17 @@ func calculateCgroup2IO(metrics *v2.Metrics) (uint64, uint64) {
 	}
 
 	return ioRead, ioWrite
+}
+
+func calculateCgroupNetwork(links []netlink.Link) (float64, float64) {
+	var rx, tx float64
+
+	for _, l := range links {
+		stats := l.Attrs().Statistics
+		if stats != nil {
+			rx += float64(stats.RxBytes)
+			tx += float64(stats.TxBytes)
+		}
+	}
+	return rx, tx
 }

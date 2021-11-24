@@ -27,7 +27,7 @@ import (
 	"github.com/containernetworking/plugins/pkg/ns"
 )
 
-func inspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
+func InspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
 	nsPath := fmt.Sprintf("/proc/%d/ns/net", pid)
 	res := &native.NetNS{}
 	fn := func(_ ns.NetNS) error {

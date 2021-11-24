@@ -42,7 +42,9 @@ require (
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
 	github.com/tidwall/gjson v1.11.0
-	golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871
+	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
+	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20211117180635-dee7805ff2e1
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211

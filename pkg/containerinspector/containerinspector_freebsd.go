@@ -22,7 +22,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 )
 
-func inspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
+func InspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
 	r := &native.NetNS{}
 
 	return r, nil

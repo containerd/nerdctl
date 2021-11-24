@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd"
 	eventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/events"
+	"github.com/containerd/nerdctl/pkg/containerinspector"
 	"github.com/containerd/nerdctl/pkg/eventutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
@@ -43,12 +44,9 @@ import (
 )
 
 func newStatsCommand() *cobra.Command {
-	short := "Display a live stream of container(s) resource usage statistics."
-	long := short + "\nNOTE: no support for network I/O on cgroup v2 hosts (yet), see https://github.com/containerd/nerdctl/issues/516"
 	var statsCommand = &cobra.Command{
 		Use:               "stats",
-		Short:             short,
-		Long:              long,
+		Short:             "Display a live stream of container(s) resource usage statistics.",
 		RunE:              statsAction,
 		ValidArgsFunction: statsShellComplete,
 		SilenceUsage:      true,
@@ -431,7 +429,13 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 				continue
 			}
 
-			statsEntry, err := renderStatsEntry(previousStats, anydata)
+			netNS, err := containerinspector.InspectNetNS(ctx, int(task.Pid()))
+			if err != nil {
+				u <- err
+				continue
+			}
+
+			statsEntry, err := renderStatsEntry(previousStats, anydata, int(task.Pid()), netNS.Interfaces)
 			if err != nil {
 				u <- err
 				continue
