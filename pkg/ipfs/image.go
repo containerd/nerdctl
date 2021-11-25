@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
@@ -40,7 +39,7 @@ import (
 )
 
 // EnsureImage pull the specified image from IPFS.
-func EnsureImage(ctx context.Context, client *containerd.Client, ipfsClient iface.CoreAPI, stdout io.Writer, snapshotter string, scheme string, ref string, mode imgutil.PullMode, ocispecPlatforms []ocispec.Platform, unpack *bool) (*imgutil.EnsuredImage, error) {
+func EnsureImage(ctx context.Context, client *containerd.Client, ipfsClient iface.CoreAPI, stdout, stderr io.Writer, snapshotter string, scheme string, ref string, mode imgutil.PullMode, ocispecPlatforms []ocispec.Platform, unpack *bool) (*imgutil.EnsuredImage, error) {
 	switch mode {
 	case "always", "missing", "never":
 		// NOP
@@ -73,7 +72,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, ipfsClient ifac
 	if err != nil {
 		return nil, err
 	}
-	return imgutil.PullImage(ctx, client, os.Stdout, snapshotter, r, ref, ocispecPlatforms, unpack)
+	return imgutil.PullImage(ctx, client, stdout, stderr, snapshotter, r, ref, ocispecPlatforms, unpack)
 }
 
 // Push pushes the specified image to IPFS.

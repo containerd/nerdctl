@@ -21,14 +21,15 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/containerd/containerd/contrib/apparmor"
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/pkg/cap"
 	"github.com/containerd/nerdctl/pkg/apparmorutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/strutil"
-
 	"github.com/sirupsen/logrus"
 )
 
@@ -95,6 +96,38 @@ func generateSecurityOpts(securityOptsMap map[string]string) ([]oci.SpecOpts, er
 	return opts, nil
 }
 
+func canonicalizeCapName(s string) string {
+	if s == "" {
+		return ""
+	}
+	s = strings.ToUpper(s)
+	if !strings.HasPrefix(s, "CAP_") {
+		s = "CAP_" + s
+	}
+	if !isKnownCapName(s) {
+		logrus.Warnf("Unknown capability name %q", s)
+		// Not a fatal error, because runtime might be aware of this cap
+	}
+	return s
+}
+
+var (
+	knownCapNames     map[string]struct{}
+	knownCapNamesOnce sync.Once
+)
+
+func isKnownCapName(s string) bool {
+	knownCapNamesOnce.Do(func() {
+		known := cap.Known()
+		knownCapNames = make(map[string]struct{}, len(known))
+		for _, f := range known {
+			knownCapNames[f] = struct{}{}
+		}
+	})
+	_, ok := knownCapNames[s]
+	return ok
+}
+
 func generateCapOpts(capAdd, capDrop []string) ([]oci.SpecOpts, error) {
 	if len(capAdd) == 0 && len(capDrop) == 0 {
 		return nil, nil
@@ -110,7 +143,7 @@ func generateCapOpts(capAdd, capDrop []string) ([]oci.SpecOpts, error) {
 	} else {
 		var capsAdd []string
 		for _, c := range capAdd {
-			capsAdd = append(capsAdd, "CAP_"+strings.ToUpper(c))
+			capsAdd = append(capsAdd, canonicalizeCapName(c))
 		}
 		opts = append(opts, oci.WithAddedCapabilities(capsAdd))
 	}
@@ -118,7 +151,7 @@ func generateCapOpts(capAdd, capDrop []string) ([]oci.SpecOpts, error) {
 	if !strutil.InStringSlice(capDrop, "ALL") {
 		var capsDrop []string
 		for _, c := range capDrop {
-			capsDrop = append(capsDrop, "CAP_"+strings.ToUpper(c))
+			capsDrop = append(capsDrop, canonicalizeCapName(c))
 		}
 		opts = append(opts, oci.WithDroppedCapabilities(capsDrop))
 	}
