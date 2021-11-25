@@ -21,14 +21,15 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/containerd/containerd/contrib/apparmor"
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/pkg/cap"
 	"github.com/containerd/nerdctl/pkg/apparmorutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/strutil"
-
 	"github.com/sirupsen/logrus"
 )
 
@@ -103,7 +104,28 @@ func canonicalizeCapName(s string) string {
 	if !strings.HasPrefix(s, "CAP_") {
 		s = "CAP_" + s
 	}
+	if !isKnownCapName(s) {
+		logrus.Warnf("Unknown capability name %q", s)
+		// Not a fatal error, because runtime might be aware of this cap
+	}
 	return s
+}
+
+var (
+	knownCapNames     map[string]struct{}
+	knownCapNamesOnce sync.Once
+)
+
+func isKnownCapName(s string) bool {
+	knownCapNamesOnce.Do(func() {
+		known := cap.Known()
+		knownCapNames = make(map[string]struct{}, len(known))
+		for _, f := range known {
+			knownCapNames[f] = struct{}{}
+		}
+	})
+	_, ok := knownCapNames[s]
+	return ok
 }
 
 func generateCapOpts(capAdd, capDrop []string) ([]oci.SpecOpts, error) {
