@@ -18,7 +18,6 @@ package main
 
 import (
 	"errors"
-	"os"
 
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/ipfs"
@@ -97,12 +96,12 @@ func pullAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		_, err = ipfs.EnsureImage(ctx, client, ipfsClient, os.Stdout, snapshotter, scheme, ref,
+		_, err = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
 			"always", ocispecPlatforms, unpack)
 		return err
 	}
 
-	_, err = imgutil.EnsureImage(ctx, client, os.Stdout, snapshotter, args[0],
+	_, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, args[0],
 		"always", insecure, ocispecPlatforms, unpack)
 	return err
 }

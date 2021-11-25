@@ -719,12 +719,12 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			ensured, err = ipfs.EnsureImage(ctx, client, ipfsClient, os.Stdout, snapshotter, scheme, ref, pull, ocispecPlatforms, nil)
+			ensured, err = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref, pull, ocispecPlatforms, nil)
 			if err != nil {
 				return nil, nil, nil, err
 			}
 		} else {
-			ensured, err = imgutil.EnsureImage(ctx, client, os.Stdout, snapshotter, args[0],
+			ensured, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, args[0],
 				pull, insecureRegistry, ocispecPlatforms, nil)
 			if err != nil {
 				return nil, nil, nil, err

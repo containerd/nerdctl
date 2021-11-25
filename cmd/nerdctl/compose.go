@@ -180,10 +180,10 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 			if err != nil {
 				return err
 			}
-			_, imgErr = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), snapshotter, scheme, ref,
+			_, imgErr = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
 				pullMode, ocispecPlatforms, nil)
 		} else {
-			_, imgErr = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), snapshotter, imageName,
+			_, imgErr = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, imageName,
 				pullMode, insecure, ocispecPlatforms, nil)
 		}
 		return imgErr
