@@ -284,6 +284,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose ps](#whale-nerdctl-compose-ps)
     - [:whale: nerdctl compose pull](#whale-nerdctl-compose-pull)
     - [:whale: nerdctl compose push](#whale-nerdctl-compose-push)
+    - [:whale: nerdctl compose config](#whale-nerdctl-compose-config)
   - [IPFS management](#ipfs-management)
     - [:nerd_face: nerdctl ipfs registry up](#nerd_face-nerdctl-ipfs-registry-up)
     - [:nerd_face: nerdctl ipfs registry down](#nerd_face-nerdctl-ipfs-registry-down)
@@ -1145,6 +1146,15 @@ Usage: `nerdctl compose push`
 
 Unimplemented `docker-compose pull` (V1) flags: `--ignore-push-failures`
 
+### :whale: nerdctl compose config
+Validate and view the Compose file
+
+Usage: `nerdctl compose config`
+
+Unimplemented `docker-compose config` (V1) flags: `--resolve-image-digests`, `--no-interpolate`, `--services`, `--volumes`, `--hash`
+
+Unimplemented `docker compose config` (V2) flags: `--resolve-image-digests`, `--no-interpolate`, `--services`, `--volumes`, `--hash`, `--format`, `--output`, `--profiles`
+
 ## IPFS management
 
 ### :nerd_face: nerdctl ipfs registry up
@@ -1216,7 +1226,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose config|create|events|exec|images|kill|pause|port|restart|rm|run|scale|start|stop|top|unpause`
+- `docker-compose create|events|exec|images|kill|pause|port|restart|rm|run|scale|start|stop|top|unpause`
 
 Others:
 - `docker system df`
