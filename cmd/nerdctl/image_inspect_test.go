@@ -25,10 +25,9 @@ import (
 
 func TestImageInspectContainsSomeStuff(t *testing.T) {
 	base := testutil.NewBase(t)
-	defer base.Cmd("rmi", "-f", testutil.NginxAlpineImage).Run()
 
-	base.Cmd("pull", testutil.NginxAlpineImage).AssertOK()
-	inspect := base.InspectImage(testutil.NginxAlpineImage)
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
+	inspect := base.InspectImage(testutil.CommonImage)
 
 	assert.Assert(base.T, len(inspect.RootFS.Layers) > 0)
 	assert.Assert(base.T, inspect.RootFS.Type != "")

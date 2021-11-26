@@ -17,14 +17,10 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -42,7 +38,7 @@ func TestRunEntrypointWithBuild(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 ENTRYPOINT ["echo", "foo"]
 CMD ["echo", "bar"]
-	`, testutil.AlpineImage)
+	`, testutil.CommonImage)
 
 	buildCtx, err := createBuildContext(dockerfile)
 	assert.NilError(t, err)
@@ -90,37 +86,14 @@ func TestRunWorkdir(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		dir = "c:" + dir
 	}
-	cmd := base.Cmd("run", "--rm", "--workdir="+dir, testutil.AlpineImage, "pwd")
+	cmd := base.Cmd("run", "--rm", "--workdir="+dir, testutil.CommonImage, "pwd")
 	cmd.AssertOutContains("/foo")
 }
 
 func TestRunWithDoubleDash(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", testutil.AlpineImage, "--", "sh", "-euxc", "exit 0").AssertOK()
-}
-
-func TestRunCustomRootfs(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	rootfs := prepareCustomRootfs(base, testutil.AlpineImage)
-	defer os.RemoveAll(rootfs)
-	base.Cmd("run", "--rm", "--rootfs", rootfs, "/bin/cat", "/proc/self/environ").AssertOutContains("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
-	base.Cmd("run", "--rm", "--entrypoint", "/bin/echo", "--rootfs", rootfs, "echo", "foo").AssertOutContains("echo foo")
-}
-
-func prepareCustomRootfs(base *testutil.Base, imageName string) string {
-	base.Cmd("pull", imageName).AssertOK()
-	tmpDir, err := os.MkdirTemp("", "test-save")
-	assert.NilError(base.T, err)
-	defer os.RemoveAll(tmpDir)
-	archiveTarPath := filepath.Join(tmpDir, "a.tar")
-	base.Cmd("save", "-o", archiveTarPath, imageName).AssertOK()
-	rootfs, err := os.MkdirTemp("", "rootfs")
-	assert.NilError(base.T, err)
-	err = extractDockerArchive(archiveTarPath, rootfs)
-	assert.NilError(base.T, err)
-	return rootfs
+	base.Cmd("run", "--rm", testutil.CommonImage, "--", "sh", "-euxc", "exit 0").AssertOK()
 }
 
 func TestRunExitCode(t *testing.T) {
@@ -131,8 +104,8 @@ func TestRunExitCode(t *testing.T) {
 	)
 	defer base.Cmd("rm", "-f", testContainer0, testContainer123).Run()
 
-	base.Cmd("run", "--name", testContainer0, testutil.AlpineImage, "sh", "-euxc", "exit 0").AssertOK()
-	base.Cmd("run", "--name", testContainer123, testutil.AlpineImage, "sh", "-euxc", "exit 123").AssertExitCode(123)
+	base.Cmd("run", "--name", testContainer0, testutil.CommonImage, "sh", "-euxc", "exit 0").AssertOK()
+	base.Cmd("run", "--name", testContainer123, testutil.CommonImage, "sh", "-euxc", "exit 123").AssertExitCode(123)
 	base.Cmd("ps", "-a").AssertOutWithFunc(func(stdout string) error {
 		if !strings.Contains(stdout, "Exited (0)") {
 			return fmt.Errorf("no entry for %q", testContainer0)
@@ -156,20 +129,13 @@ func TestRunCIDFile(t *testing.T) {
 	base := testutil.NewBase(t)
 	const fileName = "cid.file"
 
-	base.Cmd("run", "--rm", "--cidfile", fileName, testutil.AlpineImage).AssertOK()
+	base.Cmd("run", "--rm", "--cidfile", fileName, testutil.CommonImage).AssertOK()
 	defer os.Remove(fileName)
 
 	_, err := os.Stat(fileName)
 	assert.NilError(base.T, err)
 
-	base.Cmd("run", "--rm", "--cidfile", fileName, testutil.AlpineImage).AssertFail()
-}
-
-func TestRunShmSize(t *testing.T) {
-	base := testutil.NewBase(t)
-	const shmSize = "32m"
-
-	base.Cmd("run", "--rm", "--shm-size", shmSize, testutil.AlpineImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
+	base.Cmd("run", "--rm", "--cidfile", fileName, testutil.CommonImage).AssertFail()
 }
 
 func TestRunEnvFile(t *testing.T) {
@@ -192,43 +158,8 @@ func TestRunEnvFile(t *testing.T) {
 	err = os.WriteFile(path2, []byte("# this is a comment line\nTESTKEY2=TESTVAL2"), 0666)
 	assert.NilError(base.T, err)
 
-	base.Cmd("run", "--rm", "--env-file", path1, "--env-file", path2, testutil.AlpineImage, "sh", "-c", "echo $TESTKEY1").AssertOutContains("TESTVAL1")
-	base.Cmd("run", "--rm", "--env-file", path1, "--env-file", path2, testutil.AlpineImage, "sh", "-c", "echo $TESTKEY2").AssertOutContains("TESTVAL2")
-}
-
-func TestRunPidHost(t *testing.T) {
-	base := testutil.NewBase(t)
-	pid := os.Getpid()
-
-	base.Cmd("run", "--rm", "--pid=host", testutil.AlpineImage, "ps", "auxw").AssertOutContains(strconv.Itoa(pid))
-}
-
-func TestRunAddHost(t *testing.T) {
-	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "--add-host", "testing.example.com:10.0.0.1", testutil.AlpineImage, "sh", "-c", "cat /etc/hosts").AssertOutWithFunc(func(stdout string) error {
-		var found bool
-		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
-		for sc.Scan() {
-			//removing spaces and tabs separating items
-			line := strings.ReplaceAll(sc.Text(), " ", "")
-			line = strings.ReplaceAll(line, "\t", "")
-			if strings.Contains(line, "10.0.0.1testing.example.com") {
-				found = true
-			}
-		}
-		if !found {
-			return errors.New("host was not added")
-		}
-		return nil
-	})
-	base.Cmd("run", "--rm", "--add-host", "10.0.0.1:testing.example.com", testutil.AlpineImage, "sh", "-c", "cat /etc/hosts").AssertFail()
-}
-
-func TestRunUlimit(t *testing.T) {
-	base := testutil.NewBase(t)
-	ulimit := "nofile=622:622"
-
-	base.Cmd("run", "--rm", "--ulimit", ulimit, testutil.AlpineImage, "sh", "-c", "ulimit -n").AssertOutContains("622")
+	base.Cmd("run", "--rm", "--env-file", path1, "--env-file", path2, testutil.CommonImage, "sh", "-c", "echo $TESTKEY1").AssertOutContains("TESTVAL1")
+	base.Cmd("run", "--rm", "--env-file", path1, "--env-file", path2, testutil.CommonImage, "sh", "-c", "echo $TESTKEY2").AssertOutContains("TESTVAL2")
 }
 
 func TestRunEnv(t *testing.T) {
@@ -240,7 +171,7 @@ func TestRunEnv(t *testing.T) {
 		"--env", "QUX",
 		"--env", "QUUX=quux1",
 		"--env", "QUUX=quux2",
-		testutil.AlpineImage, "env").AssertOutWithFunc(func(stdout string) error {
+		testutil.CommonImage, "env").AssertOutWithFunc(func(stdout string) error {
 		if !strings.Contains(stdout, "\nFOO=foo1,foo2\n") {
 			return errors.New("got bad FOO")
 		}

@@ -35,7 +35,7 @@ func TestBuild(t *testing.T) {
 
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-string"]
-	`, testutil.AlpineImage)
+	`, testutil.CommonImage)
 
 	buildCtx, err := createBuildContext(dockerfile)
 	assert.NilError(t, err)
@@ -55,7 +55,7 @@ func TestBuildFromStdin(t *testing.T) {
 
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-stdin"]
-	`, testutil.AlpineImage)
+	`, testutil.CommonImage)
 
 	base.Cmd("build", "-t", imageName, "-f", "-", ".").CmdOption(testutil.WithStdin(strings.NewReader(dockerfile))).AssertOutContains("nerdctl-build-stdin-test")
 }

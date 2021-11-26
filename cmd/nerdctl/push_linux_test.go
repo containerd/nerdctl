@@ -28,6 +28,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -69,6 +70,9 @@ type testRegistry struct {
 }
 
 func newTestRegistry(base *testutil.Base, name string) *testRegistry {
+	if runtime.GOOS != "linux" {
+		base.T.Skip("only linux is supported, currently")
+	}
 	hostIP, err := getNonLoopbackIPv4()
 	assert.NilError(base.T, err)
 	// listen on 0.0.0.0 to enable 127.0.0.1
@@ -96,6 +100,9 @@ func newTestRegistry(base *testutil.Base, name string) *testRegistry {
 }
 
 func newTestInsecureRegistry(base *testutil.Base, name, user, pass string) *testRegistry {
+	if runtime.GOOS != "linux" {
+		base.T.Skip("only linux is supported, currently")
+	}
 	hostIP, err := getNonLoopbackIPv4()
 	assert.NilError(base.T, err)
 	// listen on 0.0.0.0 to enable 127.0.0.1
@@ -187,11 +194,11 @@ func TestPushPlainHTTPFails(t *testing.T) {
 	reg := newTestRegistry(base, "test-push-plain-http-fails")
 	defer reg.cleanup()
 
-	base.Cmd("pull", testutil.AlpineImage).AssertOK()
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s:%d/test-push-plain-http-fails:%s",
-		reg.ip.String(), reg.listenPort, strings.Split(testutil.AlpineImage, ":")[1])
+		reg.ip.String(), reg.listenPort, strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
-	base.Cmd("tag", testutil.AlpineImage, testImageRef).AssertOK()
+	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
 	res := base.Cmd("push", testImageRef).Run()
 	resCombined := res.Combined()
@@ -207,11 +214,11 @@ func TestPushPlainHTTPLocalhost(t *testing.T) {
 	localhostIP := "127.0.0.1"
 	t.Logf("localhost IP=%q", localhostIP)
 
-	base.Cmd("pull", testutil.AlpineImage).AssertOK()
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s:%d/test-push-plain-http-insecure:%s",
-		localhostIP, reg.listenPort, strings.Split(testutil.AlpineImage, ":")[1])
+		localhostIP, reg.listenPort, strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
-	base.Cmd("tag", testutil.AlpineImage, testImageRef).AssertOK()
+	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
 	base.Cmd("push", testImageRef).AssertOK()
 }
@@ -224,11 +231,11 @@ func TestPushPlainHTTPInsecure(t *testing.T) {
 	reg := newTestRegistry(base, "test-push-plain-http-insecure")
 	defer reg.cleanup()
 
-	base.Cmd("pull", testutil.AlpineImage).AssertOK()
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s:%d/test-push-plain-http-insecure:%s",
-		reg.ip.String(), reg.listenPort, strings.Split(testutil.AlpineImage, ":")[1])
+		reg.ip.String(), reg.listenPort, strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
-	base.Cmd("tag", testutil.AlpineImage, testImageRef).AssertOK()
+	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
 	base.Cmd("--insecure-registry", "push", testImageRef).AssertOK()
 }
@@ -243,11 +250,11 @@ func TestPushInsecureWithLogin(t *testing.T) {
 
 	base.Cmd("--insecure-registry", "login", "-u", "admin", "-p", "badmin",
 		fmt.Sprintf("%s:%d", reg.ip.String(), reg.listenPort)).AssertOK()
-	base.Cmd("pull", testutil.AlpineImage).AssertOK()
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s:%d/test-push-insecure-tls:%s",
-		reg.ip.String(), reg.listenPort, strings.Split(testutil.AlpineImage, ":")[1])
+		reg.ip.String(), reg.listenPort, strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
-	base.Cmd("tag", testutil.AlpineImage, testImageRef).AssertOK()
+	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
 	base.Cmd("--insecure-registry", "push", testImageRef).AssertOK()
 }

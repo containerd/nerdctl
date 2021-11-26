@@ -34,6 +34,9 @@ type jweKeyPair struct {
 }
 
 func newJWEKeyPair(t testing.TB) *jweKeyPair {
+	if _, err := exec.LookPath("openssl"); err != nil {
+		t.Skip(err)
+	}
 	td, err := os.MkdirTemp(t.TempDir(), "jwe-key-pair")
 	assert.NilError(t, err)
 	prv := filepath.Join(td, "mykey.pem")
@@ -71,10 +74,10 @@ func TestImageEncryptJWE(t *testing.T) {
 	base := testutil.NewBase(t)
 	reg := newTestRegistry(base, "test-image-encrypt-jwe")
 	defer reg.cleanup()
-	base.Cmd("pull", testutil.AlpineImage).AssertOK()
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	encryptImageRef := fmt.Sprintf("127.0.0.1:%d/test-image-encrypt-jwe:encrypted", reg.listenPort)
 	defer base.Cmd("rmi", encryptImageRef).Run()
-	base.Cmd("image", "encrypt", "--recipient=jwe:"+keyPair.pub, testutil.AlpineImage, encryptImageRef).AssertOK()
+	base.Cmd("image", "encrypt", "--recipient=jwe:"+keyPair.pub, testutil.CommonImage, encryptImageRef).AssertOK()
 	base.Cmd("image", "inspect", "--mode=native", "--format={{len .Index.Manifests}}", encryptImageRef).AssertOutExactly("1\n")
 	base.Cmd("image", "inspect", "--mode=native", "--format={{json .Manifest.Layers}}", encryptImageRef).AssertOutContains("org.opencontainers.image.enc.keys.jwe")
 	base.Cmd("push", encryptImageRef).AssertOK()

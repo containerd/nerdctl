@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 	"time"
 
@@ -25,6 +26,9 @@ import (
 )
 
 func TestLogs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("`nerdctl logs` is not implmented on Windows (why?)")
+	}
 	base := testutil.NewBase(t)
 	const containerName = "nerdctl-test-logs"
 	const containerName2 = "nerdctl-test-logs-2"
@@ -32,7 +36,7 @@ func TestLogs(t *testing.T) {
 bar`
 
 	defer base.Cmd("rm", containerName).Run()
-	base.Cmd("run", "-d", "--name", containerName, testutil.AlpineImage,
+	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
 		"sh", "-euxc", "echo foo; echo bar").AssertOK()
 
 	time.Sleep(3 * time.Second)
@@ -62,10 +66,13 @@ bar`
 }
 
 func TestLogsWithFailingContainer(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("`nerdctl logs` is not implmented on Windows (why?)")
+	}
 	base := testutil.NewBase(t)
 	const containerName = "nerdctl-test-logs"
 	defer base.Cmd("rm", containerName).Run()
-	base.Cmd("run", "-d", "--name", containerName, testutil.AlpineImage,
+	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
 		"sh", "-euxc", "echo foo; echo bar; exit 42; echo baz").AssertOK()
 	time.Sleep(3 * time.Second)
 	// AssertOutContains also asserts that the exit code of the logs command == 0,

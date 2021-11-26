@@ -14,25 +14,16 @@
    limitations under the License.
 */
 
-package main
+package testutil
 
-import (
-	"runtime"
-	"testing"
+const (
+	WindowsNano = "gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2"
 
-	"github.com/containerd/nerdctl/pkg/testutil"
+	// CommonImage.
+	//
+	// More work needs to be done to support windows containers in test framework
+	// for the tests that are run now this image (used in k8s upstream testing) meets the needs
+	// use gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2-windows-amd64-ltsc2022 locally on windows 11
+	// https://github.com/microsoft/Windows-Containers/issues/179
+	CommonImage = WindowsNano
 )
-
-func TestImageConvertEStargz(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("no windows support yet")
-	}
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	convertedImage := "test-image-convert:esgz"
-	base.Cmd("rmi", convertedImage).Run()
-	defer base.Cmd("rmi", convertedImage).Run()
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	base.Cmd("image", "convert", "--estargz", "--oci",
-		testutil.CommonImage, convertedImage).AssertOK()
-}
