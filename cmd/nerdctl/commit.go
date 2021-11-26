@@ -18,13 +18,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/imgutil/commit"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
-
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -39,6 +41,7 @@ func newCommitCommand() *cobra.Command {
 	}
 	commitCommand.Flags().StringP("author", "a", "", `Author (e.g., "nerdctl contributor <nerdctl-dev@example.com>")`)
 	commitCommand.Flags().StringP("message", "m", "", "Commit message")
+	commitCommand.Flags().StringArrayP("change", "c", nil, "Apply Dockerfile instruction to the created image (only CMD directive is supported)")
 	return commitCommand
 }
 
@@ -82,6 +85,35 @@ func commitAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func parseChanges(cmd *cobra.Command) (commit.Changes, error) {
+	const commandDirective = "CMD" // XXX: Where can I get a constant for this?
+	userChanges, err := cmd.Flags().GetStringArray("change")
+	if err != nil || userChanges == nil {
+		return commit.Changes{}, err
+	}
+	var changes commit.Changes
+	for _, change := range userChanges {
+		if change == "" {
+			return commit.Changes{}, fmt.Errorf("received an empty value in change flag")
+		}
+		changeFields := strings.Fields(change)
+		switch changeFields[0] {
+		case commandDirective:
+			var overrideCMD []string
+			if err := json.Unmarshal([]byte(change[len(commandDirective):]), &overrideCMD); err != nil {
+				return commit.Changes{}, fmt.Errorf("malformed json in change flag value %q", change)
+			}
+			if changes.CMD != nil {
+				logrus.Warn("multiple change flags supplied for the CMD directive, overriding with last supplied")
+			}
+			changes.CMD = overrideCMD
+		default: // TODO: Support the rest of the change directives
+			return commit.Changes{}, fmt.Errorf("unknown change directive %q", changeFields[0])
+		}
+	}
+	return changes, nil
+}
+
 func newCommitOpts(cmd *cobra.Command, args []string) (*commit.Opts, error) {
 	rawRef := args[1]
 
@@ -98,11 +130,16 @@ func newCommitOpts(cmd *cobra.Command, args []string) (*commit.Opts, error) {
 	if err != nil {
 		return nil, err
 	}
+	changes, err := parseChanges(cmd)
+	if err != nil {
+		return nil, err
+	}
 
 	return &commit.Opts{
 		Author:  author,
 		Message: message,
 		Ref:     named.String(),
+		Changes: changes,
 	}, nil
 }
 

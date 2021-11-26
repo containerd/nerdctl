@@ -47,10 +47,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type Changes struct {
+	CMD []string
+}
+
 type Opts struct {
 	Author  string
 	Message string
 	Ref     string
+	Changes Changes
 }
 
 var (
@@ -177,6 +182,10 @@ func generateCommitImageConfig(ctx context.Context, container containerd.Contain
 		return ocispec.Image{}, err
 	}
 
+	// TODO(fuweid): support updating the USER/ENV/... fields?
+	if opts.Changes.CMD != nil {
+		baseConfig.Config.Cmd = opts.Changes.CMD
+	}
 	if opts.Author == "" {
 		opts.Author = baseConfig.Author
 	}
@@ -204,7 +213,7 @@ func generateCommitImageConfig(ctx context.Context, container containerd.Contain
 
 		Created: &createdTime,
 		Author:  opts.Author,
-		Config:  baseConfig.Config, // TODO(fuweid): how to update the USER/ENV/CMD/... fields?
+		Config:  baseConfig.Config,
 		RootFS: ocispec.RootFS{
 			Type:    "layers",
 			DiffIDs: append(baseConfig.RootFS.DiffIDs, diffID),
