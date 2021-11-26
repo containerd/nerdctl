@@ -37,7 +37,7 @@ func TestRunCustomRootfs(t *testing.T) {
 	rootfs := prepareCustomRootfs(base, testutil.AlpineImage)
 	defer os.RemoveAll(rootfs)
 	base.Cmd("run", "--rm", "--rootfs", rootfs, "/bin/cat", "/proc/self/environ").AssertOutContains("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
-	base.Cmd("run", "--rm", "--entrypoint", "/bin/echo", "--rootfs", rootfs, "echo", "foo").AssertOutContains("echo foo")
+	base.Cmd("run", "--rm", "--entrypoint", "/bin/echo", "--rootfs", rootfs, "echo", "foo").AssertOutExactly("echo foo\n")
 }
 
 func prepareCustomRootfs(base *testutil.Base, imageName string) string {
@@ -93,5 +93,5 @@ func TestRunUlimit(t *testing.T) {
 	base := testutil.NewBase(t)
 	ulimit := "nofile=622:622"
 
-	base.Cmd("run", "--rm", "--ulimit", ulimit, testutil.AlpineImage, "sh", "-c", "ulimit -n").AssertOutContains("622")
+	base.Cmd("run", "--rm", "--ulimit", ulimit, testutil.AlpineImage, "sh", "-c", "ulimit -n").AssertOutExactly("622\n")
 }

@@ -69,7 +69,7 @@ func TestRunVolume(t *testing.T) {
 		"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
 		testutil.AlpineImage,
 		"cat", "/mnt1/file1", "/mnt3/file3",
-	).AssertOutContains("str1str3")
+	).AssertOutExactly("str1str3")
 }
 
 func TestRunAnonymousVolume(t *testing.T) {
@@ -119,11 +119,11 @@ CMD ["cat", "/mnt/initial_file"]
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 
 	//AnonymousVolume
-	base.Cmd("run", "--rm", imageName).AssertOutContains("hi")
-	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains("hi")
+	base.Cmd("run", "--rm", imageName).AssertOutExactly("hi\n")
+	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 
 	//NamedVolume should be automatically created
-	base.Cmd("run", "-v", "copying-initial-content-on-volume:/mnt", "--rm", imageName).AssertOutContains("hi")
+	base.Cmd("run", "-v", "copying-initial-content-on-volume:/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 }
 
 func TestRunCopyingUpInitialContentsOnDockerfileVolume(t *testing.T) {
@@ -146,12 +146,12 @@ CMD ["cat", "/mnt/initial_file"]
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	//AnonymousVolume
-	base.Cmd("run", "--rm", imageName).AssertOutContains("hi")
-	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains("hi")
+	base.Cmd("run", "--rm", imageName).AssertOutExactly("hi\n")
+	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 
 	//NamedVolume
 	base.Cmd("volume", "create", "copying-initial-content").AssertOK()
-	base.Cmd("run", "-v", "copying-initial-content:/mnt", "--rm", imageName).AssertOutContains("hi")
+	base.Cmd("run", "-v", "copying-initial-content:/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 
 	//mount bind
 	tmpDir, err := os.MkdirTemp("", "hostDir")
@@ -173,7 +173,7 @@ RUN ln -s ../../../../../../../../../../../../../../../../../../etc/passwd /mnt/
 VOLUME /mnt
 CMD ["readlink", "/mnt/passwd"]
         `, testutil.AlpineImage)
-	const expected = "../../../../../../../../../../../../../../../../../../etc/passwd"
+	const expected = "../../../../../../../../../../../../../../../../../../etc/passwd\n"
 
 	buildCtx, err := createBuildContext(dockerfile)
 	assert.NilError(t, err)
@@ -181,8 +181,8 @@ CMD ["readlink", "/mnt/passwd"]
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 
-	base.Cmd("run", "--rm", imageName).AssertOutContains(expected)
-	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains(expected)
+	base.Cmd("run", "--rm", imageName).AssertOutExactly(expected)
+	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutExactly(expected)
 }
 
 func TestRunTmpfs(t *testing.T) {

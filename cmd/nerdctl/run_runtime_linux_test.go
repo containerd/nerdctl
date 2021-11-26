@@ -22,8 +22,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
-func TestRuntimeResources(t *testing.T) {
+func TestRunSysctl(t *testing.T) {
 	base := testutil.NewBase(t)
-	const expected = `1`
-	base.Cmd("run", "--rm", "--sysctl", "net.ipv4.ip_forward=1", testutil.AlpineImage, "cat", "/proc/sys/net/ipv4/ip_forward").AssertOutContains(expected)
+	base.Cmd("run", "--rm", "--sysctl", "net.ipv4.ip_forward=1", testutil.AlpineImage, "cat", "/proc/sys/net/ipv4/ip_forward").AssertOutExactly("1\n")
 }

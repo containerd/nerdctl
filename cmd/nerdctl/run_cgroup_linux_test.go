@@ -61,7 +61,7 @@ func TestRunCgroupV2(t *testing.T) {
 `
 	//In CgroupV2 CPUWeight replace CPUShares => weight := 1 + ((shares-2)*9999)/262142
 	base.Cmd("run", "--rm", "--cpus", "0.42", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
-		"cat", "cpu.max", "memory.max", "pids.max", "cpu.weight", "cpuset.cpus").AssertOutContains(expected)
+		"cat", "cpu.max", "memory.max", "pids.max", "cpu.weight", "cpuset.cpus").AssertOutExactly(expected)
 }
 
 func TestRunDevice(t *testing.T) {
@@ -176,7 +176,7 @@ func TestRunCgroupConf(t *testing.T) {
 		t.Skip("test requires MemoryLimit")
 	}
 	base.Cmd("run", "--rm", "--cgroup-conf", "memory.high=33554432", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
-		"cat", "memory.high").AssertOutContains("33554432")
+		"cat", "memory.high").AssertOutExactly("33554432\n")
 }
 
 func TestRunBlkioWeightCgroupV2(t *testing.T) {
@@ -194,5 +194,5 @@ func TestRunBlkioWeightCgroupV2(t *testing.T) {
 	}
 	// when bfq io scheduler is used, the io.weight knob is exposed as io.bfq.weight
 	base.Cmd("run", "--rm", "--blkio-weight", "300", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
-		"cat", "io.bfq.weight").AssertOutContains("300")
+		"cat", "io.bfq.weight").AssertOutExactly("default 300\n")
 }

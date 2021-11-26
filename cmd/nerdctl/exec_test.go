@@ -29,7 +29,7 @@ func TestExec(t *testing.T) {
 
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
 
-	base.Cmd("exec", testContainer, "echo", "success").AssertOutContains("success")
+	base.Cmd("exec", testContainer, "echo", "success").AssertOutExactly("success\n")
 }
 
 func TestExecWithDoubleDash(t *testing.T) {
@@ -40,5 +40,5 @@ func TestExecWithDoubleDash(t *testing.T) {
 
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
 
-	base.Cmd("exec", testContainer, "--", "echo", "success").AssertOutContains("success")
+	base.Cmd("exec", testContainer, "--", "echo", "success").AssertOutExactly("success\n")
 }

@@ -44,7 +44,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
 
-	base.Cmd("run", "--rm", imageName).AssertOutContains("nerdctl-build-test-string")
+	base.Cmd("run", "--rm", imageName).AssertOutExactly("nerdctl-build-test-string\n")
 }
 
 func TestBuildFromStdin(t *testing.T) {
