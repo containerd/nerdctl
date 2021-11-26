@@ -47,32 +47,6 @@ CMD ["echo", "nerdctl-build-test-string"]
 	base.Cmd("run", "--rm", imageName).AssertOutContains("nerdctl-build-test-string")
 }
 
-func TestIPFSBuild(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	requiresIPFS(t)
-	testutil.RequiresBuild(t)
-	base := testutil.NewBase(t)
-	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage)
-	ipfsCIDBase := strings.TrimPrefix(ipfsCID, "ipfs://")
-
-	const imageName = "nerdctl-build-test"
-	defer base.Cmd("rmi", imageName).Run()
-
-	dockerfile := fmt.Sprintf(`FROM localhost:5050/ipfs/%s
-CMD ["echo", "nerdctl-build-test-string"]
-	`, ipfsCIDBase)
-
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
-
-	defer base.Cmd("ipfs", "registry", "down").AssertOK()
-	base.Cmd("build", "--ipfs", "-t", imageName, buildCtx).AssertOK()
-	base.Cmd("build", buildCtx, "--ipfs", "-t", imageName).AssertOK()
-
-	base.Cmd("run", "--rm", imageName).AssertOutContains("nerdctl-build-test-string")
-}
-
 func TestBuildFromStdin(t *testing.T) {
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
