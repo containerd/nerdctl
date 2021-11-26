@@ -68,7 +68,7 @@ volumes:
 `, testutil.WordpressImage, testutil.MariaDBImage))
 }
 
-func TestIPFSComposeUp(t *testing.T) {
+func TestComposeUpIPFS(t *testing.T) {
 	requiresIPFS(t)
 	testutil.DockerIncompatible(t)
 	tests := []struct {
@@ -311,7 +311,7 @@ networks:
 	base.Cmd("exec", svc1, "ping", "-c", "1", "svc2").AssertFail()
 }
 
-func TestLoadingOsEnvVar(t *testing.T) {
+func TestComposeUpOsEnvVar(t *testing.T) {
 	base := testutil.NewBase(t)
 	const containerName = "nginxAlpine"
 	var dockerComposeYAML = fmt.Sprintf(`
@@ -342,7 +342,7 @@ services:
 	assert.Equal(base.T, expected, inspect80TCP[0])
 }
 
-func TestDotEnvFile(t *testing.T) {
+func TestComposeUpDotEnvFile(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	var dockerComposeYAML = `
@@ -363,7 +363,7 @@ services:
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 }
 
-func TestEnvFileNotFoundError(t *testing.T) {
+func TestComposeUpEnvFileNotFoundError(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	var dockerComposeYAML = `

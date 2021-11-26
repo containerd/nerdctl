@@ -99,7 +99,7 @@ VOLUME /foo
 		"mountpoint", "-q", "/foo").AssertOK()
 }
 
-func TestCopyingUpInitialContentsOnVolume(t *testing.T) {
+func TestRunCopyingUpInitialContentsOnVolume(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
@@ -126,7 +126,7 @@ CMD ["cat", "/mnt/initial_file"]
 	base.Cmd("run", "-v", "copying-initial-content-on-volume:/mnt", "--rm", imageName).AssertOutContains("hi")
 }
 
-func TestCopyingUpInitialContentsOnDockerfileVolume(t *testing.T) {
+func TestRunCopyingUpInitialContentsOnDockerfileVolume(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
@@ -161,7 +161,7 @@ CMD ["cat", "/mnt/initial_file"]
 	base.Cmd("run", "-v", fmt.Sprintf("%s:/mnt", tmpDir), "--rm", imageName).AssertFail()
 }
 
-func TestCopyingUpInitialContentsOnVolumeShouldRetainSymlink(t *testing.T) {
+func TestRunCopyingUpInitialContentsOnVolumeShouldRetainSymlink(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
