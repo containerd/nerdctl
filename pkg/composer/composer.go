@@ -68,6 +68,10 @@ func New(o Options) (*Composer, error) {
 		o.ProjectOptions.ConfigPaths = append(o.ProjectOptions.ConfigPaths, composeYaml)
 	}
 
+	if err := composecli.WithOsEnv(&o.ProjectOptions); err != nil {
+		return nil, err
+	}
+
 	if err := composecli.WithDotEnv(&o.ProjectOptions); err != nil {
 		return nil, err
 	}

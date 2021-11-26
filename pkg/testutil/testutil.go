@@ -79,6 +79,7 @@ func (b *Base) ComposeCmd(args ...string) *Cmd {
 		binaryArgs = append(b.Args, append([]string{"compose"}, args...)...)
 	}
 	icmdCmd := icmd.Command(binary, binaryArgs...)
+	icmdCmd.Env = b.Env
 	cmd := &Cmd{
 		Cmd:  icmdCmd,
 		Base: b,
