@@ -23,6 +23,7 @@ import (
 )
 
 func TestCommit(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	switch base.Info().CgroupDriver {
 	case "none", "":

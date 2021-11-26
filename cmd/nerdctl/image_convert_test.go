@@ -28,6 +28,7 @@ func TestImageConvertEStargz(t *testing.T) {
 		t.Skip("no windows support yet")
 	}
 	testutil.DockerIncompatible(t)
+	t.Parallel()
 	base := testutil.NewBase(t)
 	convertedImage := "test-image-convert:esgz"
 	base.Cmd("rmi", convertedImage).Run()

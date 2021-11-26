@@ -55,6 +55,7 @@ func prepareCustomRootfs(base *testutil.Base, imageName string) string {
 }
 
 func TestRunShmSize(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	const shmSize = "32m"
 
@@ -62,6 +63,7 @@ func TestRunShmSize(t *testing.T) {
 }
 
 func TestRunPidHost(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	pid := os.Getpid()
 
@@ -69,6 +71,7 @@ func TestRunPidHost(t *testing.T) {
 }
 
 func TestRunAddHost(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	base.Cmd("run", "--rm", "--add-host", "testing.example.com:10.0.0.1", testutil.AlpineImage, "cat", "/etc/hosts").AssertOutWithFunc(func(stdout string) error {
 		var found bool
@@ -90,6 +93,7 @@ func TestRunAddHost(t *testing.T) {
 }
 
 func TestRunUlimit(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	ulimit := "nofile=622:622"
 

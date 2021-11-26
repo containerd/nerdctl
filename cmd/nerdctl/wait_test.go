@@ -23,6 +23,7 @@ import (
 )
 
 func TestWait(t *testing.T) {
+	t.Parallel()
 	const (
 		testContainerName1 = "nerdctl-test-wait-1"
 		testContainerName2 = "nerdctl-test-wait-2"

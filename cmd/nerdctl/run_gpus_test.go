@@ -24,6 +24,7 @@ import (
 )
 
 func TestParseGpusOptAll(t *testing.T) {
+	t.Parallel()
 	for _, testcase := range []string{
 		"all",
 		"-1",
@@ -39,6 +40,7 @@ func TestParseGpusOptAll(t *testing.T) {
 }
 
 func TestParseGpusOpts(t *testing.T) {
+	t.Parallel()
 	for _, testcase := range []string{
 		"driver=nvidia,\"capabilities=compute,utility\"",
 		"1,driver=nvidia,\"capabilities=compute,utility\"",

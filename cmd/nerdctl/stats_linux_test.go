@@ -25,6 +25,7 @@ import (
 )
 
 func TestStats(t *testing.T) {
+	t.Parallel()
 	// this comment is for `nerdctl ps` but it also valid for `nerdctl stats` :
 	// https://github.com/containerd/nerdctl/pull/223#issuecomment-851395178
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {

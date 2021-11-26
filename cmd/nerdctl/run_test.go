@@ -30,6 +30,7 @@ import (
 )
 
 func TestRunEntrypointWithBuild(t *testing.T) {
+	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	const imageName = "nerdctl-test-entrypoint-with-build"
@@ -81,6 +82,7 @@ CMD ["echo", "bar"]
 }
 
 func TestRunWorkdir(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	dir := "/foo"
 	if runtime.GOOS == "windows" {
@@ -91,12 +93,14 @@ func TestRunWorkdir(t *testing.T) {
 }
 
 func TestRunWithDoubleDash(t *testing.T) {
+	t.Parallel()
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	base.Cmd("run", "--rm", testutil.CommonImage, "--", "sh", "-euxc", "exit 0").AssertOK()
 }
 
 func TestRunExitCode(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	const (
 		testContainer0   = "nerdctl-test-run-exit-code-0"
@@ -126,6 +130,7 @@ func TestRunExitCode(t *testing.T) {
 }
 
 func TestRunCIDFile(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	const fileName = "cid.file"
 
@@ -139,6 +144,7 @@ func TestRunCIDFile(t *testing.T) {
 }
 
 func TestRunEnvFile(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 
 	const pattern = "env-file"
@@ -163,6 +169,7 @@ func TestRunEnvFile(t *testing.T) {
 }
 
 func TestRunEnv(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	base.Cmd("run", "--rm",
 		"--env", "FOO=foo1,foo2",

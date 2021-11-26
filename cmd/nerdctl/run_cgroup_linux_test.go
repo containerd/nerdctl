@@ -30,6 +30,7 @@ import (
 )
 
 func TestRunCgroupV2(t *testing.T) {
+	t.Parallel()
 	if cgroups.Mode() != cgroups.Unified {
 		t.Skip("test requires cgroup v2")
 	}
@@ -107,6 +108,7 @@ func TestRunDevice(t *testing.T) {
 }
 
 func TestParseDevice(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		s               string
 		expectedDevPath string
@@ -163,6 +165,7 @@ func TestParseDevice(t *testing.T) {
 }
 
 func TestRunCgroupConf(t *testing.T) {
+	t.Parallel()
 	if cgroups.Mode() != cgroups.Unified {
 		t.Skip("test requires cgroup v2")
 	}
@@ -180,6 +183,7 @@ func TestRunCgroupConf(t *testing.T) {
 }
 
 func TestRunBlkioWeightCgroupV2(t *testing.T) {
+	t.Parallel()
 	if cgroups.Mode() != cgroups.Unified {
 		t.Skip("test requires cgroup v2")
 	}

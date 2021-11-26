@@ -28,6 +28,7 @@ import (
 )
 
 func TestBuild(t *testing.T) {
+	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	const imageName = "nerdctl-build-test"
@@ -48,6 +49,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 }
 
 func TestBuildFromStdin(t *testing.T) {
+	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	const imageName = "nerdctl-build-stdin-test"
@@ -61,6 +63,7 @@ CMD ["echo", "nerdctl-build-test-stdin"]
 }
 
 func TestBuildLocal(t *testing.T) {
+	t.Parallel()
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)

@@ -26,6 +26,7 @@ import (
 )
 
 func TestLogs(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("`nerdctl logs` is not implmented on Windows (why?)")
 	}
@@ -66,11 +67,12 @@ bar`
 }
 
 func TestLogsWithFailingContainer(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("`nerdctl logs` is not implmented on Windows (why?)")
 	}
 	base := testutil.NewBase(t)
-	const containerName = "nerdctl-test-logs"
+	const containerName = "nerdctl-test-logs-failing-container"
 	defer base.Cmd("rm", containerName).Run()
 	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
 		"sh", "-euxc", "echo foo; echo bar; exit 42; echo baz").AssertOK()

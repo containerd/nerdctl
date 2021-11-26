@@ -24,6 +24,7 @@ import (
 )
 
 func TestVolumeInspectContainsLabels(t *testing.T) {
+	t.Parallel()
 	const testVolume = "nerdctl-test-inspect-with-labels"
 
 	base := testutil.NewBase(t)

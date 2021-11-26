@@ -23,6 +23,7 @@ import (
 )
 
 func TestRunUserGID(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	testCases := map[string]string{
 		"":       "root bin daemon sys adm disk wheel floppy dialout tape video",
