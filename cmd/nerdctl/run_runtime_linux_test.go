@@ -25,5 +25,5 @@ import (
 func TestRuntimeResources(t *testing.T) {
 	base := testutil.NewBase(t)
 	const expected = `1`
-	base.Cmd("run", "--rm", "--sysctl", "net.ipv4.ip_forward=1", testutil.AlpineImage, "sh", "-ec", "cat /proc/sys/net/ipv4/ip_forward").AssertOutContains(expected)
+	base.Cmd("run", "--rm", "--sysctl", "net.ipv4.ip_forward=1", testutil.AlpineImage, "cat", "/proc/sys/net/ipv4/ip_forward").AssertOutContains(expected)
 }

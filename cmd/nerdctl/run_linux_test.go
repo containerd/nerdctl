@@ -70,7 +70,7 @@ func TestRunPidHost(t *testing.T) {
 
 func TestRunAddHost(t *testing.T) {
 	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "--add-host", "testing.example.com:10.0.0.1", testutil.AlpineImage, "sh", "-c", "cat /etc/hosts").AssertOutWithFunc(func(stdout string) error {
+	base.Cmd("run", "--rm", "--add-host", "testing.example.com:10.0.0.1", testutil.AlpineImage, "cat", "/etc/hosts").AssertOutWithFunc(func(stdout string) error {
 		var found bool
 		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
 		for sc.Scan() {
@@ -86,7 +86,7 @@ func TestRunAddHost(t *testing.T) {
 		}
 		return nil
 	})
-	base.Cmd("run", "--rm", "--add-host", "10.0.0.1:testing.example.com", testutil.AlpineImage, "sh", "-c", "cat /etc/hosts").AssertFail()
+	base.Cmd("run", "--rm", "--add-host", "10.0.0.1:testing.example.com", testutil.AlpineImage, "cat", "/etc/hosts").AssertFail()
 }
 
 func TestRunUlimit(t *testing.T) {
