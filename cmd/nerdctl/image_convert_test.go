@@ -39,12 +39,15 @@ func TestImageConvertEStargz(t *testing.T) {
 }
 
 func TestImageConvertZstdChunked(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no windows support yet")
+	}
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	convertedImage := "test-image-convert:zstdchunked"
 	base.Cmd("rmi", convertedImage).Run()
 	defer base.Cmd("rmi", convertedImage).Run()
-	base.Cmd("pull", testutil.AlpineImage).AssertOK()
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	base.Cmd("image", "convert", "--zstdchunked", "--oci",
-		testutil.AlpineImage, convertedImage).AssertOK()
+		testutil.CommonImage, convertedImage).AssertOK()
 }
