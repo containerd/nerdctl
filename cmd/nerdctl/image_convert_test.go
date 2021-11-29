@@ -37,3 +37,14 @@ func TestImageConvertEStargz(t *testing.T) {
 	base.Cmd("image", "convert", "--estargz", "--oci",
 		testutil.CommonImage, convertedImage).AssertOK()
 }
+
+func TestImageConvertZstdChunked(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	convertedImage := "test-image-convert:zstdchunked"
+	base.Cmd("rmi", convertedImage).Run()
+	defer base.Cmd("rmi", convertedImage).Run()
+	base.Cmd("pull", testutil.AlpineImage).AssertOK()
+	base.Cmd("image", "convert", "--zstdchunked", "--oci",
+		testutil.AlpineImage, convertedImage).AssertOK()
+}

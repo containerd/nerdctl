@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/stargz-snapshotter/estargz"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
+	zstdchunkedconvert "github.com/containerd/stargz-snapshotter/nativeconverter/zstdchunked"
 	"github.com/containerd/stargz-snapshotter/recorder"
 
 	"github.com/sirupsen/logrus"
@@ -63,6 +64,7 @@ func newImageConvertCommand() *cobra.Command {
 	imageConvertCommand.Flags().String("estargz-record-in", "", "Read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)")
 	imageConvertCommand.Flags().Int("estargz-compression-level", gzip.BestCompression, "eStargz compression level")
 	imageConvertCommand.Flags().Int("estargz-chunk-size", 0, "eStargz chunk size")
+	imageConvertCommand.Flags().Bool("zstdchunked", false, "Use zstd compression instead of gzip (a.k.a zstd:chunked). Should be used in conjunction with '--oci'")
 	// #endregion
 
 	// #region generic flags
@@ -120,6 +122,10 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	zstdchunked, err := cmd.Flags().GetBool("zstdchunked")
+	if err != nil {
+		return err
+	}
 	oci, err := cmd.Flags().GetBool("oci")
 	if err != nil {
 		return err
@@ -129,17 +135,33 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if estargz {
+	if estargz || zstdchunked {
+		if estargz && zstdchunked {
+			return errors.New("option --estargz conflicts with --zstdchunked")
+		}
+
 		esgzOpts, err := getESGZConvertOpts(cmd)
 		if err != nil {
 			return err
 		}
-		convertOpts = append(convertOpts, converter.WithLayerConvertFunc(estargzconvert.LayerConvertFunc(esgzOpts...)))
+
+		var convertFunc converter.ConvertFunc
+		var convertType string
+		switch {
+		case estargz:
+			convertFunc = estargzconvert.LayerConvertFunc(esgzOpts...)
+			convertType = "estargz"
+		case zstdchunked:
+			convertFunc = zstdchunkedconvert.LayerConvertFunc(esgzOpts...)
+			convertType = "zstdchunked"
+		}
+		convertOpts = append(convertOpts, converter.WithLayerConvertFunc(convertFunc))
+
 		if !oci {
-			logrus.Warn("option --estargz should be used in conjunction with --oci")
+			logrus.Warnf("option --%s should be used in conjunction with --oci", convertType)
 		}
 		if uncompressValue {
-			return errors.New("option --estargz conflicts with --uncompress")
+			return fmt.Errorf("option --%s conflicts with --uncompress", convertType)
 		}
 	}
 
