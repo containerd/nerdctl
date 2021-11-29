@@ -23,6 +23,7 @@ import (
 )
 
 func TestWait(t *testing.T) {
+	t.Parallel()
 	const (
 		testContainerName1 = "nerdctl-test-wait-1"
 		testContainerName2 = "nerdctl-test-wait-2"
@@ -36,12 +37,12 @@ func TestWait(t *testing.T) {
 	base := testutil.NewBase(t)
 	defer base.Cmd("rm", "-f", testContainerName1, testContainerName2, testContainerName3).Run()
 
-	base.Cmd("run", "-d", "--name", testContainerName1, testutil.AlpineImage, "sleep", "2").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainerName1, testutil.CommonImage, "sleep", "2").AssertOK()
 
-	base.Cmd("run", "-d", "--name", testContainerName2, testutil.AlpineImage, "sleep", "2").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainerName2, testutil.CommonImage, "sleep", "2").AssertOK()
 
-	base.Cmd("run", "--name", testContainerName3, testutil.AlpineImage, "sh", "-euxc", "sleep 3; exit 123").AssertExitCode(123)
+	base.Cmd("run", "--name", testContainerName3, testutil.CommonImage, "sh", "-euxc", "sleep 3; exit 123").AssertExitCode(123)
 
-	base.Cmd("wait", testContainerName1, testContainerName2, testContainerName3).AssertOutContains(expected)
+	base.Cmd("wait", testContainerName1, testContainerName2, testContainerName3).AssertOutExactly(expected)
 
 }

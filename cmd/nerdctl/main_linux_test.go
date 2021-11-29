@@ -22,25 +22,15 @@ import (
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
-func TestRunUserGID(t *testing.T) {
+// TestIssue108 tests https://github.com/containerd/nerdctl/issues/108
+// ("`nerdctl run --net=host -it` fails while `nerdctl run -it --net=host` works")
+func TestIssue108(t *testing.T) {
 	base := testutil.NewBase(t)
-	testCases := map[string]string{
-		"":       "root bin daemon sys adm disk wheel floppy dialout tape video",
-		"1000":   "root",
-		"guest":  "users",
-		"nobody": "nobody",
-	}
-	for userStr, expected := range testCases {
-		userStr := userStr
-		expected := expected
-		t.Run(userStr, func(t *testing.T) {
-			t.Parallel()
-			cmd := []string{"run", "--rm"}
-			if userStr != "" {
-				cmd = append(cmd, "--user", userStr)
-			}
-			cmd = append(cmd, testutil.AlpineImage, "id", "-nG")
-			base.Cmd(cmd...).AssertOutContains(expected)
-		})
-	}
+	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
+	// unbuffer(1) can be installed with `apt-get install expect`.
+	unbuffer := []string{"unbuffer"}
+	base.CmdWithHelper(unbuffer, "run", "-it", "--rm", "--net=host", testutil.AlpineImage,
+		"echo", "this was always working").AssertOK()
+	base.CmdWithHelper(unbuffer, "run", "--rm", "--net=host", "-it", testutil.AlpineImage,
+		"echo", "this was not working due to issue #108").AssertOK()
 }

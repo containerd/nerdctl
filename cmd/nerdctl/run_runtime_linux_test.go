@@ -17,23 +17,13 @@
 package main
 
 import (
-	"runtime"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
-func TestImageConvertEStargz(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("no windows support yet")
-	}
-	testutil.DockerIncompatible(t)
+func TestRunSysctl(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	convertedImage := "test-image-convert:esgz"
-	base.Cmd("rmi", convertedImage).Run()
-	defer base.Cmd("rmi", convertedImage).Run()
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	base.Cmd("image", "convert", "--estargz", "--oci",
-		testutil.CommonImage, convertedImage).AssertOK()
+	base.Cmd("run", "--rm", "--sysctl", "net.ipv4.ip_forward=1", testutil.AlpineImage, "cat", "/proc/sys/net/ipv4/ip_forward").AssertOutExactly("1\n")
 }

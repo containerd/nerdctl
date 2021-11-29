@@ -23,22 +23,24 @@ import (
 )
 
 func TestExec(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	const testContainer = "nerdctl-test-exec"
 	defer base.Cmd("rm", "-f", testContainer).Run()
 
-	base.Cmd("run", "-d", "--name", testContainer, testutil.AlpineImage, "sh", "-euxc", "sleep 1h").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
 
-	base.Cmd("exec", testContainer, "sh", "-euxc", "echo success").AssertOutContains("success")
+	base.Cmd("exec", testContainer, "echo", "success").AssertOutExactly("success\n")
 }
 
 func TestExecWithDoubleDash(t *testing.T) {
+	t.Parallel()
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	const testContainer = "nerdctl-test-exec"
+	const testContainer = "nerdctl-test-exec-double-dash"
 	defer base.Cmd("rm", "-f", testContainer).Run()
 
-	base.Cmd("run", "-d", "--name", testContainer, testutil.AlpineImage, "sh", "-euxc", "sleep 1h").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
 
-	base.Cmd("exec", testContainer, "--", "sh", "-euxc", "echo success").AssertOutContains("success")
+	base.Cmd("exec", testContainer, "--", "echo", "success").AssertOutExactly("success\n")
 }

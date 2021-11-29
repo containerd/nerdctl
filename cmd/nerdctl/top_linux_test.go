@@ -25,6 +25,7 @@ import (
 )
 
 func TestTop(t *testing.T) {
+	t.Parallel()
 	//more details https://github.com/containerd/nerdctl/pull/223#issuecomment-851395178
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
 		t.Skip("test skipped for rootless containers on cgroup v1")

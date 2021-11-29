@@ -23,7 +23,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -158,12 +157,35 @@ func (b *Base) EnsureDaemonActive() {
 		out, err := cmd.CombinedOutput()
 		b.T.Logf("(retry=%d) %s", i, string(out))
 		if err == nil {
-			b.T.Logf("daemon %q is now running", target)
-			return
+			// The daemon is now running, but the daemon may still refuse connections to containerd.sock
+			b.T.Logf("daemon %q is now running, checking whether the daemon can handle requests", target)
+			infoRes := b.Cmd("info").Run()
+			if infoRes.ExitCode == 0 {
+				b.T.Logf("daemon %q can now handle requests", target)
+				return
+			}
+			b.T.Logf("(retry=%d) %s", i, infoRes.Combined())
 		}
 		time.Sleep(sleep)
 	}
-	b.T.Fatalf("daemon %q not running", target)
+	b.T.Fatalf("daemon %q not running?", target)
+}
+
+func (b *Base) DumpDaemonLogs(minutes int) {
+	b.T.Helper()
+	target := b.systemctlTarget()
+	cmd := exec.Command("journalctl",
+		append(b.systemctlArgs(),
+			[]string{"-u", target,
+				"--no-pager",
+				"-S", fmt.Sprintf("%d min ago", minutes)}...)...)
+	b.T.Logf("===== %v =====", cmd.Args)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		b.T.Fatal(err)
+	}
+	b.T.Log(string(out))
+	b.T.Log("==========")
 }
 
 func (b *Base) InspectContainer(name string) dockercompat.Container {
@@ -399,32 +421,3 @@ func NewBase(t *testing.T) *Base {
 	}
 	return base
 }
-
-func mirrorOf(s string) string {
-	if runtime.GOOS == "windows" {
-		// More work needs to be done to support windows containers in test framework
-		// for the tests that are run now this image (used in k8s upstream testing) meets the needs
-		// use gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2-windows-amd64-ltsc2022 locally on windows 11
-		// https://github.com/microsoft/Windows-Containers/issues/179
-		return "gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2"
-	}
-
-	// plain mirror, NOT stargz-converted images
-	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
-}
-
-var (
-	AlpineImage                 = mirrorOf("alpine:3.13")
-	NginxAlpineImage            = mirrorOf("nginx:1.19-alpine")
-	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
-	RegistryImage               = mirrorOf("registry:2")
-	WordpressImage              = mirrorOf("wordpress:5.7")
-	WordpressIndexHTMLSnippet   = "<title>WordPress &rsaquo; Installation</title>"
-	MariaDBImage                = mirrorOf("mariadb:10.5")
-	DockerAuthImage             = mirrorOf("cesanta/docker_auth:1.7")
-	WindowsNano                 = "gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2"
-)
-
-const (
-	FedoraESGZImage = "ghcr.io/stargz-containers/fedora:30-esgz" // eStargz
-)

@@ -17,6 +17,7 @@
 package main
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -25,6 +26,10 @@ import (
 )
 
 func TestNetworkInspect(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("IPAMConfig not implemented on Windows yet")
+	}
+
 	const (
 		testNetwork = "nerdctl-test-network-inspect"
 		testSubnet  = "10.24.24.0/24"

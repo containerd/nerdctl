@@ -40,7 +40,7 @@ func testMultiPlatformRun(base *testutil.Base, alpineImage string) {
 	for plat, expectedUnameM := range testCases {
 		t.Logf("Testing %q (%q)", plat, expectedUnameM)
 		cmd := base.Cmd("run", "--rm", "--platform="+plat, alpineImage, "uname", "-m")
-		cmd.AssertOutContains(expectedUnameM)
+		cmd.AssertOutExactly(expectedUnameM + "\n")
 	}
 }
 

@@ -68,8 +68,8 @@ func TestRunVolume(t *testing.T) {
 		"-v", fmt.Sprintf("%s:/mnt1", rwDir),
 		"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
 		testutil.AlpineImage,
-		"sh", "-exc", "cat /mnt1/file1 /mnt3/file3",
-	).AssertOutContains("str1str3")
+		"cat", "/mnt1/file1", "/mnt3/file3",
+	).AssertOutExactly("str1str3")
 }
 
 func TestRunAnonymousVolume(t *testing.T) {
@@ -99,7 +99,7 @@ VOLUME /foo
 		"mountpoint", "-q", "/foo").AssertOK()
 }
 
-func TestCopyingUpInitialContentsOnVolume(t *testing.T) {
+func TestRunCopyingUpInitialContentsOnVolume(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
@@ -119,14 +119,14 @@ CMD ["cat", "/mnt/initial_file"]
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 
 	//AnonymousVolume
-	base.Cmd("run", "--rm", imageName).AssertOutContains("hi")
-	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains("hi")
+	base.Cmd("run", "--rm", imageName).AssertOutExactly("hi\n")
+	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 
 	//NamedVolume should be automatically created
-	base.Cmd("run", "-v", "copying-initial-content-on-volume:/mnt", "--rm", imageName).AssertOutContains("hi")
+	base.Cmd("run", "-v", "copying-initial-content-on-volume:/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 }
 
-func TestCopyingUpInitialContentsOnDockerfileVolume(t *testing.T) {
+func TestRunCopyingUpInitialContentsOnDockerfileVolume(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
@@ -146,12 +146,12 @@ CMD ["cat", "/mnt/initial_file"]
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	//AnonymousVolume
-	base.Cmd("run", "--rm", imageName).AssertOutContains("hi")
-	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains("hi")
+	base.Cmd("run", "--rm", imageName).AssertOutExactly("hi\n")
+	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 
 	//NamedVolume
 	base.Cmd("volume", "create", "copying-initial-content").AssertOK()
-	base.Cmd("run", "-v", "copying-initial-content:/mnt", "--rm", imageName).AssertOutContains("hi")
+	base.Cmd("run", "-v", "copying-initial-content:/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 
 	//mount bind
 	tmpDir, err := os.MkdirTemp("", "hostDir")
@@ -161,7 +161,7 @@ CMD ["cat", "/mnt/initial_file"]
 	base.Cmd("run", "-v", fmt.Sprintf("%s:/mnt", tmpDir), "--rm", imageName).AssertFail()
 }
 
-func TestCopyingUpInitialContentsOnVolumeShouldRetainSymlink(t *testing.T) {
+func TestRunCopyingUpInitialContentsOnVolumeShouldRetainSymlink(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
@@ -173,7 +173,7 @@ RUN ln -s ../../../../../../../../../../../../../../../../../../etc/passwd /mnt/
 VOLUME /mnt
 CMD ["readlink", "/mnt/passwd"]
         `, testutil.AlpineImage)
-	const expected = "../../../../../../../../../../../../../../../../../../etc/passwd"
+	const expected = "../../../../../../../../../../../../../../../../../../etc/passwd\n"
 
 	buildCtx, err := createBuildContext(dockerfile)
 	assert.NilError(t, err)
@@ -181,8 +181,8 @@ CMD ["readlink", "/mnt/passwd"]
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 
-	base.Cmd("run", "--rm", imageName).AssertOutContains(expected)
-	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutContains(expected)
+	base.Cmd("run", "--rm", imageName).AssertOutExactly(expected)
+	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutExactly(expected)
 }
 
 func TestRunTmpfs(t *testing.T) {

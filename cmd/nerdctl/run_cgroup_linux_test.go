@@ -30,10 +30,30 @@ import (
 )
 
 func TestRunCgroupV2(t *testing.T) {
+	t.Parallel()
 	if cgroups.Mode() != cgroups.Unified {
 		t.Skip("test requires cgroup v2")
 	}
 	base := testutil.NewBase(t)
+	info := base.Info()
+	switch info.CgroupDriver {
+	case "none", "":
+		t.Skip("test requires cgroup driver")
+	}
+
+	if !info.MemoryLimit {
+		t.Skip("test requires MemoryLimit")
+	}
+	if !info.CPUShares {
+		t.Skip("test requires CPUShares")
+	}
+	if !info.CPUSet {
+		t.Skip("test requires CPUSet")
+	}
+	if !info.PidsLimit {
+		t.Skip("test requires PidsLimit")
+	}
+
 	const expected = `42000 100000
 44040192
 42
@@ -41,8 +61,8 @@ func TestRunCgroupV2(t *testing.T) {
 0-1
 `
 	//In CgroupV2 CPUWeight replace CPUShares => weight := 1 + ((shares-2)*9999)/262142
-	base.Cmd("run", "--rm", "--cpus", "0.42", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage,
-		"sh", "-ec", "cd /sys/fs/cgroup && cat cpu.max memory.max pids.max cpu.weight cpuset.cpus").AssertOutContains(expected)
+	base.Cmd("run", "--rm", "--cpus", "0.42", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
+		"cat", "cpu.max", "memory.max", "pids.max", "cpu.weight", "cpuset.cpus").AssertOutExactly(expected)
 }
 
 func TestRunDevice(t *testing.T) {
@@ -88,6 +108,7 @@ func TestRunDevice(t *testing.T) {
 }
 
 func TestParseDevice(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		s               string
 		expectedDevPath string
@@ -144,22 +165,38 @@ func TestParseDevice(t *testing.T) {
 }
 
 func TestRunCgroupConf(t *testing.T) {
+	t.Parallel()
 	if cgroups.Mode() != cgroups.Unified {
 		t.Skip("test requires cgroup v2")
 	}
 	base := testutil.NewBase(t)
-
-	base.Cmd("run", "--rm", "--cgroup-conf", "memory.high=33554432", testutil.AlpineImage,
-		"sh", "-ec", "cd /sys/fs/cgroup && cat memory.high").AssertOutContains("33554432")
+	info := base.Info()
+	switch info.CgroupDriver {
+	case "none", "":
+		t.Skip("test requires cgroup driver")
+	}
+	if !info.MemoryLimit {
+		t.Skip("test requires MemoryLimit")
+	}
+	base.Cmd("run", "--rm", "--cgroup-conf", "memory.high=33554432", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
+		"cat", "memory.high").AssertOutExactly("33554432\n")
 }
 
 func TestRunBlkioWeightCgroupV2(t *testing.T) {
+	t.Parallel()
 	if cgroups.Mode() != cgroups.Unified {
 		t.Skip("test requires cgroup v2")
 	}
+	if _, err := os.Stat("/sys/module/bfq"); err != nil {
+		t.Skipf("test requires \"bfq\" module to be loaded: %v", err)
+	}
 	base := testutil.NewBase(t)
-
+	info := base.Info()
+	switch info.CgroupDriver {
+	case "none", "":
+		t.Skip("test requires cgroup driver")
+	}
 	// when bfq io scheduler is used, the io.weight knob is exposed as io.bfq.weight
-	base.Cmd("run", "--rm", "--blkio-weight", "300", testutil.AlpineImage,
-		"sh", "-ec", "cd /sys/fs/cgroup && cat io.bfq.weight").AssertOutContains("300")
+	base.Cmd("run", "--rm", "--blkio-weight", "300", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
+		"cat", "io.bfq.weight").AssertOutExactly("default 300\n")
 }

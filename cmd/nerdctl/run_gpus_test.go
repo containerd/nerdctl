@@ -23,7 +23,8 @@ import (
 	is "gotest.tools/v3/assert/cmp"
 )
 
-func TestGpusOptAll(t *testing.T) {
+func TestParseGpusOptAll(t *testing.T) {
+	t.Parallel()
 	for _, testcase := range []string{
 		"all",
 		"-1",
@@ -38,7 +39,8 @@ func TestGpusOptAll(t *testing.T) {
 	}
 }
 
-func TestGpusOpts(t *testing.T) {
+func TestParseGpusOpts(t *testing.T) {
+	t.Parallel()
 	for _, testcase := range []string{
 		"driver=nvidia,\"capabilities=compute,utility\"",
 		"1,driver=nvidia,\"capabilities=compute,utility\"",

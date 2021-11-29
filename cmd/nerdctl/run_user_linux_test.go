@@ -17,23 +17,31 @@
 package main
 
 import (
-	"runtime"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
-func TestImageConvertEStargz(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("no windows support yet")
-	}
-	testutil.DockerIncompatible(t)
+func TestRunUserGID(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	convertedImage := "test-image-convert:esgz"
-	base.Cmd("rmi", convertedImage).Run()
-	defer base.Cmd("rmi", convertedImage).Run()
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	base.Cmd("image", "convert", "--estargz", "--oci",
-		testutil.CommonImage, convertedImage).AssertOK()
+	testCases := map[string]string{
+		"":       "root bin daemon sys adm disk wheel floppy dialout tape video",
+		"1000":   "root",
+		"guest":  "users",
+		"nobody": "nobody",
+	}
+	for userStr, expected := range testCases {
+		userStr := userStr
+		expected := expected
+		t.Run(userStr, func(t *testing.T) {
+			t.Parallel()
+			cmd := []string{"run", "--rm"}
+			if userStr != "" {
+				cmd = append(cmd, "--user", userStr)
+			}
+			cmd = append(cmd, testutil.AlpineImage, "id", "-nG")
+			base.Cmd(cmd...).AssertOutContains(expected)
+		})
+	}
 }

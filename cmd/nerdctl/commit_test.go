@@ -23,6 +23,7 @@ import (
 )
 
 func TestCommit(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	switch base.Info().CgroupDriver {
 	case "none", "":
@@ -35,7 +36,7 @@ func TestCommit(t *testing.T) {
 	defer base.Cmd("rm", "-f", testContainer).Run()
 	defer base.Cmd("rmi", testImage).Run()
 
-	base.Cmd("run", "-d", "--name", testContainer, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "infinity").AssertOK()
 	base.Cmd("exec", testContainer, "sh", "-euxc", `echo hello-test-commit > /foo`).AssertOK()
 	base.Cmd("commit", "-c", `CMD ["cat", "/foo"]`, testContainer, testImage).AssertOK()
 	base.Cmd("run", "--rm", testImage).AssertOutExactly("hello-test-commit\n")

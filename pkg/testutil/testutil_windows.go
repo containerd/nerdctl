@@ -14,16 +14,16 @@
    limitations under the License.
 */
 
-package main
+package testutil
 
-import (
-	"testing"
+const (
+	WindowsNano = "gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2"
 
-	"github.com/containerd/nerdctl/pkg/testutil"
+	// CommonImage.
+	//
+	// More work needs to be done to support windows containers in test framework
+	// for the tests that are run now this image (used in k8s upstream testing) meets the needs
+	// use gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2-windows-amd64-ltsc2022 locally on windows 11
+	// https://github.com/microsoft/Windows-Containers/issues/179
+	CommonImage = WindowsNano
 )
-
-func TestRuntimeResources(t *testing.T) {
-	base := testutil.NewBase(t)
-	const expected = `1`
-	base.Cmd("run", "--rm", "--sysctl", "net.ipv4.ip_forward=1", testutil.AlpineImage, "sh", "-ec", "cat /proc/sys/net/ipv4/ip_forward").AssertOutContains(expected)
-}

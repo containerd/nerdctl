@@ -12,6 +12,7 @@ task:
     - go test -v ./pkg/...
     - cd cmd/nerdctl
     - sudo go run . run $NERDCTL_RUN_ARGS | grep running
+# TODO: run `go test -v ./cmd/...`
 
 docker_builder:
   name: windows
@@ -24,4 +25,4 @@ docker_builder:
     - powershell hack/configure-windows-ci.ps1
     - refreshenv
     - go install .\cmd\nerdctl\
-    - go test -v -run "^(TestRunWorkdir|TestRunWithDoubleDash|TestRunExitCode|TestRunCIDFile|TestRunEnvFile|TestRunEnv|TestExec|ImageInspect|TestRunUserName)$" ./cmd/...
+    - go test -v ./cmd/...

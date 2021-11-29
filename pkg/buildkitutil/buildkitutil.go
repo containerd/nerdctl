@@ -17,11 +17,13 @@
 package buildkitutil
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 
@@ -44,6 +46,9 @@ func BuildctlBaseArgs(buildkitHost string) []string {
 }
 
 func PingBKDaemon(buildkitHost string) error {
+	if runtime.GOOS != "linux" {
+		return errors.New("only linux is supported")
+	}
 	hint := "`buildctl` needs to be installed and `buildkitd` needs to be running, see https://github.com/moby/buildkit"
 	if rootlessutil.IsRootless() {
 		hint += " , and `containerd-rootless-setuptool.sh install-buildkit`"

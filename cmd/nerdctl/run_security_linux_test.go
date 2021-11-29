@@ -53,6 +53,7 @@ const (
 )
 
 func TestRunCap(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 
 	// allCaps varies depending on the target version and the kernel version.
@@ -115,6 +116,7 @@ func TestRunCap(t *testing.T) {
 }
 
 func TestRunSecurityOptSeccomp(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 	type testCase struct {
 		args    []string
