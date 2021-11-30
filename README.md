@@ -1,5 +1,6 @@
 [[⬇️ **Download]**](https://github.com/containerd/nerdctl/releases)
 [[📖 **Command reference]**](#command-reference)
+[[❓**FAQs & Troubleshooting]**](./docs/faq.md)
 [[📚 **Additional documents]**](#additional-documents)
 
 # nerdctl: Docker-compatible CLI for containerd
@@ -83,7 +84,7 @@ These dependencies are included in `nerdctl-full-<VERSION>-<OS>-<ARCH>.tar.gz`, 
 
 ### macOS
 
-[Lima](https://github.com/AkihiroSuda/lima) project provides Linux virtual machines with built-in integration for nerdctl.
+[Lima](https://github.com/lima-vm/lima) project provides Linux virtual machines for macOS, with built-in integration for nerdctl.
 
 ```console
 $ brew install lima
@@ -144,11 +145,13 @@ Trivial:
 ## Similar tools
 
 - [`ctr`](https://github.com/containerd/containerd/tree/master/cmd/ctr): incompatible with Docker CLI, and not friendly to users.
-  Notably, `ctr` lacks the equivalents of the following Docker CLI commands:
-  - `docker run -p <PORT>`
-  - `docker run --restart=always --net=bridge`
-  - `docker pull` with `~/.docker/config.json` and credential helper binaries such as `docker-credential-ecr-login`
-  - `docker logs`
+  Notably, `ctr` lacks the equivalents of the following nerdctl commands:
+  - `nerdctl run -p <PORT>`
+  - `nerdctl run --restart=always --net=bridge`
+  - `nerdctl pull` with `~/.docker/config.json` and credential helper binaries such as `docker-credential-ecr-login`
+  - `nerdctl logs`
+  - `nerdctl build`
+  - `nerdctl compose up`
 
 - [`crictl`](https://github.com/kubernetes-sigs/cri-tools): incompatible with Docker CLI, not friendly to users, and does not support non-CRI features
 - [k3c v0.2 (abandoned)](https://github.com/rancher/k3c/tree/v0.2.1): needs an extra daemon, and does not support non-CRI features
@@ -1245,3 +1248,6 @@ Experimental features:
 
 Implementation details:
 - [`./docs/dir.md`](./docs/dir.md):           Directory layout (`/var/lib/nerdctl`)
+
+Misc:
+- [`./docs/faq.md`](./docs/faq.md): FAQs and Troubleshooting
