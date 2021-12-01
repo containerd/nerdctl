@@ -185,6 +185,44 @@ CMD ["readlink", "/mnt/passwd"]
 	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutExactly(expected)
 }
 
+func TestRunCopyingUpInitialContentsShouldNotResetTheCopiedContents(t *testing.T) {
+	t.Parallel()
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	const (
+		// TODO: generate names from t.Name
+		imageName     = "nerdctl-test-copy-up-no-reset"
+		volumeName    = "nerdctl-test-copy-up-no-reset"
+		containerName = "nerdctl-test-copy-up-no-reset"
+	)
+	defer func() {
+		base.Cmd("rm", "-f", containerName).Run()
+		base.Cmd("volume", "rm", volumeName).Run()
+		base.Cmd("rmi", imageName).Run()
+	}()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+RUN echo -n "rev0" > /mnt/file
+`, testutil.AlpineImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+
+	base.Cmd("volume", "create", volumeName)
+	runContainer := func() {
+		base.Cmd("run", "-d", "--name", containerName, "-v", volumeName+":/mnt", imageName, "sleep", "infinity").AssertOK()
+	}
+	runContainer()
+	base.Cmd("exec", containerName, "cat", "/mnt/file").AssertOutExactly("rev0")
+	base.Cmd("exec", containerName, "sh", "-euc", "echo -n \"rev1\" >/mnt/file").AssertOK()
+	base.Cmd("rm", "-f", containerName).AssertOK()
+	runContainer()
+	base.Cmd("exec", containerName, "cat", "/mnt/file").AssertOutExactly("rev1")
+}
+
 func TestRunTmpfs(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
