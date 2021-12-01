@@ -214,6 +214,7 @@ func newApp() *cobra.Command {
 		newIPFSCommand(),
 	)
 	addApparmorCommand(rootCmd)
+	addBuildNixCommand(rootCmd)
 	return rootCmd
 }
 

@@ -39,3 +39,7 @@ func shellCompleteCgroupManagerNames(cmd *cobra.Command, args []string, toComple
 func addApparmorCommand(rootCmd *cobra.Command) {
 	// NOP
 }
+
+func addBuildNixCommand(rootCmd *cobra.Command) {
+	// NOP
+}

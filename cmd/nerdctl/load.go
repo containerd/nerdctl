@@ -81,29 +81,31 @@ func loadAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return loadImage(in, cmd, args, platMC, false)
+	_, err = loadImage(in, cmd, args, platMC, false)
+	return err
 }
 
-func loadImage(in io.Reader, cmd *cobra.Command, args []string, platMC platforms.MatchComparer, quiet bool) error {
+func loadImage(in io.Reader, cmd *cobra.Command, args []string, platMC platforms.MatchComparer, quiet bool) ([]images.Image, error) {
 	// In addition to passing WithImagePlatform() to client.Import(), we also need to pass WithDefaultPlatform() to newClient().
 	// Otherwise unpacking may fail.
 	client, ctx, cancel, err := newClient(cmd, containerd.WithDefaultPlatform(platMC))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer cancel()
 
 	sn, err := cmd.Flags().GetString("snapshotter")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	imgs, err := client.Import(ctx, in, containerd.WithDigestRef(archive.DigestTranslator(sn)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithImportPlatform(platMC))
 	if err != nil {
 		if errors.Is(err, images.ErrEmptyWalk) {
 			err = fmt.Errorf("%w (Hint: set `--platform=PLATFORM` or `--all-platforms`)", err)
 		}
-		return err
+		return nil, err
 	}
+	var loadedImages []images.Image // nolint: prealloc
 	for _, img := range imgs {
 		image := containerd.NewImageWithPlatform(client, img, platMC)
 
@@ -113,14 +115,15 @@ func loadImage(in io.Reader, cmd *cobra.Command, args []string, platMC platforms
 		}
 		err = image.Unpack(ctx, sn)
 		if err != nil {
-			return err
+			return loadedImages, err
 		}
 		if quiet {
 			fmt.Fprintln(cmd.OutOrStdout(), img.Target.Digest)
 		} else {
 			fmt.Fprintf(cmd.OutOrStdout(), "done\n")
 		}
+		loadedImages = append(loadedImages, img)
 	}
 
-	return nil
+	return loadedImages, nil
 }

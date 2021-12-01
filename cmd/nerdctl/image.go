@@ -44,6 +44,7 @@ func newImageCommand() *cobra.Command {
 		newImageEncryptCommand(),
 		newImageDecryptCommand(),
 	)
+	addBuildNixCommand(cmd)
 	return cmd
 }
 

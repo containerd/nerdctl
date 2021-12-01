@@ -93,3 +93,7 @@ func BuildKitHost() string {
 	}
 	return fmt.Sprintf("unix://%s/buildkit/buildkitd.sock", xdr)
 }
+
+// NixImage is used by `nerdctl build-nix` .
+// Mirrored from "docker.io/nixos/nix:2.3.12@sha256:d9bb3b85b846eb0b6c5204e0d76639dff72c7871fb68f5d4edcfbb727f8a5653" (amd64-only)
+var NixImage = "ghcr.io/stargz-containers/nixos/nix:2.3.12-org@sha256:d9bb3b85b846eb0b6c5204e0d76639dff72c7871fb68f5d4edcfbb727f8a5653"

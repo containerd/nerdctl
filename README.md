@@ -19,6 +19,8 @@
 
  ✅ Supports [P2P image distribution (IPFS)](./docs/ipfs.md)
 
+ ✅ Supports [Reproducible image building (Nix)](./docs/build-nix.md)
+
 nerdctl is a **non-core** sub-project of containerd.
 
 ## Examples
@@ -667,6 +669,16 @@ Flags:
 
 Unimplemented `docker build` flags: `--add-host`, `--iidfile`, `--label`, `--network`, `--squash`
 
+### :nerd_face: nerdctl build-nix
+
+Reproducible image building with Nix derivations (EXPERIMENTAL)
+
+Usage: `nerdctl build-nix [OPTIONS]`
+
+Flags:
+- `-f, --file=FILE`:  Name of the Nix derivation (default "default.nix")
+- `--nix-image=IMAGE`: Nix image
+
 ### :whale: nerdctl commit
 Create a new image from a container's changes
 
@@ -1245,6 +1257,7 @@ Experimental features:
 - [`./docs/experimental.md`](./docs/experimental.md):  Experimental features
 - [`./docs/freebsd.md`](./docs/freebsd.md):  Running FreeBSD jails
 - [`./docs/ipfs.md`](./docs/ipfs.md): Distributing images on IPFS
+- [`./docs/build-nix.md`](./docs/build-nix.md): Reproducible image building using Nix
 
 Implementation details:
 - [`./docs/dir.md`](./docs/dir.md):           Directory layout (`/var/lib/nerdctl`)
