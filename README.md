@@ -302,7 +302,7 @@ Run a command in a new container.
 
 Usage: `nerdctl run [OPTIONS] IMAGE [COMMAND] [ARG...]`
 
-:nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IFPS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
+:nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IPFS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Basic flags:
 - :whale: :blue_square: `-i, --interactive`: Keep STDIN open even if not attached"
@@ -663,7 +663,7 @@ Flags:
 - :whale: `--cache-from=CACHE`: External cache sources (eg. user/app:cache, type=local,src=path/to/dir) (compatible with `docker buildx build`)
 - :whale: `--cache-to=CACHE`: Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir) (compatible with `docker buildx build`)
 - :whale: `--platform=(amd64|arm64|...)`: Set target platform for build (compatible with `docker buildx build`)
-- :nerd_face: `--ipfs`: Build image with pulling base images from IFPS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
+- :nerd_face: `--ipfs`: Build image with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Unimplemented `docker build` flags: `--add-host`, `--iidfile`, `--label`, `--network`, `--squash`
 
@@ -706,7 +706,7 @@ Pull an image from a registry.
 
 Usage: `nerdctl pull [OPTIONS] NAME[:TAG|@DIGEST]`
 
-:nerd_face: `ipfs://` prefix can be used for `NAME` to pull it from IFPS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
+:nerd_face: `ipfs://` prefix can be used for `NAME` to pull it from IPFS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Flags:
 - :whale: `--platform=(amd64|arm64|...)`: Pull content for a specific platform
@@ -721,7 +721,7 @@ Push an image to a registry.
 
 Usage: `nerdctl push [OPTIONS] NAME[:TAG]`
 
-:nerd_face: `ipfs://` prefix can be used for `NAME` to push it to IFPS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
+:nerd_face: `ipfs://` prefix can be used for `NAME` to push it to IPFS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Flags:
 - :nerd_face: `--platform=(amd64|arm64|...)`: Push content for a specific platform
@@ -1078,7 +1078,7 @@ Flags:
 - :whale: `--no-color`: Produce monochrome output
 - :whale: `--no-log-prefix`: Don't print prefix in logs
 - :whale: `--build`: Build images before starting containers.
-- :nerd_face: `--ipfs`: Build images with pulling base images from IFPS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
+- :nerd_face: `--ipfs`: Build images with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Unimplemented `docker-compose up` (V1) flags: `--quiet-pull`, `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
 `--no-start`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--remove-orphans`, `--exit-code-from`,
@@ -1108,7 +1108,7 @@ Flags:
 - :whale: `--build-arg`: Set build-time variables for services
 - :whale: `--no-cache`: Do not use cache when building the image
 - :whale: `--progress`: Set type of progress output (auto, plain, tty)
-- :nerd_face: `--ipfs`: Build images with pulling base images from IFPS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
+- :nerd_face: `--ipfs`: Build images with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Unimplemented `docker-compose build` (V1) flags:  `--compress`, `--force-rm`, `--memory`, `--no-rm`, `--parallel`, `--pull`, `--quiet`
 
