@@ -240,8 +240,8 @@ func copyExistingContents(source, destination string) error {
 		return err
 	}
 	if len(dstList) != 0 {
-		// not an error, see https://github.com/containerd/nerdctl/issues/232
-		logrus.Debugf("volume at %q is not initially empty", destination)
+		logrus.Debugf("volume at %q is not initially empty, skipping copying", destination)
+		return nil
 	}
 	return fs.CopyDir(destination, source)
 }
