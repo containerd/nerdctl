@@ -77,7 +77,7 @@ jobs:
 
   test-integration-rootless:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       matrix:
         containerd: [v1.4.5, v1.5.8, main]
