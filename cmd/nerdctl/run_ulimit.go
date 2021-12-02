@@ -44,8 +44,8 @@ func generateUlimitsOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
 			}
 			rlimits = append(rlimits, specs.POSIXRlimit{
 				Type: "RLIMIT_" + strings.ToUpper(l.Name),
-				Hard: uint64(l.Soft),
-				Soft: uint64(l.Hard),
+				Hard: uint64(l.Hard),
+				Soft: uint64(l.Soft),
 			})
 		}
 		opts = append(opts, withRlimits(rlimits))
