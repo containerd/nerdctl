@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/archive/compression"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/archive"
 	"github.com/containerd/containerd/platforms"
@@ -68,6 +69,11 @@ func loadAction(cmd *cobra.Command, args []string) error {
 		in = f
 	}
 
+	decompressor, err := compression.DecompressStream(in)
+	if err != nil {
+		return err
+	}
+
 	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
 	if err != nil {
 		return err
@@ -81,7 +87,7 @@ func loadAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return loadImage(in, cmd, args, platMC, false)
+	return loadImage(decompressor, cmd, args, platMC, false)
 }
 
 func loadImage(in io.Reader, cmd *cobra.Command, args []string, platMC platforms.MatchComparer, quiet bool) error {
