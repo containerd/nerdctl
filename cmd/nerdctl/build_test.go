@@ -105,3 +105,29 @@ func createBuildContext(dockerfile string) (string, error) {
 	}
 	return tmpDir, nil
 }
+
+func TestBuildWithIIDFile(t *testing.T) {
+	t.Parallel()
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	const imageName = "nerdctl-build-test"
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-string"]
+	`, testutil.CommonImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+	const fileName = "id.txt"
+
+	base.Cmd("build", "-t", imageName, buildCtx, "--iidfile", fileName).AssertOK()
+	base.Cmd("build", buildCtx, "-t", imageName, "--iidfile", fileName).AssertOK()
+	defer os.Remove(fileName)
+
+	imageID, err := os.ReadFile(fileName)
+	assert.NilError(t, err)
+
+	base.Cmd("run", "--rm", string(imageID)).AssertOutExactly("nerdctl-build-test-string\n")
+}
