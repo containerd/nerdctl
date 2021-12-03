@@ -18,6 +18,13 @@ docker_builder:
   name: windows
   platform: windows
   os_version: 2019
+  matrix:
+    - name: Windows 1.5 tests
+      env:
+        ctrdVersion: 1.5.8
+    - name: Windows 1.6 tests
+      env:
+        ctrdVersion: 1.6.0-beta.3
   env:
     CGO_ENABLED: 0
   build_script:
