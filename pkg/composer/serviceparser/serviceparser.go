@@ -78,6 +78,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		"User",
 		"WorkingDir",
 		"Volumes",
+		"Ulimits",
 	); len(unknown) > 0 {
 		logrus.Warnf("Ignoring: service %s: %+v", svc.Name, unknown)
 	}
@@ -523,6 +524,16 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 
 	if svc.PidsLimit > 0 {
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--pids-limit=%d", svc.PidsLimit))
+	}
+
+	if svc.Ulimits != nil {
+		for utype, ulimit := range svc.Ulimits {
+			if ulimit.Single != 0 {
+				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--ulimit=%s=%d", utype, ulimit.Single))
+			} else {
+				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--ulimit=%s=%d:%d", utype, ulimit.Soft, ulimit.Hard))
+			}
+		}
 	}
 
 	if svc.Platform != "" {

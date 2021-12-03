@@ -77,6 +77,11 @@ version: '3.1'
 services:
 
   wordpress:
+    ulimits:
+      nproc: 500
+      nofile:
+        soft: 20000
+        hard: 20000
     image: wordpress:5.7
     restart: always
     ports:
@@ -132,6 +137,8 @@ volumes:
 	assert.Assert(t, in(wp1.RunArgs, "-p=8080:80/tcp"))
 	assert.Assert(t, in(wp1.RunArgs, fmt.Sprintf("-v=%s_wordpress:/var/www/html", project.Name)))
 	assert.Assert(t, in(wp1.RunArgs, "--pids-limit=100"))
+	assert.Assert(t, in(wp1.RunArgs, "--ulimit=nproc=500"))
+	assert.Assert(t, in(wp1.RunArgs, "--ulimit=nofile=20000:20000"))
 
 	dbSvc, err := project.GetService("db")
 	assert.NilError(t, err)
