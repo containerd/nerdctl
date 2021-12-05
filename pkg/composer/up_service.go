@@ -43,6 +43,10 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 		}
 	}
 
+	if uo.NoStart {
+		return nil
+	}
+
 	var (
 		containers   = make(map[string]serviceparser.Container) // key: container ID
 		containersMu sync.Mutex

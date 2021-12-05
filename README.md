@@ -1079,9 +1079,9 @@ Flags:
 - :whale: `--no-log-prefix`: Don't print prefix in logs
 - :whale: `--build`: Build images before starting containers.
 - :nerd_face: `--ipfs`: Build images with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
+- :whale: `--no-start`: Don't start the services after creating them.
 
-Unimplemented `docker-compose up` (V1) flags: `--quiet-pull`, `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
-`--no-start`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--remove-orphans`, `--exit-code-from`,
+Unimplemented `docker-compose up` (V1) flags: `--quiet-pull`, `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--remove-orphans`, `--exit-code-from`,
 `--scale`
 
 Unimplemented `docker compose up` (V2) flags: `--environment`
