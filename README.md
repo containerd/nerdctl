@@ -664,9 +664,10 @@ Flags:
 - :whale: `--cache-from=CACHE`: External cache sources (eg. user/app:cache, type=local,src=path/to/dir) (compatible with `docker buildx build`)
 - :whale: `--cache-to=CACHE`: Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir) (compatible with `docker buildx build`)
 - :whale: `--platform=(amd64|arm64|...)`: Set target platform for build (compatible with `docker buildx build`)
+- :whale: `--iidfile=FILE`: Write the image ID to the file
 - :nerd_face: `--ipfs`: Build image with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
 
-Unimplemented `docker build` flags: `--add-host`, `--iidfile`, `--label`, `--network`, `--squash`
+Unimplemented `docker build` flags: `--add-host`, `--label`, `--network`, `--squash`
 
 ### :whale: nerdctl commit
 Create a new image from a container's changes
