@@ -715,8 +715,9 @@ Flags:
   - :nerd_face: Unlike Docker, this flag can be specified multiple times (`--platform=amd64 --platform=arm64`)
 - :nerd_face: `--all-platforms`: Pull content for all platforms
 - :nerd_face: `--unpack`: Unpack the image for the current single platform (auto/true/false)
+- :whale: `-q, --quiet`: Suppress verbose output
 
-Unimplemented `docker pull` flags: `--all-tags`, `--disable-content-trust` (default true), `--quiet`
+Unimplemented `docker pull` flags: `--all-tags`, `--disable-content-trust` (default true)
 
 ### :whale: nerdctl push
 Push an image to a registry.
@@ -1081,8 +1082,9 @@ Flags:
 - :whale: `--no-log-prefix`: Don't print prefix in logs
 - :whale: `--build`: Build images before starting containers.
 - :nerd_face: `--ipfs`: Build images with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
+- :whale: `--quiet-pull`: Pull without printing progress information
 
-Unimplemented `docker-compose up` (V1) flags: `--quiet-pull`, `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
+Unimplemented `docker-compose up` (V1) flags: `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
 `--no-start`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--remove-orphans`, `--exit-code-from`,
 `--scale`
 
@@ -1138,7 +1140,10 @@ Pull service images
 
 Usage: `nerdctl compose pull`
 
-Unimplemented `docker-compose pull` (V1) flags: `--ignore-pull-failures`, `--parallel`, `--no-parallel`, `quiet`, `include-deps`
+Flags:
+- :whale: `-q, --quiet`: Pull without printing progress information
+
+Unimplemented `docker-compose pull` (V1) flags: `--ignore-pull-failures`, `--parallel`, `--no-parallel`, `include-deps`
 
 ### :whale: nerdctl compose push
 Push service images

@@ -100,7 +100,7 @@ func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 // EnsureImage ensures the image.
 //
 // When insecure is set, skips verifying certs, and also falls back to HTTP when the registry does not speak HTTPS
-func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool, ocispecPlatforms []ocispec.Platform, unpack *bool) (*EnsuredImage, error) {
+func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool) (*EnsuredImage, error) {
 	switch mode {
 	case "always", "missing", "never":
 		// NOP
@@ -139,7 +139,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 		return nil, err
 	}
 
-	img, err := PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack)
+	img, err := PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack, quiet)
 	if err != nil {
 		if !IsErrHTTPResponseToHTTPSClient(err) {
 			return nil, err
@@ -151,7 +151,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 			if err != nil {
 				return nil, err
 			}
-			return PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack)
+			return PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack, quiet)
 		} else {
 			logrus.WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
 			logrus.Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
@@ -171,7 +171,7 @@ func IsErrHTTPResponseToHTTPSClient(err error) bool {
 }
 
 // PullImage pulls an image using the specified resolver.
-func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter string, resolver remotes.Resolver, ref string, ocispecPlatforms []ocispec.Platform, unpack *bool) (*EnsuredImage, error) {
+func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter string, resolver remotes.Resolver, ref string, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool) (*EnsuredImage, error) {
 	ctx, done, err := client.WithLease(ctx)
 	if err != nil {
 		return nil, err
@@ -180,10 +180,12 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 
 	var containerdImage containerd.Image
 	config := &pull.Config{
-		Resolver:       resolver,
-		ProgressOutput: stderr,
-		RemoteOpts:     []containerd.RemoteOpt{},
-		Platforms:      ocispecPlatforms, // empty for all-platforms
+		Resolver:   resolver,
+		RemoteOpts: []containerd.RemoteOpt{},
+		Platforms:  ocispecPlatforms, // empty for all-platforms
+	}
+	if !quiet {
+		config.ProgressOutput = stderr
 	}
 
 	var unpackB bool

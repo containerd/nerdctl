@@ -31,6 +31,7 @@ func newComposePullCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	composePullCommand.Flags().BoolP("quiet", "q", false, "Pull without printing progress information")
 	return composePullCommand
 }
 
@@ -50,6 +51,12 @@ func composePullAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	po := composer.PullOptions{}
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return err
+	}
+	po := composer.PullOptions{
+		Quiet: quiet,
+	}
 	return c.Pull(ctx, po)
 }

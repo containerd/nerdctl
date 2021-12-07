@@ -37,6 +37,7 @@ func newComposeUpCommand() *cobra.Command {
 	composeUpCommand.Flags().Bool("no-log-prefix", false, "Don't print prefix in logs")
 	composeUpCommand.Flags().Bool("build", false, "Build images before starting containers.")
 	composeUpCommand.Flags().Bool("ipfs", false, "Allow pulling base images from IPFS during build")
+	composeUpCommand.Flags().Bool("quiet-pull", false, "Pull without printing progress information")
 	return composeUpCommand
 }
 
@@ -68,6 +69,10 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 	if err != nil {
 		return err
 	}
+	quietPull, err := cmd.Flags().GetBool("quiet-pull")
+	if err != nil {
+		return err
+	}
 
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
@@ -86,6 +91,7 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		NoLogPrefix: noLogPrefix,
 		ForceBuild:  build,
 		IPFS:        enableIPFS,
+		QuietPull:   quietPull,
 	}
 	return c.Up(ctx, uo, services)
 }

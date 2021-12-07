@@ -48,6 +48,7 @@ func newPullCommand() *cobra.Command {
 	pullCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 	pullCommand.Flags().Bool("all-platforms", false, "Pull content for all platforms")
 	// #endregion
+	pullCommand.Flags().BoolP("quiet", "q", false, "Suppress verbose output")
 
 	return pullCommand
 }
@@ -90,6 +91,10 @@ func pullAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return err
+	}
 
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(args[0]); err == nil {
 		ipfsClient, err := httpapi.NewLocalApi()
@@ -97,11 +102,11 @@ func pullAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		_, err = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
-			"always", ocispecPlatforms, unpack)
+			"always", ocispecPlatforms, unpack, quiet)
 		return err
 	}
 
 	_, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, args[0],
-		"always", insecure, ocispecPlatforms, unpack)
+		"always", insecure, ocispecPlatforms, unpack, quiet)
 	return err
 }

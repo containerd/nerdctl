@@ -166,7 +166,7 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 		return true, nil
 	}
 
-	o.EnsureImage = func(ctx context.Context, imageName, pullMode, platform string) error {
+	o.EnsureImage = func(ctx context.Context, imageName, pullMode, platform string, quiet bool) error {
 		ocispecPlatforms := []ocispec.Platform{platforms.DefaultSpec()}
 		if platform != "" {
 			parsed, err := platforms.Parse(platform)
@@ -182,10 +182,10 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 				return err
 			}
 			_, imgErr = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
-				pullMode, ocispecPlatforms, nil)
+				pullMode, ocispecPlatforms, nil, quiet)
 		} else {
 			_, imgErr = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, imageName,
-				pullMode, insecure, ocispecPlatforms, nil)
+				pullMode, insecure, ocispecPlatforms, nil, quiet)
 		}
 		return imgErr
 	}
