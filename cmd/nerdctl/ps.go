@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"text/tabwriter"
 	"text/template"
@@ -46,6 +47,8 @@ func newPsCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	psCommand.Flags().BoolP("all", "a", false, "Show all containers (default shows just running)")
+	psCommand.Flags().IntP("last", "n", -1, "Show n last created containers (includes all states)")
+	psCommand.Flags().BoolP("latest", "l", false, "Show the latest created container (includes all states)")
 	psCommand.Flags().Bool("no-trunc", false, "Don't truncate output")
 	psCommand.Flags().BoolP("quiet", "q", false, "Only display container IDs")
 	// Alias "-f" is reserved for "--filter"
@@ -62,11 +65,37 @@ func psAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer cancel()
+	all, err := cmd.Flags().GetBool("all")
+	if err != nil {
+		return err
+	}
+	latest, err := cmd.Flags().GetBool("latest")
+	if err != nil {
+		return err
+	}
+	lastN, err := cmd.Flags().GetInt("last")
+	if err != nil {
+		return err
+	}
+	if lastN == -1 && latest {
+		lastN = 1
+	}
 	containers, err := client.Containers(ctx)
 	if err != nil {
 		return err
 	}
-	return printContainers(ctx, cmd, containers)
+	if lastN > 0 {
+		all = true
+		sort.Slice(containers, func(i, j int) bool {
+			infoI, _ := containers[i].Info(ctx, containerd.WithoutRefreshedMetadata)
+			infoJ, _ := containers[j].Info(ctx, containerd.WithoutRefreshedMetadata)
+			return infoI.CreatedAt.After(infoJ.CreatedAt)
+		})
+		if lastN < len(containers) {
+			containers = containers[:lastN]
+		}
+	}
+	return printContainers(ctx, cmd, containers, all)
 }
 
 type containerPrintable struct {
@@ -82,17 +111,14 @@ type containerPrintable struct {
 	// TODO: "Labels", "LocalVolumes", "Mounts", "Networks", "RunningFor", "Size", "State"
 }
 
-func printContainers(ctx context.Context, cmd *cobra.Command, containers []containerd.Container) error {
+func printContainers(ctx context.Context, cmd *cobra.Command, containers []containerd.Container, all bool) error {
 	noTrunc, err := cmd.Flags().GetBool("no-trunc")
 	if err != nil {
 		return err
 	}
 	var wide bool
 	trunc := !noTrunc
-	all, err := cmd.Flags().GetBool("all")
-	if err != nil {
-		return err
-	}
+
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return err

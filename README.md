@@ -544,8 +544,10 @@ Flags:
   - :whale: `--format='{{json .}}'`: JSON
   - :nerd_face: `--format=wide`: Wide table
   - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
+- :whale: `-n, --last`: Show n last created containers (includes all states)
+- :whale: `-l, --latest`: Show the latest created container (includes all states)
 
-Unimplemented `docker ps` flags: `--filter`, `--last`, `--size`
+Unimplemented `docker ps` flags: `--filter`, `--size`
 
 ### :whale: :blue_square: nerdctl inspect
 Display detailed information on one or more containers.
