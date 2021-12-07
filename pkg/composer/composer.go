@@ -46,7 +46,7 @@ type Options struct {
 	NetworkExists  func(string) (bool, error)
 	VolumeExists   func(string) (bool, error)
 	ImageExists    func(ctx context.Context, imageName string) (bool, error)
-	EnsureImage    func(ctx context.Context, imageName, pullMode, platform string) error
+	EnsureImage    func(ctx context.Context, imageName, pullMode, platform string, quiet bool) error
 	DebugPrintFull bool // full debug print, may leak secret env var to logs
 }
 

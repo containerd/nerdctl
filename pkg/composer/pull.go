@@ -28,6 +28,7 @@ import (
 )
 
 type PullOptions struct {
+	Quiet bool
 }
 
 func (c *Composer) Pull(ctx context.Context, po PullOptions) error {
@@ -46,6 +47,9 @@ func (c *Composer) pullServiceImage(ctx context.Context, image string, platform 
 	var args []string // nolint: prealloc
 	if platform != "" {
 		args = append(args, "--platform="+platform)
+	}
+	if po.Quiet {
+		args = append(args, "--quiet")
 	}
 	args = append(args, image)
 
