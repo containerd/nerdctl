@@ -20,8 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	compose "github.com/compose-spec/compose-go/types"
-	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
+	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/strutil"
 
 	"github.com/sirupsen/logrus"
 )
@@ -31,8 +32,17 @@ type DownOptions struct {
 }
 
 func (c *Composer) Down(ctx context.Context, downOptions DownOptions) error {
-	for _, svc := range c.project.Services {
-		if err := c.downService(ctx, svc, downOptions.RemoveVolumes); err != nil {
+	serviceNames, err := c.ServiceNames()
+	if err != nil {
+		return err
+	}
+	// reverse dependency order
+	for _, svc := range strutil.ReverseStrSlice(serviceNames) {
+		containers, err := c.Containers(ctx, svc)
+		if err != nil {
+			return err
+		}
+		if err := c.downContainers(ctx, containers, downOptions.RemoveVolumes); err != nil {
 			return err
 		}
 	}
@@ -100,18 +110,15 @@ func (c *Composer) downVolume(ctx context.Context, shortName string) error {
 	return nil
 }
 
-func (c *Composer) downService(ctx context.Context, svc compose.ServiceConfig, removeAnonVolumes bool) error {
-	ps, err := serviceparser.Parse(c.project, svc)
-	if err != nil {
-		return err
-	}
-	for _, container := range ps.Containers {
-		logrus.Infof("Removing container %s", container.Name)
+func (c *Composer) downContainers(ctx context.Context, containers []containerd.Container, removeAnonVolumes bool) error {
+	for _, container := range containers {
+		info, _ := container.Info(ctx, containerd.WithoutRefreshedMetadata)
+		logrus.Infof("Removing container %s", info.Labels[labels.Name])
 		args := []string{"rm", "-f"}
 		if removeAnonVolumes {
 			args = append(args, "-v")
 		}
-		args = append(args, container.Name)
+		args = append(args, container.ID())
 		if err := c.runNerdctlCmd(ctx, args...); err != nil {
 			logrus.Warn(err)
 		}

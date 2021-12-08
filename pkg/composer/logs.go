@@ -23,9 +23,10 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/compose-spec/compose-go/types"
+	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/composer/pipetagger"
-	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/pkg/labels"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,25 +38,19 @@ type LogsOptions struct {
 	NoLogPrefix bool
 }
 
-func (c *Composer) Logs(ctx context.Context, lo LogsOptions) error {
-	containers := make(map[string]serviceparser.Container) // key: container name
-	if err := c.project.WithServices(nil, func(svc types.ServiceConfig) error {
-		ps, err := serviceparser.Parse(c.project, svc)
-		if err != nil {
-			return err
-		}
-		for _, container := range ps.Containers {
-			containers[container.Name] = container
-		}
-		return nil
-	}); err != nil {
+func (c *Composer) Logs(ctx context.Context, lo LogsOptions, services []string) error {
+	serviceNames, err := c.ServiceNames(services...)
+	if err != nil {
 		return err
 	}
-
+	containers, err := c.Containers(ctx, serviceNames...)
+	if err != nil {
+		return err
+	}
 	return c.logs(ctx, containers, lo)
 }
 
-func (c *Composer) logs(ctx context.Context, containers map[string]serviceparser.Container, lo LogsOptions) error {
+func (c *Composer) logs(ctx context.Context, containers []containerd.Container, lo LogsOptions) error {
 	var logTagMaxLen int
 	type containerState struct {
 		name   string
@@ -64,13 +59,18 @@ func (c *Composer) logs(ctx context.Context, containers map[string]serviceparser
 	}
 
 	containerStates := make(map[string]containerState, len(containers)) // key: containerID
-	for id, container := range containers {
-		logTag := strings.TrimPrefix(container.Name, c.project.Name+"_")
+	for _, container := range containers {
+		info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
+		if err != nil {
+			return err
+		}
+		name := info.Labels[labels.Name]
+		logTag := strings.TrimPrefix(name, c.project.Name+"_")
 		if l := len(logTag); l > logTagMaxLen {
 			logTagMaxLen = l
 		}
-		containerStates[id] = containerState{
-			name:   container.Name,
+		containerStates[container.ID()] = containerState{
+			name:   name,
 			logTag: logTag,
 		}
 	}
