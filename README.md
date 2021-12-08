@@ -526,8 +526,9 @@ Flags:
 - :whale: `-e, --env`: Set environment variables
 - :whale: `--env-file`: Set environment variables from file
 - :whale: `--privileged`: Give extended privileges to the command
+- :whale: `-u, --user`: Username or UID (format: <name|uid>[:<group|gid>])
 
-Unimplemented `docker exec` flags: `--detach-keys`, `--user`
+Unimplemented `docker exec` flags: `--detach-keys`
 
 ## Container management
 ### :whale: :blue_square: nerdctl ps
