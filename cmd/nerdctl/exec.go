@@ -59,6 +59,7 @@ func newExecCommand() *cobra.Command {
 	// env-file is defined as StringSlice, not StringArray, to allow specifying "--env-file=FILE1,FILE2" (compatible with Podman)
 	execCommand.Flags().StringSlice("env-file", nil, "Set environment variables from file")
 	execCommand.Flags().Bool("privileged", false, "Give extended privileges to the command")
+	execCommand.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
 	return execCommand
 }
 
@@ -86,7 +87,7 @@ func execAction(cmd *cobra.Command, args []string) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("ambiguous ID %q", found.Req)
 			}
-			return execActionWithContainer(ctx, cmd, args, found.Container)
+			return execActionWithContainer(ctx, cmd, args, found.Container, client)
 		},
 	}
 	req := args[0]
@@ -99,7 +100,7 @@ func execAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func execActionWithContainer(ctx context.Context, cmd *cobra.Command, args []string, container containerd.Container) error {
+func execActionWithContainer(ctx context.Context, cmd *cobra.Command, args []string, container containerd.Container, client *containerd.Client) error {
 	flagI, err := cmd.Flags().GetBool("interactive")
 	if err != nil {
 		return err
@@ -128,7 +129,7 @@ func execActionWithContainer(ctx context.Context, cmd *cobra.Command, args []str
 		}
 	}
 
-	pspec, err := generateExecProcessSpec(ctx, cmd, args, container)
+	pspec, err := generateExecProcessSpec(ctx, cmd, args, container, client)
 	if err != nil {
 		return err
 	}
@@ -208,10 +209,25 @@ func execActionWithContainer(ctx context.Context, cmd *cobra.Command, args []str
 	return nil
 }
 
-func generateExecProcessSpec(ctx context.Context, cmd *cobra.Command, args []string, container containerd.Container) (*specs.Process, error) {
+func generateExecProcessSpec(ctx context.Context, cmd *cobra.Command, args []string, container containerd.Container, client *containerd.Client) (*specs.Process, error) {
 	spec, err := container.Spec(ctx)
 	if err != nil {
 		return nil, err
+	}
+	userOpts, err := generateUserOpts(cmd)
+	if err != nil {
+		return nil, err
+	}
+	if userOpts != nil {
+		c, err := container.Info(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, opt := range userOpts {
+			if err := opt(ctx, client, &c, spec); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	pspec := spec.Process
