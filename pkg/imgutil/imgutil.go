@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
+	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/imgcrypt"
 	"github.com/containerd/imgcrypt/images/encryption"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
@@ -47,7 +48,7 @@ type EnsuredImage struct {
 	Image       containerd.Image
 	ImageConfig ocispec.ImageConfig
 	Snapshotter string
-	Remote      bool // true for stargz
+	Remote      bool // true for stargz or overlaybd
 }
 
 // PullMode is either one of "always", "missing", "never"
@@ -74,7 +75,7 @@ func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 				Image:       image,
 				ImageConfig: *imgConfig,
 				Snapshotter: snapshotter,
-				Remote:      isStargz(snapshotter),
+				Remote:      isStargz(snapshotter) || isOverlaybd(snapshotter),
 			}
 			if unpacked, err := image.IsUnpacked(ctx, snapshotter); err == nil && !unpacked {
 				if err := image.Unpack(ctx, snapshotter); err != nil {
@@ -107,7 +108,6 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 	default:
 		return nil, fmt.Errorf("unexpected pull mode: %q", mode)
 	}
-
 	if mode != "always" && len(ocispecPlatforms) == 1 {
 		res, err := GetExistingImage(ctx, client, snapshotter, rawRef, ocispecPlatforms[0])
 		if err == nil {
@@ -198,14 +198,13 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 		unpackB = len(ocispecPlatforms) == 1
 	}
 
-	var sgz bool
+	var sgz, overlaybd bool
 	if unpackB {
 		logrus.Debugf("The image will be unpacked for platform %q, snapshotter %q.", ocispecPlatforms[0], snapshotter)
 		imgcryptPayload := imgcrypt.Payload{}
 		imgcryptUnpackOpt := encryption.WithUnpackConfigApplyOpts(encryption.WithDecryptedUnpack(&imgcryptPayload))
 		config.RemoteOpts = append(config.RemoteOpts,
 			containerd.WithPullUnpack,
-			containerd.WithPullSnapshotter(snapshotter),
 			containerd.WithUnpackOpts([]containerd.UnpackOpt{imgcryptUnpackOpt}))
 
 		sgz = isStargz(snapshotter)
@@ -215,6 +214,20 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 				config.RemoteOpts,
 				containerd.WithImageHandlerWrapper(source.AppendDefaultLabelsHandlerWrapper(ref, 10*1024*1024)),
 			)
+		}
+		overlaybd = isOverlaybd(snapshotter)
+		if overlaybd {
+			snlabel := map[string]string{"containerd.io/snapshot/image-ref": ref}
+			logrus.Debugf("append remote opts: %s", snlabel)
+
+			config.RemoteOpts = append(
+				config.RemoteOpts,
+				containerd.WithPullSnapshotter(snapshotter, snapshots.WithLabels(snlabel)),
+			)
+		} else {
+			config.RemoteOpts = append(
+				config.RemoteOpts,
+				containerd.WithPullSnapshotter(snapshotter))
 		}
 	} else {
 		logrus.Debugf("The image will not be unpacked. Platforms=%v.", ocispecPlatforms)
@@ -232,7 +245,7 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 		Image:       containerdImage,
 		ImageConfig: *imgConfig,
 		Snapshotter: snapshotter,
-		Remote:      sgz,
+		Remote:      (sgz || overlaybd),
 	}
 	return res, nil
 
@@ -246,6 +259,10 @@ func isStargz(sn string) bool {
 		logrus.Debugf("assuming %q to be a stargz-compatible snapshotter", sn)
 	}
 	return true
+}
+
+func isOverlaybd(sn string) bool {
+	return sn == "overlaybd"
 }
 
 func getImageConfig(ctx context.Context, image containerd.Image) (*ocispec.ImageConfig, error) {
