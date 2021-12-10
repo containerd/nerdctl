@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/ipfs"
@@ -112,7 +113,7 @@ func pullAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(args[0]); err == nil {
+	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
 		if verifier != "none" {
 			return errors.New("--verify flag is not supported on IPFS as of now")
 		}
@@ -126,13 +127,7 @@ func pullAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, args[0],
-		"always", insecure, ocispecPlatforms, unpack, quiet)
-
-	if err != nil {
-		return err
-	}
-
+	ref := rawRef
 	switch verifier {
 	case "cosign":
 		keyRef, err := cmd.Flags().GetString("cosign-key")
@@ -140,7 +135,8 @@ func pullAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if err := verifyCosign(ctx, rawRef, keyRef); err != nil {
+		ref, err = verifyCosign(ctx, rawRef, keyRef)
+		if err != nil {
 			return err
 		}
 	case "none":
@@ -148,24 +144,35 @@ func pullAction(cmd *cobra.Command, args []string) error {
 	default:
 		return fmt.Errorf("no verifier found: %s", verifier)
 	}
-	return nil
-}
 
-func verifyCosign(ctx context.Context, rawRef string, keyRef string) error {
-	digest, err := imgutil.ResolveDigest(ctx, rawRef, false)
-	rawRef = rawRef + "@" + digest
+	_, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, ref,
+		"always", insecure, ocispecPlatforms, unpack, quiet)
+
 	if err != nil {
-		logrus.WithError(err).Errorf("unable to resolve digest for an image %s: %v", rawRef, err)
 		return err
 	}
 
-	logrus.Debugf("verifying image: %s", rawRef)
+	return nil
+}
+
+func verifyCosign(ctx context.Context, rawRef string, keyRef string) (string, error) {
+	digest, err := imgutil.ResolveDigest(ctx, rawRef, false)
+	if err != nil {
+		logrus.WithError(err).Errorf("unable to resolve digest for an image %s: %v", rawRef, err)
+		return rawRef, err
+	}
+	ref := rawRef
+	if !strings.Contains(ref, "@") {
+		ref += "@" + digest
+	}
+
+	logrus.Debugf("verifying image: %s", ref)
 
 	cosignExecutable, err := exec.LookPath("cosign")
 	if err != nil {
 		logrus.WithError(err).Error("cosign executable not found in path $PATH")
 		logrus.Info("you might consider installing cosign from: https://docs.sigstore.dev/cosign/installation")
-		return err
+		return ref, err
 	}
 
 	cosignCmd := exec.Command(cosignExecutable, []string{"verify"}...)
@@ -177,14 +184,14 @@ func verifyCosign(ctx context.Context, rawRef string, keyRef string) error {
 		cosignCmd.Env = append(cosignCmd.Env, "COSIGN_EXPERIMENTAL=true")
 	}
 
-	cosignCmd.Args = append(cosignCmd.Args, rawRef)
+	cosignCmd.Args = append(cosignCmd.Args, ref)
 
 	logrus.Debugf("running %s %v", cosignExecutable, cosignCmd.Args)
 
 	stdout, _ := cosignCmd.StdoutPipe()
 	stderr, _ := cosignCmd.StderrPipe()
 	if err := cosignCmd.Start(); err != nil {
-		return err
+		return ref, err
 	}
 
 	scanner := bufio.NewScanner(stdout)
@@ -198,8 +205,8 @@ func verifyCosign(ctx context.Context, rawRef string, keyRef string) error {
 	}
 
 	if err := cosignCmd.Wait(); err != nil {
-		return err
+		return ref, err
 	}
 
-	return nil
+	return ref, nil
 }
