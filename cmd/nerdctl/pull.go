@@ -45,9 +45,6 @@ func newPullCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	pullCommand.Flags().String("unpack", "auto", "Unpack the image for the current single platform (auto/true/false)")
-	pullCommand.Flags().String("cosign-key", "",
-		"path to the public key file, KMS, URI or Kubernetes Secret")
-
 	pullCommand.RegisterFlagCompletionFunc("unpack", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"auto", "true", "false"}, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -57,8 +54,16 @@ func newPullCommand() *cobra.Command {
 	pullCommand.Flags().StringSlice("platform", nil, "Pull content for a specific platform")
 	pullCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 	pullCommand.Flags().Bool("all-platforms", false, "Pull content for all platforms")
-	pullCommand.Flags().String("verify", "none", "Verify the image with none|cosign. Default none")
 	// #endregion
+
+	// #region verify flags
+	pullCommand.Flags().String("verify", "none", "Verify the image (none|cosign)")
+	pullCommand.RegisterFlagCompletionFunc("verify", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"none", "cosign"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	pullCommand.Flags().String("cosign-key", "", "Path to the public key file, KMS, URI or Kubernetes Secret for --verify=cosign")
+	// #endregion
+
 	pullCommand.Flags().BoolP("quiet", "q", false, "Suppress verbose output")
 
 	return pullCommand

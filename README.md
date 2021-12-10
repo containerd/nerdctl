@@ -128,6 +128,7 @@ Major:
 - [P2P image distribution using IPFS](./docs/ipfs.md): `nerdctl run ipfs://CID`
 - Recursive read-only (RRO) bind-mount: `nerdctl run -v /mnt:/mnt:rro` (make children such as `/mnt/usb` to be read-only, too).
   Requires kernel >= 5.12, and crun >= 1.4 or runc >= 1.1 (PR [#3272](https://github.com/opencontainers/runc/pull/3272)).
+- [Cosign integration](./docs/cosign.md): `nerdctl pull --verify=cosign` and `nerdctl push --sign=cosign`
 
 Minor:
 - Namespacing: `nerdctl --namespace=<NS> ps` .
@@ -718,6 +719,8 @@ Flags:
 - :nerd_face: `--all-platforms`: Pull content for all platforms
 - :nerd_face: `--unpack`: Unpack the image for the current single platform (auto/true/false)
 - :whale: `-q, --quiet`: Suppress verbose output
+- :nerd_face: `--verify`: Verify the image (none|cosign). See [`docs/cosign.md`](./docs/cosign.md) for details.
+- :nerd_face: `--cosign-key`: Path to the public key file, KMS, URI or Kubernetes Secret for `--verify=cosign`
 
 Unimplemented `docker pull` flags: `--all-tags`, `--disable-content-trust` (default true)
 
@@ -731,6 +734,8 @@ Usage: `nerdctl push [OPTIONS] NAME[:TAG]`
 Flags:
 - :nerd_face: `--platform=(amd64|arm64|...)`: Push content for a specific platform
 - :nerd_face: `--all-platforms`: Push content for all platforms
+- :nerd_face: `--sign`: Sign the image (none|cosign). See [`docs/cosign.md`](./docs/cosign.md) for details.
+- :nerd_face: `--cosign-key`: Path to the private key file, KMS, URI or Kubernetes Secret for `--sign=cosign`
 
 Unimplemented `docker push` flags: `--all-tags`, `--disable-content-trust` (default true), `--quiet`
 
@@ -1222,7 +1227,7 @@ Image:
 
 - `docker image prune`
 
-- `docker trust *`
+- `docker trust *` (Instead, nerdctl supports `nerdctl pull --verify=cosign` and `nerdctl push --sign=cosign`. See [`./docs/cosign.md`](docs/cosign.md).)
 - `docker manifest *`
 
 Network management:

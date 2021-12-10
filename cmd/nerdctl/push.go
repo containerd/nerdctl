@@ -64,10 +64,13 @@ func newPushCommand() *cobra.Command {
 	pushCommand.Flags().Bool("estargz", false, "Convert the image into eStargz")
 	pushCommand.Flags().Bool("ipfs-ensure-image", true, "Ensure the entire contents of the image is locally available before push")
 
-	pushCommand.Flags().String("sign", "none", "Sign the image with none|cosign. Default none")
-
-	pushCommand.Flags().String("cosign-key", "",
-		"path to the private key file, KMS URI or Kubernetes Secret")
+	// #region sign flags
+	pushCommand.Flags().String("sign", "none", "Sign the image (none|cosign")
+	pushCommand.RegisterFlagCompletionFunc("sign", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"none", "cosign"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	pushCommand.Flags().String("cosign-key", "", "Path to the private key file, KMS URI or Kubernetes Secret for --sign=cosign")
+	// #endregion
 
 	return pushCommand
 }
