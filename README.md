@@ -249,10 +249,12 @@ It does not necessarily mean that the corresponding features are missing in cont
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
   - [Container management](#container-management)
     - [:whale: :blue_square: nerdctl run](#whale-blue_square-nerdctl-run)
     - [:whale: :blue_square: nerdctl exec](#whale-blue_square-nerdctl-exec)
     - [:whale: :blue_square: nerdctl create](#whale-blue_square-nerdctl-create)
+    - [:whale: nerdctl cp](#whale-nerdctl-cp)
     - [:whale: :blue_square: nerdctl ps](#whale-blue_square-nerdctl-ps)
     - [:whale: :blue_square: nerdctl inspect](#whale-blue_square-nerdctl-inspect)
     - [:whale: nerdctl logs](#whale-nerdctl-logs)
@@ -301,7 +303,6 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:nerd_face: :blue_square: nerdctl namespace ls](#nerd_face-blue_square-nerdctl-namespace-ls)
     - [:nerd_face: :blue_square: nerdctl namespace remove](#nerd_face-blue_square-nerdctl-namespace-remove)
     - [:nerd_face: :blue_square: nerdctl namespace update](#nerd_face-blue_square-nerdctl-namespace-update)
-
   - [AppArmor profile management](#apparmor-profile-management)
     - [:nerd_face: nerdctl apparmor inspect](#nerd_face-nerdctl-apparmor-inspect)
     - [:nerd_face: nerdctl apparmor load](#nerd_face-nerdctl-apparmor-load)
@@ -620,6 +621,7 @@ Flags:
 
 Unimplemented `docker exec` flags: `--detach-keys`
 
+
 ### :whale: :blue_square: nerdctl create
 Create a new container.
 
@@ -628,6 +630,21 @@ Usage: `nerdctl create [OPTIONS] IMAGE [COMMAND] [ARG...]`
 :nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IPFS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
 
 The `nerdctl create` command similar to `nerdctl run -d` except the container is never started. You can then use the `nerdctl start <container_id>` command to start the container at any point.
+
+### :whale: nerdctl cp
+Copy files/folders between a running container and the local filesystem
+
+Usage:
+- `nerdctl cp [OPTIONS] CONTAINER:SRC_PATH DEST_PATH|-`
+- `nerdctl cp [OPTIONS] SRC_PATH|- CONTAINER:DEST_PATH`
+
+:warning: `nerdctl cp` is designed only for use with trusted, cooperating containers.
+Using `nerdctl cp` with untrusted or malicious containers is unsupported and may not provide protection against unexpected behavior.
+
+Flags:
+- :whale: `-L, --follow-link` Always follow symbol link in SRC_PATH.
+
+Unimplemented `docker cp` flags: `--archive`
 
 ### :whale: :blue_square: nerdctl ps
 List containers.
@@ -1422,7 +1439,6 @@ See [`./docs/config.md`](./docs/config.md).
 ## Unimplemented Docker commands
 Container management:
 - `docker attach`
-- `docker cp`
 - `docker diff`
 - `docker rename`
 
