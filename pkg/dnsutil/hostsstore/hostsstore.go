@@ -21,6 +21,7 @@ package hostsstore
 import (
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -153,4 +154,38 @@ func (x *store) Release(ns, id string) error {
 		return newUpdater(id, x.hostsD, nil).update()
 	}
 	return lockutil.WithDirLock(x.hostsD, fn)
+}
+
+func GetMetaPath(dataStore, ns, id string) string {
+	if dataStore == "" || ns == "" || id == "" {
+		panic(errdefs.ErrInvalidArgument)
+	}
+	return filepath.Join(dataStore, hostsDirBasename, ns, id, metaJSON)
+}
+
+func WriteMeta(dir string, meta Meta) error {
+	fn := func() error {
+		metaB, err := json.Marshal(meta)
+		if err != nil {
+			return err
+		}
+		if err := ioutil.WriteFile(dir, metaB, 0644); err != nil {
+			return err
+		}
+		return nil
+	}
+	return lockutil.WithDirLock(dir, fn)
+}
+
+func ReadMeta(filename string) (Meta, error) {
+	var meta = Meta{}
+	metaData, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return meta, err
+	}
+	err = json.Unmarshal(metaData, &meta)
+	if err != nil {
+		return meta, err
+	}
+	return meta, nil
 }

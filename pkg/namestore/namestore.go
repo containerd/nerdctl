@@ -40,6 +40,7 @@ func New(dataStore, ns string) (NameStore, error) {
 type NameStore interface {
 	Acquire(name, id string) error
 	Release(name, id string) error
+	ChangeName(oldName, newName string) error
 }
 
 type nameStore struct {
@@ -86,6 +87,17 @@ func (x *nameStore) Release(name, id string) error {
 			return fmt.Errorf("name %q is used by ID %q, not by %q", name, s, id)
 		}
 		return os.RemoveAll(fileName)
+	}
+	return lockutil.WithDirLock(x.dir, fn)
+}
+
+func (x *nameStore) ChangeName(oldName, newName string) error {
+	fn := func() error {
+		err := os.Rename(filepath.Join(x.dir, oldName), filepath.Join(x.dir, newName))
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 	return lockutil.WithDirLock(x.dir, fn)
 }

@@ -155,6 +155,7 @@ func newApp() *cobra.Command {
 		newStopCommand(),
 		newStartCommand(),
 		newRestartCommand(),
+		newRenameCommand(),
 		newKillCommand(),
 		newRmCommand(),
 		newPauseCommand(),
