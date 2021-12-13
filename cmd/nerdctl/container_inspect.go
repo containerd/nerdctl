@@ -33,6 +33,7 @@ func newContainerInspectCommand() *cobra.Command {
 		Use:               "inspect [flags] CONTAINER [CONTAINER, ...]",
 		Short:             "Display detailed information on one or more containers.",
 		Long:              "Hint: set `--mode=native` for showing the full output",
+		Args:              cobra.MinimumNArgs(1),
 		RunE:              containerInspectAction,
 		ValidArgsFunction: containerInspectShellComplete,
 		SilenceUsage:      true,
@@ -50,10 +51,6 @@ func newContainerInspectCommand() *cobra.Command {
 }
 
 func containerInspectAction(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("requires at least 1 argument")
-	}
-
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err

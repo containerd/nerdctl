@@ -59,10 +59,6 @@ func newImageInspectCommand() *cobra.Command {
 }
 
 func imageInspectAction(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("requires at least 1 argument")
-	}
-
 	var clientOpts []containerd.ClientOpt
 	platform, err := cmd.Flags().GetString("platform")
 	if err != nil {

@@ -74,10 +74,6 @@ func newImagesCommand() *cobra.Command {
 func imagesAction(cmd *cobra.Command, args []string) error {
 	var filters []string
 
-	if len(args) > 1 {
-		return errors.New("cannot have more than one argument")
-	}
-
 	if len(args) > 0 {
 		canonicalRef, err := referenceutil.ParseAny(args[0])
 		if err != nil {

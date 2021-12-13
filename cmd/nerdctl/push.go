@@ -19,7 +19,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -49,6 +48,7 @@ func newPushCommand() *cobra.Command {
 	var pushCommand = &cobra.Command{
 		Use:               "push NAME[:TAG]",
 		Short:             "Push an image or a repository to a registry. Optionally specify \"ipfs://\" or \"ipns://\" scheme to push image to IPFS.",
+		Args:              cobra.ExactArgs(1),
 		RunE:              pushAction,
 		ValidArgsFunction: pushShellComplete,
 		SilenceUsage:      true,
@@ -76,9 +76,6 @@ func newPushCommand() *cobra.Command {
 }
 
 func pushAction(cmd *cobra.Command, args []string) error {
-	if len(args) != 1 {
-		return errors.New("image name needs to be specified")
-	}
 	rawRef := args[0]
 
 	client, ctx, cancel, err := newClient(cmd)

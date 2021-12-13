@@ -30,6 +30,7 @@ func newInspectCommand() *cobra.Command {
 	var inspectCommand = &cobra.Command{
 		Use:               "inspect",
 		Short:             "Return low-level information on objects.",
+		Args:              cobra.MinimumNArgs(1),
 		RunE:              inspectAction,
 		ValidArgsFunction: inspectShellComplete,
 		SilenceUsage:      true,
@@ -53,10 +54,6 @@ func addInspectFlags(cmd *cobra.Command) {
 }
 
 func inspectAction(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("requires at least 1 argument")
-	}
-
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err

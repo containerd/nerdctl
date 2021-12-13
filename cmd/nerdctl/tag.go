@@ -41,10 +41,6 @@ func newTagCommand() *cobra.Command {
 }
 
 func tagAction(cmd *cobra.Command, args []string) error {
-	if len(args) != 2 {
-		return fmt.Errorf("requires exactly 2 arguments")
-	}
-
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err

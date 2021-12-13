@@ -42,9 +42,6 @@ func newNetworkRmCommand() *cobra.Command {
 }
 
 func networkRmAction(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("requires at least 1 argument")
-	}
 	cniPath, err := cmd.Flags().GetString("cni-path")
 	if err != nil {
 		return err
