@@ -28,6 +28,7 @@ import (
 	composecli "github.com/compose-spec/compose-go/cli"
 	"github.com/compose-spec/compose-go/types"
 	compose "github.com/compose-spec/compose-go/types"
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/composer/projectloader"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
@@ -50,7 +51,7 @@ type Options struct {
 	DebugPrintFull bool // full debug print, may leak secret env var to logs
 }
 
-func New(o Options) (*Composer, error) {
+func New(o Options, client *containerd.Client) (*Composer, error) {
 	if o.NerdctlCmd == "" {
 		return nil, errors.New("got empty nerdctl cmd")
 	}
@@ -118,6 +119,7 @@ func New(o Options) (*Composer, error) {
 	c := &Composer{
 		Options: o,
 		project: project,
+		client:  client,
 	}
 
 	return c, nil
@@ -126,6 +128,7 @@ func New(o Options) (*Composer, error) {
 type Composer struct {
 	Options
 	project *compose.Project
+	client  *containerd.Client
 }
 
 func (c *Composer) createNerdctlCmd(ctx context.Context, args ...string) *exec.Cmd {
@@ -180,4 +183,15 @@ func (c *Composer) Services(ctx context.Context) ([]*serviceparser.Service, erro
 		return nil, err
 	}
 	return services, nil
+}
+
+func (c *Composer) ServiceNames(services ...string) ([]string, error) {
+	var names []string
+	if err := c.project.WithServices(services, func(svc types.ServiceConfig) error {
+		names = append(names, svc.Name)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return names, nil
 }

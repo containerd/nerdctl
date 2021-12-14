@@ -274,3 +274,27 @@ services:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "--env-file", "envFile", "up", "-d").AssertFail()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 }
+
+func TestComposeUpWithScale(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = fmt.Sprintf(`
+version: '3.1'
+
+services:
+  test:
+    image: %s
+    command: "sleep infinity"
+`, testutil.AlpineImage)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--scale", "test=2").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps").AssertOutContains(fmt.Sprintf("%s_test_2", projectName))
+}

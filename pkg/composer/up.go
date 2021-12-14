@@ -36,6 +36,7 @@ type UpOptions struct {
 	ForceBuild  bool
 	IPFS        bool
 	QuietPull   bool
+	Scale       map[string]uint64 // map of service name to replicas
 }
 
 func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) error {
@@ -68,6 +69,13 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 	var parsedServices []*serviceparser.Service
 	// use WithServices to sort the services in dependency order
 	if err := c.project.WithServices(services, func(svc types.ServiceConfig) error {
+		replicas, ok := uo.Scale[svc.Name]
+		if ok {
+			if svc.Deploy == nil {
+				svc.Deploy = &types.DeployConfig{}
+			}
+			svc.Deploy.Replicas = &replicas
+		}
 		ps, err := serviceparser.Parse(c.project, svc)
 		if err != nil {
 			return err

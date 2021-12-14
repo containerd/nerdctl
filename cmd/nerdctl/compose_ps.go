@@ -48,10 +48,6 @@ func composePsAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	services, err := c.Services(ctx)
-	if err != nil {
-		return err
-	}
 
 	// TODO: make JSON-printable.
 	// The JSON format must correspond to `docker compose ps --json` (Docker Compose v2)
@@ -63,39 +59,39 @@ func composePsAction(cmd *cobra.Command, args []string) error {
 		Ports   string
 	}
 
-	var containersPrintable []containerPrintable
+	containersPrintable := []containerPrintable{}
 
-	for _, svc := range services {
-		for _, container := range svc.Containers {
-			containersGot, err := client.Containers(ctx, fmt.Sprintf("labels.%q==%s", labels.Name, container.Name))
-			if err != nil {
-				return err
-			}
-			if len(containersGot) != 1 {
-				return fmt.Errorf("expected 1 container, got %d", len(containersGot))
-			}
-			info, err := containersGot[0].Info(ctx, containerd.WithoutRefreshedMetadata)
-			if err != nil {
-				return err
-			}
+	serviceNames, err := c.ServiceNames(args...)
+	if err != nil {
+		return err
+	}
 
-			spec, err := containersGot[0].Spec(ctx)
-			if err != nil {
-				return err
-			}
-			status := formatter.ContainerStatus(ctx, containersGot[0])
-			if status == "Up" {
-				status = "running" // corresponds to Docker Compose v2.0.1
-			}
-			p := containerPrintable{
-				Name:    container.Name,
-				Command: formatter.InspectContainerCommandTrunc(spec),
-				Service: svc.Unparsed.Name,
-				Status:  status,
-				Ports:   formatter.FormatPorts(info.Labels),
-			}
-			containersPrintable = append(containersPrintable, p)
+	containers, err := c.Containers(ctx, serviceNames...)
+	if err != nil {
+		return err
+	}
+	for _, container := range containers {
+		info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
+		if err != nil {
+			return err
 		}
+
+		spec, err := container.Spec(ctx)
+		if err != nil {
+			return err
+		}
+		status := formatter.ContainerStatus(ctx, container)
+		if status == "Up" {
+			status = "running" // corresponds to Docker Compose v2.0.1
+		}
+		p := containerPrintable{
+			Name:    info.Labels[labels.Name],
+			Command: formatter.InspectContainerCommandTrunc(spec),
+			Service: info.Labels[labels.ComposeService],
+			Status:  status,
+			Ports:   formatter.FormatPorts(info.Labels),
+		}
+		containersPrintable = append(containersPrintable, p)
 	}
 
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 4, 8, 4, ' ', 0)

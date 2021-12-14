@@ -45,10 +45,13 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 
 	var (
 		containers   = make(map[string]serviceparser.Container) // key: container ID
+		services     = []string{}
 		containersMu sync.Mutex
 		runEG        errgroup.Group
 	)
 	for _, ps := range parsedServices {
+		ps := ps
+		services = append(services, ps.Unparsed.Name)
 		for _, container := range ps.Containers {
 			container := container
 			runEG.Go(func() error {
@@ -77,7 +80,7 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 		NoColor:     uo.NoColor,
 		NoLogPrefix: uo.NoLogPrefix,
 	}
-	if err := c.logs(ctx, containers, lo); err != nil {
+	if err := c.Logs(ctx, lo, services); err != nil {
 		return err
 	}
 

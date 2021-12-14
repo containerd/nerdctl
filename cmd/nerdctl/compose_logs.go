@@ -17,8 +17,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
@@ -27,7 +25,6 @@ func newComposeLogsCommand() *cobra.Command {
 	var composeLogsCommand = &cobra.Command{
 		Use:           "logs",
 		Short:         "Show logs of a running container",
-		Args:          cobra.NoArgs,
 		RunE:          composeLogsAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -41,10 +38,6 @@ func newComposeLogsCommand() *cobra.Command {
 }
 
 func composeLogsAction(cmd *cobra.Command, args []string) error {
-	if len(args) != 0 {
-		// TODO: support specifying service names as args
-		return fmt.Errorf("arguments %v not supported", args)
-	}
 	follow, err := cmd.Flags().GetBool("follow")
 	if err != nil {
 		return err
@@ -83,5 +76,5 @@ func composeLogsAction(cmd *cobra.Command, args []string) error {
 		NoColor:     noColor,
 		NoLogPrefix: noLogPrefix,
 	}
-	return c.Logs(ctx, lo)
+	return c.Logs(ctx, lo, args)
 }

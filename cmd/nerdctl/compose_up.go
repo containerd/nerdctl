@@ -18,6 +18,9 @@ package main
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
@@ -38,6 +41,7 @@ func newComposeUpCommand() *cobra.Command {
 	composeUpCommand.Flags().Bool("build", false, "Build images before starting containers.")
 	composeUpCommand.Flags().Bool("ipfs", false, "Allow pulling base images from IPFS during build")
 	composeUpCommand.Flags().Bool("quiet-pull", false, "Pull without printing progress information")
+	composeUpCommand.Flags().StringArray("scale", []string{}, "Scale SERVICE to NUM instances. Overrides the `scale` setting in the Compose file if present.")
 	return composeUpCommand
 }
 
@@ -73,6 +77,22 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 	if err != nil {
 		return err
 	}
+	scaleSlice, err := cmd.Flags().GetStringArray("scale")
+	if err != nil {
+		return err
+	}
+	scale := make(map[string]uint64)
+	for _, s := range scaleSlice {
+		parts := strings.Split(s, "=")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid --scale option %q. Should be SERVICE=NUM", s)
+		}
+		replicas, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return err
+		}
+		scale[parts[0]] = uint64(replicas)
+	}
 
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
@@ -92,6 +112,7 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		ForceBuild:  build,
 		IPFS:        enableIPFS,
 		QuietPull:   quietPull,
+		Scale:       scale,
 	}
 	return c.Up(ctx, uo, services)
 }

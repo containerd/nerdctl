@@ -190,5 +190,5 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 		return imgErr
 	}
 
-	return composer.New(o)
+	return composer.New(o, client)
 }
