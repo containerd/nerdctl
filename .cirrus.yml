@@ -1,8 +1,46 @@
-freebsd_instance:
-  image_family: freebsd-13-0
+# GitHub Actions does not support cgroup v2, so we use Cirrus for cgroup v2.
+linux_cgroup2_task:
+  name: "Linux/cgroup2"
+  timeout_in: 60m
+  compute_engine_instance:
+    image_project: ubuntu-os-cloud
+    image: family/ubuntu-2110
+    # CPU limit: `16 / NTASK`: see https://cirrus-ci.org/faq/#are-there-any-limits
+    cpu: 4
+    # Memory limit: `4GB * NCPU`
+    memory: 16G
+    disk: 100
+  env:
+    DEBIAN_FRONTEND: noninteractive
+    DOCKER_BUILDKIT: 1
+  # Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)
+  remove_snapd_script:
+    - systemctl disable --now snapd.service snapd.socket
+    - apt-get purge -y snapd
+    - losetup -Dv
+    - losetup -lv
+  install_docker_script:
+    - apt-get update
+    - apt-get install -y docker.io
+    - docker info
+  rootful_build_script:
+    - docker build -t test-integration --target test-integration .
+  rootful_test_script:
+    - docker run -t --rm --privileged test-integration
+  rootless_build_script:
+    - docker build -t test-integration-rootless --target test-integration-rootless .
+  rootless_test_script:
+    - docker run -t --rm --privileged test-integration-rootless
 
-task:
-  name: test-freebsd-amd64
+freebsd_task:
+  name: "FreeBSD"
+  timeout_in: 20m
+  compute_engine_instance:
+    image_project: freebsd-org-cloud-dev
+    image: family/freebsd-13-0
+    platform: freebsd
+    cpu: 2
+    memory: 4G
   env:
     NERDCTL_RUN_ARGS: --net none knast/freebsd:13-STABLE echo "Nerdctl is up and running."
   install_script:
@@ -14,12 +52,17 @@ task:
     - sudo go run . run $NERDCTL_RUN_ARGS | grep running
 # TODO: run `go test -v ./cmd/...`
 
-docker_builder:
-  name: windows
-  platform: windows
-  os_version: 2019
+windows_task:
+  name: "Windows"
+  timeout_in: 20m
+  compute_engine_instance:
+    image_project: cirrus-images
+    image: family/windows-docker-builder
+    platform: windows
+    cpu: 2
+    memory: 4G
   matrix:
-    - name: Windows 1.6 tests
+    - name: "Windows/containerd-1.6"
       env:
         ctrdVersion: 1.6.0-beta.3
   env:

@@ -249,7 +249,7 @@ RUN systemctl enable test-integration-ipfs-offline && \
     ipfs init && \
     ipfs config Addresses.API "/ip4/127.0.0.1/tcp/5888" && \
     ipfs config Addresses.Gateway "/ip4/127.0.0.1/tcp/5889"
-CMD ["go", "test", "-v", "./cmd/nerdctl/..."]
+CMD ["go", "test", "-v", "./cmd/nerdctl/...", "-args", "-test.kill-daemon"]
 
 FROM test-integration AS test-integration-rootless
 # Install SSH for creating systemd user session.
@@ -267,6 +267,7 @@ RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
   cp -a /root/.ssh/id_rsa.pub /home/rootless/.ssh/authorized_keys && \
   mkdir -p /home/rootless/.local/share && \
   chown -R rootless:rootless /home/rootless
+COPY ./Dockerfile.d/etc_systemd_system_user@.service.d_delegate.conf /etc/systemd/system/user@.service.d/delegate.conf
 # ipfs daemon for rootless containerd will be enabled in /test-integration-rootless.sh
 RUN systemctl disable test-integration-ipfs-offline
 VOLUME /home/rootless/.local/share
