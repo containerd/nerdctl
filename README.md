@@ -1171,6 +1171,14 @@ Unimplemented `docker-compose config` (V1) flags: `--resolve-image-digests`, `--
 
 Unimplemented `docker compose config` (V2) flags: `--resolve-image-digests`, `--no-interpolate`, `--services`, `--volumes`, `--hash`, `--format`, `--output`, `--profiles`
 
+### :whale: nerdctl compose kill
+Force stop service containers
+
+Usage: `nerdctl compose kill`
+
+Flags:
+- :whale: `-s, --signal`: SIGNAL to send to the container (default: "SIGKILL")
+
 ## IPFS management
 
 ### :nerd_face: nerdctl ipfs registry up
@@ -1242,7 +1250,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose create|events|exec|images|kill|pause|port|restart|rm|run|scale|start|stop|top|unpause`
+- `docker-compose create|events|exec|images|pause|port|restart|rm|run|scale|start|stop|top|unpause`
 
 Others:
 - `docker system df`
