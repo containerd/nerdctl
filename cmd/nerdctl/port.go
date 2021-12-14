@@ -45,9 +45,6 @@ func newPortCommand() *cobra.Command {
 }
 
 func portAction(cmd *cobra.Command, args []string) error {
-	if len(args) != 1 && len(args) != 2 {
-		return fmt.Errorf("requires at least 1 and at most 2 arguments")
-	}
 
 	argPort := -1
 	argProto := ""

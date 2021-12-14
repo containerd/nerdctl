@@ -53,10 +53,6 @@ func newSaveCommand() *cobra.Command {
 }
 
 func saveAction(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("requires at least 1 argument")
-	}
-
 	var (
 		images   = args
 		saveOpts = []archive.ExportOpt{}

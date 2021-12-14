@@ -36,6 +36,7 @@ func newKillCommand() *cobra.Command {
 	var killCommand = &cobra.Command{
 		Use:               "kill [flags] CONTAINER [CONTAINER, ...]",
 		Short:             "Kill one or more running containers",
+		Args:              cobra.MinimumNArgs(1),
 		RunE:              killAction,
 		ValidArgsFunction: killShellComplete,
 		SilenceUsage:      true,
@@ -57,10 +58,6 @@ func killAction(cmd *cobra.Command, args []string) error {
 	signal, err := containerd.ParseSignal(killSignal)
 	if err != nil {
 		return err
-	}
-
-	if len(args) == 0 {
-		return fmt.Errorf("requires at least 1 argument")
 	}
 
 	client, ctx, cancel, err := newClient(cmd)

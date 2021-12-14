@@ -39,9 +39,6 @@ func newVolumeCreateCommand() *cobra.Command {
 }
 
 func volumeCreateAction(cmd *cobra.Command, args []string) error {
-	if len(args) != 1 {
-		return fmt.Errorf("requires exactly 1 argument")
-	}
 	name := args[0]
 	if err := identifiers.Validate(name); err != nil {
 		return fmt.Errorf("malformed name %s: %w", name, err)

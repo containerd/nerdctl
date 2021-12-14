@@ -40,6 +40,7 @@ func newPullCommand() *cobra.Command {
 	var pullCommand = &cobra.Command{
 		Use:           "pull",
 		Short:         "Pull an image from a registry. Optionally specify \"ipfs://\" or \"ipns://\" scheme to pull image from IPFS.",
+		Args:          cobra.ExactArgs(1),
 		RunE:          pullAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -70,9 +71,6 @@ func newPullCommand() *cobra.Command {
 }
 
 func pullAction(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return errors.New("image name needs to be specified")
-	}
 	rawRef := args[0]
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {

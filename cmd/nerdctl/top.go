@@ -74,11 +74,6 @@ func newTopCommand() *cobra.Command {
 }
 
 func topAction(cmd *cobra.Command, args []string) error {
-
-	if len(args) < 1 {
-		return fmt.Errorf("requires at least 1 argument")
-	}
-
 	// NOTE: rootless container does not rely on cgroupv1.
 	// more details about possible ways to resolve this concern: #223
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {

@@ -53,10 +53,6 @@ func stopAction(cmd *cobra.Command, args []string) error {
 	}
 	timeoutStr = timeoutStr + "s"
 
-	if len(args) == 0 {
-		return fmt.Errorf("requires at least 1 argument")
-	}
-
 	timeout, err := time.ParseDuration(timeoutStr)
 	if err != nil {
 		return err

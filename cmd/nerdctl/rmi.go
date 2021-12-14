@@ -44,10 +44,6 @@ func newRmiCommand() *cobra.Command {
 }
 
 func rmiAction(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("requires at least 1 argument")
-	}
-
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err

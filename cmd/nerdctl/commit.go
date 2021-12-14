@@ -19,7 +19,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -34,6 +33,7 @@ func newCommitCommand() *cobra.Command {
 	var commitCommand = &cobra.Command{
 		Use:               "commit [flags] CONTAINER REPOSITORY[:TAG]",
 		Short:             "Create a new image from a container's changes",
+		Args:              cobra.ExactArgs(2),
 		RunE:              commitAction,
 		ValidArgsFunction: commitShellComplete,
 		SilenceUsage:      true,
@@ -46,10 +46,6 @@ func newCommitCommand() *cobra.Command {
 }
 
 func commitAction(cmd *cobra.Command, args []string) error {
-	if len(args) != 2 {
-		return errors.New("need container and commit image name")
-	}
-
 	opts, err := newCommitOpts(cmd, args)
 	if err != nil {
 		return err

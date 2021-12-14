@@ -50,10 +50,6 @@ func newLogsCommand() *cobra.Command {
 }
 
 func logsAction(cmd *cobra.Command, args []string) error {
-	if len(args) != 1 {
-		return fmt.Errorf("requires exactly 1 argument")
-	}
-
 	dataStore, err := getDataStore(cmd)
 	if err != nil {
 		return err

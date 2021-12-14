@@ -228,10 +228,6 @@ func runAction(cmd *cobra.Command, args []string) error {
 		args = newArg
 	}
 
-	if len(args) < 1 {
-		return errors.New("image name needs to be specified")
-	}
-
 	ns, err := cmd.Flags().GetString("namespace")
 	if err != nil {
 		return err

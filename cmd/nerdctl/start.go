@@ -45,10 +45,6 @@ func newStartCommand() *cobra.Command {
 }
 
 func startAction(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("requires at least 1 argument")
-	}
-
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err

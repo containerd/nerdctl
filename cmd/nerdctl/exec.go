@@ -71,9 +71,6 @@ func execAction(cmd *cobra.Command, args []string) error {
 		newArg = append(newArg, args[2:]...)
 		args = newArg
 	}
-	if len(args) < 2 {
-		return fmt.Errorf("requires at least 2 arguments")
-	}
 
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {

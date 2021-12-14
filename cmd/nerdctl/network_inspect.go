@@ -49,10 +49,6 @@ func newNetworkInspectCommand() *cobra.Command {
 }
 
 func networkInspectAction(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("requires at least 1 argument")
-	}
-
 	cniPath, err := cmd.Flags().GetString("cni-path")
 	if err != nil {
 		return err
