@@ -17,6 +17,7 @@
 package ipfs
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -152,7 +153,7 @@ func (s *server) getReadSeekCloser(c cid.Cid) (io.ReadSeekCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &readSeekCloser{r, closeFunc}, nil
+	return newReadSeekCloser(r, closeFunc), nil
 }
 
 func (s *server) getFile(c cid.Cid) (*io.SectionReader, func() error, error) {
@@ -243,9 +244,32 @@ func getMediaType(desc ocispec.Descriptor) string {
 	return "application/octet-stream"
 }
 
+func newReadSeekCloser(rs io.ReadSeeker, closeFunc func() error) io.ReadSeekCloser {
+	rsc := &readSeekCloser{
+		rs:        rs,
+		closeFunc: closeFunc,
+	}
+	rsc.curR = bufio.NewReaderSize(rsc.rs, 512*1024)
+	return rsc
+}
+
 type readSeekCloser struct {
-	io.ReadSeeker
+	rs        io.ReadSeeker
 	closeFunc func() error
+	curR      *bufio.Reader
+}
+
+func (r *readSeekCloser) Read(p []byte) (int, error) {
+	return r.curR.Read(p)
+}
+
+func (r *readSeekCloser) Seek(offset int64, whence int) (int64, error) {
+	n, err := r.rs.Seek(offset, whence)
+	if err != nil {
+		return 0, err
+	}
+	r.curR.Reset(r.rs)
+	return n, nil
 }
 
 func (r *readSeekCloser) Close() error { return r.closeFunc() }
