@@ -389,106 +389,11 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 	cOpts = append(cOpts, restartOpts...)
 
-	portSlice, err := cmd.Flags().GetStringSlice("publish")
+	netOpts, netSlice, ports, err := generateNetOpts(cmd, dataStore, stateDir, ns, id)
 	if err != nil {
 		return err
 	}
-	netSlice, err := getNetworkSlice(cmd)
-	if err != nil {
-		return err
-	}
-
-	ports := make([]gocni.PortMapping, 0)
-	netType, err := nettype.Detect(netSlice)
-	if err != nil {
-		return err
-	}
-
-	switch netType {
-	case nettype.None:
-		// NOP
-	case nettype.Host:
-		opts = append(opts, oci.WithHostNamespace(specs.NetworkNamespace), oci.WithHostHostsFile, oci.WithHostResolvconf)
-	case nettype.CNI:
-		// We only verify flags and generate resolv.conf here.
-		// The actual network is configured in the oci hook.
-		cniPath, err := cmd.Flags().GetString("cni-path")
-		if err != nil {
-			return err
-		}
-		cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
-		if err != nil {
-			return err
-		}
-		e := &netutil.CNIEnv{
-			Path:        cniPath,
-			NetconfPath: cniNetconfpath,
-		}
-		ll, err := netutil.ConfigLists(e)
-		if err != nil {
-			return err
-		}
-		for _, netstr := range netSlice {
-			var netconflist *netutil.NetworkConfigList
-			for _, f := range ll {
-				if f.Name == netstr {
-					netconflist = f
-					break
-				}
-			}
-			if netconflist == nil {
-				return fmt.Errorf("no such network: %q", netstr)
-			}
-		}
-
-		resolvConfPath := filepath.Join(stateDir, "resolv.conf")
-		dnsValue, err := cmd.Flags().GetStringSlice("dns")
-		if err != nil {
-			return err
-		}
-		if runtime.GOOS == "linux" {
-			conf, err := resolvconf.Get()
-			if err != nil {
-				return err
-			}
-			slirp4Dns := []string{}
-			if rootlessutil.IsRootlessChild() {
-				slirp4Dns, err = dnsutil.GetSlirp4netnsDns()
-				if err != nil {
-					return err
-				}
-			}
-			conf, err = resolvconf.FilterResolvDNS(conf.Content, true)
-			if err != nil {
-				return err
-			}
-			searchDomains := resolvconf.GetSearchDomains(conf.Content)
-			dnsOptions := resolvconf.GetOptions(conf.Content)
-			nameServers := strutil.DedupeStrSlice(dnsValue)
-			if len(nameServers) == 0 {
-				nameServers = resolvconf.GetNameservers(conf.Content, resolvconf.IPv4)
-			}
-			if _, err := resolvconf.Build(resolvConfPath, append(slirp4Dns, nameServers...), searchDomains, dnsOptions); err != nil {
-				return err
-			}
-
-			// the content of /etc/hosts is created in OCI Hook
-			etcHostsPath, err := hostsstore.AllocHostsFile(dataStore, ns, id)
-			if err != nil {
-				return err
-			}
-			opts = append(opts, withCustomResolvConf(resolvConfPath), withCustomHosts(etcHostsPath))
-			for _, p := range portSlice {
-				pm, err := portutil.ParseFlagP(p)
-				if err != nil {
-					return err
-				}
-				ports = append(ports, pm...)
-			}
-		}
-	default:
-		return fmt.Errorf("unexpected network type %v", netType)
-	}
+	opts = append(opts, netOpts...)
 
 	hostname := id[0:12]
 	customHostname, err := cmd.Flags().GetString("hostname")
@@ -1041,4 +946,109 @@ func parseEnvVars(paths []string) ([]string, error) {
 		}
 	}
 	return vars, nil
+}
+
+func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]oci.SpecOpts, []string, []gocni.PortMapping, error) {
+	opts := []oci.SpecOpts{}
+	portSlice, err := cmd.Flags().GetStringSlice("publish")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	netSlice, err := getNetworkSlice(cmd)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	ports := make([]gocni.PortMapping, 0)
+	netType, err := nettype.Detect(netSlice)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	switch netType {
+	case nettype.None:
+		// NOP
+	case nettype.Host:
+		opts = append(opts, oci.WithHostNamespace(specs.NetworkNamespace), oci.WithHostHostsFile, oci.WithHostResolvconf)
+	case nettype.CNI:
+		// We only verify flags and generate resolv.conf here.
+		// The actual network is configured in the oci hook.
+		cniPath, err := cmd.Flags().GetString("cni-path")
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		e := &netutil.CNIEnv{
+			Path:        cniPath,
+			NetconfPath: cniNetconfpath,
+		}
+		ll, err := netutil.ConfigLists(e)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		for _, netstr := range netSlice {
+			var netconflist *netutil.NetworkConfigList
+			for _, f := range ll {
+				if f.Name == netstr {
+					netconflist = f
+					break
+				}
+			}
+			if netconflist == nil {
+				return nil, nil, nil, fmt.Errorf("no such network: %q", netstr)
+			}
+		}
+
+		resolvConfPath := filepath.Join(stateDir, "resolv.conf")
+		dnsValue, err := cmd.Flags().GetStringSlice("dns")
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if runtime.GOOS == "linux" {
+			conf, err := resolvconf.Get()
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			slirp4Dns := []string{}
+			if rootlessutil.IsRootlessChild() {
+				slirp4Dns, err = dnsutil.GetSlirp4netnsDns()
+				if err != nil {
+					return nil, nil, nil, err
+				}
+			}
+			conf, err = resolvconf.FilterResolvDNS(conf.Content, true)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			searchDomains := resolvconf.GetSearchDomains(conf.Content)
+			dnsOptions := resolvconf.GetOptions(conf.Content)
+			nameServers := strutil.DedupeStrSlice(dnsValue)
+			if len(nameServers) == 0 {
+				nameServers = resolvconf.GetNameservers(conf.Content, resolvconf.IPv4)
+			}
+			if _, err := resolvconf.Build(resolvConfPath, append(slirp4Dns, nameServers...), searchDomains, dnsOptions); err != nil {
+				return nil, nil, nil, err
+			}
+
+			// the content of /etc/hosts is created in OCI Hook
+			etcHostsPath, err := hostsstore.AllocHostsFile(dataStore, ns, id)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			opts = append(opts, withCustomResolvConf(resolvConfPath), withCustomHosts(etcHostsPath))
+			for _, p := range portSlice {
+				pm, err := portutil.ParseFlagP(p)
+				if err != nil {
+					return nil, nil, pm, err
+				}
+				ports = append(ports, pm...)
+			}
+		}
+	default:
+		return nil, nil, nil, fmt.Errorf("unexpected network type %v", netType)
+	}
+	return opts, netSlice, ports, nil
 }
