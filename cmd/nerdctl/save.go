@@ -17,15 +17,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/containerd/containerd/images/archive"
+	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/platformutil"
-	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/mattn/go-isatty"
-
 	"github.com/spf13/cobra"
 )
 
@@ -105,15 +105,60 @@ func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, cmd
 	saveOpts = append(saveOpts, archive.WithPlatform(platMC))
 
 	imageStore := client.ImageService()
+	var foundImageNames []string
+	var foundId []string
+	walker := &imagewalker.ImageWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+			imgName := found.Image.Name
+			imgDigest := found.Image.Target.Digest.String()
+			if imgName != "" && imgDigest != "" {
+				foundImageNames = append(foundImageNames, imgName)
+				foundId = append(foundId, imgDigest)
+				if err = checkRepeatId(foundId); err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("imgName or imgDigest is null")
+			}
+			return nil
+		},
+	}
+	var empty []string
 	for _, img := range images {
-		named, err := referenceutil.ParseAny(img)
+		foundImageNames = empty
+		foundId = empty
+		_, err = walker.Walk(ctx, img)
 		if err != nil {
 			return err
 		}
-		saveOpts = append(saveOpts, archive.WithImage(imageStore, named.String()))
+		for _, localName := range foundImageNames {
+			saveOpts = append(saveOpts, archive.WithImage(imageStore, localName))
+		}
 	}
-
 	return client.Export(ctx, out, saveOpts...)
+}
+
+func checkRepeatId(stringSlice []string) error {
+	uniqueSlice := uniqueSlice(stringSlice)
+	if len(uniqueSlice) > 1 {
+		return fmt.Errorf("ambiguous digest id")
+	} else if len(uniqueSlice) == 0 {
+		return fmt.Errorf("reference does not exist")
+	}
+	return nil
+}
+
+func uniqueSlice(Slice []string) []string {
+	keys := make(map[string]bool)
+	uniq := []string{}
+	for _, entry := range Slice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			uniq = append(uniq, entry)
+		}
+	}
+	return uniq
 }
 
 func saveShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
