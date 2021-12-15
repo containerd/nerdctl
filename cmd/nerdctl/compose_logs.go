@@ -23,7 +23,7 @@ import (
 
 func newComposeLogsCommand() *cobra.Command {
 	var composeLogsCommand = &cobra.Command{
-		Use:           "logs",
+		Use:           "logs [SERVICE...]",
 		Short:         "Show logs of a running container",
 		RunE:          composeLogsAction,
 		SilenceUsage:  true,
