@@ -30,8 +30,8 @@ import (
 type PushOptions struct {
 }
 
-func (c *Composer) Push(ctx context.Context, po PushOptions) error {
-	return c.project.WithServices(nil, func(svc types.ServiceConfig) error {
+func (c *Composer) Push(ctx context.Context, po PushOptions, services []string) error {
+	return c.project.WithServices(services, func(svc types.ServiceConfig) error {
 		ps, err := serviceparser.Parse(c.project, svc)
 		if err != nil {
 			return err

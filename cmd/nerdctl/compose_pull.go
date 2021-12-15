@@ -17,15 +17,13 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
 
 func newComposePullCommand() *cobra.Command {
 	var composePullCommand = &cobra.Command{
-		Use:           "pull [SERVICE]...",
+		Use:           "pull [SERVICE...]",
 		Short:         "Pull service images",
 		RunE:          composePullAction,
 		SilenceUsage:  true,
@@ -36,11 +34,6 @@ func newComposePullCommand() *cobra.Command {
 }
 
 func composePullAction(cmd *cobra.Command, args []string) error {
-	if len(args) != 0 {
-		// TODO: support specifying service names as args
-		return fmt.Errorf("arguments %v not supported", args)
-	}
-
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
@@ -58,5 +51,5 @@ func composePullAction(cmd *cobra.Command, args []string) error {
 	po := composer.PullOptions{
 		Quiet: quiet,
 	}
-	return c.Pull(ctx, po)
+	return c.Pull(ctx, po, args)
 }

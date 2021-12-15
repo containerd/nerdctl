@@ -31,8 +31,8 @@ type PullOptions struct {
 	Quiet bool
 }
 
-func (c *Composer) Pull(ctx context.Context, po PullOptions) error {
-	return c.project.WithServices(nil, func(svc types.ServiceConfig) error {
+func (c *Composer) Pull(ctx context.Context, po PullOptions, services []string) error {
+	return c.project.WithServices(services, func(svc types.ServiceConfig) error {
 		ps, err := serviceparser.Parse(c.project, svc)
 		if err != nil {
 			return err
