@@ -37,11 +37,11 @@ func TestWait(t *testing.T) {
 	base := testutil.NewBase(t)
 	defer base.Cmd("rm", "-f", testContainerName1, testContainerName2, testContainerName3).Run()
 
-	base.Cmd("run", "-d", "--name", testContainerName1, testutil.CommonImage, "sleep", "2").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainerName1, testutil.CommonImage, "sleep", "1").AssertOK()
 
-	base.Cmd("run", "-d", "--name", testContainerName2, testutil.CommonImage, "sleep", "2").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainerName2, testutil.CommonImage, "sleep", "1").AssertOK()
 
-	base.Cmd("run", "--name", testContainerName3, testutil.CommonImage, "sh", "-euxc", "sleep 3; exit 123").AssertExitCode(123)
+	base.Cmd("run", "--name", testContainerName3, testutil.CommonImage, "sh", "-euxc", "sleep 5; exit 123").AssertExitCode(123)
 
 	base.Cmd("wait", testContainerName1, testContainerName2, testContainerName3).AssertOutExactly(expected)
 
