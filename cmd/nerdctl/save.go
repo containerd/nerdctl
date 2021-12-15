@@ -17,15 +17,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/containerd/containerd/images/archive"
+	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/platformutil"
-	"github.com/containerd/nerdctl/pkg/referenceutil"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/mattn/go-isatty"
-
 	"github.com/spf13/cobra"
 )
 
@@ -83,6 +84,7 @@ func saveAction(cmd *cobra.Command, args []string) error {
 }
 
 func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, cmd *cobra.Command) error {
+	images = strutil.DedupeStrSlice(images)
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
@@ -103,16 +105,33 @@ func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, cmd
 	}
 
 	saveOpts = append(saveOpts, archive.WithPlatform(platMC))
-
 	imageStore := client.ImageService()
+	foundID := make(map[string]struct{})
+	walker := &imagewalker.ImageWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+			imgName := found.Image.Name
+			imgDigest := found.Image.Target.Digest.String()
+			if _, ok := foundID[imgDigest]; !ok {
+				foundID[imgDigest] = struct{}{}
+			}
+			saveOpts = append(saveOpts, archive.WithImage(imageStore, imgName))
+			return nil
+		},
+	}
+
 	for _, img := range images {
-		named, err := referenceutil.ParseAny(img)
+		count, err := walker.Walk(ctx, img)
 		if err != nil {
 			return err
 		}
-		saveOpts = append(saveOpts, archive.WithImage(imageStore, named.String()))
+		if count == 0 {
+			return fmt.Errorf("no such image: %s", img)
+		}
 	}
-
+	if len(foundID) > len(images) {
+		return fmt.Errorf("ambiguous digest id")
+	}
 	return client.Export(ctx, out, saveOpts...)
 }
 
