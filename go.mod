@@ -11,7 +11,7 @@ require (
 	github.com/containerd/containerd/api v1.6.0-beta.3
 	github.com/containerd/continuity v0.2.1
 	github.com/containerd/go-cni v1.1.1-0.20211026134925-aa8bf14323a5
-	github.com/containerd/imgcrypt v1.1.2
+	github.com/containerd/imgcrypt v1.1.3
 	github.com/containerd/stargz-snapshotter v0.10.1
 	github.com/containerd/stargz-snapshotter/estargz v0.10.1
 	github.com/containerd/stargz-snapshotter/ipfs v0.10.1
