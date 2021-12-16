@@ -59,11 +59,15 @@ func newImageInspectCommand() *cobra.Command {
 }
 
 func imageInspectAction(cmd *cobra.Command, args []string) error {
-	var clientOpts []containerd.ClientOpt
 	platform, err := cmd.Flags().GetString("platform")
 	if err != nil {
 		return err
 	}
+	return imageInspectActionWithPlatform(cmd, args, platform)
+}
+
+func imageInspectActionWithPlatform(cmd *cobra.Command, args []string, platform string) error {
+	var clientOpts []containerd.ClientOpt
 	if platform != "" {
 		platformParsed, err := platforms.Parse(platform)
 		if err != nil {

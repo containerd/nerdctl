@@ -93,7 +93,7 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("no such object %s", req)
 		}
 		if ni != 0 {
-			if err := imageInspectAction(cmd, args); err != nil {
+			if err := imageInspectActionWithPlatform(cmd, args, ""); err != nil {
 				return err
 			}
 		} else {
