@@ -17,9 +17,11 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"gotest.tools/v3/assert"
 )
 
 func TestComposeConfig(t *testing.T) {
@@ -35,4 +37,41 @@ services:
 	defer comp.CleanUp()
 
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "config").AssertOutContains("hello:")
+}
+
+func TestComposeConfigWithPrintService(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = `
+services:
+  hello1:
+    image: alpine:3.13
+`
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "config", "--services").AssertOutExactly("hello1\n")
+}
+
+func TestComposeConfigWithPrintServiceHash(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = `
+services:
+  hello1:
+    image: alpine:%s
+`
+
+	comp := testutil.NewComposeDir(t, fmt.Sprintf(dockerComposeYAML, "3.13"))
+	defer comp.CleanUp()
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "config", "--hash=*").AssertOutContains("hello1")
+	hash := base.ComposeCmd("-f", comp.YAMLFullPath(), "config", "--hash=hello1").Out()
+
+	newComp := testutil.NewComposeDir(t, fmt.Sprintf(dockerComposeYAML, "3.14"))
+	defer newComp.CleanUp()
+
+	newHash := base.ComposeCmd("-f", newComp.YAMLFullPath(), "config", "--hash=hello1").Out()
+	assert.Assert(t, hash != newHash)
 }

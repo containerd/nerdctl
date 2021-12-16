@@ -1171,9 +1171,15 @@ Validate and view the Compose file
 
 Usage: `nerdctl compose config`
 
-Unimplemented `docker-compose config` (V1) flags: `--resolve-image-digests`, `--no-interpolate`, `--services`, `--volumes`, `--hash`
+Flags:
+- :whale: `-q, --quiet`: Pull without printing progress information
+- :whale: `--services`: Print the service names, one per line.
+- :whale: `--volumes`: Print the volume names, one per line.
+- :whale: `--hash="*"`: Print the service config hash, one per line.
 
-Unimplemented `docker compose config` (V2) flags: `--resolve-image-digests`, `--no-interpolate`, `--services`, `--volumes`, `--hash`, `--format`, `--output`, `--profiles`
+Unimplemented `docker-compose config` (V1) flags: `--resolve-image-digests`, `--no-interpolate`
+
+Unimplemented `docker compose config` (V2) flags: `--resolve-image-digests`, `--no-interpolate`, `--format`, `--output`, `--profiles`
 
 ### :whale: nerdctl compose kill
 Force stop service containers
