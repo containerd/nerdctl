@@ -64,12 +64,13 @@ func TestImageVerifyWithCosign(t *testing.T) {
 	keyPair := newCosignKeyPair(t, "cosign-key-pair")
 	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
-	reg := newTestRegistry(base, "test-image-cosign")
+	tID := testutil.Identifier(t)
+	reg := newTestRegistry(base)
 	defer reg.cleanup()
 	localhostIP := "127.0.0.1"
 	t.Logf("localhost IP=%q", localhostIP)
-	testImageRef := fmt.Sprintf("%s:%d/test-push-signed-image",
-		localhostIP, reg.listenPort)
+	testImageRef := fmt.Sprintf("%s:%d/%s",
+		localhostIP, reg.listenPort, tID)
 	t.Logf("testImageRef=%q", testImageRef)
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -94,12 +95,13 @@ func TestImageVerifyWithCosignShouldFailWhenKeyIsNotCorrect(t *testing.T) {
 	keyPair := newCosignKeyPair(t, "cosign-key-pair")
 	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
-	reg := newTestRegistry(base, "test-image-cosign")
+	tID := testutil.Identifier(t)
+	reg := newTestRegistry(base)
 	defer reg.cleanup()
 	localhostIP := "127.0.0.1"
 	t.Logf("localhost IP=%q", localhostIP)
-	testImageRef := fmt.Sprintf("%s:%d/test-push-signed-image-wrong",
-		localhostIP, reg.listenPort)
+	testImageRef := fmt.Sprintf("%s:%d/%s",
+		localhostIP, reg.listenPort, tID)
 	t.Logf("testImageRef=%q", testImageRef)
 
 	dockerfile := fmt.Sprintf(`FROM %s

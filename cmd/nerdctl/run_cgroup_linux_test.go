@@ -85,7 +85,7 @@ func TestRunDevice(t *testing.T) {
 	}
 
 	base := testutil.NewBase(t)
-	const containerName = "nerdctl-test-run-device"
+	containerName := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", containerName).Run()
 	// lo0 is readable but not writable.
 	// lo1 is readable and writable

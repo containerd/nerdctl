@@ -25,7 +25,7 @@ import (
 )
 
 func TestContainerInspectContainsPortConfig(t *testing.T) {
-	const testContainer = "nerdctl-test-inspect-with-port-config"
+	testContainer := testutil.Identifier(t)
 
 	base := testutil.NewBase(t)
 	defer base.Cmd("rm", "-f", testContainer).Run()

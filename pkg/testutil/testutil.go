@@ -32,6 +32,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/platformutil"
+	"github.com/opencontainers/go-digest"
 
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
@@ -420,4 +421,17 @@ func NewBase(t *testing.T) *Base {
 		t.Fatalf("unknown test target %q", base.Target)
 	}
 	return base
+}
+
+// Identifier can be used as a name of container, image, volume, network, etc.
+func Identifier(t testing.TB) string {
+	s := t.Name()
+	s = strings.ReplaceAll(s, " ", "_")
+	s = strings.ReplaceAll(s, "/", "-")
+	s = strings.ToLower(s)
+	s = "nerdctl-" + s
+	if len(s) > 76 {
+		s = "nerdctl-" + digest.SHA256.FromString(t.Name()).Encoded()
+	}
+	return s
 }

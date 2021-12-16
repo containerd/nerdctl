@@ -25,7 +25,7 @@ import (
 func TestExec(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	const testContainer = "nerdctl-test-exec"
+	testContainer := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", testContainer).Run()
 
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
@@ -37,7 +37,7 @@ func TestExecWithDoubleDash(t *testing.T) {
 	t.Parallel()
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	const testContainer = "nerdctl-test-exec-double-dash"
+	testContainer := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", testContainer).Run()
 
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()

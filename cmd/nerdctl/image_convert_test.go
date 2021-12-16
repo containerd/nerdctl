@@ -30,7 +30,7 @@ func TestImageConvertEStargz(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	t.Parallel()
 	base := testutil.NewBase(t)
-	convertedImage := "test-image-convert:esgz"
+	convertedImage := testutil.Identifier(t) + ":esgz"
 	base.Cmd("rmi", convertedImage).Run()
 	defer base.Cmd("rmi", convertedImage).Run()
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
@@ -44,7 +44,7 @@ func TestImageConvertZstdChunked(t *testing.T) {
 	}
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	convertedImage := "test-image-convert:zstdchunked"
+	convertedImage := testutil.Identifier(t) + ":zstdchunked"
 	base.Cmd("rmi", convertedImage).Run()
 	defer base.Cmd("rmi", convertedImage).Run()
 	base.Cmd("pull", testutil.CommonImage).AssertOK()

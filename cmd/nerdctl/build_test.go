@@ -31,7 +31,7 @@ func TestBuild(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	const imageName = "nerdctl-build-test"
+	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -52,14 +52,14 @@ func TestBuildFromStdin(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	const imageName = "nerdctl-build-stdin-test"
+	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-stdin"]
 	`, testutil.CommonImage)
 
-	base.Cmd("build", "-t", imageName, "-f", "-", ".").CmdOption(testutil.WithStdin(strings.NewReader(dockerfile))).AssertOutContains("nerdctl-build-stdin-test")
+	base.Cmd("build", "-t", imageName, "-f", "-", ".").CmdOption(testutil.WithStdin(strings.NewReader(dockerfile))).AssertOutContains(imageName)
 }
 
 func TestBuildLocal(t *testing.T) {
@@ -110,7 +110,7 @@ func TestBuildWithIIDFile(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	const imageName = "nerdctl-build-test"
+	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s

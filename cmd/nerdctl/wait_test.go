@@ -24,11 +24,10 @@ import (
 
 func TestWait(t *testing.T) {
 	t.Parallel()
-	const (
-		testContainerName1 = "nerdctl-test-wait-1"
-		testContainerName2 = "nerdctl-test-wait-2"
-		testContainerName3 = "nerdctl-test-wait-3"
-	)
+	tID := testutil.Identifier(t)
+	testContainerName1 := tID + "-1"
+	testContainerName2 := tID + "-2"
+	testContainerName3 := tID + "-3"
 
 	const expected = `0
 0

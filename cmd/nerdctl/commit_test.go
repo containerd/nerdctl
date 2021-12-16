@@ -29,10 +29,8 @@ func TestCommit(t *testing.T) {
 	case "none", "":
 		t.Skip("requires cgroup (for pausing)")
 	}
-	const (
-		testContainer = "nerdctl-test-commit"
-		testImage     = "nerdctl-test-image"
-	)
+	testContainer := testutil.Identifier(t)
+	testImage := testutil.Identifier(t) + "-img"
 	defer base.Cmd("rm", "-f", testContainer).Run()
 	defer base.Cmd("rmi", testImage).Run()
 
