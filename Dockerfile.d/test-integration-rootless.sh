@@ -27,17 +27,17 @@ if [[ "$(id -u)" = "0" ]]; then
 else
 	containerd-rootless-setuptool.sh install
 	containerd-rootless-setuptool.sh install-buildkit
-        containerd-rootless-setuptool.sh install-stargz
-        cat <<EOF >> /home/rootless/.config/containerd/config.toml
+	containerd-rootless-setuptool.sh install-stargz
+	cat <<EOF >>/home/rootless/.config/containerd/config.toml
 [proxy_plugins]
   [proxy_plugins."stargz"]
     type = "snapshot"
     address = "/run/user/1000/containerd-stargz-grpc/containerd-stargz-grpc.sock"
 EOF
-        systemctl --user restart containerd.service
-        containerd-rootless-setuptool.sh -- install-ipfs --init --offline # offline ipfs daemon for testing
-        echo "ipfs = true" >> /home/rootless/.config/containerd-stargz-grpc/config.toml
-        systemctl --user restart stargz-snapshotter.service
-        export IPFS_PATH="/home/rootless/.local/share/ipfs"
+	systemctl --user restart containerd.service
+	containerd-rootless-setuptool.sh -- install-ipfs --init --offline # offline ipfs daemon for testing
+	echo "ipfs = true" >>/home/rootless/.config/containerd-stargz-grpc/config.toml
+	systemctl --user restart stargz-snapshotter.service
+	export IPFS_PATH="/home/rootless/.local/share/ipfs"
 	exec "$@"
 fi
