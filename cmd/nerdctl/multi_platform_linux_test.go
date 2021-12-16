@@ -54,10 +54,11 @@ func TestMultiPlatformBuildPush(t *testing.T) {
 	testutil.RequiresBuild(t)
 	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
 	base := testutil.NewBase(t)
-	reg := newTestRegistry(base, strings.ToLower(t.Name()))
+	tID := testutil.Identifier(t)
+	reg := newTestRegistry(base)
 	defer reg.cleanup()
 
-	imageName := fmt.Sprintf("localhost:%d/nerdctl-multi-platform-build-test:latest", reg.listenPort)
+	imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.listenPort, tID)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -76,10 +77,11 @@ RUN echo dummy
 func TestMultiPlatformPullPushAllPlatforms(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	reg := newTestRegistry(base, strings.ToLower(t.Name()))
+	tID := testutil.Identifier(t)
+	reg := newTestRegistry(base)
 	defer reg.cleanup()
 
-	pushImageName := fmt.Sprintf("localhost:%d/nerdctl-multi-platform-pull-push-all-platforms:latest", reg.listenPort)
+	pushImageName := fmt.Sprintf("localhost:%d/%s:latest", reg.listenPort, tID)
 	defer base.Cmd("rmi", pushImageName).Run()
 
 	base.Cmd("pull", "--all-platforms", testutil.AlpineImage).AssertOK()

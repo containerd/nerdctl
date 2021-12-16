@@ -31,7 +31,7 @@ import (
 // TestRunInternetConnectivity tests Internet connectivity with `apk update`
 func TestRunInternetConnectivity(t *testing.T) {
 	base := testutil.NewBase(t)
-	customNet := "customnet1"
+	customNet := testutil.Identifier(t)
 	base.Cmd("network", "create", customNet).AssertOK()
 	defer base.Cmd("network", "rm", customNet).Run()
 
@@ -284,12 +284,13 @@ func TestRunPort(t *testing.T) {
 		},
 	}
 
+	tID := testutil.Identifier(t)
 	for i, tc := range testCases {
 		i := i
 		tc := tc
 		tcName := fmt.Sprintf("%+v", tc)
 		t.Run(tcName, func(t *testing.T) {
-			testContainerName := fmt.Sprintf("nerdctl-test-nginx-%d", i)
+			testContainerName := fmt.Sprintf("%s-%d", tID, i)
 			base := testutil.NewBase(t)
 			defer base.Cmd("rm", "-f", testContainerName).Run()
 			pFlag := fmt.Sprintf("%s:%s:%s", tc.listenIP.String(), tc.hostPort, tc.containerPort)

@@ -69,7 +69,7 @@ type testRegistry struct {
 	cleanup    func()
 }
 
-func newTestRegistry(base *testutil.Base, name string) *testRegistry {
+func newTestRegistry(base *testutil.Base) *testRegistry {
 	if runtime.GOOS != "linux" {
 		base.T.Skip("only linux is supported, currently")
 	}
@@ -80,7 +80,7 @@ func newTestRegistry(base *testutil.Base, name string) *testRegistry {
 	const listenPort = 5000 // TODO: choose random empty port
 	base.T.Logf("hostIP=%q, listenIP=%q, listenPort=%d", hostIP, listenIP, listenPort)
 
-	registryContainerName := "reg-" + name
+	registryContainerName := "reg-" + testutil.Identifier(base.T)
 	cmd := base.Cmd("run",
 		"-d",
 		"-p", fmt.Sprintf("%s:%d:5000", listenIP, listenPort),
@@ -99,10 +99,11 @@ func newTestRegistry(base *testutil.Base, name string) *testRegistry {
 	}
 }
 
-func newTestInsecureRegistry(base *testutil.Base, name, user, pass string) *testRegistry {
+func newTestInsecureRegistry(base *testutil.Base, user, pass string) *testRegistry {
 	if runtime.GOOS != "linux" {
 		base.T.Skip("only linux is supported, currently")
 	}
+	name := testutil.Identifier(base.T)
 	hostIP, err := getNonLoopbackIPv4()
 	assert.NilError(base.T, err)
 	// listen on 0.0.0.0 to enable 127.0.0.1
@@ -191,12 +192,12 @@ acl:
 
 func TestPushPlainHTTPFails(t *testing.T) {
 	base := testutil.NewBase(t)
-	reg := newTestRegistry(base, "test-push-plain-http-fails")
+	reg := newTestRegistry(base)
 	defer reg.cleanup()
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	testImageRef := fmt.Sprintf("%s:%d/test-push-plain-http-fails:%s",
-		reg.ip.String(), reg.listenPort, strings.Split(testutil.CommonImage, ":")[1])
+	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
+		reg.ip.String(), reg.listenPort, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
 	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
@@ -209,14 +210,14 @@ func TestPushPlainHTTPFails(t *testing.T) {
 
 func TestPushPlainHTTPLocalhost(t *testing.T) {
 	base := testutil.NewBase(t)
-	reg := newTestRegistry(base, "test-push-plain-localhost")
+	reg := newTestRegistry(base)
 	defer reg.cleanup()
 	localhostIP := "127.0.0.1"
 	t.Logf("localhost IP=%q", localhostIP)
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	testImageRef := fmt.Sprintf("%s:%d/test-push-plain-http-insecure:%s",
-		localhostIP, reg.listenPort, strings.Split(testutil.CommonImage, ":")[1])
+	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
+		localhostIP, reg.listenPort, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
 	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
@@ -228,12 +229,12 @@ func TestPushPlainHTTPInsecure(t *testing.T) {
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
-	reg := newTestRegistry(base, "test-push-plain-http-insecure")
+	reg := newTestRegistry(base)
 	defer reg.cleanup()
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	testImageRef := fmt.Sprintf("%s:%d/test-push-plain-http-insecure:%s",
-		reg.ip.String(), reg.listenPort, strings.Split(testutil.CommonImage, ":")[1])
+	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
+		reg.ip.String(), reg.listenPort, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
 	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
@@ -245,14 +246,14 @@ func TestPushInsecureWithLogin(t *testing.T) {
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
-	reg := newTestInsecureRegistry(base, "test-push-insecure-tls", "admin", "badmin")
+	reg := newTestInsecureRegistry(base, "admin", "badmin")
 	defer reg.cleanup()
 
 	base.Cmd("--insecure-registry", "login", "-u", "admin", "-p", "badmin",
 		fmt.Sprintf("%s:%d", reg.ip.String(), reg.listenPort)).AssertOK()
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	testImageRef := fmt.Sprintf("%s:%d/test-push-insecure-tls:%s",
-		reg.ip.String(), reg.listenPort, strings.Split(testutil.CommonImage, ":")[1])
+	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
+		reg.ip.String(), reg.listenPort, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
 	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 

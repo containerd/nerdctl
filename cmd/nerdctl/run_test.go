@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -33,7 +34,7 @@ func TestRunEntrypointWithBuild(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	const imageName = "nerdctl-test-entrypoint-with-build"
+	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -102,10 +103,9 @@ func TestRunWithDoubleDash(t *testing.T) {
 func TestRunExitCode(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	const (
-		testContainer0   = "nerdctl-test-run-exit-code-0"
-		testContainer123 = "nerdctl-test-run-exit-code-123"
-	)
+	tID := testutil.Identifier(t)
+	testContainer0 := tID + "-0"
+	testContainer123 := tID + "-123"
 	defer base.Cmd("rm", "-f", testContainer0, testContainer123).Run()
 
 	base.Cmd("run", "--name", testContainer0, testutil.CommonImage, "sh", "-euxc", "exit 0").AssertOK()
@@ -132,7 +132,7 @@ func TestRunExitCode(t *testing.T) {
 func TestRunCIDFile(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	const fileName = "cid.file"
+	fileName := filepath.Join(t.TempDir(), "cid.file")
 
 	base.Cmd("run", "--rm", "--cidfile", fileName, testutil.CommonImage).AssertOK()
 	defer os.Remove(fileName)
@@ -147,8 +147,8 @@ func TestRunEnvFile(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 
-	const pattern = "env-file"
-	file1, err := os.CreateTemp("", pattern)
+	tID := testutil.Identifier(t)
+	file1, err := os.CreateTemp("", tID)
 	assert.NilError(base.T, err)
 	path1 := file1.Name()
 	defer file1.Close()
@@ -156,7 +156,7 @@ func TestRunEnvFile(t *testing.T) {
 	err = os.WriteFile(path1, []byte("# this is a comment line\nTESTKEY1=TESTVAL1"), 0666)
 	assert.NilError(base.T, err)
 
-	file2, err := os.CreateTemp("", pattern)
+	file2, err := os.CreateTemp("", tID)
 	assert.NilError(base.T, err)
 	path2 := file2.Name()
 	defer file2.Close()

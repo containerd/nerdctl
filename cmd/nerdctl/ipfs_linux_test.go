@@ -42,7 +42,8 @@ func TestIPFS(t *testing.T) {
 	// encryption
 	keyPair := newJWEKeyPair(t)
 	defer keyPair.cleanup()
-	encryptImageRef := "newimg:enc"
+	tID := testutil.Identifier(t)
+	encryptImageRef := tID + ":enc"
 	layersNum := 1
 	base.Cmd("image", "encrypt", "--recipient=jwe:"+keyPair.pub, ipfsCID, encryptImageRef).AssertOK()
 	base.Cmd("image", "inspect", "--mode=native", "--format={{len .Manifest.Layers}}", encryptImageRef).AssertOutExactly(fmt.Sprintf("%d\n", layersNum))
@@ -52,7 +53,7 @@ func TestIPFS(t *testing.T) {
 	ipfsCIDEnc := cidOf(t, base.Cmd("push", "ipfs://"+encryptImageRef).OutLines())
 	rmiAll(base)
 
-	decryptImageRef := "newimg:dec"
+	decryptImageRef := tID + ":dec"
 	base.Cmd("pull", "--unpack=false", ipfsCIDEnc).AssertOK()
 	base.Cmd("image", "decrypt", "--key="+keyPair.pub, ipfsCIDEnc, decryptImageRef).AssertFail() // decryption needs prv key, not pub key
 	base.Cmd("image", "decrypt", "--key="+keyPair.prv, ipfsCIDEnc, decryptImageRef).AssertOK()
@@ -72,8 +73,9 @@ func TestIPFSCommit(t *testing.T) {
 	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=overlayfs")
 	base.Cmd("pull", ipfsCID).AssertOK()
 	base.Cmd("run", "--rm", ipfsCID, "echo", "hello").AssertOK()
-	newContainer, newImg := "hello", "helloimg:v1"
-	base.Cmd("run", "--name", "hello", "-d", ipfsCID, "/bin/sh", "-c", "echo hello > /hello ; sleep 10000").AssertOK()
+	tID := testutil.Identifier(t)
+	newContainer, newImg := tID, tID+":v1"
+	base.Cmd("run", "--name", newContainer, "-d", ipfsCID, "/bin/sh", "-c", "echo hello > /hello ; sleep 10000").AssertOK()
 	base.Cmd("commit", newContainer, newImg).AssertOK()
 	base.Cmd("stop", newContainer).AssertOK()
 	base.Cmd("rm", newContainer).AssertOK()
@@ -109,8 +111,9 @@ func TestIPFSWithLazyPullingCommit(t *testing.T) {
 	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=stargz")
 	base.Cmd("pull", ipfsCID).AssertOK()
 	base.Cmd("run", "--rm", ipfsCID, "ls", "/.stargz-snapshotter").AssertOK()
-	newContainer, newImg := "hello", "helloimg:v1"
-	base.Cmd("run", "--name", "hello", "-d", ipfsCID, "/bin/sh", "-c", "echo hello > /hello ; sleep 10000").AssertOK()
+	tID := testutil.Identifier(t)
+	newContainer, newImg := tID, tID+":v1"
+	base.Cmd("run", "--name", newContainer, "-d", ipfsCID, "/bin/sh", "-c", "echo hello > /hello ; sleep 10000").AssertOK()
 	base.Cmd("commit", newContainer, newImg).AssertOK()
 	base.Cmd("stop", newContainer).AssertOK()
 	base.Cmd("rm", newContainer).AssertOK()

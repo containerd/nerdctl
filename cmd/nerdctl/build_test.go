@@ -31,7 +31,7 @@ func TestBuild(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	const imageName = "nerdctl-build-test"
+	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -52,14 +52,14 @@ func TestBuildFromStdin(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	const imageName = "nerdctl-build-stdin-test"
+	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-stdin"]
 	`, testutil.CommonImage)
 
-	base.Cmd("build", "-t", imageName, "-f", "-", ".").CmdOption(testutil.WithStdin(strings.NewReader(dockerfile))).AssertOutContains("nerdctl-build-stdin-test")
+	base.Cmd("build", "-t", imageName, "-f", "-", ".").CmdOption(testutil.WithStdin(strings.NewReader(dockerfile))).AssertOutContains(imageName)
 }
 
 func TestBuildLocal(t *testing.T) {
@@ -69,9 +69,7 @@ func TestBuildLocal(t *testing.T) {
 	base := testutil.NewBase(t)
 	const testFileName = "nerdctl-build-test"
 	const testContent = "nerdctl"
-	outputDir, err := os.MkdirTemp("", "nerdctl-build-test-")
-	assert.NilError(t, err)
-	defer os.RemoveAll(outputDir)
+	outputDir := t.TempDir()
 
 	dockerfile := fmt.Sprintf(`FROM scratch
 COPY %s /`,
@@ -110,7 +108,7 @@ func TestBuildWithIIDFile(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	const imageName = "nerdctl-build-test"
+	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -120,7 +118,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 	buildCtx, err := createBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
-	const fileName = "id.txt"
+	fileName := filepath.Join(t.TempDir(), "id.txt")
 
 	base.Cmd("build", "-t", imageName, buildCtx, "--iidfile", fileName).AssertOK()
 	base.Cmd("build", buildCtx, "-t", imageName, "--iidfile", fileName).AssertOK()

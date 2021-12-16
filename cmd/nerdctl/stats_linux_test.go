@@ -31,9 +31,7 @@ func TestStats(t *testing.T) {
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
 		t.Skip("test skipped for rootless containers on cgroup v1")
 	}
-	const (
-		testContainerName = "nerdctl-test-stats"
-	)
+	testContainerName := testutil.Identifier(t)
 
 	base := testutil.NewBase(t)
 	defer base.Cmd("rm", "-f", testContainerName).Run()

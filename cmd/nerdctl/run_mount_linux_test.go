@@ -29,24 +29,23 @@ import (
 func TestRunVolume(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	rwDir, err := os.MkdirTemp("", "nerdctl-"+t.Name()+"-rw")
+	tID := testutil.Identifier(t)
+	rwDir, err := os.MkdirTemp(t.TempDir(), "rw")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(rwDir)
-	roDir, err := os.MkdirTemp("", "nerdctl-"+t.Name()+"-ro")
+	roDir, err := os.MkdirTemp(t.TempDir(), "ro")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(roDir)
-	rwVolName := "nerdctl-testrunvolume-rw"
-	roVolName := "nerdctl-testrunvolume-ro"
+	rwVolName := tID + "-rw"
+	roVolName := tID + "-ro"
 	for _, v := range []string{rwVolName, roVolName} {
 		defer base.Cmd("volume", "rm", "-f", v).Run()
 		base.Cmd("volume", "create", v).AssertOK()
 	}
 
-	containerName := "nerdctl-testrunvolume"
+	containerName := tID
 	defer base.Cmd("rm", "-f", containerName).Run()
 	base.Cmd("run",
 		"-d",
@@ -83,7 +82,7 @@ func TestRunAnonymousVolumeWithBuild(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	const imageName = "nerdctl-test-anonymous-volume-with-build"
+	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -103,9 +102,10 @@ func TestRunCopyingUpInitialContentsOnVolume(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	const imageName = "nerdctl-test-copying-on-volume"
+	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
-	defer base.Cmd("volume", "rm", "copying-initial-content-on-volume").Run()
+	volName := testutil.Identifier(t) + "-vol"
+	defer base.Cmd("volume", "rm", volName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
 RUN mkdir -p /mnt && echo hi > /mnt/initial_file
@@ -123,16 +123,17 @@ CMD ["cat", "/mnt/initial_file"]
 	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 
 	//NamedVolume should be automatically created
-	base.Cmd("run", "-v", "copying-initial-content-on-volume:/mnt", "--rm", imageName).AssertOutExactly("hi\n")
+	base.Cmd("run", "-v", volName+":/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 }
 
 func TestRunCopyingUpInitialContentsOnDockerfileVolume(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	const imageName = "nerdctl-test-copying-initial-content"
+	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
-	defer base.Cmd("volume", "rm", "copying-initial-content").Run()
+	volName := testutil.Identifier(t) + "-vol"
+	defer base.Cmd("volume", "rm", volName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
 RUN mkdir -p /mnt && echo hi > /mnt/initial_file
@@ -151,12 +152,11 @@ CMD ["cat", "/mnt/initial_file"]
 
 	//NamedVolume
 	base.Cmd("volume", "create", "copying-initial-content").AssertOK()
-	base.Cmd("run", "-v", "copying-initial-content:/mnt", "--rm", imageName).AssertOutExactly("hi\n")
+	base.Cmd("run", "-v", volName+":/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 
 	//mount bind
-	tmpDir, err := os.MkdirTemp("", "hostDir")
+	tmpDir, err := os.MkdirTemp(t.TempDir(), "hostDir")
 	assert.NilError(t, err)
-	defer os.RemoveAll(tmpDir)
 
 	base.Cmd("run", "-v", fmt.Sprintf("%s:/mnt", tmpDir), "--rm", imageName).AssertFail()
 }
@@ -165,7 +165,7 @@ func TestRunCopyingUpInitialContentsOnVolumeShouldRetainSymlink(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	const imageName = "nerdctl-test-copy-up-retain-symlink"
+	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -189,12 +189,10 @@ func TestRunCopyingUpInitialContentsShouldNotResetTheCopiedContents(t *testing.T
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	const (
-		// TODO: generate names from t.Name
-		imageName     = "nerdctl-test-copy-up-no-reset"
-		volumeName    = "nerdctl-test-copy-up-no-reset"
-		containerName = "nerdctl-test-copy-up-no-reset"
-	)
+	tID := testutil.Identifier(t)
+	imageName := tID + "-img"
+	volumeName := tID + "-vol"
+	containerName := tID
 	defer func() {
 		base.Cmd("rm", "-f", containerName).Run()
 		base.Cmd("volume", "rm", volumeName).Run()

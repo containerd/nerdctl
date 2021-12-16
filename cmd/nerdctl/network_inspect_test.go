@@ -30,8 +30,8 @@ func TestNetworkInspect(t *testing.T) {
 		t.Skip("IPAMConfig not implemented on Windows yet")
 	}
 
+	testNetwork := testutil.Identifier(t)
 	const (
-		testNetwork = "nerdctl-test-network-inspect"
 		testSubnet  = "10.24.24.0/24"
 		testGateway = "10.24.24.1"
 	)

@@ -29,9 +29,9 @@ import (
 
 func TestStopStart(t *testing.T) {
 	const (
-		hostPort          = 8080
-		testContainerName = "nerdctl-test-stop-start-nginx"
+		hostPort = 8080
 	)
+	testContainerName := testutil.Identifier(t)
 	base := testutil.NewBase(t)
 	defer base.Cmd("rm", "-f", testContainerName).Run()
 

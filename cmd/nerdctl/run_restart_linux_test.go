@@ -30,9 +30,9 @@ import (
 
 func TestRunRestart(t *testing.T) {
 	const (
-		hostPort          = 8080
-		testContainerName = "nerdctl-test-restart-nginx"
+		hostPort = 8080
 	)
+	testContainerName := testutil.Identifier(t)
 	if testing.Short() {
 		t.Skipf("test is long")
 	}

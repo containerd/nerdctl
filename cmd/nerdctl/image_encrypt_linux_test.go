@@ -72,10 +72,11 @@ func TestImageEncryptJWE(t *testing.T) {
 	keyPair := newJWEKeyPair(t)
 	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
-	reg := newTestRegistry(base, "test-image-encrypt-jwe")
+	tID := testutil.Identifier(t)
+	reg := newTestRegistry(base)
 	defer reg.cleanup()
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	encryptImageRef := fmt.Sprintf("127.0.0.1:%d/test-image-encrypt-jwe:encrypted", reg.listenPort)
+	encryptImageRef := fmt.Sprintf("127.0.0.1:%d/%s:encrypted", reg.listenPort, tID)
 	defer base.Cmd("rmi", encryptImageRef).Run()
 	base.Cmd("image", "encrypt", "--recipient=jwe:"+keyPair.pub, testutil.CommonImage, encryptImageRef).AssertOK()
 	base.Cmd("image", "inspect", "--mode=native", "--format={{len .Index.Manifests}}", encryptImageRef).AssertOutExactly("1\n")
@@ -85,7 +86,7 @@ func TestImageEncryptJWE(t *testing.T) {
 	rmiAll(base)
 	base.Cmd("pull", encryptImageRef).AssertFail() // defaults to --unpack=true, and fails due to missing prv key
 	base.Cmd("pull", "--unpack=false", encryptImageRef).AssertOK()
-	decryptImageRef := "test-image-encrypt-jwe:decrypted"
+	decryptImageRef := tID + ":decrypted"
 	defer base.Cmd("rmi", decryptImageRef).Run()
 	base.Cmd("image", "decrypt", "--key="+keyPair.pub, encryptImageRef, decryptImageRef).AssertFail() // decryption needs prv key, not pub key
 	base.Cmd("image", "decrypt", "--key="+keyPair.prv, encryptImageRef, decryptImageRef).AssertOK()
