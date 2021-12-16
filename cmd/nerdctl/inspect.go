@@ -51,6 +51,8 @@ func addInspectFlags(cmd *cobra.Command) {
 	cmd.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"dockercompat", "native"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	cmd.Flags().String("platform", "", "Inspect a specific platform") // not a slice, and there is no --all-platforms
+	cmd.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 }
 
 func inspectAction(cmd *cobra.Command, args []string) error {
