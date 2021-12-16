@@ -25,12 +25,14 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -77,14 +79,6 @@ func pullAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer cancel()
-	insecure, err := cmd.Flags().GetBool("insecure-registry")
-	if err != nil {
-		return err
-	}
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
-	if err != nil {
-		return err
-	}
 	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
 	if err != nil {
 		return err
@@ -111,23 +105,46 @@ func pullAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	verifier, err := cmd.Flags().GetString("verify")
+	_, err = ensureImage(cmd, ctx, client, rawRef, ocispecPlatforms, "always", unpack, quiet)
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func ensureImage(cmd *cobra.Command, ctx context.Context, client *containerd.Client, rawRef string, ocispecPlatforms []v1.Platform,
+	pull string, unpack *bool, quiet bool) (*imgutil.EnsuredImage, error) {
+
+	var ensured *imgutil.EnsuredImage
+	snapshotter, err := cmd.Flags().GetString("snapshotter")
+	if err != nil {
+		return nil, err
+	}
+	insecureRegistry, err := cmd.Flags().GetBool("insecure-registry")
+	if err != nil {
+		return nil, err
+	}
+	verifier, err := cmd.Flags().GetString("verify")
+	if err != nil {
+		return nil, err
+	}
+
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
 		if verifier != "none" {
-			return errors.New("--verify flag is not supported on IPFS as of now")
+			return nil, errors.New("--verify flag is not supported on IPFS as of now")
 		}
 
 		ipfsClient, err := httpapi.NewLocalApi()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		_, err = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
-			"always", ocispecPlatforms, unpack, quiet)
-		return err
+		ensured, err = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
+			pull, ocispecPlatforms, unpack, quiet)
+		if err != nil {
+			return nil, err
+		}
+		return ensured, nil
 	}
 
 	ref := rawRef
@@ -135,27 +152,25 @@ func pullAction(cmd *cobra.Command, args []string) error {
 	case "cosign":
 		keyRef, err := cmd.Flags().GetString("cosign-key")
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		ref, err = verifyCosign(ctx, rawRef, keyRef)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	case "none":
 		logrus.Debugf("verification process skipped")
 	default:
-		return fmt.Errorf("no verifier found: %s", verifier)
+		return nil, fmt.Errorf("no verifier found: %s", verifier)
 	}
 
-	_, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, ref,
-		"always", insecure, ocispecPlatforms, unpack, quiet)
-
+	ensured, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, ref,
+		pull, insecureRegistry, ocispecPlatforms, unpack, quiet)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return nil
+	return ensured, err
 }
 
 func verifyCosign(ctx context.Context, rawRef string, keyRef string) (string, error) {
