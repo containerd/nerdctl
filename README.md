@@ -397,6 +397,10 @@ GPU flags:
 Ulimit flags:
 - :whale: `--ulimit`: Set ulimit
 
+Verify flags:
+- :nerd_face: `--verify`: Verify the image (none|cosign). See [`docs/cosign.md`](./docs/cosign.md) for details.
+- :nerd_face: `--cosign-key`: Path to the public key file, KMS, URI or Kubernetes Secret for `--verify=cosign`
+
 Other `docker run` flags are on plan but unimplemented yet.
 <details>
 <summary> Clicke here to show all the `docker run` flags (Docker 20.10)</summary>

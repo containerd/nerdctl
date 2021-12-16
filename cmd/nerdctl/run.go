@@ -44,7 +44,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
-	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/mountutil"
@@ -53,13 +52,11 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/portutil"
-	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/resolvconf"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/docker/cli/opts"
-	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/sirupsen/logrus"
@@ -211,6 +208,14 @@ func newRunCommand() *cobra.Command {
 
 	// shared memory flags
 	runCommand.Flags().String("shm-size", "", "Size of /dev/shm")
+
+	// #region verify flags
+	runCommand.Flags().String("verify", "none", "Verify the image (none|cosign)")
+	runCommand.RegisterFlagCompletionFunc("verify", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"none", "cosign"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	runCommand.Flags().String("cosign-key", "", "Path to the public key file, KMS, URI or Kubernetes Secret for --verify=cosign")
+	// #endregion
 
 	return runCommand
 }
@@ -595,15 +600,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 		return nil, nil, nil, err
 	}
 	if !imageless {
-		snapshotter, err := cmd.Flags().GetString("snapshotter")
-		if err != nil {
-			return nil, nil, nil, err
-		}
 		pull, err := cmd.Flags().GetString("pull")
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		insecureRegistry, err := cmd.Flags().GetBool("insecure-registry")
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -615,21 +612,10 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(args[0]); err == nil {
-			ipfsClient, err := httpapi.NewLocalApi()
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			ensured, err = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref, pull, ocispecPlatforms, nil, false)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-		} else {
-			ensured, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, args[0],
-				pull, insecureRegistry, ocispecPlatforms, nil, false)
-			if err != nil {
-				return nil, nil, nil, err
-			}
+		rawRef := args[0]
+		ensured, err = ensureImage(cmd, ctx, client, rawRef, ocispecPlatforms, pull, nil, false)
+		if err != nil {
+			return nil, nil, nil, err
 		}
 	}
 	var (
