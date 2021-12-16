@@ -30,16 +30,14 @@ func TestRunVolume(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	rwDir, err := os.MkdirTemp("", tID+"-rw")
+	rwDir, err := os.MkdirTemp(t.TempDir(), "rw")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(rwDir)
-	roDir, err := os.MkdirTemp("", tID+"-ro")
+	roDir, err := os.MkdirTemp(t.TempDir(), "ro")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(roDir)
 	rwVolName := tID + "-rw"
 	roVolName := tID + "-ro"
 	for _, v := range []string{rwVolName, roVolName} {
@@ -157,9 +155,8 @@ CMD ["cat", "/mnt/initial_file"]
 	base.Cmd("run", "-v", volName+":/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 
 	//mount bind
-	tmpDir, err := os.MkdirTemp("", "hostDir")
+	tmpDir, err := os.MkdirTemp(t.TempDir(), "hostDir")
 	assert.NilError(t, err)
-	defer os.RemoveAll(tmpDir)
 
 	base.Cmd("run", "-v", fmt.Sprintf("%s:/mnt", tmpDir), "--rm", imageName).AssertFail()
 }

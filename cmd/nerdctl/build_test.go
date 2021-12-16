@@ -69,9 +69,7 @@ func TestBuildLocal(t *testing.T) {
 	base := testutil.NewBase(t)
 	const testFileName = "nerdctl-build-test"
 	const testContent = "nerdctl"
-	outputDir, err := os.MkdirTemp("", "nerdctl-build-test-")
-	assert.NilError(t, err)
-	defer os.RemoveAll(outputDir)
+	outputDir := t.TempDir()
 
 	dockerfile := fmt.Sprintf(`FROM scratch
 COPY %s /`,
@@ -120,7 +118,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 	buildCtx, err := createBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
-	const fileName = "id.txt"
+	fileName := filepath.Join(t.TempDir(), "id.txt")
 
 	base.Cmd("build", "-t", imageName, buildCtx, "--iidfile", fileName).AssertOK()
 	base.Cmd("build", buildCtx, "-t", imageName, "--iidfile", fileName).AssertOK()

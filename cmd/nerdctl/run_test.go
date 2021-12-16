@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -131,7 +132,7 @@ func TestRunExitCode(t *testing.T) {
 func TestRunCIDFile(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	const fileName = "cid.file"
+	fileName := filepath.Join(t.TempDir(), "cid.file")
 
 	base.Cmd("run", "--rm", "--cidfile", fileName, testutil.CommonImage).AssertOK()
 	defer os.Remove(fileName)
