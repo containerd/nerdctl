@@ -1230,6 +1230,9 @@ Flags:
   - Default: "systemd" on cgroup v2 (rootful & rootless), "cgroupfs" on v1 rootful, "none" on v1 rootless
 - :nerd_face: `--insecure-registry`: skips verifying HTTPS certs, and allows falling back to plain HTTP
 
+The global flags can be also specified in `/etc/nerdctl/nerdctl.toml` (rootful) and `~/.config/nerdctl/nerdctl.toml` (rootless).
+See [`./docs/config.md`](./docs/config.md).
+
 ## Unimplemented Docker commands
 Container management:
 - `docker create`
@@ -1273,6 +1276,7 @@ Others:
 
 # Additional documents
 Configuration guide:
+- [`./docs/config.md`](./docs/config.md): Configuration (`/etc/nerdctl/nerdctl.toml`, `~/.config/nerdctl/nerdctl.toml`)
 - [`./docs/registry.md`](./docs/registry.md): Registry authentication (`~/.docker/config.json`)
 
 Basic features:

@@ -93,3 +93,14 @@ func BuildKitHost() string {
 	}
 	return fmt.Sprintf("unix://%s/buildkit/buildkitd.sock", xdr)
 }
+
+func NerdctlTOML() string {
+	if !rootlessutil.IsRootless() {
+		return "/etc/nerdctl/nerdctl.toml"
+	}
+	xch, err := rootlessutil.XDGConfigHome()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(xch, "nerdctl/nerdctl.toml")
+}

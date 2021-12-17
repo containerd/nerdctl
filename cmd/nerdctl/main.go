@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/version"
+	"github.com/pelletier/go-toml"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -76,35 +77,104 @@ func xmain() error {
 		return logging.Main(os.Args[2])
 	}
 	// nerdctl CLI mode
-	return newApp().Execute()
+	app, err := newApp()
+	if err != nil {
+		return err
+	}
+	return app.Execute()
 }
 
-func newApp() *cobra.Command {
+// Config corresponds to nerdctl.toml .
+// See docs/config.md .
+type Config struct {
+	Debug            bool   `toml:"debug"`
+	DebugFull        bool   `toml:"debug_full"`
+	Address          string `toml:"address"`
+	Namespace        string `toml:"namespace"`
+	Snapshotter      string `toml:"snapshotter"`
+	CNIPath          string `toml:"cni_path"`
+	CNINetConfPath   string `toml:"cni_netconfpath"`
+	DataRoot         string `toml:"data_root"`
+	CgroupManager    string `toml:"cgroup_manager"`
+	InsecureRegistry bool   `toml:"insecure_registry"`
+}
+
+// NewConfig creates a default Config object statically,
+// without interpolating CLI flags, env vars, and toml.
+func NewConfig() *Config {
+	return &Config{
+		Debug:            false,
+		DebugFull:        false,
+		Address:          defaults.DefaultAddress,
+		Namespace:        namespaces.Default,
+		Snapshotter:      containerd.DefaultSnapshotter,
+		CNIPath:          ncdefaults.CNIPath(),
+		CNINetConfPath:   ncdefaults.CNINetConfPath(),
+		DataRoot:         ncdefaults.DataRoot(),
+		CgroupManager:    ncdefaults.CgroupManager(),
+		InsecureRegistry: false,
+	}
+}
+
+func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) error {
+	cfg := NewConfig()
+	if r, err := os.Open(tomlPath); err == nil {
+		logrus.Debugf("Loading config from %q", tomlPath)
+		defer r.Close()
+		dec := toml.NewDecoder(r).Strict(true) // set Strict to detect typo
+		if err := dec.Decode(cfg); err != nil {
+			return fmt.Errorf("failed to load nerdctl config (not daemon config) from %q (Hint: don't mix up daemon's `config.toml` with `nerdctl.toml`): %w", tomlPath, err)
+		}
+		logrus.Debugf("Loaded config %+v", cfg)
+	} else {
+		logrus.WithError(err).Debugf("Not loading config from %q", tomlPath)
+		if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	rootCmd.PersistentFlags().Bool("debug", cfg.Debug, "debug mode")
+	rootCmd.PersistentFlags().Bool("debug-full", cfg.DebugFull, "debug mode (with full output)")
+	// -a is nonPersistentAlias (conflicts with nerdctl images -a)
+	AddPersistentStringFlag(rootCmd, "address", []string{"host"}, []string{"a", "H"}, cfg.Address, "CONTAINERD_ADDRESS", `containerd address, optionally with "unix://" prefix`)
+	// -n is nonPersistentAlias (conflicts with nerdctl logs -n)
+	AddPersistentStringFlag(rootCmd, "namespace", nil, []string{"n"}, cfg.Namespace, "CONTAINERD_NAMESPACE", `containerd namespace, such as "moby" for Docker, "k8s.io" for Kubernetes`)
+	rootCmd.RegisterFlagCompletionFunc("namespace", shellCompleteNamespaceNames)
+	AddPersistentStringFlag(rootCmd, "snapshotter", []string{"storage-driver"}, nil, cfg.Snapshotter, "CONTAINERD_SNAPSHOTTER", "containerd snapshotter")
+	rootCmd.RegisterFlagCompletionFunc("snapshotter", shellCompleteSnapshotterNames)
+	rootCmd.RegisterFlagCompletionFunc("storage-driver", shellCompleteSnapshotterNames)
+	AddPersistentStringFlag(rootCmd, "cni-path", nil, nil, cfg.CNIPath, "CNI_PATH", "cni plugins binary directory")
+	AddPersistentStringFlag(rootCmd, "cni-netconfpath", nil, nil, cfg.CNINetConfPath, "NETCONFPATH", "cni config directory")
+	rootCmd.PersistentFlags().String("data-root", cfg.DataRoot, "Root directory of persistent nerdctl state (managed by nerdctl, not by containerd)")
+	rootCmd.PersistentFlags().String("cgroup-manager", cfg.CgroupManager, `Cgroup manager to use ("cgroupfs"|"systemd")`)
+	rootCmd.RegisterFlagCompletionFunc("cgroup-manager", shellCompleteCgroupManagerNames)
+	rootCmd.PersistentFlags().Bool("insecure-registry", cfg.InsecureRegistry, "skips verifying HTTPS certs, and allows falling back to plain HTTP")
+	return nil
+}
+
+func newApp() (*cobra.Command, error) {
+	tomlPath := ncdefaults.NerdctlTOML()
+	if v, ok := os.LookupEnv("NERDCTL_TOML"); ok {
+		tomlPath = v
+	}
+
+	short := "nerdctl is a command line interface for containerd"
+	long := fmt.Sprintf(`%s
+
+Config file ($NERDCTL_TOML): %s
+`, short, tomlPath)
 	var rootCmd = &cobra.Command{
 		Use:              "nerdctl",
-		Short:            "nerdctl is a command line interface for containerd",
+		Short:            short,
+		Long:             long,
 		Version:          strings.TrimPrefix(version.Version, "v"),
 		SilenceUsage:     true,
 		SilenceErrors:    true,
 		TraverseChildren: true, // required for global short hands like -a, -H, -n
 	}
 	rootCmd.SetUsageTemplate(mainHelpTemplate)
-	rootCmd.PersistentFlags().Bool("debug", false, "debug mode")
-	rootCmd.PersistentFlags().Bool("debug-full", false, "debug mode (with full output)")
-	// -a is nonPersistentAlias (conflicts with nerdctl images -a)
-	AddPersistentStringFlag(rootCmd, "address", []string{"host"}, []string{"a", "H"}, defaults.DefaultAddress, "CONTAINERD_ADDRESS", `containerd address, optionally with "unix://" prefix`)
-	// -n is nonPersistentAlias (conflicts with nerdctl logs -n)
-	AddPersistentStringFlag(rootCmd, "namespace", nil, []string{"n"}, namespaces.Default, "CONTAINERD_NAMESPACE", `containerd namespace, such as "moby" for Docker, "k8s.io" for Kubernetes`)
-	rootCmd.RegisterFlagCompletionFunc("namespace", shellCompleteNamespaceNames)
-	AddPersistentStringFlag(rootCmd, "snapshotter", []string{"storage-driver"}, nil, containerd.DefaultSnapshotter, "CONTAINERD_SNAPSHOTTER", "containerd snapshotter")
-	rootCmd.RegisterFlagCompletionFunc("snapshotter", shellCompleteSnapshotterNames)
-	rootCmd.RegisterFlagCompletionFunc("storage-driver", shellCompleteSnapshotterNames)
-	AddPersistentStringFlag(rootCmd, "cni-path", nil, nil, ncdefaults.CNIPath(), "CNI_PATH", "cni plugins binary directory")
-	AddPersistentStringFlag(rootCmd, "cni-netconfpath", nil, nil, ncdefaults.CNINetConfPath(), "NETCONFPATH", "cni config directory")
-	rootCmd.PersistentFlags().String("data-root", ncdefaults.DataRoot(), "Root directory of persistent nerdctl state (managed by nerdctl, not by containerd)")
-	rootCmd.PersistentFlags().String("cgroup-manager", ncdefaults.CgroupManager(), `Cgroup manager to use ("cgroupfs"|"systemd")`)
-	rootCmd.RegisterFlagCompletionFunc("cgroup-manager", shellCompleteCgroupManagerNames)
-	rootCmd.PersistentFlags().Bool("insecure-registry", false, "skips verifying HTTPS certs, and allows falling back to plain HTTP")
+	if err := initRootCmdFlags(rootCmd, tomlPath); err != nil {
+		return nil, err
+	}
 
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		debug, err := cmd.Flags().GetBool("debug-full")
@@ -214,7 +284,7 @@ func newApp() *cobra.Command {
 		newIPFSCommand(),
 	)
 	addApparmorCommand(rootCmd)
-	return rootCmd
+	return rootCmd, nil
 }
 
 func globalFlags(cmd *cobra.Command) (string, []string) {
