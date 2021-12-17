@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/containerd/containerd/images/archive"
+	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/mattn/go-isatty"
@@ -68,6 +69,9 @@ func saveAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if output != "" {
+		if err := imgutil.ValidateOutputPath(output); err != nil {
+			return err
+		}
 		f, err := os.OpenFile(output, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return err

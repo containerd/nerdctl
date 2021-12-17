@@ -100,3 +100,10 @@ func extractTarFile(dirPath, tarFilePath string) error {
 	}
 	return nil
 }
+
+func TestSaveToIrregularFile(t *testing.T) {
+	const nullDeviceFile = "/dev/null"
+	base := testutil.NewBase(t)
+	base.Cmd("pull", testutil.AlpineImage).AssertOK()
+	base.Cmd("save", "-o", nullDeviceFile, testutil.AlpineImage).AssertFail()
+}

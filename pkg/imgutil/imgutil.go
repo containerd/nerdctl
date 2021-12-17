@@ -19,8 +19,10 @@ package imgutil
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 	"strings"
 
@@ -412,4 +414,33 @@ func ParseRepoTag(imgName string) (string, string) {
 	repository := refdocker.FamiliarName(ref)
 
 	return repository, tag
+}
+
+// ValidateOutputPath validates the output paths.
+// Check whether `path` points to a regular file
+func ValidateOutputPath(path string) error {
+	if fileInfo, err := os.Stat(path); !os.IsNotExist(err) {
+		if err != nil {
+			return err
+		}
+
+		if fileInfo.Mode().IsRegular() {
+			return nil
+		}
+		if err := ValidateOutputPathFileMode(fileInfo.Mode()); err != nil {
+			return fmt.Errorf("invalid output path: %q must be a regular file: %w", path, err)
+		}
+	}
+	return nil
+}
+
+// ValidateOutputPathFileMode is helper to `ValidateOutputPath`
+func ValidateOutputPathFileMode(fileMode os.FileMode) error {
+	switch {
+	case fileMode&os.ModeDevice != 0:
+		return errors.New("got a device")
+	case fileMode&os.ModeIrregular != 0:
+		return errors.New("got an irregular file")
+	}
+	return nil
 }
