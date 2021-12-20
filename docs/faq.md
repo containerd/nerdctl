@@ -101,14 +101,57 @@ Use `nerdctl --insecure-registry run <IMAGE>`. See also [`registry.md`](./regist
 
 ### How to change the cgroup driver?
 
-Use `nerdctl --cgroup-manager=(cgroupfs|systemd|none)`.
+- Option 1: `nerdctl --cgroup-manager=(cgroupfs|systemd|none)`.
+- Option 2: Set `cgroup_manager` property in [`nerdctl.toml`](config.md)
 
 The default value is `systemd` on cgroup v2 hosts (both rootful and rootless), `cgroupfs` on cgroup v1 rootful hosts, `none` on cgroup v1 rootless hosts.
 
+<details>
+<summary>Hint: The corresponding configuration for Kubernetes (<code>io.containerd.grpc.v1.cri</code>)</summary>
+
+<p>
+
+```toml
+# An example of /etc/containerd/config.toml for Kubernetes
+version = 2
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+  SystemdCgroup = true
+```
+
+In addition to containerd, you have to configure kubelet too:
+
+```yaml
+# An example of /var/lib/kubelet/config.yaml for Kubernetes
+kind: KubeletConfiguration
+apiVersion: kubelet.config.k8s.io/v1beta1
+cgroupDriver: "systemd"
+```
+See also https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/configure-cgroup-driver/
+
+</p>
+</details>
+
 ### How to change the snapshotter?
-Use `nerdctl --snapshotter=(overlayfs|native|btrfs|...)`, or set `$CONTAINERD_SNAPSHOTTER`.
+- Option 1: Use `nerdctl --snapshotter=(overlayfs|native|btrfs|...)`
+- Option 2: Set `$CONTAINERD_SNAPSHOTTER`
+- Option 3: Set `snapshotter` property in [`nerdctl.toml`](config.md)
 
 The default value is `overlayfs`.
+
+<details>
+<summary>Hint: The corresponding configuration for Kubernetes (<code>io.containerd.grpc.v1.cri</code>)</summary>
+
+<p>
+
+```toml
+# An example of /etc/containerd/config.toml for Kubernetes
+version = 2
+[plugins."io.containerd.grpc.v1.cri".containerd]
+  snapshotter = "overlayfs"
+```
+
+</p>
+</details>
 
 ### How to change the runtime?
 Use `nerdctl run --runtime=<RUNTIME>`.
@@ -116,9 +159,32 @@ Use `nerdctl run --runtime=<RUNTIME>`.
 The `<RUNTIME>` string can be either a containerd runtime plugin name (such as `io.containerd.runc.v2`),
 or a path to a runc-compatible binary (such as `/usr/local/sbin/runc`).
 
+<details>
+<summary>Hint: The corresponding configuration for Kubernetes (<code>io.containerd.grpc.v1.cri</code>)</summary>
+
+<p>
+
+```toml
+# An example of /etc/containerd/config.toml for Kubernetes
+version = 2
+[plugins."io.containerd.grpc.v1.cri".containerd]
+  default_runtime_name = "crun"
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.crun]
+      runtime_type = "io.containerd.runc.v2"
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.crun.options]
+        BinaryName = "/usr/local/bin/crun"
+```
+
+</p>
+</details>
+
+
 ### How to change the CNI binary path?
 
-Use `nerdctl --cni-path=<PATH>`, or set `$CNI_PATH`.
+- Option 1: Use `nerdctl --cni-path=<PATH>`
+- Option 2: Set `$CNI_PATH`
+- Option 3: Set `cni_path` property in [`nerdctl.toml`](config.md).
 
 The default value is automatically detected by checking the following candidates:
 - `~/.local/libexec/cni`
@@ -129,6 +195,22 @@ The default value is automatically detected by checking the following candidates
 - `/usr/libexec/cni`
 - `/usr/lib/cni`
 - `/opt/cni/bin`
+
+<details>
+<summary>Hint: The corresponding configuration for Kubernetes (<code>io.containerd.grpc.v1.cri</code>)</summary>
+
+<p>
+
+```toml
+# An example of /etc/containerd/config.toml for Kubernetes
+version = 2
+[plugins."io.containerd.grpc.v1.cri".cni]
+   bin_dir = "/opt/cni/bin"
+```
+
+</p>
+</details>
+
 
 ## Kubernetes
 

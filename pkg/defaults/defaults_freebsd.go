@@ -47,3 +47,7 @@ func CgroupManager() string {
 func CgroupnsMode() string {
 	return ""
 }
+
+func NerdctlTOML() string {
+	return "/etc/nerdctl/nerdctl.toml"
+}

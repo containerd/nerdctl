@@ -1,5 +1,14 @@
 # nerdctl directory layout
 
+## Config
+**Default**: `/etc/nerdctl/nerdctl.toml` (rootful), `~/.config/nerdctl/nerdctl.toml` (rootless)
+
+The configuration file of nerdctl. See [`config.md`](./config.md).
+
+Can be overridden with environment variable `$NERDCTL_TOML`.
+
+This file is unrelated to the daemon config file `/etc/containerd/config.toml`.
+
 ## Data
 ### `<DATAROOT>`
 **Default**: `/var/lib/nerdctl` (rootful), `~/.local/share/nerdctl` (rootless)

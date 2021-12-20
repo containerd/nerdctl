@@ -52,3 +52,11 @@ func CgroupManager() string {
 func CgroupnsMode() string {
 	return ""
 }
+
+func NerdctlTOML() string {
+	ucd, err := os.UserConfigDir()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(ucd, "nerdctl\\nerdctl.toml")
+}
