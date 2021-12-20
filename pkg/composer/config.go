@@ -18,16 +18,69 @@ package composer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"strings"
 
+	"github.com/compose-spec/compose-go/types"
+	"github.com/opencontainers/go-digest"
 	"gopkg.in/yaml.v2"
 )
 
-func (c *Composer) Config(ctx context.Context) error {
+type ConfigOptions struct {
+	Services bool
+	Volumes  bool
+	Hash     string
+}
+
+func (c *Composer) Config(ctx context.Context, w io.Writer, co ConfigOptions) error {
+	if co.Services {
+		for _, service := range c.project.Services {
+			fmt.Fprintln(w, service.Name)
+		}
+		return nil
+	}
+	if co.Volumes {
+		for volume := range c.project.Volumes {
+			fmt.Fprintln(w, volume)
+		}
+		return nil
+	}
+	if co.Hash != "" {
+		var services []string
+		if co.Hash != "*" {
+			services = strings.Split(co.Hash, ",")
+		}
+		if err := c.project.WithServices(services, func(svc types.ServiceConfig) error {
+			hash, err := ServiceHash(svc)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(w, "%s %s\n", svc.Name, hash)
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	}
 	projectYAML, err := yaml.Marshal(c.project)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s", projectYAML)
+	fmt.Fprintf(w, "%s", projectYAML)
 	return nil
+}
+
+// ServiceHash is from https://github.com/docker/compose/blob/v2.2.2/pkg/compose/hash.go#L28-L38
+func ServiceHash(o types.ServiceConfig) (string, error) {
+	// remove the Build config when generating the service hash
+	o.Build = nil
+	o.PullPolicy = ""
+	o.Scale = 1
+	bytes, err := json.Marshal(o)
+	if err != nil {
+		return "", err
+	}
+	return digest.SHA256.FromBytes(bytes).Encoded(), nil
 }

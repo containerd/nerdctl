@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
 
@@ -31,6 +32,12 @@ func newComposeConfigCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	composeConfigCommand.Flags().BoolP("quiet", "q", false, "Only validate the configuration, don't print anything.")
+	composeConfigCommand.Flags().Bool("services", false, "Print the service names, one per line.")
+	composeConfigCommand.Flags().Bool("volumes", false, "Print the volume names, one per line.")
+	composeConfigCommand.Flags().String("hash", "", "Print the service config hash, one per line.")
+	composeConfigCommand.RegisterFlagCompletionFunc("hash", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"\"*\""}, cobra.ShellCompDirectiveNoFileComp
+	})
 	return composeConfigCommand
 }
 
@@ -40,6 +47,18 @@ func composeConfigAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("arguments %v not supported", args)
 	}
 	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return err
+	}
+	services, err := cmd.Flags().GetBool("services")
+	if err != nil {
+		return err
+	}
+	volumes, err := cmd.Flags().GetBool("volumes")
+	if err != nil {
+		return err
+	}
+	hash, err := cmd.Flags().GetString("hash")
 	if err != nil {
 		return err
 	}
@@ -54,8 +73,13 @@ func composeConfigAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if !quiet {
-		return c.Config(ctx)
+	if quiet {
+		return nil
 	}
-	return nil
+	co := composer.ConfigOptions{
+		Services: services,
+		Volumes:  volumes,
+		Hash:     hash,
+	}
+	return c.Config(ctx, cmd.OutOrStdout(), co)
 }
