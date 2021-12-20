@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
 
 	"gotest.tools/v3/assert"
 )
@@ -51,7 +52,7 @@ func TestRunRestart(t *testing.T) {
 		testutil.NginxAlpineImage).AssertOK()
 
 	check := func(httpGetRetry int) error {
-		resp, err := httpGet(fmt.Sprintf("http://127.0.0.1:%d", hostPort), httpGetRetry)
+		resp, err := nettestutil.HTTPGet(fmt.Sprintf("http://127.0.0.1:%d", hostPort), httpGetRetry, false)
 		if err != nil {
 			return err
 		}

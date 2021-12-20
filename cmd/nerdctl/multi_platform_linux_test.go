@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
 	"gotest.tools/v3/assert"
 )
 
@@ -133,7 +134,7 @@ RUN uname -m > /usr/share/nginx/html/index.html
 	}
 
 	for testURL, expectedIndexHTML := range testCases {
-		resp, err := httpGet(testURL, 50)
+		resp, err := nettestutil.HTTPGet(testURL, 50, false)
 		assert.NilError(t, err)
 		respBody, err := io.ReadAll(resp.Body)
 		assert.NilError(t, err)

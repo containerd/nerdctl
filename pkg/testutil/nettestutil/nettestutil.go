@@ -14,9 +14,10 @@
    limitations under the License.
 */
 
-package main
+package nettestutil
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"time"
@@ -24,7 +25,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 )
 
-func httpGet(urlStr string, attempts int) (*http.Response, error) {
+func HTTPGet(urlStr string, attempts int, insecure bool) (*http.Response, error) {
 	var (
 		resp *http.Response
 		err  error
@@ -34,6 +35,11 @@ func httpGet(urlStr string, attempts int) (*http.Response, error) {
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: insecure,
+			},
+		},
 	}
 	for i := 0; i < attempts; i++ {
 		resp, err = client.Get(urlStr)

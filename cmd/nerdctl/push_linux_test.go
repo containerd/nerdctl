@@ -19,14 +19,12 @@ package main
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
 	"math/big"
 	"net"
-	"net/http"
 	"os"
 	"runtime"
 	"strings"
@@ -35,6 +33,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
 
 	"golang.org/x/crypto/bcrypt"
 	"gotest.tools/v3/assert"
@@ -87,7 +86,7 @@ func newTestRegistry(base *testutil.Base) *testRegistry {
 		"--name", registryContainerName,
 		testutil.RegistryImage)
 	cmd.AssertOK()
-	if _, err = httpGet(fmt.Sprintf("http://%s:%d/v2", hostIP.String(), listenPort), 30); err != nil {
+	if _, err = nettestutil.HTTPGet(fmt.Sprintf("http://%s:%d/v2", hostIP.String(), listenPort), 30, false); err != nil {
 		base.Cmd("rm", "-f", registryContainerName).Run()
 		base.T.Fatal(err)
 	}
@@ -171,7 +170,7 @@ acl:
 		"-v", registryKey+":/registry/domain.key",
 		testutil.RegistryImage)
 	cmd.AssertOK()
-	if _, err = httpInsecureGet(fmt.Sprintf("https://%s:%d/v2", hostIP.String(), listenPort), 30); err != nil {
+	if _, err = nettestutil.HTTPGet(fmt.Sprintf("https://%s:%d/v2", hostIP.String(), listenPort), 30, true); err != nil {
 		base.Cmd("rm", "-f", registryContainerName).Run()
 		base.T.Fatal(err)
 	}
@@ -306,30 +305,4 @@ func generateTestCert(base *testutil.Base, host string) (crtPath, keyPath string
 		}
 		return nil
 	}
-}
-
-func httpInsecureGet(urlStr string, attempts int) (*http.Response, error) {
-	var (
-		resp *http.Response
-		err  error
-	)
-	if attempts < 1 {
-		return nil, errdefs.ErrInvalidArgument
-	}
-	client := &http.Client{
-		Timeout: 3 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-	for i := 0; i < attempts; i++ {
-		resp, err = client.Get(urlStr)
-		if err == nil {
-			return resp, nil
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	return nil, fmt.Errorf("error after %d attempts: %w", attempts, err)
 }
