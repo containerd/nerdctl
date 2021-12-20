@@ -93,5 +93,6 @@ func TestPushInsecureWithLogin(t *testing.T) {
 	t.Logf("testImageRef=%q", testImageRef)
 	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
+	base.Cmd("push", testImageRef).AssertFail()
 	base.Cmd("--insecure-registry", "push", testImageRef).AssertOK()
 }
