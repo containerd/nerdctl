@@ -139,7 +139,7 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	if err != nil {
 		return nil, err
 	}
-	if infoutil.CgroupsVersion() == "1" {
+	if infoutil.CgroupsVersion() == "1" && blkioWeight != 0 {
 		blkioController := "/sys/fs/cgroup/blkio"
 		blkioWeightPath := filepath.Join(blkioController, "blkio.weight")
 		if _, err := os.Stat(blkioWeightPath); errors.Is(err, fs.ErrNotExist) {
