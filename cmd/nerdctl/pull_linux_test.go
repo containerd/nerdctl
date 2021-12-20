@@ -60,6 +60,7 @@ func TestImageVerifyWithCosign(t *testing.T) {
 		t.Skip()
 	}
 	testutil.DockerIncompatible(t)
+	testutil.RequiresBuild(t)
 	t.Setenv("COSIGN_PASSWORD", "1")
 	keyPair := newCosignKeyPair(t, "cosign-key-pair")
 	defer keyPair.cleanup()
@@ -91,6 +92,7 @@ func TestImageVerifyWithCosignShouldFailWhenKeyIsNotCorrect(t *testing.T) {
 		t.Skip()
 	}
 	testutil.DockerIncompatible(t)
+	testutil.RequiresBuild(t)
 	t.Setenv("COSIGN_PASSWORD", "1")
 	keyPair := newCosignKeyPair(t, "cosign-key-pair")
 	defer keyPair.cleanup()
