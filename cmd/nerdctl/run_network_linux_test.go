@@ -141,7 +141,7 @@ func valuesOfMapStringString(m map[string]string) map[string]struct{} {
 }
 
 func TestRunPort(t *testing.T) {
-	hostIP, err := getNonLoopbackIPv4()
+	hostIP, err := nettestutil.NonLoopbackIPv4()
 	assert.NilError(t, err)
 	type testCase struct {
 		listenIP         net.IP

@@ -19,6 +19,7 @@ package nettestutil
 import (
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -49,4 +50,26 @@ func HTTPGet(urlStr string, attempts int, insecure bool) (*http.Response, error)
 		time.Sleep(100 * time.Millisecond)
 	}
 	return nil, fmt.Errorf("error after %d attempts: %w", attempts, err)
+}
+
+func NonLoopbackIPv4() (net.IP, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return nil, err
+	}
+	for _, addr := range addrs {
+		ip, _, err := net.ParseCIDR(addr.String())
+		if err != nil {
+			continue
+		}
+		ipv4 := ip.To4()
+		if ipv4 == nil {
+			continue
+		}
+		if ipv4.IsLoopback() {
+			continue
+		}
+		return ipv4, nil
+	}
+	return nil, fmt.Errorf("non-loopback IPv4 address not found, attempted=%+v: %w", addrs, errdefs.ErrNotFound)
 }

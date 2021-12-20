@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil/testregistry"
 	"gotest.tools/v3/assert"
 )
 
@@ -73,10 +74,10 @@ func TestImageEncryptJWE(t *testing.T) {
 	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	reg := newTestRegistry(base)
-	defer reg.cleanup()
+	reg := testregistry.NewPlainHTTP(base)
+	defer reg.Cleanup()
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	encryptImageRef := fmt.Sprintf("127.0.0.1:%d/%s:encrypted", reg.listenPort, tID)
+	encryptImageRef := fmt.Sprintf("127.0.0.1:%d/%s:encrypted", reg.ListenPort, tID)
 	defer base.Cmd("rmi", encryptImageRef).Run()
 	base.Cmd("image", "encrypt", "--recipient=jwe:"+keyPair.pub, testutil.CommonImage, encryptImageRef).AssertOK()
 	base.Cmd("image", "inspect", "--mode=native", "--format={{len .Index.Manifests}}", encryptImageRef).AssertOutExactly("1\n")
