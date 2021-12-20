@@ -81,5 +81,5 @@ func composeConfigAction(cmd *cobra.Command, args []string) error {
 		Volumes:  volumes,
 		Hash:     hash,
 	}
-	return c.Config(ctx, co)
+	return c.Config(ctx, cmd.OutOrStdout(), co)
 }

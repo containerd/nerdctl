@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/compose-spec/compose-go/types"
@@ -35,11 +34,10 @@ type ConfigOptions struct {
 	Hash     string
 }
 
-func (c *Composer) Config(ctx context.Context, co ConfigOptions) error {
-	var w io.Writer = os.Stdout
+func (c *Composer) Config(ctx context.Context, w io.Writer, co ConfigOptions) error {
 	if co.Services {
 		for _, service := range c.project.Services {
-			fmt.Println(service.Name)
+			fmt.Fprintln(w, service.Name)
 		}
 		return nil
 	}
