@@ -17,19 +17,15 @@
 package testregistry
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
 	"fmt"
-	"math/big"
 	"net"
 	"os"
-	"time"
+	"path/filepath"
+	"strconv"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/pkg/testutil/testca"
 
 	"golang.org/x/crypto/bcrypt"
 	"gotest.tools/v3/assert"
@@ -39,7 +35,9 @@ type TestRegistry struct {
 	IP         net.IP
 	ListenIP   net.IP
 	ListenPort int
+	HostsDir   string // contains "<HostIP>:<ListenPort>/hosts.toml"
 	Cleanup    func()
+	Logs       func()
 }
 
 func NewPlainHTTP(base *testutil.Base) *TestRegistry {
@@ -79,8 +77,9 @@ func NewHTTPS(base *testutil.Base, user, pass string) *TestRegistry {
 	const authPort = 5100   // TODO: choose random empty port
 	base.T.Logf("hostIP=%q, listenIP=%q, listenPort=%d, authPort=%d", hostIP, listenIP, listenPort, authPort)
 
-	registryCert, registryKey, registryClose := generateTestCert(base, hostIP.String())
-	authCert, authKey, authClose := generateTestCert(base, hostIP.String())
+	ca := testca.New(base.T)
+	registryCert := ca.NewCert(hostIP.String())
+	authCert := ca.NewCert(hostIP.String())
 
 	// Prepare configuration file for authentication server
 	// Details: https://github.com/cesanta/docker_auth/blob/1.7.1/examples/simple.yml
@@ -112,8 +111,8 @@ acl:
 		"-d",
 		"-p", fmt.Sprintf("%s:%d:5100", listenIP, authPort),
 		"--name", authContainerName,
-		"-v", authCert+":/auth/domain.crt",
-		"-v", authKey+":/auth/domain.key",
+		"-v", authCert.CertPath+":/auth/domain.crt",
+		"-v", authCert.KeyPath+":/auth/domain.key",
 		"-v", authConfigFileName+":/config/auth_config.yml",
 		testutil.DockerAuthImage,
 		"/config/auth_config.yml")
@@ -133,74 +132,48 @@ acl:
 		"--env", "REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE=/auth/domain.crt",
 		"--env", "REGISTRY_HTTP_TLS_CERTIFICATE=/registry/domain.crt",
 		"--env", "REGISTRY_HTTP_TLS_KEY=/registry/domain.key",
-		"-v", authCert+":/auth/domain.crt",
-		"-v", registryCert+":/registry/domain.crt",
-		"-v", registryKey+":/registry/domain.key",
+		// rootcertbundle is not CA cert: https://github.com/distribution/distribution/issues/1143
+		"-v", authCert.CertPath+":/auth/domain.crt",
+		"-v", registryCert.CertPath+":/registry/domain.crt",
+		"-v", registryCert.KeyPath+":/registry/domain.key",
 		testutil.RegistryImage)
 	cmd.AssertOK()
-	if _, err = nettestutil.HTTPGet(fmt.Sprintf("https://%s:%d/v2", hostIP.String(), listenPort), 30, true); err != nil {
+	joined := net.JoinHostPort(hostIP.String(), strconv.Itoa(listenPort))
+	if _, err = nettestutil.HTTPGet(fmt.Sprintf("https://%s/v2", joined), 30, true); err != nil {
 		base.Cmd("rm", "-f", registryContainerName).Run()
 		base.T.Fatal(err)
 	}
+	hostsDir, err := os.MkdirTemp(base.T.TempDir(), "certs.d")
+	assert.NilError(base.T, err)
+	hostsSubDir := filepath.Join(hostsDir, joined)
+	err = os.MkdirAll(hostsSubDir, 0700)
+	assert.NilError(base.T, err)
+	hostsTOMLPath := filepath.Join(hostsSubDir, "hosts.toml")
+	// See https://github.com/containerd/containerd/blob/main/docs/hosts.md
+	hostsTOML := fmt.Sprintf(`
+server = "https://%s"
+[host."https://%s"]
+  ca = %q
+		`, joined, joined, ca.CertPath)
+	base.T.Logf("Writing %q: %q", hostsTOMLPath, hostsTOML)
+	err = os.WriteFile(hostsTOMLPath, []byte(hostsTOML), 0700)
+	assert.NilError(base.T, err)
 	return &TestRegistry{
 		IP:         hostIP,
 		ListenIP:   listenIP,
 		ListenPort: listenPort,
+		HostsDir:   hostsDir,
 		Cleanup: func() {
 			base.Cmd("rm", "-f", registryContainerName).AssertOK()
 			base.Cmd("rm", "-f", authContainerName).AssertOK()
-			assert.NilError(base.T, registryClose())
-			assert.NilError(base.T, authClose())
+			assert.NilError(base.T, registryCert.Close())
+			assert.NilError(base.T, authCert.Close())
 			assert.NilError(base.T, authConfigFile.Close())
 			os.Remove(authConfigFileName)
 		},
-	}
-}
-
-func generateTestCert(base *testutil.Base, host string) (crtPath, keyPath string, closeFn func() error) {
-	certF, err := os.CreateTemp("", "certtemp")
-	assert.NilError(base.T, err)
-	keyF, err := os.CreateTemp("", "keytemp")
-	assert.NilError(base.T, err)
-
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 60)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	assert.NilError(base.T, err)
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject:      pkix.Name{Organization: []string{"test"}},
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
-		DNSNames:     []string{host},
-	}
-	privatekey, err := rsa.GenerateKey(rand.Reader, 2048)
-	assert.NilError(base.T, err)
-	publickey := &privatekey.PublicKey
-	cert, err := x509.CreateCertificate(rand.Reader, &template, &template, publickey, privatekey)
-	assert.NilError(base.T, err)
-	privBytes, err := x509.MarshalPKCS8PrivateKey(privatekey)
-	assert.NilError(base.T, err)
-
-	assert.NilError(base.T, pem.Encode(certF, &pem.Block{Type: "CERTIFICATE", Bytes: cert}))
-	assert.NilError(base.T, pem.Encode(keyF, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}))
-
-	return certF.Name(), keyF.Name(), func() error {
-		var errors []error
-		certFName := certF.Name()
-		keyFName := keyF.Name()
-		for _, f := range []func() error{
-			certF.Close,
-			keyF.Close,
-			func() error { return os.Remove(certFName) },
-			func() error { return os.Remove(keyFName) },
-		} {
-			if err := f(); err != nil {
-				errors = append(errors, err)
-			}
-		}
-		if len(errors) > 0 {
-			return fmt.Errorf("failed to close tmpfile: %v", errors)
-		}
-		return nil
+		Logs: func() {
+			base.T.Logf("%s: %q", registryContainerName, base.Cmd("logs", registryContainerName).Run().String())
+			base.T.Logf("%s: %q", authContainerName, base.Cmd("logs", authContainerName).Run().String())
+		},
 	}
 }

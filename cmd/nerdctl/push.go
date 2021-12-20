@@ -173,7 +173,12 @@ func pushAction(cmd *cobra.Command, args []string) error {
 		logrus.Warnf("skipping verifying HTTPS certs for %q", refDomain)
 		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
-	resolver, err := dockerconfigresolver.New(refDomain, dOpts...)
+	hostsDirs, err := cmd.Flags().GetStringSlice("hosts-dir")
+	if err != nil {
+		return err
+	}
+	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(hostsDirs))
+	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
 	if err != nil {
 		return err
 	}
@@ -184,7 +189,7 @@ func pushAction(cmd *cobra.Command, args []string) error {
 		if insecure {
 			logrus.WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
 			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
-			resolver, err = dockerconfigresolver.New(refDomain, dOpts...)
+			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
 			if err != nil {
 				return err
 			}

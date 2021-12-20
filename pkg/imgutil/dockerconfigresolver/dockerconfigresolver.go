@@ -17,22 +17,26 @@
 package dockerconfigresolver
 
 import (
+	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
-	"net/http"
+	"os"
 
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
+	dockerconfig "github.com/containerd/containerd/remotes/docker/config"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/credentials"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
-
+	"github.com/docker/docker/errdefs"
 	"github.com/sirupsen/logrus"
 )
 
 type opts struct {
 	plainHTTP       bool
 	skipVerifyCerts bool
+	hostsDirs       []string
 }
 
 // Opt for New
@@ -52,55 +56,78 @@ func WithSkipVerifyCerts(b bool) Opt {
 	}
 }
 
+// WithHostsDirs specifies directories like /etc/containerd/certs.d and /etc/docker/certs.d
+func WithHostsDirs(orig []string) Opt {
+	var ss []string
+	if len(orig) == 0 {
+		logrus.Debug("no hosts dir was specified")
+	}
+	for _, v := range orig {
+		if _, err := os.Stat(v); err == nil {
+			logrus.Debugf("Found hosts dir %q", v)
+			ss = append(ss, v)
+		} else {
+			if errors.Is(err, os.ErrNotExist) {
+				logrus.WithError(err).Debugf("Ignoring hosts dir %q", v)
+			} else {
+				logrus.WithError(err).Warnf("Ignoring hosts dir %q", v)
+			}
+		}
+	}
+	return func(o *opts) {
+		o.hostsDirs = ss
+	}
+}
+
 // New instantiates a resolver using $DOCKER_CONFIG/config.json .
 //
 // $DOCKER_CONFIG defaults to "~/.docker".
 //
 // refHostname is like "docker.io".
-func New(refHostname string, optFuncs ...Opt) (remotes.Resolver, error) {
+func New(ctx context.Context, refHostname string, optFuncs ...Opt) (remotes.Resolver, error) {
 	var o opts
 	for _, of := range optFuncs {
 		of(&o)
 	}
-	var authzOpts []docker.AuthorizerOpt
-	var insecureClient *http.Client
-	if o.skipVerifyCerts {
-		insecureClient = newInsecureClient()
-		authzOpts = append(authzOpts, docker.WithAuthClient(insecureClient))
+	var ho dockerconfig.HostOptions
+
+	ho.HostDir = func(s string) (string, error) {
+		for _, hostsDir := range o.hostsDirs {
+			found, err := dockerconfig.HostDirFromRoot(hostsDir)(s)
+			if (err != nil && !errdefs.IsNotFound(err)) || (found != "") {
+				return found, err
+			}
+		}
+		return "", nil
 	}
+
 	if authCreds, err := NewAuthCreds(refHostname); err != nil {
 		return nil, err
 	} else {
-		authzOpts = append(authzOpts, docker.WithAuthCreds(authCreds))
+		ho.Credentials = authCreds
 	}
-	authz := docker.NewDockerAuthorizer(authzOpts...)
-	plainHTTPFunc := docker.MatchLocalhost
-	if o.plainHTTP {
-		plainHTTPFunc = docker.MatchAllHosts
-	}
-	regOpts := []docker.RegistryOpt{
-		docker.WithAuthorizer(authz),
-		docker.WithPlainHTTP(plainHTTPFunc),
-	}
+
 	if o.skipVerifyCerts {
-		regOpts = append(regOpts, docker.WithClient(insecureClient))
+		ho.DefaultTLS = &tls.Config{
+			InsecureSkipVerify: true,
+		}
 	}
+
+	if o.plainHTTP {
+		ho.DefaultScheme = "http"
+	} else {
+		if isLocalHost, err := docker.MatchLocalhost(refHostname); err != nil {
+			return nil, err
+		} else if isLocalHost {
+			ho.DefaultScheme = "http"
+		}
+	}
+
 	resovlerOpts := docker.ResolverOptions{
-		Hosts: docker.ConfigureDefaultRegistries(regOpts...),
+		Hosts: dockerconfig.ConfigureHosts(ctx, ho),
 	}
 	resolver := docker.NewResolver(resovlerOpts)
 	return resolver, nil
-}
-
-func newInsecureClient() *http.Client {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
-	return &http.Client{
-		Transport: tr,
-	}
 }
 
 // AuthCreds is for docker.WithAuthCreds

@@ -51,3 +51,7 @@ func CgroupnsMode() string {
 func NerdctlTOML() string {
 	return "/etc/nerdctl/nerdctl.toml"
 }
+
+func HostsDirs() []string {
+	return []string{"/etc/containerd/certs.d", "/etc/docker/certs.d"}
+}

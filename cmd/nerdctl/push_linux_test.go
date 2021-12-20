@@ -24,6 +24,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/testregistry"
 	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
 )
 
 func TestPushPlainHTTPFails(t *testing.T) {
@@ -95,4 +96,28 @@ func TestPushInsecureWithLogin(t *testing.T) {
 
 	base.Cmd("push", testImageRef).AssertFail()
 	base.Cmd("--insecure-registry", "push", testImageRef).AssertOK()
+}
+
+func TestPushWithHostsDir(t *testing.T) {
+	// Skip docker, because Docker doesn't have `--hosts-dir` option, and we don't want to contaminate the global /etc/docker/certs.d during this test
+	testutil.DockerIncompatible(t)
+
+	base := testutil.NewBase(t)
+	reg := testregistry.NewHTTPS(base, "admin", "badmin")
+	defer reg.Cleanup()
+
+	// FIXME: `nerdctl login` still ignores hosts-dir (msg="Get \"https://192.168.12.34:5000/v2/\": x509: certificate signed by unknown authority")
+	// base.Cmd("--hosts-dir", reg.HostsDir, "login", "-u", "admin", "-p", "badmin", fmt.Sprintf("%s:%d", reg.IP.String(), reg.ListenPort)).AssertOK()
+
+	res := base.Cmd("--insecure-registry", "login", "-u", "admin", "-p", "badmin", fmt.Sprintf("%s:%d", reg.IP.String(), reg.ListenPort)).Run()
+	reg.Logs()
+	res.Assert(t, icmd.Expected{ExitCode: 0})
+
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
+	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
+		reg.IP.String(), reg.ListenPort, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
+	t.Logf("testImageRef=%q", testImageRef)
+	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
+
+	base.Cmd("--debug", "--hosts-dir", reg.HostsDir, "push", testImageRef).AssertOK()
 }

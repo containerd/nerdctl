@@ -13,6 +13,7 @@
   - [nerdctl ignores `[plugins."io.containerd.grpc.v1.cri"]` config](#nerdctl-ignores-pluginsiocontainerdgrpcv1cri-config)
   - [How to login to a registry?](#how-to-login-to-a-registry)
   - [How to use a non-HTTPS registry?](#how-to-use-a-non-https-registry)
+  - [How to specify the CA certificate of the registry?](#how-to-specify-the-ca-certificate-of-the-registry)
   - [How to change the cgroup driver?](#how-to-change-the-cgroup-driver)
   - [How to change the snapshotter?](#how-to-change-the-snapshotter)
   - [How to change the runtime?](#how-to-change-the-runtime)
@@ -98,6 +99,29 @@ nerdctl also supports credential helper binaries such as `docker-credential-ecr-
 ### How to use a non-HTTPS registry?
 
 Use `nerdctl --insecure-registry run <IMAGE>`. See also [`registry.md`](./registry.md).
+
+### How to specify the CA certificate of the registry?
+
+| :zap: Requirement | nerdctl >= 0.16 |
+|-------------------|-----------------|
+
+Create `~/.config/containerd/certs.d/<HOST:PORT>/hosts.toml` (or `/etc/containerd/certs.d/...` for rootful) to specify `ca` certificates.
+
+```toml
+# An example of ~/.config/containerd/certs.d/192.168.12.34:5000/hosts.toml
+# (The path is "/etc/containerd/certs.d/192.168.12.34:5000/hosts.toml" for rootful)
+
+server = "https://192.168.12.34:5000"
+[host."https://192.168.12.34:5000"]
+  ca = "/path/to/ca.crt"
+```
+
+See https://github.com/containerd/containerd/blob/main/docs/hosts.md for the syntax of `hosts.toml` .
+
+Docker-style directories are also supported.
+The path is `~/.config/docker/certs.d` for rootless, `/etc/docker/certs.d` for rootful.
+
+See also [`registry.md`](./registry.md).
 
 ### How to change the cgroup driver?
 

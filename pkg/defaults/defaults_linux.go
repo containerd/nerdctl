@@ -104,3 +104,17 @@ func NerdctlTOML() string {
 	}
 	return filepath.Join(xch, "nerdctl/nerdctl.toml")
 }
+
+func HostsDirs() []string {
+	if !rootlessutil.IsRootless() {
+		return []string{"/etc/containerd/certs.d", "/etc/docker/certs.d"}
+	}
+	xch, err := rootlessutil.XDGConfigHome()
+	if err != nil {
+		panic(err)
+	}
+	return []string{
+		filepath.Join(xch, "containerd/certs.d"),
+		filepath.Join(xch, "docker/certs.d"),
+	}
+}

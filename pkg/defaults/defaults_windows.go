@@ -60,3 +60,14 @@ func NerdctlTOML() string {
 	}
 	return filepath.Join(ucd, "nerdctl\\nerdctl.toml")
 }
+
+func HostsDirs() []string {
+	programData := os.Getenv("ProgramData")
+	if programData == "" {
+		panic("%ProgramData% needs to be set")
+	}
+	return []string{
+		filepath.Join(programData, "containerd\\certs.d"),
+		filepath.Join(programData, "docker\\certs.d"),
+	}
+}
