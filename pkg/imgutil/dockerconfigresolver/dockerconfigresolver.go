@@ -37,6 +37,7 @@ type opts struct {
 	plainHTTP       bool
 	skipVerifyCerts bool
 	hostsDirs       []string
+	authCreds       AuthCreds
 }
 
 // Opt for New
@@ -79,12 +80,18 @@ func WithHostsDirs(orig []string) Opt {
 	}
 }
 
-// New instantiates a resolver using $DOCKER_CONFIG/config.json .
+func WithAuthCreds(ac AuthCreds) Opt {
+	return func(o *opts) {
+		o.authCreds = ac
+	}
+}
+
+// NewHostOptions instantiates a HostOptions struct using $DOCKER_CONFIG/config.json .
 //
 // $DOCKER_CONFIG defaults to "~/.docker".
 //
 // refHostname is like "docker.io".
-func New(ctx context.Context, refHostname string, optFuncs ...Opt) (remotes.Resolver, error) {
+func NewHostOptions(ctx context.Context, refHostname string, optFuncs ...Opt) (*dockerconfig.HostOptions, error) {
 	var o opts
 	for _, of := range optFuncs {
 		of(&o)
@@ -101,10 +108,14 @@ func New(ctx context.Context, refHostname string, optFuncs ...Opt) (remotes.Reso
 		return "", nil
 	}
 
-	if authCreds, err := NewAuthCreds(refHostname); err != nil {
-		return nil, err
+	if o.authCreds != nil {
+		ho.Credentials = o.authCreds
 	} else {
-		ho.Credentials = authCreds
+		if authCreds, err := NewAuthCreds(refHostname); err != nil {
+			return nil, err
+		} else {
+			ho.Credentials = authCreds
+		}
 	}
 
 	if o.skipVerifyCerts {
@@ -122,10 +133,24 @@ func New(ctx context.Context, refHostname string, optFuncs ...Opt) (remotes.Reso
 			ho.DefaultScheme = "http"
 		}
 	}
+	return &ho, nil
+}
+
+// New instantiates a resolver using $DOCKER_CONFIG/config.json .
+//
+// $DOCKER_CONFIG defaults to "~/.docker".
+//
+// refHostname is like "docker.io".
+func New(ctx context.Context, refHostname string, optFuncs ...Opt) (remotes.Resolver, error) {
+	ho, err := NewHostOptions(ctx, refHostname, optFuncs...)
+	if err != nil {
+		return nil, err
+	}
 
 	resovlerOpts := docker.ResolverOptions{
-		Hosts: dockerconfig.ConfigureHosts(ctx, ho),
+		Hosts: dockerconfig.ConfigureHosts(ctx, *ho),
 	}
+
 	resolver := docker.NewResolver(resovlerOpts)
 	return resolver, nil
 }

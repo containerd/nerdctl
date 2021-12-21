@@ -7,7 +7,7 @@ require (
 	github.com/compose-spec/compose-go v1.0.8
 	github.com/containerd/cgroups v1.0.2
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.0-beta.5
+	github.com/containerd/containerd v1.6.0-beta.5.0.20220106193438-3ccd43c8f685
 	github.com/containerd/containerd/api v1.6.0-beta.3
 	github.com/containerd/continuity v0.2.2-0.20211201162329-8e53e7cac79d
 	github.com/containerd/go-cni v1.1.1-0.20211215152955-2d9d28f46d8e
@@ -46,6 +46,7 @@ require (
 	github.com/vishvananda/netlink v1.1.1-0.20211129163951-9ada19101fc5
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3
+	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
@@ -161,7 +162,6 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
-	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect

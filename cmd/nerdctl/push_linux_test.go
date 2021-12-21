@@ -24,7 +24,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/testregistry"
 	"gotest.tools/v3/assert"
-	"gotest.tools/v3/icmd"
 )
 
 func TestPushPlainHTTPFails(t *testing.T) {
@@ -106,12 +105,7 @@ func TestPushWithHostsDir(t *testing.T) {
 	reg := testregistry.NewHTTPS(base, "admin", "badmin")
 	defer reg.Cleanup()
 
-	// FIXME: `nerdctl login` still ignores hosts-dir (msg="Get \"https://192.168.12.34:5000/v2/\": x509: certificate signed by unknown authority")
-	// base.Cmd("--hosts-dir", reg.HostsDir, "login", "-u", "admin", "-p", "badmin", fmt.Sprintf("%s:%d", reg.IP.String(), reg.ListenPort)).AssertOK()
-
-	res := base.Cmd("--insecure-registry", "login", "-u", "admin", "-p", "badmin", fmt.Sprintf("%s:%d", reg.IP.String(), reg.ListenPort)).Run()
-	reg.Logs()
-	res.Assert(t, icmd.Expected{ExitCode: 0})
+	base.Cmd("--hosts-dir", reg.HostsDir, "login", "-u", "admin", "-p", "badmin", fmt.Sprintf("%s:%d", reg.IP.String(), reg.ListenPort)).AssertOK()
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s:%d/%s:%s",

@@ -296,8 +296,8 @@ github.com/containerd/containerd v1.5.1/go.mod h1:0DOxVqwDy2iZvrZp2JUx/E+hS0UNTV
 github.com/containerd/containerd v1.5.7/go.mod h1:gyvv6+ugqY25TiXxcZC3L5yOeYgEw0QMhscqVp1AR9c=
 github.com/containerd/containerd v1.5.8/go.mod h1:YdFSv5bTFLpG2HIYmfqDpSYYTDX+mc5qtSuYx1YUb/s=
 github.com/containerd/containerd v1.6.0-beta.2.0.20211117185425-a776a27af54a/go.mod h1:0AwP8LDBKEIaCT48IETmHkY1+YX7c/ALcN1kkLGBLtk=
-github.com/containerd/containerd v1.6.0-beta.5 h1:07rR8S3D5/8sfrbJ9rloLua4U0BPAZC0qvssdYF2RRk=
-github.com/containerd/containerd v1.6.0-beta.5/go.mod h1:PnZPHEkIpTckm5JGL2+DPssQDN6lNE9jncwXRYktpXg=
+github.com/containerd/containerd v1.6.0-beta.5.0.20220106193438-3ccd43c8f685 h1:+vrXOSMO8SA5hbRbp1/QPRoYVIi1lsPROsYQ6G2f890=
+github.com/containerd/containerd v1.6.0-beta.5.0.20220106193438-3ccd43c8f685/go.mod h1:PnZPHEkIpTckm5JGL2+DPssQDN6lNE9jncwXRYktpXg=
 github.com/containerd/containerd/api v1.6.0-beta.1/go.mod h1:XDzkCoLyj2hn24f13Jcuq/U2bHb2LjJ2qWlklgL0Ofg=
 github.com/containerd/containerd/api v1.6.0-beta.3 h1:+w8zh0hbn4cNIkAtt4v95dBylcwp1hEsFJ5lxbr8wgY=
 github.com/containerd/containerd/api v1.6.0-beta.3/go.mod h1:fkctx1jj7m92mQDI6mIEXF+SH3tt2Rv/azUHqrOxYPc=
