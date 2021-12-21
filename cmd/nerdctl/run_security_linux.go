@@ -41,6 +41,13 @@ var privilegedOpts = []oci.SpecOpts{
 }
 
 func generateSecurityOpts(securityOptsMap map[string]string) ([]oci.SpecOpts, error) {
+	for k := range securityOptsMap {
+		switch k {
+		case "seccomp", "apparmor", "no-new-privileges":
+		default:
+			logrus.Warnf("Unknown security-opt: %q", k)
+		}
+	}
 	var opts []oci.SpecOpts
 	if seccompProfile, ok := securityOptsMap["seccomp"]; ok {
 		if seccompProfile == "" {
