@@ -1,6 +1,3 @@
-//go:build freebsd || linux || darwin
-// +build freebsd linux darwin
-
 /*
    Copyright The containerd Authors.
 
@@ -17,32 +14,28 @@
    limitations under the License.
 */
 
-package main
+package infoutil
 
-import (
-	"fmt"
-	"os"
-	"syscall"
+import "github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 
-	"golang.org/x/term"
-)
+// UnameR returns `uname -r`
+func UnameR() string {
+	return ""
+}
 
-func readPassword() (string, error) {
-	var fd int
-	if term.IsTerminal(syscall.Stdin) {
-		fd = syscall.Stdin
-	} else {
-		tty, err := os.Open("/dev/tty")
-		if err != nil {
-			return "", fmt.Errorf("error allocating terminal: %w", err)
-		}
-		defer tty.Close()
-		fd = int(tty.Fd())
-	}
-	bytePassword, err := term.ReadPassword(fd)
-	if err != nil {
-		return "", fmt.Errorf("error reading password: %w", err)
-	}
+// UnameM returns `uname -m`
+func UnameM() string {
+	return ""
+}
 
-	return string(bytePassword), nil
+func DistroName() string {
+	return ""
+}
+
+func CgroupsVersion() string {
+	return ""
+}
+
+func fulfillPlatformInfo(info *dockercompat.Info) {
+	// unimplemented
 }

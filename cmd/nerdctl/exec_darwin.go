@@ -1,6 +1,3 @@
-//go:build freebsd || linux || darwin
-// +build freebsd linux darwin
-
 /*
    Copyright The containerd Authors.
 
@@ -20,29 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"syscall"
-
-	"golang.org/x/term"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func readPassword() (string, error) {
-	var fd int
-	if term.IsTerminal(syscall.Stdin) {
-		fd = syscall.Stdin
-	} else {
-		tty, err := os.Open("/dev/tty")
-		if err != nil {
-			return "", fmt.Errorf("error allocating terminal: %w", err)
-		}
-		defer tty.Close()
-		fd = int(tty.Fd())
-	}
-	bytePassword, err := term.ReadPassword(fd)
-	if err != nil {
-		return "", fmt.Errorf("error reading password: %w", err)
-	}
-
-	return string(bytePassword), nil
+func setExecCapabilities(pspec *specs.Process) error {
+	//no op freebsd
+	return nil
 }

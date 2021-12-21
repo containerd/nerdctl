@@ -1,6 +1,3 @@
-//go:build freebsd || linux || darwin
-// +build freebsd linux darwin
-
 /*
    Copyright The containerd Authors.
 
@@ -17,32 +14,42 @@
    limitations under the License.
 */
 
-package main
+package defaults
 
-import (
-	"fmt"
-	"os"
-	"syscall"
+import gocni "github.com/containerd/go-cni"
 
-	"golang.org/x/term"
-)
+const AppArmorProfileName = ""
+const Runtime = ""
 
-func readPassword() (string, error) {
-	var fd int
-	if term.IsTerminal(syscall.Stdin) {
-		fd = syscall.Stdin
-	} else {
-		tty, err := os.Open("/dev/tty")
-		if err != nil {
-			return "", fmt.Errorf("error allocating terminal: %w", err)
-		}
-		defer tty.Close()
-		fd = int(tty.Fd())
-	}
-	bytePassword, err := term.ReadPassword(fd)
-	if err != nil {
-		return "", fmt.Errorf("error reading password: %w", err)
-	}
+func DataRoot() string {
+	return "/tmp/nerdctl"
+}
 
-	return string(bytePassword), nil
+func CNIPath() string {
+	// default: /opt/cni/bin
+	return gocni.DefaultCNIDir
+}
+
+func CNINetConfPath() string {
+	return gocni.DefaultNetDir
+}
+
+func BuildKitHost() string {
+	return "unix:///run/buildkit/buildkitd.sock"
+}
+
+func IsSystemdAvailable() bool {
+	return false
+}
+
+func CgroupManager() string {
+	return ""
+}
+
+func CgroupnsMode() string {
+	return ""
+}
+
+func NerdctlTOML() string {
+	return "/etc/nerdctl/nerdctl.toml"
 }

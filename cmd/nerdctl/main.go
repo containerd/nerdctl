@@ -190,10 +190,6 @@ Config file ($NERDCTL_TOML): %s
 		if debug {
 			logrus.SetLevel(logrus.DebugLevel)
 		}
-		address := cmd.Flags().Lookup("address").Value.String()
-		if strings.Contains(address, "://") && !strings.HasPrefix(address, "unix://") {
-			return fmt.Errorf("invalid address %q", address)
-		}
 		cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
 		if err != nil {
 			return err
