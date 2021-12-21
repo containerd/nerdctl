@@ -17,10 +17,12 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"runtime"
 	"strings"
 
@@ -205,7 +207,17 @@ func ConfigureAuthentification(authConfig *types.AuthConfig, options *loginOptio
 	}
 
 	if options.username == "" {
-		return fmt.Errorf("error: Username is Required")
+		fmt.Print("Enter Username: ")
+		reader := bufio.NewReader(os.Stdin)
+		usr, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		usr = strings.TrimSpace(usr)
+		if len(usr) == 0 {
+			return fmt.Errorf("non-null Username Required")
+		}
+		options.username = usr
 	}
 
 	if options.password == "" {
