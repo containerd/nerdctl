@@ -19,6 +19,7 @@ package pull
 
 import (
 	"context"
+	"github.com/containerd/containerd/labels"
 	"io"
 
 	"github.com/containerd/containerd"
@@ -75,6 +76,7 @@ func Pull(ctx context.Context, client *containerd.Client, ref string, config *Co
 		containerd.WithImageHandler(h),
 		containerd.WithSchema1Conversion,
 		containerd.WithPlatformMatcher(platformMC),
+		containerd.WithImageHandlerWrapper(appendInfoHandlerWrapper(ref)),
 	}
 	opts = append(opts, config.RemoteOpts...)
 
@@ -98,4 +100,66 @@ func Pull(ctx context.Context, client *containerd.Client, ref string, config *Co
 
 	<-progress
 	return img, nil
+}
+
+const (
+	// targetRefLabel is a label which contains image reference and will be passed
+	// to snapshotters.
+	targetRefLabel = "containerd.io/snapshot/cri.image-ref"
+	// targetManifestDigestLabel is a label which contains manifest digest and will be passed
+	// to snapshotters.
+	targetManifestDigestLabel = "containerd.io/snapshot/cri.manifest-digest"
+	// targetLayerDigestLabel is a label which contains layer digest and will be passed
+	// to snapshotters.
+	targetLayerDigestLabel = "containerd.io/snapshot/cri.layer-digest"
+	// targetImageLayersLabel is a label which contains layer digests contained in
+	// the target image and will be passed to snapshotters for preparing layers in
+	// parallel. Skipping some layers is allowed and only affects performance.
+	targetImageLayersLabel = "containerd.io/snapshot/cri.image-layers"
+)
+
+func appendInfoHandlerWrapper(ref string) func(f images.Handler) images.Handler {
+	return func(f images.Handler) images.Handler {
+		return images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			children, err := f.Handle(ctx, desc)
+			if err != nil {
+				return nil, err
+			}
+			switch desc.MediaType {
+			case ocispec.MediaTypeImageManifest, images.MediaTypeDockerSchema2Manifest:
+				for i := range children {
+					c := &children[i]
+					if images.IsLayerType(c.MediaType) {
+						if c.Annotations == nil {
+							c.Annotations = make(map[string]string)
+						}
+						c.Annotations[targetRefLabel] = ref
+						c.Annotations[targetLayerDigestLabel] = c.Digest.String()
+						c.Annotations[targetImageLayersLabel] = getLayers(ctx, targetImageLayersLabel, children[i:], labels.Validate)
+						c.Annotations[targetManifestDigestLabel] = desc.Digest.String()
+					}
+				}
+			}
+			return children, nil
+		})
+	}
+}
+
+func getLayers(ctx context.Context, key string, descs []ocispec.Descriptor, validate func(k, v string) error) (layers string) {
+	var item string
+	for _, l := range descs {
+		if images.IsLayerType(l.MediaType) {
+			item = l.Digest.String()
+			if layers != "" {
+				item = "," + item
+			}
+			// This avoids the label hits the size limitation.
+			if err := validate(key, layers+item); err != nil {
+				log.G(ctx).WithError(err).WithField("label", key).Debugf("%q is omitted in the layers list", l.Digest.String())
+				break
+			}
+			layers += item
+		}
+	}
+	return
 }
