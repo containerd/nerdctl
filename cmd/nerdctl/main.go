@@ -213,6 +213,7 @@ Config file ($NERDCTL_TOML): %s
 	}
 	rootCmd.RunE = unknownSubcommandAction
 	rootCmd.AddCommand(
+		newCreateCommand(),
 		// #region Run & Exec
 		newRunCommand(),
 		newExecCommand(),
