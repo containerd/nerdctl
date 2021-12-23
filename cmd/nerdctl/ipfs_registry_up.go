@@ -44,6 +44,8 @@ func newIPFSRegistryUpCommand() *cobra.Command {
 	}
 
 	ipfsRegistryUpCommand.PersistentFlags().String("listen-registry", defaultIPFSRegistry, "address to listen")
+	ipfsRegistryUpCommand.PersistentFlags().Int("read-retry-num", defaultIPFSReadRetryNum, "times to retry query on IPFS. Zero or lower means no retry.")
+	ipfsRegistryUpCommand.PersistentFlags().Duration("read-timeout", defaultIPFSReadTimeoutDuration, "timeout duration of a read request to IPFS. Zero means no timeout.")
 
 	return ipfsRegistryUpCommand
 }
@@ -82,6 +84,14 @@ func runRegistryAsContainer(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
+	readTimeout, err := cmd.Flags().GetDuration("read-timeout")
+	if err != nil {
+		return err
+	}
+	readRetryNum, err := cmd.Flags().GetInt("read-retry-num")
+	if err != nil {
+		return err
+	}
 	dataStore, err := getDataStore(cmd)
 	if err != nil {
 		return err
@@ -108,6 +118,7 @@ func runRegistryAsContainer(cmd *cobra.Command) error {
 		"run", "-d", "--name", ipfsRegistryContainerName, "--net=host", "--entrypoint", "/mnt/nerdctl",
 		"--read-only", "-v", nerdctlCmd+":/mnt/nerdctl:ro", "--rootfs", registryRoot,
 		"ipfs", "registry", "serve", "--ipfs-address", ipfsAPIAddr.String(), "--listen-registry", listenAddress,
+		"--read-retry-num", fmt.Sprintf("%d", readRetryNum), "--read-timeout", fmt.Sprintf("%s", readTimeout),
 	)...).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to execute registry: %v: %v", string(out), err)
 	}

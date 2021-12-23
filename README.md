@@ -1199,6 +1199,8 @@ Usage: `nerdctl ipfs registry up [OPTIONS]`
 
 Flags:
 - :nerd_face: `--listen-registry`: Address to listen (default `localhost:5050`)
+- :nerd_face: `--read-retry-num`: Times to retry query on IPFS (default 0 (no retry))
+- :nerd_face: `--read-timeout`: Timeout duration of a read request to IPFS (defualt 0 (no timeout))
 
 ### :nerd_face: nerdctl ipfs registry down
 Stop and remove read-only local registry backed by IPFS.
@@ -1215,6 +1217,8 @@ Usage: `nerdctl ipfs registry serve [OPTIONS]`
 Flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default is pulled from `$IPFS_PATH/api` file. If `$IPFS_PATH` env var is not present, it defaults to `~/.ipfs`).
 - :nerd_face: `--listen-registry`: Address to listen (default `localhost:5050`).
+- :nerd_face: `--read-retry-num`: Times to retry query on IPFS (default 0 (no retry))
+- :nerd_face: `--read-timeout`: Timeout duration of a read request to IPFS (defualt 0 (no timeout))
 
 ## Global flags
 - :nerd_face: :blue_square: `--address`:  containerd address, optionally with "unix://" prefix
