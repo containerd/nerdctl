@@ -36,7 +36,6 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/defaults"
@@ -58,7 +57,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -86,138 +84,143 @@ func newRunCommand() *cobra.Command {
 	}
 
 	runCommand.Flags().SetInterspersed(false)
+	setCreateFlags(runCommand)
+
+	runCommand.Flags().BoolP("detach", "d", false, "Run container in background and print container ID")
+
+	return runCommand
+}
+
+func setCreateFlags(cmd *cobra.Command) {
 
 	// No "-h" alias for "--help", because "-h" for "--hostname".
-	runCommand.Flags().Bool("help", false, "show help")
+	cmd.Flags().Bool("help", false, "show help")
 
-	runCommand.Flags().BoolP("tty", "t", false, "(Currently -t needs to correspond to -i)")
-	runCommand.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
-	runCommand.Flags().BoolP("detach", "d", false, "Run container in background and print container ID")
-	runCommand.Flags().String("restart", "no", `Restart policy to apply when a container exits (implemented values: "no"|"always")`)
-	runCommand.RegisterFlagCompletionFunc("restart", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().BoolP("tty", "t", false, "(Currently -t needs to correspond to -i)")
+	cmd.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
+	cmd.Flags().String("restart", "no", `Restart policy to apply when a container exits (implemented values: "no"|"always")`)
+	cmd.RegisterFlagCompletionFunc("restart", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"no", "always"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	runCommand.Flags().Bool("rm", false, "Automatically remove the container when it exits")
-	runCommand.Flags().String("pull", "missing", `Pull image before running ("always"|"missing"|"never")`)
-	runCommand.RegisterFlagCompletionFunc("pull", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().Bool("rm", false, "Automatically remove the container when it exits")
+	cmd.Flags().String("pull", "missing", `Pull image before running ("always"|"missing"|"never")`)
+	cmd.RegisterFlagCompletionFunc("pull", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"always", "missing", "never"}, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	// #region platform flags
-	runCommand.Flags().String("platform", "", "Set platform (e.g. \"amd64\", \"arm64\")") // not a slice, and there is no --all-platforms
-	runCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	cmd.Flags().String("platform", "", "Set platform (e.g. \"amd64\", \"arm64\")") // not a slice, and there is no --all-platforms
+	cmd.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 	// #endregion
 
 	// #region network flags
 	// network (net) is defined as StringSlice, not StringArray, to allow specifying "--network=cni1,cni2"
-	runCommand.Flags().StringSlice("network", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none")`)
-	runCommand.RegisterFlagCompletionFunc("network", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().StringSlice("network", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none")`)
+	cmd.RegisterFlagCompletionFunc("network", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return shellCompleteNetworkNames(cmd, []string{})
 	})
-	runCommand.Flags().StringSlice("net", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none")`)
-	runCommand.RegisterFlagCompletionFunc("net", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().StringSlice("net", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none")`)
+	cmd.RegisterFlagCompletionFunc("net", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return shellCompleteNetworkNames(cmd, []string{})
 	})
 	// dns is defined as StringSlice, not StringArray, to allow specifying "--dns=1.1.1.1,8.8.8.8" (compatible with Podman)
-	runCommand.Flags().StringSlice("dns", nil, "Set custom DNS servers")
+	cmd.Flags().StringSlice("dns", nil, "Set custom DNS servers")
 	// publish is defined as StringSlice, not StringArray, to allow specifying "--publish=80:80,443:443" (compatible with Podman)
-	runCommand.Flags().StringSliceP("publish", "p", nil, "Publish a container's port(s) to the host")
-	runCommand.Flags().StringP("hostname", "h", "", "Container host name")
+	cmd.Flags().StringSliceP("publish", "p", nil, "Publish a container's port(s) to the host")
+	cmd.Flags().StringP("hostname", "h", "", "Container host name")
 	// #endregion
 
 	// #region cgroups, namespaces, and ulimits flags
-	runCommand.Flags().Float64("cpus", 0.0, "Number of CPUs")
-	runCommand.Flags().StringP("memory", "m", "", "Memory limit")
-	runCommand.Flags().String("pid", "", "PID namespace to use")
-	runCommand.RegisterFlagCompletionFunc("pid", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().Float64("cpus", 0.0, "Number of CPUs")
+	cmd.Flags().StringP("memory", "m", "", "Memory limit")
+	cmd.Flags().String("pid", "", "PID namespace to use")
+	cmd.RegisterFlagCompletionFunc("pid", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"host"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	runCommand.Flags().Int("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
-	runCommand.Flags().StringSlice("cgroup-conf", nil, "Configure cgroup v2 (key=value)")
-	runCommand.Flags().Uint16("blkio-weight", 0, "Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)")
-	runCommand.Flags().String("cgroupns", defaults.CgroupnsMode(), `Cgroup namespace to use, the default depends on the cgroup version ("host"|"private")`)
-	runCommand.RegisterFlagCompletionFunc("cgroupns", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().Int("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
+	cmd.Flags().StringSlice("cgroup-conf", nil, "Configure cgroup v2 (key=value)")
+	cmd.Flags().Uint16("blkio-weight", 0, "Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)")
+	cmd.Flags().String("cgroupns", defaults.CgroupnsMode(), `Cgroup namespace to use, the default depends on the cgroup version ("host"|"private")`)
+	cmd.RegisterFlagCompletionFunc("cgroupns", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"host", "private"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	runCommand.Flags().String("cpuset-cpus", "", "CPUs in which to allow execution (0-3, 0,1)")
-	runCommand.Flags().Int("cpu-shares", 0, "CPU shares (relative weight)")
+	cmd.Flags().String("cpuset-cpus", "", "CPUs in which to allow execution (0-3, 0,1)")
+	cmd.Flags().Int("cpu-shares", 0, "CPU shares (relative weight)")
 	// device is defined as StringSlice, not StringArray, to allow specifying "--device=DEV1,DEV2" (compatible with Podman)
-	runCommand.Flags().StringSlice("device", nil, "Add a host device to the container")
+	cmd.Flags().StringSlice("device", nil, "Add a host device to the container")
 	// ulimit is defined as StringSlice, not StringArray, to allow specifying "--ulimit=ULIMIT1,ULIMIT2" (compatible with Podman)
-	runCommand.Flags().StringSlice("ulimit", nil, "Ulimit options")
+	cmd.Flags().StringSlice("ulimit", nil, "Ulimit options")
 	// #endregion
 
 	// user flags
-	runCommand.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
+	cmd.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
 
 	// #region security flags
-	runCommand.Flags().StringArray("security-opt", []string{}, "Security options")
-	runCommand.RegisterFlagCompletionFunc("security-opt", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().StringArray("security-opt", []string{}, "Security options")
+	cmd.RegisterFlagCompletionFunc("security-opt", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"seccomp=", "seccomp=unconfined", "apparmor=", "apparmor=" + defaults.AppArmorProfileName, "apparmor=unconfined", "no-new-privileges"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	// cap-add and cap-drop are defined as StringSlice, not StringArray, to allow specifying "--cap-add=CAP_SYS_ADMIN,CAP_NET_ADMIN" (compatible with Podman)
-	runCommand.Flags().StringSlice("cap-add", []string{}, "Add Linux capabilities")
-	runCommand.RegisterFlagCompletionFunc("cap-add", capShellComplete)
-	runCommand.Flags().StringSlice("cap-drop", []string{}, "Drop Linux capabilities")
-	runCommand.RegisterFlagCompletionFunc("cap-drop", capShellComplete)
-	runCommand.Flags().Bool("privileged", false, "Give extended privileges to this container")
+	cmd.Flags().StringSlice("cap-add", []string{}, "Add Linux capabilities")
+	cmd.RegisterFlagCompletionFunc("cap-add", capShellComplete)
+	cmd.Flags().StringSlice("cap-drop", []string{}, "Drop Linux capabilities")
+	cmd.RegisterFlagCompletionFunc("cap-drop", capShellComplete)
+	cmd.Flags().Bool("privileged", false, "Give extended privileges to this container")
 	// #endregion
 
 	// #region runtime flags
-	runCommand.Flags().String("runtime", defaults.Runtime, "Runtime to use for this container, e.g. \"crun\", or \"io.containerd.runsc.v1\"")
+	cmd.Flags().String("runtime", defaults.Runtime, "Runtime to use for this container, e.g. \"crun\", or \"io.containerd.runsc.v1\"")
 	// sysctl needs to be StringArray, not StringSlice, to prevent "foo=foo1,foo2" from being split to {"foo=foo1", "foo2"}
-	runCommand.Flags().StringArray("sysctl", nil, "Sysctl options")
+	cmd.Flags().StringArray("sysctl", nil, "Sysctl options")
 	// gpus needs to be StringArray, not StringSlice, to prevent "capabilities=utility,device=DEV" from being split to {"capabilities=utility", "device=DEV"}
-	runCommand.Flags().StringArray("gpus", nil, "GPU devices to add to the container ('all' to pass all GPUs)")
-	runCommand.RegisterFlagCompletionFunc("gpus", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().StringArray("gpus", nil, "GPU devices to add to the container ('all' to pass all GPUs)")
+	cmd.RegisterFlagCompletionFunc("gpus", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"all"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	// #endregion
 
 	// #region mount flags
 	// volume needs to be StringArray, not StringSlice, to prevent "/foo:/foo:ro,Z" from being split to {"/foo:/foo:ro", "Z"}
-	runCommand.Flags().StringArrayP("volume", "v", nil, "Bind mount a volume")
+	cmd.Flags().StringArrayP("volume", "v", nil, "Bind mount a volume")
 	// tmpfs needs to be StringArray, not StringSlice, to prevent "/foo:size=64m,exec" from being split to {"/foo:size=64m", "exec"}
-	runCommand.Flags().StringArray("tmpfs", nil, "Mount a tmpfs directory")
+	cmd.Flags().StringArray("tmpfs", nil, "Mount a tmpfs directory")
 	// #endregion
 
 	// rootfs flags
-	runCommand.Flags().Bool("read-only", false, "Mount the container's root filesystem as read only")
+	cmd.Flags().Bool("read-only", false, "Mount the container's root filesystem as read only")
 	// rootfs flags (from Podman)
-	runCommand.Flags().Bool("rootfs", false, "The first agument is not an image but the rootfs to the exploded container")
+	cmd.Flags().Bool("rootfs", false, "The first agument is not an image but the rootfs to the exploded container")
 
 	// #region env flags
-	runCommand.Flags().String("entrypoint", "", "Overwrite the default ENTRYPOINT of the image")
-	runCommand.Flags().StringP("workdir", "w", "", "Working directory inside the container")
+	cmd.Flags().String("entrypoint", "", "Overwrite the default ENTRYPOINT of the image")
+	cmd.Flags().StringP("workdir", "w", "", "Working directory inside the container")
 	// env needs to be StringArray, not StringSlice, to prevent "FOO=foo1,foo2" from being split to {"FOO=foo1", "foo2"}
-	runCommand.Flags().StringArrayP("env", "e", nil, "Set environment variables")
+	cmd.Flags().StringArrayP("env", "e", nil, "Set environment variables")
 	// add-host is defined as StringSlice, not StringArray, to allow specifying "--add-host=HOST1:IP1,HOST2:IP2" (compatible with Podman)
-	runCommand.Flags().StringSlice("add-host", nil, "Add a custom host-to-IP mapping (host:ip)")
+	cmd.Flags().StringSlice("add-host", nil, "Add a custom host-to-IP mapping (host:ip)")
 	// env-file is defined as StringSlice, not StringArray, to allow specifying "--env-file=FILE1,FILE2" (compatible with Podman)
-	runCommand.Flags().StringSlice("env-file", nil, "Set environment variables from file")
+	cmd.Flags().StringSlice("env-file", nil, "Set environment variables from file")
 
 	// #region metadata flags
-	runCommand.Flags().String("name", "", "Assign a name to the container")
+	cmd.Flags().String("name", "", "Assign a name to the container")
 	// label needs to be StringArray, not StringSlice, to prevent "foo=foo1,foo2" from being split to {"foo=foo1", "foo2"}
-	runCommand.Flags().StringArrayP("label", "l", nil, "Set metadata on container")
+	cmd.Flags().StringArrayP("label", "l", nil, "Set metadata on container")
 	// label-file is defined as StringSlice, not StringArray, to allow specifying "--env-file=FILE1,FILE2" (compatible with Podman)
-	runCommand.Flags().StringSlice("label-file", nil, "Set metadata on container from file")
-	runCommand.Flags().String("cidfile", "", "Write the container ID to the file")
-	runCommand.Flags().String("pidfile", "", "file path to write the task's pid")
+	cmd.Flags().StringSlice("label-file", nil, "Set metadata on container from file")
+	cmd.Flags().String("cidfile", "", "Write the container ID to the file")
 	// #endregion
 
 	// shared memory flags
-	runCommand.Flags().String("shm-size", "", "Size of /dev/shm")
+	cmd.Flags().String("shm-size", "", "Size of /dev/shm")
+	cmd.Flags().String("pidfile", "", "file path to write the task's pid")
 
 	// #region verify flags
-	runCommand.Flags().String("verify", "none", "Verify the image (none|cosign)")
-	runCommand.RegisterFlagCompletionFunc("verify", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().String("verify", "none", "Verify the image (none|cosign)")
+	cmd.RegisterFlagCompletionFunc("verify", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"none", "cosign"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	runCommand.Flags().String("cosign-key", "", "Path to the public key file, KMS, URI or Kubernetes Secret for --verify=cosign")
+	cmd.Flags().String("cosign-key", "", "Path to the public key file, KMS, URI or Kubernetes Secret for --verify=cosign")
 	// #endregion
-
-	return runCommand
 }
 
 // runAction is heavily based on ctr implementation:
@@ -225,120 +228,20 @@ func newRunCommand() *cobra.Command {
 //
 // FIXME: split to smaller functions
 func runAction(cmd *cobra.Command, args []string) error {
-	// simulate the behavior of double dash
-	newArg := []string{}
-	if len(args) >= 2 && args[1] == "--" {
-		newArg = append(newArg, args[:1]...)
-		newArg = append(newArg, args[2:]...)
-		args = newArg
-	}
-
-	ns, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-
-	var clientOpts []containerd.ClientOpt
 	platform, err := cmd.Flags().GetString("platform")
 	if err != nil {
 		return err
 	}
-	if platform != "" {
-		if canExec, canExecErr := platformutil.CanExecProbably(platform); !canExec {
-			warn := fmt.Sprintf("Platform %q seems incompatible with the host platform %q. If you see \"exec format error\", see https://github.com/containerd/nerdctl/blob/master/docs/multi-platform.md",
-				platform, platforms.DefaultString())
-			if canExecErr != nil {
-				logrus.WithError(canExecErr).Warn(warn)
-			} else {
-				logrus.Warn(warn)
-			}
-		}
-		platformParsed, err := platforms.Parse(platform)
-		if err != nil {
-			return err
-		}
-		platformM := platforms.Only(platformParsed)
-		clientOpts = append(clientOpts, containerd.WithDefaultPlatform(platformM))
-	}
-	client, ctx, cancel, err := newClient(cmd, clientOpts...)
+	client, ctx, cancel, err := newClientWithPlatform(cmd, platform)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	var (
-		opts  []oci.SpecOpts
-		cOpts []containerd.NewContainerOpts
-		id    = idgen.GenerateID()
-	)
-
-	cidfile, err := cmd.Flags().GetString("cidfile")
+	flagD, err := cmd.Flags().GetBool("detach")
 	if err != nil {
 		return err
 	}
-	if cidfile != "" {
-		if err := writeCIDFile(cidfile, id); err != nil {
-			return err
-		}
-	}
-
-	dataStore, err := getDataStore(cmd)
-	if err != nil {
-		return err
-	}
-
-	stateDir, err := getContainerStateDirPath(cmd, dataStore, id)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(stateDir, 0700); err != nil {
-		return err
-	}
-
-	opts = append(opts,
-		oci.WithDefaultSpec(),
-	)
-
-	opts, err = setPlatformOptions(opts, cmd, id)
-	if err != nil {
-		return err
-	}
-
-	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, platform, cmd, args, id)
-	if err != nil {
-		return err
-	}
-	opts = append(opts, rootfsOpts...)
-	cOpts = append(cOpts, rootfsCOpts...)
-
-	wd, err := cmd.Flags().GetString("workdir")
-	if err != nil {
-		return err
-	}
-	if wd != "" {
-		opts = append(opts, oci.WithProcessCwd(wd))
-	}
-
-	envFile, err := cmd.Flags().GetStringSlice("env-file")
-	if err != nil {
-		return err
-	}
-	if envFiles := strutil.DedupeStrSlice(envFile); len(envFiles) > 0 {
-		env, err := parseEnvVars(envFiles)
-		if err != nil {
-			return err
-		}
-		opts = append(opts, oci.WithEnv(env))
-	}
-
-	env, err := cmd.Flags().GetStringArray("env")
-	if err != nil {
-		return err
-	}
-	if env := strutil.DedupeStrSlice(env); len(env) > 0 {
-		opts = append(opts, oci.WithEnv(env))
-	}
-
 	flagI, err := cmd.Flags().GetBool("interactive")
 	if err != nil {
 		return err
@@ -347,146 +250,18 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	flagD, err := cmd.Flags().GetBool("detach")
+	container, dataStore, containerNameStore, err := createContainer(cmd, ctx, client, args, platform, flagI, flagT, flagD)
 	if err != nil {
 		return err
 	}
 
-	if flagI {
-		if flagD {
-			return errors.New("currently flag -i and -d cannot be specified together (FIXME)")
-		}
-	}
-
-	if flagT {
-		if flagD {
-			return errors.New("currently flag -t and -d cannot be specified together (FIXME)")
-		}
-		if !flagI {
-			return errors.New("currently flag -t needs -i to be specified together (FIXME)")
-		}
-		opts = append(opts, oci.WithTTY)
-	}
-
-	mountOpts, anonVolumes, err := generateMountOpts(cmd, ctx, client, ensuredImage)
-	if err != nil {
-		return err
-	} else {
-		opts = append(opts, mountOpts...)
-	}
-
-	var logURI string
-	if flagD {
-		if lu, err := generateLogURI(dataStore); err != nil {
-			return err
-		} else if lu != nil {
-			logURI = lu.String()
-		}
-	}
-
-	restartValue, err := cmd.Flags().GetString("restart")
+	lab, err := container.Labels(ctx)
 	if err != nil {
 		return err
 	}
-	restartOpts, err := generateRestartOpts(restartValue, logURI)
-	if err != nil {
-		return err
-	}
-	cOpts = append(cOpts, restartOpts...)
+	logURI := lab[labels.LogURI]
 
-	netOpts, netSlice, ports, err := generateNetOpts(cmd, dataStore, stateDir, ns, id)
-	if err != nil {
-		return err
-	}
-	opts = append(opts, netOpts...)
-
-	hostname := id[0:12]
-	customHostname, err := cmd.Flags().GetString("hostname")
-	if err != nil {
-		return err
-	}
-	if customHostname != "" {
-		hostname = customHostname
-	}
-	opts = append(opts, oci.WithHostname(hostname))
-	// `/etc/hostname` does not exist on FreeBSD
-	if runtime.GOOS == "linux" {
-		hostnamePath := filepath.Join(stateDir, "hostname")
-		if err := os.WriteFile(hostnamePath, []byte(hostname+"\n"), 0644); err != nil {
-			return err
-		}
-		opts = append(opts, withCustomEtcHostname(hostnamePath))
-	}
-
-	hookOpt, err := withNerdctlOCIHook(cmd, id, stateDir)
-	if err != nil {
-		return err
-	}
-	opts = append(opts, hookOpt)
-
-	if uOpts, err := generateUserOpts(cmd); err != nil {
-		return err
-	} else {
-		opts = append(opts, uOpts...)
-	}
-
-	rtCOpts, err := generateRuntimeCOpts(cmd)
-	if err != nil {
-		return err
-	}
-	cOpts = append(cOpts, rtCOpts...)
-
-	lCOpts, err := withContainerLabels(cmd)
-	if err != nil {
-		return err
-	}
-	cOpts = append(cOpts, lCOpts...)
-
-	var containerNameStore namestore.NameStore
-	name, err := cmd.Flags().GetString("name")
-	if err != nil {
-		return err
-	}
-	if name != "" {
-		containerNameStore, err = namestore.New(dataStore, ns)
-		if err != nil {
-			return err
-		}
-		if err := containerNameStore.Acquire(name, id); err != nil {
-			return err
-		}
-	}
-
-	var pidFile string
-	if cmd.Flags().Lookup("pidfile").Changed {
-		pidFile, err = cmd.Flags().GetString("pidfile")
-		if err != nil {
-			return err
-		}
-	}
-
-	extraHosts, err := cmd.Flags().GetStringSlice("add-host")
-	if err != nil {
-		return err
-	}
-	extraHosts = strutil.DedupeStrSlice(extraHosts)
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ports, logURI, anonVolumes, pidFile, platform)
-	if err != nil {
-		return err
-	}
-	cOpts = append(cOpts, ilOpt)
-
-	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
-
-	var s specs.Spec
-	spec := containerd.WithSpec(&s, opts...)
-	cOpts = append(cOpts, spec)
-
-	logrus.Debugf("final cOpts is %v", cOpts)
-	container, err := client.NewContainer(ctx, id, cOpts...)
-	if err != nil {
-		return err
-	}
+	id := container.ID()
 	rm, err := cmd.Flags().GetBool("rm")
 	if err != nil {
 		return err
@@ -497,6 +272,8 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 		defer func() {
 			const removeAnonVolumes = true
+			ns := lab[labels.Namespace]
+			stateDir := lab[labels.StateDir]
 			if removeErr := removeContainer(cmd, ctx, client, ns, id, id, true, dataStore, stateDir, containerNameStore, removeAnonVolumes); removeErr != nil {
 				logrus.WithError(removeErr).Warnf("failed to remove container %s", id)
 			}
@@ -558,6 +335,231 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd.Client, args []string, platform string, flagI, flagT, flagD bool) (containerd.Container, string, namestore.NameStore, error) {
+	// simulate the behavior of double dash
+	newArg := []string{}
+	if len(args) >= 2 && args[1] == "--" {
+		newArg = append(newArg, args[:1]...)
+		newArg = append(newArg, args[2:]...)
+		args = newArg
+	}
+
+	ns, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	var (
+		opts  []oci.SpecOpts
+		cOpts []containerd.NewContainerOpts
+		id    = idgen.GenerateID()
+	)
+
+	cidfile, err := cmd.Flags().GetString("cidfile")
+	if err != nil {
+		return nil, "", nil, err
+	}
+	if cidfile != "" {
+		if err := writeCIDFile(cidfile, id); err != nil {
+			return nil, "", nil, err
+		}
+	}
+
+	dataStore, err := getDataStore(cmd)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	stateDir, err := getContainerStateDirPath(cmd, dataStore, id)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	if err := os.MkdirAll(stateDir, 0700); err != nil {
+		return nil, "", nil, err
+	}
+
+	opts = append(opts,
+		oci.WithDefaultSpec(),
+	)
+
+	opts, err = setPlatformOptions(opts, cmd, id)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, platform, cmd, args, id)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	opts = append(opts, rootfsOpts...)
+	cOpts = append(cOpts, rootfsCOpts...)
+
+	wd, err := cmd.Flags().GetString("workdir")
+	if err != nil {
+		return nil, "", nil, err
+	}
+	if wd != "" {
+		opts = append(opts, oci.WithProcessCwd(wd))
+	}
+
+	envFile, err := cmd.Flags().GetStringSlice("env-file")
+	if err != nil {
+		return nil, "", nil, err
+	}
+	if envFiles := strutil.DedupeStrSlice(envFile); len(envFiles) > 0 {
+		env, err := parseEnvVars(envFiles)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		opts = append(opts, oci.WithEnv(env))
+	}
+
+	env, err := cmd.Flags().GetStringArray("env")
+	if err != nil {
+		return nil, "", nil, err
+	}
+	if env := strutil.DedupeStrSlice(env); len(env) > 0 {
+		opts = append(opts, oci.WithEnv(env))
+	}
+
+	if flagI {
+		if flagD {
+			return nil, "", nil, errors.New("currently flag -i and -d cannot be specified together (FIXME)")
+		}
+	}
+
+	if flagT {
+		if flagD {
+			return nil, "", nil, errors.New("currently flag -t and -d cannot be specified together (FIXME)")
+		}
+		if !flagI {
+			return nil, "", nil, errors.New("currently flag -t needs -i to be specified together (FIXME)")
+		}
+		opts = append(opts, oci.WithTTY)
+	}
+
+	mountOpts, anonVolumes, err := generateMountOpts(cmd, ctx, client, ensuredImage)
+	if err != nil {
+		return nil, "", nil, err
+	} else {
+		opts = append(opts, mountOpts...)
+	}
+
+	var logURI string
+	if flagD {
+		if lu, err := generateLogURI(dataStore); err != nil {
+			return nil, "", nil, err
+		} else if lu != nil {
+			logURI = lu.String()
+		}
+	}
+
+	restartValue, err := cmd.Flags().GetString("restart")
+	if err != nil {
+		return nil, "", nil, err
+	}
+	restartOpts, err := generateRestartOpts(restartValue, logURI)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	cOpts = append(cOpts, restartOpts...)
+
+	netOpts, netSlice, ports, err := generateNetOpts(cmd, dataStore, stateDir, ns, id)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	opts = append(opts, netOpts...)
+
+	hostname := id[0:12]
+	customHostname, err := cmd.Flags().GetString("hostname")
+	if err != nil {
+		return nil, "", nil, err
+	}
+	if customHostname != "" {
+		hostname = customHostname
+	}
+	opts = append(opts, oci.WithHostname(hostname))
+	// `/etc/hostname` does not exist on FreeBSD
+	if runtime.GOOS == "linux" {
+		hostnamePath := filepath.Join(stateDir, "hostname")
+		if err := os.WriteFile(hostnamePath, []byte(hostname+"\n"), 0644); err != nil {
+			return nil, "", nil, err
+		}
+		opts = append(opts, withCustomEtcHostname(hostnamePath))
+	}
+
+	hookOpt, err := withNerdctlOCIHook(cmd, id, stateDir)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	opts = append(opts, hookOpt)
+
+	if uOpts, err := generateUserOpts(cmd); err != nil {
+		return nil, "", nil, err
+	} else {
+		opts = append(opts, uOpts...)
+	}
+
+	rtCOpts, err := generateRuntimeCOpts(cmd)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	cOpts = append(cOpts, rtCOpts...)
+
+	lCOpts, err := withContainerLabels(cmd)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	cOpts = append(cOpts, lCOpts...)
+
+	var containerNameStore namestore.NameStore
+	name, err := cmd.Flags().GetString("name")
+	if err != nil {
+		return nil, "", nil, err
+	}
+	if name != "" {
+		containerNameStore, err = namestore.New(dataStore, ns)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		if err := containerNameStore.Acquire(name, id); err != nil {
+			return nil, "", nil, err
+		}
+	}
+
+	var pidFile string
+	if cmd.Flags().Lookup("pidfile").Changed {
+		pidFile, err = cmd.Flags().GetString("pidfile")
+		if err != nil {
+			return nil, "", nil, err
+		}
+	}
+
+	extraHosts, err := cmd.Flags().GetStringSlice("add-host")
+	if err != nil {
+		return nil, "", nil, err
+	}
+	extraHosts = strutil.DedupeStrSlice(extraHosts)
+	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ports, logURI, anonVolumes, pidFile, platform)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	cOpts = append(cOpts, ilOpt)
+
+	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
+
+	var s specs.Spec
+	spec := containerd.WithSpec(&s, opts...)
+	cOpts = append(cOpts, spec)
+
+	logrus.Debugf("final cOpts is %v", cOpts)
+	container, err := client.NewContainer(ctx, id, cOpts...)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	return container, dataStore, containerNameStore, nil
 }
 
 func getNetworkSlice(cmd *cobra.Command) ([]string, error) {

@@ -24,10 +24,13 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/opencontainers/go-digest"
 )
 
@@ -59,6 +62,27 @@ func newClient(cmd *cobra.Command, opts ...containerd.ClientOpt) (*containerd.Cl
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 	return client, ctx, cancel, nil
+}
+
+func newClientWithPlatform(cmd *cobra.Command, platform string, clientOpts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
+	if platform != "" {
+		if canExec, canExecErr := platformutil.CanExecProbably(platform); !canExec {
+			warn := fmt.Sprintf("Platform %q seems incompatible with the host platform %q. If you see \"exec format error\", see https://github.com/containerd/nerdctl/blob/master/docs/multi-platform.md",
+				platform, platforms.DefaultString())
+			if canExecErr != nil {
+				logrus.WithError(canExecErr).Warn(warn)
+			} else {
+				logrus.Warn(warn)
+			}
+		}
+		platformParsed, err := platforms.Parse(platform)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		platformM := platforms.Only(platformParsed)
+		clientOpts = append(clientOpts, containerd.WithDefaultPlatform(platformM))
+	}
+	return newClient(cmd, clientOpts...)
 }
 
 // getDataStore returns a string like "/var/lib/nerdctl/1935db59".

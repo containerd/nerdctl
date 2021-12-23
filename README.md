@@ -300,7 +300,7 @@ It does not necessarily mean that the corresponding features are missing in cont
 
 
 
-## Run & Exec
+## Container management
 ### :whale: :blue_square: nerdctl run
 Run a command in a new container.
 
@@ -537,7 +537,15 @@ Flags:
 
 Unimplemented `docker exec` flags: `--detach-keys`
 
-## Container management
+### :whale: :blue_square: nerdctl create
+Create a new container.
+
+Usage: `nerdctl create [OPTIONS] IMAGE [COMMAND] [ARG...]`
+
+:nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IPFS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
+
+The `nerdctl create` command similar to `nerdctl run -d` except the container is never started. You can then use the `nerdctl start <container_id>` command to start the container at any point.
+
 ### :whale: :blue_square: nerdctl ps
 List containers.
 
@@ -1235,7 +1243,6 @@ See [`./docs/config.md`](./docs/config.md).
 
 ## Unimplemented Docker commands
 Container management:
-- `docker create`
 - `docker attach`
 - `docker cp`
 - `docker diff`
