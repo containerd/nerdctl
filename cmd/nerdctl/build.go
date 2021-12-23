@@ -58,6 +58,7 @@ func newBuildCommand() *cobra.Command {
 	buildCommand.Flags().BoolP("quiet", "q", false, "Suppress the build output and print image ID on success")
 	buildCommand.Flags().StringArray("cache-from", nil, "External cache sources (eg. user/app:cache, type=local,src=path/to/dir)")
 	buildCommand.Flags().StringArray("cache-to", nil, "Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir)")
+	buildCommand.Flags().Bool("rm", true, "Remove intermediate containers after a successful build")
 
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
@@ -329,6 +330,14 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 			s = "type=registry,ref=" + s
 		}
 		buildctlArgs = append(buildctlArgs, "--export-cache="+s)
+	}
+
+	rm, err := cmd.Flags().GetBool("rm")
+	if err != nil {
+		return "", nil, false, "", cleanup, err
+	}
+	if !rm {
+		logrus.Warn("ignoring deprecated flag: '--rm=false'")
 	}
 
 	iidFile, err := cmd.Flags().GetString("iidfile")
