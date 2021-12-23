@@ -25,10 +25,10 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/docker/docker/errdefs"
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
 )
