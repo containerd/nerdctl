@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
@@ -64,6 +65,7 @@ volumes:
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "kill", "db").AssertOK()
+	time.Sleep(3 * time.Second)
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutContains("137")
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertNoOut("137")
 }

@@ -21,13 +21,11 @@ if [[ "$(id -u)" = "0" ]]; then
 		nerdctl apparmor load
 	fi
 
-	: "${DISABLE_SLIRP4NETNS_DNS:=}"
-	if [[ "$DISABLE_SLIRP4NETNS_DNS" = "1" ]]; then
-		cat <<EOF >/tmp/resolv.conf.no_slirp4netns
-# Workaround for https://github.com/containerd/nerdctl/issues/622
-# ERROR: failed to do request: Head "https://ghcr.io/v2/stargz-containers/alpine/manifests/3.13-org": dial tcp: lookup ghcr.io on 10.0.2.3:53: read udp 10.0.2.100:50602->10.0.2.3:53: i/o timeout
-nameserver 8.8.8.8
-EOF
+	: "${FORCE_TCP_DNS:=}"
+	if [[ "$FORCE_TCP_DNS" = "1" ]]; then
+		# Workaround for https://github.com/containerd/nerdctl/issues/622
+		# ERROR: failed to do request: Head "https://ghcr.io/v2/stargz-containers/alpine/manifests/3.13-org": dial tcp: lookup ghcr.io on 10.0.2.3:53: read udp 10.0.2.100:50602->10.0.2.3:53: i/o timeout
+		echo "options use-vc" >>/etc/resolv.conf
 	fi
 
 	# Switch to the rootless user via SSH
@@ -35,8 +33,8 @@ EOF
 	exec ssh -o StrictHostKeyChecking=no rootless@localhost "$0" "$@"
 else
 	containerd-rootless-setuptool.sh install
-	if [[ -f /tmp/resolv.conf.no_slirp4netns ]]; then
-		containerd-rootless-setuptool.sh nsenter -- cp -f /tmp/resolv.conf.no_slirp4netns /etc/resolv.conf
+	if grep -q "options use-vc" /etc/resolv.conf; then
+		containerd-rootless-setuptool.sh nsenter -- sh -euc 'echo "options use-vc" >>/etc/resolv.conf'
 	fi
 	containerd-rootless-setuptool.sh install-buildkit
 	containerd-rootless-setuptool.sh install-stargz
