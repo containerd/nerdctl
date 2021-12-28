@@ -129,3 +129,23 @@ CMD ["echo", "nerdctl-build-test-string"]
 
 	base.Cmd("run", "--rm", string(imageID)).AssertOutExactly("nerdctl-build-test-string\n")
 }
+
+func TestBuildWithLabels(t *testing.T) {
+	t.Parallel()
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	imageName := testutil.Identifier(t)
+
+	dockerfile := fmt.Sprintf(`FROM %s
+LABEL name=nerdctl-build-test-label
+	`, testutil.CommonImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, buildCtx, "--label", "label=test").AssertOK()
+	defer base.Cmd("rmi", imageName).Run()
+
+	base.Cmd("inspect", imageName, "--format", "{{json .Config.Labels }}").AssertOutExactly("{\"label\":\"test\",\"name\":\"nerdctl-build-test-label\"}\n")
+}

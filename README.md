@@ -684,8 +684,9 @@ Flags:
 - :whale: `--platform=(amd64|arm64|...)`: Set target platform for build (compatible with `docker buildx build`)
 - :whale: `--iidfile=FILE`: Write the image ID to the file
 - :nerd_face: `--ipfs`: Build image with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
+- :whale: `--label`: Set metadata for an image
 
-Unimplemented `docker build` flags: `--add-host`, `--label`, `--network`, `--squash`
+Unimplemented `docker build` flags: `--add-host`, `--network`, `--squash`
 
 ### :whale: nerdctl commit
 Create a new image from a container's changes

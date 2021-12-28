@@ -68,6 +68,7 @@ func newBuildCommand() *cobra.Command {
 
 	buildCommand.Flags().Bool("ipfs", false, "Allow pulling base images from IPFS")
 	buildCommand.Flags().String("iidfile", "", "Write the image ID to the file")
+	buildCommand.Flags().StringArray("label", nil, "Set metadata for an image")
 
 	return buildCommand
 }
@@ -284,6 +285,15 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 				logrus.WithError(err).Warnf("invalid BUILDKIT_INLINE_CACHE: %q", bic)
 			}
 		}
+	}
+
+	labels, err := cmd.Flags().GetStringArray("label")
+	if err != nil {
+		return "", nil, false, "", nil, err
+	}
+	labels = strutil.DedupeStrSlice(labels)
+	for _, l := range labels {
+		buildctlArgs = append(buildctlArgs, "--opt=label:"+l)
 	}
 
 	noCache, err := cmd.Flags().GetBool("no-cache")
