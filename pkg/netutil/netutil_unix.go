@@ -37,7 +37,7 @@ const ConfigListTemplate = `{
   "plugins": [
     {
       "type": "bridge",
-      "bridge": "nerdctl{{.ID}}",
+      "bridge": "{{.BridgeName}}",
       "isGateway": true,
       "ipMasq": true,
       "hairpinMode": true,

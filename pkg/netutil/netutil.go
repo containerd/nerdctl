@@ -29,6 +29,7 @@ import (
 	"text/template"
 
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containernetworking/cni/libcni"
 
@@ -58,6 +59,7 @@ type ConfigListTemplateOpts struct {
 	Subnet       string // e.g. "10.4.0.0/16"
 	Gateway      string // e.g. "10.4.0.1"
 	ExtraPlugins string // e.g. `,{"type":"isolation"}`
+	BridgeName   string // e.g. "nerdctl-123456"
 }
 
 // GenerateConfigList creates NetworkConfigList.
@@ -108,6 +110,7 @@ func GenerateConfigList(e *CNIEnv, labels []string, id int, name, cidr string) (
 		Subnet:       subnet.String(),
 		Gateway:      gateway.String(),
 		ExtraPlugins: extraPlugins,
+		BridgeName:   "nerdctl-" + idgen.GenerateID()[:6],
 	}
 
 	tmpl, err := template.New("").Parse(ConfigListTemplate)
