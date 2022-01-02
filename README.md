@@ -84,6 +84,13 @@ In addition to containerd, the following components should be installed (optiona
 
 These dependencies are included in `nerdctl-full-<VERSION>-<OS>-<ARCH>.tar.gz`, but not included in `nerdctl-<VERSION>-<OS>-<ARCH>.tar.gz`.
 
+### Brew
+On Linux systems you can install nerdctl via [brew](https://brew.sh):
+```bash
+brew install nerdctl
+```
+This is currently not supported for macOS. The section below shows how to install on macOS using brew.
+
 ### macOS
 
 [Lima](https://github.com/lima-vm/lima) project provides Linux virtual machines for macOS, with built-in integration for nerdctl.
