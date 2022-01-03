@@ -82,6 +82,11 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 			if err := os.RemoveAll(l.File); err != nil {
 				return err
 			}
+			// Remove the bridge network interface on the host.
+			if l.Plugins[0].Network.Type == "bridge" {
+				netIf := fmt.Sprintf("nerdctl%d", *l.NerdctlID)
+				removeBridgeNetworkInterface(netIf)
+			}
 			fmt.Fprintln(cmd.OutOrStdout(), name)
 		}
 		return nil
