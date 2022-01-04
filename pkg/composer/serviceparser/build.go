@@ -31,7 +31,7 @@ import (
 
 func parseBuildConfig(c *types.BuildConfig, project *types.Project, imageName string) (*Build, error) {
 	if unknown := reflectutil.UnknownNonEmptyFields(c,
-		"Context", "Dockerfile", "Args", "CacheFrom", "Target",
+		"Context", "Dockerfile", "Args", "CacheFrom", "Target", "Labels",
 	); len(unknown) > 0 {
 		logrus.Warnf("Ignoring: build: %+v", unknown)
 	}
@@ -74,6 +74,12 @@ func parseBuildConfig(c *types.BuildConfig, project *types.Project, imageName st
 
 	if c.Target != "" {
 		b.BuildArgs = append(b.BuildArgs, "--target="+c.Target)
+	}
+
+	if c.Labels != nil {
+		for k, v := range c.Labels {
+			b.BuildArgs = append(b.BuildArgs, "--label="+k+"="+v)
+		}
 	}
 
 	b.BuildArgs = append(b.BuildArgs, ctxDir)
