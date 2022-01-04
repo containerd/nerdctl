@@ -41,6 +41,8 @@ services:
     build:
       context: ./barctx
       target: bartgt
+      labels:
+        bar: baz
 `
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -70,4 +72,5 @@ services:
 	assert.Equal(t, true, bar.Build.Force)
 	assert.Equal(t, project.RelativePath("barctx"), lastOf(bar.Build.BuildArgs))
 	assert.Assert(t, in(bar.Build.BuildArgs, "--target=bartgt"))
+	assert.Assert(t, in(bar.Build.BuildArgs, "--label=bar=baz"))
 }
