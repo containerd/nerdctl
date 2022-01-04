@@ -298,3 +298,33 @@ services:
 
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps").AssertOutContains(fmt.Sprintf("%s_test_2", projectName))
 }
+
+func TestComposeIPAMConfig(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = fmt.Sprintf(`
+version: '3.1'
+
+services:
+  foo:
+    image: %s
+    command: "sleep infinity"
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.1.100.0/24
+`, testutil.AlpineImage)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	base.Cmd("inspect", "-f", `{{json .NetworkSettings.Networks }}`, projectName+"_foo_1").AssertOutContains("10.1.100.")
+}
