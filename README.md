@@ -1022,6 +1022,7 @@ Get real time events from the server.
 :warning: The output format is not compatible with Docker.
 
 Usage: `nerdctl events [OPTIONS]`
+
 Flags:
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 
@@ -1047,7 +1048,7 @@ Flags:
 ### :whale: nerdctl stats
 Display a live stream of container(s) resource usage statistics.
 
-Usage: `nerdctl stats [flags]`
+Usage: `nerdctl stats [OPTIONS]`
 
 Flags:
 - :whale: `-a, --all`: Show all containers (default shows just running)
