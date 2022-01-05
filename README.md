@@ -27,7 +27,7 @@ nerdctl is a **non-core** sub-project of containerd.
 
 ### Basic usage
 
-To run a container with the default CNI network (10.4.0.0/24):
+To run a container with the default `bridge` CNI network (10.4.0.0/24):
 ```console
 # nerdctl run -it --rm alpine
 ```
@@ -1298,6 +1298,7 @@ Configuration guide:
 Basic features:
 - [`./docs/compose.md`](./docs/compose.md):   Compose
 - [`./docs/rootless.md`](./docs/rootless.md): Rootless mode
+- [`./docs/cni.md`](./docs/cni.md): CNI for containers network
 
 Advanced features:
 - [`./docs/stargz.md`](./docs/stargz.md):     Lazy-pulling using Stargz Snapshotter

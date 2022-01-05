@@ -55,7 +55,7 @@ type ConfigListTemplateOpts struct {
 	ID           int
 	Name         string // e.g. "nerdctl"
 	Labels       string // e.g. `{"version":"1.1.0"}`
-	Subnet       string // e.g. "10.4.0.0/16"
+	Subnet       string // e.g. "10.4.0.0/24"
 	Gateway      string // e.g. "10.4.0.1"
 	ExtraPlugins string // e.g. `,{"type":"isolation"}`
 }
