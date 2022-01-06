@@ -19,52 +19,67 @@
 
 package netutil
 
+import (
+	"fmt"
+)
+
 const (
 	DefaultNetworkName = "bridge"
 	DefaultID          = 0
 	DefaultCIDR        = "10.4.0.0/24"
+	DefaultCNIPlugin   = "bridge"
+	DefaultIPAMDriver  = "host-local"
 )
 
-// basicPlugins is used by ConfigListTemplate
-var basicPlugins = []string{"bridge", "portmap", "firewall", "tuning"}
+func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}) ([]CNIPlugin, error) {
+	if driver == "" {
+		driver = DefaultCNIPlugin
+	}
+	var plugins []CNIPlugin
+	switch driver {
+	case "bridge":
+		bridge := newBridgePlugin(GetBridgeName(id))
+		bridge.IPAM = ipam
+		bridge.IsGW = true
+		bridge.IPMasq = true
+		bridge.HairpinMode = true
+		plugins = []CNIPlugin{bridge, newPortMapPlugin(), newFirewallPlugin(), newTuningPlugin()}
+	default:
+		return nil, fmt.Errorf("unsupported cni driver %q", driver)
+	}
+	return plugins, nil
+}
 
-// ConfigListTemplate was copied from https://github.com/containers/podman/blob/v2.2.0/cni/87-podman-bridge.conflist
-const ConfigListTemplate = `{
-  "cniVersion": "0.4.0",
-  "name": "{{.Name}}",
-  "nerdctlID": {{.ID}},
-  "nerdctlLabels": {{.Labels}},
-  "plugins": [
-    {
-      "type": "bridge",
-      "bridge": "nerdctl{{.ID}}",
-      "isGateway": true,
-      "ipMasq": true,
-      "hairpinMode": true,
-      "ipam": {
-        "type": "host-local",
-        "routes": [{ "dst": "0.0.0.0/0" }],
-        "ranges": [
-          [
-            {
-              "subnet": "{{.Subnet}}",
-              "gateway": "{{.Gateway}}"
-            }
-          ]
-        ]
-      }
-    },
-    {
-      "type": "portmap",
-      "capabilities": {
-        "portMappings": true
-      }
-    },
-    {
-      "type": "firewall"
-    },
-    {
-      "type": "tuning"
-    }{{.ExtraPlugins}}
-  ]
-}`
+func GenerateIPAM(driver string, subnetStr string) (map[string]interface{}, error) {
+	if driver == "" {
+		driver = DefaultIPAMDriver
+	}
+	subnet, gateway, err := parseSubnet(subnetStr)
+	if err != nil {
+		return nil, err
+	}
+
+	var ipamConfig interface{}
+	switch driver {
+	case "host-local":
+		ipamConf := newHostLocalIPAMConfig()
+		ipamConf.Routes = []IPAMRoute{
+			{Dst: "0.0.0.0/0"},
+		}
+		ipamConf.Ranges = append(ipamConf.Ranges, []IPRange{
+			{
+				Subnet:  subnet.String(),
+				Gateway: gateway.String(),
+			},
+		})
+		ipamConfig = ipamConf
+	default:
+		return nil, fmt.Errorf("unsupported ipam driver %q", driver)
+	}
+
+	ipam, err := structToMap(ipamConfig)
+	if err != nil {
+		return nil, err
+	}
+	return ipam, nil
+}

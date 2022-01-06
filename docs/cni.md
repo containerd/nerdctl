@@ -13,6 +13,53 @@ system, the supported CNI plugin types are `nat` only.
 The default network `bridge` for Linux and `nat` for Windows if you
 don't set any network options.
 
+Configuration of the default network `bridge` of Linux:
+
+```json
+{
+  "cniVersion": "0.4.0",
+  "name": "bridge",
+  "plugins": [
+    {
+      "type": "bridge",
+      "bridge": "nerdctl0",
+      "isGateway": true,
+      "ipMasq": true,
+      "hairpinMode": true,
+      "ipam": {
+        "type": "host-local",
+        "routes": [{ "dst": "0.0.0.0/0" }],
+        "ranges": [
+          [
+            {
+              "subnet": "10.4.0.1",
+              "gateway": "10.4.0.0/24"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "type": "portmap",
+      "capabilities": {
+        "portMappings": true
+      }
+    },
+    {
+      "type": "firewall"
+    },
+    {
+      "type": "tuning"
+    },
+    {
+      "type": "isolation"
+    }
+  ]
+}
+```
+
+When CNI plugin `isolation` be installed, will inject isolation configuration `{"type":"isolation"}` automatically.
+
 ## Custom networks
 
 You can also customize your CNI network by providing configuration files.
