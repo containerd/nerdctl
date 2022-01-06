@@ -16,7 +16,7 @@
 # Usage: `docker run -it --privileged <IMAGE>`. Make sure to add `-t` and `--privileged`.
 
 # Basic deps
-ARG CONTAINERD_VERSION=v1.5.8
+ARG CONTAINERD_VERSION=v1.5.9
 ARG RUNC_VERSION=v1.0.3
 ARG CNI_PLUGINS_VERSION=v1.0.1
 
@@ -32,10 +32,10 @@ ARG IMGCRYPT_VERSION=v1.1.2
 ARG ROOTLESSKIT_VERSION=v0.14.6
 ARG SLIRP4NETNS_VERSION=v1.1.12
 # Extra deps: FUSE-OverlayFS
-ARG FUSE_OVERLAYFS_VERSION=v1.7.1
+ARG FUSE_OVERLAYFS_VERSION=v1.8
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.4
 # Extra deps: IPFS
-ARG IPFS_VERSION=v0.10.0
+ARG IPFS_VERSION=v0.11.0
 
 # Test deps
 ARG GO_VERSION=1.17
@@ -179,7 +179,7 @@ RUN fname="containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION/v}-${TA
 ARG IPFS_VERSION
 RUN fname="go-ipfs_${IPFS_VERSION}_${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
   curl -o "${fname}" -fSL "https://github.com/ipfs/go-ipfs/releases/download/${IPFS_VERSION}/${fname}" && \
-  grep "${fname}" "/SHA256SUMS.d/go-ipfs-${IPFS_VERSION}" | sha512sum -c && \
+  grep "${fname}" "/SHA256SUMS.d/go-ipfs-${IPFS_VERSION}" | sha256sum -c && \
   tmpout=$(mktemp -d) && \
   tar -C ${tmpout} -xzf "${fname}" go-ipfs/ipfs && \
   mv ${tmpout}/go-ipfs/ipfs /out/bin/ && \
