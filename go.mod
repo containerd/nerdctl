@@ -33,7 +33,7 @@ require (
 	github.com/jaytaylor/go-hostsfile v0.0.0-20211120191712-f53f85d8b98f
 	github.com/mattn/go-isatty v0.0.14
 	github.com/moby/sys/mount v0.3.0
-	github.com/multiformats/go-multiaddr v0.4.1
+	github.com/multiformats/go-multiaddr v0.5.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.3-0.20211215212317-ea0209f50ae1
 	github.com/opencontainers/runtime-spec v1.0.3-0.20211214071223-8958f93039ab
