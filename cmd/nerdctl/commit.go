@@ -41,7 +41,7 @@ func newCommitCommand() *cobra.Command {
 	}
 	commitCommand.Flags().StringP("author", "a", "", `Author (e.g., "nerdctl contributor <nerdctl-dev@example.com>")`)
 	commitCommand.Flags().StringP("message", "m", "", "Commit message")
-	commitCommand.Flags().StringArrayP("change", "c", nil, "Apply Dockerfile instruction to the created image (only CMD directive is supported)")
+	commitCommand.Flags().StringArrayP("change", "c", nil, "Apply Dockerfile instruction to the created image (supported directives: [CMD, ENTRYPOINT])")
 	return commitCommand
 }
 
@@ -82,7 +82,11 @@ func commitAction(cmd *cobra.Command, args []string) error {
 }
 
 func parseChanges(cmd *cobra.Command) (commit.Changes, error) {
-	const commandDirective = "CMD" // XXX: Where can I get a constant for this?
+	const (
+		// XXX: Where can I get a constants for this?
+		commandDirective    = "CMD"
+		entrypointDirective = "ENTRYPOINT"
+	)
 	userChanges, err := cmd.Flags().GetStringArray("change")
 	if err != nil || userChanges == nil {
 		return commit.Changes{}, err
@@ -93,16 +97,26 @@ func parseChanges(cmd *cobra.Command) (commit.Changes, error) {
 			return commit.Changes{}, fmt.Errorf("received an empty value in change flag")
 		}
 		changeFields := strings.Fields(change)
+
 		switch changeFields[0] {
 		case commandDirective:
 			var overrideCMD []string
-			if err := json.Unmarshal([]byte(change[len(commandDirective):]), &overrideCMD); err != nil {
+			if err := json.Unmarshal([]byte(change[len(changeFields[0]):]), &overrideCMD); err != nil {
 				return commit.Changes{}, fmt.Errorf("malformed json in change flag value %q", change)
 			}
 			if changes.CMD != nil {
 				logrus.Warn("multiple change flags supplied for the CMD directive, overriding with last supplied")
 			}
 			changes.CMD = overrideCMD
+		case entrypointDirective:
+			var overrideEntrypoint []string
+			if err := json.Unmarshal([]byte(change[len(changeFields[0]):]), &overrideEntrypoint); err != nil {
+				return commit.Changes{}, fmt.Errorf("malformed json in change flag value %q", change)
+			}
+			if changes.Entrypoint != nil {
+				logrus.Warnf("multiple change flags supplied for the Entrypoint directive, overriding with last supplied")
+			}
+			changes.Entrypoint = overrideEntrypoint
 		default: // TODO: Support the rest of the change directives
 			return commit.Changes{}, fmt.Errorf("unknown change directive %q", changeFields[0])
 		}
