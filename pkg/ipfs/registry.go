@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -32,6 +33,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
+	httpapi "github.com/ipfs/go-ipfs-http-client"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	ipath "github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/opencontainers/go-digest"
@@ -39,21 +41,35 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewRegistry(ipfsClient iface.CoreAPI) http.Handler {
-	return &server{ipfsClient}
+// RegistryOptions represents options to configure the registry.
+type RegistryOptions struct {
+
+	// Times to retry query on IPFS. Zero or lower value means no retry.
+	ReadRetryNum int
+
+	// ReadTimeout is timeout duration of a read request to IPFS. Zero means no timeout.
+	ReadTimeout time.Duration
+}
+
+func NewRegistry(ipfsClient iface.CoreAPI, options RegistryOptions) (http.Handler, error) {
+	if _, ok := ipfsClient.(*httpapi.HttpApi); !ok {
+		return nil, fmt.Errorf("IPFS client must be *HttpApi")
+	}
+	return &server{ipfsClient, options}, nil
 }
 
 // server is a read-only registry which converts OCI Distribution Spec's pull-related API to IPFS
 // https://github.com/opencontainers/distribution-spec/blob/v1.0/spec.md#pull
 type server struct {
-	api iface.CoreAPI
+	api    iface.CoreAPI
+	config RegistryOptions
 }
 
 var manifestRegexp = regexp.MustCompile(`/v2/ipfs/([a-z0-9]+)/manifests/(.*)`)
 var blobsRegexp = regexp.MustCompile(`/v2/ipfs/([a-z0-9]+)/blobs/(.*)`)
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	content, mediaType, size, err := s.serve(r)
+	cid, content, mediaType, size, err := s.serve(r)
 	if err != nil {
 		logrus.WithError(err).Warnf("failed to serve %q %q", r.Method, r.URL.Path)
 		// TODO: support response body following OCI Distribution Spec's error response format spec:
@@ -62,6 +78,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if content == nil {
+		logrus.Debugf("returning without contents")
 		w.WriteHeader(200)
 		return
 	}
@@ -69,118 +86,139 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", size))
 	if r.Method == "GET" {
 		http.ServeContent(w, r, "", time.Now(), content)
-	}
-	if err := content.Close(); err != nil {
-		logrus.WithError(err).Warnf("failed to close file")
+		logrus.WithField("CID", cid).Debugf("served file")
 	}
 	return
 }
 
-func (s *server) serve(r *http.Request) (io.ReadSeekCloser, string, int64, error) {
+func (s *server) serve(r *http.Request) (string, io.ReadSeeker, string, int64, error) {
 	if r.Method != "GET" && r.Method != "HEAD" {
-		return nil, "", 0, fmt.Errorf("unsupported method")
+		return "", nil, "", 0, fmt.Errorf("unsupported method")
 	}
 
 	if r.URL.Path == "/v2/" {
-		return nil, "", 0, nil
+		logrus.Debugf("requested /v2/")
+		return "", nil, "", 0, nil
 	}
 
 	if matches := manifestRegexp.FindStringSubmatch(r.URL.Path); len(matches) != 0 {
 		cidStr, ref := matches[1], matches[2]
 		if _, dgstErr := digest.Parse(ref); dgstErr == nil {
-			content, mediaType, size, err := s.serveContentByDigest(cidStr, ref)
+			resolvedCID, content, mediaType, size, err := s.serveContentByDigest(r.Context(), cidStr, ref)
 			if !images.IsManifestType(mediaType) && !images.IsIndexType(mediaType) {
-				return nil, "", 0, fmt.Errorf("cannot serve non-manifest from manifets API: %q", mediaType)
+				return "", nil, "", 0, fmt.Errorf("cannot serve non-manifest from manifets API: %q", mediaType)
 			}
-			return content, mediaType, size, err
+			logrus.WithField("root CID", cidStr).WithField("digest", ref).WithField("resolved CID", resolvedCID).Debugf("resolved manifest by digest")
+			return resolvedCID, content, mediaType, size, err
 		}
 		if ref != "latest" {
-			return nil, "", 0, fmt.Errorf("tag of %q must be latest but got %q", cidStr, ref)
+			return "", nil, "", 0, fmt.Errorf("tag of %q must be latest but got %q", cidStr, ref)
 		}
-		return s.serveContentByCID(cidStr)
+		resolvedCID, content, mediaType, size, err := s.serveContentByCID(r.Context(), cidStr)
+		if err != nil {
+			return "", nil, "", 0, err
+		}
+		logrus.WithField("root CID", cidStr).WithField("resolved CID", resolvedCID).Debugf("resolved manifest by cid")
+		return resolvedCID, content, mediaType, size, nil
 	}
 
 	if matches := blobsRegexp.FindStringSubmatch(r.URL.Path); len(matches) != 0 {
 		rootCIDStr, dgstStr := matches[1], matches[2]
-		return s.serveContentByDigest(rootCIDStr, dgstStr)
+		resolvedCID, content, mediaType, size, err := s.serveContentByDigest(r.Context(), rootCIDStr, dgstStr)
+		if err != nil {
+			return "", nil, "", 0, err
+		}
+		logrus.WithField("root CID", rootCIDStr).WithField("digest", dgstStr).WithField("resolved CID", resolvedCID).Debugf("resolved blob by digest")
+		return resolvedCID, content, mediaType, size, nil
 	}
 
-	return nil, "", 0, fmt.Errorf("unsupported path")
+	return "", nil, "", 0, fmt.Errorf("unsupported path")
 }
 
-func (s *server) serveContentByCID(cidStr string) (r io.ReadSeekCloser, mediaType string, size int64, err error) {
+func (s *server) serveContentByCID(ctx context.Context, cidStr string) (resC string, r io.ReadSeeker, mediaType string, size int64, err error) {
 	targetCID, err := cid.Decode(cidStr)
 	if err != nil {
-		return nil, "", 0, err
+		return "", nil, "", 0, err
 	}
-	c, desc, err := s.resolveCIDOfRootBlob(targetCID)
+	c, desc, err := s.resolveCIDOfRootBlob(ctx, targetCID)
 	if err != nil {
-		return nil, "", 0, err
+		return "", nil, "", 0, err
 	}
-	rc, err := s.getReadSeekCloser(c)
+	rc, err := s.getReadSeeker(ctx, c)
 	if err != nil {
-		return nil, "", 0, err
+		return "", nil, "", 0, err
 	}
-	return rc, getMediaType(desc), desc.Size, nil
+	return c.String(), rc, getMediaType(desc), desc.Size, nil
 }
 
-func (s *server) serveContentByDigest(rootCIDStr, digestStr string) (r io.ReadSeekCloser, mediaType string, size int64, err error) {
+func (s *server) serveContentByDigest(ctx context.Context, rootCIDStr, digestStr string) (resC string, r io.ReadSeeker, mediaType string, size int64, err error) {
 	rootCID, err := cid.Decode(rootCIDStr)
 	if err != nil {
-		return nil, "", 0, err
+		return "", nil, "", 0, err
 	}
 	dgst, err := digest.Parse(digestStr)
 	if err != nil {
-		return nil, "", 0, err
+		return "", nil, "", 0, err
 	}
-	_, rootDesc, err := s.resolveCIDOfRootBlob(rootCID)
+	_, rootDesc, err := s.resolveCIDOfRootBlob(ctx, rootCID)
 	if err != nil {
-		return nil, "", 0, err
+		return "", nil, "", 0, err
 	}
-	targetCID, targetDesc, err := s.resolveCIDOfDigest(dgst, rootDesc)
+	targetCID, targetDesc, err := s.resolveCIDOfDigest(ctx, dgst, rootDesc)
 	if err != nil {
-		return nil, "", 0, err
+		return "", nil, "", 0, err
 	}
-	rc, err := s.getReadSeekCloser(targetCID)
+	rc, err := s.getReadSeeker(ctx, targetCID)
 	if err != nil {
-		return nil, "", 0, err
+		return "", nil, "", 0, err
 	}
-	return rc, getMediaType(targetDesc), targetDesc.Size, nil
+	return targetCID.String(), rc, getMediaType(targetDesc), targetDesc.Size, nil
 }
 
-func (s *server) getReadSeekCloser(c cid.Cid) (io.ReadSeekCloser, error) {
-	r, closeFunc, err := s.getFile(c)
+func (s *server) getReadSeeker(ctx context.Context, c cid.Cid) (io.ReadSeeker, error) {
+	sr, err := s.getFile(ctx, c)
 	if err != nil {
 		return nil, err
 	}
-	return newReadSeekCloser(r, closeFunc), nil
+	return newBufReadSeeker(sr), nil
 }
 
-func (s *server) getFile(c cid.Cid) (*io.SectionReader, func() error, error) {
-	n, err := s.api.Unixfs().Get(context.Background(), ipath.IpfsPath(c)) // only IPFS CID is supported
+func (s *server) getFile(ctx context.Context, c cid.Cid) (*io.SectionReader, error) {
+	target := ipath.IpfsPath(c) // only IPFS CID is supported
+	n, err := s.api.Unixfs().Get(ctx, target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get file %q: %v", c.String(), err)
+		return nil, fmt.Errorf("failed to get file %q: %v", c.String(), err)
 	}
 	f := files.ToFile(n)
-	ra, ok := f.(interface {
-		io.ReaderAt
-	})
-	if !ok {
-		return nil, nil, fmt.Errorf("ReaderAt is not implemented")
-	}
+	defer f.Close()
 	size, err := f.Size()
 	if err != nil {
-		return nil, nil, err
+		return nil, fmt.Errorf("failed to get size: %v", err)
 	}
-	return io.NewSectionReader(ra, 0, size), f.Close, nil
+	ra := &retryReaderAt{
+		ctx: ctx,
+		readAtFunc: func(ctx context.Context, p []byte, off int64) (int, error) {
+			resp, err := s.api.(*httpapi.HttpApi).Request("cat", target.String()).Option("offset", off).Option("length", len(p)).Send(ctx)
+			if err != nil {
+				return 0, err
+			}
+			if resp.Error != nil {
+				return 0, resp.Error
+			}
+			defer resp.Output.Close()
+			return io.ReadFull(resp.Output, p)
+		},
+		timeout: s.config.ReadTimeout,
+		retry:   s.config.ReadRetryNum,
+	}
+	return io.NewSectionReader(ra, 0, size), nil
 }
 
-func (s *server) resolveCIDOfRootBlob(c cid.Cid) (cid.Cid, ocispec.Descriptor, error) {
-	rc, err := s.getReadSeekCloser(c)
+func (s *server) resolveCIDOfRootBlob(ctx context.Context, c cid.Cid) (cid.Cid, ocispec.Descriptor, error) {
+	rc, err := s.getReadSeeker(ctx, c)
 	if err != nil {
 		return cid.Cid{}, ocispec.Descriptor{}, err
 	}
-	defer rc.Close()
 	var desc ocispec.Descriptor
 	if err := json.NewDecoder(rc).Decode(&desc); err != nil {
 		return cid.Cid{}, ocispec.Descriptor{}, err
@@ -192,7 +230,7 @@ func (s *server) resolveCIDOfRootBlob(c cid.Cid) (cid.Cid, ocispec.Descriptor, e
 	return c, desc, nil
 }
 
-func (s *server) resolveCIDOfDigest(dgst digest.Digest, desc ocispec.Descriptor) (cid.Cid, ocispec.Descriptor, error) {
+func (s *server) resolveCIDOfDigest(ctx context.Context, dgst digest.Digest, desc ocispec.Descriptor) (cid.Cid, ocispec.Descriptor, error) {
 	c, err := getIPFSCID(desc)
 	if err != nil {
 		return cid.Cid{}, ocispec.Descriptor{}, err
@@ -200,21 +238,21 @@ func (s *server) resolveCIDOfDigest(dgst digest.Digest, desc ocispec.Descriptor)
 	if desc.Digest == dgst {
 		return c, desc, nil // hit
 	}
-	sr, closeFunc, err := s.getFile(c)
+	if !images.IsManifestType(desc.MediaType) && !images.IsIndexType(desc.MediaType) {
+		// This is not the target blob and have no child. Early return here and avoid querying this blob.
+		return cid.Cid{}, ocispec.Descriptor{}, fmt.Errorf("blob doesn't match")
+	}
+	sr, err := s.getFile(ctx, c)
 	if err != nil {
 		return cid.Cid{}, ocispec.Descriptor{}, err
 	}
-	descs, err := images.Children(context.Background(), &readerProvider{desc, sr}, desc)
+	descs, err := images.Children(ctx, &readerProvider{desc, sr}, desc)
 	if err != nil {
-		closeFunc()
-		return cid.Cid{}, ocispec.Descriptor{}, err
-	}
-	if err := closeFunc(); err != nil {
 		return cid.Cid{}, ocispec.Descriptor{}, err
 	}
 	var allErr error
 	for _, desc := range descs {
-		gotCID, gotDesc, err := s.resolveCIDOfDigest(dgst, desc)
+		gotCID, gotDesc, err := s.resolveCIDOfDigest(ctx, dgst, desc)
 		if err != nil {
 			allErr = multierror.Append(allErr, err)
 			continue
@@ -244,26 +282,53 @@ func getMediaType(desc ocispec.Descriptor) string {
 	return "application/octet-stream"
 }
 
-func newReadSeekCloser(rs io.ReadSeeker, closeFunc func() error) io.ReadSeekCloser {
-	rsc := &readSeekCloser{
-		rs:        rs,
-		closeFunc: closeFunc,
+type retryReaderAt struct {
+	ctx        context.Context
+	readAtFunc func(ctx context.Context, p []byte, off int64) (int, error)
+	timeout    time.Duration
+	retry      int
+}
+
+func (r *retryReaderAt) ReadAt(p []byte, off int64) (int, error) {
+	if r.retry < 0 {
+		r.retry = 0
+	}
+	for i := 0; i <= r.retry; i++ {
+		ctx := r.ctx
+		if r.timeout != 0 {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, r.timeout)
+			defer cancel()
+		}
+		n, err := r.readAtFunc(ctx, p, off)
+		if err == nil {
+			return n, nil
+		} else if !errors.Is(err, context.DeadlineExceeded) {
+			return 0, err
+		}
+		// deadline exceeded. retry.
+	}
+	return 0, context.DeadlineExceeded
+}
+
+func newBufReadSeeker(rs io.ReadSeeker) io.ReadSeeker {
+	rsc := &bufReadSeeker{
+		rs: rs,
 	}
 	rsc.curR = bufio.NewReaderSize(rsc.rs, 512*1024)
 	return rsc
 }
 
-type readSeekCloser struct {
-	rs        io.ReadSeeker
-	closeFunc func() error
-	curR      *bufio.Reader
+type bufReadSeeker struct {
+	rs   io.ReadSeeker
+	curR *bufio.Reader
 }
 
-func (r *readSeekCloser) Read(p []byte) (int, error) {
+func (r *bufReadSeeker) Read(p []byte) (int, error) {
 	return r.curR.Read(p)
 }
 
-func (r *readSeekCloser) Seek(offset int64, whence int) (int64, error) {
+func (r *bufReadSeeker) Seek(offset int64, whence int) (int64, error) {
 	n, err := r.rs.Seek(offset, whence)
 	if err != nil {
 		return 0, err
@@ -271,8 +336,6 @@ func (r *readSeekCloser) Seek(offset int64, whence int) (int64, error) {
 	r.curR.Reset(r.rs)
 	return n, nil
 }
-
-func (r *readSeekCloser) Close() error { return r.closeFunc() }
 
 type readerProvider struct {
 	desc ocispec.Descriptor

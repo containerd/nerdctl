@@ -26,7 +26,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const defaultIPFSRegistry = "localhost:5050"
+const (
+	defaultIPFSRegistry            = "localhost:5050"
+	defaultIPFSReadRetryNum        = 0
+	defaultIPFSReadTimeoutDuration = 0
+)
 
 func newIPFSRegistryServeCommand() *cobra.Command {
 	var ipfsRegistryServeCommand = &cobra.Command{
@@ -39,6 +43,8 @@ func newIPFSRegistryServeCommand() *cobra.Command {
 
 	ipfsRegistryServeCommand.PersistentFlags().String("listen-registry", defaultIPFSRegistry, "address to listen")
 	ipfsRegistryServeCommand.PersistentFlags().String("ipfs-address", "", "multiaddr of IPFS API (default is pulled from $IPFS_PATH/api file. If $IPFS_PATH env var is not present, it defaults to ~/.ipfs)")
+	ipfsRegistryServeCommand.PersistentFlags().Int("read-retry-num", defaultIPFSReadRetryNum, "times to retry query on IPFS. Zero or lower means no retry.")
+	ipfsRegistryServeCommand.PersistentFlags().Duration("read-timeout", defaultIPFSReadTimeoutDuration, "timeout duration of a read request to IPFS. Zero means no timeout.")
 
 	return ipfsRegistryServeCommand
 }
@@ -49,6 +55,14 @@ func ipfsRegistryServeAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	listenAddress, err := cmd.Flags().GetString("listen-registry")
+	if err != nil {
+		return err
+	}
+	readTimeout, err := cmd.Flags().GetDuration("read-timeout")
+	if err != nil {
+		return err
+	}
+	readRetryNum, err := cmd.Flags().GetInt("read-retry-num")
 	if err != nil {
 		return err
 	}
@@ -68,7 +82,14 @@ func ipfsRegistryServeAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	h, err := ipfs.NewRegistry(ipfsClient, ipfs.RegistryOptions{
+		ReadRetryNum: readRetryNum,
+		ReadTimeout:  readTimeout,
+	})
+	if err != nil {
+		return err
+	}
 	logrus.Infof("serving on %v", listenAddress)
-	http.Handle("/", ipfs.NewRegistry(ipfsClient))
+	http.Handle("/", h)
 	return http.ListenAndServe(listenAddress, nil)
 }
