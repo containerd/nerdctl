@@ -44,6 +44,9 @@ ARG KUBO_VERSION=v0.17.0
 ARG TINI_VERSION=v0.19.0
 # Extra deps: Debug
 ARG BUILDG_VERSION=v0.4.1
+ARG IPFS_VERSION=v0.11.0
+# Extra deps: Cosign
+ARG COSIGN_VERSION=v1.13.1
 
 # Test deps
 ARG GO_VERSION=1.19
@@ -214,7 +217,14 @@ RUN fname="buildg-${BUILDG_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.
   tar xzf "${fname}" -C /out/bin && \
   rm -f "${fname}" && \
   echo "- buildg: ${BUILDG_VERSION}" >> /out/share/doc/nerdctl-full/README.md
-
+ARG COSIGN_VERSION
+RUN fname="cosign-${TARGETOS:-linux}-${TARGETARCH:-amd64}" && \
+  curl -o "${fname}" -fSL "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/${fname}" && \
+  grep "${fname}" "/SHA256SUMS.d/cosign-${COSIGN_VERSION}" | sha256sum -c && \
+  chmod +x $fname && \
+  mv $fname cosign && \
+  mv cosign /out/bin/ && \
+  echo "- cosign: ${COSIGN_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/slirp4netns:    [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/rootless-containers/slirp4netns/blob/${SLIRP4NETNS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
@@ -275,8 +285,6 @@ COPY . /go/src/github.com/containerd/nerdctl
 WORKDIR /go/src/github.com/containerd/nerdctl
 VOLUME /tmp
 ENV CGO_ENABLED=0
-# copy cosign binary for integration test
-COPY --from=gcr.io/projectsigstore/cosign:v1.3.1@sha256:3cd9b3a866579dc2e0cf2fdea547f4c9a27139276cc373165c26842bc594b8bd /ko-app/cosign /usr/local/bin/cosign
 # enable offline ipfs for integration test
 COPY ./Dockerfile.d/test-integration-etc_containerd-stargz-grpc_config.toml /etc/containerd-stargz-grpc/config.toml
 COPY ./Dockerfile.d/test-integration-ipfs-offline.service /usr/local/lib/systemd/system/
