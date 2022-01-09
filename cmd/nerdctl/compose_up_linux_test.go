@@ -114,6 +114,8 @@ func testComposeUp(t *testing.T, base *testutil.Base, dockerComposeYAML string) 
 	}
 	t.Log("wordpress seems functional")
 
+	// test `compose up` twice for idempotency
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
 	base.Cmd("volume", "inspect", fmt.Sprintf("%s_db", projectName)).AssertFail()
 	base.Cmd("network", "inspect", fmt.Sprintf("%s_default", projectName)).AssertFail()

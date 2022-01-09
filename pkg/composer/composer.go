@@ -26,7 +26,6 @@ import (
 	"path/filepath"
 
 	composecli "github.com/compose-spec/compose-go/cli"
-	"github.com/compose-spec/compose-go/types"
 	compose "github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/identifiers"
@@ -172,7 +171,7 @@ func findComposeYAML(o *Options) (string, error) {
 
 func (c *Composer) Services(ctx context.Context) ([]*serviceparser.Service, error) {
 	var services []*serviceparser.Service
-	if err := c.project.WithServices(nil, func(svc types.ServiceConfig) error {
+	if err := c.project.WithServices(nil, func(svc compose.ServiceConfig) error {
 		parsed, err := serviceparser.Parse(c.project, svc)
 		if err != nil {
 			return err
@@ -187,7 +186,7 @@ func (c *Composer) Services(ctx context.Context) ([]*serviceparser.Service, erro
 
 func (c *Composer) ServiceNames(services ...string) ([]string, error) {
 	var names []string
-	if err := c.project.WithServices(services, func(svc types.ServiceConfig) error {
+	if err := c.project.WithServices(services, func(svc compose.ServiceConfig) error {
 		names = append(names, svc.Name)
 		return nil
 	}); err != nil {

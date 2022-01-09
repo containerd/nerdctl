@@ -41,3 +41,24 @@ func (c *Composer) Containers(ctx context.Context, services ...string) ([]contai
 	}
 	return containers, nil
 }
+
+func (c *Composer) containerExists(ctx context.Context, name, service string) (bool, error) {
+	// get list of containers for service
+	containers, err := c.Containers(ctx, service)
+	if err != nil {
+		return false, err
+	}
+
+	for _, container := range containers {
+		containerLabels, err := container.Labels(ctx)
+		if err != nil {
+			return false, err
+		}
+		if name == containerLabels[labels.Name] {
+			// container exists
+			return true, nil
+		}
+	}
+	// container doesn't exist
+	return false, nil
+}
