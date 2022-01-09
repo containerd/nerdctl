@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -34,12 +35,20 @@ func TestCommit(t *testing.T) {
 	defer base.Cmd("rm", "-f", testContainer).Run()
 	defer base.Cmd("rmi", testImage).Run()
 
-	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "infinity").AssertOK()
-	base.Cmd("exec", testContainer, "sh", "-euxc", `echo hello-test-commit > /foo`).AssertOK()
-	base.Cmd(
-		"commit",
-		"-c", `CMD ["/foo"]`,
-		"-c", `ENTRYPOINT ["cat"]`,
-		testContainer, testImage).AssertOK()
-	base.Cmd("run", "--rm", testImage).AssertOutExactly("hello-test-commit\n")
+	for _, pause := range []string{
+		"true",
+		"false",
+	} {
+		base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "infinity").AssertOK()
+		base.Cmd("exec", testContainer, "sh", "-euxc", `echo hello-test-commit > /foo`).AssertOK()
+		base.Cmd(
+			"commit",
+			"-c", `CMD ["/foo"]`,
+			"-c", `ENTRYPOINT ["cat"]`,
+			fmt.Sprintf("--pause=%s", pause),
+			testContainer, testImage).AssertOK()
+		base.Cmd("run", "--rm", testImage).AssertOutExactly("hello-test-commit\n")
+		base.Cmd("rm", "-f", testContainer).Run()
+		base.Cmd("rmi", testImage).Run()
+	}
 }
