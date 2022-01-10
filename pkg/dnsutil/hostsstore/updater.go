@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -132,7 +131,7 @@ func (u *updater) phase2() error {
 		}
 
 		// parse the hosts file, keep the original host record
-		hosts, err := hostsfile.ParseHosts(ioutil.ReadFile(path))
+		hosts, err := hostsfile.ParseHosts(os.ReadFile(path))
 		if err != nil {
 			return err
 		}
