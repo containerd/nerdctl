@@ -704,8 +704,7 @@ Flags:
 - :whale: `-a, --author`: Author (e.g., "nerdctl contributor <nerdctl-dev@example.com>")
 - :whale: `-m, --message`: Commit message
 - :whale: `-c, --change`: Apply Dockerfile instruction to the created image (supported directives: [CMD, ENTRYPOINT])
-
-Unimplemented `docker commit` flags: `--pause`
+- :whale: `-p, --pause`: Pause container during commit (default: true)
 
 ## Image management
 
