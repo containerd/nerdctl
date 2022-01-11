@@ -59,10 +59,13 @@ func TestRunCgroupV2(t *testing.T) {
 42
 77
 0-1
+0
 `
 	//In CgroupV2 CPUWeight replace CPUShares => weight := 1 + ((shares-2)*9999)/262142
-	base.Cmd("run", "--rm", "--cpus", "0.42", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
-		"cat", "cpu.max", "memory.max", "pids.max", "cpu.weight", "cpuset.cpus").AssertOutExactly(expected)
+	base.Cmd("run", "--rm", "--cpus", "0.42", "--cpuset-mems", "0", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
+		"cat", "cpu.max", "memory.max", "pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected)
+	base.Cmd("run", "--rm", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
+		"cat", "cpu.max", "memory.max", "pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected)
 }
 
 func TestRunDevice(t *testing.T) {

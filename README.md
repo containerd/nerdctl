@@ -342,8 +342,11 @@ Network flags:
 
 Cgroup flags:
 - :whale: `--cpus`: Number of CPUs
+- :whale: `--cpu-quota`: Limit the CPU CFS (Completely Fair Scheduler) quota
+- :whale: `--cpu-period`: Limit the CPU CFS (Completely Fair Scheduler) period
 - :whale: `--cpu-shares`: CPU shares (relative weight)
 - :whale: `--cpuset-cpus`: CPUs in which to allow execution (0-3, 0,1)
+- :whale: `--cpuset-mems`: Memory nodes (MEMs) in which to allow execution (0-3, 0,1). Only effective on NUMA systems
 - :whale: `--memory`: Memory limit
 - :whale: `--pids-limit`: Tune container pids limit
 - :nerd_face: `--cgroup-conf`: Configure cgroup v2 (key=value)
