@@ -156,5 +156,11 @@ func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]o
 	}
 	opts = append(opts, gpuOpt...)
 
+	if rdtClass, err := cmd.Flags().GetString("rdt-class"); err != nil {
+		return nil, err
+	} else if rdtClass != "" {
+		opts = append(opts, oci.WithRdt(rdtClass, "", ""))
+	}
+
 	return opts, nil
 }

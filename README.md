@@ -352,6 +352,9 @@ Cgroup flags:
   - Default: "private" on cgroup v2 hosts, "host" on cgroup v1 hosts
 - :whale: `--device`: Add a host device to the container
 
+Intel RDT flags:
+- :nerd_face: `--rdt-class=CLASS`: Name of the RDT class (or CLOS) to associate the container wit
+
 User flags:
 - :whale: :blue_square: `-u, --user`: Username or UID (format: <name|uid>[:<group|gid>])
 
