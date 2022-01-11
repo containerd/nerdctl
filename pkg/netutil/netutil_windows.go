@@ -16,43 +16,53 @@
 
 package netutil
 
+import (
+	"fmt"
+)
+
 const (
 	DefaultNetworkName = "nat"
 	DefaultID          = 0
 	DefaultCIDR        = "10.4.0.0/24"
+	DefaultCNIPlugin   = "nat"
 )
 
-// basicPlugins is used by ConfigListTemplate
-var basicPlugins = []string{"nat"}
+func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}) ([]CNIPlugin, error) {
+	if driver == "" {
+		driver = DefaultCNIPlugin
+	}
+	var plugins []CNIPlugin
+	switch driver {
+	case "nat":
+		nat := newNatPlugin("Ethernet")
+		nat.IPAM = ipam
+		plugins = []CNIPlugin{nat}
+	default:
+		return nil, fmt.Errorf("unsupported cni driver %q", driver)
+	}
+	return plugins, nil
+}
 
-// ConfigListTemplate was copied from https://github.com/containers/podman/blob/v2.2.0/cni/87-podman-bridge.conflist
+func GenerateIPAM(driver string, subnetStr string) (map[string]interface{}, error) {
+	subnet, gateway, err := parseSubnet(subnetStr)
+	if err != nil {
+		return nil, err
+	}
 
-const ConfigListTemplate = `{
-  "cniVersion": "0.4.0",
-  "name": "{{.Name}}",
-  "nerdctlID": {{.ID}},
-  "nerdctlLabels": {{.Labels}},
-  "plugins": [
-    {
-      "type": "nat",
-      "master": "Ethernet",
-      "ipam": {
-        "subnet": "{{.Subnet}}",
-        "routes": [
-            {
-                "gateway": "{{.Gateway}}"
-            }
-        ]
-      }
-    },
-    {
-      "type": "portmap",
-      "capabilities": {
-        "portMappings": true
-      }
-    },
-    {
-      "type": "tuning"
-    }{{.ExtraPlugins}}
-  ]
-}`
+	var ipamConfig interface{}
+	switch driver {
+	case "":
+		ipamConf := newWindowsIPAMConfig()
+		ipamConf.Subnet = subnet.String()
+		ipamConf.Routes = append(ipamConf.Routes, IPAMRoute{Gateway: gateway.String()})
+		ipamConfig = ipamConf
+	default:
+		return nil, fmt.Errorf("unsupported ipam driver %q", driver)
+	}
+
+	ipam, err := structToMap(ipamConfig)
+	if err != nil {
+		return nil, err
+	}
+	return ipam, nil
+}

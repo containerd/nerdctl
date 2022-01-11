@@ -17,7 +17,6 @@
 package netutil
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -26,7 +25,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"text/template"
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -48,78 +46,62 @@ type CNIEnv struct {
 }
 
 func DefaultConfigList(e *CNIEnv) (*NetworkConfigList, error) {
-	return GenerateConfigList(e, nil, DefaultID, DefaultNetworkName, DefaultCIDR)
+	ipam, _ := GenerateIPAM("", DefaultCIDR)
+	plugins, _ := GenerateCNIPlugins("", DefaultID, ipam)
+	return GenerateConfigList(e, nil, DefaultID, DefaultNetworkName, plugins)
 }
 
-type ConfigListTemplateOpts struct {
-	ID           int
-	Name         string // e.g. "nerdctl"
-	Labels       string // e.g. `{"version":"1.1.0"}`
-	Subnet       string // e.g. "10.4.0.0/24"
-	Gateway      string // e.g. "10.4.0.1"
-	ExtraPlugins string // e.g. `,{"type":"isolation"}`
+type cniNetworkConfig struct {
+	CNIVersion string            `json:"cniVersion"`
+	Name       string            `json:"name"`
+	ID         int               `json:"nerdctlID"`
+	Labels     map[string]string `json:"nerdctlLabels"`
+	Plugins    []CNIPlugin       `json:"plugins"`
 }
 
 // GenerateConfigList creates NetworkConfigList.
 // GenerateConfigList does not fill "File" field.
 //
 // TODO: enable CNI isolation plugin
-func GenerateConfigList(e *CNIEnv, labels []string, id int, name, cidr string) (*NetworkConfigList, error) {
-	if e == nil || id < 0 || name == "" || cidr == "" {
+func GenerateConfigList(e *CNIEnv, labels []string, id int, name string, plugins []CNIPlugin) (*NetworkConfigList, error) {
+	if e == nil || id < 0 || name == "" || len(plugins) == 0 {
 		return nil, errdefs.ErrInvalidArgument
 	}
-	for _, f := range basicPlugins {
-		p := filepath.Join(e.Path, f)
+	for _, f := range plugins {
+		p := filepath.Join(e.Path, f.GetPluginType())
 		if _, err := exec.LookPath(p); err != nil {
 			return nil, fmt.Errorf("needs CNI plugin %q to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins/releases: %w", f, e.Path, err)
 		}
 	}
-	var extraPlugins string
+	var extraPlugin CNIPlugin
 	if _, err := exec.LookPath(filepath.Join(e.Path, "isolation")); err == nil {
 		logrus.Debug("found CNI isolation plugin")
-		extraPlugins = ",\n    {\n      \"type\":\"isolation\"\n    }"
+		extraPlugin = newIsolationPlugin()
 	} else if name != DefaultNetworkName {
 		// the warning is suppressed for DefaultNetworkName
 		logrus.Warnf("To isolate bridge networks, CNI plugin \"isolation\" needs to be installed in CNI_PATH (%q), see https://github.com/AkihiroSuda/cni-isolation",
 			e.Path)
 	}
 
-	subnetIP, subnet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse CIDR %q", cidr)
+	if extraPlugin != nil {
+		plugins = append(plugins, extraPlugin)
 	}
-	if !subnet.IP.Equal(subnetIP) {
-		return nil, fmt.Errorf("unexpected CIDR %q, maybe you meant %q?", cidr, subnet.String())
-	}
-	gateway := make(net.IP, len(subnet.IP))
-	copy(gateway, subnet.IP)
-	gateway[3] += 1
-
 	labelsMap := strutil.ConvertKVStringsToMap(labels)
-	labelsJson, err := json.Marshal(labelsMap)
+
+	conf := &cniNetworkConfig{
+		CNIVersion: "0.4.0",
+		Name:       name,
+		ID:         id,
+		Labels:     labelsMap,
+		Plugins:    plugins,
+	}
+
+	confJSON, err := json.MarshalIndent(conf, "", "  ")
 	if err != nil {
 		return nil, err
 	}
 
-	opts := &ConfigListTemplateOpts{
-		ID:           id,
-		Name:         name,
-		Labels:       string(labelsJson),
-		Subnet:       subnet.String(),
-		Gateway:      gateway.String(),
-		ExtraPlugins: extraPlugins,
-	}
-
-	tmpl, err := template.New("").Parse(ConfigListTemplate)
-	if err != nil {
-		return nil, err
-	}
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, opts); err != nil {
-		return nil, err
-	}
-
-	l, err := libcni.ConfListFromBytes(buf.Bytes())
+	l, err := libcni.ConfListFromBytes(confJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -210,4 +192,37 @@ func NerdctlLabels(b []byte) *map[string]string {
 		return nil
 	}
 	return ncl.NerdctlLabels
+}
+
+func GetBridgeName(id int) string {
+	return fmt.Sprintf("nerdctl%d", id)
+}
+
+func parseSubnet(subnetStr string) (*net.IPNet, net.IP, error) {
+	subnetIP, subnet, err := net.ParseCIDR(subnetStr)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse subnet %q", subnetStr)
+	}
+	if !subnet.IP.Equal(subnetIP) {
+		return nil, nil, fmt.Errorf("unexpected subnet %q, maybe you meant %q?", subnetStr, subnet.String())
+	}
+
+	gateway := make(net.IP, len(subnet.IP))
+	copy(gateway, subnet.IP)
+	gateway[3] += 1
+
+	return subnet, gateway, nil
+}
+
+// convert the struct to a map
+func structToMap(in interface{}) (map[string]interface{}, error) {
+	out := make(map[string]interface{})
+	data, err := json.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(data, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

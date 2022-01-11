@@ -98,7 +98,15 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		}
 
 		labels := strutil.DedupeStrSlice(labels)
-		l, err := netutil.GenerateConfigList(e, labels, id, name, subnet)
+		ipam, err := netutil.GenerateIPAM("", subnet)
+		if err != nil {
+			return err
+		}
+		cniPlugins, err := netutil.GenerateCNIPlugins("", id, ipam)
+		if err != nil {
+			return err
+		}
+		l, err := netutil.GenerateConfigList(e, labels, id, name, cniPlugins)
 		if err != nil {
 			return err
 		}
