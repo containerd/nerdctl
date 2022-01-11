@@ -55,6 +55,7 @@ type Opts struct {
 	Author  string
 	Message string
 	Ref     string
+	Pause   bool
 	Changes Changes
 }
 
@@ -99,23 +100,25 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 		return emptyDigest, err
 	}
 
-	status, err := task.Status(ctx)
-	if err != nil {
-		return emptyDigest, err
-	}
-
-	switch status.Status {
-	case containerd.Paused, containerd.Created, containerd.Stopped:
-	default:
-		if err := task.Pause(ctx); err != nil {
-			return emptyDigest, fmt.Errorf("failed to pause container: %w", err)
+	if opts.Pause {
+		status, err := task.Status(ctx)
+		if err != nil {
+			return emptyDigest, err
 		}
 
-		defer func() {
-			if err := task.Resume(ctx); err != nil {
-				logrus.Warnf("failed to unpause container %v: %v", id, err)
+		switch status.Status {
+		case containerd.Paused, containerd.Created, containerd.Stopped:
+		default:
+			if err := task.Pause(ctx); err != nil {
+				return emptyDigest, fmt.Errorf("failed to pause container: %w", err)
 			}
-		}()
+
+			defer func() {
+				if err := task.Resume(ctx); err != nil {
+					logrus.Warnf("failed to unpause container %v: %v", id, err)
+				}
+			}()
+		}
 	}
 
 	var (
