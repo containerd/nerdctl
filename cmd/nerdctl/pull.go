@@ -125,6 +125,10 @@ func ensureImage(cmd *cobra.Command, ctx context.Context, client *containerd.Cli
 	if err != nil {
 		return nil, err
 	}
+	hostsDirs, err := cmd.Flags().GetStringSlice("hosts-dir")
+	if err != nil {
+		return nil, err
+	}
 	verifier, err := cmd.Flags().GetString("verify")
 	if err != nil {
 		return nil, err
@@ -155,7 +159,7 @@ func ensureImage(cmd *cobra.Command, ctx context.Context, client *containerd.Cli
 			return nil, err
 		}
 
-		ref, err = verifyCosign(ctx, rawRef, keyRef)
+		ref, err = verifyCosign(ctx, rawRef, keyRef, hostsDirs)
 		if err != nil {
 			return nil, err
 		}
@@ -166,15 +170,15 @@ func ensureImage(cmd *cobra.Command, ctx context.Context, client *containerd.Cli
 	}
 
 	ensured, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, ref,
-		pull, insecureRegistry, ocispecPlatforms, unpack, quiet)
+		pull, insecureRegistry, hostsDirs, ocispecPlatforms, unpack, quiet)
 	if err != nil {
 		return nil, err
 	}
 	return ensured, err
 }
 
-func verifyCosign(ctx context.Context, rawRef string, keyRef string) (string, error) {
-	digest, err := imgutil.ResolveDigest(ctx, rawRef, false)
+func verifyCosign(ctx context.Context, rawRef string, keyRef string, hostsDirs []string) (string, error) {
+	digest, err := imgutil.ResolveDigest(ctx, rawRef, false, hostsDirs)
 	if err != nil {
 		logrus.WithError(err).Errorf("unable to resolve digest for an image %s: %v", rawRef, err)
 		return rawRef, err

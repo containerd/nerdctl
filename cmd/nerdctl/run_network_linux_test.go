@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
 
 	"gotest.tools/v3/assert"
 )
@@ -140,7 +141,7 @@ func valuesOfMapStringString(m map[string]string) map[string]struct{} {
 }
 
 func TestRunPort(t *testing.T) {
-	hostIP, err := getNonLoopbackIPv4()
+	hostIP, err := nettestutil.NonLoopbackIPv4()
 	assert.NilError(t, err)
 	type testCase struct {
 		listenIP         net.IP
@@ -307,7 +308,7 @@ func TestRunPort(t *testing.T) {
 				return
 			}
 
-			resp, err := httpGet(connectURL, 30)
+			resp, err := nettestutil.HTTPGet(connectURL, 30, false)
 			if tc.err != "" {
 				assert.ErrorContains(t, err, tc.err)
 				return

@@ -21,16 +21,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"runtime"
+	"net/http"
+	"net/url"
 	"strings"
 
-	"github.com/containerd/nerdctl/pkg/version"
+	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/remotes/docker"
+	dockerconfig "github.com/containerd/containerd/remotes/docker/config"
+	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	clitypes "github.com/docker/cli/cli/config/types"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker/api/types"
-	registrytypes "github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/registry"
+	"golang.org/x/net/context/ctxhttp"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -76,7 +80,7 @@ func loginAction(cmd *cobra.Command, args []string) error {
 		serverAddress = options.serverAddress
 	}
 
-	var response registrytypes.AuthenticateOKBody
+	var responseIdentityToken string
 	ctx := cmd.Context()
 	isDefaultRegistry := serverAddress == registry.IndexServer
 	authConfig, err := GetDefaultAuthConfig(options.username == "" && options.password == "", serverAddress, isDefaultRegistry)
@@ -85,7 +89,7 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	}
 	if err == nil && authConfig.Username != "" && authConfig.Password != "" {
 		//login With StoreCreds
-		response, err = loginClientSide(ctx, cmd, *authConfig)
+		responseIdentityToken, err = loginClientSide(ctx, cmd, *authConfig)
 	}
 
 	if err != nil || authConfig.Username == "" || authConfig.Password == "" {
@@ -94,16 +98,16 @@ func loginAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		response, err = loginClientSide(ctx, cmd, *authConfig)
+		responseIdentityToken, err = loginClientSide(ctx, cmd, *authConfig)
 		if err != nil {
 			return err
 		}
 
 	}
 
-	if response.IdentityToken != "" {
+	if responseIdentityToken != "" {
 		authConfig.Password = ""
-		authConfig.IdentityToken = response.IdentityToken
+		authConfig.IdentityToken = responseIdentityToken
 	}
 
 	dockerConfigFile, err := dockercliconfig.Load("")
@@ -115,9 +119,10 @@ func loginAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("error saving credentials: %w", err)
 	}
 
-	if response.Status != "" {
-		fmt.Fprintln(cmd.OutOrStdout(), response.Status)
+	if _, err = loginClientSide(ctx, cmd, *authConfig); err != nil {
+		return err
 	}
+	fmt.Fprintln(cmd.OutOrStdout(), "Login Succeeded")
 
 	return nil
 }
@@ -169,33 +174,119 @@ func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRe
 	return &res, nil
 }
 
-// Code from github.com/cli/cli/command/registry/login.go
-func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthConfig) (registrytypes.AuthenticateOKBody, error) {
+func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthConfig) (string, error) {
+	host := auth.ServerAddress
+	if strings.Contains(host, "://") {
+		u, err := url.Parse(host)
+		if err != nil {
+			return "", err
+		}
+		host = u.Host
+	}
 
-	var insecureRegistries []string
-	insecureRegistry, err := cmd.Flags().GetBool("insecure-registry")
+	var dOpts []dockerconfigresolver.Opt
+	insecure, err := cmd.Flags().GetBool("insecure-registry")
 	if err != nil {
-		return registrytypes.AuthenticateOKBody{}, err
+		return "", err
 	}
-	if insecureRegistry {
-		insecureRegistries = append(insecureRegistries, auth.ServerAddress)
+	if insecure {
+		logrus.Warnf("skipping verifying HTTPS certs for %q", host)
+		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
-	svc, err := registry.NewService(registry.ServiceOptions{
-		InsecureRegistries: insecureRegistries,
-	})
-
+	hostsDirs, err := cmd.Flags().GetStringSlice("hosts-dir")
 	if err != nil {
-		return registrytypes.AuthenticateOKBody{}, err
+		return "", err
+	}
+	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(hostsDirs))
+
+	authCreds := func(acArg string) (string, string, error) {
+		if acArg == host {
+			if auth.RegistryToken != "" {
+				// Even containerd/CRI does not support RegistryToken as of v1.4.3,
+				// so, nobody is actually using RegistryToken?
+				logrus.Warnf("RegistryToken (for %q) is not supported yet (FIXME)", host)
+			}
+			if auth.IdentityToken != "" {
+				return "", auth.IdentityToken, nil
+			}
+			return auth.Username, auth.Password, nil
+		}
+		return "", "", fmt.Errorf("expected acArg to be %q, got %q", host, acArg)
 	}
 
-	userAgent := fmt.Sprintf("Docker-Client/nerdctl-%s (%s)", version.Version, runtime.GOOS)
+	dOpts = append(dOpts, dockerconfigresolver.WithAuthCreds(authCreds))
+	ho, err := dockerconfigresolver.NewHostOptions(ctx, host, dOpts...)
+	if err != nil {
+		return "", err
+	}
+	fetchedRefreshTokens := make(map[string]string) // key: req.URL.Host
+	// onFetchRefreshToken is called when tryLoginWithRegHost calls rh.Authorizer.Authorize()
+	onFetchRefreshToken := func(ctx context.Context, s string, req *http.Request) {
+		fetchedRefreshTokens[req.URL.Host] = s
+	}
+	ho.AuthorizerOpts = append(ho.AuthorizerOpts, docker.WithFetchRefreshToken(onFetchRefreshToken))
+	regHosts, err := dockerconfig.ConfigureHosts(ctx, *ho)(host)
+	if err != nil {
+		return "", err
+	}
+	logrus.Debugf("len(regHosts)=%d", len(regHosts))
+	if len(regHosts) == 0 {
+		return "", fmt.Errorf("got empty []docker.RegistryHost for %q", host)
+	}
+	for i, rh := range regHosts {
+		err = tryLoginWithRegHost(ctx, rh)
+		identityToken := fetchedRefreshTokens[rh.Host] // can be empty
+		if err == nil {
+			return identityToken, nil
+		}
+		logrus.WithError(err).WithField("i", i).Error("failed to call tryLoginWithRegHost")
+	}
+	return "", err
+}
 
-	status, token, err := svc.Auth(ctx, &auth, userAgent)
+func tryLoginWithRegHost(ctx context.Context, rh docker.RegistryHost) error {
+	if rh.Authorizer == nil {
+		return errors.New("got nil Authorizer")
+	}
+	u := url.URL{
+		Scheme: rh.Scheme,
+		Host:   rh.Host,
+		Path:   rh.Path,
+	}
+	ctx = docker.WithScope(ctx, "")
+	var ress []*http.Response
+	for i := 0; i < 10; i++ {
+		req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+		if err != nil {
+			return err
+		}
+		for k, v := range rh.Header.Clone() {
+			for _, vv := range v {
+				req.Header.Add(k, vv)
+			}
+		}
+		if err := rh.Authorizer.Authorize(ctx, req); err != nil {
+			return fmt.Errorf("failed to call rh.Authorizer.Authorize: %w", err)
+		}
+		res, err := ctxhttp.Do(ctx, rh.Client, req)
+		if err != nil {
+			return fmt.Errorf("failed to call rh.Client.Do: %w", err)
+		}
+		ress = append(ress, res)
+		if res.StatusCode == 401 {
+			if err := rh.Authorizer.AddResponses(ctx, ress); err != nil && !errdefs.IsNotImplemented(err) {
+				return fmt.Errorf("failed to call rh.Authorizer.AddResponses: %w", err)
+			}
+			continue
+		}
+		if res.StatusCode/100 != 2 {
+			return fmt.Errorf("unexpected status code %d", res.StatusCode)
+		}
 
-	return registrytypes.AuthenticateOKBody{
-		Status:        status,
-		IdentityToken: token,
-	}, err
+		return nil
+	}
+
+	return errors.New("too many 401 (probably)")
 }
 
 func ConfigureAuthentification(authConfig *types.AuthConfig, options *loginOptions) error {

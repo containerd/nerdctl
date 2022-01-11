@@ -103,6 +103,11 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 	if err != nil {
 		return nil, err
 	}
+	hostsDirs, err := cmd.Flags().GetStringSlice("hosts-dir")
+	if err != nil {
+		return nil, err
+	}
+
 	o := composer.Options{
 		ProjectOptions: composecli.ProjectOptions{
 			WorkingDir:  projectDirectory,
@@ -186,7 +191,7 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 				pullMode, ocispecPlatforms, nil, quiet)
 		} else {
 			_, imgErr = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, imageName,
-				pullMode, insecure, ocispecPlatforms, nil, quiet)
+				pullMode, insecure, hostsDirs, ocispecPlatforms, nil, quiet)
 		}
 		return imgErr
 	}

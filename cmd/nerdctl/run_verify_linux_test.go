@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil/testregistry"
 	"gotest.tools/v3/assert"
 )
 
@@ -37,12 +38,12 @@ func TestRunVerifyCosign(t *testing.T) {
 	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	reg := newTestRegistry(base)
-	defer reg.cleanup()
+	reg := testregistry.NewPlainHTTP(base)
+	defer reg.Cleanup()
 	localhostIP := "127.0.0.1"
 	t.Logf("localhost IP=%q", localhostIP)
 	testImageRef := fmt.Sprintf("%s:%d/%s",
-		localhostIP, reg.listenPort, tID)
+		localhostIP, reg.ListenPort, tID)
 	t.Logf("testImageRef=%q", testImageRef)
 
 	dockerfile := fmt.Sprintf(`FROM %s

@@ -24,6 +24,8 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/pkg/testutil/testregistry"
 	"gotest.tools/v3/assert"
 )
 
@@ -55,10 +57,10 @@ func TestMultiPlatformBuildPush(t *testing.T) {
 	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	reg := newTestRegistry(base)
-	defer reg.cleanup()
+	reg := testregistry.NewPlainHTTP(base)
+	defer reg.Cleanup()
 
-	imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.listenPort, tID)
+	imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.ListenPort, tID)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -78,10 +80,10 @@ func TestMultiPlatformPullPushAllPlatforms(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	reg := newTestRegistry(base)
-	defer reg.cleanup()
+	reg := testregistry.NewPlainHTTP(base)
+	defer reg.Cleanup()
 
-	pushImageName := fmt.Sprintf("localhost:%d/%s:latest", reg.listenPort, tID)
+	pushImageName := fmt.Sprintf("localhost:%d/%s:latest", reg.ListenPort, tID)
 	defer base.Cmd("rmi", pushImageName).Run()
 
 	base.Cmd("pull", "--all-platforms", testutil.AlpineImage).AssertOK()
@@ -133,7 +135,7 @@ RUN uname -m > /usr/share/nginx/html/index.html
 	}
 
 	for testURL, expectedIndexHTML := range testCases {
-		resp, err := httpGet(testURL, 50)
+		resp, err := nettestutil.HTTPGet(testURL, 50, false)
 		assert.NilError(t, err)
 		respBody, err := io.ReadAll(resp.Body)
 		assert.NilError(t, err)

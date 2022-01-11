@@ -101,7 +101,9 @@ func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 // EnsureImage ensures the image.
 //
 // When insecure is set, skips verifying certs, and also falls back to HTTP when the registry does not speak HTTPS
-func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool) (*EnsuredImage, error) {
+//
+// FIXME: this func has too many args
+func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool, hostsDirs []string, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool) (*EnsuredImage, error) {
 	switch mode {
 	case "always", "missing", "never":
 		// NOP
@@ -134,7 +136,8 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 		logrus.Warnf("skipping verifying HTTPS certs for %q", refDomain)
 		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
-	resolver, err := dockerconfigresolver.New(refDomain, dOpts...)
+	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(hostsDirs))
+	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +150,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 		if insecure {
 			logrus.WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
 			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
-			resolver, err = dockerconfigresolver.New(refDomain, dOpts...)
+			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
 			if err != nil {
 				return nil, err
 			}
@@ -161,7 +164,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 	return img, nil
 }
 
-func ResolveDigest(ctx context.Context, rawRef string, insecure bool) (string, error) {
+func ResolveDigest(ctx context.Context, rawRef string, insecure bool, hostsDirs []string) (string, error) {
 	named, err := refdocker.ParseDockerRef(rawRef)
 	if err != nil {
 		return "", err
@@ -174,7 +177,8 @@ func ResolveDigest(ctx context.Context, rawRef string, insecure bool) (string, e
 		logrus.Warnf("skipping verifying HTTPS certs for %q", refDomain)
 		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
-	resolver, err := dockerconfigresolver.New(refDomain, dOpts...)
+	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(hostsDirs))
+	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
 	if err != nil {
 		return "", err
 	}

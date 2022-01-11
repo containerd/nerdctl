@@ -24,6 +24,7 @@ address        = "unix:///run/k3s/containerd/containerd.sock"
 namespace      = "k8s.io"
 snapshotter    = "stargz"
 cgroup_manager = "cgroupfs"
+hosts_dir      = ["/etc/containerd/certs.d", "/etc/docker/certs.d"]
 ```
 
 ## Properties
@@ -40,6 +41,7 @@ cgroup_manager = "cgroupfs"
 | `data_root`         | `--data-root`                      |                           | Persistent state directory    | Since 0.16.0     |
 | `cgroup_manager`    | `--cgroup-manager`                 |                           | cgroup manager                | Since 0.16.0     |
 | `insecure_registry` | `--insecure-registry`              |                           | Allow insecure registry       | Since 0.16.0     |
+| `hosts_dir`         | `--hosts-dir`                      |                           | `certs.d` directory           | Since 0.16.0     |
 
 The properties are parsed in the following precedence:
 1. CLI flag

@@ -27,6 +27,7 @@ import (
 	"github.com/docker/go-connections/nat"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
 
 	"gotest.tools/v3/assert"
 )
@@ -81,7 +82,7 @@ func testComposeUp(t *testing.T, base *testutil.Base, dockerComposeYAML string) 
 	base.Cmd("network", "inspect", fmt.Sprintf("%s_default", projectName)).AssertOK()
 
 	checkWordpress := func() error {
-		resp, err := httpGet("http://127.0.0.1:8080", 10)
+		resp, err := nettestutil.HTTPGet("http://127.0.0.1:8080", 10, false)
 		if err != nil {
 			return err
 		}
@@ -144,7 +145,7 @@ COPY index.html /usr/share/nginx/html/index.html
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--build").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
-	resp, err := httpGet("http://127.0.0.1:8080", 50)
+	resp, err := nettestutil.HTTPGet("http://127.0.0.1:8080", 50, false)
 	assert.NilError(t, err)
 	respBody, err := io.ReadAll(resp.Body)
 	assert.NilError(t, err)

@@ -87,16 +87,17 @@ func xmain() error {
 // Config corresponds to nerdctl.toml .
 // See docs/config.md .
 type Config struct {
-	Debug            bool   `toml:"debug"`
-	DebugFull        bool   `toml:"debug_full"`
-	Address          string `toml:"address"`
-	Namespace        string `toml:"namespace"`
-	Snapshotter      string `toml:"snapshotter"`
-	CNIPath          string `toml:"cni_path"`
-	CNINetConfPath   string `toml:"cni_netconfpath"`
-	DataRoot         string `toml:"data_root"`
-	CgroupManager    string `toml:"cgroup_manager"`
-	InsecureRegistry bool   `toml:"insecure_registry"`
+	Debug            bool     `toml:"debug"`
+	DebugFull        bool     `toml:"debug_full"`
+	Address          string   `toml:"address"`
+	Namespace        string   `toml:"namespace"`
+	Snapshotter      string   `toml:"snapshotter"`
+	CNIPath          string   `toml:"cni_path"`
+	CNINetConfPath   string   `toml:"cni_netconfpath"`
+	DataRoot         string   `toml:"data_root"`
+	CgroupManager    string   `toml:"cgroup_manager"`
+	InsecureRegistry bool     `toml:"insecure_registry"`
+	HostsDir         []string `toml:"hosts_dir"`
 }
 
 // NewConfig creates a default Config object statically,
@@ -113,6 +114,7 @@ func NewConfig() *Config {
 		DataRoot:         ncdefaults.DataRoot(),
 		CgroupManager:    ncdefaults.CgroupManager(),
 		InsecureRegistry: false,
+		HostsDir:         ncdefaults.HostsDirs(),
 	}
 }
 
@@ -148,6 +150,8 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) error {
 	rootCmd.PersistentFlags().String("cgroup-manager", cfg.CgroupManager, `Cgroup manager to use ("cgroupfs"|"systemd")`)
 	rootCmd.RegisterFlagCompletionFunc("cgroup-manager", shellCompleteCgroupManagerNames)
 	rootCmd.PersistentFlags().Bool("insecure-registry", cfg.InsecureRegistry, "skips verifying HTTPS certs, and allows falling back to plain HTTP")
+	// hosts-dir is defined as StringSlice, not StringArray, to allow specifying "--hosts-dir=/etc/containerd/certs.d,/etc/docker/certs.d"
+	rootCmd.PersistentFlags().StringSlice("hosts-dir", cfg.HostsDir, "A directory that contains <HOST:PORT>/hosts.toml (containerd style) or <HOST:PORT>/{ca.cert, cert.pem, key.pem} (docker style)")
 	return nil
 }
 

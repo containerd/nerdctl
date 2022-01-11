@@ -14,17 +14,19 @@
    limitations under the License.
 */
 
-package main
+package nettestutil
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
 	"github.com/containerd/containerd/errdefs"
 )
 
-func httpGet(urlStr string, attempts int) (*http.Response, error) {
+func HTTPGet(urlStr string, attempts int, insecure bool) (*http.Response, error) {
 	var (
 		resp *http.Response
 		err  error
@@ -34,6 +36,11 @@ func httpGet(urlStr string, attempts int) (*http.Response, error) {
 	}
 	client := &http.Client{
 		Timeout: 3 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: insecure,
+			},
+		},
 	}
 	for i := 0; i < attempts; i++ {
 		resp, err = client.Get(urlStr)
@@ -43,4 +50,26 @@ func httpGet(urlStr string, attempts int) (*http.Response, error) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	return nil, fmt.Errorf("error after %d attempts: %w", attempts, err)
+}
+
+func NonLoopbackIPv4() (net.IP, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return nil, err
+	}
+	for _, addr := range addrs {
+		ip, _, err := net.ParseCIDR(addr.String())
+		if err != nil {
+			continue
+		}
+		ipv4 := ip.To4()
+		if ipv4 == nil {
+			continue
+		}
+		if ipv4.IsLoopback() {
+			continue
+		}
+		return ipv4, nil
+	}
+	return nil, fmt.Errorf("non-loopback IPv4 address not found, attempted=%+v: %w", addrs, errdefs.ErrNotFound)
 }
