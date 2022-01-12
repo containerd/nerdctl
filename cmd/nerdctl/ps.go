@@ -30,9 +30,11 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/labels/k8slabels"
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 )
@@ -158,11 +160,19 @@ func printContainers(ctx context.Context, cmd *cobra.Command, containers []conta
 	for _, c := range containers {
 		info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
 		if err != nil {
+			if errdefs.IsNotFound(err) {
+				logrus.Warn(err)
+				continue
+			}
 			return err
 		}
 
 		spec, err := c.Spec(ctx)
 		if err != nil {
+			if errdefs.IsNotFound(err) {
+				logrus.Warn(err)
+				continue
+			}
 			return err
 		}
 
