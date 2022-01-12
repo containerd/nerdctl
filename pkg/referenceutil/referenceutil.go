@@ -18,6 +18,7 @@ package referenceutil
 
 import (
 	"fmt"
+	"path"
 	"strings"
 
 	refdocker "github.com/containerd/containerd/reference/docker"
@@ -35,8 +36,8 @@ type Reference interface {
 // If the ref has IPFS scheme or can be parsed as CID, it's parsed as an IPFS reference.
 // Otherwise it's parsed as a docker reference.
 func ParseAny(rawRef string) (Reference, error) {
-	if _, ref, err := ParseIPFSRefWithScheme(rawRef); err == nil {
-		return stringRef{ref}, nil
+	if scheme, ref, err := ParseIPFSRefWithScheme(rawRef); err == nil {
+		return stringRef{scheme: scheme, s: ref}, nil
 	}
 	if c, err := cid.Decode(rawRef); err == nil {
 		return c, nil
@@ -58,9 +59,39 @@ func ParseIPFSRefWithScheme(name string) (scheme, ref string, err error) {
 }
 
 type stringRef struct {
-	s string
+	scheme string
+	s      string
 }
 
 func (s stringRef) String() string {
 	return s.s
+}
+
+// SuggestContainerName generates a container name from name.
+// The result MUST NOT be parsed.
+func SuggestContainerName(rawRef, containerID string) string {
+	const shortIDLength = 5
+	if len(containerID) < shortIDLength {
+		panic(fmt.Errorf("got too short (< %d) container ID: %q", shortIDLength, containerID))
+	}
+	name := "untitled-" + containerID[:shortIDLength]
+	if rawRef != "" {
+		r, err := ParseAny(rawRef)
+		if err == nil {
+			switch rr := r.(type) {
+			case refdocker.Named:
+				if rrName := rr.Name(); rrName != "" {
+					imageNameBased := path.Base(rrName)
+					if imageNameBased != "" {
+						name = imageNameBased + "-" + containerID[:shortIDLength]
+					}
+				}
+			case cid.Cid:
+				name = "ipfs" + "-" + rr.String()[:shortIDLength] + "-" + containerID[:shortIDLength]
+			case stringRef:
+				name = rr.scheme + "-" + rr.s[:shortIDLength] + "-" + containerID[:shortIDLength]
+			}
+		}
+	}
+	return name
 }

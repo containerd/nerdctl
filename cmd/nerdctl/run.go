@@ -51,6 +51,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/portutil"
+	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/resolvconf"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -522,6 +523,14 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 	name, err := cmd.Flags().GetString("name")
 	if err != nil {
 		return nil, "", nil, err
+	}
+	if name == "" && !cmd.Flags().Changed("name") {
+		// Automatically set the container name, unless `--name=""` was explicitly specified.
+		var imageRef string
+		if ensuredImage != nil {
+			imageRef = ensuredImage.Ref
+		}
+		name = referenceutil.SuggestContainerName(imageRef, id)
 	}
 	if name != "" {
 		containerNameStore, err = namestore.New(dataStore, ns)
