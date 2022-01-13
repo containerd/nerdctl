@@ -66,6 +66,11 @@ func TestRunCgroupV2(t *testing.T) {
 		"cat", "cpu.max", "memory.max", "pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected)
 	base.Cmd("run", "--rm", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
 		"cat", "cpu.max", "memory.max", "pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected)
+
+	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate", "-w", "/sys/fs/cgroup", "-d", testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	base.Cmd("update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.Identifier(t)+"-testUpdate").AssertOK()
+	base.Cmd("exec", testutil.Identifier(t)+"-testUpdate", "cat", "cpu.max", "memory.max", "pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected)
+	base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate").AssertOK()
 }
 
 func TestRunDevice(t *testing.T) {
