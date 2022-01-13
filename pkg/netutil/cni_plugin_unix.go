@@ -97,11 +97,11 @@ func (*tuningConfig) GetPluginType() string {
 
 // https://github.com/containernetworking/plugins/blob/v1.0.1/plugins/ipam/host-local/backend/allocator/config.go#L47-L56
 type hostLocalIPAMConfig struct {
-	Type        string      `json:"type"`
-	Routes      []IPAMRoute `json:"routes,omitempty"`
-	ResolveConf string      `json:"resolveConf,omitempty"`
-	DataDir     string      `json:"dataDir,omitempty"`
-	Ranges      [][]IPRange `json:"ranges,omitempty"`
+	Type        string        `json:"type"`
+	Routes      []IPAMRoute   `json:"routes,omitempty"`
+	ResolveConf string        `json:"resolveConf,omitempty"`
+	DataDir     string        `json:"dataDir,omitempty"`
+	Ranges      [][]IPAMRange `json:"ranges,omitempty"`
 }
 
 func newHostLocalIPAMConfig() *hostLocalIPAMConfig {

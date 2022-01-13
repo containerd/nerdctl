@@ -46,7 +46,7 @@ type CNIEnv struct {
 }
 
 func DefaultConfigList(e *CNIEnv) (*NetworkConfigList, error) {
-	ipam, _ := GenerateIPAM("", DefaultCIDR)
+	ipam, _ := GenerateIPAM("", DefaultCIDR, "", "")
 	plugins, _ := GenerateCNIPlugins("", DefaultID, ipam)
 	return GenerateConfigList(e, nil, DefaultID, DefaultNetworkName, plugins)
 }
@@ -198,20 +198,84 @@ func GetBridgeName(id int) string {
 	return fmt.Sprintf("nerdctl%d", id)
 }
 
-func parseSubnet(subnetStr string) (*net.IPNet, net.IP, error) {
+func parseIPAMRange(subnetStr, gatewayStr, ipRangeStr string) (*IPAMRange, error) {
 	subnetIP, subnet, err := net.ParseCIDR(subnetStr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse subnet %q", subnetStr)
+		return nil, fmt.Errorf("failed to parse subnet %q", subnetStr)
 	}
 	if !subnet.IP.Equal(subnetIP) {
-		return nil, nil, fmt.Errorf("unexpected subnet %q, maybe you meant %q?", subnetStr, subnet.String())
+		return nil, fmt.Errorf("unexpected subnet %q, maybe you meant %q?", subnetStr, subnet.String())
 	}
 
-	gateway := make(net.IP, len(subnet.IP))
-	copy(gateway, subnet.IP)
-	gateway[3] += 1
+	var gateway, rangeStart, rangeEnd net.IP
+	if gatewayStr != "" {
+		gatewayIP := net.ParseIP(gatewayStr)
+		if gatewayIP == nil {
+			return nil, fmt.Errorf("failed to parse gateway %q", gatewayStr)
+		}
+		if !subnet.Contains(gatewayIP) {
+			return nil, fmt.Errorf("no matching subnet %q for gateway %q", subnetStr, gatewayStr)
+		}
+		gateway = gatewayIP
+	} else {
+		gateway, _ = firstIPInSubnet(subnet)
+	}
 
-	return subnet, gateway, nil
+	res := &IPAMRange{
+		Subnet:  subnet.String(),
+		Gateway: gateway.String(),
+	}
+
+	if ipRangeStr != "" {
+		_, ipRange, err := net.ParseCIDR(ipRangeStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse ip-range %q", ipRangeStr)
+		}
+		rangeStart, _ = firstIPInSubnet(ipRange)
+		rangeEnd, _ = lastIPInSubnet(ipRange)
+		if !subnet.Contains(rangeStart) || !subnet.Contains(rangeEnd) {
+			return nil, fmt.Errorf("no matching subnet %q for ip-range %q", subnetStr, ipRangeStr)
+		}
+		res.RangeStart = rangeStart.String()
+		res.RangeEnd = rangeEnd.String()
+		res.IPRange = ipRangeStr
+	}
+
+	return res, nil
+}
+
+// lastIPInSubnet gets the last IP in a subnet
+// https://github.com/containers/podman/blob/v4.0.0-rc1/libpod/network/util/ip.go#L18
+func lastIPInSubnet(addr *net.IPNet) (net.IP, error) {
+	// re-parse to ensure clean network address
+	_, cidr, err := net.ParseCIDR(addr.String())
+	if err != nil {
+		return nil, err
+	}
+	ones, bits := cidr.Mask.Size()
+	if ones == bits {
+		return cidr.IP, err
+	}
+	for i := range cidr.IP {
+		cidr.IP[i] = cidr.IP[i] | ^cidr.Mask[i]
+	}
+	return cidr.IP, err
+}
+
+// firstIPInSubnet gets the first IP in a subnet
+// https://github.com/containers/podman/blob/v4.0.0-rc1/libpod/network/util/ip.go#L36
+func firstIPInSubnet(addr *net.IPNet) (net.IP, error) {
+	// re-parse to ensure clean network address
+	_, cidr, err := net.ParseCIDR(addr.String())
+	if err != nil {
+		return nil, err
+	}
+	ones, bits := cidr.Mask.Size()
+	if ones == bits {
+		return cidr.IP, err
+	}
+	cidr.IP[len(cidr.IP)-1]++
+	return cidr.IP, err
 }
 
 // convert the struct to a map

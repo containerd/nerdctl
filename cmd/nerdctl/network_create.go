@@ -41,6 +41,8 @@ func newNetworkCreateCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	networkCreateCommand.Flags().String("subnet", "", `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
+	networkCreateCommand.Flags().String("gateway", "", `Gateway for the master subnet`)
+	networkCreateCommand.Flags().String("ip-range", "", `Allocate container ip from a sub-range`)
 	networkCreateCommand.Flags().StringArray("label", nil, "Set metadata for a network")
 	return networkCreateCommand
 }
@@ -61,7 +63,15 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 	if err := os.MkdirAll(cniNetconfpath, 0755); err != nil {
 		return err
 	}
-	subnet, err := cmd.Flags().GetString("subnet")
+	subnetStr, err := cmd.Flags().GetString("subnet")
+	if err != nil {
+		return err
+	}
+	gatewayStr, err := cmd.Flags().GetString("gateway")
+	if err != nil {
+		return err
+	}
+	ipRangeStr, err := cmd.Flags().GetString("ip-range")
 	if err != nil {
 		return err
 	}
@@ -90,15 +100,18 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if subnet == "" {
+		if subnetStr == "" {
+			if gatewayStr != "" || ipRangeStr != "" {
+				return fmt.Errorf("cannot set gateway or ip-range without subnet, specify --subnet manually")
+			}
 			if id > 255 {
 				return fmt.Errorf("cannot determine subnet for ID %d, specify --subnet manually", id)
 			}
-			subnet = fmt.Sprintf("10.4.%d.0/24", id)
+			subnetStr = fmt.Sprintf("10.4.%d.0/24", id)
 		}
 
 		labels := strutil.DedupeStrSlice(labels)
-		ipam, err := netutil.GenerateIPAM("", subnet)
+		ipam, err := netutil.GenerateIPAM("", subnetStr, gatewayStr, ipRangeStr)
 		if err != nil {
 			return err
 		}
