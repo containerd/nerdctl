@@ -50,11 +50,12 @@ func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}) ([]C
 	return plugins, nil
 }
 
-func GenerateIPAM(driver string, subnetStr string) (map[string]interface{}, error) {
+func GenerateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr string) (map[string]interface{}, error) {
 	if driver == "" {
 		driver = DefaultIPAMDriver
 	}
-	subnet, gateway, err := parseSubnet(subnetStr)
+
+	ipamRange, err := parseIPAMRange(subnetStr, gatewayStr, ipRangeStr)
 	if err != nil {
 		return nil, err
 	}
@@ -66,12 +67,7 @@ func GenerateIPAM(driver string, subnetStr string) (map[string]interface{}, erro
 		ipamConf.Routes = []IPAMRoute{
 			{Dst: "0.0.0.0/0"},
 		}
-		ipamConf.Ranges = append(ipamConf.Ranges, []IPRange{
-			{
-				Subnet:  subnet.String(),
-				Gateway: gateway.String(),
-			},
-		})
+		ipamConf.Ranges = append(ipamConf.Ranges, []IPAMRange{*ipamRange})
 		ipamConfig = ipamConf
 	default:
 		return nil, fmt.Errorf("unsupported ipam driver %q", driver)

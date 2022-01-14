@@ -20,11 +20,12 @@ type CNIPlugin interface {
 	GetPluginType() string
 }
 
-type IPRange struct {
+type IPAMRange struct {
 	Subnet     string `json:"subnet"`
 	RangeStart string `json:"rangeStart,omitempty"`
 	RangeEnd   string `json:"rangeEnd,omitempty"`
 	Gateway    string `json:"gateway,omitempty"`
+	IPRange    string `json:"ipRange,omitempty"`
 }
 
 type IPAMRoute struct {

@@ -909,9 +909,11 @@ Usage: `nerdctl network create [OPTIONS] NETWORK`
 
 Flags:
 - :whale: `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"
+- :whale: `--gateway`: Gateway for the master subnet
+- :whale: `--ip-range`: Allocate container ip from a sub-range
 - :whale: `--label`: Set metadata on a network
 
-Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--driver`, `--gateway`, `--ingress`, `--internal`, `--ip-range`, `--ipam-driver`, `--ipam-opt`, `--ipv6`, `--opt`, `--scope`
+Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--driver`, `--ingress`, `--internal`, `--ipam-driver`, `--ipam-opt`, `--ipv6`, `--opt`, `--scope`
 
 ### :whale: nerdctl network ls
 List networks

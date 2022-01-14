@@ -386,7 +386,7 @@ func convertToNatPort(portMappings []gocni.PortMapping) (*nat.PortMap, error) {
 type IPAMConfig struct {
 	Subnet  string `json:"Subnet,omitempty"`
 	Gateway string `json:"Gateway,omitempty"`
-	// TODO: IPRange
+	IPRange string `json:"IPRange,omitempty"`
 }
 
 type IPAM struct {
@@ -422,6 +422,9 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 		}
 		if x, ok := m["gateway"]; ok {
 			cfg.Gateway = x.String()
+		}
+		if x, ok := m["ipRange"]; ok {
+			cfg.IPRange = x.String()
 		}
 		res.IPAM.Config = append(res.IPAM.Config, cfg)
 	}

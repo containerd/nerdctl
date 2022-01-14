@@ -34,6 +34,7 @@ func TestNetworkInspect(t *testing.T) {
 	const (
 		testSubnet  = "10.24.24.0/24"
 		testGateway = "10.24.24.1"
+		testIPRange = "10.24.24.1/25"
 	)
 
 	base := testutil.NewBase(t)
@@ -41,12 +42,9 @@ func TestNetworkInspect(t *testing.T) {
 
 	args := []string{
 		"network", "create", "--label", "tag=testNetwork", "--subnet", testSubnet,
+		"--gateway", testGateway, "--ip-range", testIPRange,
+		testNetwork,
 	}
-	if base.Target == testutil.Docker {
-		// trivial incompatibility: nerdctl computes gateway automatically, but docker does not
-		args = append(args, "--gateway", testGateway)
-	}
-	args = append(args, testNetwork)
 	base.Cmd(args...).AssertOK()
 	got := base.InspectNetwork(testNetwork)
 
@@ -62,6 +60,7 @@ func TestNetworkInspect(t *testing.T) {
 			{
 				Subnet:  testSubnet,
 				Gateway: testGateway,
+				IPRange: testIPRange,
 			},
 		},
 	}
