@@ -908,12 +908,18 @@ Create a network
 Usage: `nerdctl network create [OPTIONS] NETWORK`
 
 Flags:
+- :whale: `-d, --driver=(bridge|nat)`: Driver to manage the Network
+    - :whale: `--driver=bridge`: Default driver for unix
+    - :nerd_face: :blue_square: `--driver=nat`: Default driver for windows
+- :whale: `-o, --opt`: Set driver specific options
+    - :whale: `--opt=com.docker.network.driver.mtu=<MTU>`: Set the containers network MTU
+    - :nerd_face: `--opt=mtu=<MTU>`: Alias of `--opt=com.docker.network.driver.mtu=<MTU>`
 - :whale: `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"
 - :whale: `--gateway`: Gateway for the master subnet
 - :whale: `--ip-range`: Allocate container ip from a sub-range
 - :whale: `--label`: Set metadata on a network
 
-Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--driver`, `--ingress`, `--internal`, `--ipam-driver`, `--ipam-opt`, `--ipv6`, `--opt`, `--scope`
+Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--ingress`, `--internal`, `--ipam-driver`, `--ipam-opt`, `--ipv6`, `--scope`
 
 ### :whale: nerdctl network ls
 List networks
