@@ -135,7 +135,7 @@ func newRunCommand() *cobra.Command {
 	runCommand.RegisterFlagCompletionFunc("pid", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"host"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	runCommand.Flags().Int("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
+	runCommand.Flags().Int64("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
 	runCommand.Flags().StringSlice("cgroup-conf", nil, "Configure cgroup v2 (key=value)")
 	runCommand.Flags().Uint16("blkio-weight", 0, "Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)")
 	runCommand.Flags().String("cgroupns", defaults.CgroupnsMode(), `Cgroup namespace to use, the default depends on the cgroup version ("host"|"private")`)
@@ -143,7 +143,7 @@ func newRunCommand() *cobra.Command {
 		return []string{"host", "private"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	runCommand.Flags().String("cpuset-cpus", "", "CPUs in which to allow execution (0-3, 0,1)")
-	runCommand.Flags().Int("cpu-shares", 0, "CPU shares (relative weight)")
+	runCommand.Flags().Uint64("cpu-shares", 0, "CPU shares (relative weight)")
 	// device is defined as StringSlice, not StringArray, to allow specifying "--device=DEV1,DEV2" (compatible with Podman)
 	runCommand.Flags().StringSlice("device", nil, "Add a host device to the container")
 	// ulimit is defined as StringSlice, not StringArray, to allow specifying "--ulimit=ULIMIT1,ULIMIT2" (compatible with Podman)
