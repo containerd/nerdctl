@@ -63,6 +63,11 @@ func TestParseIPAMRange(t *testing.T) {
 			},
 		},
 		{
+			subnet:  "10.1.100.0/23",
+			gateway: "10.1.102.1",
+			err:     "no matching subnet",
+		},
+		{
 			subnet:  "10.1.0.0/16",
 			iprange: "10.10.10.0/24",
 			err:     "no matching subnet",
@@ -76,6 +81,17 @@ func TestParseIPAMRange(t *testing.T) {
 				IPRange:    "10.1.100.0/24",
 				RangeStart: "10.1.100.1",
 				RangeEnd:   "10.1.100.255",
+			},
+		},
+		{
+			subnet:  "10.1.100.0/23",
+			iprange: "10.1.100.0/25",
+			expected: &IPAMRange{
+				Subnet:     "10.1.100.0/23",
+				Gateway:    "10.1.100.1",
+				IPRange:    "10.1.100.0/25",
+				RangeStart: "10.1.100.1",
+				RangeEnd:   "10.1.100.127",
 			},
 		},
 	}
