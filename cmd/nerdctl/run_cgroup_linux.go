@@ -49,7 +49,7 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	if err != nil {
 		return nil, err
 	}
-	pidsLimit, err := cmd.Flags().GetInt("pids-limit")
+	pidsLimit, err := cmd.Flags().GetInt64("pids-limit")
 	if err != nil {
 		return nil, err
 	}
@@ -86,14 +86,11 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 		opts = append(opts, oci.WithCPUCFS(quota, period))
 	}
 
-	shares, err := cmd.Flags().GetInt("cpu-shares")
+	shares, err := cmd.Flags().GetUint64("cpu-shares")
 	if err != nil {
 		return nil, err
 	}
 	if shares != 0 {
-		var (
-			shares = uint64(shares)
-		)
 		opts = append(opts, oci.WithCPUShares(shares))
 	}
 

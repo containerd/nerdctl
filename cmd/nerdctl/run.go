@@ -138,7 +138,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.RegisterFlagCompletionFunc("pid", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"host"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	cmd.Flags().Int("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
+	cmd.Flags().Int64("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
 	cmd.Flags().StringSlice("cgroup-conf", nil, "Configure cgroup v2 (key=value)")
 	cmd.Flags().Uint16("blkio-weight", 0, "Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)")
 	cmd.Flags().String("cgroupns", defaults.CgroupnsMode(), `Cgroup namespace to use, the default depends on the cgroup version ("host"|"private")`)
@@ -147,7 +147,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	})
 	cmd.Flags().String("cpuset-cpus", "", "CPUs in which to allow execution (0-3, 0,1)")
 	cmd.Flags().String("cpuset-mems", "", "MEMs in which to allow execution (0-3, 0,1)")
-	cmd.Flags().Int("cpu-shares", 0, "CPU shares (relative weight)")
+	cmd.Flags().Uint64("cpu-shares", 0, "CPU shares (relative weight)")
 	cmd.Flags().Int64("cpu-quota", -1, "Limit CPU CFS (Completely Fair Scheduler) quota")
 	cmd.Flags().Uint64("cpu-period", 0, "Limit CPU CFS (Completely Fair Scheduler) period")
 	// device is defined as StringSlice, not StringArray, to allow specifying "--device=DEV1,DEV2" (compatible with Podman)
