@@ -48,8 +48,8 @@ func CgroupnsMode() string {
 	return ""
 }
 
-func NerdctlTOML() string {
-	return "/etc/nerdctl/nerdctl.toml"
+func NerdctlPath() string {
+	return "/etc/nerdctl"
 }
 
 func HostsDirs() []string {

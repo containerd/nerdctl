@@ -14,23 +14,10 @@
    limitations under the License.
 */
 
-package main
+package defaults
 
-import (
-	"github.com/spf13/cobra"
-)
+import "path/filepath"
 
-func newNamespaceCommand() *cobra.Command {
-	namespaceCommand := &cobra.Command{
-		Annotations:   map[string]string{Category: Management},
-		Use:           "namespace",
-		Short:         "Manage containerd namespaces",
-		Long:          "Unrelated to Linux namespaces and Kubernetes namespaces",
-		RunE:          unknownSubcommandAction,
-		SilenceUsage:  true,
-		SilenceErrors: true,
-	}
-	namespaceCommand.AddCommand(newNamespaceLsCommand())
-	namespaceCommand.AddCommand(newNamespaceUseCommand())
-	return namespaceCommand
+func NerdctlTOML() string {
+	return filepath.Join(NerdctlPath(), "nerdctl.toml")
 }

@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -87,17 +88,17 @@ func xmain() error {
 // Config corresponds to nerdctl.toml .
 // See docs/config.md .
 type Config struct {
-	Debug            bool     `toml:"debug"`
-	DebugFull        bool     `toml:"debug_full"`
-	Address          string   `toml:"address"`
-	Namespace        string   `toml:"namespace"`
-	Snapshotter      string   `toml:"snapshotter"`
-	CNIPath          string   `toml:"cni_path"`
-	CNINetConfPath   string   `toml:"cni_netconfpath"`
-	DataRoot         string   `toml:"data_root"`
-	CgroupManager    string   `toml:"cgroup_manager"`
-	InsecureRegistry bool     `toml:"insecure_registry"`
-	HostsDir         []string `toml:"hosts_dir"`
+	Debug            bool     `toml:"debug,omitempty"`
+	DebugFull        bool     `toml:"debug_full,omitempty"`
+	Address          string   `toml:"address,omitempty"`
+	Namespace        string   `toml:"namespace,omitempty"`
+	Snapshotter      string   `toml:"snapshotter,omitempty"`
+	CNIPath          string   `toml:"cni_path,omitempty"`
+	CNINetConfPath   string   `toml:"cni_netconfpath,omitempty"`
+	DataRoot         string   `toml:"data_root,omitempty"`
+	CgroupManager    string   `toml:"cgroup_manager,omitempty"`
+	InsecureRegistry bool     `toml:"insecure_registry,omitempty"`
+	HostsDir         []string `toml:"hosts_dir,omitempty"`
 }
 
 // NewConfig creates a default Config object statically,
@@ -118,8 +119,16 @@ func NewConfig() *Config {
 	}
 }
 
-func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) error {
-	cfg := NewConfig()
+// NewConfigFromTOML creates a Config object from toml file
+func NewConfigFromTOML(tomlPath string) (*Config, error) {
+	c := &Config{}
+	if err := c.SetFromTOML(tomlPath); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func (cfg *Config) SetFromTOML(tomlPath string) error {
 	if r, err := os.Open(tomlPath); err == nil {
 		logrus.Debugf("Loading config from %q", tomlPath)
 		defer r.Close()
@@ -133,6 +142,31 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) error {
 		if !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
+	}
+	return nil
+}
+
+func (cfg *Config) MarshalToTOML(tomlPath string) error {
+	dirName := filepath.Dir(tomlPath)
+	if err := os.MkdirAll(dirName, 0700); err != nil {
+		return err
+	}
+	file, err := os.Create(tomlPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	if err := toml.NewEncoder(file).Encode(cfg); err != nil {
+		return err
+	}
+	return nil
+}
+
+func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) error {
+	cfg := NewConfig()
+	err := cfg.SetFromTOML(tomlPath)
+	if err != nil {
+		return err
 	}
 	rootCmd.PersistentFlags().Bool("debug", cfg.Debug, "debug mode")
 	rootCmd.PersistentFlags().Bool("debug-full", cfg.DebugFull, "debug mode (with full output)")

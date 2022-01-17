@@ -53,12 +53,12 @@ func CgroupnsMode() string {
 	return ""
 }
 
-func NerdctlTOML() string {
+func NerdctlPath() string {
 	ucd, err := os.UserConfigDir()
 	if err != nil {
 		panic(err)
 	}
-	return filepath.Join(ucd, "nerdctl\\nerdctl.toml")
+	return filepath.Join(ucd, "nerdctl")
 }
 
 func HostsDirs() []string {
