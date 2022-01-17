@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/continuity/testutil/loopback"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
+	is "gotest.tools/v3/assert/cmp"
 )
 
 func TestRunCgroupV2(t *testing.T) {
@@ -221,6 +222,24 @@ func TestRunCgroupConf(t *testing.T) {
 		"cat", "memory.high").AssertOutExactly("33554432\n")
 }
 
+func TestRunCgroupConfCgroupV1(t *testing.T) {
+	t.Parallel()
+	if cgroups.Mode() != cgroups.Legacy {
+		t.Skip("test requires cgroup v1")
+	}
+	base := testutil.NewBase(t)
+	info := base.Info()
+	switch info.CgroupDriver {
+	case "none", "":
+		t.Skip("test requires cgroup driver")
+	}
+	if !info.MemoryLimit {
+		t.Skip("test requires MemoryLimit")
+	}
+	res := base.Cmd("run", "--rm", "--cgroup-conf", "memory.high=33554432", testutil.AlpineImage, "date").Run()
+	assert.Check(t, is.Contains(res.Stderr(), "cannot use --cgroup-conf without cgroup v2"))
+}
+
 func TestRunBlkioWeightCgroupV2(t *testing.T) {
 	t.Parallel()
 	if cgroups.Mode() != cgroups.Unified {
@@ -238,4 +257,21 @@ func TestRunBlkioWeightCgroupV2(t *testing.T) {
 	// when bfq io scheduler is used, the io.weight knob is exposed as io.bfq.weight
 	base.Cmd("run", "--rm", "--blkio-weight", "300", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
 		"cat", "io.bfq.weight").AssertOutExactly("default 300\n")
+}
+
+func TestRunBlkioWeightCgroupV1(t *testing.T) {
+	t.Parallel()
+	if cgroups.Mode() != cgroups.Legacy {
+		t.Skip("test requires cgroup v1")
+	}
+	base := testutil.NewBase(t)
+	info := base.Info()
+	switch info.CgroupDriver {
+	case "none", "":
+		t.Skip("test requires cgroup driver")
+	}
+	file := "/sys/fs/cgroup/blkio/blkio.weight"
+	// when bfq io scheduler is used, the io.weight knob is exposed as io.bfq.weight
+	base.Cmd("run", "--rm", "--blkio-weight", "300", testutil.AlpineImage,
+		"cat", file).AssertOutExactly("300\n")
 }
