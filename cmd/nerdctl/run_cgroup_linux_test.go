@@ -68,6 +68,42 @@ func TestRunCgroupV2(t *testing.T) {
 		"cat", "cpu.max", "memory.max", "pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected)
 }
 
+func TestRunCgroupV1(t *testing.T) {
+	t.Parallel()
+	if cgroups.Mode() != cgroups.Legacy {
+		t.Skip("test requires cgroup v1")
+	}
+	base := testutil.NewBase(t)
+	info := base.Info()
+	switch info.CgroupDriver {
+	case "none", "":
+		t.Skip("test requires cgroup driver")
+	}
+	if !info.MemoryLimit {
+		t.Skip("test requires MemoryLimit")
+	}
+	if !info.CPUShares {
+		t.Skip("test requires CPUShares")
+	}
+	if !info.CPUSet {
+		t.Skip("test requires CPUSet")
+	}
+	if !info.PidsLimit {
+		t.Skip("test requires PidsLimit")
+	}
+	quota := "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
+	period := "/sys/fs/cgroup/cpu/cpu.cfs_period_us"
+	cpuset_mems := "/sys/fs/cgroup/cpuset/cpuset.mems"
+	memory_limit := "/sys/fs/cgroup/memory/memory.limit_in_bytes"
+	pids_limit := "/sys/fs/cgroup/pids/pids.max"
+	cpu_share := "/sys/fs/cgroup/cpu/cpu.shares"
+	cpuset_cpus := "/sys/fs/cgroup/cpuset/cpuset.cpus"
+
+	const expected = "42000\n100000\n0\n44040192\n42\n2000\n0-1\n"
+	base.Cmd("run", "--rm", "--cpus", "0.42", "--cpuset-mems", "0", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage, "cat", quota, period, cpuset_mems, memory_limit, pids_limit, cpu_share, cpuset_cpus).AssertOutExactly(expected)
+	base.Cmd("run", "--rm", "--cpu-quota", "42000", "--cpu-period", "100000", "--cpuset-mems", "0", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage, "cat", quota, period, cpuset_mems, memory_limit, pids_limit, cpu_share, cpuset_cpus).AssertOutExactly(expected)
+}
+
 func TestRunDevice(t *testing.T) {
 	if os.Geteuid() != 0 || sys.RunningInUserNS() {
 		t.Skip("test requires the root in the initial user namespace")
