@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/containerd/nerdctl/pkg/ipfs"
@@ -79,7 +80,7 @@ func ipfsRegistryServeAction(cmd *cobra.Command, args []string) error {
 	} else {
 		ipfsClient, err = httpapi.NewLocalApi()
 		if err != nil {
-			return err
+			return fmt.Errorf("error encountered, '%w', Please setup ipfs daemon, see https://github.com/containerd/nerdctl/blob/master/docs/ipfs.md", err)
 		}
 	}
 	h, err := ipfs.NewRegistry(ipfsClient, ipfs.RegistryOptions{
