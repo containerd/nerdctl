@@ -230,7 +230,7 @@ FROM base AS test-integration
 # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
 RUN apt-get update && \
   apt-get install -qq -y \
-  expect
+  expect iputils-ping bind9-dnsutils
 COPY --from=goversion /GOVERSION /GOVERSION
 ARG TARGETARCH
 RUN curl -L https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -121,6 +122,34 @@ func testComposeUp(t *testing.T, base *testutil.Base, dockerComposeYAML string) 
 }
 
 func TestComposeUpBuild(t *testing.T) {
+	defer func() {
+		f := func(exe string, args ...string) {
+			cmd := exec.Command(exe, args...)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stdout
+			fmt.Printf("==== <%s> ====\n", cmd.Args)
+			cmdErr := cmd.Run()
+			fmt.Printf("==== </%s> (%v) ====\n", cmd.Args, cmdErr)
+		}
+		f("ps", "auxw")
+		f("curl", "https://example.com")
+		f("curl", "-I", "https://ghcr.io")
+		f("ip", "a")
+		if os.Geteuid() != 0 {
+			g := func(exe string, args ...string) {
+				f("containerd-rootless-setuptool.sh",
+					append([]string{"nsenter", "--", exe}, args...)...)
+			}
+			g("nslookup", "ghcr.io", "10.0.2.3")
+			g("nslookup", "ghcr.io", "8.8.8.8")
+			g("curl", "https://example.com")
+			g("curl", "-I", "https://ghcr.io")
+			g("ip", "a")
+			g("ip", "r")
+			g("ping", "-c3", "10.0.2.2")
+			g("ping", "-c3", "8.8.8.8")
+		}
+	}()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 

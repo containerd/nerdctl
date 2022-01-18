@@ -21,11 +21,11 @@ if [[ "$(id -u)" = "0" ]]; then
 		nerdctl apparmor load
 	fi
 
-	: "${FORCE_TCP_DNS:=}"
-	if [[ "$FORCE_TCP_DNS" = "1" ]]; then
+	: "${WORKAROUND_CIRRUS_DNS:=}"
+	if [[ "$WORKAROUND_CIRRUS_DNS" = "1" ]]; then
 		# Workaround for https://github.com/containerd/nerdctl/issues/622
 		# ERROR: failed to do request: Head "https://ghcr.io/v2/stargz-containers/alpine/manifests/3.13-org": dial tcp: lookup ghcr.io on 10.0.2.3:53: read udp 10.0.2.100:50602->10.0.2.3:53: i/o timeout
-		echo "options use-vc" >>/etc/resolv.conf
+		echo "options use-vc timeout:30 attempts:5" >>/etc/resolv.conf
 	fi
 
 	# Switch to the rootless user via SSH
@@ -45,9 +45,9 @@ else
     address = "/run/user/1000/containerd-stargz-grpc/containerd-stargz-grpc.sock"
 EOF
 	systemctl --user restart containerd.service
-	containerd-rootless-setuptool.sh -- install-ipfs --init --offline # offline ipfs daemon for testing
-	echo "ipfs = true" >>/home/rootless/.config/containerd-stargz-grpc/config.toml
-	systemctl --user restart stargz-snapshotter.service
-	export IPFS_PATH="/home/rootless/.local/share/ipfs"
+	# containerd-rootless-setuptool.sh -- install-ipfs --init --offline # offline ipfs daemon for testing
+	# echo "ipfs = true" >>/home/rootless/.config/containerd-stargz-grpc/config.toml
+	# systemctl --user restart stargz-snapshotter.service
+	# export IPFS_PATH="/home/rootless/.local/share/ipfs"
 	exec "$@"
 fi
