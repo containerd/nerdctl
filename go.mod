@@ -51,7 +51,7 @@ require (
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	gopkg.in/yaml.v2 v2.4.0
-	gotest.tools/v3 v3.0.3
+	gotest.tools/v3 v3.1.0
 )
 
 require (
