@@ -134,6 +134,9 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) error {
 			return err
 		}
 	}
+
+    // Overriding config path for subcommands
+	rootCmd.PersistentFlags().String("config", tomlPath, "location of config file")
 	rootCmd.PersistentFlags().Bool("debug", cfg.Debug, "debug mode")
 	rootCmd.PersistentFlags().Bool("debug-full", cfg.DebugFull, "debug mode (with full output)")
 	// -a is nonPersistentAlias (conflicts with nerdctl images -a)
