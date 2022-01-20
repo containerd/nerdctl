@@ -267,7 +267,6 @@ func tryLoginWithRegHost(ctx context.Context, rh docker.RegistryHost) error {
 		Host:   rh.Host,
 		Path:   rh.Path,
 	}
-	ctx = docker.WithScope(ctx, "")
 	var ress []*http.Response
 	for i := 0; i < 10; i++ {
 		req, err := http.NewRequest(http.MethodGet, u.String(), nil)
