@@ -234,6 +234,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl stop](#whale-nerdctl-stop)
     - [:whale: nerdctl start](#whale-nerdctl-start)
     - [:whale: nerdctl restart](#whale-nerdctl-restart)
+    - [:whale: nerdctl update](#whale-nerdctl-update)
     - [:whale: nerdctl wait](#whale-nerdctl-wait)
     - [:whale: nerdctl kill](#whale-nerdctl-kill)
     - [:whale: nerdctl pause](#whale-nerdctl-pause)
@@ -643,6 +644,20 @@ Usage: `nerdctl restart [OPTIONS] CONTAINER [CONTAINER...]`
 
 Flags:
 - :whale: `-t, --time=SECONDS`: Seconds to wait for stop before killing it (default "10")
+
+### :whale: nerdctl update
+Update configuration of one or more containers.
+
+Usage: `nerctl update [OPTIONS] CONTAINER [CONTAINER...]`
+
+- :whale: `--cpus`: Number of CPUs
+- :whale: `--cpu-quota`: Limit the CPU CFS (Completely Fair Scheduler) quota
+- :whale: `--cpu-period`: Limit the CPU CFS (Completely Fair Scheduler) period
+- :whale: `--cpu-shares`: CPU shares (relative weight)
+- :whale: `--cpuset-cpus`: CPUs in which to allow execution (0-3, 0,1)
+- :whale: `--cpuset-mems`: Memory nodes (MEMs) in which to allow execution (0-3, 0,1). Only effective on NUMA systems
+- :whale: `--memory`: Memory limit
+- :whale: `--pids-limit`: Tune container pids limit
 
 ### :whale: nerdctl wait
 Block until one or more containers stop, then print their exit codes.

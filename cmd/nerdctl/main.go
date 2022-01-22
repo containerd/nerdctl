@@ -220,6 +220,7 @@ Config file ($NERDCTL_TOML): %s
 		newCreateCommand(),
 		// #region Run & Exec
 		newRunCommand(),
+		newUpdateCommand(),
 		newExecCommand(),
 		// #endregion
 

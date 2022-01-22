@@ -32,6 +32,7 @@ func newContainerCommand() *cobra.Command {
 	containerCommand.AddCommand(
 		newCreateCommand(),
 		newRunCommand(),
+		newUpdateCommand(),
 		newExecCommand(),
 		containerLsCommand(),
 		newContainerInspectCommand(),
