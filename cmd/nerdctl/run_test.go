@@ -198,3 +198,18 @@ func TestRunEnv(t *testing.T) {
 		return nil
 	})
 }
+
+func TestRunStdin(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	if testutil.GetTarget() == testutil.Nerdctl {
+		// Requires containerd v1.6.0-beta.2 or later: https://github.com/containerd/nerdctl/pull/726#issuecomment-1108231210
+		testutil.RequireContainerdPlugin(base, "io.containerd.runtime.v2", "shim", nil)
+	}
+
+	const testStr = "test-run-stdin"
+	opts := []func(*testutil.Cmd){
+		testutil.WithStdin(strings.NewReader(testStr)),
+	}
+	base.Cmd("run", "--rm", "-i", testutil.CommonImage, "cat").CmdOption(opts...).AssertOutExactly(testStr)
+}

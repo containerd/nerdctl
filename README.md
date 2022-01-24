@@ -356,7 +356,7 @@ Usage: `nerdctl run [OPTIONS] IMAGE [COMMAND] [ARG...]`
 Basic flags:
 - :whale: :blue_square: `-i, --interactive`: Keep STDIN open even if not attached"
 - :whale: :blue_square: `-t, --tty`: Allocate a pseudo-TTY
-  - :warning: WIP: currently `-t` requires `-i`, and conflicts with `-d`
+  - :warning: WIP: currently `-t` conflicts with `-d`
 - :whale: :blue_square: `-d, --detach`: Run container in background and print container ID
 - :whale: `--restart=(no|always)`: Restart policy to apply when a container exits
   - Default: "no"
@@ -611,7 +611,7 @@ Usage: `nerdctl exec [OPTIONS] CONTAINER COMMAND [ARG...]`
 Flags:
 - :whale: `-i, --interactive`: Keep STDIN open even if not attached
 - :whale: `-t, --tty`: Allocate a pseudo-TTY
-  - :warning: WIP: currently `-t` requires `-i`, and conflicts with `-d`
+  - :warning: WIP: currently `-t` conflicts with `-d`
 - :whale: `-d, --detach`: Detached mode: run command in the background
 - :whale: `-w, --workdir`: Working directory inside the container
 - :whale: `-e, --env`: Set environment variables

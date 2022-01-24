@@ -242,6 +242,20 @@ func (b *Base) Info() dockercompat.Info {
 	return info
 }
 
+func (b *Base) InfoNative() native.Info {
+	b.T.Helper()
+	if GetTarget() != Nerdctl {
+		b.T.Skip("InfoNative() should not be called for non-nerdctl target")
+	}
+	cmdResult := b.Cmd("info", "--mode", "native", "--format", "{{ json . }}").Run()
+	assert.Equal(b.T, cmdResult.ExitCode, 0)
+	var info native.Info
+	if err := json.Unmarshal([]byte(cmdResult.Stdout()), &info); err != nil {
+		b.T.Fatal(err)
+	}
+	return info
+}
+
 type Cmd struct {
 	icmd.Cmd
 	*Base
@@ -403,6 +417,34 @@ func RequireExecPlatform(t testing.TB, ss ...string) {
 			msg += fmt.Sprintf(": %v", err)
 		}
 		t.Skip(msg)
+	}
+}
+
+func RequireContainerdPlugin(base *Base, requiredType, requiredID string, requiredCaps []string) {
+	base.T.Helper()
+	info := base.InfoNative()
+	for _, p := range info.Daemon.Plugins.Plugins {
+		if p.Type != requiredType {
+			continue
+		}
+		if p.ID != requiredID {
+			continue
+		}
+		pCapMap := make(map[string]struct{}, len(p.Capabilities))
+		for _, f := range p.Capabilities {
+			pCapMap[f] = struct{}{}
+		}
+		for _, f := range requiredCaps {
+			if _, ok := pCapMap[f]; !ok {
+				base.T.Skipf("test requires containerd plugin \"%s.%s\" with capabilities %v (missing %q)", requiredType, requiredID, requiredCaps, f)
+			}
+		}
+		return
+	}
+	if len(requiredCaps) == 0 {
+		base.T.Skipf("test requires containerd plugin \"%s.%s\"", requiredType, requiredID)
+	} else {
+		base.T.Skipf("test requires containerd plugin \"%s.%s\" with capabilities %v", requiredType, requiredID, requiredCaps)
 	}
 }
 

@@ -17,6 +17,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -43,4 +44,23 @@ func TestExecWithDoubleDash(t *testing.T) {
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
 
 	base.Cmd("exec", testContainer, "--", "echo", "success").AssertOutExactly("success\n")
+}
+
+func TestExecStdin(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	if testutil.GetTarget() == testutil.Nerdctl {
+		// Requires containerd v1.6.0-beta.2 or later: https://github.com/containerd/nerdctl/pull/726#issuecomment-1108231210
+		testutil.RequireContainerdPlugin(base, "io.containerd.runtime.v2", "shim", nil)
+	}
+
+	testContainer := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", testContainer).Run()
+	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
+
+	const testStr = "test-exec-stdin"
+	opts := []func(*testutil.Cmd){
+		testutil.WithStdin(strings.NewReader(testStr)),
+	}
+	base.Cmd("exec", "-i", testContainer, "cat").CmdOption(opts...).AssertOutExactly(testStr)
 }

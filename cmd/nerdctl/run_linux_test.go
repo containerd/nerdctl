@@ -219,3 +219,21 @@ ENTRYPOINT ["./main"]
 	assert.Assert(logsCMD.Base.T, result.ExitCode == 0, stdoutContent)
 	assert.Equal(logsCMD.Base.T, strings.Contains(stdoutContent, "signal: 15"), true)
 }
+
+func TestRunTTY(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	if testutil.GetTarget() == testutil.Nerdctl {
+		// Requires containerd v1.6.0-beta.2 or later: https://github.com/containerd/nerdctl/pull/726#issuecomment-1108231210
+		testutil.RequireContainerdPlugin(base, "io.containerd.runtime.v2", "shim", nil)
+	}
+
+	const sttyPartialOutput = "speed 38400 baud"
+	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
+	// unbuffer(1) can be installed with `apt-get install expect`.
+	unbuffer := []string{"unbuffer"}
+	base.CmdWithHelper(unbuffer, "run", "--rm", "-it", testutil.CommonImage, "stty").AssertOutContains(sttyPartialOutput)
+	base.CmdWithHelper(unbuffer, "run", "--rm", "-t", testutil.CommonImage, "stty").AssertOutContains(sttyPartialOutput)
+	base.Cmd("run", "--rm", "-i", testutil.CommonImage, "stty").AssertFail()
+	base.Cmd("run", "--rm", testutil.CommonImage, "stty").AssertFail()
+}
