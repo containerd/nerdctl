@@ -251,6 +251,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl tag](#whale-nerdctl-tag)
     - [:whale: nerdctl rmi](#whale-nerdctl-rmi)
     - [:whale: nerdctl image inspect](#whale-nerdctl-image-inspect)
+    - [:whale: nerdctl image history](#whale-nerdctl-image-history)
     - [:nerd_face: nerdctl image convert](#nerd_face-nerdctl-image-convert)
     - [:nerd_face: nerdctl image encrypt](#nerd_face-nerdctl-image-encrypt)
     - [:nerd_face: nerdctl image decrypt](#nerd_face-nerdctl-image-decrypt)
@@ -836,6 +837,16 @@ Flags:
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 - :nerd_face: `--platform=(amd64|arm64|...)`: Inspect a specific platform
 
+### :whale: nerdctl image history
+Show the history of an image.
+
+Usage: `nerdctl history [OPTIONS] IMAGE`
+
+Flags:
+- :whale: `--no-trunc`: Don't truncate output
+- :whale: `-q, --quiet`: Only display snapshots IDs
+- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+
 ### :nerd_face: nerdctl image convert
 Convert an image format.
 
@@ -1297,7 +1308,6 @@ Container management:
 
 Image:
 - `docker export` and `docker import`
-- `docker history`
 
 - `docker image prune`
 
