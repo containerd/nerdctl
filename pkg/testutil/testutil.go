@@ -27,12 +27,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/opencontainers/go-digest"
-
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 )
@@ -403,6 +403,22 @@ func RequireExecPlatform(t testing.TB, ss ...string) {
 			msg += fmt.Sprintf(": %v", err)
 		}
 		t.Skip(msg)
+	}
+}
+
+func RequireDaemonVersion(b *Base, constraint string) {
+	b.T.Helper()
+	c, err := semver.NewConstraint(constraint)
+	if err != nil {
+		b.T.Fatal(err)
+	}
+	info := b.Info()
+	sv, err := semver.NewVersion(info.ServerVersion)
+	if err != nil {
+		b.T.Skip(err)
+	}
+	if !c.Check(sv) {
+		b.T.Skipf("version %v does not satisfy constraints %v", sv, c)
 	}
 }
 

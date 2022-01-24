@@ -18,11 +18,13 @@ package infoutil
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/services/introspection"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -134,4 +136,16 @@ func ServerVersion(ctx context.Context, client *containerd.Client) (*dockercompa
 		// TODO: add runc version
 	}
 	return v, nil
+}
+
+func ServerSemVer(ctx context.Context, client *containerd.Client) (*semver.Version, error) {
+	v, err := client.Version(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sv, err := semver.NewVersion(v.Version)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse the containerd version %q: %w", v.Version, err)
+	}
+	return sv, nil
 }

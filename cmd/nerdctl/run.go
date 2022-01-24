@@ -452,9 +452,6 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		if flagD {
 			return nil, "", nil, errors.New("currently flag -t and -d cannot be specified together (FIXME)")
 		}
-		if !flagI {
-			return nil, "", nil, errors.New("currently flag -t needs -i to be specified together (FIXME)")
-		}
 		opts = append(opts, oci.WithTTY)
 	}
 

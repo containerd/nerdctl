@@ -219,3 +219,20 @@ ENTRYPOINT ["./main"]
 	assert.Assert(logsCMD.Base.T, result.ExitCode == 0, stdoutContent)
 	assert.Equal(logsCMD.Base.T, strings.Contains(stdoutContent, "signal: 15"), true)
 }
+
+func TestRunTTY(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	if testutil.GetTarget() == testutil.Nerdctl {
+		testutil.RequireDaemonVersion(base, ">= 1.6.0-0")
+	}
+
+	const sttyPartialOutput = "speed 38400 baud"
+	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
+	// unbuffer(1) can be installed with `apt-get install expect`.
+	unbuffer := []string{"unbuffer"}
+	base.CmdWithHelper(unbuffer, "run", "--rm", "-it", testutil.CommonImage, "stty").AssertOutContains(sttyPartialOutput)
+	base.CmdWithHelper(unbuffer, "run", "--rm", "-t", testutil.CommonImage, "stty").AssertOutContains(sttyPartialOutput)
+	base.Cmd("run", "--rm", "-i", testutil.CommonImage, "stty").AssertFail()
+	base.Cmd("run", "--rm", testutil.CommonImage, "stty").AssertFail()
+}
