@@ -1,3 +1,6 @@
+//go:build windows || darwin
+// +build windows darwin
+
 /*
    Copyright The containerd Authors.
 
@@ -14,16 +17,9 @@
    limitations under the License.
 */
 
-package containerinspector
+package ocihook
 
-import (
-	"context"
-
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
-)
-
-func InspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
-	r := &native.NetNS{}
-
-	return r, nil
+func loadAppArmor() {
+	//noop
+	return
 }

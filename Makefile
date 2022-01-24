@@ -23,6 +23,11 @@ GOOS ?= $(shell go env GOOS)
 ifeq ($(GOOS),windows)
 	BIN_EXT := .exe
 endif
+ifeq ($(GOOS),darwin)
+	CGO_ENABLED_OS := 1
+else
+	CGO_ENABLED_OS := 0
+endif
 
 PACKAGE := github.com/containerd/nerdctl
 BINDIR ?= /usr/local/bin
@@ -31,7 +36,7 @@ VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always --tags)
 VERSION_TRIMMED := $(VERSION:v%=%)
 REVISION=$(shell git rev-parse HEAD)$(shell if ! git diff --no-ext-diff --quiet --exit-code; then echo .m; fi)
 
-export GO_BUILD=GO111MODULE=on CGO_ENABLED=0 GOOS=$(GOOS) $(GO) build -ldflags "-s -w -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
+export GO_BUILD=GO111MODULE=on CGO_ENABLED=$(CGO_ENABLED_OS) GOOS=$(GOOS) $(GO) build -ldflags "-s -w -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
 
 ifdef VERBOSE
 	VERBOSE_FLAG := -v
@@ -69,6 +74,7 @@ define make_artifact_full_linux
 endef
 
 artifacts: clean
+ifneq ($(GOOS),darwin)
 	GOOS=linux GOARCH=amd64       make -C $(CURDIR)  binaries
 	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-amd64.tar.gz   _output/nerdctl extras/rootless/*
 
@@ -94,6 +100,15 @@ artifacts: clean
 
 	$(call make_artifact_full_linux,amd64)
 	$(call make_artifact_full_linux,arm64)
+else
+	GOOS=darwin GOARCH=amd64     make -C $(CURDIR)  binaries
+	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-darwin-amd64.tar.gz _output/nerdctl
+
+	GOOS=darwin GOARCH=arm64     make -C $(CURDIR)  binaries
+	tar $(TAR_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-darwin-arm64.tar.gz _output/nerdctl
+
+	rm -f $(CURDIR)/_output/nerdctl $(CURDIR)/_output/nerdctl.exe
+endif
 
 .PHONY: \
 	help \

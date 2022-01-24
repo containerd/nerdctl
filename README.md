@@ -95,6 +95,9 @@ This is currently not supported for macOS. The section below shows how to instal
 
 [Lima](https://github.com/lima-vm/lima) project provides Linux virtual machines for macOS, with built-in integration for nerdctl.
 
+Optionally, nerdctl experimentally supports native execution of container instances.
+See [`./docs/darwin.md`](docs/darwin.md) for more detail.
+
 ```console
 $ brew install lima
 $ limactl start
@@ -1344,6 +1347,7 @@ Experimental features:
 - [`./docs/experimental.md`](./docs/experimental.md):  Experimental features
 - [`./docs/freebsd.md`](./docs/freebsd.md):  Running FreeBSD jails
 - [`./docs/ipfs.md`](./docs/ipfs.md): Distributing images on IPFS
+- [`./docs/darwin.md`](./docs/darwin.md): Running containers on macOS
 
 Implementation details:
 - [`./docs/dir.md`](./docs/dir.md):           Directory layout (`/var/lib/nerdctl`)

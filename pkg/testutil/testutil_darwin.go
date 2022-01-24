@@ -14,9 +14,6 @@
    limitations under the License.
 */
 
-package ocihook
+package testutil
 
-func loadAppArmor() {
-	//noop
-	return
-}
+const CommonImage = "gcr.io/ukontainer/runu-base:0.3-osx-extra"

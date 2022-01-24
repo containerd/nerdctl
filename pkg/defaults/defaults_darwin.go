@@ -1,6 +1,3 @@
-//go:build freebsd || linux || darwin
-// +build freebsd linux darwin
-
 /*
    Copyright The containerd Authors.
 
@@ -17,32 +14,43 @@
    limitations under the License.
 */
 
-package main
+package defaults
 
-import (
-	"fmt"
-	"os"
-	"syscall"
+const AppArmorProfileName = ""
+const Runtime = "io.containerd.runu.v1"
 
-	"golang.org/x/term"
-)
+func DataRoot() string {
+	return "/var/lib/nerdctl"
+}
 
-func readPassword() (string, error) {
-	var fd int
-	if term.IsTerminal(syscall.Stdin) {
-		fd = syscall.Stdin
-	} else {
-		tty, err := os.Open("/dev/tty")
-		if err != nil {
-			return "", fmt.Errorf("error allocating terminal: %w", err)
-		}
-		defer tty.Close()
-		fd = int(tty.Fd())
-	}
-	bytePassword, err := term.ReadPassword(fd)
-	if err != nil {
-		return "", fmt.Errorf("error reading password: %w", err)
-	}
+func CNIPath() string {
+	return ""
+}
 
-	return string(bytePassword), nil
+func CNINetConfPath() string {
+	return ""
+}
+
+func BuildKitHost() string {
+	return ""
+}
+
+func IsSystemdAvailable() bool {
+	return false
+}
+
+func CgroupManager() string {
+	return ""
+}
+
+func CgroupnsMode() string {
+	return ""
+}
+
+func NerdctlTOML() string {
+	return "/etc/nerdctl/nerdctl.toml"
+}
+
+func HostsDirs() []string {
+	return []string{"/etc/containerd/certs.d", "/etc/docker/certs.d"}
 }

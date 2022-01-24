@@ -1,3 +1,6 @@
+//go:build freebsd || darwin
+// +build freebsd darwin
+
 /*
    Copyright The containerd Authors.
 
@@ -16,13 +19,4 @@
 
 package main
 
-import (
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
-	"github.com/containerd/nerdctl/pkg/statsutil"
-)
-
-func renderStatsEntry(previousStats map[string]uint64, anydata interface{}, pid int, interfaces []native.NetInterface) (statsutil.StatsEntry, error) {
-
-	return statsutil.StatsEntry{}, nil
-
-}
+func removeBridgeNetworkInterface(name string) {}

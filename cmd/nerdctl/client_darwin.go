@@ -1,6 +1,3 @@
-//go:build freebsd || linux || darwin
-// +build freebsd linux darwin
-
 /*
    Copyright The containerd Authors.
 
@@ -17,39 +14,20 @@
    limitations under the License.
 */
 
-package lockutil
+package main
 
 import (
-	"fmt"
-	"os"
+	"path/filepath"
 
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
-func WithDirLock(dir string, fn func() error) error {
-	dirFile, err := os.Open(dir)
+func isSocketAccessible(s string) error {
+	abs, err := filepath.Abs(s)
 	if err != nil {
 		return err
 	}
-	defer dirFile.Close()
-	if err := Flock(dirFile, unix.LOCK_EX); err != nil {
-		return fmt.Errorf("failed to lock %q: %w", dir, err)
-	}
-	defer func() {
-		if err := Flock(dirFile, unix.LOCK_UN); err != nil {
-			logrus.WithError(err).Errorf("failed to unlock %q", dir)
-		}
-	}()
-	return fn()
-}
-
-func Flock(f *os.File, flags int) error {
-	fd := int(f.Fd())
-	for {
-		err := unix.Flock(fd, flags)
-		if err == nil || err != unix.EINTR {
-			return err
-		}
-	}
+	// set AT_EACCESS to allow running nerdctl as a setuid binary
+	// TODO: unix.AT_EACCESS isn't available on darwin
+	return unix.Faccessat(-1, abs, unix.R_OK|unix.W_OK, 0)
 }
