@@ -27,18 +27,30 @@ const (
 	DefaultNetworkName = "bridge"
 	DefaultID          = 0
 	DefaultCIDR        = "10.4.0.0/24"
-	DefaultCNIPlugin   = "bridge"
 	DefaultIPAMDriver  = "host-local"
 )
 
-func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}) ([]CNIPlugin, error) {
-	if driver == "" {
-		driver = DefaultCNIPlugin
-	}
-	var plugins []CNIPlugin
+func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}, opts map[string]string) ([]CNIPlugin, error) {
+	var (
+		plugins []CNIPlugin
+		err     error
+	)
 	switch driver {
 	case "bridge":
+		mtu := 0
+		for opt, v := range opts {
+			switch opt {
+			case "mtu", "com.docker.network.driver.mtu":
+				mtu, err = ParseMTU(v)
+				if err != nil {
+					return nil, err
+				}
+			default:
+				return nil, fmt.Errorf("unsupported network option %q", opt)
+			}
+		}
 		bridge := newBridgePlugin(GetBridgeName(id))
+		bridge.MTU = mtu
 		bridge.IPAM = ipam
 		bridge.IsGW = true
 		bridge.IPMasq = true

@@ -24,13 +24,9 @@ const (
 	DefaultNetworkName = "nat"
 	DefaultID          = 0
 	DefaultCIDR        = "10.4.0.0/24"
-	DefaultCNIPlugin   = "nat"
 )
 
-func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}) ([]CNIPlugin, error) {
-	if driver == "" {
-		driver = DefaultCNIPlugin
-	}
+func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}, opts map[string]string) ([]CNIPlugin, error) {
 	var plugins []CNIPlugin
 	switch driver {
 	case "nat":

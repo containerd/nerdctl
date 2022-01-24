@@ -40,6 +40,9 @@ func newNetworkCreateCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	networkCreateCommand.Flags().StringP("driver", "d", DefaultNetworkDriver, "Driver to manage the Network")
+	networkCreateCommand.RegisterFlagCompletionFunc("driver", shellCompleteNetworkDrivers)
+	networkCreateCommand.Flags().StringArrayP("opt", "o", nil, "Set driver specific options")
 	networkCreateCommand.Flags().String("subnet", "", `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
 	networkCreateCommand.Flags().String("gateway", "", `Gateway for the master subnet`)
 	networkCreateCommand.Flags().String("ip-range", "", `Allocate container ip from a sub-range`)
@@ -61,6 +64,14 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if err := os.MkdirAll(cniNetconfpath, 0755); err != nil {
+		return err
+	}
+	driver, err := cmd.Flags().GetString("driver")
+	if err != nil {
+		return err
+	}
+	opts, err := cmd.Flags().GetStringArray("opt")
+	if err != nil {
 		return err
 	}
 	subnetStr, err := cmd.Flags().GetString("subnet")
@@ -115,7 +126,7 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cniPlugins, err := netutil.GenerateCNIPlugins("", id, ipam)
+		cniPlugins, err := netutil.GenerateCNIPlugins(driver, id, ipam, strutil.ConvertKVStringsToMap(opts))
 		if err != nil {
 			return err
 		}

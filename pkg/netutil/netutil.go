@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/containerd/containerd/errdefs"
@@ -47,7 +48,7 @@ type CNIEnv struct {
 
 func DefaultConfigList(e *CNIEnv) (*NetworkConfigList, error) {
 	ipam, _ := GenerateIPAM("", DefaultCIDR, "", "")
-	plugins, _ := GenerateCNIPlugins("", DefaultID, ipam)
+	plugins, _ := GenerateCNIPlugins(DefaultNetworkName, DefaultID, ipam, nil)
 	return GenerateConfigList(e, nil, DefaultID, DefaultNetworkName, plugins)
 }
 
@@ -289,4 +290,19 @@ func structToMap(in interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// ParseMTU parses the mtu option
+func ParseMTU(mtu string) (int, error) {
+	if mtu == "" {
+		return 0, nil // default
+	}
+	m, err := strconv.Atoi(mtu)
+	if err != nil {
+		return 0, err
+	}
+	if m < 0 {
+		return 0, fmt.Errorf("mtu %d is less than zero", m)
+	}
+	return m, nil
 }
