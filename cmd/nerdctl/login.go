@@ -176,8 +176,16 @@ func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRe
 
 func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthConfig) (string, error) {
 	host := auth.ServerAddress
+
+	// Ensure that URL contains scheme for a good parsing process
 	if strings.Contains(host, "://") {
 		u, err := url.Parse(host)
+		if err != nil {
+			return "", err
+		}
+		host = u.Host
+	} else {
+		u, err := url.Parse("https://" + host)
 		if err != nil {
 			return "", err
 		}

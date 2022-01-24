@@ -18,6 +18,7 @@ package main
 
 import (
 	"net"
+	"path"
 	"strconv"
 	"testing"
 
@@ -40,4 +41,37 @@ func TestLogin(t *testing.T) {
 
 	t.Logf("Bad password")
 	base.Cmd("--debug-full", "--hosts-dir", reg.HostsDir, "login", "-u", "admin", "-p", "invalidTestPassword", regHost).AssertFail()
+}
+
+func TestLoginWithSpecificRegHosts(t *testing.T) {
+	// Skip docker, because Docker doesn't have `--hosts-dir` option, and we don't want to contaminate the global /etc/docker/certs.d during this test
+	testutil.DockerIncompatible(t)
+
+	base := testutil.NewBase(t)
+	reg := testregistry.NewHTTPS(base, "admin", "validTestPassword")
+	defer reg.Cleanup()
+
+	regHost := net.JoinHostPort(reg.IP.String(), strconv.Itoa(reg.ListenPort))
+
+	t.Logf("Prepare regHost URL with path and Scheme")
+
+	type testCase struct {
+		url string
+		log string
+	}
+	testCases := []testCase{
+		{
+			url: "https://" + path.Join(regHost, "test"),
+			log: "Login with repository containing path and scheme in the URL",
+		},
+		{
+			url: path.Join(regHost, "test"),
+			log: "Login with repository containing path and without scheme in the URL",
+		},
+	}
+	for _, tc := range testCases {
+		t.Logf(tc.log)
+		base.Cmd("--debug-full", "--hosts-dir", reg.HostsDir, "login", "-u", "admin", "-p", "validTestPassword", tc.url).AssertOK()
+	}
+
 }
