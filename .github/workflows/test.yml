@@ -20,9 +20,10 @@ jobs:
       with:
         path: src/github.com/containerd/nerdctl
         fetch-depth: 25
-    - uses: containerd/project-checks@v1
+    - uses: containerd/project-checks@go-mod-tidy-compat
       with:
         working-directory: src/github.com/containerd/nerdctl
+        go-mod-tidy-flags: -compat 1.17
 
   golangci-lint:
     runs-on: ubuntu-20.04
