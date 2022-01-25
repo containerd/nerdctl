@@ -41,6 +41,7 @@ func newComposeUpCommand() *cobra.Command {
 	composeUpCommand.Flags().Bool("build", false, "Build images before starting containers.")
 	composeUpCommand.Flags().Bool("ipfs", false, "Allow pulling base images from IPFS during build")
 	composeUpCommand.Flags().Bool("quiet-pull", false, "Pull without printing progress information")
+	composeUpCommand.Flags().Bool("remove-orphans", false, "Remove containers for services not defined in the Compose file.")
 	composeUpCommand.Flags().StringArray("scale", []string{}, "Scale SERVICE to NUM instances. Overrides the `scale` setting in the Compose file if present.")
 	return composeUpCommand
 }
@@ -77,6 +78,10 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 	if err != nil {
 		return err
 	}
+	removeOrphans, err := cmd.Flags().GetBool("remove-orphans")
+	if err != nil {
+		return err
+	}
 	scaleSlice, err := cmd.Flags().GetStringArray("scale")
 	if err != nil {
 		return err
@@ -105,14 +110,15 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		return err
 	}
 	uo := composer.UpOptions{
-		Detach:      detach,
-		NoBuild:     noBuild,
-		NoColor:     noColor,
-		NoLogPrefix: noLogPrefix,
-		ForceBuild:  build,
-		IPFS:        enableIPFS,
-		QuietPull:   quietPull,
-		Scale:       scale,
+		Detach:        detach,
+		NoBuild:       noBuild,
+		NoColor:       noColor,
+		NoLogPrefix:   noLogPrefix,
+		ForceBuild:    build,
+		IPFS:          enableIPFS,
+		QuietPull:     quietPull,
+		RemoveOrphans: removeOrphans,
+		Scale:         scale,
 	}
 	return c.Up(ctx, uo, services)
 }

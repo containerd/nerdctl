@@ -21,44 +21,39 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/sirupsen/logrus"
 )
 
-func (c *Composer) Containers(ctx context.Context, services ...string) ([]containerd.Container, error) {
-	projectLabel := fmt.Sprintf("labels.%q==%s", labels.ComposeProject, c.project.Name)
-	filters := []string{}
-	for _, service := range services {
-		filters = append(filters, fmt.Sprintf("%s,labels.%q==%s", projectLabel, labels.ComposeService, service))
-	}
-	if len(services) == 0 {
-		filters = append(filters, projectLabel)
-	}
-	logrus.Debugf("filters: %v", filters)
+func (c *Composer) getOrphanContainers(ctx context.Context, parsedServices []*serviceparser.Service) ([]containerd.Container, error) {
+	// get all running containers for project
+	var filters = []string{fmt.Sprintf("labels.%q==%s", labels.ComposeProject, c.project.Name)}
 	containers, err := c.client.Containers(ctx, filters...)
 	if err != nil {
 		return nil, err
 	}
-	return containers, nil
-}
 
-func (c *Composer) containerExists(ctx context.Context, name, service string) (bool, error) {
-	// get list of containers for service
-	containers, err := c.Containers(ctx, service)
-	if err != nil {
-		return false, err
-	}
+	var orphanedContainers []containerd.Container
 
+outer:
 	for _, container := range containers {
 		containerLabels, err := container.Labels(ctx)
 		if err != nil {
-			return false, err
+			return nil, fmt.Errorf("error getting container labels: %s", err)
 		}
-		if name == containerLabels[labels.Name] {
-			// container exists
-			return true, nil
+		containerName := containerLabels[labels.Name]
+
+		for _, parsedService := range parsedServices {
+			for _, serviceContainer := range parsedService.Containers {
+				if containerName == serviceContainer.Name {
+					// container name exists in parsedServices
+					continue outer
+				}
+			}
 		}
+		// container name does not exist in parsedServices
+		orphanedContainers = append(orphanedContainers, container)
 	}
-	// container doesn't exist
-	return false, nil
+
+	return orphanedContainers, nil
 }

@@ -128,7 +128,23 @@ func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Ser
 // upServiceContainer must be called after ensureServiceImage
 // upServiceContainer returns container ID
 func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparser.Service, container serviceparser.Container) (string, error) {
-	logrus.Infof("Creating container %s", container.Name)
+	// check if container already exists
+	exists, err := c.containerExists(ctx, container.Name, service.Unparsed.Name)
+	if err != nil {
+		return "", fmt.Errorf("error while checking for containers with name %q: %s", container.Name, err)
+	}
+
+	// delete container if it already exists
+	if exists {
+		logrus.Debugf("Container %q already exists, deleting", container.Name)
+		delCmd := c.createNerdctlCmd(ctx, "rm", "-f", container.Name)
+		if err = delCmd.Run(); err != nil {
+			return "", fmt.Errorf("could not delete container %q: %s", container.Name, err)
+		}
+		logrus.Infof("Re-creating container %s", container.Name)
+	} else {
+		logrus.Infof("Creating container %s", container.Name)
+	}
 
 	//add metadata labels to container https://github.com/compose-spec/compose-spec/blob/master/spec.md#labels
 	container.RunArgs = append([]string{
