@@ -24,13 +24,13 @@ func mirrorOf(s string) string {
 }
 
 var (
-	AlpineImage                 = mirrorOf("alpine:3.13")
-	NginxAlpineImage            = mirrorOf("nginx:1.19-alpine")
+	AlpineImage                 = "public.ecr.aws/docker/library/alpine:3.13"
+	NginxAlpineImage            = "public.ecr.aws/docker/library/nginx:1.19-alpine"
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
-	RegistryImage               = mirrorOf("registry:2")
-	WordpressImage              = mirrorOf("wordpress:5.7")
+	RegistryImage               = "public.ecr.aws/docker/library/registry:2"
+	WordpressImage              = "public.ecr.aws/docker/library/wordpress:5.7"
 	WordpressIndexHTMLSnippet   = "<title>WordPress &rsaquo; Installation</title>"
-	MariaDBImage                = mirrorOf("mariadb:10.5")
+	MariaDBImage                = "public.ecr.aws/docker/library/mariadb:10.5"
 	DockerAuthImage             = mirrorOf("cesanta/docker_auth:1.7")
 
 	CommonImage = AlpineImage

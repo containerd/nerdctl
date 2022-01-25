@@ -30,8 +30,7 @@ linux_cgroup2_task:
   rootless_build_script:
     - docker build -t test-integration-rootless --target test-integration-rootless .
   rootless_test_script:
-    # FORCE_TCP_DNS: Workaround for https://github.com/containerd/nerdctl/issues/622
-    - docker run -t --rm --privileged -e FORCE_TCP_DNS=1 test-integration-rootless
+    - docker run -t --rm --privileged test-integration-rootless
 
 freebsd_task:
   name: "FreeBSD"
