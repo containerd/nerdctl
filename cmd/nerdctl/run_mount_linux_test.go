@@ -226,6 +226,10 @@ func TestRunTmpfs(t *testing.T) {
 	base := testutil.NewBase(t)
 	f := func(allow, deny []string) func(stdout string) error {
 		return func(stdout string) error {
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			if len(lines) != 1 {
+				return fmt.Errorf("expected 1 lines, got %q", stdout)
+			}
 			for _, s := range allow {
 				if !strings.Contains(stdout, s) {
 					return fmt.Errorf("expected stdout to contain %q, got %q", s, stdout)
@@ -241,4 +245,6 @@ func TestRunTmpfs(t *testing.T) {
 	}
 	base.Cmd("run", "--rm", "--tmpfs", "/tmp", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "noexec"}, nil))
 	base.Cmd("run", "--rm", "--tmpfs", "/tmp:size=64m,exec", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=65536k"}, []string{"noexec"}))
+	// for https://github.com/containerd/nerdctl/issues/594
+	base.Cmd("run", "--rm", "--tmpfs", "/dev/shm:rw,exec,size=1g", testutil.AlpineImage, "grep", "/dev/shm", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=1048576k"}, []string{"noexec"}))
 }
