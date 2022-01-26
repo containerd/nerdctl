@@ -21,11 +21,9 @@ if [[ "$(id -u)" = "0" ]]; then
 		nerdctl apparmor load
 	fi
 
-	: "${FORCE_TCP_DNS:=}"
-	if [[ "$FORCE_TCP_DNS" = "1" ]]; then
-		# Workaround for https://github.com/containerd/nerdctl/issues/622
-		# ERROR: failed to do request: Head "https://ghcr.io/v2/stargz-containers/alpine/manifests/3.13-org": dial tcp: lookup ghcr.io on 10.0.2.3:53: read udp 10.0.2.100:50602->10.0.2.3:53: i/o timeout
-		echo "options use-vc" >>/etc/resolv.conf
+	: "${WORKAROUND_CIRRUS:=}"
+	if [[ "$WORKAROUND_CIRRUS" = "1" ]]; then
+		touch /workaround-cirrus
 	fi
 
 	# Switch to the rootless user via SSH
@@ -36,7 +34,12 @@ else
 	if grep -q "options use-vc" /etc/resolv.conf; then
 		containerd-rootless-setuptool.sh nsenter -- sh -euc 'echo "options use-vc" >>/etc/resolv.conf'
 	fi
-	containerd-rootless-setuptool.sh install-buildkit
+
+	if [[ -e /workaround-cirrus ]]; then
+		echo "WORKAROUND_CIRRUS: Not enabling BuildKit (https://github.com/containerd/nerdctl/issues/622)" >&2
+	else
+		containerd-rootless-setuptool.sh install-buildkit
+	fi
 	containerd-rootless-setuptool.sh install-stargz
 	cat <<EOF >>/home/rootless/.config/containerd/config.toml
 [proxy_plugins]
