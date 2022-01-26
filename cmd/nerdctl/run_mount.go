@@ -22,8 +22,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/oci"
@@ -40,6 +42,38 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+// copy from https://github.com/containerd/containerd/blob/v1.6.0-rc.1/pkg/cri/opts/spec_linux.go#L129-L151
+func withMounts(mounts []specs.Mount) oci.SpecOpts {
+	return func(ctx context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
+		// Copy all mounts from default mounts, except for
+		// - mounts overridden by supplied mount;
+		// - all mounts under /dev if a supplied /dev is present.
+		mountSet := make(map[string]struct{})
+		for _, m := range mounts {
+			mountSet[filepath.Clean(m.Destination)] = struct{}{}
+		}
+
+		defaultMounts := s.Mounts
+		s.Mounts = nil
+
+		for _, m := range defaultMounts {
+			dst := filepath.Clean(m.Destination)
+			if _, ok := mountSet[dst]; ok {
+				// filter out mount overridden by a supplied mount
+				continue
+			}
+			if _, mountDev := mountSet["/dev"]; mountDev && strings.HasPrefix(dst, "/dev/") {
+				// filter out everything under /dev if /dev is a supplied mount
+				continue
+			}
+			s.Mounts = append(s.Mounts, m)
+		}
+
+		s.Mounts = append(s.Mounts, mounts...)
+		return nil
+	}
+}
 
 // parseMountFlags parses --volume and --tmpfs.
 // parseMountFlags will also parse --mount in a future release.
@@ -84,6 +118,7 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 	var (
 		opts        []oci.SpecOpts
 		anonVolumes []string
+		userMounts  []specs.Mount
 	)
 	mounted := make(map[string]struct{})
 	var imageVolumes map[string]struct{}
@@ -181,7 +216,7 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 			}
 			opts = append(opts, x.Opts...)
 		}
-		opts = append(opts, oci.WithMounts(ociMounts))
+		userMounts = append(userMounts, ociMounts...)
 	}
 
 	// imageVolumes are defined in Dockerfile "VOLUME" instruction
@@ -213,19 +248,17 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 			return nil, nil, err
 		}
 
-		m := []specs.Mount{
-			{
-				Type:        "none",
-				Source:      anonVol.Mountpoint,
-				Destination: imgVol,
-				Options:     []string{"rbind"},
-			},
+		m := specs.Mount{
+			Type:        "none",
+			Source:      anonVol.Mountpoint,
+			Destination: imgVol,
+			Options:     []string{"rbind"},
 		}
-
-		opts = append(opts, oci.WithMounts(m))
+		userMounts = append(userMounts, m)
 		anonVolumes = append(anonVolumes, anonVolName)
 	}
 
+	opts = append(opts, withMounts(userMounts))
 	return opts, anonVolumes, nil
 }
 
