@@ -261,6 +261,12 @@ func tryLoginWithRegHost(ctx context.Context, rh docker.RegistryHost) error {
 		Host:   rh.Host,
 		Path:   rh.Path,
 	}
+	if rh.Path == "/v2" {
+		// If the path is using /v2 endpoint but lacks trailing slash add it
+		// https://docs.docker.com/registry/spec/api/#detail. Acts as a workaround
+		// for containerd issue https://github.com/containerd/containerd/blob/2986d5b077feb8252d5d2060277a9c98ff8e009b/remotes/docker/config/hosts.go#L110
+		rh.Path = "/v2/"
+	}
 	ctx = docker.WithScope(ctx, "")
 	var ress []*http.Response
 	for i := 0; i < 10; i++ {
