@@ -197,8 +197,8 @@ func NewAuthCreds(refHostname string) (AuthCreds, error) {
 			// - ac.ServerAddress:         "https://index.docker.io/v1/".
 			if !isAuthConfigEmpty(ac) {
 				if ac.ServerAddress == "" {
-					// Can this happen?
-					logrus.Warnf("failed to get ac.ServerAddress for authConfigHostname=%q (refHostname=%q)",
+					// This can happen with Amazon ECR: https://github.com/containerd/nerdctl/issues/733
+					logrus.Debugf("failed to get ac.ServerAddress for authConfigHostname=%q (refHostname=%q)",
 						authConfigHostname, refHostname)
 				} else {
 					acsaHostname := credentials.ConvertToHostname(ac.ServerAddress)
