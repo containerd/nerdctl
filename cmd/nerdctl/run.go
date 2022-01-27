@@ -44,7 +44,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/netutil"
@@ -771,14 +770,11 @@ func generateLogURI(dataStore string) (*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
-	args := map[string]string{
-		logging.MagicArgv1: dataStore,
-	}
 	if runtime.GOOS == "windows" {
 		return nil, nil
 	}
 
-	return cio.LogURIGenerator("binary", selfExe, args)
+	return cio.LogURIGenerator("binary", selfExe, nil)
 }
 
 func withNerdctlOCIHook(cmd *cobra.Command, id, stateDir string) (oci.SpecOpts, error) {
