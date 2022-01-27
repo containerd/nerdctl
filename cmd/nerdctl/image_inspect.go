@@ -128,6 +128,7 @@ func imageInspectActionWithPlatform(cmd *cobra.Command, args []string, platform 
 	if len(errs) > 0 {
 		return fmt.Errorf("%d errors: %v", len(errs), errs)
 	}
+
 	return formatSlice(cmd, f.entries)
 }
 

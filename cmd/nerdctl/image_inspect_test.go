@@ -33,3 +33,14 @@ func TestImageInspectContainsSomeStuff(t *testing.T) {
 	assert.Assert(base.T, inspect.RootFS.Type != "")
 	assert.Assert(base.T, inspect.Architecture != "")
 }
+
+func TestImageInspectWithFormat(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
+	// test RawFormat support
+	base.Cmd("image", "inspect", testutil.CommonImage, "--format", "{{.Id}}").AssertOK()
+
+	// test typedFormat support
+	base.Cmd("image", "inspect", testutil.CommonImage, "--format", "{{.ID}}").AssertOK()
+}

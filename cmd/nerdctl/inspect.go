@@ -74,6 +74,7 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 		},
 	}
 
+	var errs []error
 	for _, req := range args {
 		ni, err := imagewalker.Walk(ctx, req)
 		if err != nil {
@@ -93,14 +94,18 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("no such object %s", req)
 		}
 		if ni != 0 {
-			if err := imageInspectActionWithPlatform(cmd, args, ""); err != nil {
-				return err
+			if err := imageInspectActionWithPlatform(cmd, []string{req}, ""); err != nil {
+				errs = append(errs, err)
 			}
 		} else {
-			if err := containerInspectAction(cmd, args); err != nil {
-				return err
+			if err := containerInspectAction(cmd, []string{req}); err != nil {
+				errs = append(errs, err)
 			}
 		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("%d errors: %v", len(errs), errs)
 	}
 
 	return nil
