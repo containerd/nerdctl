@@ -222,6 +222,7 @@ Config file ($NERDCTL_TOML): %s
 		newRunCommand(),
 		newUpdateCommand(),
 		newExecCommand(),
+		newAttachCommand(),
 		// #endregion
 
 		// #region Container management

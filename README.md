@@ -248,6 +248,8 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: :blue_square: nerdctl run](#whale-blue_square-nerdctl-run)
     - [:whale: :blue_square: nerdctl exec](#whale-blue_square-nerdctl-exec)
     - [:whale: :blue_square: nerdctl create](#whale-blue_square-nerdctl-create)
+    - [:whale: :blue_square: nerdctl attach](#whale-blue_square-nerdctl-exec)
+  - [Container management](#container-management)
     - [:whale: :blue_square: nerdctl ps](#whale-blue_square-nerdctl-ps)
     - [:whale: :blue_square: nerdctl inspect](#whale-blue_square-nerdctl-inspect)
     - [:whale: nerdctl logs](#whale-nerdctl-logs)
@@ -600,6 +602,16 @@ Flags:
 - :whale: `-u, --user`: Username or UID (format: <name|uid>[:<group|gid>])
 
 Unimplemented `docker exec` flags: `--detach-keys`
+
+### :whale: :blue_square: nerdctl attach
+Attach local standard input, output, and error streams to a running container,temporary just support attach the container when use ctr or crictl run a container.
+
+Usage: `nerdctl attach [OPTIONS] CONTAINER`
+
+Flags:
+- :whale: `--stdin`: Do not attach STDIN
+
+Unimplemented `docker attach` flags: `--detach-keys` `--sig-proxy`
 
 ### :whale: :blue_square: nerdctl create
 Create a new container.
