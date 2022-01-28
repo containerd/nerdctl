@@ -309,6 +309,15 @@ func ConfigureAuthentification(authConfig *types.AuthConfig, options *loginOptio
 	}
 
 	if options.username == "" {
+		fmt.Print("Enter Username: ")
+		username, err := readUsername()
+		if err != nil {
+			return err
+		}
+		options.username = username
+	}
+
+	if options.username == "" {
 		return fmt.Errorf("error: Username is Required")
 	}
 
@@ -324,7 +333,7 @@ func ConfigureAuthentification(authConfig *types.AuthConfig, options *loginOptio
 	}
 
 	if options.password == "" {
-		return fmt.Errorf("password is Required")
+		return fmt.Errorf("error: Password is Required")
 	}
 
 	authConfig.Username = options.username

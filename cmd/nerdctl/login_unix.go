@@ -20,8 +20,10 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 
 	"golang.org/x/term"
@@ -45,4 +47,27 @@ func readPassword() (string, error) {
 	}
 
 	return string(bytePassword), nil
+}
+
+func readUsername() (string, error) {
+	var fd *os.File
+	if term.IsTerminal(syscall.Stdin) {
+		fd = os.Stdin
+	} else {
+		tty, err := os.Open("/dev/tty")
+		if err != nil {
+			return "", fmt.Errorf("error allocating terminal: %w", err)
+		}
+		defer tty.Close()
+		fd = tty
+	}
+
+	reader := bufio.NewReader(fd)
+	username, err := reader.ReadString('\n')
+	if err != nil {
+		return "", fmt.Errorf("error reading username: %w", err)
+	}
+	username = strings.TrimSpace(username)
+
+	return username, nil
 }
