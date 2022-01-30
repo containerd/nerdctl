@@ -417,7 +417,7 @@ Verify flags:
 
 Other `docker run` flags are on plan but unimplemented yet.
 <details>
-<summary> Clicke here to show all the `docker run` flags (Docker 20.10)</summary>
+<summary> Click here to show all the `docker run` flags (Docker 20.10)</summary>
 
 <p>
 
@@ -648,7 +648,7 @@ Flags:
 ### :whale: nerdctl update
 Update configuration of one or more containers.
 
-Usage: `nerctl update [OPTIONS] CONTAINER [CONTAINER...]`
+Usage: `nerdctl update [OPTIONS] CONTAINER [CONTAINER...]`
 
 - :whale: `--cpus`: Number of CPUs
 - :whale: `--cpu-quota`: Limit the CPU CFS (Completely Fair Scheduler) quota
@@ -872,7 +872,7 @@ To see non-encrypted information, run `nerdctl image inspect --mode=native --pla
 Flags:
 -  `--recipient=<RECIPIENT>`      : Recipient of the image is the person who can decrypt (e.g., `jwe:mypubkey.pem`)
 -  `--dec-recipient=<RECIPIENT>`  : Recipient of the image; used only for PKCS7 and must be an x509 certificate
--  `--key=<KEY>[:<PWDESC>]`       : A secret key's filename and an optional password separated by colon, PWDDESC=<password>|pass:<password>|fd=<file descriptor>|filename
+-  `--key=<KEY>[:<PWDDESC>]`      : A secret key's filename and an optional password separated by colon, PWDDESC=<password>|pass:<password>|fd=<file descriptor>|filename
 -  `--gpg-homedir=<DIR>`          : The GPG homedir to use; by default gpg uses ~/.gnupg
 -  `--gpg-version=<VERSION>`      : The GPG version ("v1" or "v2"), default will make an educated guess
 -  `--platform=<PLATFORM>`        : Convert content for a specific platform
@@ -892,7 +892,7 @@ nerdctl image decrypt --key=mykey.pem example.com/foo:encrypted foo:decrypted
 
 Flags:
 -  `--dec-recipient=<RECIPIENT>`  : Recipient of the image; used only for PKCS7 and must be an x509 certificate
--  `--key=<KEY>[:<PWDESC>]`       : A secret key's filename and an optional password separated by colon, PWDDESC=<password>|pass:<password>|fd=<file descriptor>|filename
+-  `--key=<KEY>[:<PWDDESC>]`      : A secret key's filename and an optional password separated by colon, PWDDESC=<password>|pass:<password>|fd=<file descriptor>|filename
 -  `--gpg-homedir=<DIR>`          : The GPG homedir to use; by default gpg uses ~/.gnupg
 -  `--gpg-version=<VERSION>`      : The GPG version ("v1" or "v2"), default will make an educated guess
 -  `--platform=<PLATFORM>`        : Convert content for a specific platform
@@ -1245,7 +1245,7 @@ Usage: `nerdctl ipfs registry up [OPTIONS]`
 Flags:
 - :nerd_face: `--listen-registry`: Address to listen (default `localhost:5050`)
 - :nerd_face: `--read-retry-num`: Times to retry query on IPFS (default 0 (no retry))
-- :nerd_face: `--read-timeout`: Timeout duration of a read request to IPFS (defualt 0 (no timeout))
+- :nerd_face: `--read-timeout`: Timeout duration of a read request to IPFS (default 0 (no timeout))
 
 ### :nerd_face: nerdctl ipfs registry down
 Stop and remove read-only local registry backed by IPFS.
@@ -1263,7 +1263,7 @@ Flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default is pulled from `$IPFS_PATH/api` file. If `$IPFS_PATH` env var is not present, it defaults to `~/.ipfs`).
 - :nerd_face: `--listen-registry`: Address to listen (default `localhost:5050`).
 - :nerd_face: `--read-retry-num`: Times to retry query on IPFS (default 0 (no retry))
-- :nerd_face: `--read-timeout`: Timeout duration of a read request to IPFS (defualt 0 (no timeout))
+- :nerd_face: `--read-timeout`: Timeout duration of a read request to IPFS (default 0 (no timeout))
 
 ## Global flags
 - :nerd_face: :blue_square: `--address`:  containerd address, optionally with "unix://" prefix

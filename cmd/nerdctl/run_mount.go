@@ -205,7 +205,7 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 				return nil, nil, err
 			}
 
-			//Coyping content in AnonymousVolume and namedVolume
+			//Copying content in AnonymousVolume and namedVolume
 			if x.Type == "volume" {
 				if err := copyExistingContents(target, x.Mount.Source); err != nil {
 					return nil, nil, err

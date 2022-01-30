@@ -42,7 +42,7 @@ You can use GPUs on compose when you specify some of the following `capabilities
 - `nvidia`
 - all allowed capabilities for `nerdctl run --gpus`
 
-Avaliable fields are the same as `nerdctl run --gpus`.
+Available fields are the same as `nerdctl run --gpus`.
 
 The following exposes all available GPUs to the container.
 

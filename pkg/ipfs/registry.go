@@ -106,7 +106,7 @@ func (s *server) serve(r *http.Request) (string, io.ReadSeeker, string, int64, e
 		if _, dgstErr := digest.Parse(ref); dgstErr == nil {
 			resolvedCID, content, mediaType, size, err := s.serveContentByDigest(r.Context(), cidStr, ref)
 			if !images.IsManifestType(mediaType) && !images.IsIndexType(mediaType) {
-				return "", nil, "", 0, fmt.Errorf("cannot serve non-manifest from manifets API: %q", mediaType)
+				return "", nil, "", 0, fmt.Errorf("cannot serve non-manifest from manifest API: %q", mediaType)
 			}
 			logrus.WithField("root CID", cidStr).WithField("digest", ref).WithField("resolved CID", resolvedCID).Debugf("resolved manifest by digest")
 			return resolvedCID, content, mediaType, size, err

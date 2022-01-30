@@ -79,7 +79,7 @@ $ lima nerdctl run -d --name nginx -p 127.0.0.1:8080:80 nginx:alpine
 
 ### Does nerdctl run on Windows ?
 
-Windows containers: Yes, but experiemental.
+Windows containers: Yes, but experimental.
 
 Linux containers: Yes, via WSL2. [Rancher Desktop for Windows](https://rancherdesktop.io/) provides a `nerdctl.exe` that wraps nerdctl binary in a WSL2 machine.
 

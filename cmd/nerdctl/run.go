@@ -194,7 +194,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	// rootfs flags
 	cmd.Flags().Bool("read-only", false, "Mount the container's root filesystem as read only")
 	// rootfs flags (from Podman)
-	cmd.Flags().Bool("rootfs", false, "The first agument is not an image but the rootfs to the exploded container")
+	cmd.Flags().Bool("rootfs", false, "The first argument is not an image but the rootfs to the exploded container")
 
 	// #region env flags
 	cmd.Flags().String("entrypoint", "", "Overwrite the default ENTRYPOINT of the image")

@@ -52,6 +52,6 @@ func volumeRmAction(cmd *cobra.Command, args []string) error {
 }
 
 func volumeRmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	// show voume names
+	// show volume names
 	return shellCompleteVolumeNames(cmd)
 }

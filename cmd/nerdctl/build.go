@@ -377,12 +377,12 @@ func getDigestFromMetaFile(path string) (string, error) {
 
 	metadata := map[string]string{}
 	if err := json.Unmarshal(data, &metadata); err != nil {
-		logrus.WithError(err).Errorf("failed to unmarshal metadate file %s", path)
+		logrus.WithError(err).Errorf("failed to unmarshal metadata file %s", path)
 		return "", err
 	}
 	digest, ok := metadata["containerimage.digest"]
 	if !ok {
-		return "", errors.New("failed to find containerimage.digest in metadate file")
+		return "", errors.New("failed to find containerimage.digest in metadata file")
 	}
 	return digest, nil
 }

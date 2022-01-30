@@ -93,7 +93,7 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	}
 
 	if err != nil || authConfig.Username == "" || authConfig.Password == "" {
-		err = ConfigureAuthentification(authConfig, options)
+		err = ConfigureAuthentication(authConfig, options)
 		if err != nil {
 			return err
 		}
@@ -302,7 +302,7 @@ func tryLoginWithRegHost(ctx context.Context, rh docker.RegistryHost) error {
 	return errors.New("too many 401 (probably)")
 }
 
-func ConfigureAuthentification(authConfig *types.AuthConfig, options *loginOptions) error {
+func ConfigureAuthentication(authConfig *types.AuthConfig, options *loginOptions) error {
 	authConfig.Username = strings.TrimSpace(authConfig.Username)
 	if options.username = strings.TrimSpace(options.username); options.username == "" {
 		options.username = authConfig.Username

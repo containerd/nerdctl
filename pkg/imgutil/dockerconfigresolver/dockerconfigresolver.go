@@ -147,11 +147,11 @@ func New(ctx context.Context, refHostname string, optFuncs ...Opt) (remotes.Reso
 		return nil, err
 	}
 
-	resovlerOpts := docker.ResolverOptions{
+	resolverOpts := docker.ResolverOptions{
 		Hosts: dockerconfig.ConfigureHosts(ctx, *ho),
 	}
 
-	resolver := docker.NewResolver(resovlerOpts)
+	resolver := docker.NewResolver(resolverOpts)
 	return resolver, nil
 }
 

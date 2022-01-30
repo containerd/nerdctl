@@ -58,7 +58,7 @@ func Encode(w io.Writer, stdout, stderr io.Reader) error {
 		for {
 			line, err := br.ReadString(byte('\n'))
 			if err != nil {
-				logrus.WithError(err).Errorf("faild to read line from %q", name)
+				logrus.WithError(err).Errorf("failed to read line from %q", name)
 				return
 			}
 			e.Log = line
@@ -67,7 +67,7 @@ func Encode(w io.Writer, stdout, stderr io.Reader) error {
 			encErr := enc.Encode(e)
 			encMu.Unlock()
 			if encErr != nil {
-				logrus.WithError(err).Errorf("faild to encode JSON")
+				logrus.WithError(err).Errorf("failed to encode JSON")
 				return
 			}
 		}
