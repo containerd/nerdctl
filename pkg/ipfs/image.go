@@ -99,7 +99,7 @@ func Push(ctx context.Context, client *containerd.Client, ipfsClient iface.CoreA
 	return p.Cid(), nil
 }
 
-// ensureContentsOfIPFSImage ensures that the entire contents of an exisiting IPFS image are fully downloaded to containerd.
+// ensureContentsOfIPFSImage ensures that the entire contents of an existing IPFS image are fully downloaded to containerd.
 func ensureContentsOfIPFSImage(ctx context.Context, client *containerd.Client, ipfsClient iface.CoreAPI, ref string, allPlatforms bool, platform []string) error {
 	platMC, err := platformutil.NewMatchComparer(allPlatforms, platform)
 	if err != nil {
@@ -119,7 +119,7 @@ func ensureContentsOfIPFSImage(ctx context.Context, client *containerd.Client, i
 	} else if n == 0 {
 		return fmt.Errorf("image does not exist: %q", ref)
 	} else if n > 1 {
-		return fmt.Errorf("ambigious reference %q matched %d objects", ref, n)
+		return fmt.Errorf("ambiguous reference %q matched %d objects", ref, n)
 	}
 	cs := client.ContentStore()
 	childrenHandler := images.ChildrenHandler(cs)

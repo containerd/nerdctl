@@ -55,7 +55,7 @@ type Image struct {
 	Created string
 	// TODO: Container   string
 	// TODO: ContainerConfig *container.Config
-	// TDOO: DockerVersion string
+	// TODO: DockerVersion string
 	Author       string
 	Config       *Config
 	Architecture string

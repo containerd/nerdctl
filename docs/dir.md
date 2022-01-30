@@ -61,7 +61,7 @@ Data volume
 ### `<NETCONFPATH>`
 **Default**: `/etc/cni/net.d` (rootful), `~/.config/cni/net.d` (rootless)
 
-Can be overriden with `nerdctl --cni-netconfpath=<NETCONFPATH>` flag and environment variable `$NETCONFPATH`.
+Can be overridden with `nerdctl --cni-netconfpath=<NETCONFPATH>` flag and environment variable `$NETCONFPATH`.
 
 Files:
 - `nerdctl-<NWNAME>.conflist`: CNI conf list created by nerdctl

@@ -393,7 +393,7 @@ cmd_entrypoint_install_ipfs() {
 		WantedBy=default.target
 	EOT
 
-	# Aavoid using 5001(api)/8080(gateway) which are reserved by tests.
+	# Avoid using 5001(api)/8080(gateway) which are reserved by tests.
 	# TODO: support unix socket
 	systemctl --user stop "${SYSTEMD_IPFS_UNIT}"
 	sleep 3

@@ -150,7 +150,7 @@ As of now, BuildKit doesn't support `ipfs://` prefix so nerdctl achieves builds 
 This registry converts registry API requests to IPFS operations.
 So IPFS-agnostic tools can pull images from IPFS via this registry.
 
-When you specify `--ipfs` option to `nerdctl bulid`, it automatically starts the registry backed by the IPFS repo of the current `$IPFS_PATH`.
+When you specify `--ipfs` option to `nerdctl build`, it automatically starts the registry backed by the IPFS repo of the current `$IPFS_PATH`.
 By default, nerdctl exposes the registry at `localhost:5050`.
 You can change the address and can manually restart the registry using `nerdctl ipfs registry up` and `nerdctl ipfs registry down`.
 
@@ -189,7 +189,7 @@ nerdctl compose build --ipfs
 ### Encryption
 
 You can distribute [encrypted images](./ocicrypt.md) on IPFS using OCIcrypt.
-Please see [`/docs/ocycrypt.md`](./ocicrypt.md) for details about how to ecrypt and decrypt an image.
+Please see [`/docs/ocicrypt.md`](./ocicrypt.md) for details about how to encrypt and decrypt an image.
 
 Same as normal images, the encrypted image can be pushed to IPFS using `ipfs://` prefix.
 
@@ -202,7 +202,7 @@ INFO[0000] ensuring image contents
 bafkreifajsysbvhtgd7fdgrfesszexdq6v5zbj5y2jnjfwxdjyqws2s3s4
 ```
 
-You can pull the encrypted image from IPFS using `ipfs://` prefix and can decrypt it in the same way as described in [`/docs/ocycrypt.md`](./ocicrypt.md).
+You can pull the encrypted image from IPFS using `ipfs://` prefix and can decrypt it in the same way as described in [`/docs/ocicrypt.md`](./ocicrypt.md).
 
 ```console
 > nerdctl pull --unpack=false ipfs://bafkreifajsysbvhtgd7fdgrfesszexdq6v5zbj5y2jnjfwxdjyqws2s3s4
@@ -227,7 +227,7 @@ Thus the container can startup without waiting for the entire image contents to 
 You can see faster container cold-start.
 
 To use this feature, you need to enable Stargz Snapshotter following [`/docs/stargz.md`](./stargz.md).
-You also need to add the following configuration to `config.toml` of Stargz Snapsohtter (typically located at `/etc/containerd-stargz-grpc/config.toml`).
+You also need to add the following configuration to `config.toml` of Stargz Snapshotter (typically located at `/etc/containerd-stargz-grpc/config.toml`).
 
 ```toml
 ipfs = true

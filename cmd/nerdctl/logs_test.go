@@ -28,7 +28,7 @@ import (
 func TestLogs(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
-		t.Skip("`nerdctl logs` is not implmented on Windows (why?)")
+		t.Skip("`nerdctl logs` is not implemented on Windows (why?)")
 	}
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
@@ -68,7 +68,7 @@ bar`
 func TestLogsWithFailingContainer(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
-		t.Skip("`nerdctl logs` is not implmented on Windows (why?)")
+		t.Skip("`nerdctl logs` is not implemented on Windows (why?)")
 	}
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)

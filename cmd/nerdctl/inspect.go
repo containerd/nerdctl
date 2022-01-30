@@ -108,8 +108,8 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 
 func inspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show container names
-	continaers, _ := shellCompleteContainerNames(cmd, nil)
+	containers, _ := shellCompleteContainerNames(cmd, nil)
 	// show image names
 	images, _ := shellCompleteImageNames(cmd)
-	return append(continaers, images...), cobra.ShellCompDirectiveNoFileComp
+	return append(containers, images...), cobra.ShellCompDirectiveNoFileComp
 }

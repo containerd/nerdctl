@@ -51,7 +51,7 @@ $gateway=$sn.GatewayAddress
 echo "configuration complete! Printing configuration..."
 echo "Service:"
 get-service containerd
-echo "cni configuraiton"
+echo "cni configuration"
 cat "$Env:ProgramFiles\containerd\cni\conf\0-containerd-nat.conf"
 ls "$Env:ProgramFiles\containerd\cni\bin"
 echo "containerd install"

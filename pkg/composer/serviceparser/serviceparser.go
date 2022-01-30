@@ -283,7 +283,7 @@ func getGPUs(svc compose.ServiceConfig) (reqs []string, _ error) {
 // getRestart returns `nerdctl run --restart` flag string ("no" or "always")
 //
 // restart:                         {"no" (default), "always", "on-failure", "unless-stopped"} (https://github.com/compose-spec/compose-spec/blob/167f207d0a8967df87c5ed757dbb1a2bb6025a1e/spec.md#restart)
-// deploy.restart_policy.condition: {"none", "on-falure", "any" (default)}                     (https://github.com/compose-spec/compose-spec/blob/167f207d0a8967df87c5ed757dbb1a2bb6025a1e/deploy.md#restart_policy)
+// deploy.restart_policy.condition: {"none", "on-failure", "any" (default)}                    (https://github.com/compose-spec/compose-spec/blob/167f207d0a8967df87c5ed757dbb1a2bb6025a1e/deploy.md#restart_policy)
 func getRestart(svc compose.ServiceConfig) (string, error) {
 	var restartFlag string
 	switch svc.Restart {

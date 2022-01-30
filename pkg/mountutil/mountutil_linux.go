@@ -152,9 +152,9 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 			}
 
 			// NOTE: Though OCI Runtime Spec doesn't explicitly describe, runc's default
-			//       of RootfsPropagtion is unix.MS_SLAVE | unix.MS_REC (i.e. runc applies
+			//       of RootfsPropagation is unix.MS_SLAVE | unix.MS_REC (i.e. runc applies
 			//       "slave" to all mount points in the container recursively). This ends
-			//       up marking the bind src directories "slave" and priventing it to shared
+			//       up marking the bind src directories "slave" and preventing it to shared
 			//      with the host. So we set RootfsPropagation to "shared" here.
 			//
 			// See also:
@@ -194,16 +194,16 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 		case "private", "rprivate":
 			pFlag = got
 		default:
-			// No propagation is specfied to this bind mount.
+			// No propagation is specified to this bind mount.
 			// NOTE: When RootfsPropagation is set (e.g. by other bind mount option), that
 			//       propagation mode will be applied to this bind mount as well. So we need
-			//       to set "rprivate" explicitly for priventing this bind mount from unexpectedly
+			//       to set "rprivate" explicitly for preventing this bind mount from unexpectedly
 			//       shared with the host. This behaviour is compatible to docker:
 			//       https://github.com/moby/moby/blob/v20.10.7/volume/mounts/linux_parser.go#L320-L322
 			//
 			// TODO: directories managed by containerd (e.g. /var/lib/containerd, /run/containerd, ...)
 			//       should be marked as "rslave" instead of "rprivate". This is because allowing
-			//       containers to hold their private bind mounts will prevent containred from remove
+			//       containers to hold their private bind mounts will prevent containerd from remove
 			//       them. See also: https://github.com/moby/moby/pull/36055.
 			//       Unfortunately, containerd doesn't expose the locations of directories where it manages.
 			//       Current workaround is explicitly add "rshared" or "rslave" option to these bind mounts.
