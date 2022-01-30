@@ -20,6 +20,14 @@ jobs:
       with:
         path: src/github.com/containerd/nerdctl
         fetch-depth: 25
+        ref: ${{ github.event.pull_request.base.sha }}
+    - name: Retrieve PR Head
+      shell: bash
+      if: ${{ github.event.pull_request.head.sha }}
+      run: |
+        cd src/github.com/containerd/nerdctl;
+        git fetch origin refs/pull/${{ github.event.pull_request.number }}/merge;
+        git checkout FETCH_HEAD
     - uses: containerd/project-checks@v1.0.2
       with:
         working-directory: src/github.com/containerd/nerdctl
