@@ -329,3 +329,67 @@ networks:
 
 	base.Cmd("inspect", "-f", `{{json .NetworkSettings.Networks }}`, projectName+"_foo_1").AssertOutContains("10.1.100.")
 }
+
+func TestComposeUpRemoveOrphans(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var (
+		dockerComposeYAMLOrphan = fmt.Sprintf(`
+version: '3.1'
+
+services:
+  test:
+    image: %s
+    command: "sleep infinity"
+`, testutil.AlpineImage)
+
+		dockerComposeYAMLFull = fmt.Sprintf(`
+%s
+  orphan:
+    image: %s
+    command: "sleep infinity"
+`, dockerComposeYAMLOrphan, testutil.AlpineImage)
+	)
+
+	compOrphan := testutil.NewComposeDir(t, dockerComposeYAMLOrphan)
+	defer compOrphan.CleanUp()
+	compFull := testutil.NewComposeDir(t, dockerComposeYAMLFull)
+	defer compFull.CleanUp()
+
+	projectName := fmt.Sprintf("nerdctl-compose-test-%d", time.Now().Unix())
+	t.Logf("projectName=%q", projectName)
+
+	orphanContainer := fmt.Sprintf("%s_orphan_1", projectName)
+
+	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "down", "-v").Run()
+	base.ComposeCmd("-p", projectName, "-f", compOrphan.YAMLFullPath(), "up", "-d").AssertOK()
+	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "ps").AssertOutContains(orphanContainer)
+	base.ComposeCmd("-p", projectName, "-f", compOrphan.YAMLFullPath(), "up", "-d", "--remove-orphans").AssertOK()
+	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "ps").AssertOutNotContains(orphanContainer)
+}
+
+func TestComposeUpIdempotent(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = fmt.Sprintf(`
+version: '3.1'
+
+services:
+  test:
+    image: %s
+    command: "sleep infinity"
+`, testutil.AlpineImage)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "down").AssertOK()
+
+}

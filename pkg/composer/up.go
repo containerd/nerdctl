@@ -29,14 +29,15 @@ import (
 )
 
 type UpOptions struct {
-	Detach      bool
-	NoBuild     bool
-	NoColor     bool
-	NoLogPrefix bool
-	ForceBuild  bool
-	IPFS        bool
-	QuietPull   bool
-	Scale       map[string]uint64 // map of service name to replicas
+	Detach        bool
+	NoBuild       bool
+	NoColor       bool
+	NoLogPrefix   bool
+	ForceBuild    bool
+	IPFS          bool
+	QuietPull     bool
+	RemoveOrphans bool
+	Scale         map[string]uint64 // map of service name to replicas
 }
 
 func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) error {
@@ -86,7 +87,24 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 		return err
 	}
 
-	return c.upServices(ctx, parsedServices, uo)
+	if err := c.upServices(ctx, parsedServices, uo); err != nil {
+		return err
+	}
+
+	if uo.RemoveOrphans {
+		orphans, err := c.getOrphanContainers(ctx, parsedServices)
+		if err != nil {
+			return fmt.Errorf("error getting orphaned containers: %s", err)
+		}
+		if len(orphans) == 0 {
+			return nil
+		}
+		if err := c.downContainers(ctx, orphans, true); err != nil {
+			return fmt.Errorf("error removing orphaned containers: %s", err)
+		}
+	}
+
+	return nil
 }
 
 func validateFileObjectConfig(obj types.FileObjectConfig, shortName, objType string, project *types.Project) error {

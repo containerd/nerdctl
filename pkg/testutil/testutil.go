@@ -290,6 +290,16 @@ func (c *Cmd) AssertOutContains(s string) {
 	c.Assert(expected)
 }
 
+func (c *Cmd) AssertOutNotContains(s string) {
+	c.AssertOutWithFunc(func(stdout string) error {
+		if strings.Contains(stdout, s) {
+			return fmt.Errorf("expected stdout to contain %q", s)
+		} else {
+			return nil
+		}
+	})
+}
+
 func (c *Cmd) AssertOutExactly(s string) {
 	c.Base.T.Helper()
 	fn := func(stdout string) error {
