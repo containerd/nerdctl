@@ -222,10 +222,10 @@ It does not necessarily mean that the corresponding features are missing in cont
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-  - [Run & Exec](#run--exec)
+  - [Container management](#container-management)
     - [:whale: :blue_square: nerdctl run](#whale-blue_square-nerdctl-run)
     - [:whale: :blue_square: nerdctl exec](#whale-blue_square-nerdctl-exec)
-  - [Container management](#container-management)
+    - [:whale: :blue_square: nerdctl create](#whale-blue_square-nerdctl-create)
     - [:whale: :blue_square: nerdctl ps](#whale-blue_square-nerdctl-ps)
     - [:whale: :blue_square: nerdctl inspect](#whale-blue_square-nerdctl-inspect)
     - [:whale: nerdctl logs](#whale-nerdctl-logs)
@@ -296,6 +296,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose pull](#whale-nerdctl-compose-pull)
     - [:whale: nerdctl compose push](#whale-nerdctl-compose-push)
     - [:whale: nerdctl compose config](#whale-nerdctl-compose-config)
+    - [:whale: nerdctl compose kill](#whale-nerdctl-compose-kill)
   - [IPFS management](#ipfs-management)
     - [:nerd_face: nerdctl ipfs registry up](#nerd_face-nerdctl-ipfs-registry-up)
     - [:nerd_face: nerdctl ipfs registry down](#nerd_face-nerdctl-ipfs-registry-down)
@@ -925,7 +926,7 @@ Usage: `nerdctl network create [OPTIONS] NETWORK`
 Flags:
 - :whale: `-d, --driver=(bridge|nat)`: Driver to manage the Network
     - :whale: `--driver=bridge`: Default driver for unix
-    - :nerd_face: :blue_square: `--driver=nat`: Default driver for windows
+    - :whale: :blue_square: `--driver=nat`: Default driver for windows
 - :whale: `-o, --opt`: Set driver specific options
     - :whale: `--opt=com.docker.network.driver.mtu=<MTU>`: Set the containers network MTU
     - :nerd_face: `--opt=mtu=<MTU>`: Alias of `--opt=com.docker.network.driver.mtu=<MTU>`
@@ -1143,9 +1144,10 @@ Flags:
 - :nerd_face: `--ipfs`: Build images with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
 - :whale: `--quiet-pull`: Pull without printing progress information
 - :whale: `--scale`: Scale SERVICE to NUM instances. Overrides the `scale` setting in the Compose file if present.
+- :whale: `--remove-orphans`: Remove containers for services not defined in the Compose file
 
 Unimplemented `docker-compose up` (V1) flags: `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
-`--no-start`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--remove-orphans`, `--exit-code-from`
+`--no-start`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--exit-code-from`
 
 Unimplemented `docker compose up` (V2) flags: `--environment`
 
@@ -1160,7 +1162,7 @@ Flags:
 - :whale: `--timestamps`: Show timestamps
 - :whale: `--tail`: Number of lines to show from the end of the logs
 
-Unimplemented `docker compose build` (V2) flags:  `--since`, `--until`
+Unimplemented `docker compose logs` (V2) flags:  `--since`, `--until`
 
 ### :whale: nerdctl compose build
 Build or rebuild services.
