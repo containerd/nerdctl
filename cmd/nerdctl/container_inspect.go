@@ -81,6 +81,7 @@ func containerInspectAction(cmd *cobra.Command, args []string) error {
 	if len(errs) > 0 {
 		return fmt.Errorf("%d errors: %v", len(errs), errs)
 	}
+
 	return formatSlice(cmd, f.entries)
 }
 

@@ -75,13 +75,41 @@ func formatSlice(cmd *cobra.Command, x []interface{}) error {
 		for _, f := range x {
 			var b bytes.Buffer
 			if err := tmpl.Execute(&b, f); err != nil {
-				return err
+				if _, ok := err.(template.ExecError); ok {
+					// FallBack to Raw Format
+					if err = tryRawFormat(&b, f, tmpl); err != nil {
+						return err
+					}
+				}
 			}
 			if _, err = fmt.Fprintf(cmd.OutOrStdout(), b.String()+"\n"); err != nil {
 				return err
 			}
 		}
 	}
+	return nil
+}
+
+func tryRawFormat(b *bytes.Buffer, f interface{}, tmpl *template.Template) error {
+	m, err := json.MarshalIndent(f, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	var raw interface{}
+	rdr := bytes.NewReader(m)
+	dec := json.NewDecoder(rdr)
+	dec.UseNumber()
+
+	if rawErr := dec.Decode(&raw); rawErr != nil {
+		return fmt.Errorf("unable to read inspect data: %v", rawErr)
+	}
+
+	tmplMissingKey := tmpl.Option("missingkey=error")
+	if rawErr := tmplMissingKey.Execute(b, raw); rawErr != nil {
+		return fmt.Errorf("Template parsing error: %v", rawErr)
+	}
+
 	return nil
 }
 
