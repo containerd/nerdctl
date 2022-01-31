@@ -17,13 +17,16 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
+	"syscall"
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/remotes/docker"
@@ -35,6 +38,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/registry"
 	"golang.org/x/net/context/ctxhttp"
+	"golang.org/x/term"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -309,6 +313,15 @@ func ConfigureAuthentication(authConfig *types.AuthConfig, options *loginOptions
 	}
 
 	if options.username == "" {
+		fmt.Print("Enter Username: ")
+		username, err := readUsername()
+		if err != nil {
+			return err
+		}
+		options.username = username
+	}
+
+	if options.username == "" {
 		return fmt.Errorf("error: Username is Required")
 	}
 
@@ -324,11 +337,29 @@ func ConfigureAuthentication(authConfig *types.AuthConfig, options *loginOptions
 	}
 
 	if options.password == "" {
-		return fmt.Errorf("password is Required")
+		return fmt.Errorf("error: Password is Required")
 	}
 
 	authConfig.Username = options.username
 	authConfig.Password = options.password
 
 	return nil
+}
+
+func readUsername() (string, error) {
+	var fd *os.File
+	if term.IsTerminal(int(syscall.Stdin)) {
+		fd = os.Stdin
+	} else {
+		return "", fmt.Errorf("stdin is not a terminal (Hint: use `nerdctl login --username=USERNAME --password-stdin`)")
+	}
+
+	reader := bufio.NewReader(fd)
+	username, err := reader.ReadString('\n')
+	if err != nil {
+		return "", fmt.Errorf("error reading username: %w", err)
+	}
+	username = strings.TrimSpace(username)
+
+	return username, nil
 }
