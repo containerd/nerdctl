@@ -113,15 +113,6 @@ func (cs *Stats) SetError(err error) {
 	}
 }
 
-func calculateMemPercent(limit float64, usedNo float64) float64 {
-	// Limit will never be 0 unless the container is not running and we haven't
-	// got any data from cgroup
-	if limit != 0 {
-		return usedNo / limit * 100.0
-	}
-	return 0
-}
-
 // Rendering a FormattedStatsEntry from StatsEntry
 func RenderEntry(in *StatsEntry, noTrunc bool) FormattedStatsEntry {
 	return FormattedStatsEntry{

@@ -1,6 +1,3 @@
-//go:build freebsd || linux || darwin
-// +build freebsd linux darwin
-
 /*
    Copyright The containerd Authors.
 
@@ -17,32 +14,28 @@
    limitations under the License.
 */
 
-package main
+package netutil
 
 import (
 	"fmt"
-	"os"
-	"syscall"
-
-	"golang.org/x/term"
 )
 
-func readPassword() (string, error) {
-	var fd int
-	if term.IsTerminal(syscall.Stdin) {
-		fd = syscall.Stdin
-	} else {
-		tty, err := os.Open("/dev/tty")
-		if err != nil {
-			return "", fmt.Errorf("error allocating terminal: %w", err)
-		}
-		defer tty.Close()
-		fd = int(tty.Fd())
-	}
-	bytePassword, err := term.ReadPassword(fd)
-	if err != nil {
-		return "", fmt.Errorf("error reading password: %w", err)
-	}
+const (
+	DefaultNetworkName = "nat"
+	DefaultID          = 0
+	DefaultCIDR        = "10.4.0.0/24"
+	DefaultCNIPlugin   = "nat"
+)
 
-	return string(bytePassword), nil
+func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}, opts map[string]string) ([]CNIPlugin, error) {
+	return nil, fmt.Errorf("unsupported cni driver %q on darwin", driver)
+}
+
+func GenerateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr string) (map[string]interface{}, error) {
+	// TODO: silence golangcli for unused function
+	_, err := structToMap(newDarwinIPAMConfig())
+	if err != nil {
+		return nil, err
+	}
+	return nil, fmt.Errorf("unsupported ipam driver %q on darwin", driver)
 }

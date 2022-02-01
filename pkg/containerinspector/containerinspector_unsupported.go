@@ -1,3 +1,6 @@
+//go:build windows || darwin
+// +build windows darwin
+
 /*
    Copyright The containerd Authors.
 
@@ -14,6 +17,16 @@
    limitations under the License.
 */
 
-package main
+package containerinspector
 
-func removeBridgeNetworkInterface(name string) {}
+import (
+	"context"
+
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+)
+
+func InspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
+	r := &native.NetNS{}
+
+	return r, nil
+}

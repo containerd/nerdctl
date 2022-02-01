@@ -1,3 +1,6 @@
+//go:build freebsd || darwin
+// +build freebsd darwin
+
 /*
    Copyright The containerd Authors.
 
@@ -30,7 +33,7 @@ func getUnprivilegedMountFlags(path string) ([]string, error) {
 	return m, nil
 }
 
-// FreeBSD doesn't support bind mounts.
+// FreeBSD and Darwin don't support bind mounts.
 const DefaultPropagationMode = ""
 
 // parseVolumeOptions parses specified optsRaw with using information of

@@ -8,3 +8,4 @@ The following features are experimental and subject to change:
   eStargz itself is out of experimental.
 - [Image Distribution on IPFS](./ipfs.md)
 - [Image Sign and Verify (cosign)](./cosign.md)
+- [macOS containers](./freebsd.md)
