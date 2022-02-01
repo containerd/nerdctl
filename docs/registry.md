@@ -74,10 +74,14 @@ See https://github.com/containerd/nerdctl/issues/86 for the discussion about wor
   - [Logging in](#logging-in-5)
   - [Creating a repo](#creating-a-repo-5)
   - [Pushing an image](#pushing-an-image-5)
-- [Quay.io](#quayio)
+- [JFrog Artifactory (Cloud/On-Prem)](#jfrog-artifactory-cloudon-prem)
   - [Logging in](#logging-in-6)
   - [Creating a repo](#creating-a-repo-6)
   - [Pushing an image](#pushing-an-image-6)
+- [Quay.io](#quayio)
+  - [Logging in](#logging-in-7)
+  - [Creating a repo](#creating-a-repo-7)
+  - [Pushing an image](#pushing-an-image-7)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -363,6 +367,43 @@ $ nerdctl push asia.gcr.io/<GCP_PROJECT_ID>/hello-world
 ```
 
 The pushed image appears in https://console.cloud.google.com/gcr/ .
+Private by default.
+
+## JFrog Artifactory (Cloud/On-Prem)
+See also https://www.jfrog.com/confluence/display/JFROG/Getting+Started+with+Artifactory+as+a+Docker+Registry
+
+### Logging in
+```console
+$ nerdctl login <SERVER_NAME>.jfrog.io -u <USERNAME>
+Enter Password: ********[Enter]
+
+Login Succeeded
+```
+
+Login using the default username: admin, and password: password for the on-prem installation, or the credentials provided to you by email for the cloud installation.
+JFrog Platform is integrated with OAuth allowing you to delegate authentication requests to external providers (the provider types supported are Google, OpenID Connect, GitHub Enterprise, and Cloud Foundry UAA)
+
+> **Note**: nerdctl prior to v0.16.1 had a bug that required pressing the Enter key twice.
+
+### Creating a repo
+1. Add local Docker repository
+   1. Add a new Local Repository with the Docker package type via `https://<server-name>.jfrog.io/ui/admin/repositories/local/new`.
+2. Add virtual Docker repository
+   1. Add a new virtual repository with the Docker package type via `https://<server-name>.jfrog.io/ui/admin/repositories/virtual/new`.
+   2. Add the local docker repository you created in Steps 1 (move it from Available Repositories to Selected Repositories using the arrow buttons).
+   3. Set local repository as a default local deployment repository.
+
+### Pushing an image
+```console
+$ nerdctl tag hello-world <SERVER_NAME>.jfrog.io/<VIRTUAL_REPO_NAME>/hello-world
+$ nerdctl push <SERVER_NAME>.jfrog.io/<VIRTUAL_REPO_NAME>/hello-world
+```
+
+The `SERVER_NAME` is the first part of the URL given to you for your environment: `https://<SERVER_NAME>.jfrog.io`
+
+The `VIRTUAL_REPO_NAME` is the name “docker” that you assigned to your virtual repository in 2.i .
+
+The pushed image appears in `https://<SERVER_NAME>.jfrog.io/ui/repos/tree/General/<VIRTUAL_REPO_NAME>` .
 Private by default.
 
 ## Quay.io
