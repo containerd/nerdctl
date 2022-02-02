@@ -28,6 +28,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/containerd/nerdctl/pkg/imgutil"
+
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/remotes/docker"
 	dockerconfig "github.com/containerd/containerd/remotes/docker/config"
@@ -246,7 +248,7 @@ func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthCon
 		return "", fmt.Errorf("got empty []docker.RegistryHost for %q", host)
 	}
 	for i, rh := range regHosts {
-		err = tryLoginWithRegHost(ctx, rh)
+		err = tryLoginWithRegHost(ctx, rh, insecure)
 		identityToken := fetchedRefreshTokens[rh.Host] // can be empty
 		if err == nil {
 			return identityToken, nil
@@ -256,7 +258,7 @@ func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthCon
 	return "", err
 }
 
-func tryLoginWithRegHost(ctx context.Context, rh docker.RegistryHost) error {
+func tryLoginWithRegHost(ctx context.Context, rh docker.RegistryHost, insecure bool) error {
 	if rh.Authorizer == nil {
 		return errors.New("got nil Authorizer")
 	}
@@ -287,7 +289,14 @@ func tryLoginWithRegHost(ctx context.Context, rh docker.RegistryHost) error {
 		}
 		res, err := ctxhttp.Do(ctx, rh.Client, req)
 		if err != nil {
-			return fmt.Errorf("failed to call rh.Client.Do: %w", err)
+			// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused"
+			if (imgutil.IsErrHTTPResponseToHTTPSClient(err) || imgutil.IsErrConnectionRefused(err)) && insecure {
+				logrus.WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", rh.Host)
+				u.Scheme = "http"
+				continue
+			} else {
+				return fmt.Errorf("failed to call rh.Client.Do: %w", err)
+			}
 		}
 		ress = append(ress, res)
 		if res.StatusCode == 401 {
