@@ -183,7 +183,8 @@ func pushAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if err = pushFunc(resolver); err != nil {
-		if !imgutil.IsErrHTTPResponseToHTTPSClient(err) {
+		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused"
+		if !imgutil.IsErrHTTPResponseToHTTPSClient(err) && !imgutil.IsErrConnectionRefused(err) {
 			return err
 		}
 		if insecure {

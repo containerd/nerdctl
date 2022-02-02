@@ -53,6 +53,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 		src, dst string
 		options  []string
 	)
+
 	split := strings.Split(s, ":")
 	switch len(split) {
 	case 1:

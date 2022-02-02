@@ -57,7 +57,7 @@ func TestMultiPlatformBuildPush(t *testing.T) {
 	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	reg := testregistry.NewPlainHTTP(base)
+	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
 
 	imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.ListenPort, tID)
@@ -80,7 +80,7 @@ func TestMultiPlatformPullPushAllPlatforms(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	reg := testregistry.NewPlainHTTP(base)
+	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
 
 	pushImageName := fmt.Sprintf("localhost:%d/%s:latest", reg.ListenPort, tID)

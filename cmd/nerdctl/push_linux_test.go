@@ -28,7 +28,7 @@ import (
 
 func TestPushPlainHTTPFails(t *testing.T) {
 	base := testutil.NewBase(t)
-	reg := testregistry.NewPlainHTTP(base)
+	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
@@ -46,7 +46,7 @@ func TestPushPlainHTTPFails(t *testing.T) {
 
 func TestPushPlainHTTPLocalhost(t *testing.T) {
 	base := testutil.NewBase(t)
-	reg := testregistry.NewPlainHTTP(base)
+	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
 	localhostIP := "127.0.0.1"
 	t.Logf("localhost IP=%q", localhostIP)
@@ -65,12 +65,29 @@ func TestPushPlainHTTPInsecure(t *testing.T) {
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
-	reg := testregistry.NewPlainHTTP(base)
+	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
 		reg.IP.String(), reg.ListenPort, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
+	t.Logf("testImageRef=%q", testImageRef)
+	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
+
+	base.Cmd("--insecure-registry", "push", testImageRef).AssertOK()
+}
+
+func TestPushPlainHttpInsecureWithDefaultPort(t *testing.T) {
+	// Skip docker, because "dockerd --insecure-registries" requires restarting the daemon
+	testutil.DockerIncompatible(t)
+
+	base := testutil.NewBase(t)
+	reg := testregistry.NewPlainHTTP(base, 80)
+	defer reg.Cleanup()
+
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
+	testImageRef := fmt.Sprintf("%s/%s:%s",
+		reg.IP.String(), testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
 	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
