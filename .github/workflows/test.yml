@@ -23,7 +23,6 @@ jobs:
     - uses: containerd/project-checks@v1.0.2
       with:
         working-directory: src/github.com/containerd/nerdctl
-        go-mod-tidy-flags: -compat=1.17
 
   golangci-lint:
     runs-on: ubuntu-20.04
