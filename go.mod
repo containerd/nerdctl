@@ -5,9 +5,9 @@ go 1.17
 require (
 	github.com/Microsoft/go-winio v0.5.1
 	github.com/compose-spec/compose-go v1.0.8
-	github.com/containerd/cgroups v1.0.2
+	github.com/containerd/cgroups v1.0.3
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.0-rc.1.0.20220128165351-9c676e98dde9
+	github.com/containerd/containerd v1.6.0-rc.2
 	github.com/containerd/continuity v0.2.2
 	github.com/containerd/go-cni v1.1.1
 	github.com/containerd/imgcrypt v1.1.3
@@ -26,7 +26,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ipfs/go-cid v0.1.0
-	github.com/ipfs/go-ipfs-files v0.1.1-0.20220118065129-90b5617c775d
+	github.com/ipfs/go-ipfs-files v0.1.1
 	github.com/ipfs/go-ipfs-http-client v0.2.0
 	github.com/ipfs/interface-go-ipfs-core v0.5.2
 	github.com/jaytaylor/go-hostsfile v0.0.0-20211120191712-f53f85d8b98f
@@ -42,7 +42,7 @@ require (
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/pflag v1.0.5
 	github.com/tidwall/gjson v1.13.0
-	github.com/vishvananda/netlink v1.1.1-0.20211129163951-9ada19101fc5
+	github.com/vishvananda/netlink v1.1.1-0.20220125195016-0639e7e787ba
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
