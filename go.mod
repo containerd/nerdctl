@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/Microsoft/go-winio v0.5.1
-	github.com/compose-spec/compose-go v1.0.8
+	github.com/compose-spec/compose-go v1.0.9
 	github.com/containerd/cgroups v1.0.3
 	github.com/containerd/console v1.0.3
 	github.com/containerd/containerd v1.6.0-rc.2
@@ -60,7 +60,6 @@ require (
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cilium/ebpf v0.7.0 // indirect
-	github.com/compose-spec/godotenv v1.1.1 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
 	github.com/containerd/ttrpc v1.1.0 // indirect
 	github.com/containers/ocicrypt v1.1.2 // indirect
