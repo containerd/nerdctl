@@ -87,6 +87,22 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	var responseIdentityToken string
 	ctx := cmd.Context()
 	isDefaultRegistry := serverAddress == registry.IndexServer
+
+	// Ensure that URL contains scheme for a good parsing process
+	if strings.Contains(serverAddress, "://") {
+		u, err := url.Parse(serverAddress)
+		if err != nil {
+			return err
+		}
+		serverAddress = u.Host
+	} else {
+		u, err := url.Parse("https://" + serverAddress)
+		if err != nil {
+			return err
+		}
+		serverAddress = u.Host
+	}
+
 	authConfig, err := GetDefaultAuthConfig(options.username == "" && options.password == "", serverAddress, isDefaultRegistry)
 	if &authConfig == nil {
 		authConfig = &types.AuthConfig{}
@@ -180,21 +196,6 @@ func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRe
 
 func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthConfig) (string, error) {
 	host := auth.ServerAddress
-
-	// Ensure that URL contains scheme for a good parsing process
-	if strings.Contains(host, "://") {
-		u, err := url.Parse(host)
-		if err != nil {
-			return "", err
-		}
-		host = u.Host
-	} else {
-		u, err := url.Parse("https://" + host)
-		if err != nil {
-			return "", err
-		}
-		host = u.Host
-	}
 
 	var dOpts []dockerconfigresolver.Opt
 	insecure, err := cmd.Flags().GetBool("insecure-registry")
