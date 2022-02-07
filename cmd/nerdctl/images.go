@@ -109,7 +109,8 @@ type imagePrintable struct {
 	ID           string // image target digest (not config digest, unlike Docker), or its short form
 	Repository   string
 	Tag          string // "<none>" or tag
-	Size         string
+	Size         string // the size of the unpacked snapshots.
+	BlobSize     string // the size of the blobs in the content store
 	// TODO: "SharedSize", "UniqueSize", "VirtualSize"
 	Platform string // nerdctl extension
 }
@@ -142,9 +143,9 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
 		if !quiet {
 			if digestsFlag {
-				fmt.Fprintln(w, "REPOSITORY\tTAG\tDIGEST\tIMAGE ID\tCREATED\tPLATFORM\tSIZE")
+				fmt.Fprintln(w, "REPOSITORY\tTAG\tDIGEST\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE")
 			} else {
-				fmt.Fprintln(w, "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tPLATFORM\tSIZE")
+				fmt.Fprintln(w, "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE")
 			}
 		}
 	case "raw":
@@ -216,10 +217,17 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 		logrus.WithError(availErr).Debugf("skipping printing image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 		return nil
 	}
+
+	blobSize, err := img.Size(ctx, x.contentStore, platMC)
+	if err != nil {
+		logrus.WithError(err).Warnf("failed to get blob size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
+	}
+
 	size, err := unpackedImageSize(ctx, x.client, x.snapshotter, img, platMC)
 	if err != nil {
-		logrus.WithError(err).Warnf("failed to get size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
+		logrus.WithError(err).Warnf("failed to get unpacked size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 	}
+
 	repository, tag := imgutil.ParseRepoTag(img.Name)
 
 	p := imagePrintable{
@@ -230,6 +238,7 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 		Repository:   repository,
 		Tag:          tag,
 		Size:         progress.Bytes(size).String(),
+		BlobSize:     progress.Bytes(blobSize).String(),
 		Platform:     platforms.Format(ociPlatform),
 	}
 	if p.Tag == "" {
@@ -253,7 +262,7 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 		}
 	} else {
 		if x.digestsFlag {
-			if _, err := fmt.Fprintf(x.w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			if _, err := fmt.Fprintf(x.w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 				p.Repository,
 				p.Tag,
 				p.Digest,
@@ -261,17 +270,19 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 				p.CreatedSince,
 				p.Platform,
 				p.Size,
+				p.BlobSize,
 			); err != nil {
 				return err
 			}
 		} else {
-			if _, err := fmt.Fprintf(x.w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			if _, err := fmt.Fprintf(x.w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 				p.Repository,
 				p.Tag,
 				p.ID,
 				p.CreatedSince,
 				p.Platform,
 				p.Size,
+				p.BlobSize,
 			); err != nil {
 				return err
 			}
