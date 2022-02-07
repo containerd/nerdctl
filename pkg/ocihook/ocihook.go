@@ -52,6 +52,29 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 		return err
 	}
 
+	// <WORKAROUND>
+	// gVisor and Kata do not propagate annotations automatically (as of Feb 2022),
+	// so, we have to copy the annotations from the spec
+	// https://github.com/kata-containers/kata-containers/issues/3629
+	if len(state.Annotations) == 0 {
+		if state.Bundle == "" {
+			return errors.New("state.Bundle must be set")
+		}
+		configJSONPath := filepath.Join(state.Bundle, "config.json")
+		configJSONReader, err := os.Open(configJSONPath)
+		if err != nil {
+			return err
+		}
+		var spec specs.Spec
+		err = json.NewDecoder(configJSONReader).Decode(&spec)
+		configJSONReader.Close()
+		if err != nil {
+			return err
+		}
+		state.Annotations = spec.Annotations
+	}
+	// </WORKAROUND>
+
 	if containerStateDir := state.Annotations[labels.StateDir]; containerStateDir == "" {
 		return errors.New("state dir must be set")
 	} else {
