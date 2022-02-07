@@ -55,7 +55,8 @@ func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}, opts
 		bridge.IsGW = true
 		bridge.IPMasq = true
 		bridge.HairpinMode = true
-		plugins = []CNIPlugin{bridge, newPortMapPlugin(), newFirewallPlugin(), newTuningPlugin()}
+		// gVisor needs "loopback" plugin to be added explicitly
+		plugins = []CNIPlugin{bridge, newPortMapPlugin(), newFirewallPlugin(), newTuningPlugin(), newLoopbackPlugin()}
 	default:
 		return nil, fmt.Errorf("unsupported cni driver %q", driver)
 	}

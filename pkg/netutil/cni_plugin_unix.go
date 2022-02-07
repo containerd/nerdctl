@@ -95,6 +95,23 @@ func (*tuningConfig) GetPluginType() string {
 	return "tuning"
 }
 
+// loopbackConfig describes the loopback plugin (required for gVisor)
+type loopbackConfig struct {
+	PluginType string `json:"type"`
+	Name       string `json:"name"`
+}
+
+func newLoopbackPlugin() *loopbackConfig {
+	return &loopbackConfig{
+		PluginType: "loopback",
+		Name:       "lo",
+	}
+}
+
+func (*loopbackConfig) GetPluginType() string {
+	return "loopback"
+}
+
 // https://github.com/containernetworking/plugins/blob/v1.0.1/plugins/ipam/host-local/backend/allocator/config.go#L47-L56
 type hostLocalIPAMConfig struct {
 	Type        string        `json:"type"`

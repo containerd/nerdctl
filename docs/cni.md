@@ -7,7 +7,7 @@ either `--network` or `--net` option.
 
 nerdctl support some basic types of CNI plugins without any configuration
 needed(you should have CNI plugin be installed), for Linux systems the basic
-CNI plugin types are `bridge`, `portmap`, `firewall`, `tuning`, for Windows
+CNI plugin types are `bridge`, `portmap`, `firewall`, `tuning`, `loopback`, for Windows
 system, the supported CNI plugin types are `nat` only.
 
 The default network `bridge` for Linux and `nat` for Windows if you
@@ -50,6 +50,10 @@ Configuration of the default network `bridge` of Linux:
     },
     {
       "type": "tuning"
+    },
+    {
+      "type": "loopback",
+      "name": "lo"
     },
     {
       "type": "isolation"
