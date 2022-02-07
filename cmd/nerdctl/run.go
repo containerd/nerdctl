@@ -788,8 +788,11 @@ func withNerdctlOCIHook(cmd *cobra.Command, id, stateDir string) (oci.SpecOpts, 
 		if s.Hooks == nil {
 			s.Hooks = &specs.Hooks{}
 		}
-		crArgs := append(args, "createRuntime")
-		s.Hooks.CreateRuntime = append(s.Hooks.CreateRuntime, specs.Hook{
+		// prestart is deprecated in favor of createRuntime added in OCI Runtime Spec v1.0.2,
+		// however, as of Feb 2022, gVisor and Kata still do not support createRuntime.
+		// https://github.com/containerd/nerdctl/issues/787
+		crArgs := append(args, "prestart")
+		s.Hooks.Prestart = append(s.Hooks.CreateRuntime, specs.Hook{
 			Path: selfExe,
 			Args: crArgs,
 			Env:  os.Environ(),

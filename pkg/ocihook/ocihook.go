@@ -73,8 +73,13 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	}
 
 	switch event {
-	case "createRuntime":
-		return onCreateRuntime(opts)
+	// prestart is deprecated in favor of createRuntime added in OCI Runtime Spec v1.0.2,
+	// however, as of Feb 2022, gVisor and Kata still do not support createRuntime.
+	// https://github.com/containerd/nerdctl/issues/787
+	//
+	// "prestart" is NOT a typo of "preStart".
+	case "prestart":
+		return onPrestart(opts)
 	case "postStop":
 		return onPostStop(opts)
 	default:
@@ -290,7 +295,7 @@ func getPortMapOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 	return nil, nil
 }
 
-func onCreateRuntime(opts *handlerOpts) error {
+func onPrestart(opts *handlerOpts) error {
 	loadAppArmor()
 
 	if opts.cni != nil {
