@@ -69,4 +69,9 @@ const (
 
 	// Platform is the normalized platform string like "linux/ppc64le".
 	Platform = Prefix + "platform"
+
+	// Bypass4netns is the flag for acceleration with bypass4netns
+	// Boolean value which can be parsed with strconv.ParseBool() is required.
+	// (like "nerdctl/bypass4netns=true" or "nerdctl/bypass4netns=false")
+	Bypass4netns = Prefix + "bypass4netns"
 )

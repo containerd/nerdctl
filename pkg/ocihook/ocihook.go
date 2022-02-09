@@ -29,6 +29,7 @@ import (
 
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/netutil"
@@ -38,6 +39,7 @@ import (
 	dopts "github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
+	b4nndclient "github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
 	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
 	"github.com/sirupsen/logrus"
 )
@@ -191,10 +193,25 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 			return nil, err
 		}
 	}
+
 	if rootlessutil.IsRootlessChild() {
 		o.rootlessKitClient, err = rootlessutil.NewRootlessKitClient()
 		if err != nil {
 			return nil, err
+		}
+		b4nnEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(o.state.Annotations)
+		if err != nil {
+			return nil, err
+		}
+		if b4nnEnabled {
+			socketPath, err := bypass4netnsutil.GetBypass4NetnsdDefaultSocketPath()
+			if err != nil {
+				return nil, err
+			}
+			o.bypassClient, err = b4nndclient.New(socketPath)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	return o, nil
@@ -209,6 +226,7 @@ type handlerOpts struct {
 	cniNames          []string
 	fullID            string
 	rootlessKitClient rlkclient.Client
+	bypassClient      b4nndclient.Client
 	extraHosts        map[string]string // ip:host
 }
 
@@ -324,17 +342,34 @@ func onCreateRuntime(opts *handlerOpts) error {
 			hsMeta.Networks[cniName] = cniResRaw[i]
 		}
 
+		b4nnEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(opts.state.Annotations)
+		if err != nil {
+			return err
+		}
+
 		if err := hs.Acquire(hsMeta); err != nil {
 			return err
 		}
-		if len(opts.ports) > 0 && rootlessutil.IsRootlessChild() {
-			pm, err := rootlessutil.NewRootlessCNIPortManager(opts.rootlessKitClient)
-			if err != nil {
-				return err
-			}
-			for _, p := range opts.ports {
-				if err := pm.ExposePort(ctx, p); err != nil {
+
+		if rootlessutil.IsRootlessChild() {
+			if b4nnEnabled {
+				bm, err := bypass4netnsutil.NewBypass4netnsCNIBypassManager(opts.bypassClient)
+				if err != nil {
 					return err
+				}
+				err = bm.StartBypass(ctx, opts.ports, opts.state.ID, opts.state.Annotations[labels.StateDir])
+				if err != nil {
+					return err
+				}
+			} else if len(opts.ports) > 0 {
+				pm, err := rootlessutil.NewRootlessCNIPortManager(opts.rootlessKitClient)
+				if err != nil {
+					return err
+				}
+				for _, p := range opts.ports {
+					if err := pm.ExposePort(ctx, p); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -345,14 +380,30 @@ func onCreateRuntime(opts *handlerOpts) error {
 func onPostStop(opts *handlerOpts) error {
 	ctx := context.Background()
 	if opts.cni != nil {
-		if len(opts.ports) > 0 && rootlessutil.IsRootlessChild() {
-			pm, err := rootlessutil.NewRootlessCNIPortManager(opts.rootlessKitClient)
-			if err != nil {
-				return err
-			}
-			for _, p := range opts.ports {
-				if err := pm.UnexposePort(ctx, p); err != nil {
+		var err error
+		b4nnEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(opts.state.Annotations)
+		if err != nil {
+			return err
+		}
+		if rootlessutil.IsRootlessChild() {
+			if b4nnEnabled {
+				bm, err := bypass4netnsutil.NewBypass4netnsCNIBypassManager(opts.bypassClient)
+				if err != nil {
 					return err
+				}
+				err = bm.StopBypass(ctx, opts.state.ID)
+				if err != nil {
+					return err
+				}
+			} else if len(opts.ports) > 0 {
+				pm, err := rootlessutil.NewRootlessCNIPortManager(opts.rootlessKitClient)
+				if err != nil {
+					return err
+				}
+				for _, p := range opts.ports {
+					if err := pm.UnexposePort(ctx, p); err != nil {
+						return err
+					}
 				}
 			}
 		}

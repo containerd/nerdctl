@@ -835,6 +835,15 @@ func getContainerStateDirPath(cmd *cobra.Command, dataStore, id string) (string,
 }
 
 func withContainerLabels(cmd *cobra.Command) ([]containerd.NewContainerOpts, error) {
+	labelMap, err := readKVStringsMapfFromLabel(cmd)
+	if err != nil {
+		return nil, err
+	}
+	o := containerd.WithAdditionalContainerLabels(labelMap)
+	return []containerd.NewContainerOpts{o}, nil
+}
+
+func readKVStringsMapfFromLabel(cmd *cobra.Command) (map[string]string, error) {
 	labelsMap, err := cmd.Flags().GetStringArray("label")
 	if err != nil {
 		return nil, err
@@ -849,8 +858,8 @@ func withContainerLabels(cmd *cobra.Command) ([]containerd.NewContainerOpts, err
 	if err != nil {
 		return nil, err
 	}
-	o := containerd.WithAdditionalContainerLabels(strutil.ConvertKVStringsToMap(labels))
-	return []containerd.NewContainerOpts{o}, nil
+
+	return strutil.ConvertKVStringsToMap(labels), nil
 }
 
 func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string) (containerd.NewContainerOpts, error) {

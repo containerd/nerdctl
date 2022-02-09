@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
@@ -80,6 +81,17 @@ func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]o
 		return nil, err
 	} else {
 		opts = append(opts, secOpts...)
+	}
+
+	labelsMap, err := readKVStringsMapfFromLabel(cmd)
+	if err != nil {
+		return nil, err
+	}
+	b4nnOpts, err := bypass4netnsutil.GenerateBypass4netnsOpts(securityOptsMaps, labelsMap, id)
+	if err != nil {
+		return nil, err
+	} else {
+		opts = append(opts, b4nnOpts...)
 	}
 
 	capAdd, err := cmd.Flags().GetStringSlice("cap-add")
