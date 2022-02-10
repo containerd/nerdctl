@@ -19,12 +19,16 @@ package mountutil
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
+	"github.com/docker/go-units"
 	mobymount "github.com/moby/sys/mount"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
@@ -257,4 +261,164 @@ func ProcessFlagTmpfs(s string) (*Processed, error) {
 		Type: Tmpfs,
 	}
 	return res, nil
+}
+
+func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, error) {
+	fields := strings.Split(s, ",")
+	var (
+		mountType       string
+		src             string
+		dst             string
+		bindPropagation string
+		rwOption        string
+		tmpfsSize       int64
+		tmpfsMode       os.FileMode
+		err             error
+	)
+
+	// set default values
+	mountType = Volume
+	tmpfsMode = os.FileMode(01777)
+
+	// three types of mount(and examples):
+	// --mount type=bind,source="$(pwd)"/target,target=/app2,readonly,bind-propagation=shared
+	// --mount type=tmpfs,destination=/app,tmpfs-mode=1770,tmpfs-size=1MB
+	// --mount type=volume,src=vol-1,dst=/app,readonly
+	// if type not specified, default will be set to volume
+	// --mount src=`pwd`/tmp,target=/app
+
+	for _, field := range fields {
+		parts := strings.SplitN(field, "=", 2)
+		key := strings.ToLower(parts[0])
+
+		if len(parts) == 1 {
+			switch key {
+			case "readonly", "ro", "rw", "rro":
+				rwOption = key
+				continue
+			}
+		}
+
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid field '%s' must be a key=value pair", field)
+		}
+
+		value := parts[1]
+		switch key {
+		case "type":
+			switch value {
+			case "tmpfs":
+				mountType = Tmpfs
+			case "bind":
+				mountType = Bind
+			case "volume":
+			default:
+				return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", value)
+			}
+		case "source", "src":
+			src = value
+		case "target", "dst", "destination":
+			dst = value
+		case "readonly", "ro", "rw", "rro":
+			trueValue, err := strconv.ParseBool(value)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for %s: %s", key, value)
+			}
+			if trueValue {
+				rwOption = key
+			}
+		case "bind-propagation":
+			// here don't validate the propagation value
+			// parseVolumeOptions will do that.
+			bindPropagation = value
+		case "tmpfs-size":
+			tmpfsSize, err = units.RAMInBytes(value)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for %s: %s", key, value)
+			}
+		case "tmpfs-mode":
+			ui64, err := strconv.ParseUint(value, 8, 32)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for %s: %s", key, value)
+			}
+			tmpfsMode = os.FileMode(ui64)
+		default:
+			return nil, fmt.Errorf("unexpected key '%s' in '%s'", key, field)
+		}
+	}
+
+	// compose new fileds and join into a string
+	// to call legacy ProcessFlagTmpfs or ProcessFlagV function
+	fields = []string{}
+	options := []string{}
+	if rwOption != "" {
+		if rwOption == "readonly" {
+			rwOption = "ro"
+		}
+		options = append(options, rwOption)
+	}
+
+	switch mountType {
+	case Tmpfs:
+		fields = []string{dst}
+		if tmpfsMode != 0 {
+			options = append(options, fmt.Sprintf("mode=%o", tmpfsMode))
+		}
+		if tmpfsSize > 0 {
+			options = append(options, getTmpfsSize(tmpfsSize))
+		}
+	case Volume, Bind:
+		fields = []string{src, dst}
+		if bindPropagation != "" {
+			options = append(options, bindPropagation)
+		}
+	}
+
+	if len(options) > 0 {
+		optionsStr := strings.Join(options, ",")
+		fields = append(fields, optionsStr)
+	}
+	fieldsStr := strings.Join(fields, ":")
+
+	logrus.Debugf("Call legacy %s process, spec: %s ", mountType, fieldsStr)
+
+	switch mountType {
+	case Tmpfs:
+		return ProcessFlagTmpfs(fieldsStr)
+	case Volume, Bind:
+		return ProcessFlagV(fieldsStr, volStore)
+	}
+	return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", mountType)
+}
+
+// copy from https://github.com/moby/moby/blob/085c6a98d54720e70b28354ccec6da9b1b9e7fcf/volume/mounts/linux_parser.go#L375
+func getTmpfsSize(size int64) string {
+	// calculate suffix here, making this linux specific, but that is
+	// okay, since API is that way anyways.
+
+	// we do this by finding the suffix that divides evenly into the
+	// value, returning the value itself, with no suffix, if it fails.
+	//
+	// For the most part, we don't enforce any semantic to this values.
+	// The operating system will usually align this and enforce minimum
+	// and maximums.
+	var (
+		suffix string
+	)
+	for _, r := range []struct {
+		suffix  string
+		divisor int64
+	}{
+		{"g", 1 << 30},
+		{"m", 1 << 20},
+		{"k", 1 << 10},
+	} {
+		if size%r.divisor == 0 {
+			size = size / r.divisor
+			suffix = r.suffix
+			break
+		}
+	}
+
+	return fmt.Sprintf("size=%d%s", size, suffix)
 }

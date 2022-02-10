@@ -383,7 +383,33 @@ Volume flags:
     Requires kernel >= 5.12, and crun >= 1.4 or runc >= 1.1 (PR [#3272](https://github.com/opencontainers/runc/pull/3272)). With older runc, `rro` just works as `ro`.
   - :whale:     option `shared`, `slave`, `private`: Non-recursive "shared" / "slave" / "private" propagation
   - :whale:     option `rshared`, `rslave`, `rprivate`: Recursive "shared" / "slave" / "private" propagation
-- :whale: `--tmpfs`: Mount a tmpfs directory
+- :whale: `--tmpfs`: Mount a tmpfs directory, e.g. `--tmpfs /tmp:size=64m,exec`.
+- :whale: `--mount`: Attach a filesystem mount to the container.
+  Consists of multiple key-value pairs, separated by commas and each
+  consisting of a `<key>=<value>` tuple.
+  e.g., `-- mount type=bind,source=/src,target=/app,bind-propagation=shared`.
+  - :whale: The `type` of the mount, which can be `bind`, `volume`, `tmpfs`.
+    The defaul type will be set to `volume` if not specified.
+    i.e., `--mount src=vol-1,dst=/app,readonly` equals `--mount type=volum,src=vol-1,dst=/app,readonly`
+  - :whale: The `source` of the mount. For bind mounts, this is the path to the file
+    or directory. May be specified as `source` or `src`.
+  - :whale: The `destination` takes as its value the path where the file or directory
+    is mounted in the container. May be specified as `destination`, `dst`,
+    or `target`.
+  - :whale: The `readonly` or `ro`, `rw`, `rro` option changes filesystem permissinos.
+    See description for `--volume` for more deails.
+  - :whale: The `bind-propagation` option is only for `bind` mount which is used to set the
+    bind propagation. May be one of `rprivate`, `private`, `rshared`, `shared`,
+    `rslave`, `slave`.
+    See description for `--volume` for more deails.
+  - :whale: The `tmpfs-size` and `tmpfs-mode` options are only for `tmpfs` bind mount,
+    e.g., `--mount type=tmpfs,target=/app,tmpfs-size=10m,tmpfs-mode=1770`.
+    - `tmpfs-size`: Size of the tmpfs mount in bytes. Unlimited by default.
+    - `tmpfs-mode`: File mode of the tmpfs in **octal**.
+      Defaults to `1777` or world-writable.
+
+Unimplemented `docker run --mount` flags: `bind-nonrecursive`, `volume-nocopy`,
+`volume-label`, `volume-driver`, `volume-opt`, `consistency`.
 
 Rootfs flags:
 - :whale: `--read-only`: Mount the container's root filesystem as read only
