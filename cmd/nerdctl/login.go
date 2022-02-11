@@ -139,9 +139,6 @@ func loginAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("error saving credentials: %w", err)
 	}
 
-	if _, err = loginClientSide(ctx, cmd, *authConfig); err != nil {
-		return err
-	}
 	fmt.Fprintln(cmd.OutOrStdout(), "Login Succeeded")
 
 	return nil
@@ -218,9 +215,6 @@ func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthCon
 				// Even containerd/CRI does not support RegistryToken as of v1.4.3,
 				// so, nobody is actually using RegistryToken?
 				logrus.Warnf("RegistryToken (for %q) is not supported yet (FIXME)", host)
-			}
-			if auth.IdentityToken != "" {
-				return "", auth.IdentityToken, nil
 			}
 			return auth.Username, auth.Password, nil
 		}
