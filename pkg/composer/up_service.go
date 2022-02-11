@@ -148,7 +148,7 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 
 	//add metadata labels to container https://github.com/compose-spec/compose-spec/blob/master/spec.md#labels
 	container.RunArgs = append([]string{
-		fmt.Sprintf("-l=%s=%s", labels.ComposeProject, c.Options.Project),
+		fmt.Sprintf("-l=%s=%s", labels.ComposeProject, c.project.Name),
 		fmt.Sprintf("-l=%s=%s", labels.ComposeService, service.Unparsed.Name),
 	}, container.RunArgs...)
 

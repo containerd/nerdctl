@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 
-	composecli "github.com/compose-spec/compose-go/cli"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/platforms"
@@ -45,7 +44,7 @@ func newComposeCommand() *cobra.Command {
 		TraverseChildren: true, // required for global short hands like -f
 	}
 	// `-f` is a nonPersistentAlias, as it conflicts with `nerdctl compose logs --follow`
-	AddPersistentStringFlag(composeCommand, "file", nil, []string{"f"}, "", "", "Specify an alternate compose file")
+	AddPersistentStringArrayFlag(composeCommand, "file", nil, []string{"f"}, nil, "", "Specify an alternate compose file")
 	composeCommand.PersistentFlags().String("project-directory", "", "Specify an alternate working directory")
 	composeCommand.PersistentFlags().StringP("project-name", "p", "", "Specify an alternate project name")
 	composeCommand.PersistentFlags().String("env-file", "", "Specify an alternate environment file")
@@ -83,7 +82,7 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 	if err != nil {
 		return nil, err
 	}
-	file, err := cmd.Flags().GetString("file")
+	files, err := cmd.Flags().GetStringArray("file")
 	if err != nil {
 		return nil, err
 	}
@@ -109,21 +108,15 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 	}
 
 	o := composer.Options{
-		ProjectOptions: composecli.ProjectOptions{
-			WorkingDir:  projectDirectory,
-			ConfigPaths: []string{},
-			Environment: map[string]string{},
-			EnvFile:     envFile,
-		},
-		Project:        projectName,
-		NerdctlCmd:     nerdctlCmd,
-		NerdctlArgs:    nerdctlArgs,
-		DebugPrintFull: debugFull,
+		Project:          projectName,
+		ProjectDirectory: projectDirectory,
+		ConfigPaths:      files,
+		EnvFile:          envFile,
+		NerdctlCmd:       nerdctlCmd,
+		NerdctlArgs:      nerdctlArgs,
+		DebugPrintFull:   debugFull,
 	}
 
-	if file != "" {
-		o.ProjectOptions.ConfigPaths = append([]string{file}, o.ProjectOptions.ConfigPaths...)
-	}
 	cniEnv := &netutil.CNIEnv{
 		Path:        cniPath,
 		NetconfPath: cniNetconfpath,
