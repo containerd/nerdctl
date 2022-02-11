@@ -833,6 +833,7 @@ Flags:
 - :nerd_face: `--all-platforms`: Push content for all platforms
 - :nerd_face: `--sign`: Sign the image (none|cosign). See [`docs/cosign.md`](./docs/cosign.md) for details.
 - :nerd_face: `--cosign-key`: Path to the private key file, KMS, URI or Kubernetes Secret for `--sign=cosign`
+- :nerd_face: `--allow-nondistributable-artifacts`: Allow pushing images with non-distributable blobs
 
 Unimplemented `docker push` flags: `--all-tags`, `--disable-content-trust` (default true), `--quiet`
 

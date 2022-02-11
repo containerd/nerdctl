@@ -41,7 +41,7 @@ import (
 )
 
 func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resolver, stdout io.Writer,
-	localRef, remoteRef string, platform platforms.MatchComparer) error {
+	localRef, remoteRef string, platform platforms.MatchComparer, allowNonDist bool) error {
 	img, err := client.ImageService().Get(ctx, localRef)
 	if err != nil {
 		return fmt.Errorf("unable to resolve image to manifest: %w", err)
@@ -61,9 +61,15 @@ func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resol
 		log.G(ctx).WithField("image", remoteRef).WithField("digest", desc.Digest).Debug("pushing")
 
 		jobHandler := images.HandlerFunc(func(ctx gocontext.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-			ongoing.add(remotes.MakeRefKey(ctx, desc))
+			if allowNonDist || !images.IsNonDistributable(desc.MediaType) {
+				ongoing.add(remotes.MakeRefKey(ctx, desc))
+			}
 			return nil, nil
 		})
+
+		if !allowNonDist {
+			jobHandler = remotes.SkipNonDistributableBlobs(jobHandler)
+		}
 
 		return client.Push(ctx, remoteRef, desc,
 			containerd.WithResolver(resolver),
