@@ -33,6 +33,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var PushTracker = docker.NewInMemoryTracker()
+
 type opts struct {
 	plainHTTP       bool
 	skipVerifyCerts bool
@@ -148,7 +150,8 @@ func New(ctx context.Context, refHostname string, optFuncs ...Opt) (remotes.Reso
 	}
 
 	resolverOpts := docker.ResolverOptions{
-		Hosts: dockerconfig.ConfigureHosts(ctx, *ho),
+		Tracker: PushTracker,
+		Hosts:   dockerconfig.ConfigureHosts(ctx, *ho),
 	}
 
 	resolver := docker.NewResolver(resolverOpts)
