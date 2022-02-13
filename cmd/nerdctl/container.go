@@ -47,6 +47,7 @@ func newContainerCommand() *cobra.Command {
 		newWaitCommand(),
 		newUnpauseCommand(),
 		newCommitCommand(),
+		newContainerPruneCommand(),
 	)
 	return containerCommand
 }

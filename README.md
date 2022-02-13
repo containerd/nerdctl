@@ -239,6 +239,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl kill](#whale-nerdctl-kill)
     - [:whale: nerdctl pause](#whale-nerdctl-pause)
     - [:whale: nerdctl unpause](#whale-nerdctl-unpause)
+    - [:whale: nerdctl container prune](#whale-nerdctl-container-prune)
   - [Build](#build)
     - [:whale: nerdctl build](#whale-nerdctl-build)
     - [:whale: nerdctl commit](#whale-nerdctl-commit)
@@ -252,6 +253,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl rmi](#whale-nerdctl-rmi)
     - [:whale: nerdctl image inspect](#whale-nerdctl-image-inspect)
     - [:whale: nerdctl image history](#whale-nerdctl-image-history)
+    - [:whale: nerdctl image prune](#whale-nerdctl-image-prune)
     - [:nerd_face: nerdctl image convert](#nerd_face-nerdctl-image-convert)
     - [:nerd_face: nerdctl image encrypt](#nerd_face-nerdctl-image-encrypt)
     - [:nerd_face: nerdctl image decrypt](#nerd_face-nerdctl-image-decrypt)
@@ -684,6 +686,16 @@ Unpause all processes within one or more containers.
 
 Usage: `nerdctl unpause CONTAINER [CONTAINER...]`
 
+### :whale: nerdctl container prune
+Remove all stopped containers.
+
+Usage: `nerdctl container prune [OPTIONS]`
+
+Flags:
+- :nerd_face: `-f, --force`: Ignore removal errors.
+
+Unimplemented `docker container prune` flags: `--filter`
+
 ## Build
 ### :whale: nerdctl build
 Build an image from a Dockerfile.
@@ -846,6 +858,16 @@ Flags:
 - :whale: `--no-trunc`: Don't truncate output
 - :whale: `-q, --quiet`: Only display snapshots IDs
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+
+### :whale: nerdctl image prune
+Remove all unused images. Roughly equals with `docker image prune -a`.
+
+Usage: `nerdctl image prune [OPTIONS]`
+
+Flags:
+- :nerd_face: `-f, --force`: Ignore removal errors.
+
+Unimplemented `docker image prune` flags: `--filter`, `-a`, `--all`
 
 ### :nerd_face: nerdctl image convert
 Convert an image format.
@@ -1302,14 +1324,10 @@ Container management:
 - `docker diff`
 - `docker rename`
 
-- `docker container prune`
-
 - `docker checkpoint *`
 
 Image:
 - `docker export` and `docker import`
-
-- `docker image prune`
 
 - `docker trust *` (Instead, nerdctl supports `nerdctl pull --verify=cosign` and `nerdctl push --sign=cosign`. See [`./docs/cosign.md`](docs/cosign.md).)
 - `docker manifest *`
