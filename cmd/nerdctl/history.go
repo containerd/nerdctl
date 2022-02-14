@@ -99,7 +99,7 @@ func historyAction(cmd *cobra.Command, args []string) error {
 			var historys []historyPrintable
 			for _, h := range configHistories {
 				var size string
-				var snapshotterName string
+				var snapshotName string
 				if !h.EmptyLayer {
 					if len(diffIDs) <= layerCounter {
 						return fmt.Errorf("too many non-empty layers in History section")
@@ -117,14 +117,14 @@ func historyAction(cmd *cobra.Command, args []string) error {
 						return fmt.Errorf("failed to get usage: %w", err)
 					}
 					size = progress.Bytes(use.Size).String()
-					snapshotterName = stat.Name
+					snapshotName = stat.Name
 					layerCounter++
 				} else {
 					size = progress.Bytes(0).String()
-					snapshotterName = "<missing>"
+					snapshotName = "<missing>"
 				}
 				history := historyPrintable{
-					Snapshot:     snapshotterName,
+					Snapshot:     snapshotName,
 					CreatedSince: formatter.TimeSinceInHuman(*h.Created),
 					CreatedBy:    h.CreatedBy,
 					Size:         size,
@@ -150,6 +150,9 @@ func historyAction(cmd *cobra.Command, args []string) error {
 		} else if n > 1 {
 			return fmt.Errorf("multiple IDs found with provided prefix: %s", req)
 		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("%d errors: %v", len(errs), errs)
 	}
 	return nil
 }
