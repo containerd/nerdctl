@@ -413,3 +413,36 @@ func AddPersistentStringFlag(cmd *cobra.Command, name string, aliases, nonPersis
 		}
 	}
 }
+
+// AddPersistentStringArrayFlag is similar to cmd.Flags().StringArray but supports aliases and env var and persistent.
+// See https://github.com/spf13/cobra/blob/master/user_guide.md#persistent-flags to learn what is "persistent".
+func AddPersistentStringArrayFlag(cmd *cobra.Command, name string, aliases, nonPersistentAliases []string, value []string, env string, usage string) {
+	if env != "" {
+		usage = fmt.Sprintf("%s [$%s]", usage, env)
+	}
+	if envV, ok := os.LookupEnv(env); ok {
+		value = []string{envV}
+	}
+	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
+	p := new([]string)
+	flags := cmd.Flags()
+	for _, a := range nonPersistentAliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			flags.StringArrayVarP(p, a, a, value, aliasesUsage)
+		} else {
+			flags.StringArrayVar(p, a, value, aliasesUsage)
+		}
+	}
+
+	persistentFlags := cmd.PersistentFlags()
+	persistentFlags.StringArrayVar(p, name, value, usage)
+	for _, a := range aliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			persistentFlags.StringArrayVarP(p, a, a, value, aliasesUsage)
+		} else {
+			persistentFlags.StringArrayVar(p, a, value, aliasesUsage)
+		}
+	}
+}

@@ -38,6 +38,10 @@ func (cd *ComposeDir) YAMLFullPath() string {
 	return filepath.Join(cd.dir, cd.yamlBasePath)
 }
 
+func (cd *ComposeDir) Dir() string {
+	return cd.dir
+}
+
 func (cd *ComposeDir) ProjectName() string {
 	return filepath.Base(cd.dir)
 }

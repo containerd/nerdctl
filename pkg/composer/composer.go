@@ -21,15 +21,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 
 	composecli "github.com/compose-spec/compose-go/cli"
 	compose "github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/identifiers"
-	"github.com/containerd/nerdctl/pkg/composer/projectloader"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
 
@@ -38,16 +35,17 @@ import (
 
 // Options groups the command line options recommended for a Compose implementation (ProjectOptions) and extra options for nerdctl
 type Options struct {
-	//TODO Specifying multiple Compose files
-	ProjectOptions composecli.ProjectOptions
-	Project        string // empty for default
-	NerdctlCmd     string
-	NerdctlArgs    []string
-	NetworkExists  func(string) (bool, error)
-	VolumeExists   func(string) (bool, error)
-	ImageExists    func(ctx context.Context, imageName string) (bool, error)
-	EnsureImage    func(ctx context.Context, imageName, pullMode, platform string, quiet bool) error
-	DebugPrintFull bool // full debug print, may leak secret env var to logs
+	Project          string // empty for default
+	ProjectDirectory string
+	ConfigPaths      []string
+	EnvFile          string
+	NerdctlCmd       string
+	NerdctlArgs      []string
+	NetworkExists    func(string) (bool, error)
+	VolumeExists     func(string) (bool, error)
+	ImageExists      func(ctx context.Context, imageName string) (bool, error)
+	EnsureImage      func(ctx context.Context, imageName, pullMode, platform string, quiet bool) error
+	DebugPrintFull   bool // full debug print, may leak secret env var to logs
 }
 
 func New(o Options, client *containerd.Client) (*Composer, error) {
@@ -57,41 +55,28 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 	if o.NetworkExists == nil || o.VolumeExists == nil || o.EnsureImage == nil {
 		return nil, errors.New("got empty functions")
 	}
-	// actually we support single ConfigPath
-	// TODO support multiple ConfigPaths
-	var err error
-	if len(o.ProjectOptions.ConfigPaths) == 0 {
-		composeYaml, err := findComposeYAML(&o)
-		if err != nil {
-			return nil, err
-		}
-		o.ProjectOptions.ConfigPaths = append(o.ProjectOptions.ConfigPaths, composeYaml)
-	}
 
-	if err := composecli.WithOsEnv(&o.ProjectOptions); err != nil {
-		return nil, err
-	}
-
-	if err := composecli.WithDotEnv(&o.ProjectOptions); err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < len(o.ProjectOptions.ConfigPaths); i++ {
-		o.ProjectOptions.ConfigPaths[i], err = filepath.Abs(o.ProjectOptions.ConfigPaths[i])
-		if err != nil {
-			return nil, err
+	if o.Project != "" {
+		if err := identifiers.Validate(o.Project); err != nil {
+			return nil, fmt.Errorf("got invalid project name %q: %w", o.Project, err)
 		}
 	}
 
-	if o.Project == "" {
-		o.Project = filepath.Base(filepath.Dir(o.ProjectOptions.ConfigPaths[0]))
-	}
+	var optionsFn []composecli.ProjectOptionsFn
+	optionsFn = append(optionsFn,
+		composecli.WithWorkingDirectory(o.ProjectDirectory),
+		composecli.WithEnvFile(o.EnvFile),
+		composecli.WithDefaultConfigPath,
+		composecli.WithOsEnv,
+		composecli.WithDotEnv,
+		composecli.WithName(o.Project),
+	)
 
-	if err := identifiers.Validate(o.Project); err != nil {
-		return nil, fmt.Errorf("got invalid project name %q: %w", o.Project, err)
+	projectOptions, err := composecli.NewProjectOptions(o.ConfigPaths, optionsFn...)
+	if err != nil {
+		return nil, err
 	}
-
-	project, err := projectloader.Load(o.ProjectOptions.ConfigPaths[0], o.Project, o.ProjectOptions.Environment)
+	project, err := composecli.ProjectFromOptions(projectOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -143,30 +128,6 @@ func (c *Composer) runNerdctlCmd(ctx context.Context, args ...string) error {
 		return fmt.Errorf("error while executing %v: %q: %w", cmd.Args, string(out), err)
 	}
 	return nil
-}
-
-//find compose Yaml file in current directory and its parents
-func findComposeYAML(o *Options) (string, error) {
-	pwd, err := o.ProjectOptions.GetWorkingDir()
-	if err != nil {
-		return "", err
-	}
-	for {
-		yamlNames := []string{"docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"}
-		for _, candidate := range yamlNames {
-			f := filepath.Join(pwd, candidate)
-			if _, err := os.Stat(f); err == nil {
-				return f, nil
-			} else if !os.IsNotExist(err) {
-				return "", err
-			}
-		}
-		parent := filepath.Dir(pwd)
-		if parent == pwd {
-			return "", fmt.Errorf("cannot find a compose YAML, supported file names: %+v in this directory or any parent", yamlNames)
-		}
-		pwd = parent
-	}
 }
 
 func (c *Composer) Services(ctx context.Context) ([]*serviceparser.Service, error) {

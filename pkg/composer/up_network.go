@@ -49,7 +49,7 @@ func (c *Composer) upNetwork(ctx context.Context, shortName string) error {
 		logrus.Infof("Creating network %s", fullName)
 		//add metadata labels to network https://github.com/compose-spec/compose-spec/blob/master/spec.md#labels-1
 		createArgs := []string{
-			fmt.Sprintf("--label=%s=%s", labels.ComposeProject, c.Options.Project),
+			fmt.Sprintf("--label=%s=%s", labels.ComposeProject, c.project.Name),
 			fmt.Sprintf("--label=%s=%s", labels.ComposeNetwork, shortName),
 		}
 

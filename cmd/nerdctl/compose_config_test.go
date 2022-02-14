@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -74,4 +75,32 @@ services:
 
 	newHash := base.ComposeCmd("-f", newComp.YAMLFullPath(), "config", "--hash=hello1").Out()
 	assert.Assert(t, hash != newHash)
+}
+
+func TestComposeConfigWithMultipleFile(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = `
+services:
+  hello1:
+    image: alpine:3.13
+`
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	comp.WriteFile("docker-compose.test.yml", `
+services:
+  hello2:
+    image: alpine:3.14
+`)
+	comp.WriteFile("docker-compose.override.yml", `
+services:
+  hello1:
+    image: alpine:3.14
+`)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "-f", filepath.Join(comp.Dir(), "docker-compose.test.yml"), "config").AssertOutContains("alpine:3.14")
+	base.ComposeCmd("--project-directory", comp.Dir(), "config", "--services").AssertOutExactly("hello1\n")
+	base.ComposeCmd("--project-directory", comp.Dir(), "config").AssertOutContains("alpine:3.14")
 }
