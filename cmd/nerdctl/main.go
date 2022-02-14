@@ -250,6 +250,7 @@ Config file ($NERDCTL_TOML): %s
 		newSaveCommand(),
 		newTagCommand(),
 		newRmiCommand(),
+		newHistoryCommand(),
 		// #endregion
 
 		// #region System

@@ -33,6 +33,7 @@ func newImageCommand() *cobra.Command {
 		newBuildCommand(),
 		// commitCommand is in "container", not in "image"
 		imageLsCommand(),
+		newHistoryCommand(),
 		newPullCommand(),
 		newPushCommand(),
 		newLoadCommand(),
