@@ -15,6 +15,8 @@
 # -----------------------------------------------------------------------------
 # Usage: `docker run -it --privileged <IMAGE>`. Make sure to add `-t` and `--privileged`.
 
+# TODO: verify commit hash
+
 # Basic deps
 ARG CONTAINERD_VERSION=v1.5.9
 ARG RUNC_VERSION=v1.1.0
@@ -31,6 +33,8 @@ ARG IMGCRYPT_VERSION=v1.1.3
 # Extra deps: Rootless
 ARG ROOTLESSKIT_VERSION=v0.14.6
 ARG SLIRP4NETNS_VERSION=v1.1.12
+# Extra deps: bypass4netns
+ARG BYPASS4NETNS_VERSION=v0.2.2
 # Extra deps: FUSE-OverlayFS
 ARG FUSE_OVERLAYFS_VERSION=v1.8.1
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.4
@@ -44,7 +48,7 @@ ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS build-base-debian
 # libbtrfs: for containerd
-# libseccomp: for runc
+# libseccomp: for runc and bypass4netns
 RUN dpkg --add-architecture arm64 && \
   apt-get update && \
   apt-get install -y crossbuild-essential-arm64 git libbtrfs-dev libbtrfs-dev:arm64 libseccomp-dev libseccomp-dev:arm64
@@ -76,6 +80,18 @@ RUN GOARCH=amd64 CC=x86_64-linux-gnu-gcc make static && \
   cp -a runc /out/runc.amd64
 RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make static && \
   cp -a runc /out/runc.arm64
+
+FROM build-base-debian AS build-bypass4netns
+ARG BYPASS4NETNS_VERSION
+RUN git clone https://github.com/rootless-containers/bypass4netns.git /go/src/github.com/rootless-containers/bypass4netns
+WORKDIR /go/src/github.com/rootless-containers/bypass4netns
+RUN git checkout ${BYPASS4NETNS_VERSION} && \
+  mkdir -p /out/amd64 /out/arm64
+ENV CGO_ENABLED=1
+RUN GOARCH=amd64 CC=x86_64-linux-gnu-gcc make static && \
+  cp -a bypass4netns bypass4netnsd /out/amd64
+RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make static && \
+  cp -a bypass4netns bypass4netnsd /out/arm64
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS build-base
 RUN apk add --no-cache make git curl
@@ -162,6 +178,9 @@ RUN fname="slirp4netns-$(cat /target_uname_m)" && \
   mv "${fname}" /out/bin/slirp4netns && \
   chmod +x /out/bin/slirp4netns && \
   echo "- slirp4netns: ${SLIRP4NETNS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+ARG BYPASS4NETNS_VERSION
+COPY --from=build-bypass4netns /out/${TARGETARCH:-amd64}/* /out/bin/
+RUN echo "- bypass4netns: ${BYPASS4NETNS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG FUSE_OVERLAYFS_VERSION
 RUN fname="fuse-overlayfs-$(cat /target_uname_m)" && \
   curl -o "${fname}" -fSL "https://github.com/containers/fuse-overlayfs/releases/download/${FUSE_OVERLAYFS_VERSION}/${fname}" && \
@@ -190,7 +209,7 @@ RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/slirp4netns:    [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/rootless-containers/slirp4netns/blob/${SLIRP4NETNS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/fuse-overlayfs: [GNU GENERAL PUBLIC LICENSE, Version 3](https://github.com/containers/fuse-overlayfs/blob/${FUSE_OVERLAYFS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/ipfs: [Combination of MIT-only license and dual MIT/Apache-2.0 license](https://github.com/ipfs/go-ipfs/blob/${IPFS_VERSION}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
-  echo "- bin/runc (Apache License 2.0) is statically linked with libseccomp ([LGPL 2.1](https://github.com/seccomp/libseccomp/blob/main/LICENSE))" >> /out/share/doc/nerdctl-full/README.md && \
+  echo "- bin/{runc,bypass4netns,bypass4netnsd}: Apache License 2.0, statically linked with libseccomp ([LGPL 2.1](https://github.com/seccomp/libseccomp/blob/main/LICENSE), source code available at https://github.com/seccomp/libseccomp/)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- Other files: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)" >> /out/share/doc/nerdctl-full/README.md && \
   (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
   mv /tmp/SHA256SUMS /out/share/doc/nerdctl-full/SHA256SUMS && \

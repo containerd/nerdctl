@@ -50,6 +50,7 @@ SYSTEMD_BUILDKIT_UNIT="buildkit.service"
 SYSTEMD_FUSE_OVERLAYFS_UNIT="containerd-fuse-overlayfs.service"
 SYSTEMD_STARGZ_UNIT="stargz-snapshotter.service"
 SYSTEMD_IPFS_UNIT="ipfs-daemon.service"
+SYSTEMD_BYPASS4NETNSD_UNIT="bypass4netnsd.service"
 
 # global vars
 ARG0="$0"
@@ -272,6 +273,35 @@ cmd_entrypoint_install_buildkit() {
 	EOT
 }
 
+# CLI subcommand: "install-bypass4netnsd"
+cmd_entrypoint_install_bypass4netnsd() {
+	init
+	if ! command -v "bypass4netnsd" >/dev/null 2>&1; then
+		ERROR "bypass4netnsd (https://github.com/rootless-containers/bypass4netns) needs to be present under \$PATH"
+		exit 1
+	fi
+	command_v_bypass4netnsd="$(command -v bypass4netnsd)"
+	# FIXME: bail if bypass4netnsd is an alias
+	cat <<-EOT | install_systemd_unit "${SYSTEMD_BYPASS4NETNSD_UNIT}"
+		[Unit]
+		Description=bypass4netnsd (daemon for bypass4netns, accelerator for rootless containers)
+		# Not PartOf=${SYSTEMD_CONTAINERD_UNIT}
+
+		[Service]
+		Environment=PATH=$BIN:/sbin:/usr/sbin:$PATH
+		ExecStart="${command_v_bypass4netnsd}"
+		ExecReload=/bin/kill -s HUP \$MAINPID
+		RestartSec=2
+		Restart=always
+		Type=simple
+		KillMode=mixed
+
+		[Install]
+		WantedBy=default.target
+	EOT
+	INFO "To use bypass4netnsd, set the \"nerdctl/bypass4netns=true\" label on containers, e.g., \`nerdctl run --label nerdctl/bypass4netns=true\`"
+}
+
 # CLI subcommand: "install-fuse-overlayfs"
 cmd_entrypoint_install_fuse_overlayfs() {
 	init
@@ -431,6 +461,12 @@ cmd_entrypoint_uninstall_buildkit() {
 	INFO "To remove data, run: \`$BIN/rootlesskit rm -rf ${XDG_DATA_HOME}/buildkit"
 }
 
+# CLI subcommand: "uninstall-bypass4netnsd"
+cmd_entrypoint_uninstall_bypass4netnsd() {
+	init
+	uninstall_systemd_unit "${SYSTEMD_BYPASS4NETNSD_UNIT}"
+}
+
 # CLI subcommand: "uninstall-fuse-overlayfs"
 cmd_entrypoint_uninstall_fuse_overlayfs() {
 	init
@@ -470,6 +506,10 @@ usage() {
 	echo "Add-on commands (BuildKit):"
 	echo "  install-buildkit            Install the systemd unit for BuildKit"
 	echo "  uninstall-buildkit          Uninstall the systemd unit for BuildKit"
+	echo
+	echo "Add-on commands (bypass4netnsd):"
+	echo "  install-bypass4netnsd       Install the systemd unit for bypass4netnsd"
+	echo "  uninstall-bypass4netnsd     Uninstall the systemd unit for bypass4netnsd"
 	echo
 	echo "Add-on commands (fuse-overlayfs):"
 	echo "  install-fuse-overlayfs      Install the systemd unit for fuse-overlayfs snapshotter"
