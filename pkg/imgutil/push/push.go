@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
@@ -35,6 +34,7 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
+	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"golang.org/x/sync/errgroup"
@@ -48,7 +48,7 @@ func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resol
 	}
 	desc := img.Target
 
-	ongoing := newPushJobs(commands.PushTracker)
+	ongoing := newPushJobs(dockerconfigresolver.PushTracker)
 
 	eg, ctx := errgroup.WithContext(ctx)
 
