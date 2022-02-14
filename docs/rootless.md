@@ -104,6 +104,34 @@ $ nerdctl run -it --rm ghcr.io/stargz-containers/alpine:3.10.2-esgz
 
 See https://github.com/containerd/stargz-snapshotter/blob/master/docs/pre-converted-images.md for the image list.
 
+## bypass4netns
+[bypass4netns(https://github.com/rootless-containers/bypass4netns)](https://github.com/rootless-containers/bypass4netns) is an accelerator for rootless networking.
+
+This improves **outgoing or incoming (with --publish option) networking performance.**
+
+The performance benchmark with iperf3 on Ubuntu 21.10 on Hyper-V VM is shown below.
+| iperf3 benchmark  | without bypass4netns | with bypass4netns |
+| ----------------- | -------------------- | ----------------- |
+| container -> host | 0.398 Gbps           | **42.2 Gbps**         |
+| host -> container | 20.6 Gbps             | **47.4 Gbps**         |
+
+This benchmark can be reproduced with [https://github.com/rootless-containers/bypass4netns/blob/f009d96139e9e38ce69a2ea8a9a746349bad273c/Vagrantfile](https://github.com/rootless-containers/bypass4netns/blob/f009d96139e9e38ce69a2ea8a9a746349bad273c/Vagrantfile)
+
+Acceleration with bypass4netns is available with `--label nerdctl/bypass4netns=true`
+Example
+```console
+$ nerdctl run -it --rm -p 8080:80 --label nerdctl/bypass4netns=true alpine
+```
+
+More detail is available at [https://github.com/rootless-containers/bypass4netns/blob/master/README.md](https://github.com/rootless-containers/bypass4netns/blob/master/README.md)
+
+### :warning: Caveats :warning:
+Subnets(`127.0.0.0/8, 10.0.0.0/8`) not handled by bypass4netns is hard-coded.
+Container networks which are not contained in the subnets can be broken or can cause problems.
+
+### TODO
+- Remove hard-coded subnets in pkg/bypass4netnsutil/bypass.go
+
 ## Troubleshooting
 
 ### Hint to Fedora users
