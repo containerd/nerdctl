@@ -44,6 +44,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	// NetworkNamespace is the network namespace path to be passed to the CNI plugins.
+	// When this annotation is set from the runtime spec.State payload, it takes
+	// precedence over the PID based resolution (/proc/<pid>/ns/net) where pid is
+	// spec.State.Pid.
+	// This is mostly used for VM based runtime, where the spec.State PID does not
+	// necessarily lives in the created container networking namespace.
+	NetworkNamespace = labels.Prefix + "network-namespace"
+)
+
 func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetconfPath string) error {
 	if stdin == nil || event == "" || dataStore == "" || cniPath == "" || cniNetconfPath == "" {
 		return errors.New("got insufficient args")
