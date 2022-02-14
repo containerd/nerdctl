@@ -19,7 +19,7 @@ jobs:
     - uses: actions/checkout@v2
       with:
         path: src/github.com/containerd/nerdctl
-        fetch-depth: 25
+        fetch-depth: 100
     - uses: containerd/project-checks@v1.0.2
       with:
         working-directory: src/github.com/containerd/nerdctl
