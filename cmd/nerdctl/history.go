@@ -151,6 +151,9 @@ func historyAction(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("multiple IDs found with provided prefix: %s", req)
 		}
 	}
+	if len(errs) > 0 {
+		return fmt.Errorf("%d errors: %v", len(errs), errs)
+	}
 	return nil
 }
 
