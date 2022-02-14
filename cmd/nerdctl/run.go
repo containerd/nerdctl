@@ -210,6 +210,10 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("name", "", "Assign a name to the container")
 	// label needs to be StringArray, not StringSlice, to prevent "foo=foo1,foo2" from being split to {"foo=foo1", "foo2"}
 	cmd.Flags().StringArrayP("label", "l", nil, "Set metadata on container")
+	cmd.RegisterFlagCompletionFunc("label", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return labels.ShellCompletions, cobra.ShellCompDirectiveNoFileComp
+	})
+
 	// label-file is defined as StringSlice, not StringArray, to allow specifying "--env-file=FILE1,FILE2" (compatible with Podman)
 	cmd.Flags().StringSlice("label-file", nil, "Set metadata on container from file")
 	cmd.Flags().String("cidfile", "", "Write the container ID to the file")
