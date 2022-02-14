@@ -11,7 +11,7 @@
 
  ✅ Supports Docker Compose (`nerdctl compose up`)
 
- ✅ Supports [rootless mode](./docs/rootless.md)
+ ✅ Supports [rootless mode, without slirp overhead](./docs/rootless.md) (`nerdctl run --label nerdctl/bypass4netns=true`)
 
  ✅ Supports [lazy-pulling (Stargz)](./docs/stargz.md)
 

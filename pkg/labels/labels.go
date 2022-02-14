@@ -75,3 +75,9 @@ const (
 	// (like "nerdctl/bypass4netns=true" or "nerdctl/bypass4netns=false")
 	Bypass4netns = Prefix + "bypass4netns"
 )
+
+var ShellCompletions = []string{
+	Bypass4netns + "=true",
+	Bypass4netns + "=false",
+	// Other labels should not be set via CLI
+}

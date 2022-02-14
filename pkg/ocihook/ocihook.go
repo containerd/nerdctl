@@ -210,7 +210,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 			}
 			o.bypassClient, err = b4nndclient.New(socketPath)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("bypass4netnsd not running? (Hint: run `containerd-rootless-setuptool.sh install-bypass4netnsd`): %w", err)
 			}
 		}
 	}
@@ -359,7 +359,7 @@ func onCreateRuntime(opts *handlerOpts) error {
 				}
 				err = bm.StartBypass(ctx, opts.ports, opts.state.ID, opts.state.Annotations[labels.StateDir])
 				if err != nil {
-					return err
+					return fmt.Errorf("bypass4netnsd not running? (Hint: run `containerd-rootless-setuptool.sh install-bypass4netnsd`): %w", err)
 				}
 			} else if len(opts.ports) > 0 {
 				pm, err := rootlessutil.NewRootlessCNIPortManager(opts.rootlessKitClient)
