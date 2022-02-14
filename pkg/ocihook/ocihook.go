@@ -262,9 +262,21 @@ func loadSpec(bundle string) (*hookSpec, error) {
 }
 
 func getNetNSPath(state *specs.State) (string, error) {
-	if state.Pid == 0 {
-		return "", errors.New("state.Pid is unset")
+	// If we have a network-namespace annotation we use it over the passed Pid.
+	netNsPath, netNsFound := state.Annotations[NetworkNamespace]
+	if netNsFound {
+		if _, err := os.Stat(netNsPath); err != nil {
+			return "", err
+		}
+
+		return netNsPath, nil
 	}
+
+	if state.Pid == 0 && !netNsFound {
+		return "", errors.New("Both state.Pid and the netNs annotation are unset")
+	}
+
+	// We dont't have a networking namespace annotation, but we have a PID.
 	s := fmt.Sprintf("/proc/%d/ns/net", state.Pid)
 	if _, err := os.Stat(s); err != nil {
 		return "", err
