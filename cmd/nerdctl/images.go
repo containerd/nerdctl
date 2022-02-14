@@ -46,7 +46,17 @@ import (
 
 func newImagesCommand() *cobra.Command {
 	shortHelp := "List images"
-	longHelp := shortHelp + "\nNOTE: The image ID is usually different from Docker image ID. The image ID is shared for multi-platform images."
+	longHelp := shortHelp + `
+
+Properties:
+- REPOSITORY: Repository
+- TAG:        Tag
+- IMAGE ID:   OCI Digest. Usually different from Docker image ID. Shared for multi-platform images.
+- CREATED:    Created time
+- PLATFORM:   Platform
+- SIZE:       Size of the unpacked snapshots
+- BLOB SIZE:  Size of the blobs (such as layer tarballs) in the content store
+`
 	var imagesCommand = &cobra.Command{
 		Use:               "images",
 		Short:             shortHelp,
@@ -110,7 +120,7 @@ type imagePrintable struct {
 	Repository   string
 	Tag          string // "<none>" or tag
 	Size         string // the size of the unpacked snapshots.
-	BlobSize     string // the size of the blobs in the content store
+	BlobSize     string // the size of the blobs in the content store (nerdctl extension)
 	// TODO: "SharedSize", "UniqueSize", "VirtualSize"
 	Platform string // nerdctl extension
 }
