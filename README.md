@@ -715,6 +715,8 @@ Flags:
 - :whale: `--iidfile=FILE`: Write the image ID to the file
 - :nerd_face: `--ipfs`: Build image with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
 - :whale: `--label`: Set metadata for an image
+- :nerd_face: `--compression`: Compression type of output image (`gzip`|`uncompressed`|`zstd`|`estargz`) (`zstd` and `estargz` requires BuildKit >= v0.10)
+- :nerd_face: `--force-compression`: Forcibly compress output image including layers from the base image (requires BuildKit >= v0.10)
 
 Unimplemented `docker build` flags: `--add-host`, `--network`, `--squash`
 

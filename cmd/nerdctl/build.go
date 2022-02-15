@@ -52,6 +52,8 @@ func newBuildCommand() *cobra.Command {
 	buildCommand.Flags().StringArray("build-arg", nil, "Set build-time variables")
 	buildCommand.Flags().Bool("no-cache", false, "Do not use cache when building the image")
 	buildCommand.Flags().StringP("output", "o", "", "Output destination (format: type=local,dest=path)")
+	buildCommand.Flags().String("compression", "", "Compression type of output image")
+	buildCommand.Flags().Bool("force-compression", false, "Forcibully compress output image including layers from the base image")
 	buildCommand.Flags().String("progress", "auto", "Set type of progress output (auto, plain, tty). Use plain to show container output")
 	buildCommand.Flags().StringArray("secret", nil, "Secret file to expose to the build: id=mysecret,src=/local/secret")
 	buildCommand.Flags().StringArray("ssh", nil, "SSH agent socket or keys to expose to the build (format: default|<id>[=<socket>|<key>[,<key>]])")
@@ -191,6 +193,16 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 			output = "type=oci"
 		}
 		needsLoading = true
+		if compressionType, err := cmd.Flags().GetString("compression"); err != nil {
+			return "", nil, false, "", nil, err
+		} else if compressionType != "" {
+			output += ",compression=" + compressionType
+		}
+		if force, err := cmd.Flags().GetBool("force-compression"); err != nil {
+			return "", nil, false, "", nil, err
+		} else if force {
+			output += ",force-compression=true"
+		}
 	}
 	tagValue, err := cmd.Flags().GetStringArray("tag")
 	if err != nil {
