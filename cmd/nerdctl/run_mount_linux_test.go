@@ -151,7 +151,7 @@ CMD ["cat", "/mnt/initial_file"]
 	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 
 	//NamedVolume
-	base.Cmd("volume", "create", "copying-initial-content").AssertOK()
+	base.Cmd("volume", "create", volName).AssertOK()
 	base.Cmd("run", "-v", volName+":/mnt", "--rm", imageName).AssertOutExactly("hi\n")
 
 	//mount bind
