@@ -267,6 +267,7 @@ func ProcessFlagTmpfs(s string) (*Processed, error) {
 			Options:     options,
 		},
 		Type: Tmpfs,
+		Mode: strings.Join(options, ","),
 	}
 	return res, nil
 }

@@ -32,6 +32,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/containerd/containerd"
@@ -107,9 +108,23 @@ type Container struct {
 	// TODO: SizeRw     *int64 `json:",omitempty"`
 	// TODO: SizeRootFs *int64 `json:",omitempty"`
 
-	// TODO: Mounts          []MountPoint
+	Mounts []MountPoint
 	// TODO: Config          *container.Config
 	NetworkSettings *NetworkSettings
+}
+
+// From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
+// MountPoint represents a mount point configuration inside the container.
+// This is used for reporting the mountpoints in use by a container.
+type MountPoint struct {
+	Type        string `json:",omitempty"`
+	Name        string `json:",omitempty"`
+	Source      string
+	Destination string
+	Driver      string `json:",omitempty"`
+	Mode        string
+	RW          bool
+	Propagation string
 }
 
 //config is from https://github.com/moby/moby/blob/8dbd90ec00daa26dc45d7da2431c965dec99e8b4/api/types/container/config.go#L37-L69
@@ -229,6 +244,15 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 			c.LogPath = ""
 		}
 	}
+
+	if nerdctlMounts := n.Labels[labels.Mounts]; nerdctlMounts != "" {
+		mounts, err := parseMounts(nerdctlMounts)
+		if err != nil {
+			return nil, err
+		}
+		c.Mounts = mounts
+	}
+
 	if n.Process != nil {
 		c.State = &ContainerState{
 			Status:     statusFromNative(n.Process.Status.Status),
@@ -439,4 +463,34 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 	}
 
 	return &res, nil
+}
+
+func parseMounts(nerdctlMounts string) ([]MountPoint, error) {
+	var mounts []MountPoint
+	err := json.Unmarshal([]byte(nerdctlMounts), &mounts)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range mounts {
+		rw, propagation := parseMountProperties(mounts[i].Mode)
+		mounts[i].RW = rw
+		mounts[i].Propagation = propagation
+	}
+
+	return mounts, nil
+}
+
+func parseMountProperties(option string) (rw bool, propagation string) {
+	rw = true
+	for _, opt := range strings.Split(option, ",") {
+		switch opt {
+		case "ro", "rro":
+			rw = false
+		case "private", "rprivate", "shared", "rshared", "slave", "rslave":
+			propagation = opt
+		default:
+		}
+	}
+	return
 }

@@ -120,10 +120,10 @@ func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*m
 
 // generateMountOpts generates volume-related mount opts.
 // Other mounts such as procfs mount are not handled here.
-func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containerd.Client, ensuredImage *imgutil.EnsuredImage) ([]oci.SpecOpts, []string, error) {
+func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containerd.Client, ensuredImage *imgutil.EnsuredImage) ([]oci.SpecOpts, []string, []*mountutil.Processed, error) {
 	volStore, err := getVolumeStore(cmd)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	//nolint:golint,prealloc
@@ -131,6 +131,7 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 		opts        []oci.SpecOpts
 		anonVolumes []string
 		userMounts  []specs.Mount
+		mountPoints []*mountutil.Processed
 	)
 	mounted := make(map[string]struct{})
 	var imageVolumes map[string]struct{}
@@ -141,23 +142,23 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 
 		snapshotter, err := cmd.Flags().GetString("snapshotter")
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		if err := ensuredImage.Image.Unpack(ctx, snapshotter); err != nil {
-			return nil, nil, fmt.Errorf("error unpacking image: %w", err)
+			return nil, nil, nil, fmt.Errorf("error unpacking image: %w", err)
 		}
 
 		diffIDs, err := ensuredImage.Image.RootFS(ctx)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		chainID := identity.ChainID(diffIDs).String()
 
 		s := client.SnapshotService(snapshotter)
 		tempDir, err = os.MkdirTemp("", "initialC")
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		// We use Remove here instead of RemoveAll.
 		// The RemoveAll will delete the temp dir and all children it contains.
@@ -167,7 +168,7 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 		var mounts []mount.Mount
 		mounts, err = s.View(ctx, tempDir, chainID)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		// windows has additional steps for mounting see
@@ -188,24 +189,24 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 				mountPath := filepath.Join(tempDir, filepath.Base(m.Source))
 				if err := m.Mount(mountPath); err != nil {
 					if err := s.Remove(ctx, tempDir); err != nil && !errdefs.IsNotFound(err) {
-						return nil, nil, err
+						return nil, nil, nil, err
 					}
-					return nil, nil, err
+					return nil, nil, nil, err
 				}
 			}
 		} else {
 			defer unmounter(tempDir)
 			if err := mount.All(mounts, tempDir); err != nil {
 				if err := s.Remove(ctx, tempDir); err != nil && !errdefs.IsNotFound(err) {
-					return nil, nil, err
+					return nil, nil, nil, err
 				}
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 		}
 	}
 
 	if parsed, err := parseMountFlags(cmd, volStore); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	} else if len(parsed) > 0 {
 		ociMounts := make([]specs.Mount, len(parsed))
 		for i, x := range parsed {
@@ -214,13 +215,13 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 
 			target, err := securejoin.SecureJoin(tempDir, x.Mount.Destination)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			// Copying content in AnonymousVolume and namedVolume
 			if x.Type == "volume" {
 				if err := copyExistingContents(target, x.Mount.Source); err != nil {
-					return nil, nil, err
+					return nil, nil, nil, err
 				}
 			}
 			if x.AnonymousVolume != "" {
@@ -229,6 +230,9 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 			opts = append(opts, x.Opts...)
 		}
 		userMounts = append(userMounts, ociMounts...)
+
+		// add parsed user specified bind-mounts/volume/tmpfs to mountPoints
+		mountPoints = append(mountPoints, parsed...)
 	}
 
 	// imageVolumes are defined in Dockerfile "VOLUME" instruction
@@ -236,7 +240,7 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 		imgVol := filepath.Clean(imgVolRaw)
 		switch imgVol {
 		case "/", "/dev", "/sys", "proc":
-			return nil, nil, fmt.Errorf("invalid VOLUME: %q", imgVolRaw)
+			return nil, nil, nil, fmt.Errorf("invalid VOLUME: %q", imgVolRaw)
 		}
 		if _, ok := mounted[imgVol]; ok {
 			continue
@@ -247,17 +251,17 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 			anonVolName, imgVolRaw)
 		anonVol, err := volStore.Create(anonVolName, []string{})
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		target, err := securejoin.SecureJoin(tempDir, imgVol)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		//copying up initial contents of the mount point directory
 		if err := copyExistingContents(target, anonVol.Mountpoint); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		m := specs.Mount{
@@ -268,10 +272,17 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 		}
 		userMounts = append(userMounts, m)
 		anonVolumes = append(anonVolumes, anonVolName)
+
+		mountPoint := &mountutil.Processed{
+			Type:            "volume",
+			AnonymousVolume: anonVolName,
+			Mount:           m,
+		}
+		mountPoints = append(mountPoints, mountPoint)
 	}
 
 	opts = append(opts, withMounts(userMounts))
-	return opts, anonVolumes, nil
+	return opts, anonVolumes, mountPoints, nil
 }
 
 // copyExistingContents copies from the source to the destination and
