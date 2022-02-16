@@ -44,6 +44,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	// NetworkNamespace is the network namespace path to be passed to the CNI plugins.
+	// When this annotation is set from the runtime spec.State payload, it takes
+	// precedence over the PID based resolution (/proc/<pid>/ns/net) where pid is
+	// spec.State.Pid.
+	// This is mostly used for VM based runtime, where the spec.State PID does not
+	// necessarily lives in the created container networking namespace.
+	NetworkNamespace = labels.Prefix + "network-namespace"
+)
+
 func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetconfPath string) error {
 	if stdin == nil || event == "" || dataStore == "" || cniPath == "" || cniNetconfPath == "" {
 		return errors.New("got insufficient args")
@@ -252,9 +262,21 @@ func loadSpec(bundle string) (*hookSpec, error) {
 }
 
 func getNetNSPath(state *specs.State) (string, error) {
-	if state.Pid == 0 {
-		return "", errors.New("state.Pid is unset")
+	// If we have a network-namespace annotation we use it over the passed Pid.
+	netNsPath, netNsFound := state.Annotations[NetworkNamespace]
+	if netNsFound {
+		if _, err := os.Stat(netNsPath); err != nil {
+			return "", err
+		}
+
+		return netNsPath, nil
 	}
+
+	if state.Pid == 0 && !netNsFound {
+		return "", errors.New("Both state.Pid and the netNs annotation are unset")
+	}
+
+	// We dont't have a networking namespace annotation, but we have a PID.
 	s := fmt.Sprintf("/proc/%d/ns/net", state.Pid)
 	if _, err := os.Stat(s); err != nil {
 		return "", err
