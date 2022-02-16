@@ -22,6 +22,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/sirupsen/logrus"
 )
 
@@ -61,5 +62,9 @@ func parseVolumeOptions(vType, src, optsRaw string) ([]string, []oci.SpecOpts, e
 }
 
 func ProcessFlagTmpfs(s string) (*Processed, error) {
+	return nil, errdefs.ErrNotImplemented
+}
+
+func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, error) {
 	return nil, errdefs.ErrNotImplemented
 }

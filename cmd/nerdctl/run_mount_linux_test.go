@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/containerd/containerd/mount"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
@@ -247,4 +248,231 @@ func TestRunTmpfs(t *testing.T) {
 	base.Cmd("run", "--rm", "--tmpfs", "/tmp:size=64m,exec", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=65536k"}, []string{"noexec"}))
 	// for https://github.com/containerd/nerdctl/issues/594
 	base.Cmd("run", "--rm", "--tmpfs", "/dev/shm:rw,exec,size=1g", testutil.AlpineImage, "grep", "/dev/shm", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=1048576k"}, []string{"noexec"}))
+}
+
+func TestRunBindMountTmpfs(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	f := func(allow []string) func(stdout string) error {
+		return func(stdout string) error {
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			if len(lines) != 1 {
+				return fmt.Errorf("expected 1 lines, got %q", stdout)
+			}
+			for _, s := range allow {
+				if !strings.Contains(stdout, s) {
+					return fmt.Errorf("expected stdout to contain %q, got %q", s, stdout)
+				}
+			}
+			return nil
+		}
+	}
+	base.Cmd("run", "--rm", "--mount", "type=tmpfs,target=/tmp", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "noexec"}))
+	base.Cmd("run", "--rm", "--mount", "type=tmpfs,target=/tmp,tmpfs-size=64m", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=65536k"}))
+}
+
+func TestRunBindMountBind(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+	rwDir, err := os.MkdirTemp(t.TempDir(), "rw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	roDir, err := os.MkdirTemp(t.TempDir(), "ro")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	containerName := tID
+	defer base.Cmd("rm", "-f", containerName).Run()
+	base.Cmd("run",
+		"-d",
+		"--name", containerName,
+		"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1", rwDir),
+		"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt2,ro", roDir),
+		testutil.AlpineImage,
+		"top",
+	).AssertOK()
+	base.Cmd("exec", containerName, "sh", "-exc", "echo -n str1 > /mnt1/file1").AssertOK()
+	base.Cmd("exec", containerName, "sh", "-exc", "echo -n str2 > /mnt2/file2").AssertFail()
+
+	base.Cmd("run",
+		"--rm",
+		"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1", rwDir),
+		testutil.AlpineImage,
+		"cat", "/mnt1/file1",
+	).AssertOutExactly("str1")
+
+	// check `bind-propagation`
+	f := func(allow string) func(stdout string) error {
+		return func(stdout string) error {
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			if len(lines) != 1 {
+				return fmt.Errorf("expected 1 lines, got %q", stdout)
+			}
+			fields := strings.Split(lines[0], " ")
+			if len(fields) < 4 {
+				return fmt.Errorf("invalid /proc/mounts format %q", stdout)
+			}
+
+			options := strings.Split(fields[3], ",")
+
+			found := false
+			for _, s := range options {
+				if allow == s {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return fmt.Errorf("expected stdout to contain %q, got %+v", allow, options)
+			}
+			return nil
+		}
+	}
+	base.Cmd("exec", containerName, "grep", "/mnt1", "/proc/mounts").AssertOutWithFunc(f("rw"))
+	base.Cmd("exec", containerName, "grep", "/mnt2", "/proc/mounts").AssertOutWithFunc(f("ro"))
+}
+
+func TestRunBindMountPropagation(t *testing.T) {
+	tID := testutil.Identifier(t)
+
+	if !isRootfsShareableMount() {
+		t.Skipf("rootfs doesn't support shared mount, skip test %s", tID)
+	}
+
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	testCases := []struct {
+		propagation string
+		assertFunc  func(containerName, containerNameReplica string)
+	}{
+		{
+			propagation: "rshared",
+			assertFunc: func(containerName, containerNameReplica string) {
+				// replica can get sub-mounts from original
+				base.Cmd("exec", containerNameReplica, "cat", "/mnt1/replica/foo.txt").AssertOutExactly("toreplica")
+
+				// and sub-mounts from replica will be propagated to the original too
+				base.Cmd("exec", containerName, "cat", "/mnt1/bar/bar.txt").AssertOutExactly("fromreplica")
+			},
+		},
+		{
+			propagation: "rslave",
+			assertFunc: func(containerName, containerNameReplica string) {
+				// replica can get sub-mounts from original
+				base.Cmd("exec", containerNameReplica, "cat", "/mnt1/replica/foo.txt").AssertOutExactly("toreplica")
+
+				// but sub-mounts from replica will not be propagated to the original
+				base.Cmd("exec", containerName, "cat", "/mnt1/bar/bar.txt").AssertFail()
+			},
+		},
+		{
+			propagation: "rprivate",
+			assertFunc: func(containerName, containerNameReplica string) {
+				// replica can't get sub-mounts from original
+				base.Cmd("exec", containerNameReplica, "cat", "/mnt1/replica/foo.txt").AssertFail()
+				// and sub-mounts from replica will not be propagated to the original too
+				base.Cmd("exec", containerName, "cat", "/mnt1/bar/bar.txt").AssertFail()
+			},
+		},
+		{
+			propagation: "",
+			assertFunc: func(containerName, containerNameReplica string) {
+				// replica can't get sub-mounts from original
+				base.Cmd("exec", containerNameReplica, "cat", "/mnt1/replica/foo.txt").AssertFail()
+				// and sub-mounts from replica will not be propagated to the original too
+				base.Cmd("exec", containerName, "cat", "/mnt1/bar/bar.txt").AssertFail()
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		propagationName := tc.propagation
+		if propagationName == "" {
+			propagationName = "default"
+		}
+
+		t.Logf("Running test propagation case %s", propagationName)
+
+		rwDir, err := os.MkdirTemp(t.TempDir(), "rw")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		containerName := tID + "-" + propagationName
+		containerNameReplica := containerName + "-replica"
+
+		mountOption := fmt.Sprintf("type=bind,src=%s,target=/mnt1,bind-propagation=%s", rwDir, tc.propagation)
+		if tc.propagation == "" {
+			mountOption = fmt.Sprintf("type=bind,src=%s,target=/mnt1", rwDir)
+		}
+
+		containers := []struct {
+			name        string
+			mountOption string
+		}{
+			{
+				name:        containerName,
+				mountOption: fmt.Sprintf("type=bind,src=%s,target=/mnt1,bind-propagation=rshared", rwDir),
+			},
+			{
+				name:        containerNameReplica,
+				mountOption: mountOption,
+			},
+		}
+		for _, c := range containers {
+			base.Cmd("run", "-d",
+				"--privileged",
+				"--name", c.name,
+				"--mount", c.mountOption,
+				testutil.AlpineImage,
+				"top").AssertOK()
+			defer base.Cmd("rm", "-f", c.name).Run()
+		}
+
+		// mount in the first container
+		base.Cmd("exec", containerName, "sh", "-exc", "mkdir /app && mkdir /mnt1/replica && mount --bind /app /mnt1/replica && echo -n toreplica > /app/foo.txt").AssertOK()
+		base.Cmd("exec", containerName, "cat", "/mnt1/replica/foo.txt").AssertOutExactly("toreplica")
+
+		// mount in the second container
+		base.Cmd("exec", containerNameReplica, "sh", "-exc", "mkdir /bar && mkdir /mnt1/bar").AssertOK()
+		base.Cmd("exec", containerNameReplica, "sh", "-exc", "mount --bind /bar /mnt1/bar").AssertOK()
+
+		base.Cmd("exec", containerNameReplica, "sh", "-exc", "echo -n fromreplica > /bar/bar.txt").AssertOK()
+		base.Cmd("exec", containerNameReplica, "cat", "/mnt1/bar/bar.txt").AssertOutExactly("fromreplica")
+
+		// call case specific assert function
+		tc.assertFunc(containerName, containerNameReplica)
+
+		// umount mount point in the first privileged container
+		base.Cmd("exec", containerNameReplica, "sh", "-exc", "umount /mnt1/bar").AssertOK()
+		base.Cmd("exec", containerName, "sh", "-exc", "umount /mnt1/replica").AssertOK()
+	}
+}
+
+// isRootfsShareableMount will check if /tmp or / support shareable mount
+func isRootfsShareableMount() bool {
+	existFunc := func(mi mount.Info) bool {
+		for _, opt := range strings.Split(mi.Optional, " ") {
+			if strings.HasPrefix(opt, "shared:") {
+				return true
+			}
+		}
+		return false
+	}
+
+	mi, err := mount.Lookup("/tmp")
+	if err == nil {
+		return existFunc(mi)
+	}
+
+	mi, err = mount.Lookup("/")
+	if err == nil {
+		return existFunc(mi)
+	}
+
+	return false
 }

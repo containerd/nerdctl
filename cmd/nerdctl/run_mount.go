@@ -75,8 +75,7 @@ func withMounts(mounts []specs.Mount) oci.SpecOpts {
 	}
 }
 
-// parseMountFlags parses --volume and --tmpfs.
-// parseMountFlags will also parse --mount in a future release.
+// parseMountFlags parses --volume, --mount and --tmpfs.
 func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*mountutil.Processed, error) {
 	var parsed []*mountutil.Processed
 	if flagVSlice, err := cmd.Flags().GetStringArray("volume"); err != nil {
@@ -103,6 +102,19 @@ func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*m
 			parsed = append(parsed, x)
 		}
 	}
+
+	if mountsSlice, err := cmd.Flags().GetStringArray("mount"); err != nil {
+		return nil, err
+	} else {
+		for _, v := range strutil.DedupeStrSlice(mountsSlice) {
+			x, err := mountutil.ProcessFlagMount(v, volStore)
+			if err != nil {
+				return nil, err
+			}
+			parsed = append(parsed, x)
+		}
+	}
+
 	return parsed, nil
 }
 
@@ -205,7 +217,7 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 				return nil, nil, err
 			}
 
-			//Copying content in AnonymousVolume and namedVolume
+			// Copying content in AnonymousVolume and namedVolume
 			if x.Type == "volume" {
 				if err := copyExistingContents(target, x.Mount.Source); err != nil {
 					return nil, nil, err
