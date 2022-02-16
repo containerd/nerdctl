@@ -52,9 +52,30 @@ See also [`./examples/compose-wordpress`](./examples/compose-wordpress).
 
 ### Debugging Kubernetes
 
-To list Kubernetes containers:
+To list local Kubernetes containers:
 ```console
 # nerdctl --namespace k8s.io ps -a
+```
+
+To build an image for local Kubernetes without using registry:
+```console
+# nerdctl --namespace k8s.io build -t foo /some-dockerfile-directory
+# kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: foo
+spec:
+  containers:
+    - name: foo
+      image: foo
+      imagePullPolicy: Never
+EOF
+```
+
+To load an image archive (`docker save` format or OCI format) into local Kubernetes:
+```console
+# nerdctl --namespace k8s.io load < /path/to/image.tar
 ```
 
 ### Rootless mode
@@ -136,6 +157,7 @@ Major:
 - Recursive read-only (RRO) bind-mount: `nerdctl run -v /mnt:/mnt:rro` (make children such as `/mnt/usb` to be read-only, too).
   Requires kernel >= 5.12, and crun >= 1.4 or runc >= 1.1 (PR [#3272](https://github.com/opencontainers/runc/pull/3272)).
 - [Cosign integration](./docs/cosign.md): `nerdctl pull --verify=cosign` and `nerdctl push --sign=cosign`
+- [Accelerated rootless containers using bypass4netns](./docs/rootless.md): `nerdctl run --label nerdctl/bypass4netns=true`
 
 Minor:
 - Namespacing: `nerdctl --namespace=<NS> ps` .
