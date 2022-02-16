@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -67,7 +68,7 @@ func TestImageVerifyWithCosign(t *testing.T) {
 	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	reg := testregistry.NewPlainHTTP(base)
+	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
 	localhostIP := "127.0.0.1"
 	t.Logf("localhost IP=%q", localhostIP)
@@ -88,6 +89,28 @@ CMD ["echo", "nerdctl-build-test-string"]
 	base.Cmd("pull", testImageRef, "--verify=cosign", "--cosign-key="+keyPair.publicKey).AssertOK()
 }
 
+func TestImagePullPlainHttpWithDefaultPort(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	reg := testregistry.NewPlainHTTP(base, 80)
+	defer reg.Cleanup()
+	testImageRef := fmt.Sprintf("%s/%s:%s",
+		reg.IP.String(), testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
+	t.Logf("testImageRef=%q", testImageRef)
+	t.Logf("testImageRef=%q", testImageRef)
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-string"]
+	`, testutil.CommonImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+	base.Cmd("build", "-t", testImageRef, buildCtx).AssertOK()
+	base.Cmd("--insecure-registry", "push", testImageRef).AssertOK()
+	base.Cmd("--insecure-registry", "pull", testImageRef).AssertOK()
+}
+
 func TestImageVerifyWithCosignShouldFailWhenKeyIsNotCorrect(t *testing.T) {
 	if _, err := exec.LookPath("cosign"); err != nil {
 		t.Skip()
@@ -99,7 +122,7 @@ func TestImageVerifyWithCosignShouldFailWhenKeyIsNotCorrect(t *testing.T) {
 	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	reg := testregistry.NewPlainHTTP(base)
+	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
 	localhostIP := "127.0.0.1"
 	t.Logf("localhost IP=%q", localhostIP)

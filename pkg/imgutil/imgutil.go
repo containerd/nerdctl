@@ -144,7 +144,8 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 
 	img, err := PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack, quiet)
 	if err != nil {
-		if !IsErrHTTPResponseToHTTPSClient(err) {
+		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused".
+		if !IsErrHTTPResponseToHTTPSClient(err) && !IsErrConnectionRefused(err) {
 			return nil, err
 		}
 		if insecure {
@@ -198,6 +199,13 @@ func IsErrHTTPResponseToHTTPSClient(err error) bool {
 	// https://github.com/golang/go/issues/44855
 	const unexposed = "server gave HTTP response to HTTPS client"
 	return strings.Contains(err.Error(), unexposed)
+}
+
+// IsErrConnectionRefused return whether err is
+// "connect: connection refused"
+func IsErrConnectionRefused(err error) bool {
+	const errMessage = "connect: connection refused"
+	return strings.Contains(err.Error(), errMessage)
 }
 
 // PullImage pulls an image using the specified resolver.

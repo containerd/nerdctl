@@ -40,12 +40,12 @@ type TestRegistry struct {
 	Logs       func()
 }
 
-func NewPlainHTTP(base *testutil.Base) *TestRegistry {
+func NewPlainHTTP(base *testutil.Base, port int) *TestRegistry {
 	hostIP, err := nettestutil.NonLoopbackIPv4()
 	assert.NilError(base.T, err)
 	// listen on 0.0.0.0 to enable 127.0.0.1
 	listenIP := net.ParseIP("0.0.0.0")
-	const listenPort = 5000 // TODO: choose random empty port
+	listenPort := port
 	base.T.Logf("hostIP=%q, listenIP=%q, listenPort=%d", hostIP, listenIP, listenPort)
 
 	registryContainerName := "reg-" + testutil.Identifier(base.T)

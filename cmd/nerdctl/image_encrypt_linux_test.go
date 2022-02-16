@@ -74,7 +74,7 @@ func TestImageEncryptJWE(t *testing.T) {
 	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	reg := testregistry.NewPlainHTTP(base)
+	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	encryptImageRef := fmt.Sprintf("127.0.0.1:%d/%s:encrypted", reg.ListenPort, tID)

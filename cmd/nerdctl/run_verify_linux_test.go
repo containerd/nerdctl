@@ -38,7 +38,7 @@ func TestRunVerifyCosign(t *testing.T) {
 	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	reg := testregistry.NewPlainHTTP(base)
+	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
 	localhostIP := "127.0.0.1"
 	t.Logf("localhost IP=%q", localhostIP)
