@@ -20,6 +20,7 @@
   - [How to change the CNI binary path?](#how-to-change-the-cni-binary-path)
 - [Kubernetes](#kubernetes)
   - [`nerdctl ps -a` does not show Kubernetes containers](#nerdctl-ps--a-does-not-show-kubernetes-containers)
+  - [How to build an image for Kubernetes?](#how-to-build-an-image-for-kubernetes)
 - [containerd socket (`/run/containerd/containerd.sock`)](#containerd-socket-runcontainerdcontainerdsock)
   - [Does nerdctl have an equivalent of `DOCKER_HOST=ssh://<USER>@<REMOTEHOST>` ?](#does-nerdctl-have-an-equivalent-of-docker_hostsshuserremotehost-)
   - [Does nerdctl have an equivalent of `sudo usermod -aG docker <USER>` ?](#does-nerdctl-have-an-equivalent-of-sudo-usermod--ag-docker-user-)
@@ -242,6 +243,30 @@ version = 2
 Try `sudo nerdctl --namespace=k8s.io ps -a` .
 
 Note: k3s users have to specify `--address` too: `sudo nerdctl --address=/run/k3s/containerd/containerd.sock --namespace=k8s.io ps -a`
+
+### How to build an image for Kubernetes?
+
+For a multi-node cluster:
+```console
+$ nerdctl build -t example.com/foo /some-dockerfile-directory
+$ nerdctl push example.com/foo
+```
+
+For a single-node cluster w/o registry:
+```console
+# nerdctl --namespace k8s.io build -t foo /some-dockerfile-directory
+# kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: foo
+spec:
+  containers:
+    - name: foo
+      image: foo
+      imagePullPolicy: Never
+EOF
+```
 
 ## containerd socket (`/run/containerd/containerd.sock`)
 
