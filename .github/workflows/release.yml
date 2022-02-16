@@ -9,7 +9,7 @@ env:
 jobs:
   release:
     runs-on: ubuntu-20.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
     - uses: actions/setup-go@v2
       with:

@@ -100,7 +100,7 @@ jobs:
 
   cross:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
     - uses: actions/setup-go@v2
       with:
