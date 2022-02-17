@@ -80,7 +80,6 @@ func TestImageEncryptJWE(t *testing.T) {
 	encryptImageRef := fmt.Sprintf("127.0.0.1:%d/%s:encrypted", reg.ListenPort, tID)
 	defer base.Cmd("rmi", encryptImageRef).Run()
 	base.Cmd("image", "encrypt", "--recipient=jwe:"+keyPair.pub, testutil.CommonImage, encryptImageRef).AssertOK()
-	base.Cmd("image", "inspect", "--mode=native", "--format={{len .Index.Manifests}}", encryptImageRef).AssertOutExactly("1\n")
 	base.Cmd("image", "inspect", "--mode=native", "--format={{json .Manifest.Layers}}", encryptImageRef).AssertOutContains("org.opencontainers.image.enc.keys.jwe")
 	base.Cmd("push", encryptImageRef).AssertOK()
 	// remove all local images (in the nerdctl-test namespace), to ensure that we do not have blobs of the original image.
