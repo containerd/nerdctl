@@ -20,13 +20,15 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
-
 	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
 )
 
 // TestRunInternetConnectivity tests Internet connectivity with `apk update`
@@ -138,6 +140,78 @@ func valuesOfMapStringString(m map[string]string) map[string]struct{} {
 		res[v] = struct{}{}
 	}
 	return res
+}
+
+func TestRunPortWithNoHostPort(t *testing.T) {
+	if rootlessutil.IsRootless() {
+		t.Skip("Auto port assign is not supported rootless mode yet")
+	}
+	type testCase struct {
+		containerPort    string
+		runShouldSuccess bool
+	}
+	testCases := []testCase{
+		{
+			containerPort:    "80",
+			runShouldSuccess: true,
+		},
+		{
+			containerPort:    "80-81",
+			runShouldSuccess: true,
+		},
+		{
+			containerPort:    "80-81/tcp",
+			runShouldSuccess: true,
+		},
+	}
+	tID := testutil.Identifier(t)
+	for i, tc := range testCases {
+		i := i
+		tc := tc
+		tcName := fmt.Sprintf("%+v", tc)
+		t.Run(tcName, func(t *testing.T) {
+			testContainerName := fmt.Sprintf("%s-%d", tID, i)
+			base := testutil.NewBase(t)
+			defer base.Cmd("rm", "-f", testContainerName).Run()
+			pFlag := tc.containerPort
+			cmd := base.Cmd("run", "-d",
+				"--name", testContainerName,
+				"-p", pFlag,
+				testutil.NginxAlpineImage)
+			var result *icmd.Result
+			stdoutContent := ""
+			if tc.runShouldSuccess {
+				cmd.AssertOK()
+			} else {
+				cmd.AssertFail()
+				return
+			}
+			portCmd := base.Cmd("port", testContainerName)
+			portCmd.Base.T.Helper()
+			result = portCmd.Run()
+			stdoutContent = result.Stdout() + result.Stderr()
+			assert.Assert(cmd.Base.T, result.ExitCode == 0, stdoutContent)
+			regexExpression := regexp.MustCompile("80\\/tcp.*?->.*?0.0.0.0:(?P<portNumber>\\d{1,5}).*?")
+			match := regexExpression.FindStringSubmatch(stdoutContent)
+			paramsMap := make(map[string]string)
+			for i, name := range regexExpression.SubexpNames() {
+				if i > 0 && i <= len(match) {
+					paramsMap[name] = match[i]
+				}
+			}
+			if _, ok := paramsMap["portNumber"]; !ok {
+				t.Fail()
+				return
+			}
+			connectURL := fmt.Sprintf("http://%s:%s", "127.0.0.1", paramsMap["portNumber"])
+			resp, err := nettestutil.HTTPGet(connectURL, 30, false)
+			assert.NilError(t, err)
+			respBody, err := io.ReadAll(resp.Body)
+			assert.NilError(t, err)
+			assert.Assert(t, strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet))
+		})
+	}
+
 }
 
 func TestRunPort(t *testing.T) {

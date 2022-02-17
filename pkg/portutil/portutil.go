@@ -22,7 +22,9 @@ import (
 	"strings"
 
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-connections/nat"
+	"github.com/sirupsen/logrus"
 )
 
 //return respectively ip, hostPort, containerPort
@@ -73,21 +75,29 @@ func ParseFlagP(s string) ([]gocni.PortMapping, error) {
 	if containerPort == "" {
 		return nil, fmt.Errorf("no port specified: %s", splitBySlash[0])
 	}
-
-	if hostPort == "" {
-		return nil, fmt.Errorf("automatic host port assignment is not supported yet (FIXME)")
-	}
-
-	startHostPort, endHostPort, err := nat.ParsePortRange(hostPort)
-	if err != nil {
-		return nil, fmt.Errorf("invalid hostPort: %s", hostPort)
-	}
+	var startHostPort uint64
+	var endHostPort uint64
 
 	startPort, endPort, err := nat.ParsePortRange(containerPort)
 	if err != nil {
 		return nil, fmt.Errorf("invalid containerPort: %s", containerPort)
 	}
-
+	if hostPort == "" {
+		// AutoHostPort could not be supported in rootless mode right now, because we can't get correct network from /proc/net/*
+		if rootlessutil.IsRootless() {
+			return nil, fmt.Errorf("FIXME: hostPort is required in root mode")
+		}
+		startHostPort, endHostPort, err = portAllocate(proto, ip, endPort-startPort+1)
+		if err != nil {
+			return nil, err
+		}
+		logrus.Debugf("There is no hostPort has been spec in command, the auto allocate port is from %d:%d to %d:%d", startHostPort, startPort, endHostPort, endPort)
+	} else {
+		startHostPort, endHostPort, err = nat.ParsePortRange(hostPort)
+		if err != nil {
+			return nil, fmt.Errorf("invalid hostPort: %s", hostPort)
+		}
+	}
 	if hostPort != "" && (endPort-startPort) != (endHostPort-startHostPort) {
 		if endPort != startPort {
 			return nil, fmt.Errorf("invalid ranges specified for container and host Ports: %s and %s", containerPort, hostPort)
