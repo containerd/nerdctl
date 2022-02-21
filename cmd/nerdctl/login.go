@@ -104,7 +104,7 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	}
 
 	authConfig, err := GetDefaultAuthConfig(options.username == "" && options.password == "", serverAddress, isDefaultRegistry)
-	if &authConfig == nil {
+	if authConfig == nil {
 		authConfig = &types.AuthConfig{}
 	}
 	if err == nil && authConfig.Username != "" && authConfig.Password != "" {
