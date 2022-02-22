@@ -12,7 +12,7 @@ require (
 	github.com/containerd/go-cni v1.1.3
 	github.com/containerd/imgcrypt v1.1.3
 	github.com/containerd/stargz-snapshotter v0.11.0
-	github.com/containerd/stargz-snapshotter/estargz v0.11.0
+	github.com/containerd/stargz-snapshotter/estargz v0.11.1
 	github.com/containerd/stargz-snapshotter/ipfs v0.11.0
 	github.com/containerd/typeurl v1.0.2
 	github.com/containernetworking/cni v1.0.1
@@ -105,7 +105,7 @@ require (
 	github.com/ipld/go-codec-dagpb v1.3.0 // indirect
 	github.com/ipld/go-ipld-prime v0.11.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
-	github.com/klauspost/compress v1.14.2 // indirect
+	github.com/klauspost/compress v1.14.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.6 // indirect
 	github.com/libp2p/go-buffer-pool v0.0.2 // indirect
 	github.com/libp2p/go-libp2p-core v0.8.6 // indirect
