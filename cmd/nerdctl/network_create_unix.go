@@ -26,6 +26,6 @@ const (
 )
 
 func shellCompleteNetworkDrivers(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	candidates := []string{"bridge"}
+	candidates := []string{"bridge", "macvlan", "ipvlan"}
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }

@@ -45,6 +45,25 @@ func (*bridgeConfig) GetPluginType() string {
 	return "bridge"
 }
 
+// vlanConfig describes the macvlan/ipvlan config
+type vlanConfig struct {
+	PluginType string                 `json:"type"`
+	Master     string                 `json:"master"`
+	Mode       string                 `json:"mode,omitempty"`
+	MTU        int                    `json:"mtu,omitempty"`
+	IPAM       map[string]interface{} `json:"ipam"`
+}
+
+func newVLANPlugin(pluginType string) *vlanConfig {
+	return &vlanConfig{
+		PluginType: pluginType,
+	}
+}
+
+func (c *vlanConfig) GetPluginType() string {
+	return c.PluginType
+}
+
 // portMapConfig describes the portmapping plugin
 type portMapConfig struct {
 	PluginType   string          `json:"type"`

@@ -21,6 +21,8 @@ package netutil
 
 import (
 	"fmt"
+
+	"github.com/containerd/nerdctl/pkg/strutil"
 )
 
 const (
@@ -46,7 +48,7 @@ func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}, opts
 					return nil, err
 				}
 			default:
-				return nil, fmt.Errorf("unsupported network option %q", opt)
+				return nil, fmt.Errorf("unsupported %q network option %q", driver, opt)
 			}
 		}
 		bridge := newBridgePlugin(GetBridgeName(id))
@@ -56,6 +58,42 @@ func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}, opts
 		bridge.IPMasq = true
 		bridge.HairpinMode = true
 		plugins = []CNIPlugin{bridge, newPortMapPlugin(), newFirewallPlugin(), newTuningPlugin()}
+	case "macvlan", "ipvlan":
+		mtu := 0
+		mode := ""
+		master := ""
+		for opt, v := range opts {
+			switch opt {
+			case "mtu", "com.docker.network.driver.mtu":
+				mtu, err = ParseMTU(v)
+				if err != nil {
+					return nil, err
+				}
+			case "mode", "macvlan_mode", "ipvlan_mode":
+				if driver == "macvlan" && opt != "ipvlan_mode" {
+					if !strutil.InStringSlice([]string{"bridge"}, v) {
+						return nil, fmt.Errorf("unknown macvlan mode %q", v)
+					}
+				} else if driver == "ipvlan" && opt != "macvlan_mode" {
+					if !strutil.InStringSlice([]string{"l2", "l3"}, v) {
+						return nil, fmt.Errorf("unknown ipvlan mode %q", v)
+					}
+				} else {
+					return nil, fmt.Errorf("unsupported %q network option %q", driver, opt)
+				}
+				mode = v
+			case "parent":
+				master = v
+			default:
+				return nil, fmt.Errorf("unsupported %q network option %q", driver, opt)
+			}
+		}
+		vlan := newVLANPlugin(driver)
+		vlan.MTU = mtu
+		vlan.Master = master
+		vlan.Mode = mode
+		vlan.IPAM = ipam
+		plugins = []CNIPlugin{vlan}
 	default:
 		return nil, fmt.Errorf("unsupported cni driver %q", driver)
 	}

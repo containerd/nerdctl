@@ -961,12 +961,18 @@ Create a network
 Usage: `nerdctl network create [OPTIONS] NETWORK`
 
 Flags:
-- :whale: `-d, --driver=(bridge|nat)`: Driver to manage the Network
+- :whale: `-d, --driver=(bridge|nat|macvlan|ipvlan)`: Driver to manage the Network
     - :whale: `--driver=bridge`: Default driver for unix
+    - :whale: `--driver=macvlan`: Macvlan network driver for unix
+    - :whale: `--driver=ipvlan`: IPvlan network driver for unix
     - :whale: :blue_square: `--driver=nat`: Default driver for windows
 - :whale: `-o, --opt`: Set driver specific options
     - :whale: `--opt=com.docker.network.driver.mtu=<MTU>`: Set the containers network MTU
     - :nerd_face: `--opt=mtu=<MTU>`: Alias of `--opt=com.docker.network.driver.mtu=<MTU>`
+    - :whale: `--opt=macvlan_mode=(bridge)>`: Set macvlan network mode (default: bridge)
+    - :whale: `--opt=ipvlan_mode=(l2|l3)`: Set IPvlan network mode (default: l2)
+    - :nerd_face: `--opt=mode=(bridge|l2|l3)`: Alias of `--opt=macvlan_mode=(bridge)` and `--opt=ipvlan_mode=(l2|l3)`
+    - :whale: `--opt=parent=<INTERFACE>`: Set valid parent interface on host
 - :whale: `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"
 - :whale: `--gateway`: Gateway for the master subnet
 - :whale: `--ip-range`: Allocate container ip from a sub-range
