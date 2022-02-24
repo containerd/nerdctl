@@ -131,7 +131,7 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cniPlugins, err := netutil.GenerateCNIPlugins(driver, id, ipam, strutil.ConvertKVStringsToMap(opts))
+		cniPlugins, err := e.GenerateCNIPlugins(driver, id, name, ipam, strutil.ConvertKVStringsToMap(opts))
 		if err != nil {
 			return err
 		}

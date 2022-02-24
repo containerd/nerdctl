@@ -87,11 +87,16 @@ func (*portMapConfig) GetPluginType() string {
 type firewallConfig struct {
 	PluginType string `json:"type"`
 	Backend    string `json:"backend,omitempty"`
+
+	// IngressPolicy is supported since firewall plugin v1.1.0.
+	// "same-bridge" mode replaces the deprecated "isolation" plugin.
+	IngressPolicy string `json:"ingressPolicy,omitempty"`
 }
 
 func newFirewallPlugin() *firewallConfig {
 	return &firewallConfig{
-		PluginType: "firewall",
+		PluginType:    "firewall",
+		IngressPolicy: "same-bridge",
 	}
 }
 

@@ -30,8 +30,6 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containernetworking/cni/libcni"
-
-	"github.com/sirupsen/logrus"
 )
 
 type CNIEnv struct {
@@ -78,8 +76,6 @@ type cniNetworkConfig struct {
 
 // GenerateNetworkConfig creates networkConfig.
 // GenerateNetworkConfig does not fill "File" field.
-//
-// TODO: enable CNI isolation plugin
 func (e *CNIEnv) GenerateNetworkConfig(labels []string, id int, name string, plugins []CNIPlugin) (*networkConfig, error) {
 	if e == nil || id < 0 || name == "" || len(plugins) == 0 {
 		return nil, errdefs.ErrInvalidArgument
@@ -90,23 +86,10 @@ func (e *CNIEnv) GenerateNetworkConfig(labels []string, id int, name string, plu
 			return nil, fmt.Errorf("needs CNI plugin %q to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins/releases: %w", f, e.Path, err)
 		}
 	}
-	var extraPlugin CNIPlugin
-	if _, err := exec.LookPath(filepath.Join(e.Path, "isolation")); err == nil {
-		logrus.Debug("found CNI isolation plugin")
-		extraPlugin = newIsolationPlugin()
-	} else if name != DefaultNetworkName {
-		// the warning is suppressed for DefaultNetworkName
-		logrus.Warnf("To isolate bridge networks, CNI plugin \"isolation\" needs to be installed in CNI_PATH (%q), see https://github.com/AkihiroSuda/cni-isolation",
-			e.Path)
-	}
-
-	if extraPlugin != nil {
-		plugins = append(plugins, extraPlugin)
-	}
 	labelsMap := strutil.ConvertKVStringsToMap(labels)
 
 	conf := &cniNetworkConfig{
-		CNIVersion: "0.4.0",
+		CNIVersion: "1.0.0",
 		Name:       name,
 		ID:         id,
 		Labels:     labelsMap,
@@ -144,7 +127,7 @@ func (e *CNIEnv) WriteNetworkConfig(net *networkConfig) error {
 
 func (e *CNIEnv) DefaultNetworkConfig() (*networkConfig, error) {
 	ipam, _ := GenerateIPAM("default", DefaultCIDR, "", "", nil)
-	plugins, _ := GenerateCNIPlugins(DefaultNetworkName, DefaultID, ipam, nil)
+	plugins, _ := e.GenerateCNIPlugins(DefaultNetworkName, DefaultID, DefaultNetworkName, ipam, nil)
 	return e.GenerateNetworkConfig(nil, DefaultID, DefaultNetworkName, plugins)
 }
 
