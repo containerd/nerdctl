@@ -82,6 +82,18 @@ func CNINetConfPath() string {
 	return filepath.Join(xch, "cni/net.d")
 }
 
+func CNIRuntimeDir() string {
+	if !rootlessutil.IsRootless() {
+		return "/run/cni"
+	}
+	xdr, err := rootlessutil.XDGRuntimeDir()
+	if err != nil {
+		logrus.Warn(err)
+		xdr = fmt.Sprintf("/run/user/%d", rootlessutil.ParentEUID())
+	}
+	return fmt.Sprintf("%s/cni", xdr)
+}
+
 func BuildKitHost() string {
 	if !rootlessutil.IsRootless() {
 		return "unix:///run/buildkit/buildkitd.sock"

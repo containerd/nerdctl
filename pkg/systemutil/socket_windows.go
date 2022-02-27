@@ -1,6 +1,3 @@
-//go:build freebsd || linux
-// +build freebsd linux
-
 /*
    Copyright The containerd Authors.
 
@@ -17,19 +14,17 @@
    limitations under the License.
 */
 
-package main
+package systemutil
 
 import (
-	"path/filepath"
+	"time"
 
-	"golang.org/x/sys/unix"
+	"github.com/Microsoft/go-winio"
 )
 
-func isSocketAccessible(s string) error {
-	abs, err := filepath.Abs(s)
-	if err != nil {
-		return err
-	}
-	// set AT_EACCESS to allow running nerdctl as a setuid binary
-	return unix.Faccessat(-1, abs, unix.R_OK|unix.W_OK, unix.AT_EACCESS)
+func IsSocketAccessible(s string) error {
+	// test if we can access the pipe
+	timeout := 2 * time.Second
+	_, err := winio.DialPipe(s, &timeout)
+	return err
 }

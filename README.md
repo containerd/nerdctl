@@ -995,12 +995,17 @@ Flags:
     - :whale: `--opt=ipvlan_mode=(l2|l3)`: Set IPvlan network mode (default: l2)
     - :nerd_face: `--opt=mode=(bridge|l2|l3)`: Alias of `--opt=macvlan_mode=(bridge)` and `--opt=ipvlan_mode=(l2|l3)`
     - :whale: `--opt=parent=<INTERFACE>`: Set valid parent interface on host
+- :whale: `--ipam-driver=(default|host-local|dhcp)`: IP Address Management Driver
+    - :whale: :blue_square: `--ipam-driver=default`: Default IPAM driver
+    - :nerd_face: `--ipam-driver=host-local`: Host-local IPAM driver for unix
+    - :nerd_face: `--ipam-driver=dhcp`: DHCP IPAM driver for unix, requires root
+- :whale: `--ipam-opt`: Set IPAM driver specific options
 - :whale: `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"
 - :whale: `--gateway`: Gateway for the master subnet
 - :whale: `--ip-range`: Allocate container ip from a sub-range
 - :whale: `--label`: Set metadata on a network
 
-Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--ingress`, `--internal`, `--ipam-driver`, `--ipam-opt`, `--ipv6`, `--scope`
+Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--ingress`, `--internal`, `--ipv6`, `--scope`
 
 ### :whale: nerdctl network ls
 List networks

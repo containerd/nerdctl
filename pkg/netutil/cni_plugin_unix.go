@@ -128,3 +128,15 @@ func newHostLocalIPAMConfig() *hostLocalIPAMConfig {
 		Type: "host-local",
 	}
 }
+
+// https://github.com/containernetworking/plugins/blob/v1.1.0/plugins/ipam/dhcp/main.go#L43-L54
+type dhcpIPAMConfig struct {
+	Type             string `json:"type"`
+	DaemonSocketPath string `json:"daemonSocketPath,omitempty"`
+}
+
+func newDHCPIPAMConfig() *dhcpIPAMConfig {
+	return &dhcpIPAMConfig{
+		Type: "dhcp",
+	}
+}
