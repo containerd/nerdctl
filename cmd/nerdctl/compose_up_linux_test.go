@@ -123,6 +123,7 @@ func testComposeUp(t *testing.T, base *testutil.Base, dockerComposeYAML string) 
 func TestComposeUpBuild(t *testing.T) {
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 
 	const dockerComposeYAML = `
 services:

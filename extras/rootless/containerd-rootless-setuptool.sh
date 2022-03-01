@@ -273,6 +273,58 @@ cmd_entrypoint_install_buildkit() {
 	EOT
 }
 
+# CLI subcommand: "install-buildkit-containerd"
+cmd_entrypoint_install_buildkit_containerd() {
+	init
+	if ! command -v "buildkitd" >/dev/null 2>&1; then
+		ERROR "buildkitd (https://github.com/moby/buildkit) needs to be present under \$PATH"
+		exit 1
+	fi
+	if [ ! -f "${XDG_CONFIG_HOME}/buildkit/buildkitd.toml" ]; then
+		mkdir -p "${XDG_CONFIG_HOME}/buildkit"
+		cat <<-EOF > "${XDG_CONFIG_HOME}/buildkit/buildkitd.toml"
+			[worker.oci]
+			enabled = false
+
+			[worker.containerd]
+			enabled = true
+			rootless = true
+		EOF
+	fi
+	if ! systemctl --user --no-pager status "${SYSTEMD_CONTAINERD_UNIT}" >/dev/null 2>&1; then
+		ERROR "Install containerd first (\`$ARG0 install\`)"
+		exit 1
+	fi
+	UNIT_NAME=${SYSTEMD_BUILDKIT_UNIT}
+	BUILDKITD_FLAG=
+	if [ -n "${CONTAINERD_NAMESPACE:-}" ] ; then
+		UNIT_NAME="${CONTAINERD_NAMESPACE}-${SYSTEMD_BUILDKIT_UNIT}"
+		BUILDKITD_FLAG="${BUILDKITD_FLAG} --addr=unix://${XDG_RUNTIME_DIR}/buildkit-${CONTAINERD_NAMESPACE}/buildkitd.sock --root=${XDG_DATA_HOME}/buildkit-${CONTAINERD_NAMESPACE} --containerd-worker-namespace=${CONTAINERD_NAMESPACE}"
+	else
+		WARNING "buildkitd has access to images in \"buildkit\" namespace by default. If you want to give buildkitd access to the images in \"default\" namespace, run this command with CONTAINERD_NAMESPACE=default"
+	fi
+	if [ -n "${CONTAINERD_SNAPSHOTTER:-}" ] ; then
+		BULDKITD_FLAG="${BUILDKITD_FLAG} --containerd-worker-snapshotter=${CONTAINERD_SNAPSHOTTER}"
+	fi
+	cat <<-EOT | install_systemd_unit "${UNIT_NAME}"
+		[Unit]
+		Description=BuildKit (Rootless)
+		PartOf=${SYSTEMD_CONTAINERD_UNIT}
+
+		[Service]
+		Environment=PATH=$BIN:/sbin:/usr/sbin:$PATH
+		ExecStart="$REALPATH0" nsenter -- buildkitd ${BUILDKITD_FLAG}
+		ExecReload=/bin/kill -s HUP \$MAINPID
+		RestartSec=2
+		Restart=always
+		Type=simple
+		KillMode=mixed
+
+		[Install]
+		WantedBy=default.target
+	EOT
+}
+
 # CLI subcommand: "install-bypass4netnsd"
 cmd_entrypoint_install_bypass4netnsd() {
 	init
@@ -461,6 +513,20 @@ cmd_entrypoint_uninstall_buildkit() {
 	INFO "To remove data, run: \`$BIN/rootlesskit rm -rf ${XDG_DATA_HOME}/buildkit"
 }
 
+# CLI subcommand: "uninstall-buildkit-containerd"
+cmd_entrypoint_uninstall_buildkit_containerd() {
+	init
+	UNIT_NAME=${SYSTEMD_BUILDKIT_UNIT}
+	BUILDKIT_ROOT="${XDG_DATA_HOME}/buildkit"
+	if [ -n "${CONTAINERD_NAMESPACE:-}" ] ; then
+		UNIT_NAME="${CONTAINERD_NAMESPACE}-${SYSTEMD_BUILDKIT_UNIT}"
+		BUILDKIT_ROOT="${XDG_DATA_HOME}/buildkit-${CONTAINERD_NAMESPACE}"
+	fi
+	uninstall_systemd_unit "${UNIT_NAME}"
+	INFO "This uninstallation tool does NOT remove data."
+	INFO "To remove data, run: \`$BIN/rootlesskit rm -rf ${BUILDKIT_ROOT}\`"
+}
+
 # CLI subcommand: "uninstall-bypass4netnsd"
 cmd_entrypoint_uninstall_bypass4netnsd() {
 	init
@@ -522,6 +588,10 @@ usage() {
 	echo "Add-on commands (ipfs):"
 	echo "  install-ipfs [ipfs-daemon-flags...]  Install the systemd unit for ipfs daemon. Specify \"--offline\" if run the daemon in offline mode"
 	echo "  uninstall-ipfs                       Uninstall the systemd unit for ipfs daemon"
+	echo
+	echo "Add-on commands (BuildKit containerd worker):"
+	echo "  install-buildkit-containerd   Install the systemd unit for BuildKit with CONTAINERD_NAMESPACE=${CONTAINERD_NAMESPACE:-} and CONTAINERD_SNAPSHOTTER=${CONTAINERD_SNAPSHOTTER:-}"
+	echo "  uninstall-buildkit-containerd Uninstall the systemd unit for BuildKit with CONTAINERD_NAMESPACE=${CONTAINERD_NAMESPACE:-} and CONTAINERD_SNAPSHOTTER=${CONTAINERD_SNAPSHOTTER:-}"
 }
 
 # parse CLI args

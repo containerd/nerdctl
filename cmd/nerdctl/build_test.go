@@ -28,9 +28,9 @@ import (
 )
 
 func TestBuild(t *testing.T) {
-	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -48,10 +48,84 @@ CMD ["echo", "nerdctl-build-test-string"]
 	base.Cmd("run", "--rm", imageName).AssertOutExactly("nerdctl-build-test-string\n")
 }
 
+// TestBuildBaseImage tests if an image can be built on the previously built image.
+// This isn't currently supported by nerdctl with BuildKit OCI worker.
+func TestBuildBaseImage(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
+	imageName := testutil.Identifier(t)
+	defer base.Cmd("rmi", imageName).Run()
+	imageName2 := imageName + "-2"
+	defer base.Cmd("rmi", imageName2).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+RUN echo hello > /hello
+CMD ["echo", "nerdctl-build-test-string"]
+	`, testutil.CommonImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
+
+	dockerfile2 := fmt.Sprintf(`FROM %s
+RUN echo hello2 > /hello2
+CMD ["cat", "/hello2"]
+	`, imageName)
+
+	buildCtx2, err := createBuildContext(dockerfile2)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx2)
+
+	base.Cmd("build", "-t", imageName2, buildCtx2).AssertOK()
+	base.Cmd("build", buildCtx2, "-t", imageName2).AssertOK()
+
+	base.Cmd("run", "--rm", imageName2).AssertOutExactly("hello2\n")
+}
+
+// TestBuildFromContainerd tests if an image can be built on an image pulled by nerdctl.
+// This isn't currently supported by nerdctl with BuildKit OCI worker.
+func TestBuildFromContainerd(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
+	imageName := testutil.Identifier(t)
+	defer base.Cmd("rmi", imageName).Run()
+	imageName2 := imageName + "-2"
+	defer base.Cmd("rmi", imageName2).Run()
+
+	// FIXME: BuildKit sometimes tries to use base image manifests of platforms that hasn't been
+	//        pulled by `nerdctl pull`. This leads to "not found" error for the base image.
+	//        To avoid this issue, images shared to BuildKit should always be pulled by manifest
+	//        digest or `--all-platforms` needs to be added.
+	base.Cmd("pull", "--all-platforms", testutil.CommonImage).AssertOK()
+	base.Cmd("tag", testutil.CommonImage, imageName).AssertOK()
+	base.Cmd("rmi", testutil.CommonImage).AssertOK()
+
+	dockerfile2 := fmt.Sprintf(`FROM %s
+RUN echo hello2 > /hello2
+CMD ["cat", "/hello2"]
+	`, imageName)
+
+	buildCtx2, err := createBuildContext(dockerfile2)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx2)
+
+	base.Cmd("build", "-t", imageName2, buildCtx2).AssertOK()
+	base.Cmd("build", buildCtx2, "-t", imageName2).AssertOK()
+
+	base.Cmd("run", "--rm", imageName2).AssertOutExactly("hello2\n")
+}
+
 func TestBuildFromStdin(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -59,7 +133,7 @@ func TestBuildFromStdin(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-stdin"]
 	`, testutil.CommonImage)
 
-	base.Cmd("build", "-t", imageName, "-f", "-", ".").CmdOption(testutil.WithStdin(strings.NewReader(dockerfile))).AssertOutContains(imageName)
+	base.Cmd("build", "-t", imageName, "-f", "-", ".").CmdOption(testutil.WithStdin(strings.NewReader(dockerfile))).AssertCombinedOutContains(imageName)
 }
 
 func TestBuildLocal(t *testing.T) {
@@ -67,6 +141,7 @@ func TestBuildLocal(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 	const testFileName = "nerdctl-build-test"
 	const testContent = "nerdctl"
 	outputDir := t.TempDir()
@@ -108,6 +183,7 @@ func TestBuildWithIIDFile(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -134,6 +210,7 @@ func TestBuildWithLabels(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 
 	dockerfile := fmt.Sprintf(`FROM %s

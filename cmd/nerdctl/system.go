@@ -16,9 +16,7 @@
 
 package main
 
-import (
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
 func newSystemCommand() *cobra.Command {
 	var systemCommand = &cobra.Command{

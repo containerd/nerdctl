@@ -56,6 +56,7 @@ func TestMultiPlatformBuildPush(t *testing.T) {
 	testutil.RequiresBuild(t)
 	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 	tID := testutil.Identifier(t)
 	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
@@ -97,6 +98,7 @@ func TestMultiPlatformComposeUpBuild(t *testing.T) {
 	testutil.RequiresBuild(t)
 	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 
 	const dockerComposeYAML = `
 services:

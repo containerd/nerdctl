@@ -32,6 +32,7 @@ func TestIPFSBuild(t *testing.T) {
 	requiresIPFS(t)
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage)
 	ipfsCIDBase := strings.TrimPrefix(ipfsCID, "ipfs://")
 

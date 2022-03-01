@@ -37,6 +37,7 @@ func TestRunVerifyCosign(t *testing.T) {
 	keyPair := newCosignKeyPair(t, "cosign-key-pair")
 	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 	tID := testutil.Identifier(t)
 	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()

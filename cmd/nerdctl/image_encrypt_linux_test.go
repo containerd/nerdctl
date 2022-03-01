@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/testregistry"
 	"gotest.tools/v3/assert"
@@ -66,6 +67,9 @@ func newJWEKeyPair(t testing.TB) *jweKeyPair {
 func rmiAll(base *testutil.Base) {
 	imageIDs := base.Cmd("images", "--no-trunc", "-a", "-q").OutLines()
 	base.Cmd(append([]string{"rmi", "-f"}, imageIDs...)...).AssertOK()
+	if _, err := buildkitutil.GetBuildkitHost(testutil.Namespace); err == nil {
+		base.Cmd("builder", "prune").AssertOK()
+	}
 }
 
 func TestImageEncryptJWE(t *testing.T) {

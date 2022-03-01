@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
-	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/platformutil"
@@ -290,6 +289,12 @@ func (c *Cmd) AssertOutContains(s string) {
 	c.Assert(expected)
 }
 
+func (c *Cmd) AssertCombinedOutContains(s string) {
+	c.Base.T.Helper()
+	res := c.Run()
+	assert.Assert(c.Base.T, strings.Contains(res.Combined(), s))
+}
+
 func (c *Cmd) AssertOutNotContains(s string) {
 	c.AssertOutWithFunc(func(stdout string) error {
 		if strings.Contains(stdout, s) {
@@ -382,11 +387,11 @@ func DockerIncompatible(t testing.TB) {
 
 func RequiresBuild(t testing.TB) {
 	if GetTarget() == Nerdctl {
-		buildkitHost := defaults.BuildKitHost()
-		t.Logf("buildkitHost=%q", buildkitHost)
-		if err := buildkitutil.PingBKDaemon(buildkitHost); err != nil {
+		buildkitHost, err := buildkitutil.GetBuildkitHost(Namespace)
+		if err != nil {
 			t.Skipf("test requires buildkitd: %+v", err)
 		}
+		t.Logf("buildkitHost=%q", buildkitHost)
 	}
 }
 
