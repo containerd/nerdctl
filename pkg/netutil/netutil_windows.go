@@ -39,7 +39,7 @@ func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}, opts
 	return plugins, nil
 }
 
-func GenerateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr string) (map[string]interface{}, error) {
+func GenerateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr string, opts map[string]string) (map[string]interface{}, error) {
 	ipamRange, err := parseIPAMRange(subnetStr, gatewayStr, ipRangeStr)
 	if err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func GenerateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr string) (map[
 
 	var ipamConfig interface{}
 	switch driver {
-	case "":
+	case "default":
 		ipamConf := newWindowsIPAMConfig()
 		ipamConf.Subnet = ipamRange.Subnet
 		ipamConf.Routes = append(ipamConf.Routes, IPAMRoute{Gateway: ipamRange.Gateway})

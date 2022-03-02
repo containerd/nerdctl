@@ -47,7 +47,7 @@ type CNIEnv struct {
 }
 
 func DefaultConfigList(e *CNIEnv) (*NetworkConfigList, error) {
-	ipam, _ := GenerateIPAM("", DefaultCIDR, "", "")
+	ipam, _ := GenerateIPAM("default", DefaultCIDR, "", "", nil)
 	plugins, _ := GenerateCNIPlugins(DefaultNetworkName, DefaultID, ipam, nil)
 	return GenerateConfigList(e, nil, DefaultID, DefaultNetworkName, plugins)
 }

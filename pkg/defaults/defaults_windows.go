@@ -37,6 +37,10 @@ func CNINetConfPath() string {
 	return filepath.Join(os.Getenv("ProgramFiles"), "containerd", "cni", "conf")
 }
 
+func CNIRuntimeDir() string {
+	return ""
+}
+
 func BuildKitHost() string {
 	return fmt.Sprint("\\\\.\\pipe\\buildkit")
 }

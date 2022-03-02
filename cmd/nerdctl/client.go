@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/platformutil"
+	"github.com/containerd/nerdctl/pkg/systemutil"
 	"github.com/opencontainers/go-digest"
 )
 
@@ -47,8 +48,8 @@ func newClient(cmd *cobra.Command, opts ...containerd.ClientOpt) (*containerd.Cl
 	}
 	address = strings.TrimPrefix(address, "unix://")
 	const dockerContainerdaddress = "/var/run/docker/containerd/containerd.sock"
-	if err := isSocketAccessible(address); err != nil {
-		if isSocketAccessible(dockerContainerdaddress) == nil {
+	if err := systemutil.IsSocketAccessible(address); err != nil {
+		if systemutil.IsSocketAccessible(dockerContainerdaddress) == nil {
 			err = fmt.Errorf("cannot access containerd socket %q (hint: try running with `--address %s` to connect to Docker-managed containerd): %w", address, dockerContainerdaddress, err)
 		} else {
 			err = fmt.Errorf("cannot access containerd socket %q: %w", address, err)

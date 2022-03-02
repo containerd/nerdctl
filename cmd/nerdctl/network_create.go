@@ -43,6 +43,9 @@ func newNetworkCreateCommand() *cobra.Command {
 	networkCreateCommand.Flags().StringP("driver", "d", DefaultNetworkDriver, "Driver to manage the Network")
 	networkCreateCommand.RegisterFlagCompletionFunc("driver", shellCompleteNetworkDrivers)
 	networkCreateCommand.Flags().StringArrayP("opt", "o", nil, "Set driver specific options")
+	networkCreateCommand.Flags().String("ipam-driver", "default", "IP Address Management Driver")
+	networkCreateCommand.RegisterFlagCompletionFunc("ipam-driver", shellCompleteIPAMDrivers)
+	networkCreateCommand.Flags().StringArray("ipam-opt", nil, "Set IPAM driver specific options")
 	networkCreateCommand.Flags().String("subnet", "", `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
 	networkCreateCommand.Flags().String("gateway", "", `Gateway for the master subnet`)
 	networkCreateCommand.Flags().String("ip-range", "", `Allocate container ip from a sub-range`)
@@ -71,6 +74,14 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	opts, err := cmd.Flags().GetStringArray("opt")
+	if err != nil {
+		return err
+	}
+	ipamDriver, err := cmd.Flags().GetString("ipam-driver")
+	if err != nil {
+		return err
+	}
+	ipamOpts, err := cmd.Flags().GetStringArray("ipam-opt")
 	if err != nil {
 		return err
 	}
@@ -122,7 +133,7 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		}
 
 		labels := strutil.DedupeStrSlice(labels)
-		ipam, err := netutil.GenerateIPAM("", subnetStr, gatewayStr, ipRangeStr)
+		ipam, err := netutil.GenerateIPAM(ipamDriver, subnetStr, gatewayStr, ipRangeStr, strutil.ConvertKVStringsToMap(ipamOpts))
 		if err != nil {
 			return err
 		}
