@@ -25,6 +25,9 @@ import (
 )
 
 func Load(fileName, projectName string, envMap map[string]string) (*compose.Project, error) {
+	if envMap == nil {
+		envMap = make(map[string]string)
+	}
 	b, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, err
@@ -45,6 +48,6 @@ func Load(fileName, projectName string, envMap map[string]string) (*compose.Proj
 
 func withProjectName(name string) func(*loader.Options) {
 	return func(lOpts *loader.Options) {
-		lOpts.Name = name
+		lOpts.SetProjectName(name, true)
 	}
 }

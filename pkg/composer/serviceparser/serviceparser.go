@@ -632,13 +632,13 @@ func servicePortConfigToFlagP(c types.ServicePortConfig) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported port mode: %s", c.Mode)
 	}
-	if c.Published <= 0 {
-		return "", fmt.Errorf("unsupported port number: %d", c.Published)
+	if c.Published == "" {
+		return "", fmt.Errorf("unsupported port number: %q", c.Published)
 	}
 	if c.Target <= 0 {
 		return "", fmt.Errorf("unsupported port number: %d", c.Target)
 	}
-	s := fmt.Sprintf("%d:%d", c.Published, c.Target)
+	s := fmt.Sprintf("%s:%d", c.Published, c.Target)
 	if c.HostIP != "" {
 		if strings.Contains(c.HostIP, ":") {
 			s = fmt.Sprintf("[%s]:%s", c.HostIP, s)
