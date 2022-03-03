@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/Microsoft/go-winio v0.5.2
-	github.com/compose-spec/compose-go v1.0.9
+	github.com/compose-spec/compose-go v1.1.0
 	github.com/containerd/cgroups v1.0.3
 	github.com/containerd/console v1.0.3
 	github.com/containerd/containerd v1.6.1

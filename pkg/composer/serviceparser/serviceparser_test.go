@@ -40,7 +40,7 @@ func TestServicePortConfigToFlagP(t *testing.T) {
 			ServicePortConfig: types.ServicePortConfig{
 				Mode:      "ingress",
 				Target:    80,
-				Published: 8080,
+				Published: "8080",
 				Protocol:  "tcp",
 			},
 			expected: "8080:80/tcp",
@@ -49,7 +49,7 @@ func TestServicePortConfigToFlagP(t *testing.T) {
 			ServicePortConfig: types.ServicePortConfig{
 				HostIP:    "127.0.0.1",
 				Target:    80,
-				Published: 8080,
+				Published: "8080",
 			},
 			expected: "127.0.0.1:8080:80",
 		},
