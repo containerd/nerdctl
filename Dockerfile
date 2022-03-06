@@ -50,8 +50,9 @@ FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS build-base-debia
 # libbtrfs: for containerd
 # libseccomp: for runc and bypass4netns
 RUN dpkg --add-architecture arm64 && \
+  dpkg --add-architecture amd64 && \
   apt-get update && \
-  apt-get install -y crossbuild-essential-arm64 git libbtrfs-dev libbtrfs-dev:arm64 libseccomp-dev libseccomp-dev:arm64
+  apt-get install -y crossbuild-essential-amd64 crossbuild-essential-arm64 git libbtrfs-dev:amd64 libbtrfs-dev:arm64 libseccomp-dev:amd64 libseccomp-dev:arm64
 
 FROM build-base-debian AS build-containerd
 ARG CONTAINERD_VERSION
