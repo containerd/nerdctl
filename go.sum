@@ -336,8 +336,9 @@ github.com/containerd/nri v0.1.0/go.mod h1:lmxnXF6oMkbqs39FiCt1s0R2HSMhcLel9vNL3
 github.com/containerd/stargz-snapshotter v0.11.0 h1:SDqrMixVWFWya1t/ZcUzfmLY3bLVu0mYnVobN5GOZxw=
 github.com/containerd/stargz-snapshotter v0.11.0/go.mod h1:4uHVxcpajrdsb7lTjhQ9Aw2iYicB7szTSFu4YqDOpTo=
 github.com/containerd/stargz-snapshotter/estargz v0.4.1/go.mod h1:x7Q9dg9QYb4+ELgxmo4gBUeJB0tl5dqH1Sdz0nJU1QM=
-github.com/containerd/stargz-snapshotter/estargz v0.11.0 h1:t0IW5kOmY7AXDAWRUs2uVzDhijAUOAYVr/dyRhOQvBg=
 github.com/containerd/stargz-snapshotter/estargz v0.11.0/go.mod h1:/KsZXsJRllMbTKFfG0miFQWViQKdI9+9aSXs+HN0+ac=
+github.com/containerd/stargz-snapshotter/estargz v0.11.2 h1:0P0vWmfrEeTtZ4BBRrpuyu/HxR9HPBLfeljGOra5f6g=
+github.com/containerd/stargz-snapshotter/estargz v0.11.2/go.mod h1:rjbdAXaytDSIrAy2WAy2kUrJ4ehzDS0eUQLlIb5UCY0=
 github.com/containerd/stargz-snapshotter/ipfs v0.11.0 h1:9gdrFGkbKeroxgu7jU5nfbVxOIau5n4jDADhqn2lf/Y=
 github.com/containerd/stargz-snapshotter/ipfs v0.11.0/go.mod h1:0jf+/W3SqsQJ3BtE/bgjndNflwZCttzpq+0A1MhFWms=
 github.com/containerd/ttrpc v0.0.0-20190828154514-0e0f228740de/go.mod h1:PvCDdDGpgqzQIzDW1TphrGLssLDZp2GuS+X5DkEJB8o=
@@ -1027,8 +1028,9 @@ github.com/klauspost/compress v1.11.3/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYs
 github.com/klauspost/compress v1.11.13/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYsUV+/s2qKfXs=
 github.com/klauspost/compress v1.13.4/go.mod h1:8dP1Hq4DHOhN9w426knH3Rhby4rFm6D8eO+e+Dq5Gzg=
 github.com/klauspost/compress v1.13.5/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
-github.com/klauspost/compress v1.14.2 h1:S0OHlFk/Gbon/yauFJ4FfJJF5V0fc5HbBTJazi28pRw=
 github.com/klauspost/compress v1.14.2/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
+github.com/klauspost/compress v1.15.0 h1:xqfchp4whNFxn5A4XFyyYtitiWI8Hy5EW59jEwcyL6U=
+github.com/klauspost/compress v1.15.0/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
 github.com/klauspost/cpuid/v2 v2.0.4/go.mod h1:FInQzS24/EEf25PyTYn52gqo7WaD8xa0213Md/qVLRg=
 github.com/klauspost/cpuid/v2 v2.0.6 h1:dQ5ueTiftKxp0gyjKSx5+8BtPWkyQbd95m8Gys/RarI=
 github.com/klauspost/cpuid/v2 v2.0.6/go.mod h1:FInQzS24/EEf25PyTYn52gqo7WaD8xa0213Md/qVLRg=
