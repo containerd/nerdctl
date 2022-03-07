@@ -25,6 +25,7 @@ import (
 	"os/exec"
 
 	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
@@ -150,7 +151,7 @@ func pushAction(cmd *cobra.Command, args []string) error {
 			}
 			return fmt.Errorf("failed to create a tmp reduced-platform image %q (platform=%v): %w", pushRef, platform, err)
 		}
-		defer client.ImageService().Delete(ctx, platImg.Name)
+		defer client.ImageService().Delete(ctx, platImg.Name, images.SynchronousDelete())
 		logrus.Infof("pushing as a reduced-platform image (%s, %s)", platImg.Target.MediaType, platImg.Target.Digest)
 	}
 
@@ -160,7 +161,7 @@ func pushAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to convert to eStargz: %v", err)
 		}
-		defer client.ImageService().Delete(ctx, esgzImg.Name)
+		defer client.ImageService().Delete(ctx, esgzImg.Name, images.SynchronousDelete())
 		logrus.Infof("pushing as an eStargz image (%s, %s)", esgzImg.Target.MediaType, esgzImg.Target.Digest)
 	}
 
