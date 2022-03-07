@@ -34,7 +34,7 @@ linux_cgroup2_task:
     - docker run -t --rm --privileged -e WORKAROUND_CIRRUS=1 test-integration-rootless
 
 freebsd_task:
-  name: "FreeBSD"
+  name: "FreeBSD (Unit tests only)"
   timeout_in: 20m
   compute_engine_instance:
     image_project: freebsd-org-cloud-dev
@@ -42,16 +42,12 @@ freebsd_task:
     platform: freebsd
     cpu: 2
     memory: 4G
-  env:
-    NERDCTL_RUN_ARGS: --net none knast/freebsd:13-STABLE echo "Nerdctl is up and running."
   install_script:
-    - pkg install -y go containerd runj
-    - daemon -o containerd.out containerd
+    - pkg install -y go
   test_script:
     - go test -v ./pkg/...
-    - cd cmd/nerdctl
-    - sudo go run . run $NERDCTL_RUN_ARGS | grep running
 # TODO: run `go test -v ./cmd/...`
+# FIXME: `nerdctl run` is broken on FreeBSD: https://github.com/containerd/nerdctl/issues/868
 
 windows_task:
   name: "Windows"
