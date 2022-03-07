@@ -338,8 +338,8 @@ github.com/containerd/stargz-snapshotter v0.11.0/go.mod h1:4uHVxcpajrdsb7lTjhQ9A
 github.com/containerd/stargz-snapshotter/estargz v0.4.1/go.mod h1:x7Q9dg9QYb4+ELgxmo4gBUeJB0tl5dqH1Sdz0nJU1QM=
 github.com/containerd/stargz-snapshotter/estargz v0.11.0 h1:t0IW5kOmY7AXDAWRUs2uVzDhijAUOAYVr/dyRhOQvBg=
 github.com/containerd/stargz-snapshotter/estargz v0.11.0/go.mod h1:/KsZXsJRllMbTKFfG0miFQWViQKdI9+9aSXs+HN0+ac=
-github.com/containerd/stargz-snapshotter/ipfs v0.11.0 h1:9gdrFGkbKeroxgu7jU5nfbVxOIau5n4jDADhqn2lf/Y=
-github.com/containerd/stargz-snapshotter/ipfs v0.11.0/go.mod h1:0jf+/W3SqsQJ3BtE/bgjndNflwZCttzpq+0A1MhFWms=
+github.com/containerd/stargz-snapshotter/ipfs v0.11.2 h1:f9ZlUMrzf4UmU+6ZRjzjlxA0/dYIeQOcDAAxK4SK9Sw=
+github.com/containerd/stargz-snapshotter/ipfs v0.11.2/go.mod h1:KnOMPhT32ZP3SjG6eV2JqK5DK9gAwVZUXZhWNaUhVWE=
 github.com/containerd/ttrpc v0.0.0-20190828154514-0e0f228740de/go.mod h1:PvCDdDGpgqzQIzDW1TphrGLssLDZp2GuS+X5DkEJB8o=
 github.com/containerd/ttrpc v0.0.0-20190828172938-92c8520ef9f8/go.mod h1:PvCDdDGpgqzQIzDW1TphrGLssLDZp2GuS+X5DkEJB8o=
 github.com/containerd/ttrpc v0.0.0-20191028202541-4f1b8fe65a5c/go.mod h1:LPm1u0xBw8r8NOKoOdNMeVHSawSsltak+Ihv+etqsE8=
@@ -891,7 +891,6 @@ github.com/ipfs/go-ipfs-exchange-offline v0.0.1 h1:P56jYKZF7lDDOLx5SotVh5KFxoY6C
 github.com/ipfs/go-ipfs-exchange-offline v0.0.1/go.mod h1:WhHSFCVYX36H/anEKQboAzpUws3x7UeEGkzQc3iNkM0=
 github.com/ipfs/go-ipfs-files v0.0.3/go.mod h1:INEFm0LL2LWXBhNJ2PMIIb2w45hpXgPjNoE7yA8Y1d4=
 github.com/ipfs/go-ipfs-files v0.0.8/go.mod h1:wiN/jSG8FKyk7N0WyctKSvq3ljIa2NNTiZB55kpTdOs=
-github.com/ipfs/go-ipfs-files v0.1.0/go.mod h1:8xkIrMWH+Y5P7HvJ4Yc5XWwIW2e52dyXUiC0tZyjDbM=
 github.com/ipfs/go-ipfs-files v0.1.1 h1:/MbEowmpLo9PJTEQk16m9rKzUHjeP4KRU9nWJyJO324=
 github.com/ipfs/go-ipfs-files v0.1.1/go.mod h1:8xkIrMWH+Y5P7HvJ4Yc5XWwIW2e52dyXUiC0tZyjDbM=
 github.com/ipfs/go-ipfs-http-client v0.2.0 h1:s0SBzK6Zrs4jPtU4A2IEuuVOJCXn6dBZMJ7zz3z/LJQ=
