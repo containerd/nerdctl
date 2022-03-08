@@ -85,7 +85,8 @@ func ParseFlagP(s string) ([]gocni.PortMapping, error) {
 	if hostPort == "" {
 		// AutoHostPort could not be supported in rootless mode right now, because we can't get correct network from /proc/net/*
 		if rootlessutil.IsRootless() {
-			return nil, fmt.Errorf("FIXME: hostPort is required in root mode")
+			return nil, fmt.Errorf("automatic port allocation is not implemented for rootless mode (Hint: specify the port like \"12345:%s\", not just \"%s\")",
+				containerPort, containerPort)
 		}
 		startHostPort, endHostPort, err = portAllocate(proto, ip, endPort-startPort+1)
 		if err != nil {
