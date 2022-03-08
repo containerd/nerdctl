@@ -27,7 +27,7 @@ ARG CNI_ISOLATION_VERSION=v0.0.4
 # Extra deps: Build
 ARG BUILDKIT_VERSION=v0.9.3
 # Extra deps: Lazy-pulling
-ARG STARGZ_SNAPSHOTTER_VERSION=v0.11.1
+ARG STARGZ_SNAPSHOTTER_VERSION=v0.11.2
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=v1.1.3
 # Extra deps: Rootless
