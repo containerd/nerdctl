@@ -293,7 +293,12 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl volume inspect](#whale-nerdctl-volume-inspect)
     - [:whale: nerdctl volume rm](#whale-nerdctl-volume-rm)
   - [Namespace management](#namespace-management)
+    - [:nerd_face: :blue_square: nerdctl namespace create](#nerd_face-blue_square-nerdctl-namespace-create)
+    - [:nerd_face: :blue_square: nerdctl namespace inspect](#nerd_face-blue_square-nerdctl-namespace-inspect)
     - [:nerd_face: :blue_square: nerdctl namespace ls](#nerd_face-blue_square-nerdctl-namespace-ls)
+    - [:nerd_face: :blue_square: nerdctl namespace remove](#nerd_face-blue_square-nerdctl-namespace-remove)
+    - [:nerd_face: :blue_square: nerdctl namespace update](#nerd_face-blue_square-nerdctl-namespace-update)
+
   - [AppArmor profile management](#apparmor-profile-management)
     - [:nerd_face: nerdctl apparmor inspect](#nerd_face-nerdctl-apparmor-inspect)
     - [:nerd_face: nerdctl apparmor load](#nerd_face-nerdctl-apparmor-load)
@@ -1083,6 +1088,18 @@ Usage: `nerdctl volume rm [OPTIONS] VOLUME [VOLUME...]`
 
 ## Namespace management
 
+### :nerd_face: :blue_square: nerdctl namespace create
+Create a new namespace.
+
+Usage: `nerdctl namespace create NAMESPACE`
+Flags:
+- `--label`: Set labels for a namespace
+
+### :nerd_face: :blue_square: nerdctl namespace inspect
+Inspect a namespace.
+
+Usage: `nerdctl namespace inspect NAMESPACE`
+
 ### :nerd_face: :blue_square: nerdctl namespace ls
 List containerd namespaces such as "default", "moby", or "k8s.io".
 
@@ -1090,6 +1107,22 @@ Usage: `nerdctl namespace ls [OPTIONS]`
 
 Flags:
 - `-q, --quiet`: Only display namespace names
+
+### :nerd_face: :blue_square: nerdctl namespace remove
+Remove one or more namespaces.
+
+Usage: `nerdctl namespace remove [OPTIONS] NAMESPACE [NAMESPACE...]`
+
+Flags:
+- `-c, --cgroup`: delete the namespace's cgroup
+
+### :nerd_face: :blue_square: nerdctl namespace update
+Udapte labels for a namespace.
+
+Usage: `nerdctl namespace update NAMESPACE`
+
+Flags:
+- `--label`: Set labels for a namespace
 
 ## AppArmor profile management
 ### :nerd_face: nerdctl apparmor inspect

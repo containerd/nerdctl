@@ -19,6 +19,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/containerd/containerd/namespaces"
@@ -31,6 +33,7 @@ func newNamespaceCommand() *cobra.Command {
 	namespaceCommand := &cobra.Command{
 		Annotations:   map[string]string{Category: Management},
 		Use:           "namespace",
+		Aliases:       []string{"ns"},
 		Short:         "Manage containerd namespaces",
 		Long:          "Unrelated to Linux namespaces and Kubernetes namespaces",
 		RunE:          unknownSubcommandAction,
@@ -38,6 +41,10 @@ func newNamespaceCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	namespaceCommand.AddCommand(newNamespaceLsCommand())
+	namespaceCommand.AddCommand(newNamespaceRmCommand())
+	namespaceCommand.AddCommand(newNamespaceCreateCommand())
+	namespaceCommand.AddCommand(newNamespacelabelUpdateCommand())
+	namespaceCommand.AddCommand(newNamespaceInspectCommand())
 	return namespaceCommand
 }
 
@@ -84,10 +91,11 @@ func namespaceLsAction(cmd *cobra.Command, args []string) error {
 
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 4, 8, 4, ' ', 0)
 	// no "NETWORKS", because networks are global objects
-	fmt.Fprintln(w, "NAME\tCONTAINERS\tIMAGES\tVOLUMES")
+	fmt.Fprintln(w, "NAME\tCONTAINERS\tIMAGES\tVOLUMES\tLABELS")
 	for _, ns := range nsList {
 		ctx = namespaces.WithNamespace(ctx, ns)
 		var numContainers, numImages, numVolumes int
+		var labelStrings []string
 
 		containers, err := client.Containers(ctx)
 		if err != nil {
@@ -114,7 +122,15 @@ func namespaceLsAction(cmd *cobra.Command, args []string) error {
 			numVolumes = len(volEnts)
 		}
 
-		fmt.Fprintf(w, "%s\t%d\t%d\t%d\n", ns, numContainers, numImages, numVolumes)
+		labels, err := client.NamespaceService().Labels(ctx, ns)
+		if err != nil {
+			return err
+		}
+		for k, v := range labels {
+			labelStrings = append(labelStrings, strings.Join([]string{k, v}, "="))
+		}
+		sort.Strings(labelStrings)
+		fmt.Fprintf(w, "%s\t%d\t%d\t%d\t%v\t\n", ns, numContainers, numImages, numVolumes, strings.Join(labelStrings, ","))
 	}
 	return w.Flush()
 }
