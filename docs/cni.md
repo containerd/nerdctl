@@ -60,6 +60,32 @@ Configuration of the default network `bridge` of Linux:
 
 When CNI plugin `isolation` be installed, will inject isolation configuration `{"type":"isolation"}` automatically.
 
+## macvlan/IPvlan networks
+
+nerdctl also support macvlan and IPvlan network driver.
+
+To create a `macvlan` network which bridges with a given physical network interface, use `--driver macvlan` with
+`nerdctl network create` command.
+
+```
+# nerdctl network create mac0 --driver macvlan \
+  --subnet=192.168.5.0/24
+  --gateway=192.168.5.2
+  -o parent=eth0
+```
+
+You can specify the `parent`, which is the interface the traffic will physically go through on the host,
+defaults to default route interface.
+
+And the `subnet` should be under the same network as the network interface,
+an easier way is to use DHCP to assign the IP:
+
+```
+# nerdctl network create mac0 --driver macvlan --ipam-driver=dhcp
+```
+
+Using `--driver ipvlan` can create `ipvlan` network, the default mode for IPvlan is `l2`.
+
 ## Custom networks
 
 You can also customize your CNI network by providing configuration files.
