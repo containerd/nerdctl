@@ -201,6 +201,8 @@ information in our [`containerd/project`](https://github.com/containerd/project)
 
 ### Compiling nerdctl from source
 
+**Tips: You should make your Go toolchain newer than 1.17.**
+
 Run `make && sudo make install`.
 
 Using `go install github.com/containerd/nerdctl/cmd/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
