@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"path"
 	"strconv"
@@ -74,4 +75,101 @@ func TestLoginWithSpecificRegHosts(t *testing.T) {
 		base.Cmd("--debug-full", "--hosts-dir", reg.HostsDir, "login", "-u", "admin", "-p", "validTestPassword", tc.url).AssertOK()
 	}
 
+}
+
+func TestLoginWithPlainHttp(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	reg5000 := testregistry.NewAuthWithHttp(base, "admin", "validTestPassword", 5000, 5001)
+	reg80 := testregistry.NewAuthWithHttp(base, "admin", "validTestPassword", 80, 5002)
+	defer reg5000.Cleanup()
+	defer reg80.Cleanup()
+	testCasesForPort5000 := []struct {
+		regHost           string
+		regPort           int
+		useRegPort        bool
+		username          string
+		password          string
+		shouldSuccess     bool
+		registry          *testregistry.TestRegistry
+		shouldUseInSecure bool
+	}{
+		{
+			regHost:           "127.0.0.1",
+			regPort:           5000,
+			useRegPort:        true,
+			username:          "admin",
+			password:          "validTestPassword",
+			shouldSuccess:     true,
+			registry:          reg5000,
+			shouldUseInSecure: true,
+		},
+		{
+			regHost:           "127.0.0.1",
+			regPort:           5000,
+			useRegPort:        true,
+			username:          "admin",
+			password:          "invalidTestPassword",
+			shouldSuccess:     false,
+			registry:          reg5000,
+			shouldUseInSecure: true,
+		},
+		{
+			regHost:           "127.0.0.1",
+			regPort:           5000,
+			useRegPort:        true,
+			username:          "admin",
+			password:          "validTestPassword",
+			shouldSuccess:     false,
+			registry:          reg5000,
+			shouldUseInSecure: false,
+		},
+		{
+			regHost:           "127.0.0.1",
+			regPort:           80,
+			useRegPort:        false,
+			username:          "admin",
+			password:          "validTestPassword",
+			shouldSuccess:     true,
+			registry:          reg80,
+			shouldUseInSecure: true,
+		},
+		{
+			regHost:           "127.0.0.1",
+			regPort:           80,
+			useRegPort:        false,
+			username:          "admin",
+			password:          "invalidTestPassword",
+			shouldSuccess:     false,
+			registry:          reg80,
+			shouldUseInSecure: true,
+		},
+	}
+	for _, tc := range testCasesForPort5000 {
+		tcName := fmt.Sprintf("%+v", tc)
+		t.Run(tcName, func(t *testing.T) {
+			regHost := tc.regHost
+			if tc.useRegPort {
+				regHost = fmt.Sprintf("%s:%d", regHost, tc.regPort)
+			}
+			if tc.shouldSuccess {
+				t.Logf("Good password")
+			} else {
+				t.Logf("Bad password")
+			}
+			var args []string
+			if tc.shouldUseInSecure {
+				args = append(args, "--insecure-registry")
+			}
+			args = append(args, []string{
+				"--debug-full", "--hosts-dir", tc.registry.HostsDir, "login", "-u", tc.username, "-p", tc.password, regHost,
+			}...)
+			cmd := base.Cmd(args...)
+			if tc.shouldSuccess {
+				cmd.AssertOK()
+			} else {
+				cmd.AssertFail()
+			}
+		})
+	}
 }
