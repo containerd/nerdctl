@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/remotes/docker"
 	dockerconfig "github.com/containerd/containerd/remotes/docker/config"
+	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	clitypes "github.com/docker/cli/cli/config/types"
@@ -242,6 +243,10 @@ func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthCon
 	}
 	for i, rh := range regHosts {
 		err = tryLoginWithRegHost(ctx, rh)
+		if err != nil && insecure && (errutil.IsErrHTTPResponseToHTTPSClient(err) || errutil.IsErrConnectionRefused(err)) {
+			rh.Scheme = "http"
+			err = tryLoginWithRegHost(ctx, rh)
+		}
 		identityToken := fetchedRefreshTokens[rh.Host] // can be empty
 		if err == nil {
 			return identityToken, nil
