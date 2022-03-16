@@ -94,25 +94,21 @@ func networkLsAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	e := &netutil.CNIEnv{
-		Path:        cniPath,
-		NetconfPath: cniNetconfpath,
-	}
-	ll, err := netutil.ConfigLists(e)
+	e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
 	if err != nil {
 		return err
 	}
-	pp := make([]networkPrintable, len(ll))
-	for i, l := range ll {
+	pp := make([]networkPrintable, len(e.Networks))
+	for i, n := range e.Networks {
 		p := networkPrintable{
-			Name: l.Name,
-			file: l.File,
+			Name: n.Name,
+			file: n.File,
 		}
-		if l.NerdctlID != nil {
-			p.ID = strconv.Itoa(*l.NerdctlID)
+		if n.NerdctlID != nil {
+			p.ID = strconv.Itoa(*n.NerdctlID)
 		}
-		if l.NerdctlLabels != nil {
-			p.Labels = formatLabels(*l.NerdctlLabels)
+		if n.NerdctlLabels != nil {
+			p.Labels = formatLabels(*n.NerdctlLabels)
 		}
 		pp[i] = p
 	}

@@ -104,19 +104,14 @@ func shellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, 
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
-	e := &netutil.CNIEnv{
-		Path:        cniPath,
-		NetconfPath: cniNetconfpath,
-	}
-
-	configLists, err := netutil.ConfigLists(e)
+	e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
 	candidates := []string{}
-	for _, configList := range configLists {
-		if _, ok := excludeMap[configList.Name]; !ok {
-			candidates = append(candidates, configList.Name)
+	for _, n := range e.Networks {
+		if _, ok := excludeMap[n.Name]; !ok {
+			candidates = append(candidates, n.Name)
 		}
 	}
 	for _, s := range []string{"host", "none"} {

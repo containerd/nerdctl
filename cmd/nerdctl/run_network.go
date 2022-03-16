@@ -137,24 +137,15 @@ func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		e := &netutil.CNIEnv{
-			Path:        cniPath,
-			NetconfPath: cniNetconfpath,
-		}
-		ll, err := netutil.ConfigLists(e)
+		e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		netMap := e.NetworkMap()
 		for _, netstr := range netSlice {
-			var netconflist *netutil.NetworkConfigList
-			for _, f := range ll {
-				if f.Name == netstr {
-					netconflist = f
-					break
-				}
-			}
-			if netconflist == nil {
-				return nil, nil, nil, fmt.Errorf("no such network: %q", netstr)
+			_, ok := netMap[netstr]
+			if !ok {
+				return nil, nil, nil, fmt.Errorf("network %s not found", netstr)
 			}
 		}
 
