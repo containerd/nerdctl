@@ -323,8 +323,8 @@ github.com/containerd/stargz-snapshotter v0.11.2/go.mod h1:HfhsbZ98KIoqA2GLmibTp
 github.com/containerd/stargz-snapshotter/estargz v0.4.1/go.mod h1:x7Q9dg9QYb4+ELgxmo4gBUeJB0tl5dqH1Sdz0nJU1QM=
 github.com/containerd/stargz-snapshotter/estargz v0.11.2 h1:0P0vWmfrEeTtZ4BBRrpuyu/HxR9HPBLfeljGOra5f6g=
 github.com/containerd/stargz-snapshotter/estargz v0.11.2/go.mod h1:rjbdAXaytDSIrAy2WAy2kUrJ4ehzDS0eUQLlIb5UCY0=
-github.com/containerd/stargz-snapshotter/ipfs v0.11.2 h1:f9ZlUMrzf4UmU+6ZRjzjlxA0/dYIeQOcDAAxK4SK9Sw=
-github.com/containerd/stargz-snapshotter/ipfs v0.11.2/go.mod h1:KnOMPhT32ZP3SjG6eV2JqK5DK9gAwVZUXZhWNaUhVWE=
+github.com/containerd/stargz-snapshotter/ipfs v0.11.3 h1:i2G1cAFFGAEDcAKE657BMn05Mr898Vq6o59PIU+1mNM=
+github.com/containerd/stargz-snapshotter/ipfs v0.11.3/go.mod h1:KnOMPhT32ZP3SjG6eV2JqK5DK9gAwVZUXZhWNaUhVWE=
 github.com/containerd/ttrpc v0.0.0-20190828154514-0e0f228740de/go.mod h1:PvCDdDGpgqzQIzDW1TphrGLssLDZp2GuS+X5DkEJB8o=
 github.com/containerd/ttrpc v0.0.0-20190828172938-92c8520ef9f8/go.mod h1:PvCDdDGpgqzQIzDW1TphrGLssLDZp2GuS+X5DkEJB8o=
 github.com/containerd/ttrpc v0.0.0-20191028202541-4f1b8fe65a5c/go.mod h1:LPm1u0xBw8r8NOKoOdNMeVHSawSsltak+Ihv+etqsE8=
