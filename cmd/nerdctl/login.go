@@ -242,6 +242,7 @@ func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthCon
 		return "", fmt.Errorf("got empty []docker.RegistryHost for %q", host)
 	}
 	needFallbackToPlainHttp := false
+	var needFallBackRegHosts []docker.RegistryHost
 	for i, rh := range regHosts {
 		err = tryLoginWithRegHost(ctx, rh)
 		identityToken := fetchedRefreshTokens[rh.Host] // can be empty
@@ -250,33 +251,19 @@ func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthCon
 		}
 		if insecure && (errutil.IsErrHTTPResponseToHTTPSClient(err) || errutil.IsErrConnectionRefused(err)) {
 			needFallbackToPlainHttp = true
-			break
+			needFallBackRegHosts = append(needFallBackRegHosts, rh)
 		}
 		logrus.WithError(err).WithField("i", i).Error("failed to call tryLoginWithRegHost")
 	}
 	if needFallbackToPlainHttp {
-		dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
-		ho, err = dockerconfigresolver.NewHostOptions(ctx, host, dOpts...)
-		if err != nil {
-			return "", err
-		}
-		fetchedRefreshTokens := make(map[string]string) // key: req.URL.Host
-		// onFetchRefreshToken is called when tryLoginWithRegHost calls rh.Authorizer.Authorize()
-		onFetchRefreshToken := func(ctx context.Context, s string, req *http.Request) {
-			fetchedRefreshTokens[req.URL.Host] = s
-		}
-		ho.AuthorizerOpts = append(ho.AuthorizerOpts, docker.WithFetchRefreshToken(onFetchRefreshToken))
-		regHosts, err = dockerconfig.ConfigureHosts(ctx, *ho)(host)
-		if err != nil {
-			return "", err
-		}
-		for i, rh := range regHosts {
+		for _, rh := range needFallBackRegHosts {
+			rh.Scheme = "http"
 			err = tryLoginWithRegHost(ctx, rh)
 			identityToken := fetchedRefreshTokens[rh.Host] // can be empty
 			if err == nil {
 				return identityToken, nil
 			}
-			logrus.WithError(err).WithField("i", i).Error("failed to call tryLoginWithRegHost")
+			logrus.WithError(err).Error("failed to call tryLoginWithRegHost with plain http")
 		}
 	}
 	return "", err

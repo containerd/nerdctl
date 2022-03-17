@@ -144,6 +144,16 @@ func TestLoginWithPlainHttp(t *testing.T) {
 			registry:          reg80,
 			shouldUseInSecure: true,
 		},
+		{
+			regHost:           "127.0.0.1",
+			regPort:           80,
+			useRegPort:        false,
+			username:          "admin",
+			password:          "validTestPassword",
+			shouldSuccess:     false,
+			registry:          reg80,
+			shouldUseInSecure: false,
+		},
 	}
 	for _, tc := range testCasesForPort5000 {
 		tcName := fmt.Sprintf("%+v", tc)
