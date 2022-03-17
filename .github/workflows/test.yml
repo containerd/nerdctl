@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: 1.17.x
+        go-version: 1.18.x
     - uses: actions/checkout@v3
       with:
         path: src/github.com/containerd/nerdctl
@@ -33,11 +33,11 @@ jobs:
         fetch-depth: 1
     - uses: actions/setup-go@v2
       with:
-        go-version: 1.17.x
+        go-version: 1.18.x
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3.1.0
       with:
-        version: v1.35
+        version: v1.45.0
         args: --verbose
 
   test-unit:
@@ -46,7 +46,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: 1.17.x
+        go-version: 1.18.x
     - uses: actions/checkout@v3
       with:
         fetch-depth: 1
@@ -107,7 +107,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: 1.17.x
+        go-version: 1.18.x
     - uses: actions/checkout@v3
       with:
         fetch-depth: 1
@@ -120,7 +120,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: 1.17.x
+        go-version: 1.18.x
     - uses: actions/checkout@v3
       with:
         fetch-depth: 1

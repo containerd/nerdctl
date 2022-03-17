@@ -29,7 +29,6 @@ require (
 	github.com/ipfs/go-ipfs-files v0.1.1
 	github.com/ipfs/go-ipfs-http-client v0.2.0
 	github.com/ipfs/interface-go-ipfs-core v0.5.2
-	github.com/jaytaylor/go-hostsfile v0.0.0-20211120191712-f53f85d8b98f
 	github.com/mattn/go-isatty v0.0.14
 	github.com/moby/sys/mount v0.3.1
 	github.com/multiformats/go-multiaddr v0.5.0
