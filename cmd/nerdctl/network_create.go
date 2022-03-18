@@ -19,9 +19,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
-	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
@@ -103,21 +101,17 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 	}
 
 	fn := func() error {
-		e := &netutil.CNIEnv{
-			Path:        cniPath,
-			NetconfPath: cniNetconfpath,
-		}
-		ll, err := netutil.ConfigLists(e)
+		e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
 		if err != nil {
 			return err
 		}
-		for _, l := range ll {
-			if l.Name == name {
+		for _, n := range e.Networks {
+			if n.Name == name {
 				return fmt.Errorf("network with name %s already exists", name)
 			}
 			// TODO: check CIDR collision
 		}
-		id, err := netutil.AcquireNextID(ll)
+		id, err := e.AcquireNextID()
 		if err != nil {
 			return err
 		}
@@ -141,15 +135,11 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		l, err := netutil.GenerateConfigList(e, labels, id, name, cniPlugins)
+		net, err := e.GenerateNetworkConfig(labels, id, name, cniPlugins)
 		if err != nil {
 			return err
 		}
-		filename := filepath.Join(cniNetconfpath, "nerdctl-"+name+".conflist")
-		if _, err := os.Stat(filename); err == nil {
-			return errdefs.ErrAlreadyExists
-		}
-		if err := os.WriteFile(filename, l.Bytes, 0644); err != nil {
+		if err := e.WriteNetworkConfig(net); err != nil {
 			return err
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "%d\n", id)

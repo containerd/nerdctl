@@ -57,27 +57,19 @@ func networkInspectAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	e := &netutil.CNIEnv{
-		Path:        cniPath,
-		NetconfPath: cniNetconfpath,
-	}
-
-	ll, err := netutil.ConfigLists(e)
+	e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
 	if err != nil {
 		return err
 	}
 
-	llMap := make(map[string]*netutil.NetworkConfigList, len(ll))
-	for _, l := range ll {
-		llMap[l.Name] = l
-	}
+	netMap := e.NetworkMap()
 
 	result := make([]interface{}, len(args))
 	for i, name := range args {
 		if name == "host" || name == "none" {
 			return fmt.Errorf("pseudo network %q cannot be inspected", name)
 		}
-		l, ok := llMap[name]
+		l, ok := netMap[name]
 		if !ok {
 			return fmt.Errorf("no such network: %s", name)
 		}

@@ -117,17 +117,13 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 		DebugPrintFull:   debugFull,
 	}
 
-	cniEnv := &netutil.CNIEnv{
-		Path:        cniPath,
-		NetconfPath: cniNetconfpath,
-	}
-	configLists, err := netutil.ConfigLists(cniEnv)
+	cniEnv, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
 	if err != nil {
 		return nil, err
 	}
 
 	o.NetworkExists = func(netName string) (bool, error) {
-		for _, f := range configLists {
+		for _, f := range cniEnv.Networks {
 			if f.Name == netName {
 				return true, nil
 			}

@@ -34,22 +34,38 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type NetworkConfigList struct {
+type CNIEnv struct {
+	Path        string
+	NetconfPath string
+	Networks    []*networkConfig
+}
+
+func NewCNIEnv(cniPath, cniConfPath string) (*CNIEnv, error) {
+	e := CNIEnv{
+		Path:        cniPath,
+		NetconfPath: cniConfPath,
+	}
+	var err error
+	e.Networks, err = e.networkConfigList()
+	if err != nil {
+		return nil, err
+	}
+	return &e, nil
+}
+
+func (e *CNIEnv) NetworkMap() map[string]*networkConfig {
+	m := make(map[string]*networkConfig, len(e.Networks))
+	for _, n := range e.Networks {
+		m[n.Name] = n
+	}
+	return m
+}
+
+type networkConfig struct {
 	*libcni.NetworkConfigList
 	NerdctlID     *int
 	NerdctlLabels *map[string]string
 	File          string
-}
-
-type CNIEnv struct {
-	Path        string
-	NetconfPath string
-}
-
-func DefaultConfigList(e *CNIEnv) (*NetworkConfigList, error) {
-	ipam, _ := GenerateIPAM("default", DefaultCIDR, "", "", nil)
-	plugins, _ := GenerateCNIPlugins(DefaultNetworkName, DefaultID, ipam, nil)
-	return GenerateConfigList(e, nil, DefaultID, DefaultNetworkName, plugins)
 }
 
 type cniNetworkConfig struct {
@@ -60,11 +76,11 @@ type cniNetworkConfig struct {
 	Plugins    []CNIPlugin       `json:"plugins"`
 }
 
-// GenerateConfigList creates NetworkConfigList.
-// GenerateConfigList does not fill "File" field.
+// GenerateNetworkConfig creates networkConfig.
+// GenerateNetworkConfig does not fill "File" field.
 //
 // TODO: enable CNI isolation plugin
-func GenerateConfigList(e *CNIEnv, labels []string, id int, name string, plugins []CNIPlugin) (*NetworkConfigList, error) {
+func (e *CNIEnv) GenerateNetworkConfig(labels []string, id int, name string, plugins []CNIPlugin) (*networkConfig, error) {
 	if e == nil || id < 0 || name == "" || len(plugins) == 0 {
 		return nil, errdefs.ErrInvalidArgument
 	}
@@ -106,7 +122,7 @@ func GenerateConfigList(e *CNIEnv, labels []string, id int, name string, plugins
 	if err != nil {
 		return nil, err
 	}
-	return &NetworkConfigList{
+	return &networkConfig{
 		NetworkConfigList: l,
 		NerdctlID:         &id,
 		NerdctlLabels:     &labelsMap,
@@ -114,14 +130,32 @@ func GenerateConfigList(e *CNIEnv, labels []string, id int, name string, plugins
 	}, nil
 }
 
-// ConfigLists loads config from dir if dir exists.
-// The result also contains DefaultConfigList
-func ConfigLists(e *CNIEnv) ([]*NetworkConfigList, error) {
-	def, err := DefaultConfigList(e)
+// WriteNetworkConfig writes networkConfig file to cni config path.
+func (e *CNIEnv) WriteNetworkConfig(net *networkConfig) error {
+	filename := filepath.Join(e.NetconfPath, "nerdctl-"+net.Name+".conflist")
+	if _, err := os.Stat(filename); err == nil {
+		return errdefs.ErrAlreadyExists
+	}
+	if err := os.WriteFile(filename, net.Bytes, 0644); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *CNIEnv) DefaultNetworkConfig() (*networkConfig, error) {
+	ipam, _ := GenerateIPAM("default", DefaultCIDR, "", "", nil)
+	plugins, _ := GenerateCNIPlugins(DefaultNetworkName, DefaultID, ipam, nil)
+	return e.GenerateNetworkConfig(nil, DefaultID, DefaultNetworkName, plugins)
+}
+
+// networkConfigList loads config from dir if dir exists.
+// The result also contains DefaultNetworkConfig
+func (e *CNIEnv) networkConfigList() ([]*networkConfig, error) {
+	def, err := e.DefaultNetworkConfig()
 	if err != nil {
 		return nil, err
 	}
-	l := []*NetworkConfigList{def}
+	l := []*networkConfig{def}
 	if _, err := os.Stat(e.NetconfPath); err != nil {
 		if os.IsNotExist(err) {
 			return l, nil
@@ -150,10 +184,10 @@ func ConfigLists(e *CNIEnv) ([]*NetworkConfigList, error) {
 				return nil, err
 			}
 		}
-		l = append(l, &NetworkConfigList{
+		l = append(l, &networkConfig{
 			NetworkConfigList: lcl,
-			NerdctlID:         NerdctlID(lcl.Bytes),
-			NerdctlLabels:     NerdctlLabels(lcl.Bytes),
+			NerdctlID:         nerdctlID(lcl.Bytes),
+			NerdctlLabels:     nerdctlLabels(lcl.Bytes),
 			File:              fileName,
 		})
 	}
@@ -161,18 +195,18 @@ func ConfigLists(e *CNIEnv) ([]*NetworkConfigList, error) {
 }
 
 // AcquireNextID suggests the next ID.
-func AcquireNextID(l []*NetworkConfigList) (int, error) {
+func (e *CNIEnv) AcquireNextID() (int, error) {
 	maxID := DefaultID
-	for _, f := range l {
-		if f.NerdctlID != nil && *f.NerdctlID > maxID {
-			maxID = *f.NerdctlID
+	for _, n := range e.Networks {
+		if n.NerdctlID != nil && *n.NerdctlID > maxID {
+			maxID = *n.NerdctlID
 		}
 	}
 	nextID := maxID + 1
 	return nextID, nil
 }
 
-func NerdctlID(b []byte) *int {
+func nerdctlID(b []byte) *int {
 	type nerdctlConfigList struct {
 		NerdctlID *int `json:"nerdctlID,omitempty"`
 	}
@@ -184,7 +218,7 @@ func NerdctlID(b []byte) *int {
 	return ncl.NerdctlID
 }
 
-func NerdctlLabels(b []byte) *map[string]string {
+func nerdctlLabels(b []byte) *map[string]string {
 	type nerdctlConfigList struct {
 		NerdctlLabels *map[string]string `json:"nerdctlLabels,omitempty"`
 	}
