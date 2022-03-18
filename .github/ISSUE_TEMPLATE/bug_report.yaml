@@ -34,7 +34,7 @@ body:
     validations:
       required: true
 
-  - type: input
+  - type: textarea
     attributes:
       label: What version of nerdctl are you using?
       placeholder: nerdctl version
