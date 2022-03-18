@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
-#install golang
-choco install --limitoutput --no-progress -y golang
+#install build dependencies
+choco install --limitoutput --no-progress -y git golang
 
 #install containerd
 $version=$env:ctrdVersion
