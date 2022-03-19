@@ -88,21 +88,6 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	isDefaultRegistry := serverAddress == registry.IndexServer
 
-	// Ensure that URL contains scheme for a good parsing process
-	if strings.Contains(serverAddress, "://") {
-		u, err := url.Parse(serverAddress)
-		if err != nil {
-			return err
-		}
-		serverAddress = u.Host
-	} else {
-		u, err := url.Parse("https://" + serverAddress)
-		if err != nil {
-			return err
-		}
-		serverAddress = u.Host
-	}
-
 	authConfig, err := GetDefaultAuthConfig(options.username == "" && options.password == "", serverAddress, isDefaultRegistry)
 	if authConfig == nil {
 		authConfig = &types.AuthConfig{}
@@ -174,6 +159,13 @@ func verifyloginOptions(cmd *cobra.Command, options *loginOptions) error {
 // GetDefaultAuthConfig gets the default auth config given a serverAddress
 // If credentials for given serverAddress exists in the credential store, the configuration will be populated with values in it
 func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRegistry bool) (*types.AuthConfig, error) {
+	if !isDefaultRegistry {
+		var err error
+		serverAddress, err = convertToHostname(serverAddress)
+		if err != nil {
+			return nil, err
+		}
+	}
 	var authconfig = dockercliconfigtypes.AuthConfig{}
 	if checkCredStore {
 		dockerConfigFile, err := dockercliconfig.Load("")
@@ -192,8 +184,11 @@ func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRe
 }
 
 func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthConfig) (string, error) {
-	host := auth.ServerAddress
 
+	host, err := convertToHostname(auth.ServerAddress)
+	if err != nil {
+		return "", err
+	}
 	var dOpts []dockerconfigresolver.Opt
 	insecure, err := cmd.Flags().GetBool("insecure-registry")
 	if err != nil {
@@ -357,4 +352,23 @@ func readUsername() (string, error) {
 	username = strings.TrimSpace(username)
 
 	return username, nil
+}
+
+func convertToHostname(serverAddress string) (string, error) {
+	// Ensure that URL contains scheme for a good parsing process
+	if strings.Contains(serverAddress, "://") {
+		u, err := url.Parse(serverAddress)
+		if err != nil {
+			return "", err
+		}
+		serverAddress = u.Host
+	} else {
+		u, err := url.Parse("https://" + serverAddress)
+		if err != nil {
+			return "", err
+		}
+		serverAddress = u.Host
+	}
+
+	return serverAddress, nil
 }
