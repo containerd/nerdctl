@@ -26,7 +26,6 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/jaytaylor/go-hostsfile"
 	"github.com/sirupsen/logrus"
 )
 
@@ -131,7 +130,7 @@ func (u *updater) phase2() error {
 		}
 
 		// parse the hosts file, keep the original host record
-		hosts, err := hostsfile.ParseHosts(os.ReadFile(path))
+		hosts, err := ParseHosts(os.ReadFile(path))
 		if err != nil {
 			return err
 		}

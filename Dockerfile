@@ -42,7 +42,7 @@ ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.4
 ARG IPFS_VERSION=v0.12.0
 
 # Test deps
-ARG GO_VERSION=1.17
+ARG GO_VERSION=1.18
 ARG UBUNTU_VERSION=21.10
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
 
@@ -247,10 +247,11 @@ FROM golang:${GO_VERSION}-alpine AS goversion
 RUN go env GOVERSION > /GOVERSION
 
 FROM base AS test-integration
+ARG DEBIAN_FRONTEND=noninteractive
 # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
 RUN apt-get update && \
   apt-get install -qq -y \
-  expect
+  expect git
 COPY --from=goversion /GOVERSION /GOVERSION
 ARG TARGETARCH
 RUN curl -L https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local
