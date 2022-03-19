@@ -29,7 +29,7 @@ import (
 	"github.com/containerd/containerd/images/converter"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
-	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/pkg/imgutil/push"
 	"github.com/containerd/nerdctl/pkg/ipfs"
@@ -185,7 +185,7 @@ func pushAction(cmd *cobra.Command, args []string) error {
 	}
 	if err = pushFunc(resolver); err != nil {
 		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused"
-		if !imgutil.IsErrHTTPResponseToHTTPSClient(err) && !imgutil.IsErrConnectionRefused(err) {
+		if !errutil.IsErrHTTPResponseToHTTPSClient(err) && !errutil.IsErrConnectionRefused(err) {
 			return err
 		}
 		if insecure {
