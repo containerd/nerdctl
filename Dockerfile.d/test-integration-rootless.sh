@@ -38,7 +38,7 @@ else
 	if [[ -e /workaround-cirrus ]]; then
 		echo "WORKAROUND_CIRRUS: Not enabling BuildKit (https://github.com/containerd/nerdctl/issues/622)" >&2
 	else
-		containerd-rootless-setuptool.sh install-buildkit
+		CONTAINERD_NAMESPACE="nerdctl-test" containerd-rootless-setuptool.sh install-buildkit-containerd
 	fi
 	containerd-rootless-setuptool.sh install-stargz
 	cat <<EOF >>/home/rootless/.config/containerd/config.toml

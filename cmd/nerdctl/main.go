@@ -273,6 +273,7 @@ Config file ($NERDCTL_TOML): %s
 		newVolumeCommand(),
 		newSystemCommand(),
 		newNamespaceCommand(),
+		newBuilderCommand(),
 		// #endregion
 
 		// Internal

@@ -28,6 +28,7 @@ import (
 
 	"path/filepath"
 
+	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/platformutil"
@@ -73,6 +74,46 @@ func newBuildCommand() *cobra.Command {
 	return buildCommand
 }
 
+func getBuildkitHost(cmd *cobra.Command) (string, error) {
+	if cmd.Flags().Changed("buildkit-host") {
+		// If address is explicitly specified, use it.
+		buildkitHost, err := cmd.Flags().GetString("buildkit-host")
+		if err != nil {
+			return "", err
+		}
+		if err := buildkitutil.PingBKDaemon(buildkitHost); err != nil {
+			return "", err
+		}
+		return buildkitHost, nil
+	}
+	ns, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return "", err
+	}
+	return buildkitutil.GetBuildkitHost(ns)
+}
+
+func isImageSharable(buildkitHost string, namespace, uuid string) (bool, error) {
+	labels, err := buildkitutil.GetWorkerLabels(buildkitHost)
+	if err != nil {
+		return false, err
+	}
+	logrus.Debugf("worker labels: %+v", labels)
+	executor, ok := labels["org.mobyproject.buildkit.worker.executor"]
+	if !ok {
+		return false, nil
+	}
+	containerdUUID, ok := labels["org.mobyproject.buildkit.worker.containerd.uuid"]
+	if !ok {
+		return false, nil
+	}
+	containerdNamespace, ok := labels["org.mobyproject.buildkit.worker.containerd.namespace"]
+	if !ok {
+		return false, nil
+	}
+	return executor == "containerd" && containerdUUID == uuid && containerdNamespace == namespace, nil
+}
+
 func buildAction(cmd *cobra.Command, args []string) error {
 	platform, err := cmd.Flags().GetStringSlice("platform")
 	if err != nil {
@@ -80,15 +121,12 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	}
 	platform = strutil.DedupeStrSlice(platform)
 
-	buildkitHost, err := cmd.Flags().GetString("buildkit-host")
+	buildkitHost, err := getBuildkitHost(cmd)
 	if err != nil {
 		return err
 	}
-	if err := buildkitutil.PingBKDaemon(buildkitHost); err != nil {
-		return err
-	}
 
-	buildctlBinary, buildctlArgs, needsLoading, metaFile, cleanup, err := generateBuildctlArgs(cmd, platform, args)
+	buildctlBinary, buildctlArgs, needsLoading, metaFile, cleanup, err := generateBuildctlArgs(cmd, buildkitHost, platform, args)
 	if err != nil {
 		return err
 	}
@@ -164,7 +202,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, []string, bool, string, func(), error) {
+func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, args []string) (string, []string, bool, string, func(), error) {
 	var needsLoading bool
 	if len(args) < 1 {
 		return "", nil, false, "", nil, errors.New("context needs to be specified")
@@ -184,13 +222,34 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 		return "", nil, false, "", nil, err
 	}
 	if output == "" {
-		output = "type=docker"
-		if len(platform) > 1 {
-			// For avoiding `error: failed to solve: docker exporter does not currently support exporting manifest lists`
-			// TODO: consider using type=oci for single-platform build too
-			output = "type=oci"
+		client, ctx, cancel, err := newClient(cmd)
+		if err != nil {
+			return "", nil, false, "", nil, err
 		}
-		needsLoading = true
+		defer cancel()
+		info, err := client.Server(ctx)
+		if err != nil {
+			return "", nil, false, "", nil, err
+		}
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			return "", nil, false, "", nil, err
+		}
+		sharable, err := isImageSharable(buildkitHost, ns, info.UUID)
+		if err != nil {
+			return "", nil, false, "", nil, err
+		}
+		if sharable {
+			output = "type=image,unpack=true" // ensure the target stage is unlazied (needed for any snapshotters)
+		} else {
+			output = "type=docker"
+			if len(platform) > 1 {
+				// For avoiding `error: failed to solve: docker exporter does not currently support exporting manifest lists`
+				// TODO: consider using type=oci for single-platform build too
+				output = "type=oci"
+			}
+			needsLoading = true
+		}
 	}
 	tagValue, err := cmd.Flags().GetStringArray("tag")
 	if err != nil {
@@ -200,12 +259,12 @@ func generateBuildctlArgs(cmd *cobra.Command, platform, args []string) (string, 
 		if len(tagSlice) > 1 {
 			return "", nil, false, "", nil, fmt.Errorf("specifying multiple -t is not supported yet")
 		}
-		output += ",name=" + tagSlice[0]
-	}
-
-	buildkitHost, err := cmd.Flags().GetString("buildkit-host")
-	if err != nil {
-		return "", nil, false, "", nil, err
+		ref := tagSlice[0]
+		named, err := dockerreference.ParseNormalizedNamed(ref)
+		if err != nil {
+			return "", nil, false, "", nil, err
+		}
+		output += ",name=" + dockerreference.TagNameOnly(named).String()
 	}
 
 	buildctlArgs := buildkitutil.BuildctlBaseArgs(buildkitHost)
@@ -375,14 +434,19 @@ func getDigestFromMetaFile(path string) (string, error) {
 	}
 	defer os.Remove(path)
 
-	metadata := map[string]string{}
+	metadata := map[string]json.RawMessage{}
 	if err := json.Unmarshal(data, &metadata); err != nil {
 		logrus.WithError(err).Errorf("failed to unmarshal metadata file %s", path)
 		return "", err
 	}
-	digest, ok := metadata["containerimage.digest"]
+	digestRaw, ok := metadata["containerimage.digest"]
 	if !ok {
 		return "", errors.New("failed to find containerimage.digest in metadata file")
+	}
+	var digest string
+	if err := json.Unmarshal(digestRaw, &digest); err != nil {
+		logrus.WithError(err).Errorf("failed to unmarshal digset")
+		return "", err
 	}
 	return digest, nil
 }

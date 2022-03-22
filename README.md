@@ -299,6 +299,8 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:nerd_face: nerdctl apparmor load](#nerd_face-nerdctl-apparmor-load)
     - [:nerd_face: nerdctl apparmor ls](#nerd_face-nerdctl-apparmor-ls)
     - [:nerd_face: nerdctl apparmor unload](#nerd_face-nerdctl-apparmor-unload)
+  - [Builder management](#builder-management)
+    - [:whale: nerdctl builder prune](#whale-nerdctl-builder-prune)
   - [System](#system)
     - [:whale: nerdctl events](#whale-nerdctl-events)
     - [:whale: nerdctl info](#whale-nerdctl-info)
@@ -1115,6 +1117,19 @@ Flags:
 Unload an AppArmor profile. The target profile name defaults to "nerdctl-default". Requires root.
 
 Usage: `nerdctl apparmor unload [PROFILE]`
+
+## Builder management
+### :whale: nerdctl builder prune
+Clean up BuildKit build cache.
+
+:warning: The output format is not compatible with Docker.
+
+Usage: `nerdctl builder prune`
+
+Flags:
+- :nerd_face: `--buildkit-host=<BUILDKIT_HOST>`: BuildKit address
+
+Unimplemented `docker builder prune` flags: `--all`, `--filter`, `--force`, `--keep-storage`
 
 ## System
 ### :whale: nerdctl events

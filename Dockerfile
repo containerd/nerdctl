@@ -25,7 +25,7 @@ ARG CNI_PLUGINS_VERSION=v1.1.0
 # Extra deps: CNI isolation
 ARG CNI_ISOLATION_VERSION=v0.0.4
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.9.3
+ARG BUILDKIT_VERSION=v0.10.0
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.11.2
 # Extra deps: Encryption
@@ -265,8 +265,9 @@ COPY --from=gcr.io/projectsigstore/cosign:v1.3.1@sha256:3cd9b3a866579dc2e0cf2fde
 # enable offline ipfs for integration test
 COPY ./Dockerfile.d/test-integration-etc_containerd-stargz-grpc_config.toml /etc/containerd-stargz-grpc/config.toml
 COPY ./Dockerfile.d/test-integration-ipfs-offline.service /usr/local/lib/systemd/system/
+COPY ./Dockerfile.d/test-integration-buildkit-nerdctl-test.service /usr/local/lib/systemd/system/
 # install ipfs service. avoid using 5001(api)/8080(gateway) which are reserved by tests.
-RUN systemctl enable test-integration-ipfs-offline && \
+RUN systemctl enable test-integration-ipfs-offline test-integration-buildkit-nerdctl-test && \
     ipfs init && \
     ipfs config Addresses.API "/ip4/127.0.0.1/tcp/5888" && \
     ipfs config Addresses.Gateway "/ip4/127.0.0.1/tcp/5889"

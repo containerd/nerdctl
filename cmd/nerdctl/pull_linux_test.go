@@ -67,6 +67,7 @@ func TestImageVerifyWithCosign(t *testing.T) {
 	keyPair := newCosignKeyPair(t, "cosign-key-pair")
 	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 	tID := testutil.Identifier(t)
 	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
@@ -93,6 +94,7 @@ func TestImagePullPlainHttpWithDefaultPort(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 	reg := testregistry.NewPlainHTTP(base, 80)
 	defer reg.Cleanup()
 	testImageRef := fmt.Sprintf("%s/%s:%s",
@@ -121,6 +123,7 @@ func TestImageVerifyWithCosignShouldFailWhenKeyIsNotCorrect(t *testing.T) {
 	keyPair := newCosignKeyPair(t, "cosign-key-pair")
 	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
 	tID := testutil.Identifier(t)
 	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()

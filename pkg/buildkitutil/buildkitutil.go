@@ -17,6 +17,7 @@
 package buildkitutil
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -45,13 +46,78 @@ func BuildctlBaseArgs(buildkitHost string) []string {
 	return []string{"--addr=" + buildkitHost}
 }
 
+func GetBuildkitHost(namespace string) (string, error) {
+	if namespace == "" {
+		return "", fmt.Errorf("namespace must be specified")
+	}
+	// Try candidate locations of the current containerd namespace.
+	run := "/run/"
+	if rootlessutil.IsRootless() {
+		var err error
+		run, err = rootlessutil.XDGRuntimeDir()
+		if err != nil {
+			logrus.Warn(err)
+			run = fmt.Sprintf("/run/user/%d", rootlessutil.ParentEUID())
+		}
+	}
+	var hostRel []string
+	if namespace != "default" {
+		hostRel = append(hostRel, fmt.Sprintf("buildkit-%s/buildkitd.sock", namespace))
+	}
+	hostRel = append(hostRel, "buildkit-default/buildkitd.sock", "buildkit/buildkitd.sock")
+	for _, p := range hostRel {
+		buildkitHost := "unix://" + filepath.Join(run, p)
+		err := PingBKDaemon(buildkitHost)
+		if err == nil {
+			return buildkitHost, nil
+		}
+		logrus.WithField("host", buildkitHost).Warn(err)
+	}
+	return "", fmt.Errorf("no buildkit host is available")
+}
+
+func GetWorkerLabels(buildkitHost string) (labels map[string]string, _ error) {
+	buildctlBinary, err := BuildctlBinary()
+	if err != nil {
+		return nil, err
+	}
+	args := BuildctlBaseArgs(buildkitHost)
+	args = append(args, "debug", "workers", "--format", "{{json .}}")
+	buildctlCheckCmd := exec.Command(buildctlBinary, args...)
+	buildctlCheckCmd.Env = os.Environ()
+	out, err := buildctlCheckCmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	var workers []json.RawMessage
+	if err := json.Unmarshal(out, &workers); err != nil {
+		return nil, err
+	}
+	if len(workers) == 0 {
+		return nil, fmt.Errorf("no worker available")
+	}
+	metadata := map[string]json.RawMessage{}
+	if err := json.Unmarshal(workers[0], &metadata); err != nil {
+		return nil, err
+	}
+	labelsRaw, ok := metadata["labels"]
+	if !ok {
+		return nil, fmt.Errorf("worker doesn't have labels")
+	}
+	labels = map[string]string{}
+	if err := json.Unmarshal(labelsRaw, &labels); err != nil {
+		return nil, err
+	}
+	return labels, nil
+}
+
 func PingBKDaemon(buildkitHost string) error {
 	if runtime.GOOS != "linux" {
 		return errors.New("only linux is supported")
 	}
 	hint := "`buildctl` needs to be installed and `buildkitd` needs to be running, see https://github.com/moby/buildkit"
 	if rootlessutil.IsRootless() {
-		hint += " , and `containerd-rootless-setuptool.sh install-buildkit`"
+		hint += " , and `containerd-rootless-setuptool.sh install-buildkit` for OCI worker or `containerd-rootless-setuptool.sh install-buildkit-containerd` for containerd worker"
 	}
 	buildctlBinary, err := BuildctlBinary()
 	if err != nil {
