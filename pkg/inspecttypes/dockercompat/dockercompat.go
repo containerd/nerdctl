@@ -105,10 +105,14 @@ type Container struct {
 	// TODO: GraphDriver     GraphDriverData
 	// TODO: SizeRw     *int64 `json:",omitempty"`
 	// TODO: SizeRootFs *int64 `json:",omitempty"`
-
-	// TODO: Mounts          []MountPoint
+	Mounts MountPoint
 	// TODO: Config          *container.Config
 	NetworkSettings *NetworkSettings
+}
+type MountPoint []struct {
+	Destination string   `json:"destination"`
+	Source      string   `json:"source"`
+	Options     []string `json:"options"`
 }
 
 //config is from https://github.com/moby/moby/blob/8dbd90ec00daa26dc45d7da2431c965dec99e8b4/api/types/container/config.go#L37-L69
@@ -195,12 +199,18 @@ type NetworkEndpointSettings struct {
 
 // ContainerFromNative instantiates a Docker-compatible Container from containerd-native Container.
 func ContainerFromNative(n *native.Container) (*Container, error) {
+	var mount *Specs
+	err := json.Unmarshal(n.Container.Spec.Value, &mount)
+	if err != nil {
+		return nil, err
+	}
 	c := &Container{
 		ID:       n.ID,
 		Created:  n.CreatedAt.Format(time.RFC3339Nano),
 		Image:    n.Image,
 		Name:     n.Labels[labels.Name],
 		Driver:   n.Snapshotter,
+		Mounts:   mount.Mounts,
 		Platform: runtime.GOOS, // for Docker compatibility, this Platform string does NOT contain arch like "/amd64"
 	}
 	if sp, ok := n.Spec.(*specs.Spec); ok {
@@ -438,4 +448,53 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 	}
 
 	return &res, nil
+}
+
+type Specs struct {
+	OciVersion string `json:"ociVersion"`
+	Process    struct {
+		Terminal bool `json:"terminal"`
+		User     struct {
+			UID      int    `json:"uid"`
+			Gid      int    `json:"gid"`
+			Username string `json:"username"`
+		} `json:"user"`
+		Args []string `json:"args"`
+		Env  []string `json:"env"`
+		Cwd  string   `json:"cwd"`
+	} `json:"process"`
+	Root struct {
+		Path string `json:"path"`
+	} `json:"root"`
+	Hostname string     `json:"hostname"`
+	Mounts   MountPoint `json:"mounts,omitempty"`
+	Hooks    struct {
+		CreateRuntime []struct {
+			Path string   `json:"path"`
+			Args []string `json:"args"`
+			Env  []string `json:"env"`
+		} `json:"createRuntime"`
+		Poststop []struct {
+			Path string   `json:"path"`
+			Args []string `json:"args"`
+			Env  []string `json:"env"`
+		} `json:"poststop"`
+	} `json:"hooks"`
+	Annotations struct {
+		IoContainerdImageConfigStopSignal string `json:"io.containerd.image.config.stop-signal"`
+		NerdctlExtraHosts                 string `json:"nerdctl/extraHosts"`
+		NerdctlHostname                   string `json:"nerdctl/hostname"`
+		NerdctlName                       string `json:"nerdctl/name"`
+		NerdctlNamespace                  string `json:"nerdctl/namespace"`
+		NerdctlNetworks                   string `json:"nerdctl/networks"`
+		NerdctlPlatform                   string `json:"nerdctl/platform"`
+		NerdctlStateDir                   string `json:"nerdctl/state-dir"`
+	} `json:"annotations"`
+	Windows struct {
+		LayerFolders            interface{} `json:"layerFolders"`
+		IgnoreFlushesDuringBoot bool        `json:"ignoreFlushesDuringBoot"`
+		Network                 struct {
+			AllowUnqualifiedDNSQuery bool `json:"allowUnqualifiedDNSQuery"`
+		} `json:"network"`
+	} `json:"windows"`
 }
