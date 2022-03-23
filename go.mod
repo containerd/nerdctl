@@ -9,7 +9,7 @@ require (
 	github.com/containerd/console v1.0.3
 	github.com/containerd/containerd v1.6.1
 	github.com/containerd/continuity v0.2.2
-	github.com/containerd/go-cni v1.1.3
+	github.com/containerd/go-cni v1.1.4
 	github.com/containerd/imgcrypt v1.1.3
 	github.com/containerd/stargz-snapshotter v0.11.3
 	github.com/containerd/stargz-snapshotter/estargz v0.11.3
