@@ -27,7 +27,7 @@ import (
 	"runtime"
 
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
-
+	"github.com/hashicorp/go-multierror"
 	"github.com/sirupsen/logrus"
 )
 
@@ -65,15 +65,19 @@ func GetBuildkitHost(namespace string) (string, error) {
 		hostRel = append(hostRel, fmt.Sprintf("buildkit-%s/buildkitd.sock", namespace))
 	}
 	hostRel = append(hostRel, "buildkit-default/buildkitd.sock", "buildkit/buildkitd.sock")
+	var allErr error
 	for _, p := range hostRel {
+		logrus.Debugf("Choosing the buildkit host %q, candidates=%v (in %q)", p, hostRel, run)
 		buildkitHost := "unix://" + filepath.Join(run, p)
-		err := PingBKDaemon(buildkitHost)
+		_, err := pingBKDaemon(buildkitHost)
 		if err == nil {
+			logrus.Debugf("Chosen buildkit host %q", buildkitHost)
 			return buildkitHost, nil
 		}
-		logrus.WithField("host", buildkitHost).Warn(err)
+		allErr = multierror.Append(allErr, fmt.Errorf("failed to ping to host %s: %w", buildkitHost, err))
 	}
-	return "", fmt.Errorf("no buildkit host is available")
+	logrus.WithError(allErr).Error(getHint())
+	return "", fmt.Errorf("no buildkit host is available, tried %d candidates: %w", len(hostRel), allErr)
 }
 
 func GetWorkerLabels(buildkitHost string) (labels map[string]string, _ error) {
@@ -111,27 +115,40 @@ func GetWorkerLabels(buildkitHost string) (labels map[string]string, _ error) {
 	return labels, nil
 }
 
-func PingBKDaemon(buildkitHost string) error {
-	if runtime.GOOS != "linux" {
-		return errors.New("only linux is supported")
-	}
+func getHint() string {
 	hint := "`buildctl` needs to be installed and `buildkitd` needs to be running, see https://github.com/moby/buildkit"
 	if rootlessutil.IsRootless() {
 		hint += " , and `containerd-rootless-setuptool.sh install-buildkit` for OCI worker or `containerd-rootless-setuptool.sh install-buildkit-containerd` for containerd worker"
 	}
+	return hint
+}
+
+func PingBKDaemon(buildkitHost string) error {
+	if out, err := pingBKDaemon(buildkitHost); err != nil {
+		if out != "" {
+			logrus.Error(string(out))
+		}
+		return fmt.Errorf(getHint()+": %w", err)
+	}
+	return nil
+}
+
+func pingBKDaemon(buildkitHost string) (output string, _ error) {
+	if runtime.GOOS != "linux" {
+		return "", errors.New("only linux is supported")
+	}
 	buildctlBinary, err := BuildctlBinary()
 	if err != nil {
-		return fmt.Errorf(hint+": %w", err)
+		return "", err
 	}
 	args := BuildctlBaseArgs(buildkitHost)
 	args = append(args, "debug", "workers")
 	buildctlCheckCmd := exec.Command(buildctlBinary, args...)
 	buildctlCheckCmd.Env = os.Environ()
 	if out, err := buildctlCheckCmd.CombinedOutput(); err != nil {
-		logrus.Error(string(out))
-		return fmt.Errorf(hint+": %w", err)
+		return string(out), err
 	}
-	return nil
+	return "", nil
 }
 
 // WriteTempDockerfile is from https://github.com/docker/cli/blob/v20.10.9/cli/command/image/build/context.go#L118
