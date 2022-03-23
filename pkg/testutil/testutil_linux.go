@@ -33,6 +33,11 @@ var (
 	MariaDBImage                = mirrorOf("mariadb:10.5")
 	DockerAuthImage             = mirrorOf("cesanta/docker_auth:1.7")
 
+	// Source: https://gist.github.com/cpuguy83/fcf3041e5d8fb1bb5c340915aabeebe0
+	NonDistBlobImage = "ghcr.io/cpuguy83/non-dist-blob:latest"
+	// Foreign layer digest
+	NonDistBlobDigest = "sha256:be691b1535726014cdf3b715ff39361b19e121ca34498a9ceea61ad776b9c215"
+
 	CommonImage = AlpineImage
 )
 

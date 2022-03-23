@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -131,4 +132,38 @@ func TestPushWithHostsDir(t *testing.T) {
 	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
 	base.Cmd("--debug", "--hosts-dir", reg.HostsDir, "push", testImageRef).AssertOK()
+}
+
+func TestPushNonDistributableArtifacts(t *testing.T) {
+	// Skip docker, because "dockerd --insecure-registries" requires restarting the daemon
+	// Skip docker, because "--allow-nondistributable-artifacts" is a daemon-only option and requires restarting the daemon
+	testutil.DockerIncompatible(t)
+
+	base := testutil.NewBase(t)
+	reg := testregistry.NewPlainHTTP(base, 5000)
+	defer reg.Cleanup()
+
+	base.Cmd("pull", testutil.NonDistBlobImage).AssertOK()
+
+	testImgRef := fmt.Sprintf("%s:%d/%s:%s",
+		reg.IP.String(), reg.ListenPort, testutil.Identifier(t), strings.Split(testutil.NonDistBlobImage, ":")[1])
+	base.Cmd("tag", testutil.NonDistBlobImage, testImgRef).AssertOK()
+
+	base.Cmd("--debug", "--insecure-registry", "push", testImgRef).AssertOK()
+
+	blobURL := fmt.Sprintf("http://%s:%d/v2/%s/blobs/%s", reg.IP.String(), reg.ListenPort, testutil.Identifier(t), testutil.NonDistBlobDigest)
+	resp, err := http.Get(blobURL)
+	assert.Assert(t, err, "error making http request")
+	if resp.Body != nil {
+		resp.Body.Close()
+	}
+	assert.Equal(t, resp.StatusCode, http.StatusNotFound, "non-distributable blob should not be available")
+
+	base.Cmd("--debug", "--insecure-registry", "push", "--allow-nondistributable-artifacts", testImgRef).AssertOK()
+	resp, err = http.Get(blobURL)
+	assert.Assert(t, err, "error making http request")
+	if resp.Body != nil {
+		resp.Body.Close()
+	}
+	assert.Equal(t, resp.StatusCode, http.StatusOK, "non-distributable blob should be available")
 }

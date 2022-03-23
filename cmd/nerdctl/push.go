@@ -45,6 +45,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	allowNonDistFlag = "allow-nondistributable-artifacts"
+)
+
 func newPushCommand() *cobra.Command {
 	var pushCommand = &cobra.Command{
 		Use:               "push NAME[:TAG]",
@@ -72,6 +76,8 @@ func newPushCommand() *cobra.Command {
 	})
 	pushCommand.Flags().String("cosign-key", "", "Path to the private key file, KMS URI or Kubernetes Secret for --sign=cosign")
 	// #endregion
+
+	pushCommand.Flags().Bool(allowNonDistFlag, false, "Allow pushing images with non-distributable blobs")
 
 	return pushCommand
 }
@@ -165,8 +171,12 @@ func pushAction(cmd *cobra.Command, args []string) error {
 		logrus.Infof("pushing as an eStargz image (%s, %s)", esgzImg.Target.MediaType, esgzImg.Target.Digest)
 	}
 
+	allowNonDist, err := cmd.Flags().GetBool(allowNonDistFlag)
+	if err != nil {
+		return err
+	}
 	pushFunc := func(r remotes.Resolver) error {
-		return push.Push(ctx, client, r, cmd.OutOrStdout(), pushRef, ref, platMC)
+		return push.Push(ctx, client, r, cmd.OutOrStdout(), pushRef, ref, platMC, allowNonDist)
 	}
 
 	var dOpts []dockerconfigresolver.Opt
