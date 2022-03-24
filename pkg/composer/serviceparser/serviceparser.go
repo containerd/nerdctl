@@ -320,16 +320,25 @@ func getRestart(svc compose.ServiceConfig) (string, error) {
 	return restartFlag, nil
 }
 
+type networkNamePair struct {
+	shortNetworkName string
+	fullName         string
+}
+
 // getNetworks returns full network names, e.g., {"compose-wordpress_default"}, or {"host"}
-func getNetworks(project *compose.Project, svc compose.ServiceConfig) ([]string, error) {
-	var fullNames []string // nolint: prealloc
+func getNetworks(project *compose.Project, svc compose.ServiceConfig) ([]networkNamePair, error) {
+	var fullNames []networkNamePair // nolint: prealloc
 
 	if svc.Net != "" {
 		logrus.Warn("net is deprecated, use network_mode or networks")
 		if len(svc.Networks) > 0 {
 			return nil, errors.New("networks and net must not be set together")
 		}
-		fullNames = append(fullNames, svc.Net)
+
+		fullNames = append(fullNames, networkNamePair{
+			fullName:         svc.Net,
+			shortNetworkName: "",
+		})
 	}
 
 	if svc.NetworkMode != "" {
@@ -342,7 +351,10 @@ func getNetworks(project *compose.Project, svc compose.ServiceConfig) ([]string,
 		if strings.Contains(svc.NetworkMode, ":") {
 			return nil, fmt.Errorf("unsupported network_mode: %q", svc.NetworkMode)
 		}
-		fullNames = append(fullNames, svc.NetworkMode)
+		fullNames = append(fullNames, networkNamePair{
+			fullName:         svc.NetworkMode,
+			shortNetworkName: "",
+		})
 	}
 
 	for shortName := range svc.Networks {
@@ -350,7 +362,10 @@ func getNetworks(project *compose.Project, svc compose.ServiceConfig) ([]string,
 		if !ok {
 			return nil, fmt.Errorf("invalid network %q", shortName)
 		}
-		fullNames = append(fullNames, net.Name)
+		fullNames = append(fullNames, networkNamePair{
+			fullName:         net.Name,
+			shortNetworkName: shortName,
+		})
 	}
 
 	return fullNames, nil
@@ -514,7 +529,12 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 		return nil, err
 	} else {
 		for _, net := range networks {
-			c.RunArgs = append(c.RunArgs, "--net="+net)
+			c.RunArgs = append(c.RunArgs, "--net="+net.fullName)
+			if value, ok := svc.Networks[net.shortNetworkName]; ok {
+				if value != nil && value.Ipv4Address != "" {
+					c.RunArgs = append(c.RunArgs, "--ip="+value.Ipv4Address)
+				}
+			}
 		}
 	}
 

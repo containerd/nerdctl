@@ -24,7 +24,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-connections/nat"
+	"github.com/sirupsen/logrus"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
@@ -152,6 +154,47 @@ COPY index.html /usr/share/nginx/html/index.html
 	assert.NilError(t, err)
 	t.Logf("respBody=%q", respBody)
 	assert.Assert(t, strings.Contains(string(respBody), indexHTML))
+}
+
+func TestComposeUpNetWithStaticIP(t *testing.T) {
+	if rootlessutil.IsRootless() {
+		t.Skip("Static IP assignment is not supported rootless mode yet.")
+	}
+	base := testutil.NewBase(t)
+	staticIP := "172.20.0.12"
+	var dockerComposeYAML = fmt.Sprintf(`
+version: '3.1'
+
+services:
+  svc0:
+    image: %s
+    networks:
+      net0:
+        ipv4_address: %s
+
+networks:
+  net0:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+`, testutil.NginxAlpineImage, staticIP)
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	svc0 := fmt.Sprintf("%s_svc0_1", projectName)
+	inspectCmd := base.Cmd("inspect", svc0, "--format", "\"{{range .NetworkSettings.Networks}} {{.IPAddress}}{{end}}\"")
+	result := inspectCmd.Run()
+	stdoutContent := result.Stdout() + result.Stderr()
+	assert.Assert(inspectCmd.Base.T, result.ExitCode == 0, stdoutContent)
+	if !strings.Contains(stdoutContent, staticIP) {
+		logrus.Errorf("test failed, the actual container ip is %s", stdoutContent)
+		t.Fail()
+		return
+	}
 }
 
 func TestComposeUpMultiNet(t *testing.T) {
