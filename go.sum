@@ -845,8 +845,8 @@ github.com/ipfs/go-unixfsnode v1.1.2/go.mod h1:5dcE2x03pyjHk4JjamXmunTMzz+VUtqvP
 github.com/ipfs/go-verifcid v0.0.1 h1:m2HI7zIuR5TFyQ1b79Da5N9dnnCP1vcu2QqawmWlK2E=
 github.com/ipfs/go-verifcid v0.0.1/go.mod h1:5Hrva5KBeIog4A+UpqlaIU+DEstipcJYQQZc0g37pY0=
 github.com/ipfs/interface-go-ipfs-core v0.5.2/go.mod h1:lNBJrdXHtWS46evMPBdWtDQMDsrKcGbxCOGoKLkztOE=
-github.com/ipfs/interface-go-ipfs-core v0.6.0 h1:a43QNc3CNayuMjZM+4D9SeyiSF2nKxBaG8qbCAelMNs=
-github.com/ipfs/interface-go-ipfs-core v0.6.0/go.mod h1:h3NuO3wzv2KuKazt0zDF2/i8AFRqiKHusyh5DUQQdPA=
+github.com/ipfs/interface-go-ipfs-core v0.6.1 h1:V0bV1PWUtKVfrisi1qbeY9wwex+apRu2ZufTc9Tvqkg=
+github.com/ipfs/interface-go-ipfs-core v0.6.1/go.mod h1:h3NuO3wzv2KuKazt0zDF2/i8AFRqiKHusyh5DUQQdPA=
 github.com/ipfs/iptb v1.4.0 h1:YFYTrCkLMRwk/35IMyC6+yjoQSHTEcNcefBStLJzgvo=
 github.com/ipfs/iptb v1.4.0/go.mod h1:1rzHpCYtNp87/+hTxG5TfCVn/yMY3dKnLn8tBiMfdmg=
 github.com/ipfs/iptb-plugins v0.3.0 h1:C1rpq1o5lUZtaAOkLIox5akh6ba4uk/3RwWc6ttVxw0=
