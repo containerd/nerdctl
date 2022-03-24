@@ -100,7 +100,7 @@ Binaries are available here: https://github.com/containerd/nerdctl/releases
 In addition to containerd, the following components should be installed:
 - [CNI plugins](https://github.com/containernetworking/plugins): for using `nerdctl run`.
    - v1.1.0 or later is highly recommended. Older versions require extra [CNI isolation plugin](https://github.com/AkihiroSuda/cni-isolation) for isolating bridge networks (`nerdctl network create`).
-- [BuildKit](https://github.com/moby/buildkit) (OPTIONAL): for using `nerdctl build`. BuildKit daemon (`buildkitd`) needs to be running.
+- [BuildKit](https://github.com/moby/buildkit) (OPTIONAL): for using `nerdctl build`. BuildKit daemon (`buildkitd`) needs to be running. See also [the document about setting up BuildKit](./docs/build.md).
 - [RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns) (OPTIONAL): for [Rootless mode](./docs/rootless.md)
    - RootlessKit needs to be v0.10.0 or later. v0.14.1 or later is recommended.
    - slirp4netns needs to be v0.4.0 or later. v1.1.7 or later is recommended.
@@ -749,7 +749,7 @@ Usage: `nerdctl unpause CONTAINER [CONTAINER...]`
 ### :whale: nerdctl build
 Build an image from a Dockerfile.
 
-:information_source: Needs buildkitd to be running.
+:information_source: Needs buildkitd to be running. See also [the document about setting up `nerdctl build` with BuildKit](./docs/build.md).
 
 Usage: `nerdctl build [OPTIONS] PATH`
 
@@ -1459,6 +1459,7 @@ Basic features:
 - [`./docs/compose.md`](./docs/compose.md):   Compose
 - [`./docs/rootless.md`](./docs/rootless.md): Rootless mode
 - [`./docs/cni.md`](./docs/cni.md): CNI for containers network
+- [`./docs/build.md`](./docs/build.md): `nerdctl build` with BuildKit
 
 Advanced features:
 - [`./docs/stargz.md`](./docs/stargz.md):     Lazy-pulling using Stargz Snapshotter
