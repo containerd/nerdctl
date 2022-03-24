@@ -121,6 +121,8 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSlice("dns", nil, "Set custom DNS servers")
 	// publish is defined as StringSlice, not StringArray, to allow specifying "--publish=80:80,443:443" (compatible with Podman)
 	cmd.Flags().StringSliceP("publish", "p", nil, "Publish a container's port(s) to the host")
+	// FIXME: not support IPV6 yet
+	cmd.Flags().String("ip", "", "IPv4 address to assign to the container")
 	cmd.Flags().StringP("hostname", "h", "", "Container host name")
 	// #endregion
 
@@ -469,7 +471,7 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 	}
 	cOpts = append(cOpts, restartOpts...)
 
-	netOpts, netSlice, ports, err := generateNetOpts(cmd, dataStore, stateDir, ns, id)
+	netOpts, netSlice, ipAddress, ports, err := generateNetOpts(cmd, dataStore, stateDir, ns, id)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -553,7 +555,7 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		return nil, "", nil, err
 	}
 	extraHosts = strutil.DedupeStrSlice(extraHosts)
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ports, logURI, anonVolumes, pidFile, platform)
+	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ipAddress, ports, logURI, anonVolumes, pidFile, platform)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -794,7 +796,7 @@ func readKVStringsMapfFromLabel(cmd *cobra.Command) (map[string]string, error) {
 	return strutil.ConvertKVStringsToMap(labels), nil
 }
 
-func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string) (containerd.NewContainerOpts, error) {
+func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ipAddress string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
 	m[labels.Namespace] = ns
 	if name != "" {
@@ -832,6 +834,10 @@ func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts
 
 	if pidFile != "" {
 		m[labels.PIDFile] = pidFile
+	}
+
+	if ipAddress != "" {
+		m[labels.IPAddress] = ipAddress
 	}
 
 	m[labels.Platform], err = platformutil.NormalizeString(platform)

@@ -395,3 +395,75 @@ func TestRunPort(t *testing.T) {
 	}
 
 }
+
+func TestRunContainerWithStaticIP(t *testing.T) {
+	if rootlessutil.IsRootless() {
+		t.Skip("Static IP assignment is not supported rootless mode yet.")
+	}
+	networkName := "test-network"
+	networkSubnet := "172.0.0.0/16"
+	base := testutil.NewBase(t)
+	cmd := base.Cmd("network", "create", networkName, "--subnet", networkSubnet)
+	cmd.AssertOK()
+	defer base.Cmd("network", "rm", networkName).Run()
+	testCases := []struct {
+		ip                string
+		shouldSuccess     bool
+		useNetwork        bool
+		checkTheIpAddress bool
+	}{
+		{
+			ip:                "172.0.0.2",
+			shouldSuccess:     true,
+			useNetwork:        true,
+			checkTheIpAddress: true,
+		},
+		{
+			ip:                "192.0.0.2",
+			shouldSuccess:     false,
+			useNetwork:        true,
+			checkTheIpAddress: false,
+		},
+		{
+			ip:                "10.4.0.2",
+			shouldSuccess:     true,
+			useNetwork:        false,
+			checkTheIpAddress: false,
+		},
+	}
+	tID := testutil.Identifier(t)
+	for i, tc := range testCases {
+		i := i
+		tc := tc
+		tcName := fmt.Sprintf("%+v", tc)
+		t.Run(tcName, func(t *testing.T) {
+			testContainerName := fmt.Sprintf("%s-%d", tID, i)
+			base := testutil.NewBase(t)
+			defer base.Cmd("rm", "-f", testContainerName).Run()
+			args := []string{
+				"run", "-d", "--name", testContainerName,
+			}
+			if tc.useNetwork {
+				args = append(args, []string{"--network", networkName}...)
+			}
+			args = append(args, []string{"--ip", tc.ip, testutil.NginxAlpineImage}...)
+			cmd := base.Cmd(args...)
+			if !tc.shouldSuccess {
+				cmd.AssertFail()
+				return
+			} else {
+				cmd.AssertOK()
+			}
+			if tc.checkTheIpAddress {
+				inspectCmd := base.Cmd("inspect", testContainerName, "--format", "\"{{range .NetworkSettings.Networks}} {{.IPAddress}}{{end}}\"")
+				result := inspectCmd.Run()
+				stdoutContent := result.Stdout() + result.Stderr()
+				assert.Assert(cmd.Base.T, result.ExitCode == 0, stdoutContent)
+				if !strings.Contains(stdoutContent, tc.ip) {
+					t.Fail()
+					return
+				}
+			}
+		})
+	}
+}

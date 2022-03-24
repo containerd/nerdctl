@@ -195,6 +195,10 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 		}
 	}
 
+	if ipAddress, ok := o.state.Annotations[labels.IPAddress]; ok {
+		o.containerIP = ipAddress
+	}
+
 	if rootlessutil.IsRootlessChild() {
 		o.rootlessKitClient, err = rootlessutil.NewRootlessKitClient()
 		if err != nil {
@@ -229,6 +233,7 @@ type handlerOpts struct {
 	rootlessKitClient rlkclient.Client
 	bypassClient      b4nndclient.Client
 	extraHosts        map[string]string // ip:host
+	containerIP       string
 }
 
 // hookSpec is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/containerd/command/oci-hook.go#L59-L64
@@ -321,6 +326,25 @@ func getPortMapOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 	return nil, nil
 }
 
+func getIPAddressOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
+	if opts.containerIP != "" {
+		if rootlessutil.IsRootlessChild() {
+			return nil, fmt.Errorf("containerIP assignment is not supported in rootless mode")
+		}
+
+		return []gocni.NamespaceOpts{
+			gocni.WithLabels(map[string]string{
+				// Special tick for go-cni. Because go-cni marks all labels and args as same
+				// So, we need add a special label to pass the containerIP to the host-local plugin.
+				// FYI: https://github.com/containerd/go-cni/blob/v1.1.3/README.md?plain=1#L57-L64
+				"IgnoreUnknown": "1",
+			}),
+			gocni.WithArgs("IP", opts.containerIP),
+		}, nil
+	}
+	return nil, nil
+}
+
 func onCreateRuntime(opts *handlerOpts) error {
 	loadAppArmor()
 
@@ -338,6 +362,13 @@ func onCreateRuntime(opts *handlerOpts) error {
 		if err != nil {
 			return err
 		}
+		ipAddressOpts, err := getIPAddressOpts(opts)
+		if err != nil {
+			return err
+		}
+		var namespaceOpts []gocni.NamespaceOpts
+		namespaceOpts = append(namespaceOpts, portMapOpts...)
+		namespaceOpts = append(namespaceOpts, ipAddressOpts...)
 		hsMeta := hostsstore.Meta{
 			Namespace:  opts.state.Annotations[labels.Namespace],
 			ID:         opts.state.ID,
@@ -346,7 +377,7 @@ func onCreateRuntime(opts *handlerOpts) error {
 			ExtraHosts: opts.extraHosts,
 			Name:       opts.state.Annotations[labels.Name],
 		}
-		cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, portMapOpts...)
+		cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, namespaceOpts...)
 		if err != nil {
 			return fmt.Errorf("failed to call cni.Setup: %w", err)
 		}
@@ -424,7 +455,14 @@ func onPostStop(opts *handlerOpts) error {
 		if err != nil {
 			return err
 		}
-		if err := opts.cni.Remove(ctx, opts.fullID, "", portMapOpts...); err != nil {
+		ipAddressOpts, err := getIPAddressOpts(opts)
+		if err != nil {
+			return err
+		}
+		var namespaceOpts []gocni.NamespaceOpts
+		namespaceOpts = append(namespaceOpts, portMapOpts...)
+		namespaceOpts = append(namespaceOpts, ipAddressOpts...)
+		if err := opts.cni.Remove(ctx, opts.fullID, "", namespaceOpts...); err != nil {
 			logrus.WithError(err).Errorf("failed to call cni.Remove")
 			return err
 		}

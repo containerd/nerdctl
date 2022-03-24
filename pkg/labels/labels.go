@@ -57,6 +57,10 @@ const (
 	// Ports is a JSON-marshalled string of []gocni.PortMapping .
 	Ports = Prefix + "ports"
 
+	// IPAddress is the static IP address of the container assigned by the user
+
+	IPAddress = Prefix + "ip"
+
 	// LogURI is the log URI
 	LogURI = Prefix + "log-uri"
 
