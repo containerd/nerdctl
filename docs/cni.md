@@ -17,7 +17,7 @@ Configuration of the default network `bridge` of Linux:
 
 ```json
 {
-  "cniVersion": "0.4.0",
+  "cniVersion": "1.0.0",
   "name": "bridge",
   "plugins": [
     {
@@ -46,19 +46,26 @@ Configuration of the default network `bridge` of Linux:
       }
     },
     {
-      "type": "firewall"
+      "type": "firewall",
+      "ingressPolicy": "same-bridge"
     },
     {
       "type": "tuning"
-    },
-    {
-      "type": "isolation"
     }
   ]
 }
 ```
 
-When CNI plugin `isolation` be installed, will inject isolation configuration `{"type":"isolation"}` automatically.
+## Bridge isolation
+
+nerdctl >= 0.18 sets the `ingressPolicy` to `same-bridge` when `firewall` plugin >= 1.1.0 is installed.
+This `ingressPolicy` replaces the CNI `isolation` plugin used in nerdctl <= 0.17.
+
+When the `isolation` plugin is found, nerdctl uses the `isolation` plugin instead of `ingressPolicy`.
+The `isolation` plugin has been deprecated, and a future version of `nerdctl` will solely support `ingressPolicy`.
+
+When neither of `firewall` plugin >= 1.1.0 or `isolation` plugin is found, nerdctl does not enable the bridge isolation.
+This means a container in `--net=foo` can connect to a container in `--net=bar`.
 
 ## macvlan/IPvlan networks
 
@@ -94,7 +101,7 @@ for `bridge` network:
 
 ```json
 {
-  "cniVersion": "0.4.0",
+  "cniVersion": "1.0.0",
   "name": "mynet",
   "type": "bridge",
   "bridge": "cni0",
@@ -128,7 +135,3 @@ this network to create a container:
     inet6 fe80::5c5b:3fff:fe0c:3656/64 scope link tentative
        valid_lft forever preferred_lft forever
 ```
-
-## Bridge Isolation Plugin
-
-If you have the [CNI isolation plugin](https://github.com/AkihiroSuda/cni-isolation) installed, the `isolation` plugin will be used automatically.

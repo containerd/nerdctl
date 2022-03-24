@@ -22,8 +22,6 @@ ARG CONTAINERD_VERSION=v1.6.1
 ARG RUNC_VERSION=v1.1.0
 ARG CNI_PLUGINS_VERSION=v1.1.1
 
-# Extra deps: CNI isolation
-ARG CNI_ISOLATION_VERSION=v0.0.4
 # Extra deps: Build
 ARG BUILDKIT_VERSION=v0.10.0
 # Extra deps: Lazy-pulling
@@ -130,13 +128,6 @@ RUN fname="cni-plugins-${TARGETOS:-linux}-${TARGETARCH:-amd64}-${CNI_PLUGINS_VER
   tar xzf "${fname}" -C /out/libexec/cni && \
   rm -f "${fname}" && \
   echo "- CNI plugins: ${CNI_PLUGINS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
-ARG CNI_ISOLATION_VERSION
-RUN fname="cni-isolation-${TARGETARCH:-amd64}.tgz" && \
-  curl -o "${fname}" -fSL "https://github.com/AkihiroSuda/cni-isolation/releases/download/${CNI_ISOLATION_VERSION}/${fname}" && \
-  grep "${fname}" "/SHA256SUMS.d/cni-isolation-${CNI_ISOLATION_VERSION}" | sha256sum -c && \
-  tar xzf "${fname}" -C /out/libexec/cni && \
-  rm -f "${fname}" && \
-  echo "- CNI isolation plugin: ${CNI_ISOLATION_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG BUILDKIT_VERSION
 RUN fname="buildkit-${BUILDKIT_VERSION}.${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
   curl -o "${fname}" -fSL "https://github.com/moby/buildkit/releases/download/${BUILDKIT_VERSION}/${fname}" && \

@@ -26,7 +26,7 @@ const (
 	DefaultCIDR        = "10.4.0.0/24"
 )
 
-func GenerateCNIPlugins(driver string, id int, ipam map[string]interface{}, opts map[string]string) ([]CNIPlugin, error) {
+func (e *CNIEnv) GenerateCNIPlugins(driver string, id int, name string, ipam map[string]interface{}, opts map[string]string) ([]CNIPlugin, error) {
 	var plugins []CNIPlugin
 	switch driver {
 	case "nat":
