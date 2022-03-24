@@ -34,7 +34,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	dockercliconfig "github.com/docker/cli/cli/config"
-	clitypes "github.com/docker/cli/cli/config/types"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/registry"
@@ -52,6 +51,11 @@ type loginOptions struct {
 	passwordStdin bool
 }
 
+const unencryptedPasswordWarning = `WARNING: Your password will be stored unencrypted in %s.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+`
+
 var options = new(loginOptions)
 
 func newLoginCommand() *cobra.Command {
@@ -67,6 +71,11 @@ func newLoginCommand() *cobra.Command {
 	loginCommand.Flags().StringVarP(&options.password, "password", "p", "", "Password")
 	loginCommand.Flags().BoolVar(&options.passwordStdin, "password-stdin", false, "Take the password from stdin")
 	return loginCommand
+}
+
+type isFileStore interface {
+	IsFileStore() bool
+	GetFilename() string
 }
 
 func loginAction(cmd *cobra.Command, args []string) error {
@@ -91,7 +100,7 @@ func loginAction(cmd *cobra.Command, args []string) error {
 
 	authConfig, err := GetDefaultAuthConfig(options.username == "" && options.password == "", serverAddress, isDefaultRegistry)
 	if authConfig == nil {
-		authConfig = &types.AuthConfig{}
+		authConfig = &types.AuthConfig{ServerAddress: serverAddress}
 	}
 	if err == nil && authConfig.Username != "" && authConfig.Password != "" {
 		//login With StoreCreds
@@ -121,7 +130,18 @@ func loginAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := dockerConfigFile.GetCredentialsStore(serverAddress).Store(clitypes.AuthConfig(*(authConfig))); err != nil {
+	creds := dockerConfigFile.GetCredentialsStore(serverAddress)
+
+	store, isFile := creds.(isFileStore)
+	// Display a warning if we're storing the users password (not a token) and credentials store type is file.
+	if isFile && authConfig.Password != "" {
+		_, err = fmt.Fprintln(cmd.OutOrStdout(), fmt.Sprintf(unencryptedPasswordWarning, store.GetFilename()))
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := creds.Store(dockercliconfigtypes.AuthConfig(*(authConfig))); err != nil {
 		return fmt.Errorf("error saving credentials: %w", err)
 	}
 
@@ -156,7 +176,7 @@ func verifyloginOptions(cmd *cobra.Command, options *loginOptions) error {
 
 }
 
-// Code from github.com/cli/cli/command/registry.go (v20.10.3)
+// Code from github.com/docker/cli/cli/command (v20.10.3)
 // GetDefaultAuthConfig gets the default auth config given a serverAddress
 // If credentials for given serverAddress exists in the credential store, the configuration will be populated with values in it
 func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRegistry bool) (*types.AuthConfig, error) {
@@ -185,7 +205,6 @@ func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRe
 }
 
 func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthConfig) (string, error) {
-
 	host, err := convertToHostname(auth.ServerAddress)
 	if err != nil {
 		return "", err
