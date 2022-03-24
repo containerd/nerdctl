@@ -57,6 +57,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         containerd: [v1.5.10, v1.6.1, main]
     env:
@@ -82,6 +83,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     strategy:
+      fail-fast: false
       matrix:
         containerd: [v1.5.10, v1.6.1, main]
     env:
