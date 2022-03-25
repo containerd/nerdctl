@@ -11,7 +11,7 @@ require (
 	github.com/containerd/containerd v1.6.2
 	github.com/containerd/continuity v0.2.2
 	github.com/containerd/go-cni v1.1.4
-	github.com/containerd/imgcrypt v1.1.3
+	github.com/containerd/imgcrypt v1.1.4
 	github.com/containerd/stargz-snapshotter v0.11.3
 	github.com/containerd/stargz-snapshotter/estargz v0.11.3
 	github.com/containerd/stargz-snapshotter/ipfs v0.11.3
@@ -38,7 +38,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.0.3-0.20220311020903-6969a0a09ab1
 	github.com/pelletier/go-toml v1.9.4
 	github.com/rootless-containers/bypass4netns v0.2.2
-	github.com/rootless-containers/rootlesskit v0.14.6
+	github.com/rootless-containers/rootlesskit v1.0.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
@@ -63,7 +63,7 @@ require (
 	github.com/cilium/ebpf v0.7.0 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
 	github.com/containerd/ttrpc v1.1.0 // indirect
-	github.com/containers/ocicrypt v1.1.2 // indirect
+	github.com/containers/ocicrypt v1.1.3 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20170627025303-887ab5e44cc3 // indirect
@@ -114,7 +114,7 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-shellwords v1.0.12 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
-	github.com/miekg/pkcs11 v1.0.3 // indirect
+	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
