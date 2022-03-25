@@ -87,21 +87,24 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 		return err
 	}
 
-	if err := c.upServices(ctx, parsedServices, uo); err != nil {
-		return err
+	// remove orphan containers before the service has be started
+	// FYI: https://github.com/docker/compose/blob/v2.3.4/pkg/compose/create.go#L91-L112
+	orphans, err := c.getOrphanContainers(ctx, parsedServices)
+	if err != nil && uo.RemoveOrphans {
+		return fmt.Errorf("error getting orphaned containers: %s", err)
+	}
+	if len(orphans) > 0 {
+		if uo.RemoveOrphans {
+			if err := c.downContainers(ctx, orphans, true); err != nil {
+				return fmt.Errorf("error removing orphaned containers: %s", err)
+			}
+		} else {
+			logrus.Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), orphans)
+		}
 	}
 
-	if uo.RemoveOrphans {
-		orphans, err := c.getOrphanContainers(ctx, parsedServices)
-		if err != nil {
-			return fmt.Errorf("error getting orphaned containers: %s", err)
-		}
-		if len(orphans) == 0 {
-			return nil
-		}
-		if err := c.downContainers(ctx, orphans, true); err != nil {
-			return fmt.Errorf("error removing orphaned containers: %s", err)
-		}
+	if err := c.upServices(ctx, parsedServices, uo); err != nil {
+		return err
 	}
 
 	return nil
