@@ -1,5 +1,8 @@
 # Distribute Container Images on IPFS (Experimental)
 
+| :zap: Requirement | nerdctl >= 0.14 |
+|-------------------|-----------------|
+
 You can distribute container images without registries, using IPFS.
 
 IPFS support is completely optional. Your host is NOT connected to any P2P network, unless you opt in to [install and run IPFS daemon](https://docs.ipfs.io/install/).
