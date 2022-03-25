@@ -1,5 +1,8 @@
 # OCIcrypt
 
+| :zap: Requirement | nerdctl >= 0.7 |
+|-------------------|----------------|
+
 nerdctl supports encryption and decryption using [OCIcrypt](https://github.com/containers/ocicrypt)
 (aka [imgcrypt](https://github.com/containerd/imgcrypt) for containerd).
 

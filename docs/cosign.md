@@ -1,5 +1,8 @@
 # Container Image Sign and Verify with cosign tool
 
+| :zap: Requirement | nerdctl >= 0.15 |
+|-------------------|-----------------|
+
 [cosign](https://github.com/sigstore/cosign) is tool that allows you to sign and verify container images with the
 public/private key pairs or without them by providing
 a [Keyless support](https://github.com/sigstore/cosign/blob/main/KEYLESS.md).

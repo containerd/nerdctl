@@ -33,7 +33,10 @@ This limitation can be avoided using containerd worker as mentioned later.
 
 ## Setting up BuildKit with containerd worker
 
-### Rootless (requires BuildKit v0.10.0 or later)
+### Rootless
+
+| :zap: Requirement | nerdctl >= 0.18, BuildKit >= 0.10 |
+|-------------------|-----------------------------------|
 
 ```
 $ CONTAINERD_NAMESPACE=default containerd-rootless-setuptool.sh install-buildkit-containerd
