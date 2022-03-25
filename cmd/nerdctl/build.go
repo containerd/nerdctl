@@ -75,7 +75,7 @@ func newBuildCommand() *cobra.Command {
 }
 
 func getBuildkitHost(cmd *cobra.Command) (string, error) {
-	if cmd.Flags().Changed("buildkit-host") {
+	if cmd.Flags().Changed("buildkit-host") || os.Getenv("BUILDKIT_HOST") != "" {
 		// If address is explicitly specified, use it.
 		buildkitHost, err := cmd.Flags().GetString("buildkit-host")
 		if err != nil {
