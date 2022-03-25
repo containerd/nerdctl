@@ -1,5 +1,8 @@
 # Lazy-pulling using Stargz Snapshotter
 
+| :zap: Requirement | nerdctl >= 0.0.1 |
+|-------------------|------------------|
+
 Lazy-pulling is a technique to running containers before completion of pulling the images.
 
 See https://github.com/containerd/stargz-snapshotter to learn further information.

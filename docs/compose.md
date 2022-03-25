@@ -1,5 +1,8 @@
 # nerdctl compose
 
+| :zap: Requirement | nerdctl >= 0.8 |
+|-------------------|----------------|
+
 ## Usage
 
 The `nerdctl compose` CLI is designed to be compatible with `docker-compose`.
