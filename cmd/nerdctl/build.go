@@ -93,7 +93,7 @@ func getBuildkitHost(cmd *cobra.Command) (string, error) {
 	return buildkitutil.GetBuildkitHost(ns)
 }
 
-func isImageSharable(buildkitHost string, namespace, uuid string) (bool, error) {
+func isImageSharable(buildkitHost string, namespace, uuid, snapshotter string) (bool, error) {
 	labels, err := buildkitutil.GetWorkerLabels(buildkitHost)
 	if err != nil {
 		return false, err
@@ -111,7 +111,12 @@ func isImageSharable(buildkitHost string, namespace, uuid string) (bool, error) 
 	if !ok {
 		return false, nil
 	}
-	return executor == "containerd" && containerdUUID == uuid && containerdNamespace == namespace, nil
+	// Compare snapshotter to minimize possibility of hitting issues related to unpacked images. Not necessary, though.
+	workerSnapshotter, ok := labels["org.mobyproject.buildkit.worker.snapshotter"]
+	if !ok {
+		return false, nil
+	}
+	return executor == "containerd" && containerdUUID == uuid && containerdNamespace == namespace && workerSnapshotter == snapshotter, nil
 }
 
 func buildAction(cmd *cobra.Command, args []string) error {
@@ -235,7 +240,11 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 		if err != nil {
 			return "", nil, false, "", nil, err
 		}
-		sharable, err := isImageSharable(buildkitHost, ns, info.UUID)
+		snapshotter, err := cmd.Flags().GetString("snapshotter")
+		if err != nil {
+			return "", nil, false, "", nil, err
+		}
+		sharable, err := isImageSharable(buildkitHost, ns, info.UUID, snapshotter)
 		if err != nil {
 			return "", nil, false, "", nil, err
 		}
