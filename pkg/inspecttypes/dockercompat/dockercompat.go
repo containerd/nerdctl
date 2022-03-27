@@ -258,7 +258,7 @@ func ImageFromNative(n *native.Image) (*Image, error) {
 	}
 	if len(imgoci.History) > 0 {
 		i.Comment = imgoci.History[len(imgoci.History)-1].Comment
-		i.Created = imgoci.History[len(imgoci.History)-1].Created.String()
+		i.Created = imgoci.History[len(imgoci.History)-1].Created.Format(time.RFC3339Nano)
 		i.Author = imgoci.History[len(imgoci.History)-1].Author
 	}
 	i.Architecture = imgoci.Architecture
