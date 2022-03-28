@@ -422,3 +422,7 @@ func getTmpfsSize(size int64) string {
 
 	return fmt.Sprintf("size=%d%s", size, suffix)
 }
+func ProcessSplit(s string, volStore volumestore.VolumeStore, res Processed, src string, dst string, options []string) (string, string, []string, error) {
+	var x []string
+	return "", "", x, nil
+}

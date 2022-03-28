@@ -66,3 +66,7 @@ func ProcessFlagTmpfs(s string) (*Processed, error) {
 func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, error) {
 	return nil, errdefs.ErrNotImplemented
 }
+func ProcessSplit(s string, volStore volumestore.VolumeStore, res Processed, src string, dst string, options []string) (string, string, []string, error) {
+	var x []string
+	return "", "", x, nil
+}
