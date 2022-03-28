@@ -368,6 +368,11 @@ Basic flags:
 Platform flags:
 - :whale: `--platform=(amd64|arm64|...)`: Set platform
 
+InitProcess flags:
+
+- :whale: `--init`: Run an init inside the container that forwards signals and reaps processes.
+- :nerd_face: `--init-binary=<binary-name>`: The custom init binary you want to use. We suggest you use the [tini](https://github.com/krallin/tini) binary which is used in Docker project to get the same behavior. Please make sure the binary-name is existed in your PATH.
+
 Network flags:
 - :whale: `--net, --network=(bridge|host|none|<CNI>)`: Connect a container to a network
   - Default: "bridge"

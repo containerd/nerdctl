@@ -195,6 +195,12 @@ RUN fname="go-ipfs_${IPFS_VERSION}_${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.g
   tar -C ${tmpout} -xzf "${fname}" go-ipfs/ipfs && \
   mv ${tmpout}/go-ipfs/ipfs /out/bin/ && \
   echo "- IPFS: ${IPFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+ARG TINI_VERSION
+RUN tiniFilename=tini-static-${TARGETARCH:-amd64} && \
+  tiniSumfile="${tiniFilename}.sha256sum" && \
+  curl -o "${tiniFilename}" -fSL https://github.com/krallin/tini/releases/download/${TINI_VERSION:-v0.19.0}/tini-static-${TARGETARCH:-amd64} && \
+  curl -o "${tiniSumfile}" -fSL https://github.com/krallin/tini/releases/download/${TINI_VERSION:-v0.19.0}/tini-static-${TARGETARCH:-amd64}.sha256sum && \
+  grep "${tiniFilename}" "${tiniSumfile}" | sha256sum -c && cp ${tiniFilename} /out/bin/tini && chmod +x /out/bin/tini && echo "- Tini: ${TINI_VERSION:-v0.19.0}" >> /out/share/doc/nerdctl-full/README.md
 
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
@@ -203,6 +209,7 @@ RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/ipfs: [Combination of MIT-only license and dual MIT/Apache-2.0 license](https://github.com/ipfs/go-ipfs/blob/${IPFS_VERSION}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/{runc,bypass4netns,bypass4netnsd}: Apache License 2.0, statically linked with libseccomp ([LGPL 2.1](https://github.com/seccomp/libseccomp/blob/main/LICENSE), source code available at https://github.com/seccomp/libseccomp/)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- Other files: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)" >> /out/share/doc/nerdctl-full/README.md && \
+  echo "- bin/tini: [MIT License](https://github.com/krallin/tini/blob/${TINI_VERSION:-v0.19.0}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
   (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
   mv /tmp/SHA256SUMS /out/share/doc/nerdctl-full/SHA256SUMS && \
   chown -R 0:0 /out
@@ -257,6 +264,7 @@ COPY --from=gcr.io/projectsigstore/cosign:v1.3.1@sha256:3cd9b3a866579dc2e0cf2fde
 COPY ./Dockerfile.d/test-integration-etc_containerd-stargz-grpc_config.toml /etc/containerd-stargz-grpc/config.toml
 COPY ./Dockerfile.d/test-integration-ipfs-offline.service /usr/local/lib/systemd/system/
 COPY ./Dockerfile.d/test-integration-buildkit-nerdctl-test.service /usr/local/lib/systemd/system/
+RUN cp /usr/local/bin/tini /usr/local/bin/tini-custom
 # install ipfs service. avoid using 5001(api)/8080(gateway) which are reserved by tests.
 RUN systemctl enable test-integration-ipfs-offline test-integration-buildkit-nerdctl-test && \
     ipfs init && \
