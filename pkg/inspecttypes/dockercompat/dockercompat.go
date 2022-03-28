@@ -106,9 +106,14 @@ type Container struct {
 	// TODO: SizeRw     *int64 `json:",omitempty"`
 	// TODO: SizeRootFs *int64 `json:",omitempty"`
 
-	// TODO: Mounts          []MountPoint
+	Mounts MountPoint
 	// TODO: Config          *container.Config
 	NetworkSettings *NetworkSettings
+}
+type MountPoint []struct {
+	Destination string   `json:"destination"`
+	Source      string   `json:"source"`
+	Options     []string `json:"options"`
 }
 
 //config is from https://github.com/moby/moby/blob/8dbd90ec00daa26dc45d7da2431c965dec99e8b4/api/types/container/config.go#L37-L69
