@@ -18,8 +18,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
+
+	"github.com/containerd/console"
+	"github.com/containerd/typeurl"
+	"github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -95,11 +101,48 @@ func startContainer(ctx context.Context, container containerd.Container) error {
 			logrus.WithError(err).Debug("failed to delete old task")
 		}
 	}
+	flagT, err := getFlagT(ctx, container)
+	if err != nil {
+		return err
+	}
+	if flagT {
+		var con console.Console
+		con = console.Current()
+		defer con.Reset()
+		if err := con.SetRaw(); err != nil {
+			return fmt.Errorf("failed to SetRaw,err is: %w", err)
+		}
+		if con == nil {
+			return errors.New("got nil con with flagT=true")
+		}
+		taskCIO = cio.NewCreator(cio.WithStreams(con, con, nil), cio.WithTerminal)
+	}
 	task, err := container.NewTask(ctx, taskCIO)
 	if err != nil {
 		return err
 	}
 	return task.Start(ctx)
+}
+
+func getFlagT(ctx context.Context, container containerd.Container) (bool, error) {
+	info, err := container.Info(ctx)
+	if err != nil {
+		return false, err
+	}
+	spec, err := typeurl.UnmarshalAny(info.Spec)
+	if err != nil {
+		return false, fmt.Errorf("failed to UnmarshalAny %s,err is: %w", info.Spec, err)
+	}
+	specInfo, err := json.Marshal(spec)
+	if err != nil {
+		return false, fmt.Errorf("failed to Marshal %s,err is: %w", spec, err)
+	}
+	var s specs.Spec
+	err = json.Unmarshal(specInfo, &s)
+	if err != nil {
+		return false, fmt.Errorf("failed to Unmarshal %s,err is: %w", string(specInfo), err)
+	}
+	return s.Process.Terminal, nil
 }
 
 func startShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
