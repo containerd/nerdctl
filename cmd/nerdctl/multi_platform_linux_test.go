@@ -77,6 +77,35 @@ RUN echo dummy
 	base.Cmd("push", "--platform=amd64,arm64,linux/arm/v7", imageName).AssertOK()
 }
 
+// TestMultiPlatformBuildPushNoRun tests if the push succeeds in a situation where nerdctl builds
+// a Dockerfile without RUN, COPY, etc commands. In such situation, BuildKit doesn't download the base image
+// so nerdctl needs to ensure these blobs to be locally available.
+func TestMultiPlatformBuildPushNoRun(t *testing.T) {
+	testutil.DockerIncompatible(t) // non-buildx version of `docker build` lacks multi-platform. Also, `docker push` lacks --platform.
+	testutil.RequiresBuild(t)
+	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
+	tID := testutil.Identifier(t)
+	reg := testregistry.NewPlainHTTP(base, 5000)
+	defer reg.Cleanup()
+
+	imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.ListenPort, tID)
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD echo dummy
+	`, testutil.AlpineImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, "--platform=amd64,arm64,linux/arm/v7", buildCtx).AssertOK()
+	testMultiPlatformRun(base, imageName)
+	base.Cmd("push", "--platform=amd64,arm64,linux/arm/v7", imageName).AssertOK()
+}
+
 func TestMultiPlatformPullPushAllPlatforms(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)

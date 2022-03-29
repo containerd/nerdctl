@@ -93,7 +93,7 @@ func getBuildkitHost(cmd *cobra.Command) (string, error) {
 	return buildkitutil.GetBuildkitHost(ns)
 }
 
-func isImageSharable(buildkitHost string, namespace, uuid, snapshotter string) (bool, error) {
+func isImageSharable(buildkitHost string, namespace, uuid, snapshotter string, platform []string) (bool, error) {
 	labels, err := buildkitutil.GetWorkerLabels(buildkitHost)
 	if err != nil {
 		return false, err
@@ -115,7 +115,11 @@ func isImageSharable(buildkitHost string, namespace, uuid, snapshotter string) (
 	if !ok {
 		return false, nil
 	}
-	return executor == "containerd" && containerdUUID == uuid && containerdNamespace == namespace && workerSnapshotter == snapshotter, nil
+	// NOTE: It's possible that BuildKit doesn't download the base image of non-default platform (e.g. when the provided
+	//       Dockerfile doesn't contain instructions require base images like RUN) even if `--output type=image,unpack=true`
+	//       is passed to BuildKit. Thus we need to use `type=docker` or `type=oci` when nerdctl builds non-default platform
+	//       image using `platform` option.
+	return executor == "containerd" && containerdUUID == uuid && containerdNamespace == namespace && workerSnapshotter == snapshotter && len(platform) == 0, nil
 }
 
 func buildAction(cmd *cobra.Command, args []string) error {
@@ -243,7 +247,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 		if err != nil {
 			return "", nil, false, "", nil, err
 		}
-		sharable, err := isImageSharable(buildkitHost, ns, info.UUID, snapshotter)
+		sharable, err := isImageSharable(buildkitHost, ns, info.UUID, snapshotter, platform)
 		if err != nil {
 			return "", nil, false, "", nil, err
 		}
