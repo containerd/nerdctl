@@ -19,21 +19,29 @@ package logging
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
+	units "github.com/docker/go-units"
+	"github.com/natefinch/lumberjack"
 )
 
-// MagicArgv1 is the magic argv1 for the containerd runtime v2 logging plugin mode.
-const MagicArgv1 = "_NERDCTL_INTERNAL_LOGGING"
+const (
+	// MagicArgv1 is the magic argv1 for the containerd runtime v2 logging plugin mode.
+	MagicArgv1 = "_NERDCTL_INTERNAL_LOGGING"
+	MaxSize    = "max-size"
+	MaxFile    = "max-file"
+)
 
 // Main is the entrypoint for the containerd runtime v2 logging plugin mode.
 //
 // Should be called only if argv1 == MagicArgv1.
-func Main(argv2 string) error {
-	fn, err := getLoggerFunc(argv2)
+func Main(argsMap map[string]string) error {
+	fn, err := getLoggerFunc(argsMap)
 	if err != nil {
 		return err
 	}
@@ -41,26 +49,51 @@ func Main(argv2 string) error {
 	return nil
 }
 
-func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
-	if dataStore == "" {
+func getLoggerFunc(argsMap map[string]string) (logging.LoggerFunc, error) {
+	if argsMap[MagicArgv1] == "" {
 		return nil, errors.New("got empty data store")
 	}
 	return func(_ context.Context, config *logging.Config, ready func() error) error {
 		if config.Namespace == "" || config.ID == "" {
 			return errors.New("got invalid config")
 		}
-		logJSONFilePath := jsonfile.Path(dataStore, config.Namespace, config.ID)
+		logJSONFilePath := jsonfile.Path(argsMap[MagicArgv1], config.Namespace, config.ID)
 		if err := os.MkdirAll(filepath.Dir(logJSONFilePath), 0700); err != nil {
 			return err
 		}
-		logJSONFile, err := os.OpenFile(logJSONFilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
-		if err != nil {
-			return err
-		}
-		defer logJSONFile.Close()
 		if err := ready(); err != nil {
 			return err
 		}
-		return jsonfile.Encode(logJSONFile, config.Stdout, config.Stderr)
+		l := &lumberjack.Logger{
+			Filename: logJSONFilePath,
+		}
+		//maxSize Defaults to unlimited.
+		var capVal int64
+		capVal = -1
+		if capacity, ok := argsMap[MaxSize]; ok {
+			var err error
+			capVal, err = units.FromHumanSize(capacity)
+			if err != nil {
+				return err
+			}
+			if capVal <= 0 {
+				return fmt.Errorf("max-size must be a positive number")
+			}
+		}
+		l.MaxBytes = capVal
+		maxFile := 1
+		if maxFileString, ok := argsMap[MaxFile]; ok {
+			var err error
+			maxFile, err = strconv.Atoi(maxFileString)
+			if err != nil {
+				return err
+			}
+			if maxFile < 1 {
+				return fmt.Errorf("max-file cannot be less than 1")
+			}
+		}
+		// MaxBackups does not include file to write logs to
+		l.MaxBackups = maxFile - 1
+		return jsonfile.Encode(l, config.Stdout, config.Stderr)
 	}, nil
 }

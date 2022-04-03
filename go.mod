@@ -32,6 +32,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14
 	github.com/moby/sys/mount v0.3.2
 	github.com/multiformats/go-multiaddr v0.5.0
+	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.3-0.20220303224323-02efb9a75ee1
 	github.com/opencontainers/runtime-spec v1.0.3-0.20220311020903-6969a0a09ab1
@@ -176,3 +177,6 @@ require (
 replace github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c
 
 replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220428184543-bb8b134a1797
+
+// Temporary fork lumberjack to support Maxbytes before releasing V3.0: https://github.com/natefinch/lumberjack/pull/132)
+replace github.com/natefinch/lumberjack => github.com/fahedouch/lumberjack v0.0.0-20220505103556-d3f93c511b35
