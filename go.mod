@@ -28,7 +28,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-ipfs-files v0.1.1
-	github.com/ipfs/go-ipfs-http-client v0.2.0
+	github.com/ipfs/go-ipfs-http-client v0.3.0
 	github.com/ipfs/interface-go-ipfs-core v0.6.2
 	github.com/mattn/go-isatty v0.0.14
 	github.com/moby/sys/mount v0.3.1
@@ -93,7 +93,7 @@ require (
 	github.com/ipfs/go-ipfs-exchange-interface v0.1.0 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
 	github.com/ipfs/go-ipld-cbor v0.0.5 // indirect
-	github.com/ipfs/go-ipld-format v0.3.0 // indirect
+	github.com/ipfs/go-ipld-format v0.4.0 // indirect
 	github.com/ipfs/go-ipld-legacy v0.1.0 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-log/v2 v2.3.0 // indirect
