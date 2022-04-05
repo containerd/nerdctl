@@ -29,7 +29,7 @@ require (
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-ipfs-files v0.1.1
 	github.com/ipfs/go-ipfs-http-client v0.2.0
-	github.com/ipfs/interface-go-ipfs-core v0.6.1
+	github.com/ipfs/interface-go-ipfs-core v0.6.2
 	github.com/mattn/go-isatty v0.0.14
 	github.com/moby/sys/mount v0.3.1
 	github.com/multiformats/go-multiaddr v0.5.0
