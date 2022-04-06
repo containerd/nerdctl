@@ -9,7 +9,7 @@ require (
 	github.com/containerd/cgroups v1.0.3
 	github.com/containerd/console v1.0.3
 	github.com/containerd/containerd v1.6.2
-	github.com/containerd/continuity v0.2.2
+	github.com/containerd/continuity v0.3.0
 	github.com/containerd/go-cni v1.1.4
 	github.com/containerd/imgcrypt v1.1.4
 	github.com/containerd/stargz-snapshotter v0.11.3
@@ -48,7 +48,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220321153916-2c7772ba3064
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220319134239-a9b59b0215f8
+	golang.org/x/sys v0.0.0-20220405210540-1e041c57c461
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.1.0
