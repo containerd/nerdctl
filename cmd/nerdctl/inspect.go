@@ -42,10 +42,19 @@ func newInspectCommand() *cobra.Command {
 	return inspectCommand
 }
 
+var validInspectType = map[string]bool{
+	"container": true,
+	"image":     true,
+}
+
 func addInspectFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
 	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	cmd.Flags().String("type", "", "Return JSON for specified type")
+	cmd.RegisterFlagCompletionFunc("type", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"image", "container", ""}, cobra.ShellCompDirectiveNoFileComp
 	})
 	cmd.Flags().String("mode", "dockercompat", `Inspect mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
 	cmd.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -54,6 +63,15 @@ func addInspectFlags(cmd *cobra.Command) {
 }
 
 func inspectAction(cmd *cobra.Command, args []string) error {
+	inspectType, err := cmd.Flags().GetString("type")
+	if err != nil {
+		return err
+	}
+
+	if len(inspectType) > 0 && !validInspectType[inspectType] {
+		return fmt.Errorf("%q is not a valid value for --type", inspectType)
+	}
+
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
@@ -76,31 +94,37 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 
 	var errs []error
 	for _, req := range args {
-		ni, err := imagewalker.Walk(ctx, req)
-		if err != nil {
-			return err
+		var ni int
+		var nc int
+
+		if len(inspectType) == 0 || inspectType == "image" {
+			ni, err = imagewalker.Walk(ctx, req)
+			if err != nil {
+				return err
+			}
 		}
 
-		nc, err := containerwalker.Walk(ctx, req)
-		if err != nil {
-			return err
-		}
-
-		if ni != 0 && nc != 0 || nc > 1 {
-			return fmt.Errorf("multiple IDs found with provided prefix: %s", req)
+		if len(inspectType) == 0 || inspectType == "container" {
+			nc, err = containerwalker.Walk(ctx, req)
+			if err != nil {
+				return err
+			}
 		}
 
 		if nc == 0 && ni == 0 {
 			return fmt.Errorf("no such object %s", req)
 		}
+		if nc != 0 {
+			if err := containerInspectAction(cmd, []string{req}); err != nil {
+				errs = append(errs, err)
+			}
+			continue
+		}
 		if ni != 0 {
 			if err := imageInspectActionWithPlatform(cmd, []string{req}, ""); err != nil {
 				errs = append(errs, err)
 			}
-		} else {
-			if err := containerInspectAction(cmd, []string{req}); err != nil {
-				errs = append(errs, err)
-			}
+			continue
 		}
 	}
 
