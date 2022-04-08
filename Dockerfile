@@ -262,7 +262,7 @@ RUN systemctl enable test-integration-ipfs-offline test-integration-buildkit-ner
     ipfs init && \
     ipfs config Addresses.API "/ip4/127.0.0.1/tcp/5888" && \
     ipfs config Addresses.Gateway "/ip4/127.0.0.1/tcp/5889"
-CMD ["go", "test", "-v", "./cmd/nerdctl/...", "-args", "-test.kill-daemon"]
+CMD ["go", "test", "-v", "-timeout=20m", "./cmd/nerdctl/...", "-args", "-test.kill-daemon"]
 
 FROM test-integration AS test-integration-rootless
 # Install SSH for creating systemd user session.
@@ -286,7 +286,7 @@ RUN systemctl disable test-integration-ipfs-offline
 VOLUME /home/rootless/.local/share
 RUN go test -o /usr/local/bin/nerdctl.test -c ./cmd/nerdctl
 COPY ./Dockerfile.d/test-integration-rootless.sh /
-CMD ["/test-integration-rootless.sh", "nerdctl.test" ,"-test.v", "-test.kill-daemon"]
+CMD ["/test-integration-rootless.sh", "nerdctl.test" ,"-test.v", "-test.timeout=20m", "-test.kill-daemon"]
 
 # test for CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns
 FROM test-integration-rootless AS test-integration-rootless-port-slirp4netns
