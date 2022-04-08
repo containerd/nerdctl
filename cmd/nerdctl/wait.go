@@ -19,13 +19,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-
+	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 )
 
 func newWaitCommand() *cobra.Command {
@@ -48,55 +47,53 @@ func containerWaitAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	var g errgroup.Group
-
+	var containers []containerd.Container
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			waitContainer(ctx, cmd, client, found.Container.ID(), &g)
+			containers = append(containers, found.Container)
 			return nil
 		},
 	}
 
 	for _, req := range args {
-		n, _ := walker.Walk(ctx, req)
+		n, err := walker.Walk(ctx, req)
+		if err != nil {
+			return err
+		}
 		if n == 0 {
 			return fmt.Errorf("no such container: %s", req)
+		} else if n > 1 {
+			return fmt.Errorf("multiple IDs found with provided prefix: %s", req)
 		}
 	}
-
-	if err := g.Wait(); err != nil {
-		return err
+	var allErr error
+	w := cmd.OutOrStdout()
+	for _, container := range containers {
+		if waitErr := waitContainer(ctx, w, container); waitErr != nil {
+			allErr = multierror.Append(allErr, waitErr)
+		}
 	}
-	return nil
+	return allErr
 }
 
-func waitContainer(ctx context.Context, cmd *cobra.Command, client *containerd.Client, id string, g *errgroup.Group) error {
-	container, err := client.LoadContainer(ctx, id)
+func waitContainer(ctx context.Context, w io.Writer, container containerd.Container) error {
+	task, err := container.Task(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	task, err := container.Task(ctx, cio.Load)
+	statusC, err := task.Wait(ctx)
 	if err != nil {
 		return err
 	}
 
-	g.Go(func() error {
-		statusC, err := task.Wait(ctx)
-		if err != nil {
-			return err
-		}
-
-		status := <-statusC
-		code, _, err := status.Result()
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(cmd.OutOrStdout(), "%d\n", int(code))
-		return nil
-	})
-
+	status := <-statusC
+	code, _, err := status.Result()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(w, code)
 	return nil
 }
 
