@@ -183,3 +183,10 @@ func TestRunApparmor(t *testing.T) {
 	base.Cmd("run", "--rm", "--security-opt", "apparmor=unconfined", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly("unconfined\n")
 	base.Cmd("run", "--rm", "--privileged", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly("unconfined\n")
 }
+
+// TestRunSeccompCapSysPtrace tests https://github.com/containerd/nerdctl/issues/976
+func TestRunSeccompCapSysPtrace(t *testing.T) {
+	base := testutil.NewBase(t)
+	base.Cmd("run", "--rm", "--cap-add", "sys_ptrace", testutil.AlpineImage, "sh", "-euxc", "apk add -q strace && strace true").AssertOK()
+	// Docker/Moby 's seccomp profile allows ptrace(2) by default, but containerd does not (yet): https://github.com/containerd/containerd/issues/6802
+}

@@ -72,26 +72,9 @@ func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]o
 		opts = append(opts, cgOpts...)
 	}
 
-	securityOpt, err := cmd.Flags().GetStringArray("security-opt")
-	if err != nil {
-		return nil, err
-	}
-	securityOptsMaps := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(securityOpt))
-	if secOpts, err := generateSecurityOpts(securityOptsMaps); err != nil {
-		return nil, err
-	} else {
-		opts = append(opts, secOpts...)
-	}
-
 	labelsMap, err := readKVStringsMapfFromLabel(cmd)
 	if err != nil {
 		return nil, err
-	}
-	b4nnOpts, err := bypass4netnsutil.GenerateBypass4netnsOpts(securityOptsMaps, labelsMap, id)
-	if err != nil {
-		return nil, err
-	} else {
-		opts = append(opts, b4nnOpts...)
 	}
 
 	capAdd, err := cmd.Flags().GetStringSlice("cap-add")
@@ -110,12 +93,30 @@ func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]o
 		opts = append(opts, capOpts...)
 	}
 
+	securityOpt, err := cmd.Flags().GetStringArray("security-opt")
+	if err != nil {
+		return nil, err
+	}
+	securityOptsMaps := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(securityOpt))
+	if secOpts, err := generateSecurityOpts(securityOptsMaps); err != nil {
+		return nil, err
+	} else {
+		opts = append(opts, secOpts...)
+	}
+
 	privileged, err := cmd.Flags().GetBool("privileged")
 	if err != nil {
 		return nil, err
 	}
 	if privileged {
 		opts = append(opts, privilegedOpts...)
+	}
+
+	b4nnOpts, err := bypass4netnsutil.GenerateBypass4netnsOpts(securityOptsMaps, labelsMap, id)
+	if err != nil {
+		return nil, err
+	} else {
+		opts = append(opts, b4nnOpts...)
 	}
 
 	shmSize, err := cmd.Flags().GetString("shm-size")
