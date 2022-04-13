@@ -72,6 +72,7 @@ func versionAction(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Fprintf(w, "Client:\n")
 		fmt.Fprintf(w, " Version:\t%s\n", v.Client.Version)
+		fmt.Fprintf(w, " OS/Arch:\t%s/%s\n", v.Client.Os, v.Client.Arch)
 		fmt.Fprintf(w, " Git commit:\t%s\n", v.Client.GitCommit)
 		if v.Server != nil {
 			fmt.Fprintf(w, "\n")
