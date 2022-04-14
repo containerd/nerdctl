@@ -31,7 +31,7 @@ require (
 	github.com/ipfs/go-ipfs-http-client v0.3.0
 	github.com/ipfs/interface-go-ipfs-core v0.6.2
 	github.com/mattn/go-isatty v0.0.14
-	github.com/moby/sys/mount v0.3.1
+	github.com/moby/sys/mount v0.3.2
 	github.com/multiformats/go-multiaddr v0.5.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.3-0.20220303224323-02efb9a75ee1
@@ -120,7 +120,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/moby/locker v1.0.1 // indirect
-	github.com/moby/sys/mountinfo v0.6.0 // indirect
+	github.com/moby/sys/mountinfo v0.6.1 // indirect
 	github.com/moby/sys/signal v0.6.0 // indirect
 	github.com/moby/term v0.0.0-20210610120745-9d4ed1856297 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
