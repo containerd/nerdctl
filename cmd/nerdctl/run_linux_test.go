@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -111,8 +112,8 @@ func TestRunWithInitAndInitPath(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	imageName := "test-init-with-custom-init-binary-with-init-path"
-	dockerfile := `
-FROM golang:1.18
+	dockerfile := fmt.Sprintf(`
+FROM %s
 ENV GO111MODULE=off
 RUN echo  '\
 package main\n\
@@ -131,7 +132,7 @@ func main() {\n\
     signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)\n\
     go func() {\n\
         sig := <-sigs\n\
-        fmt.Printf("signal: %d\\n", sig)\n\
+        fmt.Printf("signal: %%d\\n", sig)\n\
         os.Stdout.Sync()\n\
         done <- true\n\
     }()\n\
@@ -143,7 +144,7 @@ func main() {\n\
 RUN go build -o main .
 
 ENTRYPOINT ["./main"]
-`
+`, testutil.GolangImage)
 	buildCtx, err := createBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
@@ -168,8 +169,8 @@ func TestRunWithInitWithoutInitPath(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	imageName := "test-init-with-custom-init-binary-without-init-path"
-	dockerfile := `
-FROM golang:1.18
+	dockerfile := fmt.Sprintf(`
+FROM %s
 ENV GO111MODULE=off
 RUN echo  '\
 package main\n\
@@ -188,7 +189,7 @@ func main() {\n\
     signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)\n\
     go func() {\n\
         sig := <-sigs\n\
-        fmt.Printf("signal: %d\\n", sig)\n\
+        fmt.Printf("signal: %%d\\n", sig)\n\
         os.Stdout.Sync()\n\
         done <- true\n\
     }()\n\
@@ -200,7 +201,7 @@ func main() {\n\
 RUN go build -o main .
 
 ENTRYPOINT ["./main"]
-`
+`, testutil.GolangImage)
 	buildCtx, err := createBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)

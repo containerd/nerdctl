@@ -31,6 +31,7 @@ var (
 	WordpressImage              = mirrorOf("wordpress:5.7")
 	WordpressIndexHTMLSnippet   = "<title>WordPress &rsaquo; Installation</title>"
 	MariaDBImage                = mirrorOf("mariadb:10.5")
+	GolangImage                 = mirrorOf("golang:1.18")
 	DockerAuthImage             = mirrorOf("cesanta/docker_auth:1.7")
 
 	// Source: https://gist.github.com/cpuguy83/fcf3041e5d8fb1bb5c340915aabeebe0

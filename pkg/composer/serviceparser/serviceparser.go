@@ -57,6 +57,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		"ExtraHosts",
 		"Hostname",
 		"Image",
+		"Init",
 		"Labels",
 		"MemLimit",
 		"Networks",
@@ -502,6 +503,10 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 		hostname = svc.Name
 	}
 	c.RunArgs = append(c.RunArgs, fmt.Sprintf("--hostname=%s", hostname))
+
+	if svc.Init != nil && *svc.Init {
+		c.RunArgs = append(c.RunArgs, "--init")
+	}
 
 	if memLimit, err := getMemLimit(svc); err != nil {
 		return nil, err

@@ -38,6 +38,8 @@ ARG FUSE_OVERLAYFS_VERSION=v1.8.2
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.4
 # Extra deps: IPFS
 ARG IPFS_VERSION=v0.12.1
+# Extra deps: Init
+ARG TINI_VERSION=v0.19.0
 
 # Test deps
 ARG GO_VERSION=1.18
@@ -196,11 +198,11 @@ RUN fname="go-ipfs_${IPFS_VERSION}_${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.g
   mv ${tmpout}/go-ipfs/ipfs /out/bin/ && \
   echo "- IPFS: ${IPFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG TINI_VERSION
-RUN tiniFilename=tini-static-${TARGETARCH:-amd64} && \
-  tiniSumfile="${tiniFilename}.sha256sum" && \
-  curl -o "${tiniFilename}" -fSL https://github.com/krallin/tini/releases/download/${TINI_VERSION:-v0.19.0}/tini-static-${TARGETARCH:-amd64} && \
-  curl -o "${tiniSumfile}" -fSL https://github.com/krallin/tini/releases/download/${TINI_VERSION:-v0.19.0}/tini-static-${TARGETARCH:-amd64}.sha256sum && \
-  grep "${tiniFilename}" "${tiniSumfile}" | sha256sum -c && cp ${tiniFilename} /out/bin/tini && chmod +x /out/bin/tini && echo "- Tini: ${TINI_VERSION:-v0.19.0}" >> /out/share/doc/nerdctl-full/README.md
+RUN fname="tini-static-${TARGETARCH:-amd64}" && \
+  curl -o "${fname}" -fSL "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/${fname}" && \
+  grep "${fname}" "/SHA256SUMS.d/tini-${TINI_VERSION}" | sha256sum -c && \
+  cp -a "${fname}" /out/bin/tini && chmod +x /out/bin/tini && \
+  echo "- Tini: ${TINI_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
@@ -208,8 +210,8 @@ RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/fuse-overlayfs: [GNU GENERAL PUBLIC LICENSE, Version 3](https://github.com/containers/fuse-overlayfs/blob/${FUSE_OVERLAYFS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/ipfs: [Combination of MIT-only license and dual MIT/Apache-2.0 license](https://github.com/ipfs/go-ipfs/blob/${IPFS_VERSION}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/{runc,bypass4netns,bypass4netnsd}: Apache License 2.0, statically linked with libseccomp ([LGPL 2.1](https://github.com/seccomp/libseccomp/blob/main/LICENSE), source code available at https://github.com/seccomp/libseccomp/)" >> /out/share/doc/nerdctl-full/README.md && \
+  echo "- bin/tini: [MIT License](https://github.com/krallin/tini/blob/${TINI_VERSION}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- Other files: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)" >> /out/share/doc/nerdctl-full/README.md && \
-  echo "- bin/tini: [MIT License](https://github.com/krallin/tini/blob/${TINI_VERSION:-v0.19.0}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
   (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
   mv /tmp/SHA256SUMS /out/share/doc/nerdctl-full/SHA256SUMS && \
   chown -R 0:0 /out

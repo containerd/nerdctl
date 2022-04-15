@@ -57,8 +57,7 @@ import (
 )
 
 const (
-	tiniInitBinary        = "tini"
-	nerdctlInitBinaryPath = "/sbin/"
+	tiniInitBinary = "tini"
 )
 
 func newRunCommand() *cobra.Command {
@@ -676,24 +675,27 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	customInitBinary, err := cmd.Flags().GetString("init-binary")
+	initBinary, err := cmd.Flags().GetString("init-binary")
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	if cmd.Flags().Changed("init-binary") {
+		initProcessFlag = true
+	}
 	if initProcessFlag {
 		binaryNameInContainer := ""
-		binaryPath, err := exec.LookPath(customInitBinary)
+		binaryPath, err := exec.LookPath(initBinary)
 		if err != nil {
 			if errors.Is(err, exec.ErrNotFound) {
-				return nil, nil, nil, fmt.Errorf(`init binary not found, if you want to use --init, please make use a valided binary named %q is existed in the PATH or please use the --init-binary to specify the custom init binary`, customInitBinary)
+				return nil, nil, nil, fmt.Errorf(`init binary %q not found`, initBinary)
 			}
 			return nil, nil, nil, err
 		}
-		binaryNameInContainer = customInitBinary
+		binaryNameInContainer = filepath.Join("/sbin", filepath.Base(initBinary))
 		opts = append(opts, func(_ context.Context, _ oci.Client, _ *containers.Container, spec *oci.Spec) error {
-			spec.Process.Args = append([]string{nerdctlInitBinaryPath + binaryNameInContainer, "--"}, spec.Process.Args...)
+			spec.Process.Args = append([]string{binaryNameInContainer, "--"}, spec.Process.Args...)
 			spec.Mounts = append([]specs.Mount{{
-				Destination: nerdctlInitBinaryPath + binaryNameInContainer,
+				Destination: binaryNameInContainer,
 				Type:        "bind",
 				Source:      binaryPath,
 				Options:     []string{"bind", "ro"},
