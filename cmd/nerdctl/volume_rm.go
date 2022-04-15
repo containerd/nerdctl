@@ -17,8 +17,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/containerd/nerdctl/pkg/containerinspector"
+	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -27,7 +31,7 @@ func newVolumeRmCommand() *cobra.Command {
 		Use:               "rm [flags] VOLUME [VOLUME...]",
 		Aliases:           []string{"remove"},
 		Short:             "Remove one or more volumes",
-		Long:              "NOTE: volume in use is deleted without caution",
+		Long:              "NOTE: You cannot remove a volume that is in use by a container.",
 		Args:              cobra.MinimumNArgs(1),
 		RunE:              volumeRmAction,
 		ValidArgsFunction: volumeRmShellComplete,
@@ -39,14 +43,52 @@ func newVolumeRmCommand() *cobra.Command {
 }
 
 func volumeRmAction(cmd *cobra.Command, args []string) error {
+	client, ctx, cancel, err := newClient(cmd)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	containers, err := client.Containers(ctx)
+	if err != nil {
+		return err
+	}
+	var mount *specs.Spec
+	var volumenames []string
 	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return err
 	}
 	names := args
-	removedNames, err := volStore.Remove(names)
-	for _, removed := range removedNames {
-		fmt.Fprintln(cmd.OutOrStdout(), removed)
+
+	for _, name := range names {
+		var found bool
+		for _, container := range containers {
+			n, err := containerinspector.Inspect(ctx, container)
+			if err != nil {
+				return err
+			}
+			err = json.Unmarshal(n.Container.Spec.Value, &mount)
+			if err != nil {
+				return err
+			}
+			volume, _ := volStore.Get(name)
+			if found = checkVolume(&mount.Mounts, volume.Mountpoint); found {
+				found = true
+				logrus.WithError(fmt.Errorf("Volume %q is in use", name)).Error(fmt.Errorf("Remove Volume: %q failed", name))
+				break
+			}
+		}
+		if !found {
+			// volumes that are to be deleted
+			volumenames = append(volumenames, name)
+		}
+	}
+	if volumenames != nil {
+		volnames, err := volStore.Remove(volumenames)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), volnames)
 	}
 	return err
 }
@@ -54,4 +96,14 @@ func volumeRmAction(cmd *cobra.Command, args []string) error {
 func volumeRmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show volume names
 	return shellCompleteVolumeNames(cmd)
+}
+
+// checkVolume checks whether the container mount path and the given volume mount point are same or not.
+func checkVolume(mounts *[]specs.Mount, volmountpoint string) bool {
+	for _, mount := range *mounts {
+		if mount.Source == volmountpoint {
+			return true
+		}
+	}
+	return false
 }
