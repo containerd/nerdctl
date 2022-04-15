@@ -52,7 +52,7 @@ nerdctl:
 clean:
 	find . -name \*~ -delete
 	find . -name \#\* -delete
-	rm -rf _output/*
+	rm -rf _output/* vendor
 
 binaries: nerdctl
 
@@ -94,6 +94,9 @@ artifacts: clean
 
 	$(call make_artifact_full_linux,amd64)
 	$(call make_artifact_full_linux,arm64)
+
+	go mod vendor
+	tar $(TAR_FLAGS) -czf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-go-mod-vendor.tar.gz go.mod go.sum vendor
 
 .PHONY: \
 	help \
