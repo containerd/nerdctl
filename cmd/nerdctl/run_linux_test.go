@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -103,4 +104,118 @@ func TestRunUlimit(t *testing.T) {
 
 	base.Cmd("run", "--rm", "--ulimit", ulimit2, testutil.AlpineImage, "sh", "-c", "ulimit -Sn").AssertOutExactly("622\n")
 	base.Cmd("run", "--rm", "--ulimit", ulimit2, testutil.AlpineImage, "sh", "-c", "ulimit -Hn").AssertOutExactly("722\n")
+}
+
+func TestRunWithInitAndInitPath(t *testing.T) {
+	testutil.RequiresBuild(t)
+	testutil.DockerIncompatible(t)
+	t.Parallel()
+	base := testutil.NewBase(t)
+	imageName := "test-init-with-custom-init-binary-with-init-path"
+	dockerfile := fmt.Sprintf(`
+FROM %s
+ENV GO111MODULE=off
+RUN echo  '\
+package main\n\
+\n\
+import (\n\
+    "fmt"\n\
+    "os"\n\
+    "os/signal"\n\
+    "syscall"\n\
+)\n\
+\n\
+func main() {\n\
+\n\
+    sigs := make(chan os.Signal, 1)\n\
+    done := make(chan bool, 1)\n\
+    signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)\n\
+    go func() {\n\
+        sig := <-sigs\n\
+        fmt.Printf("signal: %%d\\n", sig)\n\
+        os.Stdout.Sync()\n\
+        done <- true\n\
+    }()\n\
+    for {\n\
+\n\
+    }\n\
+}\n'>> main.go
+
+RUN go build -o main .
+
+ENTRYPOINT ["./main"]
+`, testutil.GolangImage)
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
+	containerName := imageName + "container"
+	base.Cmd("run", "-d", "--name", containerName,
+		"--init", "--init-binary", "tini-custom", imageName).AssertOK()
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	defer base.Cmd("kill", containerName).AssertOK()
+	base.Cmd("kill", "--signal=TERM", containerName).AssertOK()
+	logsCMD := base.Cmd("logs", containerName)
+	logsCMD.Base.T.Helper()
+	result := logsCMD.Run()
+	stdoutContent := result.Stdout() + result.Stderr()
+	assert.Assert(logsCMD.Base.T, result.ExitCode == 0, stdoutContent)
+	assert.Equal(logsCMD.Base.T, strings.Contains(stdoutContent, "signal: 15"), true)
+}
+
+func TestRunWithInitWithoutInitPath(t *testing.T) {
+	testutil.RequiresBuild(t)
+	t.Parallel()
+	base := testutil.NewBase(t)
+	imageName := "test-init-with-custom-init-binary-without-init-path"
+	dockerfile := fmt.Sprintf(`
+FROM %s
+ENV GO111MODULE=off
+RUN echo  '\
+package main\n\
+\n\
+import (\n\
+    "fmt"\n\
+    "os"\n\
+    "os/signal"\n\
+    "syscall"\n\
+)\n\
+\n\
+func main() {\n\
+\n\
+    sigs := make(chan os.Signal, 1)\n\
+    done := make(chan bool, 1)\n\
+    signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)\n\
+    go func() {\n\
+        sig := <-sigs\n\
+        fmt.Printf("signal: %%d\\n", sig)\n\
+        os.Stdout.Sync()\n\
+        done <- true\n\
+    }()\n\
+    for {\n\
+\n\
+    }\n\
+}\n'>> main.go
+
+RUN go build -o main .
+
+ENTRYPOINT ["./main"]
+`, testutil.GolangImage)
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
+	containerName := imageName + "container"
+	base.Cmd("run", "-d", "--name", containerName, imageName, "--init").AssertOK()
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	defer base.Cmd("kill", containerName).AssertOK()
+	base.Cmd("kill", "--signal=TERM", containerName).AssertOK()
+	logsCMD := base.Cmd("logs", containerName)
+	logsCMD.Base.T.Helper()
+	result := logsCMD.Run()
+	stdoutContent := result.Stdout() + result.Stderr()
+	assert.Assert(logsCMD.Base.T, result.ExitCode == 0, stdoutContent)
+	assert.Equal(logsCMD.Base.T, strings.Contains(stdoutContent, "signal: 15"), true)
 }

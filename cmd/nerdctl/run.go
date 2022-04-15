@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -53,6 +54,10 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+)
+
+const (
+	tiniInitBinary = "tini"
 )
 
 func newRunCommand() *cobra.Command {
@@ -101,6 +106,11 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.RegisterFlagCompletionFunc("pull", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"always", "missing", "never"}, cobra.ShellCompDirectiveNoFileComp
 	})
+
+	// #region for init process
+	cmd.Flags().Bool("init", false, "Run an init process inside the container, Default to use tini")
+	cmd.Flags().String("init-binary", tiniInitBinary, "The custom binary to use as the init process")
+	// #endregion
 
 	// #region platform flags
 	cmd.Flags().String("platform", "", "Set platform (e.g. \"amd64\", \"arm64\")") // not a slice, and there is no --all-platforms
@@ -640,6 +650,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	if !imageless && !cmd.Flag("entrypoint").Changed {
 		opts = append(opts, oci.WithImageConfigArgs(ensured.Image, args[1:]))
 	} else {
@@ -658,6 +669,39 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 			return nil, nil, nil, errors.New("no command or entrypoint provided, and no CMD or ENTRYPOINT from image")
 		}
 		opts = append(opts, oci.WithProcessArgs(processArgs...))
+	}
+
+	initProcessFlag, err := cmd.Flags().GetBool("init")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	initBinary, err := cmd.Flags().GetString("init-binary")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if cmd.Flags().Changed("init-binary") {
+		initProcessFlag = true
+	}
+	if initProcessFlag {
+		binaryNameInContainer := ""
+		binaryPath, err := exec.LookPath(initBinary)
+		if err != nil {
+			if errors.Is(err, exec.ErrNotFound) {
+				return nil, nil, nil, fmt.Errorf(`init binary %q not found`, initBinary)
+			}
+			return nil, nil, nil, err
+		}
+		binaryNameInContainer = filepath.Join("/sbin", filepath.Base(initBinary))
+		opts = append(opts, func(_ context.Context, _ oci.Client, _ *containers.Container, spec *oci.Spec) error {
+			spec.Process.Args = append([]string{binaryNameInContainer, "--"}, spec.Process.Args...)
+			spec.Mounts = append([]specs.Mount{{
+				Destination: binaryNameInContainer,
+				Type:        "bind",
+				Source:      binaryPath,
+				Options:     []string{"bind", "ro"},
+			}}, spec.Mounts...)
+			return nil
+		})
 	}
 
 	readonly, err := cmd.Flags().GetBool("read-only")
