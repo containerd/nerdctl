@@ -14,6 +14,19 @@
    limitations under the License.
 */
 
+/*
+   Portions from https://github.com/moby/moby/blob/v20.10.0-rc2/runconfig/opts/parse.go
+   Copyright (C) Docker/Moby authors.
+   Licensed under the Apache License, Version 2.0
+   NOTICE: https://github.com/moby/moby/blob/v20.10.0-rc2/NOTICE
+*/
+
+/*
+   Portions from https://github.com/moby/buildkit/blob/v0.9.1/cmd/buildkitd/config.go#L35-L42
+   Copyright (C) BuildKit authors.
+   Licensed under the Apache License, Version 2.0
+*/
+
 package strutil
 
 import (

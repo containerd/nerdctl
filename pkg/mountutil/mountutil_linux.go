@@ -35,6 +35,14 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+/*
+   Portions from https://github.com/moby/moby/blob/v20.10.5/daemon/oci_linux.go
+   Portions from https://github.com/moby/moby/blob/v20.10.5/volume/mounts/linux_parser.go
+   Copyright (C) Docker/Moby authors.
+   Licensed under the Apache License, Version 2.0
+   NOTICE: https://github.com/moby/moby/blob/v20.10.5/NOTICE
+*/
+
 // getUnprivilegedMountFlags is from https://github.com/moby/moby/blob/v20.10.5/daemon/oci_linux.go#L420-L450
 //
 // Get the set of mount flags that are set on the mount that contains the given

@@ -19,6 +19,7 @@
    Portions from https://github.com/docker/cli/blob/v20.10.8/cli/command/system/version.go
    Copyright (C) Docker/Moby authors.
    Licensed under the Apache License, Version 2.0
+   NOTICE: https://github.com/moby/moby/blob/v20.10.8/NOTICE , https://github.com/docker/cli/blob/v20.10.8/NOTICE
 */
 
 package dockercompat

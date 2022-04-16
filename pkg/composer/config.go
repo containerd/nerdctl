@@ -14,6 +14,13 @@
    limitations under the License.
 */
 
+/*
+   Portions from https://github.com/docker/compose/blob/v2.2.2/pkg/compose/hash.go
+   Copyright (C) Docker Compose authors.
+   Licensed under the Apache License, Version 2.0
+   NOTICE: https://github.com/docker/compose/blob/v2.2.2/NOTICE
+*/
+
 package composer
 
 import (

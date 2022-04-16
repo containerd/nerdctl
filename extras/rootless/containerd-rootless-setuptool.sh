@@ -18,6 +18,7 @@
 # Forked from https://github.com/moby/moby/blob/v20.10.3/contrib/dockerd-rootless-setuptool.sh
 # Copyright The Moby Authors.
 # Licensed under the Apache License, Version 2.0
+# NOTICE: https://github.com/moby/moby/blob/v20.10.3/NOTICE
 # -----------------------------------------------------------------------------
 
 # containerd-rootless-setuptool.sh: setup tool for containerd-rootless.sh

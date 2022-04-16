@@ -14,6 +14,13 @@
    limitations under the License.
 */
 
+/*
+   Portions from https://github.com/moby/moby/blob/6014c1e29dc34dffa77fb5749cc3281c1b4854ac/libnetwork/resolvconf/resolvconf.go
+   Copyright (C) Docker/Moby authors.
+   Licensed under the Apache License, Version 2.0
+   NOTICE: https://github.com/moby/moby/blob/6014c1e29dc34dffa77fb5749cc3281c1b4854ac/NOTICE
+*/
+
 // Package resolvconf provides utility code to query and update DNS configuration in /etc/resolv.conf
 // originally from https://github.com/moby/moby/blob/6014c1e29dc34dffa77fb5749cc3281c1b4854ac/libnetwork/resolvconf/resolvconf.go
 package resolvconf
