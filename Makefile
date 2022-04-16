@@ -19,9 +19,12 @@
 # -----------------------------------------------------------------------------
 
 GO ?= go
+CGO_ENABLED ?= 0
 GOOS ?= $(shell go env GOOS)
 ifeq ($(GOOS),windows)
 	BIN_EXT := .exe
+else ifeq ($(GOOS),freebsd)
+	CGO_ENABLED := 1
 endif
 
 PACKAGE := github.com/containerd/nerdctl
@@ -31,7 +34,7 @@ VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always --tags)
 VERSION_TRIMMED := $(VERSION:v%=%)
 REVISION=$(shell git rev-parse HEAD)$(shell if ! git diff --no-ext-diff --quiet --exit-code; then echo .m; fi)
 
-export GO_BUILD=GO111MODULE=on CGO_ENABLED=0 GOOS=$(GOOS) $(GO) build -ldflags "-s -w -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
+export GO_BUILD=GO111MODULE=on CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) $(GO) build -ldflags "-s -w -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
 
 ifdef VERBOSE
 	VERBOSE_FLAG := -v
