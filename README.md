@@ -850,6 +850,7 @@ Flags:
 - :nerd_face: `--sign`: Sign the image (none|cosign). See [`docs/cosign.md`](./docs/cosign.md) for details.
 - :nerd_face: `--cosign-key`: Path to the private key file, KMS, URI or Kubernetes Secret for `--sign=cosign`
 - :nerd_face: `--allow-nondistributable-artifacts`: Allow pushing images with non-distributable blobs
+- :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker push` flags: `--all-tags`, `--disable-content-trust` (default true), `--quiet`
 

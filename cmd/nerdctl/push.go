@@ -39,6 +39,7 @@ import (
 	"github.com/containerd/stargz-snapshotter/estargz/zstdchunked"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
+	"github.com/multiformats/go-multiaddr"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
@@ -68,6 +69,7 @@ func newPushCommand() *cobra.Command {
 
 	pushCommand.Flags().Bool("estargz", false, "Convert the image into eStargz")
 	pushCommand.Flags().Bool("ipfs-ensure-image", true, "Ensure the entire contents of the image is locally available before push")
+	pushCommand.Flags().String("ipfs-address", "", "multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)")
 
 	// #region sign flags
 	pushCommand.Flags().String("sign", "none", "Sign the image (none|cosign")
@@ -113,10 +115,28 @@ func pushAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		logrus.Infof("pushing image %q to IPFS", ref)
-		ipfsClient, err := httpapi.NewLocalApi()
+		ipfsAddressStr, err := cmd.Flags().GetString("ipfs-address")
 		if err != nil {
 			return err
 		}
+
+		var ipfsClient *httpapi.HttpApi
+		if ipfsAddressStr != "" {
+			a, err := multiaddr.NewMultiaddr(ipfsAddressStr)
+			if err != nil {
+				return err
+			}
+			ipfsClient, err = httpapi.NewApi(a)
+			if err != nil {
+				return err
+			}
+		} else {
+			ipfsClient, err = httpapi.NewLocalApi()
+			if err != nil {
+				return err
+			}
+		}
+
 		var layerConvert converter.ConvertFunc
 		if convertEStargz {
 			layerConvert = eStargzConvertFunc()
