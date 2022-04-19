@@ -78,3 +78,45 @@ func TestParseVolumeOptions(t *testing.T) {
 		})
 	}
 }
+
+func TestProcessSplit(t *testing.T) {
+	tests := []struct {
+		res      Processed
+		src, dst string
+		options  []string
+		s        string
+		wants    []string
+	}{
+		{
+			res:     Processed{},
+			src:     "",
+			dst:     "",
+			s:       "C:\\ProgramData\\nerdctl\\test\\volumes\\default\\testVol\\_data:C:\\src",
+			options: []string{},
+		},
+		{
+			res:     Processed{},
+			src:     "",
+			dst:     "",
+			s:       "C:\\ProgramData\\nerdctl\\test\\volumes\\default\\Volmnt:C:\\src",
+			options: []string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.s, func(t *testing.T) {
+			src, dst, _, err := ProcessSplit(tt.s, nil, &tt.res, tt.src, tt.dst, tt.options)
+			if err != nil {
+				t.Errorf("failed to split %q: %v", tt.s, err)
+				return
+			}
+			if !strings.Contains(tt.s, src) {
+				t.Errorf("wrong volume src path %q & src %s", tt.s, src)
+				return
+			}
+			if !strings.Contains(tt.s, dst) {
+				t.Errorf("wrong volume dst path %q", tt.s)
+				return
+			}
+		})
+	}
+}

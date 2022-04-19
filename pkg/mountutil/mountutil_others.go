@@ -1,3 +1,6 @@
+//go:build freebsd || linux
+// +build freebsd linux
+
 /*
    Copyright The containerd Authors.
 
@@ -29,56 +32,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func getUnprivilegedMountFlags(path string) ([]string, error) {
-	m := []string{}
-	return m, nil
-}
-
-// DefaultPropagationMode is the default propagation of mounts
-// where user doesn't specify mount propagation explicitly.
-// See also: https://github.com/moby/moby/blob/v20.10.7/volume/mounts/windows_parser.go#L440-L442
-const DefaultPropagationMode = ""
-
-// parseVolumeOptions parses specified optsRaw with using information of
-// the volume type and the src directory when necessary.
-func parseVolumeOptions(vType, src, optsRaw string) ([]string, []oci.SpecOpts, error) {
-	var writeModeRawOpts []string
-	for _, opt := range strings.Split(optsRaw, ",") {
-		switch opt {
-		case "rw":
-			writeModeRawOpts = append(writeModeRawOpts, opt)
-		case "ro":
-			writeModeRawOpts = append(writeModeRawOpts, opt)
-		case "":
-			// NOP
-		default:
-			logrus.Warnf("unsupported volume option %q", opt)
-		}
-	}
-	var opts []string
-	if len(writeModeRawOpts) > 1 {
-		return nil, nil, fmt.Errorf("duplicated read/write volume option: %+v", writeModeRawOpts)
-	} else if len(writeModeRawOpts) > 0 && writeModeRawOpts[0] == "ro" {
-		opts = append(opts, "ro")
-	} // No need to return option when "rw"
-	return opts, nil, nil
-}
-
-func ProcessFlagTmpfs(s string) (*Processed, error) {
-	return nil, errdefs.ErrNotImplemented
-}
-
-func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, error) {
-	return nil, errdefs.ErrNotImplemented
-}
-
 // ProcessSplit splits volume mount information received through command line into respective source, destination
 // and optsRaw fields according to the volume type chosen and returns them accordingly.
 func ProcessSplit(s string, volStore volumestore.VolumeStore, res *Processed, src string, dst string, options []string) (string, string, []string, error) {
 	split := strings.Split(s, ":")
 	switch len(split) {
-	case 2: // For anonymous volumes in Windows
-		dst := s
+	case 1:
+		dst = s
 		res.AnonymousVolume = idgen.GenerateID()
 		logrus.Debugf("creating anonymous volume %q, for %q", res.AnonymousVolume, s)
 		anonVol, err := volStore.Create(res.AnonymousVolume, []string{})
@@ -88,27 +48,10 @@ func ProcessSplit(s string, volStore volumestore.VolumeStore, res *Processed, sr
 		src = anonVol.Mountpoint
 		res.Type = Volume
 		return src, dst, nil, err
-	case 3, 4, 5:
-		rawOpts := ""
+	case 2, 3:
 		res.Type = Bind
-		if len(split) == 3 {
-			src, dst = split[0], split[1]+":"+split[2]
-			res.Type = Volume
-		} else if len(split) == 4 {
-			if strings.Contains(split[3], "\\") || strings.Contains(split[2], "/") {
-				src = split[0] + ":" + split[1]
-				dst = split[2] + ":" + split[3]
-			} else {
-				src = split[0]
-				dst = split[1] + ":" + split[2]
-				rawOpts = split[3]
-			}
-		} else if len(split) == 5 {
-			src = split[0] + ":" + split[1]
-			dst = split[2] + ":" + split[3]
-			rawOpts = split[4]
-		}
-		if !strings.Contains(src, "/") && !strings.Contains(src, "\\") {
+		src, dst = split[0], split[1]
+		if !strings.Contains(src, "/") {
 			// assume src is a volume name
 			res.Name = src
 			vol, err := volStore.Get(src)
@@ -118,15 +61,13 @@ func ProcessSplit(s string, volStore volumestore.VolumeStore, res *Processed, sr
 					if err != nil {
 						return "", "", nil, err
 					}
-					src = vol.Mountpoint
-					res.Type = Volume
 				} else {
 					return "", "", nil, err
 				}
-			} else {
-				// src is now full path
-				src = vol.Mountpoint
 			}
+			// src is now full path
+			src = vol.Mountpoint
+			res.Type = Volume
 		}
 		if !filepath.IsAbs(src) {
 			logrus.Warnf("expected an absolute path, got a relative path %q (allowed for nerdctl, but disallowed for Docker, so unrecommended)", src)
@@ -139,7 +80,11 @@ func ProcessSplit(s string, volStore volumestore.VolumeStore, res *Processed, sr
 		if !filepath.IsAbs(dst) {
 			return "", "", nil, fmt.Errorf("expected an absolute path, got %q", dst)
 		}
-
+		rawOpts := ""
+		if len(split) == 3 {
+			rawOpts = split[2]
+		}
+		res.Mode = rawOpts
 		// always call parseVolumeOptions for bind mount to allow the parser to add some default options
 		var err error
 		var specOpts []oci.SpecOpts
