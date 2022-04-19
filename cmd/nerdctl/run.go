@@ -42,14 +42,17 @@ import (
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
+	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
+
 	"github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
@@ -455,7 +458,7 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		opts = append(opts, oci.WithTTY)
 	}
 
-	mountOpts, anonVolumes, err := generateMountOpts(cmd, ctx, client, ensuredImage)
+	mountOpts, anonVolumes, mountPoints, err := generateMountOpts(cmd, ctx, client, ensuredImage)
 	if err != nil {
 		return nil, "", nil, err
 	} else {
@@ -565,7 +568,7 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		return nil, "", nil, err
 	}
 	extraHosts = strutil.DedupeStrSlice(extraHosts)
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ipAddress, ports, logURI, anonVolumes, pidFile, platform)
+	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ipAddress, ports, logURI, anonVolumes, pidFile, platform, mountPoints)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -840,7 +843,7 @@ func readKVStringsMapfFromLabel(cmd *cobra.Command) (map[string]string, error) {
 	return strutil.ConvertKVStringsToMap(labels), nil
 }
 
-func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ipAddress string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string) (containerd.NewContainerOpts, error) {
+func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ipAddress string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string, mountPoints []*mountutil.Processed) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
 	m[labels.Namespace] = ns
 	if name != "" {
@@ -888,7 +891,43 @@ func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts
 	if err != nil {
 		return nil, err
 	}
+
+	if len(mountPoints) > 0 {
+		mounts := dockercompatMounts(mountPoints)
+		mountPointsJSON, err := json.Marshal(mounts)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.Mounts] = string(mountPointsJSON)
+	}
+
 	return containerd.WithAdditionalContainerLabels(m), nil
+}
+
+func dockercompatMounts(mountPoints []*mountutil.Processed) []dockercompat.MountPoint {
+	reuslt := make([]dockercompat.MountPoint, len(mountPoints))
+	for i := range mountPoints {
+		mp := mountPoints[i]
+		reuslt[i] = dockercompat.MountPoint{
+			Type:        mp.Type,
+			Name:        mp.Name,
+			Source:      mp.Mount.Source,
+			Destination: mp.Mount.Destination,
+			Driver:      "",
+			Mode:        mp.Mode,
+		}
+
+		// it's a anonymous volume
+		if mp.AnonymousVolume != "" {
+			reuslt[i].Name = mp.AnonymousVolume
+		}
+
+		// volume only support local driver
+		if mp.Type == "volume" {
+			reuslt[i].Driver = "local"
+		}
+	}
+	return reuslt
 }
 
 func propagateContainerdLabelsToOCIAnnotations() oci.SpecOpts {

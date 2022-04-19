@@ -41,9 +41,11 @@ const (
 )
 
 type Processed struct {
-	Mount           specs.Mount
-	AnonymousVolume string // name
 	Type            string
+	Mount           specs.Mount
+	Name            string // name
+	AnonymousVolume string // anonymous volume name
+	Mode            string
 	Opts            []oci.SpecOpts
 }
 
@@ -71,6 +73,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 		src, dst = split[0], split[1]
 		if !strings.Contains(src, "/") {
 			// assume src is a volume name
+			res.Name = src
 			vol, err := volStore.Get(src)
 			if err != nil {
 				if errors.Is(err, errdefs.ErrNotFound) {
@@ -101,6 +104,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 		if len(split) == 3 {
 			rawOpts = split[2]
 		}
+		res.Mode = rawOpts
 
 		// always call parseVolumeOptions for bind mount to allow the parser to add some default options
 		var err error
