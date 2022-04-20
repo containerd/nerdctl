@@ -257,6 +257,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl cp](#whale-nerdctl-cp)
     - [:whale: :blue_square: nerdctl ps](#whale-blue_square-nerdctl-ps)
     - [:whale: :blue_square: nerdctl inspect](#whale-blue_square-nerdctl-inspect)
+    - [:whale: :blue_square: nerdctl container prune](#whale-blue_square-nerdctl-container-prune)
     - [:whale: nerdctl logs](#whale-nerdctl-logs)
     - [:whale: nerdctl port](#whale-nerdctl-port)
     - [:whale: nerdctl rm](#whale-nerdctl-rm)
@@ -297,6 +298,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl volume ls](#whale-nerdctl-volume-ls)
     - [:whale: nerdctl volume inspect](#whale-nerdctl-volume-inspect)
     - [:whale: nerdctl volume rm](#whale-nerdctl-volume-rm)
+    - [:whale: nerdctl volume prune](#whale-nerdctl-volume-prune)
   - [Namespace management](#namespace-management)
     - [:nerd_face: :blue_square: nerdctl namespace create](#nerd_face-blue_square-nerdctl-namespace-create)
     - [:nerd_face: :blue_square: nerdctl namespace inspect](#nerd_face-blue_square-nerdctl-namespace-inspect)
@@ -685,6 +687,15 @@ Flags:
 - :whale: `--type`: Return JSON for specified type
 
 Unimplemented `docker inspect` flags:  `--size`
+
+### :whale: :blue_square: nerdctl container prune
+Removes all stopped containers
+
+Usage: `nerdctl container prune [OPTIONS] NAME|ID [NAME|ID...]`
+
+Flags:
+- :whale: `-f, --force`: Do not prompt for confirmation
+- :whale: `--filter`: Provide filter values (e.g. 'until=<timestamp>')
 
 ### :whale: nerdctl logs
 Fetch the logs of a container.
@@ -1133,6 +1144,16 @@ Usage: `nerdctl volume rm [OPTIONS] VOLUME [VOLUME...]`
 - :whale: `-f, --force`: Force the removal of one or more volumes
   - :warning: WIP: currently, volumes are always forcibly removed, even when `--force` is not specified.
 
+### :whale: nerdctl volume prune
+Remove all unused local volumes. Unused local volumes are those which are not referenced by any containers
+
+Usage: `nerdctl volume prune [OPTIONS]`
+
+Flags:
+- :whale: `-f, --force`: Do not prompt for confirmation
+- :whale: `--filter`: Provide filter values (e.g. 'label=<label>')
+
+
 ## Namespace management
 
 ### :nerd_face: :blue_square: nerdctl namespace create
@@ -1457,7 +1478,6 @@ Container management:
 - `docker attach`
 - `docker diff`
 
-- `docker container prune`
 
 - `docker checkpoint *`
 
