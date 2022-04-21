@@ -292,6 +292,7 @@ Config file ($NERDCTL_TOML): %s
 		newIPFSCommand(),
 	)
 	addApparmorCommand(rootCmd)
+	addCpCommand(rootCmd)
 	return rootCmd, nil
 }
 
