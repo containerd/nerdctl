@@ -163,7 +163,7 @@ func prettyPrintInfoNative(w io.Writer, info *native.Info) error {
 	fmt.Fprintf(w, "Rootless:           %v\n", info.Rootless)
 	fmt.Fprintf(w, "containerd Version: %s (%s)\n", info.Daemon.Version.Version, info.Daemon.Version.Revision)
 	fmt.Fprintf(w, "containerd UUID:    %s\n", info.Daemon.Server.UUID)
-	var disabledPlugins, enabledPlugins []introspection.Plugin
+	var disabledPlugins, enabledPlugins []*introspection.Plugin
 	for _, f := range info.Daemon.Plugins.Plugins {
 		if f.InitErr == nil {
 			enabledPlugins = append(enabledPlugins, f)
@@ -171,7 +171,7 @@ func prettyPrintInfoNative(w io.Writer, info *native.Info) error {
 			disabledPlugins = append(disabledPlugins, f)
 		}
 	}
-	sorter := func(x []introspection.Plugin) func(int, int) bool {
+	sorter := func(x []*introspection.Plugin) func(int, int) bool {
 		return func(i, j int) bool {
 			return x[i].Type+"."+x[j].ID < x[j].Type+"."+x[j].ID
 		}

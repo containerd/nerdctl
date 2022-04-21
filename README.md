@@ -358,9 +358,11 @@ Basic flags:
 - :whale: :blue_square: `-t, --tty`: Allocate a pseudo-TTY
   - :warning: WIP: currently `-t` conflicts with `-d`
 - :whale: :blue_square: `-d, --detach`: Run container in background and print container ID
-- :whale: `--restart=(no|always)`: Restart policy to apply when a container exits
+- :whale: `--restart=(no|always|on-failure|unless-stopped)`: Restart policy to apply when a container exits
   - Default: "no"
-  - :warning: No support for `on-failure` and `unless-stopped`
+  - always: Always restart the container if it stops.
+  - on-failure[:max-retries]: Restart only if the container exits with a non-zero exit status. Optionally, limit the number of times attempts to restart the container using the :max-retries option.
+  - unless-stopped: Always restart the container unless it is stopped.
 - :whale: `--rm`: Automatically remove the container when it exits
 - :whale: `--pull=(always|missing|never)`: Pull image before running
   - Default: "missing"

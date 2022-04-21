@@ -26,11 +26,11 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd"
+	ptypes "github.com/containerd/containerd/protobuf/types"
 	"github.com/containerd/containerd/services/introspection"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/version"
-	ptypes "github.com/gogo/protobuf/types"
 )
 
 func NativeDaemonInfo(ctx context.Context, client *containerd.Client) (*native.DaemonInfo, error) {

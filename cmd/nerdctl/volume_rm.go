@@ -67,7 +67,7 @@ func volumeRmAction(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			err = json.Unmarshal(n.Container.Spec.Value, &mount)
+			err = json.Unmarshal(n.Container.Spec.GetValue(), &mount)
 			if err != nil {
 				return err
 			}

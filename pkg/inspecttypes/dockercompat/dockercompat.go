@@ -36,6 +36,7 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
@@ -95,10 +96,10 @@ type Container struct {
 	// TODO: HostsPath      string
 	LogPath string
 	// Unimplemented: Node            *ContainerNode `json:",omitempty"` // Node is only propagated by Docker Swarm standalone API
-	Name string
-	// TODO: RestartCount int
-	Driver   string
-	Platform string
+	Name         string
+	RestartCount int
+	Driver       string
+	Platform     string
 	// TODO: MountLabel      string
 	// TODO: ProcessLabel    string
 	AppArmorProfile string
@@ -158,10 +159,10 @@ type Config struct {
 
 // ContainerState is from https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L313-L326
 type ContainerState struct {
-	Status  string // String representation of the container state. Can be one of "created", "running", "paused", "restarting", "removing", "exited", or "dead"
-	Running bool
-	Paused  bool
-	// TODO:	Restarting bool
+	Status     string // String representation of the container state. Can be one of "created", "running", "paused", "restarting", "removing", "exited", or "dead"
+	Running    bool
+	Paused     bool
+	Restarting bool
 	// TODO: OOMKilled  bool
 	// TODO:	Dead       bool
 	Pid      int
@@ -219,6 +220,9 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		Driver:   n.Snapshotter,
 		Platform: runtime.GOOS, // for Docker compatibility, this Platform string does NOT contain arch like "/amd64"
 	}
+	if n.Labels[restart.StatusLabel] == string(containerd.Running) {
+		c.RestartCount, _ = strconv.Atoi(n.Labels[restart.CountLabel])
+	}
 	if sp, ok := n.Spec.(*specs.Spec); ok {
 		if p := sp.Process; p != nil {
 			if len(p.Args) > 0 {
@@ -255,9 +259,10 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 
 	if n.Process != nil {
 		c.State = &ContainerState{
-			Status:     statusFromNative(n.Process.Status.Status),
+			Status:     statusFromNative(n.Process.Status, n.Labels),
 			Running:    n.Process.Status.Status == containerd.Running,
 			Paused:     n.Process.Status.Status == containerd.Paused,
+			Restarting: n.Labels[restart.StatusLabel] == string(containerd.Running),
 			Pid:        n.Process.Pid,
 			ExitCode:   int(n.Process.Status.ExitStatus),
 			FinishedAt: n.Process.Status.ExitTime.Format(time.RFC3339Nano),
@@ -314,12 +319,15 @@ func ImageFromNative(n *native.Image) (*Image, error) {
 
 	return i, nil
 }
-func statusFromNative(x containerd.ProcessStatus) string {
-	switch x {
+func statusFromNative(x containerd.Status, labels map[string]string) string {
+	switch s := x.Status; s {
 	case containerd.Stopped:
+		if labels[restart.StatusLabel] == string(containerd.Running) && restart.Reconcile(x, labels) {
+			return "restarting"
+		}
 		return "exited"
 	default:
-		return string(x)
+		return string(s)
 	}
 }
 
