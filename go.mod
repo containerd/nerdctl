@@ -29,7 +29,7 @@ require (
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-ipfs-files v0.1.1
 	github.com/ipfs/go-ipfs-http-client v0.3.0
-	github.com/ipfs/interface-go-ipfs-core v0.6.2
+	github.com/ipfs/interface-go-ipfs-core v0.7.0
 	github.com/mattn/go-isatty v0.0.14
 	github.com/moby/sys/mount v0.3.2
 	github.com/multiformats/go-multiaddr v0.5.0
@@ -53,6 +53,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.1.0
 )
+
+require github.com/multiformats/go-multicodec v0.3.0 // indirect
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
