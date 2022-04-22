@@ -36,7 +36,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.3-0.20220303224323-02efb9a75ee1
 	github.com/opencontainers/runtime-spec v1.0.3-0.20220311020903-6969a0a09ab1
-	github.com/pelletier/go-toml v1.9.4
+	github.com/pelletier/go-toml v1.9.5
 	github.com/rootless-containers/bypass4netns v0.2.2
 	github.com/rootless-containers/rootlesskit v1.0.0
 	github.com/sirupsen/logrus v1.8.1
