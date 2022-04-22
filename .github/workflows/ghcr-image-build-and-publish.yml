@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3.0.1
+        uses: actions/checkout@v3.0.2
 
       # Login against a Docker registry except on PR
       # https://github.com/docker/login-action
