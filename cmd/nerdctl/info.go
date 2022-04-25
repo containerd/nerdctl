@@ -17,13 +17,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 	"text/template"
 
 	"github.com/containerd/nerdctl/pkg/infoutil"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
@@ -39,6 +40,10 @@ func newInfoCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	infoCommand.Flags().String("mode", "dockercompat", `Information mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
+	infoCommand.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"dockercompat", "native"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	infoCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
 	infoCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
@@ -47,8 +52,6 @@ func newInfoCommand() *cobra.Command {
 }
 
 func infoAction(cmd *cobra.Command, args []string) error {
-	var w io.Writer
-	w = os.Stdout
 	var (
 		tmpl *template.Template
 		err  error
@@ -70,27 +73,98 @@ func infoAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
+	mode, err := cmd.Flags().GetString("mode")
 	if err != nil {
 		return err
 	}
-	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
-	if err != nil {
-		return err
+	switch mode {
+	case "dockercompat", "native":
+	default:
+		return fmt.Errorf("unknown mode %q", mode)
 	}
-	info, err := infoutil.Info(ctx, client, snapshotter, cgroupManager)
-	if err != nil {
-		return err
+
+	var (
+		infoNative *native.Info
+		infoCompat *dockercompat.Info
+	)
+	switch mode {
+	case "native":
+		di, err := infoutil.NativeDaemonInfo(ctx, client)
+		if err != nil {
+			return err
+		}
+		ci, err := nativeClientInfo(cmd)
+		if err != nil {
+			return err
+		}
+		infoNative = &native.Info{
+			Client: ci,
+			Daemon: di,
+		}
+	case "dockercompat":
+		snapshotter, err := cmd.Flags().GetString("snapshotter")
+		if err != nil {
+			return err
+		}
+		cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
+		if err != nil {
+			return err
+		}
+		infoCompat, err = infoutil.Info(ctx, client, snapshotter, cgroupManager)
+		if err != nil {
+			return err
+		}
 	}
 
 	if tmpl != nil {
-		if err := tmpl.Execute(w, info); err != nil {
+		var x interface{} = infoNative
+		if infoCompat != nil {
+			x = infoCompat
+		}
+		w := cmd.OutOrStdout()
+		if err := tmpl.Execute(w, x); err != nil {
 			return err
 		}
 		_, err = fmt.Fprintf(w, "\n")
 		return err
 	}
 
+	switch mode {
+	case "native":
+		b, err := json.MarshalIndent(infoNative, "", "    ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), string(b))
+	case "dockercompat":
+		return prettyPrintInfoDockerCompat(cmd, infoCompat)
+	}
+	return nil
+}
+
+func nativeClientInfo(cmd *cobra.Command) (*native.ClientInfo, error) {
+	var (
+		ci  native.ClientInfo
+		err error
+	)
+	flags := cmd.Flags()
+	ci.Namespace, err = flags.GetString("namespace")
+	if err != nil {
+		return nil, err
+	}
+	ci.Snapshotter, err = flags.GetString("snapshotter")
+	if err != nil {
+		return nil, err
+	}
+	ci.CgroupManager, err = flags.GetString("cgroup-manager")
+	if err != nil {
+		return nil, err
+	}
+	return &ci, nil
+}
+
+func prettyPrintInfoDockerCompat(cmd *cobra.Command, info *dockercompat.Info) error {
+	w := cmd.OutOrStdout()
 	namespace, err := cmd.Flags().GetString("namespace")
 	if err != nil {
 		return err
