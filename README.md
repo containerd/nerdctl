@@ -1214,6 +1214,7 @@ Usage: `nerdctl info [OPTIONS]`
 
 Flags:
 - :whale: `-f, --format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :nerd_face: `--mode=(dockercompat|native)`: Information mode. "native" produces more information.
 
 ### :whale: nerdctl version
 Show the nerdctl version information
