@@ -51,7 +51,7 @@ require (
 	golang.org/x/sys v0.0.0-20220405210540-1e041c57c461
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	gopkg.in/yaml.v2 v2.4.0
-	gotest.tools/v3 v3.1.0
+	gotest.tools/v3 v3.2.0
 )
 
 require github.com/multiformats/go-multicodec v0.4.1 // indirect
