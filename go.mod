@@ -16,7 +16,7 @@ require (
 	github.com/containerd/stargz-snapshotter/estargz v0.11.4
 	github.com/containerd/stargz-snapshotter/ipfs v0.11.4
 	github.com/containerd/typeurl v1.0.2
-	github.com/containernetworking/cni v1.0.1
+	github.com/containernetworking/cni v1.1.0
 	github.com/containernetworking/plugins v1.1.1
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/docker/cli v20.10.14+incompatible
