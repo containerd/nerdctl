@@ -121,9 +121,6 @@ func execActionWithContainer(ctx context.Context, cmd *cobra.Command, args []str
 		if flagD {
 			return errors.New("currently flag -t and -d cannot be specified together (FIXME)")
 		}
-		if !flagI {
-			return errors.New("currently flag -t needs -i to be specified together (FIXME)")
-		}
 	}
 
 	pspec, err := generateExecProcessSpec(ctx, cmd, args, container, client)
