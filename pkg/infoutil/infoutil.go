@@ -26,9 +26,34 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/services/introspection"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/version"
 	ptypes "github.com/gogo/protobuf/types"
 )
+
+func NativeDaemonInfo(ctx context.Context, client *containerd.Client) (*native.DaemonInfo, error) {
+	introService := client.IntrospectionService()
+	plugins, err := introService.Plugins(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	server, err := introService.Server(ctx, &ptypes.Empty{})
+	if err != nil {
+		return nil, err
+	}
+	versionService := client.VersionService()
+	version, err := versionService.Version(ctx, &ptypes.Empty{})
+	if err != nil {
+		return nil, err
+	}
+
+	daemonInfo := &native.DaemonInfo{
+		Plugins: plugins,
+		Server:  server,
+		Version: version,
+	}
+	return daemonInfo, nil
+}
 
 func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupManager string) (*dockercompat.Info, error) {
 	daemonVersion, err := client.Version(ctx)
