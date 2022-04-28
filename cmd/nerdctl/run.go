@@ -292,7 +292,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 			const removeAnonVolumes = true
 			ns := lab[labels.Namespace]
 			stateDir := lab[labels.StateDir]
-			if removeErr := removeContainer(cmd, ctx, client, ns, id, id, true, dataStore, stateDir, containerNameStore, removeAnonVolumes); removeErr != nil {
+			if removeErr := removeContainer(cmd, ctx, container, ns, id, true, dataStore, stateDir, containerNameStore, removeAnonVolumes); removeErr != nil {
 				logrus.WithError(removeErr).Warnf("failed to remove container %s", id)
 			}
 		}()

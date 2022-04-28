@@ -237,6 +237,7 @@ Config file ($NERDCTL_TOML): %s
 		newUnpauseCommand(),
 		newCommitCommand(),
 		newWaitCommand(),
+		newRenameCommand(),
 		// #endregion
 
 		// Build

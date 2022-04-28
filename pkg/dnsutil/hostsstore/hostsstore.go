@@ -109,6 +109,7 @@ type Meta struct {
 type Store interface {
 	Acquire(Meta) error
 	Release(ns, id string) error
+	Update(ns, id, newName string) error
 }
 
 type store struct {
@@ -151,6 +152,30 @@ func (x *store) Release(ns, id string) error {
 			return err
 		}
 		return newUpdater(id, x.hostsD, nil).update()
+	}
+	return lockutil.WithDirLock(x.hostsD, fn)
+}
+
+func (x *store) Update(ns, id, newName string) error {
+	fn := func() error {
+		metaPath := filepath.Join(x.hostsD, ns, id, metaJSON)
+		metaB, err := os.ReadFile(metaPath)
+		if err != nil {
+			return err
+		}
+		meta := &Meta{}
+		if err := json.Unmarshal(metaB, meta); err != nil {
+			return err
+		}
+		meta.Name = newName
+		metaB, err = json.Marshal(meta)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(metaPath, metaB, 0644); err != nil {
+			return err
+		}
+		return newUpdater(meta.ID, x.hostsD, meta.ExtraHosts).update()
 	}
 	return lockutil.WithDirLock(x.hostsD, fn)
 }

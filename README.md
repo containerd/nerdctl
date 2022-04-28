@@ -769,6 +769,12 @@ Unpause all processes within one or more containers.
 
 Usage: `nerdctl unpause CONTAINER [CONTAINER...]`
 
+### :whale: docker rename
+Rename a container.
+
+Usage: `nerdctl rename CONTAINER NEW_NAME`
+
+
 ## Build
 ### :whale: nerdctl build
 Build an image from a Dockerfile.
@@ -1441,7 +1447,6 @@ See [`./docs/config.md`](./docs/config.md).
 Container management:
 - `docker attach`
 - `docker diff`
-- `docker rename`
 
 - `docker container prune`
 

@@ -87,7 +87,7 @@ func rmAction(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			err = removeContainer(cmd, ctx, client, ns, found.Container.ID(), found.Req, force, dataStore, stateDir, containerNameStore, removeAnonVolumes)
+			err = removeContainer(cmd, ctx, found.Container, ns, found.Req, force, dataStore, stateDir, containerNameStore, removeAnonVolumes)
 			return err
 		},
 	}
@@ -104,8 +104,9 @@ func rmAction(cmd *cobra.Command, args []string) error {
 
 // removeContainer returns nil when the container cannot be found
 // FIXME: refactoring
-func removeContainer(cmd *cobra.Command, ctx context.Context, client *containerd.Client, ns, id, req string, force bool, dataStore, stateDir string, namst namestore.NameStore, removeAnonVolumes bool) (retErr error) {
+func removeContainer(cmd *cobra.Command, ctx context.Context, container containerd.Container, ns, req string, force bool, dataStore, stateDir string, namst namestore.NameStore, removeAnonVolumes bool) (retErr error) {
 	var name string
+	id := container.ID()
 	defer func() {
 		if errdefs.IsNotFound(retErr) {
 			retErr = nil
@@ -128,10 +129,6 @@ func removeContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 			logrus.WithError(retErr).Warnf("failed to release name store for container %q", id)
 		}
 	}()
-	container, err := client.LoadContainer(ctx, id)
-	if err != nil {
-		return err
-	}
 	l, err := container.Labels(ctx)
 	if err != nil {
 		return err
