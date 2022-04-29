@@ -78,9 +78,9 @@ func parseGPUOpt(value string) (oci.SpecOpts, error) {
 	if len(nvidiaCaps) != 0 {
 		gpuOpts = append(gpuOpts, nvidia.WithCapabilities(nvidiaCaps...))
 	} else {
-		// Add "utility" capability if unset.
+		// Add "utility", "compute" capability if unset.
 		// Please see also: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/user-guide.html#driver-capabilities
-		gpuOpts = append(gpuOpts, nvidia.WithCapabilities(nvidia.Utility))
+		gpuOpts = append(gpuOpts, nvidia.WithCapabilities(nvidia.Utility, nvidia.Compute))
 	}
 
 	if rootlessutil.IsRootless() {
