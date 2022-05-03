@@ -8,7 +8,7 @@ require (
 	github.com/compose-spec/compose-go v1.2.4
 	github.com/containerd/cgroups v1.0.3
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.3
+	github.com/containerd/containerd v1.6.4
 	github.com/containerd/continuity v0.3.0
 	github.com/containerd/go-cni v1.1.5
 	github.com/containerd/imgcrypt v1.1.4
@@ -133,7 +133,7 @@ require (
 	github.com/multiformats/go-multihash v0.0.15 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/opencontainers/runc v1.1.1 // indirect
-	github.com/opencontainers/selinux v1.10.0 // indirect
+	github.com/opencontainers/selinux v1.10.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e // indirect
