@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/docker/go-units"
@@ -54,9 +55,16 @@ func ContainerStatus(ctx context.Context, c containerd.Container) string {
 	if err != nil {
 		return strings.Title(string(containerd.Unknown))
 	}
+	labels, err := c.Labels(ctx)
+	if err != nil {
+		return strings.Title(string(containerd.Unknown))
+	}
 
 	switch s := status.Status; s {
 	case containerd.Stopped:
+		if labels[restart.StatusLabel] == string(containerd.Running) && restart.Reconcile(status, labels) {
+			return fmt.Sprintf("Restarting (%v) %s", status.ExitStatus, TimeSinceInHuman(status.ExitTime))
+		}
 		return fmt.Sprintf("Exited (%v) %s", status.ExitStatus, TimeSinceInHuman(status.ExitTime))
 	case containerd.Running:
 		return "Up" // TODO: print "status.UpTime" (inexistent yet)

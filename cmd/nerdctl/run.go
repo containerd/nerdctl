@@ -37,7 +37,6 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/idgen"
@@ -102,7 +101,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
 	cmd.Flags().String("restart", "no", `Restart policy to apply when a container exits (implemented values: "no"|"always")`)
 	cmd.RegisterFlagCompletionFunc("restart", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"no", "always"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"no", "always", "on-failure", "unless-stopped"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	cmd.Flags().Bool("rm", false, "Automatically remove the container when it exits")
 	cmd.Flags().String("pull", "missing", `Pull image before running ("always"|"missing"|"never")`)
@@ -475,7 +474,7 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 	if err != nil {
 		return nil, "", nil, err
 	}
-	restartOpts, err := generateRestartOpts(restartValue, logURI)
+	restartOpts, err := generateRestartOpts(ctx, client, restartValue, logURI)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -781,21 +780,6 @@ func withNerdctlOCIHook(cmd *cobra.Command, id, stateDir string) (oci.SpecOpts, 
 		})
 		return nil
 	}, nil
-}
-
-func generateRestartOpts(restartFlag, logURI string) ([]containerd.NewContainerOpts, error) {
-	switch restartFlag {
-	case "", "no":
-		return nil, nil
-	case "always":
-		opts := []containerd.NewContainerOpts{restart.WithStatus(containerd.Running)}
-		if logURI != "" {
-			opts = append(opts, restart.WithLogURIString(logURI))
-		}
-		return opts, nil
-	default:
-		return nil, fmt.Errorf("unsupported restart type %q, supported types are: \"no\",  \"always\"", restartFlag)
-	}
 }
 
 func getContainerStateDirPath(cmd *cobra.Command, dataStore, id string) (string, error) {
