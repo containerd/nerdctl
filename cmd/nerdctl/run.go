@@ -227,6 +227,12 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("cidfile", "", "Write the container ID to the file")
 	// #endregion
 
+	// #region logging flags
+	// log-opt needs to be StringArray, not StringSlice, to prevent "env=os,customer" from being split to {"env=os", "customer"}
+	cmd.Flags().String("log-driver", "json-file", "Logging driver for the container")
+	cmd.Flags().StringArray("log-opt", nil, "Log driver options")
+	// #endregion
+
 	// shared memory flags
 	cmd.Flags().String("shm-size", "", "Size of /dev/shm")
 	cmd.Flags().String("pidfile", "", "file path to write the task's pid")
@@ -463,7 +469,16 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 
 	var logURI string
 	if flagD {
-		if lu, err := generateLogURI(dataStore); err != nil {
+		// json-file is the built-in and default log driver for nerdctl
+		logDriver, err := cmd.Flags().GetString("log-driver")
+		if err != nil {
+			return nil, "", nil, err
+		}
+		logOptMap, err := parseKVStringsMapFromLogOpt(cmd, logDriver)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		if lu, err := generateLogURI(dataStore, logDriver, logOptMap); err != nil {
 			return nil, "", nil, err
 		} else if lu != nil {
 			logURI = lu.String()
@@ -743,13 +758,22 @@ func withBindMountHostProcfs(_ context.Context, _ oci.Client, _ *containers.Cont
 	return nil
 }
 
-func generateLogURI(dataStore string) (*url.URL, error) {
-	selfExe, err := os.Executable()
-	if err != nil {
-		return nil, err
+func generateLogURI(dataStore, logDriver string, logOptMap map[string]string) (*url.URL, error) {
+	var selfExe string
+	if logDriver == "json-file" {
+		var err error
+		selfExe, err = os.Executable()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("%s is not yet supported", logDriver)
 	}
 	args := map[string]string{
 		logging.MagicArgv1: dataStore,
+	}
+	for k, v := range logOptMap {
+		args[k] = v
 	}
 	if runtime.GOOS == "windows" {
 		return nil, nil
@@ -822,6 +846,22 @@ func readKVStringsMapfFromLabel(cmd *cobra.Command) (map[string]string, error) {
 	}
 
 	return strutil.ConvertKVStringsToMap(labels), nil
+}
+
+// parseKVStringsMapFromLogOpt parse log options KV entries and convert to Map
+func parseKVStringsMapFromLogOpt(cmd *cobra.Command, logDriver string) (map[string]string, error) {
+	logOptArray, err := cmd.Flags().GetStringArray("log-opt")
+	if err != nil {
+		return nil, err
+	}
+	logOptArray = strutil.DedupeStrSlice(logOptArray)
+	logOptMap := strutil.ConvertKVStringsToMap(logOptArray)
+	if logDriver == "json-file" {
+		if _, ok := logOptMap[logging.MaxSize]; !ok {
+			delete(logOptMap, logging.MaxFile)
+		}
+	}
+	return logOptMap, nil
 }
 
 func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ipAddress string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string, mountPoints []*mountutil.Processed) (containerd.NewContainerOpts, error) {

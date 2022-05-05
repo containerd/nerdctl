@@ -474,6 +474,13 @@ Metadata flags:
 - :whale: :blue_square: `--cidfile`: Write the container ID to the file
 - :nerd_face: `--pidfile`: file path to write the task's pid. The CLI syntax conforms to Podman convention.
 
+Logging flags:
+- :whale: `--log-driver=(json-file)`: Logging driver for the container (default `json-file`).
+    - :whale: `--log-driver=json-log`: The logs are formatted as JSON. The default logging driver for nerdctl.
+      - The `json-file` logging driver supports the following logging options:
+          - :whale: `--log-opt=max-size=<MAX-SIZE>`: The maximum size of the log before it is rolled. A positive integer plus a modifier representing the unit of measure (k, m, or g). Defaults to unlimited.
+          - :whale: `--log-opt=max-file=<MAX-FILE>`: The maximum number of log files that can be present. If rolling the logs creates excess files, the oldest file is removed. Only effective when `max-size` is also set. A positive integer. Defaults to 1.
+
 Shared memory flags:
 - :whale: `--shm-size`: Size of `/dev/shm`
 
