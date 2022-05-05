@@ -40,6 +40,7 @@ func New(dataStore, ns string) (NameStore, error) {
 type NameStore interface {
 	Acquire(name, id string) error
 	Release(name, id string) error
+	Rename(oldName, id, newName string) error
 }
 
 type nameStore struct {
@@ -86,6 +87,31 @@ func (x *nameStore) Release(name, id string) error {
 			return fmt.Errorf("name %q is used by ID %q, not by %q", name, s, id)
 		}
 		return os.RemoveAll(fileName)
+	}
+	return lockutil.WithDirLock(x.dir, fn)
+}
+
+func (x *nameStore) Rename(oldName, id, newName string) error {
+	if oldName == "" || newName == "" {
+		return nil
+	}
+	if err := identifiers.Validate(newName); err != nil {
+		return fmt.Errorf("invalid name %q: %w", oldName, err)
+	}
+	fn := func() error {
+		oldFileName := filepath.Join(x.dir, oldName)
+		b, err := os.ReadFile(oldFileName)
+		if err != nil {
+			return err
+		}
+		if s := strings.TrimSpace(string(b)); s != id {
+			return fmt.Errorf("name %q is used by ID %q, not by %q", oldName, s, id)
+		}
+		newFileName := filepath.Join(x.dir, newName)
+		if b, err := os.ReadFile(newFileName); err == nil {
+			return fmt.Errorf("name %q is already used by ID %q", newName, string(b))
+		}
+		return os.Rename(oldFileName, newFileName)
 	}
 	return lockutil.WithDirLock(x.dir, fn)
 }
