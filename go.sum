@@ -203,8 +203,8 @@ github.com/containerd/console v1.0.1/go.mod h1:XUsP6YE/mKtz6bxc+I8UiKKTP04qjQL4q
 github.com/containerd/console v1.0.2/go.mod h1:ytZPjGgY2oeTkAONYafi2kSj0aYggsf8acV1PGKCbzQ=
 github.com/containerd/console v1.0.3 h1:lIr7SlA5PxZyMV30bDW0MGbiOPXwc63yRuCP0ARubLw=
 github.com/containerd/console v1.0.3/go.mod h1:7LqA/THxQ86k76b8c/EMSiaJ3h1eZkMkXar0TQ1gf3U=
-github.com/containerd/containerd v1.6.1-0.20220428184543-bb8b134a1797 h1:sZU01n2/10euUyGfkSSrzHtor/1Gk65ToGsZmc+R3CY=
-github.com/containerd/containerd v1.6.1-0.20220428184543-bb8b134a1797/go.mod h1:RVARW5kC3/uu9nqUEEfbbHTQbKib5H0xXPRhBT88RIA=
+github.com/containerd/containerd v1.6.1-0.20220505233216-459179360a6b h1:aeU/8llZ+nmDj4hUVnjHNjKl3xNap/4XmMa34ypVfYI=
+github.com/containerd/containerd v1.6.1-0.20220505233216-459179360a6b/go.mod h1:RVARW5kC3/uu9nqUEEfbbHTQbKib5H0xXPRhBT88RIA=
 github.com/containerd/continuity v0.0.0-20210208174643-50096c924a4e/go.mod h1:EXlVlkqNba9rJe3j7w3Xa924itAMLgZH4UD/Q4PExuQ=
 github.com/containerd/continuity v0.2.2/go.mod h1:pWygW9u7LtS1o4N/Tn0FoCFDIXZ7rxcMX7HX1Dmibvk=
 github.com/containerd/continuity v0.3.0 h1:nisirsYROK15TAMVukJOUyGJjz4BNQJBVsNvAXZJ/eg=

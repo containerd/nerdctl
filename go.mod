@@ -8,7 +8,7 @@ require (
 	github.com/compose-spec/compose-go v1.2.4
 	github.com/containerd/cgroups v1.0.3
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.3
+	github.com/containerd/containerd v1.6.4 // replaced
 	github.com/containerd/continuity v0.3.0
 	github.com/containerd/go-cni v1.1.5
 	github.com/containerd/imgcrypt v1.1.5-0.20220421044638-8ba028dca028
@@ -55,22 +55,14 @@ require (
 )
 
 require (
-	github.com/blang/semver v3.5.1+incompatible // indirect
-	github.com/container-orchestrated-devices/container-device-interface v0.3.1 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/multiformats/go-multicodec v0.4.1 // indirect
-	github.com/opencontainers/runtime-tools v0.0.0-20190417131837-cd1349b7c47e // indirect
-	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
-)
-
-require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/hcsshim v0.9.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cilium/ebpf v0.7.0 // indirect
+	github.com/container-orchestrated-devices/container-device-interface v0.3.1 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
 	github.com/containerd/ttrpc v1.1.1-0.20220420014843-944ef4a40df3 // indirect
 	github.com/containers/ocicrypt v1.1.3 // indirect
@@ -83,6 +75,7 @@ require (
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/godbus/dbus/v5 v5.0.6 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
@@ -137,9 +130,11 @@ require (
 	github.com/multiformats/go-base32 v0.0.3 // indirect
 	github.com/multiformats/go-base36 v0.1.0 // indirect
 	github.com/multiformats/go-multibase v0.0.3 // indirect
+	github.com/multiformats/go-multicodec v0.4.1 // indirect
 	github.com/multiformats/go-multihash v0.0.15 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/opencontainers/runc v1.1.1 // indirect
+	github.com/opencontainers/runtime-tools v0.0.0-20190417131837-cd1349b7c47e // indirect
 	github.com/opencontainers/selinux v1.10.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -152,6 +147,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
 	github.com/stefanberger/go-pkcs11uri v0.0.0-20201008174630-78d3cae3a980 // indirect
+	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/urfave/cli v1.22.4 // indirect
@@ -171,12 +167,15 @@ require (
 	google.golang.org/grpc v1.46.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
+	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-// Temporary fork for avoiding importing patent-protected code: https://github.com/hashicorp/golang-lru/issues/73
-replace github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c
+replace (
+	// containerd main
+	github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220505233216-459179360a6b
+	// Temporary fork for avoiding importing patent-protected code: https://github.com/hashicorp/golang-lru/issues/73
+	github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c
 
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220428184543-bb8b134a1797
-
-// Temporary fork lumberjack to support Maxbytes before releasing V3.0: https://github.com/natefinch/lumberjack/pull/132)
-replace github.com/natefinch/lumberjack => github.com/fahedouch/lumberjack v0.0.0-20220505103556-d3f93c511b35
+	// Temporary fork lumberjack to support Maxbytes before releasing V3.0: https://github.com/natefinch/lumberjack/pull/132)
+	github.com/natefinch/lumberjack => github.com/fahedouch/lumberjack v0.0.0-20220505103556-d3f93c511b35
+)
