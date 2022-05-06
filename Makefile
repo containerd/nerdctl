@@ -82,6 +82,9 @@ artifacts: clean
 	GOOS=linux GOARCH=ppc64le     make -C $(CURDIR) binaries
 	tar $(TAR_OWNER0_FLAGS) $(TAR_FLATTEN_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-ppc64le.tar.gz _output/nerdctl extras/rootless/*
 
+	GOOS=linux GOARCH=riscv64     make -C $(CURDIR) binaries
+	tar $(TAR_OWNER0_FLAGS) $(TAR_FLATTEN_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-riscv64.tar.gz   _output/nerdctl extras/rootless/*
+
 	GOOS=linux GOARCH=s390x       make -C $(CURDIR) binaries
 	tar $(TAR_OWNER0_FLAGS) $(TAR_FLATTEN_FLAGS) -czvf $(CURDIR)/_output/nerdctl-$(VERSION_TRIMMED)-linux-s390x.tar.gz   _output/nerdctl extras/rootless/*
 
