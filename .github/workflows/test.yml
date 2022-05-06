@@ -59,7 +59,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        containerd: [v1.5.11, v1.6.3, main]
+        containerd: [v1.5.11, v1.6.4, main]
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
@@ -85,7 +85,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        containerd: [v1.5.11, v1.6.3, main]
+        containerd: [v1.5.11, v1.6.4, main]
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
