@@ -103,6 +103,7 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 	var (
 		writeModeRawOpts   []string
 		propagationRawOpts []string
+		bindOpts           []string
 	)
 	for _, opt := range strings.Split(optsRaw, ",") {
 		switch opt {
@@ -110,6 +111,9 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 			writeModeRawOpts = append(writeModeRawOpts, opt)
 		case "private", "rprivate", "shared", "rshared", "slave", "rslave":
 			propagationRawOpts = append(propagationRawOpts, opt)
+		case "bind", "rbind":
+			// bind means not recursively bind-mounted, rbind is the opposite
+			bindOpts = append(bindOpts, opt)
 		case "":
 			// NOP
 		default:
@@ -119,6 +123,14 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 
 	var opts []string
 	var specOpts []oci.SpecOpts
+
+	if len(bindOpts) > 0 && vType != Bind {
+		return nil, nil, fmt.Errorf("volume bind/rbind option is only supported for bind mount: %+v", bindOpts)
+	} else if len(bindOpts) > 1 {
+		return nil, nil, fmt.Errorf("duplicated bind/rbind option: %+v", bindOpts)
+	} else if len(bindOpts) > 0 {
+		opts = append(opts, bindOpts[0])
+	}
 
 	if len(writeModeRawOpts) > 1 {
 		return nil, nil, fmt.Errorf("duplicated read/write volume option: %+v", writeModeRawOpts)
@@ -275,14 +287,15 @@ func ProcessFlagTmpfs(s string) (*Processed, error) {
 func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, error) {
 	fields := strings.Split(s, ",")
 	var (
-		mountType       string
-		src             string
-		dst             string
-		bindPropagation string
-		rwOption        string
-		tmpfsSize       int64
-		tmpfsMode       os.FileMode
-		err             error
+		mountType        string
+		src              string
+		dst              string
+		bindPropagation  string
+		bindNonRecursive bool
+		rwOption         string
+		tmpfsSize        int64
+		tmpfsMode        os.FileMode
+		err              error
 	)
 
 	// set default values
@@ -304,6 +317,9 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			switch key {
 			case "readonly", "ro", "rw", "rro":
 				rwOption = key
+				continue
+			case "bind-nonrecursive":
+				bindNonRecursive = true
 				continue
 			}
 		}
@@ -340,6 +356,11 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			// here don't validate the propagation value
 			// parseVolumeOptions will do that.
 			bindPropagation = value
+		case "bind-nonrecursive":
+			bindNonRecursive, err = strconv.ParseBool(value)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value for %s: %s", key, value)
+			}
 		case "tmpfs-size":
 			tmpfsSize, err = units.RAMInBytes(value)
 			if err != nil {
@@ -380,6 +401,9 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		fields = []string{src, dst}
 		if bindPropagation != "" {
 			options = append(options, bindPropagation)
+		}
+		if mountType == Bind && bindNonRecursive {
+			options = append(options, "bind")
 		}
 	}
 

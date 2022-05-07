@@ -121,7 +121,17 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 	fstype := "nullfs"
 	if runtime.GOOS != "freebsd" {
 		fstype = "none"
-		options = append(options, "rbind")
+		found := false
+		for _, opt := range options {
+			switch opt {
+			case "rbind", "bind":
+				found = true
+				break
+			}
+		}
+		if !found {
+			options = append(options, "rbind")
+		}
 	}
 	res.Mount = specs.Mount{
 		Type:        fstype,
