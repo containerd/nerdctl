@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -102,5 +103,30 @@ services:
 
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "-f", filepath.Join(comp.Dir(), "docker-compose.test.yml"), "config").AssertOutContains("alpine:3.14")
 	base.ComposeCmd("--project-directory", comp.Dir(), "config", "--services").AssertOutExactly("hello1\n")
+	base.ComposeCmd("--project-directory", comp.Dir(), "config").AssertOutContains("alpine:3.14")
+}
+
+func TestComposeConfigWithComposeFileEnv(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = `
+services:
+  hello1:
+    image: alpine:3.13
+`
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	comp.WriteFile("docker-compose.test.yml", `
+services:
+  hello2:
+    image: alpine:3.14
+`)
+
+	base.Env = append(os.Environ(), "COMPOSE_FILE="+comp.YAMLFullPath()+","+filepath.Join(comp.Dir(), "docker-compose.test.yml"), "COMPOSE_PATH_SEPARATOR=,")
+
+	base.ComposeCmd("config").AssertOutContains("alpine:3.14")
+	base.ComposeCmd("--project-directory", comp.Dir(), "config", "--services").AssertOutExactly("hello1\nhello2\n")
 	base.ComposeCmd("--project-directory", comp.Dir(), "config").AssertOutContains("alpine:3.14")
 }
