@@ -66,7 +66,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			} else if sv.LessThan(semver.MustParse("1.6.0-0")) {
 				logrus.Warnf("`nerdctl (run|exec) -i` without `-t` expects containerd 1.6 or later, got containerd %v", sv)
 			}
-			stdinC := &StdinCloser{
+			var stdinC io.ReadCloser = &StdinCloser{
 				Stdin: os.Stdin,
 				Closer: func() {
 					if t, err := container.Task(ctx, nil); err != nil {
@@ -109,4 +109,18 @@ func (s *StdinCloser) Read(p []byte) (int, error) {
 		}
 	}
 	return n, err
+}
+
+// Close implements Closer
+func (s *StdinCloser) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return nil
+	}
+	if s.Closer != nil {
+		s.Closer()
+	}
+	s.closed = true
+	return nil
 }
