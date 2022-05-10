@@ -775,6 +775,7 @@ func generateLogURI(dataStore, logDriver string, logOptMap map[string]string) (*
 	for k, v := range logOptMap {
 		args[k] = v
 	}
+	args[logging.DriverType] = logDriver
 	if runtime.GOOS == "windows" {
 		return nil, nil
 	}
