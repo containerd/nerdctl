@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -61,6 +62,36 @@ bar`
 	base.Cmd("logs", "--since", "5s", containerName).AssertOutContains(expected)
 	base.Cmd("logs", "--until", "5s", containerName).AssertNoOut(expected)
 	base.Cmd("logs", "--until", "1s", containerName).AssertOutContains(expected)
+
+	base.Cmd("rm", "-f", containerName).AssertOK()
+}
+
+func TestLogsOfJournaldDriver(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("`nerdctl logs` is not implemented on Windows (why?)")
+	}
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+
+	defer base.Cmd("rm", containerName).Run()
+	base.Cmd("run", "-d", "--network", "none", "--log-driver", "journald", "--name", containerName, testutil.CommonImage,
+		"sh", "-euxc", "echo foo; echo bar").AssertOK()
+
+	time.Sleep(3 * time.Second)
+	base.Cmd("logs", containerName).AssertOutContains("bar")
+	// Run logs twice, make sure that the logs are not removed
+	base.Cmd("logs", containerName).AssertOutContains("foo")
+
+	base.Cmd("logs", "--since", "5s", containerName).AssertOutWithFunc(func(stdout string) error {
+		if !strings.Contains(stdout, "bar") {
+			return fmt.Errorf("expected bar, got %s", stdout)
+		}
+		if !strings.Contains(stdout, "foo") {
+			return fmt.Errorf("expected foo, got %s", stdout)
+		}
+		return nil
+	})
 
 	base.Cmd("rm", "-f", containerName).AssertOK()
 }

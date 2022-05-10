@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -27,8 +28,9 @@ import (
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
-
 	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
+	"gotest.tools/v3/poll"
 )
 
 func TestRunEntrypointWithBuild(t *testing.T) {
@@ -214,9 +216,9 @@ func TestRunStdin(t *testing.T) {
 	base.Cmd("run", "--rm", "-i", testutil.CommonImage, "cat").CmdOption(opts...).AssertOutExactly(testStr)
 }
 
-func TestRunWithLogOpt(t *testing.T) {
+func TestRunWithJsonFileLogDriver(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("`logging options` are not yet implemented on Windows")
+		t.Skip("json-file log driver is not yet implemented on Windows")
 	}
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
@@ -244,4 +246,62 @@ func TestRunWithLogOpt(t *testing.T) {
 			t.Fatal("file size exceeded 5k")
 		}
 	}
+}
+
+func TestRunWithJournaldLogDriver(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("journald log driver is not yet implemented on Windows")
+	}
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	base.Cmd("run", "-d", "--log-driver", "journald", "--name", containerName, testutil.CommonImage,
+		"sh", "-euxc", "echo foo; echo bar").AssertOK()
+
+	time.Sleep(3 * time.Second)
+	journalctl, err := exec.LookPath("journalctl")
+	assert.NilError(t, err)
+	inspectedContainer := base.InspectContainer(containerName)
+	found := 0
+	check := func(log poll.LogT) poll.Result {
+		res := icmd.RunCmd(icmd.Command(journalctl, "--no-pager", "--since", "2 minutes ago", fmt.Sprintf("SYSLOG_IDENTIFIER=%s", inspectedContainer.ID[:12])))
+		assert.Equal(t, 0, res.ExitCode, res.Combined())
+		if strings.Contains(res.Stdout(), "bar") && strings.Contains(res.Stdout(), "foo") {
+			found = 1
+			return poll.Success()
+		}
+		return poll.Continue("reading from journald is not yet finished")
+	}
+	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(20*time.Second))
+	assert.Equal(t, 1, found)
+}
+
+func TestRunWithJournaldLogDriverAndLogOpt(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("journald log driver is not yet implemented on Windows")
+	}
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	base.Cmd("run", "-d", "--log-driver", "journald", "--log-opt", "tag={{.FullID}}", "--name", containerName, testutil.CommonImage,
+		"sh", "-euxc", "echo foo; echo bar").AssertOK()
+
+	time.Sleep(3 * time.Second)
+	journalctl, err := exec.LookPath("journalctl")
+	assert.NilError(t, err)
+	inspectedContainer := base.InspectContainer(containerName)
+	found := 0
+	check := func(log poll.LogT) poll.Result {
+		res := icmd.RunCmd(icmd.Command(journalctl, "--no-pager", "--since", "2 minutes ago", fmt.Sprintf("SYSLOG_IDENTIFIER=%s", inspectedContainer.ID)))
+		assert.Equal(t, 0, res.ExitCode, res.Combined())
+		if strings.Contains(res.Stdout(), "bar") && strings.Contains(res.Stdout(), "foo") {
+			found = 1
+			return poll.Success()
+		}
+		return poll.Continue("reading from journald is not yet finished")
+	}
+	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(20*time.Second))
+	assert.Equal(t, 1, found)
 }
