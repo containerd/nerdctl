@@ -9,3 +9,4 @@ The following features are experimental and subject to change:
 - [Image Distribution on IPFS](./ipfs.md)
 - [Image Sign and Verify (cosign)](./cosign.md)
 - [Rootless container networking acceleration with bypass4netns](./rootless.md#bypass4netns)
+- [Interactive debugging of Dockerfile](./builder-debug.md)
