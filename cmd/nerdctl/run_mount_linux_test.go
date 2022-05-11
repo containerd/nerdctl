@@ -19,11 +19,14 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/containerd/containerd/mount"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
+	mobymount "github.com/moby/sys/mount"
 	"gotest.tools/v3/assert"
 )
 
@@ -338,6 +341,137 @@ func TestRunBindMountBind(t *testing.T) {
 	}
 	base.Cmd("exec", containerName, "grep", "/mnt1", "/proc/mounts").AssertOutWithFunc(f("rw"))
 	base.Cmd("exec", containerName, "grep", "/mnt2", "/proc/mounts").AssertOutWithFunc(f("ro"))
+}
+
+func TestRunMountBindMode(t *testing.T) {
+	if rootlessutil.IsRootless() {
+		t.Skip("must be superuser to use mount")
+	}
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	tmpDir1, err := os.MkdirTemp(t.TempDir(), "rw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir1)
+	tmpDir1Mnt := filepath.Join(tmpDir1, "mnt")
+	if err := os.MkdirAll(tmpDir1Mnt, 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpDir2, err := os.MkdirTemp(t.TempDir(), "ro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir2)
+
+	if err := mobymount.Mount(tmpDir2, tmpDir1Mnt, "none", "bind,ro"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := mobymount.Unmount(tmpDir1Mnt); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	base.Cmd("run",
+		"--rm",
+		"--mount", fmt.Sprintf("type=bind,bind-nonrecursive,src=%s,target=/mnt1", tmpDir1),
+		testutil.AlpineImage,
+		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
+	).AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) != 1 {
+			return fmt.Errorf("expected 1 line, got %q", stdout)
+		}
+		if !strings.HasPrefix(lines[0], "/mnt1") {
+			return fmt.Errorf("expected mount /mnt1, got %q", lines[0])
+		}
+		return nil
+	})
+
+	base.Cmd("run",
+		"--rm",
+		"--mount", fmt.Sprintf("type=bind,bind-nonrecursive=false,src=%s,target=/mnt1", tmpDir1),
+		testutil.AlpineImage,
+		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
+	).AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) != 2 {
+			return fmt.Errorf("expected 2 line, got %q", stdout)
+		}
+		if !strings.HasPrefix(lines[0], "/mnt1") {
+			return fmt.Errorf("expected mount /mnt1, got %q", lines[0])
+		}
+		return nil
+	})
+}
+
+func TestRunVolumeBindMode(t *testing.T) {
+	if rootlessutil.IsRootless() {
+		t.Skip("must be superuser to use mount")
+	}
+	testutil.DockerIncompatible(t)
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	tmpDir1, err := os.MkdirTemp(t.TempDir(), "rw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir1)
+	tmpDir1Mnt := filepath.Join(tmpDir1, "mnt")
+	if err := os.MkdirAll(tmpDir1Mnt, 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpDir2, err := os.MkdirTemp(t.TempDir(), "ro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir2)
+
+	if err := mobymount.Mount(tmpDir2, tmpDir1Mnt, "none", "bind,ro"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := mobymount.Unmount(tmpDir1Mnt); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	base.Cmd("run",
+		"--rm",
+		"-v", fmt.Sprintf("%s:/mnt1:bind", tmpDir1),
+		testutil.AlpineImage,
+		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
+	).AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) != 1 {
+			return fmt.Errorf("expected 1 line, got %q", stdout)
+		}
+		if !strings.HasPrefix(lines[0], "/mnt1") {
+			return fmt.Errorf("expected mount /mnt1, got %q", lines[0])
+		}
+		return nil
+	})
+
+	base.Cmd("run",
+		"--rm",
+		"-v", fmt.Sprintf("%s:/mnt1:rbind", tmpDir1),
+		testutil.AlpineImage,
+		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
+	).AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) != 2 {
+			return fmt.Errorf("expected 2 line, got %q", stdout)
+		}
+		if !strings.HasPrefix(lines[0], "/mnt1") {
+			return fmt.Errorf("expected mount /mnt1, got %q", lines[0])
+		}
+		return nil
+	})
 }
 
 func TestRunBindMountPropagation(t *testing.T) {
