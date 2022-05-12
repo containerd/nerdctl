@@ -59,6 +59,7 @@ func warnUnknownFields(svc compose.ServiceConfig) {
 		"Image",
 		"Init",
 		"Labels",
+		"Logging",
 		"MemLimit",
 		"Networks",
 		"NetworkMode",
@@ -527,6 +528,17 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 			c.RunArgs = append(c.RunArgs, fmt.Sprintf("-l=%s", k))
 		} else {
 			c.RunArgs = append(c.RunArgs, fmt.Sprintf("-l=%s=%s", k, v))
+		}
+	}
+
+	if svc.Logging != nil {
+		if svc.Logging.Driver != "" {
+			c.RunArgs = append(c.RunArgs, fmt.Sprintf("--log-driver=%s", svc.Logging.Driver))
+		}
+		if svc.Logging.Options != nil {
+			for k, v := range svc.Logging.Options {
+				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--log-opt=%s=%s", k, v))
+			}
 		}
 	}
 

@@ -356,11 +356,13 @@ Usage: `nerdctl run [OPTIONS] IMAGE [COMMAND] [ARG...]`
 Basic flags:
 - :whale: :blue_square: `-i, --interactive`: Keep STDIN open even if not attached"
 - :whale: :blue_square: `-t, --tty`: Allocate a pseudo-TTY
-  - :warning: WIP: currently `-t` requires `-i`, and conflicts with `-d`
+  - :warning: WIP: currently `-t` conflicts with `-d`
 - :whale: :blue_square: `-d, --detach`: Run container in background and print container ID
-- :whale: `--restart=(no|always)`: Restart policy to apply when a container exits
+- :whale: `--restart=(no|always|on-failure|unless-stopped)`: Restart policy to apply when a container exits
   - Default: "no"
-  - :warning: No support for `on-failure` and `unless-stopped`
+  - always: Always restart the container if it stops.
+  - on-failure[:max-retries]: Restart only if the container exits with a non-zero exit status. Optionally, limit the number of times attempts to restart the container using the :max-retries option.
+  - unless-stopped: Always restart the container unless it is stopped.
 - :whale: `--rm`: Automatically remove the container when it exits
 - :whale: `--pull=(always|missing|never)`: Pull image before running
   - Default: "missing"
@@ -426,33 +428,30 @@ Volume flags:
     Requires kernel >= 5.12, and crun >= 1.4 or runc >= 1.1 (PR [#3272](https://github.com/opencontainers/runc/pull/3272)). With older runc, `rro` just works as `ro`.
   - :whale:     option `shared`, `slave`, `private`: Non-recursive "shared" / "slave" / "private" propagation
   - :whale:     option `rshared`, `rslave`, `rprivate`: Recursive "shared" / "slave" / "private" propagation
+  - :nerd_face: option `bind`: Not-recursively bind-mounted
+  - :nerd_face: option `rbind`: Recursively bind-mounted
 - :whale: `--tmpfs`: Mount a tmpfs directory, e.g. `--tmpfs /tmp:size=64m,exec`.
 - :whale: `--mount`: Attach a filesystem mount to the container.
   Consists of multiple key-value pairs, separated by commas and each
   consisting of a `<key>=<value>` tuple.
   e.g., `-- mount type=bind,source=/src,target=/app,bind-propagation=shared`.
-  - :whale: The `type` of the mount, which can be `bind`, `volume`, `tmpfs`.
+  - :whale: `type`: Current supported mount types are `bind`, `volume`, `tmpfs`.
     The defaul type will be set to `volume` if not specified.
     i.e., `--mount src=vol-1,dst=/app,readonly` equals `--mount type=volum,src=vol-1,dst=/app,readonly`
-  - :whale: The `source` of the mount. For bind mounts, this is the path to the file
-    or directory. May be specified as `source` or `src`.
-  - :whale: The `destination` takes as its value the path where the file or directory
-    is mounted in the container. May be specified as `destination`, `dst`,
-    or `target`.
-  - :whale: The `readonly` or `ro`, `rw`, `rro` option changes filesystem permissinos.
-    See description for `--volume` for more deails.
-  - :whale: The `bind-propagation` option is only for `bind` mount which is used to set the
-    bind propagation. May be one of `rprivate`, `private`, `rshared`, `shared`,
-    `rslave`, `slave`.
-    See description for `--volume` for more deails.
-  - :whale: The `tmpfs-size` and `tmpfs-mode` options are only for `tmpfs` bind mount,
-    e.g., `--mount type=tmpfs,target=/app,tmpfs-size=10m,tmpfs-mode=1770`.
-    - `tmpfs-size`: Size of the tmpfs mount in bytes. Unlimited by default.
-    - `tmpfs-mode`: File mode of the tmpfs in **octal**.
+  - Common Options:
+    - :whale: `src`, `source`: Mount source spec for bind and volume. Mandatory for bind.
+    - :whale: `dst`, `destination`, `target`: Mount destination spec.
+    - :whale: `readonly`, `ro`, `rw`, `rro`: Filesystem permissinos.
+  - Options specific to `bind`:
+    - :whale: `bind-propagation`: `shared`, `slave`, `private`, `rshared`, `rslave`, or `rprivate`(default).
+    - :whale: `bind-nonrecursive`: `true` or `false`(default). If set to true, submounts are not recursively bind-mounted. This option is useful for readonly bind mount.
+    - unimplemented options: `consistency`
+  - Options specific to `tmpfs`:
+    - :whale: `tmpfs-size`: Size of the tmpfs mount in bytes. Unlimited by default.
+    - :whale: `tmpfs-mode`: File mode of the tmpfs in **octal**.
       Defaults to `1777` or world-writable.
-
-Unimplemented `docker run --mount` flags: `bind-nonrecursive`, `volume-nocopy`,
-`volume-label`, `volume-driver`, `volume-opt`, `consistency`.
+  - Options specific to `volume`:
+    - unimplemented options: `volume-nocopy`, `volume-label`, `volume-driver`, `volume-opt`
 
 Rootfs flags:
 - :whale: `--read-only`: Mount the container's root filesystem as read only
@@ -471,6 +470,13 @@ Metadata flags:
 - :whale: :blue_square: `--label-file`: Read in a line delimited file of labels
 - :whale: :blue_square: `--cidfile`: Write the container ID to the file
 - :nerd_face: `--pidfile`: file path to write the task's pid. The CLI syntax conforms to Podman convention.
+
+Logging flags:
+- :whale: `--log-driver=(json-file)`: Logging driver for the container (default `json-file`).
+    - :whale: `--log-driver=json-log`: The logs are formatted as JSON. The default logging driver for nerdctl.
+      - The `json-file` logging driver supports the following logging options:
+          - :whale: `--log-opt=max-size=<MAX-SIZE>`: The maximum size of the log before it is rolled. A positive integer plus a modifier representing the unit of measure (k, m, or g). Defaults to unlimited.
+          - :whale: `--log-opt=max-file=<MAX-FILE>`: The maximum number of log files that can be present. If rolling the logs creates excess files, the oldest file is removed. Only effective when `max-size` is also set. A positive integer. Defaults to 1.
 
 Shared memory flags:
 - :whale: `--shm-size`: Size of `/dev/shm`
@@ -611,7 +617,7 @@ Usage: `nerdctl exec [OPTIONS] CONTAINER COMMAND [ARG...]`
 Flags:
 - :whale: `-i, --interactive`: Keep STDIN open even if not attached
 - :whale: `-t, --tty`: Allocate a pseudo-TTY
-  - :warning: WIP: currently `-t` requires `-i`, and conflicts with `-d`
+  - :warning: WIP: currently `-t` conflicts with `-d`
 - :whale: `-d, --detach`: Detached mode: run command in the background
 - :whale: `-w, --workdir`: Working directory inside the container
 - :whale: `-e, --env`: Set environment variables
@@ -768,6 +774,12 @@ Usage: `nerdctl pause CONTAINER [CONTAINER...]`
 Unpause all processes within one or more containers.
 
 Usage: `nerdctl unpause CONTAINER [CONTAINER...]`
+
+### :whale: docker rename
+Rename a container.
+
+Usage: `nerdctl rename CONTAINER NEW_NAME`
+
 
 ## Build
 ### :whale: nerdctl build
@@ -1214,6 +1226,7 @@ Usage: `nerdctl info [OPTIONS]`
 
 Flags:
 - :whale: `-f, --format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :nerd_face: `--mode=(dockercompat|native)`: Information mode. "native" produces more information.
 
 ### :whale: nerdctl version
 Show the nerdctl version information
@@ -1440,7 +1453,6 @@ See [`./docs/config.md`](./docs/config.md).
 Container management:
 - `docker attach`
 - `docker diff`
-- `docker rename`
 
 - `docker container prune`
 

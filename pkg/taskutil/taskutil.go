@@ -22,23 +22,35 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"runtime"
+	"sync"
+	"syscall"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/nerdctl/pkg/infoutil"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/term"
 )
 
 // NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108
 func NewTask(ctx context.Context, client *containerd.Client, container containerd.Container, flagI, flagT, flagD bool, con console.Console, logURI string) (containerd.Task, error) {
-	stdinC := &StdinCloser{
-		Stdin: os.Stdin,
-	}
 	var ioCreator cio.Creator
 	if flagT {
 		if con == nil {
 			return nil, errors.New("got nil con with flagT=true")
 		}
-		ioCreator = cio.NewCreator(cio.WithStreams(con, con, nil), cio.WithTerminal)
+		var in io.Reader
+		if flagI {
+			// FIXME: check IsTerminal on Windows too
+			if runtime.GOOS != "windows" && !term.IsTerminal(0) {
+				return nil, errors.New("the input device is not a TTY")
+			}
+			in = con
+		}
+		ioCreator = cio.NewCreator(cio.WithStreams(in, con, nil), cio.WithTerminal)
 	} else if flagD && logURI != "" {
 		// TODO: support logURI for `nerdctl run -it`
 		u, err := url.Parse(logURI)
@@ -49,6 +61,21 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 	} else {
 		var in io.Reader
 		if flagI {
+			if sv, err := infoutil.ServerSemVer(ctx, client); err != nil {
+				logrus.Warn(err)
+			} else if sv.LessThan(semver.MustParse("1.6.0-0")) {
+				logrus.Warnf("`nerdctl (run|exec) -i` without `-t` expects containerd 1.6 or later, got containerd %v", sv)
+			}
+			var stdinC io.ReadCloser = &StdinCloser{
+				Stdin: os.Stdin,
+				Closer: func() {
+					if t, err := container.Task(ctx, nil); err != nil {
+						logrus.WithError(err).Debugf("failed to get task for StdinCloser")
+					} else {
+						t.CloseIO(ctx, containerd.WithStdinCloser)
+					}
+				},
+			}
 			in = stdinC
 		}
 		ioCreator = cio.NewCreator(cio.WithStreams(in, os.Stdout, os.Stderr))
@@ -57,24 +84,43 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 	if err != nil {
 		return nil, err
 	}
-	stdinC.Closer = func() {
-		t.CloseIO(ctx, containerd.WithStdinCloser)
-	}
 	return t, nil
 }
 
 // StdinCloser is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/exec.go#L181-L194
 type StdinCloser struct {
+	mu     sync.Mutex
 	Stdin  *os.File
 	Closer func()
+	closed bool
 }
 
 func (s *StdinCloser) Read(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return 0, syscall.EBADF
+	}
 	n, err := s.Stdin.Read(p)
-	if err == io.EOF {
+	if err != nil {
 		if s.Closer != nil {
 			s.Closer()
+			s.closed = true
 		}
 	}
 	return n, err
+}
+
+// Close implements Closer
+func (s *StdinCloser) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return nil
+	}
+	if s.Closer != nil {
+		s.Closer()
+	}
+	s.closed = true
+	return nil
 }

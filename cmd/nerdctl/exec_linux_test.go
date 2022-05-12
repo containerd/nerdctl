@@ -48,3 +48,24 @@ func TestExecWithUser(t *testing.T) {
 		base.Cmd(cmd...).AssertOutContains(expected)
 	}
 }
+
+func TestExecTTY(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	if testutil.GetTarget() == testutil.Nerdctl {
+		testutil.RequireDaemonVersion(base, ">= 1.6.0-0")
+	}
+
+	testContainer := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", testContainer).Run()
+	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "infinity").AssertOK()
+
+	const sttyPartialOutput = "speed 38400 baud"
+	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
+	// unbuffer(1) can be installed with `apt-get install expect`.
+	unbuffer := []string{"unbuffer"}
+	base.CmdWithHelper(unbuffer, "exec", "-it", testContainer, "stty").AssertOutContains(sttyPartialOutput)
+	base.CmdWithHelper(unbuffer, "exec", "-t", testContainer, "stty").AssertOutContains(sttyPartialOutput)
+	base.Cmd("exec", "-i", testContainer, "stty").AssertFail()
+	base.Cmd("exec", testContainer, "stty").AssertFail()
+}

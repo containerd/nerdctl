@@ -90,6 +90,10 @@ func stopAction(cmd *cobra.Command, args []string) error {
 }
 
 func stopContainer(ctx context.Context, container containerd.Container, timeout time.Duration) error {
+	if err := updateContainerStoppedLabel(ctx, container, true); err != nil {
+		return err
+	}
+
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
 		return err

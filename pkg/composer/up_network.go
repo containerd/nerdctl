@@ -36,7 +36,7 @@ func (c *Composer) upNetwork(ctx context.Context, shortName string) error {
 		return nil
 	}
 
-	if unknown := reflectutil.UnknownNonEmptyFields(&net, "Name", "Ipam"); len(unknown) > 0 {
+	if unknown := reflectutil.UnknownNonEmptyFields(&net, "Name", "Ipam", "Driver", "DriverOpts"); len(unknown) > 0 {
 		logrus.Warnf("Ignoring: network %s: %+v", shortName, unknown)
 	}
 
@@ -53,13 +53,41 @@ func (c *Composer) upNetwork(ctx context.Context, shortName string) error {
 			fmt.Sprintf("--label=%s=%s", labels.ComposeNetwork, shortName),
 		}
 
-		for i, ipamConfig := range net.Ipam.Config {
-			if unknown := reflectutil.UnknownNonEmptyFields(ipamConfig, "Subnet"); len(unknown) > 0 {
-				logrus.Warnf("Ignoring: network %s: ipam.config[%d]: %+v", shortName, i, unknown)
-			}
-			createArgs = append(createArgs, fmt.Sprintf("--subnet=%s", ipamConfig.Subnet))
+		if net.Driver != "" {
+			createArgs = append(createArgs, fmt.Sprintf("--driver=%s", net.Driver))
 		}
+
+		if net.DriverOpts != nil {
+			for k, v := range net.DriverOpts {
+				createArgs = append(createArgs, fmt.Sprintf("--opt=%s=%s", k, v))
+			}
+		}
+
+		if net.Ipam.Config != nil {
+			if len(net.Ipam.Config) > 1 {
+				logrus.Warnf("Ignoring: network %s: imam.config %+v", shortName, net.Ipam.Config[1:])
+			}
+
+			ipamConfig := net.Ipam.Config[0]
+			if unknown := reflectutil.UnknownNonEmptyFields(ipamConfig, "Subnet", "Gateway", "IPRange"); len(unknown) > 0 {
+				logrus.Warnf("Ignoring: network %s: ipam.config[0]: %+v", shortName, unknown)
+			}
+			if ipamConfig.Subnet != "" {
+				createArgs = append(createArgs, fmt.Sprintf("--subnet=%s", ipamConfig.Subnet))
+			}
+			if ipamConfig.Gateway != "" {
+				createArgs = append(createArgs, fmt.Sprintf("--gateway=%s", ipamConfig.Gateway))
+			}
+			if ipamConfig.IPRange != "" {
+				createArgs = append(createArgs, fmt.Sprintf("--ip-range=%s", ipamConfig.IPRange))
+			}
+		}
+
 		createArgs = append(createArgs, fullName)
+
+		if c.DebugPrintFull {
+			logrus.Debugf("Creating network args: %s", createArgs)
+		}
 
 		if err := c.runNerdctlCmd(ctx, append([]string{"network", "create"}, createArgs...)...); err != nil {
 			return err

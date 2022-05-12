@@ -18,17 +18,44 @@ package infoutil
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd"
+	ptypes "github.com/containerd/containerd/protobuf/types"
 	"github.com/containerd/containerd/services/introspection"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/version"
-	ptypes "github.com/gogo/protobuf/types"
 )
+
+func NativeDaemonInfo(ctx context.Context, client *containerd.Client) (*native.DaemonInfo, error) {
+	introService := client.IntrospectionService()
+	plugins, err := introService.Plugins(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	server, err := introService.Server(ctx, &ptypes.Empty{})
+	if err != nil {
+		return nil, err
+	}
+	versionService := client.VersionService()
+	version, err := versionService.Version(ctx, &ptypes.Empty{})
+	if err != nil {
+		return nil, err
+	}
+
+	daemonInfo := &native.DaemonInfo{
+		Plugins: plugins,
+		Server:  server,
+		Version: version,
+	}
+	return daemonInfo, nil
+}
 
 func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupManager string) (*dockercompat.Info, error) {
 	daemonVersion, err := client.Version(ctx)
@@ -109,4 +136,16 @@ func ServerVersion(ctx context.Context, client *containerd.Client) (*dockercompa
 		// TODO: add runc version
 	}
 	return v, nil
+}
+
+func ServerSemVer(ctx context.Context, client *containerd.Client) (*semver.Version, error) {
+	v, err := client.Version(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sv, err := semver.NewVersion(v.Version)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse the containerd version %q: %w", v.Version, err)
+	}
+	return sv, nil
 }

@@ -108,6 +108,13 @@ func TestParseVolumeOptions(t *testing.T) {
 			wants:   []string{"ro", "private"},
 		},
 		{
+			name:    "make bind nonrecursive",
+			vType:   "bind",
+			src:     "dummy",
+			optsRaw: "bind",
+			wants:   []string{"bind", "rprivate"},
+		},
+		{
 			name:                  "make bind shared",
 			vType:                 "bind",
 			src:                   "dummy",

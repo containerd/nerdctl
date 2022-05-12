@@ -94,6 +94,11 @@ services:
     volumes:
       - wordpress:/var/www/html
     pids_limit: 100
+    logging:
+      driver: json-file
+      options:
+        max-size: "5K"
+        max-file: "2"
 
   db:
     image: mariadb:10.5
@@ -139,6 +144,9 @@ volumes:
 	assert.Assert(t, in(wp1.RunArgs, "--pids-limit=100"))
 	assert.Assert(t, in(wp1.RunArgs, "--ulimit=nproc=500"))
 	assert.Assert(t, in(wp1.RunArgs, "--ulimit=nofile=20000:20000"))
+	assert.Assert(t, in(wp1.RunArgs, "--log-driver=json-file"))
+	assert.Assert(t, in(wp1.RunArgs, "--log-opt=max-size=5K"))
+	assert.Assert(t, in(wp1.RunArgs, "--log-opt=max-file=2"))
 
 	dbSvc, err := project.GetService("db")
 	assert.NilError(t, err)

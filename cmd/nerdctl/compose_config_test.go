@@ -18,7 +18,9 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -102,5 +104,38 @@ services:
 
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "-f", filepath.Join(comp.Dir(), "docker-compose.test.yml"), "config").AssertOutContains("alpine:3.14")
 	base.ComposeCmd("--project-directory", comp.Dir(), "config", "--services").AssertOutExactly("hello1\n")
+	base.ComposeCmd("--project-directory", comp.Dir(), "config").AssertOutContains("alpine:3.14")
+}
+
+func TestComposeConfigWithComposeFileEnv(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = `
+services:
+  hello1:
+    image: alpine:3.13
+`
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	comp.WriteFile("docker-compose.test.yml", `
+services:
+  hello2:
+    image: alpine:3.14
+`)
+
+	base.Env = append(os.Environ(), "COMPOSE_FILE="+comp.YAMLFullPath()+","+filepath.Join(comp.Dir(), "docker-compose.test.yml"), "COMPOSE_PATH_SEPARATOR=,")
+
+	base.ComposeCmd("config").AssertOutContains("alpine:3.14")
+	base.ComposeCmd("--project-directory", comp.Dir(), "config", "--services").AssertOutWithFunc(func(out string) error {
+		if !strings.Contains(out, "hello1\n") {
+			return fmt.Errorf("expected hello1, got %s", out)
+		}
+		if !strings.Contains(out, "hello2\n") {
+			return fmt.Errorf("expected hello2, got %s", out)
+		}
+		return nil
+	})
 	base.ComposeCmd("--project-directory", comp.Dir(), "config").AssertOutContains("alpine:3.14")
 }

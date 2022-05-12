@@ -35,7 +35,7 @@ jobs:
       with:
         go-version: 1.18.x
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3.1.0
+      uses: golangci/golangci-lint-action@v3.2.0
       with:
         version: v1.45.0
         args: --verbose
@@ -59,7 +59,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        containerd: [v1.5.10, v1.6.2, main]
+        containerd: [v1.5.11, v1.6.4, main]
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
@@ -85,7 +85,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        containerd: [v1.5.10, v1.6.2, main]
+        containerd: [v1.5.11, v1.6.4, main]
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:

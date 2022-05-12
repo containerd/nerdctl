@@ -90,6 +90,9 @@ func startContainer(ctx context.Context, container containerd.Container) error {
 		logrus.Warnf("container %s is already running", container.ID())
 		return nil
 	}
+	if err := updateContainerStoppedLabel(ctx, container, false); err != nil {
+		return err
+	}
 	if oldTask, err := container.Task(ctx, nil); err == nil {
 		if _, err := oldTask.Delete(ctx); err != nil {
 			logrus.WithError(err).Debug("failed to delete old task")

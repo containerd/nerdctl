@@ -27,12 +27,12 @@ You can also pass detailed configuration to `--gpus` option as a list of key-val
 
 - `count`: number of GPUs to use. `all` exposes all available GPUs.
 - `device`: IDs of GPUs to use. UUID or numbers of GPUs can be specified.
-- `capabilities`: [Driver capabilities](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/user-guide.html#driver-capabilities). If unset, `utility` is used.
+- `capabilities`: [Driver capabilities](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/user-guide.html#driver-capabilities). If unset, use default driver `utility`, `compute`.
 
 The following example exposes a specific GPU to the container.
 
 ```
-nerdctl run -it --rm --gpus capabilities=utility,device=GPU-3a23c669-1f69-c64e-cf85-44e9b07e7a2a nvidia/cuda:9.0-base nvidia-smi
+nerdctl run -it --rm --gpus '"capabilities=utility,compute",device=GPU-3a23c669-1f69-c64e-cf85-44e9b07e7a2a' nvidia/cuda:9.0-base nvidia-smi
 ```
 
 ## Fields for `nerdctl compose`

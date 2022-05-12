@@ -19,11 +19,15 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
+	"sort"
 	"strings"
 	"text/template"
 
+	"github.com/containerd/containerd/api/services/introspection/v1"
 	"github.com/containerd/nerdctl/pkg/infoutil"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
@@ -39,6 +43,10 @@ func newInfoCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	infoCommand.Flags().String("mode", "dockercompat", `Information mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
+	infoCommand.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"dockercompat", "native"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	infoCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
 	infoCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
@@ -47,8 +55,6 @@ func newInfoCommand() *cobra.Command {
 }
 
 func infoAction(cmd *cobra.Command, args []string) error {
-	var w io.Writer
-	w = os.Stdout
 	var (
 		tmpl *template.Template
 		err  error
@@ -70,27 +76,121 @@ func infoAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
-	if err != nil {
-		return err
-	}
-	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
-	if err != nil {
-		return err
-	}
-	info, err := infoutil.Info(ctx, client, snapshotter, cgroupManager)
+	mode, err := cmd.Flags().GetString("mode")
 	if err != nil {
 		return err
 	}
 
+	var (
+		infoNative *native.Info
+		infoCompat *dockercompat.Info
+	)
+	switch mode {
+	case "native":
+		di, err := infoutil.NativeDaemonInfo(ctx, client)
+		if err != nil {
+			return err
+		}
+		infoNative, err = fulfillNativeInfo(cmd, di)
+		if err != nil {
+			return err
+		}
+	case "dockercompat":
+		snapshotter, err := cmd.Flags().GetString("snapshotter")
+		if err != nil {
+			return err
+		}
+		cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
+		if err != nil {
+			return err
+		}
+		infoCompat, err = infoutil.Info(ctx, client, snapshotter, cgroupManager)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unknown mode %q", mode)
+	}
+
 	if tmpl != nil {
-		if err := tmpl.Execute(w, info); err != nil {
+		var x interface{} = infoNative
+		if infoCompat != nil {
+			x = infoCompat
+		}
+		w := cmd.OutOrStdout()
+		if err := tmpl.Execute(w, x); err != nil {
 			return err
 		}
 		_, err = fmt.Fprintf(w, "\n")
 		return err
 	}
 
+	switch mode {
+	case "native":
+		return prettyPrintInfoNative(cmd.OutOrStdout(), infoNative)
+	case "dockercompat":
+		return prettyPrintInfoDockerCompat(cmd, infoCompat)
+	}
+	return nil
+}
+
+func fulfillNativeInfo(cmd *cobra.Command, di *native.DaemonInfo) (*native.Info, error) {
+	info := &native.Info{
+		Daemon: di,
+	}
+	flags := cmd.Flags()
+	var err error
+	info.Namespace, err = flags.GetString("namespace")
+	if err != nil {
+		return nil, err
+	}
+	info.Snapshotter, err = flags.GetString("snapshotter")
+	if err != nil {
+		return nil, err
+	}
+	info.CgroupManager, err = flags.GetString("cgroup-manager")
+	if err != nil {
+		return nil, err
+	}
+	info.Rootless = rootlessutil.IsRootless()
+	return info, nil
+}
+
+func prettyPrintInfoNative(w io.Writer, info *native.Info) error {
+	fmt.Fprintf(w, "Namespace:          %s\n", info.Namespace)
+	fmt.Fprintf(w, "Snapshotter:        %s\n", info.Snapshotter)
+	fmt.Fprintf(w, "Cgroup Manager:     %s\n", info.CgroupManager)
+	fmt.Fprintf(w, "Rootless:           %v\n", info.Rootless)
+	fmt.Fprintf(w, "containerd Version: %s (%s)\n", info.Daemon.Version.Version, info.Daemon.Version.Revision)
+	fmt.Fprintf(w, "containerd UUID:    %s\n", info.Daemon.Server.UUID)
+	var disabledPlugins, enabledPlugins []*introspection.Plugin
+	for _, f := range info.Daemon.Plugins.Plugins {
+		if f.InitErr == nil {
+			enabledPlugins = append(enabledPlugins, f)
+		} else {
+			disabledPlugins = append(disabledPlugins, f)
+		}
+	}
+	sorter := func(x []*introspection.Plugin) func(int, int) bool {
+		return func(i, j int) bool {
+			return x[i].Type+"."+x[j].ID < x[j].Type+"."+x[j].ID
+		}
+	}
+	sort.Slice(enabledPlugins, sorter(enabledPlugins))
+	sort.Slice(disabledPlugins, sorter(disabledPlugins))
+	fmt.Fprintf(w, "containerd Plugins:\n")
+	for _, f := range enabledPlugins {
+		fmt.Fprintf(w, " - %s.%s\n", f.Type, f.ID)
+	}
+	fmt.Fprintf(w, "containerd Plugins (disabled):\n")
+	for _, f := range disabledPlugins {
+		fmt.Fprintf(w, " - %s.%s\n", f.Type, f.ID)
+	}
+	return nil
+}
+
+func prettyPrintInfoDockerCompat(cmd *cobra.Command, info *dockercompat.Info) error {
+	w := cmd.OutOrStdout()
 	namespace, err := cmd.Flags().GetString("namespace")
 	if err != nil {
 		return err

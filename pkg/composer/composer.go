@@ -64,10 +64,11 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 
 	var optionsFn []composecli.ProjectOptionsFn
 	optionsFn = append(optionsFn,
+		composecli.WithOsEnv,
 		composecli.WithWorkingDirectory(o.ProjectDirectory),
 		composecli.WithEnvFile(o.EnvFile),
+		composecli.WithConfigFileEnv,
 		composecli.WithDefaultConfigPath,
-		composecli.WithOsEnv,
 		composecli.WithDotEnv,
 		composecli.WithName(o.Project),
 	)

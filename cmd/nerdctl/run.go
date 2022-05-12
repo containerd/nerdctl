@@ -37,7 +37,6 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/idgen"
@@ -102,7 +101,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
 	cmd.Flags().String("restart", "no", `Restart policy to apply when a container exits (implemented values: "no"|"always")`)
 	cmd.RegisterFlagCompletionFunc("restart", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"no", "always"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"no", "always", "on-failure", "unless-stopped"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	cmd.Flags().Bool("rm", false, "Automatically remove the container when it exits")
 	cmd.Flags().String("pull", "missing", `Pull image before running ("always"|"missing"|"never")`)
@@ -228,6 +227,12 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("cidfile", "", "Write the container ID to the file")
 	// #endregion
 
+	// #region logging flags
+	// log-opt needs to be StringArray, not StringSlice, to prevent "env=os,customer" from being split to {"env=os", "customer"}
+	cmd.Flags().String("log-driver", "json-file", "Logging driver for the container")
+	cmd.Flags().StringArray("log-opt", nil, "Log driver options")
+	// #endregion
+
 	// shared memory flags
 	cmd.Flags().String("shm-size", "", "Size of /dev/shm")
 	cmd.Flags().String("pidfile", "", "file path to write the task's pid")
@@ -292,7 +297,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 			const removeAnonVolumes = true
 			ns := lab[labels.Namespace]
 			stateDir := lab[labels.StateDir]
-			if removeErr := removeContainer(cmd, ctx, client, ns, id, id, true, dataStore, stateDir, containerNameStore, removeAnonVolumes); removeErr != nil {
+			if removeErr := removeContainer(cmd, ctx, container, ns, id, true, dataStore, stateDir, containerNameStore, removeAnonVolumes); removeErr != nil {
 				logrus.WithError(removeErr).Warnf("failed to remove container %s", id)
 			}
 		}()
@@ -452,9 +457,6 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		if flagD {
 			return nil, "", nil, errors.New("currently flag -t and -d cannot be specified together (FIXME)")
 		}
-		if !flagI {
-			return nil, "", nil, errors.New("currently flag -t needs -i to be specified together (FIXME)")
-		}
 		opts = append(opts, oci.WithTTY)
 	}
 
@@ -467,7 +469,16 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 
 	var logURI string
 	if flagD {
-		if lu, err := generateLogURI(dataStore); err != nil {
+		// json-file is the built-in and default log driver for nerdctl
+		logDriver, err := cmd.Flags().GetString("log-driver")
+		if err != nil {
+			return nil, "", nil, err
+		}
+		logOptMap, err := parseKVStringsMapFromLogOpt(cmd, logDriver)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		if lu, err := generateLogURI(dataStore, logDriver, logOptMap); err != nil {
 			return nil, "", nil, err
 		} else if lu != nil {
 			logURI = lu.String()
@@ -478,7 +489,7 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 	if err != nil {
 		return nil, "", nil, err
 	}
-	restartOpts, err := generateRestartOpts(restartValue, logURI)
+	restartOpts, err := generateRestartOpts(ctx, client, restartValue, logURI)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -747,13 +758,22 @@ func withBindMountHostProcfs(_ context.Context, _ oci.Client, _ *containers.Cont
 	return nil
 }
 
-func generateLogURI(dataStore string) (*url.URL, error) {
-	selfExe, err := os.Executable()
-	if err != nil {
-		return nil, err
+func generateLogURI(dataStore, logDriver string, logOptMap map[string]string) (*url.URL, error) {
+	var selfExe string
+	if logDriver == "json-file" {
+		var err error
+		selfExe, err = os.Executable()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("%s is not yet supported", logDriver)
 	}
 	args := map[string]string{
 		logging.MagicArgv1: dataStore,
+	}
+	for k, v := range logOptMap {
+		args[k] = v
 	}
 	if runtime.GOOS == "windows" {
 		return nil, nil
@@ -784,21 +804,6 @@ func withNerdctlOCIHook(cmd *cobra.Command, id, stateDir string) (oci.SpecOpts, 
 		})
 		return nil
 	}, nil
-}
-
-func generateRestartOpts(restartFlag, logURI string) ([]containerd.NewContainerOpts, error) {
-	switch restartFlag {
-	case "", "no":
-		return nil, nil
-	case "always":
-		opts := []containerd.NewContainerOpts{restart.WithStatus(containerd.Running)}
-		if logURI != "" {
-			opts = append(opts, restart.WithLogURIString(logURI))
-		}
-		return opts, nil
-	default:
-		return nil, fmt.Errorf("unsupported restart type %q, supported types are: \"no\",  \"always\"", restartFlag)
-	}
 }
 
 func getContainerStateDirPath(cmd *cobra.Command, dataStore, id string) (string, error) {
@@ -841,6 +846,22 @@ func readKVStringsMapfFromLabel(cmd *cobra.Command) (map[string]string, error) {
 	}
 
 	return strutil.ConvertKVStringsToMap(labels), nil
+}
+
+// parseKVStringsMapFromLogOpt parse log options KV entries and convert to Map
+func parseKVStringsMapFromLogOpt(cmd *cobra.Command, logDriver string) (map[string]string, error) {
+	logOptArray, err := cmd.Flags().GetStringArray("log-opt")
+	if err != nil {
+		return nil, err
+	}
+	logOptArray = strutil.DedupeStrSlice(logOptArray)
+	logOptMap := strutil.ConvertKVStringsToMap(logOptArray)
+	if logDriver == "json-file" {
+		if _, ok := logOptMap[logging.MaxSize]; !ok {
+			delete(logOptMap, logging.MaxFile)
+		}
+	}
+	return logOptMap, nil
 }
 
 func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ipAddress string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string, mountPoints []*mountutil.Processed) (containerd.NewContainerOpts, error) {
