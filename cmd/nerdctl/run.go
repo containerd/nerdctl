@@ -32,7 +32,6 @@ import (
 
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
@@ -769,17 +768,25 @@ func generateLogURI(dataStore, logDriver string, logOptMap map[string]string) (*
 	} else {
 		return nil, fmt.Errorf("%s is not yet supported", logDriver)
 	}
-	args := map[string]string{
-		logging.MagicArgv1: dataStore,
-	}
-	for k, v := range logOptMap {
-		args[k] = v
+	filePath := filepath.Clean(selfExe)
+	if !strings.HasPrefix(filePath, "/") {
+		return nil, errors.New("absolute filePath needed")
 	}
 	if runtime.GOOS == "windows" {
 		return nil, nil
 	}
+	uri := &url.URL{
+		Scheme: "binary",
+		Path:   filePath,
+	}
+	query := strutil.NewOrderedQuery()
+	query.Set(logging.MagicArgv1, dataStore)
 
-	return cio.LogURIGenerator("binary", selfExe, args)
+	for k, v := range logOptMap {
+		query.Set(k, v)
+	}
+	uri.RawQuery = query.Encode()
+	return uri, nil
 }
 
 func withNerdctlOCIHook(cmd *cobra.Command, id, stateDir string) (oci.SpecOpts, error) {

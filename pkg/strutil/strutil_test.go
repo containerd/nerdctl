@@ -281,3 +281,11 @@ func TestParseCSVMap(t *testing.T) {
 		})
 	}
 }
+
+func TestOrderedQuery(t *testing.T) {
+	query := NewOrderedQuery()
+	query.Set("abc", "1")
+	query.Set("aa", "2")
+	result := query.Encode()
+	assert.Equal(t, result, "abc=1&aa=2", "")
+}

@@ -32,6 +32,7 @@ package strutil
 import (
 	"encoding/csv"
 	"fmt"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -129,4 +130,59 @@ func ParseBoolOrAuto(s string) (*bool, error) {
 	}
 	b, err := strconv.ParseBool(s)
 	return &b, err
+}
+
+type OrderedQuery struct {
+	index []string
+	data  map[string][]string
+}
+
+func NewOrderedQuery() *OrderedQuery {
+	return &OrderedQuery{[]string{}, map[string][]string{}}
+}
+
+func (orderedQuery *OrderedQuery) Get(key string) string {
+	if orderedQuery == nil {
+		return ""
+	}
+	vs := orderedQuery.data[key]
+	if len(vs) == 0 {
+		return ""
+	}
+	return vs[0]
+}
+
+// Set sets the key to value. It replaces any existing
+// values.
+func (orderedQuery *OrderedQuery) Set(key, value string) {
+	orderedQuery.data[key] = []string{value}
+	orderedQuery.index = append(orderedQuery.index, key)
+}
+
+// Add adds the value to key. It appends to any existing
+// values associated with key.
+func (orderedQuery *OrderedQuery) Add(key, value string) {
+	orderedQuery.data[key] = append(orderedQuery.data[key], value)
+}
+
+// Encode encodes the values into ``URL encoded'' form
+// ("bar=baz&foo=quux") sorted by key.
+func (orderedQuery *OrderedQuery) Encode() string {
+	if orderedQuery == nil {
+		return ""
+	}
+	var buf strings.Builder
+	for _, k := range orderedQuery.index {
+		vs := orderedQuery.data[k]
+		keyEscaped := url.QueryEscape(k)
+		for _, v := range vs {
+			if buf.Len() > 0 {
+				buf.WriteByte('&')
+			}
+			buf.WriteString(keyEscaped)
+			buf.WriteByte('=')
+			buf.WriteString(url.QueryEscape(v))
+		}
+	}
+	return buf.String()
 }
