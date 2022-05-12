@@ -40,6 +40,8 @@ ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.4
 ARG IPFS_VERSION=v0.12.2
 # Extra deps: Init
 ARG TINI_VERSION=v0.19.0
+# Extra deps: Debug
+ARG BUILDG_VERSION=v0.0.3
 
 # Test deps
 ARG GO_VERSION=1.18
@@ -203,6 +205,13 @@ RUN fname="tini-static-${TARGETARCH:-amd64}" && \
   grep "${fname}" "/SHA256SUMS.d/tini-${TINI_VERSION}" | sha256sum -c && \
   cp -a "${fname}" /out/bin/tini && chmod +x /out/bin/tini && \
   echo "- Tini: ${TINI_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+ARG BUILDG_VERSION
+RUN fname="buildg-${BUILDG_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
+  curl -o "${fname}" -fSL "https://github.com/ktock/buildg/releases/download/${BUILDG_VERSION}/${fname}" && \
+  grep "${fname}" "/SHA256SUMS.d/buildg-${BUILDG_VERSION}" | sha256sum -c && \
+  tar xzf "${fname}" -C /out/bin && \
+  rm -f "${fname}" && \
+  echo "- buildg: ${BUILDG_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \

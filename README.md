@@ -310,6 +310,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:nerd_face: nerdctl apparmor unload](#nerd_face-nerdctl-apparmor-unload)
   - [Builder management](#builder-management)
     - [:whale: nerdctl builder prune](#whale-nerdctl-builder-prune)
+    - [:nerd_face: nerdctl builder debug](#nerd_face-nerdctl-builder-debug)
   - [System](#system)
     - [:whale: nerdctl events](#whale-nerdctl-events)
     - [:whale: nerdctl info](#whale-nerdctl-info)
@@ -1204,6 +1205,21 @@ Usage: `nerdctl builder prune`
 Flags:
 - :nerd_face: `--buildkit-host=<BUILDKIT_HOST>`: BuildKit address
 
+### :nerd_face: nerdctl builder debug
+Interactive debugging of Dockerfile using [buildg](https://github.com/ktock/buildg).
+Please refer to [`./docs/builder-debug.md`](./docs/builder-debug.md) for details.
+This is an [experimental](./docs/experimental.md) feature.
+
+:warning: This command currently doesn't use the host's `buildkitd` daemon but uses the patched version of BuildKit provided by buildg. This should be fixed in the future.
+
+Usage: `nerdctl builder debug PATH`
+
+Flags:
+- :nerd_face: `-f`, `--file`: Name of the Dockerfile
+- :nerd_face: `--image`: Image to use for debugging stage
+- :nerd_face: `--target`: Set the target build stage to build
+- :nerd_face: `--build-arg`: Set build-time variables
+
 Unimplemented `docker builder prune` flags: `--all`, `--filter`, `--force`, `--keep-storage`
 
 ## System
@@ -1507,6 +1523,7 @@ Experimental features:
 - [`./docs/experimental.md`](./docs/experimental.md):  Experimental features
 - [`./docs/freebsd.md`](./docs/freebsd.md):  Running FreeBSD jails
 - [`./docs/ipfs.md`](./docs/ipfs.md): Distributing images on IPFS
+- [`./docs/builder-debug.md`](./docs/builder-debug.md): Interactive debugging of Dockerfile
 
 Implementation details:
 - [`./docs/dir.md`](./docs/dir.md):           Directory layout (`/var/lib/nerdctl`)
