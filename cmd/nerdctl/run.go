@@ -478,7 +478,23 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		if err != nil {
 			return nil, "", nil, err
 		}
-		if lu, err := generateLogURI(dataStore, logDriver, logOptMap); err != nil {
+		logConfig := &logging.LogConfig{
+			Drivers: []logging.LogDriverConfig{
+				{
+					Driver: logDriver,
+					Opts:   logOptMap,
+				},
+			},
+		}
+		logConfigB, err := json.Marshal(logConfig)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		logConfigFilePath := logging.LogConfigFilePath(dataStore, ns, id)
+		if err = os.WriteFile(logConfigFilePath, logConfigB, 0600); err != nil {
+			return nil, "", nil, err
+		}
+		if lu, err := generateLogURI(dataStore); err != nil {
 			return nil, "", nil, err
 		} else if lu != nil {
 			logURI = lu.String()
@@ -758,22 +774,13 @@ func withBindMountHostProcfs(_ context.Context, _ oci.Client, _ *containers.Cont
 	return nil
 }
 
-func generateLogURI(dataStore, logDriver string, logOptMap map[string]string) (*url.URL, error) {
-	var selfExe string
-	if logDriver == "json-file" {
-		var err error
-		selfExe, err = os.Executable()
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, fmt.Errorf("%s is not yet supported", logDriver)
+func generateLogURI(dataStore string) (*url.URL, error) {
+	selfExe, err := os.Executable()
+	if err != nil {
+		return nil, err
 	}
 	args := map[string]string{
 		logging.MagicArgv1: dataStore,
-	}
-	for k, v := range logOptMap {
-		args[k] = v
 	}
 	if runtime.GOOS == "windows" {
 		return nil, nil

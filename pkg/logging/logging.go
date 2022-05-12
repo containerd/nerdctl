@@ -18,6 +18,7 @@ package logging
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -40,8 +41,8 @@ const (
 // Main is the entrypoint for the containerd runtime v2 logging plugin mode.
 //
 // Should be called only if argv1 == MagicArgv1.
-func Main(argsMap map[string]string) error {
-	fn, err := getLoggerFunc(argsMap)
+func Main(argv2 string) error {
+	fn, err := getLoggerFunc(argv2)
 	if err != nil {
 		return err
 	}
@@ -49,15 +50,55 @@ func Main(argsMap map[string]string) error {
 	return nil
 }
 
-func getLoggerFunc(argsMap map[string]string) (logging.LoggerFunc, error) {
-	if argsMap[MagicArgv1] == "" {
+// LogConfig is marshalled as "log-config.json"
+type LogConfig struct {
+	Drivers []LogDriverConfig `json:"drivers,omitempty"`
+}
+
+// LogDriverConfig is defined per a driver
+type LogDriverConfig struct {
+	Driver string            `json:"driver"`
+	Opts   map[string]string `json:"opts,omitempty"`
+}
+
+// LogConfigFilePath returns the path of log-config.json
+func LogConfigFilePath(dataStore, ns, id string) string {
+	return filepath.Join(dataStore, "containers", ns, id, "log-config.json")
+}
+
+func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
+	if dataStore == "" {
 		return nil, errors.New("got empty data store")
 	}
 	return func(_ context.Context, config *logging.Config, ready func() error) error {
 		if config.Namespace == "" || config.ID == "" {
 			return errors.New("got invalid config")
 		}
-		logJSONFilePath := jsonfile.Path(argsMap[MagicArgv1], config.Namespace, config.ID)
+		jsonFileDriverOpts := make(map[string]string)
+		logConfigFilePath := LogConfigFilePath(dataStore, config.Namespace, config.ID)
+		if _, err := os.Stat(logConfigFilePath); err == nil {
+			var logConfig LogConfig
+			logConfigFileB, err := os.ReadFile(logConfigFilePath)
+			if err != nil {
+				return err
+			}
+			if err = json.Unmarshal(logConfigFileB, &logConfig); err != nil {
+				return err
+			}
+			for _, f := range logConfig.Drivers {
+				switch f.Driver {
+				case "json-file":
+					jsonFileDriverOpts = f.Opts
+				default:
+					return fmt.Errorf("unknown driver %q", f.Driver)
+				}
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
+			// the file does not exist if the container was created with nerdctl < 0.20
+			return err
+		}
+
+		logJSONFilePath := jsonfile.Path(dataStore, config.Namespace, config.ID)
 		if err := os.MkdirAll(filepath.Dir(logJSONFilePath), 0700); err != nil {
 			return err
 		}
@@ -70,7 +111,7 @@ func getLoggerFunc(argsMap map[string]string) (logging.LoggerFunc, error) {
 		//maxSize Defaults to unlimited.
 		var capVal int64
 		capVal = -1
-		if capacity, ok := argsMap[MaxSize]; ok {
+		if capacity, ok := jsonFileDriverOpts[MaxSize]; ok {
 			var err error
 			capVal, err = units.FromHumanSize(capacity)
 			if err != nil {
@@ -82,7 +123,7 @@ func getLoggerFunc(argsMap map[string]string) (logging.LoggerFunc, error) {
 		}
 		l.MaxBytes = capVal
 		maxFile := 1
-		if maxFileString, ok := argsMap[MaxFile]; ok {
+		if maxFileString, ok := jsonFileDriverOpts[MaxFile]; ok {
 			var err error
 			maxFile, err = strconv.Atoi(maxFileString)
 			if err != nil {

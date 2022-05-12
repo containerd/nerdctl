@@ -31,6 +31,7 @@ e.g. `/var/lib/nerdctl/1935db59/containers/default/c4ed811cc361d26faffdee8d696dd
 Files:
 - `resolv.conf`: mounted to the container as `/etc/resolv.conf`
 - `hostname`: mounted to the container as `/etc/hostname`
+- `log-config.json`: used for storing the `--log-opts` map of `nerdctl run`
 - `<CID>-json.log`: used by `nerdctl logs`
 - `oci-hook.*.log`: logs of the OCI hook
 
