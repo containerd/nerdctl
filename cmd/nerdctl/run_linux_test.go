@@ -71,6 +71,20 @@ func TestRunPidHost(t *testing.T) {
 	base.Cmd("run", "--rm", "--pid=host", testutil.AlpineImage, "ps", "auxw").AssertOutContains(strconv.Itoa(pid))
 }
 
+func TestRunIpcHost(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	testFile, err := os.Create("/dev/shm/test")
+	assert.NilError(base.T, err)
+
+	defer func() {
+		testFile.Close()
+		os.Remove(testFile.Name())
+	}()
+
+	base.Cmd("run", "--rm", "--ipc=host", testutil.AlpineImage, "ls", testFile.Name()).AssertExitCode(0)
+}
+
 func TestRunAddHost(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)

@@ -175,5 +175,17 @@ func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]o
 		opts = append(opts, oci.WithRdt(rdtClass, "", ""))
 	}
 
+	ipc, err := cmd.Flags().GetString("ipc")
+	if err != nil {
+		return nil, err
+	}
+	// if nothing is specified, or if private, default to normal behavior
+	if ipc == "host" {
+		opts = append(opts, oci.WithHostNamespace(specs.IPCNamespace))
+		opts = append(opts, withBindMountHostIPC)
+	} else if ipc != "" && ipc != "private" {
+		return nil, fmt.Errorf("error: %v", "invalid ipc value, supported values are 'private' or 'host'")
+	}
+
 	return opts, nil
 }

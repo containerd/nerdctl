@@ -138,6 +138,10 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("hostname", "h", "", "Container host name")
 	// #endregion
 
+	cmd.Flags().String("ipc", "", `IPC namespace to use ("host"|"private")`)
+	cmd.RegisterFlagCompletionFunc("ipc", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"host", "private"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	// #region cgroups, namespaces, and ulimits flags
 	cmd.Flags().Float64("cpus", 0.0, "Number of CPUs")
 	cmd.Flags().StringP("memory", "m", "", "Memory limit")
@@ -726,6 +730,33 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 		opts = append(opts, oci.WithRootFSReadonly())
 	}
 	return opts, cOpts, ensured, nil
+}
+
+// withBindMountHostIPC replaces /dev/shm and /dev/mqueue  mount with rbind.
+// Required for --ipc=host on rootless.
+//
+func withBindMountHostIPC(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+	for i, m := range s.Mounts {
+		if path.Clean(m.Destination) == "/dev/shm" {
+			newM := specs.Mount{
+				Destination: "/dev/shm",
+				Type:        "bind",
+				Source:      "/dev/shm",
+				Options:     []string{"rbind", "nosuid", "noexec", "nodev"},
+			}
+			s.Mounts[i] = newM
+		}
+		if path.Clean(m.Destination) == "/dev/mqueue" {
+			newM := specs.Mount{
+				Destination: "/dev/mqueue",
+				Type:        "bind",
+				Source:      "/dev/mqueue",
+				Options:     []string{"rbind", "nosuid", "noexec", "nodev"},
+			}
+			s.Mounts[i] = newM
+		}
+	}
+	return nil
 }
 
 // withBindMountHostProcfs replaces procfs mount with rbind.
