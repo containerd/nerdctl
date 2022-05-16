@@ -480,6 +480,7 @@ Logging flags:
           - :whale: `--log-opt=max-file=<MAX-FILE>`: The maximum number of log files that can be present. If rolling the logs creates excess files, the oldest file is removed. Only effective when `max-size` is also set. A positive integer. Defaults to 1.
 
 Shared memory flags:
+- :whale: `--ipc`: IPC namespace to use
 - :whale: `--shm-size`: Size of `/dev/shm`
 
 GPU flags:
