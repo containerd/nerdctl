@@ -74,15 +74,13 @@ func TestRunPidHost(t *testing.T) {
 func TestRunIpcHost(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	testFile, err := os.Create("/dev/shm/test")
+	testFilePath := filepath.Join("/dev/shm",
+		fmt.Sprintf("%s-%d-%s", testutil.Identifier(t), os.Geteuid(), base.Target))
+	err := os.WriteFile(testFilePath, []byte(""), 0644)
 	assert.NilError(base.T, err)
+	defer os.Remove(testFilePath)
 
-	defer func() {
-		testFile.Close()
-		os.Remove(testFile.Name())
-	}()
-
-	base.Cmd("run", "--rm", "--ipc=host", testutil.AlpineImage, "ls", testFile.Name()).AssertExitCode(0)
+	base.Cmd("run", "--rm", "--ipc=host", testutil.AlpineImage, "ls", testFilePath).AssertOK()
 }
 
 func TestRunAddHost(t *testing.T) {
