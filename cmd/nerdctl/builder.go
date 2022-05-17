@@ -89,6 +89,8 @@ func newBuilderDebugCommand() *cobra.Command {
 	buildDebugCommand.Flags().String("target", "", "Set the target build stage to build")
 	buildDebugCommand.Flags().StringArray("build-arg", nil, "Set build-time variables")
 	buildDebugCommand.Flags().String("image", "", "Image to use for debugging stage")
+	buildDebugCommand.Flags().StringArray("ssh", nil, "Allow forwarding SSH agent to the build. Format: default|<id>[=<socket>|<key>[,<key>]]")
+	buildDebugCommand.Flags().StringArray("secret", nil, "Expose secret value to the build. Format: id=secretname,src=filepath")
 	return buildDebugCommand
 }
 
@@ -133,6 +135,22 @@ func builderDebugAction(cmd *cobra.Command, args []string) error {
 		return err
 	} else if imageValue != "" {
 		buildgArgs = append(buildgArgs, "--image="+imageValue)
+	}
+
+	if sshValue, err := cmd.Flags().GetStringArray("ssh"); err != nil {
+		return err
+	} else if len(sshValue) > 0 {
+		for _, v := range sshValue {
+			buildgArgs = append(buildgArgs, "--ssh="+v)
+		}
+	}
+
+	if secretValue, err := cmd.Flags().GetStringArray("secret"); err != nil {
+		return err
+	} else if len(secretValue) > 0 {
+		for _, v := range secretValue {
+			buildgArgs = append(buildgArgs, "--secret="+v)
+		}
 	}
 
 	buildgCmd := exec.Command(buildgBinary, append(buildgArgs, args[0])...)

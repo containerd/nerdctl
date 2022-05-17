@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"testing"
@@ -37,5 +38,5 @@ CMD ["echo", "nerdctl-builder-debug-test-string"]
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
-	base.Cmd("builder", "debug", buildCtx).AssertOK()
+	base.Cmd("builder", "debug", buildCtx).CmdOption(testutil.WithStdin(bytes.NewReader([]byte("c\n")))).AssertOK()
 }

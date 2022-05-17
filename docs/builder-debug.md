@@ -26,8 +26,7 @@ Example debugging:
 
 ```console
 $ nerdctl builder debug --image=ubuntu:22.04 /tmp/ctx/
-WARN[2022-05-10T12:49:43Z] using host network as the default
-#1 [internal] load .dockerignore
+WARN[2022-05-17T10:15:48Z] using host network as the default#1 [internal] load .dockerignore
 #1 transferring context: 2B done
 #1 DONE 0.1s
 
@@ -36,52 +35,42 @@ WARN[2022-05-10T12:49:43Z] using host network as the default
 #2 DONE 0.1s
 
 #3 [internal] load metadata for docker.io/library/busybox:latest
-#3 DONE 3.0s
+INFO[2022-05-17T10:15:51Z] debug session started. type "help" for command reference.
+Filename: "Dockerfile"
+ =>   1| FROM busybox AS build1
+      2| RUN echo a > /a
+      3| RUN echo b > /b
+      4| RUN echo c > /c
+(buildg) break 3
+(buildg) breakpoints
+[0]: line: Dockerfile:3
+[on-fail]: breaks on fail
+(buildg) continue
+#3 DONE 3.1s
 
 #4 [1/4] FROM docker.io/library/busybox@sha256:d2b53584f580310186df7a2055ce3ff83cc0df6caacf1e3489bff8cf5d0af5d8
 #4 resolve docker.io/library/busybox@sha256:d2b53584f580310186df7a2055ce3ff83cc0df6caacf1e3489bff8cf5d0af5d8 0.0s done
 #4 sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 0B / 772.81kB 0.2s
-Filename: "Dockerfile"
-      1| FROM busybox AS build1
- =>   2| RUN echo a > /a
-      3| RUN echo b > /b
-      4| RUN echo c > /c
->>> break 3
->>> breakpoints
-[0]: line: Dockerfile:3
-[on-fail]: breaks on fail
->>> continue
-#4 sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 772.81kB / 772.81kB 0.3s done
-#4 extracting sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 0.0s done
-#4 DONE 0.4s
+#4 sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 0B / 772.81kB 5.3s
+#4 sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 0B / 772.81kB 10.4s
+#4 sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 772.81kB / 772.81kB 11.4s done
+#4 extracting sha256:50e8d59317eb665383b2ef4d9434aeaa394dcd6f54b96bb7810fdde583e9c2d1 0.1s done
+#4 DONE 20.2s
 
 #5 [2/4] RUN echo a > /a
-#5 DONE 15.1s
-Breakpoint: line: Dockerfile:3: reached
+#5 DONE 0.1s
+Breakpoint[0]: reached line: Dockerfile:3
 Filename: "Dockerfile"
       1| FROM busybox AS build1
       2| RUN echo a > /a
 *=>   3| RUN echo b > /b
       4| RUN echo c > /c
->>> exec --image sh
-# cat /etc/os-release
-PRETTY_NAME="Ubuntu 22.04 LTS"
-NAME="Ubuntu"
-VERSION_ID="22.04"
-VERSION="22.04 LTS (Jammy Jellyfish)"
-VERSION_CODENAME=jammy
-ID=ubuntu
-ID_LIKE=debian
-HOME_URL="https://www.ubuntu.com/"
-SUPPORT_URL="https://help.ubuntu.com/"
-BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
-PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
-UBUNTU_CODENAME=jammy
+(buildg) exec --image sh
 # ls /debugroot/
 a  b  bin  dev	etc  home  proc  root  tmp  usr  var
 # cat /debugroot/a /debugroot/b
 a
 b
 #
->>> quit
+(buildg) quit
 ```
