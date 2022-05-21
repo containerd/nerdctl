@@ -23,9 +23,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -264,4 +266,156 @@ func TestRunTTY(t *testing.T) {
 	base.CmdWithHelper(unbuffer, "run", "--rm", "-t", testutil.CommonImage, "stty").AssertOutContains(sttyPartialOutput)
 	base.Cmd("run", "--rm", "-i", testutil.CommonImage, "stty").AssertFail()
 	base.Cmd("run", "--rm", testutil.CommonImage, "stty").AssertFail()
+}
+
+func TestRunWithFluentdLogDriver(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fluentd log driver is not yet implemented on Windows")
+	}
+	base := testutil.NewBase(t)
+	imageName := "test-fluentd-image"
+	dockerfile := fmt.Sprintf(`
+FROM %s
+RUN rm -rf /fluentd/etc/test.conf && echo  -e '\
+ <source>\n\
+   @type forward\n\
+ </source>\n\
+\n\
+ <match *>\n\
+   @type file\n\
+   path /data/fluentd\n\
+   append true\n\
+  <buffer>\n\
+    flush_mode immediate\n\
+  </buffer>\n\
+ </match>\n\
+'>> /fluentd/etc/test.conf
+`, testutil.FluentdImage)
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
+	tempDirectory, err := os.MkdirTemp(t.TempDir(), "rw")
+	assert.NilError(t, err)
+	defer os.RemoveAll(tempDirectory)
+	err = os.Chmod(tempDirectory, 0777)
+	assert.NilError(t, err)
+	containerName := imageName + "container"
+	base.Cmd([]string{
+		"run",
+		"-d",
+		"--name",
+		containerName,
+		"-p",
+		"24224:24224",
+		"-v",
+		fmt.Sprintf("%s:/data", tempDirectory),
+		"-e",
+		"FLUENTD_CONF=test.conf",
+		imageName,
+	}...).AssertOK()
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	defer base.Cmd("kill", containerName).AssertOK()
+	time.Sleep(3 * time.Second)
+	testContainerName := "test-container"
+	base.Cmd("run", "-d", "--log-driver", "fluentd", "--name", testContainerName, testutil.CommonImage,
+		"sh", "-c", "echo test").AssertOK()
+	defer base.Cmd("rm", "-f", testContainerName).AssertOK()
+	inspectedContainer := base.InspectContainer(testContainerName)
+	matches, err := filepath.Glob(tempDirectory + "/" + "*log")
+	assert.NilError(t, err)
+	assert.Equal(t, 1, len(matches))
+	logFile := matches[0]
+	defer os.Remove(logFile)
+	file, err := os.Open(logFile)
+	assert.NilError(t, err)
+	defer file.Close()
+	reader := bufio.NewReader(file)
+	data, _, err := reader.ReadLine()
+	assert.NilError(t, err)
+	logData := string(data)
+	assert.Equal(t, true, strings.Contains(logData, "test"))
+	assert.Equal(t, true, strings.Contains(logData, inspectedContainer.ID))
+}
+
+func TestRunWithFluentdLogDriverWithLogOpt(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fluentd log driver is not yet implemented on Windows")
+	}
+	base := testutil.NewBase(t)
+	imageName := "test-fluentd-image"
+	dockerfile := fmt.Sprintf(`
+FROM %s
+RUN rm -rf /fluentd/etc/test.conf && echo  -e '\
+ <source>\n\
+   @type forward\n\
+ </source>\n\
+\n\
+ <match *>\n\
+   @type file\n\
+   path /data/fluentd\n\
+   append true\n\
+  <buffer>\n\
+    flush_mode immediate\n\
+  </buffer>\n\
+ </match>\n\
+'>> /fluentd/etc/test.conf
+`, testutil.FluentdImage)
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
+	tempDirectory, err := os.MkdirTemp(t.TempDir(), "rw")
+	assert.NilError(t, err)
+	defer os.RemoveAll(tempDirectory)
+	err = os.Chmod(tempDirectory, 0777)
+	assert.NilError(t, err)
+	containerName := imageName + "container"
+	base.Cmd([]string{
+		"run",
+		"-d",
+		"--name",
+		containerName,
+		"-p",
+		"24225:24224",
+		"-v",
+		fmt.Sprintf("%s:/data", tempDirectory),
+		"-e",
+		"FLUENTD_CONF=test.conf",
+		imageName,
+	}...).AssertOK()
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	defer base.Cmd("kill", containerName).AssertOK()
+	time.Sleep(3 * time.Second)
+	testContainerName := "test-container"
+	base.Cmd([]string{
+		"run",
+		"-d",
+		"--log-driver",
+		"fluentd",
+		"--log-opt",
+		"fluentd-address=127.0.0.1:24225",
+		"--name",
+		testContainerName,
+		testutil.CommonImage,
+		"sh", "-c", "echo test2",
+	}...).AssertOK()
+	defer base.Cmd("rm", "-f", testContainerName).AssertOK()
+	inspectedContainer := base.InspectContainer(testContainerName)
+	matches, err := filepath.Glob(tempDirectory + "/" + "*log")
+	assert.NilError(t, err)
+	assert.Equal(t, 1, len(matches))
+	logFile := matches[0]
+	defer os.Remove(logFile)
+	file, err := os.Open(logFile)
+	assert.NilError(t, err)
+	defer file.Close()
+	reader := bufio.NewReader(file)
+	data, _, err := reader.ReadLine()
+	assert.NilError(t, err)
+	logData := string(data)
+	assert.Equal(t, true, strings.Contains(logData, "test2"))
+	assert.Equal(t, true, strings.Contains(logData, inspectedContainer.ID))
 }
