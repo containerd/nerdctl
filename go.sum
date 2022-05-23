@@ -191,8 +191,8 @@ github.com/cockroachdb/datadriven v0.0.0-20200714090401-bf6692d28da5/go.mod h1:h
 github.com/cockroachdb/errors v1.2.4/go.mod h1:rQD95gz6FARkaKkQXUksEje/d9a6wBJoCr5oaCLELYA=
 github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f/go.mod h1:i/u985jwjWRlyHXQbwatDASoW0RMlZ/3i9yJHE2xLkI=
 github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd/go.mod h1:sE/e/2PUdi/liOCUjSTXgM1o87ZssimdTWN964YiIeI=
-github.com/compose-spec/compose-go v1.2.5 h1:yGaACRJrWTQMFW89/ck2o1qd3gIxAji4EQkgewH3hqc=
-github.com/compose-spec/compose-go v1.2.5/go.mod h1:a/H2RY5UejNRhzbNXHygSAxBARTpLmLlaCkh58xfStM=
+github.com/compose-spec/compose-go v1.2.6 h1:9l2Y/yNn/OSngnkUBP8h8CchTmMcf1MW4BeUEaZXy8k=
+github.com/compose-spec/compose-go v1.2.6/go.mod h1:cg8yTeI+7rfQsEW9XHOLx0sNVjGKEXr6XwVB4fxmG3A=
 github.com/container-orchestrated-devices/container-device-interface v0.3.1 h1:AvASKHHm6w3qMU49iPYyp8GhwbacvqjfGHUZEgvA/mQ=
 github.com/container-orchestrated-devices/container-device-interface v0.3.1/go.mod h1:E1zcucIkq9P3eyNmY+68dBQsTcsXJh9cgRo2IVNScKQ=
 github.com/containerd/aufs v1.0.0/go.mod h1:kL5kd6KM5TzQjR79jljyi4olc1Vrx6XBlcyj3gNv2PU=
