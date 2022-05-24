@@ -51,7 +51,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
-
 	"github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
@@ -209,7 +208,10 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("rootfs", false, "The first argument is not an image but the rootfs to the exploded container")
 
 	// #region env flags
-	cmd.Flags().String("entrypoint", "", "Overwrite the default ENTRYPOINT of the image")
+	// entrypoint needs to be StringArray, not StringSlice, to prevent "FOO=foo1,foo2" from being split to {"FOO=foo1", "foo2"}
+	// entrypoint StringArray is an internal implementation to support `nerdctl compose` entrypoint yaml filed with multiple strings
+	// users are not expected to specify multiple --entrypoint flags manually.
+	cmd.Flags().StringArray("entrypoint", nil, "Overwrite the default ENTRYPOINT of the image")
 	cmd.Flags().StringP("workdir", "w", "", "Working directory inside the container")
 	// env needs to be StringArray, not StringSlice, to prevent "FOO=foo1,foo2" from being split to {"FOO=foo1", "foo2"}
 	cmd.Flags().StringArrayP("env", "e", nil, "Set environment variables")
@@ -680,7 +682,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 	}
 
 	// NOTE: "--entrypoint" can be set to an empty string, see TestRunEntrypoint* in run_test.go .
-	entrypoint, err := cmd.Flags().GetString("entrypoint")
+	entrypoint, err := cmd.Flags().GetStringArray("entrypoint")
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -692,8 +694,8 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 			opts = append(opts, oci.WithImageConfig(ensured.Image))
 		}
 		var processArgs []string
-		if entrypoint != "" {
-			processArgs = append(processArgs, entrypoint)
+		if len(entrypoint) != 0 {
+			processArgs = append(processArgs, entrypoint...)
 		}
 		if len(args) > 1 {
 			processArgs = append(processArgs, args[1:]...)

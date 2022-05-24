@@ -478,12 +478,6 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 	for _, v := range svc.DNS {
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--dns=%s", v))
 	}
-
-	if len(svc.Entrypoint) > 1 {
-		return nil, fmt.Errorf("service %s: specifying entrypoint with multiple strings (%v) is not supported yet",
-			svc.Name, svc.Entrypoint)
-	}
-
 	for _, v := range svc.Entrypoint {
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--entrypoint=%s", v))
 	}

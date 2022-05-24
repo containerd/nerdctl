@@ -21,7 +21,7 @@ which was derived from [Docker Compose file version 3 specification](https://doc
 
 ### Unimplemented YAML fields
 - Fields that correspond to unimplemented `docker run` flags, e.g., `services.<SERVICE>.links` (corresponds to `docker run --link`)
-- Fields that correspond to unimplemented `docker build` flags, e.g., `services.<SERVICE>.build.labels` (corresponds to `docker build --label`)
+- Fields that correspond to unimplemented `docker build` flags, e.g., `services.<SERVICE>.build.extra_hosts` (corresponds to `docker build --add-host`)
 - `services.<SERVICE>.credential_spec`
 - `services.<SERVICE>.deploy.update_config`
 - `services.<SERVICE>.deploy.rollback_config`
@@ -38,9 +38,6 @@ which was derived from [Docker Compose file version 3 specification](https://doc
 ### Incompatibility
 #### `services.<SERVICE>.build.context`
 - The value must be a local directory path, not a URL.
-
-#### `services.<SERVICE>.entrypoint`
-- Multiple entrypoint strings cannot be specified.
 
 #### `services.<SERVICE>.secrets`, `services.<SERVICE>.configs`
 - `uid`, `gid`: Cannot be specified. The default value is not propagated from `USER` instruction of Dockerfile.
