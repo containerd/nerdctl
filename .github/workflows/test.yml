@@ -10,7 +10,7 @@ on:
 jobs:
   project:
     name: Project Checks
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
     - uses: actions/setup-go@v3
@@ -25,7 +25,7 @@ jobs:
         working-directory: src/github.com/containerd/nerdctl
 
   golangci-lint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v3.0.2
@@ -41,7 +41,7 @@ jobs:
         args: --verbose
 
   test-unit:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
     - uses: actions/setup-go@v3
@@ -54,20 +54,30 @@ jobs:
       run: go test -v ./pkg/...
 
   test-integration:
-    runs-on: ubuntu-20.04
+    runs-on: "ubuntu-${{ matrix.ubuntu }}"
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        containerd: [v1.5.11, v1.6.4, main]
+        # ubuntu-22.04: cgroup v1, ubuntu-22.04: cgroup v2
+        include:
+          - ubuntu: 20.04
+            containerd: v1.5.11
+          - ubuntu: 20.04
+            containerd: v1.6.4
+          - ubuntu: 22.04
+            containerd: v1.6.4
+          - ubuntu: 22.04
+            containerd: main
     env:
+      UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
     - uses: actions/checkout@v3.0.2
       with:
         fetch-depth: 1
     - name: "Prepare integration test environment"
-      run: DOCKER_BUILDKIT=1 docker build -t test-integration --target test-integration --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+      run: DOCKER_BUILDKIT=1 docker build -t test-integration --target test-integration --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
     - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
       run: |
         sudo systemctl disable --now snapd.service snapd.socket
@@ -80,13 +90,23 @@ jobs:
       run: docker run -t --rm --privileged test-integration
 
   test-integration-rootless:
-    runs-on: ubuntu-20.04
+    runs-on: "ubuntu-${{ matrix.ubuntu }}"
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        containerd: [v1.5.11, v1.6.4, main]
+        # ubuntu-22.04: cgroup v1, ubuntu-22.04: cgroup v2
+        include:
+          - ubuntu: 20.04
+            containerd: v1.5.11
+          - ubuntu: 20.04
+            containerd: v1.6.4
+          - ubuntu: 22.04
+            containerd: v1.6.4
+          - ubuntu: 22.04
+            containerd: main
     env:
+      UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
     - uses: actions/checkout@v3.0.2
@@ -95,16 +115,16 @@ jobs:
     - name: "Register QEMU (tonistiigi/binfmt)"
       run: docker run --privileged --rm tonistiigi/binfmt --install all
     - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
-      run: DOCKER_BUILDKIT=1 docker build -t test-integration-rootless --target test-integration-rootless --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+      run: DOCKER_BUILDKIT=1 docker build -t test-integration-rootless --target test-integration-rootless --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
     - name: "Test    (network driver=slirp4netns, port driver=builtin)"
       run: docker run -t --rm --privileged test-integration-rootless
     - name: "Prepare (network driver=slirp4netns, port driver=slirp4netns)"
-      run: DOCKER_BUILDKIT=1 docker build -t test-integration-rootless-port-slirp4netns --target test-integration-rootless-port-slirp4netns --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+      run: DOCKER_BUILDKIT=1 docker build -t test-integration-rootless-port-slirp4netns --target test-integration-rootless-port-slirp4netns --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
     - name: "Test    (network driver=slirp4netns, port driver=slirp4netns)"
       run: docker run -t --rm --privileged test-integration-rootless-port-slirp4netns
 
   cross:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:
     - uses: actions/setup-go@v3
@@ -117,7 +137,7 @@ jobs:
       run: make artifacts
 
   test-integration-docker-compatibility:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
     - uses: actions/setup-go@v3
