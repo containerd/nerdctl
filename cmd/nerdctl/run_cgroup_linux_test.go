@@ -213,6 +213,7 @@ func TestRunCgroupConf(t *testing.T) {
 	if cgroups.Mode() != cgroups.Unified {
 		t.Skip("test requires cgroup v2")
 	}
+	testutil.DockerIncompatible(t) // Docker lacks --cgroup-conf
 	base := testutil.NewBase(t)
 	info := base.Info()
 	switch info.CgroupDriver {
