@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/Microsoft/go-winio v0.5.2
 	github.com/compose-spec/compose-go v1.2.6
-	github.com/containerd/cgroups v1.0.3
+	github.com/containerd/cgroups v1.0.4
 	github.com/containerd/console v1.0.3
 	github.com/containerd/containerd v1.6.4 // replaced
 	github.com/containerd/continuity v0.3.0
