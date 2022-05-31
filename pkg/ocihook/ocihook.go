@@ -36,7 +36,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	types100 "github.com/containernetworking/cni/pkg/types/100"
-	dopts "github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
 	b4nndclient "github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
@@ -100,31 +99,11 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 		dataStore: dataStore,
 	}
 
-	extraHostsJSON := o.state.Annotations[labels.ExtraHosts]
-	var extraHosts []string
-	if err := json.Unmarshal([]byte(extraHostsJSON), &extraHosts); err != nil {
+	extraHosts, err := getExtraHosts(state)
+	if err != nil {
 		return nil, err
 	}
-
-	//validate and format extraHosts
-	ensureExtraHosts := func(extraHosts []string) (map[string]string, error) {
-		hosts := make(map[string]string)
-		for _, host := range extraHosts {
-			hostIP, err := dopts.ValidateExtraHost(host)
-			if err != nil {
-				return nil, err
-			}
-			if v := strings.SplitN(hostIP, ":", 2); len(v) == 2 {
-				hosts[v[1]] = v[0]
-			}
-		}
-		return hosts, nil
-	}
-
-	var err error
-	if o.extraHosts, err = ensureExtraHosts(extraHosts); err != nil {
-		return nil, err
-	}
+	o.extraHosts = extraHosts
 
 	hs, err := loadSpec(o.state.Bundle)
 	if err != nil {
@@ -232,7 +211,7 @@ type handlerOpts struct {
 	fullID            string
 	rootlessKitClient rlkclient.Client
 	bypassClient      b4nndclient.Client
-	extraHosts        map[string]string // ip:host
+	extraHosts        map[string]string // host:ip
 	containerIP       string
 }
 
@@ -255,6 +234,22 @@ func loadSpec(bundle string) (*hookSpec, error) {
 		return nil, err
 	}
 	return &s, nil
+}
+
+func getExtraHosts(state *specs.State) (map[string]string, error) {
+	extraHostsJSON := state.Annotations[labels.ExtraHosts]
+	var extraHosts []string
+	if err := json.Unmarshal([]byte(extraHostsJSON), &extraHosts); err != nil {
+		return nil, err
+	}
+
+	hosts := make(map[string]string)
+	for _, host := range extraHosts {
+		if v := strings.SplitN(host, ":", 2); len(v) == 2 {
+			hosts[v[0]] = v[1]
+		}
+	}
+	return hosts, nil
 }
 
 func getNetNSPath(state *specs.State) (string, error) {

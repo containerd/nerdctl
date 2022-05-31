@@ -27,6 +27,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 
 	"gotest.tools/v3/assert"
@@ -87,6 +88,22 @@ func TestRunAddHost(t *testing.T) {
 		}
 		if !found {
 			return errors.New("host was not added")
+		}
+		return nil
+	})
+	base.Cmd("run", "--rm", "--add-host", "test:10.0.0.1", "--add-host", "test1:10.0.0.1", testutil.AlpineImage, "cat", "/etc/hosts").AssertOutWithFunc(func(stdout string) error {
+		var found int
+		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
+		for sc.Scan() {
+			//removing spaces and tabs separating items
+			line := strings.ReplaceAll(sc.Text(), " ", "")
+			line = strings.ReplaceAll(line, "\t", "")
+			if strutil.InStringSlice([]string{"10.0.0.1test", "10.0.0.1test1"}, line) {
+				found += 1
+			}
+		}
+		if found != 2 {
+			return errors.New(fmt.Sprintf("host was not added, found %d", found))
 		}
 		return nil
 	})

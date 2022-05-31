@@ -102,7 +102,7 @@ type Meta struct {
 	ID         string
 	Networks   map[string]*types100.Result
 	Hostname   string
-	ExtraHosts map[string]string // ip:host
+	ExtraHosts map[string]string // host:ip
 	Name       string
 }
 

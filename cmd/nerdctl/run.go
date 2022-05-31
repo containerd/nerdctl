@@ -53,6 +53,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/taskutil"
 
 	"github.com/docker/cli/opts"
+	dopts "github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -579,6 +580,11 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		return nil, "", nil, err
 	}
 	extraHosts = strutil.DedupeStrSlice(extraHosts)
+	for _, host := range extraHosts {
+		if _, err := dopts.ValidateExtraHost(host); err != nil {
+			return nil, "", nil, err
+		}
+	}
 	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ipAddress, ports, logURI, anonVolumes, pidFile, platform, mountPoints)
 	if err != nil {
 		return nil, "", nil, err
