@@ -10,13 +10,13 @@ require (
 	github.com/containerd/console v1.0.3
 	github.com/containerd/containerd v1.6.4 // replaced
 	github.com/containerd/continuity v0.3.0
-	github.com/containerd/go-cni v1.1.5
+	github.com/containerd/go-cni v1.1.6
 	github.com/containerd/imgcrypt v1.1.5-0.20220421044638-8ba028dca028
 	github.com/containerd/stargz-snapshotter v0.11.4
 	github.com/containerd/stargz-snapshotter/estargz v0.11.4
 	github.com/containerd/stargz-snapshotter/ipfs v0.11.4
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67
-	github.com/containernetworking/cni v1.1.0
+	github.com/containernetworking/cni v1.1.1
 	github.com/containernetworking/plugins v1.1.1
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/docker/cli v20.10.16+incompatible
