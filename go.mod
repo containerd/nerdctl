@@ -18,6 +18,7 @@ require (
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67
 	github.com/containernetworking/cni v1.1.0
 	github.com/containernetworking/plugins v1.1.1
+	github.com/coreos/go-systemd/v22 v22.3.2
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/docker/cli v20.10.16+incompatible
 	github.com/docker/docker v20.10.16+incompatible
@@ -66,7 +67,6 @@ require (
 	github.com/containerd/fifo v1.0.0 // indirect
 	github.com/containerd/ttrpc v1.1.1-0.20220420014843-944ef4a40df3 // indirect
 	github.com/containers/ocicrypt v1.1.3 // indirect
-	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20170627025303-887ab5e44cc3 // indirect
 	github.com/distribution/distribution/v3 v3.0.0-20210316161203-a01c71e2477e // indirect

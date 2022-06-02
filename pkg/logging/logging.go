@@ -23,12 +23,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
-	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
-	units "github.com/docker/go-units"
-	"github.com/natefinch/lumberjack"
 )
 
 const (
@@ -36,7 +32,12 @@ const (
 	MagicArgv1 = "_NERDCTL_INTERNAL_LOGGING"
 	MaxSize    = "max-size"
 	MaxFile    = "max-file"
+	Tag        = "tag"
 )
+
+type LogDriver interface {
+	Process(dataStore string, config *logging.Config) error
+}
 
 // Main is the entrypoint for the containerd runtime v2 logging plugin mode.
 //
@@ -52,11 +53,6 @@ func Main(argv2 string) error {
 
 // LogConfig is marshalled as "log-config.json"
 type LogConfig struct {
-	Drivers []LogDriverConfig `json:"drivers,omitempty"`
-}
-
-// LogDriverConfig is defined per a driver
-type LogDriverConfig struct {
 	Driver string            `json:"driver"`
 	Opts   map[string]string `json:"opts,omitempty"`
 }
@@ -74,7 +70,7 @@ func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
 		if config.Namespace == "" || config.ID == "" {
 			return errors.New("got invalid config")
 		}
-		jsonFileDriverOpts := make(map[string]string)
+		var driver LogDriver
 		logConfigFilePath := LogConfigFilePath(dataStore, config.Namespace, config.ID)
 		if _, err := os.Stat(logConfigFilePath); err == nil {
 			var logConfig LogConfig
@@ -85,56 +81,26 @@ func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
 			if err = json.Unmarshal(logConfigFileB, &logConfig); err != nil {
 				return err
 			}
-			for _, f := range logConfig.Drivers {
-				switch f.Driver {
-				case "json-file":
-					jsonFileDriverOpts = f.Opts
-				default:
-					return fmt.Errorf("unknown driver %q", f.Driver)
+			switch logConfig.Driver {
+			case "json-file":
+				driver = &JsonLogger{
+					Opts: logConfig.Opts,
 				}
+			case "journald":
+				driver = &JournaldLogger{
+					Opts: logConfig.Opts,
+				}
+			default:
+				return fmt.Errorf("unknown driver %q", logConfig.Driver)
 			}
+			if err := ready(); err != nil {
+				return err
+			}
+			return driver.Process(dataStore, config)
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// the file does not exist if the container was created with nerdctl < 0.20
 			return err
 		}
-
-		logJSONFilePath := jsonfile.Path(dataStore, config.Namespace, config.ID)
-		if err := os.MkdirAll(filepath.Dir(logJSONFilePath), 0700); err != nil {
-			return err
-		}
-		if err := ready(); err != nil {
-			return err
-		}
-		l := &lumberjack.Logger{
-			Filename: logJSONFilePath,
-		}
-		//maxSize Defaults to unlimited.
-		var capVal int64
-		capVal = -1
-		if capacity, ok := jsonFileDriverOpts[MaxSize]; ok {
-			var err error
-			capVal, err = units.FromHumanSize(capacity)
-			if err != nil {
-				return err
-			}
-			if capVal <= 0 {
-				return fmt.Errorf("max-size must be a positive number")
-			}
-		}
-		l.MaxBytes = capVal
-		maxFile := 1
-		if maxFileString, ok := jsonFileDriverOpts[MaxFile]; ok {
-			var err error
-			maxFile, err = strconv.Atoi(maxFileString)
-			if err != nil {
-				return err
-			}
-			if maxFile < 1 {
-				return fmt.Errorf("max-file cannot be less than 1")
-			}
-		}
-		// MaxBackups does not include file to write logs to
-		l.MaxBackups = maxFile - 1
-		return jsonfile.Encode(l, config.Stdout, config.Stderr)
+		return nil
 	}, nil
 }

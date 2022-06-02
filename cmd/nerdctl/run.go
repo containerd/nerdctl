@@ -237,6 +237,9 @@ func setCreateFlags(cmd *cobra.Command) {
 	// #region logging flags
 	// log-opt needs to be StringArray, not StringSlice, to prevent "env=os,customer" from being split to {"env=os", "customer"}
 	cmd.Flags().String("log-driver", "json-file", "Logging driver for the container")
+	cmd.RegisterFlagCompletionFunc("log-driver", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"json-file", "journald"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	cmd.Flags().StringArray("log-opt", nil, "Log driver options")
 	// #endregion
 
@@ -486,12 +489,8 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 			return nil, "", nil, err
 		}
 		logConfig := &logging.LogConfig{
-			Drivers: []logging.LogDriverConfig{
-				{
-					Driver: logDriver,
-					Opts:   logOptMap,
-				},
-			},
+			Driver: logDriver,
+			Opts:   logOptMap,
 		}
 		logConfigB, err := json.Marshal(logConfig)
 		if err != nil {

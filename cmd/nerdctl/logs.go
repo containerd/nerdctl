@@ -18,15 +18,20 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
+	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
-
+	timetypes "github.com/docker/docker/api/types/time"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -76,22 +81,6 @@ func logsAction(cmd *cobra.Command, args []string) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("ambiguous ID %q", found.Req)
 			}
-			logJSONFilePath := jsonfile.Path(dataStore, ns, found.Container.ID())
-			if _, err := os.Stat(logJSONFilePath); err != nil {
-				return fmt.Errorf("failed to open %q, container is not created with `nerdctl run -d`?: %w", logJSONFilePath, err)
-			}
-			task, err := found.Container.Task(ctx, nil)
-			if err != nil {
-				return err
-			}
-			status, err := task.Status(ctx)
-			if err != nil {
-				return err
-			}
-			var reader io.Reader
-			var execCmd *exec.Cmd
-			//chan for non-follow tail to check the logsEOF
-			logsEOFChan := make(chan struct{})
 			follow, err := cmd.Flags().GetBool("follow")
 			if err != nil {
 				return err
@@ -99,43 +88,6 @@ func logsAction(cmd *cobra.Command, args []string) error {
 			tail, err := cmd.Flags().GetString("tail")
 			if err != nil {
 				return err
-			}
-			if follow && status.Status == containerd.Running {
-				waitCh, err := task.Wait(ctx)
-				if err != nil {
-					return err
-				}
-				reader, execCmd, err = newTailReader(ctx, task, logJSONFilePath, follow, tail)
-				if err != nil {
-					return err
-				}
-
-				go func() {
-					<-waitCh
-					execCmd.Process.Kill()
-				}()
-			} else {
-				if tail != "" {
-					reader, execCmd, err = newTailReader(ctx, task, logJSONFilePath, false, tail)
-					if err != nil {
-						return err
-					}
-					go func() {
-						<-logsEOFChan
-						execCmd.Process.Kill()
-					}()
-
-				} else {
-					f, err := os.Open(logJSONFilePath)
-					if err != nil {
-						return err
-					}
-					defer f.Close()
-					reader = f
-					go func() {
-						<-logsEOFChan
-					}()
-				}
 			}
 			timestamps, err := cmd.Flags().GetBool("timestamps")
 			if err != nil {
@@ -149,7 +101,111 @@ func logsAction(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			return jsonfile.Decode(os.Stdout, os.Stderr, reader, timestamps, since, until, logsEOFChan)
+			l, err := found.Container.Labels(ctx)
+			if err != nil {
+				return err
+			}
+			logConfigFilePath := logging.LogConfigFilePath(dataStore, l[labels.Namespace], found.Container.ID())
+			var logConfig logging.LogConfig
+			logConfigFileB, err := os.ReadFile(logConfigFilePath)
+			if err != nil {
+				return err
+			}
+			if err = json.Unmarshal(logConfigFileB, &logConfig); err != nil {
+				return err
+			}
+			switch logConfig.Driver {
+			case "json-file":
+				logJSONFilePath := jsonfile.Path(dataStore, ns, found.Container.ID())
+				if _, err := os.Stat(logJSONFilePath); err != nil {
+					return fmt.Errorf("failed to open %q, container is not created with `nerdctl run -d`?: %w", logJSONFilePath, err)
+				}
+				task, err := found.Container.Task(ctx, nil)
+				if err != nil {
+					return err
+				}
+				status, err := task.Status(ctx)
+				if err != nil {
+					return err
+				}
+				var reader io.Reader
+				var execCmd *exec.Cmd
+				//chan for non-follow tail to check the logsEOF
+				logsEOFChan := make(chan struct{})
+				if follow && status.Status == containerd.Running {
+					waitCh, err := task.Wait(ctx)
+					if err != nil {
+						return err
+					}
+					reader, execCmd, err = newTailReader(ctx, task, logJSONFilePath, follow, tail)
+					if err != nil {
+						return err
+					}
+
+					go func() {
+						<-waitCh
+						execCmd.Process.Kill()
+					}()
+				} else {
+					if tail != "" {
+						reader, execCmd, err = newTailReader(ctx, task, logJSONFilePath, false, tail)
+						if err != nil {
+							return err
+						}
+						go func() {
+							<-logsEOFChan
+							execCmd.Process.Kill()
+						}()
+
+					} else {
+						f, err := os.Open(logJSONFilePath)
+						if err != nil {
+							return err
+						}
+						defer f.Close()
+						reader = f
+						go func() {
+							<-logsEOFChan
+						}()
+					}
+				}
+				return jsonfile.Decode(os.Stdout, os.Stderr, reader, timestamps, since, until, logsEOFChan)
+			case "journald":
+				shortID := found.Container.ID()[:12]
+				var journalctlArgs = []string{fmt.Sprintf("SYSLOG_IDENTIFIER=%s", shortID), "--output=cat"}
+				if follow {
+					journalctlArgs = append(journalctlArgs, "-f")
+				}
+				if since != "" {
+					// using GetTimestamp from moby to keep time format consistency
+					ts, err := timetypes.GetTimestamp(since, time.Now())
+					if err != nil {
+						return fmt.Errorf("invalid value for \"since\": %w", err)
+					}
+					date, err := prepareJournalCtlDate(ts)
+					if err != nil {
+						return err
+					}
+					journalctlArgs = append(journalctlArgs, "--since", date)
+				}
+				if timestamps {
+					logrus.Warnf("unsupported timestamps option for jounrald driver")
+				}
+				if until != "" {
+					// using GetTimestamp from moby to keep time format consistency
+					ts, err := timetypes.GetTimestamp(until, time.Now())
+					if err != nil {
+						return fmt.Errorf("invalid value for \"until\": %w", err)
+					}
+					date, err := prepareJournalCtlDate(ts)
+					if err != nil {
+						return err
+					}
+					journalctlArgs = append(journalctlArgs, "--until", date)
+				}
+				return logging.FetchLogs(journalctlArgs)
+			}
+			return nil
 		},
 	}
 	req := args[0]
@@ -197,4 +253,14 @@ func newTailReader(ctx context.Context, task containerd.Task, filePath string, f
 		return nil, nil, err
 	}
 	return r, cmd, nil
+}
+
+func prepareJournalCtlDate(t string) (string, error) {
+	i, err := strconv.ParseInt(t, 10, 64)
+	if err != nil {
+		return "", err
+	}
+	tm := time.Unix(i, 0)
+	s := tm.Format("2006-01-02 15:04:05")
+	return s, nil
 }
