@@ -150,7 +150,7 @@ require (
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
-	github.com/urfave/cli v1.22.4 // indirect
+	github.com/urfave/cli v1.22.9 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200123233031-1cdf64d27158 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
@@ -164,7 +164,7 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20220426171045-31bebdecfb46 // indirect
-	google.golang.org/grpc v1.46.0 // indirect
+	google.golang.org/grpc v1.47.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
@@ -172,7 +172,7 @@ require (
 
 replace (
 	// containerd main
-	github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220514185319-e217c83e8c4d
+	github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220606171923-c1bcabb45419
 	// Temporary fork for avoiding importing patent-protected code: https://github.com/hashicorp/golang-lru/issues/73
 	github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c
 	// Temporary fork lumberjack to support Maxbytes before releasing V3.0: https://github.com/natefinch/lumberjack/pull/132)
