@@ -1,5 +1,5 @@
 freebsd_task:
-  name: "FreeBSD (Unit tests only)"
+  name: FreeBSD
   timeout_in: 20m
   compute_engine_instance:
     image_project: freebsd-org-cloud-dev
@@ -7,12 +7,16 @@ freebsd_task:
     platform: freebsd
     cpu: 2
     memory: 4G
+  env:
+     NERDCTL_RUN_ARGS: --net none dougrabson/freebsd-minimal:13.1 echo "Nerdctl is up and running."
   install_script:
-    - pkg install -y go
+    - pkg install -y go containerd runj
   test_script:
+    - daemon -o containerd.out containerd
     - go test -v ./pkg/...
+    - cd cmd/nerdctl
+    - sudo go run . run $NERDCTL_RUN_ARGS | grep running
 # TODO: run `go test -v ./cmd/...`
-# FIXME: `nerdctl run` is broken on FreeBSD: https://github.com/containerd/nerdctl/issues/868
 
 windows_task:
   name: "Windows"
