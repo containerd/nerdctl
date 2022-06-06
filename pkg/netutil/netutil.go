@@ -44,6 +44,10 @@ func NewCNIEnv(cniPath, cniConfPath string) (*CNIEnv, error) {
 		NetconfPath: cniConfPath,
 	}
 	var err error
+	err = e.ensureDefaultNetworkConfig()
+	if err != nil {
+		return nil, err
+	}
 	e.Networks, err = e.networkConfigList()
 	if err != nil {
 		return nil, err
@@ -115,6 +119,9 @@ func (e *CNIEnv) GenerateNetworkConfig(labels []string, id int, name string, plu
 
 // WriteNetworkConfig writes networkConfig file to cni config path.
 func (e *CNIEnv) WriteNetworkConfig(net *networkConfig) error {
+	if err := os.MkdirAll(e.NetconfPath, 0755); err != nil {
+		return err
+	}
 	filename := filepath.Join(e.NetconfPath, "nerdctl-"+net.Name+".conflist")
 	if _, err := os.Stat(filename); err == nil {
 		return errdefs.ErrAlreadyExists
@@ -125,26 +132,23 @@ func (e *CNIEnv) WriteNetworkConfig(net *networkConfig) error {
 	return nil
 }
 
-func (e *CNIEnv) DefaultNetworkConfig() (*networkConfig, error) {
+func (e *CNIEnv) ensureDefaultNetworkConfig() error {
 	ipam, _ := GenerateIPAM("default", DefaultCIDR, "", "", nil)
 	plugins, _ := e.GenerateCNIPlugins(DefaultNetworkName, DefaultID, DefaultNetworkName, ipam, nil)
-	return e.GenerateNetworkConfig(nil, DefaultID, DefaultNetworkName, plugins)
+	conf, err := e.GenerateNetworkConfig(nil, DefaultID, DefaultNetworkName, plugins)
+	if err != nil {
+		return err
+	}
+	err = e.WriteNetworkConfig(conf)
+	if err != nil && !errdefs.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
 }
 
 // networkConfigList loads config from dir if dir exists.
-// The result also contains DefaultNetworkConfig
 func (e *CNIEnv) networkConfigList() ([]*networkConfig, error) {
-	def, err := e.DefaultNetworkConfig()
-	if err != nil {
-		return nil, err
-	}
-	l := []*networkConfig{def}
-	if _, err := os.Stat(e.NetconfPath); err != nil {
-		if os.IsNotExist(err) {
-			return l, nil
-		}
-		return nil, err
-	}
+	l := []*networkConfig{}
 	fileNames, err := libcni.ConfFiles(e.NetconfPath, []string{".conf", ".conflist", ".json"})
 	if err != nil {
 		return nil, err
