@@ -26,7 +26,7 @@ windows_task:
   matrix:
     - name: "Windows/containerd-1.6"
       env:
-        ctrdVersion: 1.6.4
+        ctrdVersion: 1.6.6
   env:
     CGO_ENABLED: 0
   build_script:
