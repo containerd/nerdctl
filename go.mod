@@ -31,7 +31,7 @@ require (
 	github.com/ipfs/go-ipfs-http-client v0.3.1
 	github.com/ipfs/interface-go-ipfs-core v0.7.0
 	github.com/mattn/go-isatty v0.0.14
-	github.com/moby/sys/mount v0.3.2
+	github.com/moby/sys/mount v0.3.3
 	github.com/multiformats/go-multiaddr v0.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/opencontainers/go-digest v1.0.0
@@ -49,7 +49,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220513210258-46612604a0f9
 	golang.org/x/net v0.0.0-20220516133312-45b265872317
 	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
-	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a
+	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
 	golang.org/x/term v0.0.0-20220411215600-e5f449aeb171
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.2.0
@@ -122,7 +122,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/locker v1.0.1 // indirect
-	github.com/moby/sys/mountinfo v0.6.1 // indirect
+	github.com/moby/sys/mountinfo v0.6.2 // indirect
 	github.com/moby/sys/signal v0.7.0 // indirect
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
