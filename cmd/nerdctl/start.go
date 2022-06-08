@@ -20,9 +20,11 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -41,6 +43,10 @@ func newStartCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
+
+	startCommand.Flags().SetInterspersed(false)
+	startCommand.Flags().BoolP("attach", "a", false, "Attach STDOUT/STDERR and forward signals")
+
 	return startCommand
 }
 
@@ -51,13 +57,27 @@ func startAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
+	flagA, err := cmd.Flags().GetBool("attach")
+	if err != nil {
+		return err
+	}
+
+	if flagA && len(args) > 1 {
+		return fmt.Errorf("you cannot start and attach multiple containers at once")
+	}
+
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if err := startContainer(ctx, found.Container); err != nil {
+			if err := startContainer(ctx, found.Container, flagA); err != nil {
 				return err
 			}
-			_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
+			if !flagA {
+				_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
+				if err != nil {
+					return err
+				}
+			}
 			return err
 		},
 	}
@@ -72,19 +92,29 @@ func startAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func startContainer(ctx context.Context, container containerd.Container) error {
+func startContainer(ctx context.Context, container containerd.Container, flagA bool) error {
 	lab, err := container.Labels(ctx)
 	if err != nil {
 		return err
 	}
 	taskCIO := cio.NullIO
+
+	// Choosing the user selected option over the labels
+	if flagA {
+		taskCIO = cio.NewCreator(cio.WithStreams(os.Stdin, os.Stdout, os.Stderr))
+	}
 	if logURIStr := lab[labels.LogURI]; logURIStr != "" {
 		logURI, err := url.Parse(logURIStr)
 		if err != nil {
 			return err
 		}
-		taskCIO = cio.LogURI(logURI)
+		if flagA {
+			logrus.Warn("attaching output instead of using the log-uri")
+		} else {
+			taskCIO = cio.LogURI(logURI)
+		}
 	}
+
 	cStatus := formatter.ContainerStatus(ctx, container)
 	if cStatus == "Up" {
 		logrus.Warnf("container %s is already running", container.ID())
@@ -102,7 +132,36 @@ func startContainer(ctx context.Context, container containerd.Container) error {
 	if err != nil {
 		return err
 	}
-	return task.Start(ctx)
+
+	var statusC <-chan containerd.ExitStatus
+	if flagA {
+		statusC, err = task.Wait(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := task.Start(ctx); err != nil {
+		return err
+	}
+
+	if !flagA {
+		return nil
+	}
+
+	sigc := commands.ForwardAllSignals(ctx, task)
+	defer commands.StopCatch(sigc)
+	status := <-statusC
+	code, _, err := status.Result()
+	if err != nil {
+		return err
+	}
+	if code != 0 {
+		return ExitCodeError{
+			exitCode: int(code),
+		}
+	}
+	return nil
 }
 
 func startShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
