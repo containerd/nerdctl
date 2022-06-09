@@ -21,12 +21,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/archive/compression"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/archive"
 	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/imgcrypt"
+	"github.com/containerd/imgcrypt/images/encryption"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/spf13/cobra"
 )
@@ -51,6 +54,10 @@ func newLoadCommand() *cobra.Command {
 	loadCommand.Flags().Bool("all-platforms", false, "Import content for all platforms")
 	// #endregion
 
+	loadCommand.Flags().Bool("no-unpack", false, "Skip unpacking the images(true/false)")
+	loadCommand.RegisterFlagCompletionFunc("no-unpack", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"true", "false"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	return loadCommand
 }
 
@@ -86,11 +93,15 @@ func loadAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	noUnpack, err := cmd.Flags().GetBool("no-unpack")
+	if err != nil {
+		return err
+	}
 
-	return loadImage(decompressor, cmd, args, platMC, false)
+	return loadImage(decompressor, cmd, args, platMC, false, noUnpack)
 }
 
-func loadImage(in io.Reader, cmd *cobra.Command, args []string, platMC platforms.MatchComparer, quiet bool) error {
+func loadImage(in io.Reader, cmd *cobra.Command, args []string, platMC platforms.MatchComparer, quiet bool, noUnpack bool) error {
 	// In addition to passing WithImagePlatform() to client.Import(), we also need to pass WithDefaultPlatform() to newClient().
 	// Otherwise unpacking may fail.
 	client, ctx, cancel, err := newClient(cmd, containerd.WithDefaultPlatform(platMC))
@@ -110,6 +121,12 @@ func loadImage(in io.Reader, cmd *cobra.Command, args []string, platMC platforms
 		}
 		return err
 	}
+
+	// not unpack image
+	if noUnpack {
+		return nil
+	}
+
 	for _, img := range imgs {
 		image := containerd.NewImageWithPlatform(client, img, platMC)
 
@@ -117,10 +134,22 @@ func loadImage(in io.Reader, cmd *cobra.Command, args []string, platMC platforms
 		if !quiet {
 			fmt.Fprintf(cmd.OutOrStdout(), "unpacking %s (%s)...", img.Name, img.Target.Digest)
 		}
-		err = image.Unpack(ctx, sn)
+
+		// try to use ctd-decoder option key file path
+		var unpackOpts []containerd.UnpackOpt
+		imgcryptPayload := imgcrypt.Payload{}
+		imgcryptUnpackOpt := encryption.WithUnpackConfigApplyOpts(encryption.WithDecryptedUnpack(&imgcryptPayload))
+		unpackOpts = append(unpackOpts, imgcryptUnpackOpt)
+		err = image.Unpack(ctx, sn, unpackOpts...)
 		if err != nil {
-			return err
+			if strings.Contains(err.Error(), "configFd") {
+				fmt.Fprintln(cmd.OutOrStdout(), "\ndecrypt this image failed, use specified key try to `nerdctl image decrypt` unpack this image")
+				return nil
+			} else {
+				return err
+			}
 		}
+
 		if quiet {
 			fmt.Fprintln(cmd.OutOrStdout(), img.Target.Digest)
 		} else {

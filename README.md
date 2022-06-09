@@ -896,6 +896,7 @@ Usage: `nerdctl load [OPTIONS]`
 
 Flags:
 - :whale: `-i, --input`: Read from tar archive file, instead of STDIN
+- :nerd_face: `--no-unpack`: Skip unpacking the images(true/false)
 - :nerd_face: `--platform=(amd64|arm64|...)`: Import content for a specific platform
 - :nerd_face: `--all-platforms`: Import content for all platforms
 

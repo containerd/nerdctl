@@ -41,8 +41,8 @@ func newJWEKeyPair(t testing.TB) *jweKeyPair {
 	}
 	td, err := os.MkdirTemp(t.TempDir(), "jwe-key-pair")
 	assert.NilError(t, err)
-	prv := filepath.Join(td, "mykey.pem")
-	pub := filepath.Join(td, "mypubkey.pem")
+	prv := filepath.Join(td, "nerdctl-"+t.Name()+"-prvkey.pem")
+	pub := filepath.Join(td, "nerdctl-"+t.Name()+"-pubkey.pem")
 	cmds := [][]string{
 		// Exec openssl commands to ensure that nerdctl is compatible with the output of openssl commands.
 		// Do NOT refactor this function to use "crypto/rsa" stdlib.
