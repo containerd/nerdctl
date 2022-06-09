@@ -17,7 +17,7 @@
 package main
 
 import (
-	gocontext "context"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -74,21 +74,20 @@ func main() {
 }
 
 func xmain() error {
-	signals := make(chan os.Signal, 2048)
-	ctx, cancel := gocontext.WithCancel(gocontext.Background())
-	handleSignals(ctx, signals, cancel)
-	signal.Notify(signals, handledSignals...)
 	if len(os.Args) == 3 && os.Args[1] == logging.MagicArgv1 {
 		// containerd runtime v2 logging plugin mode.
 		// "binary://BIN?KEY=VALUE" URI is parsed into Args {BIN, KEY, VALUE}.
 		return logging.Main(os.Args[2])
 	}
-
 	// nerdctl CLI mode
 	app, err := newApp()
 	if err != nil {
 		return err
 	}
+	signals := make(chan os.Signal, 2048)
+	ctx, cancel := context.WithCancel(context.Background())
+	handleSignals(ctx, signals, cancel)
+	signal.Notify(signals, handledSignals...)
 	return app.Execute()
 }
 
@@ -471,7 +470,7 @@ func dumpStacks(writeToFile bool) {
 		bufferLen *= 2
 	}
 	buf = buf[:stackSize]
-	logrus.Debugf("=== BEGIN goroutine stack dump ===\n%s\n=== END goroutine stack dump ===", buf)
+	logrus.Infof("=== BEGIN goroutine stack dump ===\n%s\n=== END goroutine stack dump ===", buf)
 
 	if writeToFile {
 		// Also write to file to aid gathering diagnostics
@@ -482,6 +481,6 @@ func dumpStacks(writeToFile bool) {
 		}
 		defer f.Close()
 		f.WriteString(string(buf))
-		logrus.Debugf("goroutine stack dump written to %s", name)
+		logrus.Infof("goroutine stack dump written to %s", name)
 	}
 }

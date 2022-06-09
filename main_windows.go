@@ -19,20 +19,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"unsafe"
-
 	"github.com/containerd/containerd/log"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/windows"
-)
 
-var (
-	handledSignals = []os.Signal{
-		windows.SIGTERM,
-		windows.SIGINT,
-	}
+	"os"
+	"unsafe"
 )
 
 func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
@@ -58,6 +51,13 @@ func addApparmorCommand(rootCmd *cobra.Command) {
 func addCpCommand(rootCmd *cobra.Command) {
 	// NOP
 }
+
+var (
+	handledSignals = []os.Signal{
+		windows.SIGTERM,
+		windows.SIGINT,
+	}
+)
 
 func handleSignals(ctx context.Context, signals chan os.Signal, cancel func()) chan struct{} {
 	done := make(chan struct{})
