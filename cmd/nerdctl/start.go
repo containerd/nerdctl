@@ -109,7 +109,7 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 			return err
 		}
 		if flagA {
-			logrus.Warn("attaching output instead of using the log-uri")
+			logrus.Debug("attaching output instead of using the log-uri")
 		} else {
 			taskCIO = cio.LogURI(logURI)
 		}

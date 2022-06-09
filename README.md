@@ -732,7 +732,10 @@ Start one or more running containers.
 
 Usage: `nerdctl start [OPTIONS] CONTAINER [CONTAINER...]`
 
-Unimplemented `docker start` flags: `--attach`, `--checkpoint`, `--checkpoint-dir`, `--detach-keys`, `--interactive`
+Flags:
+- :whale: `-a, --attach`: Attach STDOUT/STDERR and forward signals
+
+Unimplemented `docker start` flags: `--checkpoint`, `--checkpoint-dir`, `--detach-keys`, `--interactive`
 
 ### :whale: nerdctl restart
 Restart one or more running containers.
