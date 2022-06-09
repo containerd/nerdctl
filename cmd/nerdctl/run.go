@@ -145,6 +145,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	// #region cgroups, namespaces, and ulimits flags
 	cmd.Flags().Float64("cpus", 0.0, "Number of CPUs")
 	cmd.Flags().StringP("memory", "m", "", "Memory limit")
+	cmd.Flags().Bool("oom-kill-disable", false, "Disable OOM Killer")
 	cmd.Flags().String("pid", "", "PID namespace to use")
 	cmd.RegisterFlagCompletionFunc("pid", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"host"}, cobra.ShellCompDirectiveNoFileComp
