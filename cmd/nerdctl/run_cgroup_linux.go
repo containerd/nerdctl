@@ -49,6 +49,10 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	if err != nil {
 		return nil, err
 	}
+	memSwap, err := cmd.Flags().GetString("memory-swap")
+	if err != nil {
+		return nil, err
+	}
 
 	okd, err := cmd.Flags().GetBool("oom-kill-disable")
 	if err != nil {
@@ -67,7 +71,7 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 			return nil, errors.New("cgroup-manager \"none\" is only supported for rootless")
 		}
 
-		if cpus > 0.0 || memStr != "" || pidsLimit > 0 {
+		if cpus > 0.0 || memStr != "" || memSwap != "" || pidsLimit > 0 {
 			logrus.Warn("cgroup manager is set to \"none\", discarding resource limit requests. " +
 				"(Hint: enable cgroup v2 with systemd: https://rootlesscontaine.rs/getting-started/common/cgroup2/)")
 		}
@@ -131,12 +135,30 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	if cpusetMems != "" {
 		opts = append(opts, oci.WithCPUsMems(cpusetMems))
 	}
+	var mem64 int64
 	if memStr != "" {
-		mem64, err := units.RAMInBytes(memStr)
+		mem64, err = units.RAMInBytes(memStr)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse memory bytes %q: %w", memStr, err)
 		}
 		opts = append(opts, oci.WithMemoryLimit(uint64(mem64)))
+	}
+
+	var memSwap64 int64
+	if memSwap != "" {
+		if memSwap == "-1" {
+			memSwap64 = -1
+		} else {
+			memSwap64, err = units.RAMInBytes(memSwap)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse memory-swap bytes %q: %w", memSwap, err)
+			}
+			if mem64 > 0 && memSwap64 > 0 && memSwap64 < mem64 {
+				return nil, fmt.Errorf("Minimum memoryswap limit should be larger than memory limit, see usage")
+			}
+		}
+
+		opts = append(opts, oci.WithMemorySwap(memSwap64))
 	}
 
 	if okd {

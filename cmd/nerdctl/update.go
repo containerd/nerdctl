@@ -40,6 +40,7 @@ type updateResourceOptions struct {
 	CpuQuota           int64
 	CpuShares          uint64
 	MemoryLimitInBytes int64
+	MemorySwapInBytes  int64
 	CpusetCpus         string
 	CpusetMems         string
 	PidsLimit          int64
@@ -66,6 +67,7 @@ func setUpdateFlags(cmd *cobra.Command) {
 	cmd.Flags().Int64("cpu-quota", -1, "Limit CPU CFS (Completely Fair Scheduler) quota")
 	cmd.Flags().Uint64("cpu-shares", 0, "CPU shares (relative weight)")
 	cmd.Flags().StringP("memory", "m", "", "Memory limit")
+	cmd.Flags().String("memory-swap", "", "Swap limit equal to memory plus swap: '-1' to enable unlimited swap")
 	cmd.Flags().String("cpuset-cpus", "", "CPUs in which to allow execution (0-3, 0,1)")
 	cmd.Flags().String("cpuset-mems", "", "MEMs in which to allow execution (0-3, 0,1)")
 	cmd.Flags().Int64("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
@@ -139,6 +141,26 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 			return options, fmt.Errorf("failed to parse memory bytes %q: %w", memStr, err)
 		}
 	}
+	memSwap, err := cmd.Flags().GetString("memory-swap")
+	if err != nil {
+		return options, err
+	}
+
+	var memSwap64 int64
+	if memSwap != "" {
+		if memSwap == "-1" {
+			memSwap64 = -1
+		} else {
+			memSwap64, err = units.RAMInBytes(memSwap)
+			if err != nil {
+				return options, fmt.Errorf("failed to parse memory-swap bytes %q: %w", memSwap, err)
+			}
+			if mem64 > 0 && memSwap64 > 0 && memSwap64 < mem64 {
+				return options, fmt.Errorf("Minimum memoryswap limit should be larger than memory limit, see usage")
+			}
+		}
+	}
+
 	cpuset, err := cmd.Flags().GetString("cpuset-cpus")
 	if err != nil {
 		return options, err
@@ -159,6 +181,7 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 			CpusetCpus:         cpuset,
 			CpusetMems:         cpusetMems,
 			MemoryLimitInBytes: mem64,
+			MemorySwapInBytes:  memSwap64,
 			PidsLimit:          pidsLimit,
 		}
 	}
@@ -230,6 +253,11 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 		if cmd.Flags().Changed("memory") {
 			if spec.Linux.Resources.Memory.Limit != &opts.MemoryLimitInBytes {
 				spec.Linux.Resources.Memory.Limit = &opts.MemoryLimitInBytes
+			}
+		}
+		if cmd.Flags().Changed("memory-swap") {
+			if spec.Linux.Resources.Memory.Swap != &opts.MemorySwapInBytes {
+				spec.Linux.Resources.Memory.Swap = &opts.MemorySwapInBytes
 			}
 		}
 		if spec.Linux.Resources.Pids == nil {
