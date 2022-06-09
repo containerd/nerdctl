@@ -17,150 +17,32 @@
 package composer
 
 import (
-	"context"
-	"os"
-	"os/exec"
-	"os/signal"
+	"io"
 	"strings"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/nerdctl/pkg/composer/pipetagger"
-	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/logging/pipetagger"
 
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/nerdctl/pkg/logging"
 )
 
-type LogsOptions struct {
-	Follow      bool
-	Timestamps  bool
-	Tail        string
-	NoColor     bool
-	NoLogPrefix bool
-}
-
-func (c *Composer) Logs(ctx context.Context, lo LogsOptions, services []string) error {
-	serviceNames, err := c.ServiceNames(services...)
-	if err != nil {
-		return err
-	}
-	containers, err := c.Containers(ctx, serviceNames...)
-	if err != nil {
-		return err
-	}
-	return c.logs(ctx, containers, lo)
-}
-
-func (c *Composer) logs(ctx context.Context, containers []containerd.Container, lo LogsOptions) error {
+func (c *Composer) FormatLogs(containerName string, logsChan chan map[string]string, logsEOFChan chan string, lo logging.LogsOptions, rdStdout io.ReadCloser, rdStderr io.ReadCloser) error {
 	var logTagMaxLen int
-	type containerState struct {
-		name   string
-		logTag string
-		logCmd *exec.Cmd
+	logTag := strings.TrimPrefix(containerName, c.project.Name+"_")
+
+	if l := len(logTag); l > logTagMaxLen {
+		logTagMaxLen = l
 	}
 
-	containerStates := make(map[string]containerState, len(containers)) // key: containerID
-	for _, container := range containers {
-		info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
-		if err != nil {
-			return err
-		}
-		name := info.Labels[labels.Name]
-		logTag := strings.TrimPrefix(name, c.project.Name+"_")
-		if l := len(logTag); l > logTagMaxLen {
-			logTagMaxLen = l
-		}
-		containerStates[container.ID()] = containerState{
-			name:   name,
-			logTag: logTag,
-		}
+	logWidth := logTagMaxLen + 1
+	if lo.NoLogPrefix {
+		logWidth = -1
 	}
 
-	logsEOFChan := make(chan string) // value: container name
-	for id, state := range containerStates {
-		// TODO: show logs without executing `nerdctl logs`
-		args := []string{"logs"}
-		if lo.Follow {
-			args = append(args, "-f")
-		}
-		if lo.Timestamps {
-			args = append(args, "-t")
-		}
-		if lo.Tail != "" {
-			args = append(args, "-n")
-			if lo.Tail == "all" {
-				args = append(args, "+0")
-			} else {
-				args = append(args, lo.Tail)
-			}
-		}
+	stdoutTagger := pipetagger.New(rdStdout, logTag, logWidth, lo.NoColor)
+	stderrTagger := pipetagger.New(rdStderr, logTag, logWidth, lo.NoColor)
 
-		args = append(args, id)
-		state.logCmd = c.createNerdctlCmd(ctx, args...)
-		stdout, err := state.logCmd.StdoutPipe()
-		if err != nil {
-			return err
-		}
-		logWidth := logTagMaxLen + 1
-		if lo.NoLogPrefix {
-			logWidth = -1
-		}
-		stdoutTagger := pipetagger.New(os.Stdout, stdout, state.logTag, logWidth, lo.NoColor)
-		stderr, err := state.logCmd.StderrPipe()
-		if err != nil {
-			return err
-		}
-		stderrTagger := pipetagger.New(os.Stderr, stderr, state.logTag, logWidth, lo.NoColor)
-		if c.DebugPrintFull {
-			logrus.Debugf("Running %v", state.logCmd.Args)
-		}
-		if err := state.logCmd.Start(); err != nil {
-			return err
-		}
-		containerName := state.name
-		go func() {
-			stdoutTagger.Run()
-			logsEOFChan <- containerName
-		}()
-		go stderrTagger.Run()
-	}
-
-	interruptChan := make(chan os.Signal, 1)
-	signal.Notify(interruptChan, os.Interrupt)
-
-	logsEOFMap := make(map[string]struct{}) // key: container name
-selectLoop:
-	for {
-		// Wait for Ctrl-C, or `nerdctl compose down` in another terminal
-		select {
-		case sig := <-interruptChan:
-			logrus.Debugf("Received signal: %s", sig)
-			break selectLoop
-		case containerName := <-logsEOFChan:
-			if lo.Follow {
-				// When `nerdctl logs -f` has exited, we can assume that the container has exited
-				logrus.Infof("Container %q exited", containerName)
-			} else {
-				logrus.Debugf("Logs for container %q reached EOF", containerName)
-			}
-			logsEOFMap[containerName] = struct{}{}
-			if len(logsEOFMap) == len(containerStates) {
-				if lo.Follow {
-					logrus.Info("All the containers have exited")
-				} else {
-					logrus.Debug("All the logs reached EOF")
-				}
-				break selectLoop
-			}
-		}
-	}
-
-	for _, state := range containerStates {
-		if state.logCmd != nil && state.logCmd.Process != nil {
-			if err := state.logCmd.Process.Kill(); err != nil {
-				logrus.Warn(err)
-			}
-		}
-	}
-
+	go stdoutTagger.Run(logsChan, logsEOFChan, "stdout", containerName)
+	go stderrTagger.Run(logsChan, logsEOFChan, "stderr", containerName)
 	return nil
+
 }

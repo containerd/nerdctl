@@ -441,7 +441,6 @@ func newContainer(project *compose.Project, parsed *Service, i int) (*Container,
 
 	c.RunArgs = []string{
 		"--name=" + c.Name,
-		"-d",
 		"--pull=never", // because image will be ensured before running replicas with `nerdctl run`.
 	}
 

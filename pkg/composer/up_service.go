@@ -20,12 +20,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
-	"strings"
+	"os/exec"
+	"os/signal"
 	"sync"
 
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/logging"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -44,56 +47,128 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 	}
 
 	var (
-		containers   = make(map[string]serviceparser.Container) // key: container ID
-		services     = []string{}
+		containers   = make(map[string]serviceparser.Container) // key: container Name
 		containersMu sync.Mutex
 		runEG        errgroup.Group
 	)
+
+	logsEOFChan := make(chan string) // value: container name
+	interruptChan := make(chan os.Signal, 1)
+	logsChan := make(chan map[string]string)
+
+	lo := logging.LogsOptions{
+		Follow:      true,
+		NoColor:     uo.NoColor,
+		NoLogPrefix: uo.NoLogPrefix,
+	}
+
 	for _, ps := range parsedServices {
 		ps := ps
-		services = append(services, ps.Unparsed.Name)
 		for _, container := range ps.Containers {
-			container := container
-			runEG.Go(func() error {
-				id, err := c.upServiceContainer(ctx, ps, container)
+			if uo.Detach {
+				cmd, _, _, err := c.upServiceContainer(ctx, ps, container, uo)
 				if err != nil {
 					return err
 				}
-				containersMu.Lock()
-				containers[id] = container
-				containersMu.Unlock()
-				return nil
-			})
+				if err := cmd.Wait(); err != nil {
+					return err
+				}
+			} else {
+				container := container
+				runEG.Go(func() error {
+					_, rStdout, rStderr, err := c.upServiceContainer(ctx, ps, container, uo)
+					if err != nil {
+						return err
+					}
+					go func() {
+						<-interruptChan
+						rStdout.Close()
+						rStderr.Close()
+					}()
+					// format and write to channel
+					if err = c.FormatLogs(container.Name, logsChan, logsEOFChan, lo, rStdout, rStderr); err != nil {
+						return err
+					}
+					containersMu.Lock()
+					containers[container.Name] = container
+					containersMu.Unlock()
+					return nil
+				})
+			}
+
 		}
-	}
-	if err := runEG.Wait(); err != nil {
-		return err
 	}
 
 	if uo.Detach {
 		return nil
 	}
 
-	logrus.Info("Attaching to logs")
-	lo := LogsOptions{
-		Follow:      true,
-		NoColor:     uo.NoColor,
-		NoLogPrefix: uo.NoLogPrefix,
-	}
-	if err := c.Logs(ctx, lo, services); err != nil {
+	if err := runEG.Wait(); err != nil {
 		return err
+	}
+
+	if uo.Detach {
+		logrus.Info("Attaching to logs")
+	}
+	interruptChann := make(chan os.Signal, 1)
+	signal.Notify(interruptChann, os.Interrupt)
+
+	go func() {
+		for {
+			select {
+			case e := <-logsChan:
+				for k, v := range e {
+					if k == "stdout" {
+						fmt.Fprintf(os.Stdout, v)
+					} else if k == "stderr" {
+						fmt.Fprintf(os.Stderr, v)
+					}
+				}
+				break
+			}
+		}
+	}()
+
+	signal.Notify(interruptChan, os.Interrupt)
+	logsEOFMap := make(map[string]struct{}) // key: container name
+selectLoop:
+	for {
+		// Wait for Ctrl-C, or `nerdctl compose down` in another terminal
+		select {
+		case sig := <-interruptChann:
+			logrus.Debugf("Received signal: %s", sig)
+			close(logsChan)
+			break selectLoop
+		case containerName := <-logsEOFChan:
+			if lo.Follow {
+				// When `nerdctl logs -f` has exited, we can assume that the container has exited
+				logrus.Infof("Container %q exited", containerName)
+			} else {
+				logrus.Debugf("Logs for container %q reached EOF", containerName)
+			}
+			logsEOFMap[containerName] = struct{}{}
+			if len(logsEOFMap) == len(containers) {
+				if lo.Follow {
+					logrus.Info("All the containers have exited")
+				} else {
+					logrus.Debug("All the logs reached EOF")
+				}
+				close(logsChan)
+				break selectLoop
+			}
+		}
 	}
 
 	logrus.Infof("Stopping containers (forcibly)") // TODO: support gracefully stopping
 	var rmWG sync.WaitGroup
-	for id, container := range containers {
-		id := id
+	for name, container := range containers {
+		name := name
 		container := container
 		rmWG.Add(1)
 		go func() {
 			defer rmWG.Done()
 			logrus.Infof("Stopping container %s", container.Name)
-			if err := c.runNerdctlCmd(ctx, "rm", "-f", id); err != nil {
+			if err := c.runNerdctlCmd(ctx, "rm", "-f", name); err != nil {
 				logrus.Warn(err)
 			}
 		}()
@@ -127,11 +202,11 @@ func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Ser
 
 // upServiceContainer must be called after ensureServiceImage
 // upServiceContainer returns container ID
-func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparser.Service, container serviceparser.Container) (string, error) {
+func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparser.Service, container serviceparser.Container, uo UpOptions) (*exec.Cmd, io.ReadCloser, io.ReadCloser, error) {
 	// check if container already exists
 	exists, err := c.containerExists(ctx, container.Name, service.Unparsed.Name)
 	if err != nil {
-		return "", fmt.Errorf("error while checking for containers with name %q: %s", container.Name, err)
+		return nil, nil, nil, fmt.Errorf("error while checking for containers with name %q: %s", container.Name, err)
 	}
 
 	// delete container if it already exists
@@ -139,7 +214,7 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 		logrus.Debugf("Container %q already exists, deleting", container.Name)
 		delCmd := c.createNerdctlCmd(ctx, "rm", "-f", container.Name)
 		if err = delCmd.Run(); err != nil {
-			return "", fmt.Errorf("could not delete container %q: %s", container.Name, err)
+			return nil, nil, nil, fmt.Errorf("could not delete container %q: %s", container.Name, err)
 		}
 		logrus.Infof("Re-creating container %s", container.Name)
 	} else {
@@ -152,14 +227,25 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 		fmt.Sprintf("-l=%s=%s", labels.ComposeService, service.Unparsed.Name),
 	}, container.RunArgs...)
 
+	if uo.Detach {
+		container.RunArgs = append([]string{"-d"}, container.RunArgs...)
+	}
 	cmd := c.createNerdctlCmd(ctx, append([]string{"run"}, container.RunArgs...)...)
 	if c.DebugPrintFull {
 		logrus.Debugf("Running %v", cmd.Args)
 	}
-	cmd.Stderr = os.Stderr
-	out, err := cmd.Output()
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return "", fmt.Errorf("error while creating container %s: %w", container.Name, err)
+		return nil, nil, nil, err
 	}
-	return strings.TrimSpace(string(out)), nil
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	if err = cmd.Start(); err != nil {
+		return nil, nil, nil, fmt.Errorf("error while creating container %s: %w", container.Name, err)
+	}
+	return cmd, stdout, stderr, nil
 }

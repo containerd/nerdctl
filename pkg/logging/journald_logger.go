@@ -21,10 +21,11 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"os"
 	"os/exec"
+	"strconv"
 	"sync"
 	"text/template"
+	"time"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/coreos/go-systemd/v22/journal"
@@ -94,19 +95,47 @@ func (journaldLogger *JournaldLogger) Process(dataStore string, config *logging.
 	return nil
 }
 
-func FetchLogs(journalctlArgs []string) error {
+func FetchLogs(journalctlArgs []string, wStdoutPipe, wStderrPipe io.WriteCloser, logsEOFChan chan<- struct{}) error {
 	journalctl, err := exec.LookPath("journalctl")
 	if err != nil {
 		return err
 	}
 
 	cmd := exec.Command(journalctl, journalctlArgs...)
-
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-
-	if err := cmd.Run(); err != nil {
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
 		return err
 	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	go io.Copy(wStdoutPipe, stdout)
+	go io.Copy(wStderrPipe, stderr)
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	go func() error {
+		if err := cmd.Wait(); err != nil {
+			return err
+		}
+		logsEOFChan <- struct{}{}
+		return nil
+	}()
+
 	return nil
+}
+
+func PrepareJournalCtlDate(t string) (string, error) {
+	i, err := strconv.ParseInt(t, 10, 64)
+	if err != nil {
+		return "", err
+	}
+	tm := time.Unix(i, 0)
+	s := tm.Format("2006-01-02 15:04:05")
+	return s, nil
 }

@@ -71,14 +71,13 @@ func ChooseColorAttrs(tag string) []color.Attribute {
 
 // New create a PipeTagger.
 // Set width = -1 to disable tagging.
-func New(w io.Writer, r io.Reader, tag string, width int, noColor bool) *PipeTagger {
+func New(r io.ReadCloser, tag string, width int, noColor bool) *PipeTagger {
 	var attrs []color.Attribute
 	if !noColor {
 		attrs = ChooseColorAttrs(tag)
 	}
 	return &PipeTagger{
-		w:     w,
-		r:     r,
+		R:     r,
 		tag:   tag,
 		width: width,
 		color: color.New(attrs...),
@@ -86,29 +85,29 @@ func New(w io.Writer, r io.Reader, tag string, width int, noColor bool) *PipeTag
 }
 
 type PipeTagger struct {
-	w     io.Writer
-	r     io.Reader
+	R     io.ReadCloser
 	tag   string
 	width int
 	color *color.Color
 }
 
-func (x *PipeTagger) Run() error {
-	scanner := bufio.NewScanner(x.r)
+func (x *PipeTagger) Run(logsChan chan map[string]string, logsEOFChan chan string, device string, containerName string) error {
+	scanner := bufio.NewScanner(x.R)
 	for scanner.Scan() {
 		line := scanner.Text()
+		var e = make(map[string]string)
 		if x.width < 0 {
-			fmt.Fprintln(x.w, line)
+			e[device] = fmt.Sprintf("%s\n", line)
 		} else {
-			fmt.Fprintf(x.w, "%s%s|%s\n",
-				x.color.Sprint(x.tag),
-				strings.Repeat(" ", x.width-len(x.tag)),
-				line,
-			)
+			line = fmt.Sprintf("%s%s|%s\n", x.color.Sprint(x.tag), strings.Repeat(" ", x.width-len(x.tag)), line)
+			e[device] = line
 		}
+		logsChan <- e
 	}
+
 	if err := scanner.Err(); err != nil {
 		return err
 	}
+	logsEOFChan <- containerName
 	return nil
 }

@@ -35,6 +35,16 @@ const (
 	Tag        = "tag"
 )
 
+type LogsOptions struct {
+	Follow      bool
+	Timestamps  bool
+	Tail        string
+	Since       string
+	Until       string
+	NoColor     bool
+	NoLogPrefix bool
+}
+
 type LogDriver interface {
 	Process(dataStore string, config *logging.Config) error
 }

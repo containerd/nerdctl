@@ -78,7 +78,7 @@ func Encode(w io.WriteCloser, stdout, stderr io.Reader) error {
 	return nil
 }
 
-func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string, until string, logsEOFChan chan<- struct{}) error {
+func Decode(r io.Reader, wStdoutPipe, wStderrPipe io.WriteCloser, timestamps bool, since string, until string, logsEOFChan chan<- struct{}) error {
 	dec := json.NewDecoder(r)
 	now := time.Now()
 	for {
@@ -128,12 +128,11 @@ func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string
 		}
 
 		output = append(output, []byte(e.Log)...)
-
 		switch e.Stream {
 		case "stdout":
-			stdout.Write(output)
+			wStdoutPipe.Write(output)
 		case "stderr":
-			stderr.Write(output)
+			wStderrPipe.Write(output)
 		default:
 			logrus.Errorf("unknown stream name %q, entry=%+v", e.Stream, e)
 		}
