@@ -17,9 +17,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -71,11 +74,16 @@ func main() {
 }
 
 func xmain() error {
+	signals := make(chan os.Signal, 2048)
+	ctx, cancel := context.WithCancel(context.Background())
+	handleSignals(ctx, signals, cancel)
+	signal.Notify(signals, handledSignals...)
 	if len(os.Args) == 3 && os.Args[1] == logging.MagicArgv1 {
 		// containerd runtime v2 logging plugin mode.
 		// "binary://BIN?KEY=VALUE" URI is parsed into Args {BIN, KEY, VALUE}.
 		return logging.Main(os.Args[2])
 	}
+
 	// nerdctl CLI mode
 	app, err := newApp()
 	if err != nil {
@@ -448,5 +456,32 @@ func AddPersistentStringArrayFlag(cmd *cobra.Command, name string, aliases, nonP
 		} else {
 			persistentFlags.StringArrayVar(p, a, value, aliasesUsage)
 		}
+	}
+}
+
+func dumpStacks(writeToFile bool) {
+	var (
+		buf       []byte
+		stackSize int
+	)
+	bufferLen := 16384
+	for stackSize == len(buf) {
+		buf = make([]byte, bufferLen)
+		stackSize = runtime.Stack(buf, true)
+		bufferLen *= 2
+	}
+	buf = buf[:stackSize]
+	logrus.Debugf("=== BEGIN goroutine stack dump ===\n%s\n=== END goroutine stack dump ===", buf)
+
+	if writeToFile {
+		// Also write to file to aid gathering diagnostics
+		name := filepath.Join(os.TempDir(), fmt.Sprintf("nerdctl.%d.stacks.log", os.Getpid()))
+		f, err := os.Create(name)
+		if err != nil {
+			return
+		}
+		defer f.Close()
+		f.WriteString(string(buf))
+		logrus.Debugf("goroutine stack dump written to %s", name)
 	}
 }
