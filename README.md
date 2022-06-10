@@ -396,6 +396,7 @@ Cgroup flags:
 - :whale: `--cpuset-cpus`: CPUs in which to allow execution (0-3, 0,1)
 - :whale: `--cpuset-mems`: Memory nodes (MEMs) in which to allow execution (0-3, 0,1). Only effective on NUMA systems
 - :whale: `--memory`: Memory limit
+- :whale: `--oom-kill-disable`: Disable OOM Killer
 - :whale: `--pids-limit`: Tune container pids limit
 - :nerd_face: `--cgroup-conf`: Configure cgroup v2 (key=value)
 - :whale: `blkio-weight`: Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)

@@ -49,6 +49,15 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	okd, err := cmd.Flags().GetBool("oom-kill-disable")
+	if err != nil {
+		return nil, err
+	}
+	if memStr == "" && okd {
+		logrus.Warn("Disabling the OOM killer on containers without setting a '-m/--memory' limit may be dangerous.")
+	}
+
 	pidsLimit, err := cmd.Flags().GetInt64("pids-limit")
 	if err != nil {
 		return nil, err
@@ -128,6 +137,10 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 			return nil, fmt.Errorf("failed to parse memory bytes %q: %w", memStr, err)
 		}
 		opts = append(opts, oci.WithMemoryLimit(uint64(mem64)))
+	}
+
+	if okd {
+		opts = append(opts, withDisableOOMKiller(okd))
 	}
 
 	if pidsLimit > 0 {
@@ -271,6 +284,21 @@ func withBlkioWeight(blkioWeight uint16) oci.SpecOpts {
 			return nil
 		}
 		s.Linux.Resources.BlockIO = &specs.LinuxBlockIO{Weight: &blkioWeight}
+		return nil
+	}
+}
+
+func withDisableOOMKiller(disableOOMKiller bool) oci.SpecOpts {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		if s.Linux != nil {
+			if s.Linux.Resources == nil {
+				s.Linux.Resources = &specs.LinuxResources{}
+			}
+			if s.Linux.Resources.Memory == nil {
+				s.Linux.Resources.Memory = &specs.LinuxMemory{}
+			}
+			s.Linux.Resources.Memory.DisableOOMKiller = &disableOOMKiller
+		}
 		return nil
 	}
 }
