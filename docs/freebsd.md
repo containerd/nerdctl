@@ -20,7 +20,6 @@ You can use the `knast/freebsd` image to run a standard FreeBSD 13 jail:
 nerdctl run --net none -it knast/freebsd:13-STABLE
 ```
 
-:warning: `nerdctl run` has been broken on FreeBSD (FIXME): https://github.com/containerd/nerdctl/issues/868
 
 ## Limitations & Bugs
 
