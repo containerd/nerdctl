@@ -90,6 +90,10 @@ func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
 				driver = &JournaldLogger{
 					Opts: logConfig.Opts,
 				}
+			case "fluentd":
+				driver = &FluentdLogger{
+					Opts: logConfig.Opts,
+				}
 			default:
 				return fmt.Errorf("unknown driver %q", logConfig.Driver)
 			}

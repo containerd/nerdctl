@@ -474,13 +474,23 @@ Metadata flags:
 - :nerd_face: `--pidfile`: file path to write the task's pid. The CLI syntax conforms to Podman convention.
 
 Logging flags:
-- :whale: `--log-driver=(json-file|journald)`: Logging driver for the container (default `json-file`).
+- :whale: `--log-driver=(json-file|journald|fluentd)`: Logging driver for the container (default `json-file`).
     - :whale: `--log-driver=json-file`: The logs are formatted as JSON. The default logging driver for nerdctl.
       - The `json-file` logging driver supports the following logging options:
-          - :whale: `--log-opt=max-size=<MAX-SIZE>`: The maximum size of the log before it is rolled. A positive integer plus a modifier representing the unit of measure (k, m, or g). Defaults to unlimited.
-          - :whale: `--log-opt=max-file=<MAX-FILE>`: The maximum number of log files that can be present. If rolling the logs creates excess files, the oldest file is removed. Only effective when `max-size` is also set. A positive integer. Defaults to 1.
+        - :whale: `--log-opt=max-size=<MAX-SIZE>`: The maximum size of the log before it is rolled. A positive integer plus a modifier representing the unit of measure (k, m, or g). Defaults to unlimited.
+        - :whale: `--log-opt=max-file=<MAX-FILE>`: The maximum number of log files that can be present. If rolling the logs creates excess files, the oldest file is removed. Only effective when `max-size` is also set. A positive integer. Defaults to 1.
     - :whale: `--log-driver=journald`: Writes log messages to `journald`. The `journald` daemon must be running on the host machine.
-          - :whale: `--log-opt=tag=<TEMPLATE>`: Specify template to set `SYSLOG_IDENTIFIER` value in journald logs.
+      - :whale: `--log-opt=tag=<TEMPLATE>`: Specify template to set `SYSLOG_IDENTIFIER` value in journald logs.
+    - :whale: `--log-driver=fluentd`: Writes log messages to `fluentd`. The `fluentd` daemon must be running on the host machine.
+      - The `fluentd` logging driver supports the following logging options:
+        - :whale: `--log-opt=fluentd-address=<ADDRESS>`: The address of the `fluentd` daemon, tcp(default) and unix sockets are supported..
+        - :whale: `--log-opt=fluentd-async=<true|false>`: Enable async mode for fluentd. The default value is false.
+        - :whale: `--log-opt=fluentd-buffer-limit=<LIMIT>`: The buffer limit for fluentd. If the buffer is full, the call to record logs will fail. The default is 8192. (https://github.com/fluent/fluent-logger-golang/tree/master#bufferlimit)
+        - :whale: `--log-opt=fluentd-retry-wait=<1s|1ms>`: The time to wait before retrying to send logs to fluentd. The default value is 1s.
+        - :whale: `--log-opt=fluentd-max-retries=<1>`: The maximum number of retries to send logs to fluentd. The default value is MaxInt32.
+        - :whale: `--log-opt=fluentd-sub-second-precision=<true|false>`: Enable sub-second precision for fluentd. The default value is false.
+        - :nerd_face: `--log-opt=fluentd-async-reconnect-interval=<1s|1ms>`: The time to wait before retrying to reconnect to fluentd. The default value is 0s.
+        - :nerd_face: `--log-opt=fluentd-request-ack=<true|false>`: Enable request ack for fluentd. The default value is false.
 
 Shared memory flags:
 - :whale: `--ipc`: IPC namespace to use
