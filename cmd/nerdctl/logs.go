@@ -115,10 +115,19 @@ func logsAction(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			switch logConfig.Driver {
-			case "json-file":
-				logJSONFilePath := jsonfile.Path(dataStore, ns, found.Container.ID())
-				if _, err := os.Stat(logJSONFilePath); err != nil {
-					return fmt.Errorf("failed to open %q, container is not created with `nerdctl run -d`?: %w", logJSONFilePath, err)
+			case "json-file", "file":
+				var logFilePath string
+				if logConfig.Driver == "file" {
+					logFilePath = logConfig.Opts[logging.LogPath]
+					if logFilePath == "" {
+						return fmt.Errorf("log file path is empty")
+					}
+				} else {
+					logFilePath = jsonfile.Path(dataStore, ns, found.Container.ID())
+				}
+
+				if _, err := os.Stat(logFilePath); err != nil {
+					return fmt.Errorf("failed to open %q, container is not created with `nerdctl run -d`?: %w", logFilePath, err)
 				}
 				task, err := found.Container.Task(ctx, nil)
 				if err != nil {
@@ -137,7 +146,7 @@ func logsAction(cmd *cobra.Command, args []string) error {
 					if err != nil {
 						return err
 					}
-					reader, execCmd, err = newTailReader(ctx, task, logJSONFilePath, follow, tail)
+					reader, execCmd, err = newTailReader(ctx, task, logFilePath, follow, tail)
 					if err != nil {
 						return err
 					}
@@ -148,7 +157,7 @@ func logsAction(cmd *cobra.Command, args []string) error {
 					}()
 				} else {
 					if tail != "" {
-						reader, execCmd, err = newTailReader(ctx, task, logJSONFilePath, false, tail)
+						reader, execCmd, err = newTailReader(ctx, task, logFilePath, false, tail)
 						if err != nil {
 							return err
 						}
@@ -158,7 +167,7 @@ func logsAction(cmd *cobra.Command, args []string) error {
 						}()
 
 					} else {
-						f, err := os.Open(logJSONFilePath)
+						f, err := os.Open(logFilePath)
 						if err != nil {
 							return err
 						}
@@ -168,6 +177,9 @@ func logsAction(cmd *cobra.Command, args []string) error {
 							<-logsEOFChan
 						}()
 					}
+				}
+				if logConfig.Driver == "file" {
+					return fetchFileLogs(os.Stdout, os.Stderr, reader, logsEOFChan)
 				}
 				return jsonfile.Decode(os.Stdout, os.Stderr, reader, timestamps, since, until, logsEOFChan)
 			case "journald":
@@ -263,4 +275,15 @@ func prepareJournalCtlDate(t string) (string, error) {
 	tm := time.Unix(i, 0)
 	s := tm.Format("2006-01-02 15:04:05")
 	return s, nil
+}
+
+// fetchFileLogs fetches logs from a regular file which contains both stdout and stderr
+// and prints logs to stdout
+func fetchFileLogs(stdout, _stderr io.Writer, r io.Reader, logsEOFChan chan<- struct{}) error {
+	_, err := io.Copy(stdout, r)
+	logsEOFChan <- struct{}{}
+	if err != nil && err != io.EOF {
+		return err
+	}
+	return nil
 }

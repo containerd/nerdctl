@@ -32,6 +32,7 @@ const (
 	MagicArgv1 = "_NERDCTL_INTERNAL_LOGGING"
 	MaxSize    = "max-size"
 	MaxFile    = "max-file"
+	LogPath    = "path"
 	Tag        = "tag"
 )
 

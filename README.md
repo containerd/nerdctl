@@ -473,13 +473,16 @@ Metadata flags:
 - :nerd_face: `--pidfile`: file path to write the task's pid. The CLI syntax conforms to Podman convention.
 
 Logging flags:
-- :whale: `--log-driver=(json-file|journald)`: Logging driver for the container (default `json-file`).
+- :whale: `--log-driver=(json-file|journald|file)`: Logging driver for the container (default `json-file`).
     - :whale: `--log-driver=json-file`: The logs are formatted as JSON. The default logging driver for nerdctl.
       - The `json-file` logging driver supports the following logging options:
           - :whale: `--log-opt=max-size=<MAX-SIZE>`: The maximum size of the log before it is rolled. A positive integer plus a modifier representing the unit of measure (k, m, or g). Defaults to unlimited.
           - :whale: `--log-opt=max-file=<MAX-FILE>`: The maximum number of log files that can be present. If rolling the logs creates excess files, the oldest file is removed. Only effective when `max-size` is also set. A positive integer. Defaults to 1.
     - :whale: `--log-driver=journald`: Writes log messages to `journald`. The `journald` daemon must be running on the host machine.
           - :whale: `--log-opt=tag=<TEMPLATE>`: Specify template to set `SYSLOG_IDENTIFIER` value in journald logs.
+    - :whale: `--log-driver=file`: Writes log messages to a specified file. Default saved to the container's state dir with name `<CONTAINERID>.log`.
+          - :whale: `--log-opt=path=<PATH>`: Specify the full absolute path for container log.
+          - :warning: `--timestamps` and `--until` options of `nerdctl logs` command will not work with `file` log driver.
 
 Shared memory flags:
 - :whale: `--ipc`: IPC namespace to use

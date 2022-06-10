@@ -238,7 +238,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	// log-opt needs to be StringArray, not StringSlice, to prevent "env=os,customer" from being split to {"env=os", "customer"}
 	cmd.Flags().String("log-driver", "json-file", "Logging driver for the container")
 	cmd.RegisterFlagCompletionFunc("log-driver", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"json-file", "journald"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"json-file", "journald", "file"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	cmd.Flags().StringArray("log-opt", nil, "Log driver options")
 	// #endregion
@@ -292,6 +292,8 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	ns := lab[labels.Namespace]
 	logURI := lab[labels.LogURI]
 
 	id := container.ID()
@@ -305,7 +307,6 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 		defer func() {
 			const removeAnonVolumes = true
-			ns := lab[labels.Namespace]
 			stateDir := lab[labels.StateDir]
 			if removeErr := removeContainer(cmd, ctx, container, ns, id, true, dataStore, stateDir, containerNameStore, removeAnonVolumes); removeErr != nil {
 				logrus.WithError(removeErr).Warnf("failed to remove container %s", id)
@@ -492,6 +493,18 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 			Driver: logDriver,
 			Opts:   logOptMap,
 		}
+
+		// update log config for file log driver
+		if logDriver == "file" {
+			// for `file` log driver, all stdout/stderr will be written to the same file
+			logPath := logOptMap[logging.LogPath]
+			if logPath == "" {
+				// default log path will be the state dir of the container,
+				// and log file will be named <CONTAINERID>.log like json file
+				logOptMap[logging.LogPath] = filepath.Join(stateDir, id+".log")
+			}
+		}
+
 		logConfigB, err := json.Marshal(logConfig)
 		if err != nil {
 			return nil, "", nil, err
@@ -500,7 +513,7 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		if err = os.WriteFile(logConfigFilePath, logConfigB, 0600); err != nil {
 			return nil, "", nil, err
 		}
-		if lu, err := generateLogURI(dataStore); err != nil {
+		if lu, err := generateLogURI(dataStore, logDriver, logOptMap); err != nil {
 			return nil, "", nil, err
 		} else if lu != nil {
 			logURI = lu.String()
@@ -812,16 +825,21 @@ func withBindMountHostProcfs(_ context.Context, _ oci.Client, _ *containers.Cont
 	return nil
 }
 
-func generateLogURI(dataStore string) (*url.URL, error) {
+func generateLogURI(dataStore, logDriver string, logOptMap map[string]string) (*url.URL, error) {
+	if runtime.GOOS == "windows" {
+		return nil, nil
+	}
+
+	if logDriver == "file" {
+		return cio.LogURIGenerator("file", logOptMap[logging.LogPath], nil)
+	}
+
 	selfExe, err := os.Executable()
 	if err != nil {
 		return nil, err
 	}
 	args := map[string]string{
 		logging.MagicArgv1: dataStore,
-	}
-	if runtime.GOOS == "windows" {
-		return nil, nil
 	}
 
 	return cio.LogURIGenerator("binary", selfExe, args)
@@ -906,6 +924,7 @@ func parseKVStringsMapFromLogOpt(cmd *cobra.Command, logDriver string) (map[stri
 			delete(logOptMap, logging.MaxFile)
 		}
 	}
+
 	return logOptMap, nil
 }
 
