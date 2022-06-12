@@ -396,6 +396,7 @@ Cgroup flags:
 - :whale: `--cpuset-cpus`: CPUs in which to allow execution (0-3, 0,1)
 - :whale: `--cpuset-mems`: Memory nodes (MEMs) in which to allow execution (0-3, 0,1). Only effective on NUMA systems
 - :whale: `--memory`: Memory limit
+- :whale: `--memory-swap`: Swap limit equal to memory plus swap: '-1' to enable unlimited swap
 - :whale: `--oom-kill-disable`: Disable OOM Killer
 - :whale: `--pids-limit`: Tune container pids limit
 - :nerd_face: `--cgroup-conf`: Configure cgroup v2 (key=value)
@@ -768,6 +769,7 @@ Usage: `nerdctl update [OPTIONS] CONTAINER [CONTAINER...]`
 - :whale: `--cpuset-cpus`: CPUs in which to allow execution (0-3, 0,1)
 - :whale: `--cpuset-mems`: Memory nodes (MEMs) in which to allow execution (0-3, 0,1). Only effective on NUMA systems
 - :whale: `--memory`: Memory limit
+- :whale: `--memory-swap`: Swap limit equal to memory plus swap: '-1' to enable unlimited swap
 - :whale: `--pids-limit`: Tune container pids limit
 
 ### :whale: nerdctl wait
