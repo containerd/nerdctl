@@ -40,6 +40,7 @@ type updateResourceOptions struct {
 	CpuQuota           int64
 	CpuShares          uint64
 	MemoryLimitInBytes int64
+	MemoryReservation  int64
 	MemorySwapInBytes  int64
 	CpusetCpus         string
 	CpusetMems         string
@@ -67,6 +68,7 @@ func setUpdateFlags(cmd *cobra.Command) {
 	cmd.Flags().Int64("cpu-quota", -1, "Limit CPU CFS (Completely Fair Scheduler) quota")
 	cmd.Flags().Uint64("cpu-shares", 0, "CPU shares (relative weight)")
 	cmd.Flags().StringP("memory", "m", "", "Memory limit")
+	cmd.Flags().String("memory-reservation", "", "Memory soft limit")
 	cmd.Flags().String("memory-swap", "", "Swap limit equal to memory plus swap: '-1' to enable unlimited swap")
 	cmd.Flags().String("cpuset-cpus", "", "CPUs in which to allow execution (0-3, 0,1)")
 	cmd.Flags().String("cpuset-mems", "", "MEMs in which to allow execution (0-3, 0,1)")
@@ -164,6 +166,20 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 	if memSwap64 == 0 {
 		memSwap64 = mem64 * 2
 	}
+	memReserve, err := cmd.Flags().GetString("memory-reservation")
+	if err != nil {
+		return options, err
+	}
+	var memReserve64 int64
+	if memReserve != "" {
+		memReserve64, err = units.RAMInBytes(memReserve)
+		if err != nil {
+			return options, fmt.Errorf("failed to parse memory bytes %q: %w", memReserve, err)
+		}
+	}
+	if mem64 > 0 && memReserve64 > 0 && mem64 < memReserve64 {
+		return options, fmt.Errorf("Minimum memory limit can not be less than memory reservation limit, see usage")
+	}
 
 	cpuset, err := cmd.Flags().GetString("cpuset-cpus")
 	if err != nil {
@@ -185,6 +201,7 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 			CpusetCpus:         cpuset,
 			CpusetMems:         cpusetMems,
 			MemoryLimitInBytes: mem64,
+			MemoryReservation:  memReserve64,
 			MemorySwapInBytes:  memSwap64,
 			PidsLimit:          pidsLimit,
 		}
@@ -260,6 +277,11 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 			}
 			if spec.Linux.Resources.Memory.Swap != &opts.MemorySwapInBytes {
 				spec.Linux.Resources.Memory.Swap = &opts.MemorySwapInBytes
+			}
+		}
+		if cmd.Flags().Changed("memory-reservation") {
+			if spec.Linux.Resources.Memory.Reservation != &opts.MemoryReservation {
+				spec.Linux.Resources.Memory.Reservation = &opts.MemoryReservation
 			}
 		}
 		if spec.Linux.Resources.Pids == nil {
