@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/lockutil"
@@ -62,9 +61,6 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 	}
 	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
 	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(cniNetconfpath, 0755); err != nil {
 		return err
 	}
 	driver, err := cmd.Flags().GetString("driver")
