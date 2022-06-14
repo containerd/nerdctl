@@ -134,6 +134,10 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 	if err != nil {
 		return options, err
 	}
+	memSwap, err := cmd.Flags().GetString("memory-swap")
+	if err != nil {
+		return options, err
+	}
 	var mem64 int64
 	if memStr != "" {
 		mem64, err = units.RAMInBytes(memStr)
@@ -141,11 +145,6 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 			return options, fmt.Errorf("failed to parse memory bytes %q: %w", memStr, err)
 		}
 	}
-	memSwap, err := cmd.Flags().GetString("memory-swap")
-	if err != nil {
-		return options, err
-	}
-
 	var memSwap64 int64
 	if memSwap != "" {
 		if memSwap == "-1" {
@@ -159,6 +158,11 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 				return options, fmt.Errorf("Minimum memoryswap limit should be larger than memory limit, see usage")
 			}
 		}
+	} else {
+		memSwap64 = mem64 * 2
+	}
+	if memSwap64 == 0 {
+		memSwap64 = mem64 * 2
 	}
 
 	cpuset, err := cmd.Flags().GetString("cpuset-cpus")
@@ -254,8 +258,6 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 			if spec.Linux.Resources.Memory.Limit != &opts.MemoryLimitInBytes {
 				spec.Linux.Resources.Memory.Limit = &opts.MemoryLimitInBytes
 			}
-		}
-		if cmd.Flags().Changed("memory-swap") {
 			if spec.Linux.Resources.Memory.Swap != &opts.MemorySwapInBytes {
 				spec.Linux.Resources.Memory.Swap = &opts.MemorySwapInBytes
 			}
