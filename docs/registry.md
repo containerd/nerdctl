@@ -66,22 +66,26 @@ See https://github.com/containerd/nerdctl/issues/86 for the discussion about wor
   - [Logging in](#logging-in-3)
   - [Creating a repo](#creating-a-repo-3)
   - [Pushing an image](#pushing-an-image-3)
-- [Google Artifact Registry (pkg.dev)](#google-artifact-registry-pkgdev)
+- [GitLab Container Registry](#gitlab-container-registry)
   - [Logging in](#logging-in-4)
   - [Creating a repo](#creating-a-repo-4)
   - [Pushing an image](#pushing-an-image-4)
-- [Google Container Registry (GCR)](#google-container-registry-gcr)
+- [Google Artifact Registry (pkg.dev)](#google-artifact-registry-pkgdev)
   - [Logging in](#logging-in-5)
   - [Creating a repo](#creating-a-repo-5)
   - [Pushing an image](#pushing-an-image-5)
-- [JFrog Artifactory (Cloud/On-Prem)](#jfrog-artifactory-cloudon-prem)
+- [Google Container Registry (GCR)](#google-container-registry-gcr)
   - [Logging in](#logging-in-6)
   - [Creating a repo](#creating-a-repo-6)
   - [Pushing an image](#pushing-an-image-6)
-- [Quay.io](#quayio)
+- [JFrog Artifactory (Cloud/On-Prem)](#jfrog-artifactory-cloudon-prem)
   - [Logging in](#logging-in-7)
   - [Creating a repo](#creating-a-repo-7)
   - [Pushing an image](#pushing-an-image-7)
+- [Quay.io](#quayio)
+  - [Logging in](#logging-in-8)
+  - [Creating a repo](#creating-a-repo-8)
+  - [Pushing an image](#pushing-an-image-8)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -232,6 +236,38 @@ $ nerdctl push ghcr.io/<USERNAME>/hello-world
 
 The pushed image appears in the "Packages" tab of your GitHub profile.
 Private as default.
+
+## GitLab Container Registry
+See also https://docs.gitlab.com/ee/user/packages/container_registry/
+
+### Logging in
+
+```console
+$ nerdctl login registry.gitlab.com -u <USERNAME>
+Enter Password: ********[Enter]
+
+Login Succeeded
+```
+
+The `<USERNAME>` is your GitLab username.
+
+The "Password" here is either a [GitLab Personal access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html) or a [GitLab Deploy token](https://docs.gitlab.com/ee/user/project/deploy_tokens/index.html). Both options require minimum scope of `read_registry` for pull access and both `write_registry` and `read_registry` scopes for push access.
+
+> **Note**: nerdctl prior to v0.16.1 had a bug that required pressing the Enter key twice.
+
+### Creating a repo
+Container registries in GitLab are created at the project level. A project in GitLab must exist first before you begin working with its container registry.
+
+### Pushing an image
+
+In this example we have created a GitLab project named `myproject`.
+
+```console
+$ nerdctl tag hello-world registry.gitlab.com/<USERNAME>/myproject/hello-world:latest
+$ nerdctl push registry.gitlab.com/<USERNAME>/myproject/hello-world:latest
+```
+
+The pushed image appears under the "Packages & Registries -> Container Registry" tab of your project on GitLab.
 
 ## Google Artifact Registry (pkg.dev)
 See also https://cloud.google.com/artifact-registry/docs/docker/quickstart
