@@ -31,10 +31,15 @@ import (
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+type customMemoryOptions struct {
+	MemoryReservation *int64
+	MemorySwappiness  *uint64
+	disableOOMKiller  *bool
+}
 
 func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
@@ -50,6 +55,16 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 		return nil, err
 	}
 	memSwap, err := cmd.Flags().GetString("memory-swap")
+	if err != nil {
+		return nil, err
+	}
+
+	memSwappiness64, err := cmd.Flags().GetInt64("memory-swappiness")
+	if err != nil {
+		return nil, err
+	}
+
+	memReserve, err := cmd.Flags().GetString("memory-reservation")
 	if err != nil {
 		return nil, err
 	}
@@ -144,6 +159,13 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 		opts = append(opts, oci.WithMemoryLimit(uint64(mem64)))
 
 	}
+	var memReserve64 int64
+	if memReserve != "" {
+		memReserve64, err = units.RAMInBytes(memReserve)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse memory bytes %q: %w", memReserve, err)
+		}
+	}
 	var memSwap64 int64
 	if memSwap != "" {
 		if memSwap == "-1" {
@@ -167,12 +189,28 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	}
 	opts = append(opts, oci.WithMemorySwap(memSwap64))
 
-	if okd {
-		opts = append(opts, withDisableOOMKiller(okd))
+	if mem64 > 0 && memReserve64 > 0 && mem64 < memReserve64 {
+		return nil, fmt.Errorf("Minimum memory limit can not be less than memory reservation limit, see usage")
+	}
+	if memSwappiness64 > 100 || memSwappiness64 < -1 {
+		return nil, fmt.Errorf("Invalid value: %v, valid memory swappiness range is 0-100", memSwappiness64)
 	}
 
+	var customMemRes customMemoryOptions
+	if memReserve64 >= 0 && cmd.Flags().Changed("memory-reservation") {
+		customMemRes.MemoryReservation = &memReserve64
+	}
+	if memSwappiness64 >= 0 && cmd.Flags().Changed("memory-swappiness") {
+		memSwapinessUint64 := uint64(memSwappiness64)
+		customMemRes.MemorySwappiness = &memSwapinessUint64
+	}
+	if okd {
+		customMemRes.disableOOMKiller = &okd
+	}
+	opts = append(opts, withCustomMemoryResources(customMemRes))
+
 	if pidsLimit > 0 {
-		opts = append(opts, oci.WithPidsLimit(int64(pidsLimit)))
+		opts = append(opts, oci.WithPidsLimit(pidsLimit))
 	}
 
 	cgroupConf, err := cmd.Flags().GetStringSlice("cgroup-conf")
@@ -316,7 +354,7 @@ func withBlkioWeight(blkioWeight uint16) oci.SpecOpts {
 	}
 }
 
-func withDisableOOMKiller(disableOOMKiller bool) oci.SpecOpts {
+func withCustomMemoryResources(memoryOptions customMemoryOptions) oci.SpecOpts {
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
 		if s.Linux != nil {
 			if s.Linux.Resources == nil {
@@ -325,7 +363,15 @@ func withDisableOOMKiller(disableOOMKiller bool) oci.SpecOpts {
 			if s.Linux.Resources.Memory == nil {
 				s.Linux.Resources.Memory = &specs.LinuxMemory{}
 			}
-			s.Linux.Resources.Memory.DisableOOMKiller = &disableOOMKiller
+			if memoryOptions.disableOOMKiller != nil {
+				s.Linux.Resources.Memory.DisableOOMKiller = memoryOptions.disableOOMKiller
+			}
+			if memoryOptions.MemorySwappiness != nil {
+				s.Linux.Resources.Memory.Swappiness = memoryOptions.MemorySwappiness
+			}
+			if memoryOptions.MemoryReservation != nil {
+				s.Linux.Resources.Memory.Reservation = memoryOptions.MemoryReservation
+			}
 		}
 		return nil
 	}
