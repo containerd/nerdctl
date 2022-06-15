@@ -142,8 +142,8 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 			return nil, fmt.Errorf("failed to parse memory bytes %q: %w", memStr, err)
 		}
 		opts = append(opts, oci.WithMemoryLimit(uint64(mem64)))
-	}
 
+	}
 	var memSwap64 int64
 	if memSwap != "" {
 		if memSwap == "-1" {
@@ -157,9 +157,15 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 				return nil, fmt.Errorf("Minimum memoryswap limit should be larger than memory limit, see usage")
 			}
 		}
-
-		opts = append(opts, oci.WithMemorySwap(memSwap64))
+	} else {
+		// if `--memory-swap` is unset, the container can use as much swap as the `--memory` setting.
+		memSwap64 = mem64 * 2
 	}
+	if memSwap64 == 0 {
+		// if --memory-swap is set to 0, the setting is ignored, and the value is treated as unset.
+		memSwap64 = mem64 * 2
+	}
+	opts = append(opts, oci.WithMemorySwap(memSwap64))
 
 	if okd {
 		opts = append(opts, withDisableOOMKiller(okd))

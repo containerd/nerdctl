@@ -58,6 +58,7 @@ func TestRunCgroupV2(t *testing.T) {
 	}
 	const expected1 = `42000 100000
 44040192
+44040192
 42
 77
 0-1
@@ -71,29 +72,52 @@ func TestRunCgroupV2(t *testing.T) {
 0-1
 0
 `
-	//In CgroupV2 CPUWeight replace CPUShares => weight := 1 + ((shares-2)*9999)/262142
-	base.Cmd("run", "--rm", "--cpus", "0.42", "--cpuset-mems", "0", "--memory", "42m", "--memory-swap", "100m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
-		"cat", "cpu.max", "memory.max", "memory.swap.max", "pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
-	base.Cmd("run", "--rm", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000", "--memory", "42m", "--memory-swap", "100m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
-		"cat", "cpu.max", "memory.max", "memory.swap.max", "pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
 
-	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate1", "-w", "/sys/fs/cgroup", "-d", testutil.AlpineImage, "sleep", "infinity").AssertOK()
-	update := []string{"update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000", "--memory", "42m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1"}
+	//In CgroupV2 CPUWeight replace CPUShares => weight := 1 + ((shares-2)*9999)/262142
+	base.Cmd("run", "--rm",
+		"--cpus", "0.42", "--cpuset-mems", "0",
+		"--memory", "42m",
+		"--pids-limit", "42",
+		"--cpu-shares", "2000", "--cpuset-cpus", "0-1",
+		"-w", "/sys/fs/cgroup", testutil.AlpineImage,
+		"cat", "cpu.max", "memory.max", "memory.swap.max",
+		"pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected1)
+	base.Cmd("run", "--rm",
+		"--cpu-quota", "42000", "--cpuset-mems", "0",
+		"--cpu-period", "100000", "--memory", "42m", "--memory-swap", "100m",
+		"--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1",
+		"-w", "/sys/fs/cgroup", testutil.AlpineImage,
+		"cat", "cpu.max", "memory.max", "memory.swap.max", "pids.max",
+		"cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
+
+	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate1", "-w", "/sys/fs/cgroup", "-d",
+		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	defer base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate1").Run()
+	update := []string{"update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
+		"--memory", "42m",
+		"--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1"}
 	if base.Target == testutil.Docker && info.CgroupVersion == "2" && info.SwapLimit {
 		// Workaround for Docker with cgroup v2:
 		// > Error response from daemon: Cannot update container 67c13276a13dd6a091cdfdebb355aa4e1ecb15fbf39c2b5c9abee89053e88fce:
 		// > Memory limit should be smaller than already set memoryswap limit, update the memoryswap at the same time
-		update = append(update, "--memory-swap=-1")
+		update = append(update, "--memory-swap=84m")
 	}
 	update = append(update, testutil.Identifier(t)+"-testUpdate1")
 	base.Cmd(update...).AssertOK()
-	base.Cmd("exec", testutil.Identifier(t)+"-testUpdate1", "cat", "cpu.max", "memory.max", "pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected1)
-	base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate1").AssertOK()
+	base.Cmd("exec", testutil.Identifier(t)+"-testUpdate1",
+		"cat", "cpu.max", "memory.max", "memory.swap.max",
+		"pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected1)
 
-	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate2", "-w", "/sys/fs/cgroup", "-d", testutil.AlpineImage, "sleep", "infinity").AssertOK()
-	base.Cmd("update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000", "--memory", "42m", "--memory-swap", "100m", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.Identifier(t)+"-testUpdate2").AssertOK()
-	base.Cmd("exec", testutil.Identifier(t)+"-testUpdate2", "cat", "cpu.max", "memory.max", "memory.swap.max", "pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
-	base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate2").AssertOK()
+	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate2", "-w", "/sys/fs/cgroup", "-d",
+		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	defer base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate2").Run()
+	base.Cmd("update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
+		"--memory", "42m", "--memory-swap", "100m",
+		"--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1",
+		testutil.Identifier(t)+"-testUpdate2").AssertOK()
+	base.Cmd("exec", testutil.Identifier(t)+"-testUpdate2",
+		"cat", "cpu.max", "memory.max", "memory.swap.max",
+		"pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
 
 }
 
