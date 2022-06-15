@@ -486,6 +486,11 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		if err != nil {
 			return nil, "", nil, err
 		}
+		switch logDriver {
+		case "json-file", "journald", "fluentd":
+		default:
+			return nil, "", nil, fmt.Errorf("unknown driver %q", logDriver)
+		}
 		logOptMap, err := parseKVStringsMapFromLogOpt(cmd, logDriver)
 		if err != nil {
 			return nil, "", nil, err
