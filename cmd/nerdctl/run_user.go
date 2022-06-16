@@ -54,6 +54,18 @@ func generateUmaskOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
 	return opts, nil
 }
 
+func generateGroupsOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
+	var opts []oci.SpecOpts
+	groups, err := cmd.Flags().GetStringSlice("group-add")
+	if err != nil {
+		return nil, err
+	}
+	if len(groups) != 0 {
+		opts = append(opts, oci.WithAppendAdditionalGroups(groups...))
+	}
+	return opts, nil
+}
+
 func withResetAdditionalGIDs() oci.SpecOpts {
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
 		s.Process.User.AdditionalGids = nil
