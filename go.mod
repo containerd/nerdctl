@@ -8,7 +8,7 @@ require (
 	github.com/compose-spec/compose-go v1.2.7
 	github.com/containerd/cgroups v1.0.4
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.4 // replaced
+	github.com/containerd/containerd v1.6.6 // replaced
 	github.com/containerd/continuity v0.3.0
 	github.com/containerd/go-cni v1.1.6
 	github.com/containerd/imgcrypt v1.1.5-0.20220421044638-8ba028dca028
@@ -175,7 +175,7 @@ require (
 
 replace (
 	// containerd main
-	github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220606171923-c1bcabb45419
+	github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220616041926-9c6154bff158
 	// Temporary fork for avoiding importing patent-protected code: https://github.com/hashicorp/golang-lru/issues/73
 	github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c
 	// Temporary fork lumberjack to support Maxbytes before releasing V3.0: https://github.com/natefinch/lumberjack/pull/132)
