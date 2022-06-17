@@ -115,6 +115,7 @@ func logsAction(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			switch logConfig.Driver {
+			// TODO: move these logics to pkg/logging
 			case "json-file":
 				logJSONFilePath := jsonfile.Path(dataStore, ns, found.Container.ID())
 				if _, err := os.Stat(logJSONFilePath); err != nil {

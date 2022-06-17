@@ -44,7 +44,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
-	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
 	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/netutil"
@@ -243,7 +242,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	// log-opt needs to be StringArray, not StringSlice, to prevent "env=os,customer" from being split to {"env=os", "customer"}
 	cmd.Flags().String("log-driver", "json-file", "Logging driver for the container")
 	cmd.RegisterFlagCompletionFunc("log-driver", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"json-file", "journald"}, cobra.ShellCompDirectiveNoFileComp
+		return logging.Drivers(), cobra.ShellCompDirectiveNoFileComp
 	})
 	cmd.Flags().StringArray("log-opt", nil, "Log driver options")
 	// #endregion
@@ -489,22 +488,15 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		if err != nil {
 			return nil, "", nil, err
 		}
-		switch logDriver {
-		case "json-file":
-			// Initialize the log file (https://github.com/containerd/nerdctl/issues/1071)
-			jsonFilePath := jsonfile.Path(dataStore, ns, id)
-			if _, err := os.Stat(jsonFilePath); errors.Is(err, os.ErrNotExist) {
-				if writeErr := os.WriteFile(jsonFilePath, []byte{}, 0600); writeErr != nil {
-					return nil, "", nil, writeErr
-				}
-			}
-		case "journald", "fluentd":
-			// NOP
-		default:
-			return nil, "", nil, fmt.Errorf("unknown driver %q", logDriver)
-		}
 		logOptMap, err := parseKVStringsMapFromLogOpt(cmd, logDriver)
 		if err != nil {
+			return nil, "", nil, err
+		}
+		logDriverInst, err := logging.GetDriver(logDriver, logOptMap)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		if err := logDriverInst.Init(dataStore, ns, id); err != nil {
 			return nil, "", nil, err
 		}
 		logConfig := &logging.LogConfig{
