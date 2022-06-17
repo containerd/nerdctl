@@ -44,6 +44,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
+	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
 	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/netutil"
@@ -489,7 +490,16 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 			return nil, "", nil, err
 		}
 		switch logDriver {
-		case "json-file", "journald", "fluentd":
+		case "json-file":
+			// Initialize the log file (https://github.com/containerd/nerdctl/issues/1071)
+			jsonFilePath := jsonfile.Path(dataStore, ns, id)
+			if _, err := os.Stat(jsonFilePath); errors.Is(err, os.ErrNotExist) {
+				if writeErr := os.WriteFile(jsonFilePath, []byte{}, 0600); writeErr != nil {
+					return nil, "", nil, writeErr
+				}
+			}
+		case "journald", "fluentd":
+			// NOP
 		default:
 			return nil, "", nil, fmt.Errorf("unknown driver %q", logDriver)
 		}
