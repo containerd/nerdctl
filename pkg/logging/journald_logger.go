@@ -95,39 +95,30 @@ func (journaldLogger *JournaldLogger) Process(dataStore string, config *logging.
 	return nil
 }
 
-func FetchLogs(journalctlArgs []string, wStdoutPipe, wStderrPipe io.WriteCloser, logsEOFChan chan<- struct{}) error {
+func FetchLogs(journalctlArgs []string, wStdoutPipe, wStderrPipe io.WriteCloser) (io.Reader, io.Reader, error) {
 	journalctl, err := exec.LookPath("journalctl")
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	cmd := exec.Command(journalctl, journalctlArgs...)
+	//cmd.Stdout = wStdoutPipe
+	//cmd.Stderr = wStderrPipe
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-
-	go io.Copy(wStdoutPipe, stdout)
-	go io.Copy(wStderrPipe, stderr)
 
 	if err := cmd.Start(); err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	go func() error {
-		if err := cmd.Wait(); err != nil {
-			return err
-		}
-		logsEOFChan <- struct{}{}
-		return nil
-	}()
-
-	return nil
+	return stdout, stderr, nil
 }
 
 func PrepareJournalCtlDate(t string) (string, error) {

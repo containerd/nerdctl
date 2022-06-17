@@ -36,6 +36,7 @@ import (
 	timetypes "github.com/docker/docker/api/types/time"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 func newLogsCommand() *cobra.Command {
@@ -92,9 +93,9 @@ func logsAction(cmd *cobra.Command, args []string) error {
 	}
 
 	logsEOFChan := make(chan string) // value: container name
-	interruptChan := make(chan os.Signal, 1)
 	logsChan := make(chan map[string]string)
 	errs := make(chan error)
+	var runEG errgroup.Group
 	dataStore, err := getDataStore(cmd)
 	if err != nil {
 		return err
@@ -112,13 +113,26 @@ func logsAction(cmd *cobra.Command, args []string) error {
 			name := info.Labels[labels.Name]
 			rStdoutPipe, wStdoutPipe := io.Pipe()
 			rStderrPipe, wStderrPipe := io.Pipe()
-			go WriteContainerLogsToPipe(ctx, client, cmd, dataStore, wStdoutPipe, wStderrPipe, errs, lo, found.Container)
 
-			stdoutTagger := pipetagger.New(rStdoutPipe, "", -1, true)
-			stderrTagger := pipetagger.New(rStderrPipe, "", -1, true)
+			stdout, stderr, _ := WriteContainerLogsToPipe(ctx, client, cmd, dataStore, wStdoutPipe, wStderrPipe, rStdoutPipe, rStderrPipe, errs, lo, found.Container)
 
-			go stdoutTagger.Run(logsChan, logsEOFChan, "stdout", name)
-			go stderrTagger.Run(logsChan, logsEOFChan, "stderr", name)
+			stdoutTagger := pipetagger.New(stdout, "", -1, true)
+			stderrTagger := pipetagger.New(stderr, "", -1, true)
+
+			for _, v := range []string{"stdout", "stderr"} {
+				device := v
+				runEG.Go(func() error {
+					switch device {
+					case "stdout":
+						stdoutTagger.Run(logsChan, logsEOFChan, device, name)
+					case "stderr":
+						stderrTagger.Run(logsChan, logsEOFChan, device, name)
+					}
+					return nil
+				})
+			}
+			/*go stdoutTagger.Run(logsChan, logsEOFChan, "stdout", name)
+			go stderrTagger.Run(logsChan, logsEOFChan, "stderr", name)*/
 
 			return nil
 		},
@@ -130,13 +144,23 @@ func logsAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no such container %s", args[0])
 	}
 
+	go func() error {
+		if err := runEG.Wait(); err != nil {
+			return err
+		}
+		logsEOFChan <- args[0]
+		return nil
+	}()
+
+	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt)
+
 selectLoop:
 	for {
 		// Wait for Ctrl-C, or `nerdctl compose down` in another terminal
 		select {
-		case err := <-errs:
-			return err
+		case _ = <-errs:
+			//return nil
 		case e := <-logsChan:
 			for k, v := range e {
 				if k == "stdout" {
@@ -158,30 +182,32 @@ selectLoop:
 			break selectLoop
 		}
 	}
+
 	return nil
 }
 
-func WriteContainerLogsToPipe(ctx context.Context, client *containerd.Client, cmd *cobra.Command, dataStore string, wStdoutPipe, wStderrPipe io.WriteCloser, errs chan error, lo logging.LogsOptions, container containerd.Container) {
+func WriteContainerLogsToPipe(ctx context.Context, client *containerd.Client, cmd *cobra.Command, dataStore string, wStdoutPipe, wStderrPipe io.WriteCloser, rStdoutPipe, rStderrPipe io.ReadCloser, errs chan error, lo logging.LogsOptions, container containerd.Container) (io.Reader, io.Reader, error) {
 	ns, err := cmd.Flags().GetString("namespace")
 	if err != nil {
-		errs <- err
+		return nil, nil, err
 	}
+	var stdout, stderr io.Reader
 	switch ns {
 	case "moby", "k8s.io":
 		logrus.Warn("Currently, `nerdctl logs` only supports containers created with `nerdctl run -d`")
 	}
 	l, err := container.Labels(ctx)
 	if err != nil {
-		errs <- err
+		return nil, nil, err
 	}
 	logConfigFilePath := logging.LogConfigFilePath(dataStore, l[labels.Namespace], container.ID())
 	var logConfig logging.LogConfig
 	logConfigFileB, err := os.ReadFile(logConfigFilePath)
 	if err != nil {
-		errs <- err
+		return nil, nil, err
 	}
 	if err = json.Unmarshal(logConfigFileB, &logConfig); err != nil {
-		errs <- err
+		return nil, nil, err
 	}
 	//chan for non-follow tail to check the logsEOF
 	logsEOFChan := make(chan struct{})
@@ -190,44 +216,49 @@ func WriteContainerLogsToPipe(ctx context.Context, client *containerd.Client, cm
 	case "json-file":
 		logJSONFilePath := jsonfile.Path(dataStore, ns, container.ID())
 		if _, err := os.Stat(logJSONFilePath); err != nil {
-			errs <- fmt.Errorf("failed to open %q, container is not created with `nerdctl run -d`?: %w", logJSONFilePath, err)
+			return nil, nil, fmt.Errorf("failed to open %q, container is not created with `nerdctl run -d`?: %w", logJSONFilePath, err)
 		}
 		task, err := container.Task(ctx, nil)
 		if err != nil {
-			errs <- err
+			return nil, nil, err
 		}
 		status, err := task.Status(ctx)
 		if err != nil {
-			errs <- err
+			return nil, nil, err
 		}
 		var reader io.Reader
 		var execCmd *exec.Cmd
+		rPipeStdout, wPipeStdout := io.Pipe()
+		rPipeStderr, wPipeStderr := io.Pipe()
+
+		stdout = rPipeStdout
+		stderr = rPipeStderr
 		if lo.Follow && status.Status == containerd.Running {
 			waitCh, err := task.Wait(ctx)
 			if err != nil {
-				errs <- err
+				return nil, nil, err
 			}
 			reader, execCmd, err = newTailReader(ctx, logJSONFilePath, lo.Follow, lo.Tail)
 			if err != nil {
-				errs <- err
+				return nil, nil, err
 			}
 			go func() {
 				<-waitCh
 				execCmd.Process.Kill()
-				wStdoutPipe.Close()
-				wStderrPipe.Close()
+				wPipeStdout.Close()
+				wPipeStderr.Close()
 			}()
 		} else {
 			if lo.Tail != "" {
 				reader, execCmd, err = newTailReader(ctx, logJSONFilePath, false, lo.Tail)
 				if err != nil {
-					errs <- err
+					return nil, nil, fmt.Errorf("invalid value for \"since\": %w", err)
 				}
 				go func() {
 					<-logsEOFChan
 					execCmd.Process.Kill()
-					wStdoutPipe.Close()
-					wStderrPipe.Close()
+					wPipeStdout.Close()
+					wPipeStderr.Close()
 				}()
 
 			} else {
@@ -237,15 +268,11 @@ func WriteContainerLogsToPipe(ctx context.Context, client *containerd.Client, cm
 				}
 				defer f.Close()
 				reader = f
-				go func() {
-					<-logsEOFChan
-					wStdoutPipe.Close()
-					wStderrPipe.Close()
-				}()
 			}
 		}
-		if err := jsonfile.Decode(reader, wStdoutPipe, wStderrPipe, lo.Timestamps, lo.Since, lo.Until, logsEOFChan); err != nil {
-			errs <- err
+
+		if err = jsonfile.Decode(reader, wPipeStdout, wPipeStderr, lo.Timestamps, lo.Since, lo.Until, logsEOFChan); err != nil {
+			return nil, nil, fmt.Errorf("invalid value for \"since\": %w", err)
 		}
 	case "journald":
 		shortID := container.ID()[:12]
@@ -257,11 +284,11 @@ func WriteContainerLogsToPipe(ctx context.Context, client *containerd.Client, cm
 			// using GetTimestamp from moby to keep time format consistency
 			ts, err := timetypes.GetTimestamp(lo.Since, time.Now())
 			if err != nil {
-				errs <- fmt.Errorf("invalid value for \"since\": %w", err)
+				return nil, nil, fmt.Errorf("invalid value for \"since\": %w", err)
 			}
 			date, err := prepareJournalCtlDate(ts)
 			if err != nil {
-				errs <- err
+				return nil, nil, err
 			}
 			journalctlArgs = append(journalctlArgs, "--since", date)
 		}
@@ -272,23 +299,20 @@ func WriteContainerLogsToPipe(ctx context.Context, client *containerd.Client, cm
 			// using GetTimestamp from moby to keep time format consistency
 			ts, err := timetypes.GetTimestamp(lo.Until, time.Now())
 			if err != nil {
-				errs <- fmt.Errorf("invalid value for \"until\": %w", err)
+				return nil, nil, fmt.Errorf("invalid value for \"until\": %w", err)
 			}
 			date, err := prepareJournalCtlDate(ts)
 			if err != nil {
-				errs <- err
+				return nil, nil, err
 			}
 			journalctlArgs = append(journalctlArgs, "--until", date)
 		}
-		go func() {
-			<-logsEOFChan
-			wStdoutPipe.Close()
-			wStderrPipe.Close()
-		}()
-		if err := logging.FetchLogs(journalctlArgs, wStdoutPipe, wStderrPipe, logsEOFChan); err != nil {
-			errs <- err
+
+		if stdout, stderr, err = logging.FetchLogs(journalctlArgs, wStdoutPipe, wStderrPipe); err != nil {
+			return nil, nil, err
 		}
 	}
+	return stdout, stderr, err
 }
 
 func newTailReader(ctx context.Context, filePath string, follow bool, tail string) (io.Reader, *exec.Cmd, error) {

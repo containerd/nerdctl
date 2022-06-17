@@ -81,61 +81,66 @@ func Encode(w io.WriteCloser, stdout, stderr io.Reader) error {
 func Decode(r io.Reader, wStdoutPipe, wStderrPipe io.WriteCloser, timestamps bool, since string, until string, logsEOFChan chan<- struct{}) error {
 	dec := json.NewDecoder(r)
 	now := time.Now()
-	for {
-		var e Entry
-		if err := dec.Decode(&e); err == io.EOF {
-			logsEOFChan <- struct{}{}
-			break
-		} else if err != nil {
-			return err
-		}
 
-		output := []byte{}
-
-		if since != "" {
-			ts, err := timetypes.GetTimestamp(since, now)
-			if err != nil {
-				return fmt.Errorf("invalid value for \"since\": %w", err)
-			}
-			v := strings.Split(ts, ".")
-			i, err := strconv.ParseInt(v[0], 10, 64)
-			if err != nil {
+	go func() error {
+		for {
+			var e Entry
+			if err := dec.Decode(&e); err == io.EOF {
+				logsEOFChan <- struct{}{}
+				break
+			} else if err != nil {
 				return err
 			}
-			if !e.Time.After(time.Unix(i, 0)) {
-				continue
-			}
-		}
 
-		if until != "" {
-			ts, err := timetypes.GetTimestamp(until, now)
-			if err != nil {
-				return fmt.Errorf("invalid value for \"until\": %w", err)
-			}
-			v := strings.Split(ts, ".")
-			i, err := strconv.ParseInt(v[0], 10, 64)
-			if err != nil {
-				return err
-			}
-			if !e.Time.Before(time.Unix(i, 0)) {
-				continue
-			}
-		}
+			output := []byte{}
 
-		if timestamps {
-			output = append(output, []byte(e.Time.Format(time.RFC3339Nano))...)
-			output = append(output, ' ')
-		}
+			if since != "" {
+				ts, err := timetypes.GetTimestamp(since, now)
+				if err != nil {
+					return fmt.Errorf("invalid value for \"since\": %w", err)
+				}
+				v := strings.Split(ts, ".")
+				i, err := strconv.ParseInt(v[0], 10, 64)
+				if err != nil {
+					return err
+				}
+				if !e.Time.After(time.Unix(i, 0)) {
+					continue
+				}
+			}
 
-		output = append(output, []byte(e.Log)...)
-		switch e.Stream {
-		case "stdout":
-			wStdoutPipe.Write(output)
-		case "stderr":
-			wStderrPipe.Write(output)
-		default:
-			logrus.Errorf("unknown stream name %q, entry=%+v", e.Stream, e)
+			if until != "" {
+				ts, err := timetypes.GetTimestamp(until, now)
+				if err != nil {
+					return fmt.Errorf("invalid value for \"until\": %w", err)
+				}
+				v := strings.Split(ts, ".")
+				i, err := strconv.ParseInt(v[0], 10, 64)
+				if err != nil {
+					return err
+				}
+				if !e.Time.Before(time.Unix(i, 0)) {
+					continue
+				}
+			}
+
+			if timestamps {
+				output = append(output, []byte(e.Time.Format(time.RFC3339Nano))...)
+				output = append(output, ' ')
+			}
+
+			output = append(output, []byte(e.Log)...)
+
+			switch e.Stream {
+			case "stdout":
+				wStdoutPipe.Write(output)
+			case "stderr":
+				wStderrPipe.Write(output)
+			default:
+				logrus.Errorf("unknown stream name %q, entry=%+v", e.Stream, e)
+			}
 		}
-	}
+		return nil
+	}()
 	return nil
 }

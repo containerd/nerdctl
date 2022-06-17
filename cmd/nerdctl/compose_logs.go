@@ -114,7 +114,7 @@ func composeLogsAction(cmd *cobra.Command, args []string) error {
 		runEG.Go(func() error {
 			rStdoutPipe, wStdoutPipe := io.Pipe()
 			rStderrPipe, wStderrPipe := io.Pipe()
-			go WriteContainerLogsToPipe(ctx, client, cmd, dataStore, wStdoutPipe, wStderrPipe, errs, lo, container)
+			go WriteContainerLogsToPipe(ctx, client, cmd, dataStore, wStdoutPipe, wStderrPipe, rStdoutPipe, rStderrPipe, errs, lo, container)
 			info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
 			if err != nil {
 				return err
@@ -128,6 +128,7 @@ func composeLogsAction(cmd *cobra.Command, args []string) error {
 	if err := runEG.Wait(); err != nil {
 		return err
 	}
+
 	signal.Notify(interruptChan, os.Interrupt)
 	logsEOFMap := make(map[string]struct{}) // key: container name
 selectLoop:

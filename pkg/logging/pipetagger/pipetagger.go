@@ -71,7 +71,7 @@ func ChooseColorAttrs(tag string) []color.Attribute {
 
 // New create a PipeTagger.
 // Set width = -1 to disable tagging.
-func New(r io.ReadCloser, tag string, width int, noColor bool) *PipeTagger {
+func New(r io.Reader, tag string, width int, noColor bool) *PipeTagger {
 	var attrs []color.Attribute
 	if !noColor {
 		attrs = ChooseColorAttrs(tag)
@@ -85,7 +85,7 @@ func New(r io.ReadCloser, tag string, width int, noColor bool) *PipeTagger {
 }
 
 type PipeTagger struct {
-	R     io.ReadCloser
+	R     io.Reader
 	tag   string
 	width int
 	color *color.Color
@@ -108,6 +108,6 @@ func (x *PipeTagger) Run(logsChan chan map[string]string, logsEOFChan chan strin
 	if err := scanner.Err(); err != nil {
 		return err
 	}
-	logsEOFChan <- containerName
+	//logsEOFChan <- containerName
 	return nil
 }
