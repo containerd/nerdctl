@@ -254,9 +254,7 @@ func generateExecProcessSpec(ctx context.Context, cmd *cobra.Command, args []str
 	if err != nil {
 		return nil, err
 	}
-	for _, e := range strutil.DedupeStrSlice(env) {
-		pspec.Env = append(pspec.Env, e)
-	}
+	pspec.Env = append(pspec.Env, strutil.DedupeStrSlice(env)...)
 
 	privileged, err := cmd.Flags().GetBool("privileged")
 	if err != nil {

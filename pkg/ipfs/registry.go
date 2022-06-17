@@ -88,7 +88,6 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.ServeContent(w, r, "", time.Now(), content)
 		logrus.WithField("CID", cid).Debugf("served file")
 	}
-	return
 }
 
 func (s *server) serve(r *http.Request) (string, io.ReadSeeker, string, int64, error) {

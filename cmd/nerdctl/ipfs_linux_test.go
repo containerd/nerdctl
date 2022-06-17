@@ -143,5 +143,4 @@ func requiresIPFS(t *testing.T) {
 	if _, err := httpapi.NewLocalApi(); err != nil {
 		t.Skipf("test requires ipfs daemon, but got: %v", err)
 	}
-	return
 }

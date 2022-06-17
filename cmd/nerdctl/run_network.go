@@ -120,7 +120,7 @@ func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 		return nil, nil, "", nil, err
 	}
 
-	if (netSlice == nil || len(netSlice) == 0) && (ipAddress != "") {
+	if (len(netSlice) == 0) && (ipAddress != "") {
 		logrus.Warnf("You have assign an IP address %s but no network, So we will use the default network", ipAddress)
 	}
 

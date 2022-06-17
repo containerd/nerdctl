@@ -118,7 +118,7 @@ func runRegistryAsContainer(cmd *cobra.Command) error {
 		"run", "-d", "--name", ipfsRegistryContainerName, "--net=host", "--entrypoint", "/mnt/nerdctl",
 		"--read-only", "-v", nerdctlCmd+":/mnt/nerdctl:ro", "--rootfs", registryRoot,
 		"ipfs", "registry", "serve", "--ipfs-address", ipfsAPIAddr.String(), "--listen-registry", listenAddress,
-		"--read-retry-num", fmt.Sprintf("%d", readRetryNum), "--read-timeout", fmt.Sprintf("%s", readTimeout),
+		"--read-retry-num", fmt.Sprintf("%d", readRetryNum), "--read-timeout", readTimeout.String(),
 	)...).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to execute registry: %v: %v", string(out), err)
 	}

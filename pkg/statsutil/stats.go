@@ -160,42 +160,42 @@ func (s *StatsEntry) EntryID(noTrunc bool) string {
 
 func (s *StatsEntry) CPUPerc() string {
 	if s.IsInvalid {
-		return fmt.Sprintf("--")
+		return "--"
 	}
 	return fmt.Sprintf("%.2f%%", s.CPUPercentage)
 }
 
 func (s *StatsEntry) MemUsage() string {
 	if s.IsInvalid {
-		return fmt.Sprintf("-- / --")
+		return "-- / --"
 	}
 	return fmt.Sprintf("%s / %s", units.BytesSize(s.Memory), units.BytesSize(s.MemoryLimit))
 }
 
 func (s *StatsEntry) MemPerc() string {
 	if s.IsInvalid {
-		return fmt.Sprintf("--")
+		return "--"
 	}
 	return fmt.Sprintf("%.2f%%", s.MemoryPercentage)
 }
 
 func (s *StatsEntry) NetIO() string {
 	if s.IsInvalid {
-		return fmt.Sprintf("--")
+		return "--"
 	}
 	return fmt.Sprintf("%s / %s", units.HumanSizeWithPrecision(s.NetworkRx, 3), units.HumanSizeWithPrecision(s.NetworkTx, 3))
 }
 
 func (s *StatsEntry) BlockIO() string {
 	if s.IsInvalid {
-		return fmt.Sprintf("--")
+		return "--"
 	}
 	return fmt.Sprintf("%s / %s", units.HumanSizeWithPrecision(s.BlockRead, 3), units.HumanSizeWithPrecision(s.BlockWrite, 3))
 }
 
 func (s *StatsEntry) PIDs() string {
 	if s.IsInvalid {
-		return fmt.Sprintf("--")
+		return "--"
 	}
 	return fmt.Sprintf("%d", s.PidsCurrent)
 }

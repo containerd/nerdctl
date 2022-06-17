@@ -117,7 +117,7 @@ func TestRunAddHost(t *testing.T) {
 			}
 		}
 		if found != 2 {
-			return errors.New(fmt.Sprintf("host was not added, found %d", found))
+			return fmt.Errorf("host was not added, found %d", found)
 		}
 		return nil
 	})
