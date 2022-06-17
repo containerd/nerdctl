@@ -91,7 +91,7 @@ type PipeTagger struct {
 	color *color.Color
 }
 
-func (x *PipeTagger) Run(logsChan chan map[string]string, logsEOFChan chan string, device string, containerName string) error {
+func (x *PipeTagger) Run(logsChan chan map[string]string, device string) error {
 	scanner := bufio.NewScanner(x.R)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -108,6 +108,5 @@ func (x *PipeTagger) Run(logsChan chan map[string]string, logsEOFChan chan strin
 	if err := scanner.Err(); err != nil {
 		return err
 	}
-	//logsEOFChan <- containerName
 	return nil
 }

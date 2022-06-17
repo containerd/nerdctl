@@ -110,7 +110,7 @@ func logsAction(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			name := info.Labels[labels.Name]
+			_ = info.Labels[labels.Name]
 			rStdoutPipe, wStdoutPipe := io.Pipe()
 			rStderrPipe, wStderrPipe := io.Pipe()
 
@@ -124,15 +124,13 @@ func logsAction(cmd *cobra.Command, args []string) error {
 				runEG.Go(func() error {
 					switch device {
 					case "stdout":
-						stdoutTagger.Run(logsChan, logsEOFChan, device, name)
+						stdoutTagger.Run(logsChan, device)
 					case "stderr":
-						stderrTagger.Run(logsChan, logsEOFChan, device, name)
+						stderrTagger.Run(logsChan, device)
 					}
 					return nil
 				})
 			}
-			/*go stdoutTagger.Run(logsChan, logsEOFChan, "stdout", name)
-			go stderrTagger.Run(logsChan, logsEOFChan, "stderr", name)*/
 
 			return nil
 		},

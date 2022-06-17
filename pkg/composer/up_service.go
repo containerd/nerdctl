@@ -50,9 +50,11 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 		containers   = make(map[string]serviceparser.Container) // key: container Name
 		containersMu sync.Mutex
 		runEG        errgroup.Group
+		runEGTagger  errgroup.Group
 	)
 
-	logsEOFChan := make(chan string) // value: container name
+	logsEOFChan := make(chan string)          // value: container name
+	containerLogsEOFChan := make(chan string) // value: container name
 	interruptChan := make(chan os.Signal, 1)
 	logsChan := make(chan map[string]string)
 
@@ -86,7 +88,8 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 						rStderr.Close()
 					}()
 					// format and write to channel
-					if err = c.FormatLogs(container.Name, logsChan, logsEOFChan, lo, rStdout, rStderr); err != nil {
+
+					if err = c.FormatLogs(container.Name, logsChan, containerLogsEOFChan, runEGTagger, lo, rStdout, rStderr); err != nil {
 						return err
 					}
 					containersMu.Lock()
@@ -110,6 +113,15 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 	if uo.Detach {
 		logrus.Info("Attaching to logs")
 	}
+
+	go func() error {
+		if err := runEGTagger.Wait(); err != nil {
+			return err
+		}
+		logsEOFChan <- "EOF"
+		return nil
+	}()
+
 	interruptChann := make(chan os.Signal, 1)
 	signal.Notify(interruptChann, os.Interrupt)
 
@@ -137,7 +149,6 @@ selectLoop:
 		select {
 		case sig := <-interruptChann:
 			logrus.Debugf("Received signal: %s", sig)
-			close(logsChan)
 			break selectLoop
 		case containerName := <-logsEOFChan:
 			if lo.Follow {
@@ -153,7 +164,6 @@ selectLoop:
 				} else {
 					logrus.Debug("All the logs reached EOF")
 				}
-				close(logsChan)
 				break selectLoop
 			}
 		}

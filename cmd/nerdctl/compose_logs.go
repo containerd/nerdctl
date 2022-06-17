@@ -22,7 +22,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/sirupsen/logrus"
@@ -96,10 +95,12 @@ func composeLogsAction(cmd *cobra.Command, args []string) error {
 	}
 
 	var (
-		runEG errgroup.Group
+		runEG       errgroup.Group
+		runEGTagger errgroup.Group
 	)
 
-	logsEOFChan := make(chan string) // value: container name
+	logsEOFChan := make(chan string)          // value: container name
+	containerLogsEOFChan := make(chan string) // value: container name
 	interruptChan := make(chan os.Signal, 1)
 	logsChan := make(chan map[string]string)
 	errs := make(chan error)
@@ -114,13 +115,13 @@ func composeLogsAction(cmd *cobra.Command, args []string) error {
 		runEG.Go(func() error {
 			rStdoutPipe, wStdoutPipe := io.Pipe()
 			rStderrPipe, wStderrPipe := io.Pipe()
-			go WriteContainerLogsToPipe(ctx, client, cmd, dataStore, wStdoutPipe, wStderrPipe, rStdoutPipe, rStderrPipe, errs, lo, container)
+			stdout, stderr, _ := WriteContainerLogsToPipe(ctx, client, cmd, dataStore, wStdoutPipe, wStderrPipe, rStdoutPipe, rStderrPipe, errs, lo, container)
 			info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
 			if err != nil {
 				return err
 			}
 			name := info.Labels[labels.Name]
-			c.FormatLogs(name, logsChan, logsEOFChan, lo, rStdoutPipe, rStderrPipe)
+			c.FormatLogs(name, logsChan, containerLogsEOFChan, *runEGTagger, lo, stdout, stderr)
 			return nil
 		})
 	}
@@ -128,6 +129,14 @@ func composeLogsAction(cmd *cobra.Command, args []string) error {
 	if err := runEG.Wait(); err != nil {
 		return err
 	}
+
+	go func() error {
+		if err := runEGTagger.Wait(); err != nil {
+			return err
+		}
+		logsEOFChan <- "EOF"
+		return nil
+	}()
 
 	signal.Notify(interruptChan, os.Interrupt)
 	logsEOFMap := make(map[string]struct{}) // key: container name
@@ -162,7 +171,6 @@ selectLoop:
 				} else {
 					logrus.Debug("All the logs reached EOF")
 				}
-				close(logsChan)
 				break selectLoop
 			}
 			break selectLoop

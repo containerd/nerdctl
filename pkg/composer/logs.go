@@ -21,11 +21,12 @@ import (
 	"strings"
 
 	"github.com/containerd/nerdctl/pkg/logging/pipetagger"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/containerd/nerdctl/pkg/logging"
 )
 
-func (c *Composer) FormatLogs(containerName string, logsChan chan map[string]string, logsEOFChan chan string, lo logging.LogsOptions, rdStdout io.ReadCloser, rdStderr io.ReadCloser) error {
+func (c *Composer) FormatLogs(containerName string, logsChan chan map[string]string, containerLogsEOFChan chan string, runEGTagger *errgroup.Group, lo logging.LogsOptions, rdStdout io.Reader, rdStderr io.Reader) error {
 	var logTagMaxLen int
 	logTag := strings.TrimPrefix(containerName, c.project.Name+"_")
 
@@ -41,8 +42,20 @@ func (c *Composer) FormatLogs(containerName string, logsChan chan map[string]str
 	stdoutTagger := pipetagger.New(rdStdout, logTag, logWidth, lo.NoColor)
 	stderrTagger := pipetagger.New(rdStderr, logTag, logWidth, lo.NoColor)
 
-	go stdoutTagger.Run(logsChan, logsEOFChan, "stdout", containerName)
-	go stderrTagger.Run(logsChan, logsEOFChan, "stderr", containerName)
+	for _, v := range []string{"stdout", "stderr"} {
+		device := v
+		runEGTagger.Go(func() error {
+			switch device {
+			case "stdout":
+				stdoutTagger.Run(logsChan, device)
+			case "stderr":
+				stderrTagger.Run(logsChan, device)
+			}
+			containerLogsEOFChan <- containerName
+			return nil
+		})
+	}
+
 	return nil
 
 }
