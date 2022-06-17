@@ -17,8 +17,16 @@
 package main
 
 import (
-	"github.com/containerd/nerdctl/pkg/composer"
+	"fmt"
+	"io"
+	"os"
+	"os/signal"
+
+	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/logging"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 func newComposeLogsCommand() *cobra.Command {
@@ -65,16 +73,108 @@ func composeLogsAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	c, err := getComposer(cmd, client)
-	if err != nil {
-		return err
-	}
-	lo := composer.LogsOptions{
+	lo := logging.LogsOptions{
 		Follow:      follow,
 		Timestamps:  timestamps,
 		Tail:        tail,
 		NoColor:     noColor,
 		NoLogPrefix: noLogPrefix,
 	}
-	return c.Logs(ctx, lo, args)
+
+	c, err := getComposer(cmd, client)
+	if err != nil {
+		return err
+	}
+	serviceNames, err := c.ServiceNames(args...)
+	if err != nil {
+		return err
+	}
+	containers, err := c.Containers(ctx, serviceNames...)
+	if err != nil {
+		return err
+	}
+
+	var (
+		runEG       errgroup.Group
+		runEGTagger errgroup.Group
+	)
+
+	logsEOFChan := make(chan string)          // value: container name
+	containerLogsEOFChan := make(chan string) // value: container name
+	interruptChan := make(chan os.Signal, 1)
+	logsChan := make(chan map[string]string)
+	errs := make(chan error)
+
+	dataStore, err := getDataStore(cmd)
+	if err != nil {
+		return err
+	}
+
+	for _, container := range containers {
+		container := container
+		runEG.Go(func() error {
+			rStdoutPipe, wStdoutPipe := io.Pipe()
+			rStderrPipe, wStderrPipe := io.Pipe()
+			stdout, stderr, _ := WriteContainerLogsToPipe(ctx, client, cmd, dataStore, wStdoutPipe, wStderrPipe, rStdoutPipe, rStderrPipe, errs, lo, container)
+			info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
+			if err != nil {
+				return err
+			}
+			name := info.Labels[labels.Name]
+			c.FormatLogs(name, logsChan, containerLogsEOFChan, *runEGTagger, lo, stdout, stderr)
+			return nil
+		})
+	}
+
+	if err := runEG.Wait(); err != nil {
+		return err
+	}
+
+	go func() error {
+		if err := runEGTagger.Wait(); err != nil {
+			return err
+		}
+		logsEOFChan <- "EOF"
+		return nil
+	}()
+
+	signal.Notify(interruptChan, os.Interrupt)
+	logsEOFMap := make(map[string]struct{}) // key: container name
+selectLoop:
+	for {
+		// Wait for Ctrl-C, or `nerdctl compose down` in another terminal
+		select {
+		case err := <-errs:
+			return err
+		case e := <-logsChan:
+			for k, v := range e {
+				if k == "stdout" {
+					fmt.Fprintf(os.Stdout, v)
+				} else if k == "stderr" {
+					fmt.Fprintf(os.Stderr, v)
+				}
+			}
+		case sig := <-interruptChan:
+			logrus.Debugf("Received signal: %s", sig)
+			break selectLoop
+		case containerName := <-logsEOFChan:
+			if lo.Follow {
+				// When `nerdctl logs -f` has exited, we can assume that the container has exited
+				logrus.Infof("Container %q exited", containerName)
+			} else {
+				logrus.Debugf("Logs for container %q reached EOF", containerName)
+			}
+			logsEOFMap[containerName] = struct{}{}
+			if len(logsEOFMap) == len(containers) {
+				if lo.Follow {
+					logrus.Info("All the containers have exited")
+				} else {
+					logrus.Debug("All the logs reached EOF")
+				}
+				break selectLoop
+			}
+			break selectLoop
+		}
+	}
+	return nil
 }
