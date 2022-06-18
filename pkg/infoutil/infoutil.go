@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/services/introspection"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/version"
 )
 
@@ -74,9 +75,9 @@ func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupMan
 
 	var info dockercompat.Info
 	info.ID = daemonIntro.UUID
-	// Storage Driver is not really Server concept for nerdctl, but mimics `docker info` output
+	// Storage drivers and logging drivers are not really Server concept for nerdctl, but mimics `docker info` output
 	info.Driver = snapshotter
-	info.Plugins.Log = []string{"json-file"}
+	info.Plugins.Log = logging.Drivers()
 	info.Plugins.Storage = snapshotterPlugins
 	info.SystemTime = time.Now().Format(time.RFC3339Nano)
 	info.LoggingDriver = "json-file" // hard-coded

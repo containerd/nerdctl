@@ -67,6 +67,10 @@ type fluentdLocation struct {
 	path     string
 }
 
+func (f *FluentdLogger) Init(dataStore, ns, id string) error {
+	return nil
+}
+
 func (f *FluentdLogger) Process(_ string, config *logging.Config) error {
 	if runtime.GOOS == "windows" {
 		// TODO: support fluentd on windows

@@ -8,7 +8,7 @@ require (
 	github.com/compose-spec/compose-go v1.2.7
 	github.com/containerd/cgroups v1.0.4
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.4 // replaced
+	github.com/containerd/containerd v1.6.6 // replaced
 	github.com/containerd/continuity v0.3.0
 	github.com/containerd/go-cni v1.1.6
 	github.com/containerd/imgcrypt v1.1.5-0.20220421044638-8ba028dca028
@@ -46,11 +46,11 @@ require (
 	github.com/tidwall/gjson v1.14.1
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
-	golang.org/x/crypto v0.0.0-20220513210258-46612604a0f9
-	golang.org/x/net v0.0.0-20220516133312-45b265872317
-	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
-	golang.org/x/term v0.0.0-20220411215600-e5f449aeb171
+	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
+	golang.org/x/net v0.0.0-20220615171555-694bf12d69de
+	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
+	golang.org/x/sys v0.0.0-20220615213510-4f61da869c0c
+	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.2.0
 )
@@ -175,7 +175,7 @@ require (
 
 replace (
 	// containerd main
-	github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220606171923-c1bcabb45419
+	github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220616041926-9c6154bff158
 	// Temporary fork for avoiding importing patent-protected code: https://github.com/hashicorp/golang-lru/issues/73
 	github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c
 	// Temporary fork lumberjack to support Maxbytes before releasing V3.0: https://github.com/natefinch/lumberjack/pull/132)

@@ -23,7 +23,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/runtime/v2/logging"
 )
 
@@ -35,8 +37,46 @@ const (
 	Tag        = "tag"
 )
 
-type LogDriver interface {
+type Driver interface {
+	Init(dataStore, ns, id string) error
 	Process(dataStore string, config *logging.Config) error
+}
+
+type DriverFactory func(map[string]string) (Driver, error)
+
+var drivers = make(map[string]DriverFactory)
+
+func RegisterDriver(name string, f DriverFactory) {
+	drivers[name] = f
+}
+
+func Drivers() []string {
+	var ss []string // nolint: prealloc
+	for f := range drivers {
+		ss = append(ss, f)
+	}
+	sort.Strings(ss)
+	return ss
+}
+
+func GetDriver(name string, opts map[string]string) (Driver, error) {
+	driverFactory, ok := drivers[name]
+	if !ok {
+		return nil, fmt.Errorf("unknown logging driver %q: %w", name, errdefs.ErrNotFound)
+	}
+	return driverFactory(opts)
+}
+
+func init() {
+	RegisterDriver("json-file", func(opts map[string]string) (Driver, error) {
+		return &JsonLogger{Opts: opts}, nil
+	})
+	RegisterDriver("journald", func(opts map[string]string) (Driver, error) {
+		return &JournaldLogger{Opts: opts}, nil
+	})
+	RegisterDriver("fluentd", func(opts map[string]string) (Driver, error) {
+		return &FluentdLogger{Opts: opts}, nil
+	})
 }
 
 // Main is the entrypoint for the containerd runtime v2 logging plugin mode.
@@ -70,7 +110,6 @@ func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
 		if config.Namespace == "" || config.ID == "" {
 			return errors.New("got invalid config")
 		}
-		var driver LogDriver
 		logConfigFilePath := LogConfigFilePath(dataStore, config.Namespace, config.ID)
 		if _, err := os.Stat(logConfigFilePath); err == nil {
 			var logConfig LogConfig
@@ -81,21 +120,9 @@ func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
 			if err = json.Unmarshal(logConfigFileB, &logConfig); err != nil {
 				return err
 			}
-			switch logConfig.Driver {
-			case "json-file":
-				driver = &JsonLogger{
-					Opts: logConfig.Opts,
-				}
-			case "journald":
-				driver = &JournaldLogger{
-					Opts: logConfig.Opts,
-				}
-			case "fluentd":
-				driver = &FluentdLogger{
-					Opts: logConfig.Opts,
-				}
-			default:
-				return fmt.Errorf("unknown driver %q", logConfig.Driver)
+			driver, err := GetDriver(logConfig.Driver, logConfig.Opts)
+			if err != nil {
+				return err
 			}
 			if err := ready(); err != nil {
 				return err
