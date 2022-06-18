@@ -412,6 +412,8 @@ Intel RDT flags:
 
 User flags:
 - :whale: :blue_square: `-u, --user`: Username or UID (format: <name|uid>[:<group|gid>])
+- :nerd_face: `--umask`: Set the umask inside the container. Defaults to 0022.
+  Corresponds to Podman CLI.
 
 Security flags:
 - :whale: `--security-opt seccomp=<PROFILE_JSON_FILE>`: specify custom seccomp profile

@@ -18,6 +18,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
@@ -36,9 +38,32 @@ func generateUserOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
 	return opts, nil
 }
 
+func generateUmaskOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
+	var opts []oci.SpecOpts
+	umask, err := cmd.Flags().GetString("umask")
+	if err != nil {
+		return nil, err
+	}
+	if cmd.Flags().Changed("umask") && umask != "" {
+		decVal, err := strconv.ParseUint(umask, 8, 32)
+		if err != nil {
+			return nil, fmt.Errorf("Invalid Umask Value:%s", umask)
+		}
+		opts = append(opts, withAdditionalUmask(uint32(decVal)))
+	}
+	return opts, nil
+}
+
 func withResetAdditionalGIDs() oci.SpecOpts {
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
 		s.Process.User.AdditionalGids = nil
+		return nil
+	}
+}
+
+func withAdditionalUmask(umask uint32) oci.SpecOpts {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		s.Process.User.Umask = &umask
 		return nil
 	}
 }
