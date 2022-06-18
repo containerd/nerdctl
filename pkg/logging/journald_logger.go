@@ -41,6 +41,10 @@ type identifier struct {
 	Namespace string
 }
 
+func (journaldLogger *JournaldLogger) Init(dataStore, ns, id string) error {
+	return nil
+}
+
 func (journaldLogger *JournaldLogger) Process(dataStore string, config *logging.Config) error {
 	if !journal.Enabled() {
 		return errors.New("the local systemd journal is not available for logging.")

@@ -17,6 +17,7 @@
 package logging
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,6 +31,18 @@ import (
 
 type JsonLogger struct {
 	Opts map[string]string
+}
+
+func (jsonLogger *JsonLogger) Init(dataStore, ns, id string) error {
+	// Initialize the log file (https://github.com/containerd/nerdctl/issues/1071)
+	// TODO: move this logic to pkg/logging
+	jsonFilePath := jsonfile.Path(dataStore, ns, id)
+	if _, err := os.Stat(jsonFilePath); errors.Is(err, os.ErrNotExist) {
+		if writeErr := os.WriteFile(jsonFilePath, []byte{}, 0600); writeErr != nil {
+			return writeErr
+		}
+	}
+	return nil
 }
 
 func (jsonLogger *JsonLogger) Process(dataStore string, config *logging.Config) error {
