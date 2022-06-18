@@ -67,8 +67,16 @@ func loadAction(cmd *cobra.Command, args []string) error {
 		}
 		defer f.Close()
 		in = f
+	} else {
+		// check if stdin is empty.
+		stdinStat, err := os.Stdin.Stat()
+		if err != nil {
+			return err
+		}
+		if stdinStat.Size() == 0 {
+			return errors.New("stdin is empty and input flag is not specified")
+		}
 	}
-
 	decompressor, err := compression.DecompressStream(in)
 	if err != nil {
 		return err
