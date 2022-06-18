@@ -51,8 +51,8 @@ import (
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
-	"github.com/docker/cli/opts"
-	dopts "github.com/docker/cli/opts"
+	"github.com/docker/cli/opts"       // nolint: stylecheck
+	dopts "github.com/docker/cli/opts" // nolint: stylecheck
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

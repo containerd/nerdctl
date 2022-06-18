@@ -22,7 +22,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 )
 
-func GetSlirp4netnsDns() ([]string, error) {
+func GetSlirp4netnsDNS() ([]string, error) {
 	var dns []string
 	rkClient, err := rootlessutil.NewRootlessKitClient()
 	if err != nil {
@@ -33,8 +33,8 @@ func GetSlirp4netnsDns() ([]string, error) {
 		return dns, err
 	}
 	if info != nil && info.NetworkDriver != nil {
-		for _, dnsIp := range info.NetworkDriver.DNS {
-			dns = append(dns, dnsIp.String())
+		for _, dnsIP := range info.NetworkDriver.DNS {
+			dns = append(dns, dnsIP.String())
 		}
 	}
 	return dns, nil

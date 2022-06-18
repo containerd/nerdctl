@@ -138,7 +138,7 @@ func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]o
 	pidNs = strings.ToLower(pidNs)
 	if pidNs != "" {
 		if pidNs != "host" {
-			return nil, fmt.Errorf("Invalid pid namespace. Set --pid=host to enable host pid namespace.")
+			return nil, fmt.Errorf("invalid pid namespace. Set --pid=host to enable host pid namespace")
 		} else {
 			opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
 			if rootlessutil.IsRootless() {

@@ -107,7 +107,7 @@ func tryRawFormat(b *bytes.Buffer, f interface{}, tmpl *template.Template) error
 
 	tmplMissingKey := tmpl.Option("missingkey=error")
 	if rawErr := tmplMissingKey.Execute(b, raw); rawErr != nil {
-		return fmt.Errorf("Template parsing error: %v", rawErr)
+		return fmt.Errorf("template parsing error: %v", rawErr)
 	}
 
 	return nil

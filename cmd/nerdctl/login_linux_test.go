@@ -80,8 +80,8 @@ func TestLoginWithSpecificRegHosts(t *testing.T) {
 func TestLoginWithPlainHttp(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	reg5000 := testregistry.NewAuthWithHttp(base, "admin", "validTestPassword", 5000, 5001)
-	reg80 := testregistry.NewAuthWithHttp(base, "admin", "validTestPassword", 80, 5002)
+	reg5000 := testregistry.NewAuthWithHTTP(base, "admin", "validTestPassword", 5000, 5001)
+	reg80 := testregistry.NewAuthWithHTTP(base, "admin", "validTestPassword", 80, 5002)
 	defer reg5000.Cleanup()
 	defer reg80.Cleanup()
 	testCasesForPort5000 := []struct {

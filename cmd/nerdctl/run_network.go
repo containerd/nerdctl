@@ -170,7 +170,7 @@ func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 			}
 			slirp4Dns := []string{}
 			if rootlessutil.IsRootlessChild() {
-				slirp4Dns, err = dnsutil.GetSlirp4netnsDns()
+				slirp4Dns, err = dnsutil.GetSlirp4netnsDNS()
 				if err != nil {
 					return nil, nil, "", nil, err
 				}

@@ -106,7 +106,7 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 
 	switch status.Status {
 	case containerd.Created, containerd.Stopped:
-		return fmt.Errorf("cannot kill container: %s: Container %s is not running\n", container.ID(), container.ID())
+		return fmt.Errorf("cannot kill container: %s: Container %s is not running", container.ID(), container.ID())
 	case containerd.Paused, containerd.Pausing:
 		paused = true
 	default:

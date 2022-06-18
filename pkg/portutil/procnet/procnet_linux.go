@@ -29,25 +29,25 @@ const (
 	udp6Proto = "udp6"
 	// FIXME: The /proc/net/tcp is not recommended by the kernel, FYI https://www.kernel.org/doc/Documentation/networking/proc_net_tcp.txt
 	// In the future, we should use netlink instead of /proc/net/tcp
-	netTcpStats  = "/proc/net/tcp"
-	netUdpStats  = "/proc/net/udp"
-	netTcp6Stats = "/proc/net/tcp6"
-	netUdp6Stats = "/proc/net/udp6"
+	netTCPStats  = "/proc/net/tcp"
+	netUDPStats  = "/proc/net/udp"
+	netTCP6Stats = "/proc/net/tcp6"
+	netUDP6Stats = "/proc/net/udp6"
 )
 
 func ReadStatsFileData(protocol string) ([]string, error) {
 	var fileAddress string
 
 	if protocol == tcpProto {
-		fileAddress = netTcpStats
+		fileAddress = netTCPStats
 	} else if protocol == udpProto {
-		fileAddress = netUdpStats
+		fileAddress = netUDPStats
 	} else if protocol == tcp6Proto {
-		fileAddress = netTcp6Stats
+		fileAddress = netTCP6Stats
 	} else if protocol == udp6Proto {
-		fileAddress = netUdp6Stats
+		fileAddress = netUDP6Stats
 	} else {
-		return nil, fmt.Errorf("Unknown protocol %s", protocol)
+		return nil, fmt.Errorf("unknown protocol %s", protocol)
 	}
 
 	fp, err := os.Open(fileAddress)

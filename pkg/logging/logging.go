@@ -69,7 +69,7 @@ func GetDriver(name string, opts map[string]string) (Driver, error) {
 
 func init() {
 	RegisterDriver("json-file", func(opts map[string]string) (Driver, error) {
-		return &JsonLogger{Opts: opts}, nil
+		return &JSONLogger{Opts: opts}, nil
 	})
 	RegisterDriver("journald", func(opts map[string]string) (Driver, error) {
 		return &JournaldLogger{Opts: opts}, nil

@@ -56,7 +56,7 @@ linters:
     # - scopelint
     # - sqlclosecheck
     # - staticcheck
-    # - stylecheck
+    - stylecheck
     # - testpackage
     # - tparallel
     # - unconvert
