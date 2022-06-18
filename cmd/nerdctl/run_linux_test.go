@@ -87,7 +87,7 @@ func TestRunIpcHost(t *testing.T) {
 }
 
 func TestRunAddHost(t *testing.T) {
-	t.Parallel()
+	// Not parallelizable (https://github.com/containerd/nerdctl/issues/1127)
 	base := testutil.NewBase(t)
 	base.Cmd("run", "--rm", "--add-host", "testing.example.com:10.0.0.1", testutil.AlpineImage, "cat", "/etc/hosts").AssertOutWithFunc(func(stdout string) error {
 		var found bool
