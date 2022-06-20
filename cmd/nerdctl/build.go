@@ -262,6 +262,10 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 			}
 			needsLoading = true
 		}
+	} else {
+		if strings.Contains(output, "type=docker") || strings.Contains(output, "type=oci") {
+			needsLoading = true
+		}
 	}
 	tagValue, err := cmd.Flags().GetStringArray("tag")
 	if err != nil {
