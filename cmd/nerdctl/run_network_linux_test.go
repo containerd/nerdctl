@@ -17,13 +17,17 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"net"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
+	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
@@ -466,4 +470,82 @@ func TestRunContainerWithStaticIP(t *testing.T) {
 			}
 		})
 	}
+}
+func TestRunWithDefaultNetworkInConfig(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	tomlPath := ncdefaults.NerdctlTOML()
+	defer func(name string) {
+		_ = os.Remove(name)
+	}(tomlPath)
+	networkName := "test-network"
+	networkSubnet := "172.0.0.0/16"
+	base := testutil.NewBase(t)
+	cmd := base.Cmd("network", "create", networkName, "--subnet", networkSubnet)
+	cmd.AssertOK()
+	defer base.Cmd("network", "rm", networkName).Run()
+	directory := filepath.Dir(tomlPath)
+	if _, err := os.Stat(directory); os.IsNotExist(err) {
+		_ = os.MkdirAll(directory, 0755)
+	}
+	fp, err := os.OpenFile(tomlPath, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0777)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := bufio.NewWriter(fp)
+	if _, err := w.Write([]byte(fmt.Sprintf("default_network_name = \"%s\"", networkName))); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Flush()
+	testContainerName := "test-default-container"
+	defer base.Cmd("rm", "-f", testContainerName).Run()
+	args := []string{
+		"run", "-d", "--name", testContainerName,
+	}
+	args = append(args, []string{testutil.NginxAlpineImage}...)
+	cmd = base.Cmd(args...)
+	cmd.AssertOK()
+	inspectCmd := base.Cmd("inspect", testContainerName, "--format", "\"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}\"")
+	result := inspectCmd.Run()
+	stdoutContent := result.Stdout() + result.Stderr()
+	assert.Assert(inspectCmd.Base.T, result.ExitCode == 0, stdoutContent)
+	_, ipNet, err := net.ParseCIDR(networkSubnet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdoutContent = strings.Replace(strings.Replace(stdoutContent, "\n", "", -1), `"`, "", -1)
+	ip := net.ParseIP(stdoutContent)
+	assert.Equal(t, ipNet.Contains(ip), true)
+}
+
+func TestRunWithDefaultNetworkInCLI(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	tomlPath := ncdefaults.NerdctlTOML()
+	defer func(name string) {
+		_ = os.Remove(name)
+	}(tomlPath)
+	networkName := "test-network"
+	networkSubnet := "172.0.0.0/16"
+	base := testutil.NewBase(t)
+	cmd := base.Cmd("network", "create", networkName, "--subnet", networkSubnet)
+	cmd.AssertOK()
+	defer base.Cmd("network", "rm", networkName).Run()
+	testContainerName := "test-default-container"
+	defer base.Cmd("rm", "-f", testContainerName).Run()
+	args := []string{
+		"--default-network-name", networkName, "run", "-d", "--name", testContainerName,
+	}
+	args = append(args, []string{testutil.NginxAlpineImage}...)
+	cmd = base.Cmd(args...)
+	cmd.AssertOK()
+	inspectCmd := base.Cmd("inspect", testContainerName, "--format", "\"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}\"")
+	result := inspectCmd.Run()
+	stdoutContent := result.Stdout() + result.Stderr()
+	assert.Assert(inspectCmd.Base.T, result.ExitCode == 0, stdoutContent)
+	_, ipNet, err := net.ParseCIDR(networkSubnet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdoutContent = strings.Replace(strings.Replace(stdoutContent, "\n", "", -1), `"`, "", -1)
+	ip := net.ParseIP(stdoutContent)
+	assert.Equal(t, ipNet.Contains(ip), true)
 }

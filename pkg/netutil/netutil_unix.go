@@ -33,13 +33,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	DefaultNetworkName = "bridge"
-	DefaultID          = 0
-	DefaultCIDR        = "10.4.0.0/24"
-	DefaultIPAMDriver  = "host-local"
-)
-
 func (e *CNIEnv) GenerateCNIPlugins(driver string, id int, name string, ipam map[string]interface{}, opts map[string]string) ([]CNIPlugin, error) {
 	var (
 		plugins []CNIPlugin
@@ -147,7 +140,7 @@ func fixUpIsolation(e *CNIEnv, name string, plugins []CNIPlugin) []CNIPlugin {
 	isolationPath := filepath.Join(e.Path, "isolation")
 	if _, err := exec.LookPath(isolationPath); err == nil {
 		// the warning is suppressed for DefaultNetworkName (because multi-bridge networking is not involved)
-		if name != DefaultNetworkName {
+		if name != defaults.DefaultNetworkName {
 			logrus.Warnf(`network %q: Using the deprecated CNI "isolation" plugin instead of CNI "firewall" plugin (>= 1.1.0) ingressPolicy.
 To dismiss this warning, uninstall %q and install CNI "firewall" plugin (>= 1.1.0) from https://github.com/containernetworking/plugins`,
 				name, isolationPath)
@@ -155,13 +148,13 @@ To dismiss this warning, uninstall %q and install CNI "firewall" plugin (>= 1.1.
 		plugins = append(plugins, newIsolationPlugin())
 		for _, f := range plugins {
 			if x, ok := f.(*firewallConfig); ok {
-				if name != DefaultNetworkName {
+				if name != defaults.DefaultNetworkName {
 					logrus.Warnf("network %q: Unsetting firewall ingressPolicy %q (because using the deprecated \"isolation\" plugin)", name, x.IngressPolicy)
 				}
 				x.IngressPolicy = ""
 			}
 		}
-	} else if name != DefaultNetworkName {
+	} else if name != defaults.DefaultNetworkName {
 		firewallPath := filepath.Join(e.Path, "firewall")
 		ok, err := firewallPluginGEQ110(firewallPath)
 		if err != nil {

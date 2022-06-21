@@ -29,19 +29,20 @@ hosts_dir      = ["/etc/containerd/certs.d", "/etc/docker/certs.d"]
 
 ## Properties
 
-| TOML property       | CLI flag                           | Env var                   | Description                   | Availability \*1 |
-|---------------------|------------------------------------|---------------------------|-------------------------------|------------------|
-| `debug`             | `--debug`                          |                           | Debug mode                    | Since 0.16.0     |
-| `debug_full`        | `--debug-full`                     |                           | Debug mode (with full output) | Since 0.16.0     |
-| `address`           | `--address`,`--host`,`-a`,`-H`     | `$CONTAINERD_ADDRESS`     | containerd address            | Since 0.16.0     |
-| `namespace`         | `--namespace`,`-n`                 | `$CONTAINERD_NAMESPACE`   | containerd namespace          | Since 0.16.0     |
-| `snapshotter`       | `--snapshotter`,`--storage-driver` | `$CONTAINERD_SNAPSHOTTER` | containerd snapshotter        | Since 0.16.0     |
-| `cni_path`          | `--cni-path`                       | `$CNI_PATH`               | CNI binary directory          | Since 0.16.0     |
-| `cni_netconfpath`   | `--cni-netconfpath`                | `$NETCONFPATH`            | CNI config directory          | Since 0.16.0     |
-| `data_root`         | `--data-root`                      |                           | Persistent state directory    | Since 0.16.0     |
-| `cgroup_manager`    | `--cgroup-manager`                 |                           | cgroup manager                | Since 0.16.0     |
-| `insecure_registry` | `--insecure-registry`              |                           | Allow insecure registry       | Since 0.16.0     |
-| `hosts_dir`         | `--hosts-dir`                      |                           | `certs.d` directory           | Since 0.16.0     |
+| TOML property          | CLI flag                           | Env var                   | Description                   | Availability \*1 |
+|------------------------|------------------------------------|---------------------------|-------------------------------|------------------|
+| `debug`                | `--debug`                          |                           | Debug mode                    | Since 0.16.0     |
+| `debug_full`           | `--debug-full`                     |                           | Debug mode (with full output) | Since 0.16.0     |
+| `address`              | `--address`,`--host`,`-a`,`-H`     | `$CONTAINERD_ADDRESS`     | containerd address            | Since 0.16.0     |
+| `namespace`            | `--namespace`,`-n`                 | `$CONTAINERD_NAMESPACE`   | containerd namespace          | Since 0.16.0     |
+| `snapshotter`          | `--snapshotter`,`--storage-driver` | `$CONTAINERD_SNAPSHOTTER` | containerd snapshotter        | Since 0.16.0     |
+| `cni_path`             | `--cni-path`                       | `$CNI_PATH`               | CNI binary directory          | Since 0.16.0     |
+| `cni_netconfpath`      | `--cni-netconfpath`                | `$NETCONFPATH`            | CNI config directory          | Since 0.16.0     |
+| `data_root`            | `--data-root`                      |                           | Persistent state directory    | Since 0.16.0     |
+| `cgroup_manager`       | `--cgroup-manager`                 |                           | cgroup manager                | Since 0.16.0     |
+| `insecure_registry`    | `--insecure-registry`              |                           | Allow insecure registry       | Since 0.16.0     |
+| `hosts_dir`            | `--hosts-dir`                      |                           | `certs.d` directory           | Since 0.16.0     |
+| `default_network_name` | `--default-network-name`           |                           | Default network name          | Since 0.21.1     |
 
 The properties are parsed in the following precedence:
 1. CLI flag

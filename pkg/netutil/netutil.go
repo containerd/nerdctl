@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containernetworking/cni/libcni"
 )
@@ -133,9 +134,9 @@ func (e *CNIEnv) WriteNetworkConfig(net *networkConfig) error {
 }
 
 func (e *CNIEnv) ensureDefaultNetworkConfig() error {
-	ipam, _ := GenerateIPAM("default", DefaultCIDR, "", "", nil)
-	plugins, _ := e.GenerateCNIPlugins(DefaultNetworkName, DefaultID, DefaultNetworkName, ipam, nil)
-	conf, err := e.GenerateNetworkConfig(nil, DefaultID, DefaultNetworkName, plugins)
+	ipam, _ := GenerateIPAM("default", defaults.DefaultCIDR, "", "", nil)
+	plugins, _ := e.GenerateCNIPlugins(defaults.DefaultNetworkName, defaults.DefaultID, defaults.DefaultNetworkName, ipam, nil)
+	conf, err := e.GenerateNetworkConfig(nil, defaults.DefaultID, defaults.DefaultNetworkName, plugins)
 	if err != nil {
 		return err
 	}
@@ -183,7 +184,7 @@ func (e *CNIEnv) networkConfigList() ([]*networkConfig, error) {
 
 // AcquireNextID suggests the next ID.
 func (e *CNIEnv) AcquireNextID() (int, error) {
-	maxID := DefaultID
+	maxID := defaults.DefaultID
 	for _, n := range e.Networks {
 		if n.NerdctlID != nil && *n.NerdctlID > maxID {
 			maxID = *n.NerdctlID

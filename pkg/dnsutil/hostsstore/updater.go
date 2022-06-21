@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/sirupsen/logrus"
 )
 
@@ -190,7 +190,7 @@ func createLine(thatNetwork string, meta *Meta, myNetworks map[string]struct{}) 
 
 	for _, baseHostname := range baseHostnames {
 		line = append(line, baseHostname)
-		if thatNetwork != netutil.DefaultNetworkName {
+		if thatNetwork != defaults.DefaultNetworkName {
 			// Do not add a entry like "foo.bridge"
 			line = append(line, baseHostname+"."+thatNetwork)
 		}

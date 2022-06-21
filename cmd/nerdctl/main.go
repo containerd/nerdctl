@@ -87,34 +87,36 @@ func xmain() error {
 // Config corresponds to nerdctl.toml .
 // See docs/config.md .
 type Config struct {
-	Debug            bool     `toml:"debug"`
-	DebugFull        bool     `toml:"debug_full"`
-	Address          string   `toml:"address"`
-	Namespace        string   `toml:"namespace"`
-	Snapshotter      string   `toml:"snapshotter"`
-	CNIPath          string   `toml:"cni_path"`
-	CNINetConfPath   string   `toml:"cni_netconfpath"`
-	DataRoot         string   `toml:"data_root"`
-	CgroupManager    string   `toml:"cgroup_manager"`
-	InsecureRegistry bool     `toml:"insecure_registry"`
-	HostsDir         []string `toml:"hosts_dir"`
+	Debug              bool     `toml:"debug"`
+	DebugFull          bool     `toml:"debug_full"`
+	Address            string   `toml:"address"`
+	Namespace          string   `toml:"namespace"`
+	Snapshotter        string   `toml:"snapshotter"`
+	CNIPath            string   `toml:"cni_path"`
+	CNINetConfPath     string   `toml:"cni_netconfpath"`
+	DataRoot           string   `toml:"data_root"`
+	CgroupManager      string   `toml:"cgroup_manager"`
+	InsecureRegistry   bool     `toml:"insecure_registry"`
+	HostsDir           []string `toml:"hosts_dir"`
+	DefaultNetworkName string   `toml:"default_network_name"`
 }
 
 // NewConfig creates a default Config object statically,
 // without interpolating CLI flags, env vars, and toml.
 func NewConfig() *Config {
 	return &Config{
-		Debug:            false,
-		DebugFull:        false,
-		Address:          defaults.DefaultAddress,
-		Namespace:        namespaces.Default,
-		Snapshotter:      containerd.DefaultSnapshotter,
-		CNIPath:          ncdefaults.CNIPath(),
-		CNINetConfPath:   ncdefaults.CNINetConfPath(),
-		DataRoot:         ncdefaults.DataRoot(),
-		CgroupManager:    ncdefaults.CgroupManager(),
-		InsecureRegistry: false,
-		HostsDir:         ncdefaults.HostsDirs(),
+		Debug:              false,
+		DebugFull:          false,
+		Address:            defaults.DefaultAddress,
+		Namespace:          namespaces.Default,
+		Snapshotter:        containerd.DefaultSnapshotter,
+		CNIPath:            ncdefaults.CNIPath(),
+		CNINetConfPath:     ncdefaults.CNINetConfPath(),
+		DataRoot:           ncdefaults.DataRoot(),
+		CgroupManager:      ncdefaults.CgroupManager(),
+		InsecureRegistry:   false,
+		HostsDir:           ncdefaults.HostsDirs(),
+		DefaultNetworkName: ncdefaults.DefaultNetworkName,
 	}
 }
 
@@ -152,6 +154,7 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) error {
 	rootCmd.PersistentFlags().Bool("insecure-registry", cfg.InsecureRegistry, "skips verifying HTTPS certs, and allows falling back to plain HTTP")
 	// hosts-dir is defined as StringSlice, not StringArray, to allow specifying "--hosts-dir=/etc/containerd/certs.d,/etc/docker/certs.d"
 	rootCmd.PersistentFlags().StringSlice("hosts-dir", cfg.HostsDir, "A directory that contains <HOST:PORT>/hosts.toml (containerd style) or <HOST:PORT>/{ca.cert, cert.pem, key.pem} (docker style)")
+	rootCmd.PersistentFlags().String("default-network-name", cfg.DefaultNetworkName, "Default network name")
 	return nil
 }
 

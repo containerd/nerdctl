@@ -60,11 +60,19 @@ func getNetworkSlice(cmd *cobra.Command) ([]string, error) {
 	}
 
 	if !networkSet {
+		globalDefaultNetworkName, err := cmd.Flags().GetString("default-network-name")
+		if err != nil {
+			return nil, err
+		}
 		network, err := cmd.Flags().GetStringSlice("network")
 		if err != nil {
 			return nil, err
 		}
-		netSlice = append(netSlice, network...)
+		if globalDefaultNetworkName != "" {
+			netSlice = append(netSlice, globalDefaultNetworkName)
+		} else {
+			netSlice = append(netSlice, network...)
+		}
 	}
 	return netSlice, nil
 }

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
 
@@ -88,6 +89,6 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 
 func networkRmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show network names, including "bridge"
-	exclude := []string{netutil.DefaultNetworkName, "host", "none"}
+	exclude := []string{defaults.DefaultNetworkName, "host", "none"}
 	return shellCompleteNetworkNames(cmd, exclude)
 }

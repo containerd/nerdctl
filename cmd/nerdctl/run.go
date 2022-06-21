@@ -46,7 +46,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/namestore"
-	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -93,7 +92,6 @@ func newRunCommand() *cobra.Command {
 }
 
 func setCreateFlags(cmd *cobra.Command) {
-
 	// No "-h" alias for "--help", because "-h" for "--hostname".
 	cmd.Flags().Bool("help", false, "show help")
 
@@ -121,11 +119,11 @@ func setCreateFlags(cmd *cobra.Command) {
 
 	// #region network flags
 	// network (net) is defined as StringSlice, not StringArray, to allow specifying "--network=cni1,cni2"
-	cmd.Flags().StringSlice("network", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none"|<CNI>)`)
+	cmd.Flags().StringSlice("network", []string{defaults.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none"|<CNI>)`)
 	cmd.RegisterFlagCompletionFunc("network", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return shellCompleteNetworkNames(cmd, []string{})
 	})
-	cmd.Flags().StringSlice("net", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none"|<CNI>)`)
+	cmd.Flags().StringSlice("net", []string{defaults.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none"|<CNI>)`)
 	cmd.RegisterFlagCompletionFunc("net", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return shellCompleteNetworkNames(cmd, []string{})
 	})
