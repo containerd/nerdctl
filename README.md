@@ -225,7 +225,7 @@ docker build -t test-integration --target test-integration .
 docker run -t --rm --privileged test-integration
 ```
 #### Running integration test suite against Docker
-Run `go test -exec sudo -v ./cmd/nerdctl/... -args test.target=docker` to ensure that the test suite is compatible with Docker.
+Run `go test -exec sudo -v ./cmd/nerdctl/... -args -test.target=docker` to ensure that the test suite is compatible with Docker.
 
 ### Contributing to nerdctl
 
