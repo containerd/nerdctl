@@ -32,7 +32,7 @@ require (
 	github.com/ipfs/interface-go-ipfs-core v0.7.0
 	github.com/mattn/go-isatty v0.0.14
 	github.com/moby/sys/mount v0.3.3
-	github.com/multiformats/go-multiaddr v0.5.0
+	github.com/multiformats/go-multiaddr v0.6.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.3-0.20220303224323-02efb9a75ee1
