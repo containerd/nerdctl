@@ -870,6 +870,7 @@ Flags:
   - :nerd_face: `--format=wide`: Wide table
   - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
 - :whale: `--digests`: Show digests (compatible with Docker, unlike ID)
+- :nerd_face: `--names`: Show image names
 
 Unimplemented `docker images` flags: `--filter`
 

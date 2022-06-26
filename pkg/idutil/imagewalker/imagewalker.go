@@ -49,6 +49,7 @@ func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 		filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
 	}
 	filters = append(filters,
+		fmt.Sprintf("name==%s", req),
 		fmt.Sprintf("target.digest~=^sha256:%s.*$", regexp.QuoteMeta(req)),
 		fmt.Sprintf("target.digest~=^%s.*$", regexp.QuoteMeta(req)),
 	)
