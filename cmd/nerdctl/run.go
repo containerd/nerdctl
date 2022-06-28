@@ -175,6 +175,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	// user flags
 	cmd.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
 	cmd.Flags().String("umask", "", "Set the umask inside the container. Defaults to 0022")
+	cmd.Flags().StringSlice("group-add", []string{}, "Add additional groups to join")
 
 	// #region security flags
 	cmd.Flags().StringArray("security-opt", []string{}, "Security options")
@@ -563,6 +564,12 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		return nil, "", nil, err
 	} else {
 		opts = append(opts, uOpts...)
+	}
+
+	if gOpts, err := generateGroupsOpts(cmd); err != nil {
+		return nil, "", nil, err
+	} else {
+		opts = append(opts, gOpts...)
 	}
 
 	if umaskOpts, err := generateUmaskOpts(cmd); err != nil {

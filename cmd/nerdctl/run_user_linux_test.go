@@ -52,3 +52,69 @@ func TestRunUmask(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base.Cmd("run", "--rm", "--umask", "0200", "busybox", "sh", "-c", "umask").AssertOutContains("0200")
 }
+
+func TestRunAddGroup(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	testCases := []struct {
+		user     string
+		groups   []string
+		expected string
+	}{
+		{
+			user:     "",
+			groups:   []string{},
+			expected: "root bin daemon sys adm disk wheel floppy dialout tape video",
+		},
+		{
+			user:     "1000",
+			groups:   []string{},
+			expected: "root",
+		},
+		{
+			user:     "1000",
+			groups:   []string{"nogroup"},
+			expected: "root nogroup",
+		},
+		{
+			user:     "1000:wheel",
+			groups:   []string{"nogroup"},
+			expected: "wheel nogroup",
+		},
+		{
+			user:     "root",
+			groups:   []string{"nogroup"},
+			expected: "root bin daemon sys adm disk wheel floppy dialout tape video nogroup",
+		},
+		{
+			user:     "root:nogroup",
+			groups:   []string{"nogroup"},
+			expected: "nogroup",
+		},
+		{
+			user:     "guest",
+			groups:   []string{"root", "nogroup"},
+			expected: "users root nogroup",
+		},
+		{
+			user:     "guest:nogroup",
+			groups:   []string{"0"},
+			expected: "nogroup root",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.user, func(t *testing.T) {
+			t.Parallel()
+			cmd := []string{"run", "--rm"}
+			if testCase.user != "" {
+				cmd = append(cmd, "--user", testCase.user)
+			}
+			for _, group := range testCase.groups {
+				cmd = append(cmd, "--group-add", group)
+			}
+			cmd = append(cmd, testutil.AlpineImage, "id", "-nG")
+			base.Cmd(cmd...).AssertOutExactly(testCase.expected + "\n")
+		})
+	}
+}

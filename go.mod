@@ -56,6 +56,7 @@ require (
 )
 
 require (
+	github.com/AdaLogics/go-fuzz-headers v0.0.0-20210715213245-6c3934b029d8 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/hcsshim v0.9.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -180,7 +181,7 @@ require (
 
 replace (
 	// containerd main
-	github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220616041926-9c6154bff158
+	github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220621192144-0fac756b6452
 	// Temporary fork for avoiding importing patent-protected code: https://github.com/hashicorp/golang-lru/issues/73
 	github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c
 	// Temporary fork lumberjack to support Maxbytes before releasing V3.0: https://github.com/natefinch/lumberjack/pull/132)
