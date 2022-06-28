@@ -18,7 +18,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"runtime"
 
@@ -166,7 +168,12 @@ func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 		if runtime.GOOS == "linux" {
 			conf, err := resolvconf.Get()
 			if err != nil {
-				return nil, nil, "", nil, err
+				if !errors.Is(err, fs.ErrNotExist) {
+					return nil, nil, "", nil, err
+				}
+				// if resolvConf file does't exist, using default resolvers
+				conf = &resolvconf.File{}
+				logrus.WithError(err).Debug("resolvConf file not found")
 			}
 			slirp4Dns := []string{}
 			if rootlessutil.IsRootlessChild() {
