@@ -120,33 +120,33 @@ func parseAddress(address string) (*fluentdLocation, error) {
 	if !strings.Contains(address, "://") {
 		address = defaultProtocol + "://" + address
 	}
-	tempUrl, err := url.Parse(address)
+	tempURL, err := url.Parse(address)
 	if err != nil {
 		return nil, err
 	}
-	switch tempUrl.Scheme {
+	switch tempURL.Scheme {
 	case "unix":
-		if strings.TrimLeft(tempUrl.Path, "/") == "" {
+		if strings.TrimLeft(tempURL.Path, "/") == "" {
 			return nil, fmt.Errorf("unix socket path must not be empty")
 		}
 		return &fluentdLocation{
-			protocol: tempUrl.Scheme,
-			path:     tempUrl.Path,
+			protocol: tempURL.Scheme,
+			path:     tempURL.Path,
 		}, nil
 	case "tcp", "tls":
 	// continue to process below
 	default:
-		return nil, fmt.Errorf("unsupported protocol: %s", tempUrl.Scheme)
+		return nil, fmt.Errorf("unsupported protocol: %s", tempURL.Scheme)
 	}
-	if tempUrl.Path != "" {
-		return nil, fmt.Errorf("path is not supported: %s", tempUrl.Path)
+	if tempURL.Path != "" {
+		return nil, fmt.Errorf("path is not supported: %s", tempURL.Path)
 	}
 	host := defaultHost
 	port := defaultPort
-	if h := tempUrl.Hostname(); h != "" {
+	if h := tempURL.Hostname(); h != "" {
 		host = h
 	}
-	if p := tempUrl.Port(); p != "" {
+	if p := tempURL.Port(); p != "" {
 		portNum, err := strconv.ParseUint(p, 10, 16)
 		if err != nil {
 			return nil, fmt.Errorf("error occurs %v,invalid port", err)
@@ -154,7 +154,7 @@ func parseAddress(address string) (*fluentdLocation, error) {
 		port = int(portNum)
 	}
 	return &fluentdLocation{
-		protocol: tempUrl.Scheme,
+		protocol: tempURL.Scheme,
 		host:     host,
 		port:     port,
 	}, nil

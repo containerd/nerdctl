@@ -19,7 +19,6 @@ package push
 
 import (
 	"context"
-	gocontext "context"
 	"fmt"
 	"io"
 	"sync"
@@ -60,7 +59,7 @@ func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resol
 
 		log.G(ctx).WithField("image", remoteRef).WithField("digest", desc.Digest).Debug("pushing")
 
-		jobHandler := images.HandlerFunc(func(ctx gocontext.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		jobHandler := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			if allowNonDist || !images.IsNonDistributable(desc.MediaType) {
 				ongoing.add(remotes.MakeRefKey(ctx, desc))
 			}

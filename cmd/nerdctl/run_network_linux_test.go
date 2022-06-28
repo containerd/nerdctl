@@ -410,25 +410,25 @@ func TestRunContainerWithStaticIP(t *testing.T) {
 		ip                string
 		shouldSuccess     bool
 		useNetwork        bool
-		checkTheIpAddress bool
+		checkTheIPAddress bool
 	}{
 		{
 			ip:                "172.0.0.2",
 			shouldSuccess:     true,
 			useNetwork:        true,
-			checkTheIpAddress: true,
+			checkTheIPAddress: true,
 		},
 		{
 			ip:                "192.0.0.2",
 			shouldSuccess:     false,
 			useNetwork:        true,
-			checkTheIpAddress: false,
+			checkTheIPAddress: false,
 		},
 		{
 			ip:                "10.4.0.2",
 			shouldSuccess:     true,
 			useNetwork:        false,
-			checkTheIpAddress: false,
+			checkTheIPAddress: false,
 		},
 	}
 	tID := testutil.Identifier(t)
@@ -454,7 +454,7 @@ func TestRunContainerWithStaticIP(t *testing.T) {
 			} else {
 				cmd.AssertOK()
 			}
-			if tc.checkTheIpAddress {
+			if tc.checkTheIPAddress {
 				inspectCmd := base.Cmd("inspect", testContainerName, "--format", "\"{{range .NetworkSettings.Networks}} {{.IPAddress}}{{end}}\"")
 				result := inspectCmd.Run()
 				stdoutContent := result.Stdout() + result.Stderr()

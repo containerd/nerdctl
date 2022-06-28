@@ -48,8 +48,8 @@ func getCapEff(base *testutil.Base, args ...string) uint64 {
 }
 
 const (
-	CAP_NET_RAW  = 13
-	CAP_IPC_LOCK = 14
+	CapNetRaw  = 13
+	CapIPCLock = 14
 )
 
 func TestRunCap(t *testing.T) {
@@ -78,27 +78,27 @@ func TestRunCap(t *testing.T) {
 		},
 		{
 			args:   []string{"--cap-add=ipc_lock"},
-			capEff: (allCaps & defaultCaps) | (1 << CAP_IPC_LOCK),
+			capEff: (allCaps & defaultCaps) | (1 << CapIPCLock),
 		},
 		{
 			args:   []string{"--cap-add=all", "--cap-drop=net_raw"},
-			capEff: allCaps ^ (1 << CAP_NET_RAW),
+			capEff: allCaps ^ (1 << CapNetRaw),
 		},
 		{
 			args:   []string{"--cap-drop=all", "--cap-add=net_raw"},
-			capEff: 1 << CAP_NET_RAW,
+			capEff: 1 << CapNetRaw,
 		},
 		{
 			args:   []string{"--cap-drop=all", "--cap-add=NET_RAW"},
-			capEff: 1 << CAP_NET_RAW,
+			capEff: 1 << CapNetRaw,
 		},
 		{
 			args:   []string{"--cap-drop=all", "--cap-add=cap_net_raw"},
-			capEff: 1 << CAP_NET_RAW,
+			capEff: 1 << CapNetRaw,
 		},
 		{
 			args:   []string{"--cap-drop=all", "--cap-add=CAP_NET_RAW"},
-			capEff: 1 << CAP_NET_RAW,
+			capEff: 1 << CapNetRaw,
 		},
 	}
 	for _, tc := range testCases {

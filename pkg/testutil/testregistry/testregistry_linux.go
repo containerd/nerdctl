@@ -67,7 +67,7 @@ func NewPlainHTTP(base *testutil.Base, port int) *TestRegistry {
 	}
 }
 
-func NewAuthWithHttp(base *testutil.Base, user, pass string, listenPort int, authPort int) *TestRegistry {
+func NewAuthWithHTTP(base *testutil.Base, user, pass string, listenPort int, authPort int) *TestRegistry {
 	name := testutil.Identifier(base.T)
 	hostIP, err := nettestutil.NonLoopbackIPv4()
 	assert.NilError(base.T, err)

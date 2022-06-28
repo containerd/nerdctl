@@ -47,7 +47,7 @@ func generateUmaskOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
 	if cmd.Flags().Changed("umask") && umask != "" {
 		decVal, err := strconv.ParseUint(umask, 8, 32)
 		if err != nil {
-			return nil, fmt.Errorf("Invalid Umask Value:%s", umask)
+			return nil, fmt.Errorf("invalid Umask Value:%s", umask)
 		}
 		opts = append(opts, withAdditionalUmask(uint32(decVal)))
 	}

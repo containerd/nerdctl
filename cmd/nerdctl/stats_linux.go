@@ -44,7 +44,7 @@ func renderStatsEntry(previousStats map[string]uint64, anydata interface{}, pid 
 	case *v2.Metrics:
 		data2 = v
 	default:
-		return statsutil.StatsEntry{}, errors.New("cannot convert metric data to cgroups.Metrics.")
+		return statsutil.StatsEntry{}, errors.New("cannot convert metric data to cgroups.Metrics")
 	}
 
 	var (

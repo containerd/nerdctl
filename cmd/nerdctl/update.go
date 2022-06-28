@@ -36,9 +36,9 @@ import (
 )
 
 type updateResourceOptions struct {
-	CpuPeriod          uint64
-	CpuQuota           int64
-	CpuShares          uint64
+	CPUPeriod          uint64
+	CPUQuota           int64
+	CPUShares          uint64
 	MemoryLimitInBytes int64
 	MemoryReservation  int64
 	MemorySwapInBytes  int64
@@ -157,7 +157,7 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 				return options, fmt.Errorf("failed to parse memory-swap bytes %q: %w", memSwap, err)
 			}
 			if mem64 > 0 && memSwap64 > 0 && memSwap64 < mem64 {
-				return options, fmt.Errorf("Minimum memoryswap limit should be larger than memory limit, see usage")
+				return options, fmt.Errorf("minimum memoryswap limit should be larger than memory limit, see usage")
 			}
 		}
 	} else {
@@ -178,7 +178,7 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 		}
 	}
 	if mem64 > 0 && memReserve64 > 0 && mem64 < memReserve64 {
-		return options, fmt.Errorf("Minimum memory limit can not be less than memory reservation limit, see usage")
+		return options, fmt.Errorf("minimum memory limit can not be less than memory reservation limit, see usage")
 	}
 
 	cpuset, err := cmd.Flags().GetString("cpuset-cpus")
@@ -195,9 +195,9 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 	}
 	if runtime.GOOS == "linux" {
 		options = updateResourceOptions{
-			CpuPeriod:          cpuPeriod,
-			CpuQuota:           cpuQuota,
-			CpuShares:          shares,
+			CPUPeriod:          cpuPeriod,
+			CPUQuota:           cpuQuota,
+			CPUShares:          shares,
 			CpusetCpus:         cpuset,
 			CpusetMems:         cpusetMems,
 			MemoryLimitInBytes: mem64,
@@ -238,18 +238,18 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 			spec.Linux.Resources.CPU = &runtimespec.LinuxCPU{}
 		}
 		if cmd.Flags().Changed("cpu-shares") {
-			if spec.Linux.Resources.CPU.Shares != &opts.CpuShares {
-				spec.Linux.Resources.CPU.Shares = &opts.CpuShares
+			if spec.Linux.Resources.CPU.Shares != &opts.CPUShares {
+				spec.Linux.Resources.CPU.Shares = &opts.CPUShares
 			}
 		}
 		if cmd.Flags().Changed("cpu-quota") {
-			if spec.Linux.Resources.CPU.Quota != &opts.CpuQuota {
-				spec.Linux.Resources.CPU.Quota = &opts.CpuQuota
+			if spec.Linux.Resources.CPU.Quota != &opts.CPUQuota {
+				spec.Linux.Resources.CPU.Quota = &opts.CPUQuota
 			}
 		}
 		if cmd.Flags().Changed("cpu-period") {
-			if spec.Linux.Resources.CPU.Period != &opts.CpuPeriod {
-				spec.Linux.Resources.CPU.Period = &opts.CpuPeriod
+			if spec.Linux.Resources.CPU.Period != &opts.CPUPeriod {
+				spec.Linux.Resources.CPU.Period = &opts.CPUPeriod
 			}
 		}
 		if cmd.Flags().Changed("cpus") {

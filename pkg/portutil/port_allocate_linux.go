@@ -46,18 +46,18 @@ func portAllocate(protocol string, ip string, count uint64) (uint64, uint64, err
 	// In some circumstances, when we bind address like "0.0.0.0:80", we will get the formation of ":::80" in /proc/net/tcp6.
 	// So we need some trick to process this situation.
 	if protocol == "tcp" {
-		tempTcpV6Data, err := procnet.ReadStatsFileData("tcp6")
+		tempTCPV6Data, err := procnet.ReadStatsFileData("tcp6")
 		if err != nil {
 			return 0, 0, err
 		}
-		netprocItems = append(netprocItems, procnet.Parse(tempTcpV6Data)...)
+		netprocItems = append(netprocItems, procnet.Parse(tempTCPV6Data)...)
 	}
 	if protocol == "udp" {
-		tempUdpV6Data, err := procnet.ReadStatsFileData("udp6")
+		tempUDPV6Data, err := procnet.ReadStatsFileData("udp6")
 		if err != nil {
 			return 0, 0, err
 		}
-		netprocItems = append(netprocItems, procnet.Parse(tempUdpV6Data)...)
+		netprocItems = append(netprocItems, procnet.Parse(tempUDPV6Data)...)
 	}
 	if ip != "" {
 		netprocItems = filter(netprocItems, func(s procnet.NetworkDetail) bool {

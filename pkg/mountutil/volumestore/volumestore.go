@@ -101,13 +101,13 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 			Labels: labelsMap,
 		}
 
-		labelsJson, err := json.MarshalIndent(volOpts, "", "    ")
+		labelsJSON, err := json.MarshalIndent(volOpts, "", "    ")
 		if err != nil {
 			return err
 		}
 
 		volFilePath := filepath.Join(volPath, volumeJSONFileName)
-		if err := os.WriteFile(volFilePath, labelsJson, 0644); err != nil {
+		if err := os.WriteFile(volFilePath, labelsJSON, 0644); err != nil {
 			return err
 		}
 		return nil

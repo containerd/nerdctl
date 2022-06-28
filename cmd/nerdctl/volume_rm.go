@@ -74,7 +74,7 @@ func volumeRmAction(cmd *cobra.Command, args []string) error {
 			volume, _ := volStore.Get(name)
 			if found = checkVolume(&mount.Mounts, volume.Mountpoint); found {
 				found = true
-				logrus.WithError(fmt.Errorf("Volume %q is in use", name)).Error(fmt.Errorf("Remove Volume: %q failed", name))
+				logrus.WithError(fmt.Errorf("volume %q is in use", name)).Error(fmt.Errorf("remove Volume: %q failed", name))
 				break
 			}
 		}

@@ -89,7 +89,7 @@ func unpauseContainer(ctx context.Context, client *containerd.Client, id string)
 	case containerd.Paused:
 		return task.Resume(ctx)
 	default:
-		return fmt.Errorf("Container %s is not paused", id)
+		return fmt.Errorf("container %s is not paused", id)
 	}
 }
 

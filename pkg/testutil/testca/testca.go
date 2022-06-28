@@ -43,8 +43,8 @@ type CA struct {
 	closeF func() error
 }
 
-func (c *CA) Close() error {
-	return c.closeF()
+func (ca *CA) Close() error {
+	return ca.closeF()
 }
 
 const keyLength = 4096

@@ -29,11 +29,11 @@ import (
 	"github.com/natefinch/lumberjack"
 )
 
-type JsonLogger struct {
+type JSONLogger struct {
 	Opts map[string]string
 }
 
-func (jsonLogger *JsonLogger) Init(dataStore, ns, id string) error {
+func (jsonLogger *JSONLogger) Init(dataStore, ns, id string) error {
 	// Initialize the log file (https://github.com/containerd/nerdctl/issues/1071)
 	// TODO: move this logic to pkg/logging
 	jsonFilePath := jsonfile.Path(dataStore, ns, id)
@@ -45,7 +45,7 @@ func (jsonLogger *JsonLogger) Init(dataStore, ns, id string) error {
 	return nil
 }
 
-func (jsonLogger *JsonLogger) Process(dataStore string, config *logging.Config) error {
+func (jsonLogger *JSONLogger) Process(dataStore string, config *logging.Config) error {
 	logJSONFilePath := jsonfile.Path(dataStore, config.Namespace, config.ID)
 	if err := os.MkdirAll(filepath.Dir(logJSONFilePath), 0700); err != nil {
 		return err

@@ -264,7 +264,7 @@ func getNetNSPath(state *specs.State) (string, error) {
 	}
 
 	if state.Pid == 0 && !netNsFound {
-		return "", errors.New("Both state.Pid and the netNs annotation are unset")
+		return "", errors.New("both state.Pid and the netNs annotation are unset")
 	}
 
 	// We dont't have a networking namespace annotation, but we have a PID.
