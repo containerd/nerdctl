@@ -643,7 +643,6 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 	spec := containerd.WithSpec(&s, opts...)
 	cOpts = append(cOpts, spec)
 
-	logrus.Debugf("final cOpts is %v", cOpts)
 	container, err := client.NewContainer(ctx, id, cOpts...)
 	if err != nil {
 		return nil, "", nil, err
