@@ -384,6 +384,8 @@ Network flags:
   - :nerd_face: Unlike Docker, this flag can be specified multiple times (`--net foo --net bar`)
 - :whale: `-p, --publish`: Publish a container's port(s) to the host
 - :whale: `--dns`: Set custom DNS servers
+- :whale: `--dns-search`: Set custom DNS search domains
+- :whale: `--dns-opt`: Set DNS options
 - :whale: `-h, --hostname`: Container host name
 - :whale: `--add-host`: Add a custom host-to-IP mapping (host:ip)
 - :whale: `--ip`: Specific static IP address(es) to use

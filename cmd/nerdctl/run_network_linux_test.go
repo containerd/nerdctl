@@ -467,3 +467,21 @@ func TestRunContainerWithStaticIP(t *testing.T) {
 		})
 	}
 }
+
+func TestRunDNS(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	base.Cmd("run", "--rm", "--dns", "8.8.8.8", testutil.CommonImage,
+		"cat", "/etc/resolv.conf").AssertOutContains("nameserver 8.8.8.8\n")
+	base.Cmd("run", "--rm", "--dns-search", "test", testutil.CommonImage,
+		"cat", "/etc/resolv.conf").AssertOutContains("search test\n")
+	base.Cmd("run", "--rm", "--dns-search", "test", "--dns-search", "test1", testutil.CommonImage,
+		"cat", "/etc/resolv.conf").AssertOutContains("search test test1\n")
+	base.Cmd("run", "--rm", "--dns-opt", "attempts:10", testutil.CommonImage,
+		"cat", "/etc/resolv.conf").AssertOutContains("options attempts:10\n")
+	cmd := base.Cmd("run", "--rm", "--dns", "8.8.8.8", "--dns-search", "test", "--dns-opt", "attempts:10", testutil.CommonImage,
+		"cat", "/etc/resolv.conf")
+	cmd.AssertOutContains("nameserver 8.8.8.8\n")
+	cmd.AssertOutContains("search test\n")
+	cmd.AssertOutContains("options attempts:10\n")
+}
