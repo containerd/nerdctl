@@ -44,8 +44,12 @@ CMD ["echo", "nerdctl-build-test-string"]
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
+	ignoredImageNamed := imageName + "-" + "ignored"
+	outputOpt := fmt.Sprintf("--output=type=docker,name=%s", ignoredImageNamed)
+	base.Cmd("build", buildCtx, "-t", imageName, outputOpt).AssertOK()
 
 	base.Cmd("run", "--rm", imageName).AssertOutExactly("nerdctl-build-test-string\n")
+	base.Cmd("run", "--rm", ignoredImageNamed).AssertFail()
 }
 
 // TestBuildBaseImage tests if an image can be built on the previously built image.
