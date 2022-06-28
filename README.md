@@ -368,6 +368,8 @@ Basic flags:
 - :whale: `--pull=(always|missing|never)`: Pull image before running
   - Default: "missing"
 - :whale: `--pid=(host)`: PID namespace to use
+- :whale: `--stop-signal`: Signal to stop a container (default "SIGTERM")
+- :whale: `--stop-timeout`: Timeout (in seconds) to stop a container
 
 Platform flags:
 - :whale: `--platform=(amd64|arm64|...)`: Set platform

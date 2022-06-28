@@ -67,3 +67,22 @@ func TestStopStart(t *testing.T) {
 	base.Cmd("start", testContainerName).AssertOK()
 	assert.NilError(t, check(30))
 }
+
+func TestStopWithStopSignal(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	testContainerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", testContainerName).Run()
+
+	base.Cmd("run", "-d", "--stop-signal", "SIGQUIT", "--name", testContainerName, testutil.CommonImage, "sh", "-euxc", `#!/bin/sh
+set -eu
+trap 'quit=1' QUIT
+quit=0
+while [ $quit -ne 1 ]; do
+    printf 'wait quit'
+    sleep 1
+done
+echo "signal quit"`).AssertOK()
+	base.Cmd("stop", testContainerName).AssertOK()
+	base.Cmd("logs", "-f", testContainerName).AssertOutContains("signal quit")
+}

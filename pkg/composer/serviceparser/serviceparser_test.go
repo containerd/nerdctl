@@ -110,6 +110,8 @@ services:
       MYSQL_RANDOM_ROOT_PASSWORD: '1'
     volumes:
       - db:/var/lib/mysql
+    stop_grace_period: 1m30s
+    stop_signal: SIGUSR1
 
 volumes:
   wordpress:
@@ -160,6 +162,8 @@ volumes:
 	assert.Assert(t, db1.Name == fmt.Sprintf("%s_db_1", project.Name))
 	assert.Assert(t, in(db1.RunArgs, "--hostname=db"))
 	assert.Assert(t, in(db1.RunArgs, fmt.Sprintf("-v=%s_db:/var/lib/mysql", project.Name)))
+	assert.Assert(t, in(db1.RunArgs, "--stop-signal=SIGUSR1"))
+	assert.Assert(t, in(db1.RunArgs, "--stop-timeout=90"))
 }
 
 func TestParseDeprecated(t *testing.T) {

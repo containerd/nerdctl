@@ -81,6 +81,9 @@ const (
 	// Boolean value which can be parsed with strconv.ParseBool() is required.
 	// (like "nerdctl/bypass4netns=true" or "nerdctl/bypass4netns=false")
 	Bypass4netns = Prefix + "bypass4netns"
+
+	// StopTimeout is seconds to wait for stop a container.
+	StopTimout = Prefix + "stop-timeout"
 )
 
 var ShellCompletions = []string{
