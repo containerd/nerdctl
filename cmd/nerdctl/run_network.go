@@ -140,59 +140,13 @@ func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 	case nettype.CNI:
 		// We only verify flags and generate resolv.conf here.
 		// The actual network is configured in the oci hook.
-		cniPath, err := cmd.Flags().GetString("cni-path")
-		if err != nil {
+		if err := verifyCNINetwork(cmd, netSlice); err != nil {
 			return nil, nil, "", nil, err
-		}
-		cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
-		if err != nil {
-			return nil, nil, "", nil, err
-		}
-		e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
-		if err != nil {
-			return nil, nil, "", nil, err
-		}
-		netMap := e.NetworkMap()
-		for _, netstr := range netSlice {
-			_, ok := netMap[netstr]
-			if !ok {
-				return nil, nil, "", nil, fmt.Errorf("network %s not found", netstr)
-			}
 		}
 
-		resolvConfPath := filepath.Join(stateDir, "resolv.conf")
-		dnsValue, err := cmd.Flags().GetStringSlice("dns")
-		if err != nil {
-			return nil, nil, "", nil, err
-		}
 		if runtime.GOOS == "linux" {
-			conf, err := resolvconf.Get()
-			if err != nil {
-				if !errors.Is(err, fs.ErrNotExist) {
-					return nil, nil, "", nil, err
-				}
-				// if resolvConf file does't exist, using default resolvers
-				conf = &resolvconf.File{}
-				logrus.WithError(err).Debug("resolvConf file not found")
-			}
-			slirp4Dns := []string{}
-			if rootlessutil.IsRootlessChild() {
-				slirp4Dns, err = dnsutil.GetSlirp4netnsDNS()
-				if err != nil {
-					return nil, nil, "", nil, err
-				}
-			}
-			conf, err = resolvconf.FilterResolvDNS(conf.Content, true)
-			if err != nil {
-				return nil, nil, "", nil, err
-			}
-			searchDomains := resolvconf.GetSearchDomains(conf.Content)
-			dnsOptions := resolvconf.GetOptions(conf.Content)
-			nameServers := strutil.DedupeStrSlice(dnsValue)
-			if len(nameServers) == 0 {
-				nameServers = resolvconf.GetNameservers(conf.Content, resolvconf.IPv4)
-			}
-			if _, err := resolvconf.Build(resolvConfPath, append(slirp4Dns, nameServers...), searchDomains, dnsOptions); err != nil {
+			resolvConfPath := filepath.Join(stateDir, "resolv.conf")
+			if err := buildResolvConf(cmd, resolvConfPath); err != nil {
 				return nil, nil, "", nil, err
 			}
 
@@ -214,4 +168,86 @@ func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 		return nil, nil, "", nil, fmt.Errorf("unexpected network type %v", netType)
 	}
 	return opts, netSlice, ipAddress, ports, nil
+}
+
+func verifyCNINetwork(cmd *cobra.Command, netSlice []string) error {
+	cniPath, err := cmd.Flags().GetString("cni-path")
+	if err != nil {
+		return err
+	}
+	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	if err != nil {
+		return err
+	}
+	e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
+	if err != nil {
+		return err
+	}
+	netMap := e.NetworkMap()
+	for _, netstr := range netSlice {
+		_, ok := netMap[netstr]
+		if !ok {
+			return fmt.Errorf("network %s not found", netstr)
+		}
+	}
+	return nil
+}
+
+func buildResolvConf(cmd *cobra.Command, resolvConfPath string) error {
+	dnsValue, err := cmd.Flags().GetStringSlice("dns")
+	if err != nil {
+		return err
+	}
+	dnsSearchValue, err := cmd.Flags().GetStringSlice("dns-search")
+	if err != nil {
+		return err
+	}
+	dnsOptionValue, err := cmd.Flags().GetStringSlice("dns-opt")
+	if err != nil {
+		return err
+	}
+
+	slirp4Dns := []string{}
+	if rootlessutil.IsRootlessChild() {
+		slirp4Dns, err = dnsutil.GetSlirp4netnsDNS()
+		if err != nil {
+			return err
+		}
+	}
+
+	var (
+		nameServers   = strutil.DedupeStrSlice(dnsValue)
+		searchDomains = strutil.DedupeStrSlice(dnsSearchValue)
+		dnsOptions    = strutil.DedupeStrSlice(dnsOptionValue)
+	)
+
+	if len(nameServers) == 0 || len(searchDomains) == 0 || len(dnsOptions) == 0 {
+		conf, err := resolvconf.Get()
+		if err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				return err
+			}
+			// if resolvConf file does't exist, using default resolvers
+			conf = &resolvconf.File{}
+			logrus.WithError(err).Debug("resolvConf file doesn't exist")
+		}
+		conf, err = resolvconf.FilterResolvDNS(conf.Content, true)
+		if err != nil {
+			return err
+		}
+		if len(searchDomains) == 0 {
+			searchDomains = resolvconf.GetSearchDomains(conf.Content)
+		}
+		if len(nameServers) == 0 {
+			nameServers = resolvconf.GetNameservers(conf.Content, resolvconf.IPv4)
+		}
+		if len(dnsOptions) == 0 {
+			dnsOptions = resolvconf.GetOptions(conf.Content)
+		}
+	}
+
+	if _, err := resolvconf.Build(resolvConfPath, append(slirp4Dns, nameServers...), searchDomains, dnsOptions); err != nil {
+		return err
+	}
+	return nil
 }
