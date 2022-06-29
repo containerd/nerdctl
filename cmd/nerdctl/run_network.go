@@ -202,8 +202,15 @@ func buildResolvConf(cmd *cobra.Command, resolvConfPath string) error {
 	if err != nil {
 		return err
 	}
-	dnsOptionValue, err := cmd.Flags().GetStringSlice("dns-opt")
-	if err != nil {
+	var dnsOptionValue []string
+	if dnsOpts, err := cmd.Flags().GetStringSlice("dns-opt"); err == nil {
+		dnsOptionValue = append(dnsOptionValue, dnsOpts...)
+	} else {
+		return err
+	}
+	if dnsOpts, err := cmd.Flags().GetStringSlice("dns-option"); err == nil {
+		dnsOptionValue = append(dnsOptionValue, dnsOpts...)
+	} else {
 		return err
 	}
 
