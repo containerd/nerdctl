@@ -477,9 +477,9 @@ func TestRunDNS(t *testing.T) {
 		"cat", "/etc/resolv.conf").AssertOutContains("search test\n")
 	base.Cmd("run", "--rm", "--dns-search", "test", "--dns-search", "test1", testutil.CommonImage,
 		"cat", "/etc/resolv.conf").AssertOutContains("search test test1\n")
-	base.Cmd("run", "--rm", "--dns-opt", "attempts:10", testutil.CommonImage,
-		"cat", "/etc/resolv.conf").AssertOutContains("options attempts:10\n")
-	cmd := base.Cmd("run", "--rm", "--dns", "8.8.8.8", "--dns-search", "test", "--dns-opt", "attempts:10", testutil.CommonImage,
+	base.Cmd("run", "--rm", "--dns-opt", "no-tld-query", "--dns-option", "attempts:10", testutil.CommonImage,
+		"cat", "/etc/resolv.conf").AssertOutContains("options no-tld-query attempts:10\n")
+	cmd := base.Cmd("run", "--rm", "--dns", "8.8.8.8", "--dns-search", "test", "--dns-option", "attempts:10", testutil.CommonImage,
 		"cat", "/etc/resolv.conf")
 	cmd.AssertOutContains("nameserver 8.8.8.8\n")
 	cmd.AssertOutContains("search test\n")

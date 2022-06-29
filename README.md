@@ -387,7 +387,7 @@ Network flags:
 - :whale: `-p, --publish`: Publish a container's port(s) to the host
 - :whale: `--dns`: Set custom DNS servers
 - :whale: `--dns-search`: Set custom DNS search domains
-- :whale: `--dns-opt`: Set DNS options
+- :whale: `--dns-opt, --dns-option`: Set DNS options
 - :whale: `-h, --hostname`: Container host name
 - :whale: `--add-host`: Add a custom host-to-IP mapping (host:ip)
 - :whale: `--ip`: Specific static IP address(es) to use

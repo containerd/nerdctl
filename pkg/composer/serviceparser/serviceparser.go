@@ -51,6 +51,8 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		"Devices",
 		"Dockerfile", // handled by the loader (normalizer)
 		"DNS",
+		"DNSSearch",
+		"DNSOpts",
 		"Entrypoint",
 		"Environment",
 		"Extends", // handled by the loader
@@ -480,6 +482,13 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 	for _, v := range svc.DNS {
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--dns=%s", v))
 	}
+	for _, v := range svc.DNSSearch {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--dns-search=%s", v))
+	}
+	for _, v := range svc.DNSOpts {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--dns-option=%s", v))
+	}
+
 	for _, v := range svc.Entrypoint {
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--entrypoint=%s", v))
 	}

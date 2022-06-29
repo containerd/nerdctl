@@ -94,6 +94,12 @@ services:
     volumes:
       - wordpress:/var/www/html
     pids_limit: 100
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    dns_search: example.com
+    dns_opt:
+      - no-tld-query
     logging:
       driver: json-file
       options:
@@ -146,6 +152,10 @@ volumes:
 	assert.Assert(t, in(wp1.RunArgs, "--pids-limit=100"))
 	assert.Assert(t, in(wp1.RunArgs, "--ulimit=nproc=500"))
 	assert.Assert(t, in(wp1.RunArgs, "--ulimit=nofile=20000:20000"))
+	assert.Assert(t, in(wp1.RunArgs, "--dns=8.8.8.8"))
+	assert.Assert(t, in(wp1.RunArgs, "--dns=8.8.4.4"))
+	assert.Assert(t, in(wp1.RunArgs, "--dns-search=example.com"))
+	assert.Assert(t, in(wp1.RunArgs, "--dns-option=no-tld-query"))
 	assert.Assert(t, in(wp1.RunArgs, "--log-driver=json-file"))
 	assert.Assert(t, in(wp1.RunArgs, "--log-opt=max-size=5K"))
 	assert.Assert(t, in(wp1.RunArgs, "--log-opt=max-file=2"))

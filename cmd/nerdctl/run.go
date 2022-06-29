@@ -135,7 +135,9 @@ func setCreateFlags(cmd *cobra.Command) {
 	// dns is defined as StringSlice, not StringArray, to allow specifying "--dns=1.1.1.1,8.8.8.8" (compatible with Podman)
 	cmd.Flags().StringSlice("dns", nil, "Set custom DNS servers")
 	cmd.Flags().StringSlice("dns-search", nil, "Set custom DNS search domains")
+	// We allow for both "--dns-opt" and "--dns-option", although the latter is the recommended way.
 	cmd.Flags().StringSlice("dns-opt", nil, "Set DNS options")
+	cmd.Flags().StringSlice("dns-option", nil, "Set DNS options")
 	// publish is defined as StringSlice, not StringArray, to allow specifying "--publish=80:80,443:443" (compatible with Podman)
 	cmd.Flags().StringSliceP("publish", "p", nil, "Publish a container's port(s) to the host")
 	// FIXME: not support IPV6 yet
