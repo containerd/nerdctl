@@ -402,8 +402,12 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		if bindPropagation != "" {
 			options = append(options, bindPropagation)
 		}
-		if mountType == Bind && bindNonRecursive {
-			options = append(options, "bind")
+		if mountType == Bind {
+			if bindNonRecursive {
+				options = append(options, "bind")
+			} else {
+				options = append(options, "rbind")
+			}
 		}
 	}
 
