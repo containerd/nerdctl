@@ -191,7 +191,7 @@ func TestRunPortWithNoHostPort(t *testing.T) {
 			result = portCmd.Run()
 			stdoutContent = result.Stdout() + result.Stderr()
 			assert.Assert(cmd.Base.T, result.ExitCode == 0, stdoutContent)
-			regexExpression := regexp.MustCompile("80\\/tcp.*?->.*?0.0.0.0:(?P<portNumber>\\d{1,5}).*?")
+			regexExpression := regexp.MustCompile(`80\/tcp.*?->.*?0.0.0.0:(?P<portNumber>\d{1,5}).*?`)
 			match := regexExpression.FindStringSubmatch(stdoutContent)
 			paramsMap := make(map[string]string)
 			for i, name := range regexExpression.SubexpNames() {
