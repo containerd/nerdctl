@@ -28,6 +28,7 @@ import (
 
 	"path/filepath"
 
+	"github.com/containerd/containerd/errdefs"
 	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
@@ -117,7 +118,7 @@ func isImageSharable(buildkitHost string, namespace, uuid, snapshotter string, p
 	}
 	// NOTE: It's possible that BuildKit doesn't download the base image of non-default platform (e.g. when the provided
 	//       Dockerfile doesn't contain instructions require base images like RUN) even if `--output type=image,unpack=true`
-	//       is passed to BuildKit. Thus we need to use `type=docker` or `type=oci` when nerdctl builds non-default platform
+	//       is passed to BuildKit. Thus, we need to use `type=docker` or `type=oci` when nerdctl builds non-default platform
 	//       image using `platform` option.
 	return executor == "containerd" && containerdUUID == uuid && containerdNamespace == namespace && workerSnapshotter == snapshotter && len(platform) == 0, nil
 }
@@ -134,7 +135,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	buildctlBinary, buildctlArgs, needsLoading, metaFile, cleanup, err := generateBuildctlArgs(cmd, buildkitHost, platform, args)
+	buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, err := generateBuildctlArgs(cmd, buildkitHost, platform, args)
 	if err != nil {
 		return err
 	}
@@ -207,49 +208,73 @@ func buildAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if len(tags) > 1 {
+		logrus.Debug("Found more than 1 tag")
+		client, ctx, cancel, err := newClient(cmd)
+		if err != nil {
+			return fmt.Errorf("unable to tag images: %s", err)
+		}
+		defer cancel()
+		imageService := client.ImageService()
+		image, err := imageService.Get(ctx, tags[0])
+		if err != nil {
+			return fmt.Errorf("unable to tag image: %s", err)
+		}
+		for _, targetRef := range tags[1:] {
+			image.Name = targetRef
+			if _, err := imageService.Create(ctx, image); err != nil {
+				// if already exists; skip.
+				if errors.Is(err, errdefs.ErrAlreadyExists) {
+					continue
+				}
+				return fmt.Errorf("unable to tag image: %s", err)
+			}
+		}
+	}
+
 	return nil
 }
 
-func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, args []string) (string, []string, bool, string, func(), error) {
-	var needsLoading bool
+func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, args []string) (buildCtlBinary string,
+	buildctlArgs []string, needsLoading bool, metaFile string, tags []string, cleanup func(), err error) {
 	if len(args) < 1 {
-		return "", nil, false, "", nil, errors.New("context needs to be specified")
+		return "", nil, false, "", nil, nil, errors.New("context needs to be specified")
 	}
 	buildContext := args[0]
 	if buildContext == "-" || strings.Contains(buildContext, "://") {
-		return "", nil, false, "", nil, fmt.Errorf("unsupported build context: %q", buildContext)
+		return "", nil, false, "", nil, nil, fmt.Errorf("unsupported build context: %q", buildContext)
 	}
 
 	buildctlBinary, err := buildkitutil.BuildctlBinary()
 	if err != nil {
-		return "", nil, false, "", nil, err
+		return "", nil, false, "", nil, nil, err
 	}
 
 	output, err := cmd.Flags().GetString("output")
 	if err != nil {
-		return "", nil, false, "", nil, err
+		return "", nil, false, "", nil, nil, err
 	}
 	if output == "" {
 		client, ctx, cancel, err := newClient(cmd)
 		if err != nil {
-			return "", nil, false, "", nil, err
+			return "", nil, false, "", nil, nil, err
 		}
 		defer cancel()
 		info, err := client.Server(ctx)
 		if err != nil {
-			return "", nil, false, "", nil, err
+			return "", nil, false, "", nil, nil, err
 		}
 		ns, err := cmd.Flags().GetString("namespace")
 		if err != nil {
-			return "", nil, false, "", nil, err
+			return "", nil, false, "", nil, nil, err
 		}
 		snapshotter, err := cmd.Flags().GetString("snapshotter")
 		if err != nil {
-			return "", nil, false, "", nil, err
+			return "", nil, false, "", nil, nil, err
 		}
 		sharable, err := isImageSharable(buildkitHost, ns, info.UUID, snapshotter, platform)
 		if err != nil {
-			return "", nil, false, "", nil, err
+			return "", nil, false, "", nil, nil, err
 		}
 		if sharable {
 			output = "type=image,unpack=true" // ensure the target stage is unlazied (needed for any snapshotters)
@@ -269,25 +294,32 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 	}
 	tagValue, err := cmd.Flags().GetStringArray("tag")
 	if err != nil {
-		return "", nil, false, "", nil, err
+		return "", nil, false, "", nil, nil, err
 	}
-	if tagSlice := strutil.DedupeStrSlice(tagValue); len(tagSlice) > 0 {
-		if len(tagSlice) > 1 {
-			return "", nil, false, "", nil, fmt.Errorf("specifying multiple -t is not supported yet")
-		}
-		ref := tagSlice[0]
+	if tags = strutil.DedupeStrSlice(tagValue); len(tags) > 0 {
+
+		ref := tags[0]
 		named, err := dockerreference.ParseNormalizedNamed(ref)
 		if err != nil {
-			return "", nil, false, "", nil, err
+			return "", nil, false, "", nil, nil, err
 		}
 		output += ",name=" + dockerreference.TagNameOnly(named).String()
+
+		// pick the first tag and add it to output
+		for idx, tag := range tags {
+			named, err := dockerreference.ParseNormalizedNamed(tag)
+			if err != nil {
+				return "", nil, false, "", nil, nil, err
+			}
+			tags[idx] = dockerreference.TagNameOnly(named).String()
+		}
 	}
 
-	buildctlArgs := buildkitutil.BuildctlBaseArgs(buildkitHost)
+	buildctlArgs = buildkitutil.BuildctlBaseArgs(buildkitHost)
 
 	progressValue, err := cmd.Flags().GetString("progress")
 	if err != nil {
-		return "", nil, false, "", nil, err
+		return "", nil, false, "", nil, nil, err
 	}
 
 	buildctlArgs = append(buildctlArgs, []string{
@@ -301,18 +333,17 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 
 	filename, err := cmd.Flags().GetString("file")
 	if err != nil {
-		return "", nil, false, "", nil, err
+		return "", nil, false, "", nil, nil, err
 	}
 
 	var dir, file string
-	var cleanup func()
 
 	if filename != "" {
 		if filename == "-" {
 			var err error
 			dir, err = buildkitutil.WriteTempDockerfile(cmd.InOrStdin())
 			if err != nil {
-				return "", nil, false, "", nil, err
+				return "", nil, false, "", nil, nil, err
 			}
 			file = buildkitutil.DefaultDockerfileName
 			cleanup = func() {
@@ -330,7 +361,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 
 	target, err := cmd.Flags().GetString("target")
 	if err != nil {
-		return "", nil, false, "", cleanup, err
+		return "", nil, false, "", nil, cleanup, err
 	}
 	if target != "" {
 		buildctlArgs = append(buildctlArgs, "--opt=target="+target)
@@ -342,7 +373,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 
 	buildArgsValue, err := cmd.Flags().GetStringArray("build-arg")
 	if err != nil {
-		return "", nil, false, "", cleanup, err
+		return "", nil, false, "", nil, cleanup, err
 	}
 	for _, ba := range strutil.DedupeStrSlice(buildArgsValue) {
 		buildctlArgs = append(buildctlArgs, "--opt=build-arg:"+ba)
@@ -364,7 +395,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 
 	labels, err := cmd.Flags().GetStringArray("label")
 	if err != nil {
-		return "", nil, false, "", nil, err
+		return "", nil, false, "", nil, nil, err
 	}
 	labels = strutil.DedupeStrSlice(labels)
 	for _, l := range labels {
@@ -373,7 +404,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 
 	noCache, err := cmd.Flags().GetBool("no-cache")
 	if err != nil {
-		return "", nil, false, "", cleanup, err
+		return "", nil, false, "", nil, cleanup, err
 	}
 	if noCache {
 		buildctlArgs = append(buildctlArgs, "--no-cache")
@@ -381,7 +412,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 
 	secretValue, err := cmd.Flags().GetStringArray("secret")
 	if err != nil {
-		return "", nil, false, "", cleanup, err
+		return "", nil, false, "", nil, cleanup, err
 	}
 	for _, s := range strutil.DedupeStrSlice(secretValue) {
 		buildctlArgs = append(buildctlArgs, "--secret="+s)
@@ -389,7 +420,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 
 	sshValue, err := cmd.Flags().GetStringArray("ssh")
 	if err != nil {
-		return "", nil, false, "", cleanup, err
+		return "", nil, false, "", nil, cleanup, err
 	}
 	for _, s := range strutil.DedupeStrSlice(sshValue) {
 		buildctlArgs = append(buildctlArgs, "--ssh="+s)
@@ -397,7 +428,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 
 	cacheFrom, err := cmd.Flags().GetStringArray("cache-from")
 	if err != nil {
-		return "", nil, false, "", cleanup, err
+		return "", nil, false, "", nil, cleanup, err
 	}
 	for _, s := range strutil.DedupeStrSlice(cacheFrom) {
 		if !strings.Contains(s, "type=") {
@@ -408,7 +439,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 
 	cacheTo, err := cmd.Flags().GetStringArray("cache-to")
 	if err != nil {
-		return "", nil, false, "", cleanup, err
+		return "", nil, false, "", nil, cleanup, err
 	}
 	for _, s := range strutil.DedupeStrSlice(cacheTo) {
 		if !strings.Contains(s, "type=") {
@@ -419,7 +450,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 
 	rm, err := cmd.Flags().GetBool("rm")
 	if err != nil {
-		return "", nil, false, "", cleanup, err
+		return "", nil, false, "", nil, cleanup, err
 	}
 	if !rm {
 		logrus.Warn("ignoring deprecated flag: '--rm=false'")
@@ -427,20 +458,19 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 
 	iidFile, err := cmd.Flags().GetString("iidfile")
 	if err != nil {
-		return "", nil, false, "", cleanup, err
+		return "", nil, false, "", nil, cleanup, err
 	}
-	var metaFile string
 	if iidFile != "" {
 		file, err := os.CreateTemp("", "buildkit-meta-*")
 		if err != nil {
-			return "", nil, false, "", cleanup, err
+			return "", nil, false, "", nil, cleanup, err
 		}
 		defer file.Close()
 		metaFile = file.Name()
 		buildctlArgs = append(buildctlArgs, "--metadata-file="+metaFile)
 	}
 
-	return buildctlBinary, buildctlArgs, needsLoading, metaFile, cleanup, nil
+	return buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, nil
 }
 
 func getDigestFromMetaFile(path string) (string, error) {
