@@ -51,6 +51,7 @@ func newImagesCommand() *cobra.Command {
 Properties:
 - REPOSITORY: Repository
 - TAG:        Tag
+- NAME:       Name of the image, --names for skip parsing as repository and tag.
 - IMAGE ID:   OCI Digest. Usually different from Docker image ID. Shared for multi-platform images.
 - CREATED:    Created time
 - PLATFORM:   Platform
@@ -76,6 +77,7 @@ Properties:
 		return []string{"json", "table", "wide"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	imagesCommand.Flags().Bool("digests", false, "Show digests (compatible with Docker, unlike ID)")
+	imagesCommand.Flags().Bool("names", false, "Show image names")
 	imagesCommand.Flags().BoolP("all", "a", true, "(unimplemented yet, always true)")
 
 	return imagesCommand
@@ -90,6 +92,7 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
+		filters = append(filters, fmt.Sprintf("name==%s", args[0]))
 	}
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
@@ -119,6 +122,7 @@ type imagePrintable struct {
 	ID           string // image target digest (not config digest, unlike Docker), or its short form
 	Repository   string
 	Tag          string // "<none>" or tag
+	Name         string // image name
 	Size         string // the size of the unpacked snapshots.
 	BlobSize     string // the size of the blobs in the content store (nerdctl extension)
 	// TODO: "SharedSize", "UniqueSize", "VirtualSize"
@@ -138,6 +142,10 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 	if err != nil {
 		return err
 	}
+	namesFlag, err := cmd.Flags().GetBool("names")
+	if err != nil {
+		return err
+	}
 	var w io.Writer
 	w = os.Stdout
 	format, err := cmd.Flags().GetString("format")
@@ -152,11 +160,17 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 	case "", "table", "wide":
 		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
 		if !quiet {
-			if digestsFlag {
-				fmt.Fprintln(w, "REPOSITORY\tTAG\tDIGEST\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE")
+			printHeader := ""
+			if namesFlag {
+				printHeader += "NAME\t"
 			} else {
-				fmt.Fprintln(w, "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE")
+				printHeader += "REPOSITORY\tTAG\t"
 			}
+			if digestsFlag {
+				printHeader += "DIGEST\t"
+			}
+			printHeader += "IMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE"
+			fmt.Fprintln(w, printHeader)
 		}
 	case "raw":
 		return errors.New("unsupported format: \"raw\"")
@@ -181,6 +195,7 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 		quiet:        quiet,
 		noTrunc:      noTrunc,
 		digestsFlag:  digestsFlag,
+		namesFlag:    namesFlag,
 		tmpl:         tmpl,
 		client:       client,
 		contentStore: client.ContentStore(),
@@ -199,12 +214,12 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 }
 
 type imagePrinter struct {
-	w                           io.Writer
-	quiet, noTrunc, digestsFlag bool
-	tmpl                        *template.Template
-	client                      *containerd.Client
-	contentStore                content.Store
-	snapshotter                 snapshots.Snapshotter
+	w                                      io.Writer
+	quiet, noTrunc, digestsFlag, namesFlag bool
+	tmpl                                   *template.Template
+	client                                 *containerd.Client
+	contentStore                           content.Store
+	snapshotter                            snapshots.Snapshotter
 }
 
 func (x *imagePrinter) printImage(ctx context.Context, img images.Image) error {
@@ -228,17 +243,29 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 		return nil
 	}
 
-	blobSize, err := img.Size(ctx, x.contentStore, platMC)
+	image := containerd.NewImageWithPlatform(x.client, img, platMC)
+	desc, err := image.Config(ctx)
+	if err != nil {
+		logrus.WithError(err).Warnf("failed to get config of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
+	}
+	var (
+		repository string
+		tag        string
+	)
+	// cri plugin will create an image named digest of image's config, skip parsing.
+	if x.namesFlag || desc.Digest.String() != img.Name {
+		repository, tag = imgutil.ParseRepoTag(img.Name)
+	}
+
+	blobSize, err := image.Size(ctx)
 	if err != nil {
 		logrus.WithError(err).Warnf("failed to get blob size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 	}
 
-	size, err := unpackedImageSize(ctx, x.client, x.snapshotter, img, platMC)
+	size, err := unpackedImageSize(ctx, x.snapshotter, image)
 	if err != nil {
 		logrus.WithError(err).Warnf("failed to get unpacked size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 	}
-
-	repository, tag := imgutil.ParseRepoTag(img.Name)
 
 	p := imagePrintable{
 		CreatedAt:    img.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
@@ -247,9 +274,13 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 		ID:           img.Target.Digest.String(),
 		Repository:   repository,
 		Tag:          tag,
+		Name:         img.Name,
 		Size:         progress.Bytes(size).String(),
 		BlobSize:     progress.Bytes(blobSize).String(),
 		Platform:     platforms.Format(ociPlatform),
+	}
+	if p.Repository == "" {
+		p.Repository = "<none>"
 	}
 	if p.Tag == "" {
 		p.Tag = "<none>" // for Docker compatibility
@@ -271,31 +302,24 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 			return err
 		}
 	} else {
-		if x.digestsFlag {
-			if _, err := fmt.Fprintf(x.w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-				p.Repository,
-				p.Tag,
-				p.Digest,
-				p.ID,
-				p.CreatedSince,
-				p.Platform,
-				p.Size,
-				p.BlobSize,
-			); err != nil {
-				return err
-			}
+		format := ""
+		args := []interface{}{}
+		if x.namesFlag {
+			format += "%s\t"
+			args = append(args, p.Name)
 		} else {
-			if _, err := fmt.Fprintf(x.w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-				p.Repository,
-				p.Tag,
-				p.ID,
-				p.CreatedSince,
-				p.Platform,
-				p.Size,
-				p.BlobSize,
-			); err != nil {
-				return err
-			}
+			format += "%s\t%s\t"
+			args = append(args, p.Repository, p.Tag)
+		}
+		if x.digestsFlag {
+			format += "%s\t"
+			args = append(args, p.Digest)
+		}
+
+		format += "%s\t%s\t%s\t%s\t%s\n"
+		args = append(args, p.ID, p.CreatedSince, p.Platform, p.Size, p.BlobSize)
+		if _, err := fmt.Fprintf(x.w, format, args...); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -335,9 +359,7 @@ func (key snapshotKey) add(ctx context.Context, s snapshots.Snapshotter, usage *
 
 // unpackedImageSize is the size of the unpacked snapshots.
 // Does not contain the size of the blobs in the content store. (Corresponds to Docker).
-func unpackedImageSize(ctx context.Context, client *containerd.Client, s snapshots.Snapshotter, i images.Image, platMC platforms.MatchComparer) (int64, error) {
-	img := containerd.NewImageWithPlatform(client, i, platMC)
-
+func unpackedImageSize(ctx context.Context, s snapshots.Snapshotter, img containerd.Image) (int64, error) {
 	diffIDs, err := img.RootFS(ctx)
 	if err != nil {
 		return 0, err
@@ -347,7 +369,7 @@ func unpackedImageSize(ctx context.Context, client *containerd.Client, s snapsho
 	usage, err := s.Usage(ctx, chainID)
 	if err != nil {
 		if errdefs.IsNotFound(err) {
-			logrus.WithError(err).Debugf("image %q seems not unpacked", i.Name)
+			logrus.WithError(err).Debugf("image %q seems not unpacked", img.Name())
 			return 0, nil
 		}
 		return 0, err
