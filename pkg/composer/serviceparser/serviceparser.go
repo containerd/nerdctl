@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd/contrib/nvidia"
@@ -74,6 +75,8 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		"Secrets",
 		"Scale",
 		"SecurityOpt",
+		"StopGracePeriod",
+		"StopSignal",
 		"Sysctls",
 		"Tmpfs",
 		"User",
@@ -584,6 +587,14 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 
 	if svc.ReadOnly {
 		c.RunArgs = append(c.RunArgs, "--read-only")
+	}
+
+	if svc.StopGracePeriod != nil {
+		timeout := time.Duration(*svc.StopGracePeriod)
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--stop-timeout=%d", int(timeout.Seconds())))
+	}
+	if svc.StopSignal != "" {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--stop-signal=%s", svc.StopSignal))
 	}
 
 	if restart, err := getRestart(svc); err != nil {

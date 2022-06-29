@@ -28,6 +28,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/containerd/console"
@@ -108,6 +109,8 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.RegisterFlagCompletionFunc("pull", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"always", "missing", "never"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	cmd.Flags().String("stop-signal", "SIGTERM", "Signal to stop a container")
+	cmd.Flags().Int("stop-timeout", 0, "Timeout (in seconds) to stop a container")
 
 	// #region for init process
 	cmd.Flags().Bool("init", false, "Run an init process inside the container, Default to use tini")
@@ -532,6 +535,16 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 	}
 	cOpts = append(cOpts, restartOpts...)
 
+	stopSignal, err := cmd.Flags().GetString("stop-signal")
+	if err != nil {
+		return nil, "", nil, err
+	}
+	stopTimeout, err := cmd.Flags().GetInt("stop-timeout")
+	if err != nil {
+		return nil, "", nil, err
+	}
+	cOpts = append(cOpts, withStop(stopSignal, stopTimeout, ensuredImage))
+
 	netOpts, netSlice, ipAddress, ports, err := generateNetOpts(cmd, dataStore, stateDir, ns, id)
 	if err != nil {
 		return nil, "", nil, err
@@ -933,6 +946,26 @@ func parseKVStringsMapFromLogOpt(cmd *cobra.Command, logDriver string) (map[stri
 		}
 	}
 	return logOptMap, nil
+}
+
+func withStop(stopSignal string, stopTimeout int, ensuredImage *imgutil.EnsuredImage) containerd.NewContainerOpts {
+	return func(ctx context.Context, _ *containerd.Client, c *containers.Container) error {
+		if c.Labels == nil {
+			c.Labels = make(map[string]string)
+		}
+		var err error
+		if ensuredImage != nil {
+			stopSignal, err = containerd.GetOCIStopSignal(ctx, ensuredImage.Image, stopSignal)
+			if err != nil {
+				return err
+			}
+		}
+		c.Labels[containerd.StopSignalLabel] = stopSignal
+		if stopTimeout != 0 {
+			c.Labels[labels.StopTimout] = strconv.Itoa(stopTimeout)
+		}
+		return nil
+	}
 }
 
 func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ipAddress string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string, mountPoints []*mountutil.Processed) (containerd.NewContainerOpts, error) {
