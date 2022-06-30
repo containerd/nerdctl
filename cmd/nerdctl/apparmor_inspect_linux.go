@@ -41,6 +41,6 @@ func apparmorInspectAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(cmd.OutOrStdout(), b)
+	_, err = fmt.Fprint(cmd.OutOrStdout(), b)
 	return err
 }

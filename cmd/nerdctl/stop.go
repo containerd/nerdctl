@@ -21,14 +21,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
 
+	"github.com/moby/sys/signal"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 )
 
 func newStopCommand() *cobra.Command {
@@ -138,18 +140,18 @@ func stopContainer(ctx context.Context, container containerd.Container, timeout 
 	}
 
 	if *timeout > 0 {
-		signal, err := containerd.ParseSignal("SIGTERM")
+		sig, err := signal.ParseSignal("SIGTERM")
 		if err != nil {
 			return err
 		}
 		if stopSignal, ok := l[containerd.StopSignalLabel]; ok {
-			signal, err = containerd.ParseSignal(stopSignal)
+			sig, err = signal.ParseSignal(stopSignal)
 			if err != nil {
 				return err
 			}
 		}
 
-		if err := task.Kill(ctx, signal); err != nil {
+		if err := task.Kill(ctx, sig); err != nil {
 			return err
 		}
 
@@ -176,12 +178,12 @@ func stopContainer(ctx context.Context, container containerd.Container, timeout 
 		}
 	}
 
-	signal, err := containerd.ParseSignal("SIGKILL")
+	sig, err := signal.ParseSignal("SIGKILL")
 	if err != nil {
 		return err
 	}
 
-	if err := task.Kill(ctx, signal); err != nil {
+	if err := task.Kill(ctx, sig); err != nil {
 		return err
 	}
 

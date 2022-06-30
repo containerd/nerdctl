@@ -72,7 +72,6 @@ func portAllocate(protocol string, ip string, count uint64) (uint64, uint64, err
 		usedPort[value.LocalPort] = true
 	}
 	start := uint64(allocateStart)
-	var results []uint64
 	if count > uint64(allocateEnd-allocateStart+1) {
 		return 0, 0, fmt.Errorf("can not allocate %d ports", count)
 	}
@@ -85,9 +84,6 @@ func portAllocate(protocol string, ip string, count uint64) (uint64, uint64, err
 			}
 		}
 		if needReturn {
-			for i := start; i < start+count; i++ {
-				results = append(results, i)
-			}
 			return start, start + count - 1, nil
 		}
 		start += count

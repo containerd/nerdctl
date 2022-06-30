@@ -23,6 +23,9 @@ import (
 	"strings"
 	"text/template"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/containerd/containerd/api/services/introspection/v1"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -231,7 +234,7 @@ func prettyPrintInfoDockerCompat(cmd *cobra.Command, info *dockercompat.Info) er
 			if k == "name" {
 				continue
 			}
-			fmt.Fprintf(w, "   %s: %s\n", strings.Title(k), v)
+			fmt.Fprintf(w, "   %s: %s\n", cases.Title(language.English).String(k), v)
 		}
 	}
 	fmt.Fprintf(w, " Kernel Version: %s\n", info.KernelVersion)

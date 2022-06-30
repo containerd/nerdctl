@@ -313,9 +313,6 @@ func statsAction(cmd *cobra.Command, args []string) error {
 			return errors.New("unsupported format: \"raw\"")
 		default:
 			tmpl, err = parseTemplate(format)
-			if err != nil {
-				break
-			}
 		}
 
 		for _, c := range ccstats {
