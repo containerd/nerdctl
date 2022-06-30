@@ -34,6 +34,23 @@ func TestLoadEncryptImage(t *testing.T) {
 	keyPair := newJWEKeyPair(t)
 	defer keyPair.cleanup()
 
+	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+	encryptImageRef := fmt.Sprintf("%s:encrypted", tID)
+	tmpPath := path.Dir(keyPair.pub)
+	encryptImageTar := path.Join(tmpPath, fmt.Sprintf("%s.encrypted.tar", tID))
+	defer os.Remove(encryptImageTar)
+
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
+	base.Cmd("image", "encrypt", "--recipient=jwe:"+keyPair.pub, testutil.CommonImage, encryptImageRef).AssertOK()
+	base.Cmd("save", "--output", encryptImageTar, encryptImageRef).AssertOK()
+	// remove all local images (in the nerdctl-test namespace), to ensure that we do not have blobs of the original image.
+	rmiAll(base)
+
+	base.Cmd("load", "--input", encryptImageTar).AssertFail()
+	base.Cmd("load", "--input", encryptImageTar, "--unpack=false").AssertOK()
+	base.Cmd("rmi", encryptImageRef).AssertOK()
+
 	// copy temp private key to default directory, from default config.toml --decryption-keys-path value
 	ocicryptDefaultPath := "/etc/containerd/ocicrypt/keys"
 	if rootlessutil.IsRootless() {
@@ -48,29 +65,7 @@ func TestLoadEncryptImage(t *testing.T) {
 	etcPrvPath := filepath.Join(ocicryptDefaultPath, prvName)
 	defer os.Remove(etcPrvPath)
 
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-	encryptImageRef := fmt.Sprintf("%s:encrypted", tID)
-	tmpPath := path.Dir(keyPair.pub)
-	encryptImageTar := path.Join(tmpPath, fmt.Sprintf("%s.encrypted.tar", tID))
-	simpleImageTar := path.Join(tmpPath, fmt.Sprintf("%s.simple.tar", tID))
-	defer os.Remove(encryptImageTar)
-	defer os.Remove(simpleImageTar)
-
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	base.Cmd("image", "encrypt", "--recipient=jwe:"+keyPair.pub, testutil.CommonImage, encryptImageRef).AssertOK()
-	base.Cmd("save", "--output", encryptImageTar, encryptImageRef).AssertOK()
-	base.Cmd("save", "--output", simpleImageTar, testutil.CommonImage).AssertOK()
-	// remove all local images (in the nerdctl-test namespace), to ensure that we do not have blobs of the original image.
-	rmiAll(base)
-
-	// if --no-unpack option is not specified
-	base.Cmd("load", "--input", encryptImageTar).AssertFail()
-	// load simple image
-	base.Cmd("load", "--input", simpleImageTar).AssertOK()
-
-	// decrypt image when --no-unpack option is specified
-	base.Cmd("rmi", encryptImageRef).AssertOK()
-	base.Cmd("load", "--input", encryptImageTar, "--no-unpack").AssertOK()
+	// decrypt image when private key place in default directory
+	base.Cmd("load", "--input", encryptImageTar).AssertOK()
 	base.Cmd("run", "--rm", encryptImageRef, "echo", "hello").AssertOutContains("hello")
 }
