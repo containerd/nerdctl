@@ -268,6 +268,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl kill](#whale-nerdctl-kill)
     - [:whale: nerdctl pause](#whale-nerdctl-pause)
     - [:whale: nerdctl unpause](#whale-nerdctl-unpause)
+    - [:whale: nerdctl container prune](#whale-nerdctl-container-prune)
   - [Build](#build)
     - [:whale: nerdctl build](#whale-nerdctl-build)
     - [:whale: nerdctl commit](#whale-nerdctl-commit)
@@ -810,6 +811,15 @@ Rename a container.
 
 Usage: `nerdctl rename CONTAINER NEW_NAME`
 
+### :whale: nerdctl container prune
+Remove all stopped containers.
+
+Usage: `nerdctl container prune [OPTIONS]`
+
+Flags:
+- :whale: `-f, --force`: Do not prompt for confirmation.
+
+Unimplemented `docker container prune` flags: `--filter`
 
 ## Build
 ### :whale: nerdctl build
@@ -1499,9 +1509,6 @@ See [`./docs/config.md`](./docs/config.md).
 Container management:
 - `docker attach`
 - `docker diff`
-
-- `docker container prune`
-
 - `docker checkpoint *`
 
 Image:

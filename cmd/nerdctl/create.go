@@ -60,7 +60,7 @@ func createAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	container, _, _, err := createContainer(cmd, ctx, client, args, platform, false, false, true)
+	container, err := createContainer(cmd, ctx, client, args, platform, false, false, true)
 	if err != nil {
 		return err
 	}

@@ -48,6 +48,7 @@ func newContainerCommand() *cobra.Command {
 		newUnpauseCommand(),
 		newCommitCommand(),
 		newRenameCommand(),
+		newContainerPruneCommand(),
 	)
 	addCpCommand(containerCommand)
 	return containerCommand
