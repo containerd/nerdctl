@@ -50,7 +50,7 @@ func TestRunUmask(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	testutil.DockerIncompatible(t)
-	base.Cmd("run", "--rm", "--umask", "0200", "busybox", "sh", "-c", "umask").AssertOutContains("0200")
+	base.Cmd("run", "--rm", "--umask", "0200", testutil.AlpineImage, "sh", "-c", "umask").AssertOutContains("0200")
 }
 
 func TestRunAddGroup(t *testing.T) {
