@@ -17,9 +17,13 @@
 package main
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/containerd/nerdctl/pkg/tabutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"gotest.tools/v3/assert"
 )
 
 func TestImagesWithNames(t *testing.T) {
@@ -29,4 +33,44 @@ func TestImagesWithNames(t *testing.T) {
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	base.Cmd("images", "--names", testutil.CommonImage).AssertOutContains(testutil.CommonImage)
+	base.Cmd("images", "--names", testutil.CommonImage).AssertOutWithFunc(func(out string) error {
+		lines := strings.Split(strings.TrimSpace(out), "\n")
+		if len(lines) < 2 {
+			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+		}
+		tab := tabutil.NewReader("NAME\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE")
+		err := tab.ParseHeader(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse header: %v", err)
+		}
+		name, _ := tab.ReadRow(lines[1], "NAME")
+		assert.Equal(t, name, testutil.CommonImage)
+		return nil
+	})
+}
+
+func TestImages(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	header := "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE"
+	if base.Target == testutil.Docker {
+		header = "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE"
+	}
+
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
+	base.Cmd("images", testutil.CommonImage).AssertOutWithFunc(func(out string) error {
+		lines := strings.Split(strings.TrimSpace(out), "\n")
+		if len(lines) < 2 {
+			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+		}
+		tab := tabutil.NewReader(header)
+		err := tab.ParseHeader(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse header: %v", err)
+		}
+		repo, _ := tab.ReadRow(lines[1], "REPOSITORY")
+		tag, _ := tab.ReadRow(lines[1], "TAG")
+		assert.Equal(t, repo+":"+tag, testutil.CommonImage)
+		return nil
+	})
 }
