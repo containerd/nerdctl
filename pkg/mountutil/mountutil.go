@@ -128,6 +128,9 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 				fstype = "bind"
 				found = true
 			}
+			if found {
+				break
+			}
 		}
 		if !found {
 			options = append(options, "rbind")

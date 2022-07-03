@@ -55,7 +55,7 @@ linters:
     # - rowserrcheck
     # - scopelint
     # - sqlclosecheck
-    # - staticcheck
+    - staticcheck
     - stylecheck
     # - testpackage
     # - tparallel

@@ -73,7 +73,8 @@ func Pull(ctx context.Context, client *containerd.Client, ref string, config *Co
 	opts := []containerd.RemoteOpt{
 		containerd.WithResolver(config.Resolver),
 		containerd.WithImageHandler(h),
-		containerd.WithSchema1Conversion,
+		//nolint:staticcheck
+		containerd.WithSchema1Conversion, //lint:ignore SA1019 nerdctl should support schema1 as well.
 		containerd.WithPlatformMatcher(platformMC),
 	}
 	opts = append(opts, config.RemoteOpts...)

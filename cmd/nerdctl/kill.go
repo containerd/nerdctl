@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 
+	"github.com/moby/sys/signal"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -55,7 +56,7 @@ func killAction(cmd *cobra.Command, args []string) error {
 		killSignal = "SIG" + killSignal
 	}
 
-	signal, err := containerd.ParseSignal(killSignal)
+	signal, err := signal.ParseSignal(killSignal)
 	if err != nil {
 		return err
 	}

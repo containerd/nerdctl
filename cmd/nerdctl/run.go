@@ -52,8 +52,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
-	"github.com/docker/cli/opts"       // nolint: stylecheck
-	dopts "github.com/docker/cli/opts" // nolint: stylecheck
+	dopts "github.com/docker/cli/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -926,7 +925,7 @@ func readKVStringsMapfFromLabel(cmd *cobra.Command) (map[string]string, error) {
 		return nil, err
 	}
 	labelsFilePath = strutil.DedupeStrSlice(labelsFilePath)
-	labels, err := opts.ReadKVStrings(labelsFilePath, labelsMap)
+	labels, err := dopts.ReadKVStrings(labelsFilePath, labelsMap)
 	if err != nil {
 		return nil, err
 	}
@@ -1068,6 +1067,9 @@ func writeCIDFile(path, id string) error {
 		return fmt.Errorf("container ID file found, make sure the other container isn't running or delete %s", path)
 	} else if errors.Is(err, os.ErrNotExist) {
 		f, err := os.Create(path)
+		if err != nil {
+			return err
+		}
 		defer f.Close()
 		if err != nil {
 			return fmt.Errorf("failed to create the container ID file: %s", err)

@@ -24,6 +24,9 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
@@ -38,6 +41,7 @@ func ContainerStatus(ctx context.Context, c containerd.Container) string {
 	// Just in case, there is something wrong in server.
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	titleCaser := cases.Title(language.English)
 
 	task, err := c.Task(ctx, nil)
 	if err != nil {
@@ -46,18 +50,18 @@ func ContainerStatus(ctx context.Context, c containerd.Container) string {
 		// when it exits. So, the status will be "created" for this
 		// case.
 		if errdefs.IsNotFound(err) {
-			return strings.Title(string(containerd.Created))
+			return titleCaser.String(string(containerd.Created))
 		}
-		return strings.Title(string(containerd.Unknown))
+		return titleCaser.String(string(containerd.Unknown))
 	}
 
 	status, err := task.Status(ctx)
 	if err != nil {
-		return strings.Title(string(containerd.Unknown))
+		return titleCaser.String(string(containerd.Unknown))
 	}
 	labels, err := c.Labels(ctx)
 	if err != nil {
-		return strings.Title(string(containerd.Unknown))
+		return titleCaser.String(string(containerd.Unknown))
 	}
 
 	switch s := status.Status; s {
@@ -69,7 +73,7 @@ func ContainerStatus(ctx context.Context, c containerd.Container) string {
 	case containerd.Running:
 		return "Up" // TODO: print "status.UpTime" (inexistent yet)
 	default:
-		return strings.Title(string(s))
+		return titleCaser.String(string(s))
 	}
 }
 
