@@ -24,11 +24,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/namespaces"
 	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/logging"
+	"github.com/containerd/nerdctl/pkg/reflectutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/version"
 	"github.com/fatih/color"
@@ -136,18 +138,70 @@ func xmain() error {
 // Config corresponds to nerdctl.toml .
 // See docs/config.md .
 type Config struct {
-	Debug            bool     `toml:"debug"`
-	DebugFull        bool     `toml:"debug_full"`
-	Address          string   `toml:"address"`
-	Namespace        string   `toml:"namespace"`
-	Snapshotter      string   `toml:"snapshotter"`
-	CNIPath          string   `toml:"cni_path"`
-	CNINetConfPath   string   `toml:"cni_netconfpath"`
-	DataRoot         string   `toml:"data_root"`
-	CgroupManager    string   `toml:"cgroup_manager"`
-	InsecureRegistry bool     `toml:"insecure_registry"`
-	HostsDir         []string `toml:"hosts_dir"`
-	Experimental     bool     `toml:"experimental"`
+	Debug            bool            `toml:"debug"`
+	DebugFull        bool            `toml:"debug_full"`
+	Address          string          `toml:"address"`
+	Namespace        string          `toml:"namespace"`
+	Snapshotter      string          `toml:"snapshotter"`
+	CNIPath          string          `toml:"cni_path"`
+	CNINetConfPath   string          `toml:"cni_netconfpath"`
+	DataRoot         string          `toml:"data_root"`
+	CgroupManager    string          `toml:"cgroup_manager"`
+	InsecureRegistry bool            `toml:"insecure_registry"`
+	HostsDir         []string        `toml:"hosts_dir"`
+	Experimental     bool            `toml:"experimental"`
+	DefaultConfig    ConfigTemplates `toml:"default_config"`
+}
+
+type ConfigTemplates map[string]types.ServiceConfig
+
+func (d *ConfigTemplates) UnmarshalTOML(v interface{}) error {
+	defaultConfig, ok := v.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("parse ConfigTemplates error")
+	}
+
+	res := make(map[string]types.ServiceConfig)
+	for namespace, vl := range defaultConfig {
+		dcfg := defaultConfigTemplate()
+		tree, err := toml.TreeFromMap(vl.(map[string]interface{}))
+		if err != nil {
+			return err
+		}
+		if err = tree.Unmarshal(&dcfg); err != nil {
+			return err
+		}
+		warnUnknownFields(dcfg, namespace)
+		res[namespace] = dcfg
+	}
+	*d = res
+	return nil
+}
+
+func defaultConfigTemplate() types.ServiceConfig {
+	return types.ServiceConfig{
+		Build: &types.BuildConfig{
+			Platforms: []string{},
+		},
+		Platform: "",
+	}
+}
+
+func warnUnknownFields(svc types.ServiceConfig, namespace string) {
+	if unknown := reflectutil.UnknownNonEmptyFields(&svc,
+		"Build",
+		"Platform",
+	); len(unknown) > 0 {
+		logrus.Warnf("Ignoring: [namespace %s] service %s: %+v", namespace, svc.Name, unknown)
+	}
+
+	if svc.Build != nil {
+		if unknown := reflectutil.UnknownNonEmptyFields(svc.Build,
+			"Platforms",
+		); len(unknown) > 0 {
+			logrus.Warnf("Ignoring: [namespace %s] service %s: build: %+v", namespace, svc.Name, unknown)
+		}
+	}
 }
 
 // NewConfig creates a default Config object statically,
@@ -166,23 +220,24 @@ func NewConfig() *Config {
 		InsecureRegistry: false,
 		HostsDir:         ncdefaults.HostsDirs(),
 		Experimental:     true,
+		DefaultConfig:    make(map[string]types.ServiceConfig),
 	}
 }
 
-func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, error) {
+func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, map[string]types.ServiceConfig, error) {
 	cfg := NewConfig()
 	if r, err := os.Open(tomlPath); err == nil {
 		logrus.Debugf("Loading config from %q", tomlPath)
 		defer r.Close()
 		dec := toml.NewDecoder(r).Strict(true) // set Strict to detect typo
 		if err := dec.Decode(cfg); err != nil {
-			return nil, fmt.Errorf("failed to load nerdctl config (not daemon config) from %q (Hint: don't mix up daemon's `config.toml` with `nerdctl.toml`): %w", tomlPath, err)
+			return nil, nil, fmt.Errorf("failed to load nerdctl config (not daemon config) from %q (Hint: don't mix up daemon's `config.toml` with `nerdctl.toml`): %w", tomlPath, err)
 		}
 		logrus.Debugf("Loaded config %+v", cfg)
 	} else {
 		logrus.WithError(err).Debugf("Not loading config from %q", tomlPath)
 		if !errors.Is(err, os.ErrNotExist) {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	aliasToBeInherited := pflag.NewFlagSet(rootCmd.Name(), pflag.ExitOnError)
@@ -207,7 +262,7 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, 
 	rootCmd.PersistentFlags().StringSlice("hosts-dir", cfg.HostsDir, "A directory that contains <HOST:PORT>/hosts.toml (containerd style) or <HOST:PORT>/{ca.cert, cert.pem, key.pem} (docker style)")
 	// Experimental enable experimental feature, see in https://github.com/containerd/nerdctl/blob/main/docs/experimental.md
 	AddPersistentBoolFlag(rootCmd, "experimental", nil, nil, cfg.Experimental, "NERDCTL_EXPERIMENTAL", "Control experimental: https://github.com/containerd/nerdctl/blob/main/docs/experimental.md")
-	return aliasToBeInherited, nil
+	return aliasToBeInherited, cfg.DefaultConfig, nil
 }
 
 func newApp() (*cobra.Command, error) {
@@ -232,10 +287,23 @@ Config file ($NERDCTL_TOML): %s
 	}
 
 	rootCmd.SetUsageFunc(usage)
-	aliasToBeInherited, err := initRootCmdFlags(rootCmd, tomlPath)
+	aliasToBeInherited, defaultConfigs, err := initRootCmdFlags(rootCmd, tomlPath)
 	if err != nil {
 		return nil, err
 	}
+
+	ns, err := rootCmd.Flags().GetString("namespace")
+	if err != nil {
+		return nil, err
+	}
+	namespaceCfg, ok := defaultConfigs[ns]
+	if !ok {
+		namespaceCfg = defaultConfigTemplate()
+	}
+	//size := len(namespaceCfg.Build.Platforms)
+	//if size != 0 && namespaceCfg.Platform != namespaceCfg.Build.Platforms[size-1] {
+	//	return nil, fmt.Errorf("conflict platform config")
+	//}
 
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		debug, err := cmd.Flags().GetBool("debug-full")
@@ -274,9 +342,9 @@ Config file ($NERDCTL_TOML): %s
 	}
 	rootCmd.RunE = unknownSubcommandAction
 	rootCmd.AddCommand(
-		newCreateCommand(),
+		newCreateCommand(&namespaceCfg),
 		// #region Run & Exec
-		newRunCommand(),
+		newRunCommand(&namespaceCfg),
 		newUpdateCommand(),
 		newExecCommand(),
 		// #endregion
@@ -298,7 +366,7 @@ Config file ($NERDCTL_TOML): %s
 		// #endregion
 
 		// Build
-		newBuildCommand(),
+		newBuildCommand(namespaceCfg.Build),
 
 		// #region Image management
 		newImagesCommand(),
@@ -325,8 +393,8 @@ Config file ($NERDCTL_TOML): %s
 		newStatsCommand(),
 
 		// #region Management
-		newContainerCommand(),
-		newImageCommand(),
+		newContainerCommand(&namespaceCfg),
+		newImageCommand(namespaceCfg.Build),
 		newNetworkCommand(),
 		newVolumeCommand(),
 		newSystemCommand(),

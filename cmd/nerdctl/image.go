@@ -17,10 +17,11 @@
 package main
 
 import (
+	"github.com/compose-spec/compose-go/types"
 	"github.com/spf13/cobra"
 )
 
-func newImageCommand() *cobra.Command {
+func newImageCommand(cfg *types.BuildConfig) *cobra.Command {
 	cmd := &cobra.Command{
 		Annotations:   map[string]string{Category: Management},
 		Use:           "image",
@@ -30,7 +31,7 @@ func newImageCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	cmd.AddCommand(
-		newBuildCommand(),
+		newBuildCommand(cfg),
 		// commitCommand is in "container", not in "image"
 		imageLsCommand(),
 		newHistoryCommand(),
