@@ -78,6 +78,7 @@ func setUpdateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("cpuset-mems", "", "MEMs in which to allow execution (0-3, 0,1)")
 	cmd.Flags().Int64("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
 	cmd.Flags().Uint16("blkio-weight", 0, "Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)")
+	cmd.Flags().String("restart", "no", "Restart policy to apply when a container exits")
 }
 
 func updateAction(cmd *cobra.Command, args []string) error {
@@ -334,6 +335,9 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 	if err := updateContainerSpec(ctx, container, spec); err != nil {
 		log.G(ctx).WithError(err).Errorf("Failed to update spec %+v for container %q", spec, id)
 	}
+	if err := updateContainerRestartPolicy(ctx, client, container, cmd); err != nil {
+		return err
+	}
 	defer func() {
 		if retErr != nil {
 			// Reset spec on error.
@@ -358,6 +362,19 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 	}
 	if err := task.Update(ctx, containerd.WithResources(spec.Linux.Resources)); err != nil {
 		return err
+	}
+	return nil
+}
+
+func updateContainerRestartPolicy(ctx context.Context, client *containerd.Client, container containerd.Container, cmd *cobra.Command) error {
+	policyLabel, err := cmd.Flags().GetString("restart")
+	if err != nil {
+		return err
+	}
+	if cmd.Flags().Changed("restart") && policyLabel != "" {
+		if err = updateContainerRestartPolicyLabel(ctx, client, container, policyLabel); err != nil {
+			return fmt.Errorf("failed to update policyLabel %s for container %q:%w", policyLabel, container.ID(), err)
+		}
 	}
 	return nil
 }

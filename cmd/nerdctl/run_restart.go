@@ -28,25 +28,8 @@ import (
 )
 
 func generateRestartOpts(ctx context.Context, client *containerd.Client, restartFlag, logURI string) ([]containerd.NewContainerOpts, error) {
-	policySlice := strings.Split(restartFlag, ":")
-	switch policySlice[0] {
-	case "", "no":
-		return nil, nil
-	}
-	res, err := client.IntrospectionService().Plugins(ctx, []string{"id==restart"})
-	if err != nil {
+	if _, err := checkRestartCapabilities(ctx, client, restartFlag); err != nil {
 		return nil, err
-	}
-	if len(res.Plugins) == 0 {
-		return nil, fmt.Errorf("no restart plugin found")
-	}
-	restartPlugin := res.Plugins[0]
-	capabilities := restartPlugin.Capabilities
-	if len(capabilities) == 0 {
-		capabilities = []string{"always"}
-	}
-	if !strutil.InStringSlice(capabilities, policySlice[0]) {
-		return nil, fmt.Errorf("unsupported restart policy %q, supported policies are: %q", policySlice[0], restartPlugin.Capabilities)
 	}
 	policy, err := restart.NewPolicy(restartFlag)
 	if err != nil {
@@ -64,4 +47,39 @@ func updateContainerStoppedLabel(ctx context.Context, container containerd.Conta
 		restart.ExplicitlyStoppedLabel: strconv.FormatBool(stopped),
 	})
 	return container.Update(ctx, containerd.UpdateContainerOpts(opt))
+}
+
+func updateContainerRestartPolicyLabel(ctx context.Context, client *containerd.Client, container containerd.Container, policyLabel string) error {
+	if _, err := checkRestartCapabilities(ctx, client, policyLabel); err != nil {
+		return err
+	}
+	policy, err := restart.NewPolicy(policyLabel)
+	if err != nil {
+		return err
+	}
+	return container.Update(ctx, restart.WithPolicy(policy))
+}
+
+func checkRestartCapabilities(ctx context.Context, client *containerd.Client, restartFlag string) (bool, error) {
+	policySlice := strings.Split(restartFlag, ":")
+	switch policySlice[0] {
+	case "", "no":
+		return true, nil
+	}
+	res, err := client.IntrospectionService().Plugins(ctx, []string{"id==restart"})
+	if err != nil {
+		return false, err
+	}
+	if len(res.Plugins) == 0 {
+		return false, fmt.Errorf("no restart plugin found")
+	}
+	restartPlugin := res.Plugins[0]
+	capabilities := restartPlugin.Capabilities
+	if len(capabilities) == 0 {
+		capabilities = []string{"always"}
+	}
+	if !strutil.InStringSlice(capabilities, policySlice[0]) {
+		return false, fmt.Errorf("unsupported restart policy %q, supported policies are: %q", policySlice[0], restartPlugin.Capabilities)
+	}
+	return true, nil
 }
