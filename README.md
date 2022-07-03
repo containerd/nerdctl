@@ -679,6 +679,7 @@ Usage: `nerdctl update [OPTIONS] CONTAINER [CONTAINER...]`
 - :whale: `--kernel-memory`: Kernel memory limit (deprecated)
 - :whale: `--pids-limit`: Tune container pids limit
 - :whale: `--blkio-weight`: Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)
+- :whale: `--restart=(no|always|on-failure|unless-stopped)`: Restart policy to apply when a container exits
 
 ### :whale: nerdctl wait
 Block until one or more containers stop, then print their exit codes.
