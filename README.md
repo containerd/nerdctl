@@ -406,7 +406,7 @@ Cgroup flags:
 - :whale: `--oom-kill-disable`: Disable OOM Killer
 - :whale: `--pids-limit`: Tune container pids limit
 - :nerd_face: `--cgroup-conf`: Configure cgroup v2 (key=value)
-- :whale: `blkio-weight`: Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)
+- :whale: `--blkio-weight`: Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)
 - :whale: `--cgroupns=(host|private)`: Cgroup namespace to use
   - Default: "private" on cgroup v2 hosts, "host" on cgroup v1 hosts
 - :whale: `--device`: Add a host device to the container
