@@ -87,7 +87,7 @@ func (e *CNIEnv) GenerateNetworkConfig(labels []string, id int, name string, plu
 	for _, f := range plugins {
 		p := filepath.Join(e.Path, f.GetPluginType())
 		if _, err := exec.LookPath(p); err != nil {
-			return nil, fmt.Errorf("needs CNI plugin %q to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins/releases: %w", f, e.Path, err)
+			return nil, fmt.Errorf("needs CNI plugin %q to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins/releases: %w", f.GetPluginType(), e.Path, err)
 		}
 	}
 	labelsMap := strutil.ConvertKVStringsToMap(labels)
