@@ -230,3 +230,28 @@ LABEL name=nerdctl-build-test-label
 
 	base.Cmd("inspect", imageName, "--format", "{{json .Config.Labels }}").AssertOutExactly("{\"label\":\"test\",\"name\":\"nerdctl-build-test-label\"}\n")
 }
+
+func TestBuildMultipleTags(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
+	img := testutil.Identifier(t)
+	imgWithNoTag, imgWithCustomTag := fmt.Sprintf("%s%d", img, 2), fmt.Sprintf("%s%d:hello", img, 3)
+	defer base.Cmd("rmi", img).Run()
+	defer base.Cmd("rmi", imgWithNoTag).Run()
+	defer base.Cmd("rmi", imgWithCustomTag).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-string"]
+	`, testutil.CommonImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", img, buildCtx).AssertOK()
+	base.Cmd("build", buildCtx, "-t", img, "-t", imgWithNoTag, "-t", imgWithCustomTag).AssertOK()
+	base.Cmd("run", "--rm", img).AssertOutExactly("nerdctl-build-test-string\n")
+	base.Cmd("run", "--rm", imgWithNoTag).AssertOutExactly("nerdctl-build-test-string\n")
+	base.Cmd("run", "--rm", imgWithCustomTag).AssertOutExactly("nerdctl-build-test-string\n")
+}
