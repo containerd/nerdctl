@@ -50,17 +50,17 @@ func newRmCommand() *cobra.Command {
 	return rmCommand
 }
 
+// removing a non-stoped/non-created container without force, will cause a error
+type statusError struct {
+	error
+}
+
 func rmAction(cmd *cobra.Command, args []string) error {
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
 	defer cancel()
-
-	dataStore, err := getDataStore(cmd)
-	if err != nil {
-		return err
-	}
 
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
@@ -75,19 +75,15 @@ func rmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	containerNameStore, err := namestore.New(dataStore, ns)
-	if err != nil {
-		return err
-	}
 
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			stateDir, err := getContainerStateDirPath(cmd, dataStore, found.Container.ID())
+			err = removeContainer(cmd, ctx, found.Container, ns, force, removeAnonVolumes)
 			if err != nil {
 				return err
 			}
-			err = removeContainer(cmd, ctx, found.Container, ns, found.Req, force, dataStore, stateDir, containerNameStore, removeAnonVolumes)
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
 			return err
 		},
 	}
@@ -102,38 +98,44 @@ func rmAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// removeContainer returns nil when the container cannot be found
-// FIXME: refactoring
-func removeContainer(cmd *cobra.Command, ctx context.Context, container containerd.Container, ns, req string, force bool, dataStore, stateDir string, namst namestore.NameStore, removeAnonVolumes bool) (retErr error) {
-	var name string
+func removeContainer(cmd *cobra.Command, ctx context.Context, container containerd.Container, ns string, force bool, removeAnonVolumes bool) (retErr error) {
 	id := container.ID()
-	defer func() {
-		if errdefs.IsNotFound(retErr) {
-			retErr = nil
-		}
-		if retErr == nil {
-			retErr = os.RemoveAll(stateDir)
-		} else {
-			logrus.WithError(retErr).Warnf("failed to remove container %q", id)
-		}
-		if retErr == nil {
-			if name != "" {
-				retErr = namst.Release(name, id)
-			}
-		} else {
-			logrus.WithError(retErr).Warnf("failed to remove container %q", id)
-		}
-		if retErr == nil {
-			retErr = hostsstore.DeallocHostsFile(dataStore, ns, id)
-		} else {
-			logrus.WithError(retErr).Warnf("failed to release name store for container %q", id)
-		}
-	}()
 	l, err := container.Labels(ctx)
 	if err != nil {
 		return err
 	}
-	name = l[labels.Name]
+	stateDir := l[labels.StateDir]
+	name := l[labels.Name]
+
+	dataStore, err := getDataStore(cmd)
+	if err != nil {
+		return err
+	}
+	namst, err := namestore.New(dataStore, ns)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if errdefs.IsNotFound(retErr) {
+			retErr = nil
+		}
+		if retErr != nil {
+			return
+		}
+
+		if err := os.RemoveAll(stateDir); err != nil {
+			logrus.WithError(retErr).Warnf("failed to remove container state dir %s", stateDir)
+		}
+		if name != "" {
+			if err := namst.Release(name, id); err != nil {
+				logrus.WithError(retErr).Warnf("failed to release container name %s", name)
+			}
+		}
+		if err := hostsstore.DeallocHostsFile(dataStore, ns, id); err != nil {
+			logrus.WithError(retErr).Warnf("failed to remove hosts file for container %q", id)
+		}
+	}()
 	if anonVolumesJSON, ok := l[labels.AnonymousVolumes]; ok && removeAnonVolumes {
 		var anonVolumes []string
 		if err := json.Unmarshal([]byte(anonVolumesJSON), &anonVolumes); err != nil {
@@ -175,8 +177,7 @@ func removeContainer(cmd *cobra.Command, ctx context.Context, container containe
 		}
 	case containerd.Paused:
 		if !force {
-			_, err := fmt.Fprintf(cmd.OutOrStdout(), "You cannot remove a %v container %v. Unpause the container before attempting removal or force remove\n", status.Status, id)
-			return err
+			return statusError{fmt.Errorf("you cannot remove a %v container %v. Unpause the container before attempting removal or force remove", status.Status, id)}
 		}
 		_, err := task.Delete(ctx, containerd.WithProcessKill)
 		if err != nil && !errdefs.IsNotFound(err) {
@@ -185,8 +186,7 @@ func removeContainer(cmd *cobra.Command, ctx context.Context, container containe
 	// default is the case, when status.Status = containerd.Running
 	default:
 		if !force {
-			_, err := fmt.Fprintf(cmd.OutOrStdout(), "You cannot remove a %v container %v. Stop the container before attempting removal or force remove\n", status.Status, id)
-			return err
+			return statusError{fmt.Errorf("you cannot remove a %v container %v. Stop the container before attempting removal or force remove", status.Status, id)}
 		}
 		if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
 			logrus.WithError(err).Warnf("failed to send SIGKILL")
@@ -208,8 +208,6 @@ func removeContainer(cmd *cobra.Command, ctx context.Context, container containe
 	if err := container.Delete(ctx, delOpts...); err != nil {
 		return err
 	}
-
-	_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", req)
 	return err
 }
 
