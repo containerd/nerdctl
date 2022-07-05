@@ -140,6 +140,38 @@ CMD ["echo", "nerdctl-build-test-stdin"]
 	base.Cmd("build", "-t", imageName, "-f", "-", ".").CmdOption(testutil.WithStdin(strings.NewReader(dockerfile))).AssertCombinedOutContains(imageName)
 }
 
+func TestBuildWithDockerfile(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
+	imageName := testutil.Identifier(t)
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-dockerfile"]
+	`, testutil.CommonImage)
+
+	buildCtx := filepath.Join(t.TempDir(), "test")
+	err := os.MkdirAll(buildCtx, 0755)
+	assert.NilError(t, err)
+	err = os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0644)
+	assert.NilError(t, err)
+
+	pwd, err := os.Getwd()
+	assert.NilError(t, err)
+	err = os.Chdir(buildCtx)
+	assert.NilError(t, err)
+	defer os.Chdir(pwd)
+
+	// hack os.Getwd return "(unreachable)" on rootless
+	t.Setenv("PWD", buildCtx)
+
+	base.Cmd("build", "-t", imageName, "-f", "Dockerfile", "..").AssertOK()
+	base.Cmd("build", "-t", imageName, "-f", "Dockerfile", ".").AssertOK()
+	// fail err: no such file or directory
+	base.Cmd("build", "-t", imageName, "-f", "../Dockerfile", ".").AssertFail()
+}
+
 func TestBuildLocal(t *testing.T) {
 	t.Parallel()
 	testutil.DockerIncompatible(t)
