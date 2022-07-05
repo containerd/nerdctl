@@ -102,7 +102,6 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 
 	var (
 		imageStore = client.ImageService()
-		cs         = client.ContentStore()
 	)
 
 	// To-do: Add support for --filter.
@@ -111,7 +110,7 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return printImages(ctx, cmd, client, imageList, cs)
+	return printImages(ctx, cmd, client, imageList)
 }
 
 type imagePrintable struct {
@@ -129,7 +128,7 @@ type imagePrintable struct {
 	Platform string // nerdctl extension
 }
 
-func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Client, imageList []images.Image, cs content.Store) error {
+func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Client, imageList []images.Image) error {
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return err
