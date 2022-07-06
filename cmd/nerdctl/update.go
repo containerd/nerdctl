@@ -32,6 +32,7 @@ import (
 	"github.com/containerd/typeurl"
 	"github.com/docker/go-units"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -70,6 +71,7 @@ func setUpdateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("memory", "m", "", "Memory limit")
 	cmd.Flags().String("memory-reservation", "", "Memory soft limit")
 	cmd.Flags().String("memory-swap", "", "Swap limit equal to memory plus swap: '-1' to enable unlimited swap")
+	cmd.Flags().String("kernel-memory", "", "Kernel memory limit (deprecated)")
 	cmd.Flags().String("cpuset-cpus", "", "CPUs in which to allow execution (0-3, 0,1)")
 	cmd.Flags().String("cpuset-mems", "", "MEMs in which to allow execution (0-3, 0,1)")
 	cmd.Flags().Int64("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
@@ -181,6 +183,13 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 		return options, fmt.Errorf("minimum memory limit can not be less than memory reservation limit, see usage")
 	}
 
+	kernelMemStr, err := cmd.Flags().GetString("kernel-memory")
+	if err != nil {
+		return options, err
+	}
+	if kernelMemStr != "" && cmd.Flag("kernel-memory").Changed {
+		logrus.Warnf("The --kernel-memory flag is no longer supported. This flag is a noop.")
+	}
 	cpuset, err := cmd.Flags().GetString("cpuset-cpus")
 	if err != nil {
 		return options, err

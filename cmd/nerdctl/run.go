@@ -154,6 +154,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("memory-reservation", "", "Memory soft limit")
 	cmd.Flags().String("memory-swap", "", "Swap limit equal to memory plus swap: '-1' to enable unlimited swap")
 	cmd.Flags().Int64("memory-swappiness", -1, "Tune container memory swappiness (0 to 100) (default -1)")
+	cmd.Flags().String("kernel-memory", "", "Kernel memory limit (deprecated)")
 	cmd.Flags().Bool("oom-kill-disable", false, "Disable OOM Killer")
 	cmd.Flags().String("pid", "", "PID namespace to use")
 	cmd.RegisterFlagCompletionFunc("pid", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
