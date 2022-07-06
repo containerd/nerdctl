@@ -110,7 +110,7 @@ func TestContainerListWideMode(t *testing.T) {
 			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
 		}
 
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tPLATFORM\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\tRUNTIME\tSIZE")
+		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\tRUNTIME\tPLATFORM\tSIZE")
 		err := tab.ParseHeader(lines[0])
 		if err != nil {
 			return fmt.Errorf("failed to parse header: %v", err)

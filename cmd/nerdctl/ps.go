@@ -162,7 +162,7 @@ func printContainers(ctx context.Context, client *containerd.Client, cmd *cobra.
 	case "wide":
 		w = tabwriter.NewWriter(os.Stdout, 4, 8, 4, ' ', 0)
 		if !quiet {
-			fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tPLATFORM\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\tRUNTIME\tSIZE")
+			fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\tRUNTIME\tPLATFORM\tSIZE")
 			wide = true
 		}
 	default:
@@ -239,48 +239,27 @@ func printContainers(ctx context.Context, client *containerd.Client, cmd *cobra.
 				return err
 			}
 		} else {
+			format := "%s\t%s\t%s\t%s\t%s\t%s\t%s"
+			args := []interface{}{
+				p.ID,
+				p.Image,
+				p.Command,
+				formatter.TimeSinceInHuman(info.CreatedAt),
+				p.Status,
+				p.Ports,
+				p.Names,
+			}
 			if wide {
-				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-					p.ID,
-					p.Image,
-					p.Platform,
-					p.Command,
-					formatter.TimeSinceInHuman(info.CreatedAt),
-					p.Status,
-					p.Ports,
-					p.Names,
-					p.Runtime,
-					p.Size,
-				); err != nil {
-					return err
-				}
+				format += "\t%s\t%s\t%s\n"
+				args = append(args, p.Runtime, p.Platform, p.Size)
+			} else if size {
+				format += "\t%s\n"
+				args = append(args, p.Size)
 			} else {
-				if size {
-					_, err = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-						p.ID,
-						p.Image,
-						p.Command,
-						formatter.TimeSinceInHuman(info.CreatedAt),
-						p.Status,
-						p.Ports,
-						p.Names,
-						p.Size,
-					)
-				} else {
-					_, err = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-						p.ID,
-						p.Image,
-						p.Command,
-						formatter.TimeSinceInHuman(info.CreatedAt),
-						p.Status,
-						p.Ports,
-						p.Names,
-					)
-				}
-
-				if err != nil {
-					return err
-				}
+				format += "\n"
+			}
+			if _, err := fmt.Fprintf(w, format, args...); err != nil {
+				return err
 			}
 		}
 
