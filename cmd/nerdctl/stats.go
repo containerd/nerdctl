@@ -125,6 +125,16 @@ func statsAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	var w = cmd.OutOrStdout()
+	var tmpl *template.Template
+	switch format {
+	case "", "table":
+		w = tabwriter.NewWriter(cmd.OutOrStdout(), 10, 1, 3, ' ', 0)
+	case "raw":
+		return errors.New("unsupported format: \"raw\"")
+	default:
+		tmpl, err = parseTemplate(format)
+	}
 
 	noTrunc, err := cmd.Flags().GetBool("no-trunc")
 	if err != nil {
@@ -302,17 +312,9 @@ func statsAction(cmd *cobra.Command, args []string) error {
 		}
 		cStats.mu.Unlock()
 
-		w := cmd.OutOrStdout()
-		var tmpl *template.Template
-
-		switch format {
-		case "", "table":
-			w = tabwriter.NewWriter(cmd.OutOrStdout(), 10, 1, 3, ' ', 0)
+		// print header for every tab
+		if format == "" || format == "table" {
 			fmt.Fprintln(w, "CONTAINER ID\tNAME\tCPU %\tMEM USAGE / LIMIT\tMEM %\tNET I/O\tBLOCK I/O\tPIDS")
-		case "raw":
-			return errors.New("unsupported format: \"raw\"")
-		default:
-			tmpl, err = parseTemplate(format)
 		}
 
 		for _, c := range ccstats {
