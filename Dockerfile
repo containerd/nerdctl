@@ -235,7 +235,7 @@ RUN apt-get update && \
   apparmor \
   ca-certificates curl \
   iproute2 iptables \
-  dbus systemd systemd-sysv \
+  dbus dbus-user-session systemd systemd-sysv \
   fuse3
 ARG CONTAINERIZED_SYSTEMD_VERSION
 RUN curl -L -o /docker-entrypoint.sh https://raw.githubusercontent.com/AkihiroSuda/containerized-systemd/${CONTAINERIZED_SYSTEMD_VERSION}/docker-entrypoint.sh && \
@@ -290,7 +290,6 @@ FROM test-integration AS test-integration-rootless
 RUN apt-get update && \
   apt-get install -qq -y \
   uidmap \
-  dbus-user-session \
   openssh-server openssh-client
 # TODO: update containerized-systemd to enable sshd by default, or allow `systemctl wants <TARGET> sshd` here
 RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
