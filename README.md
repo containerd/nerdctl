@@ -687,6 +687,7 @@ Flags:
 - :whale: `-a, --all`: Show all containers (default shows just running)
 - :whale: `--no-trunc`: Don't truncate output
 - :whale: `-q, --quiet`: Only display container IDs
+- :whale: `-s, --size`: Display total file sizes
 - :whale: `--format`: Format the output using the given Go template
   - :whale: `--format=table` (default): Table
   - :whale: `--format='{{json .}}'`: JSON
@@ -695,7 +696,7 @@ Flags:
 - :whale: `-n, --last`: Show n last created containers (includes all states)
 - :whale: `-l, --latest`: Show the latest created container (includes all states)
 
-Unimplemented `docker ps` flags: `--filter`, `--size`
+Unimplemented `docker ps` flags: `--filter`
 
 ### :whale: :blue_square: nerdctl inspect
 Display detailed information on one or more containers.
