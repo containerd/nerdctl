@@ -134,6 +134,9 @@ func statsAction(cmd *cobra.Command, args []string) error {
 		return errors.New("unsupported format: \"raw\"")
 	default:
 		tmpl, err = parseTemplate(format)
+		if err != nil {
+			return err
+		}
 	}
 
 	noTrunc, err := cmd.Flags().GetBool("no-trunc")
@@ -312,7 +315,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 		}
 		cStats.mu.Unlock()
 
-		// print header for every tab
+		// print header for every tick
 		if format == "" || format == "table" {
 			fmt.Fprintln(w, "CONTAINER ID\tNAME\tCPU %\tMEM USAGE / LIMIT\tMEM %\tNET I/O\tBLOCK I/O\tPIDS")
 		}
