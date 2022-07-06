@@ -124,7 +124,9 @@ func TestRunCgroupV2(t *testing.T) {
 
 func TestRunCgroupV1(t *testing.T) {
 	t.Parallel()
-	if cgroups.Mode() != cgroups.Legacy {
+	switch cgroups.Mode() {
+	case cgroups.Legacy, cgroups.Hybrid:
+	default:
 		t.Skip("test requires cgroup v1")
 	}
 	base := testutil.NewBase(t)
