@@ -20,8 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -235,17 +233,9 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	if err != nil {
 		return nil, err
 	}
-	if infoutil.CgroupsVersion() == "1" && blkioWeight != 0 {
-		blkioController := "/sys/fs/cgroup/blkio"
-		blkioWeightPath := filepath.Join(blkioController, "blkio.weight")
-		if _, err := os.Stat(blkioWeightPath); errors.Is(err, fs.ErrNotExist) {
-			// if bfq io scheduler is used, the blkio.weight knob will be exposed as blkio.bfq.weight
-			blkioBfqWeightPath := filepath.Join(blkioController, "blkio.bfq.weight")
-			if _, err := os.Stat(blkioBfqWeightPath); errors.Is(err, fs.ErrNotExist) {
-				logrus.Warn("kernel support for cgroup blkio weight missing, weight discarded")
-				blkioWeight = 0
-			}
-		}
+	if blkioWeight != 0 && !infoutil.BlockIOWeight(cgroupManager) {
+		logrus.Warn("kernel support for cgroup blkio weight missing, weight discarded")
+		blkioWeight = 0
 	}
 	if blkioWeight > 0 && blkioWeight < 10 || blkioWeight > 1000 {
 		return nil, errors.New("range of blkio weight is from 10 to 1000")

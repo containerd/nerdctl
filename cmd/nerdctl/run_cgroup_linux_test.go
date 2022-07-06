@@ -293,7 +293,11 @@ func TestRunBlkioWeightCgroupV2(t *testing.T) {
 	case "none", "":
 		t.Skip("test requires cgroup driver")
 	}
+	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", containerName).Run()
 	// when bfq io scheduler is used, the io.weight knob is exposed as io.bfq.weight
-	base.Cmd("run", "--rm", "--blkio-weight", "300", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
-		"cat", "io.bfq.weight").AssertOutExactly("default 300\n")
+	base.Cmd("run", "--name", containerName, "--blkio-weight", "300", "-w", "/sys/fs/cgroup", testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	base.Cmd("exec", containerName, "cat", "io.bfq.weight").AssertOutExactly("default 300\n")
+	base.Cmd("update", containerName, "--blkio-weight", "400").AssertOK()
+	base.Cmd("exec", containerName, "cat", "io.bfq.weight").AssertOutExactly("default 400\n")
 }

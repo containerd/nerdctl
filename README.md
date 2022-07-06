@@ -783,6 +783,7 @@ Usage: `nerdctl update [OPTIONS] CONTAINER [CONTAINER...]`
 - :whale: `--memory-reservation`: Memory soft limit
 - :whale: `--memory-swap`: Swap limit equal to memory plus swap: '-1' to enable unlimited swap
 - :whale: `--pids-limit`: Tune container pids limit
+- :whale: `--blkio-weight`: Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)
 
 ### :whale: nerdctl wait
 Block until one or more containers stop, then print their exit codes.
