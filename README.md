@@ -282,6 +282,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl rmi](#whale-nerdctl-rmi)
     - [:whale: nerdctl image inspect](#whale-nerdctl-image-inspect)
     - [:whale: nerdctl image history](#whale-nerdctl-image-history)
+    - [:whale: nerdctl image prune](#whale-nerdctl-image-prune)
     - [:nerd_face: nerdctl image convert](#nerd_face-nerdctl-image-convert)
     - [:nerd_face: nerdctl image encrypt](#nerd_face-nerdctl-image-encrypt)
     - [:nerd_face: nerdctl image decrypt](#nerd_face-nerdctl-image-decrypt)
@@ -988,6 +989,19 @@ Flags:
 - :whale: `-q, --quiet`: Only display snapshots IDs
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 
+### :whale: nerdctl image prune
+Remove unused images.
+
+:warning: Currently, `nerdctl image prune` requires --all to be specified.
+
+Usage: `nerdctl image prune [OPTIONS]`
+
+Flags:
+- :whale: `-a, --all`: Remove all unused images, not just dangling ones
+- :whale: `-f, --force`: Do not prompt for confirmation
+
+Unimplemented `docker image prune` flags: `--filter`
+
 ### :nerd_face: nerdctl image convert
 Convert an image format.
 
@@ -1514,9 +1528,6 @@ Container management:
 
 Image:
 - `docker export` and `docker import`
-
-- `docker image prune`
-
 - `docker trust *` (Instead, nerdctl supports `nerdctl pull --verify=cosign` and `nerdctl push --sign=cosign`. See [`./docs/cosign.md`](docs/cosign.md).)
 - `docker manifest *`
 
