@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
@@ -394,6 +395,17 @@ func TestRunPort(t *testing.T) {
 		})
 	}
 
+}
+
+func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
+	// docker does not set label restriction to 4096 bytes
+	testutil.DockerIncompatible(t)
+	t.Parallel()
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	base.Cmd("run", "--rm", "--name", containerName, "-p", "22200-22299:22200-22299", testutil.CommonImage).AssertFail()
+	base.Cmd("run", "--rm", "--name", containerName, "-p", "22200-22299:22200-22299", testutil.CommonImage).AssertCombinedOutContains(errdefs.ErrInvalidArgument.Error())
+	base.Cmd("run", "--rm", "--name", containerName, testutil.CommonImage).AssertOK()
 }
 
 func TestRunContainerWithStaticIP(t *testing.T) {
