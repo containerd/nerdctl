@@ -405,6 +405,7 @@ Cgroup flags:
 - :whale: `--memory-reservation`: Memory soft limit
 - :whale: `--memory-swap`: Swap limit equal to memory plus swap: '-1' to enable unlimited swap
 - :whale: `--memory-swappiness`: Tune container memory swappiness (0 to 100) (default -1)
+- :whale: `--kernel-memory`: Kernel memory limit (deprecated)
 - :whale: `--oom-kill-disable`: Disable OOM Killer
 - :whale: `--pids-limit`: Tune container pids limit
 - :nerd_face: `--cgroup-conf`: Configure cgroup v2 (key=value)
@@ -783,6 +784,7 @@ Usage: `nerdctl update [OPTIONS] CONTAINER [CONTAINER...]`
 - :whale: `--memory`: Memory limit
 - :whale: `--memory-reservation`: Memory soft limit
 - :whale: `--memory-swap`: Swap limit equal to memory plus swap: '-1' to enable unlimited swap
+- :whale: `--kernel-memory`: Kernel memory limit (deprecated)
 - :whale: `--pids-limit`: Tune container pids limit
 
 ### :whale: nerdctl wait

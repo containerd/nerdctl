@@ -63,6 +63,13 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	if err != nil {
 		return nil, err
 	}
+	kernelMemStr, err := cmd.Flags().GetString("kernel-memory")
+	if err != nil {
+		return nil, err
+	}
+	if kernelMemStr != "" && cmd.Flag("kernel-memory").Changed {
+		logrus.Warnf("The --kernel-memory flag is no longer supported. This flag is a noop.")
+	}
 
 	memReserve, err := cmd.Flags().GetString("memory-reservation")
 	if err != nil {
