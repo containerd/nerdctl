@@ -327,7 +327,6 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 		"--progress=" + progressValue,
 		"--frontend=dockerfile.v0",
 		"--local=context=" + buildContext,
-		"--local=dockerfile=" + buildContext,
 		"--output=" + output,
 	}...)
 
@@ -336,8 +335,8 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 		return "", nil, false, "", nil, nil, err
 	}
 
-	var dir, file string
-
+	dir := buildContext
+	file := buildkitutil.DefaultDockerfileName
 	if filename != "" {
 		if filename == "-" {
 			var err error
@@ -345,7 +344,6 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 			if err != nil {
 				return "", nil, false, "", nil, nil, err
 			}
-			file = buildkitutil.DefaultDockerfileName
 			cleanup = func() {
 				os.RemoveAll(dir)
 			}
@@ -353,11 +351,19 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 			dir, file = filepath.Split(filename)
 		}
 
-		if dir != "" {
-			buildctlArgs = append(buildctlArgs, "--local=dockerfile="+dir)
+		if dir == "" {
+			dir = "."
 		}
-		buildctlArgs = append(buildctlArgs, "--opt=filename="+file)
 	}
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return "", nil, false, "", nil, nil, err
+	}
+	if _, err := os.Lstat(filepath.Join(absDir, file)); err != nil {
+		return "", nil, false, "", nil, nil, err
+	}
+	buildctlArgs = append(buildctlArgs, "--local=dockerfile="+dir)
+	buildctlArgs = append(buildctlArgs, "--opt=filename="+file)
 
 	target, err := cmd.Flags().GetString("target")
 	if err != nil {
