@@ -17,12 +17,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
-	"github.com/containerd/nerdctl/pkg/containerinspector"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/spf13/cobra"
 )
 
@@ -52,43 +54,33 @@ func volumeRmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	var mount *specs.Spec
-	var volumenames []string
 	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return err
 	}
 	names := args
-
-	for _, name := range names {
-		var found bool
-		for _, container := range containers {
-			n, err := containerinspector.Inspect(ctx, container)
-			if err != nil {
-				return err
-			}
-			err = json.Unmarshal(n.Container.Spec.GetValue(), &mount)
-			if err != nil {
-				return err
-			}
-			volume, _ := volStore.Get(name)
-			if found = checkVolume(&mount.Mounts, volume.Mountpoint); found {
-				found = true
-				logrus.WithError(fmt.Errorf("volume %q is in use", name)).Error(fmt.Errorf("remove Volume: %q failed", name))
-				break
-			}
-		}
-		if !found {
-			// volumes that are to be deleted
-			volumenames = append(volumenames, name)
-		}
+	usedVolumes, err := usedVolumes(ctx, containers)
+	if err != nil {
+		return err
 	}
-	if volumenames != nil {
-		volnames, err := volStore.Remove(volumenames)
+
+	var volumenames []string // nolint: prealloc
+	for _, name := range names {
+		volume, err := volStore.Get(name)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), volnames)
+		if _, ok := usedVolumes[volume.Name]; ok {
+			return fmt.Errorf("volume %q is in use", name)
+		}
+		volumenames = append(volumenames, name)
+	}
+	removedNames, err := volStore.Remove(volumenames)
+	if err != nil {
+		return err
+	}
+	for _, name := range removedNames {
+		fmt.Fprintln(cmd.OutOrStdout(), name)
 	}
 	return err
 }
@@ -98,12 +90,28 @@ func volumeRmShellComplete(cmd *cobra.Command, args []string, toComplete string)
 	return shellCompleteVolumeNames(cmd)
 }
 
-// checkVolume checks whether the container mount path and the given volume mount point are same or not.
-func checkVolume(mounts *[]specs.Mount, volmountpoint string) bool {
-	for _, mount := range *mounts {
-		if mount.Source == volmountpoint {
-			return true
+func usedVolumes(ctx context.Context, containers []containerd.Container) (map[string]struct{}, error) {
+	usedVolumes := make(map[string]struct{})
+	for _, c := range containers {
+		l, err := c.Labels(ctx)
+		if err != nil {
+			return nil, err
+		}
+		mountsJSON, ok := l[labels.Mounts]
+		if !ok {
+			continue
+		}
+
+		var mounts []dockercompat.MountPoint
+		err = json.Unmarshal([]byte(mountsJSON), &mounts)
+		if err != nil {
+			return nil, err
+		}
+		for _, m := range mounts {
+			if m.Type == mountutil.Volume {
+				usedVolumes[m.Name] = struct{}{}
+			}
 		}
 	}
-	return false
+	return usedVolumes, nil
 }

@@ -35,6 +35,7 @@ func newVolumeCommand() *cobra.Command {
 		newVolumeInspectCommand(),
 		newVolumeCreateCommand(),
 		newVolumeRmCommand(),
+		newVolumePruneCommand(),
 	)
 	return volumeCommand
 }
