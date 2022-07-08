@@ -76,11 +76,12 @@ type VersionInfo struct {
 
 // ClientVersion is from https://github.com/docker/cli/blob/v20.10.8/cli/command/system/version.go#L74-L87
 type ClientVersion struct {
-	Version   string
-	GitCommit string
-	GoVersion string
-	Os        string // GOOS
-	Arch      string // GOARCH
+	Version    string
+	GitCommit  string
+	GoVersion  string
+	Os         string             // GOOS
+	Arch       string             // GOARCH
+	Components []ComponentVersion // nerdctl extension
 }
 
 // ComponentVersion describes the version information for a specific component.
