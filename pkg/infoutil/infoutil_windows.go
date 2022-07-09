@@ -16,7 +16,10 @@
 
 package infoutil
 
-import "github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+import (
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/docker/docker/pkg/sysinfo"
+)
 
 // UnameR returns `uname -r`
 func UnameR() string {
@@ -38,4 +41,9 @@ func CgroupsVersion() string {
 
 func fulfillPlatformInfo(info *dockercompat.Info) {
 	// unimplemented
+}
+
+func mobySysInfo(info *dockercompat.Info) *sysinfo.SysInfo {
+	var sysinfo sysinfo.SysInfo
+	return &sysinfo
 }

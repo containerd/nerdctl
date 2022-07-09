@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/containerd/pkg/cri/util"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/typeurl"
 	"github.com/docker/go-units"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
@@ -46,6 +47,7 @@ type updateResourceOptions struct {
 	CpusetCpus         string
 	CpusetMems         string
 	PidsLimit          int64
+	BlkioWeight        uint16
 }
 
 func newUpdateCommand() *cobra.Command {
@@ -75,6 +77,7 @@ func setUpdateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("cpuset-cpus", "", "CPUs in which to allow execution (0-3, 0,1)")
 	cmd.Flags().String("cpuset-mems", "", "MEMs in which to allow execution (0-3, 0,1)")
 	cmd.Flags().Int64("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
+	cmd.Flags().Uint16("blkio-weight", 0, "Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)")
 }
 
 func updateAction(cmd *cobra.Command, args []string) error {
@@ -202,6 +205,21 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 	if err != nil {
 		return options, err
 	}
+	blkioWeight, err := cmd.Flags().GetUint16("blkio-weight")
+	if err != nil {
+		return options, err
+	}
+	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
+	if err != nil {
+		return options, err
+	}
+	if blkioWeight != 0 && !infoutil.BlockIOWeight(cgroupManager) {
+		return options, fmt.Errorf("kernel support for cgroup blkio weight missing, weight discarded")
+	}
+	if blkioWeight > 0 && blkioWeight < 10 || blkioWeight > 1000 {
+		return options, errors.New("range of blkio weight is from 10 to 1000")
+	}
+
 	if runtime.GOOS == "linux" {
 		options = updateResourceOptions{
 			CPUPeriod:          cpuPeriod,
@@ -213,6 +231,7 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 			MemoryReservation:  memReserve64,
 			MemorySwapInBytes:  memSwap64,
 			PidsLimit:          pidsLimit,
+			BlkioWeight:        blkioWeight,
 		}
 	}
 	return options, nil
@@ -242,6 +261,14 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 		}
 		if spec.Linux.Resources == nil {
 			spec.Linux.Resources = &runtimespec.LinuxResources{}
+		}
+		if spec.Linux.Resources.BlockIO == nil {
+			spec.Linux.Resources.BlockIO = &runtimespec.LinuxBlockIO{}
+		}
+		if cmd.Flags().Changed("blkio-weight") {
+			if spec.Linux.Resources.BlockIO.Weight != &opts.BlkioWeight {
+				spec.Linux.Resources.BlockIO.Weight = &opts.BlkioWeight
+			}
 		}
 		if spec.Linux.Resources.CPU == nil {
 			spec.Linux.Resources.CPU = &runtimespec.LinuxCPU{}

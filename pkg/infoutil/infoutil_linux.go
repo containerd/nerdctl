@@ -64,12 +64,7 @@ WARNING: AppArmor profile %q is not loaded.
 // SecurityOptions, CgroupDriver, CgroupVersion
 func fulfillPlatformInfo(info *dockercompat.Info) {
 	fulfillSecurityOptions(info)
-	var mobySysInfoOpts []sysinfo.Opt
-	if info.CgroupDriver == "systemd" && info.CgroupVersion == "2" && rootlessutil.IsRootless() {
-		g := fmt.Sprintf("/user.slice/user-%d.slice", rootlessutil.ParentEUID())
-		mobySysInfoOpts = append(mobySysInfoOpts, sysinfo.WithCgroup2GroupPath(g))
-	}
-	mobySysInfo := sysinfo.New(true, mobySysInfoOpts...)
+	mobySysInfo := mobySysInfo(info)
 
 	if info.CgroupDriver == "none" {
 		if info.CgroupVersion == "2" {
@@ -131,4 +126,14 @@ func fulfillPlatformInfo(info *dockercompat.Info) {
 	} else {
 		info.MemTotal = memLimit.MemTotal
 	}
+}
+
+func mobySysInfo(info *dockercompat.Info) *sysinfo.SysInfo {
+	var mobySysInfoOpts []sysinfo.Opt
+	if info.CgroupDriver == "systemd" && info.CgroupVersion == "2" && rootlessutil.IsRootless() {
+		g := fmt.Sprintf("/user.slice/user-%d.slice", rootlessutil.ParentEUID())
+		mobySysInfoOpts = append(mobySysInfoOpts, sysinfo.WithCgroup2GroupPath(g))
+	}
+	mobySysInfo := sysinfo.New(true, mobySysInfoOpts...)
+	return mobySysInfo
 }
