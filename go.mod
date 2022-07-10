@@ -25,6 +25,7 @@ require (
 	github.com/docker/docker v20.10.17+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0
+	github.com/fahedouch/go-logrotate v0.1.1
 	github.com/fatih/color v1.13.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ipfs/go-cid v0.1.0
@@ -34,7 +35,6 @@ require (
 	github.com/mattn/go-isatty v0.0.14
 	github.com/moby/sys/mount v0.3.3
 	github.com/multiformats/go-multiaddr v0.6.0
-	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.3-0.20220303224323-02efb9a75ee1
 	github.com/opencontainers/runtime-spec v1.0.3-0.20220311020903-6969a0a09ab1
@@ -72,6 +72,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20170627025303-887ab5e44cc3 // indirect
 	github.com/distribution/distribution/v3 v3.0.0-20210316161203-a01c71e2477e // indirect
+	github.com/djherbis/times v1.5.0 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
@@ -150,6 +151,7 @@ require (
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
+	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/stefanberger/go-pkcs11uri v0.0.0-20201008174630-78d3cae3a980 // indirect
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
@@ -172,12 +174,8 @@ require (
 	google.golang.org/grpc v1.47.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
-)
-
-require (
-	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	lukechampine.com/blake3 v1.1.6 // indirect
+	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
 replace (
@@ -185,6 +183,4 @@ replace (
 	github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220621192144-0fac756b6452
 	// Temporary fork for avoiding importing patent-protected code: https://github.com/hashicorp/golang-lru/issues/73
 	github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c
-	// Temporary fork lumberjack to support Maxbytes before releasing V3.0: https://github.com/natefinch/lumberjack/pull/132)
-	github.com/natefinch/lumberjack => github.com/fahedouch/lumberjack v0.0.0-20220505103556-d3f93c511b35
 )

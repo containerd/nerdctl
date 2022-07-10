@@ -26,7 +26,7 @@ import (
 	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
 	"github.com/docker/go-units"
-	"github.com/natefinch/lumberjack"
+	"github.com/fahedouch/go-logrotate"
 )
 
 type JSONLogger struct {
@@ -50,7 +50,7 @@ func (jsonLogger *JSONLogger) Process(dataStore string, config *logging.Config) 
 	if err := os.MkdirAll(filepath.Dir(logJSONFilePath), 0700); err != nil {
 		return err
 	}
-	l := &lumberjack.Logger{
+	l := &logrotate.Logger{
 		Filename: logJSONFilePath,
 	}
 	//maxSize Defaults to unlimited.
