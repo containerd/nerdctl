@@ -78,13 +78,12 @@ func Encode(w io.WriteCloser, stdout, stderr io.Reader) error {
 	return nil
 }
 
-func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string, until string, logsEOFChan chan<- struct{}) error {
+func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string, until string) error {
 	dec := json.NewDecoder(r)
 	now := time.Now()
 	for {
 		var e Entry
 		if err := dec.Decode(&e); err == io.EOF {
-			logsEOFChan <- struct{}{}
 			break
 		} else if err != nil {
 			return err

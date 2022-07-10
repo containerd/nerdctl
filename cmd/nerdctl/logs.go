@@ -75,31 +75,32 @@ func logsAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
+	follow, err := cmd.Flags().GetBool("follow")
+	if err != nil {
+		return err
+	}
+	tail, err := cmd.Flags().GetString("tail")
+	if err != nil {
+		return err
+	}
+	timestamps, err := cmd.Flags().GetBool("timestamps")
+	if err != nil {
+		return err
+	}
+	since, err := cmd.Flags().GetString("since")
+	if err != nil {
+		return err
+	}
+	until, err := cmd.Flags().GetString("until")
+	if err != nil {
+		return err
+	}
+
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("ambiguous ID %q", found.Req)
-			}
-			follow, err := cmd.Flags().GetBool("follow")
-			if err != nil {
-				return err
-			}
-			tail, err := cmd.Flags().GetString("tail")
-			if err != nil {
-				return err
-			}
-			timestamps, err := cmd.Flags().GetBool("timestamps")
-			if err != nil {
-				return err
-			}
-			since, err := cmd.Flags().GetString("since")
-			if err != nil {
-				return err
-			}
-			until, err := cmd.Flags().GetString("until")
-			if err != nil {
-				return err
 			}
 			l, err := found.Container.Labels(ctx)
 			if err != nil {
@@ -129,48 +130,23 @@ func logsAction(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				var reader io.Reader
-				var execCmd *exec.Cmd
-				//chan for non-follow tail to check the logsEOF
-				logsEOFChan := make(chan struct{})
-				if follow && status.Status == containerd.Running {
-					waitCh, err := task.Wait(ctx)
-					if err != nil {
-						return err
-					}
-					reader, execCmd, err = newTailReader(ctx, task, logJSONFilePath, follow, tail)
-					if err != nil {
-						return err
-					}
-
-					go func() {
-						<-waitCh
-						execCmd.Process.Kill()
-					}()
-				} else {
-					if tail != "" {
-						reader, execCmd, err = newTailReader(ctx, task, logJSONFilePath, false, tail)
-						if err != nil {
-							return err
-						}
-						go func() {
-							<-logsEOFChan
-							execCmd.Process.Kill()
-						}()
-
-					} else {
-						f, err := os.Open(logJSONFilePath)
-						if err != nil {
-							return err
-						}
-						defer f.Close()
-						reader = f
-						go func() {
-							<-logsEOFChan
-						}()
-					}
+				if status.Status != containerd.Running {
+					follow = false
 				}
-				return jsonfile.Decode(os.Stdout, os.Stderr, reader, timestamps, since, until, logsEOFChan)
+
+				reader, execCmd, err := newTailReader(ctx, logJSONFilePath, follow, tail)
+				if err != nil {
+					return err
+				}
+				go func() {
+					if follow {
+						if waitCh, err := task.Wait(ctx); err == nil {
+							<-waitCh
+						}
+						execCmd.Process.Kill()
+					}
+				}()
+				return jsonfile.Decode(os.Stdout, os.Stderr, reader, timestamps, since, until)
 			case "journald":
 				shortID := found.Container.ID()[:12]
 				var journalctlArgs = []string{fmt.Sprintf("SYSLOG_IDENTIFIER=%s", shortID), "--output=cat"}
@@ -224,8 +200,7 @@ func logsShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]
 	return shellCompleteContainerNames(cmd, nil)
 }
 
-func newTailReader(ctx context.Context, task containerd.Task, filePath string, follow bool, tail string) (io.Reader, *exec.Cmd, error) {
-
+func newTailReader(ctx context.Context, filePath string, follow bool, tail string) (io.Reader, *exec.Cmd, error) {
 	var args []string
 
 	if tail != "" {
