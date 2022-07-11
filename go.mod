@@ -14,7 +14,7 @@ require (
 	github.com/containerd/imgcrypt v1.1.5-0.20220421044638-8ba028dca028
 	github.com/containerd/nydus-snapshotter v0.3.0-alpha.4
 	github.com/containerd/stargz-snapshotter v0.11.4
-	github.com/containerd/stargz-snapshotter/estargz v0.11.4
+	github.com/containerd/stargz-snapshotter/estargz v0.12.0
 	github.com/containerd/stargz-snapshotter/ipfs v0.11.4
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67
 	github.com/containernetworking/cni v1.1.1
@@ -111,7 +111,7 @@ require (
 	github.com/ipld/go-codec-dagpb v1.3.2 // indirect
 	github.com/ipld/go-ipld-prime v0.11.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
-	github.com/klauspost/compress v1.15.1 // indirect
+	github.com/klauspost/compress v1.15.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	// NOTE: P2P image distribution (IPFS) is completely optional. Your host is NOT connected to any P2P network, unless you opt in to install and run IPFS daemon.
 	github.com/libp2p/go-buffer-pool v0.0.2 // indirect
