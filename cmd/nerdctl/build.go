@@ -41,8 +41,10 @@ import (
 
 func newBuildCommand() *cobra.Command {
 	var buildCommand = &cobra.Command{
-		Use:           "build",
-		Short:         "Build an image from a Dockerfile. Needs buildkitd to be running.",
+		Use:   "build",
+		Short: "Build an image from a Dockerfile. Needs buildkitd to be running.",
+		Long: `Build an image from a Dockerfile. Needs buildkitd to be running.
+If Dockerfile is not present and -f is not specified, it will look for Containerfile and build with it. `,
 		RunE:          buildAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -355,13 +357,11 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 			dir = "."
 		}
 	}
-	absDir, err := filepath.Abs(dir)
+	dir, file, err = buildkitutil.BuildKitFile(dir, file)
 	if err != nil {
 		return "", nil, false, "", nil, nil, err
 	}
-	if _, err := os.Lstat(filepath.Join(absDir, file)); err != nil {
-		return "", nil, false, "", nil, nil, err
-	}
+
 	buildctlArgs = append(buildctlArgs, "--local=dockerfile="+dir)
 	buildctlArgs = append(buildctlArgs, "--opt=filename="+file)
 

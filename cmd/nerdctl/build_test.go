@@ -287,3 +287,54 @@ CMD ["echo", "nerdctl-build-test-string"]
 	base.Cmd("run", "--rm", imgWithNoTag).AssertOutExactly("nerdctl-build-test-string\n")
 	base.Cmd("run", "--rm", imgWithCustomTag).AssertOutExactly("nerdctl-build-test-string\n")
 }
+
+func TestBuildWithContainerfile(t *testing.T) {
+	testutil.RequiresBuild(t)
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
+	imageName := testutil.Identifier(t)
+	defer base.Cmd("rmi", imageName).Run()
+
+	containerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-string"]
+	`, testutil.CommonImage)
+
+	buildCtx := t.TempDir()
+
+	var err = os.WriteFile(filepath.Join(buildCtx, "Containerfile"), []byte(containerfile), 0644)
+	assert.NilError(t, err)
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("run", "--rm", imageName).AssertOutExactly("nerdctl-build-test-string\n")
+}
+
+func TestBuildWithDockerFileAndContainerfile(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
+	imageName := testutil.Identifier(t)
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "dockerfile"]
+	`, testutil.CommonImage)
+
+	containerfile := fmt.Sprintf(`FROM %s
+	CMD ["echo", "containerfile"]
+		`, testutil.CommonImage)
+
+	tmpDir := t.TempDir()
+
+	var err = os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644)
+	assert.NilError(t, err)
+
+	err = os.WriteFile(filepath.Join(tmpDir, "Containerfile"), []byte(containerfile), 0644)
+	assert.NilError(t, err)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("run", "--rm", imageName).AssertOutExactly("dockerfile\n")
+}

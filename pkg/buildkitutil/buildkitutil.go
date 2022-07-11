@@ -24,10 +24,12 @@
 package buildkitutil
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,6 +43,7 @@ import (
 const (
 	// DefaultDockerfileName is the Default filename, read by nerdctl build
 	DefaultDockerfileName string = "Dockerfile"
+	ContainerfileName     string = "Containerfile"
 
 	TempDockerfileName string = "docker-build-tempdockerfile-"
 )
@@ -180,4 +183,52 @@ func WriteTempDockerfile(rc io.Reader) (dockerfileDir string, err error) {
 		return "", err
 	}
 	return dockerfileDir, nil
+}
+
+// Buildkit file returns the values for the following buildctl args
+// --localfilename=dockerfile={absDir}
+// --opt=filename={file}
+func BuildKitFile(dir, inputfile string) (absDir string, file string, err error) {
+	file = inputfile
+	if file == "" || file == "." {
+		file = DefaultDockerfileName
+	}
+	absDir, err = filepath.Abs(dir)
+	if err != nil {
+		return "", "", err
+	}
+	if file != DefaultDockerfileName {
+		if _, err := os.Lstat(filepath.Join(absDir, file)); err != nil {
+			return "", "", err
+		}
+	} else {
+		_, dErr := os.Lstat(filepath.Join(absDir, file))
+		_, cErr := os.Lstat(filepath.Join(absDir, ContainerfileName))
+		if dErr == nil && cErr == nil {
+			// both files exist, prefer Dockerfile.
+			dockerfile, err := os.ReadFile(filepath.Join(absDir, DefaultDockerfileName))
+			if err != nil {
+				return "", "", err
+			}
+			containerfile, err := os.ReadFile(filepath.Join(absDir, ContainerfileName))
+			if err != nil {
+				return "", "", err
+			}
+			if !bytes.Equal(dockerfile, containerfile) {
+				logrus.Warnf("%s and %s have different contents, building with %s", DefaultDockerfileName, ContainerfileName, DefaultDockerfileName)
+			}
+		}
+		if dErr != nil {
+			if errors.Is(dErr, fs.ErrNotExist) {
+				logrus.Warnf("%s, using %s as fallback", dErr, ContainerfileName)
+				file = ContainerfileName
+			} else {
+				return "", "", dErr
+			}
+			if cErr != nil {
+				return "", "", cErr
+			}
+		}
+	}
+	return absDir, file, nil
 }
