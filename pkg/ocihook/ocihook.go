@@ -135,7 +135,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 	}
 
 	switch netType {
-	case nettype.Host, nettype.None:
+	case nettype.Host, nettype.None, nettype.Container:
 		// NOP
 	case nettype.CNI:
 		e, err := netutil.NewCNIEnv(cniPath, cniNetconfPath)

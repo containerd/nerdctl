@@ -123,7 +123,7 @@ func setCreateFlags(cmd *cobra.Command) {
 
 	// #region network flags
 	// network (net) is defined as StringSlice, not StringArray, to allow specifying "--network=cni1,cni2"
-	cmd.Flags().StringSlice("network", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none"|<CNI>)`)
+	cmd.Flags().StringSlice("network", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none"|"container:<container>"|<CNI>)`)
 	cmd.RegisterFlagCompletionFunc("network", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return shellCompleteNetworkNames(cmd, []string{})
 	})
@@ -548,12 +548,6 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 	}
 	cOpts = append(cOpts, withStop(stopSignal, stopTimeout, ensuredImage))
 
-	netOpts, netSlice, ipAddress, ports, err := generateNetOpts(cmd, dataStore, stateDir, ns, id)
-	if err != nil {
-		return nil, nil, err
-	}
-	opts = append(opts, netOpts...)
-
 	hostname := id[0:12]
 	customHostname, err := cmd.Flags().GetString("hostname")
 	if err != nil {
@@ -571,6 +565,12 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		}
 		opts = append(opts, withCustomEtcHostname(hostnamePath))
 	}
+
+	netOpts, netSlice, ipAddress, ports, err := generateNetOpts(cmd, dataStore, stateDir, ns, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	opts = append(opts, netOpts...)
 
 	hookOpt, err := withNerdctlOCIHook(cmd, id, stateDir)
 	if err != nil {

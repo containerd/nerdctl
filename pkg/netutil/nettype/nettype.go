@@ -16,7 +16,10 @@
 
 package nettype
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Type int
 
@@ -25,13 +28,15 @@ const (
 	None
 	Host
 	CNI
+	Container
 )
 
 var netTypeToName = map[interface{}]string{
-	Invalid: "invalid",
-	None:    "none",
-	Host:    "host",
-	CNI:     "cni",
+	Invalid:   "invalid",
+	None:      "none",
+	Host:      "host",
+	CNI:       "cni",
+	Container: "container",
 }
 
 func Detect(names []string) (Type, error) {
@@ -39,11 +44,16 @@ func Detect(names []string) (Type, error) {
 
 	for _, name := range names {
 		var tmp Type
-		switch name {
+
+		// In case of using --network=container:<container> to share the network namespace
+		networkName := strings.SplitN(name, ":", 2)[0]
+		switch networkName {
 		case "none":
 			tmp = None
 		case "host":
 			tmp = Host
+		case "container":
+			tmp = Container
 		default:
 			tmp = CNI
 		}

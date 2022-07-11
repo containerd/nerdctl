@@ -21,6 +21,7 @@ import (
 	"io"
 	"net"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -496,4 +497,42 @@ func TestRunDNS(t *testing.T) {
 	cmd.AssertOutContains("nameserver 8.8.8.8\n")
 	cmd.AssertOutContains("search test\n")
 	cmd.AssertOutContains("options attempts:10\n")
+}
+
+func TestSharedNetworkStack(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("--network=container:<container name|id> only supports linux now")
+	}
+	base := testutil.NewBase(t)
+
+	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	base.Cmd("run", "-d", "--name", containerName,
+		testutil.NginxAlpineImage).AssertOK()
+	base.EnsureContainerStarted(containerName)
+
+	containerNameJoin := testutil.Identifier(t) + "-nework"
+	defer base.Cmd("rm", "-f", containerNameJoin).AssertOK()
+	cmd := base.Cmd("run",
+		"-d",
+		"--name", containerNameJoin,
+		"--network=container:"+containerName,
+		testutil.CommonImage,
+		"sleep", "infinity")
+	cmd.AssertOK()
+
+	base.Cmd("exec", containerNameJoin, "wget", "-qO-", "http://127.0.0.1:80").
+		AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
+
+	base.Cmd("restart", containerName).AssertOK()
+	base.Cmd("restart", containerNameJoin).AssertOK()
+	base.Cmd("exec", containerNameJoin, "wget", "-qO-", "http://127.0.0.1:80").
+		AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
+
+	base.Cmd("restart", containerName).AssertOK()
+	base.Cmd("stop", containerNameJoin).AssertOK()
+	base.Cmd("start", containerNameJoin).AssertOK()
+	base.Cmd("exec", containerNameJoin, "wget", "-qO-", "http://127.0.0.1:80").
+		AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
+
 }
