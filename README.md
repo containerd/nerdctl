@@ -13,7 +13,7 @@
 
  ✅ [Optional] Supports [rootless mode, without slirp overhead (bypass4netns)](./docs/rootless.md)
 
- ✅ [Optional] Supports lazy-pulling ([Stargz](./docs/stargz.md), [Nydus](./docs/nydus.md))
+ ✅ [Optional] Supports lazy-pulling ([Stargz](./docs/stargz.md), [Nydus](./docs/nydus.md), [OverlayBD](./docs/overlaybd.md))
 
  ✅ [Optional] Supports [encrypted images (ocicrypt)](./docs/ocicrypt.md)
 
@@ -145,7 +145,7 @@ docker run -it --rm --privileged nerdctl
 
 The goal of `nerdctl` is to facilitate experimenting the cutting-edge features of containerd that are not present in Docker.
 
-Such features include, but not limited to, on-demand image pulling (lazy-pulling) [Stargz](./docs/stargz.md), [Nydus](./docs/nydus.md) and [image encryption/decryption](./docs/ocicrypt.md).
+Such features include, but not limited to, on-demand image pulling (lazy-pulling) [Stargz](./docs/stargz.md), [Nydus](./docs/nydus.md), [OverlayBD](./docs/overlaybd.md) and [image encryption/decryption](./docs/ocicrypt.md).
 
 Note that competing with Docker is _not_ the goal of `nerdctl`. Those cutting-edge features are expected to be eventually available in Docker as well.
 
@@ -153,7 +153,7 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 
 ## Features present in `nerdctl` but not present in Docker
 Major:
-- On-demand image pulling (lazy-pulling) using [Stargz](./docs/stargz.md)/[Nydus](./docs/nydus.md) Snapshotter: `nerdctl --snapshotter=stargz|nydus run IMAGE` .
+- On-demand image pulling (lazy-pulling) using [Stargz](./docs/stargz.md)/[Nydus](./docs/nydus.md)/[OverlayBD](./docs/overlaybd.md) Snapshotter: `nerdctl --snapshotter=stargz|nydus|overlaybd run IMAGE` .
 - [Image encryption and decryption using ocicrypt (imgcrypt)](./docs/ocicrypt.md): `nerdctl image (encrypt|decrypt) SRC DST`
 - [P2P image distribution using IPFS](./docs/ipfs.md): `nerdctl run ipfs://CID` .
   P2P image distribution (IPFS) is completely optional. Your host is NOT connected to any P2P network, unless you opt in to [install and run IPFS daemon](https://docs.ipfs.io/install/).
@@ -1466,6 +1466,7 @@ Basic features:
 Advanced features:
 - [`./docs/stargz.md`](./docs/stargz.md):     Lazy-pulling using Stargz Snapshotter
 - [`./docs/nydus.md`](./docs/nydus.md):       Lazy-pulling using Nydus Snapshotter
+- [`./docs/overlaybd.md`](./docs/overlaybd.md):       Lazy-pulling using OverlayBD Snapshotter
 - [`./docs/ocicrypt.md`](./docs/ocicrypt.md): Running encrypted images
 - [`./docs/gpu.md`](./docs/gpu.md):           Using GPUs inside containers
 - [`./docs/multi-platform.md`](./docs/multi-platform.md):  Multi-platform mode
