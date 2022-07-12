@@ -40,6 +40,7 @@ func TestCommit(t *testing.T) {
 		"false",
 	} {
 		base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "infinity").AssertOK()
+		base.EnsureContainerStarted(testContainer)
 		base.Cmd("exec", testContainer, "sh", "-euxc", `echo hello-test-commit > /foo`).AssertOK()
 		base.Cmd(
 			"commit",

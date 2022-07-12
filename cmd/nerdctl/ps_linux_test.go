@@ -44,6 +44,7 @@ func prepareTest(t *testing.T) (*testutil.Base, string) {
 		testutil.CommonImage,
 		"top",
 	}...).AssertOK()
+	base.EnsureContainerStarted(testContainerName)
 
 	// dd if=/dev/zero of=test_file bs=1M count=25
 	// let the container occupy 25MiB space.

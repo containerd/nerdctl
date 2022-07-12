@@ -26,9 +26,10 @@ func TestExecWithUser(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	testContainer := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
 
+	defer base.Cmd("rm", "-f", testContainer).Run()
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "infinity").AssertOK()
+	base.EnsureContainerStarted(testContainer)
 
 	testCases := map[string]string{
 		"":             "uid=0(root) gid=0(root)",

@@ -255,6 +255,23 @@ func (b *Base) InfoNative() native.Info {
 	}
 	return info
 }
+func (b *Base) EnsureContainerStarted(con string) {
+	b.T.Helper()
+
+	const (
+		maxRetry = 5
+		sleep    = time.Second
+	)
+	for i := 0; i < maxRetry; i++ {
+		if b.InspectContainer(con).State.Running {
+			b.T.Logf("container %s is now running", con)
+			return
+		}
+		b.T.Logf("(retry=%d)", i+1)
+		time.Sleep(sleep)
+	}
+	b.T.Fatalf("conainer %s not running", con)
+}
 
 type Cmd struct {
 	icmd.Cmd

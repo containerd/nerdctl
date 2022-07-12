@@ -30,6 +30,7 @@ func TestExec(t *testing.T) {
 	defer base.Cmd("rm", "-f", testContainer).Run()
 
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
+	base.EnsureContainerStarted(testContainer)
 
 	base.Cmd("exec", testContainer, "echo", "success").AssertOutExactly("success\n")
 }
@@ -42,6 +43,7 @@ func TestExecWithDoubleDash(t *testing.T) {
 	defer base.Cmd("rm", "-f", testContainer).Run()
 
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
+	base.EnsureContainerStarted(testContainer)
 
 	base.Cmd("exec", testContainer, "--", "echo", "success").AssertOutExactly("success\n")
 }
@@ -56,6 +58,7 @@ func TestExecStdin(t *testing.T) {
 	testContainer := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", testContainer).Run()
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
+	base.EnsureContainerStarted(testContainer)
 
 	const testStr = "test-exec-stdin"
 	opts := []func(*testutil.Cmd){
