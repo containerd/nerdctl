@@ -109,9 +109,11 @@ func TestRunCgroupV2(t *testing.T) {
 		"cat", "cpu.max", "memory.max", "memory.swap.max",
 		"pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected1)
 
+	defer base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate2").Run()
 	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate2", "-w", "/sys/fs/cgroup", "-d",
 		testutil.AlpineImage, "sleep", "infinity").AssertOK()
-	defer base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate2").Run()
+	base.EnsureContainerStarted(testutil.Identifier(t) + "-testUpdate2")
+
 	base.Cmd("update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
 		"--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m",
 		"--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1",

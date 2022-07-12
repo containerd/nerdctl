@@ -45,9 +45,11 @@ func TestRenameUpdateHosts(t *testing.T) {
 
 	defer base.Cmd("rm", "-f", testContainerName).Run()
 	base.Cmd("run", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", "infinity").AssertOK()
+	base.EnsureContainerStarted(testContainerName)
 
 	defer base.Cmd("rm", "-f", testContainerName+"_1").Run()
 	base.Cmd("run", "-d", "--name", testContainerName+"_1", testutil.CommonImage, "sleep", "infinity").AssertOK()
+	base.EnsureContainerStarted(testContainerName + "_1")
 
 	defer base.Cmd("rm", "-f", testContainerName+"_new").Run()
 	base.Cmd("exec", testContainerName, "cat", "/etc/hosts").AssertOutContains(testContainerName + "_1")

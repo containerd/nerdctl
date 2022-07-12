@@ -223,10 +223,12 @@ RUN echo -n "rev0" > /mnt/file
 		base.Cmd("run", "-d", "--name", containerName, "-v", volumeName+":/mnt", imageName, "sleep", "infinity").AssertOK()
 	}
 	runContainer()
+	base.EnsureContainerStarted(containerName)
 	base.Cmd("exec", containerName, "cat", "/mnt/file").AssertOutExactly("rev0")
 	base.Cmd("exec", containerName, "sh", "-euc", "echo -n \"rev1\" >/mnt/file").AssertOK()
 	base.Cmd("rm", "-f", containerName).AssertOK()
 	runContainer()
+	base.EnsureContainerStarted(containerName)
 	base.Cmd("exec", containerName, "cat", "/mnt/file").AssertOutExactly("rev1")
 }
 
