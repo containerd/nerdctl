@@ -25,7 +25,7 @@ require (
 	github.com/docker/docker v20.10.17+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0
-	github.com/fahedouch/go-logrotate v0.1.1
+	github.com/fahedouch/go-logrotate v0.1.2
 	github.com/fatih/color v1.13.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ipfs/go-cid v0.1.0
