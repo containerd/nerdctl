@@ -158,30 +158,48 @@ func ServerSemVer(ctx context.Context, client *containerd.Client) (*semver.Versi
 }
 
 func buildctlVersion() dockercompat.ComponentVersion {
-	const buildctl = "buildctl"
 	buildctlBinary, err := buildkitutil.BuildctlBinary()
 	if err != nil {
 		logrus.Warnf("unable to determine buildctl version: %s", err.Error())
-		return dockercompat.ComponentVersion{Name: buildctl}
+		return dockercompat.ComponentVersion{Name: "builctl"}
 	}
 
 	stdout, err := exec.Command(buildctlBinary, "--version").Output()
 	if err != nil {
 		logrus.Warnf("unable to determine buildctl version: %s", err.Error())
-		return dockercompat.ComponentVersion{Name: buildctl}
+		return dockercompat.ComponentVersion{Name: "buildctl"}
 	}
 
-	versionStr := strings.Fields(strings.TrimSpace(string(stdout)))
-	if len(versionStr) != 4 {
-		logrus.Errorf("unable to determine buildctl version got: %s", versionStr)
-		return dockercompat.ComponentVersion{Name: buildctl}
+	v, err := parseBuildctlVersion(stdout)
+	if err != nil {
+		logrus.Warn(err)
+		return dockercompat.ComponentVersion{Name: "buildctl"}
 	}
+	return *v
+}
 
-	return dockercompat.ComponentVersion{
-		Name:    buildctl,
-		Version: versionStr[2],
-		Details: map[string]string{"GitCommit": versionStr[3]},
+func parseBuildctlVersion(buildctlVersionStdout []byte) (*dockercompat.ComponentVersion, error) {
+	fields := strings.Fields(strings.TrimSpace(string(buildctlVersionStdout)))
+	var v *dockercompat.ComponentVersion
+	switch len(fields) {
+	case 4:
+		v = &dockercompat.ComponentVersion{
+			Name:    fields[0],
+			Version: fields[2],
+			Details: map[string]string{"GitCommit": fields[3]},
+		}
+	case 3:
+		v = &dockercompat.ComponentVersion{
+			Name:    fields[0],
+			Version: fields[2],
+		}
+	default:
+		return nil, fmt.Errorf("unable to determine buildctl version, got %q", string(buildctlVersionStdout))
 	}
+	if v.Name != "buildctl" {
+		return nil, fmt.Errorf("unable to determine buildctl version, got %q", string(buildctlVersionStdout))
+	}
+	return v, nil
 }
 
 func runcVersion() dockercompat.ComponentVersion {
