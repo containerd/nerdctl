@@ -143,9 +143,7 @@ docker run -it --rm --privileged nerdctl
 
 ## Motivation
 
-The goal of `nerdctl` is to facilitate experimenting the cutting-edge features of containerd that are not present in Docker.
-
-Such features include, but not limited to, on-demand image pulling (lazy-pulling) [Stargz](./docs/stargz.md), [Nydus](./docs/nydus.md), [OverlayBD](./docs/overlaybd.md) and [image encryption/decryption](./docs/ocicrypt.md).
+The goal of `nerdctl` is to facilitate experimenting the cutting-edge features of containerd that are not present in Docker (see below).
 
 Note that competing with Docker is _not_ the goal of `nerdctl`. Those cutting-edge features are expected to be eventually available in Docker as well.
 
@@ -249,7 +247,6 @@ It does not necessarily mean that the corresponding features are missing in cont
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
   - [Container management](#container-management)
     - [:whale: :blue_square: nerdctl run](#whale-blue_square-nerdctl-run)
     - [:whale: :blue_square: nerdctl exec](#whale-blue_square-nerdctl-exec)
@@ -268,6 +265,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl kill](#whale-nerdctl-kill)
     - [:whale: nerdctl pause](#whale-nerdctl-pause)
     - [:whale: nerdctl unpause](#whale-nerdctl-unpause)
+    - [:whale: docker rename](#whale-docker-rename)
     - [:whale: nerdctl container prune](#whale-nerdctl-container-prune)
   - [Build](#build)
     - [:whale: nerdctl build](#whale-nerdctl-build)
@@ -299,6 +297,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl volume ls](#whale-nerdctl-volume-ls)
     - [:whale: nerdctl volume inspect](#whale-nerdctl-volume-inspect)
     - [:whale: nerdctl volume rm](#whale-nerdctl-volume-rm)
+    - [:whale: nerdctl volume prune](#whale-nerdctl-volume-prune)
   - [Namespace management](#namespace-management)
     - [:nerd_face: :blue_square: nerdctl namespace create](#nerd_face-blue_square-nerdctl-namespace-create)
     - [:nerd_face: :blue_square: nerdctl namespace inspect](#nerd_face-blue_square-nerdctl-namespace-inspect)
