@@ -221,8 +221,9 @@ github.com/containerd/go-cni v1.1.3/go.mod h1:Rflh2EJ/++BA2/vY5ao3K6WJRR/bZKsX12
 github.com/containerd/go-cni v1.1.6 h1:el5WPymG5nRRLQF1EfB97FWob4Tdc8INg8RZMaXWZlo=
 github.com/containerd/go-cni v1.1.6/go.mod h1:BWtoWl5ghVymxu6MBjg79W9NZrCRyHIdUtk4cauMe34=
 github.com/containerd/go-runc v1.0.0/go.mod h1:cNU0ZbCgCQVZK4lgG3P+9tn9/PaJNmoDXPpoJhDR+Ok=
-github.com/containerd/imgcrypt v1.1.5-0.20220421044638-8ba028dca028 h1:CqFTne8EGv2eAWAS0O6weGE5RtP0Q8XiFUdkDT840Yc=
 github.com/containerd/imgcrypt v1.1.5-0.20220421044638-8ba028dca028/go.mod h1:LorQnPtzL/T0IyCeftcsMEO7AqxUDbdO8j/tSUpgxvo=
+github.com/containerd/imgcrypt v1.1.6 h1:SVkkrLRY8MLrMeMUF/nc2yyttgV+/eraTe+Sak/smtk=
+github.com/containerd/imgcrypt v1.1.6/go.mod h1:cBSGSd3q2oo+r2Glsiix6O5g2eKFaYe0bMNrYjN+V7M=
 github.com/containerd/nri v0.1.0/go.mod h1:lmxnXF6oMkbqs39FiCt1s0R2HSMhcLel9vNL3m4AaeY=
 github.com/containerd/nydus-snapshotter v0.3.0-alpha.4 h1:zJt0DB0t9Xe5d6U/f4Bhs8LoscgkMuGhYJo6+ddxPIo=
 github.com/containerd/nydus-snapshotter v0.3.0-alpha.4/go.mod h1:wbBcrhc0zIiztULoMuF8ijq1QmpVBui/Ps7K/lspATg=
@@ -246,8 +247,9 @@ github.com/containernetworking/cni v1.1.1 h1:ky20T7c0MvKvbMOwS/FrlbNwjEoqJEUUYfs
 github.com/containernetworking/cni v1.1.1/go.mod h1:sDpYKmGVENF3s6uvMvGgldDWeG8dMxakj/u+i9ht9vw=
 github.com/containernetworking/plugins v1.1.1 h1:+AGfFigZ5TiQH00vhR8qPeSatj53eNGz0C1d3wVYlHE=
 github.com/containernetworking/plugins v1.1.1/go.mod h1:Sr5TH/eBsGLXK/h71HeLfX19sZPp3ry5uHSkI4LPxV8=
-github.com/containers/ocicrypt v1.1.3 h1:uMxn2wTb4nDR7GqG3rnZSfpJXqWURfzZ7nKydzIeKpA=
 github.com/containers/ocicrypt v1.1.3/go.mod h1:xpdkbVAuaH3WzbEabUd5yDsl9SwJA5pABH85425Es2g=
+github.com/containers/ocicrypt v1.1.5 h1:UO+gBnBXvMvC7HTXLh0bPgLslfW8HlY+oxYcoSHBcZQ=
+github.com/containers/ocicrypt v1.1.5/go.mod h1:WgjxPWdTJMqYMjf3M6cuIFFA1/MpyyhIM99YInA+Rvc=
 github.com/coreos/bbolt v1.3.2/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/etcd v3.3.10+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
 github.com/coreos/etcd v3.3.13+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
