@@ -92,10 +92,15 @@ func rmAction(cmd *cobra.Command, args []string) error {
 	}
 	for _, req := range args {
 		n, err := walker.Walk(ctx, req)
+		if err == nil && n == 0 {
+			err = fmt.Errorf("no such container %s", req)
+		}
 		if err != nil {
-			return err
-		} else if n == 0 {
-			return fmt.Errorf("no such container %s", req)
+			if force {
+				logrus.Error(err)
+			} else {
+				return err
+			}
 		}
 	}
 	return nil
