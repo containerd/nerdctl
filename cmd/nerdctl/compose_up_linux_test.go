@@ -437,3 +437,56 @@ services:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "down").AssertOK()
 
 }
+
+func TestComposeUpWithExternalNetwork(t *testing.T) {
+	containerName1 := testutil.Identifier(t) + "-1"
+	containerName2 := testutil.Identifier(t) + "-2"
+	networkName := testutil.Identifier(t) + "-network"
+	var dockerComposeYaml1 = fmt.Sprintf(`
+version: "3"
+services:
+  %s:
+    image: %s
+    container_name: %s
+    networks:
+      %s:
+        aliases:
+          - nginx-1
+networks:
+  %s:
+    external: true
+`, containerName1, testutil.NginxAlpineImage, containerName1, networkName, networkName)
+	var dockerComposeYaml2 = fmt.Sprintf(`
+version: "3"
+services:
+  %s:
+    image: %s
+    container_name: %s
+    networks:
+      %s:
+        aliases:
+          - nginx-2
+networks:
+  %s:
+    external: true
+`, containerName2, testutil.NginxAlpineImage, containerName2, networkName, networkName)
+	comp1 := testutil.NewComposeDir(t, dockerComposeYaml1)
+	defer comp1.CleanUp()
+	comp2 := testutil.NewComposeDir(t, dockerComposeYaml2)
+	defer comp2.CleanUp()
+	base := testutil.NewBase(t)
+	// Create the test network
+	base.Cmd("network", "create", networkName).AssertOK()
+	defer base.Cmd("network", "rm", networkName).Run()
+	// Run the first compose
+	base.ComposeCmd("-f", comp1.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp1.YAMLFullPath(), "down", "-v").Run()
+	// Run the second compose
+	base.ComposeCmd("-f", comp2.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp2.YAMLFullPath(), "down", "-v").Run()
+	// Down the second compose
+	base.ComposeCmd("-f", comp2.YAMLFullPath(), "down", "-v").AssertOK()
+	// Run the second compose again
+	base.ComposeCmd("-f", comp2.YAMLFullPath(), "up", "-d").AssertOK()
+	base.Cmd("exec", containerName1, "wget", "-qO-", "http://"+containerName2).AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
+}
