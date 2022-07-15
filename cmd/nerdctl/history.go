@@ -83,6 +83,9 @@ func historyAction(cmd *cobra.Command, args []string) error {
 	walker := &imagewalker.ImageWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+			if found.MatchCount > 1 {
+				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+			}
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 			img := containerd.NewImage(client, found.Image)
@@ -147,8 +150,6 @@ func historyAction(cmd *cobra.Command, args []string) error {
 			errs = append(errs, err)
 		} else if n == 0 {
 			errs = append(errs, fmt.Errorf("no such object: %s", req))
-		} else if n > 1 {
-			return fmt.Errorf("multiple IDs found with provided prefix: %s", req)
 		}
 	}
 	if len(errs) > 0 {

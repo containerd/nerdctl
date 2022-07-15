@@ -79,6 +79,9 @@ func rmAction(cmd *cobra.Command, args []string) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if found.MatchCount > 1 {
+				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+			}
 			err = removeContainer(cmd, ctx, found.Container, ns, force, removeAnonVolumes)
 			if err != nil {
 				return err

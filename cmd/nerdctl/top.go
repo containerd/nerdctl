@@ -98,6 +98,9 @@ func topAction(cmd *cobra.Command, args []string) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if found.MatchCount > 1 {
+				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+			}
 			if err := containerTop(ctx, cmd, client, found.Container.ID(), strings.Join(args[1:], " ")); err != nil {
 				return err
 			}

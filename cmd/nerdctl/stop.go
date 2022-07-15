@@ -68,6 +68,9 @@ func stopAction(cmd *cobra.Command, args []string) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if found.MatchCount > 1 {
+				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+			}
 			if err := stopContainer(ctx, found.Container, timeout); err != nil {
 				if errdefs.IsNotFound(err) {
 					fmt.Fprintf(cmd.ErrOrStderr(), "No such container: %s\n", found.Req)

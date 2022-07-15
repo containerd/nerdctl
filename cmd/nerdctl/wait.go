@@ -51,6 +51,9 @@ func containerWaitAction(cmd *cobra.Command, args []string) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if found.MatchCount > 1 {
+				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+			}
 			containers = append(containers, found.Container)
 			return nil
 		},
@@ -63,8 +66,6 @@ func containerWaitAction(cmd *cobra.Command, args []string) error {
 		}
 		if n == 0 {
 			return fmt.Errorf("no such container: %s", req)
-		} else if n > 1 {
-			return fmt.Errorf("multiple IDs found with provided prefix: %s", req)
 		}
 	}
 	var allErr error
