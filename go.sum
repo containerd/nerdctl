@@ -363,8 +363,8 @@ github.com/evanphx/json-patch v4.11.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQL
 github.com/evanphx/json-patch v4.12.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/facebookgo/atomicfile v0.0.0-20151019160806-2de1f203e7d5 h1:BBso6MBKW8ncyZLv37o+KNyy0HrrHgfnOaGQC2qvN+A=
 github.com/facebookgo/atomicfile v0.0.0-20151019160806-2de1f203e7d5/go.mod h1:JpoxHjuQauoxiFMl1ie8Xc/7TfLuMZ5eOCONd1sUBHg=
-github.com/fahedouch/go-logrotate v0.1.1 h1:CnjWBhRXo8RdPxH2sH6xdyiV+6Q7o1WhDoXfo8ouz7c=
-github.com/fahedouch/go-logrotate v0.1.1/go.mod h1:zhubt7XZAongM3pHPeCu/fKGrYG+qOevxeWxWlJED3M=
+github.com/fahedouch/go-logrotate v0.1.2 h1:982OwaxZST/ignlNY6vxA2ZQuXa9oe4LH82tLlqQZwM=
+github.com/fahedouch/go-logrotate v0.1.2/go.mod h1:zhubt7XZAongM3pHPeCu/fKGrYG+qOevxeWxWlJED3M=
 github.com/fanliao/go-promise v0.0.0-20141029170127-1890db352a72/go.mod h1:PjfxuH4FZdUyfMdtBio2lsRr1AKEaVPwelzuHuh8Lqc=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fatih/color v1.13.0 h1:8LOYc1KYPPmyKMuN8QV2DNRWNbLo6LZ0iLs8+mlH53w=
