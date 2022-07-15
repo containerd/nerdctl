@@ -208,30 +208,40 @@ func runcVersion() dockercompat.ComponentVersion {
 		logrus.Warnf("unable to determine runc version: %s", err.Error())
 		return dockercompat.ComponentVersion{Name: "runc"}
 	}
-
-	var versionList = strings.Split(strings.TrimSpace(string(stdout)), "\n")
-	firstLine := strings.Fields(versionList[0])
-	if len(firstLine) != 3 {
-		logrus.Errorf("unable to determine runc version, got: %s", firstLine)
+	v, err := parseRuncVersion(stdout)
+	if err != nil {
+		logrus.Warn(err)
 		return dockercompat.ComponentVersion{Name: "runc"}
+	}
+	return *v
+}
+
+func parseRuncVersion(runcVersionStdout []byte) (*dockercompat.ComponentVersion, error) {
+	var versionList = strings.Split(strings.TrimSpace(string(runcVersionStdout)), "\n")
+	firstLine := strings.Fields(versionList[0])
+	if len(firstLine) != 3 || firstLine[0] != "runc" {
+		return nil, fmt.Errorf("unable to determine runc version, got: %s", string(runcVersionStdout))
 	}
 	version := firstLine[2]
 
 	details := map[string]string{}
 	for _, detailsLine := range versionList[1:] {
-		detail := strings.Split(detailsLine, ": ")
+		detail := strings.SplitN(detailsLine, ":", 2)
 		if len(detail) != 2 {
 			logrus.Warnf("unable to determine one of runc details, got: %s, %d", detail, len(detail))
 			continue
 		}
-		details[detail[0]] = detail[1]
+		switch strings.TrimSpace(detail[0]) {
+		case "commit":
+			details["GitCommit"] = strings.TrimSpace(detail[1])
+		}
 	}
 
-	return dockercompat.ComponentVersion{
+	return &dockercompat.ComponentVersion{
 		Name:    "runc",
 		Version: version,
 		Details: details,
-	}
+	}, nil
 }
 
 //BlockIOWeight return whether Block IO weight is supported or not

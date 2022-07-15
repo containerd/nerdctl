@@ -56,3 +56,29 @@ func TestParseBuildctlVersion(t *testing.T) {
 		}
 	}
 }
+
+func TestParseRuncVersion(t *testing.T) {
+	testCases := map[string]*dockercompat.ComponentVersion{
+		`runc version 1.1.2
+commit: v1.1.2-0-ga916309f
+spec: 1.0.2-dev
+go: go1.18.3
+libseccomp: 2.5.1`: {
+			Name:    "runc",
+			Version: "1.1.2",
+			Details: map[string]string{
+				"GitCommit": "v1.1.2-0-ga916309f",
+			},
+		},
+	}
+
+	for s, expected := range testCases {
+		got, err := parseRuncVersion([]byte(s))
+		if expected != nil {
+			assert.NilError(t, err)
+			assert.DeepEqual(t, expected, got)
+		} else {
+			assert.Assert(t, err != nil)
+		}
+	}
+}
