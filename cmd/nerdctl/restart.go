@@ -17,6 +17,11 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/spf13/cobra"
 )
 
@@ -35,13 +40,46 @@ func newRestartCommand() *cobra.Command {
 }
 
 func restartAction(cmd *cobra.Command, args []string) error {
-	err := stopAction(cmd, args)
+	// Time to wait after sending a SIGTERM and before sending a SIGKILL.
+	var timeout *time.Duration
+	if cmd.Flags().Changed("time") {
+		timeValue, err := cmd.Flags().GetInt("time")
+		if err != nil {
+			return err
+		}
+		t := time.Duration(timeValue) * time.Second
+		timeout = &t
+	}
+
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
-	err = startAction(cmd, args)
-	if err != nil {
-		return err
+	defer cancel()
+
+	walker := &containerwalker.ContainerWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if found.MatchCount > 1 {
+				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+			}
+			if err := stopContainer(ctx, found.Container, timeout); err != nil {
+				return err
+			}
+			if err := startContainer(ctx, found.Container, false); err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
+			return err
+		},
+	}
+	for _, req := range args {
+		n, err := walker.Walk(ctx, req)
+		if err != nil {
+			return err
+		} else if n == 0 {
+			return fmt.Errorf("no such container %s", req)
+		}
 	}
 	return nil
 }
