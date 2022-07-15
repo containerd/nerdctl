@@ -41,7 +41,7 @@ ARG IPFS_VERSION=v0.13.1
 # Extra deps: Init
 ARG TINI_VERSION=v0.19.0
 # Extra deps: Debug
-ARG BUILDG_VERSION=v0.2.0
+ARG BUILDG_VERSION=v0.3.0
 
 # Test deps
 ARG GO_VERSION=1.18
