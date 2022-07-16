@@ -1073,7 +1073,6 @@ Remove one or more volumes
 Usage: `nerdctl volume rm [OPTIONS] VOLUME [VOLUME...]`
 
 - :whale: `-f, --force`: Force the removal of one or more volumes
-  - :warning: WIP: currently, volumes are always forcibly removed, even when `--force` is not specified.
 
 ### :whale: nerdctl volume prune
 Remove all unused local volumes
