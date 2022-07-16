@@ -234,7 +234,7 @@ func TestRunWithJsonFileLogDriver(t *testing.T) {
 	matches, err := filepath.Glob(filepath.Join(logJSONPath, inspectedContainer.ID+"*"))
 	assert.NilError(t, err)
 	if len(matches) != 2 {
-		t.Fatalf("the maximum number of old log files to retain exceeded 2 files, got: %s", matches)
+		t.Fatalf("the number of log files is not equal to 2 files, got: %s", matches)
 	}
 	for _, file := range matches {
 		fInfo, err := os.Stat(file)
