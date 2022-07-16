@@ -306,6 +306,9 @@ func statsAction(cmd *cobra.Command, args []string) error {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
+	// firstTick is for creating distant CPU readings.
+	// firstTick stats are not displayed.
+	var firstTick = true
 	for range ticker.C {
 		cleanScreen()
 		ccstats := []statsutil.StatsEntry{}
@@ -315,33 +318,37 @@ func statsAction(cmd *cobra.Command, args []string) error {
 		}
 		cStats.mu.Unlock()
 
-		// print header for every tick
-		if format == "" || format == "table" {
-			fmt.Fprintln(w, "CONTAINER ID\tNAME\tCPU %\tMEM USAGE / LIMIT\tMEM %\tNET I/O\tBLOCK I/O\tPIDS")
+		if !firstTick {
+			// print header for every tick
+			if format == "" || format == "table" {
+				fmt.Fprintln(w, "CONTAINER ID\tNAME\tCPU %\tMEM USAGE / LIMIT\tMEM %\tNET I/O\tBLOCK I/O\tPIDS")
+			}
 		}
 
 		for _, c := range ccstats {
 			rc := statsutil.RenderEntry(&c, noTrunc)
-			if tmpl != nil {
-				var b bytes.Buffer
-				if err := tmpl.Execute(&b, rc); err != nil {
-					break
-				}
-				if _, err = fmt.Fprintf(cmd.OutOrStdout(), b.String()+"\n"); err != nil {
-					break
-				}
-			} else {
-				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-					rc.ID,
-					rc.Name,
-					rc.CPUPerc,
-					rc.MemUsage,
-					rc.MemPerc,
-					rc.NetIO,
-					rc.BlockIO,
-					rc.PIDs,
-				); err != nil {
-					break
+			if !firstTick {
+				if tmpl != nil {
+					var b bytes.Buffer
+					if err := tmpl.Execute(&b, rc); err != nil {
+						break
+					}
+					if _, err = fmt.Fprintf(cmd.OutOrStdout(), b.String()+"\n"); err != nil {
+						break
+					}
+				} else {
+					if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+						rc.ID,
+						rc.Name,
+						rc.CPUPerc,
+						rc.MemUsage,
+						rc.MemPerc,
+						rc.NetIO,
+						rc.BlockIO,
+						rc.PIDs,
+					); err != nil {
+						break
+					}
 				}
 			}
 		}
@@ -352,7 +359,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 		if len(cStats.cs) == 0 && !showAll {
 			break
 		}
-		if noStream {
+		if noStream && !firstTick {
 			break
 		}
 		select {
@@ -365,6 +372,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 		default:
 			// just skip
 		}
+		firstTick = false
 	}
 
 	return err
