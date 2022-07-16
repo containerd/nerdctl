@@ -37,7 +37,7 @@ func newRmiCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	rmiCommand.Flags().BoolP("force", "f", false, "Ignore removal errors")
+	rmiCommand.Flags().BoolP("force", "f", false, "Force removal of the image")
 	// Alias `-a` is reserved for `--all`. Should be compatible with `podman rmi --all`.
 	rmiCommand.Flags().Bool("async", false, "Asynchronous mode")
 	return rmiCommand
@@ -64,10 +64,26 @@ func rmiAction(cmd *cobra.Command, args []string) error {
 
 	cs := client.ContentStore()
 	is := client.ImageService()
+	containerStore := client.ContainerService()
+
+	containerList, err := containerStore.List(ctx)
+	if err != nil {
+		return err
+	}
+	usedImages := make(map[string]struct{})
+	for _, container := range containerList {
+		usedImages[container.Image] = struct{}{}
+	}
 
 	walker := &imagewalker.ImageWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+			if found.MatchCount > 1 {
+				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+			}
+			if _, ok := usedImages[found.Image.Name]; ok && !force {
+				return fmt.Errorf("conflict: unable to remove repository reference %q (must force)", found.Req)
+			}
 			// digests is used only for emulating human-readable output of `docker rmi`
 			digests, err := found.Image.RootFS(ctx, cs, platforms.DefaultStrict())
 			if err != nil {

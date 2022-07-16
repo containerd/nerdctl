@@ -854,8 +854,7 @@ Usage: `nerdctl rmi [OPTIONS] IMAGE [IMAGE...]`
 
 Flags:
 - :nerd_face: `--async`: Asynchronous mode
-- :whale: `-f, --force`: Ignore removal errors
-  - :warning: WIP: currently, images are always forcibly removed, even when `--force` is not specified.
+- :whale: `-f, --force`: Force removal of the image
 
 Unimplemented `docker rmi` flags: `--no-prune`
 
