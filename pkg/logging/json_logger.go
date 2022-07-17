@@ -25,12 +25,28 @@ import (
 
 	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
 	"github.com/fahedouch/go-logrotate"
+	"github.com/sirupsen/logrus"
 )
+
+var JSONDriverLogOpts = []string{
+	MaxSize,
+	MaxFile,
+}
 
 type JSONLogger struct {
 	Opts map[string]string
+}
+
+func JSONFileLogOptsValidate(logOptMap map[string]string) error {
+	for key := range logOptMap {
+		if !strutil.InStringSlice(JSONDriverLogOpts, key) {
+			logrus.Warnf("log-opt %s is ignored for json-file log driver", key)
+		}
+	}
+	return nil
 }
 
 func (jsonLogger *JSONLogger) Init(dataStore, ns, id string) error {
