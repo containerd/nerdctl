@@ -17,6 +17,8 @@
 package netutil
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -28,6 +30,8 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/nerdctl/pkg/lockutil"
+	subnetutil "github.com/containerd/nerdctl/pkg/netutil/subnet"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containernetworking/cni/libcni"
 )
@@ -43,15 +47,17 @@ func NewCNIEnv(cniPath, cniConfPath string) (*CNIEnv, error) {
 		Path:        cniPath,
 		NetconfPath: cniConfPath,
 	}
-	var err error
-	err = e.ensureDefaultNetworkConfig()
+	if err := os.MkdirAll(e.NetconfPath, 0755); err != nil {
+		return nil, err
+	}
+	if err := e.ensureDefaultNetworkConfig(); err != nil {
+		return nil, err
+	}
+	networks, err := e.networkConfigList()
 	if err != nil {
 		return nil, err
 	}
-	e.Networks, err = e.networkConfigList()
-	if err != nil {
-		return nil, err
-	}
+	e.Networks = networks
 	return &e, nil
 }
 
@@ -63,9 +69,20 @@ func (e *CNIEnv) NetworkMap() map[string]*networkConfig {
 	return m
 }
 
+func (e *CNIEnv) usedSubnets() ([]*net.IPNet, error) {
+	usedSubnets, err := subnetutil.GetLiveNetworkSubnets()
+	if err != nil {
+		return nil, err
+	}
+	for _, net := range e.Networks {
+		usedSubnets = append(usedSubnets, net.subnets()...)
+	}
+	return usedSubnets, nil
+}
+
 type networkConfig struct {
 	*libcni.NetworkConfigList
-	NerdctlID     *int
+	NerdctlID     *string
 	NerdctlLabels *map[string]string
 	File          string
 }
@@ -73,15 +90,89 @@ type networkConfig struct {
 type cniNetworkConfig struct {
 	CNIVersion string            `json:"cniVersion"`
 	Name       string            `json:"name"`
-	ID         int               `json:"nerdctlID"`
+	ID         string            `json:"nerdctlID"`
 	Labels     map[string]string `json:"nerdctlLabels"`
 	Plugins    []CNIPlugin       `json:"plugins"`
 }
 
-// GenerateNetworkConfig creates networkConfig.
-// GenerateNetworkConfig does not fill "File" field.
-func (e *CNIEnv) GenerateNetworkConfig(labels []string, id int, name string, plugins []CNIPlugin) (*networkConfig, error) {
-	if e == nil || id < 0 || name == "" || len(plugins) == 0 {
+type CreateOptions struct {
+	Name        string
+	Driver      string
+	Options     map[string]string
+	IPAMDriver  string
+	IPAMOptions map[string]string
+	Subnet      string
+	Gateway     string
+	IPRange     string
+	Labels      []string
+}
+
+func (e *CNIEnv) CreateNetwork(opts CreateOptions) (*networkConfig, error) {
+	var net *networkConfig
+	if _, ok := e.NetworkMap()[opts.Name]; ok {
+		return nil, errdefs.ErrAlreadyExists
+	}
+
+	fn := func() error {
+		ipam, err := e.generateIPAM(opts.IPAMDriver, opts.Subnet, opts.Gateway, opts.IPRange, opts.IPAMOptions)
+		if err != nil {
+			return err
+		}
+		plugins, err := e.generateCNIPlugins(opts.Driver, opts.Name, ipam, opts.Options)
+		if err != nil {
+			return err
+		}
+		net, err = e.generateNetworkConfig(opts.Name, opts.Labels, plugins)
+		if err != nil {
+			return err
+		}
+		if err := e.writeNetworkConfig(net); err != nil {
+			return err
+		}
+		return nil
+	}
+	err := lockutil.WithDirLock(e.NetconfPath, fn)
+	if err != nil {
+		return nil, err
+	}
+	return net, nil
+}
+
+func (e *CNIEnv) RemoveNetwork(net *networkConfig) error {
+	fn := func() error {
+		if err := os.RemoveAll(net.File); err != nil {
+			return err
+		}
+		if err := net.clean(); err != nil {
+			return err
+		}
+		return nil
+	}
+	return lockutil.WithDirLock(e.NetconfPath, fn)
+}
+
+func (e *CNIEnv) ensureDefaultNetworkConfig() error {
+	filename := filepath.Join(e.NetconfPath, "nerdctl-"+DefaultNetworkName+".conflist")
+	if _, err := os.Stat(filename); err == nil {
+		return nil
+	}
+	opts := CreateOptions{
+		Name:       DefaultNetworkName,
+		Driver:     DefaultNetworkName,
+		Subnet:     DefaultCIDR,
+		IPAMDriver: "default",
+	}
+	_, err := e.CreateNetwork(opts)
+	if err != nil && !errdefs.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
+}
+
+// generateNetworkConfig creates networkConfig.
+// generateNetworkConfig does not fill "File" field.
+func (e *CNIEnv) generateNetworkConfig(name string, labels []string, plugins []CNIPlugin) (*networkConfig, error) {
+	if name == "" || len(plugins) == 0 {
 		return nil, errdefs.ErrInvalidArgument
 	}
 	for _, f := range plugins {
@@ -90,6 +181,7 @@ func (e *CNIEnv) GenerateNetworkConfig(labels []string, id int, name string, plu
 			return nil, fmt.Errorf("needs CNI plugin %q to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins/releases: %w", f.GetPluginType(), e.Path, err)
 		}
 	}
+	id := networkID(name)
 	labelsMap := strutil.ConvertKVStringsToMap(labels)
 
 	conf := &cniNetworkConfig{
@@ -117,30 +209,13 @@ func (e *CNIEnv) GenerateNetworkConfig(labels []string, id int, name string, plu
 	}, nil
 }
 
-// WriteNetworkConfig writes networkConfig file to cni config path.
-func (e *CNIEnv) WriteNetworkConfig(net *networkConfig) error {
-	if err := os.MkdirAll(e.NetconfPath, 0755); err != nil {
-		return err
-	}
+// writeNetworkConfig writes networkConfig file to cni config path.
+func (e *CNIEnv) writeNetworkConfig(net *networkConfig) error {
 	filename := filepath.Join(e.NetconfPath, "nerdctl-"+net.Name+".conflist")
 	if _, err := os.Stat(filename); err == nil {
 		return errdefs.ErrAlreadyExists
 	}
 	if err := os.WriteFile(filename, net.Bytes, 0644); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (e *CNIEnv) ensureDefaultNetworkConfig() error {
-	ipam, _ := GenerateIPAM("default", DefaultCIDR, "", "", nil)
-	plugins, _ := e.GenerateCNIPlugins(DefaultNetworkName, DefaultID, DefaultNetworkName, ipam, nil)
-	conf, err := e.GenerateNetworkConfig(nil, DefaultID, DefaultNetworkName, plugins)
-	if err != nil {
-		return err
-	}
-	err = e.WriteNetworkConfig(conf)
-	if err != nil && !errdefs.IsAlreadyExists(err) {
 		return err
 	}
 	return nil
@@ -171,56 +246,48 @@ func (e *CNIEnv) networkConfigList() ([]*networkConfig, error) {
 				return nil, err
 			}
 		}
+		id, labels := nerdctlIDLabels(lcl.Bytes)
 		l = append(l, &networkConfig{
 			NetworkConfigList: lcl,
-			NerdctlID:         nerdctlID(lcl.Bytes),
-			NerdctlLabels:     nerdctlLabels(lcl.Bytes),
+			NerdctlID:         id,
+			NerdctlLabels:     labels,
 			File:              fileName,
 		})
 	}
 	return l, nil
 }
 
-// AcquireNextID suggests the next ID.
-func (e *CNIEnv) AcquireNextID() (int, error) {
-	maxID := DefaultID
-	for _, n := range e.Networks {
-		if n.NerdctlID != nil && *n.NerdctlID > maxID {
-			maxID = *n.NerdctlID
+func nerdctlIDLabels(b []byte) (*string, *map[string]string) {
+	type idLabels struct {
+		ID     *string            `json:"nerdctlID,omitempty"`
+		Labels *map[string]string `json:"nerdctlLabels,omitempty"`
+	}
+	var idl idLabels
+	if err := json.Unmarshal(b, &idl); err != nil {
+		return nil, nil
+	}
+	return idl.ID, idl.Labels
+}
+
+func networkID(name string) string {
+	hash := sha256.Sum256([]byte(name))
+	return hex.EncodeToString(hash[:])
+}
+
+func (e *CNIEnv) parseSubnet(subnetStr string) (*net.IPNet, error) {
+	usedSubnets, err := e.usedSubnets()
+	if err != nil {
+		return nil, err
+	}
+	if subnetStr == "" {
+		_, defaultSubnet, _ := net.ParseCIDR(DefaultCIDR)
+		subnet, err := subnetutil.GetFreeSubnet(defaultSubnet, usedSubnets)
+		if err != nil {
+			return nil, err
 		}
+		return subnet, nil
 	}
-	nextID := maxID + 1
-	return nextID, nil
-}
 
-func nerdctlID(b []byte) *int {
-	type nerdctlConfigList struct {
-		NerdctlID *int `json:"nerdctlID,omitempty"`
-	}
-	var ncl nerdctlConfigList
-	if err := json.Unmarshal(b, &ncl); err != nil {
-		// The network is managed outside nerdctl
-		return nil
-	}
-	return ncl.NerdctlID
-}
-
-func nerdctlLabels(b []byte) *map[string]string {
-	type nerdctlConfigList struct {
-		NerdctlLabels *map[string]string `json:"nerdctlLabels,omitempty"`
-	}
-	var ncl nerdctlConfigList
-	if err := json.Unmarshal(b, &ncl); err != nil {
-		return nil
-	}
-	return ncl.NerdctlLabels
-}
-
-func GetBridgeName(id int) string {
-	return fmt.Sprintf("nerdctl%d", id)
-}
-
-func parseIPAMRange(subnetStr, gatewayStr, ipRangeStr string) (*IPAMRange, error) {
 	subnetIP, subnet, err := net.ParseCIDR(subnetStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse subnet %q", subnetStr)
@@ -228,7 +295,13 @@ func parseIPAMRange(subnetStr, gatewayStr, ipRangeStr string) (*IPAMRange, error
 	if !subnet.IP.Equal(subnetIP) {
 		return nil, fmt.Errorf("unexpected subnet %q, maybe you meant %q?", subnetStr, subnet.String())
 	}
+	if subnetutil.IntersectsWithNetworks(subnet, usedSubnets) {
+		return nil, fmt.Errorf("subnet %s overlaps with other one on this address space", subnetStr)
+	}
+	return subnet, nil
+}
 
+func parseIPAMRange(subnet *net.IPNet, gatewayStr, ipRangeStr string) (*IPAMRange, error) {
 	var gateway, rangeStart, rangeEnd net.IP
 	if gatewayStr != "" {
 		gatewayIP := net.ParseIP(gatewayStr)
@@ -236,11 +309,11 @@ func parseIPAMRange(subnetStr, gatewayStr, ipRangeStr string) (*IPAMRange, error
 			return nil, fmt.Errorf("failed to parse gateway %q", gatewayStr)
 		}
 		if !subnet.Contains(gatewayIP) {
-			return nil, fmt.Errorf("no matching subnet %q for gateway %q", subnetStr, gatewayStr)
+			return nil, fmt.Errorf("no matching subnet %q for gateway %q", subnet, gatewayStr)
 		}
 		gateway = gatewayIP
 	} else {
-		gateway, _ = firstIPInSubnet(subnet)
+		gateway, _ = subnetutil.FirstIPInSubnet(subnet)
 	}
 
 	res := &IPAMRange{
@@ -253,10 +326,10 @@ func parseIPAMRange(subnetStr, gatewayStr, ipRangeStr string) (*IPAMRange, error
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse ip-range %q", ipRangeStr)
 		}
-		rangeStart, _ = firstIPInSubnet(ipRange)
-		rangeEnd, _ = lastIPInSubnet(ipRange)
+		rangeStart, _ = subnetutil.FirstIPInSubnet(ipRange)
+		rangeEnd, _ = subnetutil.LastIPInSubnet(ipRange)
 		if !subnet.Contains(rangeStart) || !subnet.Contains(rangeEnd) {
-			return nil, fmt.Errorf("no matching subnet %q for ip-range %q", subnetStr, ipRangeStr)
+			return nil, fmt.Errorf("no matching subnet %q for ip-range %q", subnet, ipRangeStr)
 		}
 		res.RangeStart = rangeStart.String()
 		res.RangeEnd = rangeEnd.String()
@@ -264,40 +337,6 @@ func parseIPAMRange(subnetStr, gatewayStr, ipRangeStr string) (*IPAMRange, error
 	}
 
 	return res, nil
-}
-
-// lastIPInSubnet gets the last IP in a subnet
-// https://github.com/containers/podman/blob/v4.0.0-rc1/libpod/network/util/ip.go#L18
-func lastIPInSubnet(addr *net.IPNet) (net.IP, error) {
-	// re-parse to ensure clean network address
-	_, cidr, err := net.ParseCIDR(addr.String())
-	if err != nil {
-		return nil, err
-	}
-	ones, bits := cidr.Mask.Size()
-	if ones == bits {
-		return cidr.IP, err
-	}
-	for i := range cidr.IP {
-		cidr.IP[i] = cidr.IP[i] | ^cidr.Mask[i]
-	}
-	return cidr.IP, err
-}
-
-// firstIPInSubnet gets the first IP in a subnet
-// https://github.com/containers/podman/blob/v4.0.0-rc1/libpod/network/util/ip.go#L36
-func firstIPInSubnet(addr *net.IPNet) (net.IP, error) {
-	// re-parse to ensure clean network address
-	_, cidr, err := net.ParseCIDR(addr.String())
-	if err != nil {
-		return nil, err
-	}
-	ones, bits := cidr.Mask.Size()
-	if ones == bits {
-		return cidr.IP, err
-	}
-	cidr.IP[len(cidr.IP)-1]++
-	return cidr.IP, err
 }
 
 // convert the struct to a map

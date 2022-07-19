@@ -21,7 +21,9 @@ package netutil
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"net"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -30,17 +32,57 @@ import (
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/systemutil"
+	"github.com/mitchellh/mapstructure"
 	"github.com/sirupsen/logrus"
+	"github.com/vishvananda/netlink"
 )
 
 const (
 	DefaultNetworkName = "bridge"
-	DefaultID          = 0
 	DefaultCIDR        = "10.4.0.0/24"
 	DefaultIPAMDriver  = "host-local"
 )
 
-func (e *CNIEnv) GenerateCNIPlugins(driver string, id int, name string, ipam map[string]interface{}, opts map[string]string) ([]CNIPlugin, error) {
+func (n *networkConfig) subnets() []*net.IPNet {
+	var subnets []*net.IPNet
+	if len(n.Plugins) > 0 && n.Plugins[0].Network.Type == "bridge" {
+		var bridge bridgeConfig
+		if err := json.Unmarshal(n.Plugins[0].Bytes, &bridge); err != nil {
+			return subnets
+		}
+		if bridge.IPAM["type"] != "host-local" {
+			return subnets
+		}
+		var ipam hostLocalIPAMConfig
+		if err := mapstructure.Decode(bridge.IPAM, &ipam); err != nil {
+			return subnets
+		}
+		for _, irange := range ipam.Ranges {
+			if len(irange) > 0 {
+				_, subnet, err := net.ParseCIDR(irange[0].Subnet)
+				if err != nil {
+					continue
+				}
+				subnets = append(subnets, subnet)
+			}
+		}
+	}
+	return subnets
+}
+
+func (n *networkConfig) clean() error {
+	// Remove the bridge network interface on the host.
+	if len(n.Plugins) > 0 && n.Plugins[0].Network.Type == "bridge" {
+		var bridge bridgeConfig
+		if err := json.Unmarshal(n.Plugins[0].Bytes, &bridge); err != nil {
+			return err
+		}
+		return removeBridgeNetworkInterface(bridge.BrName)
+	}
+	return nil
+}
+
+func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]interface{}, opts map[string]string) ([]CNIPlugin, error) {
 	var (
 		plugins []CNIPlugin
 		err     error
@@ -59,7 +101,12 @@ func (e *CNIEnv) GenerateCNIPlugins(driver string, id int, name string, ipam map
 				return nil, fmt.Errorf("unsupported %q network option %q", driver, opt)
 			}
 		}
-		bridge := newBridgePlugin(GetBridgeName(id))
+		var bridge *bridgeConfig
+		if name == DefaultNetworkName {
+			bridge = newBridgePlugin("nerdctl0")
+		} else {
+			bridge = newBridgePlugin("br-" + networkID(name)[:12])
+		}
 		bridge.MTU = mtu
 		bridge.IPAM = ipam
 		bridge.IsGW = true
@@ -109,11 +156,15 @@ func (e *CNIEnv) GenerateCNIPlugins(driver string, id int, name string, ipam map
 	return plugins, nil
 }
 
-func GenerateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr string, opts map[string]string) (map[string]interface{}, error) {
+func (e *CNIEnv) generateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr string, opts map[string]string) (map[string]interface{}, error) {
 	var ipamConfig interface{}
 	switch driver {
 	case "default", "host-local":
-		ipamRange, err := parseIPAMRange(subnetStr, gatewayStr, ipRangeStr)
+		subnet, err := e.parseSubnet(subnetStr)
+		if err != nil {
+			return nil, err
+		}
+		ipamRange, err := parseIPAMRange(subnet, gatewayStr, ipRangeStr)
 		if err != nil {
 			return nil, err
 		}
@@ -228,4 +279,14 @@ func guessFirewallPluginVersion(stderr string) (*semver.Version, error) {
 		return ver, nil
 	}
 	return nil, fmt.Errorf("stderr %q does not have any line that starts with %q", stderr, prefix)
+}
+
+func removeBridgeNetworkInterface(netIf string) error {
+	link, err := netlink.LinkByName(netIf)
+	if err == nil {
+		if err := netlink.LinkDel(link); err != nil {
+			return fmt.Errorf("failed to remove network interface %s: %v", netIf, err)
+		}
+	}
+	return nil
 }

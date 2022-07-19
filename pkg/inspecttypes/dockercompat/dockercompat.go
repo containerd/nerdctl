@@ -463,7 +463,7 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 	}
 
 	if n.NerdctlID != nil {
-		res.ID = strconv.Itoa(*n.NerdctlID)
+		res.ID = *n.NerdctlID
 	}
 
 	if n.NerdctlLabels != nil {

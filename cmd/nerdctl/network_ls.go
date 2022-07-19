@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"strconv"
 	"text/tabwriter"
 	"text/template"
 
@@ -105,7 +104,10 @@ func networkLsAction(cmd *cobra.Command, args []string) error {
 			file: n.File,
 		}
 		if n.NerdctlID != nil {
-			p.ID = strconv.Itoa(*n.NerdctlID)
+			p.ID = *n.NerdctlID
+			if len(p.ID) > 12 {
+				p.ID = p.ID[:12]
+			}
 		}
 		if n.NerdctlLabels != nil {
 			p.Labels = formatLabels(*n.NerdctlLabels)

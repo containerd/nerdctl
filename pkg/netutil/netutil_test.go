@@ -17,6 +17,7 @@
 package netutil
 
 import (
+	"net"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -32,16 +33,6 @@ func TestParseIPAMRange(t *testing.T) {
 		err      string
 	}
 	testCases := []testCase{
-		{
-			subnet:   "",
-			expected: nil,
-			err:      "failed to parse subnet",
-		},
-		{
-			subnet:   "10.1.100.1/24",
-			expected: nil,
-			err:      "unexpected subnet",
-		},
 		{
 			subnet: "10.1.100.0/24",
 			expected: &IPAMRange{
@@ -96,7 +87,8 @@ func TestParseIPAMRange(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		got, err := parseIPAMRange(tc.subnet, tc.gateway, tc.iprange)
+		_, subnet, _ := net.ParseCIDR(tc.subnet)
+		got, err := parseIPAMRange(subnet, tc.gateway, tc.iprange)
 		if tc.err != "" {
 			assert.ErrorContains(t, err, tc.err)
 		} else {

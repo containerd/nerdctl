@@ -17,16 +17,43 @@
 package netutil
 
 import (
+	"encoding/json"
 	"fmt"
+	"net"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
 	DefaultNetworkName = "nat"
-	DefaultID          = 0
 	DefaultCIDR        = "10.4.0.0/24"
 )
 
-func (e *CNIEnv) GenerateCNIPlugins(driver string, id int, name string, ipam map[string]interface{}, opts map[string]string) ([]CNIPlugin, error) {
+func (n *networkConfig) subnets() []*net.IPNet {
+	var subnets []*net.IPNet
+	if n.Plugins[0].Network.Type == "nat" {
+		var nat natConfig
+		if err := json.Unmarshal(n.Plugins[0].Bytes, &nat); err != nil {
+			return subnets
+		}
+		var ipam windowsIpamConfig
+		if err := mapstructure.Decode(nat.IPAM, &ipam); err != nil {
+			return subnets
+		}
+		_, subnet, err := net.ParseCIDR(ipam.Subnet)
+		if err != nil {
+			return subnets
+		}
+		subnets = append(subnets, subnet)
+	}
+	return subnets
+}
+
+func (n *networkConfig) clean() error {
+	return nil
+}
+
+func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]interface{}, opts map[string]string) ([]CNIPlugin, error) {
 	var plugins []CNIPlugin
 	switch driver {
 	case "nat":
@@ -39,8 +66,12 @@ func (e *CNIEnv) GenerateCNIPlugins(driver string, id int, name string, ipam map
 	return plugins, nil
 }
 
-func GenerateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr string, opts map[string]string) (map[string]interface{}, error) {
-	ipamRange, err := parseIPAMRange(subnetStr, gatewayStr, ipRangeStr)
+func (e *CNIEnv) generateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr string, opts map[string]string) (map[string]interface{}, error) {
+	subnet, err := e.parseSubnet(subnetStr)
+	if err != nil {
+		return nil, err
+	}
+	ipamRange, err := parseIPAMRange(subnet, gatewayStr, ipRangeStr)
 	if err != nil {
 		return nil, err
 	}
@@ -61,4 +92,8 @@ func GenerateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr string, opts 
 		return nil, err
 	}
 	return ipam, nil
+}
+
+func removeBridgeNetworkInterface(name string) error {
+	return nil
 }
