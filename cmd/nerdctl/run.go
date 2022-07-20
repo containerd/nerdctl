@@ -271,8 +271,6 @@ func setCreateFlags(cmd *cobra.Command) {
 
 // runAction is heavily based on ctr implementation:
 // https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/run/run.go
-//
-// FIXME: split to smaller functions
 func runAction(cmd *cobra.Command, args []string) error {
 	platform, err := cmd.Flags().GetString("platform")
 	if err != nil {
@@ -304,12 +302,6 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	lab, err := container.Labels(ctx)
-	if err != nil {
-		return err
-	}
-	logURI := lab[labels.LogURI]
-
 	id := container.ID()
 	rm, err := cmd.Flags().GetBool("rm")
 	if err != nil {
@@ -320,8 +312,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 			return errors.New("flag -d and --rm cannot be specified together")
 		}
 		defer func() {
-			ns := lab[labels.Namespace]
-			if err := removeContainer(cmd, ctx, container, ns, true, true); err != nil {
+			if err := removeContainer(cmd, ctx, container, true, true); err != nil {
 				logrus.WithError(err).Warnf("failed to remove container %s", id)
 			}
 		}()
@@ -335,6 +326,12 @@ func runAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
+	lab, err := container.Labels(ctx)
+	if err != nil {
+		return err
+	}
+	logURI := lab[labels.LogURI]
 
 	task, err := taskutil.NewTask(ctx, client, container, flagI, flagT, flagD, con, logURI)
 	if err != nil {
@@ -384,6 +381,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// FIXME: split to smaller functions
 func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd.Client, args []string, platform string, flagI, flagT, flagD bool) (containerd.Container, func(), error) {
 	// simulate the behavior of double dash
 	newArg := []string{}
