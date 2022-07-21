@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/Microsoft/go-winio v0.5.2
-	github.com/compose-spec/compose-go v1.2.8
+	github.com/compose-spec/compose-go v1.2.9
 	github.com/containerd/cgroups v1.0.4
 	github.com/containerd/console v1.0.3
 	github.com/containerd/containerd v1.6.6 // replaced
