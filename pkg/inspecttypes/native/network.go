@@ -21,7 +21,7 @@ import "encoding/json"
 // Network corresponds to pkg/netutil.NetworkConfigList
 type Network struct {
 	CNI           json.RawMessage    `json:"CNI,omitempty"`
-	NerdctlID     *int               `json:"NerdctlID"`
+	NerdctlID     *string            `json:"NerdctlID"`
 	NerdctlLabels *map[string]string `json:"NerdctlLabels,omitempty"`
 	File          string             `json:"File,omitempty"`
 }

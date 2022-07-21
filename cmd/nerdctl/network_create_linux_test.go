@@ -20,9 +20,11 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"gotest.tools/v3/assert"
 )
 
 func TestNetworkCreateWithMTU(t *testing.T) {
+	t.Parallel()
 	testNetwork := testutil.Identifier(t)
 	base := testutil.NewBase(t)
 
@@ -34,4 +36,23 @@ func TestNetworkCreateWithMTU(t *testing.T) {
 	defer base.Cmd("network", "rm", testNetwork).Run()
 
 	base.Cmd("run", "--rm", "--net", testNetwork, testutil.AlpineImage, "ifconfig", "eth0").AssertOutContains("MTU:9216")
+}
+
+func TestNetworkCreate(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	testNetwork := testutil.Identifier(t)
+
+	base.Cmd("network", "create", testNetwork).AssertOK()
+	defer base.Cmd("network", "rm", testNetwork).Run()
+
+	net := base.InspectNetwork(testNetwork)
+	assert.Equal(t, len(net.IPAM.Config), 1)
+
+	base.Cmd("run", "--rm", "--net", testNetwork, testutil.CommonImage, "ip", "route").AssertOutContains(net.IPAM.Config[0].Subnet)
+
+	base.Cmd("network", "create", testNetwork+"-1").AssertOK()
+	defer base.Cmd("network", "rm", testNetwork+"-1").Run()
+
+	base.Cmd("run", "--rm", "--net", testNetwork+"-1", testutil.CommonImage, "ip", "route").AssertNoOut(net.IPAM.Config[0].Subnet)
 }

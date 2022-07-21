@@ -18,9 +18,7 @@ package main
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
 
 	"github.com/spf13/cobra"
@@ -54,36 +52,28 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fn := func() error {
-		netMap := e.NetworkMap()
+	netMap := e.NetworkMap()
 
-		for _, name := range args {
-			if name == "host" || name == "none" {
-				return fmt.Errorf("pseudo network %q cannot be removed", name)
-			}
-			l, ok := netMap[name]
-			if !ok {
-				return fmt.Errorf("no such network: %s", name)
-			}
-			if l.NerdctlID == nil {
-				return fmt.Errorf("%s is managed outside nerdctl and cannot be removed", name)
-			}
-			if l.File == "" {
-				return fmt.Errorf("%s is a pre-defined network and cannot be removed", name)
-			}
-			if err := os.RemoveAll(l.File); err != nil {
-				return err
-			}
-			// Remove the bridge network interface on the host.
-			if l.Plugins[0].Network.Type == "bridge" {
-				netIf := netutil.GetBridgeName(*l.NerdctlID)
-				removeBridgeNetworkInterface(netIf)
-			}
-			fmt.Fprintln(cmd.OutOrStdout(), name)
+	for _, name := range args {
+		if name == "host" || name == "none" {
+			return fmt.Errorf("pseudo network %q cannot be removed", name)
 		}
-		return nil
+		net, ok := netMap[name]
+		if !ok {
+			return fmt.Errorf("no such network: %s", name)
+		}
+		if net.NerdctlID == nil {
+			return fmt.Errorf("%s is managed outside nerdctl and cannot be removed", name)
+		}
+		if net.File == "" {
+			return fmt.Errorf("%s is a pre-defined network and cannot be removed", name)
+		}
+		if err := e.RemoveNetwork(net); err != nil {
+			return err
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), name)
 	}
-	return lockutil.WithDirLock(cniNetconfpath, fn)
+	return nil
 }
 
 func networkRmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

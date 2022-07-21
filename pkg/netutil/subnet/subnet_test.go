@@ -14,6 +14,37 @@
    limitations under the License.
 */
 
-package main
+package subnet
 
-func removeBridgeNetworkInterface(name string) {}
+import (
+	"net"
+	"testing"
+
+	"gotest.tools/v3/assert"
+)
+
+func TestNextSubnet(t *testing.T) {
+	testCases := []struct {
+		subnet string
+		expect string
+	}{
+		{
+			subnet: "10.4.1.0/24",
+			expect: "10.4.2.0/24",
+		},
+		{
+			subnet: "10.4.255.0/24",
+			expect: "10.5.0.0/24",
+		},
+		{
+			subnet: "10.4.255.0/16",
+			expect: "10.5.0.0/16",
+		},
+	}
+	for _, tc := range testCases {
+		_, net, _ := net.ParseCIDR(tc.subnet)
+		nextSubnet, err := nextSubnet(net)
+		assert.NilError(t, err)
+		assert.Equal(t, nextSubnet.String(), tc.expect)
+	}
+}
