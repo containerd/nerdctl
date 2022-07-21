@@ -23,12 +23,15 @@ import (
 	"io/fs"
 	"path/filepath"
 	"runtime"
+	"strings"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/dnsutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
+	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
@@ -164,10 +167,87 @@ func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 				ports = append(ports, pm...)
 			}
 		}
+	case nettype.Container:
+		if err := verifyContainerNetwork(cmd, netSlice); err != nil {
+			return nil, nil, "", nil, err
+		}
+		network := strings.Split(netSlice[0], ":")
+		if len(network) != 2 {
+			return nil, nil, "", nil, fmt.Errorf("invalid network: %s, should be \"container:<id|name>\"", netSlice[0])
+		}
+		containerName := network[1]
+		client, ctx, cancel, err := newClient(cmd)
+		if err != nil {
+			return nil, nil, "", nil, err
+		}
+		defer cancel()
+
+		walker := &containerwalker.ContainerWalker{
+			Client: client,
+			OnFound: func(ctx context.Context, found containerwalker.Found) error {
+				if found.MatchCount > 1 {
+					return fmt.Errorf("multiple containers found with prefix: %s", containerName)
+				}
+				containerID := found.Container.ID()
+
+				conStateDir, err := getContainerStateDirPath(cmd, dataStore, containerID)
+				if err != nil {
+					return err
+				}
+
+				s, err := found.Container.Spec(ctx)
+				if err != nil {
+					return err
+				}
+				hostname := s.Hostname
+				hostnamePath := filepath.Join(conStateDir, "hostname")
+				resolvConfPath := filepath.Join(conStateDir, "resolv.conf")
+				etcHostsPath := hostsstore.HostsPath(dataStore, ns, containerID)
+				netNSPath, err := getContainerNetNSPath(ctx, found.Container)
+				if err != nil {
+					return err
+				}
+				opts = append(opts,
+					oci.WithLinuxNamespace(specs.LinuxNamespace{
+						Type: specs.NetworkNamespace,
+						Path: netNSPath,
+					}),
+					withCustomResolvConf(resolvConfPath),
+					withCustomHosts(etcHostsPath),
+					oci.WithHostname(hostname),
+					withCustomEtcHostname(hostnamePath),
+				)
+				// stored in labels with key "nerdctl/networks"
+				netSlice = []string{fmt.Sprintf("container:%s", containerID)}
+				return nil
+			},
+		}
+		n, err := walker.Walk(ctx, containerName)
+		if err != nil {
+			return nil, nil, "", nil, err
+		}
+		if n == 0 {
+			return nil, nil, "", nil, fmt.Errorf("no such container: %s", containerName)
+		}
 	default:
 		return nil, nil, "", nil, fmt.Errorf("unexpected network type %v", netType)
 	}
 	return opts, netSlice, ipAddress, ports, nil
+}
+
+func getContainerNetNSPath(ctx context.Context, c containerd.Container) (string, error) {
+	task, err := c.Task(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	status, err := task.Status(ctx)
+	if err != nil {
+		return "", err
+	}
+	if status.Status != containerd.Running {
+		return "", fmt.Errorf("invalid target container: %s, should be running", c.ID())
+	}
+	return fmt.Sprintf("/proc/%d/ns/net", task.Pid()), nil
 }
 
 func verifyCNINetwork(cmd *cobra.Command, netSlice []string) error {
@@ -189,6 +269,27 @@ func verifyCNINetwork(cmd *cobra.Command, netSlice []string) error {
 		if !ok {
 			return fmt.Errorf("network %s not found", netstr)
 		}
+	}
+	return nil
+}
+func verifyContainerNetwork(cmd *cobra.Command, netSlice []string) error {
+	if cmd.Flags().Changed("publish") {
+		return fmt.Errorf("conflicting options: port publishing and the container type network mode")
+	}
+	if cmd.Flags().Changed("hostname") {
+		return fmt.Errorf("conflicting options: hostname and the network mode")
+	}
+	if cmd.Flags().Changed("dns") {
+		return fmt.Errorf("conflicting options: dns and the network mode")
+	}
+	if cmd.Flags().Changed("add-host") {
+		return fmt.Errorf("conflicting options: custom host-to-IP mapping and the network mode")
+	}
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("currently '--network=container:<container>' can only works on linux")
+	}
+	if len(netSlice) > 1 {
+		return fmt.Errorf("only one network allowed using '--network=container:<container>'")
 	}
 	return nil
 }

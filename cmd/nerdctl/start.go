@@ -18,16 +18,21 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
+	"github.com/containerd/containerd/oci"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/netutil/nettype"
+	"github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -72,7 +77,7 @@ func startAction(cmd *cobra.Command, args []string) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := startContainer(ctx, found.Container, flagA); err != nil {
+			if err := startContainer(ctx, found.Container, flagA, client); err != nil {
 				return err
 			}
 			if !flagA {
@@ -95,11 +100,16 @@ func startAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func startContainer(ctx context.Context, container containerd.Container, flagA bool) error {
+func startContainer(ctx context.Context, container containerd.Container, flagA bool, client *containerd.Client) error {
 	lab, err := container.Labels(ctx)
 	if err != nil {
 		return err
 	}
+
+	if err := reconfigNetContainer(ctx, container, client, lab); err != nil {
+		return err
+	}
+
 	taskCIO := cio.NullIO
 
 	// Choosing the user selected option over the labels
@@ -164,6 +174,48 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 			exitCode: int(code),
 		}
 	}
+	return nil
+}
+
+func reconfigNetContainer(ctx context.Context, c containerd.Container, client *containerd.Client, lab map[string]string) error {
+
+	networksJSON := lab[labels.Networks]
+	var networks []string
+	if err := json.Unmarshal([]byte(networksJSON), &networks); err != nil {
+		return err
+	}
+	netType, err := nettype.Detect(networks)
+	if err != nil {
+		return err
+	}
+	if netType == nettype.Container {
+		network := strings.Split(networks[0], ":")
+		if len(network) != 2 {
+			return fmt.Errorf("invalid network: %s, should be \"container:<id|name>\"", networks[0])
+		}
+		targetCon, err := client.LoadContainer(ctx, network[1])
+		if err != nil {
+			return err
+		}
+		netNSPath, err := getContainerNetNSPath(ctx, targetCon)
+		if err != nil {
+			return err
+		}
+		spec, err := c.Spec(ctx)
+		if err != nil {
+			return err
+		}
+		err = c.Update(ctx, containerd.UpdateContainerOpts(
+			containerd.WithSpec(spec, oci.WithLinuxNamespace(
+				specs.LinuxNamespace{
+					Type: specs.NetworkNamespace,
+					Path: netNSPath,
+				}))))
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

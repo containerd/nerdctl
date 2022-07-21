@@ -66,7 +66,7 @@ func restartAction(cmd *cobra.Command, args []string) error {
 			if err := stopContainer(ctx, found.Container, timeout); err != nil {
 				return err
 			}
-			if err := startContainer(ctx, found.Container, false); err != nil {
+			if err := startContainer(ctx, found.Container, false, client); err != nil {
 				return err
 			}
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
@@ -81,5 +81,6 @@ func restartAction(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("no such container %s", req)
 		}
 	}
+
 	return nil
 }

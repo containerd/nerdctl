@@ -382,8 +382,9 @@ Init process flags:
   - Default: `tini`
 
 Network flags:
-- :whale: `--net, --network=(bridge|host|none|<CNI>)`: Connect a container to a network
+- :whale: `--net, --network=(bridge|host|none|container:<container>|<CNI>)`: Connect a container to a network.
   - Default: "bridge"
+  - 'container:<name|id>': reuse another container's network stack, container has to be precreated.
   - :nerd_face: Unlike Docker, this flag can be specified multiple times (`--net foo --net bar`)
 - :whale: `-p, --publish`: Publish a container's port(s) to the host
 - :whale: `--dns`: Set custom DNS servers
