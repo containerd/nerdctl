@@ -26,6 +26,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -56,12 +57,6 @@ type statusError struct {
 }
 
 func rmAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := newClient(cmd)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
@@ -71,10 +66,11 @@ func rmAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ns, err := cmd.Flags().GetString("namespace")
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
+	defer cancel()
 
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
@@ -82,8 +78,7 @@ func rmAction(cmd *cobra.Command, args []string) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			err = removeContainer(cmd, ctx, found.Container, ns, force, removeAnonVolumes)
-			if err != nil {
+			if err := removeContainer(cmd, ctx, found.Container, force, removeAnonVolumes); err != nil {
 				return err
 			}
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
@@ -106,7 +101,12 @@ func rmAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func removeContainer(cmd *cobra.Command, ctx context.Context, container containerd.Container, ns string, force bool, removeAnonVolumes bool) (retErr error) {
+func removeContainer(cmd *cobra.Command, ctx context.Context, container containerd.Container, force bool, removeAnonVolumes bool) (retErr error) {
+	ns, err := namespaces.NamespaceRequired(ctx)
+	if err != nil {
+		return err
+	}
+
 	id := container.ID()
 	l, err := container.Labels(ctx)
 	if err != nil {

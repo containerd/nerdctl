@@ -39,12 +39,6 @@ func newContainerPruneCommand() *cobra.Command {
 }
 
 func containerPruneAction(cmd *cobra.Command, _ []string) error {
-	client, ctx, cancel, err := newClient(cmd)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
@@ -60,10 +54,11 @@ func containerPruneAction(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	ns, err := cmd.Flags().GetString("namespace")
+	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
+	defer cancel()
 
 	containers, err := client.Containers(ctx)
 	if err != nil {
@@ -72,7 +67,7 @@ func containerPruneAction(cmd *cobra.Command, _ []string) error {
 
 	var deleted []string
 	for _, container := range containers {
-		err = removeContainer(cmd, ctx, container, ns, false, true)
+		err = removeContainer(cmd, ctx, container, false, true)
 		if err == nil {
 			deleted = append(deleted, container.ID())
 			continue
