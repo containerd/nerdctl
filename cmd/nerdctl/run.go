@@ -783,7 +783,6 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 		initProcessFlag = true
 	}
 	if initProcessFlag {
-		binaryNameInContainer := ""
 		binaryPath, err := exec.LookPath(initBinary)
 		if err != nil {
 			if errors.Is(err, exec.ErrNotFound) {
@@ -791,11 +790,11 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 			}
 			return nil, nil, nil, err
 		}
-		binaryNameInContainer = filepath.Join("/sbin", filepath.Base(initBinary))
+		inContainerPath := filepath.Join("/sbin", filepath.Base(initBinary))
 		opts = append(opts, func(_ context.Context, _ oci.Client, _ *containers.Container, spec *oci.Spec) error {
-			spec.Process.Args = append([]string{binaryNameInContainer, "--"}, spec.Process.Args...)
+			spec.Process.Args = append([]string{inContainerPath, "--"}, spec.Process.Args...)
 			spec.Mounts = append([]specs.Mount{{
-				Destination: binaryNameInContainer,
+				Destination: inContainerPath,
 				Type:        "bind",
 				Source:      binaryPath,
 				Options:     []string{"bind", "ro"},
