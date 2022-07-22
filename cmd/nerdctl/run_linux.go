@@ -187,5 +187,31 @@ func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]o
 		return nil, fmt.Errorf("error: %v", "invalid ipc value, supported values are 'private' or 'host'")
 	}
 
+	opts, err = setOOMScoreAdj(opts, cmd)
+	if err != nil {
+		return nil, err
+	}
+
 	return opts, nil
+}
+
+func setOOMScoreAdj(opts []oci.SpecOpts, cmd *cobra.Command) ([]oci.SpecOpts, error) {
+	score, err := cmd.Flags().GetInt("oom-score-adj")
+	if err != nil {
+		return nil, err
+	}
+
+	if score < -1000 || score > 1000 {
+		return nil, fmt.Errorf("invalid value %d, range for oom score adj is [-1000, 1000]", score)
+	}
+
+	opts = append(opts, withOOMScoreAdj(score))
+	return opts, nil
+}
+
+func withOOMScoreAdj(score int) oci.SpecOpts {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		s.Process.OOMScoreAdj = &score
+		return nil
+	}
 }

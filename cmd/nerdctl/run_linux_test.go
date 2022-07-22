@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 
@@ -330,4 +331,15 @@ func TestRunWithFluentdLogDriverWithLogOpt(t *testing.T) {
 	logData := string(data)
 	assert.Equal(t, true, strings.Contains(logData, "test2"))
 	assert.Equal(t, true, strings.Contains(logData, inspectedContainer.ID))
+}
+
+func TestRunWithOOMScoreAdj(t *testing.T) {
+	if rootlessutil.IsRootless() {
+		t.Skip("test skipped for rootless containers.")
+	}
+	t.Parallel()
+	base := testutil.NewBase(t)
+	var score = "-42"
+
+	base.Cmd("run", "--rm", "--oom-score-adj", score, testutil.AlpineImage, "cat", "/proc/self/oom_score_adj").AssertOutContains(score)
 }

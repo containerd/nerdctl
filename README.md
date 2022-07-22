@@ -394,7 +394,7 @@ Network flags:
 - :whale: `--add-host`: Add a custom host-to-IP mapping (host:ip)
 - :whale: `--ip`: Specific static IP address(es) to use
 
-Cgroup flags:
+Resource flags:
 - :whale: `--cpus`: Number of CPUs
 - :whale: `--cpu-quota`: Limit the CPU CFS (Completely Fair Scheduler) quota
 - :whale: `--cpu-period`: Limit the CPU CFS (Completely Fair Scheduler) period
@@ -407,6 +407,7 @@ Cgroup flags:
 - :whale: `--memory-swappiness`: Tune container memory swappiness (0 to 100) (default -1)
 - :whale: `--kernel-memory`: Kernel memory limit (deprecated)
 - :whale: `--oom-kill-disable`: Disable OOM Killer
+- :whale: `--oom-score-adj`: Tune container’s OOM preferences (-1000 to 1000)
 - :whale: `--pids-limit`: Tune container pids limit
 - :nerd_face: `--cgroup-conf`: Configure cgroup v2 (key=value)
 - :whale: `--blkio-weight`: Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)
@@ -522,7 +523,7 @@ Verify flags:
 Unimplemented `docker run` flags:
     `--attach`, `--blkio-weight-device`, `--cgroup-parent`, `--cpu-rt-*`, `--detach-keys`, `--device-*`,
     `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--ip6`, `--isolation`, `--no-healthcheck`,
-    `--oom-score-adj`, `--link*`, `--mac-address`, `--publish-all`, `--sig-proxy`, `--storage-opt`,
+    `--link*`, `--mac-address`, `--publish-all`, `--sig-proxy`, `--storage-opt`,
     `--userns`, `--uts`, `--volume-driver`, `--volumes-from`
 
 ### :whale: :blue_square: nerdctl exec
