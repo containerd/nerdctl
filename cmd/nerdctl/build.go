@@ -190,7 +190,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err = loadImage(buildctlStdout, cmd, args, platMC, quiet); err != nil {
+		if err = loadImage(buildctlStdout, cmd, platMC, quiet); err != nil {
 			return err
 		}
 	}
