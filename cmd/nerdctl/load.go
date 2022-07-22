@@ -54,7 +54,7 @@ func newLoadCommand() *cobra.Command {
 	return loadCommand
 }
 
-func loadAction(cmd *cobra.Command, args []string) error {
+func loadAction(cmd *cobra.Command, _ []string) error {
 	in := cmd.InOrStdin()
 	input, err := cmd.Flags().GetString("input")
 	if err != nil {
@@ -95,10 +95,10 @@ func loadAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return loadImage(decompressor, cmd, args, platMC, false)
+	return loadImage(decompressor, cmd, platMC, false)
 }
 
-func loadImage(in io.Reader, cmd *cobra.Command, args []string, platMC platforms.MatchComparer, quiet bool) error {
+func loadImage(in io.Reader, cmd *cobra.Command, platMC platforms.MatchComparer, quiet bool) error {
 	// In addition to passing WithImagePlatform() to client.Import(), we also need to pass WithDefaultPlatform() to newClient().
 	// Otherwise unpacking may fail.
 	client, ctx, cancel, err := newClient(cmd, containerd.WithDefaultPlatform(platMC))
