@@ -115,7 +115,8 @@ type containerPrintable struct {
 	Status    string
 	Runtime   string // nerdctl extension
 	Size      string
-	// TODO: "Labels", "LocalVolumes", "Mounts", "Networks", "RunningFor",  "State"
+	Labels    string
+	// TODO: "LocalVolumes", "Mounts", "Networks", "RunningFor", "State"
 }
 
 func printContainers(ctx context.Context, client *containerd.Client, cmd *cobra.Command, containers []containerd.Container, all bool) error {
@@ -216,6 +217,7 @@ func printContainers(ctx context.Context, client *containerd.Client, cmd *cobra.
 			Ports:     formatter.FormatPorts(info.Labels),
 			Status:    cStatus,
 			Runtime:   info.Runtime.Name,
+			Labels:    formatter.FormatLabels(info.Labels),
 		}
 
 		if size || wide {

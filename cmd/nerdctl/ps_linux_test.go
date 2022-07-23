@@ -21,12 +21,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/containerd/nerdctl/pkg/formatter"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/tabutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
 
-func prepareTest(t *testing.T) (*testutil.Base, string) {
+type testContainer struct {
+	name   string
+	labels map[string]string
+}
+
+func prepareTest(t *testing.T) (*testutil.Base, testContainer) {
 	base := testutil.NewBase(t)
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
@@ -36,11 +43,25 @@ func prepareTest(t *testing.T) (*testutil.Base, string) {
 		base.Cmd("rm", "-f", testContainerName).AssertOK()
 	})
 
+	// A container can have multiple labels.
+	// Therefore, this test container has multiple labels to check it.
+	testLabels := make(map[string]string)
+	keys := []string{
+		testutil.Identifier(t),
+		testutil.Identifier(t),
+	}
+	// fill the value of testLabels
+	for _, k := range keys {
+		testLabels[k] = testutil.Identifier(t)
+	}
+
 	base.Cmd([]string{
 		"run",
 		"-d",
 		"--name",
 		testContainerName,
+		"--label",
+		formatter.FormatLabels(testLabels),
 		testutil.CommonImage,
 		"top",
 	}...).AssertOK()
@@ -50,11 +71,14 @@ func prepareTest(t *testing.T) (*testutil.Base, string) {
 	// let the container occupy 25MiB space.
 	base.Cmd("exec", testContainerName, "dd", "if=/dev/zero", "of=/test_file", "bs=1M", "count=25").AssertOK()
 
-	return base, testContainerName
+	return base, testContainer{
+		name:   testContainerName,
+		labels: testLabels,
+	}
 }
 
 func TestContainerList(t *testing.T) {
-	base, testContainerName := prepareTest(t)
+	base, testContainer := prepareTest(t)
 
 	// hope there are no tests running parallel
 	base.Cmd("ps", "-n", "1", "-s").AssertOutWithFunc(func(stdout string) error {
@@ -74,7 +98,7 @@ func TestContainerList(t *testing.T) {
 		}
 
 		container, _ := tab.ReadRow(lines[1], "NAMES")
-		assert.Equal(t, container, testContainerName)
+		assert.Equal(t, container, testContainer.name)
 
 		image, _ := tab.ReadRow(lines[1], "IMAGE")
 		assert.Equal(t, image, testutil.CommonImage)
@@ -97,7 +121,7 @@ func TestContainerList(t *testing.T) {
 
 func TestContainerListWideMode(t *testing.T) {
 	testutil.DockerIncompatible(t)
-	base, testContainerName := prepareTest(t)
+	base, testContainer := prepareTest(t)
 
 	// hope there are no tests running parallel
 	base.Cmd("ps", "-n", "1", "--format", "wide").AssertOutWithFunc(func(stdout string) error {
@@ -118,7 +142,7 @@ func TestContainerListWideMode(t *testing.T) {
 		}
 
 		container, _ := tab.ReadRow(lines[1], "NAMES")
-		assert.Equal(t, container, testContainerName)
+		assert.Equal(t, container, testContainer.name)
 
 		image, _ := tab.ReadRow(lines[1], "IMAGE")
 		assert.Equal(t, image, testutil.CommonImage)
@@ -130,6 +154,34 @@ func TestContainerListWideMode(t *testing.T) {
 		expectedSize := "25.0 MiB (virtual "
 		if !strings.Contains(size, expectedSize) {
 			return fmt.Errorf("expect container size %s, but got %s", expectedSize, size)
+		}
+		return nil
+	})
+}
+
+func TestContainerListWithLabels(t *testing.T) {
+	base, testContainer := prepareTest(t)
+
+	// hope there are no tests running parallel
+	base.Cmd("ps", "-n", "1", "--format", "{{.Labels}}").AssertOutWithFunc(func(stdout string) error {
+
+		// An example of nerdctl ps --format "{{.Labels}}"
+		// key1=value1,key2=value2,key3=value3
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) != 1 {
+			return fmt.Errorf("expected 1 line, got %d", len(lines))
+		}
+
+		// check labels using map
+		// 1. the results has no guarantee to show the same order.
+		// 2. the results has no guarantee to show only configured labels.
+		labelsMap, err := strutil.ParseCSVMap(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse labels: %v", err)
+		}
+
+		for i := range testContainer.labels {
+			assert.Equal(t, labelsMap[i], testContainer.labels[i])
 		}
 		return nil
 	})
