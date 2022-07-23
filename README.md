@@ -292,6 +292,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl network ls](#whale-nerdctl-network-ls)
     - [:whale: nerdctl network inspect](#whale-nerdctl-network-inspect)
     - [:whale: nerdctl network rm](#whale-nerdctl-network-rm)
+    - [:whale: nerdctl network prune](#whale-nerdctl-network-prune)
   - [Volume management](#volume-management)
     - [:whale: nerdctl volume create](#whale-nerdctl-volume-create)
     - [:whale: nerdctl volume ls](#whale-nerdctl-volume-ls)
@@ -1034,6 +1035,16 @@ Remove one or more networks
 
 Usage: `nerdctl network rm NETWORK [NETWORK...]`
 
+### :whale: nerdctl network prune
+Remove all unused networks
+
+Usage: `nerdctl network prune [OPTIONS]`
+
+Flags:
+- :whale: `-f, --force`: Do not prompt for confirmation
+
+Unimplemented `docker network prune` flags: `--filter`
+
 ## Volume management
 ### :whale: nerdctl volume create
 Create a volume
@@ -1433,7 +1444,6 @@ Image:
 Network management:
 - `docker network connect`
 - `docker network disconnect`
-- `docker network prune`
 
 Registry:
 - `docker search`

@@ -17,24 +17,22 @@
 package main
 
 import (
-	"github.com/spf13/cobra"
+	"testing"
+
+	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
-func newNetworkCommand() *cobra.Command {
-	networkCommand := &cobra.Command{
-		Annotations:   map[string]string{Category: Management},
-		Use:           "network",
-		Short:         "Manage networks",
-		RunE:          unknownSubcommandAction,
-		SilenceUsage:  true,
-		SilenceErrors: true,
-	}
-	networkCommand.AddCommand(
-		newNetworkLsCommand(),
-		newNetworkInspectCommand(),
-		newNetworkCreateCommand(),
-		newNetworkRmCommand(),
-		newNetworkPruneCommand(),
-	)
-	return networkCommand
+func TestNetworkPrune(t *testing.T) {
+	base := testutil.NewBase(t)
+	testNetwork := testutil.Identifier(t)
+	base.Cmd("network", "create", testNetwork).AssertOK()
+	defer base.Cmd("network", "prune", "-f").Run()
+
+	tID := testutil.Identifier(t)
+	base.Cmd("run", "-d", "--net", testNetwork, "--name", tID, testutil.NginxAlpineImage).AssertOK()
+	defer base.Cmd("rm", "-f", tID).Run()
+
+	base.Cmd("network", "prune", "-f").AssertNoOut(testNetwork)
+	base.Cmd("stop", tID).AssertOK()
+	base.Cmd("network", "prune", "-f").AssertOutContains(testNetwork)
 }
