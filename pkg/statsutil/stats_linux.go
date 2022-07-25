@@ -24,9 +24,9 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-func SetCgroupStatsFields(previousCgroupCPU, previousCgroupSystem uint64, data *v1.Metrics, links []netlink.Link) (StatsEntry, error) {
+func SetCgroupStatsFields(previousStats *ContainerStats, data *v1.Metrics, links []netlink.Link) (StatsEntry, error) {
 
-	cpuPercent := calculateCgroupCPUPercent(previousCgroupCPU, previousCgroupSystem, data)
+	cpuPercent := calculateCgroupCPUPercent(previousStats, data)
 	blkRead, blkWrite := calculateCgroupBlockIO(data)
 	mem := calculateCgroupMemUsage(data)
 	memLimit := float64(data.Memory.Usage.Limit)
@@ -48,9 +48,9 @@ func SetCgroupStatsFields(previousCgroupCPU, previousCgroupSystem uint64, data *
 
 }
 
-func SetCgroup2StatsFields(previousCgroup2CPU, previousCgroup2System uint64, metrics *v2.Metrics, links []netlink.Link) (StatsEntry, error) {
+func SetCgroup2StatsFields(previousStats *ContainerStats, metrics *v2.Metrics, links []netlink.Link) (StatsEntry, error) {
 
-	cpuPercent := calculateCgroup2CPUPercent(previousCgroup2CPU, previousCgroup2System, metrics)
+	cpuPercent := calculateCgroup2CPUPercent(previousStats, metrics)
 	blkRead, blkWrite := calculateCgroup2IO(metrics)
 	mem := calculateCgroup2MemUsage(metrics)
 	memLimit := float64(metrics.Memory.UsageLimit)
@@ -72,13 +72,13 @@ func SetCgroup2StatsFields(previousCgroup2CPU, previousCgroup2System uint64, met
 
 }
 
-func calculateCgroupCPUPercent(previousCPU, previousSystem uint64, metrics *v1.Metrics) float64 {
+func calculateCgroupCPUPercent(previousStats *ContainerStats, metrics *v1.Metrics) float64 {
 	var (
 		cpuPercent = 0.0
 		// calculate the change for the cpu usage of the container in between readings
-		cpuDelta = float64(metrics.CPU.Usage.Total) - float64(previousCPU)
+		cpuDelta = float64(metrics.CPU.Usage.Total) - float64(previousStats.CgroupCPU)
 		// calculate the change for the entire system between readings
-		systemDelta = float64(metrics.CPU.Usage.Kernel) - float64(previousSystem)
+		systemDelta = float64(metrics.CPU.Usage.Kernel) - float64(previousStats.CgroupSystem)
 		onlineCPUs  = float64(len(metrics.CPU.Usage.PerCPU))
 	)
 
@@ -89,18 +89,18 @@ func calculateCgroupCPUPercent(previousCPU, previousSystem uint64, metrics *v1.M
 }
 
 //PercpuUsage is not supported in CgroupV2
-func calculateCgroup2CPUPercent(previousCPU, previousSystem uint64, metrics *v2.Metrics) float64 {
+func calculateCgroup2CPUPercent(previousStats *ContainerStats, metrics *v2.Metrics) float64 {
 	var (
 		cpuPercent = 0.0
 		// calculate the change for the cpu usage of the container in between readings
-		cpuDelta = float64(metrics.CPU.UsageUsec*1000) - float64(previousCPU)
+		cpuDelta = float64(metrics.CPU.UsageUsec*1000) - float64(previousStats.Cgroup2CPU)
 		// calculate the change for the entire system between readings
-		systemDelta = float64(metrics.CPU.SystemUsec*1000) - float64(previousSystem)
+		_ = float64(metrics.CPU.SystemUsec*1000) - float64(previousStats.Cgroup2System)
+		// time duration
+		timeDelta = time.Since(previousStats.Time)
 	)
-
-	u, _ := time.ParseDuration("500ms")
-	if systemDelta > 0.0 && cpuDelta > 0.0 {
-		cpuPercent = (cpuDelta + systemDelta) / float64(u.Nanoseconds()) * 100.0
+	if cpuDelta > 0.0 {
+		cpuPercent = cpuDelta / float64(timeDelta.Nanoseconds()) * 100.0
 	}
 	return cpuPercent
 }

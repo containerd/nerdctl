@@ -19,6 +19,7 @@ package statsutil
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	units "github.com/docker/go-units"
 )
@@ -57,6 +58,13 @@ type Stats struct {
 	mutex sync.RWMutex
 	StatsEntry
 	err error
+}
+
+// ContainerStats represents the runtime container stats
+type ContainerStats struct {
+	Time                        time.Time
+	CgroupCPU, Cgroup2CPU       uint64
+	CgroupSystem, Cgroup2System uint64
 }
 
 //NewStats is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L113-L116

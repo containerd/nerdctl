@@ -407,9 +407,8 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 	}
 
 	go func() {
-
-		previousStats := make(map[string]uint64)
-
+		previousStats := new(statsutil.ContainerStats)
+		firstSet := true
 		for {
 			//task is in the for loop to avoid nil task just after Container creation
 			task, err := container.Task(ctx, nil)
@@ -424,9 +423,6 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 				u <- err
 				continue
 			}
-
-			//sleep to create distant CPU readings
-			time.Sleep(500 * time.Millisecond)
 
 			metric, err := task.Metrics(ctx)
 			if err != nil {
@@ -445,7 +441,8 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 				continue
 			}
 
-			statsEntry, err := renderStatsEntry(previousStats, anydata, int(task.Pid()), netNS.Interfaces)
+			// when (firstSet == true), we only set container stats without rendering stat entry
+			statsEntry, err := setContainerStatsAndRenderStatsEntry(previousStats, firstSet, anydata, int(task.Pid()), netNS.Interfaces)
 			if err != nil {
 				u <- err
 				continue
@@ -453,8 +450,14 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 			statsEntry.Name = clabels[labels.Name]
 			statsEntry.ID = container.ID()
 
-			s.SetStatistics(statsEntry)
+			if firstSet {
+				firstSet = false
+			} else {
+				s.SetStatistics(statsEntry)
+			}
 			u <- nil
+			//sleep to create distant CPU readings
+			time.Sleep(500 * time.Millisecond)
 		}
 	}()
 	for {

@@ -21,8 +21,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/statsutil"
 )
 
-func renderStatsEntry(previousStats map[string]uint64, anydata interface{}, pid int, interfaces []native.NetInterface) (statsutil.StatsEntry, error) {
-
+func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStats, firstSet bool, anydata interface{}, pid int, interfaces []native.NetInterface) (statsutil.StatsEntry, error) {
 	return statsutil.StatsEntry{}, nil
-
 }
