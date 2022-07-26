@@ -511,28 +511,21 @@ func TestSharedNetworkStack(t *testing.T) {
 		testutil.NginxAlpineImage).AssertOK()
 	base.EnsureContainerStarted(containerName)
 
-	containerNameJoin := testutil.Identifier(t) + "-nework"
+	containerNameJoin := testutil.Identifier(t) + "-network"
 	defer base.Cmd("rm", "-f", containerNameJoin).AssertOK()
-	cmd := base.Cmd("run",
+	base.Cmd("run",
 		"-d",
 		"--name", containerNameJoin,
 		"--network=container:"+containerName,
 		testutil.CommonImage,
-		"sleep", "infinity")
-	cmd.AssertOK()
+		"sleep", "infinity").AssertOK()
 
 	base.Cmd("exec", containerNameJoin, "wget", "-qO-", "http://127.0.0.1:80").
 		AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
 
 	base.Cmd("restart", containerName).AssertOK()
-	base.Cmd("restart", containerNameJoin).AssertOK()
-	base.Cmd("exec", containerNameJoin, "wget", "-qO-", "http://127.0.0.1:80").
-		AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
-
-	base.Cmd("restart", containerName).AssertOK()
-	base.Cmd("stop", containerNameJoin).AssertOK()
+	base.Cmd("stop", "--time=1", containerNameJoin).AssertOK()
 	base.Cmd("start", containerNameJoin).AssertOK()
 	base.Cmd("exec", containerNameJoin, "wget", "-qO-", "http://127.0.0.1:80").
 		AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
-
 }
