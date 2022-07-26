@@ -42,12 +42,6 @@ func newImagePruneCommand() *cobra.Command {
 }
 
 func imagePruneAction(cmd *cobra.Command, _ []string) error {
-	client, ctx, cancel, err := newClient(cmd)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
 	all, err := cmd.Flags().GetBool("all")
 	if err != nil {
 		return err
@@ -76,6 +70,13 @@ func imagePruneAction(cmd *cobra.Command, _ []string) error {
 			return nil
 		}
 	}
+
+	client, ctx, cancel, err := newClient(cmd)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
 	var (
 		imageStore     = client.ImageService()
 		contentStore   = client.ContentStore()
@@ -109,7 +110,7 @@ func imagePruneAction(cmd *cobra.Command, _ []string) error {
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "Untagged: %s\n", image.Name)
 		for _, digest := range digests {
-			fmt.Fprintf(cmd.OutOrStdout(), "Deleted: %s\n", digest)
+			fmt.Fprintf(cmd.OutOrStdout(), "deleted: %s\n", digest)
 		}
 	}
 	return nil
