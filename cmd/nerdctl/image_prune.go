@@ -17,11 +17,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
+	"github.com/opencontainers/go-digest"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -77,6 +80,10 @@ func imagePruneAction(cmd *cobra.Command, _ []string) error {
 	}
 	defer cancel()
 
+	return imagePrune(cmd, client, ctx)
+}
+
+func imagePrune(cmd *cobra.Command, client *containerd.Client, ctx context.Context) error {
 	var (
 		imageStore     = client.ImageService()
 		contentStore   = client.ContentStore()
@@ -96,6 +103,7 @@ func imagePruneAction(cmd *cobra.Command, _ []string) error {
 	}
 
 	delOpts := []images.DeleteOpt{images.SynchronousDelete()}
+	removedImages := make(map[string][]digest.Digest)
 	for _, image := range imageList {
 		if _, ok := usedImages[image.Name]; ok {
 			continue
@@ -107,11 +115,20 @@ func imagePruneAction(cmd *cobra.Command, _ []string) error {
 		}
 		if err := imageStore.Delete(ctx, image.Name, delOpts...); err != nil {
 			logrus.WithError(err).Warnf("failed to delete image %s", image.Name)
+			continue
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Untagged: %s\n", image.Name)
-		for _, digest := range digests {
-			fmt.Fprintf(cmd.OutOrStdout(), "deleted: %s\n", digest)
+		removedImages[image.Name] = digests
+	}
+
+	if len(removedImages) > 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "Deleted Images:")
+		for image, digests := range removedImages {
+			fmt.Fprintf(cmd.OutOrStdout(), "Untagged: %s\n", image)
+			for _, digest := range digests {
+				fmt.Fprintf(cmd.OutOrStdout(), "deleted: %s\n", digest)
+			}
 		}
+		fmt.Fprintln(cmd.OutOrStdout(), "")
 	}
 	return nil
 }

@@ -17,9 +17,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"github.com/containerd/containerd"
 	"github.com/spf13/cobra"
 )
 
@@ -37,12 +39,6 @@ func newVolumePruneCommand() *cobra.Command {
 }
 
 func volumePruneAction(cmd *cobra.Command, _ []string) error {
-	client, ctx, cancel, err := newClient(cmd)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
@@ -60,6 +56,16 @@ func volumePruneAction(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	client, ctx, cancel, err := newClient(cmd)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	return volumePrune(cmd, client, ctx)
+}
+
+func volumePrune(cmd *cobra.Command, client *containerd.Client, ctx context.Context) error {
 	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return err
@@ -92,6 +98,7 @@ func volumePruneAction(cmd *cobra.Command, _ []string) error {
 		for _, name := range removedNames {
 			fmt.Fprintln(cmd.OutOrStdout(), name)
 		}
+		fmt.Fprintln(cmd.OutOrStdout(), "")
 	}
 	return nil
 }

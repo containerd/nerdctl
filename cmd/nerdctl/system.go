@@ -31,6 +31,7 @@ func newSystemCommand() *cobra.Command {
 	systemCommand.AddCommand(
 		newEventsCommand(),
 		newInfoCommand(),
+		newSystemPruneCommand(),
 	)
 	return systemCommand
 }

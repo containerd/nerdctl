@@ -317,6 +317,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl events](#whale-nerdctl-events)
     - [:whale: nerdctl info](#whale-nerdctl-info)
     - [:whale: nerdctl version](#whale-nerdctl-version)
+    - [:whale: nerdctl system prune](#whale-nerdctl-system-prune)
   - [Stats](#stats)
     - [:whale: nerdctl stats](#whale-nerdctl-stats)
     - [:whale: nerdctl top](#whale-nerdctl-top)
@@ -1217,6 +1218,20 @@ Usage: `nerdctl version [OPTIONS]`
 
 Flags:
 - :whale: `-f, --format`: Format the output using the given Go template, e.g, `{{json .}}`
+
+### :whale: nerdctl system prune
+Remove unused data
+
+:warning: Currently, `nerdctl system prune` requires --all to be specified.
+
+Usage: `nerdctl system prune [OPTIONS]`
+
+Flags:
+- :whale: `-a, --all`: Remove all unused images, not just dangling ones
+- :whale: `-f, --force`: Do not prompt for confirmation
+- :whale: `--volumes`: Prune volumes
+
+Unimplemented `docker system prune` flags: `--filter`
 
 ## Stats
 ### :whale: nerdctl stats
