@@ -138,3 +138,19 @@ func TestContainerInspectContainsMounts(t *testing.T) {
 		}
 	}
 }
+
+func TestContainerInspectContainsLabel(t *testing.T) {
+	t.Parallel()
+	testContainer := testutil.Identifier(t)
+
+	base := testutil.NewBase(t)
+	defer base.Cmd("rm", "-f", testContainer).Run()
+
+	base.Cmd("run", "-d", "--name", testContainer, "--label", "foo=foo", "--label", "bar=bar", testutil.NginxAlpineImage).AssertOK()
+	base.EnsureContainerStarted(testContainer)
+	inspect := base.InspectContainer(testContainer)
+	lbs := inspect.Config.Labels
+
+	assert.Equal(base.T, "foo", lbs["foo"])
+	assert.Equal(base.T, "bar", lbs["bar"])
+}
