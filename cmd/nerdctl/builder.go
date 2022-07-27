@@ -58,7 +58,7 @@ func newBuilderPruneCommand() *cobra.Command {
 	return buildPruneCommand
 }
 
-func builderPruneAction(cmd *cobra.Command, args []string) error {
+func builderPruneAction(cmd *cobra.Command, _ []string) error {
 	buildkitHost, err := getBuildkitHost(cmd)
 	if err != nil {
 		return err

@@ -43,15 +43,7 @@ func newNetworkPruneCommand() *cobra.Command {
 	return networkPruneCommand
 }
 
-func networkPruneAction(cmd *cobra.Command, args []string) error {
-	cniPath, err := cmd.Flags().GetString("cni-path")
-	if err != nil {
-		return err
-	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
-	if err != nil {
-		return err
-	}
+func networkPruneAction(cmd *cobra.Command, _ []string) error {
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
@@ -70,16 +62,28 @@ func networkPruneAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
-	if err != nil {
-		return err
-	}
-
 	client, ctx, cancel, err := newClient(cmd)
 	if err != nil {
 		return err
 	}
 	defer cancel()
+
+	return networkPrune(cmd, client, ctx)
+}
+
+func networkPrune(cmd *cobra.Command, client *containerd.Client, ctx context.Context) error {
+	cniPath, err := cmd.Flags().GetString("cni-path")
+	if err != nil {
+		return err
+	}
+	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
+	if err != nil {
+		return err
+	}
+	e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
+	if err != nil {
+		return err
+	}
 
 	containers, err := client.Containers(ctx)
 	if err != nil {
@@ -114,6 +118,7 @@ func networkPruneAction(cmd *cobra.Command, args []string) error {
 		for _, name := range removedNetworks {
 			fmt.Fprintln(cmd.OutOrStdout(), name)
 		}
+		fmt.Fprintln(cmd.OutOrStdout(), "")
 	}
 	return nil
 }

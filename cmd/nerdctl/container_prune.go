@@ -17,10 +17,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/containerd/containerd"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -46,7 +48,9 @@ func containerPruneAction(cmd *cobra.Command, _ []string) error {
 
 	if !force {
 		var confirm string
-		fmt.Fprintf(cmd.OutOrStdout(), "%s", "WARNING! This will remove all stopped containers.\nAre you sure you want to continue? [y/N] ")
+		msg := "This will remove all stopped containers."
+		msg += "\nAre you sure you want to continue? [y/N] "
+		fmt.Fprintf(cmd.OutOrStdout(), "WARNING! %s", msg)
 		fmt.Fscanf(cmd.InOrStdin(), "%s", &confirm)
 
 		if strings.ToLower(confirm) != "y" {
@@ -60,6 +64,10 @@ func containerPruneAction(cmd *cobra.Command, _ []string) error {
 	}
 	defer cancel()
 
+	return containerPrune(cmd, client, ctx)
+}
+
+func containerPrune(cmd *cobra.Command, client *containerd.Client, ctx context.Context) error {
 	containers, err := client.Containers(ctx)
 	if err != nil {
 		return err
@@ -83,6 +91,7 @@ func containerPruneAction(cmd *cobra.Command, _ []string) error {
 		for _, id := range deleted {
 			fmt.Fprintln(cmd.OutOrStdout(), id)
 		}
+		fmt.Fprintln(cmd.OutOrStdout(), "")
 	}
 
 	return nil
