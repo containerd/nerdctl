@@ -21,4 +21,5 @@ type Volume struct {
 	Name       string             `json:"Name"`
 	Mountpoint string             `json:"Mountpoint"`
 	Labels     *map[string]string `json:"Labels,omitempty"`
+	Size       int64              `json:"Size,omitempty"`
 }

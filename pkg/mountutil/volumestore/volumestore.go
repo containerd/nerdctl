@@ -63,6 +63,8 @@ type VolumeStore interface {
 	Create(name string, labels []string) (*native.Volume, error)
 	// Get may return ErrNotFound
 	Get(name string) (*native.Volume, error)
+	// GetWithSize returns a volume with size. May return ErrNotFound. Slow when volume has a lot of files.
+	GetWithSize(name string) (*native.Volume, error)
 	List() (map[string]native.Volume, error)
 	Remove(names []string) (removedNames []string, err error)
 }
@@ -152,6 +154,28 @@ func (vs *volumeStore) Get(name string) (*native.Volume, error) {
 		Labels:     Labels(volumeDataBytes),
 	}
 	return &entry, nil
+}
+
+func (vs *volumeStore) GetWithSize(name string) (*native.Volume, error) {
+	vol, err := vs.Get(name)
+	if err != nil {
+		return nil, err
+	}
+	walkDirFn := func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			vol.Size += info.Size()
+		}
+		return err
+	}
+
+	err = filepath.Walk(vol.Mountpoint, walkDirFn)
+	if err != nil {
+		return nil, err
+	}
+	return vol, nil
 }
 
 func (vs *volumeStore) List() (map[string]native.Volume, error) {
