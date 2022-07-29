@@ -78,7 +78,7 @@ func rmiAction(cmd *cobra.Command, args []string) error {
 	walker := &imagewalker.ImageWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found imagewalker.Found) error {
-			if found.MatchCount > 1 {
+			if found.MatchCount > 1 && !force {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
 			if _, ok := usedImages[found.Image.Name]; ok && !force {
