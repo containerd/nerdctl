@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
@@ -30,15 +29,12 @@ import (
 	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
-	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/imgcrypt"
 	"github.com/containerd/imgcrypt/images/encryption"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/pkg/imgutil/pull"
-	nyduslabel "github.com/containerd/nydus-snapshotter/pkg/label"
-	"github.com/containerd/stargz-snapshotter/fs/source"
 	"github.com/docker/docker/errdefs"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
@@ -77,7 +73,7 @@ func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 				Image:       image,
 				ImageConfig: *imgConfig,
 				Snapshotter: snapshotter,
-				Remote:      isStargz(snapshotter) || isOverlaybd(snapshotter),
+				Remote:      getSnapshotterOpts(snapshotter).isRemote(),
 			}
 			if unpacked, err := image.IsUnpacked(ctx, snapshotter); err == nil && !unpacked {
 				if err := image.Unpack(ctx, snapshotter); err != nil {
@@ -222,7 +218,7 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 		unpackB = len(ocispecPlatforms) == 1
 	}
 
-	var sgz, overlaybd, nydus bool
+	snOpt := getSnapshotterOpts(snapshotter)
 	if unpackB {
 		logrus.Debugf("The image will be unpacked for platform %q, snapshotter %q.", ocispecPlatforms[0], snapshotter)
 		imgcryptPayload := imgcrypt.Payload{}
@@ -231,35 +227,8 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 			containerd.WithPullUnpack,
 			containerd.WithUnpackOpts([]containerd.UnpackOpt{imgcryptUnpackOpt}))
 
-		sgz = isStargz(snapshotter)
-		if sgz {
-			// TODO: support "skip-content-verify"
-			config.RemoteOpts = append(
-				config.RemoteOpts,
-				containerd.WithImageHandlerWrapper(source.AppendDefaultLabelsHandlerWrapper(ref, 10*1024*1024)),
-			)
-		}
-		nydus = isNydus(snapshotter)
-		if nydus {
-			config.RemoteOpts = append(
-				config.RemoteOpts,
-				containerd.WithImageHandlerWrapper(nyduslabel.AppendLabelsHandlerWrapper(ref)),
-			)
-		}
-		overlaybd = isOverlaybd(snapshotter)
-		if overlaybd {
-			snlabel := map[string]string{"containerd.io/snapshot/image-ref": ref}
-			logrus.Debugf("append remote opts: %s", snlabel)
-
-			config.RemoteOpts = append(
-				config.RemoteOpts,
-				containerd.WithPullSnapshotter(snapshotter, snapshots.WithLabels(snlabel)),
-			)
-		} else {
-			config.RemoteOpts = append(
-				config.RemoteOpts,
-				containerd.WithPullSnapshotter(snapshotter))
-		}
+		// different remote snapshotters will update pull.Config separately
+		snOpt.apply(config, ref)
 	} else {
 		logrus.Debugf("The image will not be unpacked. Platforms=%v.", ocispecPlatforms)
 	}
@@ -276,28 +245,10 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 		Image:       containerdImage,
 		ImageConfig: *imgConfig,
 		Snapshotter: snapshotter,
-		Remote:      (sgz || overlaybd || nydus),
+		Remote:      snOpt.isRemote(),
 	}
 	return res, nil
 
-}
-
-func isStargz(sn string) bool {
-	if !strings.Contains(sn, "stargz") {
-		return false
-	}
-	if sn != "stargz" {
-		logrus.Debugf("assuming %q to be a stargz-compatible snapshotter", sn)
-	}
-	return true
-}
-
-func isOverlaybd(sn string) bool {
-	return sn == "overlaybd"
-}
-
-func isNydus(sn string) bool {
-	return sn == "nydus"
 }
 
 func getImageConfig(ctx context.Context, image containerd.Image) (*ocispec.ImageConfig, error) {
