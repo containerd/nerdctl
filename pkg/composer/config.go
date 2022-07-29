@@ -32,7 +32,7 @@ import (
 
 	"github.com/compose-spec/compose-go/types"
 	"github.com/opencontainers/go-digest"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type ConfigOptions struct {

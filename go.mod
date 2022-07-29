@@ -52,7 +52,7 @@ require (
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
-	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.3.0
 )
 
@@ -174,7 +174,7 @@ require (
 	google.golang.org/grpc v1.47.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.1.6 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
