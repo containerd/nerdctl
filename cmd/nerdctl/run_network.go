@@ -272,6 +272,7 @@ func verifyCNINetwork(cmd *cobra.Command, netSlice []string) error {
 	}
 	return nil
 }
+
 func verifyContainerNetwork(cmd *cobra.Command, netSlice []string) error {
 	if cmd.Flags().Changed("publish") {
 		return fmt.Errorf("conflicting options: port publishing and the container type network mode")

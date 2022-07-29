@@ -36,7 +36,7 @@ func TestPruneContainer(t *testing.T) {
 	base.Cmd("inspect", tID+"-1").AssertOK()
 	base.Cmd("inspect", tID+"-2").AssertFail()
 
-	base.Cmd("stop", tID+"-1").AssertOK()
+	base.Cmd("kill", tID+"-1").AssertOK()
 	base.Cmd("container", "prune", "-f").AssertOK()
 	base.Cmd("inspect", tID+"-1").AssertFail()
 }
