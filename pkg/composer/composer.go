@@ -71,6 +71,13 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 		composecli.WithDefaultConfigPath,
 		composecli.WithDotEnv,
 		composecli.WithName(o.Project),
+		func(o *composecli.ProjectOptions) error {
+			if _, ok := o.Environment["COMPOSE_COMPATIBILITY"]; !ok {
+				// https://github.com/compose-spec/compose-go/pull/294
+				o.Environment["COMPOSE_COMPATIBILITY"] = "1"
+			}
+			return nil
+		},
 	)
 
 	projectOptions, err := composecli.NewProjectOptions(o.ConfigPaths, optionsFn...)

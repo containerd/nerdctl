@@ -24,6 +24,8 @@ import (
 	compose "github.com/compose-spec/compose-go/types"
 )
 
+// Load is used only for unit testing.
+// TODO: Remove
 func Load(fileName, projectName string, envMap map[string]string) (*compose.Project, error) {
 	if envMap == nil {
 		envMap = make(map[string]string)
@@ -43,11 +45,18 @@ func Load(fileName, projectName string, envMap map[string]string) (*compose.Proj
 		WorkingDir:  wd,
 		ConfigFiles: files,
 		Environment: envMap,
-	}, withProjectName(projectName))
+	}, withProjectName(projectName), withCompatibilitySeparator())
 }
 
 func withProjectName(name string) func(*loader.Options) {
 	return func(lOpts *loader.Options) {
 		lOpts.SetProjectName(name, true)
+	}
+}
+
+func withCompatibilitySeparator() func(*loader.Options) {
+	return func(lOpts *loader.Options) {
+		// https://github.com/compose-spec/compose-go/pull/294
+		lOpts.Separator = loader.CompatibilitySeparator
 	}
 }
