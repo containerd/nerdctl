@@ -1470,7 +1470,6 @@ Compose:
 
 Others:
 - `docker system df`
-- `docker system prune`
 - `docker context`
 - Swarm commands are unimplemented and will not be implemented: `docker swarm|node|service|config|secret|stack *`
 - Plugin commands are unimplemented and will not be implemented: `docker plugin *`

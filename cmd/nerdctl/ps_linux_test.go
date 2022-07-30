@@ -28,12 +28,12 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-type testContainer struct {
+type psTestContainer struct {
 	name   string
 	labels map[string]string
 }
 
-func prepareTest(t *testing.T) (*testutil.Base, testContainer) {
+func preparePsTestContainer(t *testing.T) (*testutil.Base, psTestContainer) {
 	base := testutil.NewBase(t)
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
@@ -71,14 +71,14 @@ func prepareTest(t *testing.T) (*testutil.Base, testContainer) {
 	// let the container occupy 25MiB space.
 	base.Cmd("exec", testContainerName, "dd", "if=/dev/zero", "of=/test_file", "bs=1M", "count=25").AssertOK()
 
-	return base, testContainer{
+	return base, psTestContainer{
 		name:   testContainerName,
 		labels: testLabels,
 	}
 }
 
 func TestContainerList(t *testing.T) {
-	base, testContainer := prepareTest(t)
+	base, testContainer := preparePsTestContainer(t)
 
 	// hope there are no tests running parallel
 	base.Cmd("ps", "-n", "1", "-s").AssertOutWithFunc(func(stdout string) error {
@@ -121,7 +121,7 @@ func TestContainerList(t *testing.T) {
 
 func TestContainerListWideMode(t *testing.T) {
 	testutil.DockerIncompatible(t)
-	base, testContainer := prepareTest(t)
+	base, testContainer := preparePsTestContainer(t)
 
 	// hope there are no tests running parallel
 	base.Cmd("ps", "-n", "1", "--format", "wide").AssertOutWithFunc(func(stdout string) error {
@@ -160,7 +160,7 @@ func TestContainerListWideMode(t *testing.T) {
 }
 
 func TestContainerListWithLabels(t *testing.T) {
-	base, testContainer := prepareTest(t)
+	base, testContainer := preparePsTestContainer(t)
 
 	// hope there are no tests running parallel
 	base.Cmd("ps", "-n", "1", "--format", "{{.Labels}}").AssertOutWithFunc(func(stdout string) error {
