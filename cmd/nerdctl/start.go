@@ -178,8 +178,10 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 }
 
 func reconfigNetContainer(ctx context.Context, c containerd.Container, client *containerd.Client, lab map[string]string) error {
-
-	networksJSON := lab[labels.Networks]
+	networksJSON, ok := lab[labels.Networks]
+	if !ok {
+		return nil
+	}
 	var networks []string
 	if err := json.Unmarshal([]byte(networksJSON), &networks); err != nil {
 		return err
