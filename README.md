@@ -1080,6 +1080,7 @@ Usage: `nerdctl volume inspect [OPTIONS] VOLUME [VOLUME...]`
 
 Flags:
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :nerd_face: `--size`: Displays disk usage of volume
 
 ### :whale: nerdctl volume rm
 Remove one or more volumes

@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/spf13/cobra"
 )
 
@@ -31,6 +32,7 @@ func newVolumeInspectCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 	volumeInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	volumeInspectCommand.Flags().BoolP("size", "s", false, "Display the disk usage of the volume")
 	volumeInspectCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -38,14 +40,25 @@ func newVolumeInspectCommand() *cobra.Command {
 }
 
 func volumeInspectAction(cmd *cobra.Command, args []string) error {
+	var displayDiskUsage, err = cmd.Flags().GetBool("size")
+	if err != nil {
+		return err
+	}
 
 	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return err
 	}
 	result := make([]interface{}, len(args))
+
 	for i, name := range args {
-		vol, err := volStore.Get(name)
+		var vol *native.Volume
+		var err error
+		if displayDiskUsage {
+			vol, err = volStore.GetWithSize(name)
+		} else {
+			vol, err = volStore.Get(name)
+		}
 		if err != nil {
 			return err
 		}
