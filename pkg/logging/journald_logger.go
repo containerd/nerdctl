@@ -27,9 +27,24 @@ import (
 	"text/template"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/coreos/go-systemd/v22/journal"
 	"github.com/docker/cli/templates"
+	"github.com/sirupsen/logrus"
 )
+
+var JournalDriverLogOpts = []string{
+	Tag,
+}
+
+func JournalLogOptsValidate(logOptMap map[string]string) error {
+	for key := range logOptMap {
+		if !strutil.InStringSlice(JournalDriverLogOpts, key) {
+			logrus.Warnf("log-opt %s is ignored for journald log driver", key)
+		}
+	}
+	return nil
+}
 
 type JournaldLogger struct {
 	Opts map[string]string

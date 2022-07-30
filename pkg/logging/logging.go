@@ -43,11 +43,21 @@ type Driver interface {
 }
 
 type DriverFactory func(map[string]string) (Driver, error)
+type LogOpsValidateFunc func(logOptMap map[string]string) error
 
 var drivers = make(map[string]DriverFactory)
+var driversLogOptsValidateFunctions = make(map[string]LogOpsValidateFunc)
 
-func RegisterDriver(name string, f DriverFactory) {
+func ValidateLogOpts(logDriver string, logOpts map[string]string) error {
+	if value, ok := driversLogOptsValidateFunctions[logDriver]; ok && value != nil {
+		return value(logOpts)
+	}
+	return nil
+}
+
+func RegisterDriver(name string, f DriverFactory, validateFunc LogOpsValidateFunc) {
 	drivers[name] = f
+	driversLogOptsValidateFunctions[name] = validateFunc
 }
 
 func Drivers() []string {
@@ -70,13 +80,13 @@ func GetDriver(name string, opts map[string]string) (Driver, error) {
 func init() {
 	RegisterDriver("json-file", func(opts map[string]string) (Driver, error) {
 		return &JSONLogger{Opts: opts}, nil
-	})
+	}, JSONFileLogOptsValidate)
 	RegisterDriver("journald", func(opts map[string]string) (Driver, error) {
 		return &JournaldLogger{Opts: opts}, nil
-	})
+	}, JournalLogOptsValidate)
 	RegisterDriver("fluentd", func(opts map[string]string) (Driver, error) {
 		return &FluentdLogger{Opts: opts}, nil
-	})
+	}, FluentdLogOptsValidate)
 }
 
 // Main is the entrypoint for the containerd runtime v2 logging plugin mode.

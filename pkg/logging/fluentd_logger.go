@@ -29,7 +29,9 @@ import (
 	"time"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/fluent/fluent-logger-golang/fluent"
+	"github.com/sirupsen/logrus"
 )
 
 type FluentdLogger struct {
@@ -47,6 +49,18 @@ const (
 	fluentRequestAck              = "fluentd-request-ack"
 )
 
+var FluentdLogOpts = []string{
+	fluentAddress,
+	fluentdAsync,
+	fluentdBufferLimit,
+	fluentdRetryWait,
+	fluentdMaxRetries,
+	fluentdSubSecondPrecision,
+	fluentdAsyncReconnectInterval,
+	fluentRequestAck,
+	Tag,
+}
+
 const (
 	defaultBufferLimit = 1024 * 1024
 	defaultHost        = "127.0.0.1"
@@ -59,6 +73,18 @@ const (
 	minReconnectInterval = 100 * time.Millisecond
 	maxReconnectInterval = 10 * time.Second
 )
+
+func FluentdLogOptsValidate(logOptMap map[string]string) error {
+	for key := range logOptMap {
+		if !strutil.InStringSlice(FluentdLogOpts, key) {
+			logrus.Warnf("log-opt %s is ignored for fluentd log driver", key)
+		}
+	}
+	if _, ok := logOptMap[fluentAddress]; !ok {
+		logrus.Warnf("%s is missing for fluentd log driver, the default value %s:%d will be used", fluentAddress, defaultHost, defaultPort)
+	}
+	return nil
+}
 
 type fluentdLocation struct {
 	protocol string

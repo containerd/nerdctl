@@ -965,6 +965,9 @@ func parseKVStringsMapFromLogOpt(cmd *cobra.Command, logDriver string) (map[stri
 			delete(logOptMap, logging.MaxFile)
 		}
 	}
+	if err := logging.ValidateLogOpts(logDriver, logOptMap); err != nil {
+		return nil, err
+	}
 	return logOptMap, nil
 }
 
