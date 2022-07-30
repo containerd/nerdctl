@@ -252,6 +252,19 @@ func TestParseCSVMap(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "normal-2",
+			args: args{
+				s: "foo=\"x,bar=y,baz=\"z\",qux",
+			},
+			want: map[string]string{
+				"foo": "\"x",
+				"bar": "y",
+				"baz": "\"z\"",
+				"qux": "",
+			},
+			wantErr: false,
+		},
+		{
 			name: "invalid",
 			args: args{
 				s: "sssssss\nsss",

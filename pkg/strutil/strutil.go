@@ -84,6 +84,8 @@ func DedupeStrSlice(in []string) []string {
 // ParseCSVMap parses a string like "foo=x,bar=y" into a map
 func ParseCSVMap(s string) (map[string]string, error) {
 	csvR := csv.NewReader(strings.NewReader(s))
+	// s can contains quotes, but the csv reader needs LazyQuotes to recognize quotes as values.
+	csvR.LazyQuotes = true
 	ra, err := csvR.ReadAll()
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse %q: %w", s, err)

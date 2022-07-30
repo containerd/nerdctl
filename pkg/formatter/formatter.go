@@ -135,3 +135,13 @@ func FormatPorts(labelMap map[string]string) string {
 func TimeSinceInHuman(since time.Time) string {
 	return fmt.Sprintf("%s ago", units.HumanDuration(time.Since(since)))
 }
+
+func FormatLabels(labelMap map[string]string) string {
+	strs := make([]string, len(labelMap))
+	idx := 0
+	for i := range labelMap {
+		strs[idx] = fmt.Sprintf("%s=%s", i, labelMap[i])
+		idx++
+	}
+	return strings.Join(strs, ",")
+}
