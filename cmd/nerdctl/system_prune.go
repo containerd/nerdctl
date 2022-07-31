@@ -72,6 +72,7 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 		}
 		msg += `
   - all images without at least one container associated to them
+  - all build cache
 `
 		msg += "\nAre you sure you want to continue? [y/N] "
 		fmt.Fprintf(cmd.OutOrStdout(), "WARNING! %s", msg)
@@ -99,5 +100,8 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	return imagePrune(cmd, client, ctx)
+	if err := imagePrune(cmd, client, ctx); err != nil {
+		return err
+	}
+	return builderPruneAction(cmd, args)
 }
