@@ -31,7 +31,7 @@ func newNetworkCreateCommand() *cobra.Command {
 	var networkCreateCommand = &cobra.Command{
 		Use:           "create [flags] NETWORK",
 		Short:         "Create a network",
-		Long:          "NOTE: To isolate CNI bridge, CNI isolation plugin needs to be installed: https://github.com/AkihiroSuda/cni-isolation",
+		Long:          `NOTE: To isolate CNI bridge, CNI plugin "firewall" (>= v1.1.0) is needed.`,
 		Args:          cobra.ExactArgs(1),
 		RunE:          networkCreateAction,
 		SilenceUsage:  true,

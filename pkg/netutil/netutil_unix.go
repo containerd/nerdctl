@@ -219,7 +219,7 @@ To dismiss this warning, uninstall %q and install CNI "firewall" plugin (>= 1.1.
 			logrus.WithError(err).Warnf("Failed to detect whether %q is newer than v1.1.0", firewallPath)
 		}
 		if !ok {
-			logrus.Warnf("To isolate bridge networks, CNI plugin \"firewall\" (>= 1.1.0), or CNI plugin \"isolation\" (deprecated) needs to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins",
+			logrus.Warnf("To isolate bridge networks, CNI plugin \"firewall\" (>= 1.1.0) needs to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins",
 				e.Path)
 		}
 	}
