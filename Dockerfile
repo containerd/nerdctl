@@ -37,7 +37,7 @@ ARG BYPASS4NETNS_VERSION=v0.2.2
 ARG FUSE_OVERLAYFS_VERSION=v1.9
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.4
 # Extra deps: IPFS
-ARG IPFS_VERSION=v0.13.1
+ARG KUBO_VERSION=v0.14.0
 # Extra deps: Init
 ARG TINI_VERSION=v0.19.0
 # Extra deps: Debug
@@ -191,14 +191,14 @@ RUN fname="containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION/v}-${TA
   tar xzf "${fname}" -C /out/bin && \
   rm -f "${fname}" && \
   echo "- containerd-fuse-overlayfs: ${CONTAINERD_FUSE_OVERLAYFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
-ARG IPFS_VERSION
-RUN fname="go-ipfs_${IPFS_VERSION}_${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
-  curl -o "${fname}" -fSL "https://github.com/ipfs/go-ipfs/releases/download/${IPFS_VERSION}/${fname}" && \
-  grep "${fname}" "/SHA256SUMS.d/go-ipfs-${IPFS_VERSION}" | sha256sum -c && \
+ARG KUBO_VERSION
+RUN fname="kubo_${KUBO_VERSION}_${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
+  curl -o "${fname}" -fSL "https://github.com/ipfs/kubo/releases/download/${KUBO_VERSION}/${fname}" && \
+  grep "${fname}" "/SHA256SUMS.d/kubo-${KUBO_VERSION}" | sha256sum -c && \
   tmpout=$(mktemp -d) && \
-  tar -C ${tmpout} -xzf "${fname}" go-ipfs/ipfs && \
-  mv ${tmpout}/go-ipfs/ipfs /out/bin/ && \
-  echo "- IPFS: ${IPFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+  tar -C ${tmpout} -xzf "${fname}" kubo/ipfs && \
+  mv ${tmpout}/kubo/ipfs /out/bin/ && \
+  echo "- Kubo (IPFS): ${KUBO_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG TINI_VERSION
 RUN fname="tini-static-${TARGETARCH:-amd64}" && \
   curl -o "${fname}" -fSL "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/${fname}" && \
@@ -217,7 +217,7 @@ RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/slirp4netns:    [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/rootless-containers/slirp4netns/blob/${SLIRP4NETNS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/fuse-overlayfs: [GNU GENERAL PUBLIC LICENSE, Version 3](https://github.com/containers/fuse-overlayfs/blob/${FUSE_OVERLAYFS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
-  echo "- bin/ipfs: [Combination of MIT-only license and dual MIT/Apache-2.0 license](https://github.com/ipfs/go-ipfs/blob/${IPFS_VERSION}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
+  echo "- bin/ipfs: [Combination of MIT-only license and dual MIT/Apache-2.0 license](https://github.com/ipfs/kubo/blob/${KUBO_VERSION}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/{runc,bypass4netns,bypass4netnsd}: Apache License 2.0, statically linked with libseccomp ([LGPL 2.1](https://github.com/seccomp/libseccomp/blob/main/LICENSE), source code available at https://github.com/seccomp/libseccomp/)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/tini: [MIT License](https://github.com/krallin/tini/blob/${TINI_VERSION}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- Other files: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)" >> /out/share/doc/nerdctl-full/README.md && \
