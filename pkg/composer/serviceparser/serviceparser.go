@@ -500,8 +500,8 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 			c.RunArgs = append(c.RunArgs, fmt.Sprintf("-e=%s=%s", k, *v))
 		}
 	}
-	for _, v := range svc.ExtraHosts {
-		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--add-host=%s", v))
+	for k, v := range svc.ExtraHosts {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--add-host=%s:%s", k, v))
 	}
 
 	hostname := svc.Hostname

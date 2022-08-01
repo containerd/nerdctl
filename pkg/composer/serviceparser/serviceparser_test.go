@@ -86,6 +86,9 @@ services:
     restart: always
     ports:
       - 8080:80
+    extra_hosts:
+      test.com: 172.19.1.1
+      test2.com: 172.19.1.2
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: exampleuser
@@ -159,6 +162,8 @@ volumes:
 	assert.Assert(t, in(wp1.RunArgs, "--log-driver=json-file"))
 	assert.Assert(t, in(wp1.RunArgs, "--log-opt=max-size=5K"))
 	assert.Assert(t, in(wp1.RunArgs, "--log-opt=max-file=2"))
+	assert.Assert(t, in(wp1.RunArgs, "--add-host=test.com:172.19.1.1"))
+	assert.Assert(t, in(wp1.RunArgs, "--add-host=test2.com:172.19.1.2"))
 
 	dbSvc, err := project.GetService("db")
 	assert.NilError(t, err)
