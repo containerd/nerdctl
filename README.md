@@ -978,7 +978,7 @@ Usage: `nerdctl logout [SERVER]`
 ### :whale: nerdctl network create
 Create a network
 
-:information_source: To isolate CNI bridge, [CNI isolation plugin](https://github.com/AkihiroSuda/cni-isolation) needs to be installed.
+:information_source: To isolate CNI bridge, CNI plugins v1.1.0 or later needs to be installed.
 
 Usage: `nerdctl network create [OPTIONS] NETWORK`
 
