@@ -196,10 +196,15 @@ func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]o
 }
 
 func setOOMScoreAdj(opts []oci.SpecOpts, cmd *cobra.Command) ([]oci.SpecOpts, error) {
+	if !cmd.Flags().Changed("oom-score-adj") {
+		return opts, nil
+	}
+
 	score, err := cmd.Flags().GetInt("oom-score-adj")
 	if err != nil {
 		return nil, err
 	}
+	// score=0 means literally zero, not "unchanged"
 
 	if score < -1000 || score > 1000 {
 		return nil, fmt.Errorf("invalid value %d, range for oom score adj is [-1000, 1000]", score)
