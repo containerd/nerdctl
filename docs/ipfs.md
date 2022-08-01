@@ -9,8 +9,8 @@ IPFS support is completely optional. Your host is NOT connected to any P2P netwo
 
 ## Prerequisites
 
-To use this feature, make sure `ipfs daemon` is running on your host.
-For example, you can run an IPFS daemon using the following command.
+To use this feature, make sure an IPFS daemon such as [Kubo](https://github.com/ipfs/kubo) (former go-ipfs) is running on your host.
+For example, you can run Kubo using the following command.
 
 ```
 ipfs daemon
