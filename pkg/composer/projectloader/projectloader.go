@@ -45,18 +45,11 @@ func Load(fileName, projectName string, envMap map[string]string) (*compose.Proj
 		WorkingDir:  wd,
 		ConfigFiles: files,
 		Environment: envMap,
-	}, withProjectName(projectName), withCompatibilitySeparator())
+	}, withProjectName(projectName))
 }
 
 func withProjectName(name string) func(*loader.Options) {
 	return func(lOpts *loader.Options) {
 		lOpts.SetProjectName(name, true)
-	}
-}
-
-func withCompatibilitySeparator() func(*loader.Options) {
-	return func(lOpts *loader.Options) {
-		// https://github.com/compose-spec/compose-go/pull/294
-		lOpts.Separator = loader.CompatibilitySeparator
 	}
 }
