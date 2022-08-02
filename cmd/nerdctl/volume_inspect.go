@@ -17,7 +17,6 @@
 package main
 
 import (
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +39,7 @@ func newVolumeInspectCommand() *cobra.Command {
 }
 
 func volumeInspectAction(cmd *cobra.Command, args []string) error {
-	var displayDiskUsage, err = cmd.Flags().GetBool("size")
+	var volumeSize, err = cmd.Flags().GetBool("size")
 	if err != nil {
 		return err
 	}
@@ -52,13 +51,7 @@ func volumeInspectAction(cmd *cobra.Command, args []string) error {
 	result := make([]interface{}, len(args))
 
 	for i, name := range args {
-		var vol *native.Volume
-		var err error
-		if displayDiskUsage {
-			vol, err = volStore.GetWithSize(name)
-		} else {
-			vol, err = volStore.Get(name)
-		}
+		var vol, err = volStore.Get(name, volumeSize)
 		if err != nil {
 			return err
 		}

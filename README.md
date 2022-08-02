@@ -1070,6 +1070,7 @@ Flags:
   - :whale: `--format='{{json .}}'`: JSON
   - :nerd_face: `--format=wide`: Alias of `--format=table`
   - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
+- :nerd_face: `--size`: Display the disk usage of volumes.
 
 Unimplemented `docker volume ls` flags: `--filter`
 

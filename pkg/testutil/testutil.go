@@ -221,8 +221,10 @@ func (b *Base) InspectNetwork(name string) dockercompat.Network {
 	return dc[0]
 }
 
-func (b *Base) InspectVolume(name string) native.Volume {
-	cmdResult := b.Cmd("volume", "inspect", name).Run()
+func (b *Base) InspectVolume(name string, args ...string) native.Volume {
+	cmd := append([]string{"volume", "inspect"}, args...)
+	cmd = append(cmd, name)
+	cmdResult := b.Cmd(cmd...).Run()
 	assert.Equal(b.T, cmdResult.ExitCode, 0)
 	var dc []native.Volume
 	if err := json.Unmarshal([]byte(cmdResult.Stdout()), &dc); err != nil {

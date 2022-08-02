@@ -66,7 +66,7 @@ func volumeRmAction(cmd *cobra.Command, args []string) error {
 
 	var volumenames []string // nolint: prealloc
 	for _, name := range names {
-		volume, err := volStore.Get(name)
+		volume, err := volStore.Get(name, false)
 		if err != nil {
 			return err
 		}
