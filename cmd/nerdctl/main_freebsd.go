@@ -17,8 +17,20 @@
 package main
 
 import (
+	"context"
+	"os"
+
+	"github.com/containerd/containerd/log"
 	"github.com/spf13/cobra"
+	"golang.org/x/sys/unix"
 )
+
+var handledSignals = []os.Signal{
+	unix.SIGTERM,
+	unix.SIGINT,
+	unix.SIGUSR1,
+	unix.SIGPIPE,
+}
 
 func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
 	return false
@@ -34,4 +46,32 @@ func addApparmorCommand(rootCmd *cobra.Command) {
 
 func addCpCommand(rootCmd *cobra.Command) {
 	// NOP
+}
+
+func handleSignals(ctx context.Context, signals chan os.Signal, cancel func()) chan struct{} {
+	done := make(chan struct{}, 1)
+	go func() {
+		for {
+			select {
+			case s := <-signals:
+
+				// Do not print message when dealing with SIGPIPE, which may cause
+				// nested signals and consume lots of cpu bandwidth.
+				if s == unix.SIGPIPE {
+					continue
+				}
+
+				log.G(ctx).WithField("signal", s).Debug("received signal")
+				switch s {
+				case unix.SIGUSR1:
+					dumpStacks(true)
+				default:
+					cancel()
+					close(done)
+					return
+				}
+			}
+		}
+	}()
+	return done
 }
