@@ -44,3 +44,37 @@ func TestTabReader(t *testing.T) {
 	value, _ = reader.ReadRow(tabRows[2], "b")
 	assert.Equal(t, value, "456")
 }
+
+func TestTabReaderParseTrimmedRow(t *testing.T) {
+	// for example, row 2 and row 3 are trimmed because they do not contain value for the header c
+	tabRows := strings.Split(`a    b    c
+1    2
+123  456`, "\n")
+	reader := NewReader("a\tb\tc\t")
+
+	err := reader.ParseHeader(tabRows[0])
+	assert.NilError(t, err)
+
+	var (
+		value string
+		ok    bool
+	)
+	value, ok = reader.ReadRow(tabRows[1], "a")
+	assert.Equal(t, value, "1")
+	assert.Equal(t, ok, true)
+	value, ok = reader.ReadRow(tabRows[1], "b")
+	assert.Equal(t, value, "2")
+	assert.Equal(t, ok, true)
+	value, ok = reader.ReadRow(tabRows[1], "c")
+	assert.Equal(t, value, "")
+	assert.Equal(t, ok, false)
+	value, ok = reader.ReadRow(tabRows[2], "a")
+	assert.Equal(t, value, "123")
+	assert.Equal(t, ok, true)
+	value, ok = reader.ReadRow(tabRows[2], "b")
+	assert.Equal(t, value, "456")
+	assert.Equal(t, ok, true)
+	value, ok = reader.ReadRow(tabRows[2], "c")
+	assert.Equal(t, value, "")
+	assert.Equal(t, ok, false)
+}

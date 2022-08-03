@@ -61,11 +61,21 @@ func (r *TabReader) ReadRow(row, key string) (string, bool) {
 	if !ok {
 		return "", false
 	}
+	if idx.start > len(row) {
+		return "", false
+	}
 	var value string
 	if idx.end == -1 {
 		value = row[idx.start:]
 	} else {
-		value = row[idx.start:idx.end]
+		end := min(idx.end, len(row))
+		value = row[idx.start:end]
 	}
 	return strings.TrimSpace(value), true
+}
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
