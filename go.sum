@@ -68,6 +68,7 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/toml v1.1.0 h1:ksErzDEI1khOiGPgpwuI7x2ebx/uXQNw7xJpn9Eq1+I=
 github.com/BurntSushi/toml v1.1.0/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
+github.com/KarpelesLab/reflink v0.0.2/go.mod h1:mB+2afhyn+eZTMFSH1gXunrgArTsiUBzfoAy0X2fatA=
 github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/Kubuxu/go-os-helper v0.0.1/go.mod h1:N8B+I7vPCT80IcP58r50u4+gEEcsZETFUpAzWW2ep1Y=
 github.com/Masterminds/semver/v3 v3.1.1 h1:hLg3sBzpNErnxhQtUy/mmLR2I9foDujNK030IGemrRc=
@@ -228,8 +229,8 @@ github.com/containerd/imgcrypt v1.1.5-0.20220421044638-8ba028dca028/go.mod h1:Lo
 github.com/containerd/imgcrypt v1.1.6 h1:SVkkrLRY8MLrMeMUF/nc2yyttgV+/eraTe+Sak/smtk=
 github.com/containerd/imgcrypt v1.1.6/go.mod h1:cBSGSd3q2oo+r2Glsiix6O5g2eKFaYe0bMNrYjN+V7M=
 github.com/containerd/nri v0.1.0/go.mod h1:lmxnXF6oMkbqs39FiCt1s0R2HSMhcLel9vNL3m4AaeY=
-github.com/containerd/nydus-snapshotter v0.3.0-alpha.4 h1:zJt0DB0t9Xe5d6U/f4Bhs8LoscgkMuGhYJo6+ddxPIo=
-github.com/containerd/nydus-snapshotter v0.3.0-alpha.4/go.mod h1:wbBcrhc0zIiztULoMuF8ijq1QmpVBui/Ps7K/lspATg=
+github.com/containerd/nydus-snapshotter v0.3.0-alpha.5 h1:r6x2KjHqlcTiLUEZi8C5S3irTGpqj+1Y/9wdOHsLaVM=
+github.com/containerd/nydus-snapshotter v0.3.0-alpha.5/go.mod h1:zBuYaCIt5l9DBvX89EQBrbp7K8wd2tvpR51KTxodtF8=
 github.com/containerd/stargz-snapshotter v0.12.0 h1:SRKo+YxmypnlyC7eKc9KNW0Ciy1Auo102s8E/aRGWKg=
 github.com/containerd/stargz-snapshotter v0.12.0/go.mod h1:LYKrfzJBNUs0hP9GA4YXTIudE6pjZ96W0X1Ls7yI7Gs=
 github.com/containerd/stargz-snapshotter/estargz v0.4.1/go.mod h1:x7Q9dg9QYb4+ELgxmo4gBUeJB0tl5dqH1Sdz0nJU1QM=
