@@ -19,6 +19,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"strings"
@@ -123,5 +124,9 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 	for _, row := range parsedOutput.Rows {
 		_, _ = fmt.Fprintf(out, "%s\n", row.ID)
 	}
+	j, _ := json.Marshal(parsedOutput)
+	fmt.Fprintf(out, "%s\n", j)
+
+	fmt.Fprintf(out, "%s", buf.Bytes())
 	return err
 }

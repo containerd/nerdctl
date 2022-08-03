@@ -1,8 +1,29 @@
+/*
+   Copyright The containerd Authors.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
+/*
+   Portions from https://github.com/docker/cli/blob/v20.10.9/cli/command/image/build/context.go
+   Copyright (C) Docker authors.
+   Licensed under the Apache License, Version 2.0
+   NOTICE: https://github.com/docker/cli/blob/v20.10.9/NOTICE
+*/
+
 package buildkitutil
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"github.com/containerd/nerdctl/pkg/tabutil"
 	"strings"
@@ -28,24 +49,27 @@ const FinalizerTotal = "Total:"
 
 func ParseBuildctlPruneTableOutput(out []byte) (*BuildctlPruneOutput, error) {
 	tabReader := tabutil.NewReader(fmt.Sprintf("%s\t%s\t%s\t%s", HeaderID, HeaderReclaimable, HeaderSize, HeaderLastAccessed))
-	scanner := bufio.NewScanner(bytes.NewReader(out))
-	firstLineParsed := false
+	lines := strings.Split(string(out), "\n")
+
+	totalSize, err := parseTotalSize(lines[len(lines)-2])
+	if err != nil {
+		return nil, err
+	}
+
+	if len(lines) == 2 {
+		return &BuildctlPruneOutput{
+			TotalSize: totalSize,
+			Rows:      nil,
+		}, nil
+	}
+
+	if err := tabReader.ParseHeader(lines[0]); err != nil {
+		return nil, err
+	}
 
 	var rows []BuildctlPruneOutputRow
-	totalSize := ""
-	for scanner.Scan() {
-		line := scanner.Text()
-		// parse total
-		if strings.HasPrefix(line, FinalizerTotal) {
-			totalSize = strings.TrimSpace(line[len(FinalizerTotal):])
-			break
-		}
-		// parse header
-		if !firstLineParsed {
-			_ = tabReader.ParseHeader(line)
-			firstLineParsed = true
-			continue
-		}
+
+	for _, line := range lines[1 : len(lines)-2] {
 		// best effort parse row
 		id, _ := tabReader.ReadRow(line, HeaderID)
 		reclaimable, _ := tabReader.ReadRow(line, HeaderReclaimable)
@@ -58,8 +82,16 @@ func ParseBuildctlPruneTableOutput(out []byte) (*BuildctlPruneOutput, error) {
 			LastAccessed: lastAccessed,
 		})
 	}
+
 	return &BuildctlPruneOutput{
 		TotalSize: totalSize,
 		Rows:      rows,
 	}, nil
+}
+
+func parseTotalSize(line string) (string, error) {
+	if strings.HasPrefix(line, FinalizerTotal) {
+		return strings.TrimSpace(line[len(FinalizerTotal):]), nil
+	}
+	return "", fmt.Errorf("parse total size from buildctl prune command ouput, unexpected line, does not contains total size: %s", line)
 }
