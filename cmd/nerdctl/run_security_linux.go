@@ -18,8 +18,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -29,6 +27,7 @@ import (
 	"github.com/containerd/containerd/pkg/cap"
 	"github.com/containerd/nerdctl/pkg/apparmorutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/maputil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/sirupsen/logrus"
 )
@@ -40,10 +39,15 @@ var privilegedOpts = []oci.SpecOpts{
 	oci.WithNewPrivileges,
 }
 
-func generateSecurityOpts(securityOptsMap map[string]string) ([]oci.SpecOpts, error) {
+var privilegedWithoutDevicesOpts = []oci.SpecOpts{
+	oci.WithPrivileged,
+	oci.WithNewPrivileges,
+}
+
+func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([]oci.SpecOpts, error) {
 	for k := range securityOptsMap {
 		switch k {
-		case "seccomp", "apparmor", "no-new-privileges":
+		case "seccomp", "apparmor", "no-new-privileges", "privileged-without-host-devices":
 		default:
 			logrus.Warnf("Unknown security-opt: %q", k)
 		}
@@ -85,21 +89,32 @@ func generateSecurityOpts(securityOptsMap map[string]string) ([]oci.SpecOpts, er
 		}
 	}
 
-	nnp := false
-	if nnpStr, ok := securityOptsMap["no-new-privileges"]; ok {
-		if nnpStr == "" {
-			nnp = true
-		} else {
-			var err error
-			nnp, err = strconv.ParseBool(nnpStr)
-			if err != nil {
-				return nil, fmt.Errorf("invalid \"no-new-privileges\" value: %q: %w", nnpStr, err)
-			}
-		}
+	nnp, err := maputil.MapBoolValueAsOpt(securityOptsMap, "no-new-privileges")
+	if err != nil {
+		return nil, err
 	}
+
 	if !nnp {
 		opts = append(opts, oci.WithNewPrivileges)
 	}
+
+	privilegedWithoutHostDevices, err := maputil.MapBoolValueAsOpt(securityOptsMap, "privileged-without-host-devices")
+	if err != nil {
+		return nil, err
+	}
+
+	if privilegedWithoutHostDevices && !privileged {
+		return nil, errors.New("flag `--security-opt privileged-without-host-devices` can't be used without `--privileged` enabled")
+	}
+
+	if privileged {
+		if privilegedWithoutHostDevices {
+			opts = append(opts, privilegedWithoutDevicesOpts...)
+		} else {
+			opts = append(opts, privilegedOpts...)
+		}
+	}
+
 	return opts, nil
 }
 
