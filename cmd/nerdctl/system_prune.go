@@ -17,7 +17,10 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -103,5 +106,22 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 	if err := imagePrune(cmd, client, ctx); err != nil {
 		return err
 	}
-	return builderPruneAction(cmd, args)
+
+	var buf bytes.Buffer
+	outWriter := bufio.NewWriter(&buf)
+	copiedCmd := *cmd
+	copiedCmd.SetOut(outWriter)
+	if err := builderPruneAction(&copiedCmd, args); err != nil {
+		return err
+	}
+	parsedOutput, err := buildkitutil.ParseBuildctlPruneTableOutput(buf.Bytes())
+	if err != nil {
+		return err
+	}
+	// pretty print the output of prune build cache
+	out := cmd.OutOrStdout()
+	for _, row := range parsedOutput.Rows {
+		_, _ = fmt.Fprintf(out, "%s\n", row.ID)
+	}
+	return err
 }

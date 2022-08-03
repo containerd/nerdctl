@@ -26,7 +26,7 @@ const HeaderSize = "SIZE"
 const HeaderLastAccessed = "LAST ACCESSED"
 const FinalizerTotal = "Total:"
 
-func ParseBuildctlPruneOutput(out []byte) (*BuildctlPruneOutput, error) {
+func ParseBuildctlPruneTableOutput(out []byte) (*BuildctlPruneOutput, error) {
 	tabReader := tabutil.NewReader(fmt.Sprintf("%s\t%s\t%s\t%s", HeaderID, HeaderReclaimable, HeaderSize, HeaderLastAccessed))
 	scanner := bufio.NewScanner(bytes.NewReader(out))
 	firstLineParsed := false

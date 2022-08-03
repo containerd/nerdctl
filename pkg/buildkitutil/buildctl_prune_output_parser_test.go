@@ -96,13 +96,13 @@ Total:  584.31MB`)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseBuildctlPruneOutput(tt.args.out)
+			got, err := ParseBuildctlPruneTableOutput(tt.args.out)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseBuildctlPruneOutput() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParseBuildctlPruneTableOutput() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ParseBuildctlPruneOutput() got = %v, want %v", got, tt.want)
+				t.Errorf("ParseBuildctlPruneTableOutput() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
