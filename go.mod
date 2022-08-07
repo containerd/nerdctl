@@ -44,7 +44,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	github.com/tidwall/gjson v1.14.1
+	github.com/tidwall/gjson v1.14.2
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
