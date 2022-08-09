@@ -209,13 +209,21 @@ func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containe
 		return nil, nil, nil, err
 	} else if len(parsed) > 0 {
 		ociMounts := make([]specs.Mount, len(parsed))
+		var target string
 		for i, x := range parsed {
 			ociMounts[i] = x.Mount
 			mounted[filepath.Clean(x.Mount.Destination)] = struct{}{}
 
-			target, err := securejoin.SecureJoin(tempDir, x.Mount.Destination)
-			if err != nil {
-				return nil, nil, nil, err
+			if runtime.GOOS == "windows" {
+				target, err = securejoin.SecureJoin(tempDir, strings.Replace(x.Mount.Destination, ":", "", -1))
+				if err != nil {
+					return nil, nil, nil, err
+				}
+			} else {
+				target, err = securejoin.SecureJoin(tempDir, x.Mount.Destination)
+				if err != nil {
+					return nil, nil, nil, err
+				}
 			}
 
 			// Copying content in AnonymousVolume and namedVolume
