@@ -782,9 +782,16 @@ Flags:
   - :nerd_face: `--format=wide`: Wide table
   - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
 - :whale: `--digests`: Show digests (compatible with Docker, unlike ID)
+- :whale: `-f, --filter`: Filter the images. For now, only 'before=<image:tag>' and 'since=<image:tag>' is supported.
+  - :whale: `--filter=before=<image:tag>`: Images created before given image (exclusive)
+  - :whale: `--filter=since=<image:tag>`: Images created after given image (exclusive)
 - :nerd_face: `--names`: Show image names
 
-Unimplemented `docker images` flags: `--filter`
+Following arguments for `--filter` are not supported yet:
+
+1. `--filter=label=<key>=<value>`: Filter images by label
+2. `--filter=reference=<image:tag>`: Filter images by reference
+3. `--filter=dangling=true`: Filter images by dangling
 
 ### :whale: :blue_square: nerdctl pull
 Pull an image from a registry.

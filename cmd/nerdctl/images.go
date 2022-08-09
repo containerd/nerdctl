@@ -73,6 +73,7 @@ Properties:
 	imagesCommand.Flags().Bool("no-trunc", false, "Don't truncate output")
 	// Alias "-f" is reserved for "--filter"
 	imagesCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}', 'wide'")
+	imagesCommand.Flags().StringSliceP("filter", "f", []string{}, "Filter output based on conditions provided")
 	imagesCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json", "table", "wide"}, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -103,13 +104,36 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 	var (
 		imageStore = client.ImageService()
 	)
-
-	// To-do: Add support for --filter.
 	imageList, err := imageStore.List(ctx, filters...)
 	if err != nil {
 		return err
 	}
+	if cmd.Flags().Changed("filter") {
+		inputFilters, err := cmd.Flags().GetStringSlice("filter")
+		if err != nil {
+			return err
+		}
+		beforeFilters, sinceFilters, err := imgutil.ParseFilters(inputFilters)
+		if err != nil {
+			return err
+		}
+		var beforeImages []images.Image
+		if len(beforeFilters) > 0 {
+			beforeImages, err = imageStore.List(ctx, beforeFilters...)
+			if err != nil {
+				return err
+			}
+		}
+		var afterImages []images.Image
+		if len(sinceFilters) > 0 {
+			afterImages, err = imageStore.List(ctx, sinceFilters...)
+			if err != nil {
+				return err
+			}
+		}
 
+		imageList = imgutil.FilterImages(imageList, beforeImages, afterImages)
+	}
 	return printImages(ctx, cmd, client, imageList)
 }
 
