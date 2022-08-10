@@ -74,7 +74,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 		if !strings.Contains(src, "/") {
 			// assume src is a volume name
 			res.Name = src
-			vol, err := volStore.Get(src)
+			vol, err := volStore.Get(src, false)
 			if err != nil {
 				if errors.Is(err, errdefs.ErrNotFound) {
 					vol, err = volStore.Create(src, nil)

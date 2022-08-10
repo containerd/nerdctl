@@ -23,7 +23,9 @@ import (
 	"text/tabwriter"
 	"text/template"
 
+	"github.com/containerd/containerd/pkg/progress"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 )
@@ -41,6 +43,7 @@ func newVolumeLsCommand() *cobra.Command {
 	volumeLsCommand.Flags().BoolP("quiet", "q", false, "Only display volume names")
 	// Alias "-f" is reserved for "--filter"
 	volumeLsCommand.Flags().String("format", "", "Format the output using the given go template")
+	volumeLsCommand.Flags().BoolP("size", "s", false, "Display the disk usage of volumes. Can be slow with volumes having loads of directories.")
 	volumeLsCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json", "table", "wide"}, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -53,13 +56,22 @@ type volumePrintable struct {
 	Mountpoint string
 	Name       string
 	Scope      string
-	// TODO: "Links", "Size"
+	Size       string
+	// TODO: "Links"
 }
 
 func volumeLsAction(cmd *cobra.Command, args []string) error {
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return err
+	}
+	volumeSize, err := cmd.Flags().GetBool("size")
+	if err != nil {
+		return err
+	}
+	if quiet && volumeSize {
+		logrus.Warn("cannot use --size and --quiet together, ignoring --size")
+		volumeSize = false
 	}
 	w := cmd.OutOrStdout()
 	var tmpl *template.Template
@@ -71,7 +83,11 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 	case "", "table", "wide":
 		w = tabwriter.NewWriter(cmd.OutOrStdout(), 4, 8, 4, ' ', 0)
 		if !quiet {
-			fmt.Fprintln(w, "VOLUME NAME\tDIRECTORY")
+			if volumeSize {
+				fmt.Fprintln(w, "VOLUME NAME\tDIRECTORY\tSIZE")
+			} else {
+				fmt.Fprintln(w, "VOLUME NAME\tDIRECTORY")
+			}
 		}
 	case "raw":
 		return errors.New("unsupported format: \"raw\"")
@@ -102,6 +118,9 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 		if v.Labels != nil {
 			p.Labels = formatLabels(*v.Labels)
 		}
+		if volumeSize {
+			p.Size = progress.Bytes(v.Size).String()
+		}
 		if tmpl != nil {
 			var b bytes.Buffer
 			if err := tmpl.Execute(&b, p); err != nil {
@@ -112,6 +131,8 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 			}
 		} else if quiet {
 			fmt.Fprintln(w, p.Name)
+		} else if volumeSize {
+			fmt.Fprintf(w, "%s\t%s\t%s\n", p.Name, p.Mountpoint, p.Size)
 		} else {
 			fmt.Fprintf(w, "%s\t%s\n", p.Name, p.Mountpoint)
 		}
@@ -127,5 +148,9 @@ func getVolumes(cmd *cobra.Command) (map[string]native.Volume, error) {
 	if err != nil {
 		return nil, err
 	}
-	return volStore.List()
+	volumeSize, err := cmd.Flags().GetBool("size")
+	if err != nil {
+		return nil, err
+	}
+	return volStore.List(volumeSize)
 }

@@ -70,7 +70,7 @@ func volumePrune(cmd *cobra.Command, client *containerd.Client, ctx context.Cont
 	if err != nil {
 		return err
 	}
-	volumes, err := volStore.List()
+	volumes, err := volStore.List(false)
 	if err != nil {
 		return err
 	}
