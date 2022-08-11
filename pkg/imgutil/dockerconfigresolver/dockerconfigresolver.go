@@ -201,7 +201,7 @@ func NewAuthCreds(refHostname string) (AuthCreds, error) {
 			// - ac.ServerAddress:         "https://index.docker.io/v1/".
 			if !isAuthConfigEmpty(ac) {
 				if authConfigHostname == registry.IndexServer {
-					if ac.ServerAddress != registry.IndexServer {
+					if ac.ServerAddress != "" && ac.ServerAddress != registry.IndexServer {
 						return nil, fmt.Errorf("expected ac.ServerAddress (%q) to be %q", ac.ServerAddress, registry.IndexServer)
 					}
 				} else if ac.ServerAddress == "" {
