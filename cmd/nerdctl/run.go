@@ -571,7 +571,7 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 	}
 	opts = append(opts, netOpts...)
 
-	hookOpt, err := withNerdctlOCIHook(cmd, id, stateDir)
+	hookOpt, err := withNerdctlOCIHook(cmd, id)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -886,7 +886,7 @@ func generateLogURI(dataStore string) (*url.URL, error) {
 	return cio.LogURIGenerator("binary", selfExe, args)
 }
 
-func withNerdctlOCIHook(cmd *cobra.Command, id, stateDir string) (oci.SpecOpts, error) {
+func withNerdctlOCIHook(cmd *cobra.Command, id string) (oci.SpecOpts, error) {
 	selfExe, f := globalFlags(cmd)
 	args := append([]string{selfExe}, append(f, "internal", "oci-hook")...)
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {

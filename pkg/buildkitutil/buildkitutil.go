@@ -220,7 +220,6 @@ func BuildKitFile(dir, inputfile string) (absDir string, file string, err error)
 		}
 		if dErr != nil {
 			if errors.Is(dErr, fs.ErrNotExist) {
-				logrus.Warnf("%s, using %s as fallback", dErr, ContainerfileName)
 				file = ContainerfileName
 			} else {
 				return "", "", dErr
