@@ -26,9 +26,12 @@ import (
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+var networkDriversToKeep = []string{"host", "none", DefaultNetworkDriver}
 
 func newNetworkPruneCommand() *cobra.Command {
 	networkPruneCommand := &cobra.Command{
@@ -97,7 +100,7 @@ func networkPrune(cmd *cobra.Command, client *containerd.Client, ctx context.Con
 
 	var removedNetworks []string // nolint: prealloc
 	for _, net := range e.Networks {
-		if net.Name == "host" || net.Name == "none" {
+		if strutil.InStringSlice(networkDriversToKeep, net.Name) {
 			continue
 		}
 		if net.NerdctlID == nil || net.File == "" {
