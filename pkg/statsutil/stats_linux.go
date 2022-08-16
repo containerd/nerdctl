@@ -88,7 +88,7 @@ func calculateCgroupCPUPercent(previousStats *ContainerStats, metrics *v1.Metric
 	return cpuPercent
 }
 
-//PercpuUsage is not supported in CgroupV2
+// PercpuUsage is not supported in CgroupV2
 func calculateCgroup2CPUPercent(previousStats *ContainerStats, metrics *v2.Metrics) float64 {
 	var (
 		cpuPercent = 0.0

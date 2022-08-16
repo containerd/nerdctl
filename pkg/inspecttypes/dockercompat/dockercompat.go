@@ -128,7 +128,7 @@ type MountPoint struct {
 	Propagation string
 }
 
-//config is from https://github.com/moby/moby/blob/8dbd90ec00daa26dc45d7da2431c965dec99e8b4/api/types/container/config.go#L37-L69
+// config is from https://github.com/moby/moby/blob/8dbd90ec00daa26dc45d7da2431c965dec99e8b4/api/types/container/config.go#L37-L69
 type Config struct {
 	Hostname string `json:",omitempty"` // Hostname
 	// TODO: Domainname   string      // Domainname

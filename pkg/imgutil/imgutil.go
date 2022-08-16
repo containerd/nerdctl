@@ -98,7 +98,7 @@ func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 
 // EnsureImage ensures the image.
 //
-// When insecure is set, skips verifying certs, and also falls back to HTTP when the registry does not speak HTTPS
+// # When insecure is set, skips verifying certs, and also falls back to HTTP when the registry does not speak HTTPS
 //
 // FIXME: this func has too many args
 func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool, hostsDirs []string, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool) (*EnsuredImage, error) {

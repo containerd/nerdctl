@@ -27,7 +27,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//return respectively ip, hostPort, containerPort
+// return respectively ip, hostPort, containerPort
 func splitParts(rawport string) (string, string, string) {
 	parts := strings.Split(rawport, ":")
 	n := len(parts)

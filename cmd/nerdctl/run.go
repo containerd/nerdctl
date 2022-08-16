@@ -816,7 +816,6 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 
 // withBindMountHostIPC replaces /dev/shm and /dev/mqueue  mount with rbind.
 // Required for --ipc=host on rootless.
-//
 func withBindMountHostIPC(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
 	for i, m := range s.Mounts {
 		if path.Clean(m.Destination) == "/dev/shm" {

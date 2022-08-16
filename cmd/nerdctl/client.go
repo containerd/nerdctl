@@ -87,7 +87,7 @@ func newClientWithPlatform(cmd *cobra.Command, platform string, clientOpts ...co
 }
 
 // getDataStore returns a string like "/var/lib/nerdctl/1935db59".
-// "1935db9" is from `$(echo -n "/run/containerd/containerd.sock" | sha256sum | cut -c1-8)``
+// "1935db9" is from `$(echo -n "/run/containerd/containerd.sock" | sha256sum | cut -c1-8)`
 // on Windows it will return "%PROGRAMFILES%/nerdctl/1935db59"
 func getDataStore(cmd *cobra.Command) (string, error) {
 	dataRoot, err := cmd.Flags().GetString("data-root")

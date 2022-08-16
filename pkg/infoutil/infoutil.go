@@ -244,7 +244,7 @@ func parseRuncVersion(runcVersionStdout []byte) (*dockercompat.ComponentVersion,
 	}, nil
 }
 
-//BlockIOWeight return whether Block IO weight is supported or not
+// BlockIOWeight return whether Block IO weight is supported or not
 func BlockIOWeight(cgroupManager string) bool {
 	var info *dockercompat.Info
 	info.CgroupVersion = CgroupsVersion()
