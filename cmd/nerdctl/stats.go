@@ -283,17 +283,6 @@ func statsAction(cmd *cobra.Command, args []string) error {
 		// make sure each container get at least one valid stat data
 		waitFirst.Wait()
 
-		var errs []string
-		cStats.mu.Lock()
-		for _, c := range cStats.cs {
-			if err := c.GetError(); err != nil {
-				errs = append(errs, err.Error())
-			}
-		}
-		cStats.mu.Unlock()
-		if len(errs) > 0 {
-			return errors.New(strings.Join(errs, "\n"))
-		}
 	}
 
 	cleanScreen := func() {
@@ -314,6 +303,9 @@ func statsAction(cmd *cobra.Command, args []string) error {
 		ccstats := []statsutil.StatsEntry{}
 		cStats.mu.Lock()
 		for _, c := range cStats.cs {
+			if err := c.GetError(); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "unable to get stat entry: %s\n", err)
+			}
 			ccstats = append(ccstats, c.GetStatistics())
 		}
 		cStats.mu.Unlock()

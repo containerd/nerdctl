@@ -31,12 +31,12 @@ import (
 	"github.com/vishvananda/netns"
 )
 
-func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStats, firstSet bool, anydata interface{}, pid int, interfaces []native.NetInterface) (statsutil.StatsEntry, error) {
+//nolint:nakedret
+func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStats, firstSet bool, anydata interface{}, pid int, interfaces []native.NetInterface) (statsEntry statsutil.StatsEntry, err error) {
 
 	var (
-		data       *v1.Metrics
-		data2      *v2.Metrics
-		statsEntry statsutil.StatsEntry
+		data  *v1.Metrics
+		data2 *v2.Metrics
 	)
 
 	switch v := anydata.(type) {
@@ -45,14 +45,14 @@ func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStat
 	case *v2.Metrics:
 		data2 = v
 	default:
-		return statsutil.StatsEntry{}, errors.New("cannot convert metric data to cgroups.Metrics")
+		err = errors.New("cannot convert metric data to cgroups.Metrics")
+		return
 	}
 
 	var nlinks []netlink.Link
 
 	if !firstSet {
 		var (
-			err      error
 			nlink    netlink.Link
 			nlHandle *netlink.Handle
 			ns       netns.NsHandle
@@ -60,18 +60,25 @@ func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStat
 
 		ns, err = netns.GetFromPid(pid)
 		if err != nil {
-			return statsutil.StatsEntry{}, fmt.Errorf("failed to retrieve the statistics in netns %s: %v", ns, err)
+			err = fmt.Errorf("failed to retrieve the statistics in netns %s: %v", ns, err)
+			return
 		}
+		defer func() {
+			err = ns.Close()
+		}()
 
 		nlHandle, err = netlink.NewHandleAt(ns)
 		if err != nil {
-			return statsutil.StatsEntry{}, fmt.Errorf("failed to retrieve the statistics in netns %s: %v", ns, err)
+			err = fmt.Errorf("failed to retrieve the statistics in netns %s: %v", ns, err)
+			return
 		}
+		defer nlHandle.Close()
 
 		for _, v := range interfaces {
 			nlink, err = nlHandle.LinkByIndex(v.Index)
 			if err != nil {
-				return statsutil.StatsEntry{}, fmt.Errorf("failed to retrieve the statistics for %s in netns %s: %v", v.Name, ns, err)
+				err = fmt.Errorf("failed to retrieve the statistics for %s in netns %s: %v", v.Name, ns, err)
+				return
 			}
 			//exclude inactive interface
 			if nlink.Attrs().Flags&net.FlagUp != 0 {
@@ -85,7 +92,6 @@ func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStat
 		}
 	}
 
-	var err error
 	if data != nil {
 		if !firstSet {
 			statsEntry, err = statsutil.SetCgroupStatsFields(previousStats, data, nlinks)
@@ -93,7 +99,7 @@ func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStat
 		previousStats.CgroupCPU = data.CPU.Usage.Total
 		previousStats.CgroupSystem = data.CPU.Usage.Kernel
 		if err != nil {
-			return statsutil.StatsEntry{}, err
+			return
 		}
 	} else if data2 != nil {
 		if !firstSet {
@@ -102,10 +108,10 @@ func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStat
 		previousStats.Cgroup2CPU = data2.CPU.UsageUsec * 1000
 		previousStats.Cgroup2System = data2.CPU.SystemUsec * 1000
 		if err != nil {
-			return statsutil.StatsEntry{}, err
+			return
 		}
 	}
 	previousStats.Time = time.Now()
 
-	return statsEntry, nil
+	return
 }
