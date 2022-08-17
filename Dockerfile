@@ -236,13 +236,18 @@ RUN apt-get update && \
   ca-certificates curl \
   iproute2 iptables \
   dbus dbus-user-session systemd systemd-sysv \
-  fuse3
+  fuse3 binfmt-support qemu-user-static qemu
+
 ARG CONTAINERIZED_SYSTEMD_VERSION
 RUN curl -L -o /docker-entrypoint.sh https://raw.githubusercontent.com/AkihiroSuda/containerized-systemd/${CONTAINERIZED_SYSTEMD_VERSION}/docker-entrypoint.sh && \
   chmod +x /docker-entrypoint.sh
 COPY --from=out-full / /usr/local/
 RUN perl -pi -e 's/multi-user.target/docker-entrypoint.target/g' /usr/local/lib/systemd/system/*.service && \
-  systemctl enable containerd buildkit stargz-snapshotter
+  systemctl enable containerd buildkit stargz-snapshotter binfmt-support
+
+# Below hack to start binfmt-support.service on Container start
+RUN ln -s /lib/systemd/system/binfmt-support.service /etc/systemd/system/docker-entrypoint.target.wants/binfmt-support.service
+
 COPY ./Dockerfile.d/etc_containerd_config.toml /etc/containerd/config.toml
 VOLUME /var/lib/containerd
 VOLUME /var/lib/buildkit
