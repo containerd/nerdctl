@@ -70,7 +70,7 @@ type stats struct {
 	cs []*statsutil.Stats
 }
 
-//add is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/stats_helpers.go#L26-L34
+// add is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/stats_helpers.go#L26-L34
 func (s *stats) add(cs *statsutil.Stats) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -81,7 +81,7 @@ func (s *stats) add(cs *statsutil.Stats) bool {
 	return false
 }
 
-//remove is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/stats_helpers.go#L36-L42
+// remove is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/stats_helpers.go#L36-L42
 func (s *stats) remove(id string) {
 	s.mu.Lock()
 	if i, exists := s.isKnownContainer(id); exists {
@@ -90,7 +90,7 @@ func (s *stats) remove(id string) {
 	s.mu.Unlock()
 }
 
-//isKnownContainer is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/stats_helpers.go#L44-L51
+// isKnownContainer is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/stats_helpers.go#L44-L51
 func (s *stats) isKnownContainer(cid string) (int, bool) {
 	for i, c := range s.cs {
 		if c.Container == cid {

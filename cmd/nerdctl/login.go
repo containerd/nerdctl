@@ -150,7 +150,7 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-//copied from github.com/docker/cli/cli/command/registry/login.go (v20.10.3)
+// copied from github.com/docker/cli/cli/command/registry/login.go (v20.10.3)
 func verifyloginOptions(cmd *cobra.Command, options *loginOptions) error {
 	if options.password != "" {
 		logrus.Warn("WARNING! Using --password via the CLI is insecure. Use --password-stdin.")

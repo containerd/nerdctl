@@ -47,7 +47,7 @@ func formatLabels(labels map[string]string) string {
 
 // formatSlice formats the slice with `--format` flag.
 //
-// --format='' (default): JSON
+// --format="" (default): JSON
 // --format='{{json .}}': JSON lines
 //
 // formatSlice is expected to be only used for `nerdctl OBJECT inspect` commands.

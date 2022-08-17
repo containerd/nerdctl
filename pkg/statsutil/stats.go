@@ -67,12 +67,12 @@ type ContainerStats struct {
 	CgroupSystem, Cgroup2System uint64
 }
 
-//NewStats is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L113-L116
+// NewStats is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L113-L116
 func NewStats(container string) *Stats {
 	return &Stats{StatsEntry: StatsEntry{Container: container}}
 }
 
-//SetStatistics is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L87-L93
+// SetStatistics is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L87-L93
 func (cs *Stats) SetStatistics(s StatsEntry) {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
@@ -80,21 +80,21 @@ func (cs *Stats) SetStatistics(s StatsEntry) {
 	cs.StatsEntry = s
 }
 
-//GetStatistics is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L95-L100
+// GetStatistics is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L95-L100
 func (cs *Stats) GetStatistics() StatsEntry {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
 	return cs.StatsEntry
 }
 
-//GetError is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L51-L57
+// GetError is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L51-L57
 func (cs *Stats) GetError() error {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
 	return cs.err
 }
 
-//SetErrorAndReset is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L59-L75
+// SetErrorAndReset is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L59-L75
 func (cs *Stats) SetErrorAndReset(err error) {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
@@ -111,7 +111,7 @@ func (cs *Stats) SetErrorAndReset(err error) {
 	cs.IsInvalid = true
 }
 
-//SetError is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L77-L85
+// SetError is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L77-L85
 func (cs *Stats) SetError(err error) {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
