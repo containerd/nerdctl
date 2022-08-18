@@ -1508,3 +1508,8 @@ Implementation details:
 
 Misc:
 - [`./docs/faq.md`](./docs/faq.md): FAQs and Troubleshooting
+
+
+### Infrastructure model
+
+![Infrastructure model](.infragenie/infrastructure_model.png)
