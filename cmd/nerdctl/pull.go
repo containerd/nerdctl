@@ -154,6 +154,15 @@ func ensureImage(cmd *cobra.Command, ctx context.Context, client *containerd.Cli
 	ref := rawRef
 	switch verifier {
 	case "cosign":
+		experimental, err := cmd.Flags().GetBool("experimental")
+		if err != nil {
+			return nil, err
+		}
+
+		if !experimental {
+			return nil, fmt.Errorf("cosign only work with enable experimental feature")
+		}
+
 		keyRef, err := cmd.Flags().GetString("cosign-key")
 		if err != nil {
 			return nil, err

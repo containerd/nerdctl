@@ -240,6 +240,15 @@ func pushAction(cmd *cobra.Command, args []string) error {
 	}
 	switch signer {
 	case "cosign":
+		experimental, err := cmd.Flags().GetBool("experimental")
+		if err != nil {
+			return err
+		}
+
+		if !experimental {
+			return fmt.Errorf("cosign only work with enable experimental feature")
+		}
+
 		keyRef, err := cmd.Flags().GetString("cosign-key")
 		if err != nil {
 			return err
