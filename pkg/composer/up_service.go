@@ -154,7 +154,7 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 	defer os.RemoveAll(tempDir)
 	cidFilename := filepath.Join(tempDir, "cid")
 
-	if container.Detached {
+	if container.Detached && !service.Unparsed.StdinOpen && !service.Unparsed.Tty {
 		container.RunArgs = append([]string{"-d"}, container.RunArgs...)
 	}
 
@@ -169,7 +169,21 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 	if c.DebugPrintFull {
 		logrus.Debugf("Running %v", cmd.Args)
 	}
-	cmd.Stderr = os.Stderr
+
+	// FIXME
+	if service.Unparsed.StdinOpen != service.Unparsed.Tty {
+		return "", fmt.Errorf("currently StdinOpen(-i) and Tty(-t) should be same")
+	}
+
+	if service.Unparsed.StdinOpen {
+		cmd.Stdin = os.Stdin
+	}
+
+	if !container.Detached {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
+
 	err = cmd.Run()
 	if err != nil {
 		return "", fmt.Errorf("error while creating container %s: %w", container.Name, err)
