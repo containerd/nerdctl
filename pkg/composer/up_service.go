@@ -149,7 +149,7 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 
 	tempDir, err := os.MkdirTemp(os.TempDir(), "compose-")
 	if err != nil {
-		return "", fmt.Errorf("error while creating container %s: %w", container.Name, err)
+		return "", fmt.Errorf("error while creating/re-creating container %s: %w", container.Name, err)
 	}
 	defer os.RemoveAll(tempDir)
 	cidFilename := filepath.Join(tempDir, "cid")

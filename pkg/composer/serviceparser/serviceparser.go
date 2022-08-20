@@ -80,7 +80,9 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		"StopGracePeriod",
 		"StopSignal",
 		"Sysctls",
+		"StdinOpen",
 		"Tmpfs",
+		"Tty",
 		"User",
 		"WorkingDir",
 		"Volumes",
@@ -625,6 +627,10 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--sysctl=%s=%s", k, v))
 	}
 
+	if svc.StdinOpen {
+		c.RunArgs = append(c.RunArgs, "--interactive")
+	}
+
 	if svc.User != "" {
 		c.RunArgs = append(c.RunArgs, "--user="+svc.User)
 	}
@@ -657,6 +663,10 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 
 	for _, tmpfs := range svc.Tmpfs {
 		c.RunArgs = append(c.RunArgs, "--tmpfs="+tmpfs)
+	}
+
+	if svc.Tty {
+		c.RunArgs = append(c.RunArgs, "--tty")
 	}
 
 	if svc.WorkingDir != "" {
