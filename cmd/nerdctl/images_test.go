@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -73,4 +74,26 @@ func TestImages(t *testing.T) {
 		assert.Equal(t, repo+":"+tag, testutil.CommonImage)
 		return nil
 	})
+}
+
+func TestImagesFilter(t *testing.T) {
+	testutil.RequiresBuild(t)
+	t.Parallel()
+	base := testutil.NewBase(t)
+	tempName := testutil.Identifier(base.T)
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+	base.Cmd("build", "-t", tempName, "-f", buildCtx+"/Dockerfile", buildCtx).AssertOK()
+	base.Cmd("images", "--filter", fmt.Sprintf("before=%s:%s", tempName, "latest")).AssertOutContains(strings.Split(testutil.CommonImage, ":")[0])
+	base.Cmd("images", "--filter", fmt.Sprintf("before=%s:%s", tempName, "latest")).AssertOutNotContains(tempName)
+	base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage)).AssertOutContains(tempName)
+	base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage)).AssertOutNotContains(strings.Split(testutil.CommonImage, ":")[0])
+	base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage), testutil.CommonImage).AssertOutNotContains(strings.Split(testutil.CommonImage, ":")[0])
+	base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage), testutil.CommonImage).AssertOutNotContains(tempName)
 }
