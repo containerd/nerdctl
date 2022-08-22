@@ -24,6 +24,7 @@ ifeq ($(GOOS),windows)
 	BIN_EXT := .exe
 endif
 
+
 PACKAGE := github.com/containerd/nerdctl
 BINDIR ?= /usr/local/bin
 
