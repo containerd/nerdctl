@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"text/tabwriter"
 	"text/template"
 
@@ -47,6 +49,7 @@ func newVolumeLsCommand() *cobra.Command {
 	volumeLsCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json", "table", "wide"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	volumeLsCommand.Flags().StringSliceP("filter", "f", []string{}, "Filter matches volumes based on given conditions")
 	return volumeLsCommand
 }
 
@@ -72,6 +75,23 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 	if quiet && volumeSize {
 		logrus.Warn("cannot use --size and --quiet together, ignoring --size")
 		volumeSize = false
+	}
+	filters, err := cmd.Flags().GetStringSlice("filter")
+	if err != nil {
+		return err
+	}
+	labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs, isFilter, err := getVolumeFilterFuncs(filters)
+	if err != nil {
+		return err
+	}
+	if len(sizeFilterFuncs) > 0 && quiet {
+		logrus.Warn("cannot use --filter=size and --quiet together, ignoring --filter=size")
+		sizeFilterFuncs = nil
+	}
+	if len(sizeFilterFuncs) > 0 && !volumeSize {
+		logrus.Warn("should use --filter=size and --size together")
+		cmd.Flags().Set("size", "true")
+		volumeSize = true
 	}
 	w := cmd.OutOrStdout()
 	var tmpl *template.Template
@@ -108,6 +128,9 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, v := range vols {
+		if isFilter && !volumeMatchesFilter(v, labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs) {
+			continue
+		}
 		p := volumePrintable{
 			Driver:     "local",
 			Labels:     "",
@@ -153,4 +176,97 @@ func getVolumes(cmd *cobra.Command) (map[string]native.Volume, error) {
 		return nil, err
 	}
 	return volStore.List(volumeSize)
+}
+
+func getVolumeFilterFuncs(filters []string) ([]func(*map[string]string) bool, []func(string) bool, []func(int64) bool, bool, error) {
+	isFilter := len(filters) > 0
+	labelFilterFuncs := make([]func(*map[string]string) bool, 0)
+	nameFilterFuncs := make([]func(string) bool, 0)
+	sizeFilterFuncs := make([]func(int64) bool, 0)
+	sizeOperators := []struct {
+		Operand string
+		Compare func(int64, int64) bool
+	}{
+		{">=", func(size, volumeSize int64) bool {
+			return volumeSize >= size
+		}},
+		{"<=", func(size, volumeSize int64) bool {
+			return volumeSize <= size
+		}},
+		{">", func(size, volumeSize int64) bool {
+			return volumeSize > size
+		}},
+		{"<", func(size, volumeSize int64) bool {
+			return volumeSize < size
+		}},
+		{"=", func(size, volumeSize int64) bool {
+			return volumeSize == size
+		}},
+	}
+	for _, filter := range filters {
+		if strings.HasPrefix(filter, "name") || strings.HasPrefix(filter, "label") {
+			subs := strings.SplitN(filter, "=", 2)
+			if len(subs) < 2 {
+				continue
+			}
+			switch subs[0] {
+			case "name":
+				nameFilterFuncs = append(nameFilterFuncs, func(name string) bool {
+					return strings.Contains(name, subs[1])
+				})
+			case "label":
+				v, k, hasValue := "", subs[1], false
+				if subs := strings.SplitN(subs[1], "=", 2); len(subs) == 2 {
+					hasValue = true
+					k, v = subs[0], subs[1]
+				}
+				labelFilterFuncs = append(labelFilterFuncs, func(labels *map[string]string) bool {
+					if labels == nil {
+						return false
+					}
+					val, ok := (*labels)[k]
+					if !ok || (hasValue && val != v) {
+						return false
+					}
+					return true
+				})
+			}
+			continue
+		}
+		if strings.HasPrefix(filter, "size") {
+			for _, sizeOperator := range sizeOperators {
+				if subs := strings.SplitN(filter, sizeOperator.Operand, 2); len(subs) == 2 {
+					v, err := strconv.Atoi(subs[1])
+					if err != nil {
+						return nil, nil, nil, false, err
+					}
+					sizeFilterFuncs = append(sizeFilterFuncs, func(size int64) bool {
+						return sizeOperator.Compare(int64(v), size)
+					})
+					break
+				}
+			}
+			continue
+		}
+	}
+	return labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs, isFilter, nil
+}
+
+func volumeMatchesFilter(vol native.Volume, labelFilterFuncs []func(*map[string]string) bool, nameFilterFuncs []func(string) bool, sizeFilterFuncs []func(int64) bool) bool {
+	for _, labelFilterFunc := range labelFilterFuncs {
+		if !labelFilterFunc(vol.Labels) {
+			return false
+		}
+	}
+	for _, nameFilterFunc := range nameFilterFuncs {
+		if !nameFilterFunc(vol.Name) {
+			return false
+		}
+	}
+	for _, sizeFilterFunc := range sizeFilterFuncs {
+		if !sizeFilterFunc(vol.Size) {
+			return false
+		}
+	}
+	return true
 }

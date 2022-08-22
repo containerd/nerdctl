@@ -1079,8 +1079,21 @@ Flags:
   - :nerd_face: `--format=wide`: Alias of `--format=table`
   - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
 - :nerd_face: `--size`: Display the disk usage of volumes.
+- :whale: `-f, --filter`: Filter volumes based on given conditions.
+    - :whale: `--filter label=<key>=<value>`: Matches volumes by label on both
+      `key` and `value`. If `value` is left empty, matches all volumes with `key`
+      regardless of its value
+    - :whale: `--filter name=<value>`: Matches all volumes with a name containing
+      the `value` string
+    - :nerd_face: `--filter "size=<value>"`: Matches all volumes with a size
+      meets the `value`. `size` operand can be `>=, <=, >, <, =` and `value` must be
+      an integer. Quotes should be used otherwise some shells may treat operand as
+      redirections
 
-Unimplemented `docker volume ls` flags: `--filter`
+Following arguments for `--filter` are not supported yet:
+
+1. `--filter=dangling=true`: Filter volumes by dangling
+2. `--filter=driver=local`: Filter volumes by driver
 
 ### :whale: nerdctl volume inspect
 Display detailed information on one or more volumes
