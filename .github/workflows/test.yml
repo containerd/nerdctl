@@ -148,5 +148,8 @@ jobs:
         fetch-depth: 1
     - name: "Register QEMU (tonistiigi/binfmt)"
       run: docker run --privileged --rm tonistiigi/binfmt --install all
+    - name: "Prepare integration test environment"
+      run: |
+        sudo apt-get install -y expect
     - name: "Ensure that the integration test suite is compatible with Docker"
       run: go test -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon
