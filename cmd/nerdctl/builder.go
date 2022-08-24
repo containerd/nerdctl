@@ -81,6 +81,7 @@ func newBuilderDebugCommand() *cobra.Command {
 	var buildDebugCommand = &cobra.Command{
 		Use:           "debug",
 		Short:         shortHelp,
+		PreRunE:       checkExperimental("`nerdctl builder debug`"),
 		RunE:          builderDebugAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,

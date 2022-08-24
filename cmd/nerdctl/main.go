@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/containerd/containerd"
@@ -98,6 +99,7 @@ type Config struct {
 	CgroupManager    string   `toml:"cgroup_manager"`
 	InsecureRegistry bool     `toml:"insecure_registry"`
 	HostsDir         []string `toml:"hosts_dir"`
+	Experimental     bool     `toml:"experimental"`
 }
 
 // NewConfig creates a default Config object statically,
@@ -115,6 +117,7 @@ func NewConfig() *Config {
 		CgroupManager:    ncdefaults.CgroupManager(),
 		InsecureRegistry: false,
 		HostsDir:         ncdefaults.HostsDirs(),
+		Experimental:     true,
 	}
 }
 
@@ -152,6 +155,8 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) error {
 	rootCmd.PersistentFlags().Bool("insecure-registry", cfg.InsecureRegistry, "skips verifying HTTPS certs, and allows falling back to plain HTTP")
 	// hosts-dir is defined as StringSlice, not StringArray, to allow specifying "--hosts-dir=/etc/containerd/certs.d,/etc/docker/certs.d"
 	rootCmd.PersistentFlags().StringSlice("hosts-dir", cfg.HostsDir, "A directory that contains <HOST:PORT>/hosts.toml (containerd style) or <HOST:PORT>/{ca.cert, cert.pem, key.pem} (docker style)")
+	// Experimental enable experimental feature, see in https://github.com/containerd/nerdctl/blob/master/docs/experimental.md
+	AddPersistentBoolFlag(rootCmd, "experimental", nil, nil, cfg.Experimental, "NERDCTL_EXPERIMENTAL", "Control experimental: https://github.com/containerd/nerdctl/blob/master/docs/experimental.md")
 	return nil
 }
 
@@ -418,6 +423,43 @@ func AddPersistentStringFlag(cmd *cobra.Command, name string, aliases, nonPersis
 	}
 }
 
+// AddPersistentBoolFlag is similar to AddBoolFlag but persistent.
+// See https://github.com/spf13/cobra/blob/master/user_guide.md#persistent-flags to learn what is "persistent".
+func AddPersistentBoolFlag(cmd *cobra.Command, name string, aliases, nonPersistentAliases []string, value bool, env, usage string) {
+	if env != "" {
+		usage = fmt.Sprintf("%s [$%s]", usage, env)
+	}
+	if envV, ok := os.LookupEnv(env); ok {
+		var err error
+		value, err = strconv.ParseBool(envV)
+		if err != nil {
+			logrus.WithError(err).Warnf("Invalid boolean value for `%s`", env)
+		}
+	}
+	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
+	p := new(bool)
+	flags := cmd.Flags()
+	for _, a := range nonPersistentAliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			flags.BoolVarP(p, a, a, value, aliasesUsage)
+		} else {
+			flags.BoolVar(p, a, value, aliasesUsage)
+		}
+	}
+
+	persistentFlags := cmd.PersistentFlags()
+	persistentFlags.BoolVar(p, name, value, usage)
+	for _, a := range aliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			persistentFlags.BoolVarP(p, a, a, value, aliasesUsage)
+		} else {
+			persistentFlags.BoolVar(p, a, value, aliasesUsage)
+		}
+	}
+}
+
 // AddPersistentStringArrayFlag is similar to cmd.Flags().StringArray but supports aliases and env var and persistent.
 // See https://github.com/spf13/cobra/blob/master/user_guide.md#persistent-flags to learn what is "persistent".
 func AddPersistentStringArrayFlag(cmd *cobra.Command, name string, aliases, nonPersistentAliases []string, value []string, env string, usage string) {
@@ -448,5 +490,18 @@ func AddPersistentStringArrayFlag(cmd *cobra.Command, name string, aliases, nonP
 		} else {
 			persistentFlags.StringArrayVar(p, a, value, aliasesUsage)
 		}
+	}
+}
+
+func checkExperimental(feature string) func(cmd *cobra.Command, args []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		experimental, err := cmd.Flags().GetBool("experimental")
+		if err != nil {
+			return err
+		}
+		if !experimental {
+			return fmt.Errorf("%s is experimental feature, you should enable experimental config", feature)
+		}
+		return nil
 	}
 }

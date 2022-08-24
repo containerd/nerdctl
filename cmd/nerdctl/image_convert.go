@@ -206,7 +206,17 @@ func getESGZConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
 		estargz.WithCompressionLevel(estargzCompressionLevel),
 		estargz.WithChunkSize(estargzChunkSize),
 	}
+
+	experimental, err := cmd.Flags().GetBool("experimental")
+	if err != nil {
+		return nil, err
+	}
+
 	if estargzRecordIn != "" {
+		if !experimental {
+			return nil, fmt.Errorf("estargz-record-in requires experimental mode to be enabled")
+		}
+
 		logrus.Warn("--estargz-record-in flag is experimental and subject to change")
 		paths, err := readPathsFromRecordFile(estargzRecordIn)
 		if err != nil {

@@ -54,6 +54,16 @@ func createAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	experimental, err := cmd.Flags().GetBool("experimental")
+	if err != nil {
+		return err
+	}
+
+	if (platform == "windows" || platform == "freebsd") && !experimental {
+		return fmt.Errorf("%s requires experimental mode to be enabled", platform)
+	}
+
 	client, ctx, cancel, err := newClientWithPlatform(cmd, platform)
 	if err != nil {
 		return err
