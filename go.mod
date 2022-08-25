@@ -28,7 +28,7 @@ require (
 	github.com/fahedouch/go-logrotate v0.1.2
 	github.com/fatih/color v1.13.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/ipfs/go-cid v0.1.0
+	github.com/ipfs/go-cid v0.3.0
 	github.com/ipfs/go-ipfs-files v0.1.1
 	github.com/ipfs/go-ipfs-http-client v0.4.0
 	github.com/ipfs/interface-go-ipfs-core v0.7.0
