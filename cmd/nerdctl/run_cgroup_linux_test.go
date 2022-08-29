@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/containerd/cgroups"
-	"github.com/containerd/containerd/sys"
+	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/continuity/testutil/loopback"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
@@ -74,7 +74,7 @@ func TestRunCgroupV2(t *testing.T) {
 0
 `
 
-	//In CgroupV2 CPUWeight replace CPUShares => weight := 1 + ((shares-2)*9999)/262142
+	// In CgroupV2 CPUWeight replace CPUShares => weight := 1 + ((shares-2)*9999)/262142
 	base.Cmd("run", "--rm",
 		"--cpus", "0.42", "--cpuset-mems", "0",
 		"--memory", "42m",
@@ -166,7 +166,7 @@ func TestRunCgroupV1(t *testing.T) {
 }
 
 func TestRunDevice(t *testing.T) {
-	if os.Geteuid() != 0 || sys.RunningInUserNS() {
+	if os.Geteuid() != 0 || userns.RunningInUserNS() {
 		t.Skip("test requires the root in the initial user namespace")
 	}
 
