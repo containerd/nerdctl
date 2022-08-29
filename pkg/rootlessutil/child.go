@@ -19,9 +19,9 @@ package rootlessutil
 import (
 	"os"
 
-	"github.com/containerd/containerd/sys"
+	"github.com/containerd/containerd/pkg/userns"
 )
 
 func IsRootlessChild() bool {
-	return !IsRootlessParent() && sys.RunningInUserNS() && os.Getenv("ROOTLESSKIT_STATE_DIR") != ""
+	return !IsRootlessParent() && userns.RunningInUserNS() && os.Getenv("ROOTLESSKIT_STATE_DIR") != ""
 }

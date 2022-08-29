@@ -25,7 +25,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/sys"
+	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -142,7 +142,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 		Destination: dst,
 		Options:     options,
 	}
-	if sys.RunningInUserNS() {
+	if userns.RunningInUserNS() {
 		unpriv, err := getUnprivilegedMountFlags(src)
 		if err != nil {
 			return nil, err
