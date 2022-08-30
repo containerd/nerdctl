@@ -17,7 +17,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -29,56 +31,88 @@ import (
 )
 
 type psTestContainer struct {
-	name   string
-	labels map[string]string
+	name    string
+	labels  map[string]string
+	volumes []string
+	network string
 }
 
-func preparePsTestContainer(t *testing.T) (*testutil.Base, psTestContainer) {
+func preparePsTestContainer(t *testing.T, identity string, restart bool) (*testutil.Base, psTestContainer) {
 	base := testutil.NewBase(t)
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 
-	testContainerName := testutil.Identifier(t)
+	testContainerName := testutil.Identifier(t) + identity
+	rwVolName := testContainerName + "-rw"
+	// A container can mount named and anonymous volumes
+	rwDir, err := os.MkdirTemp(t.TempDir(), "rw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	base.Cmd("network", "create", testContainerName).AssertOK()
 	t.Cleanup(func() {
 		base.Cmd("rm", "-f", testContainerName).AssertOK()
+		base.Cmd("volume", "rm", "-f", rwVolName).Run()
+		base.Cmd("network", "rm", testContainerName).Run()
+		os.RemoveAll(rwDir)
 	})
 
 	// A container can have multiple labels.
 	// Therefore, this test container has multiple labels to check it.
 	testLabels := make(map[string]string)
 	keys := []string{
-		testutil.Identifier(t),
-		testutil.Identifier(t),
+		testutil.Identifier(t) + identity,
+		testutil.Identifier(t) + identity,
 	}
 	// fill the value of testLabels
 	for _, k := range keys {
-		testLabels[k] = testutil.Identifier(t)
+		testLabels[k] = k
 	}
+	base.Cmd("volume", "create", rwVolName).AssertOK()
+	mnt1 := fmt.Sprintf("%s:/%s_mnt1", rwDir, identity)
+	mnt2 := fmt.Sprintf("%s:/%s_mnt3", rwVolName, identity)
 
-	base.Cmd([]string{
+	args := []string{
 		"run",
 		"-d",
 		"--name",
 		testContainerName,
 		"--label",
 		formatter.FormatLabels(testLabels),
+		"-v", mnt1,
+		"-v", mnt2,
+		"--net", testContainerName,
 		testutil.CommonImage,
 		"top",
-	}...).AssertOK()
-	base.EnsureContainerStarted(testContainerName)
+	}
+	if !restart {
+		args = append(args, "--restart=no")
+	}
+
+	base.Cmd(args...).AssertOK()
+	if restart {
+		base.EnsureContainerStarted(testContainerName)
+	}
 
 	// dd if=/dev/zero of=test_file bs=1M count=25
 	// let the container occupy 25MiB space.
-	base.Cmd("exec", testContainerName, "dd", "if=/dev/zero", "of=/test_file", "bs=1M", "count=25").AssertOK()
+	if restart {
+		base.Cmd("exec", testContainerName, "dd", "if=/dev/zero", "of=/test_file", "bs=1M", "count=25").AssertOK()
+	}
+	volumes := []string{}
+	volumes = append(volumes, strings.Split(mnt1, ":")...)
+	volumes = append(volumes, strings.Split(mnt2, ":")...)
 
 	return base, psTestContainer{
-		name:   testContainerName,
-		labels: testLabels,
+		name:    testContainerName,
+		labels:  testLabels,
+		volumes: volumes,
+		network: testContainerName,
 	}
 }
 
 func TestContainerList(t *testing.T) {
-	base, testContainer := preparePsTestContainer(t)
+	base, testContainer := preparePsTestContainer(t, "list", true)
 
 	// hope there are no tests running parallel
 	base.Cmd("ps", "-n", "1", "-s").AssertOutWithFunc(func(stdout string) error {
@@ -121,7 +155,7 @@ func TestContainerList(t *testing.T) {
 
 func TestContainerListWideMode(t *testing.T) {
 	testutil.DockerIncompatible(t)
-	base, testContainer := preparePsTestContainer(t)
+	base, testContainer := preparePsTestContainer(t, "listWithMode", true)
 
 	// hope there are no tests running parallel
 	base.Cmd("ps", "-n", "1", "--format", "wide").AssertOutWithFunc(func(stdout string) error {
@@ -160,7 +194,7 @@ func TestContainerListWideMode(t *testing.T) {
 }
 
 func TestContainerListWithLabels(t *testing.T) {
-	base, testContainer := preparePsTestContainer(t)
+	base, testContainer := preparePsTestContainer(t, "listWithLabels", true)
 
 	// hope there are no tests running parallel
 	base.Cmd("ps", "-n", "1", "--format", "{{.Labels}}").AssertOutWithFunc(func(stdout string) error {
@@ -181,7 +215,341 @@ func TestContainerListWithLabels(t *testing.T) {
 		}
 
 		for i := range testContainer.labels {
-			assert.Equal(t, labelsMap[i], testContainer.labels[i])
+			if value, ok := labelsMap[i]; ok {
+				assert.Equal(t, value, testContainer.labels[i])
+			}
+		}
+		return nil
+	})
+}
+
+func TestContainerListWithFilter(t *testing.T) {
+	base, testContainerA := preparePsTestContainer(t, "listWithFilterA", true)
+	_, testContainerB := preparePsTestContainer(t, "listWithFilterB", true)
+	_, testContainerC := preparePsTestContainer(t, "listWithFilterC", false)
+
+	base.Cmd("ps", "--filter", "name="+testContainerA.name).AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) < 2 {
+			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+		}
+
+		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+		err := tab.ParseHeader(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse header: %v", err)
+		}
+
+		containerName, _ := tab.ReadRow(lines[1], "NAMES")
+		assert.Equal(t, containerName, testContainerA.name)
+		id, _ := tab.ReadRow(lines[1], "CONTAINER ID")
+		base.Cmd("ps", "-q", "--filter", "id="+id).AssertOutWithFunc(func(stdout string) error {
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			if len(lines) != 1 {
+				return fmt.Errorf("expected 1 line, got %d", len(lines))
+			}
+			if lines[0] != id {
+				return errors.New("failed to filter by id")
+			}
+			return nil
+		})
+		base.Cmd("ps", "-q", "--filter", "id="+id+id).AssertOutWithFunc(func(stdout string) error {
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			if len(lines) > 0 {
+				for _, line := range lines {
+					if line != "" {
+						return fmt.Errorf("unexpected container found: %s", line)
+					}
+				}
+			}
+			return nil
+		})
+		base.Cmd("ps", "-q", "--filter", "id=").AssertOutWithFunc(func(stdout string) error {
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			if len(lines) > 0 {
+				for _, line := range lines {
+					if line != "" {
+						return fmt.Errorf("unexpected container found: %s", line)
+					}
+				}
+			}
+			return nil
+		})
+		return nil
+	})
+
+	base.Cmd("ps", "-q", "--filter", "name="+testContainerA.name+testContainerA.name).AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) > 0 {
+			for _, line := range lines {
+				if line != "" {
+					return fmt.Errorf("unexpected container found: %s", line)
+				}
+			}
+		}
+		return nil
+	})
+
+	base.Cmd("ps", "-q", "--filter", "name=").AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) == 0 {
+			return errors.New("expect at least 1 container, got 0")
+		}
+		return nil
+	})
+
+	base.Cmd("ps", "--filter", "name=listWithFilter").AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) < 3 {
+			return fmt.Errorf("expected at least 3 lines, got %d", len(lines))
+		}
+
+		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+		err := tab.ParseHeader(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse header: %v", err)
+		}
+		containerNames := map[string]struct{}{
+			testContainerA.name: {}, testContainerB.name: {},
+		}
+		for idx, line := range lines {
+			if idx == 0 {
+				continue
+			}
+			containerName, _ := tab.ReadRow(line, "NAMES")
+			if _, ok := containerNames[containerName]; !ok {
+				return fmt.Errorf("unexpected container %s found", containerName)
+			}
+		}
+		return nil
+	})
+
+	// docker filter by id only support full ID no truncate
+	// https://github.com/docker/for-linux/issues/258
+	// yet nerdctl also support truncate ID
+	base.Cmd("ps", "--no-trunc", "--filter", "since="+testContainerA.name).AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) < 2 {
+			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+		}
+
+		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+		err := tab.ParseHeader(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse header: %v", err)
+		}
+		var id string
+		for idx, line := range lines {
+			if idx == 0 {
+				continue
+			}
+			containerName, _ := tab.ReadRow(line, "NAMES")
+			if containerName != testContainerB.name {
+				return fmt.Errorf("unexpected container %s found", containerName)
+			}
+			id, _ = tab.ReadRow(line, "CONTAINER ID")
+		}
+		base.Cmd("ps", "--filter", "before="+id).AssertOutWithFunc(func(stdout string) error {
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			if len(lines) < 2 {
+				return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+			}
+
+			tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+			err := tab.ParseHeader(lines[0])
+			if err != nil {
+				return fmt.Errorf("failed to parse header: %v", err)
+			}
+			foundA := false
+			for idx, line := range lines {
+				if idx == 0 {
+					continue
+				}
+				containerName, _ := tab.ReadRow(line, "NAMES")
+				if containerName == testContainerA.name {
+					foundA = true
+					break
+				}
+			}
+			// there are other containers such as **wordpress** could be listed since
+			// their created times are ahead of testContainerB too
+			if !foundA {
+				return fmt.Errorf("expected container %s not found", testContainerA.name)
+			}
+			return nil
+		})
+		return nil
+	})
+
+	// docker filter by id only support full ID no truncate
+	// https://github.com/docker/for-linux/issues/258
+	// yet nerdctl also support truncate ID
+	base.Cmd("ps", "--no-trunc", "--filter", "before="+testContainerB.name).AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) < 2 {
+			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+		}
+
+		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+		err := tab.ParseHeader(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse header: %v", err)
+		}
+		foundA := false
+		var id string
+		for idx, line := range lines {
+			if idx == 0 {
+				continue
+			}
+			containerName, _ := tab.ReadRow(line, "NAMES")
+			if containerName == testContainerA.name {
+				foundA = true
+				id, _ = tab.ReadRow(line, "CONTAINER ID")
+				break
+			}
+		}
+		// there are other containers such as **wordpress** could be listed since
+		// their created times are ahead of testContainerB too
+		if !foundA {
+			return fmt.Errorf("expected container %s not found", testContainerA.name)
+		}
+		base.Cmd("ps", "--filter", "since="+id).AssertOutWithFunc(func(stdout string) error {
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			if len(lines) < 2 {
+				return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+			}
+
+			tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+			err := tab.ParseHeader(lines[0])
+			if err != nil {
+				return fmt.Errorf("failed to parse header: %v", err)
+			}
+			for idx, line := range lines {
+				if idx == 0 {
+					continue
+				}
+				containerName, _ := tab.ReadRow(line, "NAMES")
+				if containerName != testContainerB.name {
+					return fmt.Errorf("unexpected container %s found", containerName)
+				}
+			}
+			return nil
+		})
+		return nil
+	})
+
+	for _, testContainer := range []psTestContainer{testContainerA, testContainerB} {
+		for _, volume := range testContainer.volumes {
+			base.Cmd("ps", "--filter", "volume="+volume).AssertOutWithFunc(func(stdout string) error {
+				lines := strings.Split(strings.TrimSpace(stdout), "\n")
+				if len(lines) < 2 {
+					return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+				}
+
+				tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+				err := tab.ParseHeader(lines[0])
+				if err != nil {
+					return fmt.Errorf("failed to parse header: %v", err)
+				}
+				containerName, _ := tab.ReadRow(lines[1], "NAMES")
+				assert.Equal(t, containerName, testContainer.name)
+				return nil
+			})
+		}
+	}
+
+	base.Cmd("ps", "--filter", "network="+testContainerA.network).AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) < 2 {
+			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+		}
+
+		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+		err := tab.ParseHeader(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse header: %v", err)
+		}
+		containerName, _ := tab.ReadRow(lines[1], "NAMES")
+		assert.Equal(t, containerName, testContainerA.name)
+		return nil
+	})
+
+	for key, value := range testContainerB.labels {
+		base.Cmd("ps", "--filter", "label="+key+"="+value).AssertOutWithFunc(func(stdout string) error {
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			if len(lines) < 2 {
+				return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+			}
+
+			tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+			err := tab.ParseHeader(lines[0])
+			if err != nil {
+				return fmt.Errorf("failed to parse header: %v", err)
+			}
+			containerNames := map[string]struct{}{
+				testContainerB.name: {},
+			}
+			for idx, line := range lines {
+				if idx == 0 {
+					continue
+				}
+				containerName, _ := tab.ReadRow(line, "NAMES")
+				if _, ok := containerNames[containerName]; !ok {
+					return fmt.Errorf("unexpected container %s found", containerName)
+				}
+			}
+			return nil
+		})
+	}
+
+	base.Cmd("ps", "-a", "--filter", "exited=1").AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) < 2 {
+			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+		}
+
+		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+		err := tab.ParseHeader(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse header: %v", err)
+		}
+		containerNames := map[string]struct{}{
+			testContainerC.name: {},
+		}
+		for idx, line := range lines {
+			if idx == 0 {
+				continue
+			}
+			containerName, _ := tab.ReadRow(line, "NAMES")
+			if _, ok := containerNames[containerName]; !ok {
+				return fmt.Errorf("unexpected container %s found", containerName)
+			}
+		}
+		return nil
+	})
+
+	base.Cmd("ps", "-a", "--filter", "status=exited").AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) < 2 {
+			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+		}
+
+		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+		err := tab.ParseHeader(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse header: %v", err)
+		}
+		containerNames := map[string]struct{}{
+			testContainerC.name: {},
+		}
+		for idx, line := range lines {
+			if idx == 0 {
+				continue
+			}
+			containerName, _ := tab.ReadRow(line, "NAMES")
+			if _, ok := containerNames[containerName]; !ok {
+				return fmt.Errorf("unexpected container %s found", containerName)
+			}
 		}
 		return nil
 	})

@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -62,6 +63,7 @@ func newPsCommand() *cobra.Command {
 	psCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json", "table", "wide"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	psCommand.Flags().StringSliceP("filter", "f", nil, "Filter matches containers based on given conditions")
 	return psCommand
 }
 
@@ -90,6 +92,15 @@ func psAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	filters, err := cmd.Flags().GetStringSlice("filter")
+	if err != nil {
+		return err
+	}
+	filterCtx, err := foldContainerFilters(ctx, containers, filters)
+	if err != nil {
+		return err
+	}
+	containers = filterCtx.MatchesFilters(ctx)
 	if lastN > 0 {
 		all = true
 		sort.Slice(containers, func(i, j int) bool {
@@ -289,6 +300,57 @@ func getPrintableContainerName(containerLabels map[string]string) string {
 		}
 	}
 	return ""
+}
+
+type containerVolume struct {
+	Type        string
+	Name        string
+	Source      string
+	Destination string
+	Mode        string
+	RW          bool
+	Propagation string
+}
+
+func getContainerVolumes(containerLabels map[string]string) []*containerVolume {
+	var vols []*containerVolume
+	volLabels := []string{labels.AnonymousVolumes, labels.Mounts}
+	for _, volLabel := range volLabels {
+		names, ok := containerLabels[volLabel]
+		if !ok {
+			continue
+		}
+		var (
+			volumes []*containerVolume
+			err     error
+		)
+		if volLabel == labels.Mounts {
+			err = json.Unmarshal([]byte(names), &volumes)
+		}
+		if volLabel == labels.AnonymousVolumes {
+			var anonymous []string
+			err = json.Unmarshal([]byte(names), &anonymous)
+			for _, anony := range anonymous {
+				volumes = append(volumes, &containerVolume{Name: anony})
+			}
+
+		}
+		if err != nil {
+			logrus.Warn(err)
+		}
+		vols = append(vols, volumes...)
+	}
+	return vols
+}
+
+func getContainerNetworks(containerLables map[string]string) []string {
+	var networks []string
+	if names, ok := containerLables[labels.Networks]; ok {
+		if err := json.Unmarshal([]byte(names), &networks); err != nil {
+			logrus.Warn(err)
+		}
+	}
+	return networks
 }
 
 func getContainerSize(ctx context.Context, client *containerd.Client, c containerd.Container, info containers.Container) (string, error) {

@@ -589,8 +589,30 @@ Flags:
   - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
 - :whale: `-n, --last`: Show n last created containers (includes all states)
 - :whale: `-l, --latest`: Show the latest created container (includes all states)
+- :whale: `-f, --filter`: Filter containers based on given conditions
+  - :whale: `--filter id=<value>`: Container's ID. Both full ID and
+    truncated ID are supported
+  - :whale: `--filter name=<value>`: Container's name
+  - :whale: `--filter label=<key>=<value>`: Arbitrary string either a key or a
+    key-value pair
+  - :whale: `--filter exited=<value>`: Container's exit code. Only work with
+    `--all`
+  - :whale: `--filter status=<value>`: One of `created, running, paused,
+    stopped, exited, pausing, unknown`. Note that `restarting, removing, dead` are
+    not supported and will be ignored
+  - :whale: `--filter before/since=<ID/name>`: Filter containers created before
+    or after a given ID or name
+  - :whale: `--filter volume=<value>`: Filter by a given mounted volume or bind
+    mount
+  - :whale: `--filter network=<value>`: Filter by a given network
 
-Unimplemented `docker ps` flags: `--filter`
+Following arguments for `--filter` are not supported yet:
+
+1. `--filter ancestor=<value>`
+2. `--filter publish/expose=<port/startport-endport>[/<proto>]`
+3. `--filter health=<value>`
+4. `--filter isolation=<value>`
+5. `--filter is-task=<value>`
 
 ### :whale: :blue_square: nerdctl inspect
 Display detailed information on one or more containers.
