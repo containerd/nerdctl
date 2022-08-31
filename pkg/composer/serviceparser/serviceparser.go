@@ -80,7 +80,9 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		"StopGracePeriod",
 		"StopSignal",
 		"Sysctls",
+		"StdinOpen",
 		"Tmpfs",
+		"Tty",
 		"User",
 		"WorkingDir",
 		"Volumes",
@@ -164,8 +166,9 @@ func warnUnknownFields(svc types.ServiceConfig) {
 }
 
 type Container struct {
-	Name    string   // e.g., "compose-wordpress_wordpress_1"
-	RunArgs []string // {"-d", "--pull=never", ...}
+	Name     string // e.g., "compose-wordpress_wordpress_1"
+	Detached bool
+	RunArgs  []string // {"--pull=never", ...}
 }
 
 type Build struct {
@@ -443,9 +446,9 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		c.Name = svc.ContainerName
 	}
 
+	c.Detached = true
 	c.RunArgs = []string{
 		"--name=" + c.Name,
-		"-d",
 		"--pull=never", // because image will be ensured before running replicas with `nerdctl run`.
 	}
 
@@ -624,6 +627,10 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--sysctl=%s=%s", k, v))
 	}
 
+	if svc.StdinOpen {
+		c.RunArgs = append(c.RunArgs, "--interactive")
+	}
+
 	if svc.User != "" {
 		c.RunArgs = append(c.RunArgs, "--user="+svc.User)
 	}
@@ -656,6 +663,10 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 
 	for _, tmpfs := range svc.Tmpfs {
 		c.RunArgs = append(c.RunArgs, "--tmpfs="+tmpfs)
+	}
+
+	if svc.Tty {
+		c.RunArgs = append(c.RunArgs, "--tty")
 	}
 
 	if svc.WorkingDir != "" {

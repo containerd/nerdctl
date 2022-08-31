@@ -337,6 +337,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose push](#whale-nerdctl-compose-push)
     - [:whale: nerdctl compose config](#whale-nerdctl-compose-config)
     - [:whale: nerdctl compose kill](#whale-nerdctl-compose-kill)
+    - [:whale: nerdctl compose run](#whale-nerdctl-compose-run)
   - [IPFS management](#ipfs-management)
     - [:nerd_face: nerdctl ipfs registry up](#nerd_face-nerdctl-ipfs-registry-up)
     - [:nerd_face: nerdctl ipfs registry down](#nerd_face-nerdctl-ipfs-registry-down)
@@ -1419,6 +1420,15 @@ Usage: `nerdctl compose kill`
 Flags:
 - :whale: `-s, --signal`: SIGNAL to send to the container (default: "SIGKILL")
 
+### :whale: nerdctl compose run
+Run a one-off command on a service
+
+Usage: `nerdctl compose run`
+
+Unimplemented `docker-compose run` (V1) flags: `--use-aliases`, `--no-TTY`
+
+Unimplemented `docker compose run` (V2) flags: `--use-aliases`, `--no-TTY`, `--tty`
+
 ## IPFS management
 
 P2P image distribution (IPFS) is completely optional. Your host is NOT connected to any P2P network, unless you opt in to [install and run IPFS daemon](https://docs.ipfs.io/install/).
@@ -1488,7 +1498,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose create|events|exec|images|pause|port|restart|rm|run|scale|start|stop|top|unpause`
+- `docker-compose create|events|exec|images|pause|port|restart|rm|scale|start|stop|top|unpause`
 
 Others:
 - `docker system df`

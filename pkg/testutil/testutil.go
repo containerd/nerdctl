@@ -86,6 +86,34 @@ func (b *Base) ComposeCmd(args ...string) *Cmd {
 	return cmd
 }
 
+func (b *Base) ComposeCmdWithHelper(helper []string, args ...string) *Cmd {
+	helperBin, err := exec.LookPath(helper[0])
+	if err != nil {
+		b.T.Skipf("helper binary %q not found", helper[0])
+	}
+	helperArgs := helper[1:]
+	var (
+		binary     string
+		binaryArgs []string
+	)
+	if b.ComposeBinary != "" {
+		binary = b.ComposeBinary
+		binaryArgs = append(b.Args, args...)
+	} else {
+		binary = b.Binary
+		binaryArgs = append(b.Args, append([]string{"compose"}, args...)...)
+	}
+	helperArgs = append(helperArgs, binary)
+	helperArgs = append(helperArgs, binaryArgs...)
+	icmdCmd := icmd.Command(helperBin, helperArgs...)
+	icmdCmd.Env = b.Env
+	cmd := &Cmd{
+		Cmd:  icmdCmd,
+		Base: b,
+	}
+	return cmd
+}
+
 func (b *Base) CmdWithHelper(helper []string, args ...string) *Cmd {
 	helperBin, err := exec.LookPath(helper[0])
 	if err != nil {

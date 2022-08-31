@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -146,8 +147,20 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 		logrus.Infof("Creating container %s", container.Name)
 	}
 
+	tempDir, err := os.MkdirTemp(os.TempDir(), "compose-")
+	if err != nil {
+		return "", fmt.Errorf("error while creating/re-creating container %s: %w", container.Name, err)
+	}
+	defer os.RemoveAll(tempDir)
+	cidFilename := filepath.Join(tempDir, "cid")
+
+	if container.Detached && !service.Unparsed.StdinOpen && !service.Unparsed.Tty {
+		container.RunArgs = append([]string{"-d"}, container.RunArgs...)
+	}
+
 	//add metadata labels to container https://github.com/compose-spec/compose-spec/blob/master/spec.md#labels
 	container.RunArgs = append([]string{
+		"--cidfile=" + cidFilename,
 		fmt.Sprintf("-l=%s=%s", labels.ComposeProject, c.project.Name),
 		fmt.Sprintf("-l=%s=%s", labels.ComposeService, service.Unparsed.Name),
 	}, container.RunArgs...)
@@ -156,10 +169,29 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 	if c.DebugPrintFull {
 		logrus.Debugf("Running %v", cmd.Args)
 	}
-	cmd.Stderr = os.Stderr
-	out, err := cmd.Output()
+
+	// FIXME
+	if service.Unparsed.StdinOpen != service.Unparsed.Tty {
+		return "", fmt.Errorf("currently StdinOpen(-i) and Tty(-t) should be same")
+	}
+
+	if service.Unparsed.StdinOpen {
+		cmd.Stdin = os.Stdin
+	}
+
+	if !container.Detached {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
+
+	err = cmd.Run()
 	if err != nil {
 		return "", fmt.Errorf("error while creating container %s: %w", container.Name, err)
 	}
-	return strings.TrimSpace(string(out)), nil
+
+	cid, err := os.ReadFile(cidFilename)
+	if err != nil {
+		return "", fmt.Errorf("error while creating container %s: %w", container.Name, err)
+	}
+	return strings.TrimSpace(string(cid)), nil
 }
