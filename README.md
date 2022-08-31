@@ -1498,7 +1498,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose create|events|exec|images|pause|port|restart|rm|run|scale|start|stop|top|unpause`
+- `docker-compose create|events|exec|images|pause|port|restart|rm|scale|start|stop|top|unpause`
 
 Others:
 - `docker system df`
