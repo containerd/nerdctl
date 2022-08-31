@@ -37,9 +37,9 @@ require (
 	github.com/multiformats/go-multiaddr v0.6.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.3-0.20220303224323-02efb9a75ee1
-	github.com/opencontainers/runtime-spec v1.0.3-0.20220311020903-6969a0a09ab1
+	github.com/opencontainers/runtime-spec v1.0.3-0.20220809190508-9ee22abf867e
 	github.com/pelletier/go-toml v1.9.5
-	github.com/rootless-containers/bypass4netns v0.2.2
+	github.com/rootless-containers/bypass4netns v0.2.3
 	github.com/rootless-containers/rootlesskit v1.0.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
@@ -50,7 +50,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 	golang.org/x/net v0.0.0-20220615171555-694bf12d69de
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
-	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab
+	golang.org/x/sys v0.0.0-20220818161305-2296e01440c6
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.3.0
