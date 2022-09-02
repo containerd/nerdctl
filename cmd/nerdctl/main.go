@@ -139,10 +139,8 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) error {
 	}
 	rootCmd.PersistentFlags().Bool("debug", cfg.Debug, "debug mode")
 	rootCmd.PersistentFlags().Bool("debug-full", cfg.DebugFull, "debug mode (with full output)")
-	// -a is nonPersistentAlias (conflicts with nerdctl images -a)
-	AddPersistentStringFlag(rootCmd, "address", []string{"host"}, []string{"a", "H"}, cfg.Address, "CONTAINERD_ADDRESS", `containerd address, optionally with "unix://" prefix`)
-	// -n is nonPersistentAlias (conflicts with nerdctl logs -n)
-	AddPersistentStringFlag(rootCmd, "namespace", nil, []string{"n"}, cfg.Namespace, "CONTAINERD_NAMESPACE", `containerd namespace, such as "moby" for Docker, "k8s.io" for Kubernetes`)
+	AddPersistentStringFlag(rootCmd, "address", []string{"host", "a"}, []string{"H"}, cfg.Address, "CONTAINERD_ADDRESS", `containerd address, optionally with "unix://" prefix`)
+	AddPersistentStringFlag(rootCmd, "namespace", []string{"n"}, nil, cfg.Namespace, "CONTAINERD_NAMESPACE", `containerd namespace, such as "moby" for Docker, "k8s.io" for Kubernetes`)
 	rootCmd.RegisterFlagCompletionFunc("namespace", shellCompleteNamespaceNames)
 	AddPersistentStringFlag(rootCmd, "snapshotter", []string{"storage-driver"}, nil, cfg.Snapshotter, "CONTAINERD_SNAPSHOTTER", "containerd snapshotter")
 	rootCmd.RegisterFlagCompletionFunc("snapshotter", shellCompleteSnapshotterNames)
@@ -299,6 +297,7 @@ Config file ($NERDCTL_TOML): %s
 	)
 	addApparmorCommand(rootCmd)
 	addCpCommand(rootCmd)
+
 	return rootCmd, nil
 }
 

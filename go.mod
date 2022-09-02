@@ -89,7 +89,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-block-format v0.0.3 // indirect
 	github.com/ipfs/go-blockservice v0.3.0 // indirect
@@ -185,4 +185,7 @@ replace (
 	github.com/containerd/containerd => github.com/containerd/containerd v1.6.1-0.20220807041520-6deb1174fbfc
 	// Temporary fork for avoiding importing patent-protected code: https://github.com/hashicorp/golang-lru/issues/73
 	github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c
+	// Temporary fork for parent flags persistence: https://github.com/spf13/cobra/pull/1795
+	github.com/spf13/cobra => github.com/fahedouch/cobra v0.0.0-20220905130657-0c653d6e38ad
+	github.com/spf13/pflag => github.com/fahedouch/pflag v0.0.0-20220905133355-1113e9b3fb8b
 )
