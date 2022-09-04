@@ -25,6 +25,7 @@ import (
 	"github.com/compose-spec/compose-go/loader"
 	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -110,6 +111,10 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 	}
 	if targetSvc == nil {
 		return fmt.Errorf("error cannot find service name: %s", ro.ServiceName)
+	}
+
+	for i := range svcs {
+		svcs[i].ContainerName = fmt.Sprintf("%s_%s_run_%s", c.project.Name, svcs[i].Name, idgen.TruncateID(idgen.GenerateID()))
 	}
 
 	targetSvc.Tty = ro.Tty

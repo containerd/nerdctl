@@ -22,7 +22,10 @@ import (
 	"fmt"
 )
 
-const IDLength = 64
+const (
+	IDLength      = 64
+	ShortIDLength = 12
+)
 
 func GenerateID() string {
 	bytesLength := IDLength / 2
@@ -35,4 +38,11 @@ func GenerateID() string {
 		panic(fmt.Errorf("expected %d bytes, got %d bytes", bytesLength, n))
 	}
 	return hex.EncodeToString(b)
+}
+
+func TruncateID(id string) string {
+	if len(id) < ShortIDLength {
+		return id
+	}
+	return id[:ShortIDLength]
 }
