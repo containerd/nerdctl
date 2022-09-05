@@ -250,7 +250,7 @@ func setCreateFlags(cmd *cobra.Command) {
 
 	// #region logging flags
 	// log-opt needs to be StringArray, not StringSlice, to prevent "env=os,customer" from being split to {"env=os", "customer"}
-	cmd.Flags().String("log-driver", "json-file", "Logging driver for the container")
+	cmd.Flags().String("log-driver", "json-file", "Logging driver for the container. Default is json-file. It also supports logURI (eg: --log-driver binary://<path>)")
 	cmd.RegisterFlagCompletionFunc("log-driver", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return logging.Drivers(), cobra.ShellCompDirectiveNoFileComp
 	})
@@ -497,33 +497,41 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		if err != nil {
 			return nil, nil, err
 		}
-		logOptMap, err := parseKVStringsMapFromLogOpt(cmd, logDriver)
-		if err != nil {
-			return nil, nil, err
-		}
-		logDriverInst, err := logging.GetDriver(logDriver, logOptMap)
-		if err != nil {
-			return nil, nil, err
-		}
-		if err := logDriverInst.Init(dataStore, ns, id); err != nil {
-			return nil, nil, err
-		}
-		logConfig := &logging.LogConfig{
-			Driver: logDriver,
-			Opts:   logOptMap,
-		}
-		logConfigB, err := json.Marshal(logConfig)
-		if err != nil {
-			return nil, nil, err
-		}
-		logConfigFilePath := logging.LogConfigFilePath(dataStore, ns, id)
-		if err = os.WriteFile(logConfigFilePath, logConfigB, 0600); err != nil {
-			return nil, nil, err
-		}
-		if lu, err := generateLogURI(dataStore); err != nil {
-			return nil, nil, err
-		} else if lu != nil {
-			logURI = lu.String()
+
+		// check if log driver is a valid uri. If it is a valid uri and scheme is not
+		if u, err := url.Parse(logDriver); err == nil && u.Scheme != "" {
+			logURI = logDriver
+		} else {
+			logOptMap, err := parseKVStringsMapFromLogOpt(cmd, logDriver)
+			if err != nil {
+				return nil, nil, err
+			}
+			logDriverInst, err := logging.GetDriver(logDriver, logOptMap)
+			if err != nil {
+				return nil, nil, err
+			}
+			if err := logDriverInst.Init(dataStore, ns, id); err != nil {
+				return nil, nil, err
+			}
+			logConfig := &logging.LogConfig{
+				Driver: logDriver,
+				Opts:   logOptMap,
+			}
+			logConfigB, err := json.Marshal(logConfig)
+			if err != nil {
+				return nil, nil, err
+			}
+			logConfigFilePath := logging.LogConfigFilePath(dataStore, ns, id)
+			if err = os.WriteFile(logConfigFilePath, logConfigB, 0600); err != nil {
+				return nil, nil, err
+			}
+			if lu, err := generateLogURI(dataStore); err != nil {
+				return nil, nil, err
+			} else if lu != nil {
+				logrus.Debugf("generated log driver: %s", lu.String())
+
+				logURI = lu.String()
+			}
 		}
 	}
 

@@ -305,3 +305,91 @@ func TestRunWithJournaldLogDriverAndLogOpt(t *testing.T) {
 	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(20*time.Second))
 	assert.Equal(t, 1, found)
 }
+
+func TestRunWithLogBinary(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("buildkit is not enabled on windows, this feature may work on windows.")
+	}
+	testutil.DockerIncompatible(t)
+	t.Parallel()
+	base := testutil.NewBase(t)
+	imageName := testutil.Identifier(t) + "-image"
+	containerName := testutil.Identifier(t)
+
+	const dockerfile = `
+FROM golang:latest as builder
+WORKDIR /go/src/
+RUN mkdir -p logger
+WORKDIR /go/src/logger
+RUN echo '\
+	package main \n\
+	\n\
+	import ( \n\
+	"bufio" \n\
+	"context" \n\
+	"fmt" \n\
+	"io" \n\
+	"os" \n\
+	"path/filepath" \n\
+	"sync" \n\
+	\n\
+	"github.com/containerd/containerd/runtime/v2/logging"\n\
+	)\n\
+
+	func main() {\n\
+		logging.Run(log)\n\
+	}\n\
+
+	func log(ctx context.Context, config *logging.Config, ready func() error) error {\n\
+		var wg sync.WaitGroup \n\
+		wg.Add(2) \n\
+		// forward both stdout and stderr to temp files \n\
+		go copy(&wg, config.Stdout, config.ID, "stdout") \n\
+		go copy(&wg, config.Stderr, config.ID, "stderr") \n\
+
+		// signal that we are ready and setup for the container to be started \n\
+		if err := ready(); err != nil { \n\
+		return err \n\
+		} \n\
+		wg.Wait() \n\
+		return nil \n\
+	}\n\
+	\n\
+	func copy(wg *sync.WaitGroup, r io.Reader, id string, kind string) { \n\
+		f, _ := os.Create(filepath.Join(os.TempDir(), fmt.Sprintf("%s_%s.log", id, kind))) \n\
+		defer f.Close() \n\
+		defer wg.Done() \n\
+		s := bufio.NewScanner(r) \n\
+		for s.Scan() { \n\
+			f.WriteString(s.Text()) \n\
+		} \n\
+	}\n' >> main.go
+
+
+RUN go mod init
+RUN go mod tidy
+RUN go build .
+
+FROM scratch
+COPY --from=builder /go/src/logger/logger /
+	`
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+	tmpDir := t.TempDir()
+	base.Cmd("build", buildCtx, "--output", fmt.Sprintf("type=local,src=/go/src/logger/logger,dest=%s", tmpDir)).AssertOK()
+	defer base.Cmd("image", "rm", "-f", imageName).AssertOK()
+
+	base.Cmd("container", "rm", "-f", containerName).AssertOK()
+	base.Cmd("run", "-d", "--log-driver", fmt.Sprintf("binary://%s/logger", tmpDir), "--name", containerName, testutil.CommonImage,
+		"sh", "-euxc", "echo foo; echo bar").AssertOK()
+	defer base.Cmd("container", "rm", "-f", containerName)
+
+	inspectedContainer := base.InspectContainer(containerName)
+	bytes, err := os.ReadFile(filepath.Join(os.TempDir(), fmt.Sprintf("%s_%s.log", inspectedContainer.ID, "stdout")))
+	assert.NilError(t, err)
+	log := string(bytes)
+	assert.Check(t, strings.Contains(log, "foo"))
+	assert.Check(t, strings.Contains(log, "bar"))
+}

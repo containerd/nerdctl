@@ -508,6 +508,8 @@ Logging flags:
         - :whale: `--log-opt=fluentd-sub-second-precision=<true|false>`: Enable sub-second precision for fluentd. The default value is false.
         - :nerd_face: `--log-opt=fluentd-async-reconnect-interval=<1s|1ms>`: The time to wait before retrying to reconnect to fluentd. The default value is 0s.
         - :nerd_face: `--log-opt=fluentd-request-ack=<true|false>`: Enable request ack for fluentd. The default value is false.
+    - :nerd_face: Accepts a LogURI which is a containerd shim logger. A scheme must be specified for the URI. Example: `nerdctl run -d --log-driver binary:///usr/bin/ctr-journald-shim docker.io/library/hello-world:latest`. An implementation of shim logger can be found at (https://github.com/containerd/containerd/tree/dbef1d56d7ebc05bc4553d72c419ed5ce025b05d/runtime/v2#logging)
+
 
 Shared memory flags:
 - :whale: `--ipc`: IPC namespace to use
