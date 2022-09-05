@@ -192,8 +192,9 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 		// if --memory-swap is set to 0, the setting is ignored, and the value is treated as unset.
 		memSwap64 = mem64 * 2
 	}
-	opts = append(opts, oci.WithMemorySwap(memSwap64))
-
+	if memSwap64 != 0 {
+		opts = append(opts, oci.WithMemorySwap(memSwap64))
+	}
 	if mem64 > 0 && memReserve64 > 0 && mem64 < memReserve64 {
 		return nil, fmt.Errorf("minimum memory limit can not be less than memory reservation limit, see usage")
 	}
