@@ -21,7 +21,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
+	"github.com/containerd/nerdctl/pkg/containerinspector"
+	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
@@ -30,6 +33,7 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/pkg/cap"
+	"github.com/containerd/containerd/pkg/userns"
 	"github.com/spf13/cobra"
 )
 
@@ -132,15 +136,22 @@ func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]o
 	if err != nil {
 		return nil, err
 	}
-	pidNs = strings.ToLower(pidNs)
+	platform, err := cmd.Flags().GetString("platform")
+	if err != nil {
+		return nil, err
+	}
+
+	// FIXME : setPlatformOptions() is invoked by createContainer() and createContainer() already has client.
+	client, ctx, cancel, err := newClientWithPlatform(cmd, platform)
+	if err != nil {
+		return nil, err
+	}
+	defer cancel()
+
 	if pidNs != "" {
-		if pidNs != "host" {
-			return nil, fmt.Errorf("invalid pid namespace. Set --pid=host to enable host pid namespace")
-		} else {
-			opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
-			if rootlessutil.IsRootless() {
-				opts = append(opts, withBindMountHostProcfs)
-			}
+		opts, err = setPIDNamespace(ctx, opts, client, pidNs)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -216,4 +227,65 @@ func withOOMScoreAdj(score int) oci.SpecOpts {
 		s.Process.OOMScoreAdj = &score
 		return nil
 	}
+}
+
+func setPIDNamespace(ctx context.Context, opts []oci.SpecOpts, client *containerd.Client, pidNs string) ([]oci.SpecOpts, error) {
+	pidNs = strings.ToLower(pidNs)
+
+	switch pidNs {
+	case "host":
+		opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
+		if rootlessutil.IsRootless() {
+			opts = append(opts, withBindMountHostProcfs)
+		}
+	default: // container:<name|id> form
+		parsedPidNs := strings.Split(pidNs, ":")
+		if len(parsedPidNs) < 2 {
+			return nil, fmt.Errorf("invalid pid namespace. Set --pid=[host|container:<name|id>]")
+		}
+
+		req := parsedPidNs[1] // container's id or name
+		walker := &containerwalker.ContainerWalker{
+			Client: client,
+			OnFound: func(ctx context.Context, found containerwalker.Found) error {
+				if found.MatchCount > 1 {
+					return fmt.Errorf("ambiguous condition for containers")
+				}
+
+				nc, err := containerinspector.Inspect(ctx, found.Container)
+				if err != nil {
+					return err
+				}
+
+				if nc.Process.Status.Status != containerd.Running {
+					return fmt.Errorf("shared container is not running")
+				}
+
+				ns := specs.LinuxNamespace{
+					Type: specs.PIDNamespace,
+					Path: fmt.Sprintf("/proc/%d/ns/pid", nc.Process.Pid),
+				}
+				opts = append(opts, oci.WithLinuxNamespace(ns))
+
+				if userns.RunningInUserNS() {
+					nsUser := specs.LinuxNamespace{
+						Type: specs.UserNamespace,
+						Path: fmt.Sprintf("/proc/%d/ns/user", nc.Process.Pid),
+					}
+					opts = append(opts, oci.WithLinuxNamespace(nsUser))
+				}
+				return nil
+			},
+		}
+
+		matchCount, err := walker.Walk(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		if matchCount == 0 {
+			return nil, fmt.Errorf("invalid pid namespace. Set --pid=[host|container:<name|id>]")
+		}
+	}
+
+	return opts, nil
 }
