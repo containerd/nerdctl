@@ -59,7 +59,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-22.04: cgroup v1, ubuntu-22.04: cgroup v2
+        # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
         include:
           - ubuntu: 20.04
             containerd: v1.5.13

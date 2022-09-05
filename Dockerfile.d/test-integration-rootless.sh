@@ -52,5 +52,6 @@ EOF
 	echo "ipfs = true" >>/home/rootless/.config/containerd-stargz-grpc/config.toml
 	systemctl --user restart stargz-snapshotter.service
 	export IPFS_PATH="/home/rootless/.local/share/ipfs"
+	containerd-rootless-setuptool.sh install-bypass4netnsd
 	exec "$@"
 fi

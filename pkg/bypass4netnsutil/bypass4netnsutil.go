@@ -32,7 +32,15 @@ import (
 
 func generateSecurityOpt(listenerPath string) (oci.SpecOpts, error) {
 	opt := func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
-		s.Linux.Seccomp = b4nnoci.GetDefaultSeccompProfile(listenerPath)
+		if s.Linux.Seccomp == nil {
+			s.Linux.Seccomp = b4nnoci.GetDefaultSeccompProfile(listenerPath)
+		} else {
+			sc, err := b4nnoci.TranslateSeccompProfile(*s.Linux.Seccomp, listenerPath)
+			if err != nil {
+				return err
+			}
+			s.Linux.Seccomp = sc
+		}
 		return nil
 	}
 	return opt, nil
@@ -51,10 +59,6 @@ func GenerateBypass4netnsOpts(securityOptsMaps map[string]string, labelMaps map[
 
 	if !b4nnEnable {
 		return nil, nil
-	}
-
-	if _, ok := securityOptsMaps["seccomp"]; ok {
-		return nil, fmt.Errorf("--security-opt seccomp cannot be specified if bypass4netns enabled")
 	}
 
 	socketPath, err := GetSocketPathByID(id)

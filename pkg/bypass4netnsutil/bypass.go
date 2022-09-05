@@ -18,26 +18,31 @@ package bypass4netnsutil
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"path/filepath"
 
 	"github.com/containerd/containerd/errdefs"
 	gocni "github.com/containerd/go-cni"
 	b4nnapi "github.com/rootless-containers/bypass4netns/pkg/api"
 	"github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
+	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
 )
 
-func NewBypass4netnsCNIBypassManager(client client.Client) (*Bypass4netnsCNIBypassManager, error) {
-	if client == nil {
+func NewBypass4netnsCNIBypassManager(client client.Client, rlkClient rlkclient.Client) (*Bypass4netnsCNIBypassManager, error) {
+	if client == nil || rlkClient == nil {
 		return nil, errdefs.ErrInvalidArgument
 	}
 	pm := &Bypass4netnsCNIBypassManager{
-		Client: client,
+		Client:    client,
+		rlkClient: rlkClient,
 	}
 	return pm, nil
 }
 
 type Bypass4netnsCNIBypassManager struct {
 	client.Client
+	rlkClient rlkclient.Client
 }
 
 func (b4nnm *Bypass4netnsCNIBypassManager) StartBypass(ctx context.Context, ports []gocni.PortMapping, id, stateDir string) error {
@@ -51,13 +56,24 @@ func (b4nnm *Bypass4netnsCNIBypassManager) StartBypass(ctx context.Context, port
 	}
 	logFilePath := filepath.Join(stateDir, "bypass4netns.log")
 
+	rlkInfo, err := b4nnm.rlkClient.Info(ctx)
+	if err != nil {
+		return err
+	}
+	if rlkInfo.NetworkDriver == nil {
+		return fmt.Errorf("no network driver is set in RootlessKit info: %+v", rlkInfo)
+	}
+	rlkIP := rlkInfo.NetworkDriver.ChildIP
+	const mask = 24 // currently hard-coded
+	rlkCIDR := fmt.Sprintf("%s/%d", rlkIP.Mask(net.CIDRMask(mask, 32)), mask)
+
 	spec := b4nnapi.BypassSpec{
 		ID:          id,
 		SocketPath:  socketPath,
 		PidFilePath: pidFilePath,
 		LogFilePath: logFilePath,
-		// TODO: Remove hard-coded subnets
-		IgnoreSubnets: []string{"127.0.0.0/8", "10.0.0.0/8"},
+		// "auto" can detect CNI CIDRs automatically
+		IgnoreSubnets: []string{"127.0.0.0/8", rlkCIDR, "auto"},
 	}
 	portMap := []b4nnapi.PortSpec{}
 	for _, p := range ports {
