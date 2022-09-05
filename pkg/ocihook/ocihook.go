@@ -392,7 +392,7 @@ func onCreateRuntime(opts *handlerOpts) error {
 
 		if rootlessutil.IsRootlessChild() {
 			if b4nnEnabled {
-				bm, err := bypass4netnsutil.NewBypass4netnsCNIBypassManager(opts.bypassClient)
+				bm, err := bypass4netnsutil.NewBypass4netnsCNIBypassManager(opts.bypassClient, opts.rootlessKitClient)
 				if err != nil {
 					return err
 				}
@@ -426,7 +426,7 @@ func onPostStop(opts *handlerOpts) error {
 		}
 		if rootlessutil.IsRootlessChild() {
 			if b4nnEnabled {
-				bm, err := bypass4netnsutil.NewBypass4netnsCNIBypassManager(opts.bypassClient)
+				bm, err := bypass4netnsutil.NewBypass4netnsCNIBypassManager(opts.bypassClient, opts.rootlessKitClient)
 				if err != nil {
 					return err
 				}

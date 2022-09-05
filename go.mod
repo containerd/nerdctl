@@ -39,7 +39,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.3-0.20220303224323-02efb9a75ee1
 	github.com/opencontainers/runtime-spec v1.0.3-0.20220809190508-9ee22abf867e
 	github.com/pelletier/go-toml v1.9.5
-	github.com/rootless-containers/bypass4netns v0.2.3
+	github.com/rootless-containers/bypass4netns v0.3.0
 	github.com/rootless-containers/rootlesskit v1.0.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0

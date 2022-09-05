@@ -23,15 +23,18 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/platformutil"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/opencontainers/go-digest"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
@@ -483,6 +486,21 @@ func RequireDaemonVersion(b *Base, constraint string) {
 	}
 }
 
+func RequireKernelVersion(t testing.TB, constraint string) {
+	t.Helper()
+	c, err := semver.NewConstraint(constraint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unameR, err := semver.NewVersion(infoutil.UnameR())
+	if err != nil {
+		t.Skip(err)
+	}
+	if !c.Check(unameR) {
+		t.Skipf("version %v does not satisfy constraints %v", unameR, c)
+	}
+}
+
 func RequireContainerdPlugin(base *Base, requiredType, requiredID string, requiredCaps []string) {
 	base.T.Helper()
 	info := base.InfoNative()
@@ -508,6 +526,22 @@ func RequireContainerdPlugin(base *Base, requiredType, requiredID string, requir
 		base.T.Skipf("test requires containerd plugin \"%s.%s\"", requiredType, requiredID)
 	} else {
 		base.T.Skipf("test requires containerd plugin \"%s.%s\" with capabilities %v", requiredType, requiredID, requiredCaps)
+	}
+}
+
+func RequireSystemService(t testing.TB, sv string) {
+	t.Helper()
+	if runtime.GOOS != "linux" {
+		t.Skipf("Service %q is not supported on %q", sv, runtime.GOOS)
+	}
+	var systemctlArgs []string
+	if rootlessutil.IsRootless() {
+		systemctlArgs = append(systemctlArgs, "--user")
+	}
+	systemctlArgs = append(systemctlArgs, []string{"-q", "is-active", sv}...)
+	cmd := exec.Command("systemctl", systemctlArgs...)
+	if err := cmd.Run(); err != nil {
+		t.Skipf("Service %q does not seem active: %v: %v", sv, cmd.Args, err)
 	}
 }
 

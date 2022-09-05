@@ -490,3 +490,51 @@ networks:
 	base.ComposeCmd("-f", comp2.YAMLFullPath(), "up", "-d").AssertOK()
 	base.Cmd("exec", containerName1, "wget", "-qO-", "http://"+containerName2).AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
 }
+
+func TestComposeUpWithBypass4netns(t *testing.T) {
+	// docker does not support bypass4netns mode
+	testutil.DockerIncompatible(t)
+	if !rootlessutil.IsRootless() {
+		t.Skip("test needs rootless")
+	}
+	testutil.RequireKernelVersion(t, ">= 5.9.0-0")
+	testutil.RequireSystemService(t, "bypass4netnsd")
+	base := testutil.NewBase(t)
+	testComposeUp(t, base, fmt.Sprintf(`
+version: '3.1'
+
+services:
+
+  wordpress:
+    image: %s
+    restart: always
+    ports:
+      - 8080:80
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: exampleuser
+      WORDPRESS_DB_PASSWORD: examplepass
+      WORDPRESS_DB_NAME: exampledb
+    volumes:
+      - wordpress:/var/www/html
+    labels:
+      - nerdctl/bypass4netns=1
+
+  db:
+    image: %s
+    restart: always
+    environment:
+      MYSQL_DATABASE: exampledb
+      MYSQL_USER: exampleuser
+      MYSQL_PASSWORD: examplepass
+      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+    volumes:
+      - db:/var/lib/mysql
+    labels:
+      - nerdctl/bypass4netns=1
+
+volumes:
+  wordpress:
+  db:
+`, testutil.WordpressImage, testutil.MariaDBImage))
+}
