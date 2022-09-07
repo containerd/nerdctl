@@ -134,6 +134,6 @@ func mobySysInfo(info *dockercompat.Info) *sysinfo.SysInfo {
 		g := fmt.Sprintf("/user.slice/user-%d.slice", rootlessutil.ParentEUID())
 		mobySysInfoOpts = append(mobySysInfoOpts, sysinfo.WithCgroup2GroupPath(g))
 	}
-	mobySysInfo := sysinfo.New(true, mobySysInfoOpts...)
+	mobySysInfo := sysinfo.New(mobySysInfoOpts...)
 	return mobySysInfo
 }

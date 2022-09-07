@@ -17,9 +17,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	buildkitclient "github.com/moby/buildkit/client"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -72,6 +74,7 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 		}
 		msg += `
   - all images without at least one container associated to them
+  - all build cache
 `
 		msg += "\nAre you sure you want to continue? [y/N] "
 		fmt.Fprintf(cmd.OutOrStdout(), "WARNING! %s", msg)
@@ -99,5 +102,67 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	return imagePrune(ctx, cmd, client)
+	if err := imagePrune(ctx, cmd, client); err != nil {
+		return nil
+	}
+	prunedObjects, err := buildCachePrune(ctx, cmd, all)
+	if err != nil {
+		return err
+	}
+
+	if len(prunedObjects) > 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "Deleted build cache objects:")
+		for _, item := range prunedObjects {
+			fmt.Fprintln(cmd.OutOrStdout(), item.ID)
+		}
+	}
+
+	// TODO: print total reclaimed space
+
+	return nil
+}
+
+type cacheUsageInfo struct {
+	ID   string
+	Size int64
+}
+
+func buildCachePrune(ctx context.Context, cmd *cobra.Command, pruneAll bool) ([]cacheUsageInfo, error) {
+	buildkitHost, err := getBuildkitHost(cmd)
+	if err != nil {
+		return nil, err
+	}
+	opts := []buildkitclient.ClientOpt{buildkitclient.WithFailFast()}
+	client, err := buildkitclient.New(ctx, buildkitHost, opts)
+	if err != nil {
+		return nil, err
+	}
+	var pruneOpts []buildkitclient.PruneOption
+	if pruneAll {
+		pruneOpts = append(pruneOpts, buildkitclient.PruneAll)
+	}
+
+	var usageInfos []buildkitclient.UsageInfo
+	usageCh := make(chan buildkitclient.UsageInfo)
+
+	go func() {
+		for item := range usageCh {
+			usageInfos = append(usageInfos, item)
+		}
+	}()
+
+	err = client.Prune(ctx, usageCh, pruneOpts...)
+	close(usageCh)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]cacheUsageInfo, len(usageInfos))
+	for i, item := range usageInfos {
+		result[i] = cacheUsageInfo{
+			ID:   item.ID,
+			Size: item.Size,
+		}
+	}
+	return result, nil
 }
