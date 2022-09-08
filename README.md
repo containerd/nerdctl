@@ -1486,8 +1486,9 @@ Usage: `nerdctl compose down [OPTIONS]`
 
 Flags:
 - :whale: `-v, --volumes`: Remove named volumes declared in the volumes section of the Compose file and anonymous volumes attached to containers
+- :whale: `--remove-orphans`: Remove containers of services not defined in the Compose file.
 
-Unimplemented `docker-compose down` (V1) flags: `--rmi`, `--remove-orphans`, `--timeout`
+Unimplemented `docker-compose down` (V1) flags: `--rmi`, `--timeout`
 
 ### :whale: nerdctl compose images
 
