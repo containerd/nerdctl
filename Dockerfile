@@ -41,7 +41,7 @@ ARG KUBO_VERSION=v0.15.0
 # Extra deps: Init
 ARG TINI_VERSION=v0.19.0
 # Extra deps: Debug
-ARG BUILDG_VERSION=v0.3.0
+ARG BUILDG_VERSION=v0.4.1
 
 # Test deps
 ARG GO_VERSION=1.19
