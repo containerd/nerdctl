@@ -66,6 +66,32 @@ bar`
 	base.Cmd("rm", "-f", containerName).AssertOK()
 }
 
+func TestLogsWithInheritedFlags(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("`nerdctl logs` is not implemented on Windows (why?)")
+	}
+	base := testutil.NewBase(t)
+	for k, v := range base.Args {
+		if strings.HasPrefix(v, "--namespace=") {
+			base.Args[k] = "-n=" + testutil.Namespace
+		}
+	}
+	containerName := testutil.Identifier(t)
+
+	defer base.Cmd("rm", containerName).Run()
+	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
+		"sh", "-euxc", "echo foo; echo bar").AssertOK()
+
+	// test rootCmd alias `-n` already used in logs subcommand
+	base.Cmd("logs", "-n", "1", containerName).AssertOutWithFunc(func(stdout string) error {
+		if !(stdout == "bar\n" || stdout == "") {
+			return fmt.Errorf("expected %q or %q, got %q", "bar", "", stdout)
+		}
+		return nil
+	})
+}
+
 func TestLogsOfJournaldDriver(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
