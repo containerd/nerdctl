@@ -43,26 +43,66 @@ const (
 	Management = "management"
 )
 
-// mainHelpTemplate was derived from https://github.com/spf13/cobra/blob/v1.2.1/command.go#L491-L514
-const mainHelpTemplate = `Usage:{{if .Runnable}}
-  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
-  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
-Aliases:
-  {{.NameAndAliases}}{{end}}{{if .HasExample}}
-Examples:
-{{.Example}}{{end}}{{if .HasAvailableSubCommands}}
-Management commands:{{range .Commands}}{{if (eq (index .Annotations "category") "management")}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
-Commands:{{range .Commands}}{{if (eq (index .Annotations "category") "")}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
-Flags:
-{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
-Global Flags:
-{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
-Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
-  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
-Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
-`
+// usage was derived from https://github.com/spf13/cobra/blob/v1.2.1/command.go#L491-L514
+func usage(c *cobra.Command) error {
+	s := "Usage: "
+	if c.Runnable() {
+		s += c.UseLine() + "\n"
+	} else {
+		s += c.CommandPath() + " [command]\n"
+	}
+	s += "\n"
+	if len(c.Aliases) > 0 {
+		s += "Aliases: " + c.NameAndAliases() + "\n"
+	}
+	if c.HasExample() {
+		s += "Example:\n"
+		s += c.Example + "\n"
+	}
+
+	var managementCommands, nonManagementCommands []*cobra.Command
+	for _, f := range c.Commands() {
+		f := f
+		if f.Annotations[Category] == Management {
+			managementCommands = append(managementCommands, f)
+		} else {
+			nonManagementCommands = append(nonManagementCommands, f)
+		}
+	}
+	printCommands := func(title string, commands []*cobra.Command) string {
+		if len(commands) == 0 {
+			return ""
+		}
+		var longest int
+		for _, f := range commands {
+			if l := len(f.Name()); l > longest {
+				longest = l
+			}
+		}
+		t := title + ":\n"
+		for _, f := range commands {
+			t += "  "
+			t += f.Name()
+			t += strings.Repeat(" ", longest-len(f.Name()))
+			t += "  " + f.Short + "\n"
+		}
+		t += "\n"
+		return t
+	}
+	s += printCommands("Management commands", managementCommands)
+	s += printCommands("Commands", nonManagementCommands)
+
+	s += "Flags:\n"
+	s += c.LocalFlags().FlagUsages() + "\n"
+
+	if c == c.Root() {
+		s += "Run '" + c.CommandPath() + " COMMAND --help' for more information on a command.\n"
+	} else {
+		s += "See also '" + c.Root().CommandPath() + " --help' for the global flags such as '--namespace', '--snapshotter', and '--cgroup-manager'."
+	}
+	fmt.Fprintln(c.OutOrStdout(), s)
+	return nil
+}
 
 func main() {
 	if err := xmain(); err != nil {
@@ -180,7 +220,7 @@ Config file ($NERDCTL_TOML): %s
 		SilenceErrors:    true,
 		TraverseChildren: true, // required for global short hands like -a, -H, -n
 	}
-	rootCmd.SetUsageTemplate(mainHelpTemplate)
+	rootCmd.SetUsageFunc(usage)
 	if err := initRootCmdFlags(rootCmd, tomlPath); err != nil {
 		return nil, err
 	}
