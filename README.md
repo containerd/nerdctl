@@ -993,7 +993,7 @@ Flags:
 
 ## Registry
 ### :whale: nerdctl login
-Log in to a Docker registry.
+Log in to a container registry.
 
 Usage: `nerdctl login [OPTIONS] [SERVER]`
 
@@ -1003,7 +1003,7 @@ Flags:
 - :whale: `--password-stdin`: Take the password from stdin
 
 ### :whale: nerdctl logout
-Log out from a Docker registry
+Log out from a container registry
 
 Usage: `nerdctl logout [SERVER]`
 

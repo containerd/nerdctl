@@ -62,7 +62,7 @@ func newLoginCommand() *cobra.Command {
 	var loginCommand = &cobra.Command{
 		Use:           "login [flags] [SERVER]",
 		Args:          cobra.MaximumNArgs(1),
-		Short:         "Log in to a Docker registry",
+		Short:         "Log in to a container registry",
 		RunE:          loginAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
