@@ -28,7 +28,7 @@ func newLogoutCommand() *cobra.Command {
 	var logoutCommand = &cobra.Command{
 		Use:               "logout [flags] [SERVER]",
 		Args:              cobra.MaximumNArgs(1),
-		Short:             "Log out from a Docker registry",
+		Short:             "Log out from a container registry",
 		RunE:              logoutAction,
 		ValidArgsFunction: logoutShellComplete,
 		SilenceUsage:      true,
