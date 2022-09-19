@@ -161,7 +161,7 @@ func buildctlVersion() dockercompat.ComponentVersion {
 	buildctlBinary, err := buildkitutil.BuildctlBinary()
 	if err != nil {
 		logrus.Warnf("unable to determine buildctl version: %s", err.Error())
-		return dockercompat.ComponentVersion{Name: "builctl"}
+		return dockercompat.ComponentVersion{Name: "buildctl"}
 	}
 
 	stdout, err := exec.Command(buildctlBinary, "--version").Output()
