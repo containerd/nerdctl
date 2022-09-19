@@ -59,14 +59,15 @@ Properties:
 - BLOB SIZE:  Size of the blobs (such as layer tarballs) in the content store
 `
 	var imagesCommand = &cobra.Command{
-		Use:               "images",
-		Short:             shortHelp,
-		Long:              longHelp,
-		Args:              cobra.MaximumNArgs(1),
-		RunE:              imagesAction,
-		ValidArgsFunction: imagesShellComplete,
-		SilenceUsage:      true,
-		SilenceErrors:     true,
+		Use:                   "images [flags] [REPOSITORY[:TAG]]",
+		Short:                 shortHelp,
+		Long:                  longHelp,
+		Args:                  cobra.MaximumNArgs(1),
+		RunE:                  imagesAction,
+		ValidArgsFunction:     imagesShellComplete,
+		SilenceUsage:          true,
+		SilenceErrors:         true,
+		DisableFlagsInUseLine: true,
 	}
 
 	imagesCommand.Flags().BoolP("quiet", "q", false, "Only show numeric IDs")
