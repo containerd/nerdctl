@@ -82,6 +82,13 @@ func TestRunAnonymousVolume(t *testing.T) {
 		"mountpoint", "-q", "/foo").AssertOK()
 }
 
+func TestRunAnonymousVolumeWithTypeMountFlag(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	base.Cmd("run", "--rm", "--mount", "type=volume,dst=/foo", testutil.AlpineImage,
+		"mountpoint", "-q", "/foo").AssertOK()
+}
+
 func TestRunAnonymousVolumeWithBuild(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
