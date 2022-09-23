@@ -338,6 +338,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose config](#whale-nerdctl-compose-config)
     - [:whale: nerdctl compose kill](#whale-nerdctl-compose-kill)
     - [:whale: nerdctl compose run](#whale-nerdctl-compose-run)
+    - [:whale: nerdctl compose version](#whale-nerdctl-compose-version)
   - [IPFS management](#ipfs-management)
     - [:nerd_face: nerdctl ipfs registry up](#nerd_face-nerdctl-ipfs-registry-up)
     - [:nerd_face: nerdctl ipfs registry down](#nerd_face-nerdctl-ipfs-registry-down)
@@ -1452,6 +1453,15 @@ Usage: `nerdctl compose run`
 Unimplemented `docker-compose run` (V1) flags: `--use-aliases`, `--no-TTY`
 
 Unimplemented `docker compose run` (V2) flags: `--use-aliases`, `--no-TTY`, `--tty`
+
+### :whale: nerdctl compose version
+Show the Compose version information (which is the nerdctl version)
+
+Usage: `nerdctl compose version`
+
+Flags:
+- :whale: `-f, --format`: Format the output. Values: [pretty | json] (default "pretty")
+- :whale: `--short`: Shows only Compose's version number
 
 ## IPFS management
 
