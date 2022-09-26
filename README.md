@@ -493,7 +493,7 @@ Metadata flags:
 - :nerd_face: `--pidfile`: file path to write the task's pid. The CLI syntax conforms to Podman convention.
 
 Logging flags:
-- :whale: `--log-driver=(json-file|journald|fluentd)`: Logging driver for the container (default `json-file`).
+- :whale: `--log-driver=(json-file|journald|fluentd|syslog)`: Logging driver for the container (default `json-file`).
     - :whale: `--log-driver=json-file`: The logs are formatted as JSON. The default logging driver for nerdctl.
       - The `json-file` logging driver supports the following logging options:
         - :whale: `--log-opt=max-size=<MAX-SIZE>`: The maximum size of the log before it is rolled. A positive integer plus a modifier representing the unit of measure (k, m, or g). Defaults to unlimited.
@@ -510,6 +510,37 @@ Logging flags:
         - :whale: `--log-opt=fluentd-sub-second-precision=<true|false>`: Enable sub-second precision for fluentd. The default value is false.
         - :nerd_face: `--log-opt=fluentd-async-reconnect-interval=<1s|1ms>`: The time to wait before retrying to reconnect to fluentd. The default value is 0s.
         - :nerd_face: `--log-opt=fluentd-request-ack=<true|false>`: Enable request ack for fluentd. The default value is false.
+    - :whale: `--log-driver=syslog`: Writes log messages to `syslog`. The
+      `syslog` daemon must be running on either the host machine or remote.
+      - The `syslog` logging driver supports the following logging options:
+        - :whale: `--log-opt=syslog-address=<ADDRESS>`: The address of an
+          external `syslog` server. The URI specifier may be
+          `tcp|udp|tcp+tls]://host:port`, `unix://path`, or `unixgram://path`.
+          If the transport is `tcp`, `udp`, or `tcp+tls`, the default port is
+          `514`.
+        - :whale: `--log-opt=syslog-facility=<FACILITY>`: The `syslog` facility to
+          use. Can be the number or name for any valid syslog facility. See the
+          [syslog documentation](https://www.rfc-editor.org/rfc/rfc5424#section-6.2.1).
+        - :whale: `--log-opt=syslog-tls-ca-cert=<VALUE>`: The absolute path to
+          the trust certificates signed by the CA. **Ignored if the address
+          protocol is not `tcp+tls`**.
+        - :whale: `--log-opt=syslog-tls-cert=<VALUE>`: The absolute path to
+          the TLS certificate file. **Ignored if the address protocol is not
+          `tcp+tls`**.
+        - :whale: `--log-opt=syslog-tls-key=<VALUE>`:The absolute path to
+          the TLS key file. **Ignored if the address protocol is not `tcp+tls`**.
+        - :whale: `--log-opt=syslog-tls-skip-verify=<VALUE>`: If set to `true`,
+          TLS verification is skipped when connecting to the daemon.
+          **Ignored if the address protocol is not `tcp+tls`**.
+        - :whale: `--log-opt=syslog-format=<VALUE>`: The `syslog` message format
+          to use. If not specified the local UNIX syslog format is used,
+          without a specified hostname. Specify `rfc3164` for the RFC-3164
+          compatible format, `rfc5424` for RFC-5424 compatible format, or
+          `rfc5424micro` for RFC-5424 compatible format with microsecond
+          timestamp resolution.
+        - :whale: `--log-opt=tag=<VALUE>`: A string that is appended to the
+          `APP-NAME` in the `syslog` message. By default, nerdctl uses the first
+          12 characters of the container ID to tag log messages.
     - :nerd_face: Accepts a LogURI which is a containerd shim logger. A scheme must be specified for the URI. Example: `nerdctl run -d --log-driver binary:///usr/bin/ctr-journald-shim docker.io/library/hello-world:latest`. An implementation of shim logger can be found at (https://github.com/containerd/containerd/tree/dbef1d56d7ebc05bc4553d72c419ed5ce025b05d/runtime/v2#logging)
 
 
