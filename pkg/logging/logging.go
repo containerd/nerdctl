@@ -87,6 +87,9 @@ func init() {
 	RegisterDriver("fluentd", func(opts map[string]string) (Driver, error) {
 		return &FluentdLogger{Opts: opts}, nil
 	}, FluentdLogOptsValidate)
+	RegisterDriver("syslog", func(opts map[string]string) (Driver, error) {
+		return &SyslogLogger{Opts: opts}, nil
+	}, SyslogOptsValidate)
 }
 
 // Main is the entrypoint for the containerd runtime v2 logging plugin mode.
