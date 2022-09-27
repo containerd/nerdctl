@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/Masterminds/semver/v3 v3.1.1
-	github.com/Microsoft/go-winio v0.5.2
+	github.com/Microsoft/go-winio v0.6.0
 	github.com/compose-spec/compose-go v1.6.0
 	github.com/containerd/cgroups v1.0.4
 	github.com/containerd/console v1.0.3
@@ -49,7 +49,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	github.com/yuchanns/srslog v1.1.0
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
-	golang.org/x/net v0.0.0-20220615171555-694bf12d69de
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	golang.org/x/sys v0.0.0-20220818161305-2296e01440c6
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
@@ -179,6 +179,11 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.1.6 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
+)
+
+require (
+	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
+	golang.org/x/tools v0.1.12 // indirect
 )
 
 replace (
