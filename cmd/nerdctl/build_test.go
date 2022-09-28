@@ -52,6 +52,22 @@ CMD ["echo", "nerdctl-build-test-string"]
 	base.Cmd("run", "--rm", ignoredImageNamed).AssertFail()
 }
 
+func TestBuildNoTag(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	testutil.DockerIncompatible(t)
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-string"]
+	`, testutil.CommonImage)
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", buildCtx).AssertOK()
+	// buildctl throws an invalid reference for <none>:<none>
+	base.Cmd("run", "--rm", "none:none").AssertOutExactly("nerdctl-build-test-string\n")
+}
+
 // TestBuildBaseImage tests if an image can be built on the previously built image.
 // This isn't currently supported by nerdctl with BuildKit OCI worker.
 func TestBuildBaseImage(t *testing.T) {

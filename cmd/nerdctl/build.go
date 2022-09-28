@@ -324,6 +324,9 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 		return "", nil, false, "", nil, nil, err
 	}
 
+	if strings.Contains(output, "type=image") && len(tags) == 0 {
+		output += ",name=none:none"
+	}
 	buildctlArgs = append(buildctlArgs, []string{
 		"build",
 		"--progress=" + progressValue,
