@@ -36,7 +36,6 @@ import (
 	dockercliconfig "github.com/docker/cli/cli/config"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/registry"
 	"golang.org/x/net/context/ctxhttp"
 	"golang.org/x/term"
 
@@ -89,14 +88,14 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	var serverAddress string
 
 	if options.serverAddress == "" {
-		serverAddress = registry.IndexServer
+		serverAddress = dockerconfigresolver.IndexServer
 	} else {
 		serverAddress = options.serverAddress
 	}
 
 	var responseIdentityToken string
 	ctx := cmd.Context()
-	isDefaultRegistry := serverAddress == registry.IndexServer
+	isDefaultRegistry := serverAddress == dockerconfigresolver.IndexServer
 
 	authConfig, err := GetDefaultAuthConfig(options.username == "" && options.password == "", serverAddress, isDefaultRegistry)
 	if authConfig == nil {

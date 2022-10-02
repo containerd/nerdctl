@@ -19,8 +19,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	dockercliconfig "github.com/docker/cli/cli/config"
-	"github.com/docker/docker/registry"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +39,7 @@ func newLogoutCommand() *cobra.Command {
 
 // code inspired from XXX
 func logoutAction(cmd *cobra.Command, args []string) error {
-	serverAddress := registry.IndexServer
+	serverAddress := dockerconfigresolver.IndexServer
 	isDefaultRegistry := true
 	if len(args) >= 1 {
 		serverAddress = args[0]
@@ -52,7 +52,7 @@ func logoutAction(cmd *cobra.Command, args []string) error {
 	)
 
 	if !isDefaultRegistry {
-		hostnameAddress = registry.ConvertToHostname(serverAddress)
+		hostnameAddress = dockerconfigresolver.ConvertToHostname(serverAddress)
 		// the tries below are kept for backward compatibility where a user could have
 		// saved the registry in one of the following format.
 		regsToLogout = append(regsToLogout, hostnameAddress, "http://"+hostnameAddress, "https://"+hostnameAddress)
