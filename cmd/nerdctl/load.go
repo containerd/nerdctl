@@ -73,7 +73,7 @@ func loadAction(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		if stdinStat.Size() == 0 {
+		if stdinStat.Size() == 0 && (stdinStat.Mode()&os.ModeNamedPipe) == 0 {
 			return errors.New("stdin is empty and input flag is not specified")
 		}
 	}
@@ -123,7 +123,7 @@ func loadImage(in io.Reader, cmd *cobra.Command, platMC platforms.MatchComparer,
 
 		// TODO: Show unpack status
 		if !quiet {
-			fmt.Fprintf(cmd.OutOrStdout(), "unpacking %s (%s)...", img.Name, img.Target.Digest)
+			fmt.Fprintf(cmd.OutOrStdout(), "unpacking %s (%s)...\n", img.Name, img.Target.Digest)
 		}
 		err = image.Unpack(ctx, sn)
 		if err != nil {
@@ -132,7 +132,7 @@ func loadImage(in io.Reader, cmd *cobra.Command, platMC platforms.MatchComparer,
 		if quiet {
 			fmt.Fprintln(cmd.OutOrStdout(), img.Target.Digest)
 		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "done\n")
+			fmt.Fprintf(cmd.OutOrStdout(), "Loaded image: %s", img.Name)
 		}
 	}
 
