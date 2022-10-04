@@ -29,13 +29,12 @@ import (
 )
 
 func TestLoadStdinFromPipe(t *testing.T) {
-	t.Parallel()
 	base := testutil.NewBase(t)
 
 	tmp := t.TempDir()
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	base.Cmd("save", testutil.CommonImage, "-o", filepath.Join(tmp, "common.tar")).AssertOK()
-
+	base.Cmd("rmi", testutil.CommonImage).AssertOK()
 	loadCmd := strings.Join(base.Cmd("load").Command, " ")
 	output := filepath.Join(tmp, "output")
 
