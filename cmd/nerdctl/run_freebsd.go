@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/spf13/cobra"
@@ -38,6 +39,10 @@ func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
-func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
+func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Command, client *containerd.Client, id string) ([]oci.SpecOpts, error) {
 	return opts, nil
+}
+
+func setPlatformContainerOptions(ctx context.Context, cOpts []containerd.NewContainerOpts, cmd *cobra.Command, client *containerd.Client, id string) ([]containerd.NewContainerOpts, error) {
+	return cOpts, nil
 }
