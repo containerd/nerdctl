@@ -84,6 +84,8 @@ const (
 
 	// StopTimeout is seconds to wait for stop a container.
 	StopTimout = Prefix + "stop-timeout"
+
+	MACAddress = Prefix + "mac-address"
 )
 
 var ShellCompletions = []string{

@@ -142,6 +142,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	// FIXME: not support IPV6 yet
 	cmd.Flags().String("ip", "", "IPv4 address to assign to the container")
 	cmd.Flags().StringP("hostname", "h", "", "Container host name")
+	cmd.Flags().String("mac-address", "", "MAC address to assign to the container")
 	// #endregion
 
 	cmd.Flags().String("ipc", "", `IPC namespace to use ("host"|"private")`)
@@ -573,7 +574,7 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		opts = append(opts, withCustomEtcHostname(hostnamePath))
 	}
 
-	netOpts, netSlice, ipAddress, ports, err := generateNetOpts(cmd, dataStore, stateDir, ns, id)
+	netOpts, netSlice, ipAddress, ports, macAddress, err := generateNetOpts(cmd, dataStore, stateDir, ns, id)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -656,7 +657,7 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 			return nil, nil, err
 		}
 	}
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ipAddress, ports, logURI, anonVolumes, pidFile, platform, mountPoints)
+	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ipAddress, ports, logURI, anonVolumes, pidFile, platform, mountPoints, macAddress)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -998,7 +999,7 @@ func withStop(stopSignal string, stopTimeout int, ensuredImage *imgutil.EnsuredI
 	}
 }
 
-func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ipAddress string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string, mountPoints []*mountutil.Processed) (containerd.NewContainerOpts, error) {
+func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ipAddress string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string, mountPoints []*mountutil.Processed, macAddress string) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
 	m[labels.Namespace] = ns
 	if name != "" {
@@ -1054,6 +1055,10 @@ func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts
 			return nil, err
 		}
 		m[labels.Mounts] = string(mountPointsJSON)
+	}
+
+	if macAddress != "" {
+		m[labels.MACAddress] = macAddress
 	}
 
 	return containerd.WithAdditionalContainerLabels(m), nil

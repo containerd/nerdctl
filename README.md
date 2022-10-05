@@ -397,6 +397,9 @@ Network flags:
 - :whale: `-h, --hostname`: Container host name
 - :whale: `--add-host`: Add a custom host-to-IP mapping (host:ip)
 - :whale: `--ip`: Specific static IP address(es) to use
+- :whale: `--mac-address`: Specific MAC address to use. Be aware that it does not
+  check if manually specified MAC addresses are unique. Supports network
+  type `bridge` and `macvlan`
 
 Resource flags:
 - :whale: `--cpus`: Number of CPUs

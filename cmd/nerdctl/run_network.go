@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -110,75 +111,88 @@ func withCustomHosts(src string) func(context.Context, oci.Client, *containers.C
 	}
 }
 
-func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]oci.SpecOpts, []string, string, []gocni.PortMapping, error) {
+func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]oci.SpecOpts, []string, string, []gocni.PortMapping, string, error) {
 	opts := []oci.SpecOpts{}
 	portSlice, err := cmd.Flags().GetStringSlice("publish")
 	if err != nil {
-		return nil, nil, "", nil, err
+		return nil, nil, "", nil, "", err
 	}
 	ipAddress, err := cmd.Flags().GetString("ip")
 	if err != nil {
-		return nil, nil, "", nil, err
+		return nil, nil, "", nil, "", err
 	}
 	netSlice, err := getNetworkSlice(cmd)
 	if err != nil {
-		return nil, nil, "", nil, err
+		return nil, nil, "", nil, "", err
 	}
 
 	if (len(netSlice) == 0) && (ipAddress != "") {
 		logrus.Warnf("You have assign an IP address %s but no network, So we will use the default network", ipAddress)
 	}
 
+	macAddress, err := getMACAddress(cmd, netSlice)
+	if err != nil {
+		return nil, nil, "", nil, "", err
+	}
+
 	ports := make([]gocni.PortMapping, 0)
 	netType, err := nettype.Detect(netSlice)
 	if err != nil {
-		return nil, nil, "", nil, err
+		return nil, nil, "", nil, "", err
 	}
 
 	switch netType {
 	case nettype.None:
 		// NOP
+		// Docker compatible: if macAddress is specified, set MAC address shall
+		// not work but run command will success
 	case nettype.Host:
+		if macAddress != "" {
+			return nil, nil, "", nil, "", errors.New("conflicting options: mac-address and the network mode")
+		}
 		opts = append(opts, oci.WithHostNamespace(specs.NetworkNamespace), oci.WithHostHostsFile, oci.WithHostResolvconf)
 	case nettype.CNI:
 		// We only verify flags and generate resolv.conf here.
 		// The actual network is configured in the oci hook.
-		if err := verifyCNINetwork(cmd, netSlice); err != nil {
-			return nil, nil, "", nil, err
+		if err := verifyCNINetwork(cmd, netSlice, macAddress); err != nil {
+			return nil, nil, "", nil, "", err
 		}
 
 		if runtime.GOOS == "linux" {
 			resolvConfPath := filepath.Join(stateDir, "resolv.conf")
 			if err := buildResolvConf(cmd, resolvConfPath); err != nil {
-				return nil, nil, "", nil, err
+				return nil, nil, "", nil, "", err
 			}
 
 			// the content of /etc/hosts is created in OCI Hook
 			etcHostsPath, err := hostsstore.AllocHostsFile(dataStore, ns, id)
 			if err != nil {
-				return nil, nil, "", nil, err
+				return nil, nil, "", nil, "", err
 			}
 			opts = append(opts, withCustomResolvConf(resolvConfPath), withCustomHosts(etcHostsPath))
 			for _, p := range portSlice {
 				pm, err := portutil.ParseFlagP(p)
 				if err != nil {
-					return nil, nil, "", pm, err
+					return nil, nil, "", pm, "", err
 				}
 				ports = append(ports, pm...)
 			}
 		}
 	case nettype.Container:
+		if macAddress != "" {
+			return nil, nil, "", nil, "", errors.New("conflicting options: mac-address and the network mode")
+		}
 		if err := verifyContainerNetwork(cmd, netSlice); err != nil {
-			return nil, nil, "", nil, err
+			return nil, nil, "", nil, "", err
 		}
 		network := strings.Split(netSlice[0], ":")
 		if len(network) != 2 {
-			return nil, nil, "", nil, fmt.Errorf("invalid network: %s, should be \"container:<id|name>\"", netSlice[0])
+			return nil, nil, "", nil, "", fmt.Errorf("invalid network: %s, should be \"container:<id|name>\"", netSlice[0])
 		}
 		containerName := network[1]
 		client, ctx, cancel, err := newClient(cmd)
 		if err != nil {
-			return nil, nil, "", nil, err
+			return nil, nil, "", nil, "", err
 		}
 		defer cancel()
 
@@ -224,15 +238,15 @@ func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 		}
 		n, err := walker.Walk(ctx, containerName)
 		if err != nil {
-			return nil, nil, "", nil, err
+			return nil, nil, "", nil, "", err
 		}
 		if n == 0 {
-			return nil, nil, "", nil, fmt.Errorf("no such container: %s", containerName)
+			return nil, nil, "", nil, "", fmt.Errorf("no such container: %s", containerName)
 		}
 	default:
-		return nil, nil, "", nil, fmt.Errorf("unexpected network type %v", netType)
+		return nil, nil, "", nil, "", fmt.Errorf("unexpected network type %v", netType)
 	}
-	return opts, netSlice, ipAddress, ports, nil
+	return opts, netSlice, ipAddress, ports, macAddress, nil
 }
 
 func getContainerNetNSPath(ctx context.Context, c containerd.Container) (string, error) {
@@ -250,7 +264,7 @@ func getContainerNetNSPath(ctx context.Context, c containerd.Container) (string,
 	return fmt.Sprintf("/proc/%d/ns/net", task.Pid()), nil
 }
 
-func verifyCNINetwork(cmd *cobra.Command, netSlice []string) error {
+func verifyCNINetwork(cmd *cobra.Command, netSlice []string, macAddress string) error {
 	cniPath, err := cmd.Flags().GetString("cni-path")
 	if err != nil {
 		return err
@@ -263,11 +277,18 @@ func verifyCNINetwork(cmd *cobra.Command, netSlice []string) error {
 	if err != nil {
 		return err
 	}
+	macValidNetworks := []string{"bridge", "macvlan"}
 	netMap := e.NetworkMap()
 	for _, netstr := range netSlice {
-		_, ok := netMap[netstr]
+		netConfig, ok := netMap[netstr]
 		if !ok {
 			return fmt.Errorf("network %s not found", netstr)
+		}
+		// if MAC address is specified, the type of the network
+		// must be one of macValidNetworks
+		netType := netConfig.Plugins[0].Network.Type
+		if macAddress != "" && !strutil.InStringSlice(macValidNetworks, netType) {
+			return fmt.Errorf("%s interfaces on network %s do not support --mac-address", netType, netstr)
 		}
 	}
 	return nil
@@ -359,4 +380,18 @@ func buildResolvConf(cmd *cobra.Command, resolvConfPath string) error {
 		return err
 	}
 	return nil
+}
+
+func getMACAddress(cmd *cobra.Command, netSlice []string) (string, error) {
+	macAddress, err := cmd.Flags().GetString("mac-address")
+	if err != nil {
+		return "", err
+	}
+	if macAddress == "" {
+		return "", nil
+	}
+	if _, err := net.ParseMAC(macAddress); err != nil {
+		return "", err
+	}
+	return macAddress, nil
 }
