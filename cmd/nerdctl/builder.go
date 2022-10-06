@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
@@ -128,7 +129,19 @@ func builderDebugAction(cmd *cobra.Command, args []string) error {
 		return err
 	} else if len(buildArgsValue) > 0 {
 		for _, v := range buildArgsValue {
-			buildgArgs = append(buildgArgs, "--build-arg="+v)
+			arr := strings.Split(v, "=")
+			if len(arr) == 1 && len(arr[0]) > 0 {
+				// Avoid masking default build arg value from Dockerfile if environment variable is not set
+				// https://github.com/moby/moby/issues/24101
+				val, ok := os.LookupEnv(arr[0])
+				if ok {
+					buildgArgs = append(buildgArgs, fmt.Sprintf("--build-arg=%s=%s", v, val))
+				}
+			} else if len(arr) > 1 && len(arr[0]) > 0 {
+				buildgArgs = append(buildgArgs, "--build-arg="+v)
+			} else {
+				return fmt.Errorf("invalid build arg %q", v)
+			}
 		}
 	}
 
