@@ -529,3 +529,49 @@ func TestSharedNetworkStack(t *testing.T) {
 	base.Cmd("exec", containerNameJoin, "wget", "-qO-", "http://127.0.0.1:80").
 		AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
 }
+
+func TestRunContainerWithMACAddress(t *testing.T) {
+	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+	networkBridge := "testNetworkBridge" + tID
+	networkMACvlan := "testNetworkMACvlan" + tID
+	networkIPvlan := "testNetworkIPvlan" + tID
+	base.Cmd("network", "create", networkBridge, "--driver", "bridge").AssertOK()
+	base.Cmd("network", "create", networkMACvlan, "--driver", "macvlan").AssertOK()
+	base.Cmd("network", "create", networkIPvlan, "--driver", "ipvlan").AssertOK()
+	t.Cleanup(func() {
+		base.Cmd("network", "rm", networkBridge).Run()
+		base.Cmd("network", "rm", networkMACvlan).Run()
+		base.Cmd("network", "rm", networkIPvlan).Run()
+	})
+	tests := []struct {
+		Network string
+		WantErr bool
+		Expect  string
+	}{
+		{"host", true, "conflicting options"},
+		{"none", true, "can't open '/sys/class/net/eth0/address'"},
+		{"container:whatever" + tID, true, "conflicting options"},
+		{"bridge", false, ""},
+		{networkBridge, false, ""},
+		{networkMACvlan, false, ""},
+		{networkIPvlan, true, "not support"},
+	}
+	for _, test := range tests {
+		macAddress, err := nettestutil.GenerateMACAddress()
+		if err != nil {
+			t.Errorf("failed to generate MAC address: %s", err)
+		}
+		if test.Expect == "" && !test.WantErr {
+			test.Expect = macAddress
+		}
+		cmd := base.Cmd("run", "--rm", "--network", test.Network, "--mac-address", macAddress, testutil.CommonImage, "cat", "/sys/class/net/eth0/address")
+		if test.WantErr {
+			cmd.AssertFail()
+			cmd.AssertCombinedOutContains(test.Expect)
+		} else {
+			cmd.AssertOK()
+			cmd.AssertOutContains(test.Expect)
+		}
+	}
+}
