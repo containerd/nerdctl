@@ -29,6 +29,7 @@ import (
 
 	"github.com/containerd/containerd"
 	eventstypes "github.com/containerd/containerd/api/events"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
 	"github.com/containerd/nerdctl/pkg/containerinspector"
 	"github.com/containerd/nerdctl/pkg/eventutil"
@@ -318,6 +319,9 @@ func statsAction(cmd *cobra.Command, args []string) error {
 		}
 
 		for _, c := range ccstats {
+			if c.ID == "" {
+				continue
+			}
 			rc := statsutil.RenderEntry(&c, noTrunc)
 			if !firstTick {
 				if tmpl != nil {
@@ -465,8 +469,10 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 			}
 		case err := <-u:
 			if err != nil {
-				s.SetError(err)
-				continue
+				if !errdefs.IsNotFound(err) {
+					s.SetError(err)
+					continue
+				}
 			}
 			// if this is the first stat you get, release WaitGroup
 			if !getFirst {

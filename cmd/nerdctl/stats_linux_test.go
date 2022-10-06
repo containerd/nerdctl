@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/infoutil"
@@ -25,18 +26,20 @@ import (
 )
 
 func TestStats(t *testing.T) {
-	t.Parallel()
 	// this comment is for `nerdctl ps` but it also valid for `nerdctl stats` :
 	// https://github.com/containerd/nerdctl/pull/223#issuecomment-851395178
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
 		t.Skip("test skipped for rootless containers on cgroup v1")
 	}
-	testContainerName := testutil.Identifier(t)
+	testContainerName := testutil.Identifier(t)[:12]
+	exitedTestContainerName := fmt.Sprintf("%s-exited", testContainerName)
 
 	base := testutil.NewBase(t)
 	defer base.Cmd("rm", "-f", testContainerName).Run()
+	defer base.Cmd("rm", "-f", exitedTestContainerName).Run()
+	base.Cmd("run", "--name", exitedTestContainerName, testutil.AlpineImage, "echo", "'exited'").AssertOK()
 
 	base.Cmd("run", "-d", "--name", testContainerName, testutil.AlpineImage, "sleep", "5").AssertOK()
+	base.Cmd("stats", "--no-stream").AssertOutContains(testContainerName)
 	base.Cmd("stats", "--no-stream", testContainerName).AssertOK()
-
 }
