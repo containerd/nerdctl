@@ -17,23 +17,22 @@
 package main
 
 import (
-	"testing"
+	"os"
+	"path/filepath"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
-// Returns the list of shell commands to be run for generating public/private RSA keys
-// with the given filepaths to be used during the encryption/decryption tests
-func keyGenCmdsF(prvPath string, pubPath string) [][]string {
-	// Exec openssl commands to ensure that nerdctl is compatible with the output of openssl commands.
-	// Do NOT refactor this function to use "crypto/rsa" stdlib.
-	return [][]string{
-		{"openssl", "genrsa", "-out", prvPath},
-		{"openssl", "rsa", "-in", prvPath, "-pubout", "-out", pubPath},
-	}
-}
+// Signature of functions used to create temporary images for tests:
+type TestImageCreationFunc = func(testingBase *testutil.Base, imageName string) error
 
-func TestImageEncryptJWE(t *testing.T) {
-	keyPair := newJWEKeyPair(t, keyGenCmdsF)
-	testImageEncryptJWE(t, testutil.CommonImage, keyPair)
+func createBuildContext(dockerfile string) (string, error) {
+	tmpDir, err := os.MkdirTemp("", "nerdctl-build-test")
+	if err != nil {
+		return "", err
+	}
+	if err = os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644); err != nil {
+		return "", err
+	}
+	return tmpDir, nil
 }

@@ -204,17 +204,6 @@ COPY %s /`,
 	assert.Equal(t, string(data), testContent)
 }
 
-func createBuildContext(dockerfile string) (string, error) {
-	tmpDir, err := os.MkdirTemp("", "nerdctl-build-test")
-	if err != nil {
-		return "", err
-	}
-	if err = os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644); err != nil {
-		return "", err
-	}
-	return tmpDir, nil
-}
-
 func TestBuildWithIIDFile(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)

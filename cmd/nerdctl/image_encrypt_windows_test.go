@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -25,11 +26,13 @@ import (
 // Returns the list of shell commands to be run for generating public/private RSA keys
 // with the given filepaths to be used during the encryption/decryption tests
 func keyGenCmdsF(prvPath string, pubPath string) [][]string {
-	// Exec openssl commands to ensure that nerdctl is compatible with the output of openssl commands.
+	// Exec commands to ensure that nerdctl is compatible with the output of openssl commands.
 	// Do NOT refactor this function to use "crypto/rsa" stdlib.
 	return [][]string{
-		{"openssl", "genrsa", "-out", prvPath},
-		{"openssl", "rsa", "-in", prvPath, "-pubout", "-out", pubPath},
+		// {"openssl", "genrsa", "-out", prvPath},
+		{"ssh-keygen.exe", "-t", "rsa", "-b", "2048", "-q", "-N", "''", "-f", prvPath},
+		// NOTE: redirect will cause `pubPath` to be UTF-16-LE which is necessary for the test:
+		{"powershell.exe", fmt.Sprintf("{ssh-keygen.exe -e -f %q -y -m PEM > %q}", prvPath, pubPath)},
 	}
 }
 

@@ -40,7 +40,7 @@ func TestIPFS(t *testing.T) {
 	base.Cmd("run", "--rm", ipfsCID, "echo", "hello").AssertOK()
 
 	// encryption
-	keyPair := newJWEKeyPair(t)
+	keyPair := newJWEKeyPair(t, keyGenCmdsF)
 	defer keyPair.cleanup()
 	tID := testutil.Identifier(t)
 	encryptImageRef := tID + ":enc"

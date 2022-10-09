@@ -17,30 +17,21 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
 
-func TestImagePrune(t *testing.T) {
-	testutil.RequiresBuild(t)
-
+func baseTestImagePrune(t *testing.T, imageCreationF TestImageCreationFunc) {
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
+
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
-	dockerfile := fmt.Sprintf(`FROM %s
-	CMD ["echo", "nerdctl-test-image-prune"]`, testutil.CommonImage)
-
-	buildCtx, err := createBuildContext(dockerfile)
+	err := imageCreationF(base, imageName)
 	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
 
-	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("images").AssertOutContains(imageName)
 
 	tID := testutil.Identifier(t)

@@ -22,18 +22,12 @@ import (
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
-// Returns the list of shell commands to be run for generating public/private RSA keys
-// with the given filepaths to be used during the encryption/decryption tests
-func keyGenCmdsF(prvPath string, pubPath string) [][]string {
-	// Exec openssl commands to ensure that nerdctl is compatible with the output of openssl commands.
-	// Do NOT refactor this function to use "crypto/rsa" stdlib.
-	return [][]string{
-		{"openssl", "genrsa", "-out", prvPath},
-		{"openssl", "rsa", "-in", prvPath, "-pubout", "-out", pubPath},
-	}
-}
-
-func TestImageEncryptJWE(t *testing.T) {
-	keyPair := newJWEKeyPair(t, keyGenCmdsF)
-	testImageEncryptJWE(t, testutil.CommonImage, keyPair)
+func TestImagesFilter(t *testing.T) {
+	// NOTE: lacking BuildKit support on Windows, there is no straightforward way to
+	// run this test with Docker on Windows because:
+	// - image format convertsion is nerdctl-specific
+	// - creating a test image by re-tagging on Docker yields the same underlying image
+	// 	 object, resulting in identical CreatedAt tags (which this test relies on)
+	testutil.DockerIncompatible(t)
+	baseTestImagesFilter(t, createTestImageByConvertingCommonImage)
 }

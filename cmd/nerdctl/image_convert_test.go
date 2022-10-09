@@ -17,16 +17,12 @@
 package main
 
 import (
-	"runtime"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
 func TestImageConvertEStargz(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("no windows support yet")
-	}
 	testutil.DockerIncompatible(t)
 	t.Parallel()
 	base := testutil.NewBase(t)
@@ -39,9 +35,6 @@ func TestImageConvertEStargz(t *testing.T) {
 }
 
 func TestImageConvertZstdChunked(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("no windows support yet")
-	}
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	convertedImage := testutil.Identifier(t) + ":zstdchunked"

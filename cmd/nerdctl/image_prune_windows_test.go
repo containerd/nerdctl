@@ -18,14 +18,10 @@ package main
 
 import (
 	"testing"
-
-	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
-func TestRename(t *testing.T) {
-	testRename(t, testutil.CommonImage)
-}
-
-func TestRenameUpdateHosts(t *testing.T) {
-	testRenameUpdateHosts(t, testutil.CommonImage)
+func TestImagePrune(t *testing.T) {
+	// NOTE: there is no support for BuildKit on Windows so we must resort to
+	// re-tagging the base testing image to use for this test:
+	baseTestImagePrune(t, createTestImageByTaggingCommonImage)
 }
