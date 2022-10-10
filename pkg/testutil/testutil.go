@@ -303,7 +303,7 @@ func (b *Base) EnsureContainerStarted(con string) {
 		b.T.Logf("(retry=%d)", i+1)
 		time.Sleep(sleep)
 	}
-	b.T.Fatalf("conainer %s not running", con)
+	b.T.Fatalf("container %s not running", con)
 }
 
 type Cmd struct {
@@ -481,6 +481,7 @@ func RequireDaemonVersion(b *Base, constraint string) {
 	if err != nil {
 		b.T.Skip(err)
 	}
+
 	if !c.Check(sv) {
 		b.T.Skipf("version %v does not satisfy constraints %v", sv, c)
 	}

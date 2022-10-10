@@ -16,8 +16,22 @@
 
 package testutil
 
+import "fmt"
+
+func mirrorOf(s string) string {
+	// plain mirror, NOT stargz-converted images
+	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
+}
+
 const (
 	WindowsNano = "gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2"
+)
+
+var (
+	// TODO: build and set Windows-compatible images for the following
+	// (preferably estargz but not mandatory)
+	DockerAuthImage = mirrorOf("cesanta/docker_auth:1.7")
+	RegistryImage   = mirrorOf("registry:2")
 
 	// CommonImage.
 	//
