@@ -1,0 +1,102 @@
+# This workflow runs the command test suite on GitHub-based Windows Server runners.
+name: Windows Basic Acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+env:
+  GO_VERSION: '1.19'
+
+  # NOTE: some tests require that the version string returned
+  # by the server be SemVer-compatible
+  CONTAINERD_VERSION: '1.6.8'
+
+jobs:
+  acceptance-basic:
+    name: Windows Basic Acceptance
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    env:
+      GOTEST: gotestsum --
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2019, windows-2022]
+
+    defaults:
+      run:
+        shell: powershell
+        working-directory: 'src\github.com\containerd\nerdctl'
+
+    steps:
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: actions/checkout@v2
+        with:
+          path: src/github.com/containerd/nerdctl
+
+      #
+      # Build and start containerd.
+      #
+      - uses: actions/checkout@v2
+        with:
+          repository: 'containerd/containerd'
+          path: 'src\github.com\containerd\containerd'
+
+      - uses: actions/checkout@v2
+        with:
+          path: src/github.com/containerd/nerdctl
+
+      - name: Install Dev Tools
+        run: bash script/setup/install-dev-tools
+        working-directory: src/github.com/containerd/containerd
+
+      - name: Setup CNI
+        env:
+          CGO_ENABLED: 1
+          GOPATH: ${{ github.workspace }}
+        run: bash script/setup/install-cni-windows
+        working-directory: src/github.com/containerd/containerd
+
+      - name: Build containerd
+        shell: bash
+        env:
+          CGO_ENABLED: 1
+          GOPATH: ${{ github.workspace }}
+        run: |
+          mingw32-make.exe binaries
+        working-directory: src/github.com/containerd/containerd
+
+      - name: Start containerd
+        env:
+          GOPATH: ${{ github.workspace }}
+        run: |
+          Set-Content ./containerd-log.txt ""
+          ./bin/containerd.exe --version
+          ./bin/containerd.exe --log-level=debug --log-file=$(pwd)\containerd-log.txt --service-name containerd --register-service
+          Set-Service -StartupType Automatic containerd
+          start-service containerd
+          get-process | sls containerd
+          start-sleep 60
+        working-directory: src/github.com/containerd/containerd
+
+      - name:  Run Tests
+        run: |
+          go install ./cmd/nerdctl/
+          go test -v ./cmd/...
+
+      - name: containerd logs
+        if: always()
+        run: |
+          Get-Content ./containerd-log.txt
+        working-directory: src/github.com/containerd/containerd
