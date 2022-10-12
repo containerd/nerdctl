@@ -248,6 +248,41 @@ func TestRunWithJsonFileLogDriver(t *testing.T) {
 	}
 }
 
+func TestRunWithJsonFileLogDriverAndLogPathOpt(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("json-file log driver is not yet implemented on Windows")
+	}
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	customLogJSONPath := filepath.Join(t.TempDir(), containerName, containerName+"-json.log")
+	base.Cmd("run", "-d", "--log-driver", "json-file", "--log-opt", fmt.Sprintf("log-path=%s", customLogJSONPath), "--log-opt", "max-size=5K", "--log-opt", "max-file=2", "--name", containerName, testutil.CommonImage,
+		"sh", "-euxc", "hexdump -C /dev/urandom | head -n1000").AssertOK()
+
+	time.Sleep(3 * time.Second)
+	rawBytes, err := os.ReadFile(customLogJSONPath)
+	assert.NilError(t, err)
+	if len(rawBytes) == 0 {
+		t.Fatalf("logs are not written correctly to log-path: %s", customLogJSONPath)
+	}
+
+	// matches = current log file + old log files to retain
+	matches, err := filepath.Glob(filepath.Join(filepath.Dir(customLogJSONPath), containerName+"*"))
+	assert.NilError(t, err)
+	if len(matches) != 2 {
+		t.Fatalf("the number of log files is not equal to 2 files, got: %s", matches)
+	}
+	for _, file := range matches {
+		fInfo, err := os.Stat(file)
+		assert.NilError(t, err)
+		if fInfo.Size() > 5200 {
+			t.Fatal("file size exceeded 5k")
+		}
+	}
+}
+
 func TestRunWithJournaldLogDriver(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("journald log driver is not yet implemented on Windows")

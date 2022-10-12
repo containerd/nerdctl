@@ -32,6 +32,7 @@ import (
 const (
 	// MagicArgv1 is the magic argv1 for the containerd runtime v2 logging plugin mode.
 	MagicArgv1 = "_NERDCTL_INTERNAL_LOGGING"
+	LogPath    = "log-path"
 	MaxSize    = "max-size"
 	MaxFile    = "max-file"
 	Tag        = "tag"

@@ -32,6 +32,7 @@ import (
 )
 
 var JSONDriverLogOpts = []string{
+	LogPath,
 	MaxSize,
 	MaxFile,
 }
@@ -52,7 +53,15 @@ func JSONFileLogOptsValidate(logOptMap map[string]string) error {
 func (jsonLogger *JSONLogger) Init(dataStore, ns, id string) error {
 	// Initialize the log file (https://github.com/containerd/nerdctl/issues/1071)
 	// TODO: move this logic to pkg/logging
-	jsonFilePath := jsonfile.Path(dataStore, ns, id)
+	var jsonFilePath string
+	if logPath, ok := jsonLogger.Opts[LogPath]; ok {
+		jsonFilePath = logPath
+	} else {
+		jsonFilePath = jsonfile.Path(dataStore, ns, id)
+	}
+	if err := os.MkdirAll(filepath.Dir(jsonFilePath), 0700); err != nil {
+		return err
+	}
 	if _, err := os.Stat(jsonFilePath); errors.Is(err, os.ErrNotExist) {
 		if writeErr := os.WriteFile(jsonFilePath, []byte{}, 0600); writeErr != nil {
 			return writeErr
@@ -62,12 +71,14 @@ func (jsonLogger *JSONLogger) Init(dataStore, ns, id string) error {
 }
 
 func (jsonLogger *JSONLogger) Process(dataStore string, config *logging.Config) error {
-	logJSONFilePath := jsonfile.Path(dataStore, config.Namespace, config.ID)
-	if err := os.MkdirAll(filepath.Dir(logJSONFilePath), 0700); err != nil {
-		return err
+	var jsonFilePath string
+	if logPath, ok := jsonLogger.Opts[LogPath]; ok {
+		jsonFilePath = logPath
+	} else {
+		jsonFilePath = jsonfile.Path(dataStore, config.Namespace, config.ID)
 	}
 	l := &logrotate.Logger{
-		Filename: logJSONFilePath,
+		Filename: jsonFilePath,
 	}
 	//maxSize Defaults to unlimited.
 	var capVal int64
