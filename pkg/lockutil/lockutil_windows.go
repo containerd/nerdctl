@@ -19,17 +19,9 @@ package lockutil
 import (
 	"fmt"
 	"os"
-	"syscall"
-	"unsafe"
 
 	"github.com/sirupsen/logrus"
-)
-
-// LockFile modified from https://github.com/boltdb/bolt/blob/v1.3.1/bolt_windows.go using MIT
-var (
-	modkernel32      = syscall.NewLazyDLL("kernel32.dll")
-	procLockFileEx   = modkernel32.NewProc("LockFileEx")
-	procUnlockFileEx = modkernel32.NewProc("UnlockFileEx")
+	"golang.org/x/sys/windows"
 )
 
 func WithDirLock(dir string, fn func() error) error {
@@ -40,30 +32,14 @@ func WithDirLock(dir string, fn func() error) error {
 	defer dirFile.Close()
 	// see https://msdn.microsoft.com/en-us/library/windows/desktop/aa365203(v=vs.85).aspx
 	// 1 lock immediately
-	if err := lockFileEx(syscall.Handle(dirFile.Fd()), 1, 0, 1, 0, &syscall.Overlapped{}); err != nil {
+	if err = windows.LockFileEx(windows.Handle(dirFile.Fd()), 1, 0, 1, 0, &windows.Overlapped{}); err != nil {
 		return fmt.Errorf("failed to lock %q: %w", dir, err)
 	}
 
 	defer func() {
-		if err := unlockFileEx(syscall.Handle(dirFile.Fd()), 0, 1, 0, &syscall.Overlapped{}); err != nil {
+		if err := windows.UnlockFileEx(windows.Handle(dirFile.Fd()), 0, 1, 0, &windows.Overlapped{}); err != nil {
 			logrus.WithError(err).Errorf("failed to unlock %q", dir)
 		}
 	}()
 	return fn()
-}
-
-func lockFileEx(h syscall.Handle, flags, reserved, locklow, lockhigh uint32, ol *syscall.Overlapped) (err error) {
-	r, _, err := procLockFileEx.Call(uintptr(h), uintptr(flags), uintptr(reserved), uintptr(locklow), uintptr(lockhigh), uintptr(unsafe.Pointer(ol)))
-	if r == 0 {
-		return err
-	}
-	return nil
-}
-
-func unlockFileEx(h syscall.Handle, reserved, locklow, lockhigh uint32, ol *syscall.Overlapped) (err error) {
-	r, _, err := procUnlockFileEx.Call(uintptr(h), uintptr(reserved), uintptr(locklow), uintptr(lockhigh), uintptr(unsafe.Pointer(ol)), 0)
-	if r == 0 {
-		return err
-	}
-	return nil
 }
