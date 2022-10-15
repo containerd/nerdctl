@@ -11,7 +11,7 @@ require (
 	github.com/containerd/containerd v1.6.8 // replaced
 	github.com/containerd/continuity v0.3.0
 	github.com/containerd/go-cni v1.1.7
-	github.com/containerd/imgcrypt v1.1.6
+	github.com/containerd/imgcrypt v1.1.7
 	github.com/containerd/nydus-snapshotter v0.3.0-rc.3
 	github.com/containerd/stargz-snapshotter v0.12.0
 	github.com/containerd/stargz-snapshotter/estargz v0.12.0
@@ -67,7 +67,7 @@ require (
 	github.com/container-orchestrated-devices/container-device-interface v0.3.1 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
 	github.com/containerd/ttrpc v1.1.1-0.20220420014843-944ef4a40df3 // indirect
-	github.com/containers/ocicrypt v1.1.5 // indirect
+	github.com/containers/ocicrypt v1.1.6 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20170627025303-887ab5e44cc3 // indirect
 	github.com/distribution/distribution/v3 v3.0.0-20220725133111-4bf3547399eb // indirect
