@@ -20,7 +20,7 @@ jobs:
       with:
         path: src/github.com/containerd/nerdctl
         fetch-depth: 100
-    - uses: containerd/project-checks@v1.0.2
+    - uses: containerd/project-checks@v1.1.0
       with:
         working-directory: src/github.com/containerd/nerdctl
 
