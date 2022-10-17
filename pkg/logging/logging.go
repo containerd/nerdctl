@@ -116,6 +116,23 @@ func LogConfigFilePath(dataStore, ns, id string) string {
 	return filepath.Join(dataStore, "containers", ns, id, "log-config.json")
 }
 
+// LoadLogConfig loads the log-config.json for the afferrent container store
+func LoadLogConfig(dataStore, ns, id string) (LogConfig, error) {
+	logConfig := LogConfig{}
+
+	logConfigFilePath := LogConfigFilePath(dataStore, ns, id)
+	logConfigData, err := os.ReadFile(logConfigFilePath)
+	if err != nil {
+		return logConfig, fmt.Errorf("failed to read log config file %q: %s", logConfigFilePath, err)
+	}
+
+	err = json.Unmarshal(logConfigData, &logConfig)
+	if err != nil {
+		return logConfig, fmt.Errorf("failed to load JSON logging config file %q: %s", logConfigFilePath, err)
+	}
+	return logConfig, nil
+}
+
 func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
 	if dataStore == "" {
 		return nil, errors.New("got empty data store")
@@ -126,12 +143,8 @@ func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
 		}
 		logConfigFilePath := LogConfigFilePath(dataStore, config.Namespace, config.ID)
 		if _, err := os.Stat(logConfigFilePath); err == nil {
-			var logConfig LogConfig
-			logConfigFileB, err := os.ReadFile(logConfigFilePath)
+			logConfig, err := LoadLogConfig(dataStore, config.Namespace, config.ID)
 			if err != nil {
-				return err
-			}
-			if err = json.Unmarshal(logConfigFileB, &logConfig); err != nil {
 				return err
 			}
 			driver, err := GetDriver(logConfig.Driver, logConfig.Opts)

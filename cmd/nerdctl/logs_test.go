@@ -18,7 +18,7 @@ package main
 
 import (
 	"fmt"
-	"runtime"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -28,9 +28,6 @@ import (
 
 func TestLogs(t *testing.T) {
 	t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Skip("`nerdctl logs` is not implemented on Windows (why?)")
-	}
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
 	const expected = `foo
@@ -50,6 +47,7 @@ bar`
 
 	//test tail flag
 	base.Cmd("logs", "-n", "all", containerName).AssertOutContains(expected)
+
 	base.Cmd("logs", "-n", "1", containerName).AssertOutWithFunc(func(stdout string) error {
 		if !(stdout == "bar\n" || stdout == "") {
 			return fmt.Errorf("expected %q or %q, got %q", "bar", "", stdout)
@@ -66,11 +64,23 @@ bar`
 	base.Cmd("rm", "-f", containerName).AssertOK()
 }
 
+// Tests whether `nerdctl logs` properly separates stdout/stderr output
+// streams for containers using the jsonfile logging driver:
+func TestLogsOutStreamsSeparated(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+
+	defer base.Cmd("rm", containerName).Run()
+	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
+		"sh", "-euc", "echo stdout1; echo stderr1 >&2; echo stdout2; echo stderr2 >&2").AssertOK()
+	time.Sleep(3 * time.Second)
+
+	base.Cmd("logs", containerName).AssertOutStreamsExactly("stdout1\nstdout2\n", "stderr1\nstderr2\n")
+}
+
 func TestLogsWithInheritedFlags(t *testing.T) {
 	t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Skip("`nerdctl logs` is not implemented on Windows (why?)")
-	}
 	base := testutil.NewBase(t)
 	for k, v := range base.Args {
 		if strings.HasPrefix(v, "--namespace=") {
@@ -94,8 +104,9 @@ func TestLogsWithInheritedFlags(t *testing.T) {
 
 func TestLogsOfJournaldDriver(t *testing.T) {
 	t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Skip("`nerdctl logs` is not implemented on Windows (why?)")
+	_, err := exec.LookPath("journalctl")
+	if err != nil {
+		t.Skipf("`journalctl` executable is required for this test: %s", err)
 	}
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
@@ -124,9 +135,6 @@ func TestLogsOfJournaldDriver(t *testing.T) {
 
 func TestLogsWithFailingContainer(t *testing.T) {
 	t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Skip("`nerdctl logs` is not implemented on Windows (why?)")
-	}
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
 	defer base.Cmd("rm", containerName).Run()
