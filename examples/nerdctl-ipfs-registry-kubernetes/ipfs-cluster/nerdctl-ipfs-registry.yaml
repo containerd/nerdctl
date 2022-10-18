@@ -1,4 +1,15 @@
-# Example YAML of IPFS-based node-to-node image sharing
+# Example YAML of IPFS-based node-to-node image sharing with ipfs-cluster
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ipfs-cluster-conf
+data:
+  # `replication_factor_max` and `replication_factor_max`
+  # https://cluster.ipfs.io/documentation/reference/configuration/
+  cluster-replication-factor: "2"
+
+---
 
 apiVersion: apps/v1
 kind: Deployment
@@ -15,7 +26,7 @@ spec:
     spec:
       initContainers:
         - name: configure-ipfs
-          image: "ghcr.io/stargz-containers/ipfs/go-ipfs:v0.11.0"
+          image: "ghcr.io/stargz-containers/ipfs/kubo:v0.16.0"
           command: ["sh", "/custom/configure-ipfs.sh"]
           env:
             - name: LIBP2P_FORCE_PNET
@@ -32,7 +43,7 @@ spec:
               mountPath: /custom
       containers:
         - name: id
-          image: "ghcr.io/stargz-containers/ipfs/go-ipfs:v0.11.0"
+          image: "ghcr.io/stargz-containers/ipfs/kubo:v0.16.0"
           command: ["sh", "/custom/id-server.sh"]
           ports:
             - name: id
@@ -44,7 +55,7 @@ spec:
             - name: configure-script
               mountPath: /custom
         - name: ipfs
-          image: "ghcr.io/stargz-containers/ipfs/go-ipfs:v0.11.0"
+          image: "ghcr.io/stargz-containers/ipfs/kubo:v0.16.0"
           command: ["ipfs", "daemon"]
           env:
             - name: LIBP2P_FORCE_PNET
@@ -64,11 +75,63 @@ spec:
             initialDelaySeconds: 30
             timeoutSeconds: 5
             periodSeconds: 15
+        - name: ipfs-cluster
+          image: "ghcr.io/stargz-containers/ipfs/ipfs-cluster:1.0.4"
+          command: ["sh", "/custom/cluster-entrypoint.sh"]
+          env:
+            - name: CLUSTER_REPLICATIONFACTORMIN
+              valueFrom:
+                configMapKeyRef:
+                  name: ipfs-cluster-conf
+                  key: cluster-replication-factor
+            - name: CLUSTER_REPLICATIONFACTORMAX
+              valueFrom:
+                configMapKeyRef:
+                  name: ipfs-cluster-conf
+                  key: cluster-replication-factor
+            - name: CLUSTER_BOOTSTRAP_PEER_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: env-config
+                  key: cluster-bootstrap-peer-id
+            - name: CLUSTER_BOOTSTRAP_PEER_PRIV_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secret-config
+                  key: cluster-bootstrap-peer-priv-key
+            - name: CLUSTER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: secret-config
+                  key: cluster-secret
+          ports:
+            - name: api-http
+              containerPort: 9094
+              protocol: TCP
+            - name: proxy-http
+              containerPort: 9095
+              protocol: TCP
+            - name: cluster-swarm
+              containerPort: 9096
+              protocol: TCP
+          volumeMounts:
+            - name: cluster-storage
+              mountPath: /data/ipfs-cluster
+            - name: configure-script
+              mountPath: /custom
+          livenessProbe:
+            tcpSocket:
+              port: cluster-swarm
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+            periodSeconds: 10
       volumes:
       - name: configure-script
         configMap:
           name: ipfs-bootstrap-conf
       - name: ipfs-storage
+        emptyDir: {}
+      - name: cluster-storage
         emptyDir: {}
 
 ---
@@ -88,6 +151,9 @@ spec:
     - name: swarm
       targetPort: swarm
       port: 4001
+    - name: cluster-swarm
+      targetPort: cluster-swarm
+      port: 9096
   selector:
     app: ipfs-bootstrap
 
@@ -108,7 +174,7 @@ spec:
     spec:
       initContainers:
         - name: configure-ipfs
-          image: "ghcr.io/stargz-containers/ipfs/go-ipfs:v0.11.0"
+          image: "ghcr.io/stargz-containers/ipfs/kubo:v0.16.0"
           command: ["sh", "/custom/configure-ipfs.sh"]
           env:
             - name: BOOTSTRAP_SVC_NAME
@@ -127,7 +193,7 @@ spec:
               mountPath: /custom
       containers:
         - name: ipfs
-          image: "ghcr.io/stargz-containers/ipfs/go-ipfs:v0.11.0"
+          image: "ghcr.io/stargz-containers/ipfs/kubo:v0.16.0"
           command: ["ipfs", "daemon"]
           env:
             - name: LIBP2P_FORCE_PNET
@@ -151,8 +217,56 @@ spec:
             initialDelaySeconds: 30
             timeoutSeconds: 5
             periodSeconds: 15
+        - name: ipfs-cluster
+          image: "ghcr.io/stargz-containers/ipfs/ipfs-cluster:1.0.4"
+          command: ["sh", "/custom/cluster-entrypoint.sh"]
+          env:
+            - name: BOOTSTRAP_SVC_NAME
+              value: "ipfs-bootstrap"
+            - name: CLUSTER_REPLICATIONFACTORMIN
+              valueFrom:
+                configMapKeyRef:
+                  name: ipfs-cluster-conf
+                  key: cluster-replication-factor
+            - name: CLUSTER_REPLICATIONFACTORMAX
+              valueFrom:
+                configMapKeyRef:
+                  name: ipfs-cluster-conf
+                  key: cluster-replication-factor
+            - name: CLUSTER_BOOTSTRAP_PEER_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: env-config
+                  key: cluster-bootstrap-peer-id
+            - name: CLUSTER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: secret-config
+                  key: cluster-secret
+          ports:
+            - name: api-http
+              containerPort: 9094
+              protocol: TCP
+            - name: proxy-http
+              containerPort: 9095
+              protocol: TCP
+              hostPort: 9095
+            - name: cluster-swarm
+              containerPort: 9096
+              protocol: TCP
+          volumeMounts:
+            - name: cluster-storage
+              mountPath: /data/ipfs-cluster
+            - name: configure-script
+              mountPath: /custom
+          livenessProbe:
+            tcpSocket:
+              port: cluster-swarm
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+            periodSeconds: 10
         - name: nerdctl-ipfs-registry
-          image: "ghcr.io/stargz-containers/nerdctl-ipfs-registry:v0.16.0"
+          image: "ghcr.io/stargz-containers/nerdctl-ipfs-registry:v0.23.0"
           command: ["sh", "/custom/nerdctl-ipfs-registry-entrypoint.sh"]
           env:
             - name: IPFS_PATH
@@ -172,6 +286,9 @@ spec:
       - name: ipfs-storage
         hostPath:
           path: /var/ipfs/
+      - name: cluster-storage
+        hostPath:
+          path: /var/ipfs-cluster/
 
 ---
 
@@ -184,10 +301,16 @@ data:
     #!/bin/sh
     set -eu
 
+    if ! command -v curl &> /dev/null
+    then
+        echo "curl not found. installing..."
+        apt-get update -y && apt-get install -y curl
+    fi
+
     # wait for ipfs daemon
     ok=false
     for i in $(seq 100) ; do
-        if curl localhost:5001/api/v0/id >/dev/null 2>&1 ; then
+        if curl localhost:9095/api/v0/id >/dev/null 2>&1 ; then
             ok=true
             break
         fi
@@ -199,7 +322,38 @@ data:
       exit 1
     fi
 
-    exec /usr/local/bin/nerdctl ipfs registry serve --listen-registry 0.0.0.0:5050 --ipfs-address /ip4/127.0.0.1/tcp/5001 --read-retry-num 3 --read-timeout 500ms
+    exec /usr/local/bin/nerdctl ipfs registry serve --listen-registry 0.0.0.0:5050 --ipfs-address /ip4/127.0.0.1/tcp/9095 --read-retry-num 3 --read-timeout 1s
+
+  cluster-entrypoint.sh: |
+    #!/bin/sh
+    set -eu -o pipefail
+
+    # wait for bootstrap node running
+    ok=false
+    for i in $(seq 100) ; do
+        if nc -z ${BOOTSTRAP_SVC_NAME} 9096 ; then
+            ok=true
+            break
+        fi
+        echo "Fail(${i}). Retrying..."
+        sleep 3
+    done
+    if [ "$ok" != "true" ] ; then
+      echo "failed to detect bootstrap node"
+      exit 1
+    fi
+
+    mkdir -p /data/ipfs-cluster
+    if ! [ -z "$(ls -A /data/ipfs-cluster)" ]; then
+      echo "IPFS cluster already configured on this node; destroying the current repo and refreshing..."
+      rm -rf /data/ipfs-cluster/*
+    fi
+    ipfs-cluster-service init
+    cat /data/ipfs-cluster/service.json | sed 's|/ip4/127.0.0.1/tcp/9095|/ip4/0.0.0.0/tcp/9095|' > /tmp/tmp.json
+    mv /tmp/tmp.json /data/ipfs-cluster/service.json
+
+    BOOTSTRAP_ADDR=/dns4/${BOOTSTRAP_SVC_NAME}/tcp/9096/ipfs/${CLUSTER_BOOTSTRAP_PEER_ID}
+    exec ipfs-cluster-service daemon --upgrade --bootstrap $BOOTSTRAP_ADDR --leave
 
   configure-ipfs.sh: |
     #!/bin/sh
@@ -236,7 +390,7 @@ data:
       rm -rf /data/ipfs/*
     fi
 
-    ipfs init --profile=badgerds,server
+    ipfs init --profile=server
     ipfs bootstrap rm --all
     ipfs bootstrap add /dns4/${BOOTSTRAP_SVC_NAME}/tcp/4001/ipfs/${BOOTSTRAP_ID}
     ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
@@ -263,6 +417,21 @@ data:
     fi
     exec httpd -f -p 8000 -h /doc
 
+  cluster-entrypoint.sh: |
+    #!/bin/sh
+    set -eu -o pipefail
+
+    mkdir -p /data/ipfs-cluster
+    if ! [ -z "$(ls -A /data/ipfs-cluster)" ]; then
+      echo "IPFS cluster already configured on this node; destroying the current repo and refreshing..."
+      rm -rf /data/ipfs-cluster/*
+    fi
+    ipfs-cluster-service init
+
+    CLUSTER_ID=${CLUSTER_BOOTSTRAP_PEER_ID} \
+    CLUSTER_PRIVATEKEY=${CLUSTER_BOOTSTRAP_PEER_PRIV_KEY} \
+    exec ipfs-cluster-service daemon --upgrade
+
   configure-ipfs.sh: |
     #!/bin/sh
     set -eu -o pipefail
@@ -277,7 +446,7 @@ data:
       rm -rf /data/ipfs/*
     fi
 
-    ipfs init --profile=badgerds,server
+    ipfs init --profile=server
     ipfs bootstrap rm --all
     ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
     ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080

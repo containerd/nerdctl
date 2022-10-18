@@ -1,95 +1,40 @@
-# Example: Node-to-Node image sharing on Kubernetes using `nerdctl ipfs registry`
+# Examples of Node-to-Node image sharing on Kubernetes using `nerdctl ipfs registry`
 
-Usage:
-- Generate `bootstrap.yaml` by executing `bootstrap.yaml.sh` (e.g. `./bootstrap.yaml.sh > ${DIR_LOCATION}/bootstrap.yaml`)
-  - [`ipfs-swarm-key-gen`](https://github.com/Kubuxu/go-ipfs-swarm-key-gen) is required (see https://github.com/ipfs/kubo/blob/v0.15.0/docs/experimental-features.md#private-networks)
-- Deploy `bootstrap.yaml` and `nerdctl-ipfs-registry.yaml` (e.g. using `kubectl apply`)
-- Make sure nodes contain containerd >= v1.5.8
+This directory contains examples of node-to-node image sharing on Kubernetes with `nerdctl ipfs registry`.
 
-## Example on kind
+- [`./ipfs`](./ipfs): node-to-node image sharing using IPFS
+- [`./ipfs-cluster`](./ipfs-cluster): node-to-node image sharing with content replication using ipfs-cluster
+- [`./ipfs-stargz-snapshotter`](./ipfs-stargz-snapshotter): node-to-node image sharing with lazy pulling using eStargz and Stargz Snapshotter
 
-Prepare cluster (make sure kind nodes contain containerd >= v1.5.8).
+## Example Dockerfile of `nerdctl ipfs regisry`
 
-```console
-$ cat <<EOF > /tmp/kindconfig.yaml
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-- role: control-plane
-- role: worker
-- role: worker
-EOF
-$ kind create cluster --image=kindest/node:v1.23.1 --config=/tmp/kindconfig.yaml
-$ ./bootstrap.yaml.sh > ./bootstrap.yaml
-$ kubectl apply -f .
-```
+The above examples use `nerdctl ipfs regisry` running in a Pod.
+The image is available at [`ghcr.io/stargz-containers/nerdctl-ipfs-registry`](https://github.com/orgs/stargz-containers/packages/container/package/nerdctl-ipfs-registry).
 
-Prepare `kind-worker` (1st node) for importing an image to IPFS
-
-(in `kind-worker`)
-
-```console
-$ docker exec -it kind-worker /bin/bash
-(kind-worker)# NERDCTL_VERSION=0.15.0
-(kind-worker)# curl -sSL --output /tmp/nerdctl.tgz https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
-(kind-worker)# tar zxvf /tmp/nerdctl.tgz -C /usr/local/bin/
-```
-
-Add an image to `kind-worker`.
-
-```console
-$ docker exec -it kind-worker /bin/bash
-(kind-worker)# mkdir -p /tmp/ipfsapi ; echo -n /ip4/127.0.0.1/tcp/5001 >  /tmp/ipfsapi/api
-(kind-worker)# export IPFS_PATH=/tmp/ipfsapi
-(kind-worker)# nerdctl pull ghcr.io/stargz-containers/jenkins:2.60.3-org
-(kind-worker)# nerdctl push ipfs://ghcr.io/stargz-containers/jenkins:2.60.3-org
-(kind-worker)# nerdctl rmi ghcr.io/stargz-containers/jenkins:2.60.3-org
-```
-
-The image added to `kind-worker` is shared to `kind-worker2` via IPFS.
-You can run this image on all worker nodes using the following manifest (assuming the image is added to IPFS as CID `localhost:5050/ipfs/bafkreife3j4tgtx23jcautprornrdp2p4g3j3ndnidzdlrpd7unbpnwkce`).
-
-```console
-$ cat <<EOF | kubectl apply -f -
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: jenkins
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: jenkins
-  template:
-    metadata:
-      labels:
-        app: jenkins
-    spec:
-      containers:
-      - name: jenkins
-        image: localhost:5050/ipfs/bafkreife3j4tgtx23jcautprornrdp2p4g3j3ndnidzdlrpd7unbpnwkce
-        resources:
-          requests:
-            cpu: 1
-EOF
-```
-
-The image runs on all nodes.
-
-```console
-$ kubectl get pods -owide | grep jenkins
-jenkins-7bd8f96d79-2jbc6          1/1     Running   0          69s    10.244.1.3   kind-worker    <none>           <none>
-jenkins-7bd8f96d79-jb5lm          1/1     Running   0          69s    10.244.2.4   kind-worker2   <none>           <none>
-```
-
-## Example Dockerfile of nerdctl
+The following Dockerfile can be used to build it by yourself.
 
 ```Dockerfile
-FROM ubuntu:20.04
-ARG NERDCTL_VERSION=0.16.0
+FROM ubuntu:22.04 AS dev
+
+ARG NERDCTL_VERSION=0.23.0
+ARG NERDCTL_AMD64_SHA256SUM=aa00cd197de3549469e9c62753798979203dc0607f3e60f119ed632478244553
+ARG NERDCTL_ARM64_SHA256SUM=bc8095b8d60a2f25da7e5c456705dce2db020a0a87d003093550994618189ea3
+ARG NERDCTL_PPC64LE_SHA256SUM=162d68a636e0a9c32f705f27390ae8ed919ca8c0442832909ebf3c0e5a884fac
+ARG NERDCTL_RISCV64_SHA256SUM=1580fe87e730fe4b4442ce3e5199fa487ca03dcd0761f0bfa3c7603e4be10372
+ARG NERDCTL_S390X_SHA256SUM=7905ef258968c6f331944a097afe28251c793471fdbc4b7e87aae63f999e8098
+
 RUN apt-get update -y && apt-get install -y curl && \
-    curl -sSL --output /tmp/nerdctl.tgz https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-${TARGETARCH:-amd64}.tar.gz && \
-    tar zxvf /tmp/nerdctl.tgz -C /usr/local/bin/ && \
-    rm /tmp/nerdctl.tgz
+    curl -sSL --output /tmp/nerdctl.${TARGETARCH:-amd64}.tgz https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-${TARGETARCH:-amd64}.tar.gz && \
+    echo "${NERDCTL_AMD64_SHA256SUM}  /tmp/nerdctl.amd64.tgz" | tee /tmp/nerdctl.sha256 && \
+    echo "${NERDCTL_ARM64_SHA256SUM}  /tmp/nerdctl.arm64.tgz" | tee -a /tmp/nerdctl.sha256 && \
+    echo "${NERDCTL_PPC64LE_SHA256SUM}  /tmp/nerdctl.ppc64le.tgz" | tee -a /tmp/nerdctl.sha256 && \
+    echo "${NERDCTL_RISCV64_SHA256SUM}  /tmp/nerdctl.riscv64.tgz" | tee -a /tmp/nerdctl.sha256 && \
+    echo "${NERDCTL_S390X_SHA256SUM}  /tmp/nerdctl.s390x.tgz" | tee -a /tmp/nerdctl.sha256 && \
+    sha256sum --ignore-missing -c /tmp/nerdctl.sha256 && \
+    tar zxvf /tmp/nerdctl.${TARGETARCH:-amd64}.tgz -C /usr/local/bin/ && \
+    rm /tmp/nerdctl.${TARGETARCH:-amd64}.tgz
+
+FROM ubuntu:22.04
+COPY --from=dev /usr/local/bin/nerdctl /usr/local/bin/nerdctl
 ENTRYPOINT [ "/usr/local/bin/nerdctl", "ipfs", "registry", "serve" ]
 ```

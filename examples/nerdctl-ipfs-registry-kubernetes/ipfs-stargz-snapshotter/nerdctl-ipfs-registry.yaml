@@ -1,0 +1,293 @@
+# Example YAML of IPFS-based node-to-node image sharing
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ipfs-bootstrap
+spec:
+  selector:
+    matchLabels:
+      app: ipfs-bootstrap
+  template:
+    metadata:
+      labels:
+        app: ipfs-bootstrap
+    spec:
+      initContainers:
+        - name: configure-ipfs
+          image: "ghcr.io/stargz-containers/ipfs/kubo:v0.16.0"
+          command: ["sh", "/custom/configure-ipfs.sh"]
+          env:
+            - name: LIBP2P_FORCE_PNET
+              value: "1"
+            - name: IPFS_SWARM_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secret-config
+                  key: ipfs-swarm-key
+          volumeMounts:
+            - name: ipfs-storage
+              mountPath: /data/ipfs
+            - name: configure-script
+              mountPath: /custom
+      containers:
+        - name: id
+          image: "ghcr.io/stargz-containers/ipfs/kubo:v0.16.0"
+          command: ["sh", "/custom/id-server.sh"]
+          ports:
+            - name: id
+              protocol: TCP
+              containerPort: 8000
+          volumeMounts:
+            - name: ipfs-storage
+              mountPath: /data/ipfs
+            - name: configure-script
+              mountPath: /custom
+        - name: ipfs
+          image: "ghcr.io/stargz-containers/ipfs/kubo:v0.16.0"
+          command: ["ipfs", "daemon"]
+          env:
+            - name: LIBP2P_FORCE_PNET
+              value: "1"
+          ports:
+            - name: swarm
+              protocol: TCP
+              containerPort: 4001
+          volumeMounts:
+            - name: ipfs-storage
+              mountPath: /data/ipfs
+            - name: configure-script
+              mountPath: /custom
+          livenessProbe:
+            tcpSocket:
+              port: swarm
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            periodSeconds: 15
+      volumes:
+      - name: configure-script
+        configMap:
+          name: ipfs-bootstrap-conf
+      - name: ipfs-storage
+        emptyDir: {}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ipfs-bootstrap
+  labels:
+    app: ipfs-bootstrap
+spec:
+  type: ClusterIP
+  ports:
+    - name: id
+      targetPort: id
+      port: 8000
+    - name: swarm
+      targetPort: swarm
+      port: 4001
+  selector:
+    app: ipfs-bootstrap
+
+---
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ipfs
+spec:
+  selector:
+    matchLabels:
+      app: ipfs
+  template:
+    metadata:
+      labels:
+        app: ipfs
+    spec:
+      initContainers:
+        - name: configure-ipfs
+          image: "ghcr.io/stargz-containers/ipfs/kubo:v0.16.0"
+          command: ["sh", "/custom/configure-ipfs.sh"]
+          env:
+            - name: BOOTSTRAP_SVC_NAME
+              value: "ipfs-bootstrap"
+            - name: LIBP2P_FORCE_PNET
+              value: "1"
+            - name: IPFS_SWARM_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secret-config
+                  key: ipfs-swarm-key
+          volumeMounts:
+            - name: ipfs-storage
+              mountPath: /data/ipfs
+            - name: configure-script
+              mountPath: /custom
+      containers:
+        - name: ipfs
+          image: "ghcr.io/stargz-containers/ipfs/kubo:v0.16.0"
+          command: ["ipfs", "daemon"]
+          env:
+            - name: LIBP2P_FORCE_PNET
+              value: "1"
+          ports:
+            - name: swarm
+              protocol: TCP
+              containerPort: 4001
+            - name: api
+              protocol: TCP
+              containerPort: 5001
+              hostPort: 5001
+          volumeMounts:
+            - name: ipfs-storage
+              mountPath: /data/ipfs
+            - name: configure-script
+              mountPath: /custom
+          livenessProbe:
+            tcpSocket:
+              port: swarm
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            periodSeconds: 15
+        - name: nerdctl-ipfs-registry
+          image: "ghcr.io/stargz-containers/nerdctl-ipfs-registry:v0.23.0"
+          command: ["sh", "/custom/nerdctl-ipfs-registry-entrypoint.sh"]
+          env:
+            - name: IPFS_PATH
+              value: "/data/ipfs"
+          ports:
+            - containerPort: 5050
+              hostPort: 5050
+          volumeMounts:
+            - name: ipfs-storage
+              mountPath: /data/ipfs
+            - name: configure-script
+              mountPath: /custom
+      volumes:
+      - name: configure-script
+        configMap:
+          name: ipfs-peer-conf
+      - name: ipfs-storage
+        hostPath:
+          path: /var/ipfs/
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ipfs-peer-conf
+data:
+  nerdctl-ipfs-registry-entrypoint.sh: |
+    #!/bin/sh
+    set -eu
+
+    if ! command -v curl &> /dev/null
+    then
+        echo "curl not found. installing..."
+        apt-get update -y && apt-get install -y curl
+    fi
+
+    # wait for ipfs daemon
+    ok=false
+    for i in $(seq 100) ; do
+        if curl localhost:5001/api/v0/id >/dev/null 2>&1 ; then
+            ok=true
+            break
+        fi
+        echo "Fail(${i}). Retrying..."
+        sleep 3
+    done
+    if [ "$ok" != "true" ] ; then
+      echo "failed to detect ipfs api"
+      exit 1
+    fi
+
+    exec /usr/local/bin/nerdctl ipfs registry serve --listen-registry 0.0.0.0:5050 --ipfs-address /ip4/127.0.0.1/tcp/5001 --read-retry-num 3 --read-timeout 500ms
+
+  configure-ipfs.sh: |
+    #!/bin/sh
+    set -eu -o pipefail
+
+    # wait for bootstrap node running
+    ok=false
+    for i in $(seq 100) ; do
+        if nc -z ${BOOTSTRAP_SVC_NAME} 4001 ; then
+            ok=true
+            break
+        fi
+        echo "Fail(${i}). Retrying..."
+        sleep 3
+    done
+    if [ "$ok" != "true" ] ; then
+      echo "failed to detect bootstrap node"
+      exit 1
+    fi
+
+    BOOTSTRAP_ID=$(wget -O - ${BOOTSTRAP_SVC_NAME}:8000/id)
+    if [ "${BOOTSTRAP_ID}" == "" ] ; then
+      echo "failed to get bootstrap peer id"
+      exit 1
+    fi
+    if [ "${IPFS_SWARM_KEY}" == "" ] || [ "${LIBP2P_FORCE_PNET}" != "1" ] ; then
+      echo "must be forced to private ipfs network (got LIBP2P_FORCE_PNET=${LIBP2P_FORCE_PNET})"
+      exit 1
+    fi
+
+    mkdir -p /data/ipfs
+    if ! [ -z "$(ls -A /data/ipfs)" ]; then
+      echo "IPFS already configured on this node; destroying the current repo and refreshing..."
+      rm -rf /data/ipfs/*
+    fi
+
+    ipfs init --profile=server
+    ipfs bootstrap rm --all
+    ipfs bootstrap add /dns4/${BOOTSTRAP_SVC_NAME}/tcp/4001/ipfs/${BOOTSTRAP_ID}
+    ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
+    ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
+    ipfs config Datastore.StorageMax 100GB
+    ipfs config Addresses.NoAnnounce --json '[]'
+    ipfs config Swarm.AddrFilters --json '[]'
+    echo -n "${IPFS_SWARM_KEY}" > /data/ipfs/swarm.key
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ipfs-bootstrap-conf
+data:
+  id-server.sh: |
+    #!/bin/sh
+    set -eu -o pipefail
+
+    if [ ! -f /doc/id ]; then
+      mkdir /doc
+      ipfs config show | grep "PeerID" | sed -E 's/.*"PeerID": "([a-zA-Z0-9]*)".*/\1/' > /doc/id
+    fi
+    exec httpd -f -p 8000 -h /doc
+
+  configure-ipfs.sh: |
+    #!/bin/sh
+    set -eu -o pipefail
+
+    if [ "${IPFS_SWARM_KEY}" == "" ] || [ "${LIBP2P_FORCE_PNET}" != "1" ] ; then
+      echo "must be forced to private ipfs network (got LIBP2P_FORCE_PNET=${LIBP2P_FORCE_PNET})"
+    fi
+
+    mkdir -p /data/ipfs
+    if ! [ -z "$(ls -A /data/ipfs)" ]; then
+      echo "IPFS already configured on this node; destroying the current repo and refreshing..."
+      rm -rf /data/ipfs/*
+    fi
+
+    ipfs init --profile=server
+    ipfs bootstrap rm --all
+    ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
+    ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
+    ipfs config Addresses.NoAnnounce --json '[]'
+    ipfs config Swarm.AddrFilters --json '[]'
+    ipfs config Datastore.StorageMax 1GB
+    echo -n "${IPFS_SWARM_KEY}" > /data/ipfs/swarm.key
