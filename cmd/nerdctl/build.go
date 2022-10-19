@@ -382,20 +382,34 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 		return "", nil, false, "", nil, cleanup, err
 	}
 	for _, ba := range strutil.DedupeStrSlice(buildArgsValue) {
-		buildctlArgs = append(buildctlArgs, "--opt=build-arg:"+ba)
-
-		// Support `--build-arg BUILDKIT_INLINE_CACHE=1` for compatibility with `docker buildx build`
-		// https://github.com/docker/buildx/blob/v0.6.3/docs/reference/buildx_build.md#-export-build-cache-to-an-external-cache-destination---cache-to
-		if strings.HasPrefix(ba, "BUILDKIT_INLINE_CACHE=") {
-			bic := strings.TrimPrefix(ba, "BUILDKIT_INLINE_CACHE=")
-			bicParsed, err := strconv.ParseBool(bic)
-			if err == nil {
-				if bicParsed {
-					buildctlArgs = append(buildctlArgs, "--export-cache=type=inline")
-				}
+		arr := strings.Split(ba, "=")
+		if len(arr) == 1 && len(arr[0]) > 0 {
+			// Avoid masking default build arg value from Dockerfile if environment variable is not set
+			// https://github.com/moby/moby/issues/24101
+			val, ok := os.LookupEnv(arr[0])
+			if ok {
+				buildctlArgs = append(buildctlArgs, fmt.Sprintf("--opt=build-arg:%s=%s", ba, val))
 			} else {
-				logrus.WithError(err).Warnf("invalid BUILDKIT_INLINE_CACHE: %q", bic)
+				logrus.Debugf("ignoring unset build arg %q", ba)
 			}
+		} else if len(arr) > 1 && len(arr[0]) > 0 {
+			buildctlArgs = append(buildctlArgs, "--opt=build-arg:"+ba)
+
+			// Support `--build-arg BUILDKIT_INLINE_CACHE=1` for compatibility with `docker buildx build`
+			// https://github.com/docker/buildx/blob/v0.6.3/docs/reference/buildx_build.md#-export-build-cache-to-an-external-cache-destination---cache-to
+			if strings.HasPrefix(ba, "BUILDKIT_INLINE_CACHE=") {
+				bic := strings.TrimPrefix(ba, "BUILDKIT_INLINE_CACHE=")
+				bicParsed, err := strconv.ParseBool(bic)
+				if err == nil {
+					if bicParsed {
+						buildctlArgs = append(buildctlArgs, "--export-cache=type=inline")
+					}
+				} else {
+					logrus.WithError(err).Warnf("invalid BUILDKIT_INLINE_CACHE: %q", bic)
+				}
+			}
+		} else {
+			return "", nil, false, "", nil, nil, fmt.Errorf("invalid build arg %q", ba)
 		}
 	}
 

@@ -215,6 +215,58 @@ func createBuildContext(dockerfile string) (string, error) {
 	return tmpDir, nil
 }
 
+func TestBuildWithBuildArg(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
+	imageName := testutil.Identifier(t)
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+ARG TEST_STRING=1
+ENV TEST_STRING=$TEST_STRING
+CMD echo $TEST_STRING
+	`, testutil.CommonImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
+	base.Cmd("run", "--rm", imageName).AssertOutExactly("1\n")
+
+	validCases := []struct {
+		name     string
+		arg      string
+		envValue string
+		envSet   bool
+		expected string
+	}{
+		{"ArgValueOverridesDefault", "TEST_STRING=2", "", false, "2\n"},
+		{"EmptyArgValueOverridesDefault", "TEST_STRING=", "", false, "\n"},
+		{"UnsetArgKeyPreservesDefault", "TEST_STRING", "", false, "1\n"},
+		{"EnvValueOverridesDefault", "TEST_STRING", "3", true, "3\n"},
+		{"EmptyEnvValueOverridesDefault", "TEST_STRING", "", true, "\n"},
+	}
+
+	for _, tc := range validCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.envSet {
+				err := os.Setenv("TEST_STRING", tc.envValue)
+				assert.NilError(t, err)
+				defer os.Unsetenv("TEST_STRING")
+			}
+
+			base.Cmd("build", buildCtx, "-t", imageName, "--build-arg", tc.arg).AssertOK()
+			base.Cmd("run", "--rm", imageName).AssertOutExactly(tc.expected)
+		})
+	}
+
+	t.Run("InvalidBuildArgCausesError", func(t *testing.T) {
+		base.Cmd("build", buildCtx, "-t", imageName, "--build-arg", "=TEST_STRING").AssertFail()
+	})
+}
+
 func TestBuildWithIIDFile(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
