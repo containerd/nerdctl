@@ -233,6 +233,7 @@ FROM ubuntu:${UBUNTU_VERSION} AS base
 RUN apt-get update && \
   apt-get install -qq -y --no-install-recommends \
   apparmor \
+  bash-completion \
   ca-certificates curl \
   iproute2 iptables \
   dbus dbus-user-session systemd systemd-sysv \
@@ -242,7 +243,9 @@ RUN curl -L -o /docker-entrypoint.sh https://raw.githubusercontent.com/AkihiroSu
   chmod +x /docker-entrypoint.sh
 COPY --from=out-full / /usr/local/
 RUN perl -pi -e 's/multi-user.target/docker-entrypoint.target/g' /usr/local/lib/systemd/system/*.service && \
-  systemctl enable containerd buildkit stargz-snapshotter
+  systemctl enable containerd buildkit stargz-snapshotter && \
+  mkdir -p /etc/bash_completion.d && \
+  nerdctl completion bash >/etc/bash_completion.d/nerdctl
 COPY ./Dockerfile.d/etc_containerd_config.toml /etc/containerd/config.toml
 COPY ./Dockerfile.d/etc_buildkit_buildkitd.toml /etc/buildkit/buildkitd.toml
 VOLUME /var/lib/containerd
@@ -250,7 +253,7 @@ VOLUME /var/lib/buildkit
 VOLUME /var/lib/containerd-stargz-grpc
 VOLUME /var/lib/nerdctl
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["bash"]
+CMD ["bash", "--login", "-i"]
 
 # convert GO_VERSION=1.16 to the latest release such as "go1.16.1"
 FROM golang:${GO_VERSION}-alpine AS goversion
