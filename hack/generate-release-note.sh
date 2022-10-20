@@ -24,6 +24,9 @@ cat <<-EOX
 ## Changes
 (To be documented)
 
+## Compatible containerd versions
+This release of nerdctl is expected to be used with containerd v1.5 or v1.6.
+
 ## About the binaries
 - Minimal (\`${minimal_amd64tgz_basename}\`): nerdctl only
 - Full (\`${full_amd64tgz_basename}\`):    Includes dependencies such as containerd, runc, and CNI
