@@ -1100,6 +1100,7 @@ Usage: `nerdctl network inspect [OPTIONS] NETWORK [NETWORK...]`
 
 Flags:
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :nerd_face: `--mode=(dockercompat|native)`: Inspection mode. "native" produces more information.
 
 Unimplemented `docker network inspect` flags: `--verbose`
 
