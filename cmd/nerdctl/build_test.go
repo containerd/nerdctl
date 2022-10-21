@@ -174,9 +174,11 @@ CMD ["echo", "nerdctl-build-test-dockerfile"]
 
 func TestBuildLocal(t *testing.T) {
 	t.Parallel()
-	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
+	if testutil.GetTarget() == testutil.Docker {
+		base.Env = append(base.Env, "DOCKER_BUILDKIT=1")
+	}
 	defer base.Cmd("builder", "prune").Run()
 	const testFileName = "nerdctl-build-test"
 	const testContent = "nerdctl"
@@ -200,6 +202,16 @@ COPY %s /`,
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(testFilePath)
+	assert.NilError(t, err)
+	assert.Equal(t, string(data), testContent)
+
+	aliasOutputDir := t.TempDir()
+	testAliasFilePath := filepath.Join(aliasOutputDir, testFileName)
+	base.Cmd("build", "-o", aliasOutputDir, buildCtx).AssertOK()
+	if _, err := os.Stat(testAliasFilePath); err != nil {
+		t.Fatal(err)
+	}
+	data, err = os.ReadFile(testAliasFilePath)
 	assert.NilError(t, err)
 	assert.Equal(t, string(data), testContent)
 }

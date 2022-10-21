@@ -290,6 +290,11 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 			needsLoading = true
 		}
 	} else {
+		if !strings.Contains(output, "type=") {
+			// should accept --output <DIR> as an alias of --output
+			// type=local,dest=<DIR>
+			output = fmt.Sprintf("type=local,dest=%s", output)
+		}
 		if strings.Contains(output, "type=docker") || strings.Contains(output, "type=oci") {
 			needsLoading = true
 		}
