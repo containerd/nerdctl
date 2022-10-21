@@ -21,7 +21,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
+	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
@@ -55,7 +58,7 @@ func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 	}
 }
 
-func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
+func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Command, client *containerd.Client, id string) ([]oci.SpecOpts, error) {
 	opts = append(opts,
 		oci.WithDefaultUnixDevices,
 		WithoutRunMount(), // unmount default tmpfs on "/run": https://github.com/containerd/nerdctl/issues/157)
@@ -128,21 +131,15 @@ func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]o
 		opts = append(opts, oci.WithDevShmSize(shmBytes/1024))
 	}
 
-	pidNs, err := cmd.Flags().GetString("pid")
+	pid, err := cmd.Flags().GetString("pid")
 	if err != nil {
 		return nil, err
 	}
-	pidNs = strings.ToLower(pidNs)
-	if pidNs != "" {
-		if pidNs != "host" {
-			return nil, fmt.Errorf("invalid pid namespace. Set --pid=host to enable host pid namespace")
-		} else {
-			opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
-			if rootlessutil.IsRootless() {
-				opts = append(opts, withBindMountHostProcfs)
-			}
-		}
+	pidOpts, err := generatePIDOpts(ctx, client, pid)
+	if err != nil {
+		return nil, err
 	}
+	opts = append(opts, pidOpts...)
 
 	ulimitOpts, err := generateUlimitsOpts(cmd)
 	if err != nil {
@@ -192,6 +189,21 @@ func setPlatformOptions(opts []oci.SpecOpts, cmd *cobra.Command, id string) ([]o
 	return opts, nil
 }
 
+func setPlatformContainerOptions(ctx context.Context, cOpts []containerd.NewContainerOpts, cmd *cobra.Command, client *containerd.Client, id string) ([]containerd.NewContainerOpts, error) {
+	pid, err := cmd.Flags().GetString("pid")
+	if err != nil {
+		return nil, err
+	}
+
+	pidCOpts, err := generatePIDCOpts(ctx, client, pid)
+	if err != nil {
+		return nil, err
+	}
+	cOpts = append(cOpts, pidCOpts...)
+
+	return cOpts, nil
+}
+
 func setOOMScoreAdj(opts []oci.SpecOpts, cmd *cobra.Command) ([]oci.SpecOpts, error) {
 	if !cmd.Flags().Changed("oom-score-adj") {
 		return opts, nil
@@ -216,4 +228,84 @@ func withOOMScoreAdj(score int) oci.SpecOpts {
 		s.Process.OOMScoreAdj = &score
 		return nil
 	}
+}
+
+func generatePIDOpts(ctx context.Context, client *containerd.Client, pid string) ([]oci.SpecOpts, error) {
+	opts := make([]oci.SpecOpts, 0)
+	pid = strings.ToLower(pid)
+
+	switch pid {
+	case "":
+		// do nothing
+	case "host":
+		opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
+		if rootlessutil.IsRootless() {
+			opts = append(opts, withBindMountHostProcfs)
+		}
+	default: // container:<id|name>
+		parsed := strings.Split(pid, ":")
+		if len(parsed) < 2 || parsed[0] != "container" {
+			return nil, fmt.Errorf("invalid pid namespace. Set --pid=[host|container:<name|id>")
+		}
+
+		containerName := parsed[1]
+		walker := &containerwalker.ContainerWalker{
+			Client: client,
+			OnFound: func(ctx context.Context, found containerwalker.Found) error {
+				if found.MatchCount > 1 {
+					return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+				}
+
+				o, err := generateSharingPIDOpts(ctx, found.Container)
+				if err != nil {
+					return err
+				}
+				opts = append(opts, o...)
+
+				return nil
+			},
+		}
+		matchedCount, err := walker.Walk(ctx, containerName)
+		if err != nil {
+			return nil, err
+		}
+		if matchedCount < 1 {
+			return nil, fmt.Errorf("no such container: %s", containerName)
+		}
+	}
+
+	return opts, nil
+}
+
+func generatePIDCOpts(ctx context.Context, client *containerd.Client, pid string) ([]containerd.NewContainerOpts, error) {
+	pid = strings.ToLower(pid)
+
+	cOpts := make([]containerd.NewContainerOpts, 0)
+	parsed := strings.Split(pid, ":")
+	if len(parsed) < 2 || parsed[0] != "container" {
+		// no need to save pid options
+		return cOpts, nil
+	}
+
+	containerName := parsed[1]
+	walker := &containerwalker.ContainerWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if found.MatchCount > 1 {
+				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+			}
+			cOpts = append(cOpts, containerd.WithAdditionalContainerLabels(map[string]string{
+				labels.PIDContainer: containerName,
+			}))
+			return nil
+		},
+	}
+	matchedCount, err := walker.Walk(ctx, containerName)
+	if err != nil {
+		return nil, err
+	}
+	if matchedCount < 1 {
+		return nil, fmt.Errorf("no such container: %s", containerName)
+	}
+	return cOpts, nil
 }

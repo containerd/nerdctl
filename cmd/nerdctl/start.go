@@ -19,9 +19,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/containerd/containerd"
@@ -107,6 +109,10 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 	}
 
 	if err := reconfigNetContainer(ctx, container, client, lab); err != nil {
+		return err
+	}
+
+	if err := reconfigPIDContainer(ctx, container, client, lab); err != nil {
 		return err
 	}
 
@@ -216,6 +222,41 @@ func reconfigNetContainer(ctx context.Context, c containerd.Container, client *c
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func reconfigPIDContainer(ctx context.Context, c containerd.Container, client *containerd.Client, lab map[string]string) error {
+	targetContainerID, ok := lab[labels.PIDContainer]
+	if !ok {
+		return nil
+	}
+
+	if runtime.GOOS != "linux" {
+		return errors.New("--pid only supported on linux")
+	}
+
+	targetCon, err := client.LoadContainer(ctx, targetContainerID)
+	if err != nil {
+		return err
+	}
+
+	opts, err := generateSharingPIDOpts(ctx, targetCon)
+	if err != nil {
+		return err
+	}
+
+	spec, err := c.Spec(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = c.Update(ctx, containerd.UpdateContainerOpts(
+		containerd.WithSpec(spec, oci.Compose(opts...)),
+	))
+	if err != nil {
+		return err
 	}
 
 	return nil

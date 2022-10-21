@@ -86,6 +86,9 @@ const (
 	StopTimout = Prefix + "stop-timeout"
 
 	MACAddress = Prefix + "mac-address"
+
+	// PIDContainer is the `nerdctl run --pid` for restarting
+	PIDContainer = Prefix + "pid-container"
 )
 
 var ShellCompletions = []string{

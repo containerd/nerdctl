@@ -75,6 +75,18 @@ func TestRunPidHost(t *testing.T) {
 	base.Cmd("run", "--rm", "--pid=host", testutil.AlpineImage, "ps", "auxw").AssertOutContains(strconv.Itoa(pid))
 }
 
+func TestRunPidContainer(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	sharedContainerResult := base.Cmd("run", "-d", testutil.AlpineImage, "sleep", "infinity").Run()
+	baseContainerID := strings.TrimSpace(sharedContainerResult.Stdout())
+	defer base.Cmd("rm", "-f", baseContainerID).Run()
+
+	base.Cmd("run", "--rm", fmt.Sprintf("--pid=container:%s", baseContainerID),
+		testutil.AlpineImage, "ps", "ax").AssertOutContains("sleep infinity")
+}
+
 func TestRunIpcHost(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
