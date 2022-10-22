@@ -35,7 +35,7 @@ jobs:
       with:
         go-version: 1.19.x
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3.2.0
+      uses: golangci/golangci-lint-action@v3.3.0
       with:
         version: v1.49.0
         args: --verbose
