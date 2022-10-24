@@ -320,6 +320,8 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 			}
 			tags[idx] = dockerreference.TagNameOnly(named).String()
 		}
+	} else if len(tags) == 0 {
+		output = output + ",dangling-name-prefix=<none>"
 	}
 
 	buildctlArgs = buildkitutil.BuildctlBaseArgs(buildkitHost)
