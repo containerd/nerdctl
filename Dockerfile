@@ -26,6 +26,8 @@ ARG CNI_PLUGINS_VERSION=v1.1.1
 ARG BUILDKIT_VERSION=v0.10.5
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.12.1
+# Extra deps: Nydus Lazy-pulling
+ARG NYDUS_VERSION=v2.1.0
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=v1.1.7
 # Extra deps: Rootless
@@ -285,6 +287,12 @@ RUN systemctl enable test-integration-ipfs-offline test-integration-buildkit-ner
     ipfs init && \
     ipfs config Addresses.API "/ip4/127.0.0.1/tcp/5888" && \
     ipfs config Addresses.Gateway "/ip4/127.0.0.1/tcp/5889"
+# install nydus components
+ARG NYDUS_VERSION
+RUN curl -L -o nydus-static.tgz "https://github.com/dragonflyoss/image-service/releases/download/${NYDUS_VERSION}/nydus-static-${NYDUS_VERSION}-linux-${TARGETARCH}.tgz" && \
+    tar xzf nydus-static.tgz && \
+    mv nydus-static/nydus-image nydus-static/nydusd nydus-static/nydusify /usr/bin/ && \
+    rm nydus-static.tgz
 CMD ["go", "test", "-v", "-timeout=20m", "./cmd/nerdctl/...", "-args", "-test.kill-daemon"]
 
 FROM test-integration AS test-integration-rootless

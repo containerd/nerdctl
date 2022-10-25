@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/images/converter/uncompress"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
+	nydusconvert "github.com/containerd/nydus-snapshotter/pkg/converter"
 	"github.com/containerd/stargz-snapshotter/estargz"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
 	zstdchunkedconvert "github.com/containerd/stargz-snapshotter/nativeconverter/zstdchunked"
@@ -65,6 +66,14 @@ func newImageConvertCommand() *cobra.Command {
 	imageConvertCommand.Flags().Int("estargz-compression-level", gzip.BestCompression, "eStargz compression level")
 	imageConvertCommand.Flags().Int("estargz-chunk-size", 0, "eStargz chunk size")
 	imageConvertCommand.Flags().Bool("zstdchunked", false, "Use zstd compression instead of gzip (a.k.a zstd:chunked). Should be used in conjunction with '--oci'")
+	// #endregion
+
+	// #region nydus flags
+	imageConvertCommand.Flags().Bool("nydus", false, "Convert an OCI image to Nydus image. Should be used in conjunction with '--oci'")
+	imageConvertCommand.Flags().String("nydus-builder-path", "nydus-image", "The nydus-image binary path, if unset, search in PATH environment")
+	imageConvertCommand.Flags().String("nydus-work-dir", "", "Work directory path for image conversion, default is the nerdctl data root directory")
+	imageConvertCommand.Flags().String("nydus-prefetch-patterns", "", "The file path pattern list want to prefetch")
+	imageConvertCommand.Flags().String("nydus-compressor", "lz4_block", "Nydus blob compression algorithm, possible values: `none`, `lz4_block`, `zstd`, default is `lz4_block`")
 	// #endregion
 
 	// #region generic flags
@@ -126,6 +135,10 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	nydus, err := cmd.Flags().GetBool("nydus")
+	if err != nil {
+		return err
+	}
 	oci, err := cmd.Flags().GetBool("oci")
 	if err != nil {
 		return err
@@ -163,6 +176,41 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 		if uncompressValue {
 			return fmt.Errorf("option --%s conflicts with --uncompress", convertType)
 		}
+	}
+
+	if nydus {
+		if estargz {
+			return errors.New("option --nydus conflicts with --estargz")
+		}
+		if zstdchunked {
+			return errors.New("option --nydus conflicts with --zstdchunked")
+		}
+		if !oci {
+			logrus.Warnln("option --nydus should be used in conjunction with '--oci', forcibly enabling on oci mediatype for nydus conversion")
+		}
+
+		nydusOpts, err := getNydusConvertOpts(cmd)
+		if err != nil {
+			return err
+		}
+		convertFunc := nydusconvert.LayerConvertFunc(*nydusOpts)
+		convertHooks := converter.ConvertHooks{
+			PostConvertHook: nydusconvert.ConvertHookFunc(nydusconvert.MergeOption{
+				WorkDir:          nydusOpts.WorkDir,
+				BuilderPath:      nydusOpts.BuilderPath,
+				FsVersion:        nydusOpts.FsVersion,
+				ChunkDictPath:    nydusOpts.ChunkDictPath,
+				PrefetchPatterns: nydusOpts.PrefetchPatterns,
+			}),
+		}
+		convertOpts = append(convertOpts, converter.WithIndexConvertFunc(
+			converter.IndexConvertFuncWithHook(
+				convertFunc,
+				true,
+				platMC,
+				convertHooks,
+			)),
+		)
 	}
 
 	if uncompressValue {
@@ -227,6 +275,41 @@ func getESGZConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
 		esgzOpts = append(esgzOpts, estargz.WithAllowPrioritizeNotFound(&ignored))
 	}
 	return esgzOpts, nil
+}
+
+func getNydusConvertOpts(cmd *cobra.Command) (*nydusconvert.PackOption, error) {
+	builderPath, err := cmd.Flags().GetString("nydus-builder-path")
+	if err != nil {
+		return nil, err
+	}
+	workDir, err := cmd.Flags().GetString("nydus-work-dir")
+	if err != nil {
+		return nil, err
+	}
+	if workDir == "" {
+		workDir, err = getDataStore(cmd)
+		if err != nil {
+			return nil, err
+		}
+	}
+	prefetchPatterns, err := cmd.Flags().GetString("nydus-prefetch-patterns")
+	if err != nil {
+		return nil, err
+	}
+	compressor, err := cmd.Flags().GetString("nydus-compressor")
+	if err != nil {
+		return nil, err
+	}
+	return &nydusconvert.PackOption{
+		BuilderPath: builderPath,
+		// the path will finally be used is <NERDCTL_DATA_ROOT>/nydus-converter-<hash>,
+		// for example: /var/lib/nerdctl/1935db59/nydus-converter-3269662176/,
+		// and it will be deleted after the conversion
+		WorkDir:          workDir,
+		PrefetchPatterns: prefetchPatterns,
+		Compressor:       compressor,
+		FsVersion:        "6",
+	}, nil
 }
 
 func readPathsFromRecordFile(filename string) ([]string, error) {
