@@ -230,7 +230,9 @@ COPY --from=build-full /out /
 
 FROM ubuntu:${UBUNTU_VERSION} AS base
 # fuse3 is required by stargz snapshotter
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
+  apt-get dist-upgrade -y && \
   apt-get install -qq -y --no-install-recommends \
   apparmor \
   bash-completion \
