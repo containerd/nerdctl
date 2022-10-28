@@ -200,6 +200,12 @@ As a containerd non-core sub-project, you will find the:
 
 information in our [`containerd/project`](https://github.com/containerd/project) repository.
 
+### Quickly getting a development environment setup
+
+To get a quick working development environment you could use Gitpod.
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/containerd/nerdctl)
+
 ### Compiling nerdctl from source
 
 **Tips: You should make your Go toolchain newer than 1.17.**

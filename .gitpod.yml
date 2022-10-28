@@ -1,0 +1,14 @@
+tasks:
+  - name: Configure nerdctl
+    command: mkdir -p /home/gitpod/.config/nerdctl && echo 'snapshotter = "native"' > /home/gitpod/.config/nerdctl/nerdctl.toml
+  - name: Run containerd
+    command: bash -c "curl https://raw.githubusercontent.com/containerd/containerd/main/script/setup/install-cni | bash" && sudo containerd
+  - name: Watch nerdctl
+    before: npm install --global nodemon
+    command: nodemon --watch './**/*.go' --ext go --signal SIGTERM --exec 'make binaries && make install && sudo chown root $BINDIR/nerdctl && sudo chmod +s $BINDIR/nerdctl'
+    env:
+      BINDIR: /home/gitpod/.local/bin
+
+vscode:
+  extensions:
+    - golang.go
