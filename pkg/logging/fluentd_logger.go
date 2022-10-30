@@ -47,6 +47,7 @@ const (
 	fluentdSubSecondPrecision     = "fluentd-sub-second-precision"
 	fluentdAsyncReconnectInterval = "fluentd-async-reconnect-interval"
 	fluentRequestAck              = "fluentd-request-ack"
+	fluentLogToJson               = "fluentd-log-to-json"
 )
 
 var FluentdLogOpts = []string{

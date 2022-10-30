@@ -247,7 +247,7 @@ func TestRunWithFluentdLogDriverWithLogOpt(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	testContainerName := containerName + "test"
-	base.Cmd("run", "-d", "--log-driver", "fluentd", "--log-opt", "fluentd-address=127.0.0.1:24225",
+	base.Cmd("run", "-d", "--log-driver", "fluentd", "--log-opt", "fluentd-address=127.0.0.1:24225", "--log-ops", "fluentd-log-to-json=true",
 		"--name", testContainerName, testutil.CommonImage, "sh", "-c", "echo test2").AssertOK()
 	defer base.Cmd("rm", "-f", testContainerName).AssertOK()
 
@@ -260,6 +260,7 @@ func TestRunWithFluentdLogDriverWithLogOpt(t *testing.T) {
 	assert.NilError(t, err)
 	logData := string(data)
 	assert.Equal(t, true, strings.Contains(logData, "test2"))
+	base.Cmd("logs", testContainerName).AssertOutContains("test2")
 	assert.Equal(t, true, strings.Contains(logData, inspectedContainer.ID))
 }
 
