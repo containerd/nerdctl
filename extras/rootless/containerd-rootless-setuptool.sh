@@ -305,7 +305,7 @@ cmd_entrypoint_install_buildkit_containerd() {
 		WARNING "buildkitd has access to images in \"buildkit\" namespace by default. If you want to give buildkitd access to the images in \"default\" namespace, run this command with CONTAINERD_NAMESPACE=default"
 	fi
 	if [ -n "${CONTAINERD_SNAPSHOTTER:-}" ] ; then
-		BULDKITD_FLAG="${BUILDKITD_FLAG} --containerd-worker-snapshotter=${CONTAINERD_SNAPSHOTTER}"
+		BUILDKITD_FLAG="${BUILDKITD_FLAG} --containerd-worker-snapshotter=${CONTAINERD_SNAPSHOTTER}"
 	fi
 	cat <<-EOT | install_systemd_unit "${UNIT_NAME}"
 		[Unit]
