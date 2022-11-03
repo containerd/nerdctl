@@ -48,7 +48,7 @@ Note that competing with Docker is _not_ the goal of nerdctl. Those cutting-edge
 
 ### How is nerdctl different from `ctr` and `crictl` ?
 
-[`ctr`](https://github.com/containerd/containerd/tree/master/cmd/ctr) is a debugging utility bundled with containerd.
+[`ctr`](https://github.com/containerd/containerd/tree/main/cmd/ctr) is a debugging utility bundled with containerd.
 
 ctr is incompatible with Docker CLI, and not friendly to users.
 

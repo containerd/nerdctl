@@ -31,7 +31,7 @@ See https://github.com/containerd/stargz-snapshotter to learn further informatio
 # nerdctl --snapshotter=stargz run -it --rm ghcr.io/stargz-containers/fedora:30-esgz
 ```
 
-For the list of pre-converted Stargz images, see https://github.com/containerd/stargz-snapshotter/blob/master/docs/pre-converted-images.md
+For the list of pre-converted Stargz images, see https://github.com/containerd/stargz-snapshotter/blob/main/docs/pre-converted-images.md
 
 ### Benchmark result (Dec 9, 2020)
 For running `python3 -c print("hi")`, eStargz with Stargz Snapshotter is 3-4 times faster than the legacy OCI with overlayfs snapshotter.
