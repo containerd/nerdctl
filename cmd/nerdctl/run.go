@@ -893,9 +893,6 @@ func generateLogURI(dataStore string) (*url.URL, error) {
 	args := map[string]string{
 		logging.MagicArgv1: dataStore,
 	}
-	if runtime.GOOS == "windows" {
-		return nil, nil
-	}
 
 	return cio.LogURIGenerator("binary", selfExe, args)
 }
