@@ -402,3 +402,21 @@ CMD ["echo", "dockerfile"]
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("run", "--rm", imageName).AssertOutExactly("dockerfile\n")
 }
+
+func TestBuildNoTag(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").AssertOK()
+	base.Cmd("image", "prune", "--force", "--all").AssertOK()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-notag-string"]
+	`, testutil.CommonImage)
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", buildCtx).AssertOK()
+	base.Cmd("images").AssertOutContains("<none>")
+	base.Cmd("image", "prune", "--force", "--all").AssertOK()
+}
