@@ -7,7 +7,7 @@ name: Container Image Build
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ main ]
     # Publish semver tags as releases.
     tags: [ 'v*.*.*' ]
 

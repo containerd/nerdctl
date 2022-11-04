@@ -102,7 +102,7 @@ $ export CONTAINERD_SNAPSHOTTER=stargz
 $ nerdctl run -it --rm ghcr.io/stargz-containers/alpine:3.10.2-esgz
 ```
 
-See https://github.com/containerd/stargz-snapshotter/blob/master/docs/pre-converted-images.md for the image list.
+See https://github.com/containerd/stargz-snapshotter/blob/main/docs/pre-converted-images.md for the image list.
 
 ## bypass4netns
 | :zap: Requirement | nerdctl >= 0.17 |

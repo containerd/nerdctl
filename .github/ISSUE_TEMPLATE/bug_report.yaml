@@ -10,7 +10,7 @@ body:
         repository. If there is a duplicate, please close your issue and add a comment
         to the existing issue instead.
 
-        Please also see [the FAQs and Troubleshooting](https://github.com/containerd/nerdctl/blob/master/docs/faq.md).
+        Please also see [the FAQs and Troubleshooting](https://github.com/containerd/nerdctl/blob/main/docs/faq.md).
 
   - type: textarea
     attributes:

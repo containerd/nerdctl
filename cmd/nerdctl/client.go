@@ -68,7 +68,7 @@ func newClient(cmd *cobra.Command, opts ...containerd.ClientOpt) (*containerd.Cl
 func newClientWithPlatform(cmd *cobra.Command, platform string, clientOpts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
 	if platform != "" {
 		if canExec, canExecErr := platformutil.CanExecProbably(platform); !canExec {
-			warn := fmt.Sprintf("Platform %q seems incompatible with the host platform %q. If you see \"exec format error\", see https://github.com/containerd/nerdctl/blob/master/docs/multi-platform.md",
+			warn := fmt.Sprintf("Platform %q seems incompatible with the host platform %q. If you see \"exec format error\", see https://github.com/containerd/nerdctl/blob/main/docs/multi-platform.md",
 				platform, platforms.DefaultString())
 			if canExecErr != nil {
 				logrus.WithError(canExecErr).Warn(warn)

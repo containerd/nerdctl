@@ -177,7 +177,7 @@ Trivial:
 
 ## Similar tools
 
-- [`ctr`](https://github.com/containerd/containerd/tree/master/cmd/ctr): incompatible with Docker CLI, and not friendly to users.
+- [`ctr`](https://github.com/containerd/containerd/tree/main/cmd/ctr): incompatible with Docker CLI, and not friendly to users.
   Notably, `ctr` lacks the equivalents of the following nerdctl commands:
   - `nerdctl run -p <PORT>`
   - `nerdctl run --restart=always --net=bridge`
@@ -194,9 +194,9 @@ Trivial:
 ## Developer guide
 nerdctl is a containerd **non-core** sub-project, licensed under the [Apache 2.0 license](./LICENSE).
 As a containerd non-core sub-project, you will find the:
- * [Project governance](https://github.com/containerd/project/blob/master/GOVERNANCE.md),
+ * [Project governance](https://github.com/containerd/project/blob/main/GOVERNANCE.md),
  * [Maintainers](./MAINTAINERS),
- * and [Contributing guidelines](https://github.com/containerd/project/blob/master/CONTRIBUTING.md)
+ * and [Contributing guidelines](https://github.com/containerd/project/blob/main/CONTRIBUTING.md)
 
 information in our [`containerd/project`](https://github.com/containerd/project) repository.
 

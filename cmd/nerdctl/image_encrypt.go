@@ -39,7 +39,7 @@ Example:
   nerdctl push example.com/foo:encrypted
 
 To run the encrypted image, put the private key file (mykey.pem) to /etc/containerd/ocicrypt/keys (rootful) or ~/.config/containerd/ocicrypt/keys (rootless).
-containerd before v1.4 requires extra configuration steps, see https://github.com/containerd/nerdctl/blob/master/docs/ocicrypt.md
+containerd before v1.4 requires extra configuration steps, see https://github.com/containerd/nerdctl/blob/main/docs/ocicrypt.md
 
 CAUTION: This command only encrypts image layers, but does NOT encrypt container configuration such as 'Env' and 'Cmd'.
 To see non-encrypted information, run 'nerdctl image inspect --mode=native --platform=PLATFORM example.com/foo:encrypted' .

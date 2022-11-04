@@ -197,8 +197,8 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, 
 	rootCmd.PersistentFlags().Bool("insecure-registry", cfg.InsecureRegistry, "skips verifying HTTPS certs, and allows falling back to plain HTTP")
 	// hosts-dir is defined as StringSlice, not StringArray, to allow specifying "--hosts-dir=/etc/containerd/certs.d,/etc/docker/certs.d"
 	rootCmd.PersistentFlags().StringSlice("hosts-dir", cfg.HostsDir, "A directory that contains <HOST:PORT>/hosts.toml (containerd style) or <HOST:PORT>/{ca.cert, cert.pem, key.pem} (docker style)")
-	// Experimental enable experimental feature, see in https://github.com/containerd/nerdctl/blob/master/docs/experimental.md
-	AddPersistentBoolFlag(rootCmd, "experimental", nil, nil, cfg.Experimental, "NERDCTL_EXPERIMENTAL", "Control experimental: https://github.com/containerd/nerdctl/blob/master/docs/experimental.md")
+	// Experimental enable experimental feature, see in https://github.com/containerd/nerdctl/blob/main/docs/experimental.md
+	AddPersistentBoolFlag(rootCmd, "experimental", nil, nil, cfg.Experimental, "NERDCTL_EXPERIMENTAL", "Control experimental: https://github.com/containerd/nerdctl/blob/main/docs/experimental.md")
 	return aliasToBeInherited, nil
 }
 
@@ -440,7 +440,7 @@ func AddStringFlag(cmd *cobra.Command, name string, aliases []string, value stri
 }
 
 // AddPersistentStringFlag is similar to AddStringFlag but persistent.
-// See https://github.com/spf13/cobra/blob/master/user_guide.md#persistent-flags to learn what is "persistent".
+// See https://github.com/spf13/cobra/blob/main/user_guide.md#persistent-flags to learn what is "persistent".
 func AddPersistentStringFlag(cmd *cobra.Command, name string, aliases, localAliases, persistentAliases []string, aliasToBeInherited *pflag.FlagSet, value string, env, usage string) {
 	if env != "" {
 		usage = fmt.Sprintf("%s [$%s]", usage, env)
@@ -491,7 +491,7 @@ func AddPersistentStringFlag(cmd *cobra.Command, name string, aliases, localAlia
 }
 
 // AddPersistentBoolFlag is similar to AddBoolFlag but persistent.
-// See https://github.com/spf13/cobra/blob/master/user_guide.md#persistent-flags to learn what is "persistent".
+// See https://github.com/spf13/cobra/blob/main/user_guide.md#persistent-flags to learn what is "persistent".
 func AddPersistentBoolFlag(cmd *cobra.Command, name string, aliases, nonPersistentAliases []string, value bool, env, usage string) {
 	if env != "" {
 		usage = fmt.Sprintf("%s [$%s]", usage, env)
@@ -528,7 +528,7 @@ func AddPersistentBoolFlag(cmd *cobra.Command, name string, aliases, nonPersiste
 }
 
 // AddPersistentStringArrayFlag is similar to cmd.Flags().StringArray but supports aliases and env var and persistent.
-// See https://github.com/spf13/cobra/blob/master/user_guide.md#persistent-flags to learn what is "persistent".
+// See https://github.com/spf13/cobra/blob/main/user_guide.md#persistent-flags to learn what is "persistent".
 func AddPersistentStringArrayFlag(cmd *cobra.Command, name string, aliases, nonPersistentAliases []string, value []string, env string, usage string) {
 	if env != "" {
 		usage = fmt.Sprintf("%s [$%s]", usage, env)

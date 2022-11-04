@@ -32,7 +32,7 @@ func newCreateCommand() *cobra.Command {
 		longHelp += "WARNING: `nerdctl create` is experimental on Windows and currently broken (https://github.com/containerd/nerdctl/issues/28)"
 	case "freebsd":
 		longHelp += "\n"
-		longHelp += "WARNING: `nerdctl create` is experimental on FreeBSD and currently requires `--net=none` (https://github.com/containerd/nerdctl/blob/master/docs/freebsd.md)"
+		longHelp += "WARNING: `nerdctl create` is experimental on FreeBSD and currently requires `--net=none` (https://github.com/containerd/nerdctl/blob/main/docs/freebsd.md)"
 	}
 	var createCommand = &cobra.Command{
 		Use:               "create [flags] IMAGE [COMMAND] [ARG...]",

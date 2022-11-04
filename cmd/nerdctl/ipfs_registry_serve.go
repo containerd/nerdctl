@@ -80,7 +80,7 @@ func ipfsRegistryServeAction(cmd *cobra.Command, args []string) error {
 	} else {
 		ipfsClient, err = httpapi.NewLocalApi()
 		if err != nil {
-			return fmt.Errorf("error encountered, '%w', Please setup ipfs daemon, see https://github.com/containerd/nerdctl/blob/master/docs/ipfs.md", err)
+			return fmt.Errorf("error encountered, '%w', Please setup ipfs daemon, see https://github.com/containerd/nerdctl/blob/main/docs/ipfs.md", err)
 		}
 	}
 	h, err := ipfs.NewRegistry(ipfsClient, ipfs.RegistryOptions{
