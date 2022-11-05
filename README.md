@@ -1401,7 +1401,7 @@ Unimplemented `docker compose up` (V2) flags: `--environment`
 ### :whale: nerdctl compose logs
 Create and start containers
 
-Usage: `nerdctl compose logs [OPTIONS]`
+Usage: `nerdctl compose logs [OPTIONS] [SERVICE...]`
 
 Flags:
 - :whale: `--no-color`: Produce monochrome output
@@ -1414,7 +1414,7 @@ Unimplemented `docker compose logs` (V2) flags:  `--since`, `--until`
 ### :whale: nerdctl compose build
 Build or rebuild services.
 
-Usage: `nerdctl compose build [OPTIONS]`
+Usage: `nerdctl compose build [OPTIONS] [SERVICE...]`
 
 Flags:
 - :whale: `--build-arg`: Set build-time variables for services
@@ -1437,7 +1437,7 @@ Unimplemented `docker-compose down` (V1) flags: `--rmi`, `--remove-orphans`, `--
 ### :whale: nerdctl compose ps
 List containers of services
 
-Usage: `nerdctl compose ps`
+Usage: `nerdctl compose ps [OPTIONS] [SERVICE...]`
 
 Unimplemented `docker-compose ps` (V1) flags: `--quiet`, `--services`, `--filter`, `--all`
 
@@ -1446,7 +1446,7 @@ Unimplemented `docker compose ps` (V2) flags: `--format`, `--status`
 ### :whale: nerdctl compose pull
 Pull service images
 
-Usage: `nerdctl compose pull`
+Usage: `nerdctl compose pull [OPTIONS] [SERVICE...]`
 
 Flags:
 - :whale: `-q, --quiet`: Pull without printing progress information
@@ -1456,7 +1456,7 @@ Unimplemented `docker-compose pull` (V1) flags: `--ignore-pull-failures`, `--par
 ### :whale: nerdctl compose push
 Push service images
 
-Usage: `nerdctl compose push`
+Usage: `nerdctl compose push [OPTIONS] [SERVICE...]`
 
 Unimplemented `docker-compose pull` (V1) flags: `--ignore-push-failures`
 
@@ -1478,7 +1478,7 @@ Unimplemented `docker compose config` (V2) flags: `--resolve-image-digests`, `--
 ### :whale: nerdctl compose kill
 Force stop service containers
 
-Usage: `nerdctl compose kill`
+Usage: `nerdctl compose kill [OPTIONS] [SERVICE...]`
 
 Flags:
 - :whale: `-s, --signal`: SIGNAL to send to the container (default: "SIGKILL")
@@ -1486,7 +1486,7 @@ Flags:
 ### :whale: nerdctl compose run
 Run a one-off command on a service
 
-Usage: `nerdctl compose run`
+Usage: `nerdctl compose run [OPTIONS] SERVICE [COMMAND] [ARGS...]`
 
 Unimplemented `docker-compose run` (V1) flags: `--use-aliases`, `--no-TTY`
 
