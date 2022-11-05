@@ -23,7 +23,7 @@ import (
 
 func newComposePullCommand() *cobra.Command {
 	var composePullCommand = &cobra.Command{
-		Use:           "pull [SERVICE...]",
+		Use:           "pull [flags] [SERVICE...]",
 		Short:         "Pull service images",
 		RunE:          composePullAction,
 		SilenceUsage:  true,

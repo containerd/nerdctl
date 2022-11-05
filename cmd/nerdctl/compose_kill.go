@@ -23,7 +23,7 @@ import (
 
 func newComposeKillCommand() *cobra.Command {
 	var composeKillCommand = &cobra.Command{
-		Use:           "kill [SERVICE...]",
+		Use:           "kill [flags] [SERVICE...]",
 		Short:         "Force stop service containers",
 		RunE:          composeKillAction,
 		SilenceUsage:  true,
