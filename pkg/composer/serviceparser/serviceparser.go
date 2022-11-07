@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -289,7 +290,9 @@ func getGPUs(svc types.ServiceConfig) (reqs []string, _ error) {
 	return reqs, nil
 }
 
-// getRestart returns `nerdctl run --restart` flag string ("no" or "always")
+var restartFailurePat = regexp.MustCompile(`^on-failure:\d+$`)
+
+// getRestart returns `nerdctl run --restart` flag string
 //
 // restart:                         {"no" (default), "always", "on-failure", "unless-stopped"} (https://github.com/compose-spec/compose-spec/blob/167f207d0a8967df87c5ed757dbb1a2bb6025a1e/spec.md#restart)
 // deploy.restart_policy.condition: {"none", "on-failure", "any" (default)}                    (https://github.com/compose-spec/compose-spec/blob/167f207d0a8967df87c5ed757dbb1a2bb6025a1e/deploy.md#restart_policy)
@@ -298,12 +301,14 @@ func getRestart(svc types.ServiceConfig) (string, error) {
 	switch svc.Restart {
 	case "":
 		restartFlag = "no"
-	case "no", "always":
+	case "no", "always", "on-failure", "unless-stopped":
 		restartFlag = svc.Restart
-	case "on-failure", "unless-stopped":
-		logrus.Warnf("Ignoring: service %s: restart=%q (unimplemented)", svc.Name, svc.Restart)
 	default:
-		logrus.Warnf("Ignoring: service %s: restart=%q (unknown)", svc.Name, svc.Restart)
+		if restartFailurePat.MatchString(svc.Restart) {
+			restartFlag = svc.Restart
+		} else {
+			logrus.Warnf("Ignoring: service %s: restart=%q (unknown)", svc.Name, svc.Restart)
+		}
 	}
 
 	if svc.Deploy != nil && svc.Deploy.RestartPolicy != nil {

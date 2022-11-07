@@ -415,3 +415,49 @@ configs:
 		assert.Assert(t, in(c.RunArgs, fmt.Sprintf("-v=%s:/mnt/config2-foo:ro", filepath.Join(project.WorkingDir, "config2"))))
 	}
 }
+
+func TestParseRestartPolicy(t *testing.T) {
+	t.Parallel()
+	const dockerComposeYAML = `
+services:
+  onfailure_no_count:
+    image: alpine:3.14
+    restart: on-failure
+  onfailure_with_count:
+    image: alpine:3.14
+    restart: on-failure:10
+  onfailure_ignore:
+    image: alpine:3.14
+    restart: on-failure:3.14
+  unless_stopped:
+    image: alpine:3.14
+    restart: unless-stopped
+`
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	assert.NilError(t, err)
+
+	getContainersFromService := func(svcName string) []Container {
+		svcConfig, err := project.GetService(svcName)
+		assert.NilError(t, err)
+		svc, err := Parse(project, svcConfig)
+		assert.NilError(t, err)
+
+		return svc.Containers
+	}
+
+	var c Container
+	c = getContainersFromService("onfailure_no_count")[0]
+	assert.Assert(t, in(c.RunArgs, "--restart=on-failure"))
+
+	c = getContainersFromService("onfailure_with_count")[0]
+	assert.Assert(t, in(c.RunArgs, "--restart=on-failure:10"))
+
+	c = getContainersFromService("onfailure_ignore")[0]
+	assert.Assert(t, !in(c.RunArgs, "--restart=on-failure:3.14"))
+
+	c = getContainersFromService("unless_stopped")[0]
+	assert.Assert(t, in(c.RunArgs, "--restart=unless-stopped"))
+}
