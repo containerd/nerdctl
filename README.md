@@ -1419,7 +1419,7 @@ Usage: `nerdctl compose build [OPTIONS] [SERVICE...]`
 Flags:
 - :whale: `--build-arg`: Set build-time variables for services
 - :whale: `--no-cache`: Do not use cache when building the image
-- :whale: `--progress`: Set type of progress output (auto, plain, tty)
+- :whale: `--progress`: Set type of progress output (auto, plain, tty). Use plain to show container output
 - :nerd_face: `--ipfs`: Build images with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Unimplemented `docker-compose build` (V1) flags:  `--compress`, `--force-rm`, `--memory`, `--no-rm`, `--parallel`, `--pull`, `--quiet`
