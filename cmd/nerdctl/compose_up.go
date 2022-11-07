@@ -28,7 +28,7 @@ import (
 
 func newComposeUpCommand() *cobra.Command {
 	var composeUpCommand = &cobra.Command{
-		Use:           "up [SERVICE...]",
+		Use:           "up [flags] [SERVICE...]",
 		Short:         "Create and start containers",
 		RunE:          composeUpAction,
 		SilenceUsage:  true,

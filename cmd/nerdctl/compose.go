@@ -36,7 +36,7 @@ import (
 
 func newComposeCommand() *cobra.Command {
 	var composeCommand = &cobra.Command{
-		Use:              "compose",
+		Use:              "compose [flags] COMMAND",
 		Short:            "Compose",
 		RunE:             unknownSubcommandAction,
 		SilenceUsage:     true,

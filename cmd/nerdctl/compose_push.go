@@ -23,7 +23,7 @@ import (
 
 func newComposePushCommand() *cobra.Command {
 	var composePushCommand = &cobra.Command{
-		Use:           "push [SERVICE...]",
+		Use:           "push [flags] [SERVICE...]",
 		Short:         "Push service images",
 		RunE:          composePushAction,
 		SilenceUsage:  true,

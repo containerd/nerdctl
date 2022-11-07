@@ -28,7 +28,7 @@ import (
 
 func newComposePsCommand() *cobra.Command {
 	var composePsCommand = &cobra.Command{
-		Use:           "ps",
+		Use:           "ps [flags] [SERVICE...]",
 		Short:         "List containers of services",
 		RunE:          composePsAction,
 		SilenceUsage:  true,
