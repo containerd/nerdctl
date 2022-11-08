@@ -31,7 +31,7 @@ func newComposeBuildCommand() *cobra.Command {
 	}
 	composeBuildCommand.Flags().StringArray("build-arg", nil, "Set build-time variables for services.")
 	composeBuildCommand.Flags().Bool("no-cache", false, "Do not use cache when building the image.")
-	composeBuildCommand.Flags().String("progress", "", "Set type of progress output")
+	composeBuildCommand.Flags().String("progress", "", "Set type of progress output (auto, plain, tty). Use plain to show container output")
 
 	composeBuildCommand.Flags().Bool("ipfs", false, "Allow pulling base images from IPFS during build")
 
