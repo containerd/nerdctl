@@ -152,6 +152,23 @@ func generateCgroupOpts(cmd *cobra.Command, globalOptions types.GlobalCommandOpt
 		}
 		opts = append(opts, oci.WithCPUCFS(cpuQuota, cpuPeriod))
 	}
+	cpuRTRuntime, err := cmd.Flags().GetInt64("cpu-rt-runtime")
+	if err != nil {
+		return nil, err
+	}
+	cpuRTPeriod, err := cmd.Flags().GetUint64("cpu-rt-period")
+	if err != nil {
+		return nil, err
+	}
+	if cpuRTRuntime != -1 || cpuRTPeriod != 0 {
+		if cpus > 0.0 {
+			return nil, errors.New("cpus and RT runtime/period should be used separately")
+		}
+		if cpuQuota != -1 || cpuPeriod != 0 {
+			return nil, errors.New("quota/period and RT runtime/period should be used separately")
+		}
+		opts = append(opts, oci.WithCPURT(cpuRTRuntime, cpuRTPeriod))
+	}
 	cpusetMems, err := cmd.Flags().GetString("cpuset-mems")
 	if err != nil {
 		return nil, err

@@ -53,6 +53,8 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		"CPUS",
 		"CPUSet",
 		"CPUShares",
+		"CPURTRuntime",
+		"CPURTPeriod",
 		"Command",
 		"Configs",
 		"ContainerName",
@@ -492,6 +494,13 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 
 	if svc.CPUShares != 0 {
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--cpu-shares=%d", svc.CPUShares))
+	}
+
+	if svc.CPURTRuntime != 0 {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--cpu-rt-runtime=%d", svc.CPURTRuntime))
+	}
+	if svc.CPURTPeriod != 0 {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--cpu-rt-period=%d", svc.CPURTPeriod))
 	}
 
 	for _, v := range svc.Devices {
