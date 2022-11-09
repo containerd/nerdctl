@@ -61,6 +61,7 @@ func newComposeCommand() *cobra.Command {
 		newComposeKillCommand(),
 		newComposeRunCommand(),
 		newComposeVersionCommand(),
+		newComposeStopCommand(),
 	)
 
 	return composeCommand
