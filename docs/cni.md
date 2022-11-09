@@ -32,8 +32,8 @@ Configuration of the default network `bridge` of Linux:
         "ranges": [
           [
             {
-              "subnet": "10.4.0.1",
-              "gateway": "10.4.0.0/24"
+              "subnet": "10.4.0.0/24",
+              "gateway": "10.4.0.1"
             }
           ]
         ]
