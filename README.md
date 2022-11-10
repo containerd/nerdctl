@@ -707,6 +707,7 @@ Usage: `nerdctl stop [OPTIONS] CONTAINER [CONTAINER...]`
 
 Flags:
 - :whale: `-t, --time=SECONDS`: Seconds to wait for stop before killing it (default "10")
+  - Tips: If the init process in container is exited after receiving SIGTERM or exited before the time you specified, the container will be exited immediately
 
 ### :whale: nerdctl start
 Start one or more running containers.
@@ -725,6 +726,8 @@ Usage: `nerdctl restart [OPTIONS] CONTAINER [CONTAINER...]`
 
 Flags:
 - :whale: `-t, --time=SECONDS`: Seconds to wait for stop before killing it (default "10")
+  - Tips: If the init process in container is exited after receiving SIGTERM or exited before the time you specified, the container will be exited immediately
+
 
 ### :whale: nerdctl update
 Update configuration of one or more containers.
