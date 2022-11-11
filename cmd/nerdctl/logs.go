@@ -18,20 +18,16 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
+	"os/signal"
 	"strconv"
-	"time"
+	"syscall"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
-	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
-	timetypes "github.com/docker/docker/api/types/time"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -79,9 +75,16 @@ func logsAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	tail, err := cmd.Flags().GetString("tail")
+	tailArg, err := cmd.Flags().GetString("tail")
 	if err != nil {
 		return err
+	}
+	var tail uint
+	if tailArg != "" {
+		tail, err = getTailArgAsUint(tailArg)
+		if err != nil {
+			return err
+		}
 	}
 	timestamps, err := cmd.Flags().GetBool("timestamps")
 	if err != nil {
@@ -96,6 +99,10 @@ func logsAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	stopChannel := make(chan os.Signal, 1)
+	// catch OS signals:
+	signal.Notify(stopChannel, syscall.SIGTERM, syscall.SIGINT)
+
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
@@ -106,83 +113,48 @@ func logsAction(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			logConfigFilePath := logging.LogConfigFilePath(dataStore, l[labels.Namespace], found.Container.ID())
-			var logConfig logging.LogConfig
-			logConfigFileB, err := os.ReadFile(logConfigFilePath)
+			task, err := found.Container.Task(ctx, nil)
 			if err != nil {
 				return err
 			}
-			if err = json.Unmarshal(logConfigFileB, &logConfig); err != nil {
+			status, err := task.Status(ctx)
+			if err != nil {
 				return err
 			}
-			switch logConfig.Driver {
-			// TODO: move these logics to pkg/logging
-			case "json-file":
-				logJSONFilePath := jsonfile.Path(dataStore, ns, found.Container.ID())
-				if _, err := os.Stat(logJSONFilePath); err != nil {
-					return fmt.Errorf("failed to open %q, container is not created with `nerdctl run -d`?: %w", logJSONFilePath, err)
-				}
-				task, err := found.Container.Task(ctx, nil)
+			if status.Status != containerd.Running {
+				follow = false
+			}
+
+			if follow {
+				waitCh, err := task.Wait(ctx)
 				if err != nil {
-					return err
-				}
-				status, err := task.Status(ctx)
-				if err != nil {
-					return err
-				}
-				if status.Status != containerd.Running {
-					follow = false
+					return fmt.Errorf("failed to get wait channel for task %#v: %s", task, err)
 				}
 
-				reader, execCmd, err := newTailReader(ctx, logJSONFilePath, follow, tail)
-				if err != nil {
-					return err
-				}
+				// Setup goroutine to send stop event if container task finishes:
 				go func() {
-					if follow {
-						if waitCh, err := task.Wait(ctx); err == nil {
-							<-waitCh
-						}
-						execCmd.Process.Kill()
-					}
+					<-waitCh
+					logrus.Debugf("container task has finished, sending kill signal to log viewer")
+					stopChannel <- os.Interrupt
 				}()
-				return jsonfile.Decode(os.Stdout, os.Stderr, reader, timestamps, since, until)
-			case "journald":
-				shortID := found.Container.ID()[:12]
-				var journalctlArgs = []string{fmt.Sprintf("SYSLOG_IDENTIFIER=%s", shortID), "--output=cat"}
-				if follow {
-					journalctlArgs = append(journalctlArgs, "-f")
-				}
-				if since != "" {
-					// using GetTimestamp from moby to keep time format consistency
-					ts, err := timetypes.GetTimestamp(since, time.Now())
-					if err != nil {
-						return fmt.Errorf("invalid value for \"since\": %w", err)
-					}
-					date, err := prepareJournalCtlDate(ts)
-					if err != nil {
-						return err
-					}
-					journalctlArgs = append(journalctlArgs, "--since", date)
-				}
-				if timestamps {
-					logrus.Warnf("unsupported timestamps option for jounrald driver")
-				}
-				if until != "" {
-					// using GetTimestamp from moby to keep time format consistency
-					ts, err := timetypes.GetTimestamp(until, time.Now())
-					if err != nil {
-						return fmt.Errorf("invalid value for \"until\": %w", err)
-					}
-					date, err := prepareJournalCtlDate(ts)
-					if err != nil {
-						return err
-					}
-					journalctlArgs = append(journalctlArgs, "--until", date)
-				}
-				return logging.FetchLogs(journalctlArgs)
 			}
-			return nil
+
+			logViewOpts := logging.LogViewOptions{
+				ContainerID:       found.Container.ID(),
+				Namespace:         l[labels.Namespace],
+				DatastoreRootPath: dataStore,
+				Follow:            follow,
+				Timestamps:        timestamps,
+				Tail:              tail,
+				Since:             since,
+				Until:             until,
+			}
+			logViewer, err := logging.InitContainerLogViewer(logViewOpts, stopChannel)
+			if err != nil {
+				return err
+			}
+
+			return logViewer.PrintLogsTo(os.Stdout, os.Stderr)
 		},
 	}
 	req := args[0]
@@ -200,43 +172,18 @@ func logsShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]
 	return shellCompleteContainerNames(cmd, nil)
 }
 
-func newTailReader(ctx context.Context, filePath string, follow bool, tail string) (io.Reader, *exec.Cmd, error) {
-	var args []string
-
-	if tail != "" {
-		args = append(args, "-n")
-		if tail == "all" {
-			args = append(args, "+0")
-		} else {
-			args = append(args, tail)
-		}
+// Attempts to parse the argument given to `-n/--tail` as a uint.
+func getTailArgAsUint(arg string) (uint, error) {
+	if arg == "all" {
+		return 0, nil
 	} else {
-		args = append(args, "-n")
-		args = append(args, "+0")
+		num, err := strconv.Atoi(arg)
+		if err != nil {
+			return 0, fmt.Errorf("failed to parse `-n/--tail` argument %q: %s", arg, err)
+		}
+		if num < 0 {
+			return 0, fmt.Errorf("`-n/--tail` argument must be positive, got: %d", num)
+		}
+		return uint(num), nil
 	}
-
-	if follow {
-		args = append(args, "-f")
-	}
-	args = append(args, filePath)
-	cmd := exec.CommandContext(ctx, "tail", args...)
-	cmd.Stderr = os.Stderr
-	r, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, nil, err
-	}
-	if err := cmd.Start(); err != nil {
-		return nil, nil, err
-	}
-	return r, cmd, nil
-}
-
-func prepareJournalCtlDate(t string) (string, error) {
-	i, err := strconv.ParseInt(t, 10, 64)
-	if err != nil {
-		return "", err
-	}
-	tm := time.Unix(i, 0)
-	s := tm.Format("2006-01-02 15:04:05")
-	return s, nil
 }

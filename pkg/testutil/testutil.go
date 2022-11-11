@@ -380,6 +380,24 @@ func (c *Cmd) AssertOutExactly(s string) {
 	c.AssertOutWithFunc(fn)
 }
 
+func (c *Cmd) AssertOutStreamsExactly(stdout, stderr string) {
+	c.Base.T.Helper()
+	fn := func(sout, serr string) error {
+		msg := ""
+		if sout != stdout {
+			msg += fmt.Sprintf("stdout mismatch, expected %q, got %q\n", stdout, sout)
+		}
+		if serr != stderr {
+			msg += fmt.Sprintf("stderr mismatch, expected %q, got %q\n", stderr, serr)
+		}
+		if msg != "" {
+			return fmt.Errorf(msg)
+		}
+		return nil
+	}
+	c.AssertOutStreamsWithFunc(fn)
+}
+
 func (c *Cmd) AssertNoOut(s string) {
 	c.Base.T.Helper()
 	fn := func(stdout string) error {
@@ -396,6 +414,13 @@ func (c *Cmd) AssertOutWithFunc(fn func(stdout string) error) {
 	res := c.Run()
 	assert.Equal(c.Base.T, 0, res.ExitCode, res.Combined())
 	assert.NilError(c.Base.T, fn(res.Stdout()), res.Combined())
+}
+
+func (c *Cmd) AssertOutStreamsWithFunc(fn func(stdout, stderr string) error) {
+	c.Base.T.Helper()
+	res := c.Run()
+	assert.Equal(c.Base.T, 0, res.ExitCode, res.Combined())
+	assert.NilError(c.Base.T, fn(res.Stdout(), res.Stderr()), res.Combined())
 }
 
 func (c *Cmd) Out() string {

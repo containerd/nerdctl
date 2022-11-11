@@ -115,12 +115,15 @@ func TestLoginWithPlainHttp(t *testing.T) {
 			shouldUseInSecure: true,
 		},
 		{
-			regHost:           "127.0.0.1",
-			regPort:           5000,
-			useRegPort:        true,
-			username:          "admin",
-			password:          "validTestPassword",
-			shouldSuccess:     false,
+			regHost:    "127.0.0.1",
+			regPort:    5000,
+			useRegPort: true,
+			username:   "admin",
+			password:   "validTestPassword",
+			// Following the merging of the below, any localhost/loopback registries will
+			// get automatically downgraded to HTTP so this will still succceed:
+			// https://github.com/containerd/containerd/pull/7393
+			shouldSuccess:     true,
 			registry:          reg5000,
 			shouldUseInSecure: false,
 		},
@@ -145,12 +148,15 @@ func TestLoginWithPlainHttp(t *testing.T) {
 			shouldUseInSecure: true,
 		},
 		{
-			regHost:           "127.0.0.1",
-			regPort:           80,
-			useRegPort:        false,
-			username:          "admin",
-			password:          "validTestPassword",
-			shouldSuccess:     false,
+			regHost:    "127.0.0.1",
+			regPort:    80,
+			useRegPort: false,
+			username:   "admin",
+			password:   "validTestPassword",
+			// Following the merging of the below, any localhost/loopback registries will
+			// get automatically downgraded to HTTP so this will still succceed:
+			// https://github.com/containerd/containerd/pull/7393
+			shouldSuccess:     true,
 			registry:          reg80,
 			shouldUseInSecure: false,
 		},
