@@ -78,7 +78,9 @@ func rmiAction(cmd *cobra.Command, args []string) error {
 	walker := &imagewalker.ImageWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found imagewalker.Found) error {
-			if found.MatchCount > 1 {
+			// if found multiple images, return error unless in force-mode and
+			// there is only 1 unique image.
+			if found.MatchCount > 1 && !(force && found.UniqueImages == 1) {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
 			if _, ok := usedImages[found.Image.Name]; ok && !force {
