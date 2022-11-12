@@ -13,9 +13,9 @@ require (
 	github.com/containerd/go-cni v1.1.7
 	github.com/containerd/imgcrypt v1.1.7
 	github.com/containerd/nydus-snapshotter v0.3.3
-	github.com/containerd/stargz-snapshotter v0.12.1
-	github.com/containerd/stargz-snapshotter/estargz v0.12.1
-	github.com/containerd/stargz-snapshotter/ipfs v0.12.1
+	github.com/containerd/stargz-snapshotter v0.13.0
+	github.com/containerd/stargz-snapshotter/estargz v0.13.0
+	github.com/containerd/stargz-snapshotter/ipfs v0.13.0
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67
 	github.com/containernetworking/cni v1.1.2
 	github.com/containernetworking/plugins v1.1.1
@@ -48,11 +48,11 @@ require (
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	github.com/yuchanns/srslog v1.1.0
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
-	golang.org/x/net v0.0.0-20220906165146-f3363e06e74c
+	golang.org/x/crypto v0.2.0
+	golang.org/x/net v0.2.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.0.0-20220915200043-7b5979e65e41
-	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
+	golang.org/x/sys v0.2.0
+	golang.org/x/term v0.2.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.4.0
 )
@@ -104,7 +104,7 @@ require (
 	github.com/ipld/go-codec-dagpb v1.3.2 // indirect
 	github.com/ipld/go-ipld-prime v0.11.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
-	github.com/klauspost/compress v1.15.11 // indirect
+	github.com/klauspost/compress v1.15.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	// NOTE: P2P image distribution (IPFS) is completely optional. Your host is NOT connected to any P2P network, unless you opt in to install and run IPFS daemon.
 	github.com/libp2p/go-buffer-pool v0.0.2 // indirect
@@ -155,7 +155,7 @@ require (
 	golang.org/x/text v0.4.0
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21 // indirect
-	google.golang.org/grpc v1.50.0 // indirect
+	google.golang.org/grpc v1.50.1 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
