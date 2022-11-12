@@ -281,20 +281,7 @@ func (c *Composer) runServices(ctx context.Context, parsedServices []*servicepar
 	}
 
 	logrus.Infof("Stopping containers (forcibly)") // TODO: support gracefully stopping
-	for id, container := range containers {
-		var stopWG sync.WaitGroup
-		id := id
-		container := container
-		stopWG.Add(1)
-		go func() {
-			defer stopWG.Done()
-			logrus.Infof("Stopping container %s", container.Name)
-			if err := c.runNerdctlCmd(ctx, "stop", id); err != nil {
-				logrus.Warn(err)
-			}
-		}()
-		stopWG.Wait()
-	}
+	c.stopContainersFromParsedServices(ctx, containers)
 
 	if ro.Rm {
 		var rmWG sync.WaitGroup
