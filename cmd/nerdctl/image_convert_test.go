@@ -48,6 +48,6 @@ func TestImageConvertZstdChunked(t *testing.T) {
 	base.Cmd("rmi", convertedImage).Run()
 	defer base.Cmd("rmi", convertedImage).Run()
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	base.Cmd("image", "convert", "--zstdchunked", "--oci",
+	base.Cmd("image", "convert", "--zstdchunked", "--oci", "--zstdchunked-compression-level", "3",
 		testutil.CommonImage, convertedImage).AssertOK()
 }

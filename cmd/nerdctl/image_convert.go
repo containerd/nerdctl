@@ -32,6 +32,7 @@ import (
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
 	zstdchunkedconvert "github.com/containerd/stargz-snapshotter/nativeconverter/zstdchunked"
 	"github.com/containerd/stargz-snapshotter/recorder"
+	"github.com/klauspost/compress/zstd"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -66,6 +67,10 @@ func newImageConvertCommand() *cobra.Command {
 	imageConvertCommand.Flags().Int("estargz-compression-level", gzip.BestCompression, "eStargz compression level")
 	imageConvertCommand.Flags().Int("estargz-chunk-size", 0, "eStargz chunk size")
 	imageConvertCommand.Flags().Bool("zstdchunked", false, "Use zstd compression instead of gzip (a.k.a zstd:chunked). Should be used in conjunction with '--oci'")
+	imageConvertCommand.Flags().String("zstdchunked-record-in", "", "Read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)")
+	// SpeedDefault; see also https://pkg.go.dev/github.com/klauspost/compress/zstd#EncoderLevel
+	imageConvertCommand.Flags().Int("zstdchunked-compression-level", 3, "zstd compression level")
+	imageConvertCommand.Flags().Int("zstdchunked-chunk-size", 0, "zstd chunk size")
 	// #endregion
 
 	// #region nydus flags
@@ -153,19 +158,27 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 			return errors.New("option --estargz conflicts with --zstdchunked")
 		}
 
-		esgzOpts, err := getESGZConvertOpts(cmd)
-		if err != nil {
-			return err
-		}
-
 		var convertFunc converter.ConvertFunc
 		var convertType string
 		switch {
 		case estargz:
+			esgzOpts, err := getESGZConvertOpts(cmd)
+			if err != nil {
+				return err
+			}
 			convertFunc = estargzconvert.LayerConvertFunc(esgzOpts...)
 			convertType = "estargz"
 		case zstdchunked:
-			convertFunc = zstdchunkedconvert.LayerConvertFunc(esgzOpts...)
+			esgzOpts, err := getZstdConvertOpts(cmd)
+			if err != nil {
+				return err
+			}
+			zstdchunkedCompressionLevel, err := cmd.Flags().GetInt("zstdchunked-compression-level")
+			if err != nil {
+				return err
+			}
+			convertFunc = zstdchunkedconvert.LayerConvertFuncWithCompressionLevel(
+				zstd.EncoderLevelFromZstd(zstdchunkedCompressionLevel), esgzOpts...)
 			convertType = "zstdchunked"
 		}
 		convertOpts = append(convertOpts, converter.WithLayerConvertFunc(convertFunc))
@@ -267,6 +280,42 @@ func getESGZConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
 
 		logrus.Warn("--estargz-record-in flag is experimental and subject to change")
 		paths, err := readPathsFromRecordFile(estargzRecordIn)
+		if err != nil {
+			return nil, err
+		}
+		esgzOpts = append(esgzOpts, estargz.WithPrioritizedFiles(paths))
+		var ignored []string
+		esgzOpts = append(esgzOpts, estargz.WithAllowPrioritizeNotFound(&ignored))
+	}
+	return esgzOpts, nil
+}
+
+func getZstdConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
+	zstdchunkedChunkSize, err := cmd.Flags().GetInt("zstdchunked-chunk-size")
+	if err != nil {
+		return nil, err
+	}
+	zstdchunkedRecordIn, err := cmd.Flags().GetString("zstdchunked-record-in")
+	if err != nil {
+		return nil, err
+	}
+
+	esgzOpts := []estargz.Option{
+		estargz.WithChunkSize(zstdchunkedChunkSize),
+	}
+
+	experimental, err := cmd.Flags().GetBool("experimental")
+	if err != nil {
+		return nil, err
+	}
+
+	if zstdchunkedRecordIn != "" {
+		if !experimental {
+			return nil, fmt.Errorf("zstdchunked-record-in requires experimental mode to be enabled")
+		}
+
+		logrus.Warn("--zstdchunked-record-in flag is experimental and subject to change")
+		paths, err := readPathsFromRecordFile(zstdchunkedRecordIn)
 		if err != nil {
 			return nil, err
 		}
