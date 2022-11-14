@@ -19,8 +19,10 @@ package composer
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/strutil"
 
@@ -59,18 +61,42 @@ func (c *Composer) stopContainers(ctx context.Context, containers []containerd.C
 		timeoutArg = fmt.Sprintf("--timeout=%d", opt.Timeout)
 	}
 
+	var rmWG sync.WaitGroup
 	for _, container := range containers {
-		info, _ := container.Info(ctx, containerd.WithoutRefreshedMetadata)
-		logrus.Infof("Stopping container %s", info.Labels[labels.Name])
-		args := []string{"stop"}
-		if opt.TimeChanged {
-			args = append(args, timeoutArg)
-		}
-		args = append(args, container.ID())
-		if err := c.runNerdctlCmd(ctx, args...); err != nil {
-			logrus.Warn(err)
-		}
+		container := container
+		rmWG.Add(1)
+		go func() {
+			defer rmWG.Done()
+			info, _ := container.Info(ctx, containerd.WithoutRefreshedMetadata)
+			logrus.Infof("Stopping container %s", info.Labels[labels.Name])
+			args := []string{"stop"}
+			if opt.TimeChanged {
+				args = append(args, timeoutArg)
+			}
+			args = append(args, container.ID())
+			if err := c.runNerdctlCmd(ctx, args...); err != nil {
+				logrus.Warn(err)
+			}
+		}()
 	}
+	rmWG.Wait()
 
 	return nil
+}
+
+func (c *Composer) stopContainersFromParsedServices(ctx context.Context, containers map[string]serviceparser.Container) {
+	var rmWG sync.WaitGroup
+	for id, container := range containers {
+		id := id
+		container := container
+		rmWG.Add(1)
+		go func() {
+			defer rmWG.Done()
+			logrus.Infof("Stopping container %s", container.Name)
+			if err := c.runNerdctlCmd(ctx, "stop", id); err != nil {
+				logrus.Warn(err)
+			}
+		}()
+	}
+	rmWG.Wait()
 }
