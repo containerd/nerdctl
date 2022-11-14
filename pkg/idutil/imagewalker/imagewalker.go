@@ -24,13 +24,15 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
+	"github.com/opencontainers/go-digest"
 )
 
 type Found struct {
-	Image      images.Image
-	Req        string // The raw request string. name, short ID, or long ID.
-	MatchIndex int    // Begins with 0, up to MatchCount - 1.
-	MatchCount int    // 1 on exact match. > 1 on ambiguous match. Never be <= 0.
+	Image        images.Image
+	Req          string // The raw request string. name, short ID, or long ID.
+	MatchIndex   int    // Begins with 0, up to MatchCount - 1.
+	MatchCount   int    // 1 on exact match. > 1 on ambiguous match. Never be <= 0.
+	UniqueImages int    // Number of unique images in all found images.
 }
 
 type OnFound func(ctx context.Context, found Found) error
@@ -60,12 +62,20 @@ func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 	}
 
 	matchCount := len(images)
+	// to handle the `rmi -f` case where returned images are different but
+	// have the same short prefix.
+	uniqueImages := make(map[digest.Digest]bool)
+	for _, image := range images {
+		uniqueImages[image.Target.Digest] = true
+	}
+
 	for i, img := range images {
 		f := Found{
-			Image:      img,
-			Req:        req,
-			MatchIndex: i,
-			MatchCount: matchCount,
+			Image:        img,
+			Req:          req,
+			MatchIndex:   i,
+			MatchCount:   matchCount,
+			UniqueImages: len(uniqueImages),
 		}
 		if e := w.OnFound(ctx, f); e != nil {
 			return -1, e
