@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
@@ -68,4 +69,26 @@ func TestRestartPIDContainer(t *testing.T) {
 	sharedOutput := strings.TrimSpace(sharedPSResult.Stdout())
 
 	assert.Equal(t, baseOutput, sharedOutput)
+}
+
+func TestRestartWithTime(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+
+	base.Cmd("run", "-d", "--name", tID, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	defer base.Cmd("rm", "-f", tID).AssertOK()
+
+	inspect := base.InspectContainer(tID)
+	pid := inspect.State.Pid
+
+	timePreRestart := time.Now()
+	base.Cmd("restart", "-t", "5", tID).AssertOK()
+	timePostRestart := time.Now()
+
+	newInspect := base.InspectContainer(tID)
+	newPid := newInspect.State.Pid
+	assert.Assert(t, pid != newPid)
+	// ensure that stop took at least 5 seconds
+	assert.Assert(t, timePostRestart.Sub(timePreRestart) >= time.Second*5)
 }
