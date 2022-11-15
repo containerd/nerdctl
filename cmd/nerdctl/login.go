@@ -26,7 +26,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"syscall"
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/remotes/docker"
@@ -361,7 +360,7 @@ func ConfigureAuthentication(authConfig *types.AuthConfig, options *loginOptions
 
 func readUsername() (string, error) {
 	var fd *os.File
-	if term.IsTerminal(int(syscall.Stdin)) {
+	if term.IsTerminal(int(os.Stdin.Fd())) {
 		fd = os.Stdin
 	} else {
 		return "", fmt.Errorf("stdin is not a terminal (Hint: use `nerdctl login --username=USERNAME --password-stdin`)")

@@ -136,7 +136,7 @@ func TestCopyFromContainer(t *testing.T) {
 		assert.NilError(t, err)
 		stSys := st.Sys().(*syscall.Stat_t)
 		// stSys.Uid matches euid, not srcUID
-		assert.DeepEqual(t, uint32(euid), uint32(stSys.Uid))
+		assert.DeepEqual(t, uint32(euid), stSys.Uid)
 	}
 
 	td := t.TempDir()

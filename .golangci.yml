@@ -56,7 +56,7 @@ linters:
     - stylecheck
     # - testpackage
     # - tparallel
-    # - unconvert
+    - unconvert
     # - unparam
     - unused
     # - whitespace

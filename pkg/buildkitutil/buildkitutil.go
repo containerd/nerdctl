@@ -136,7 +136,7 @@ func getHint() string {
 func PingBKDaemon(buildkitHost string) error {
 	if out, err := pingBKDaemon(buildkitHost); err != nil {
 		if out != "" {
-			logrus.Error(string(out))
+			logrus.Error(out)
 		}
 		return fmt.Errorf(getHint()+": %w", err)
 	}
