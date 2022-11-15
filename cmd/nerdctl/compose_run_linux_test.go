@@ -19,12 +19,14 @@ package main
 import (
 	"fmt"
 	"io"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/pkg/testutil/testregistry"
 	"github.com/sirupsen/logrus"
 	"gotest.tools/v3/assert"
 )
@@ -429,4 +431,91 @@ services:
 	assert.Assert(t, len(container.Mounts) == 1, errMsg)
 	assert.Assert(t, container.Mounts[0].Source == tmpDir, errMsg)
 	assert.Assert(t, container.Mounts[0].Destination == destinationDir, errMsg)
+}
+
+func TestComposePushAndPullWithCosignVerify(t *testing.T) {
+	if _, err := exec.LookPath("cosign"); err != nil {
+		t.Skip()
+	}
+	testutil.DockerIncompatible(t)
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
+
+	// set up cosign and local registry
+	t.Setenv("COSIGN_PASSWORD", "1")
+	keyPair := newCosignKeyPair(t, "cosign-key-pair")
+	defer keyPair.cleanup()
+
+	reg := testregistry.NewPlainHTTP(base, 5000)
+	defer reg.Cleanup()
+	localhostIP := "127.0.0.1"
+	t.Logf("localhost IP=%q", localhostIP)
+	testImageRefPrefix := fmt.Sprintf("%s:%d/",
+		localhostIP, reg.ListenPort)
+	t.Logf("testImageRefPrefix=%q", testImageRefPrefix)
+
+	var (
+		imageSvc0 = testImageRefPrefix + "composebuild_svc0"
+		imageSvc1 = testImageRefPrefix + "composebuild_svc1"
+		imageSvc2 = testImageRefPrefix + "composebuild_svc2"
+	)
+
+	dockerComposeYAML := fmt.Sprintf(`
+services:
+  svc0:
+    build: .
+    image: %s
+    x-nerdctl-verify: cosign
+    x-nerdctl-cosign-public-key: %s
+    x-nerdctl-sign: cosign
+    x-nerdctl-cosign-private-key: %s
+    entrypoint:
+      - stty
+  svc1:
+    build: .
+    image: %s
+    x-nerdctl-verify: cosign
+    x-nerdctl-cosign-public-key: dummy_pub_key
+    x-nerdctl-sign: cosign
+    x-nerdctl-cosign-private-key: %s
+    entrypoint:
+      - stty
+  svc2:
+    build: .
+    image: %s
+    x-nerdctl-verify: none
+    x-nerdctl-sign: none
+    entrypoint:
+      - stty
+`, imageSvc0, keyPair.publicKey, keyPair.privateKey,
+		imageSvc1, keyPair.privateKey, imageSvc2)
+
+	dockerfile := fmt.Sprintf(`FROM %s`, testutil.AlpineImage)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+	comp.WriteFile("Dockerfile", dockerfile)
+
+	// 1. build both services/images
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "build").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	// 2. compose push with cosign for svc0/svc1, (and none for svc2)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "push").AssertOK()
+	// 3. compose pull with cosign
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "pull", "svc0").AssertOK()   // key match
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "pull", "svc1").AssertFail() // key mismatch
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "pull", "svc2").AssertOK()   // verify passed
+	// 4. compose run
+	const sttyPartialOutput = "speed 38400 baud"
+	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
+	// unbuffer(1) can be installed with `apt-get install expect`.
+	unbuffer := []string{"unbuffer"}
+	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "run", "svc0").AssertOutContains(sttyPartialOutput) // key match
+	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "run", "svc1").AssertFail()                         // key mismatch
+	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "run", "svc2").AssertOutContains(sttyPartialOutput) // verify passed
+	// 5. compose up
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "svc0").AssertOK()   // key match
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "svc1").AssertFail() // key mismatch
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "svc2").AssertOK()   // verify passed
 }

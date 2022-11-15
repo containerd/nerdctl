@@ -34,6 +34,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// ComposeExtensionKey defines fields used to implement extension features.
+const (
+	ComposeVerify           = "x-nerdctl-verify"
+	ComposeCosignPublicKey  = "x-nerdctl-cosign-public-key"
+	ComposeSign             = "x-nerdctl-sign"
+	ComposeCosignPrivateKey = "x-nerdctl-cosign-private-key"
+)
+
 func warnUnknownFields(svc types.ServiceConfig) {
 	if unknown := reflectutil.UnknownNonEmptyFields(&svc,
 		"Name",
@@ -57,6 +65,7 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		"Entrypoint",
 		"Environment",
 		"Extends", // handled by the loader
+		"Extensions",
 		"ExtraHosts",
 		"Hostname",
 		"Image",

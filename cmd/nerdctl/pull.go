@@ -17,15 +17,12 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
-	"strings"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/cosignutil"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/platformutil"
@@ -168,7 +165,7 @@ func ensureImage(cmd *cobra.Command, ctx context.Context, client *containerd.Cli
 			return nil, err
 		}
 
-		ref, err = verifyCosign(ctx, rawRef, keyRef, hostsDirs)
+		ref, err = cosignutil.VerifyCosign(ctx, rawRef, keyRef, hostsDirs)
 		if err != nil {
 			return nil, err
 		}
@@ -184,60 +181,4 @@ func ensureImage(cmd *cobra.Command, ctx context.Context, client *containerd.Cli
 		return nil, err
 	}
 	return ensured, err
-}
-
-func verifyCosign(ctx context.Context, rawRef string, keyRef string, hostsDirs []string) (string, error) {
-	digest, err := imgutil.ResolveDigest(ctx, rawRef, false, hostsDirs)
-	if err != nil {
-		logrus.WithError(err).Errorf("unable to resolve digest for an image %s: %v", rawRef, err)
-		return rawRef, err
-	}
-	ref := rawRef
-	if !strings.Contains(ref, "@") {
-		ref += "@" + digest
-	}
-
-	logrus.Debugf("verifying image: %s", ref)
-
-	cosignExecutable, err := exec.LookPath("cosign")
-	if err != nil {
-		logrus.WithError(err).Error("cosign executable not found in path $PATH")
-		logrus.Info("you might consider installing cosign from: https://docs.sigstore.dev/cosign/installation")
-		return ref, err
-	}
-
-	cosignCmd := exec.Command(cosignExecutable, []string{"verify"}...)
-	cosignCmd.Env = os.Environ()
-
-	if keyRef != "" {
-		cosignCmd.Args = append(cosignCmd.Args, "--key", keyRef)
-	} else {
-		cosignCmd.Env = append(cosignCmd.Env, "COSIGN_EXPERIMENTAL=true")
-	}
-
-	cosignCmd.Args = append(cosignCmd.Args, ref)
-
-	logrus.Debugf("running %s %v", cosignExecutable, cosignCmd.Args)
-
-	stdout, _ := cosignCmd.StdoutPipe()
-	stderr, _ := cosignCmd.StderrPipe()
-	if err := cosignCmd.Start(); err != nil {
-		return ref, err
-	}
-
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		logrus.Info("cosign: " + scanner.Text())
-	}
-
-	errScanner := bufio.NewScanner(stderr)
-	for errScanner.Scan() {
-		logrus.Info("cosign: " + errScanner.Text())
-	}
-
-	if err := cosignCmd.Wait(); err != nil {
-		return ref, err
-	}
-
-	return ref, nil
 }

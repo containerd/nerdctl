@@ -37,11 +37,11 @@ func (c *Composer) Pull(ctx context.Context, po PullOptions, services []string) 
 		if err != nil {
 			return err
 		}
-		return c.pullServiceImage(ctx, ps.Image, ps.Unparsed.Platform, po)
+		return c.pullServiceImage(ctx, ps.Image, ps.Unparsed.Platform, ps, po)
 	})
 }
 
-func (c *Composer) pullServiceImage(ctx context.Context, image string, platform string, po PullOptions) error {
+func (c *Composer) pullServiceImage(ctx context.Context, image string, platform string, ps *serviceparser.Service, po PullOptions) error {
 	logrus.Infof("Pulling image %s", image)
 
 	var args []string // nolint: prealloc
@@ -51,6 +51,16 @@ func (c *Composer) pullServiceImage(ctx context.Context, image string, platform 
 	if po.Quiet {
 		args = append(args, "--quiet")
 	}
+	if verifier, ok := ps.Unparsed.Extensions[serviceparser.ComposeVerify]; ok {
+		args = append(args, "--verify="+verifier.(string))
+	}
+	if publicKey, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]; ok {
+		args = append(args, "--cosign-key="+publicKey.(string))
+	}
+	if c.Options.Experimental {
+		args = append(args, "--experimental")
+	}
+
 	args = append(args, image)
 
 	cmd := c.createNerdctlCmd(ctx, append([]string{"pull"}, args...)...)

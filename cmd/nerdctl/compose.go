@@ -19,17 +19,21 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/composer"
+	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/pkg/cosignutil"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 )
@@ -109,6 +113,10 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 	if err != nil {
 		return nil, err
 	}
+	experimental, err := cmd.Flags().GetBool("experimental")
+	if err != nil {
+		return nil, err
+	}
 
 	o := composer.Options{
 		Project:          projectName,
@@ -118,6 +126,7 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 		NerdctlCmd:       nerdctlCmd,
 		NerdctlArgs:      nerdctlArgs,
 		DebugPrintFull:   debugFull,
+		Experimental:     experimental,
 	}
 
 	cniEnv, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
@@ -164,7 +173,7 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 		return true, nil
 	}
 
-	o.EnsureImage = func(ctx context.Context, imageName, pullMode, platform string, quiet bool) error {
+	o.EnsureImage = func(ctx context.Context, imageName, pullMode, platform string, ps *serviceparser.Service, quiet bool) error {
 		ocispecPlatforms := []ocispec.Platform{platforms.DefaultSpec()}
 		if platform != "" {
 			parsed, err := platforms.Parse(platform)
@@ -173,19 +182,43 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 			}
 			ocispecPlatforms = []ocispec.Platform{parsed} // no append
 		}
-		var imgErr error
+
+		// IPFS reference
 		if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(imageName); err == nil {
 			ipfsClient, err := httpapi.NewLocalApi()
 			if err != nil {
 				return err
 			}
-			_, imgErr = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
+			_, err = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
 				pullMode, ocispecPlatforms, nil, quiet)
-		} else {
-			_, imgErr = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, imageName,
-				pullMode, insecure, hostsDirs, ocispecPlatforms, nil, quiet)
+			return err
 		}
-		return imgErr
+
+		ref := imageName
+		if verifier, ok := ps.Unparsed.Extensions[serviceparser.ComposeVerify]; ok {
+			switch verifier {
+			case "cosign":
+				if !o.Experimental {
+					return fmt.Errorf("cosign only work with enable experimental feature")
+				}
+				keyRef, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]
+				if !ok {
+					return fmt.Errorf("no cosign public key, service: %s", ps.Unparsed.Name)
+				}
+
+				ref, err = cosignutil.VerifyCosign(ctx, ref, keyRef.(string), hostsDirs)
+				if err != nil {
+					return err
+				}
+			case "none":
+				logrus.Debugf("verification process skipped")
+			default:
+				return fmt.Errorf("no verifier found: %s", verifier)
+			}
+		}
+		_, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, ref,
+			pullMode, insecure, hostsDirs, ocispecPlatforms, nil, quiet)
+		return err
 	}
 
 	return composer.New(o, client)
