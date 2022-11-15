@@ -18,21 +18,28 @@ package main
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/images/converter/uncompress"
+	converterutil "github.com/containerd/nerdctl/pkg/imgutil/converter"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	nydusconvert "github.com/containerd/nydus-snapshotter/pkg/converter"
 	"github.com/containerd/stargz-snapshotter/estargz"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
+	estargzexternaltocconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz/externaltoc"
 	zstdchunkedconvert "github.com/containerd/stargz-snapshotter/nativeconverter/zstdchunked"
 	"github.com/containerd/stargz-snapshotter/recorder"
 	"github.com/klauspost/compress/zstd"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -61,16 +68,23 @@ func newImageConvertCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 
+	imageConvertCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, 'json'")
+
 	// #region estargz flags
 	imageConvertCommand.Flags().Bool("estargz", false, "Convert legacy tar(.gz) layers to eStargz for lazy pulling. Should be used in conjunction with '--oci'")
 	imageConvertCommand.Flags().String("estargz-record-in", "", "Read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)")
 	imageConvertCommand.Flags().Int("estargz-compression-level", gzip.BestCompression, "eStargz compression level")
 	imageConvertCommand.Flags().Int("estargz-chunk-size", 0, "eStargz chunk size")
-	imageConvertCommand.Flags().Bool("zstdchunked", false, "Use zstd compression instead of gzip (a.k.a zstd:chunked). Should be used in conjunction with '--oci'")
+	imageConvertCommand.Flags().Int("estargz-min-chunk-size", 0, "The minimal number of bytes of data must be written in one gzip stream. (requires stargz-snapshotter >= v0.13.0)")
+	imageConvertCommand.Flags().Bool("estargz-external-toc", false, "Separate TOC JSON into another image (called \"TOC image\"). The name of TOC image is the original + \"-esgztoc\" suffix. Both eStargz and the TOC image should be pushed to the same registry. (requires stargz-snapshotter >= v0.13.0) (EXPERIMENTAL)")
+	imageConvertCommand.Flags().Bool("estargz-keep-diff-id", false, "Convert to esgz without changing diffID (cannot be used in conjunction with '--estargz-record-in'. must be specified with '--estargz-external-toc')")
+	// #endregion
+
+	// #region zstd:chunked flags
+	imageConvertCommand.Flags().Bool("zstdchunked", false, "Convert legacy tar(.gz) layers to zstd:chunked for lazy pulling. Should be used in conjunction with '--oci'")
 	imageConvertCommand.Flags().String("zstdchunked-record-in", "", "Read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)")
-	// SpeedDefault; see also https://pkg.go.dev/github.com/klauspost/compress/zstd#EncoderLevel
-	imageConvertCommand.Flags().Int("zstdchunked-compression-level", 3, "zstd compression level")
-	imageConvertCommand.Flags().Int("zstdchunked-chunk-size", 0, "zstd chunk size")
+	imageConvertCommand.Flags().Int("zstdchunked-compression-level", 3, "zstd:chunked compression level") // SpeedDefault; see also https://pkg.go.dev/github.com/klauspost/compress/zstd#EncoderLevel
+	imageConvertCommand.Flags().Int("zstdchunked-chunk-size", 0, "zstd:chunked chunk size")
 	// #endregion
 
 	// #region nydus flags
@@ -153,6 +167,7 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	var finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error)
 	if estargz || zstdchunked {
 		if estargz && zstdchunked {
 			return errors.New("option --estargz conflicts with --zstdchunked")
@@ -162,23 +177,16 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 		var convertType string
 		switch {
 		case estargz:
-			esgzOpts, err := getESGZConvertOpts(cmd)
+			convertFunc, finalize, err = getESGZConverter(cmd)
 			if err != nil {
 				return err
 			}
-			convertFunc = estargzconvert.LayerConvertFunc(esgzOpts...)
 			convertType = "estargz"
 		case zstdchunked:
-			esgzOpts, err := getZstdConvertOpts(cmd)
+			convertFunc, err = getZstdchunkedConverter(cmd)
 			if err != nil {
 				return err
 			}
-			zstdchunkedCompressionLevel, err := cmd.Flags().GetInt("zstdchunked-compression-level")
-			if err != nil {
-				return err
-			}
-			convertFunc = zstdchunkedconvert.LayerConvertFuncWithCompressionLevel(
-				zstd.EncoderLevelFromZstd(zstdchunkedCompressionLevel), esgzOpts...)
 			convertType = "zstdchunked"
 		}
 		convertOpts = append(convertOpts, converter.WithLayerConvertFunc(convertFunc))
@@ -245,8 +253,84 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), newImg.Target.Digest.String())
-	return nil
+	res := converterutil.ConvertedImageInfo{
+		Image: newImg.Name + "@" + newImg.Target.Digest.String(),
+	}
+	if finalize != nil {
+		ctx, done, err := client.WithLease(ctx)
+		if err != nil {
+			return err
+		}
+		defer done(ctx)
+		newI, err := finalize(ctx, client.ContentStore(), targetRef, &newImg.Target)
+		if err != nil {
+			return err
+		}
+		is := client.ImageService()
+		_ = is.Delete(ctx, newI.Name)
+		finimg, err := is.Create(ctx, *newI)
+		if err != nil {
+			return err
+		}
+		res.ExtraImages = append(res.ExtraImages, finimg.Name+"@"+finimg.Target.Digest.String())
+	}
+	return printConvertedImage(cmd, res)
+}
+
+func getESGZConverter(cmd *cobra.Command) (convertFunc converter.ConvertFunc, finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error), _ error) {
+	experimental, err := cmd.Flags().GetBool("experimental")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	externalTOC, err := cmd.Flags().GetBool("estargz-external-toc")
+	if err != nil {
+		return nil, nil, err
+	}
+	keepDiffID, err := cmd.Flags().GetBool("estargz-keep-diff-id")
+	if err != nil {
+		return nil, nil, err
+	}
+	if externalTOC && !experimental {
+		return nil, nil, fmt.Errorf("estargz-external-toc requires experimental mode to be enabled")
+	}
+	if keepDiffID && !externalTOC {
+		return nil, nil, fmt.Errorf("option --estargz-keep-diff-id must be specified with --estargz-external-toc")
+	}
+	if externalTOC {
+		estargzCompressionLevel, err := cmd.Flags().GetInt("estargz-compression-level")
+		if err != nil {
+			return nil, nil, err
+		}
+		if !keepDiffID {
+			esgzOpts, err := getESGZConvertOpts(cmd)
+			if err != nil {
+				return nil, nil, err
+			}
+			convertFunc, finalize = estargzexternaltocconvert.LayerConvertFunc(esgzOpts, estargzCompressionLevel)
+		} else {
+			estargzChunkSize, err := cmd.Flags().GetInt("estargz-chunk-size")
+			if err != nil {
+				return nil, nil, err
+			}
+			estargzMinChunkSize, err := cmd.Flags().GetInt("estargz-min-chunk-size")
+			if err != nil {
+				return nil, nil, err
+			}
+			convertFunc, finalize = estargzexternaltocconvert.LayerConvertLossLessFunc(estargzexternaltocconvert.LayerConvertLossLessConfig{
+				CompressionLevel: estargzCompressionLevel,
+				ChunkSize:        estargzChunkSize,
+				MinChunkSize:     estargzMinChunkSize,
+			})
+		}
+	} else {
+		esgzOpts, err := getESGZConvertOpts(cmd)
+		if err != nil {
+			return nil, nil, err
+		}
+		convertFunc = estargzconvert.LayerConvertFunc(esgzOpts...)
+	}
+	return convertFunc, finalize, nil
 }
 
 func getESGZConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
@@ -258,6 +342,10 @@ func getESGZConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
 	if err != nil {
 		return nil, err
 	}
+	estargzMinChunkSize, err := cmd.Flags().GetInt("estargz-min-chunk-size")
+	if err != nil {
+		return nil, err
+	}
 	estargzRecordIn, err := cmd.Flags().GetString("estargz-record-in")
 	if err != nil {
 		return nil, err
@@ -266,6 +354,7 @@ func getESGZConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
 	esgzOpts := []estargz.Option{
 		estargz.WithCompressionLevel(estargzCompressionLevel),
 		estargz.WithChunkSize(estargzChunkSize),
+		estargz.WithMinChunkSize(estargzMinChunkSize),
 	}
 
 	experimental, err := cmd.Flags().GetBool("experimental")
@@ -290,7 +379,11 @@ func getESGZConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
 	return esgzOpts, nil
 }
 
-func getZstdConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
+func getZstdchunkedConverter(cmd *cobra.Command) (converter.ConvertFunc, error) {
+	zstdchunkedCompressionLevel, err := cmd.Flags().GetInt("zstdchunked-compression-level")
+	if err != nil {
+		return nil, err
+	}
 	zstdchunkedChunkSize, err := cmd.Flags().GetInt("zstdchunked-chunk-size")
 	if err != nil {
 		return nil, err
@@ -323,7 +416,7 @@ func getZstdConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
 		var ignored []string
 		esgzOpts = append(esgzOpts, estargz.WithAllowPrioritizeNotFound(&ignored))
 	}
-	return esgzOpts, nil
+	return zstdchunkedconvert.LayerConvertFuncWithCompressionLevel(zstd.EncoderLevelFromZstd(zstdchunkedCompressionLevel), esgzOpts...), nil
 }
 
 func getNydusConvertOpts(cmd *cobra.Command) (*nydusconvert.PackOption, error) {
@@ -386,4 +479,35 @@ func readPathsFromRecordFile(filename string) ([]string, error) {
 func imageConvertShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
 	return shellCompleteImageNames(cmd)
+}
+
+func printConvertedImage(cmd *cobra.Command, img converterutil.ConvertedImageInfo) error {
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	switch format {
+	case "json":
+		b, err := json.MarshalIndent(img, "", "    ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), string(b))
+	default:
+		for i, e := range img.ExtraImages {
+			elems := strings.SplitN(e, "@", 2)
+			if len(elems) < 2 {
+				logrus.Errorf("extra reference %q doesn't contain digest", e)
+			} else {
+				logrus.Infof("Extra image(%d) %s", i, elems[0])
+			}
+		}
+		elems := strings.SplitN(img.Image, "@", 2)
+		if len(elems) < 2 {
+			logrus.Errorf("reference %q doesn't contain digest", img.Image)
+		} else {
+			fmt.Fprintln(cmd.OutOrStdout(), elems[1])
+		}
+	}
+	return nil
 }

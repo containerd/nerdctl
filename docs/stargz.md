@@ -89,3 +89,99 @@ $ nerdctl push example.com/foo:estargz
 NOTE: `--estargz` should be specified in conjunction with `--oci`
 
 Stargz Snapshotter is not needed for building stargz images.
+
+## Tips for image conversion
+
+### Tips 1: Creating smaller eStargz images
+
+`nerdctl image convert` allows the following flags for optionally creating a smaller eStargz image.
+The result image requires stargz-snapshotter >= v0.13.0 for lazy pulling.
+
+- `--estargz-min-chunk-size`: The minimal number of bytes of data must be written in one gzip stream. If it's > 0, multiple files and chunks can be written into one gzip stream. Smaller number of gzip header and smaller size of the result blob can be expected. `--estargz-min-chunk-size=0` produces normal eStargz.
+
+- `--estargz-external-toc`: Separate TOC JSON metadata into another image (called "TOC image"). The result eStargz doesn't contain TOC so we can expect a smaller size than normal eStargz. This is an [experimental](./experimental.md) feature.
+
+#### `--estargz-min-chunk-size` usage
+
+conversion:
+
+```console
+# nerdctl image convert --oci --estargz --estargz-min-chunk-size=50000 ghcr.io/stargz-containers/ubuntu:22.04 registry2:5000/ubuntu:22.04-chunk50000
+# nerdctl image ls
+REPOSITORY                          TAG                 IMAGE ID        CREATED           PLATFORM       SIZE        BLOB SIZE
+ghcr.io/stargz-containers/ubuntu    22.04               20fa2d7bb4de    14 seconds ago    linux/amd64    83.4 MiB    29.0 MiB
+registry2:5000/ubuntu               22.04-chunk50000    562e09e1b3c1    2 seconds ago     linux/amd64    0.0 B       29.2 MiB
+# nerdctl push --insecure-registry registry2:5000/ubuntu:22.04-chunk50000
+```
+
+Pull it lazily:
+
+```console
+# nerdctl pull --snapshotter=stargz --insecure-registry registry2:5000/ubuntu:22.04-chunk50000
+# mount | grep "stargz on"
+stargz on /var/lib/containerd-stargz-grpc/snapshotter/snapshots/1/fs type fuse.rawBridge (rw,nodev,relatime,user_id=0,group_id=0,allow_other)
+```
+
+#### `--estargz-external-toc` usage
+
+convert:
+
+```console
+# nerdctl image convert --oci --estargz --estargz-external-toc ghcr.io/stargz-containers/ubuntu:22.04 registry2:5000/ubuntu:22.04-ex
+INFO[0005] Extra image(0) registry2:5000/ubuntu:22.04-ex-esgztoc
+sha256:3059dd5d9c404344e0b7c43d9782de8cae908531897262b7772103a0b585bbee
+# nerdctl images
+REPOSITORY                          TAG                 IMAGE ID        CREATED           PLATFORM       SIZE        BLOB SIZE
+ghcr.io/stargz-containers/ubuntu    22.04                20fa2d7bb4de    9 seconds ago    linux/amd64    83.4 MiB    29.0 MiB
+registry2:5000/ubuntu               22.04-ex             3059dd5d9c40    1 second ago     linux/amd64    0.0 B       30.8 MiB
+registry2:5000/ubuntu               22.04-ex-esgztoc     18c042b6eb8b    1 second ago     linux          0.0 B       151.3 KiB
+```
+
+Then push eStargz(`registry2:5000/ubuntu:22.04-ex`) and TOC image(`registry2:5000/ubuntu:22.04-ex-esgztoc`) to the same registry (`registry2` is used in this example but you can use arbitrary registries):
+
+```console
+# nerdctl push --insecure-registry registry2:5000/ubuntu:22.04-ex
+# nerdctl push --insecure-registry registry2:5000/ubuntu:22.04-ex-esgztoc
+```
+
+Pull it lazily:
+
+```console
+# nerdctl pull --insecure-registry --snapshotter=stargz registry2:5000/ubuntu:22.04-ex
+```
+
+Stargz Snapshotter automatically refers to the TOC image on the same registry.
+
+##### optional `--estargz-keep-diff-id` flag for conversion without changing layer diffID
+
+`nerdctl image convert` supports optional flag `--estargz-keep-diff-id` specified with `--estargz-external-toc`.
+This converts an image to eStargz without changing the diffID (uncompressed digest) so even eStargz-agnostic gzip decompressor (e.g. gunzip) can restore the original tar blob.
+
+```console
+# nerdctl image convert --oci --estargz --estargz-external-toc --estargz-keep-diff-id ghcr.io/stargz-containers/ubuntu:22.04 registry2:5000/ubuntu:22.04-ex-keepdiff
+# nerdctl push --insecure-registry registry2:5000/ubuntu:22.04-ex-keepdiff
+# nerdctl push --insecure-registry registry2:5000/ubuntu:22.04-ex-keepdiff-esgztoc
+# crane --insecure blob registry2:5000/ubuntu:22.04-ex-keepdiff@sha256:2dc39ba059dcd42ade30aae30147b5692777ba9ff0779a62ad93a74de02e3e1f | jq -r '.rootfs.diff_ids[]'
+sha256:7f5cbd8cc787c8d628630756bcc7240e6c96b876c2882e6fc980a8b60cdfa274
+# crane blob ghcr.io/stargz-containers/ubuntu:22.04@sha256:2dc39ba059dcd42ade30aae30147b5692777ba9ff0779a62ad93a74de02e3e1f | jq -r '.rootfs.diff_ids[]'
+sha256:7f5cbd8cc787c8d628630756bcc7240e6c96b876c2882e6fc980a8b60cdfa274
+```
+
+### Tips 2: Using zstd instead of gzip (a.k.a. zstd:chunked)
+
+You can use zstd compression with lazy pulling support (a.k.a zstd:chunked) instead of gzip.
+
+- Pros
+  - [Faster](https://github.com/facebook/zstd/tree/v1.5.2#benchmarks) compression/decompression.
+- Cons
+  - Old tools might not support. And unsupported by some tools yet.
+    - zstd support by OCI Image Specification is still under rc (2022/11). will be added to [v1.1.0](https://github.com/opencontainers/image-spec/commit/1a29e8675a64a5cdd2d93b6fa879a82d9a4d926a).
+    - zstd support unreleased [by Docker](https://github.com/moby/moby/pull/41759/commits/e187eb2bb5f0c3f899fe643e95d1af8c57e89a73) (will be added to v22.06).
+    - [containerd >= v1.5](https://github.com/containerd/containerd/releases/tag/v1.5.0) supports zstd.
+  - `min-chunk-size`, `external-toc` (described in Tips 1) are unsupported yet.
+
+```console
+$ nerdctl build -t example.com/foo .
+$ nerdctl image convert --zstdchunked --oci example.com/foo example.com/foo:zstdchunked
+$ nerdctl push example.com/foo:zstdchunked
+```
