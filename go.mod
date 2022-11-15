@@ -34,7 +34,7 @@ require (
 	github.com/ipfs/interface-go-ipfs-core v0.7.0
 	github.com/mattn/go-isatty v0.0.16
 	github.com/moby/sys/mount v0.3.3
-	github.com/multiformats/go-multiaddr v0.7.0
+	github.com/multiformats/go-multiaddr v0.8.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0-rc2.0.20221005185240-3a7f492d3f1b
 	github.com/opencontainers/runtime-spec v1.0.3-0.20220809190508-9ee22abf867e
