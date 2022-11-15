@@ -41,7 +41,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.0.3-0.20220809190508-9ee22abf867e
 	github.com/pelletier/go-toml v1.9.5
 	github.com/rootless-containers/bypass4netns v0.3.0
-	github.com/rootless-containers/rootlesskit v1.0.1
+	github.com/rootless-containers/rootlesskit v1.1.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5

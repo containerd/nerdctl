@@ -1540,8 +1540,8 @@ github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFR
 github.com/rogpeppe/go-internal v1.6.1 h1:/FiVV8dS/e+YqF2JvO3yXRFbBLTIuSDkuC7aBOAvL+k=
 github.com/rootless-containers/bypass4netns v0.3.0 h1:UwI55zWDZz7OGyN4YWgfCKdsI58VGY7OlghcLdxJX10=
 github.com/rootless-containers/bypass4netns v0.3.0/go.mod h1:IXHPjkQlJRygNBCN0hSSR3ITX6kDKr3aAaGHx6APd+g=
-github.com/rootless-containers/rootlesskit v1.0.1 h1:jepqW1txFSowKSMAEkVhWH3Oa1TCY9S400MVYe/6Iro=
-github.com/rootless-containers/rootlesskit v1.0.1/go.mod h1:t2UAiYagxrJ+wmpFAUIZPcqsm4k2B7ve6g7lILKbloc=
+github.com/rootless-containers/rootlesskit v1.1.0 h1:cRaRIYxY8oce4eE/zeAUZhgKu/4tU1p9YHN4+suwV7M=
+github.com/rootless-containers/rootlesskit v1.1.0/go.mod h1:H+o9ndNe7tS91WqU0/+vpvc+VaCd7TCIWaJjnV0ujUo=
 github.com/rs/cors v1.7.0 h1:+88SsELBHx5r+hZ8TCkggzSstaWNbDvThkVK8H6f9ik=
 github.com/rs/cors v1.7.0/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=
 github.com/rs/xid v1.4.0/go.mod h1:trrq9SKmegXys3aeAKXMUTdJsYXVwGY3RLcfgqegfbg=
