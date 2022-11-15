@@ -68,9 +68,9 @@ jobs:
           - ubuntu: 20.04
             containerd: v1.5.13
           - ubuntu: 20.04
-            containerd: v1.6.8
+            containerd: v1.6.10
           - ubuntu: 22.04
-            containerd: v1.6.8
+            containerd: v1.6.10
           - ubuntu: 22.04
             containerd: main
     env:
@@ -104,9 +104,9 @@ jobs:
           - ubuntu: 20.04
             containerd: v1.5.13
           - ubuntu: 20.04
-            containerd: v1.6.8
+            containerd: v1.6.10
           - ubuntu: 22.04
-            containerd: v1.6.8
+            containerd: v1.6.10
           - ubuntu: 22.04
             containerd: main
     env:
