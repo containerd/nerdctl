@@ -201,12 +201,14 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 				if !o.Experimental {
 					return fmt.Errorf("cosign only work with enable experimental feature")
 				}
-				keyRef, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]
-				if !ok {
-					return fmt.Errorf("no cosign public key, service: %s", ps.Unparsed.Name)
+
+				// if key is given, use key mode, otherwise use keyless mode.
+				keyRef := ""
+				if keyVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]; ok {
+					keyRef = keyVal.(string)
 				}
 
-				ref, err = cosignutil.VerifyCosign(ctx, ref, keyRef.(string), hostsDirs)
+				ref, err = cosignutil.VerifyCosign(ctx, ref, keyRef, hostsDirs)
 				if err != nil {
 					return err
 				}
