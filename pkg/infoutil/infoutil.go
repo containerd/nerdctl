@@ -246,10 +246,10 @@ func parseRuncVersion(runcVersionStdout []byte) (*dockercompat.ComponentVersion,
 
 // BlockIOWeight return whether Block IO weight is supported or not
 func BlockIOWeight(cgroupManager string) bool {
-	var info *dockercompat.Info
+	var info dockercompat.Info
 	info.CgroupVersion = CgroupsVersion()
 	info.CgroupDriver = cgroupManager
-	mobySysInfo := mobySysInfo(info)
+	mobySysInfo := mobySysInfo(&info)
 	// blkio weight is not available on cgroup v1 since kernel 5.0.
 	// On cgroup v2, blkio weight is implemented using io.weight
 	return mobySysInfo.BlkioWeight
