@@ -209,7 +209,7 @@ func Labels(b []byte) *map[string]string {
 }
 
 func Size(volume *native.Volume) (int64, error) {
-	var size int64 = 0
+	var size int64
 	var walkFn = func(_ string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err

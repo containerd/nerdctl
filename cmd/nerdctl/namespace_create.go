@@ -54,7 +54,6 @@ func namespaceCreateAction(cmd *cobra.Command, args []string) error {
 func ObjectWithLabelArgs(args []string) map[string]string {
 	if len(args) >= 1 {
 		return commands.LabelArgs(args)
-	} else {
-		return nil
 	}
+	return nil
 }

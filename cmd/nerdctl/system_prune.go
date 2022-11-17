@@ -88,16 +88,16 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	if err := containerPrune(cmd, client, ctx); err != nil {
+	if err := containerPrune(ctx, cmd, client); err != nil {
 		return err
 	}
-	if err := networkPrune(cmd, client, ctx); err != nil {
+	if err := networkPrune(ctx, cmd, client); err != nil {
 		return err
 	}
 	if vFlag {
-		if err := volumePrune(cmd, client, ctx); err != nil {
+		if err := volumePrune(ctx, cmd, client); err != nil {
 			return err
 		}
 	}
-	return imagePrune(cmd, client, ctx)
+	return imagePrune(ctx, cmd, client)
 }

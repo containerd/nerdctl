@@ -126,7 +126,7 @@ func TestRunAddHost(t *testing.T) {
 			line := strings.ReplaceAll(sc.Text(), " ", "")
 			line = strings.ReplaceAll(line, "\t", "")
 			if strutil.InStringSlice([]string{"10.0.0.1test", "10.0.0.1test1"}, line) {
-				found += 1
+				found++
 			}
 		}
 		if found != 2 {

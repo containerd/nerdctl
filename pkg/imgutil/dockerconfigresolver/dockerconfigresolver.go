@@ -113,11 +113,12 @@ func NewHostOptions(ctx context.Context, refHostname string, optFuncs ...Opt) (*
 	if o.authCreds != nil {
 		ho.Credentials = o.authCreds
 	} else {
-		if authCreds, err := NewAuthCreds(refHostname); err != nil {
+		authCreds, err := NewAuthCreds(refHostname)
+		if err != nil {
 			return nil, err
-		} else {
-			ho.Credentials = authCreds
 		}
+		ho.Credentials = authCreds
+
 	}
 
 	if o.skipVerifyCerts {

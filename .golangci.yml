@@ -49,6 +49,7 @@ linters:
     # - nlreturn
     # - noctx
     # - nolintlint
+    - revive
     # - rowserrcheck
     # - scopelint
     # - sqlclosecheck

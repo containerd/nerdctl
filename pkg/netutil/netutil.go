@@ -61,7 +61,7 @@ func NewCNIEnv(cniPath, cniConfPath string) (*CNIEnv, error) {
 	return &e, nil
 }
 
-func (e *CNIEnv) NetworkMap() map[string]*networkConfig {
+func (e *CNIEnv) NetworkMap() map[string]*networkConfig { //nolint:revive
 	m := make(map[string]*networkConfig, len(e.Networks))
 	for _, n := range e.Networks {
 		m[n.Name] = n
@@ -107,7 +107,7 @@ type CreateOptions struct {
 	Labels      []string
 }
 
-func (e *CNIEnv) CreateNetwork(opts CreateOptions) (*networkConfig, error) {
+func (e *CNIEnv) CreateNetwork(opts CreateOptions) (*networkConfig, error) { //nolint:revive
 	var net *networkConfig
 	if _, ok := e.NetworkMap()[opts.Name]; ok {
 		return nil, errdefs.ErrAlreadyExists

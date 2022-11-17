@@ -161,11 +161,11 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 				return nil, err
 			}
 			return PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack, quiet)
-		} else {
-			logrus.WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
-			logrus.Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
-			return nil, err
 		}
+		logrus.WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
+		logrus.Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
+		return nil, err
+
 	}
 	return img, nil
 }

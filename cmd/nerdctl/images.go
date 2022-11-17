@@ -353,9 +353,8 @@ func imagesShellComplete(cmd *cobra.Command, args []string, toComplete string) (
 	if len(args) == 0 {
 		// show image names
 		return shellCompleteImageNames(cmd)
-	} else {
-		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
 type snapshotKey string

@@ -277,7 +277,6 @@ func execShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]
 			return st == containerd.Running
 		}
 		return shellCompleteContainerNames(cmd, statusFilterFn)
-	} else {
-		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }

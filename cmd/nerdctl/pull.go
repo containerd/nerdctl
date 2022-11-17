@@ -105,7 +105,7 @@ func pullAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = ensureImage(cmd, ctx, client, rawRef, ocispecPlatforms, "always", unpack, quiet)
+	_, err = ensureImage(ctx, cmd, client, rawRef, ocispecPlatforms, "always", unpack, quiet)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func pullAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func ensureImage(cmd *cobra.Command, ctx context.Context, client *containerd.Client, rawRef string, ocispecPlatforms []v1.Platform,
+func ensureImage(ctx context.Context, cmd *cobra.Command, client *containerd.Client, rawRef string, ocispecPlatforms []v1.Platform,
 	pull string, unpack *bool, quiet bool) (*imgutil.EnsuredImage, error) {
 
 	var ensured *imgutil.EnsuredImage

@@ -63,20 +63,20 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 		return err
 	}
 
-	if containerStateDir := state.Annotations[labels.StateDir]; containerStateDir == "" {
+	containerStateDir := state.Annotations[labels.StateDir]
+	if containerStateDir == "" {
 		return errors.New("state dir must be set")
-	} else {
-		if err := os.MkdirAll(containerStateDir, 0700); err != nil {
-			return fmt.Errorf("failed to create %q: %w", containerStateDir, err)
-		}
-		logFilePath := filepath.Join(containerStateDir, "oci-hook."+event+".log")
-		logFile, err := os.Create(logFilePath)
-		if err != nil {
-			return err
-		}
-		defer logFile.Close()
-		logrus.SetOutput(io.MultiWriter(stderr, logFile))
 	}
+	if err := os.MkdirAll(containerStateDir, 0700); err != nil {
+		return fmt.Errorf("failed to create %q: %w", containerStateDir, err)
+	}
+	logFilePath := filepath.Join(containerStateDir, "oci-hook."+event+".log")
+	logFile, err := os.Create(logFilePath)
+	if err != nil {
+		return err
+	}
+	defer logFile.Close()
+	logrus.SetOutput(io.MultiWriter(stderr, logFile))
 
 	opts, err := newHandlerOpts(&state, dataStore, cniPath, cniNetconfPath)
 	if err != nil {

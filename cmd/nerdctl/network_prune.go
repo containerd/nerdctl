@@ -71,10 +71,10 @@ func networkPruneAction(cmd *cobra.Command, _ []string) error {
 	}
 	defer cancel()
 
-	return networkPrune(cmd, client, ctx)
+	return networkPrune(ctx, cmd, client)
 }
 
-func networkPrune(cmd *cobra.Command, client *containerd.Client, ctx context.Context) error {
+func networkPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client) error {
 	cniPath, err := cmd.Flags().GetString("cni-path")
 	if err != nil {
 		return err
