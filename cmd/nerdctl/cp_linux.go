@@ -233,7 +233,7 @@ func kopy(ctx context.Context, container2host bool, pid int, dst, src string, fo
 	}
 	tarX = append(tarX, "-f", "-")
 	if rootlessutil.IsRootless() {
-		nsenter := []string{"nsenter", "-t", strconv.Itoa(int(pid)), "-U", "--preserve-credentials", "--"}
+		nsenter := []string{"nsenter", "-t", strconv.Itoa(pid), "-U", "--preserve-credentials", "--"}
 		if container2host {
 			tarC = append(nsenter, tarC...)
 		} else {
