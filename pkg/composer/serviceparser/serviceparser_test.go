@@ -53,6 +53,13 @@ func TestServicePortConfigToFlagP(t *testing.T) {
 			},
 			expected: "127.0.0.1:8080:80",
 		},
+		{
+			ServicePortConfig: types.ServicePortConfig{
+				HostIP: "127.0.0.1",
+				Target: 80,
+			},
+			expected: "127.0.0.1::80",
+		},
 	}
 	for i, tc := range testCases {
 		got, err := servicePortConfigToFlagP(tc.ServicePortConfig)

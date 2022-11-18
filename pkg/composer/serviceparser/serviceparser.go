@@ -707,9 +707,6 @@ func servicePortConfigToFlagP(c types.ServicePortConfig) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported port mode: %s", c.Mode)
 	}
-	if c.Published == "" {
-		return "", fmt.Errorf("unsupported port number: %q", c.Published)
-	}
 	if c.Target <= 0 {
 		return "", fmt.Errorf("unsupported port number: %d", c.Target)
 	}
