@@ -44,8 +44,9 @@ type Options struct {
 	NetworkExists    func(string) (bool, error)
 	VolumeExists     func(string) (bool, error)
 	ImageExists      func(ctx context.Context, imageName string) (bool, error)
-	EnsureImage      func(ctx context.Context, imageName, pullMode, platform string, quiet bool) error
+	EnsureImage      func(ctx context.Context, imageName, pullMode, platform string, ps *serviceparser.Service, quiet bool) error
 	DebugPrintFull   bool // full debug print, may leak secret env var to logs
+	Experimental     bool // enable experimental features
 }
 
 func New(o Options, client *containerd.Client) (*Composer, error) {

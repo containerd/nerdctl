@@ -36,17 +36,27 @@ func (c *Composer) Push(ctx context.Context, po PushOptions, services []string) 
 		if err != nil {
 			return err
 		}
-		return c.pushServiceImage(ctx, ps.Image, ps.Unparsed.Platform, po)
+		return c.pushServiceImage(ctx, ps.Image, ps.Unparsed.Platform, ps, po)
 	})
 }
 
-func (c *Composer) pushServiceImage(ctx context.Context, image string, platform string, po PushOptions) error {
+func (c *Composer) pushServiceImage(ctx context.Context, image string, platform string, ps *serviceparser.Service, po PushOptions) error {
 	logrus.Infof("Pushing image %s", image)
 
 	var args []string // nolint: prealloc
 	if platform != "" {
 		args = append(args, "--platform="+platform)
 	}
+	if signer, ok := ps.Unparsed.Extensions[serviceparser.ComposeSign]; ok {
+		args = append(args, "--sign="+signer.(string))
+	}
+	if privateKey, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPrivateKey]; ok {
+		args = append(args, "--cosign-key="+privateKey.(string))
+	}
+	if c.Options.Experimental {
+		args = append(args, "--experimental")
+	}
+
 	args = append(args, image)
 
 	cmd := c.createNerdctlCmd(ctx, append([]string{"push"}, args...)...)
