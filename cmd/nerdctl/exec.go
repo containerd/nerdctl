@@ -40,7 +40,7 @@ import (
 
 func newExecCommand() *cobra.Command {
 	var execCommand = &cobra.Command{
-		Use:               "exec [OPTIONS] CONTAINER COMMAND [ARG...]",
+		Use:               "exec [flags] CONTAINER COMMAND [ARG...]",
 		Args:              cobra.MinimumNArgs(2),
 		Short:             "Run a command in a running container",
 		RunE:              execAction,

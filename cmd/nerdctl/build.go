@@ -41,7 +41,7 @@ import (
 
 func newBuildCommand() *cobra.Command {
 	var buildCommand = &cobra.Command{
-		Use:   "build",
+		Use:   "build [flags] PATH",
 		Short: "Build an image from a Dockerfile. Needs buildkitd to be running.",
 		Long: `Build an image from a Dockerfile. Needs buildkitd to be running.
 If Dockerfile is not present and -f is not specified, it will look for Containerfile and build with it. `,

@@ -26,7 +26,7 @@ import (
 
 func newNamespaceRmCommand() *cobra.Command {
 	namespaceRmCommand := &cobra.Command{
-		Use:           "remove [OPTIONS] NAMESPACE [NAMESPACE...]",
+		Use:           "remove [flags] NAMESPACE [NAMESPACE...]",
 		Aliases:       []string{"rm"},
 		Args:          cobra.MinimumNArgs(1),
 		Short:         "Remove one or more namespaces",

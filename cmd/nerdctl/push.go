@@ -50,7 +50,7 @@ const (
 
 func newPushCommand() *cobra.Command {
 	var pushCommand = &cobra.Command{
-		Use:               "push NAME[:TAG]",
+		Use:               "push [flags] NAME[:TAG]",
 		Short:             "Push an image or a repository to a registry. Optionally specify \"ipfs://\" or \"ipns://\" scheme to push image to IPFS.",
 		Args:              cobra.ExactArgs(1),
 		RunE:              pushAction,

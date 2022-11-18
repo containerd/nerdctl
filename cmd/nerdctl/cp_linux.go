@@ -48,8 +48,8 @@ WARNING: 'nerdctl cp' is designed only for use with trusted, cooperating contain
 Using 'nerdctl cp' with untrusted or malicious containers is unsupported and may not provide protection against unexpected behavior.
 `
 
-	usage := `cp [OPTIONS] CONTAINER:SRC_PATH DEST_PATH|-
-  nerdctl cp [OPTIONS] SRC_PATH|- CONTAINER:DEST_PATH`
+	usage := `cp [flags] CONTAINER:SRC_PATH DEST_PATH|-
+  nerdctl cp [flags] SRC_PATH|- CONTAINER:DEST_PATH`
 	var cpCommand = &cobra.Command{
 		Use:               usage,
 		Args:              cobra.ExactArgs(2),
