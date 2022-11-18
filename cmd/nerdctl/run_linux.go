@@ -22,6 +22,10 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/containers"
+	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/pkg/cap"
+	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -29,10 +33,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
-
-	"github.com/containerd/containerd/containers"
-	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/pkg/cap"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -217,6 +218,20 @@ func setOOMScoreAdj(opts []oci.SpecOpts, cmd *cobra.Command) ([]oci.SpecOpts, er
 
 	if score < -1000 || score > 1000 {
 		return nil, fmt.Errorf("invalid value %d, range for oom score adj is [-1000, 1000]", score)
+	}
+
+	if userns.RunningInUserNS() {
+		// > The value of /proc/<pid>/oom_score_adj may be reduced no lower than the last value set by a CAP_SYS_RESOURCE process.
+		// > To reduce the value any lower requires CAP_SYS_RESOURCE.
+		// https://github.com/torvalds/linux/blob/v6.0/Documentation/filesystems/proc.rst#31-procpidoom_adj--procpidoom_score_adj--adjust-the-oom-killer-score
+		//
+		// The minimum=100 is from `/proc/$(pgrep -u $(id -u) systemd)/oom_score_adj`
+		// (FIXME: find a more robust way to get the current minimum value)
+		const minimum = 100
+		if score < minimum {
+			logrus.Warnf("Limiting oom_score_adj (%d -> %d)", score, minimum)
+			score = minimum
+		}
 	}
 
 	opts = append(opts, withOOMScoreAdj(score))
