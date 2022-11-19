@@ -39,7 +39,7 @@ import (
 
 func newHistoryCommand() *cobra.Command {
 	var historyCommand = &cobra.Command{
-		Use:               "history [OPTIONS] IMAGE",
+		Use:               "history [flags] IMAGE",
 		Short:             "Show the history of an image",
 		Args:              cobra.ExactArgs(1),
 		RunE:              historyAction,

@@ -22,7 +22,7 @@ import (
 
 func newNamespacelabelUpdateCommand() *cobra.Command {
 	namespaceLableCommand := &cobra.Command{
-		Use:           "update NAMESPACE",
+		Use:           "update [flags] NAMESPACE",
 		Short:         "Update labels for a namespace",
 		RunE:          labelUpdateAction,
 		Args:          cobra.MinimumNArgs(1),

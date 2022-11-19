@@ -33,7 +33,7 @@ import (
 
 func newPortCommand() *cobra.Command {
 	var portCommand = &cobra.Command{
-		Use:               "port CONTAINER [PRIVATE_PORT[/PROTO]]",
+		Use:               "port [flags] CONTAINER [PRIVATE_PORT[/PROTO]]",
 		Args:              cobra.RangeArgs(1, 2),
 		Short:             "List port mappings or a specific mapping for the container",
 		RunE:              portAction,

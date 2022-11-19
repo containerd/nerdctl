@@ -32,7 +32,7 @@ import (
 
 func newImageInspectCommand() *cobra.Command {
 	var imageInspectCommand = &cobra.Command{
-		Use:               "inspect [OPTIONS] IMAGE [IMAGE...]",
+		Use:               "inspect [flags] IMAGE [IMAGE...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Display detailed information on one or more images.",
 		Long:              "Hint: set `--mode=native` for showing the full output",

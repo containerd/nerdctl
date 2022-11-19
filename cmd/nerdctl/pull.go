@@ -37,7 +37,7 @@ import (
 
 func newPullCommand() *cobra.Command {
 	var pullCommand = &cobra.Command{
-		Use:           "pull",
+		Use:           "pull [flags] NAME[:TAG]",
 		Short:         "Pull an image from a registry. Optionally specify \"ipfs://\" or \"ipns://\" scheme to pull image from IPFS.",
 		Args:          cobra.ExactArgs(1),
 		RunE:          pullAction,
