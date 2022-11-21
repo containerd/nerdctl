@@ -54,9 +54,8 @@ func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) == 0 {
 		return shellCompleteImageNames(cmd)
-	} else {
-		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
 func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Command, client *containerd.Client, id string) ([]oci.SpecOpts, error) {
@@ -70,11 +69,11 @@ func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Com
 			{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro", "nosuid", "noexec", "nodev"}},
 		}))
 
-	if cgOpts, err := generateCgroupOpts(cmd, id); err != nil {
+	cgOpts, err := generateCgroupOpts(cmd, id)
+	if err != nil {
 		return nil, err
-	} else {
-		opts = append(opts, cgOpts...)
 	}
+	opts = append(opts, cgOpts...)
 
 	labelsMap, err := readKVStringsMapfFromLabel(cmd)
 	if err != nil {
@@ -89,13 +88,13 @@ func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Com
 	if err != nil {
 		return nil, err
 	}
-	if capOpts, err := generateCapOpts(
+	capOpts, err := generateCapOpts(
 		strutil.DedupeStrSlice(capAdd),
-		strutil.DedupeStrSlice(capDrop)); err != nil {
+		strutil.DedupeStrSlice(capDrop))
+	if err != nil {
 		return nil, err
-	} else {
-		opts = append(opts, capOpts...)
 	}
+	opts = append(opts, capOpts...)
 
 	privileged, err := cmd.Flags().GetBool("privileged")
 	if err != nil {
@@ -107,18 +106,17 @@ func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Com
 		return nil, err
 	}
 	securityOptsMaps := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(securityOpt))
-	if secOpts, err := generateSecurityOpts(privileged, securityOptsMaps); err != nil {
+	secOpts, err := generateSecurityOpts(privileged, securityOptsMaps)
+	if err != nil {
 		return nil, err
-	} else {
-		opts = append(opts, secOpts...)
 	}
+	opts = append(opts, secOpts...)
 
 	b4nnOpts, err := bypass4netnsutil.GenerateBypass4netnsOpts(securityOptsMaps, labelsMap, id)
 	if err != nil {
 		return nil, err
-	} else {
-		opts = append(opts, b4nnOpts...)
 	}
+	opts = append(opts, b4nnOpts...)
 
 	shmSize, err := cmd.Flags().GetString("shm-size")
 	if err != nil {

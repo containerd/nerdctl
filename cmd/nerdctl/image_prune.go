@@ -80,10 +80,10 @@ func imagePruneAction(cmd *cobra.Command, _ []string) error {
 	}
 	defer cancel()
 
-	return imagePrune(cmd, client, ctx)
+	return imagePrune(ctx, cmd, client)
 }
 
-func imagePrune(cmd *cobra.Command, client *containerd.Client, ctx context.Context) error {
+func imagePrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client) error {
 	var (
 		imageStore     = client.ImageService()
 		contentStore   = client.ContentStore()

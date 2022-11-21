@@ -293,10 +293,9 @@ func getPrintableContainerName(containerLabels map[string]string) string {
 			if containerName, ok := containerLabels[k8slabels.ContainerName]; ok {
 				// Container
 				return fmt.Sprintf("k8s://%s/%s/%s", ns, podName, containerName)
-			} else {
-				// Pod sandbox
-				return fmt.Sprintf("k8s://%s/%s", ns, podName)
 			}
+			// Pod sandbox
+			return fmt.Sprintf("k8s://%s/%s", ns, podName)
 		}
 	}
 	return ""

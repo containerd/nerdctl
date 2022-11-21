@@ -464,9 +464,9 @@ func TestRunContainerWithStaticIP(t *testing.T) {
 			if !tc.shouldSuccess {
 				cmd.AssertFail()
 				return
-			} else {
-				cmd.AssertOK()
 			}
+			cmd.AssertOK()
+
 			if tc.checkTheIPAddress {
 				inspectCmd := base.Cmd("inspect", testContainerName, "--format", "\"{{range .NetworkSettings.Networks}} {{.IPAddress}}{{end}}\"")
 				result := inspectCmd.Run()

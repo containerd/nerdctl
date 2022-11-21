@@ -64,10 +64,10 @@ func containerPruneAction(cmd *cobra.Command, _ []string) error {
 	}
 	defer cancel()
 
-	return containerPrune(cmd, client, ctx)
+	return containerPrune(ctx, cmd, client)
 }
 
-func containerPrune(cmd *cobra.Command, client *containerd.Client, ctx context.Context) error {
+func containerPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client) error {
 	containers, err := client.Containers(ctx)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func containerPrune(cmd *cobra.Command, client *containerd.Client, ctx context.C
 
 	var deleted []string
 	for _, container := range containers {
-		err = removeContainer(cmd, ctx, container, false, true)
+		err = removeContainer(ctx, cmd, container, false, true)
 		if err == nil {
 			deleted = append(deleted, container.ID())
 			continue

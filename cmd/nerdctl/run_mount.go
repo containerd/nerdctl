@@ -77,42 +77,42 @@ func withMounts(mounts []specs.Mount) oci.SpecOpts {
 
 // parseMountFlags parses --volume, --mount and --tmpfs.
 func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*mountutil.Processed, error) {
-	var parsed []*mountutil.Processed
-	if flagVSlice, err := cmd.Flags().GetStringArray("volume"); err != nil {
+	var parsed []*mountutil.Processed //nolint:prealloc
+	flagVSlice, err := cmd.Flags().GetStringArray("volume")
+	if err != nil {
 		return nil, err
-	} else {
-		for _, v := range strutil.DedupeStrSlice(flagVSlice) {
-			x, err := mountutil.ProcessFlagV(v, volStore)
-			if err != nil {
-				return nil, err
-			}
-			parsed = append(parsed, x)
+	}
+	for _, v := range strutil.DedupeStrSlice(flagVSlice) {
+		x, err := mountutil.ProcessFlagV(v, volStore)
+		if err != nil {
+			return nil, err
 		}
+		parsed = append(parsed, x)
 	}
 
 	// tmpfs needs to be StringArray, not StringSlice, to prevent "/foo:size=64m,exec" from being split to {"/foo:size=64m", "exec"}
-	if tmpfsSlice, err := cmd.Flags().GetStringArray("tmpfs"); err != nil {
+	tmpfsSlice, err := cmd.Flags().GetStringArray("tmpfs")
+	if err != nil {
 		return nil, err
-	} else {
-		for _, v := range strutil.DedupeStrSlice(tmpfsSlice) {
-			x, err := mountutil.ProcessFlagTmpfs(v)
-			if err != nil {
-				return nil, err
-			}
-			parsed = append(parsed, x)
+	}
+	for _, v := range strutil.DedupeStrSlice(tmpfsSlice) {
+		x, err := mountutil.ProcessFlagTmpfs(v)
+		if err != nil {
+			return nil, err
 		}
+		parsed = append(parsed, x)
 	}
 
-	if mountsSlice, err := cmd.Flags().GetStringArray("mount"); err != nil {
+	mountsSlice, err := cmd.Flags().GetStringArray("mount")
+	if err != nil {
 		return nil, err
-	} else {
-		for _, v := range strutil.DedupeStrSlice(mountsSlice) {
-			x, err := mountutil.ProcessFlagMount(v, volStore)
-			if err != nil {
-				return nil, err
-			}
-			parsed = append(parsed, x)
+	}
+	for _, v := range strutil.DedupeStrSlice(mountsSlice) {
+		x, err := mountutil.ProcessFlagMount(v, volStore)
+		if err != nil {
+			return nil, err
 		}
+		parsed = append(parsed, x)
 	}
 
 	return parsed, nil
@@ -120,7 +120,7 @@ func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*m
 
 // generateMountOpts generates volume-related mount opts.
 // Other mounts such as procfs mount are not handled here.
-func generateMountOpts(cmd *cobra.Command, ctx context.Context, client *containerd.Client, ensuredImage *imgutil.EnsuredImage) ([]oci.SpecOpts, []string, []*mountutil.Processed, error) {
+func generateMountOpts(ctx context.Context, cmd *cobra.Command, client *containerd.Client, ensuredImage *imgutil.EnsuredImage) ([]oci.SpecOpts, []string, []*mountutil.Processed, error) {
 	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return nil, nil, nil, err

@@ -119,7 +119,7 @@ func writeEntry(e *Entry, stdout, stderr io.Writer, refTime time.Time, timestamp
 
 	output = append(output, []byte(e.Log)...)
 
-	var writeTo io.Writer = nil
+	var writeTo io.Writer
 	switch e.Stream {
 	case "stdout":
 		writeTo = stdout

@@ -122,9 +122,8 @@ func viewLogsJSONFile(lvopts LogViewOptions, stdout, stderr io.Writer, stopChann
 
 	if checkExecutableAvailableInPath("tail") {
 		return viewLogsJSONFileThroughTailExec(lvopts, logFilePath, stdout, stderr, stopChannel)
-	} else {
-		return viewLogsJSONFileDirect(lvopts, logFilePath, stdout, stderr, stopChannel)
 	}
+	return viewLogsJSONFileDirect(lvopts, logFilePath, stdout, stderr, stopChannel)
 }
 
 // Loads JSON log entries directly from the provided JSON log file.

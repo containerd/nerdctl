@@ -101,7 +101,6 @@ func tagShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 	if len(args) < 2 {
 		// show image names
 		return shellCompleteImageNames(cmd)
-	} else {
-		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }

@@ -297,7 +297,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	container, gc, err := createContainer(cmd, ctx, client, args, platform, flagI, flagT, flagD)
+	container, gc, err := createContainer(ctx, cmd, client, args, platform, flagI, flagT, flagD)
 	if err != nil {
 		if gc != nil {
 			defer gc()
@@ -315,7 +315,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 			return errors.New("flag -d and --rm cannot be specified together")
 		}
 		defer func() {
-			if err := removeContainer(cmd, ctx, container, true, true); err != nil {
+			if err := removeContainer(ctx, cmd, container, true, true); err != nil {
 				logrus.WithError(err).Warnf("failed to remove container %s", id)
 			}
 		}()
@@ -385,7 +385,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 }
 
 // FIXME: split to smaller functions
-func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd.Client, args []string, platform string, flagI, flagT, flagD bool) (containerd.Container, func(), error) {
+func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd.Client, args []string, platform string, flagI, flagT, flagD bool) (containerd.Container, func(), error) {
 	// simulate the behavior of double dash
 	newArg := []string{}
 	if len(args) >= 2 && args[1] == "--" {
@@ -485,12 +485,11 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 		opts = append(opts, oci.WithTTY)
 	}
 
-	mountOpts, anonVolumes, mountPoints, err := generateMountOpts(cmd, ctx, client, ensuredImage)
+	mountOpts, anonVolumes, mountPoints, err := generateMountOpts(ctx, cmd, client, ensuredImage)
 	if err != nil {
 		return nil, nil, err
-	} else {
-		opts = append(opts, mountOpts...)
 	}
+	opts = append(opts, mountOpts...)
 
 	var logURI string
 	if flagD {
@@ -587,23 +586,23 @@ func createContainer(cmd *cobra.Command, ctx context.Context, client *containerd
 	}
 	opts = append(opts, hookOpt)
 
-	if uOpts, err := generateUserOpts(cmd); err != nil {
+	uOpts, err := generateUserOpts(cmd)
+	if err != nil {
 		return nil, nil, err
-	} else {
-		opts = append(opts, uOpts...)
 	}
+	opts = append(opts, uOpts...)
 
-	if gOpts, err := generateGroupsOpts(cmd); err != nil {
+	gOpts, err := generateGroupsOpts(cmd)
+	if err != nil {
 		return nil, nil, err
-	} else {
-		opts = append(opts, gOpts...)
 	}
+	opts = append(opts, gOpts...)
 
-	if umaskOpts, err := generateUmaskOpts(cmd); err != nil {
+	umaskOpts, err := generateUmaskOpts(cmd)
+	if err != nil {
 		return nil, nil, err
-	} else {
-		opts = append(opts, umaskOpts...)
 	}
+	opts = append(opts, umaskOpts...)
 
 	rtCOpts, err := generateRuntimeCOpts(cmd)
 	if err != nil {
@@ -724,7 +723,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 			return nil, nil, nil, err
 		}
 		rawRef := args[0]
-		ensured, err = ensureImage(cmd, ctx, client, rawRef, ocispecPlatforms, pull, nil, false)
+		ensured, err = ensureImage(ctx, cmd, client, rawRef, ocispecPlatforms, pull, nil, false)
 		if err != nil {
 			return nil, nil, nil, err
 		}

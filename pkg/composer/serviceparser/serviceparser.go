@@ -564,15 +564,15 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		}
 	}
 
-	if networks, err := getNetworks(project, svc); err != nil {
+	networks, err := getNetworks(project, svc)
+	if err != nil {
 		return nil, err
-	} else {
-		for _, net := range networks {
-			c.RunArgs = append(c.RunArgs, "--net="+net.fullName)
-			if value, ok := svc.Networks[net.shortNetworkName]; ok {
-				if value != nil && value.Ipv4Address != "" {
-					c.RunArgs = append(c.RunArgs, "--ip="+value.Ipv4Address)
-				}
+	}
+	for _, net := range networks {
+		c.RunArgs = append(c.RunArgs, "--net="+net.fullName)
+		if value, ok := svc.Networks[net.shortNetworkName]; ok {
+			if value != nil && value.Ipv4Address != "" {
+				c.RunArgs = append(c.RunArgs, "--ip="+value.Ipv4Address)
 			}
 		}
 	}

@@ -363,9 +363,9 @@ func (c *Cmd) AssertOutNotContains(s string) {
 	c.AssertOutWithFunc(func(stdout string) error {
 		if strings.Contains(stdout, s) {
 			return fmt.Errorf("expected stdout to not contain %q", s)
-		} else {
-			return nil
 		}
+		return nil
+
 	})
 }
 

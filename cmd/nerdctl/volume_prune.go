@@ -62,10 +62,10 @@ func volumePruneAction(cmd *cobra.Command, _ []string) error {
 	}
 	defer cancel()
 
-	return volumePrune(cmd, client, ctx)
+	return volumePrune(ctx, cmd, client)
 }
 
-func volumePrune(cmd *cobra.Command, client *containerd.Client, ctx context.Context) error {
+func volumePrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client) error {
 	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return err

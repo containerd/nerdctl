@@ -176,14 +176,13 @@ func logsShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]
 func getTailArgAsUint(arg string) (uint, error) {
 	if arg == "all" {
 		return 0, nil
-	} else {
-		num, err := strconv.Atoi(arg)
-		if err != nil {
-			return 0, fmt.Errorf("failed to parse `-n/--tail` argument %q: %s", arg, err)
-		}
-		if num < 0 {
-			return 0, fmt.Errorf("`-n/--tail` argument must be positive, got: %d", num)
-		}
-		return uint(num), nil
 	}
+	num, err := strconv.Atoi(arg)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse `-n/--tail` argument %q: %s", arg, err)
+	}
+	if num < 0 {
+		return 0, fmt.Errorf("`-n/--tail` argument must be positive, got: %d", num)
+	}
+	return uint(num), nil
 }

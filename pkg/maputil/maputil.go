@@ -34,13 +34,12 @@ func MapBoolValueAsOpt(m map[string]string, key string) (bool, error) {
 	if str, ok := m[key]; ok {
 		if str == "" {
 			return true, nil
-		} else {
-			b, err := strconv.ParseBool(str)
-			if err != nil {
-				return false, fmt.Errorf("invalid \"%s\" value: %q: %w", key, str, err)
-			}
-			return b, nil
 		}
+		b, err := strconv.ParseBool(str)
+		if err != nil {
+			return false, fmt.Errorf("invalid \"%s\" value: %q: %w", key, str, err)
+		}
+		return b, nil
 	}
 
 	return false, nil

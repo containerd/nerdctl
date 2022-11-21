@@ -163,7 +163,6 @@ func newCommitOpts(cmd *cobra.Command, args []string) (*commit.Opts, error) {
 func commitShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) == 0 {
 		return shellCompleteContainerNames(cmd, nil)
-	} else {
-		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }

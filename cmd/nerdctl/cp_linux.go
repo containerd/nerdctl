@@ -152,11 +152,12 @@ func kopy(ctx context.Context, container2host bool, pid int, dst, src string, fo
 		dstExists      bool
 		dstExistsAsDir bool
 	)
-	if st, err := os.Stat(srcFull); err != nil {
+	st, err := os.Stat(srcFull)
+	if err != nil {
 		return err
-	} else {
-		srcIsDir = st.IsDir()
 	}
+	srcIsDir = st.IsDir()
+
 	// dst may not exist yet, so err is negligible
 	if st, err := os.Stat(dstFull); err == nil {
 		dstExists = true

@@ -78,7 +78,7 @@ func rmAction(cmd *cobra.Command, args []string) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := removeContainer(cmd, ctx, found.Container, force, removeAnonVolumes); err != nil {
+			if err := removeContainer(ctx, cmd, found.Container, force, removeAnonVolumes); err != nil {
 				return err
 			}
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
@@ -101,7 +101,7 @@ func rmAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func removeContainer(cmd *cobra.Command, ctx context.Context, container containerd.Container, force bool, removeAnonVolumes bool) (retErr error) {
+func removeContainer(ctx context.Context, cmd *cobra.Command, container containerd.Container, force bool, removeAnonVolumes bool) (retErr error) {
 	ns, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
 		return err

@@ -224,11 +224,10 @@ func pushAction(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			return pushFunc(resolver)
-		} else {
-			logrus.WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
-			logrus.Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
-			return err
 		}
+		logrus.WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
+		logrus.Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
+		return err
 	}
 
 	signer, err := cmd.Flags().GetString("sign")
