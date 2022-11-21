@@ -33,27 +33,24 @@ func (c *Composer) getOrphanContainers(ctx context.Context, parsedServices []*se
 		return nil, err
 	}
 
-	var orphanedContainers []containerd.Container
+	parsedSvcNames := make(map[string]bool)
+	for _, svc := range parsedServices {
+		parsedSvcNames[svc.Unparsed.Name] = true
+	}
 
-outer:
+	var orphanContainers []containerd.Container
 	for _, container := range containers {
+		// orphan containers doesn't have a `ComposeService` label corresponding
+		// to any name of given services.
 		containerLabels, err := container.Labels(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("error getting container labels: %s", err)
 		}
-		containerName := containerLabels[labels.Name]
-
-		for _, parsedService := range parsedServices {
-			for _, serviceContainer := range parsedService.Containers {
-				if containerName == serviceContainer.Name {
-					// container name exists in parsedServices
-					continue outer
-				}
-			}
+		containerSvc := containerLabels[labels.ComposeService]
+		if inServices := parsedSvcNames[containerSvc]; !inServices {
+			orphanContainers = append(orphanContainers, container)
 		}
-		// container name does not exist in parsedServices
-		orphanedContainers = append(orphanedContainers, container)
 	}
 
-	return orphanedContainers, nil
+	return orphanContainers, nil
 }
