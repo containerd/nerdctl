@@ -664,7 +664,23 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 			return nil, nil, err
 		}
 	}
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ipAddress, ports, logURI, anonVolumes, pidFile, platform, mountPoints, macAddress)
+	internalLabels := internalLabels{
+		namespace:   ns,
+		name:        name,
+		hostname:    hostname,
+		stateDir:    stateDir,
+		extraHosts:  extraHosts,
+		networks:    netSlice,
+		ipAddress:   ipAddress,
+		ports:       ports,
+		logURI:      logURI,
+		anonVolumes: anonVolumes,
+		pidFile:     pidFile,
+		platform:    platform,
+		mountPoints: mountPoints,
+		macAddress:  macAddress,
+	}
+	ilOpt, err := withInternalLabels(internalLabels)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1008,57 +1024,80 @@ func withStop(stopSignal string, stopTimeout int, ensuredImage *imgutil.EnsuredI
 	}
 }
 
-func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ipAddress string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string, mountPoints []*mountutil.Processed, macAddress string) (containerd.NewContainerOpts, error) {
+type internalLabels struct {
+	// labels from cmd options
+	namespace  string
+	platform   string
+	extraHosts []string
+	pidFile    string
+	// labels from cmd options or automatically set
+	name     string
+	hostname string
+	// automatically generated
+	stateDir string
+	// network
+	networks   []string
+	ipAddress  string
+	ports      []gocni.PortMapping
+	macAddress string
+	// volumn
+	mountPoints []*mountutil.Processed
+	anonVolumes []string
+	// log
+	logURI string
+}
+
+func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
-	m[labels.Namespace] = ns
-	if name != "" {
-		m[labels.Name] = name
+	m[labels.Namespace] = internalLabels.namespace
+	if internalLabels.name != "" {
+		m[labels.Name] = internalLabels.name
 	}
-	m[labels.Hostname] = hostname
-	extraHostsJSON, err := json.Marshal(extraHosts)
+	m[labels.Hostname] = internalLabels.hostname
+	extraHostsJSON, err := json.Marshal(internalLabels.extraHosts)
 	if err != nil {
 		return nil, err
 	}
 	m[labels.ExtraHosts] = string(extraHostsJSON)
-	m[labels.StateDir] = containerStateDir
-	networksJSON, err := json.Marshal(networks)
+	m[labels.StateDir] = internalLabels.stateDir
+	networksJSON, err := json.Marshal(internalLabels.networks)
 	if err != nil {
 		return nil, err
 	}
 	m[labels.Networks] = string(networksJSON)
-	if len(ports) > 0 {
-		portsJSON, err := json.Marshal(ports)
+	if len(internalLabels.ports) > 0 {
+		portsJSON, err := json.Marshal(internalLabels.ports)
 		if err != nil {
 			return nil, err
 		}
 		m[labels.Ports] = string(portsJSON)
 	}
-	if logURI != "" {
-		m[labels.LogURI] = logURI
+	if internalLabels.logURI != "" {
+		m[labels.LogURI] = internalLabels.logURI
 	}
-	if len(anonVolumes) > 0 {
-		anonVolumeJSON, err := json.Marshal(anonVolumes)
+	if len(internalLabels.anonVolumes) > 0 {
+		anonVolumeJSON, err := json.Marshal(internalLabels.anonVolumes)
 		if err != nil {
 			return nil, err
 		}
 		m[labels.AnonymousVolumes] = string(anonVolumeJSON)
 	}
 
-	if pidFile != "" {
-		m[labels.PIDFile] = pidFile
+	if internalLabels.pidFile != "" {
+		m[labels.PIDFile] = internalLabels.pidFile
 	}
 
-	if ipAddress != "" {
-		m[labels.IPAddress] = ipAddress
+	if internalLabels.ipAddress != "" {
+		m[labels.IPAddress] = internalLabels.ipAddress
 	}
 
-	m[labels.Platform], err = platformutil.NormalizeString(platform)
+	m[labels.Platform], err = platformutil.NormalizeString(internalLabels.platform)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(mountPoints) > 0 {
-		mounts := dockercompatMounts(mountPoints)
+	if len(internalLabels.mountPoints) > 0 {
+		mounts := dockercompatMounts(internalLabels.mountPoints)
 		mountPointsJSON, err := json.Marshal(mounts)
 		if err != nil {
 			return nil, err
@@ -1066,8 +1105,8 @@ func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts
 		m[labels.Mounts] = string(mountPointsJSON)
 	}
 
-	if macAddress != "" {
-		m[labels.MACAddress] = macAddress
+	if internalLabels.macAddress != "" {
+		m[labels.MACAddress] = internalLabels.macAddress
 	}
 
 	return containerd.WithAdditionalContainerLabels(m), nil
