@@ -39,3 +39,15 @@ func TestRemoveImage(t *testing.T) {
 
 	base.Cmd("images").AssertNoOut(testutil.CommonImage)
 }
+
+func TestRemoveRunningImage(t *testing.T) {
+	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+	base.Cmd("run", "--name", tID, "-d", testutil.CommonImage, "sleep", "infinity").AssertOK()
+	defer base.Cmd("rm", "-f", tID).Run()
+	base.Cmd("rmi", testutil.CommonImage).AssertFail()
+	base.Cmd("kill", tID).AssertOK()
+	base.Cmd("rmi", testutil.CommonImage).AssertFail()
+	base.Cmd("rmi", "-f", testutil.CommonImage).AssertOK()
+	base.Cmd("images").AssertNoOut(testutil.CommonImage)
+}
