@@ -329,7 +329,7 @@ func getPortMapOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 func getIPAddressOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 	if opts.containerIP != "" {
 		if rootlessutil.IsRootlessChild() {
-			return nil, fmt.Errorf("containerIP assignment is not supported in rootless mode")
+			logrus.Debug("container IP assignment is not fully supported in rootless mode. The IP is not accessible from the host (but still accessible from other containers).")
 		}
 
 		return []gocni.NamespaceOpts{
