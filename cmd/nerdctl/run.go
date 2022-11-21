@@ -456,12 +456,14 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	if err != nil {
 		return nil, nil, err
 	}
+
+	var envs []string
+
 	if envFiles := strutil.DedupeStrSlice(envFile); len(envFiles) > 0 {
-		env, err := parseEnvVars(envFiles)
+		envs, err = parseEnvVars(envFiles)
 		if err != nil {
 			return nil, nil, err
 		}
-		opts = append(opts, oci.WithEnv(env))
 	}
 
 	env, err := cmd.Flags().GetStringArray("env")
@@ -469,8 +471,13 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		return nil, nil, err
 	}
 	if env := strutil.DedupeStrSlice(env); len(env) > 0 {
-		opts = append(opts, oci.WithEnv(env))
+		envs = append(envs, env...)
 	}
+
+	if envs, err = withOSEnv(envs); err != nil {
+		return nil, nil, err
+	}
+	opts = append(opts, oci.WithEnv(envs))
 
 	if flagI {
 		if flagD {
@@ -1142,6 +1149,34 @@ func parseEnvVars(paths []string) ([]string, error) {
 		}
 	}
 	return vars, nil
+}
+
+func withOSEnv(envs []string) ([]string, error) {
+	newEnvs := make([]string, len(envs))
+
+	// from https://github.com/docker/cli/blob/v22.06.0-beta.0/opts/env.go#L18
+	getEnv := func(val string) (string, error) {
+		arr := strings.SplitN(val, "=", 2)
+		if arr[0] == "" {
+			return "", errors.New("invalid environment variable: " + val)
+		}
+		if len(arr) > 1 {
+			return val, nil
+		}
+		if envVal, ok := os.LookupEnv(arr[0]); ok {
+			return arr[0] + "=" + envVal, nil
+		}
+		return val, nil
+	}
+	for i := range envs {
+		env, err := getEnv(envs[i])
+		if err != nil {
+			return nil, err
+		}
+		newEnvs[i] = env
+	}
+
+	return newEnvs, nil
 }
 
 func generateSharingPIDOpts(ctx context.Context, targetCon containerd.Container) ([]oci.SpecOpts, error) {
