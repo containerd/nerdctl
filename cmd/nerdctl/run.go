@@ -432,7 +432,8 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		oci.WithDefaultSpec(),
 	)
 
-	opts, err = setPlatformOptions(ctx, opts, cmd, client, id)
+	var internalLabels internalLabels
+	opts, internalLabels, err = setPlatformOptions(ctx, opts, cmd, client, id, internalLabels)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -664,22 +665,21 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 			return nil, nil, err
 		}
 	}
-	internalLabels := internalLabels{
-		namespace:   ns,
-		name:        name,
-		hostname:    hostname,
-		stateDir:    stateDir,
-		extraHosts:  extraHosts,
-		networks:    netSlice,
-		ipAddress:   ipAddress,
-		ports:       ports,
-		logURI:      logURI,
-		anonVolumes: anonVolumes,
-		pidFile:     pidFile,
-		platform:    platform,
-		mountPoints: mountPoints,
-		macAddress:  macAddress,
-	}
+	internalLabels.namespace = ns
+	internalLabels.name = name
+	internalLabels.hostname = hostname
+	internalLabels.stateDir = stateDir
+	internalLabels.extraHosts = extraHosts
+	internalLabels.networks = netSlice
+	internalLabels.ipAddress = ipAddress
+	internalLabels.ports = ports
+	internalLabels.logURI = logURI
+	internalLabels.anonVolumes = anonVolumes
+	internalLabels.pidFile = pidFile
+	internalLabels.platform = platform
+	internalLabels.mountPoints = mountPoints
+	internalLabels.macAddress = macAddress
+
 	ilOpt, err := withInternalLabels(internalLabels)
 	if err != nil {
 		return nil, nil, err
@@ -691,11 +691,6 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)
 	cOpts = append(cOpts, spec)
-
-	cOpts, err = setPlatformContainerOptions(ctx, cOpts, cmd, client, id)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	container, err := client.NewContainer(ctx, id, cOpts...)
 	if err != nil {
@@ -1043,6 +1038,8 @@ type internalLabels struct {
 	// volumn
 	mountPoints []*mountutil.Processed
 	anonVolumes []string
+	// pid namespace
+	pidContainer string
 	// log
 	logURI string
 }
@@ -1107,6 +1104,10 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 
 	if internalLabels.macAddress != "" {
 		m[labels.MACAddress] = internalLabels.macAddress
+	}
+
+	if internalLabels.pidContainer != "" {
+		m[labels.PIDContainer] = internalLabels.pidContainer
 	}
 
 	return containerd.WithAdditionalContainerLabels(m), nil

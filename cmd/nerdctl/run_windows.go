@@ -41,10 +41,10 @@ func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
-func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Command, client *containerd.Client, id string) ([]oci.SpecOpts, error) {
+func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Command, client *containerd.Client, id string, internalLabels internalLabels) ([]oci.SpecOpts, internalLabels, error) {
 	cpus, err := cmd.Flags().GetFloat64("cpus")
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	if cpus > 0.0 {
 		opts = append(opts, oci.WithWindowsCPUCount(uint64(cpus)))
@@ -52,12 +52,12 @@ func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Com
 
 	memStr, err := cmd.Flags().GetString("memory")
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	if memStr != "" {
 		mem64, err := units.RAMInBytes(memStr)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse memory bytes %q: %w", memStr, err)
+			return nil, internalLabels, fmt.Errorf("failed to parse memory bytes %q: %w", memStr, err)
 		}
 		opts = append(opts, oci.WithMemoryLimit(uint64(mem64)))
 	}
@@ -66,9 +66,5 @@ func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Com
 		oci.WithWindowNetworksAllowUnqualifiedDNSQuery(),
 		oci.WithWindowsIgnoreFlushesDuringBoot())
 
-	return opts, nil
-}
-
-func setPlatformContainerOptions(ctx context.Context, cOpts []containerd.NewContainerOpts, cmd *cobra.Command, client *containerd.Client, id string) ([]containerd.NewContainerOpts, error) {
-	return cOpts, nil
+	return opts, internalLabels, nil
 }

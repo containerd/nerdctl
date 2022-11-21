@@ -28,7 +28,6 @@ import (
 	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
@@ -58,7 +57,7 @@ func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
-func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Command, client *containerd.Client, id string) ([]oci.SpecOpts, error) {
+func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Command, client *containerd.Client, id string, internalLabels internalLabels) ([]oci.SpecOpts, internalLabels, error) {
 	opts = append(opts,
 		oci.WithDefaultUnixDevices,
 		WithoutRunMount(), // unmount default tmpfs on "/run": https://github.com/containerd/nerdctl/issues/157)
@@ -71,136 +70,122 @@ func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Com
 
 	cgOpts, err := generateCgroupOpts(cmd, id)
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	opts = append(opts, cgOpts...)
 
 	labelsMap, err := readKVStringsMapfFromLabel(cmd)
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 
 	capAdd, err := cmd.Flags().GetStringSlice("cap-add")
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	capDrop, err := cmd.Flags().GetStringSlice("cap-drop")
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	capOpts, err := generateCapOpts(
 		strutil.DedupeStrSlice(capAdd),
 		strutil.DedupeStrSlice(capDrop))
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	opts = append(opts, capOpts...)
 
 	privileged, err := cmd.Flags().GetBool("privileged")
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 
 	securityOpt, err := cmd.Flags().GetStringArray("security-opt")
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	securityOptsMaps := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(securityOpt))
 	secOpts, err := generateSecurityOpts(privileged, securityOptsMaps)
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	opts = append(opts, secOpts...)
 
 	b4nnOpts, err := bypass4netnsutil.GenerateBypass4netnsOpts(securityOptsMaps, labelsMap, id)
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	opts = append(opts, b4nnOpts...)
 
 	shmSize, err := cmd.Flags().GetString("shm-size")
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	if len(shmSize) > 0 {
 		shmBytes, err := units.RAMInBytes(shmSize)
 		if err != nil {
-			return nil, err
+			return nil, internalLabels, err
 		}
 		opts = append(opts, oci.WithDevShmSize(shmBytes/1024))
 	}
 
 	pid, err := cmd.Flags().GetString("pid")
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
-	pidOpts, err := generatePIDOpts(ctx, client, pid)
+	pidOpts, pidInternalLabel, err := generatePIDOpts(ctx, client, pid)
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
+	internalLabels.pidContainer = pidInternalLabel
 	opts = append(opts, pidOpts...)
 
 	ulimitOpts, err := generateUlimitsOpts(cmd)
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	opts = append(opts, ulimitOpts...)
 
 	sysctl, err := cmd.Flags().GetStringArray("sysctl")
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(sysctl)))
 
 	gpus, err := cmd.Flags().GetStringArray("gpus")
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	gpuOpt, err := parseGPUOpts(gpus)
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	opts = append(opts, gpuOpt...)
 
 	if rdtClass, err := cmd.Flags().GetString("rdt-class"); err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	} else if rdtClass != "" {
 		opts = append(opts, oci.WithRdt(rdtClass, "", ""))
 	}
 
 	ipc, err := cmd.Flags().GetString("ipc")
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 	// if nothing is specified, or if private, default to normal behavior
 	if ipc == "host" {
 		opts = append(opts, oci.WithHostNamespace(specs.IPCNamespace))
 		opts = append(opts, withBindMountHostIPC)
 	} else if ipc != "" && ipc != "private" {
-		return nil, fmt.Errorf("error: %v", "invalid ipc value, supported values are 'private' or 'host'")
+		return nil, internalLabels, fmt.Errorf("error: %v", "invalid ipc value, supported values are 'private' or 'host'")
 	}
 
 	opts, err = setOOMScoreAdj(opts, cmd)
 	if err != nil {
-		return nil, err
+		return nil, internalLabels, err
 	}
 
-	return opts, nil
-}
-
-func setPlatformContainerOptions(ctx context.Context, cOpts []containerd.NewContainerOpts, cmd *cobra.Command, client *containerd.Client, id string) ([]containerd.NewContainerOpts, error) {
-	pid, err := cmd.Flags().GetString("pid")
-	if err != nil {
-		return nil, err
-	}
-
-	pidCOpts, err := generatePIDCOpts(ctx, client, pid)
-	if err != nil {
-		return nil, err
-	}
-	cOpts = append(cOpts, pidCOpts...)
-
-	return cOpts, nil
+	return opts, internalLabels, nil
 }
 
 func setOOMScoreAdj(opts []oci.SpecOpts, cmd *cobra.Command) ([]oci.SpecOpts, error) {
@@ -243,9 +228,10 @@ func withOOMScoreAdj(score int) oci.SpecOpts {
 	}
 }
 
-func generatePIDOpts(ctx context.Context, client *containerd.Client, pid string) ([]oci.SpecOpts, error) {
+func generatePIDOpts(ctx context.Context, client *containerd.Client, pid string) ([]oci.SpecOpts, string, error) {
 	opts := make([]oci.SpecOpts, 0)
 	pid = strings.ToLower(pid)
+	var pidInternalLabel string
 
 	switch pid {
 	case "":
@@ -258,7 +244,7 @@ func generatePIDOpts(ctx context.Context, client *containerd.Client, pid string)
 	default: // container:<id|name>
 		parsed := strings.Split(pid, ":")
 		if len(parsed) < 2 || parsed[0] != "container" {
-			return nil, fmt.Errorf("invalid pid namespace. Set --pid=[host|container:<name|id>")
+			return nil, "", fmt.Errorf("invalid pid namespace. Set --pid=[host|container:<name|id>")
 		}
 
 		containerName := parsed[1]
@@ -274,51 +260,19 @@ func generatePIDOpts(ctx context.Context, client *containerd.Client, pid string)
 					return err
 				}
 				opts = append(opts, o...)
+				pidInternalLabel = found.Container.ID()
 
 				return nil
 			},
 		}
 		matchedCount, err := walker.Walk(ctx, containerName)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		if matchedCount < 1 {
-			return nil, fmt.Errorf("no such container: %s", containerName)
+			return nil, "", fmt.Errorf("no such container: %s", containerName)
 		}
 	}
 
-	return opts, nil
-}
-
-func generatePIDCOpts(ctx context.Context, client *containerd.Client, pid string) ([]containerd.NewContainerOpts, error) {
-	pid = strings.ToLower(pid)
-
-	cOpts := make([]containerd.NewContainerOpts, 0)
-	parsed := strings.Split(pid, ":")
-	if len(parsed) < 2 || parsed[0] != "container" {
-		// no need to save pid options
-		return cOpts, nil
-	}
-
-	containerName := parsed[1]
-	walker := &containerwalker.ContainerWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if found.MatchCount > 1 {
-				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
-			}
-			cOpts = append(cOpts, containerd.WithAdditionalContainerLabels(map[string]string{
-				labels.PIDContainer: containerName,
-			}))
-			return nil
-		},
-	}
-	matchedCount, err := walker.Walk(ctx, containerName)
-	if err != nil {
-		return nil, err
-	}
-	if matchedCount < 1 {
-		return nil, fmt.Errorf("no such container: %s", containerName)
-	}
-	return cOpts, nil
+	return opts, pidInternalLabel, nil
 }
