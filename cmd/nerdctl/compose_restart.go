@@ -21,20 +21,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newComposeStopCommand() *cobra.Command {
-	var composeStopCommand = &cobra.Command{
-		Use:           "stop [flags] [SERVICE...]",
-		Short:         "Stop running containers without removing them.",
-		RunE:          composeStopAction,
+func newComposeRestartCommand() *cobra.Command {
+	var composeRestartCommand = &cobra.Command{
+		Use:           "restart [flags] [SERVICE...]",
+		Short:         "Restart containers of given (or all) services",
+		RunE:          composeRestartAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeStopCommand.Flags().UintP("timeout", "t", 10, "Seconds to wait for stop before killing them")
-	return composeStopCommand
+	composeRestartCommand.Flags().UintP("timeout", "t", 10, "Seconds to wait before restarting them")
+	return composeRestartCommand
 }
 
-func composeStopAction(cmd *cobra.Command, args []string) error {
-	var opt composer.StopOptions
+func composeRestartAction(cmd *cobra.Command, args []string) error {
+	var opt composer.RestartOptions
 
 	if cmd.Flags().Changed("timeout") {
 		timeValue, err := cmd.Flags().GetUint("timeout")
@@ -54,5 +54,5 @@ func composeStopAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return c.Stop(ctx, opt, args)
+	return c.Restart(ctx, opt, args)
 }
