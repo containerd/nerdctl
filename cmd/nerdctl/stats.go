@@ -374,14 +374,14 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 
 	logrus.Debugf("collecting stats for %s", s.Container)
 	var (
-		getFirst bool
+		getFirst = true
 		u        = make(chan error, 1)
 	)
 
 	defer func() {
 		// if error happens and we get nothing of stats, release wait group whatever
-		if !getFirst {
-			getFirst = true
+		if getFirst {
+			getFirst = false
 			waitFirst.Done()
 		}
 	}()
@@ -459,8 +459,8 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 			// the specified duration.
 			s.SetErrorAndReset(errors.New("timeout waiting for stats"))
 			// if this is the first stat you get, release WaitGroup
-			if !getFirst {
-				getFirst = true
+			if getFirst {
+				getFirst = false
 				waitFirst.Done()
 			}
 		case err := <-u:
@@ -469,8 +469,8 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 				continue
 			}
 			// if this is the first stat you get, release WaitGroup
-			if !getFirst {
-				getFirst = true
+			if getFirst {
+				getFirst = false
 				waitFirst.Done()
 			}
 		}
