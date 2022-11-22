@@ -38,6 +38,7 @@ import (
 	subnetutil "github.com/containerd/nerdctl/pkg/netutil/subnet"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containernetworking/cni/libcni"
+	"github.com/sirupsen/logrus"
 )
 
 type CNIEnv struct {
@@ -121,6 +122,7 @@ func NewCNIEnv(cniPath, cniConfPath string, opts ...CNIEnvOpt) (*CNIEnv, error) 
 		return nil, err
 	}
 	e.Networks = networks
+
 	return &e, nil
 }
 
@@ -130,6 +132,20 @@ func (e *CNIEnv) NetworkMap() map[string]*NetworkConfig { //nolint:revive
 		m[n.Name] = n
 	}
 	return m
+}
+
+func (e *CNIEnv) filterNetworks(filterf func(*networkConfig) bool) []*networkConfig {
+	result := []*networkConfig{}
+	for _, networkConfig := range e.Networks {
+		if filterf(networkConfig) {
+			result = append(result, networkConfig)
+		}
+	}
+	return result
+}
+
+func (e *CNIEnv) getConfigPathForNetworkName(netName string) string {
+	return filepath.Join(e.NetconfPath, "nerdctl-"+netName+".conflist")
 }
 
 func (e *CNIEnv) usedSubnets() ([]*net.IPNet, error) {
@@ -214,16 +230,62 @@ func (e *CNIEnv) RemoveNetwork(net *NetworkConfig) error {
 	return lockutil.WithDirLock(e.NetconfPath, fn)
 }
 
-func (e *CNIEnv) ensureDefaultNetworkConfig() error {
-	filename := filepath.Join(e.NetconfPath, "nerdctl-"+DefaultNetworkName+".conflist")
+// Checks whether the default network exists by first checking if
+// any network bears the `labels.NerdctlDefaultNetwork` label,
+// or falls back to checking whether any network bears the
+// `DefaultNetworkName` name.
+func (e *CNIEnv) getDefaultNetworkConfig() (*networkConfig, error) {
+	// Search for networks bearing the `labels.NerdctlDefaultNetwork` label:
+	defaultLabelFilterF := func(nc *networkConfig) bool {
+		if nc.NerdctlLabels == nil {
+			return false
+		} else if _, ok := (*nc.NerdctlLabels)[labels.NerdctlDefaultNetwork]; ok {
+			return true
+		}
+		return false
+	}
+	labelMatches := e.filterNetworks(defaultLabelFilterF)
+	if len(labelMatches) >= 1 {
+		if len(labelMatches) > 1 {
+			logrus.Warnf("returning the first network bearing the %q label out of the multiple found: %#v", labels.NerdctlDefaultNetwork, labelMatches)
+		}
+		return labelMatches[0], nil
+	}
+
+	// Search for networks bearing the DefaultNetworkName:
+	defaultNameFilterF := func(nc *networkConfig) bool {
+		return nc.Name == DefaultNetworkName
+	}
+	nameMatches := e.filterNetworks(defaultNameFilterF)
+	if len(nameMatches) >= 1 {
+		if len(nameMatches) > 1 {
+			logrus.Warnf("returning the first network bearing the %q default network name out of the multiple found: %#v", DefaultNetworkName, nameMatches)
+		}
+
+		// Warn the user if the default network was not created by nerdctl:
+		match := nameMatches[0]
+		_, statErr := os.Stat(e.getConfigPathForNetworkName(DefaultNetworkName))
+		if match.NerdctlID == nil || statErr != nil {
+			logrus.Warnf("default network named %q does not have an internal nerdctl ID or nerdctl-managed config file, it was most likely NOT created by nerdctl", DefaultNetworkName)
+		}
+
+		return nameMatches[0], nil
+	}
+
+	return nil, nil
+}
+
+func (e *CNIEnv) createDefaultNetworkConfig() error {
+	filename := e.getConfigPathForNetworkName(DefaultNetworkName)
 	if _, err := os.Stat(filename); err == nil {
-		return nil
+		return fmt.Errorf("already found existing network config at %q, cannot create new network named %q", filename, DefaultNetworkName)
 	}
 	opts := CreateOptions{
 		Name:       DefaultNetworkName,
 		Driver:     DefaultNetworkName,
 		Subnet:     DefaultCIDR,
 		IPAMDriver: "default",
+		Labels:     []string{fmt.Sprintf("%s=true", labels.NerdctlDefaultNetwork)},
 	}
 	_, err := e.CreateNetwork(opts)
 	if err != nil && !errdefs.IsAlreadyExists(err) {
@@ -274,7 +336,7 @@ func (e *CNIEnv) generateNetworkConfig(name string, labels []string, plugins []C
 
 // writeNetworkConfig writes NetworkConfig file to cni config path.
 func (e *CNIEnv) writeNetworkConfig(net *NetworkConfig) error {
-	filename := filepath.Join(e.NetconfPath, "nerdctl-"+net.Name+".conflist")
+	filename := e.getConfigPathForNetworkName(net.Name)
 	if _, err := os.Stat(filename); err == nil {
 		return errdefs.ErrAlreadyExists
 	}

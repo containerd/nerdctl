@@ -89,6 +89,12 @@ const (
 
 	// PIDContainer is the `nerdctl run --pid` for restarting
 	PIDContainer = Prefix + "pid-container"
+
+	// NerdctlDefaultNetwork indicates whether a network is the default network
+	// created and owned by Nerdctl.
+	// Boolean value which can be parsed with strconv.ParseBool() is required.
+	// (like "nerdctl/default-network=true" or "nerdctl/default-network=false")
+	NerdctlDefaultNetwork = Prefix + "default-network"
 )
 
 var ShellCompletions = []string{
