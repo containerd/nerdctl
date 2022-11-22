@@ -339,6 +339,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose config](#whale-nerdctl-compose-config)
     - [:whale: nerdctl compose kill](#whale-nerdctl-compose-kill)
     - [:whale: nerdctl compose restart](#whale-nerdctl-compose-restart)
+    - [:whale: nerdctl compose rm](#whale-nerdctl-compose-rm)
     - [:whale: nerdctl compose run](#whale-nerdctl-compose-run)
     - [:whale: nerdctl compose version](#whale-nerdctl-compose-version)
   - [IPFS management](#ipfs-management)
@@ -1514,6 +1515,18 @@ Flags:
 
 - :whale: `-t, --timeout`: Seconds to wait before restarting it (default 10)
 
+### :whale: nerdctl compose rm
+
+Remove stopped service containers
+
+Usage: `nerdctl compose rm [OPTIONS] [SERVICE...]`
+
+Flags:
+
+- :whale: `-f, --force`: Don't prompt for confirmation (different with `-f` in `nerdctl rm` which means force deletion).
+- :whale: `-s, --stop`: Stop containers before removing.
+- :whale: `-v, --volumes`: Remove anonymous volumes associated with the container.
+
 ### :whale: nerdctl compose run
 Run a one-off command on a service
 
@@ -1601,7 +1614,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose create|events|exec|images|pause|port|rm|scale|start|top|unpause`
+- `docker-compose create|events|exec|images|pause|port|scale|start|top|unpause`
 
 Others:
 - `docker system df`
