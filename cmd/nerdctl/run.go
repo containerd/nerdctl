@@ -393,11 +393,14 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		newArg = append(newArg, args[2:]...)
 		args = newArg
 	}
+	var internalLabels internalLabels
+	internalLabels.platform = platform
 
 	ns, err := cmd.Flags().GetString("namespace")
 	if err != nil {
 		return nil, nil, err
 	}
+	internalLabels.namespace = ns
 
 	var (
 		opts  []oci.SpecOpts
@@ -427,12 +430,13 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	if err := os.MkdirAll(stateDir, 0700); err != nil {
 		return nil, nil, err
 	}
+	internalLabels.stateDir = stateDir
 
 	opts = append(opts,
 		oci.WithDefaultSpec(),
 	)
 
-	opts, err = setPlatformOptions(ctx, opts, cmd, client, id)
+	opts, internalLabels, err = setPlatformOptions(ctx, opts, cmd, client, id, internalLabels)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -496,6 +500,8 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	if err != nil {
 		return nil, nil, err
 	}
+	internalLabels.anonVolumes = anonVolumes
+	internalLabels.mountPoints = mountPoints
 	opts = append(opts, mountOpts...)
 
 	var logURI string
@@ -542,6 +548,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 			}
 		}
 	}
+	internalLabels.logURI = logURI
 
 	restartValue, err := cmd.Flags().GetString("restart")
 	if err != nil {
@@ -572,6 +579,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		hostname = customHostname
 	}
 	opts = append(opts, oci.WithHostname(hostname))
+	internalLabels.hostname = hostname
 	// `/etc/hostname` does not exist on FreeBSD
 	if runtime.GOOS == "linux" {
 		hostnamePath := filepath.Join(stateDir, "hostname")
@@ -585,6 +593,10 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	if err != nil {
 		return nil, nil, err
 	}
+	internalLabels.networks = netSlice
+	internalLabels.ipAddress = ipAddress
+	internalLabels.ports = ports
+	internalLabels.macAddress = macAddress
 	opts = append(opts, netOpts...)
 
 	hookOpt, err := withNerdctlOCIHook(cmd, id)
@@ -645,6 +657,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 			return nil, nil, err
 		}
 	}
+	internalLabels.name = name
 
 	var pidFile string
 	if cmd.Flags().Lookup("pidfile").Changed {
@@ -653,6 +666,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 			return nil, nil, err
 		}
 	}
+	internalLabels.pidFile = pidFile
 
 	extraHosts, err := cmd.Flags().GetStringSlice("add-host")
 	if err != nil {
@@ -664,7 +678,9 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 			return nil, nil, err
 		}
 	}
-	ilOpt, err := withInternalLabels(ns, name, hostname, stateDir, extraHosts, netSlice, ipAddress, ports, logURI, anonVolumes, pidFile, platform, mountPoints, macAddress)
+	internalLabels.extraHosts = extraHosts
+
+	ilOpt, err := withInternalLabels(internalLabels)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -675,11 +691,6 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)
 	cOpts = append(cOpts, spec)
-
-	cOpts, err = setPlatformContainerOptions(ctx, cOpts, cmd, client, id)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	container, err := client.NewContainer(ctx, id, cOpts...)
 	if err != nil {
@@ -1008,57 +1019,82 @@ func withStop(stopSignal string, stopTimeout int, ensuredImage *imgutil.EnsuredI
 	}
 }
 
-func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts, networks []string, ipAddress string, ports []gocni.PortMapping, logURI string, anonVolumes []string, pidFile, platform string, mountPoints []*mountutil.Processed, macAddress string) (containerd.NewContainerOpts, error) {
+type internalLabels struct {
+	// labels from cmd options
+	namespace  string
+	platform   string
+	extraHosts []string
+	pidFile    string
+	// labels from cmd options or automatically set
+	name     string
+	hostname string
+	// automatically generated
+	stateDir string
+	// network
+	networks   []string
+	ipAddress  string
+	ports      []gocni.PortMapping
+	macAddress string
+	// volumn
+	mountPoints []*mountutil.Processed
+	anonVolumes []string
+	// pid namespace
+	pidContainer string
+	// log
+	logURI string
+}
+
+func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
-	m[labels.Namespace] = ns
-	if name != "" {
-		m[labels.Name] = name
+	m[labels.Namespace] = internalLabels.namespace
+	if internalLabels.name != "" {
+		m[labels.Name] = internalLabels.name
 	}
-	m[labels.Hostname] = hostname
-	extraHostsJSON, err := json.Marshal(extraHosts)
+	m[labels.Hostname] = internalLabels.hostname
+	extraHostsJSON, err := json.Marshal(internalLabels.extraHosts)
 	if err != nil {
 		return nil, err
 	}
 	m[labels.ExtraHosts] = string(extraHostsJSON)
-	m[labels.StateDir] = containerStateDir
-	networksJSON, err := json.Marshal(networks)
+	m[labels.StateDir] = internalLabels.stateDir
+	networksJSON, err := json.Marshal(internalLabels.networks)
 	if err != nil {
 		return nil, err
 	}
 	m[labels.Networks] = string(networksJSON)
-	if len(ports) > 0 {
-		portsJSON, err := json.Marshal(ports)
+	if len(internalLabels.ports) > 0 {
+		portsJSON, err := json.Marshal(internalLabels.ports)
 		if err != nil {
 			return nil, err
 		}
 		m[labels.Ports] = string(portsJSON)
 	}
-	if logURI != "" {
-		m[labels.LogURI] = logURI
+	if internalLabels.logURI != "" {
+		m[labels.LogURI] = internalLabels.logURI
 	}
-	if len(anonVolumes) > 0 {
-		anonVolumeJSON, err := json.Marshal(anonVolumes)
+	if len(internalLabels.anonVolumes) > 0 {
+		anonVolumeJSON, err := json.Marshal(internalLabels.anonVolumes)
 		if err != nil {
 			return nil, err
 		}
 		m[labels.AnonymousVolumes] = string(anonVolumeJSON)
 	}
 
-	if pidFile != "" {
-		m[labels.PIDFile] = pidFile
+	if internalLabels.pidFile != "" {
+		m[labels.PIDFile] = internalLabels.pidFile
 	}
 
-	if ipAddress != "" {
-		m[labels.IPAddress] = ipAddress
+	if internalLabels.ipAddress != "" {
+		m[labels.IPAddress] = internalLabels.ipAddress
 	}
 
-	m[labels.Platform], err = platformutil.NormalizeString(platform)
+	m[labels.Platform], err = platformutil.NormalizeString(internalLabels.platform)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(mountPoints) > 0 {
-		mounts := dockercompatMounts(mountPoints)
+	if len(internalLabels.mountPoints) > 0 {
+		mounts := dockercompatMounts(internalLabels.mountPoints)
 		mountPointsJSON, err := json.Marshal(mounts)
 		if err != nil {
 			return nil, err
@@ -1066,8 +1102,12 @@ func withInternalLabels(ns, name, hostname, containerStateDir string, extraHosts
 		m[labels.Mounts] = string(mountPointsJSON)
 	}
 
-	if macAddress != "" {
-		m[labels.MACAddress] = macAddress
+	if internalLabels.macAddress != "" {
+		m[labels.MACAddress] = internalLabels.macAddress
+	}
+
+	if internalLabels.pidContainer != "" {
+		m[labels.PIDContainer] = internalLabels.pidContainer
 	}
 
 	return containerd.WithAdditionalContainerLabels(m), nil
