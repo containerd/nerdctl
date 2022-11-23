@@ -59,6 +59,7 @@ require (
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20221007124625-37f5449ff7df // indirect
+	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20220912195655-e1f97a00006b // indirect
 	github.com/Microsoft/hcsshim v0.10.0-rc.1 // indirect
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
@@ -79,6 +80,7 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
+	// golang-lru contains patented ARC cache code, but we do not compile it in. Verified using hack/verify-no-patent.sh .
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
@@ -119,6 +121,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/sys/mountinfo v0.6.2 // indirect
+	github.com/moby/sys/sequential v0.0.0-20220829095930-b22ba8a69b30 // indirect
 	github.com/moby/sys/signal v0.7.0
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base32 v0.0.3 // indirect
@@ -152,7 +155,9 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.19.0 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/text v0.4.0
+	golang.org/x/tools v0.1.12 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21 // indirect
 	google.golang.org/grpc v1.50.1 // indirect
@@ -161,13 +166,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.1.6 // indirect
 )
-
-require (
-	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20220912195655-e1f97a00006b // indirect
-	github.com/moby/sys/sequential v0.0.0-20220829095930-b22ba8a69b30 // indirect
-	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
-	golang.org/x/tools v0.1.12 // indirect
-)
-
-// Temporary fork for avoiding importing patent-protected code: https://github.com/hashicorp/golang-lru/issues/73
-replace github.com/hashicorp/golang-lru => github.com/ktock/golang-lru v0.5.5-0.20211029085301-ec551be6f75c

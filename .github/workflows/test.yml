@@ -23,6 +23,8 @@ jobs:
     - uses: containerd/project-checks@v1.1.0
       with:
         working-directory: src/github.com/containerd/nerdctl
+    - run: ./hack/verify-no-patent.sh
+      working-directory: src/github.com/containerd/nerdctl
 
   golangci-lint:
     runs-on: ubuntu-22.04
