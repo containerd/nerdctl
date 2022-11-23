@@ -232,11 +232,12 @@ func generateExecProcessSpec(ctx context.Context, cmd *cobra.Command, args []str
 	pspec.Terminal = flagT
 	if flagT {
 		con := console.Current()
-		if size, err := con.Size(); err != nil {
+		var size console.WinSize
+
+		if size, err = con.Size(); err != nil {
 			return nil, err
-		} else {
-			pspec.ConsoleSize = &specs.Box{Height: uint(size.Height), Width: uint(size.Width)}
 		}
+		pspec.ConsoleSize = &specs.Box{Height: uint(size.Height), Width: uint(size.Width)}
 	}
 	pspec.Args = args[1:]
 
