@@ -125,3 +125,22 @@ func TestExecEnv(t *testing.T) {
 		return nil
 	})
 }
+
+func TestExecTtySize(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	testContainer := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", testContainer).Run()
+	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
+	base.EnsureContainerStarted(testContainer)
+
+	SizedTty := func(output string) error {
+		output = strings.TrimSuffix(output, "\n")
+		if output != "0 0" {
+			return nil
+		}
+		return errors.New("not sized tty")
+	}
+	base.Cmd("exec", "-it", testContainer, "stty", "size").AssertOutWithFunc(SizedTty)
+}
