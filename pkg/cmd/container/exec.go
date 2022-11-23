@@ -161,6 +161,12 @@ func generateExecProcessSpec(ctx context.Context, client *containerd.Client, con
 
 	pspec := spec.Process
 	pspec.Terminal = options.TTY
+	if options.TTY {
+		err = setInitialTTYSize(pspec)
+		if err != nil {
+			return nil, err
+		}
+	}
 	pspec.Args = args[1:]
 
 	if options.Workdir != "" {
@@ -180,4 +186,16 @@ func generateExecProcessSpec(ctx context.Context, client *containerd.Client, con
 	}
 
 	return pspec, nil
+}
+
+func setInitialTTYSize(pspec *specs.Process) error {
+	if pspec.Terminal && pspec.ConsoleSize == nil {
+		con := console.Current()
+		size, err := con.Size()
+		if err != nil {
+			return err
+		}
+		pspec.ConsoleSize = &specs.Box{Height: uint(size.Height), Width: uint(size.Width)}
+	}
+	return nil
 }
