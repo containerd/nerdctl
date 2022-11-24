@@ -237,6 +237,8 @@ github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f/go.mod h1:i/u9
 github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd/go.mod h1:sE/e/2PUdi/liOCUjSTXgM1o87ZssimdTWN964YiIeI=
 github.com/compose-spec/compose-go v1.7.0 h1:70HzJ/g81pdxF1ao9L7W2fgje/9FxNKH/davgvusEKc=
 github.com/compose-spec/compose-go v1.7.0/go.mod h1:Tb5Ae2PsYN3GTqYqzl2IRbTPiJtPZZjMw8UKUvmehFk=
+github.com/containerd/accelerated-container-image v0.5.2 h1:gnPqNqmynp/SjoAvFJpWTnZfaurtY9oop6etRSmFXPM=
+github.com/containerd/accelerated-container-image v0.5.2/go.mod h1:2gtaJ7535HlImo5DGYmUyRKSGOr9JqTqw1DX5FTpY3k=
 github.com/containerd/aufs v0.0.0-20200908144142-dab0cbea06f4/go.mod h1:nukgQABAEopAHvB6j7cnP5zJ+/3aVcE7hCYqvIwAHyE=
 github.com/containerd/aufs v0.0.0-20201003224125-76a6863f2989/go.mod h1:AkGGQs9NM2vtYHaUen+NljV0/baGCAPELGm2q9ZXpWU=
 github.com/containerd/aufs v0.0.0-20210316121734-20793ff83c97/go.mod h1:kL5kd6KM5TzQjR79jljyi4olc1Vrx6XBlcyj3gNv2PU=

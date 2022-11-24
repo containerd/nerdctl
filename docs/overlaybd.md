@@ -27,3 +27,9 @@ nerdctl run --net host -it --rm --snapshotter=overlaybd registry.hub.docker.com/
 ```
 
 For more details about how to build overlaybd image, please refer to [accelerated-container-image](https://github.com/containerd/accelerated-container-image/blob/main/docs/IMAGE_CONVERTOR.md) conversion tool.
+
+## Build OverlayBD image using `nerdctl image convert`
+
+Nerdctl supports to convert an OCI image or docker format v2 image to OverlayBD image by using the `nerdctl image convert` command.
+
+Before the conversion, you should have the `overlaybd-snapshotter` binary installed, which build from [accelerated-container-image](https://github.com/containerd/accelerated-container-image). You can run the command like `nerdctl image convert --overlaybd --oci <source_image> <target_image>` to convert the `<source_image>` to a OverlayBD image whose tag is `<target_image>`.

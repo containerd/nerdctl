@@ -25,6 +25,7 @@ import (
 	"os"
 	"strings"
 
+	overlaybdconvert "github.com/containerd/accelerated-container-image/pkg/convertor"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
@@ -95,6 +96,12 @@ func newImageConvertCommand() *cobra.Command {
 	imageConvertCommand.Flags().String("nydus-compressor", "lz4_block", "Nydus blob compression algorithm, possible values: `none`, `lz4_block`, `zstd`, default is `lz4_block`")
 	// #endregion
 
+	// #region overlaybd flags
+	imageConvertCommand.Flags().Bool("overlaybd", false, "Convert tar.gz layers to overlaybd layers")
+	imageConvertCommand.Flags().String("overlaybd-fs-type", "ext4", "Filesystem type for overlaybd")
+	imageConvertCommand.Flags().String("overlaybd-dbstr", "", "Database config string for overlaybd")
+	// #endregion
+
 	// #region generic flags
 	imageConvertCommand.Flags().Bool("uncompress", false, "Convert tar.gz layers to uncompressed tar layers")
 	imageConvertCommand.Flags().Bool("oci", false, "Convert Docker media types to OCI media types")
@@ -158,6 +165,10 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	overlaybd, err := cmd.Flags().GetBool("overlaybd")
+	if err != nil {
+		return err
+	}
 	oci, err := cmd.Flags().GetBool("oci")
 	if err != nil {
 		return err
@@ -167,10 +178,30 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	client, ctx, cancel, err := newClient(cmd)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
 	var finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error)
-	if estargz || zstdchunked {
-		if estargz && zstdchunked {
-			return errors.New("option --estargz conflicts with --zstdchunked")
+	if estargz || zstdchunked || overlaybd || nydus {
+		convertCount := 0
+		if estargz {
+			convertCount++
+		}
+		if zstdchunked {
+			convertCount++
+		}
+		if overlaybd {
+			convertCount++
+		}
+		if nydus {
+			convertCount++
+		}
+
+		if convertCount > 1 {
+			return errors.New("options --estargz, --zstdchunked, --overlaybd and --nydus lead to conflict, only one of them can be used")
 		}
 
 		var convertFunc converter.ConvertFunc
@@ -188,50 +219,54 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			convertType = "zstdchunked"
+		case overlaybd:
+			obdOpts, err := getOBDConvertOpts(cmd)
+			if err != nil {
+				return err
+			}
+			obdOpts = append(obdOpts, overlaybdconvert.WithClient(client))
+			obdOpts = append(obdOpts, overlaybdconvert.WithImageRef(srcRef))
+			convertFunc = overlaybdconvert.IndexConvertFunc(obdOpts...)
+			convertOpts = append(convertOpts, converter.WithIndexConvertFunc(convertFunc))
+			convertType = "overlaybd"
+		case nydus:
+			nydusOpts, err := getNydusConvertOpts(cmd)
+			if err != nil {
+				return err
+			}
+			convertHooks := converter.ConvertHooks{
+				PostConvertHook: nydusconvert.ConvertHookFunc(nydusconvert.MergeOption{
+					WorkDir:          nydusOpts.WorkDir,
+					BuilderPath:      nydusOpts.BuilderPath,
+					FsVersion:        nydusOpts.FsVersion,
+					ChunkDictPath:    nydusOpts.ChunkDictPath,
+					PrefetchPatterns: nydusOpts.PrefetchPatterns,
+				}),
+			}
+			convertOpts = append(convertOpts, converter.WithIndexConvertFunc(
+				converter.IndexConvertFuncWithHook(
+					nydusconvert.LayerConvertFunc(*nydusOpts),
+					true,
+					platMC,
+					convertHooks,
+				)),
+			)
+			convertType = "nydus"
 		}
-		convertOpts = append(convertOpts, converter.WithLayerConvertFunc(convertFunc))
 
+		if convertType != "overlaybd" {
+			convertOpts = append(convertOpts, converter.WithLayerConvertFunc(convertFunc))
+		}
 		if !oci {
-			logrus.Warnf("option --%s should be used in conjunction with --oci", convertType)
+			if nydus || overlaybd {
+				logrus.Warnf("option --%s should be used in conjunction with --oci, forcibly enabling on oci mediatype for %s conversion", convertType, convertType)
+			} else {
+				logrus.Warnf("option --%s should be used in conjunction with --oci", convertType)
+			}
 		}
 		if uncompressValue {
 			return fmt.Errorf("option --%s conflicts with --uncompress", convertType)
 		}
-	}
-
-	if nydus {
-		if estargz {
-			return errors.New("option --nydus conflicts with --estargz")
-		}
-		if zstdchunked {
-			return errors.New("option --nydus conflicts with --zstdchunked")
-		}
-		if !oci {
-			logrus.Warnln("option --nydus should be used in conjunction with '--oci', forcibly enabling on oci mediatype for nydus conversion")
-		}
-
-		nydusOpts, err := getNydusConvertOpts(cmd)
-		if err != nil {
-			return err
-		}
-		convertFunc := nydusconvert.LayerConvertFunc(*nydusOpts)
-		convertHooks := converter.ConvertHooks{
-			PostConvertHook: nydusconvert.ConvertHookFunc(nydusconvert.MergeOption{
-				WorkDir:          nydusOpts.WorkDir,
-				BuilderPath:      nydusOpts.BuilderPath,
-				FsVersion:        nydusOpts.FsVersion,
-				ChunkDictPath:    nydusOpts.ChunkDictPath,
-				PrefetchPatterns: nydusOpts.PrefetchPatterns,
-			}),
-		}
-		convertOpts = append(convertOpts, converter.WithIndexConvertFunc(
-			converter.IndexConvertFuncWithHook(
-				convertFunc,
-				true,
-				platMC,
-				convertHooks,
-			)),
-		)
 	}
 
 	if uncompressValue {
@@ -241,12 +276,6 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 	if oci {
 		convertOpts = append(convertOpts, converter.WithDockerToOCI(true))
 	}
-
-	client, ctx, cancel, err := newClient(cmd)
-	if err != nil {
-		return err
-	}
-	defer cancel()
 
 	// converter.Convert() gains the lease by itself
 	newImg, err := converter.Convert(ctx, client, targetRef, srcRef, convertOpts...)
@@ -452,6 +481,23 @@ func getNydusConvertOpts(cmd *cobra.Command) (*nydusconvert.PackOption, error) {
 		Compressor:       compressor,
 		FsVersion:        "6",
 	}, nil
+}
+
+func getOBDConvertOpts(cmd *cobra.Command) ([]overlaybdconvert.Option, error) {
+	obdFsType, err := cmd.Flags().GetString("overlaybd-fs-type")
+	if err != nil {
+		return nil, err
+	}
+	obdDbstr, err := cmd.Flags().GetString("overlaybd-dbstr")
+	if err != nil {
+		return nil, err
+	}
+
+	obdOpts := []overlaybdconvert.Option{
+		overlaybdconvert.WithFsType(obdFsType),
+		overlaybdconvert.WithDbstr(obdDbstr),
+	}
+	return obdOpts, nil
 }
 
 func readPathsFromRecordFile(filename string) ([]string, error) {
