@@ -95,8 +95,13 @@ func networkPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Cl
 		return err
 	}
 
+	networkConfigs, err := e.NetworkList()
+	if err != nil {
+		return err
+	}
+
 	var removedNetworks []string // nolint: prealloc
-	for _, net := range e.Networks {
+	for _, net := range networkConfigs {
 		if strutil.InStringSlice(networkDriversToKeep, net.Name) {
 			continue
 		}

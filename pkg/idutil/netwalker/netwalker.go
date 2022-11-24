@@ -52,11 +52,12 @@ func (w *NetworkWalker) Walk(ctx context.Context, req string) (int, error) {
 		return 0, err
 	}
 
-	networks := []*netutil.NetworkConfig{}
-	for _, n := range w.Client.Networks {
-		if n.Name == req || longIDExp.Match([]byte(*n.NerdctlID)) || shortIDExp.Match([]byte(*n.NerdctlID)) {
-			networks = append(networks, n)
-		}
+	idFilterF := func(n *netutil.NetworkConfig) bool {
+		return n.Name == req || longIDExp.Match([]byte(*n.NerdctlID)) || shortIDExp.Match([]byte(*n.NerdctlID))
+	}
+	networks, err := w.Client.FilterNetworks(idFilterF)
+	if err != nil {
+		return 0, err
 	}
 
 	matchCount := len(networks)
