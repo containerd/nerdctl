@@ -440,7 +440,7 @@ COPY --from=builder /go/src/logger/logger /
 	base.Cmd("container", "rm", "-f", containerName).AssertOK()
 	base.Cmd("run", "-d", "--log-driver", fmt.Sprintf("binary://%s/logger", tmpDir), "--name", containerName, testutil.CommonImage,
 		"sh", "-euxc", "echo foo; echo bar").AssertOK()
-	defer base.Cmd("container", "rm", "-f", containerName)
+	defer base.Cmd("container", "rm", "-f", containerName).AssertOK()
 
 	inspectedContainer := base.InspectContainer(containerName)
 	bytes, err := os.ReadFile(filepath.Join(os.TempDir(), fmt.Sprintf("%s_%s.log", inspectedContainer.ID, "stdout")))
