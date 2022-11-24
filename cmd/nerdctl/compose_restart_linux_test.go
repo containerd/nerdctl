@@ -20,18 +20,16 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
-func TestComposeStop(t *testing.T) {
+func TestComposeRestart(t *testing.T) {
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
 version: '3.1'
 
 services:
-
   wordpress:
     image: %s
     ports:
@@ -43,7 +41,6 @@ services:
       WORDPRESS_DB_NAME: exampledb
     volumes:
       - wordpress:/var/www/html
-
   db:
     image: %s
     environment:
@@ -67,20 +64,35 @@ volumes:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
+	exitAssertHandler := func(svc string) func(stdout string) error {
+		return func(stdout string) error {
+			// Docker Compose v1: "Exit code", v2: "exited (code)"
+			if !strings.Contains(stdout, "Exit") && !strings.Contains(stdout, "exited") {
+				return fmt.Errorf("service \"%s\" must have exited", svc)
+			}
+			return nil
+		}
+	}
+	upAssertHandler := func(svc string) func(stdout string) error {
+		return func(stdout string) error {
+			// Docker Compose v1: "Up", v2: "running"
+			if !strings.Contains(stdout, "Up") && !strings.Contains(stdout, "running") {
+				return fmt.Errorf("service \"%s\" must have been still running", svc)
+			}
+			return nil
+		}
+	}
+
+	// stop and restart a single service.
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "db").AssertOK()
-	time.Sleep(3 * time.Second)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(func(stdout string) error {
-		// Docker Compose v1: "Exit code", v2: "exited (code)"
-		if !strings.Contains(stdout, "Exit") && !strings.Contains(stdout, "exited") {
-			return fmt.Errorf("service \"db\" must have exited")
-		}
-		return nil
-	})
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutWithFunc(func(stdout string) error {
-		// Docker Compose v1: "Up", v2: "running"
-		if !strings.Contains(stdout, "Up") && !strings.Contains(stdout, "running") {
-			return fmt.Errorf("service \"wordpress\" must have been still running")
-		}
-		return nil
-	})
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(exitAssertHandler("db"))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "restart", "db").AssertOK()
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(upAssertHandler("db"))
+
+	// stop one service and restart all
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "db").AssertOK()
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(exitAssertHandler("db"))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "restart").AssertOK()
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(upAssertHandler("db"))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutWithFunc(upAssertHandler("wordpress"))
 }

@@ -338,6 +338,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose push](#whale-nerdctl-compose-push)
     - [:whale: nerdctl compose config](#whale-nerdctl-compose-config)
     - [:whale: nerdctl compose kill](#whale-nerdctl-compose-kill)
+    - [:whale: nerdctl compose restart](#whale-nerdctl-compose-restart)
     - [:whale: nerdctl compose run](#whale-nerdctl-compose-run)
     - [:whale: nerdctl compose version](#whale-nerdctl-compose-version)
   - [IPFS management](#ipfs-management)
@@ -1503,6 +1504,16 @@ Usage: `nerdctl compose kill [OPTIONS] [SERVICE...]`
 Flags:
 - :whale: `-s, --signal`: SIGNAL to send to the container (default: "SIGKILL")
 
+### :whale: nerdctl compose restart
+
+Restart containers of given (or all) services
+
+Usage: `nerdctl compose restart [OPTIONS] [SERVICE...]`
+
+Flags:
+
+- :whale: `-t, --timeout`: Seconds to wait before restarting it (default 10)
+
 ### :whale: nerdctl compose run
 Run a one-off command on a service
 
@@ -1590,7 +1601,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose create|events|exec|images|pause|port|restart|rm|scale|start|top|unpause`
+- `docker-compose create|events|exec|images|pause|port|rm|scale|start|top|unpause`
 
 Others:
 - `docker system df`

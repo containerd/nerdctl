@@ -22,21 +22,20 @@ import (
 	"sync"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/strutil"
 
 	"github.com/sirupsen/logrus"
 )
 
-// StopOptions stores all option input from `nerdctl compose stop`
-type StopOptions struct {
+// RestartOptions stores all option input from `nerdctl compose restart`
+type RestartOptions struct {
 	Timeout *uint
 }
 
-// Stop stops containers in `services` without removing them. It calls
-// `nerdctl stop CONTAINER_ID` to do the actual job.
-func (c *Composer) Stop(ctx context.Context, opt StopOptions, services []string) error {
+// Restart restarts running/stopped containers in `services`. It calls
+// `nerdctl restart CONTAINER_ID` to do the actual job.
+func (c *Composer) Restart(ctx context.Context, opt RestartOptions, services []string) error {
 	serviceNames, err := c.ServiceNames(services...)
 	if err != nil {
 		return err
@@ -47,28 +46,28 @@ func (c *Composer) Stop(ctx context.Context, opt StopOptions, services []string)
 		if err != nil {
 			return err
 		}
-		if err := c.stopContainers(ctx, containers, opt); err != nil {
+		if err := c.restartContainers(ctx, containers, opt); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (c *Composer) stopContainers(ctx context.Context, containers []containerd.Container, opt StopOptions) error {
+func (c *Composer) restartContainers(ctx context.Context, containers []containerd.Container, opt RestartOptions) error {
 	var timeoutArg string
 	if opt.Timeout != nil {
-		timeoutArg = fmt.Sprintf("--timeout=%d", opt.Timeout)
+		timeoutArg = fmt.Sprintf("--timeout=%d", *opt.Timeout)
 	}
 
-	var rmWG sync.WaitGroup
+	var rsWG sync.WaitGroup
 	for _, container := range containers {
 		container := container
-		rmWG.Add(1)
+		rsWG.Add(1)
 		go func() {
-			defer rmWG.Done()
+			defer rsWG.Done()
 			info, _ := container.Info(ctx, containerd.WithoutRefreshedMetadata)
-			logrus.Infof("Stopping container %s", info.Labels[labels.Name])
-			args := []string{"stop"}
+			logrus.Infof("Restarting container %s", info.Labels[labels.Name])
+			args := []string{"restart"}
 			if opt.Timeout != nil {
 				args = append(args, timeoutArg)
 			}
@@ -78,24 +77,7 @@ func (c *Composer) stopContainers(ctx context.Context, containers []containerd.C
 			}
 		}()
 	}
-	rmWG.Wait()
+	rsWG.Wait()
 
 	return nil
-}
-
-func (c *Composer) stopContainersFromParsedServices(ctx context.Context, containers map[string]serviceparser.Container) {
-	var rmWG sync.WaitGroup
-	for id, container := range containers {
-		id := id
-		container := container
-		rmWG.Add(1)
-		go func() {
-			defer rmWG.Done()
-			logrus.Infof("Stopping container %s", container.Name)
-			if err := c.runNerdctlCmd(ctx, "stop", id); err != nil {
-				logrus.Warn(err)
-			}
-		}()
-	}
-	rmWG.Wait()
 }
