@@ -60,6 +60,11 @@ func canExecProbably(s string) (bool, error) {
 			"/proc/sys/fs/binfmt_misc/qemu-" + qemuArch,
 			"/proc/sys/fs/binfmt_misc/buildkit-qemu-" + qemuArch,
 		}
+		// Rosetta 2 for Linux on ARM Mac
+		// https://developer.apple.com/documentation/virtualization/running_intel_binaries_in_linux_vms_with_rosetta
+		if runtime.GOARCH == "arm64" && p.Architecture == "amd64" {
+			candidates = append(candidates, "/proc/sys/fs/binfmt_misc/rosetta")
+		}
 		for _, cand := range candidates {
 			if _, err := os.Stat(cand); err == nil {
 				return true, nil
