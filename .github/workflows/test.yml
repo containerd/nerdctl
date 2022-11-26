@@ -13,47 +13,49 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-    - uses: actions/setup-go@v3
-      with:
-        go-version: 1.19.x
-    - uses: actions/checkout@v3.1.0
-      with:
-        path: src/github.com/containerd/nerdctl
-        fetch-depth: 100
-    - uses: containerd/project-checks@v1.1.0
-      with:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.x
+      - uses: actions/checkout@v3.1.0
+        with:
+          path: src/github.com/containerd/nerdctl
+          fetch-depth: 100
+      - uses: containerd/project-checks@v1.1.0
+        with:
+          working-directory: src/github.com/containerd/nerdctl
+      - run: ./hack/verify-no-patent.sh
         working-directory: src/github.com/containerd/nerdctl
-    - run: ./hack/verify-no-patent.sh
-      working-directory: src/github.com/containerd/nerdctl
 
-  golangci-lint:
+  lint:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v3.1.0
-      with:
-        fetch-depth: 1
-    - uses: actions/setup-go@v3
-      with:
-        go-version: 1.19.x
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3.3.1
-      with:
-        version: v1.50.1
-        args: --verbose
+      - uses: actions/checkout@v3.1.0
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.x
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3.3.1
+        with:
+          version: v1.50.1
+          args: --verbose
+      - name: yamllint-lint
+        run: yamllint .
 
   test-unit:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-    - uses: actions/setup-go@v3
-      with:
-        go-version: 1.19.x
-    - uses: actions/checkout@v3.1.0
-      with:
-        fetch-depth: 1
-    - name: "Run unit tests"
-      run: go test -v ./pkg/...
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.x
+      - uses: actions/checkout@v3.1.0
+        with:
+          fetch-depth: 1
+      - name: "Run unit tests"
+        run: go test -v ./pkg/...
 
   test-integration:
     runs-on: "ubuntu-${{ matrix.ubuntu }}"
@@ -75,21 +77,21 @@ jobs:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
-    - uses: actions/checkout@v3.1.0
-      with:
-        fetch-depth: 1
-    - name: "Prepare integration test environment"
-      run: DOCKER_BUILDKIT=1 docker build -t test-integration --target test-integration --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
-    - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
-      run: |
-        sudo systemctl disable --now snapd.service snapd.socket
-        sudo apt-get purge -y snapd
-        sudo losetup -Dv
-        sudo losetup -lv
-    - name: "Register QEMU (tonistiigi/binfmt)"
-      run: docker run --privileged --rm tonistiigi/binfmt --install all
-    - name: "Run integration tests"
-      run: docker run -t --rm --privileged test-integration
+      - uses: actions/checkout@v3.1.0
+        with:
+          fetch-depth: 1
+      - name: "Prepare integration test environment"
+        run: DOCKER_BUILDKIT=1 docker build -t test-integration --target test-integration --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+      - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
+        run: |
+          sudo systemctl disable --now snapd.service snapd.socket
+          sudo apt-get purge -y snapd
+          sudo losetup -Dv
+          sudo losetup -lv
+      - name: "Register QEMU (tonistiigi/binfmt)"
+        run: docker run --privileged --rm tonistiigi/binfmt --install all
+      - name: "Run integration tests"
+        run: docker run -t --rm --privileged test-integration
 
   test-integration-rootless:
     runs-on: "ubuntu-${{ matrix.ubuntu }}"
@@ -111,47 +113,47 @@ jobs:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
-    - uses: actions/checkout@v3.1.0
-      with:
-        fetch-depth: 1
-    - name: "Register QEMU (tonistiigi/binfmt)"
-      run: docker run --privileged --rm tonistiigi/binfmt --install all
-    - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
-      run: DOCKER_BUILDKIT=1 docker build -t test-integration-rootless --target test-integration-rootless --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
-    - name: "Test    (network driver=slirp4netns, port driver=builtin)"
-      run: docker run -t --rm --privileged test-integration-rootless
-    - name: "Prepare (network driver=slirp4netns, port driver=slirp4netns)"
-      run: DOCKER_BUILDKIT=1 docker build -t test-integration-rootless-port-slirp4netns --target test-integration-rootless-port-slirp4netns --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
-    - name: "Test    (network driver=slirp4netns, port driver=slirp4netns)"
-      run: docker run -t --rm --privileged test-integration-rootless-port-slirp4netns
+      - uses: actions/checkout@v3.1.0
+        with:
+          fetch-depth: 1
+      - name: "Register QEMU (tonistiigi/binfmt)"
+        run: docker run --privileged --rm tonistiigi/binfmt --install all
+      - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
+        run: DOCKER_BUILDKIT=1 docker build -t test-integration-rootless --target test-integration-rootless --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+      - name: "Test    (network driver=slirp4netns, port driver=builtin)"
+        run: docker run -t --rm --privileged test-integration-rootless
+      - name: "Prepare (network driver=slirp4netns, port driver=slirp4netns)"
+        run: DOCKER_BUILDKIT=1 docker build -t test-integration-rootless-port-slirp4netns --target test-integration-rootless-port-slirp4netns --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+      - name: "Test    (network driver=slirp4netns, port driver=slirp4netns)"
+        run: docker run -t --rm --privileged test-integration-rootless-port-slirp4netns
 
   cross:
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:
-    - uses: actions/setup-go@v3
-      with:
-        go-version: 1.19.x
-    - uses: actions/checkout@v3.1.0
-      with:
-        fetch-depth: 1
-    - name: "Cross"
-      run: make artifacts
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.x
+      - uses: actions/checkout@v3.1.0
+        with:
+          fetch-depth: 1
+      - name: "Cross"
+        run: make artifacts
 
   test-integration-docker-compatibility:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-    - uses: actions/setup-go@v3
-      with:
-        go-version: 1.19.x
-    - uses: actions/checkout@v3.1.0
-      with:
-        fetch-depth: 1
-    - name: "Register QEMU (tonistiigi/binfmt)"
-      run: docker run --privileged --rm tonistiigi/binfmt --install all
-    - name: "Prepare integration test environment"
-      run: |
-        sudo apt-get install -y expect
-    - name: "Ensure that the integration test suite is compatible with Docker"
-      run: go test -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.x
+      - uses: actions/checkout@v3.1.0
+        with:
+          fetch-depth: 1
+      - name: "Register QEMU (tonistiigi/binfmt)"
+        run: docker run --privileged --rm tonistiigi/binfmt --install all
+      - name: "Prepare integration test environment"
+        run: |
+          sudo apt-get install -y expect
+      - name: "Ensure that the integration test suite is compatible with Docker"
+        run: go test -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon

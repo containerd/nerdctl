@@ -7,9 +7,9 @@ name: Container Image Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     # Publish semver tags as releases.
-    tags: [ 'v*.*.*' ]
+    tags: ['v*.*.*']
 
 env:
   # Use docker.io for Docker Hub if empty
