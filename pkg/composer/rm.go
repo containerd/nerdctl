@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -29,7 +30,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// RemoveOptions stores all option input from `nerdctl compose rm`
+// RemoveOptions stores all options when removing compose containers:
+// Stop: if true, remove using `rm -f`; if false, check and skip running containers.
+// Volumes: if remove anonymous volumes associated with the container.
 type RemoveOptions struct {
 	Stop    bool
 	Volumes bool
@@ -73,7 +76,7 @@ func (c *Composer) removeContainers(ctx context.Context, containers []containerd
 		go func() {
 			defer rmWG.Done()
 			info, _ := container.Info(ctx, containerd.WithoutRefreshedMetadata)
-			// if no `--stop` is passed, check status and skip running container
+			// if not `Stop`, check status and skip running container
 			if !opt.Stop {
 				cStatus := formatter.ContainerStatus(ctx, container)
 				if strings.HasPrefix(cStatus, "Up") {
@@ -91,4 +94,21 @@ func (c *Composer) removeContainers(ctx context.Context, containers []containerd
 	rmWG.Wait()
 
 	return nil
+}
+
+func (c *Composer) removeContainersFromParsedServices(ctx context.Context, containers map[string]serviceparser.Container) {
+	var rmWG sync.WaitGroup
+	for id, container := range containers {
+		id := id
+		container := container
+		rmWG.Add(1)
+		go func() {
+			defer rmWG.Done()
+			logrus.Infof("Removing container %s", container.Name)
+			if err := c.runNerdctlCmd(ctx, "rm", "-f", id); err != nil {
+				logrus.Warn(err)
+			}
+		}()
+	}
+	rmWG.Wait()
 }

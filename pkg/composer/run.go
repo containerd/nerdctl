@@ -194,7 +194,7 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 	}
 	if len(orphans) > 0 {
 		if ro.RemoveOrphans {
-			if err := c.downContainers(ctx, orphans, true); err != nil {
+			if err := c.removeContainers(ctx, orphans, RemoveOptions{Stop: true, Volumes: true}); err != nil {
 				return fmt.Errorf("error removing orphaned containers: %s", err)
 			}
 		} else {
@@ -284,20 +284,7 @@ func (c *Composer) runServices(ctx context.Context, parsedServices []*servicepar
 	c.stopContainersFromParsedServices(ctx, containers)
 
 	if ro.Rm {
-		var rmWG sync.WaitGroup
-		for id, container := range containers {
-			id := id
-			container := container
-			rmWG.Add(1)
-			go func() {
-				defer rmWG.Done()
-				logrus.Infof("Removing container %s", container.Name)
-				if err := c.runNerdctlCmd(ctx, "rm", "-f", id); err != nil {
-					logrus.Warn(err)
-				}
-			}()
-		}
-		rmWG.Wait()
+		c.removeContainersFromParsedServices(ctx, containers)
 	}
 	return nil
 }

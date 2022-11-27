@@ -20,8 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/strutil"
 
 	"github.com/sirupsen/logrus"
@@ -42,7 +40,7 @@ func (c *Composer) Down(ctx context.Context, downOptions DownOptions) error {
 		if err != nil {
 			return err
 		}
-		if err := c.downContainers(ctx, containers, downOptions.RemoveVolumes); err != nil {
+		if err := c.removeContainers(ctx, containers, RemoveOptions{Stop: true, Volumes: downOptions.RemoveVolumes}); err != nil {
 			return err
 		}
 	}
@@ -104,22 +102,6 @@ func (c *Composer) downVolume(ctx context.Context, shortName string) error {
 	} else if volExists {
 		logrus.Infof("Removing volume %s", fullName)
 		if err := c.runNerdctlCmd(ctx, "volume", "rm", "-f", fullName); err != nil {
-			logrus.Warn(err)
-		}
-	}
-	return nil
-}
-
-func (c *Composer) downContainers(ctx context.Context, containers []containerd.Container, removeAnonVolumes bool) error {
-	for _, container := range containers {
-		info, _ := container.Info(ctx, containerd.WithoutRefreshedMetadata)
-		logrus.Infof("Removing container %s", info.Labels[labels.Name])
-		args := []string{"rm", "-f"}
-		if removeAnonVolumes {
-			args = append(args, "-v")
-		}
-		args = append(args, container.ID())
-		if err := c.runNerdctlCmd(ctx, args...); err != nil {
 			logrus.Warn(err)
 		}
 	}
