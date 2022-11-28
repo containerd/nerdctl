@@ -42,7 +42,18 @@ type CNIEnv struct {
 	Networks    []*networkConfig
 }
 
-func NewCNIEnv(cniPath, cniConfPath string) (*CNIEnv, error) {
+type CNIEnvOpt func(e *CNIEnv) error
+
+func WithDefaultNetwork() CNIEnvOpt {
+	return func(e *CNIEnv) error {
+		if err := e.ensureDefaultNetworkConfig(); err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+func NewCNIEnv(cniPath, cniConfPath string, opts ...CNIEnvOpt) (*CNIEnv, error) {
 	e := CNIEnv{
 		Path:        cniPath,
 		NetconfPath: cniConfPath,
@@ -50,9 +61,12 @@ func NewCNIEnv(cniPath, cniConfPath string) (*CNIEnv, error) {
 	if err := os.MkdirAll(e.NetconfPath, 0755); err != nil {
 		return nil, err
 	}
-	if err := e.ensureDefaultNetworkConfig(); err != nil {
-		return nil, err
+	for _, o := range opts {
+		if err := o(&e); err != nil {
+			return nil, err
+		}
 	}
+
 	networks, err := e.networkConfigList()
 	if err != nil {
 		return nil, err

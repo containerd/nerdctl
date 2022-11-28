@@ -132,7 +132,7 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 		Experimental:     experimental,
 	}
 
-	cniEnv, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
+	cniEnv, err := netutil.NewCNIEnv(cniPath, cniNetconfpath, netutil.WithDefaultNetwork())
 	if err != nil {
 		return nil, err
 	}
