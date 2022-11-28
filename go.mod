@@ -3,7 +3,7 @@ module github.com/containerd/nerdctl
 go 1.19
 
 require (
-	github.com/Masterminds/semver/v3 v3.1.1
+	github.com/Masterminds/semver/v3 v3.2.0
 	github.com/Microsoft/go-winio v0.6.0
 	github.com/compose-spec/compose-go v1.7.0
 	github.com/containerd/accelerated-container-image v0.5.2
