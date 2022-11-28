@@ -65,11 +65,11 @@ spec:
             timeoutSeconds: 5
             periodSeconds: 15
       volumes:
-      - name: configure-script
-        configMap:
-          name: ipfs-bootstrap-conf
-      - name: ipfs-storage
-        emptyDir: {}
+        - name: configure-script
+          configMap:
+            name: ipfs-bootstrap-conf
+        - name: ipfs-storage
+          emptyDir: {}
 
 ---
 
@@ -166,12 +166,12 @@ spec:
             - name: configure-script
               mountPath: /custom
       volumes:
-      - name: configure-script
-        configMap:
-          name: ipfs-peer-conf
-      - name: ipfs-storage
-        hostPath:
-          path: /var/ipfs/
+        - name: configure-script
+          configMap:
+            name: ipfs-peer-conf
+        - name: ipfs-storage
+          hostPath:
+            path: /var/ipfs/
 
 ---
 
