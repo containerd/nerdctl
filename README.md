@@ -332,6 +332,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose logs](#whale-nerdctl-compose-logs)
     - [:whale: nerdctl compose build](#whale-nerdctl-compose-build)
     - [:whale: nerdctl compose down](#whale-nerdctl-compose-down)
+    - [:whale: nerdctl compose images](#whale-nerdctl-compose-images)
     - [:whale: nerdctl compose stop](#whale-nerdctl-compose-stop)
     - [:whale: nerdctl compose ps](#whale-nerdctl-compose-ps)
     - [:whale: nerdctl compose pull](#whale-nerdctl-compose-pull)
@@ -1446,6 +1447,16 @@ Flags:
 
 Unimplemented `docker-compose down` (V1) flags: `--rmi`, `--remove-orphans`, `--timeout`
 
+### :whale: nerdctl compose images
+
+List images used by created containers in services
+
+Usage: `nerdctl compose images [OPTIONS] [SERVICE...]`
+
+Flags:
+
+- :whale: `-q, --quiet`: Only show numeric image IDs
+
 ### :whale: nerdctl compose stop
 
 Stop containers in services without removing them.
@@ -1614,7 +1625,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose create|events|exec|images|pause|port|scale|start|top|unpause`
+- `docker-compose create|events|exec|pause|port|scale|start|top|unpause`
 
 Others:
 - `docker system df`
