@@ -84,7 +84,9 @@ func TestImagesFilter(t *testing.T) {
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 
 	dockerfile := fmt.Sprintf(`FROM %s
-CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
+CMD ["echo", "nerdctl-build-test-string"] \n
+LABEL foo=bar
+LABEL version=0.1`, testutil.CommonImage)
 
 	buildCtx, err := createBuildContext(dockerfile)
 	assert.NilError(t, err)
@@ -96,4 +98,9 @@ CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
 	base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage)).AssertOutNotContains(strings.Split(testutil.CommonImage, ":")[0])
 	base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage), testutil.CommonImage).AssertOutNotContains(strings.Split(testutil.CommonImage, ":")[0])
 	base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage), testutil.CommonImage).AssertOutNotContains(tempName)
+	base.Cmd("images", "--filter", "label=foo=bar").AssertOutContains(tempName)
+	base.Cmd("images", "--filter", "label=foo=bar1").AssertOutNotContains(tempName)
+	base.Cmd("images", "--filter", "label=foo=bar", "--filter", "label=version=0.1").AssertOutContains(tempName)
+	base.Cmd("images", "--filter", "label=foo=bar", "--filter", "label=version=0.2").AssertOutNotContains(tempName)
+	base.Cmd("images", "--filter", "label=version").AssertOutContains(tempName)
 }

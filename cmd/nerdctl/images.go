@@ -114,28 +114,54 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		beforeFilters, sinceFilters, err := imgutil.ParseFilters(inputFilters)
+		f, err := imgutil.ParseFilters(inputFilters)
 		if err != nil {
 			return err
 		}
+
+		imageList, err = filterByLabel(ctx, client, imageList, f.Labels)
+		if err != nil {
+			return err
+		}
+
 		var beforeImages []images.Image
-		if len(beforeFilters) > 0 {
-			beforeImages, err = imageStore.List(ctx, beforeFilters...)
+		if len(f.Before) > 0 {
+			beforeImages, err = imageStore.List(ctx, f.Before...)
 			if err != nil {
 				return err
 			}
 		}
-		var afterImages []images.Image
-		if len(sinceFilters) > 0 {
-			afterImages, err = imageStore.List(ctx, sinceFilters...)
+		var sinceImages []images.Image
+		if len(f.Since) > 0 {
+			sinceImages, err = imageStore.List(ctx, f.Since...)
 			if err != nil {
 				return err
 			}
 		}
 
-		imageList = imgutil.FilterImages(imageList, beforeImages, afterImages)
+		imageList = imgutil.FilterImages(imageList, beforeImages, sinceImages)
 	}
 	return printImages(ctx, cmd, client, imageList)
+}
+
+func filterByLabel(ctx context.Context, client *containerd.Client, imageList []images.Image, filters map[string]string) ([]images.Image, error) {
+	for lk, lv := range filters {
+		var imageLabels []images.Image
+		for _, img := range imageList {
+			ci := containerd.NewImage(client, img)
+			cfg, _, err := imgutil.ReadImageConfig(ctx, ci)
+			if err != nil {
+				return nil, err
+			}
+			if val, ok := cfg.Config.Labels[lk]; ok {
+				if val == lv || lv == "" {
+					imageLabels = append(imageLabels, img)
+				}
+			}
+		}
+		imageList = imageLabels
+	}
+	return imageList, nil
 }
 
 type imagePrintable struct {
