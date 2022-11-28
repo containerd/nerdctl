@@ -17,11 +17,13 @@
 package portutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
 
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-connections/nat"
 	"github.com/sirupsen/logrus"
@@ -124,4 +126,18 @@ func ParseFlagP(s string) ([]gocni.PortMapping, error) {
 	}
 
 	return mr, nil
+}
+
+// ParsePortsLabel parses JSON-marshalled string from label map
+// (under `labels.Ports` key) and returns []gocni.PortMapping.
+func ParsePortsLabel(labelMap map[string]string) ([]gocni.PortMapping, error) {
+	portsJSON := labelMap[labels.Ports]
+	if portsJSON == "" {
+		return []gocni.PortMapping{}, nil
+	}
+	var ports []gocni.PortMapping
+	if err := json.Unmarshal([]byte(portsJSON), &ports); err != nil {
+		return nil, fmt.Errorf("failed to parse label %q=%q: %s", labels.Ports, portsJSON, err.Error())
+	}
+	return ports, nil
 }

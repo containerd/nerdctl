@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 )
 
@@ -160,6 +161,86 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 		})
 	}
 
+}
+
+func TestParsePortsLabel(t *testing.T) {
+	tests := []struct {
+		name     string
+		labelMap map[string]string
+		want     []gocni.PortMapping
+		wantErr  bool
+	}{
+		{
+			name: "normal",
+			labelMap: map[string]string{
+				labels.Ports: "[{\"HostPort\":12345,\"ContainerPort\":10000,\"Protocol\":\"tcp\",\"HostIP\":\"0.0.0.0\"}]",
+			},
+			want: []gocni.PortMapping{
+				{
+					HostPort:      3000,
+					ContainerPort: 8080,
+					Protocol:      "tcp",
+					HostIP:        "127.0.0.1",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "empty ports (value empty)",
+			labelMap: map[string]string{
+				labels.Ports: "",
+			},
+			want:    []gocni.PortMapping{},
+			wantErr: false,
+		},
+		{
+			name:     "empty ports (key not exists)",
+			labelMap: map[string]string{},
+			want:     []gocni.PortMapping{},
+			wantErr:  false,
+		},
+		{
+			name: "parse error (wrong format)",
+			labelMap: map[string]string{
+				labels.Ports: "{\"HostPort\":12345,\"ContainerPort\":10000,\"Protocol\":\"tcp\",\"HostIP\":\"0.0.0.0\"}",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParsePortsLabel(tt.labelMap)
+			t.Log(err)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParsePortsLabel() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				if len(got) == len(tt.want) {
+					if len(got) > 1 {
+						var hostPorts []int32
+						var containerPorts []int32
+						for _, value := range got {
+							hostPorts = append(hostPorts, value.HostPort)
+							containerPorts = append(containerPorts, value.ContainerPort)
+						}
+						sort.Slice(hostPorts, func(i, j int) bool {
+							return i < j
+						})
+						sort.Slice(containerPorts, func(i, j int) bool {
+							return i < j
+						})
+						if (hostPorts[len(hostPorts)-1] - hostPorts[0]) != (containerPorts[len(hostPorts)-1] - containerPorts[0]) {
+							t.Errorf("ParsePortsLabel() = %v, want %v", got, tt.want)
+						}
+					}
+				} else {
+					t.Errorf("ParsePortsLabel() = %v, want %v", got, tt.want)
+				}
+			}
+		})
+	}
 }
 
 func TestParseFlagP(t *testing.T) {

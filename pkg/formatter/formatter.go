@@ -17,6 +17,7 @@
 package formatter
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -31,8 +32,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/runtime/restart"
-	gocni "github.com/containerd/go-cni"
-	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/portutil"
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
 )
@@ -77,7 +77,7 @@ func ContainerStatus(ctx context.Context, c containerd.Container) string {
 	}
 }
 
-func InspectContainerCommand(spec *oci.Spec, trunc bool) string {
+func InspectContainerCommand(spec *oci.Spec, trunc, quote bool) string {
 	if spec == nil || spec.Process == nil {
 		return ""
 	}
@@ -86,11 +86,14 @@ func InspectContainerCommand(spec *oci.Spec, trunc bool) string {
 	if trunc {
 		command = Ellipsis(command, 20)
 	}
-	return strconv.Quote(command)
+	if quote {
+		command = strconv.Quote(command)
+	}
+	return command
 }
 
 func InspectContainerCommandTrunc(spec *oci.Spec) string {
-	return InspectContainerCommand(spec, true)
+	return InspectContainerCommand(spec, true, true)
 }
 
 func Ellipsis(str string, maxDisplayWidth int) string {
@@ -113,14 +116,9 @@ func Ellipsis(str string, maxDisplayWidth int) string {
 }
 
 func FormatPorts(labelMap map[string]string) string {
-	portsJSON := labelMap[labels.Ports]
-	if portsJSON == "" {
-		return ""
-	}
-	var ports []gocni.PortMapping
-	if err := json.Unmarshal([]byte(portsJSON), &ports); err != nil {
-		logrus.WithError(err).Errorf("failed to parse label %q=%q", labels.Ports, portsJSON)
-		return ""
+	ports, err := portutil.ParsePortsLabel(labelMap)
+	if err != nil {
+		logrus.Error(err.Error())
 	}
 	if len(ports) == 0 {
 		return ""
@@ -144,4 +142,15 @@ func FormatLabels(labelMap map[string]string) string {
 		idx++
 	}
 	return strings.Join(strs, ",")
+}
+
+// ToJSON return a string with the JSON representation of the interface{}
+// https://github.com/docker/compose/blob/v2/cmd/formatter/json.go#L31C4-L39
+func ToJSON(i interface{}, prefix string, indentation string) (string, error) {
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent(prefix, indentation)
+	err := encoder.Encode(i)
+	return buffer.String(), err
 }
