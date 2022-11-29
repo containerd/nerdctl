@@ -40,6 +40,11 @@ func newNetworkRmCommand() *cobra.Command {
 }
 
 func networkRmAction(cmd *cobra.Command, args []string) error {
+	client, ctx, cancel, err := newClient(cmd)
+	if err != nil {
+		return err
+	}
+	defer cancel()
 	cniPath, err := cmd.Flags().GetString("cni-path")
 	if err != nil {
 		return err
@@ -52,6 +57,14 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	containers, err := getContainersInAllNamespaces(ctx, client)
+	if err != nil {
+		return err
+	}
+	usedNetworkInfo, err := netutil.UsedNetworks(ctx, containers)
+	if err != nil {
+		return err
+	}
 	netMap := e.NetworkMap()
 
 	for _, name := range args {
@@ -61,6 +74,9 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 		net, ok := netMap[name]
 		if !ok {
 			return fmt.Errorf("no such network: %s", name)
+		}
+		if value, ok := usedNetworkInfo[name]; ok {
+			return fmt.Errorf("network %q is in use by container %q", name, value)
 		}
 		if net.NerdctlID == nil {
 			return fmt.Errorf("%s is managed outside nerdctl and cannot be removed", name)
