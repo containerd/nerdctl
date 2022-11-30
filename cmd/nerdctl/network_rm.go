@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/containerd/nerdctl/pkg/netutil"
@@ -65,29 +66,41 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	netMap := e.NetworkMap()
+
+	walker := netutil.NetworkWalker{
+		Client: e,
+		OnFound: func(ctx context.Context, found netutil.Found) error {
+			if found.MatchCount > 1 {
+				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+			}
+			if value, ok := usedNetworkInfo[found.Network.Name]; ok {
+				return fmt.Errorf("network %q is in use by container %q", found.Req, value)
+			}
+			if found.Network.NerdctlID == nil {
+				return fmt.Errorf("%s is managed outside nerdctl and cannot be removed", found.Req)
+			}
+			if found.Network.File == "" {
+				return fmt.Errorf("%s is a pre-defined network and cannot be removed", found.Req)
+			}
+			if err := e.RemoveNetwork(found.Network); err != nil {
+				return err
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), found.Req)
+			return nil
+		},
+	}
 
 	for _, name := range args {
 		if name == "host" || name == "none" {
 			return fmt.Errorf("pseudo network %q cannot be removed", name)
 		}
-		net, ok := netMap[name]
-		if !ok {
-			return fmt.Errorf("no such network: %s", name)
-		}
-		if value, ok := usedNetworkInfo[name]; ok {
-			return fmt.Errorf("network %q is in use by container %q", name, value)
-		}
-		if net.NerdctlID == nil {
-			return fmt.Errorf("%s is managed outside nerdctl and cannot be removed", name)
-		}
-		if net.File == "" {
-			return fmt.Errorf("%s is a pre-defined network and cannot be removed", name)
-		}
-		if err := e.RemoveNetwork(net); err != nil {
+
+		n, err := walker.Walk(cmd.Context(), name)
+		if err != nil {
 			return err
+		} else if n == 0 {
+			return fmt.Errorf("no such network %s", name)
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), name)
 	}
 	return nil
 }
