@@ -63,6 +63,21 @@ require (
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20220912195655-e1f97a00006b // indirect
 	github.com/Microsoft/hcsshim v0.10.0-rc.1 // indirect
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
+	// ↑The `github.com/btcsuite/btcd` line exists for the indirect dependency on `github.com/btcsuite/btcd/btcec` (secp256k1 elliptic curve cryptography library) via `github.com/ipfs/go-ipfs-http-client`.
+	// https://github.com/btcsuite/btcd/tree/master/btcec
+	//
+	// BitCoin daemon itself is NOT included. There is NO code path that relates to mining or trading of BitCoin (or any crypto "currency").
+	//  $ go mod vendor
+	//  $ ls vendor/github.com/btcsuite/btcd/
+	//  btcec  LICENSE
+	//  $ go mod why github.com/btcsuite/btcd/btcec
+	//  # github.com/btcsuite/btcd/btcec
+	//  github.com/containerd/nerdctl/cmd/nerdctl
+	//  github.com/ipfs/go-ipfs-http-client
+	//  github.com/libp2p/go-libp2p-core/network
+	//  github.com/libp2p/go-libp2p-core/crypto
+	//  github.com/btcsuite/btcd/btcec
+	//
 	github.com/cilium/ebpf v0.9.1 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
 	github.com/containerd/ttrpc v1.1.1-0.20220420014843-944ef4a40df3 // indirect
