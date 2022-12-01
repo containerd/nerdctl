@@ -53,6 +53,9 @@ func UsedNetworks(ctx context.Context, containers []containerd.Container) (map[s
 	for _, c := range containers {
 		task, err := c.Task(ctx, nil)
 		if err != nil {
+			if errdefs.IsNotFound(err) {
+				continue
+			}
 			return nil, err
 		}
 		status, err := task.Status(ctx)
