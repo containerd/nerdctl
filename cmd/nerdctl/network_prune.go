@@ -18,14 +18,11 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -88,12 +85,12 @@ func networkPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Cl
 		return err
 	}
 
-	containers, err := client.Containers(ctx)
+	containers, err := getContainersInAllNamespaces(ctx, client)
 	if err != nil {
 		return err
 	}
 
-	usedNetworks, err := usedNetworks(ctx, containers)
+	usedNetworks, err := netutil.UsedNetworks(ctx, containers)
 	if err != nil {
 		return err
 	}
@@ -124,46 +121,4 @@ func networkPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Cl
 		fmt.Fprintln(cmd.OutOrStdout(), "")
 	}
 	return nil
-}
-
-func usedNetworks(ctx context.Context, containers []containerd.Container) (map[string]struct{}, error) {
-	used := make(map[string]struct{})
-	for _, c := range containers {
-		task, err := c.Task(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-		status, err := task.Status(ctx)
-		if err != nil {
-			return nil, err
-		}
-		switch status.Status {
-		case containerd.Paused, containerd.Running:
-		default:
-			continue
-		}
-		l, err := c.Labels(ctx)
-		if err != nil {
-			return nil, err
-		}
-		networkJSON, ok := l[labels.Networks]
-		if !ok {
-			continue
-		}
-		var networks []string
-		if err := json.Unmarshal([]byte(networkJSON), &networks); err != nil {
-			return nil, err
-		}
-		netType, err := nettype.Detect(networks)
-		if err != nil {
-			return nil, err
-		}
-		if netType != nettype.CNI {
-			continue
-		}
-		for _, n := range networks {
-			used[n] = struct{}{}
-		}
-	}
-	return used, nil
 }

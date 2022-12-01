@@ -1120,6 +1120,8 @@ Unimplemented `docker network inspect` flags: `--verbose`
 ### :whale: nerdctl network rm
 Remove one or more networks
 
+:warning network removal will fail if there are containers attached to it.
+
 Usage: `nerdctl network rm NETWORK [NETWORK...]`
 
 ### :whale: nerdctl network prune

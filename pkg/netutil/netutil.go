@@ -17,6 +17,7 @@
 package netutil
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -29,8 +30,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/lockutil"
+	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	subnetutil "github.com/containerd/nerdctl/pkg/netutil/subnet"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containernetworking/cni/libcni"
@@ -43,6 +47,48 @@ type CNIEnv struct {
 }
 
 type CNIEnvOpt func(e *CNIEnv) error
+
+func UsedNetworks(ctx context.Context, containers []containerd.Container) (map[string][]string, error) {
+	used := make(map[string][]string)
+	for _, c := range containers {
+		task, err := c.Task(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		status, err := task.Status(ctx)
+		if err != nil {
+			return nil, err
+		}
+		switch status.Status {
+		case containerd.Paused, containerd.Running:
+		default:
+			continue
+		}
+		l, err := c.Labels(ctx)
+		if err != nil {
+			return nil, err
+		}
+		networkJSON, ok := l[labels.Networks]
+		if !ok {
+			continue
+		}
+		var networks []string
+		if err := json.Unmarshal([]byte(networkJSON), &networks); err != nil {
+			return nil, err
+		}
+		netType, err := nettype.Detect(networks)
+		if err != nil {
+			return nil, err
+		}
+		if netType != nettype.CNI {
+			continue
+		}
+		for _, n := range networks {
+			used[n] = append(used[n], c.ID())
+		}
+	}
+	return used, nil
+}
 
 func WithDefaultNetwork() CNIEnvOpt {
 	return func(e *CNIEnv) error {

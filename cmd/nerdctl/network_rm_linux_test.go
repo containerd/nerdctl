@@ -49,3 +49,20 @@ func TestNetworkRemove(t *testing.T) {
 	_, err = netlink.LinkByName("br-" + networkID[:12])
 	assert.Error(t, err, "Link not found")
 }
+
+func TestNetworkRemoveWhenLinkWithContainer(t *testing.T) {
+	t.Parallel()
+	if rootlessutil.IsRootless() {
+		t.Skip("test skipped for remove rootless network")
+	}
+	base := testutil.NewBase(t)
+	networkName := testutil.Identifier(t)
+
+	base.Cmd("network", "create", networkName).AssertOK()
+	defer base.Cmd("network", "rm", networkName).Run()
+
+	tID := testutil.Identifier(t)
+	base.Cmd("run", "-d", "--net", networkName, "--name", tID, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	defer base.Cmd("rm", "-f", tID).Run()
+	base.Cmd("network", "rm", networkName).AssertFail()
+}
