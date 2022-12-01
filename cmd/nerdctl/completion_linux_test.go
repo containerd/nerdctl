@@ -33,14 +33,11 @@ func TestCompletion(t *testing.T) {
 	base.Cmd(gsc, "run", "-").AssertOutContains("--network\t")
 	base.Cmd(gsc, "run", "--n").AssertOutContains("--network\t")
 	base.Cmd(gsc, "run", "--ne").AssertOutContains("--network\t")
-	base.Cmd(gsc, "run", "--net", "").AssertOutContains("bridge\n")
 	base.Cmd(gsc, "run", "--net", "").AssertOutContains("host\n")
-	base.Cmd(gsc, "run", "-it", "--net", "").AssertOutContains("bridge\n")
-	base.Cmd(gsc, "run", "-it", "--rm", "--net", "").AssertOutContains("bridge\n")
+	base.Cmd(gsc, "run", "-it", "--net", "").AssertOutContains("host\n")
+	base.Cmd(gsc, "run", "-it", "--rm", "--net", "").AssertOutContains("host\n")
 	base.Cmd(gsc, "run", "--restart", "").AssertOutContains("always\n")
-	base.Cmd(gsc, "network", "inspect", "").AssertOutContains("bridge\n")
-	base.Cmd(gsc, "network", "rm", "").AssertNoOut("bridge\n") // bridge is unremovable
-	base.Cmd(gsc, "network", "rm", "").AssertNoOut("host\n")   // host is unremovable
+	base.Cmd(gsc, "network", "rm", "").AssertNoOut("host\n") // host is unremovable
 	base.Cmd(gsc, "run", "--cap-add", "").AssertOutContains("sys_admin\n")
 	base.Cmd(gsc, "run", "--cap-add", "").AssertNoOut("CAP_SYS_ADMIN\n") // invalid form
 
