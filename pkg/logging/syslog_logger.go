@@ -17,11 +17,9 @@
 package logging
 
 import (
-	"bufio"
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/url"
 	"os"
@@ -115,34 +113,40 @@ func SyslogOptsValidate(logOptMap map[string]string) error {
 }
 
 type SyslogLogger struct {
-	Opts map[string]string
+	Opts   map[string]string
+	logger *syslog.Writer
 }
 
 func (sy *SyslogLogger) Init(dataStore string, ns string, id string) error {
 	return nil
 }
 
-func (sy *SyslogLogger) Process(dataStore string, config *logging.Config) error {
+func (sy *SyslogLogger) PreProcess(dataStore string, config *logging.Config) error {
 	logger, err := parseSyslog(config.ID, sy.Opts)
 	if err != nil {
 		return err
 	}
-	defer logger.Close()
+	sy.logger = logger
+	return nil
+}
+
+func (sy *SyslogLogger) Process(stdout <-chan string, stderr <-chan string) error {
 	var wg sync.WaitGroup
 	wg.Add(2)
-	fn := func(r io.Reader, logFn func(msg string) error) {
+	fn := func(dataChan <-chan string, logFn func(msg string) error) {
 		defer wg.Done()
-		s := bufio.NewScanner(r)
-		for s.Scan() {
-			if s.Err() != nil {
-				return
-			}
-			logFn(s.Text())
+		for log := range dataChan {
+			logFn(log)
 		}
 	}
-	go fn(config.Stdout, logger.Info)
-	go fn(config.Stderr, logger.Err)
+	go fn(stdout, sy.logger.Info)
+	go fn(stderr, sy.logger.Err)
 	wg.Wait()
+	return nil
+}
+
+func (sy *SyslogLogger) PostProcess() error {
+	defer sy.logger.Close()
 	return nil
 }
 

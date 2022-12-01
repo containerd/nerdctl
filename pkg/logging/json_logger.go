@@ -41,7 +41,8 @@ var JSONDriverLogOpts = []string{
 }
 
 type JSONLogger struct {
-	Opts map[string]string
+	Opts   map[string]string
+	logger *logrotate.Logger
 }
 
 func JSONFileLogOptsValidate(logOptMap map[string]string) error {
@@ -72,7 +73,7 @@ func (jsonLogger *JSONLogger) Init(dataStore, ns, id string) error {
 	return nil
 }
 
-func (jsonLogger *JSONLogger) Process(dataStore string, config *logging.Config) error {
+func (jsonLogger *JSONLogger) PreProcess(dataStore string, config *logging.Config) error {
 	var jsonFilePath string
 	if logPath, ok := jsonLogger.Opts[LogPath]; ok {
 		jsonFilePath = logPath
@@ -109,7 +110,16 @@ func (jsonLogger *JSONLogger) Process(dataStore string, config *logging.Config) 
 	}
 	// MaxBackups does not include file to write logs to
 	l.MaxBackups = maxFile - 1
-	return jsonfile.Encode(l, config.Stdout, config.Stderr)
+	jsonLogger.logger = l
+	return nil
+}
+
+func (jsonLogger *JSONLogger) Process(stdout <-chan string, stderr <-chan string) error {
+	return jsonfile.Encoode(stdout, stderr, jsonLogger.logger)
+}
+
+func (jsonLogger *JSONLogger) PostProcess() error {
+	return nil
 }
 
 // Loads log entries from logfiles produced by the json-logger driver and forwards

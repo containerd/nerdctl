@@ -17,7 +17,6 @@
 package jsonfile
 
 import (
-	"bufio"
 	"container/ring"
 	"encoding/json"
 	"fmt"
@@ -45,30 +44,24 @@ func Path(dataStore, ns, id string) string {
 	return filepath.Join(dataStore, "containers", ns, id, id+"-json.log")
 }
 
-func Encode(w io.WriteCloser, stdout, stderr io.Reader) error {
-	enc := json.NewEncoder(w)
+func Encoode(stdout <-chan string, stderr <-chan string, writer io.Writer) error {
+	enc := json.NewEncoder(writer)
 	var encMu sync.Mutex
 	var wg sync.WaitGroup
 	wg.Add(2)
-	f := func(r io.Reader, name string) {
+	f := func(dataChan <-chan string, name string) {
 		defer wg.Done()
-		br := bufio.NewReader(r)
 		e := &Entry{
 			Stream: name,
 		}
-		for {
-			line, err := br.ReadString(byte('\n'))
-			if err != nil {
-				logrus.WithError(err).Errorf("failed to read line from %q", name)
-				return
-			}
-			e.Log = line
+		for log := range dataChan {
+			e.Log = log + "\n"
 			e.Time = time.Now().UTC()
 			encMu.Lock()
 			encErr := enc.Encode(e)
 			encMu.Unlock()
 			if encErr != nil {
-				logrus.WithError(err).Errorf("failed to encode JSON")
+				logrus.WithError(encErr).Errorf("failed to encode JSON")
 				return
 			}
 		}

@@ -17,9 +17,7 @@
 package logging
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"math"
 	"net/url"
 	"runtime"
@@ -35,7 +33,9 @@ import (
 )
 
 type FluentdLogger struct {
-	Opts map[string]string
+	Opts         map[string]string
+	fluentClient *fluent.Fluent
+	config       *logging.Config
 }
 
 const (
@@ -97,7 +97,7 @@ func (f *FluentdLogger) Init(dataStore, ns, id string) error {
 	return nil
 }
 
-func (f *FluentdLogger) Process(_ string, config *logging.Config) error {
+func (f *FluentdLogger) PreProcess(_ string, config *logging.Config) error {
 	if runtime.GOOS == "windows" {
 		// TODO: support fluentd on windows
 		return fmt.Errorf("logging to fluentd is not supported on windows")
@@ -110,28 +110,34 @@ func (f *FluentdLogger) Process(_ string, config *logging.Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to create fluent client: %w", err)
 	}
+	f.fluentClient = fluentClient
+	f.config = config
+	return nil
+}
+func (f *FluentdLogger) Process(stdout <-chan string, stderr <-chan string) error {
 	var wg sync.WaitGroup
 	wg.Add(2)
-	fun := func(wg *sync.WaitGroup, reader io.Reader, id, namespace, source string) {
+	fun := func(wg *sync.WaitGroup, dataChan <-chan string, id, namespace, source string) {
 		defer wg.Done()
 		metaData := map[string]string{
 			"container_id": id,
 			"namespace":    namespace,
 			"source":       source,
 		}
-		scanner := bufio.NewScanner(reader)
-		for scanner.Scan() {
-			if scanner.Err() != nil {
-				return
-			}
-			metaData["log"] = scanner.Text()
-			fluentClient.PostWithTime(f.Opts[Tag], time.Now(), metaData)
+		for log := range dataChan {
+			metaData["log"] = log
+			f.fluentClient.PostWithTime(f.Opts[Tag], time.Now(), metaData)
 		}
 	}
-	go fun(&wg, config.Stdout, config.ID, config.Namespace, "stdout")
-	go fun(&wg, config.Stderr, config.ID, config.Namespace, "stderr")
+	go fun(&wg, stdout, f.config.ID, f.config.Namespace, "stdout")
+	go fun(&wg, stderr, f.config.ID, f.config.Namespace, "stderr")
 
 	wg.Wait()
+	return nil
+}
+
+func (f *FluentdLogger) PostProcess() error {
+	defer f.fluentClient.Close()
 	return nil
 }
 

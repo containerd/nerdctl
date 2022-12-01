@@ -17,16 +17,20 @@
 package logging
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/runtime/v2/logging"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -40,7 +44,9 @@ const (
 
 type Driver interface {
 	Init(dataStore, ns, id string) error
-	Process(dataStore string, config *logging.Config) error
+	PreProcess(dataStore string, config *logging.Config) error
+	Process(stdout <-chan string, stderr <-chan string) error
+	PostProcess() error
 }
 
 type DriverFactory func(map[string]string) (Driver, error)
@@ -133,6 +139,37 @@ func LoadLogConfig(dataStore, ns, id string) (LogConfig, error) {
 	return logConfig, nil
 }
 
+func loggingProcessAdapter(driver Driver, dataStore string, config *logging.Config) error {
+	if err := driver.PreProcess(dataStore, config); err != nil {
+		return err
+	}
+	var wg sync.WaitGroup
+	wg.Add(3)
+	stdout := make(chan string, 10000)
+	stderr := make(chan string, 10000)
+	processLogFunc := func(reader io.Reader, dataChan chan string) {
+		defer wg.Done()
+		defer close(dataChan)
+		scanner := bufio.NewScanner(reader)
+		for scanner.Scan() {
+			if scanner.Err() != nil {
+				logrus.Errorf("failed to read log: %v", scanner.Err())
+				return
+			}
+			dataChan <- scanner.Text()
+		}
+	}
+
+	go processLogFunc(config.Stdout, stdout)
+	go processLogFunc(config.Stderr, stderr)
+	go func() {
+		defer wg.Done()
+		driver.Process(stdout, stderr)
+	}()
+	wg.Wait()
+	return driver.PostProcess()
+}
+
 func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
 	if dataStore == "" {
 		return nil, errors.New("got empty data store")
@@ -154,7 +191,8 @@ func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
 			if err := ready(); err != nil {
 				return err
 			}
-			return driver.Process(dataStore, config)
+
+			return loggingProcessAdapter(driver, dataStore, config)
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// the file does not exist if the container was created with nerdctl < 0.20
 			return err

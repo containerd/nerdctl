@@ -17,7 +17,6 @@
 package logging
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -52,6 +51,7 @@ func JournalLogOptsValidate(logOptMap map[string]string) error {
 
 type JournaldLogger struct {
 	Opts map[string]string
+	vars map[string]string
 }
 
 type identifier struct {
@@ -64,7 +64,7 @@ func (journaldLogger *JournaldLogger) Init(dataStore, ns, id string) error {
 	return nil
 }
 
-func (journaldLogger *JournaldLogger) Process(dataStore string, config *logging.Config) error {
+func (journaldLogger *JournaldLogger) PreProcess(dataStore string, config *logging.Config) error {
 	if !journal.Enabled() {
 		return errors.New("the local systemd journal is not available for logging")
 	}
@@ -97,23 +97,28 @@ func (journaldLogger *JournaldLogger) Process(dataStore string, config *logging.
 	vars := map[string]string{
 		"SYSLOG_IDENTIFIER": syslogIdentifier,
 	}
+	journaldLogger.vars = vars
+	return nil
+}
+
+func (journaldLogger *JournaldLogger) Process(stdout <-chan string, stderr <-chan string) error {
 	var wg sync.WaitGroup
 	wg.Add(2)
-	f := func(wg *sync.WaitGroup, r io.Reader, pri journal.Priority, vars map[string]string) {
+	f := func(wg *sync.WaitGroup, dataChan <-chan string, pri journal.Priority, vars map[string]string) {
 		defer wg.Done()
-		s := bufio.NewScanner(r)
-		for s.Scan() {
-			if s.Err() != nil {
-				return
-			}
-			journal.Send(s.Text(), pri, vars)
+		for log := range dataChan {
+			journal.Send(log, pri, vars)
 		}
 	}
 	// forward both stdout and stderr to the journal
-	go f(&wg, config.Stdout, journal.PriInfo, vars)
-	go f(&wg, config.Stderr, journal.PriErr, vars)
+	go f(&wg, stdout, journal.PriInfo, journaldLogger.vars)
+	go f(&wg, stderr, journal.PriErr, journaldLogger.vars)
 
 	wg.Wait()
+	return nil
+}
+
+func (journaldLogger *JournaldLogger) PostProcess() error {
 	return nil
 }
 
