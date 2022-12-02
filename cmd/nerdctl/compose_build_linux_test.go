@@ -50,6 +50,8 @@ services:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 	comp.WriteFile("Dockerfile", dockerfile)
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
 
 	defer base.Cmd("rmi", imageSvc0).Run()
 	defer base.Cmd("rmi", imageSvc1).Run()

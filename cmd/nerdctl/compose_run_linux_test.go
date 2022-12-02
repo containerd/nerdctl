@@ -137,8 +137,8 @@ services:
 		if err != nil {
 			return err
 		}
-		t.Logf("respBody=%q", respBody)
 		if !strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet) {
+			t.Logf("respBody=%q", respBody)
 			return fmt.Errorf("respBody does not contain %q", testutil.NginxAlpineIndexHTMLSnippet)
 		}
 		return nil
@@ -196,8 +196,8 @@ services:
 		if err != nil {
 			return err
 		}
-		t.Logf("respBody=%q", respBody)
 		if !strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet) {
+			t.Logf("respBody=%q", respBody)
 			return fmt.Errorf("respBody does not contain %q", testutil.NginxAlpineIndexHTMLSnippet)
 		}
 		return nil
