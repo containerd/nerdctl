@@ -21,7 +21,7 @@
 - [Kubernetes](#kubernetes)
   - [`nerdctl ps -a` does not show Kubernetes containers](#nerdctl-ps--a-does-not-show-kubernetes-containers)
   - [How to build an image for Kubernetes?](#how-to-build-an-image-for-kubernetes)
-- [containerd socket (`/run/containerd/containerd.sock`)](#containerd-socket-runcontainerdcontainerdsock)
+- [containerd socket address](#containerd-socket-address)
   - [Does nerdctl have an equivalent of `DOCKER_HOST=ssh://<USER>@<REMOTEHOST>` ?](#does-nerdctl-have-an-equivalent-of-docker_hostsshuserremotehost-)
   - [Does nerdctl have an equivalent of `sudo usermod -aG docker <USER>` ?](#does-nerdctl-have-an-equivalent-of-sudo-usermod--ag-docker-user-)
 - [Rootless](#rootless)
