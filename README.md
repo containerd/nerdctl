@@ -1476,7 +1476,7 @@ Usage: `nerdctl compose ps [OPTIONS] [SERVICE...]`
 
 Unimplemented `docker-compose ps` (V1) flags: `--quiet`, `--services`, `--filter`, `--all`
 
-Unimplemented `docker compose ps` (V2) flags: `--format`, `--status`
+Unimplemented `docker compose ps` (V2) flags: `--status`
 
 ### :whale: nerdctl compose pull
 Pull service images

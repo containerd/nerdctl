@@ -219,7 +219,7 @@ func printContainers(ctx context.Context, client *containerd.Client, cmd *cobra.
 		}
 
 		p := containerPrintable{
-			Command:   formatter.InspectContainerCommand(spec, trunc),
+			Command:   formatter.InspectContainerCommand(spec, trunc, true),
 			CreatedAt: info.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
 			ID:        id,
 			Image:     imageName,
