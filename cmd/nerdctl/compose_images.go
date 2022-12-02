@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"text/tabwriter"
 
 	"github.com/containerd/containerd"
@@ -116,14 +115,10 @@ func printComposeImages(ctx context.Context, cmd *cobra.Command, containers []co
 		Size          string
 	}
 
-	var (
-		imagePrintables = []composeImagePrintable{}
-		mu              sync.Mutex
-	)
-
+	imagePrintables := make([]composeImagePrintable, len(containers))
 	eg, ctx := errgroup.WithContext(ctx)
-	for _, c := range containers {
-		c := c
+	for i, c := range containers {
+		i, c := i, c
 		eg.Go(func() error {
 			info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
 			if err != nil {
@@ -152,17 +147,14 @@ func printComposeImages(ctx context.Context, cmd *cobra.Command, containers []co
 			}
 			imageID = strings.Split(imageID, ":")[1][:12]
 
-			printable := composeImagePrintable{
+			// no race condition since each goroutine accesses different `i`
+			imagePrintables[i] = composeImagePrintable{
 				ContainerName: containerName,
 				Repository:    repository,
 				Tag:           tag,
 				ImageID:       imageID,
 				Size:          progress.Bytes(size).String(),
 			}
-
-			mu.Lock()
-			defer mu.Unlock()
-			imagePrintables = append(imagePrintables, printable)
 
 			return nil
 		})
