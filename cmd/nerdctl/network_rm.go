@@ -69,23 +69,29 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 
 	for _, name := range args {
 		if name == "host" || name == "none" {
-			return fmt.Errorf("pseudo network %q cannot be removed", name)
+			fmt.Fprintf(cmd.OutOrStdout(), "Error: pseudo network %q cannot be removed\n", name)
+			continue
 		}
 		net, ok := netMap[name]
 		if !ok {
-			return fmt.Errorf("no such network: %s", name)
+			fmt.Fprintf(cmd.OutOrStdout(), "Error: No such network: %s\n", name)
+			continue
 		}
 		if value, ok := usedNetworkInfo[name]; ok {
-			return fmt.Errorf("network %q is in use by container %q", name, value)
+			fmt.Fprintf(cmd.OutOrStdout(), "Error: network %q is in use by container %q\n", name, value)
+			continue
 		}
 		if net.NerdctlID == nil {
-			return fmt.Errorf("%s is managed outside nerdctl and cannot be removed", name)
+			fmt.Fprintf(cmd.OutOrStdout(), "Error: %s is managed outside nerdctl and cannot be removed\n", name)
+			continue
 		}
 		if net.File == "" {
-			return fmt.Errorf("%s is a pre-defined network and cannot be removed", name)
+			fmt.Fprintf(cmd.OutOrStdout(), "Error: %s is a pre-defined network and cannot be removed\n", name)
+			continue
 		}
 		if err := e.RemoveNetwork(net); err != nil {
-			return err
+			fmt.Fprintf(cmd.OutOrStdout(), "Error: %s\n", err.Error())
+			continue
 		}
 		fmt.Fprintln(cmd.OutOrStdout(), name)
 	}
