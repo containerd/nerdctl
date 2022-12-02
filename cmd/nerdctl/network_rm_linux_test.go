@@ -57,7 +57,7 @@ func TestNetworkRemoveWhenLinkWithContainer(t *testing.T) {
 	networkName := testutil.Identifier(t)
 
 	base.Cmd("network", "create", networkName).AssertOK()
-	defer base.Cmd("network", "rm", networkName).Run()
+	defer base.Cmd("network", "rm", networkName).AssertOK()
 
 	tID := testutil.Identifier(t)
 	base.Cmd("run", "-d", "--net", networkName, "--name", tID, testutil.AlpineImage, "sleep", "infinity").AssertOK()
