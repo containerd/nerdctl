@@ -268,7 +268,10 @@ spec:
 EOF
 ```
 
-## containerd socket (`/run/containerd/containerd.sock`)
+## containerd socket address
+
+- rootful: `/run/containerd/containerd.sock`
+- rootless (e.g., default [Lima](https://github.com/lima-vm/lima) instance): `/proc/<PID of containerd>/root/run/containerd/containerd.sock`, or you can run this command to find out: `echo /proc/$(cat $XDG_RUNTIME_DIR/containerd-rootless/child_pid)/root/run/containerd/containerd.sock` (why it works:  [`rootlessutil.ParentMain`](https://github.com/containerd/nerdctl/blob/b160d8173fb765b76cf0920d26621843d377bc3f/pkg/rootlessutil/parent.go#L66))
 
 ### Does nerdctl have an equivalent of `DOCKER_HOST=ssh://<USER>@<REMOTEHOST>` ?
 
