@@ -92,8 +92,8 @@ func testComposeUp(t *testing.T, base *testutil.Base, dockerComposeYAML string) 
 		if err != nil {
 			return err
 		}
-		t.Logf("respBody=%q", respBody)
 		if !strings.Contains(string(respBody), testutil.WordpressIndexHTMLSnippet) {
+			t.Logf("respBody=%q", respBody)
 			return fmt.Errorf("respBody does not contain %q", testutil.WordpressIndexHTMLSnippet)
 		}
 		return nil
@@ -141,6 +141,8 @@ COPY index.html /usr/share/nginx/html/index.html
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
 
 	comp.WriteFile("Dockerfile", dockerfile)
 	comp.WriteFile("index.html", indexHTML)
@@ -262,6 +264,8 @@ services:
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
 
 	base.Env = append(os.Environ(), "ADDRESS=0.0.0.0")
 
@@ -290,6 +294,8 @@ services:
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
 
 	envFile := `TAG=1.19-alpine-org`
 	comp.WriteFile(".env", envFile)
@@ -311,6 +317,8 @@ services:
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
 
 	envFile := `TAG=1.19-alpine-org`
 	comp.WriteFile("envFile", envFile)
@@ -334,7 +342,6 @@ services:
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
-
 	projectName := comp.ProjectName()
 	t.Logf("projectName=%q", projectName)
 
@@ -364,7 +371,6 @@ networks:
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
-
 	projectName := comp.ProjectName()
 	t.Logf("projectName=%q", projectName)
 
@@ -427,7 +433,6 @@ services:
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
-
 	projectName := comp.ProjectName()
 	t.Logf("projectName=%q", projectName)
 
@@ -435,7 +440,6 @@ services:
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "down").AssertOK()
-
 }
 
 func TestComposeUpWithExternalNetwork(t *testing.T) {
