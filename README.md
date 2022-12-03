@@ -331,6 +331,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose up](#whale-nerdctl-compose-up)
     - [:whale: nerdctl compose logs](#whale-nerdctl-compose-logs)
     - [:whale: nerdctl compose build](#whale-nerdctl-compose-build)
+    - [:whale: nerdctl compose exec](#whale-nerdctl-compose-exec)
     - [:whale: nerdctl compose down](#whale-nerdctl-compose-down)
     - [:whale: nerdctl compose images](#whale-nerdctl-compose-images)
     - [:whale: nerdctl compose stop](#whale-nerdctl-compose-stop)
@@ -1439,6 +1440,25 @@ Flags:
 
 Unimplemented `docker-compose build` (V1) flags:  `--compress`, `--force-rm`, `--memory`, `--no-rm`, `--parallel`, `--pull`, `--quiet`
 
+### :whale: nerdctl compose exec
+
+Execute a command on a running container of the service.
+
+Usage: `nerdctl compose exec [OPTIONS] SERVICE COMMAND [ARGS...]`
+
+Flags:
+
+- :whale: `-d, --detach`: Detached mode: Run the command in background
+- :whale: `-e, --env`: Set environment variables
+- :whale: `--index`: Set index of the container if the service has multiple instances. (default 1)
+- :whale: `-i, --interactive`: Keep STDIN open even if not attached (default true)
+- :whale: `--privileged`: Give extended privileges to the command
+- :whale: `-t, --tty`: Allocate a pseudo-TTY
+- :whale: `-u, --user`: Username or UID (format: `<name|uid>[:<group|gid>]`)
+- :whale: `-w, --workdir`: Working directory inside the container
+
+Unimplemented `docker-compose exec` (V2) flags:  `-T, --no-TTY`
+
 ### :whale: nerdctl compose down
 Remove containers and associated resources
 
@@ -1627,7 +1647,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose create|events|exec|pause|port|scale|start|top|unpause`
+- `docker-compose create|events|pause|port|scale|start|top|unpause`
 
 Others:
 - `docker system df`

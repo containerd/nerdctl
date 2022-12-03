@@ -50,7 +50,7 @@ func newExecCommand() *cobra.Command {
 	}
 	execCommand.Flags().SetInterspersed(false)
 
-	execCommand.Flags().BoolP("tty", "t", false, "(Currently -t needs to correspond to -i)")
+	execCommand.Flags().BoolP("tty", "t", false, "Allocate a pseudo-TTY")
 	execCommand.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
 	execCommand.Flags().BoolP("detach", "d", false, "Detached mode: run command in the background")
 	execCommand.Flags().StringP("workdir", "w", "", "Working directory inside the container")
