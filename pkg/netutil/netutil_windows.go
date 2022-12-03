@@ -29,7 +29,7 @@ const (
 	DefaultCIDR        = "10.4.0.0/24"
 )
 
-func (n *networkConfig) subnets() []*net.IPNet {
+func (n *NetworkConfig) subnets() []*net.IPNet {
 	var subnets []*net.IPNet
 	if n.Plugins[0].Network.Type == "nat" {
 		var nat natConfig
@@ -49,7 +49,7 @@ func (n *networkConfig) subnets() []*net.IPNet {
 	return subnets
 }
 
-func (n *networkConfig) clean() error {
+func (n *NetworkConfig) clean() error {
 	return nil
 }
 

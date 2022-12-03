@@ -23,7 +23,7 @@ import (
 )
 
 type Found struct {
-	Network    *networkConfig
+	Network    *NetworkConfig
 	Req        string // The raw request string. name, short ID, or long ID.
 	MatchIndex int    // Begins with 0, up to MatchCount - 1.
 	MatchCount int    // 1 on exact match. > 1 on ambiguous match. Never be <= 0.
@@ -50,7 +50,7 @@ func (w *NetworkWalker) Walk(ctx context.Context, req string) (int, error) {
 		return 0, err
 	}
 
-	networks := []*networkConfig{}
+	networks := []*NetworkConfig{}
 	for _, n := range w.Client.Networks {
 		if n.Name == req || longIDExp.Match([]byte(*n.NerdctlID)) || shortIDExp.Match([]byte(*n.NerdctlID)) {
 			networks = append(networks, n)

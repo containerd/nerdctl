@@ -43,7 +43,7 @@ import (
 type CNIEnv struct {
 	Path        string
 	NetconfPath string
-	Networks    []*networkConfig
+	Networks    []*NetworkConfig
 }
 
 type CNIEnvOpt func(e *CNIEnv) error
@@ -124,8 +124,8 @@ func NewCNIEnv(cniPath, cniConfPath string, opts ...CNIEnvOpt) (*CNIEnv, error) 
 	return &e, nil
 }
 
-func (e *CNIEnv) NetworkMap() map[string]*networkConfig { //nolint:revive
-	m := make(map[string]*networkConfig, len(e.Networks))
+func (e *CNIEnv) NetworkMap() map[string]*NetworkConfig { //nolint:revive
+	m := make(map[string]*NetworkConfig, len(e.Networks))
 	for _, n := range e.Networks {
 		m[n.Name] = n
 	}
@@ -143,7 +143,7 @@ func (e *CNIEnv) usedSubnets() ([]*net.IPNet, error) {
 	return usedSubnets, nil
 }
 
-type networkConfig struct {
+type NetworkConfig struct {
 	*libcni.NetworkConfigList
 	NerdctlID     *string
 	NerdctlLabels *map[string]string
@@ -170,8 +170,8 @@ type CreateOptions struct {
 	Labels      []string
 }
 
-func (e *CNIEnv) CreateNetwork(opts CreateOptions) (*networkConfig, error) { //nolint:revive
-	var net *networkConfig
+func (e *CNIEnv) CreateNetwork(opts CreateOptions) (*NetworkConfig, error) { //nolint:revive
+	var net *NetworkConfig
 	if _, ok := e.NetworkMap()[opts.Name]; ok {
 		return nil, errdefs.ErrAlreadyExists
 	}
@@ -201,7 +201,7 @@ func (e *CNIEnv) CreateNetwork(opts CreateOptions) (*networkConfig, error) { //n
 	return net, nil
 }
 
-func (e *CNIEnv) RemoveNetwork(net *networkConfig) error {
+func (e *CNIEnv) RemoveNetwork(net *NetworkConfig) error {
 	fn := func() error {
 		if err := os.RemoveAll(net.File); err != nil {
 			return err
@@ -232,9 +232,9 @@ func (e *CNIEnv) ensureDefaultNetworkConfig() error {
 	return nil
 }
 
-// generateNetworkConfig creates networkConfig.
+// generateNetworkConfig creates NetworkConfig.
 // generateNetworkConfig does not fill "File" field.
-func (e *CNIEnv) generateNetworkConfig(name string, labels []string, plugins []CNIPlugin) (*networkConfig, error) {
+func (e *CNIEnv) generateNetworkConfig(name string, labels []string, plugins []CNIPlugin) (*NetworkConfig, error) {
 	if name == "" || len(plugins) == 0 {
 		return nil, errdefs.ErrInvalidArgument
 	}
@@ -264,7 +264,7 @@ func (e *CNIEnv) generateNetworkConfig(name string, labels []string, plugins []C
 	if err != nil {
 		return nil, err
 	}
-	return &networkConfig{
+	return &NetworkConfig{
 		NetworkConfigList: l,
 		NerdctlID:         &id,
 		NerdctlLabels:     &labelsMap,
@@ -272,8 +272,8 @@ func (e *CNIEnv) generateNetworkConfig(name string, labels []string, plugins []C
 	}, nil
 }
 
-// writeNetworkConfig writes networkConfig file to cni config path.
-func (e *CNIEnv) writeNetworkConfig(net *networkConfig) error {
+// writeNetworkConfig writes NetworkConfig file to cni config path.
+func (e *CNIEnv) writeNetworkConfig(net *NetworkConfig) error {
 	filename := filepath.Join(e.NetconfPath, "nerdctl-"+net.Name+".conflist")
 	if _, err := os.Stat(filename); err == nil {
 		return errdefs.ErrAlreadyExists
@@ -285,8 +285,8 @@ func (e *CNIEnv) writeNetworkConfig(net *networkConfig) error {
 }
 
 // networkConfigList loads config from dir if dir exists.
-func (e *CNIEnv) networkConfigList() ([]*networkConfig, error) {
-	l := []*networkConfig{}
+func (e *CNIEnv) networkConfigList() ([]*NetworkConfig, error) {
+	l := []*NetworkConfig{}
 	fileNames, err := libcni.ConfFiles(e.NetconfPath, []string{".conf", ".conflist", ".json"})
 	if err != nil {
 		return nil, err
@@ -310,7 +310,7 @@ func (e *CNIEnv) networkConfigList() ([]*networkConfig, error) {
 			}
 		}
 		id, labels := nerdctlIDLabels(lcl.Bytes)
-		l = append(l, &networkConfig{
+		l = append(l, &NetworkConfig{
 			NetworkConfigList: lcl,
 			NerdctlID:         id,
 			NerdctlLabels:     labels,
