@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/containerd/nerdctl/pkg/idutil/netwalker"
 	"github.com/containerd/nerdctl/pkg/netutil"
 
 	"github.com/spf13/cobra"
@@ -67,9 +68,9 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	walker := netutil.NetworkWalker{
+	walker := netwalker.NetworkWalker{
 		Client: e,
-		OnFound: func(ctx context.Context, found netutil.Found) error {
+		OnFound: func(ctx context.Context, found netwalker.Found) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}

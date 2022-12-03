@@ -14,16 +14,18 @@
    limitations under the License.
 */
 
-package netutil
+package netwalker
 
 import (
 	"context"
 	"fmt"
 	"regexp"
+
+	"github.com/containerd/nerdctl/pkg/netutil"
 )
 
 type Found struct {
-	Network    *NetworkConfig
+	Network    *netutil.NetworkConfig
 	Req        string // The raw request string. name, short ID, or long ID.
 	MatchIndex int    // Begins with 0, up to MatchCount - 1.
 	MatchCount int    // 1 on exact match. > 1 on ambiguous match. Never be <= 0.
@@ -32,7 +34,7 @@ type Found struct {
 type OnFound func(ctx context.Context, found Found) error
 
 type NetworkWalker struct {
-	Client  *CNIEnv
+	Client  *netutil.CNIEnv
 	OnFound OnFound
 }
 
@@ -50,7 +52,7 @@ func (w *NetworkWalker) Walk(ctx context.Context, req string) (int, error) {
 		return 0, err
 	}
 
-	networks := []*NetworkConfig{}
+	networks := []*netutil.NetworkConfig{}
 	for _, n := range w.Client.Networks {
 		if n.Name == req || longIDExp.Match([]byte(*n.NerdctlID)) || shortIDExp.Match([]byte(*n.NerdctlID)) {
 			networks = append(networks, n)
