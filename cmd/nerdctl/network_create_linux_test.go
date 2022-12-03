@@ -24,7 +24,6 @@ import (
 )
 
 func TestNetworkCreateWithMTU(t *testing.T) {
-	t.Parallel()
 	testNetwork := testutil.Identifier(t)
 	base := testutil.NewBase(t)
 
@@ -39,7 +38,6 @@ func TestNetworkCreateWithMTU(t *testing.T) {
 }
 
 func TestNetworkCreate(t *testing.T) {
-	t.Parallel()
 	base := testutil.NewBase(t)
 	testNetwork := testutil.Identifier(t)
 
