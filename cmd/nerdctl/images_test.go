@@ -92,6 +92,15 @@ LABEL version=0.1`, testutil.CommonImage)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 	base.Cmd("build", "-t", tempName, "-f", buildCtx+"/Dockerfile", buildCtx).AssertOK()
+	defer base.Cmd("rmi", tempName).AssertOK()
+
+	busyboxGlibc, busyboxUclibc := "busybox:glibc", "busybox:uclibc"
+	base.Cmd("pull", busyboxGlibc).AssertOK()
+	defer base.Cmd("rmi", busyboxGlibc).AssertOK()
+
+	base.Cmd("pull", busyboxUclibc).AssertOK()
+	defer base.Cmd("rmi", busyboxUclibc).AssertOK()
+
 	base.Cmd("images", "--filter", fmt.Sprintf("before=%s:%s", tempName, "latest")).AssertOutContains(strings.Split(testutil.CommonImage, ":")[0])
 	base.Cmd("images", "--filter", fmt.Sprintf("before=%s:%s", tempName, "latest")).AssertOutNotContains(tempName)
 	base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage)).AssertOutContains(tempName)
@@ -103,4 +112,7 @@ LABEL version=0.1`, testutil.CommonImage)
 	base.Cmd("images", "--filter", "label=foo=bar", "--filter", "label=version=0.1").AssertOutContains(tempName)
 	base.Cmd("images", "--filter", "label=foo=bar", "--filter", "label=version=0.2").AssertOutNotContains(tempName)
 	base.Cmd("images", "--filter", "label=version").AssertOutContains(tempName)
+	base.Cmd("images", "--filter", fmt.Sprintf("reference=%s*", tempName)).AssertOutContains(tempName)
+	base.Cmd("images", "--filter", "reference=busy*:*libc*").AssertOutContains("glibc")
+	base.Cmd("images", "--filter", "reference=busy*:*libc*").AssertOutContains("uclibc")
 }
