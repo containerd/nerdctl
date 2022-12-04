@@ -26,7 +26,6 @@ import (
 )
 
 func TestNetworkRemove(t *testing.T) {
-	t.Parallel()
 	if rootlessutil.IsRootless() {
 		t.Skip("test skipped for remove rootless network")
 	}
@@ -51,7 +50,6 @@ func TestNetworkRemove(t *testing.T) {
 }
 
 func TestNetworkRemoveWhenLinkWithContainer(t *testing.T) {
-	t.Parallel()
 	if rootlessutil.IsRootless() {
 		t.Skip("test skipped for remove rootless network")
 	}
