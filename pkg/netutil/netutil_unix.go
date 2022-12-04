@@ -42,7 +42,7 @@ const (
 	DefaultIPAMDriver  = "host-local"
 )
 
-func (n *networkConfig) subnets() []*net.IPNet {
+func (n *NetworkConfig) subnets() []*net.IPNet {
 	var subnets []*net.IPNet
 	if len(n.Plugins) > 0 && n.Plugins[0].Network.Type == "bridge" {
 		var bridge bridgeConfig
@@ -69,7 +69,7 @@ func (n *networkConfig) subnets() []*net.IPNet {
 	return subnets
 }
 
-func (n *networkConfig) clean() error {
+func (n *NetworkConfig) clean() error {
 	// Remove the bridge network interface on the host.
 	if len(n.Plugins) > 0 && n.Plugins[0].Network.Type == "bridge" {
 		var bridge bridgeConfig

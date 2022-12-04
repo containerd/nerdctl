@@ -64,3 +64,53 @@ func TestNetworkRemoveWhenLinkWithContainer(t *testing.T) {
 	defer base.Cmd("rm", "-f", tID).Run()
 	base.Cmd("network", "rm", networkName).AssertFail()
 }
+
+func TestNetworkRemoveById(t *testing.T) {
+	t.Parallel()
+	if rootlessutil.IsRootless() {
+		t.Skip("test skipped for remove rootless network")
+	}
+	base := testutil.NewBase(t)
+	networkName := testutil.Identifier(t)
+
+	base.Cmd("network", "create", networkName).AssertOK()
+	defer base.Cmd("network", "rm", networkName).Run()
+
+	networkID := base.InspectNetwork(networkName).ID
+
+	tID := testutil.Identifier(t)
+	base.Cmd("run", "--rm", "--net", networkName, "--name", tID, testutil.CommonImage).AssertOK()
+
+	_, err := netlink.LinkByName("br-" + networkID[:12])
+	assert.NilError(t, err)
+
+	base.Cmd("network", "rm", networkID).AssertOK()
+
+	_, err = netlink.LinkByName("br-" + networkID[:12])
+	assert.Error(t, err, "Link not found")
+}
+
+func TestNetworkRemoveByShortId(t *testing.T) {
+	t.Parallel()
+	if rootlessutil.IsRootless() {
+		t.Skip("test skipped for remove rootless network")
+	}
+	base := testutil.NewBase(t)
+	networkName := testutil.Identifier(t)
+
+	base.Cmd("network", "create", networkName).AssertOK()
+	defer base.Cmd("network", "rm", networkName).Run()
+
+	networkID := base.InspectNetwork(networkName).ID
+
+	tID := testutil.Identifier(t)
+	base.Cmd("run", "--rm", "--net", networkName, "--name", tID, testutil.CommonImage).AssertOK()
+
+	_, err := netlink.LinkByName("br-" + networkID[:12])
+	assert.NilError(t, err)
+
+	base.Cmd("network", "rm", networkID[:12]).AssertOK()
+
+	_, err = netlink.LinkByName("br-" + networkID[:12])
+	assert.Error(t, err, "Link not found")
+}
