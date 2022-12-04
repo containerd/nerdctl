@@ -151,7 +151,7 @@ Also, `nerdctl` might be potentially useful for debugging Kubernetes clusters, b
 
 ## Features present in `nerdctl` but not present in Docker
 Major:
-- On-demand image pulling (lazy-pulling) using [Stargz](./docs/stargz.md)/[Nydus](./docs/nydus.md)/[OverlayBD](./docs/overlaybd.md) Snapshotter: `nerdctl --snapshotter=stargz|nydus|overlaybd run IMAGE` .
+- On-demand image pulling (lazy-pulling) using [Stargz](./docs/stargz.md)/[Nydus](./docs/nydus.md)/[OverlayBD](./docs/overlaybd.md)/[SOCI](./docs/soci.md) Snapshotter: `nerdctl --snapshotter=stargz|nydus|overlaybd|soci run IMAGE` .
 - [Image encryption and decryption using ocicrypt (imgcrypt)](./docs/ocicrypt.md): `nerdctl image (encrypt|decrypt) SRC DST`
 - [P2P image distribution using IPFS](./docs/ipfs.md): `nerdctl run ipfs://CID` .
   P2P image distribution (IPFS) is completely optional. Your host is NOT connected to any P2P network, unless you opt in to [install and run IPFS daemon](https://docs.ipfs.io/install/).
