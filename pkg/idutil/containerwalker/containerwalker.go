@@ -18,12 +18,7 @@ package containerwalker
 
 import (
 	"context"
-	"fmt"
-	"regexp"
-	"strings"
-
 	"github.com/containerd/containerd"
-	"github.com/containerd/nerdctl/pkg/labels"
 )
 
 type Found struct {
@@ -44,30 +39,12 @@ type ContainerWalker struct {
 // Req is name, short ID, or long ID.
 // Returns the number of the found entries.
 func (w *ContainerWalker) Walk(ctx context.Context, req string) (int, error) {
-	if strings.HasPrefix(req, "k8s://") {
-		return -1, fmt.Errorf("specifying \"k8s://...\" form is not supported (Hint: specify ID instead): %q", req)
+	f := Found{
+		Container: nil,
+		Req:       req,
 	}
-	filters := []string{
-		fmt.Sprintf("labels.%q==%s", labels.Name, req),
-		fmt.Sprintf("id~=^%s.*$", regexp.QuoteMeta(req)),
+	if e := w.OnFound(ctx, f); e != nil {
+		return -1, e
 	}
-
-	containers, err := w.Client.Containers(ctx, filters...)
-	if err != nil {
-		return -1, err
-	}
-
-	matchCount := len(containers)
-	for i, c := range containers {
-		f := Found{
-			Container:  c,
-			Req:        req,
-			MatchIndex: i,
-			MatchCount: matchCount,
-		}
-		if e := w.OnFound(ctx, f); e != nil {
-			return -1, e
-		}
-	}
-	return matchCount, nil
+	return 1, nil
 }

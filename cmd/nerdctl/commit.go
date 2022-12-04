@@ -17,16 +17,13 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
-
-	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/imgutil/commit"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 func newCommitCommand() *cobra.Command {
@@ -43,6 +40,11 @@ func newCommitCommand() *cobra.Command {
 	commitCommand.Flags().StringP("message", "m", "", "Commit message")
 	commitCommand.Flags().StringArrayP("change", "c", nil, "Apply Dockerfile instruction to the created image (supported directives: [CMD, ENTRYPOINT])")
 	commitCommand.Flags().BoolP("pause", "p", true, "Pause container during commit")
+	commitCommand.Flags().StringP("image", "i", "", "ImageURL")
+	commitCommand.Flags().StringP("lowerDir", "l", "/var/lib/containerd/lower", "lower dir")
+	commitCommand.Flags().StringP("upperDir", "u", "/ebs/upper", "upper dir")
+	commitCommand.Flags().StringP("excludeDir", "e", "/ebs/excludedir", "exclude dirs")
+	commitCommand.Flags().StringSliceP("excludeRootfsDirs", "r", nil, "exclude rootfsdirs")
 	return commitCommand
 }
 
@@ -58,28 +60,12 @@ func commitAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	walker := &containerwalker.ContainerWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if found.MatchCount > 1 {
-				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
-			}
-			imageID, err := commit.Commit(ctx, client, found.Container, opts)
-			if err != nil {
-				return err
-			}
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", imageID)
-			return err
-		},
-	}
-	req := args[0]
-	n, err := walker.Walk(ctx, req)
+	imageID, err := commit.Commit(ctx, client, opts)
 	if err != nil {
 		return err
-	} else if n == 0 {
-		return fmt.Errorf("no such container %s", req)
 	}
-	return nil
+	_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", imageID)
+	return err
 }
 
 func parseChanges(cmd *cobra.Command) (commit.Changes, error) {
@@ -150,13 +136,38 @@ func newCommitOpts(cmd *cobra.Command, args []string) (*commit.Opts, error) {
 	if err != nil {
 		return nil, err
 	}
+	image, err := cmd.Flags().GetString("image")
+	if err != nil {
+		return nil, err
+	}
 
+	lowerDir, err := cmd.Flags().GetString("lowerDir")
+	if err != nil {
+		return nil, err
+	}
+	upperDir, err := cmd.Flags().GetString("upperDir")
+	if err != nil {
+		return nil, err
+	}
+	excludeDir, err := cmd.Flags().GetString("excludeDir")
+	if err != nil {
+		return nil, err
+	}
+	excludeRootfsDirs, err := cmd.Flags().GetStringSlice("excludeRootfsDirs")
+	if err != nil {
+		return nil, err
+	}
 	return &commit.Opts{
-		Author:  author,
-		Message: message,
-		Ref:     named.String(),
-		Pause:   pause,
-		Changes: changes,
+		Author:            author,
+		Message:           message,
+		Ref:               named.String(),
+		Pause:             pause,
+		Changes:           changes,
+		Image:             image,
+		LowerDir:          lowerDir,
+		UpperDir:          upperDir,
+		ExcludeDir:        excludeDir,
+		ExcludeRootfsDirs: excludeRootfsDirs,
 	}, nil
 }
 
