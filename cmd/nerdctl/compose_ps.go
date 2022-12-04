@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/portutil"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 func newComposePsCommand() *cobra.Command {
@@ -86,18 +87,28 @@ func composePsAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	containersPrintable := []composeContainerPrintable{}
-	var p composeContainerPrintable
-	for _, container := range containers {
-		if format == "json" {
-			p, err = composeContainerPrintableJSON(ctx, container)
-		} else {
-			p, err = composeContainerPrintableTab(ctx, container)
-		}
-		if err != nil {
-			return err
-		}
-		containersPrintable = append(containersPrintable, p)
+	containersPrintable := make([]composeContainerPrintable, len(containers))
+	eg, ctx := errgroup.WithContext(ctx)
+	for i, container := range containers {
+		i, container := i, container
+		eg.Go(func() error {
+			var p composeContainerPrintable
+			var err error
+			if format == "json" {
+				p, err = composeContainerPrintableJSON(ctx, container)
+			} else {
+				p, err = composeContainerPrintableTab(ctx, container)
+			}
+			if err != nil {
+				return err
+			}
+			containersPrintable[i] = p
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return err
 	}
 
 	if format == "json" {
