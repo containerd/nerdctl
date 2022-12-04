@@ -32,7 +32,7 @@ func TestNetworkCreateWithMTU(t *testing.T) {
 		"--driver", "bridge", "--opt", "com.docker.network.driver.mtu=9216",
 	}
 	base.Cmd(args...).AssertOK()
-	defer base.Cmd("network", "rm", testNetwork).Run()
+	defer base.Cmd("network", "rm", testNetwork).AssertOK()
 
 	base.Cmd("run", "--rm", "--net", testNetwork, testutil.AlpineImage, "ifconfig", "eth0").AssertOutContains("MTU:9216")
 }
@@ -42,7 +42,7 @@ func TestNetworkCreate(t *testing.T) {
 	testNetwork := testutil.Identifier(t)
 
 	base.Cmd("network", "create", testNetwork).AssertOK()
-	defer base.Cmd("network", "rm", testNetwork).Run()
+	defer base.Cmd("network", "rm", testNetwork).AssertOK()
 
 	net := base.InspectNetwork(testNetwork)
 	assert.Equal(t, len(net.IPAM.Config), 1)
@@ -50,7 +50,7 @@ func TestNetworkCreate(t *testing.T) {
 	base.Cmd("run", "--rm", "--net", testNetwork, testutil.CommonImage, "ip", "route").AssertOutContains(net.IPAM.Config[0].Subnet)
 
 	base.Cmd("network", "create", testNetwork+"-1").AssertOK()
-	defer base.Cmd("network", "rm", testNetwork+"-1").Run()
+	defer base.Cmd("network", "rm", testNetwork+"-1").AssertOK()
 
 	base.Cmd("run", "--rm", "--net", testNetwork+"-1", testutil.CommonImage, "ip", "route").AssertNoOut(net.IPAM.Config[0].Subnet)
 }
