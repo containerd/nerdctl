@@ -156,4 +156,4 @@ jobs:
         run: |
           sudo apt-get install -y expect
       - name: "Ensure that the integration test suite is compatible with Docker"
-        run: go test -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon
+        run: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon

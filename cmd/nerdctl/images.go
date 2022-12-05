@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"text/tabwriter"
 	"text/template"
@@ -34,6 +35,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/pkg/progress"
 	"github.com/containerd/containerd/platforms"
+	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/imgutil"
@@ -102,9 +104,7 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	var (
-		imageStore = client.ImageService()
-	)
+	var imageStore = client.ImageService()
 	imageList, err := imageStore.List(ctx, filters...)
 	if err != nil {
 		return err
@@ -120,6 +120,11 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 		}
 
 		imageList, err = filterByLabel(ctx, client, imageList, f.Labels)
+		if err != nil {
+			return err
+		}
+
+		imageList, err = filterByReference(imageList, f.Reference)
 		if err != nil {
 			return err
 		}
@@ -142,6 +147,39 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 		imageList = imgutil.FilterImages(imageList, beforeImages, sinceImages)
 	}
 	return printImages(ctx, cmd, client, imageList)
+}
+
+func filterByReference(imageList []images.Image, filters []string) ([]images.Image, error) {
+	var filteredImageList []images.Image
+	logrus.Debug(filters)
+	for _, image := range imageList {
+		logrus.Debug(image.Name)
+		var matches int
+		for _, f := range filters {
+			var ref dockerreference.Reference
+			var err error
+			ref, err = dockerreference.ParseAnyReference(image.Name)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse image name: %s while filtering by reference because of %s", image.Name, err.Error())
+			}
+
+			familiarMatch, err := dockerreference.FamiliarMatch(f, ref)
+			if err != nil {
+				return nil, err
+			}
+			regexpMatch, err := regexp.MatchString(f, image.Name)
+			if err != nil {
+				return nil, err
+			}
+			if familiarMatch || regexpMatch {
+				matches++
+			}
+		}
+		if matches == len(filters) {
+			filteredImageList = append(filteredImageList, image)
+		}
+	}
+	return filteredImageList, nil
 }
 
 func filterByLabel(ctx context.Context, client *containerd.Client, imageList []images.Image, filters map[string]string) ([]images.Image, error) {

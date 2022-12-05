@@ -304,7 +304,6 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 		return "", nil, false, "", nil, nil, err
 	}
 	if tags = strutil.DedupeStrSlice(tagValue); len(tags) > 0 {
-
 		ref := tags[0]
 		named, err := dockerreference.ParseNormalizedNamed(ref)
 		if err != nil {

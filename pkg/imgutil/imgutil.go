@@ -52,9 +52,10 @@ type EnsuredImage struct {
 }
 
 var (
-	FilterBeforeType = "before"
-	FilterSinceType  = "since"
-	FilterLabelType  = "label"
+	FilterBeforeType    = "before"
+	FilterSinceType     = "since"
+	FilterLabelType     = "label"
+	FilterReferenceType = "reference"
 )
 
 // PullMode is either one of "always", "missing", "never"
@@ -383,9 +384,10 @@ func ParseRepoTag(imgName string) (string, string) {
 }
 
 type Filters struct {
-	Before []string
-	Since  []string
-	Labels map[string]string
+	Before    []string
+	Since     []string
+	Labels    map[string]string
+	Reference []string
 }
 
 func ParseFilters(filters []string) (*Filters, error) {
@@ -412,7 +414,10 @@ func ParseFilters(filters []string) (*Filters, error) {
 				f.Since = append(f.Since, fmt.Sprintf("name==%s", canonicalRef.String()))
 				f.Since = append(f.Since, fmt.Sprintf("name==%s", tempFilterToken[1]))
 			} else if tempFilterToken[0] == FilterLabelType {
+				// To support filtering labels by keys.
 				f.Labels[tempFilterToken[1]] = ""
+			} else if tempFilterToken[0] == FilterReferenceType {
+				f.Reference = append(f.Reference, tempFilterToken[1])
 			} else {
 				return nil, fmt.Errorf("invalid filter %q", filter)
 			}
