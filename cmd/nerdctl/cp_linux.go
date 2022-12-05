@@ -52,7 +52,7 @@ Using 'nerdctl cp' with untrusted or malicious containers is unsupported and may
   nerdctl cp [flags] SRC_PATH|- CONTAINER:DEST_PATH`
 	var cpCommand = &cobra.Command{
 		Use:               usage,
-		Args:              cobra.ExactArgs(2),
+		Args:              IsExactArgs(2),
 		Short:             shortHelp,
 		Long:              longHelp,
 		RunE:              cpAction,

@@ -31,7 +31,7 @@ func newTagCommand() *cobra.Command {
 	var tagCommand = &cobra.Command{
 		Use:               "tag [flags] SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]",
 		Short:             "Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE",
-		Args:              cobra.ExactArgs(2),
+		Args:              IsExactArgs(2),
 		RunE:              tagAction,
 		ValidArgsFunction: tagShellComplete,
 		SilenceUsage:      true,

@@ -29,7 +29,7 @@ func newVolumeCreateCommand() *cobra.Command {
 	volumeCreateCommand := &cobra.Command{
 		Use:           "create [flags] VOLUME",
 		Short:         "Create a volume",
-		Args:          cobra.ExactArgs(1),
+		Args:          IsExactArgs(1),
 		RunE:          volumeCreateAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
