@@ -572,3 +572,21 @@ func checkExperimental(feature string) func(cmd *cobra.Command, args []string) e
 		return nil
 	}
 }
+
+// IsExactArgs returns an error if there is not the exact number of args
+func IsExactArgs(number int) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		if len(args) == number {
+			return nil
+		}
+		return fmt.Errorf(
+			"%q requires exactly %d %s.\nSee '%s --help'.\n\nUsage:  %s\n\n%s",
+			cmd.CommandPath(),
+			number,
+			"argument(s)",
+			cmd.CommandPath(),
+			cmd.UseLine(),
+			cmd.Short,
+		)
+	}
+}

@@ -35,7 +35,7 @@ import (
 func newLogsCommand() *cobra.Command {
 	var logsCommand = &cobra.Command{
 		Use:               "logs [flags] CONTAINER",
-		Args:              cobra.ExactArgs(1),
+		Args:              IsExactArgs(1),
 		Short:             "Fetch the logs of a container. Currently, only containers created with `nerdctl run -d` are supported.",
 		RunE:              logsAction,
 		ValidArgsFunction: logsShellComplete,

@@ -31,7 +31,7 @@ import (
 func newRenameCommand() *cobra.Command {
 	var renameCommand = &cobra.Command{
 		Use:               "rename [flags] CONTAINER NEW_NAME",
-		Args:              cobra.ExactArgs(2),
+		Args:              IsExactArgs(2),
 		Short:             "rename a container",
 		RunE:              renameAction,
 		ValidArgsFunction: renameShellComplete,
