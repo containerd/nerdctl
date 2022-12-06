@@ -66,7 +66,6 @@ func TestNetworkRemoveWhenLinkWithContainer(t *testing.T) {
 }
 
 func TestNetworkRemoveById(t *testing.T) {
-	t.Parallel()
 	if rootlessutil.IsRootless() {
 		t.Skip("test skipped for remove rootless network")
 	}
@@ -91,7 +90,6 @@ func TestNetworkRemoveById(t *testing.T) {
 }
 
 func TestNetworkRemoveByShortId(t *testing.T) {
-	t.Parallel()
 	if rootlessutil.IsRootless() {
 		t.Skip("test skipped for remove rootless network")
 	}
