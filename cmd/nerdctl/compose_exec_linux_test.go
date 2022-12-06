@@ -28,7 +28,7 @@ import (
 )
 
 func TestComposeExec(t *testing.T) {
-	// `-i` in `compose run & exec` is only supported in compose v2.
+	// disabling `-it` in `compose exec` is only supported in compose v2.
 	// Currently CI is using compose v1.
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
@@ -38,8 +38,10 @@ version: '3.1'
 services:
   svc0:
     image: %s
+    command: "sleep infinity"
   svc1:
     image: %s
+    command: "sleep infinity"
 `, testutil.CommonImage, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
@@ -47,15 +49,38 @@ services:
 	projectName := comp.ProjectName()
 	t.Logf("projectName=%q", projectName)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "run", "-d", "-i=false", "svc0", "sleep", "1h").AssertOK()
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "svc0").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
 
 	// test basic functionality and `--workdir` flag
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "-t=false", "svc0", "echo", "success").AssertOutExactly("success\n")
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "-t=false", "--workdir", "/tmp", "svc0", "pwd").AssertOutExactly("/tmp\n")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "-t=false", "svc1", "echo", "success").AssertFail()
+	// cannot `exec` on non-running service
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "svc1", "echo", "success").AssertFail()
+}
 
-	// test `--env` flag
+func TestComposeExecWithEnv(t *testing.T) {
+	// disabling `-it` in `compose exec` is only supported in compose v2.
+	// Currently CI is using compose v1.
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	var dockerComposeYAML = fmt.Sprintf(`
+version: '3.1'
+
+services:
+  svc0:
+    image: %s
+    command: "sleep infinity"
+`, testutil.CommonImage)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+
 	// FYI: https://github.com/containerd/nerdctl/blob/e4b2b6da56555dc29ed66d0fd8e7094ff2bc002d/cmd/nerdctl/run_test.go#L177
 	base.Env = append(os.Environ(), "CORGE=corge-value-in-host", "GARPLY=garply-value-in-host")
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "-t=false",
@@ -104,7 +129,7 @@ services:
 }
 
 func TestComposeExecWithUser(t *testing.T) {
-	// `-i` in `compose run & exec` is only supported in compose v2.
+	// disabling `-it` in `compose exec` is only supported in compose v2.
 	// Currently CI is using compose v1.
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
@@ -114,19 +139,16 @@ version: '3.1'
 services:
   svc0:
     image: %s
-  svc1:
-    image: %s
-`, testutil.CommonImage, testutil.CommonImage)
+    command: "sleep infinity"
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 	projectName := comp.ProjectName()
 	t.Logf("projectName=%q", projectName)
 
-	testContainer := testutil.Identifier(t)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "run", "-d", "-i=false", "--name", testContainer, "svc0", "sleep", "1h").AssertOK()
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
-	base.EnsureContainerStarted(testContainer)
 
 	testCases := map[string]string{
 		"":             "uid=0(root) gid=0(root)",
