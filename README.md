@@ -345,6 +345,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose restart](#whale-nerdctl-compose-restart)
     - [:whale: nerdctl compose rm](#whale-nerdctl-compose-rm)
     - [:whale: nerdctl compose run](#whale-nerdctl-compose-run)
+    - [:whale: nerdctl compose top](#whale-nerdctl-compose-top)
     - [:whale: nerdctl compose version](#whale-nerdctl-compose-version)
   - [IPFS management](#ipfs-management)
     - [:nerd_face: nerdctl ipfs registry up](#nerd_face-nerdctl-ipfs-registry-up)
@@ -1583,6 +1584,12 @@ Unimplemented `docker-compose run` (V1) flags: `--use-aliases`, `--no-TTY`
 
 Unimplemented `docker compose run` (V2) flags: `--use-aliases`, `--no-TTY`, `--tty`
 
+### :whale: nerdctl compose top
+
+Display the running processes of service containers
+
+Usage: `nerdctl compose top [SERVICES...]`
+
 ### :whale: nerdctl compose version
 Show the Compose version information (which is the nerdctl version)
 
@@ -1661,7 +1668,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose create|events|port|scale|start|top`
+- `docker-compose create|events|port|scale|start`
 
 Others:
 - `docker system df`
