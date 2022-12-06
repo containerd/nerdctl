@@ -109,9 +109,13 @@ func shellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, 
 		return nil, cobra.ShellCompDirectiveError
 	}
 	candidates := []string{}
-	for _, n := range e.Networks {
-		if _, ok := excludeMap[n.Name]; !ok {
-			candidates = append(candidates, n.Name)
+	netConfigs, err := e.NetworkMap()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	for netName := range netConfigs {
+		if _, ok := excludeMap[netName]; !ok {
+			candidates = append(candidates, netName)
 		}
 	}
 	for _, s := range []string{"host", "none"} {

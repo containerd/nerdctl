@@ -62,7 +62,10 @@ func networkInspectAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	netMap := e.NetworkMap()
+	netMap, err := e.NetworkMap()
+	if err != nil {
+		return err
+	}
 
 	result := make([]interface{}, len(args))
 	for i, name := range args {

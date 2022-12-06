@@ -137,9 +137,13 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 	if err != nil {
 		return nil, err
 	}
+	networkConfigs, err := cniEnv.NetworkList()
+	if err != nil {
+		return nil, err
+	}
 
 	o.NetworkExists = func(netName string) (bool, error) {
-		for _, f := range cniEnv.Networks {
+		for _, f := range networkConfigs {
 			if f.Name == netName {
 				return true, nil
 			}

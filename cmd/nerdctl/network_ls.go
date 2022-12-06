@@ -97,8 +97,12 @@ func networkLsAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	pp := make([]networkPrintable, len(e.Networks))
-	for i, n := range e.Networks {
+	netConfigs, err := e.NetworkList()
+	if err != nil {
+		return err
+	}
+	pp := make([]networkPrintable, len(netConfigs))
+	for i, n := range netConfigs {
 		p := networkPrintable{
 			Name: n.Name,
 			file: n.File,

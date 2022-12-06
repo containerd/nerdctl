@@ -278,7 +278,10 @@ func verifyCNINetwork(cmd *cobra.Command, netSlice []string, macAddress string) 
 		return err
 	}
 	macValidNetworks := []string{"bridge", "macvlan"}
-	netMap := e.NetworkMap()
+	netMap, err := e.NetworkMap()
+	if err != nil {
+		return err
+	}
 	for _, netstr := range netSlice {
 		netConfig, ok := netMap[netstr]
 		if !ok {
