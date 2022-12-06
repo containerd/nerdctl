@@ -132,7 +132,7 @@ func loadImage(in io.Reader, cmd *cobra.Command, platMC platforms.MatchComparer,
 		if quiet {
 			fmt.Fprintln(cmd.OutOrStdout(), img.Target.Digest)
 		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "Loaded image: %s", img.Name)
+			fmt.Fprintf(cmd.OutOrStdout(), "Loaded image: %s\n", img.Name)
 		}
 	}
 
