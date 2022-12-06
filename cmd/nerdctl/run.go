@@ -460,25 +460,12 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	if err != nil {
 		return nil, nil, err
 	}
-
-	var envs []string
-
-	if envFiles := strutil.DedupeStrSlice(envFile); len(envFiles) > 0 {
-		envs, err = parseEnvVars(envFiles)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
 	env, err := cmd.Flags().GetStringArray("env")
 	if err != nil {
 		return nil, nil, err
 	}
-	if env := strutil.DedupeStrSlice(env); len(env) > 0 {
-		envs = append(envs, env...)
-	}
-
-	if envs, err = withOSEnv(envs); err != nil {
+	envs, err := generateEnvs(envFile, env)
+	if err != nil {
 		return nil, nil, err
 	}
 	opts = append(opts, oci.WithEnv(envs))
@@ -1260,4 +1247,28 @@ func generateSharingPIDOpts(ctx context.Context, targetCon containerd.Container)
 	}
 
 	return opts, nil
+}
+
+// generateEnvs combines environment variables from `--env-file` and `--env`.
+// Pass an empty slice if any arg is not used.
+func generateEnvs(envFile []string, env []string) ([]string, error) {
+	var envs []string
+	var err error
+
+	if envFiles := strutil.DedupeStrSlice(envFile); len(envFiles) > 0 {
+		envs, err = parseEnvVars(envFiles)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if env := strutil.DedupeStrSlice(env); len(env) > 0 {
+		envs = append(envs, env...)
+	}
+
+	if envs, err = withOSEnv(envs); err != nil {
+		return nil, err
+	}
+
+	return envs, nil
 }

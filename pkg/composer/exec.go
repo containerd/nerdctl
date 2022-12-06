@@ -74,8 +74,8 @@ func (c *Composer) exec(ctx context.Context, container containerd.Container, eo 
 	if eo.WorkDir != "" {
 		args = append(args, "--workdir", eo.WorkDir)
 	}
-	if len(eo.Env) > 0 {
-		args = append(append(args, "--env"), eo.Env...)
+	for _, e := range eo.Env {
+		args = append(args, "--env", e)
 	}
 	args = append(args, container.ID())
 	args = append(args, eo.Args...)
