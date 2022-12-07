@@ -338,6 +338,8 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose ps](#whale-nerdctl-compose-ps)
     - [:whale: nerdctl compose pull](#whale-nerdctl-compose-pull)
     - [:whale: nerdctl compose push](#whale-nerdctl-compose-push)
+    - [:whale: nerdctl compose pause](#whale-nerdctl-compose-pause)
+    - [:whale: nerdctl compose unpause](#whale-nerdctl-compose-unpause)
     - [:whale: nerdctl compose config](#whale-nerdctl-compose-config)
     - [:whale: nerdctl compose kill](#whale-nerdctl-compose-kill)
     - [:whale: nerdctl compose restart](#whale-nerdctl-compose-restart)
@@ -1515,6 +1517,18 @@ Usage: `nerdctl compose push [OPTIONS] [SERVICE...]`
 
 Unimplemented `docker-compose pull` (V1) flags: `--ignore-push-failures`
 
+### :whale: nerdctl compose pause
+
+Pause all processes within containers of service(s). They can be unpaused with `nerdctl compose unpause`
+
+Usage: `nerdctl compose pause [SERVICE...]`
+
+### :whale: nerdctl compose unpause
+
+Unpause all processes within containers of service(s)
+
+Usage: `nerdctl compose unpause [SERVICE...]`
+
 ### :whale: nerdctl compose config
 Validate and view the Compose file
 
@@ -1647,7 +1661,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose create|events|pause|port|scale|start|top|unpause`
+- `docker-compose create|events|port|scale|start|top`
 
 Others:
 - `docker system df`
