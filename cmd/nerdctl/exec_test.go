@@ -17,6 +17,9 @@
 package main
 
 import (
+	"errors"
+	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -65,4 +68,60 @@ func TestExecStdin(t *testing.T) {
 		testutil.WithStdin(strings.NewReader(testStr)),
 	}
 	base.Cmd("exec", "-i", testContainer, "cat").CmdOption(opts...).AssertOutExactly(testStr)
+}
+
+// FYI: https://github.com/containerd/nerdctl/blob/e4b2b6da56555dc29ed66d0fd8e7094ff2bc002d/cmd/nerdctl/run_test.go#L177
+func TestExecEnv(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	testContainer := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", testContainer).Run()
+
+	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
+	base.EnsureContainerStarted(testContainer)
+
+	base.Env = append(os.Environ(), "CORGE=corge-value-in-host", "GARPLY=garply-value-in-host")
+	base.Cmd("exec",
+		"--env", "FOO=foo1,foo2",
+		"--env", "BAR=bar1 bar2",
+		"--env", "BAZ=",
+		"--env", "QUX", // not exported in OS
+		"--env", "QUUX=quux1",
+		"--env", "QUUX=quux2",
+		"--env", "CORGE", // OS exported
+		"--env", "GRAULT=grault_key=grault_value", // value contains `=` char
+		"--env", "GARPLY=", // OS exported
+		"--env", "WALDO=", // not exported in OS
+
+		testContainer, "env").AssertOutWithFunc(func(stdout string) error {
+		if !strings.Contains(stdout, "\nFOO=foo1,foo2\n") {
+			return errors.New("got bad FOO")
+		}
+		if !strings.Contains(stdout, "\nBAR=bar1 bar2\n") {
+			return errors.New("got bad BAR")
+		}
+		if !strings.Contains(stdout, "\nBAZ=\n") && runtime.GOOS != "windows" {
+			return errors.New("got bad BAZ")
+		}
+		if strings.Contains(stdout, "QUX") {
+			return errors.New("got bad QUX (should not be set)")
+		}
+		if !strings.Contains(stdout, "\nQUUX=quux2\n") {
+			return errors.New("got bad QUUX")
+		}
+		if !strings.Contains(stdout, "\nCORGE=corge-value-in-host\n") {
+			return errors.New("got bad CORGE")
+		}
+		if !strings.Contains(stdout, "\nGRAULT=grault_key=grault_value\n") {
+			return errors.New("got bad GRAULT")
+		}
+		if !strings.Contains(stdout, "\nGARPLY=\n") && runtime.GOOS != "windows" {
+			return errors.New("got bad GARPLY")
+		}
+		if !strings.Contains(stdout, "\nWALDO=\n") && runtime.GOOS != "windows" {
+			return errors.New("got bad WALDO")
+		}
+
+		return nil
+	})
 }

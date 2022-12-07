@@ -28,9 +28,9 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
+	"github.com/containerd/nerdctl/pkg/flagutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
@@ -243,18 +243,15 @@ func generateExecProcessSpec(ctx context.Context, cmd *cobra.Command, args []str
 	if err != nil {
 		return nil, err
 	}
-	if envFiles := strutil.DedupeStrSlice(envFile); len(envFiles) > 0 {
-		env, err := parseEnvVars(envFiles)
-		if err != nil {
-			return nil, err
-		}
-		pspec.Env = append(pspec.Env, env...)
-	}
 	env, err := cmd.Flags().GetStringArray("env")
 	if err != nil {
 		return nil, err
 	}
-	pspec.Env = append(pspec.Env, strutil.DedupeStrSlice(env)...)
+	envs, err := generateEnvs(envFile, env)
+	if err != nil {
+		return nil, err
+	}
+	pspec.Env = flagutil.ReplaceOrAppendEnvValues(pspec.Env, envs)
 
 	privileged, err := cmd.Flags().GetBool("privileged")
 	if err != nil {
