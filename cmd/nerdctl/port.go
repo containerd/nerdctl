@@ -18,15 +18,12 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/containerd/containerd"
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-	"github.com/containerd/nerdctl/pkg/labels"
 
 	"github.com/spf13/cobra"
 )
@@ -85,7 +82,7 @@ func portAction(cmd *cobra.Command, args []string) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			return printPort(ctx, cmd, found.Container, argPort, argProto)
+			return containerutil.PrintHostPort(ctx, cmd.OutOrStdout(), found.Container, argPort, argProto)
 		},
 	}
 	req := args[0]
@@ -96,36 +93,6 @@ func portAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no such container %s", req)
 	}
 	return nil
-}
-
-func printPort(ctx context.Context, cmd *cobra.Command, container containerd.Container, argPort int, argProto string) error {
-	l, err := container.Labels(ctx)
-	if err != nil {
-		return err
-	}
-	portsJSON := l[labels.Ports]
-	if portsJSON == "" {
-		return nil
-	}
-	var ports []gocni.PortMapping
-	if err := json.Unmarshal([]byte(portsJSON), &ports); err != nil {
-		return err
-	}
-
-	if argPort < 0 {
-		for _, p := range ports {
-			fmt.Fprintf(cmd.OutOrStdout(), "%d/%s -> %s:%d\n", p.ContainerPort, p.Protocol, p.HostIP, p.HostPort)
-		}
-		return nil
-	}
-
-	for _, p := range ports {
-		if p.ContainerPort == int32(argPort) && strings.ToLower(p.Protocol) == argProto {
-			fmt.Fprintf(cmd.OutOrStdout(), "%s:%d\n", p.HostIP, p.HostPort)
-			return nil
-		}
-	}
-	return fmt.Errorf("no public port %d/%s published for %q", argPort, argProto, container.ID())
 }
 
 func portShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

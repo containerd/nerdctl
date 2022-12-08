@@ -335,6 +335,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose down](#whale-nerdctl-compose-down)
     - [:whale: nerdctl compose images](#whale-nerdctl-compose-images)
     - [:whale: nerdctl compose stop](#whale-nerdctl-compose-stop)
+    - [:whale: nerdctl compose port](#whale-nerdctl-compose-port)
     - [:whale: nerdctl compose ps](#whale-nerdctl-compose-ps)
     - [:whale: nerdctl compose pull](#whale-nerdctl-compose-pull)
     - [:whale: nerdctl compose push](#whale-nerdctl-compose-push)
@@ -1492,6 +1493,17 @@ Flags:
 
 - :whale: `-t, --timeout`: Seconds to wait for stop before killing it (default 10)
 
+### :whale: nerdctl compose port
+
+Print the public port for a port binding of a service container
+
+Usage: `nerdctl compose port [OPTIONS] SERVICE PRIVATE_PORT`
+
+Flags:
+
+- :whale: `--index`: Index of the container if the service has multiple instances. (default 1)
+- :whale: `--protocol`: Protocol of the port (tcp|udp) (default "tcp")
+
 ### :whale: nerdctl compose ps
 List containers of services
 
@@ -1668,7 +1680,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose create|events|port|scale|start`
+- `docker-compose create|events|scale|start`
 
 Others:
 - `docker system df`
