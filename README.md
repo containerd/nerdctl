@@ -334,6 +334,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose exec](#whale-nerdctl-compose-exec)
     - [:whale: nerdctl compose down](#whale-nerdctl-compose-down)
     - [:whale: nerdctl compose images](#whale-nerdctl-compose-images)
+    - [:whale: nerdctl compose start](#whale-nerdctl-compose-start)
     - [:whale: nerdctl compose stop](#whale-nerdctl-compose-stop)
     - [:whale: nerdctl compose port](#whale-nerdctl-compose-port)
     - [:whale: nerdctl compose ps](#whale-nerdctl-compose-ps)
@@ -1483,6 +1484,12 @@ Flags:
 
 - :whale: `-q, --quiet`: Only show numeric image IDs
 
+### :whale: nerdctl compose start
+
+Start existing containers for service(s)
+
+Usage: `nerdctl compose start [SERVICE...]`
+
 ### :whale: nerdctl compose stop
 
 Stop containers in services without removing them.
@@ -1680,7 +1687,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose create|events|scale|start`
+- `docker-compose create|events|scale`
 
 Others:
 - `docker system df`

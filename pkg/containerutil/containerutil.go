@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/portutil"
@@ -52,4 +53,18 @@ func PrintHostPort(ctx context.Context, writer io.Writer, container containerd.C
 		}
 	}
 	return fmt.Errorf("no public port %d/%s published for %q", containerPort, proto, container.ID())
+}
+
+// ContainerStatus returns the container's status from its task.
+func ContainerStatus(ctx context.Context, c containerd.Container) (containerd.Status, error) {
+	// Just in case, there is something wrong in server.
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	task, err := c.Task(ctx, nil)
+	if err != nil {
+		return containerd.Status{}, err
+	}
+
+	return task.Status(ctx)
 }

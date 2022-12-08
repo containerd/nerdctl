@@ -70,6 +70,7 @@ func newComposeCommand() *cobra.Command {
 		newComposeRemoveCommand(),
 		newComposeRunCommand(),
 		newComposeVersionCommand(),
+		newComposeStartCommand(),
 		newComposeStopCommand(),
 		newComposePauseCommand(),
 		newComposeUnpauseCommand(),
