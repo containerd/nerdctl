@@ -419,7 +419,7 @@ Resource flags:
 - :whale: `--memory-swappiness`: Tune container memory swappiness (0 to 100) (default -1)
 - :whale: `--kernel-memory`: Kernel memory limit (deprecated)
 - :whale: `--oom-kill-disable`: Disable OOM Killer
-- :whale: `--oom-score-adj`: Tune container’s OOM preferences (-1000 to 1000)
+- :whale: `--oom-score-adj`: Tune container’s OOM preferences (-1000 to 1000, rootless: 100 to 1000)
 - :whale: `--pids-limit`: Tune container pids limit
 - :nerd_face: `--cgroup-conf`: Configure cgroup v2 (key=value)
 - :whale: `--blkio-weight`: Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)
