@@ -22,6 +22,7 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/idutil/netwalker"
 	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 )
@@ -91,16 +92,32 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 		},
 	}
 
+	code := 0
 	for _, name := range args {
 		if name == "host" || name == "none" {
-			return fmt.Errorf("pseudo network %q cannot be removed", name)
+			code = 1
+			logrus.Errorf("pseudo network %q cannot be removed", name)
+			continue
 		}
 
 		n, err := walker.Walk(cmd.Context(), name)
 		if err != nil {
-			return err
+			code = 1
+			logrus.Error(err)
+			continue
+
 		} else if n == 0 {
-			return fmt.Errorf("no such network %s", name)
+			code = 1
+			logrus.Errorf("No such network: %s", name)
+			continue
+		}
+	}
+
+	// compatible with docker
+	// ExitCodeError is to allow the program to exit with status code 1 without outputting an error message.
+	if code != 0 {
+		return ExitCodeError{
+			exitCode: code,
 		}
 	}
 	return nil
