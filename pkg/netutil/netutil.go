@@ -32,6 +32,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
@@ -48,9 +49,40 @@ type CNIEnv struct {
 
 type CNIEnvOpt func(e *CNIEnv) error
 
-func UsedNetworks(ctx context.Context, containers []containerd.Container) (map[string][]string, error) {
+func UsedNetworks(ctx context.Context, client *containerd.Client) (map[string][]string, error) {
+	nsService := client.NamespaceService()
+	nsList, err := nsService.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	used := make(map[string][]string)
+	for _, ns := range nsList {
+		nsCtx := namespaces.WithNamespace(ctx, ns)
+		containers, err := client.Containers(nsCtx)
+		if err != nil {
+			return nil, err
+		}
+		nsUsedN, err := namespaceUsedNetworks(nsCtx, containers)
+		if err != nil {
+			return nil, err
+		}
+
+		// merge
+		for k, v := range nsUsedN {
+			if value, ok := used[k]; ok {
+				used[k] = append(value, v...)
+			} else {
+				used[k] = v
+			}
+		}
+	}
+	return used, nil
+}
+
+func namespaceUsedNetworks(ctx context.Context, containers []containerd.Container) (map[string][]string, error) {
 	used := make(map[string][]string)
 	for _, c := range containers {
+		// Only tasks under the ctx namespace can be obtained here
 		task, err := c.Task(ctx, nil)
 		if err != nil {
 			if errdefs.IsNotFound(err) {

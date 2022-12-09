@@ -85,12 +85,7 @@ func networkPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Cl
 		return err
 	}
 
-	containers, err := getContainersInAllNamespaces(ctx, client)
-	if err != nil {
-		return err
-	}
-
-	usedNetworks, err := netutil.UsedNetworks(ctx, containers)
+	usedNetworks, err := netutil.UsedNetworks(ctx, client)
 	if err != nil {
 		return err
 	}

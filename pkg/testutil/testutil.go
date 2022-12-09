@@ -572,7 +572,18 @@ func RequireSystemService(t testing.TB, sv string) {
 
 const Namespace = "nerdctl-test"
 
+func NewBaseWithNamespace(t *testing.T, ns string) *Base {
+	if ns == "" || ns == "default" || ns == Namespace {
+		t.Fatalf(`the other base namespace cannot be "%s"`, ns)
+	}
+	return newBase(t, ns)
+}
+
 func NewBase(t *testing.T) *Base {
+	return newBase(t, Namespace)
+}
+
+func newBase(t *testing.T, ns string) *Base {
 	base := &Base{
 		T:                t,
 		Target:           GetTarget(),
@@ -585,7 +596,7 @@ func NewBase(t *testing.T) *Base {
 		if err != nil {
 			t.Fatal(err)
 		}
-		base.Args = []string{"--namespace=" + Namespace}
+		base.Args = []string{"--namespace=" + ns}
 		base.ComposeBinary = ""
 	case Docker:
 		base.Binary, err = exec.LookPath("docker")
