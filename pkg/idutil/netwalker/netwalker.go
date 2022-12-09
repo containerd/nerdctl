@@ -53,6 +53,10 @@ func (w *NetworkWalker) Walk(ctx context.Context, req string) (int, error) {
 	}
 
 	idFilterF := func(n *netutil.NetworkConfig) bool {
+		if n.NerdctlID == nil {
+			// External network
+			return false
+		}
 		return n.Name == req || longIDExp.Match([]byte(*n.NerdctlID)) || shortIDExp.Match([]byte(*n.NerdctlID))
 	}
 	networks, err := w.Client.FilterNetworks(idFilterF)
