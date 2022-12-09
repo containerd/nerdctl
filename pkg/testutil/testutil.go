@@ -453,7 +453,7 @@ func M(m *testing.M) {
 	flag.StringVar(&flagTestTarget, "test.target", Nerdctl, "target to test")
 	flag.BoolVar(&flagTestKillDaemon, "test.kill-daemon", false, "enable tests that kill the daemon")
 	flag.Parse()
-	fmt.Printf("test target: %q\n", flagTestTarget)
+	fmt.Fprintf(os.Stderr, "test target: %q\n", flagTestTarget)
 	os.Exit(m.Run())
 }
 

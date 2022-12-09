@@ -49,6 +49,7 @@ ARG BUILDG_VERSION=v0.4.1
 ARG GO_VERSION=1.19
 ARG UBUNTU_VERSION=22.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
+ARG GOTESTSUM_VERSION=v1.8.2
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS build-base-debian
 # libbtrfs: for containerd
@@ -271,6 +272,8 @@ COPY --from=goversion /GOVERSION /GOVERSION
 ARG TARGETARCH
 RUN curl -L https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local
 ENV PATH=/usr/local/go/bin:$PATH
+ARG GOTESTSUM_VERSION
+RUN GOBIN=/usr/local/bin go install gotest.tools/gotestsum@${GOTESTSUM_VERSION}
 COPY . /go/src/github.com/containerd/nerdctl
 WORKDIR /go/src/github.com/containerd/nerdctl
 VOLUME /tmp
@@ -293,7 +296,8 @@ RUN curl -L -o nydus-static.tgz "https://github.com/dragonflyoss/image-service/r
     tar xzf nydus-static.tgz && \
     mv nydus-static/nydus-image nydus-static/nydusd nydus-static/nydusify /usr/bin/ && \
     rm nydus-static.tgz
-CMD ["go", "test", "-v", "-timeout=20m", "./cmd/nerdctl/...", "-args", "-test.kill-daemon"]
+CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=github.com/containerd/nerdctl/cmd/nerdctl/...", \
+  "--", "-timeout=20m", "-args", "-test.kill-daemon"]
 
 FROM test-integration AS test-integration-rootless
 # Install SSH for creating systemd user session.
@@ -316,7 +320,10 @@ RUN systemctl disable test-integration-ipfs-offline
 VOLUME /home/rootless/.local/share
 RUN go test -o /usr/local/bin/nerdctl.test -c ./cmd/nerdctl
 COPY ./Dockerfile.d/test-integration-rootless.sh /
-CMD ["/test-integration-rootless.sh", "nerdctl.test" ,"-test.v", "-test.timeout=20m", "-test.kill-daemon"]
+CMD ["/test-integration-rootless.sh", \
+  "gotestsum", "--format=testname", "--rerun-fails=2", "--raw-command", \
+  "--", "/usr/local/go/bin/go", "tool", "test2json", "-t", "-p", "github.com/containerd/nerdctl/cmd/nerdctl",  \
+    "/usr/local/bin/nerdctl.test", "-test.v", "-test.timeout=20m", "-test.kill-daemon"]
 
 # test for CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns
 FROM test-integration-rootless AS test-integration-rootless-port-slirp4netns
