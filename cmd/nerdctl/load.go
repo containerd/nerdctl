@@ -111,8 +111,14 @@ func loadImage(in io.Reader, cmd *cobra.Command, platMC platforms.MatchComparer,
 	if err != nil {
 		return err
 	}
-	imgs, err := client.Import(ctx, in, containerd.WithDigestRef(archive.DigestTranslator(sn)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithImportPlatform(platMC))
+
+	r := &readCounter{Reader: in}
+	imgs, err := client.Import(ctx, r, containerd.WithDigestRef(archive.DigestTranslator(sn)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithImportPlatform(platMC))
 	if err != nil {
+		if r.N == 0 {
+			// Avoid confusing "unrecognized image format"
+			return errors.New("no image was built")
+		}
 		if errors.Is(err, images.ErrEmptyWalk) {
 			err = fmt.Errorf("%w (Hint: set `--platform=PLATFORM` or `--all-platforms`)", err)
 		}
@@ -137,4 +143,17 @@ func loadImage(in io.Reader, cmd *cobra.Command, platMC platforms.MatchComparer,
 	}
 
 	return nil
+}
+
+type readCounter struct {
+	io.Reader
+	N int
+}
+
+func (r *readCounter) Read(p []byte) (int, error) {
+	n, err := r.Reader.Read(p)
+	if n > 0 {
+		r.N += n
+	}
+	return n, err
 }
