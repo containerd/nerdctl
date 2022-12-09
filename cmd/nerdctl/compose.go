@@ -60,6 +60,7 @@ func newComposeCommand() *cobra.Command {
 		newComposeBuildCommand(),
 		newComposeExecCommand(),
 		newComposeImagesCommand(),
+		newComposePortCommand(),
 		newComposePushCommand(),
 		newComposePullCommand(),
 		newComposeDownCommand(),
