@@ -29,7 +29,7 @@ require (
 	github.com/fahedouch/go-logrotate v0.1.2
 	github.com/fatih/color v1.13.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/ipfs/go-cid v0.1.0
+	github.com/ipfs/go-cid v0.2.0
 	github.com/ipfs/go-ipfs-files v0.2.0
 	github.com/ipfs/go-ipfs-http-client v0.4.0
 	github.com/ipfs/interface-go-ipfs-core v0.7.0
@@ -62,34 +62,19 @@ require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20221007124625-37f5449ff7df // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20220912195655-e1f97a00006b // indirect
 	github.com/Microsoft/hcsshim v0.10.0-rc.1 // indirect
-	github.com/btcsuite/btcd v0.21.0-beta // indirect
-	// ↑The `github.com/btcsuite/btcd` line exists for the indirect dependency on `github.com/btcsuite/btcd/btcec` (secp256k1 elliptic curve cryptography library) via `github.com/ipfs/go-ipfs-http-client`.
-	// https://github.com/btcsuite/btcd/tree/master/btcec
-	//
-	// BitCoin daemon itself is NOT included. There is NO code path that relates to mining or trading of BitCoin (or any crypto "currency").
-	//  $ go mod vendor
-	//  $ ls vendor/github.com/btcsuite/btcd/
-	//  btcec  LICENSE
-	//  $ go mod why github.com/btcsuite/btcd/btcec
-	//  # github.com/btcsuite/btcd/btcec
-	//  github.com/containerd/nerdctl/cmd/nerdctl
-	//  github.com/ipfs/go-ipfs-http-client
-	//  github.com/libp2p/go-libp2p-core/network
-	//  github.com/libp2p/go-libp2p-core/crypto
-	//  github.com/btcsuite/btcd/btcec
-	//
 	github.com/cilium/ebpf v0.9.1 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
 	github.com/containerd/ttrpc v1.1.1-0.20220420014843-944ef4a40df3 // indirect
 	github.com/containers/ocicrypt v1.1.6 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20170627025303-887ab5e44cc3 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/distribution/distribution/v3 v3.0.0-20221103125252-ebfa2a0ac0a9 // indirect
 	github.com/djherbis/times v1.5.0 // indirect
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/fluent/fluent-logger-golang v1.9.0
-	github.com/godbus/dbus/v5 v5.0.6 // indirect
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -103,7 +88,7 @@ require (
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-block-format v0.0.3 // indirect
 	github.com/ipfs/go-blockservice v0.3.0 // indirect
-	github.com/ipfs/go-datastore v0.5.0 // indirect
+	github.com/ipfs/go-datastore v0.5.1 // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.2.0 // indirect
 	github.com/ipfs/go-ipfs-cmds v0.7.0 // indirect
 	github.com/ipfs/go-ipfs-ds-help v1.1.0 // indirect
@@ -113,7 +98,7 @@ require (
 	github.com/ipfs/go-ipld-format v0.4.0 // indirect
 	github.com/ipfs/go-ipld-legacy v0.1.0 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
-	github.com/ipfs/go-log/v2 v2.3.0 // indirect
+	github.com/ipfs/go-log/v2 v2.5.1 // indirect
 	github.com/ipfs/go-merkledag v0.6.0 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/ipfs/go-path v0.3.0 // indirect
@@ -123,15 +108,16 @@ require (
 	github.com/ipld/go-ipld-prime v0.11.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/klauspost/compress v1.15.12
-	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
+	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
 	// NOTE: P2P image distribution (IPFS) is completely optional. Your host is NOT connected to any P2P network, unless you opt in to install and run IPFS daemon.
-	github.com/libp2p/go-buffer-pool v0.0.2 // indirect
-	github.com/libp2p/go-libp2p-core v0.8.6 // indirect
-	github.com/libp2p/go-openssl v0.0.7 // indirect
+	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
+	github.com/libp2p/go-libp2p v0.22.0 // indirect
+	github.com/libp2p/go-libp2p-core v0.20.1 // indirect
+	github.com/libp2p/go-openssl v0.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/mattn/go-shellwords v1.0.12 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
-	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0
@@ -140,11 +126,11 @@ require (
 	github.com/moby/sys/sequential v0.0.0-20220829095930-b22ba8a69b30 // indirect
 	github.com/moby/sys/signal v0.7.0
 	github.com/mr-tron/base58 v1.2.0 // indirect
-	github.com/multiformats/go-base32 v0.0.3 // indirect
+	github.com/multiformats/go-base32 v0.0.4 // indirect
 	github.com/multiformats/go-base36 v0.1.0 // indirect
-	github.com/multiformats/go-multibase v0.0.3 // indirect
-	github.com/multiformats/go-multicodec v0.4.1 // indirect
-	github.com/multiformats/go-multihash v0.1.0 // indirect
+	github.com/multiformats/go-multibase v0.1.1 // indirect
+	github.com/multiformats/go-multicodec v0.5.0 // indirect
+	github.com/multiformats/go-multihash v0.2.1 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/opencontainers/runc v1.1.4 // indirect
 	github.com/opencontainers/selinux v1.10.2 // indirect
@@ -168,9 +154,9 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
-	go.uber.org/multierr v1.7.0 // indirect
-	go.uber.org/zap v1.19.0 // indirect
+	go.uber.org/atomic v1.10.0 // indirect
+	go.uber.org/multierr v1.8.0 // indirect
+	go.uber.org/zap v1.22.0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/text v0.5.0
 	golang.org/x/tools v0.1.12 // indirect
@@ -180,5 +166,5 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	lukechampine.com/blake3 v1.1.6 // indirect
+	lukechampine.com/blake3 v1.1.7 // indirect
 )
