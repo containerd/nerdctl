@@ -25,7 +25,6 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
-	"github.com/containerd/containerd/namespaces"
 	"github.com/sirupsen/logrus"
 )
 
@@ -373,22 +372,4 @@ func idOrNameFilter(ctx context.Context, containers []containerd.Container, valu
 		}
 	}
 	return nil, fmt.Errorf("no such container %s", value)
-}
-
-func getContainersInAllNamespaces(ctx context.Context, client *containerd.Client) ([]containerd.Container, error) {
-	nsService := client.NamespaceService()
-	nsList, err := nsService.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var results []containerd.Container
-	for _, ns := range nsList {
-		newCtx := namespaces.WithNamespace(ctx, ns)
-		containers, err := client.Containers(newCtx)
-		if err != nil {
-			return nil, err
-		}
-		results = append(results, containers...)
-	}
-	return results, nil
 }

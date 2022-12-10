@@ -60,11 +60,8 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	containers, err := getContainersInAllNamespaces(ctx, client)
-	if err != nil {
-		return err
-	}
-	usedNetworkInfo, err := netutil.UsedNetworks(ctx, containers)
+
+	usedNetworkInfo, err := netutil.UsedNetworks(ctx, client)
 	if err != nil {
 		return err
 	}
