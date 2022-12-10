@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
@@ -64,23 +63,36 @@ volumes:
 	projectName := comp.ProjectName()
 	t.Logf("projectName=%q", projectName)
 
+	upAssertHandler := func(svc string) func(stdout string) error {
+		return func(stdout string) error {
+			// Docker Compose v1: "Up", v2: "running"
+			if !strings.Contains(stdout, "Up") && !strings.Contains(stdout, "running") {
+				return fmt.Errorf("service \"%s\" must have been still running", svc)
+			}
+			return nil
+		}
+	}
+
+	exitAssertHandler := func(svc string) func(stdout string) error {
+		return func(stdout string) error {
+			// Docker Compose v1: "Exit code", v2: "exited (code)"
+			if !strings.Contains(stdout, "Exit") && !strings.Contains(stdout, "exited") {
+				return fmt.Errorf("service \"%s\" must have exited", svc)
+			}
+			return nil
+		}
+	}
+
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
+	// stop should (only) stop the given service.
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "db").AssertOK()
-	time.Sleep(3 * time.Second)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(func(stdout string) error {
-		// Docker Compose v1: "Exit code", v2: "exited (code)"
-		if !strings.Contains(stdout, "Exit") && !strings.Contains(stdout, "exited") {
-			return fmt.Errorf("service \"db\" must have exited")
-		}
-		return nil
-	})
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutWithFunc(func(stdout string) error {
-		// Docker Compose v1: "Up", v2: "running"
-		if !strings.Contains(stdout, "Up") && !strings.Contains(stdout, "running") {
-			return fmt.Errorf("service \"wordpress\" must have been still running")
-		}
-		return nil
-	})
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(exitAssertHandler("db"))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutWithFunc(upAssertHandler("wordpress"))
+
+	// `--timeout` arg should work properly.
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "--timeout", "5", "wordpress").AssertOK()
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutWithFunc(exitAssertHandler("wordpress"))
+
 }

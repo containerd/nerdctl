@@ -89,10 +89,10 @@ volumes:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "restart", "db").AssertOK()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(upAssertHandler("db"))
 
-	// stop one service and restart all
+	// stop one service and restart all (also check `--timeout` arg).
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "db").AssertOK()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(exitAssertHandler("db"))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "restart").AssertOK()
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "restart", "--timeout", "5").AssertOK()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(upAssertHandler("db"))
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutWithFunc(upAssertHandler("wordpress"))
 }
