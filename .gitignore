@@ -7,3 +7,4 @@ build
 
 # vagrant
 /.vagrant
+!cmd/nerdctl/build

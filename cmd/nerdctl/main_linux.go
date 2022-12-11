@@ -17,7 +17,6 @@
 package main
 
 import (
-	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/spf13/cobra"
@@ -52,23 +51,4 @@ func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
 		}
 	}
 	return true
-}
-
-func shellCompleteCgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	candidates := []string{"cgroupfs"}
-	if ncdefaults.IsSystemdAvailable() {
-		candidates = append(candidates, "systemd")
-	}
-	if rootlessutil.IsRootless() {
-		candidates = append(candidates, "none")
-	}
-	return candidates, cobra.ShellCompDirectiveNoFileComp
-}
-
-func addApparmorCommand(rootCmd *cobra.Command) {
-	rootCmd.AddCommand(newApparmorCommand())
-}
-
-func addCpCommand(rootCmd *cobra.Command) {
-	rootCmd.AddCommand(newCpCommand())
 }

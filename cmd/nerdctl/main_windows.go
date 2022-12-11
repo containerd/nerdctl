@@ -23,23 +23,3 @@ import (
 func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
 	return false
 }
-
-func shellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return nil, cobra.ShellCompDirectiveNoFileComp
-}
-
-func shellCompleteSnapshotterNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return nil, cobra.ShellCompDirectiveNoFileComp
-}
-
-func shellCompleteCgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return nil, cobra.ShellCompDirectiveNoFileComp
-}
-
-func addApparmorCommand(rootCmd *cobra.Command) {
-	// NOP
-}
-
-func addCpCommand(rootCmd *cobra.Command) {
-	// NOP
-}
