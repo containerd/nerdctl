@@ -57,7 +57,8 @@ func (c *Composer) Stop(ctx context.Context, opt StopOptions, services []string)
 func (c *Composer) stopContainers(ctx context.Context, containers []containerd.Container, opt StopOptions) error {
 	var timeoutArg string
 	if opt.Timeout != nil {
-		timeoutArg = fmt.Sprintf("--timeout=%d", opt.Timeout)
+		// `nerdctl stop` uses `--time` instead of `--timeout`
+		timeoutArg = fmt.Sprintf("--time=%d", *opt.Timeout)
 	}
 
 	var rmWG sync.WaitGroup
