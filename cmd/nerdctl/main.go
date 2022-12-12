@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/version"
+	"github.com/fatih/color"
 	"github.com/pelletier/go-toml"
 
 	"github.com/sirupsen/logrus"
@@ -41,6 +42,11 @@ import (
 const (
 	Category   = "category"
 	Management = "management"
+)
+
+var (
+	// To print Bold Text
+	Bold = color.New(color.Bold).SprintfFunc()
 )
 
 // usage was derived from https://github.com/spf13/cobra/blob/v1.2.1/command.go#L491-L514
@@ -79,6 +85,8 @@ func usage(c *cobra.Command) error {
 				longest = l
 			}
 		}
+
+		title = Bold(title)
 		t := title + ":\n"
 		for _, f := range commands {
 			t += "  "
@@ -92,7 +100,7 @@ func usage(c *cobra.Command) error {
 	s += printCommands("Management commands", managementCommands)
 	s += printCommands("Commands", nonManagementCommands)
 
-	s += "Flags:\n"
+	s += Bold("Flags") + ":\n"
 	s += c.LocalFlags().FlagUsages() + "\n"
 
 	if c == c.Root() {
