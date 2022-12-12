@@ -24,6 +24,9 @@ import (
 )
 
 func TestComposeRestart(t *testing.T) {
+	// docker-compose v2 hides exited containers in `compose ps`, and shows
+	// them if `-a` is passed, which is not supported yet by `nerdctl compose`.
+	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
 version: '3.1'

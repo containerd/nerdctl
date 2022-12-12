@@ -26,6 +26,7 @@ import (
 	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/composer/pipetagger"
+	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/labels"
 
 	"github.com/sirupsen/logrus"
@@ -70,7 +71,7 @@ func (c *Composer) logs(ctx context.Context, containers []containerd.Container, 
 			return err
 		}
 		name := info.Labels[labels.Name]
-		logTag := strings.TrimPrefix(name, c.project.Name+"_")
+		logTag := strings.TrimPrefix(name, c.project.Name+serviceparser.Separator)
 		if l := len(logTag); l > logTagMaxLen {
 			logTagMaxLen = l
 		}

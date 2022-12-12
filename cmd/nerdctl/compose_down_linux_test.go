@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
@@ -92,7 +93,7 @@ services:
 	projectName := compFull.ProjectName()
 	t.Logf("projectName=%q", projectName)
 
-	orphanContainer := fmt.Sprintf("%s_orphan_1", projectName)
+	orphanContainer := serviceparser.DefaultContainerName(projectName, "orphan", "1")
 
 	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "down", "-v").Run()

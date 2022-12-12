@@ -113,7 +113,8 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 	}
 
 	for i := range svcs {
-		svcs[i].ContainerName = fmt.Sprintf("%s_%s_run_%s", c.project.Name, svcs[i].Name, idgen.TruncateID(idgen.GenerateID()))
+		// FYI: https://github.com/docker/compose/blob/v2.18.1/pkg/compose/run.go#L65
+		svcs[i].ContainerName = fmt.Sprintf("%[1]s%[4]s%[2]s%[4]srun%[4]s%[3]s", c.project.Name, svcs[i].Name, idgen.TruncateID(idgen.GenerateID()), serviceparser.Separator)
 	}
 
 	targetSvc.Tty = ro.Tty

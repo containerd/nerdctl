@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/compose-spec/compose-go/types"
@@ -151,7 +152,7 @@ volumes:
 	assert.Assert(t, wp.Image == "wordpress:5.7")
 	assert.Assert(t, len(wp.Containers) == 1)
 	wp1 := wp.Containers[0]
-	assert.Assert(t, wp1.Name == fmt.Sprintf("%s_wordpress_1", project.Name))
+	assert.Assert(t, wp1.Name == DefaultContainerName(project.Name, "wordpress", "1"))
 	assert.Assert(t, in(wp1.RunArgs, "--name="+wp1.Name))
 	assert.Assert(t, in(wp1.RunArgs, "--hostname=wordpress"))
 	assert.Assert(t, in(wp1.RunArgs, fmt.Sprintf("--net=%s_default", project.Name)))
@@ -183,7 +184,7 @@ volumes:
 	t.Logf("db: %+v", db)
 	assert.Assert(t, len(db.Containers) == 1)
 	db1 := db.Containers[0]
-	assert.Assert(t, db1.Name == fmt.Sprintf("%s_db_1", project.Name))
+	assert.Assert(t, db1.Name == DefaultContainerName(project.Name, "db", "1"))
 	assert.Assert(t, in(db1.RunArgs, "--hostname=db"))
 	assert.Assert(t, in(db1.RunArgs, fmt.Sprintf("-v=%s_db:/var/lib/mysql", project.Name)))
 	assert.Assert(t, in(db1.RunArgs, "--stop-signal=SIGUSR1"))
@@ -218,7 +219,7 @@ services:
 	t.Logf("foo: %+v", foo)
 	assert.Assert(t, len(foo.Containers) == 2)
 	for i, c := range foo.Containers {
-		assert.Assert(t, c.Name == fmt.Sprintf("%s_foo_%d", project.Name, i+1))
+		assert.Assert(t, c.Name == DefaultContainerName(project.Name, "foo", strconv.Itoa(i+1)))
 		assert.Assert(t, in(c.RunArgs, "--name="+c.Name))
 		assert.Assert(t, in(c.RunArgs, fmt.Sprintf("--cpus=%f", 0.42)))
 		assert.Assert(t, in(c.RunArgs, "-m=44040192"))
@@ -275,7 +276,7 @@ services:
 	t.Logf("foo: %+v", foo)
 	assert.Assert(t, len(foo.Containers) == 3)
 	for i, c := range foo.Containers {
-		assert.Assert(t, c.Name == fmt.Sprintf("%s_foo_%d", project.Name, i+1))
+		assert.Assert(t, c.Name == DefaultContainerName(project.Name, "foo", strconv.Itoa(i+1)))
 		assert.Assert(t, in(c.RunArgs, "--name="+c.Name))
 
 		assert.Assert(t, in(c.RunArgs, "--restart=no"))
