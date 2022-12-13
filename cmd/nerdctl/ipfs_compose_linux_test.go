@@ -29,7 +29,7 @@ import (
 )
 
 func TestIPFSComposeUp(t *testing.T) {
-	requiresIPFS(t)
+	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 	tests := []struct {
 		name           string
@@ -101,7 +101,7 @@ volumes:
 }
 
 func TestIPFSComposeUpBuild(t *testing.T) {
-	requiresIPFS(t)
+	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
@@ -127,8 +127,9 @@ COPY index.html /usr/share/nginx/html/index.html
 	comp.WriteFile("Dockerfile", dockerfile)
 	comp.WriteFile("index.html", indexHTML)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--build", "--ipfs").AssertOK()
-	defer base.Cmd("ipfs", "registry", "down").AssertOK()
+	done := ipfsRegistryUp(t, base)
+	defer done()
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--build").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
 	resp, err := nettestutil.HTTPGet("http://127.0.0.1:8080", 50, false)

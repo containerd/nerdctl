@@ -351,8 +351,6 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose top](#whale-nerdctl-compose-top)
     - [:whale: nerdctl compose version](#whale-nerdctl-compose-version)
   - [IPFS management](#ipfs-management)
-    - [:nerd_face: nerdctl ipfs registry up](#nerd_face-nerdctl-ipfs-registry-up)
-    - [:nerd_face: nerdctl ipfs registry down](#nerd_face-nerdctl-ipfs-registry-down)
     - [:nerd_face: nerdctl ipfs registry serve](#nerd_face-nerdctl-ipfs-registry-serve)
   - [Global flags](#global-flags)
   - [Unimplemented Docker commands](#unimplemented-docker-commands)
@@ -1637,26 +1635,13 @@ Flags:
 
 P2P image distribution (IPFS) is completely optional. Your host is NOT connected to any P2P network, unless you opt in to [install and run IPFS daemon](https://docs.ipfs.io/install/).
 
-### :nerd_face: nerdctl ipfs registry up
-Start read-only local registry backed by IPFS.
-See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
-
-Usage: `nerdctl ipfs registry up [OPTIONS]`
-
-Flags:
-- :nerd_face: `--listen-registry`: Address to listen (default `localhost:5050`)
-- :nerd_face: `--read-retry-num`: Times to retry query on IPFS (default 0 (no retry))
-- :nerd_face: `--read-timeout`: Timeout duration of a read request to IPFS (default 0 (no timeout))
-
-### :nerd_face: nerdctl ipfs registry down
-Stop and remove read-only local registry backed by IPFS.
-See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
-
-Usage: `nerdctl ipfs registry down`
-
 ### :nerd_face: nerdctl ipfs registry serve
 Serve read-only registry backed by IPFS on localhost.
-Use `nerdctl ipfs registry up`.
+This is needed to run `nerdctl build` with pulling base images from IPFS.
+Other commands (e.g. `nerdctl push ipfs://<image-name>` and `nerdctl pull ipfs://<CID>`) don't require this.
+
+You need to install `ipfs` command on the host.
+See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
 
 Usage: `nerdctl ipfs registry serve [OPTIONS]`
 

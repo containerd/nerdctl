@@ -21,15 +21,17 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 
 	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
 )
 
 func TestIPFSBuild(t *testing.T) {
 	testutil.DockerIncompatible(t)
-	requiresIPFS(t)
+	testutil.RequireExecutable(t, "ipfs")
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	defer base.Cmd("builder", "prune").Run()
@@ -47,9 +49,22 @@ CMD ["echo", "nerdctl-build-test-string"]
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
-	defer base.Cmd("ipfs", "registry", "down").AssertOK()
-	base.Cmd("build", "--ipfs", "-t", imageName, buildCtx).AssertOK()
-	base.Cmd("build", buildCtx, "--ipfs", "-t", imageName).AssertOK()
+	done := ipfsRegistryUp(t, base)
+	defer done()
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
 
 	base.Cmd("run", "--rm", imageName).AssertOutContains("nerdctl-build-test-string")
+}
+
+func ipfsRegistryUp(t *testing.T, base *testutil.Base, args ...string) (done func() error) {
+	res := icmd.StartCmd(base.Cmd(append([]string{"ipfs", "registry", "serve"}, args...)...).Cmd)
+	time.Sleep(time.Second)
+	assert.Assert(t, res.Cmd.Process != nil)
+	assert.NilError(t, res.Error)
+	return func() error {
+		res.Cmd.Process.Kill()
+		icmd.WaitOnCmd(3*time.Second, res)
+		return nil
+	}
 }

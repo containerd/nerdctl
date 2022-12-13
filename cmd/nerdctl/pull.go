@@ -28,7 +28,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	httpapi "github.com/ipfs/go-ipfs-http-client"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 
@@ -136,11 +135,7 @@ func ensureImage(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 			return nil, errors.New("--verify flag is not supported on IPFS as of now")
 		}
 
-		ipfsClient, err := httpapi.NewLocalApi()
-		if err != nil {
-			return nil, err
-		}
-		ensured, err = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
+		ensured, err = ipfs.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
 			pull, ocispecPlatforms, unpack, quiet)
 		if err != nil {
 			return nil, err

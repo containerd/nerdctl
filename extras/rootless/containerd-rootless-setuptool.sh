@@ -587,7 +587,7 @@ usage() {
 	echo "  uninstall-stargz            Uninstall the systemd unit for stargz snapshotter"
 	echo
 	echo "Add-on commands (ipfs):"
-	echo "  install-ipfs [ipfs-daemon-flags...]  Install the systemd unit for ipfs daemon. Specify \"--offline\" if run the daemon in offline mode"
+	echo "  install-ipfs [ipfs-daemon-flags...]  Install the systemd unit for ipfs daemon. Specify \"--offline\" if run the daemon in offline mode. Specify \"--init\" to initialize IPFS repository as well."
 	echo "  uninstall-ipfs                       Uninstall the systemd unit for ipfs daemon"
 	echo
 	echo "Add-on commands (BuildKit containerd worker):"

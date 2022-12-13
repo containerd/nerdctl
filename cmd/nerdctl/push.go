@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
@@ -36,8 +38,6 @@ import (
 	"github.com/containerd/stargz-snapshotter/estargz"
 	"github.com/containerd/stargz-snapshotter/estargz/zstdchunked"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
-	httpapi "github.com/ipfs/go-ipfs-http-client"
-	"github.com/multiformats/go-multiaddr"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
@@ -118,32 +118,29 @@ func pushAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		var ipfsClient *httpapi.HttpApi
+		var ipfsPath *string
 		if ipfsAddressStr != "" {
-			a, err := multiaddr.NewMultiaddr(ipfsAddressStr)
+			dir, err := os.MkdirTemp("", "apidirtmp")
 			if err != nil {
 				return err
 			}
-			ipfsClient, err = httpapi.NewApi(a)
-			if err != nil {
+			defer os.RemoveAll(dir)
+			if err := os.WriteFile(filepath.Join(dir, "api"), []byte(ipfsAddressStr), 0600); err != nil {
 				return err
 			}
-		} else {
-			ipfsClient, err = httpapi.NewLocalApi()
-			if err != nil {
-				return err
-			}
+			ipfsPath = &dir
 		}
 
 		var layerConvert converter.ConvertFunc
 		if convertEStargz {
 			layerConvert = eStargzConvertFunc()
 		}
-		c, err := ipfs.Push(ctx, client, ipfsClient, ref, layerConvert, allPlatforms, platform, ensureImage)
+		c, err := ipfs.Push(ctx, client, ref, layerConvert, allPlatforms, platform, ensureImage, ipfsPath)
 		if err != nil {
+			logrus.WithError(err).Warnf("ipfs push failed")
 			return err
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), c.String())
+		fmt.Fprintln(cmd.OutOrStdout(), c)
 		return err
 	}
 

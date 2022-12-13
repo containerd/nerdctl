@@ -32,8 +32,6 @@ func newIPFSRegistryCommand() *cobra.Command {
 	}
 	cmd.AddCommand(
 		newIPFSRegistryServeCommand(),
-		newIPFSRegistryUpCommand(),
-		newIPFSRegistryDownCommand(),
 	)
 	return cmd
 }

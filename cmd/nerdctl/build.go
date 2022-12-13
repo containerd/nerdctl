@@ -70,7 +70,6 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 	buildCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 	// #endregion
 
-	buildCommand.Flags().Bool("ipfs", false, "Allow pulling base images from IPFS")
 	buildCommand.Flags().String("iidfile", "", "Write the image ID to the file")
 	buildCommand.Flags().StringArray("label", nil, "Set metadata for an image")
 
@@ -143,20 +142,6 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	}
 	if cleanup != nil {
 		defer cleanup()
-	}
-
-	runIPFSRegistry, err := cmd.Flags().GetBool("ipfs")
-	if err != nil {
-		return err
-	}
-	if runIPFSRegistry {
-		logrus.Infof("Ensuring IPFS registry is running")
-		nerdctlCmd, nerdctlArgs := globalFlags(cmd)
-		out, err := exec.Command(nerdctlCmd, append(nerdctlArgs, "ipfs", "registry", "up")...).CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("failed to start IPFS registry: %v: %v", string(out), err)
-		}
-		logrus.Infof("IPFS registry is running: %v", string(out))
 	}
 
 	quiet, err := cmd.Flags().GetBool("quiet")

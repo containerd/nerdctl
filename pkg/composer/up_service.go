@@ -39,7 +39,7 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 
 	// TODO: parallelize loop for ensuring images (make sure not to mess up tty)
 	for _, ps := range parsedServices {
-		if err := c.ensureServiceImage(ctx, ps, !uo.NoBuild, uo.ForceBuild, BuildOptions{IPFS: uo.IPFS}, uo.QuietPull); err != nil {
+		if err := c.ensureServiceImage(ctx, ps, !uo.NoBuild, uo.ForceBuild, BuildOptions{}, uo.QuietPull); err != nil {
 			return err
 		}
 	}
