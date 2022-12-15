@@ -29,7 +29,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewNetworkInspectCommand() *cobra.Command {
+func NewInspectCommand() *cobra.Command {
 	networkInspectCommand := &cobra.Command{
 		Use:               "inspect [flags] NETWORK [NETWORK, ...]",
 		Short:             "Display detailed information on one or more networks",

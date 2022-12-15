@@ -27,7 +27,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewVolumePruneCommand() *cobra.Command {
+func NewPruneCommand() *cobra.Command {
 	volumePruneCommand := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove all unused local volumes",

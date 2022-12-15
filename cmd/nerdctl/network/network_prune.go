@@ -31,7 +31,7 @@ import (
 
 var networkDriversToKeep = []string{"host", "none", DefaultNetworkDriver}
 
-func NewNetworkPruneCommand() *cobra.Command {
+func NewPruneCommand() *cobra.Command {
 	networkPruneCommand := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove all unused networks",

@@ -31,7 +31,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewContainerInspectCommand() *cobra.Command {
+func NewInspectCommand() *cobra.Command {
 	var containerInspectCommand = &cobra.Command{
 		Use:               "inspect [flags] CONTAINER [CONTAINER, ...]",
 		Short:             "Display detailed information on one or more containers.",

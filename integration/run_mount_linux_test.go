@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/containerd/containerd/mount"
-	"github.com/containerd/nerdctl/cmd/nerdctl/build"
+	"github.com/containerd/nerdctl/cmd/nerdctl/builder"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	mobymount "github.com/moby/sys/mount"
@@ -102,7 +102,7 @@ func TestRunAnonymousVolumeWithBuild(t *testing.T) {
 VOLUME /foo
         `, testutil.AlpineImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -126,7 +126,7 @@ RUN mkdir -p /mnt && echo hi > /mnt/initial_file
 CMD ["cat", "/mnt/initial_file"]
         `, testutil.AlpineImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -156,7 +156,7 @@ VOLUME /mnt
 CMD ["cat", "/mnt/initial_file"]
         `, testutil.AlpineImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -191,7 +191,7 @@ CMD ["readlink", "/mnt/passwd"]
         `, testutil.AlpineImage)
 	const expected = "../../../../../../../../../../../../../../../../../../etc/passwd\n"
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -220,7 +220,7 @@ func TestRunCopyingUpInitialContentsShouldNotResetTheCopiedContents(t *testing.T
 RUN echo -n "rev0" > /mnt/file
 `, testutil.AlpineImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 

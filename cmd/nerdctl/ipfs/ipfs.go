@@ -18,6 +18,7 @@ package ipfs
 
 import (
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
+	"github.com/containerd/nerdctl/cmd/nerdctl/ipfs/registry"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +33,7 @@ func NewIPFSCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	cmd.AddCommand(
-		NewIPFSRegistryCommand(),
+		registry.NewRegistryCommand(),
 	)
 	return cmd
 }

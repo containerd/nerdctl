@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/containerd/nerdctl/cmd/nerdctl/build"
+	"github.com/containerd/nerdctl/cmd/nerdctl/builder"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
@@ -37,7 +37,7 @@ func TestImagePrune(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 	CMD ["echo", "nerdctl-test-image-prune"]`, testutil.CommonImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 

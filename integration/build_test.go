@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/nerdctl/cmd/nerdctl/build"
+	"github.com/containerd/nerdctl/cmd/nerdctl/builder"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
@@ -39,7 +39,7 @@ func TestBuild(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -69,7 +69,7 @@ RUN echo hello > /hello
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -81,7 +81,7 @@ RUN echo hello2 > /hello2
 CMD ["cat", "/hello2"]
 	`, imageName)
 
-	buildCtx2, err := build.CreateBuildContext(dockerfile2)
+	buildCtx2, err := builder.CreateBuildContext(dockerfile2)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx2)
 
@@ -116,7 +116,7 @@ RUN echo hello2 > /hello2
 CMD ["cat", "/hello2"]
 	`, imageName)
 
-	buildCtx2, err := build.CreateBuildContext(dockerfile2)
+	buildCtx2, err := builder.CreateBuildContext(dockerfile2)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx2)
 
@@ -189,7 +189,7 @@ func TestBuildLocal(t *testing.T) {
 COPY %s /`,
 		testFileName)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -230,7 +230,7 @@ ENV TEST_STRING=$TEST_STRING
 CMD echo $TEST_STRING
 	`, testutil.CommonImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -281,7 +281,7 @@ func TestBuildWithIIDFile(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 	fileName := filepath.Join(t.TempDir(), "id.txt")
@@ -307,7 +307,7 @@ func TestBuildWithLabels(t *testing.T) {
 LABEL name=nerdctl-build-test-label
 	`, testutil.CommonImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -331,7 +331,7 @@ func TestBuildMultipleTags(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -385,7 +385,7 @@ CMD ["echo", "dockerfile"]
 	err = os.WriteFile(filepath.Join(tmpDir, "Containerfile"), []byte(containerfile), 0644)
 	assert.NilError(t, err)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -402,7 +402,7 @@ func TestBuildNoTag(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-notag-string"]
 	`, testutil.CommonImage)
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 

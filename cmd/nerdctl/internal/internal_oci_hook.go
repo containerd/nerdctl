@@ -26,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewInternalOCIHookCommandCommand() *cobra.Command {
+func newOCIHookCommand() *cobra.Command {
 	var internalOCIHookCommand = &cobra.Command{
 		Use:           "oci-hook",
 		Short:         "OCI hook",

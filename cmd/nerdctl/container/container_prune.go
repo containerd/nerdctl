@@ -31,7 +31,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewContainerPruneCommand() *cobra.Command {
+func NewPruneCommand() *cobra.Command {
 	containerPruneCommand := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove all stopped containers",

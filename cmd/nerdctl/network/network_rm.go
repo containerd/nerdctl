@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewNetworkRmCommand() *cobra.Command {
+func NewRmCommand() *cobra.Command {
 	networkRmCommand := &cobra.Command{
 		Use:               "rm [flags] NETWORK [NETWORK, ...]",
 		Aliases:           []string{"remove"},

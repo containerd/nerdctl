@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewNamespaceCreateCommand() *cobra.Command {
+func NewCreateCommand() *cobra.Command {
 	namespaceCreateCommand := &cobra.Command{
 		Use:           "create NAMESPACE",
 		Short:         "Create a new namespace",

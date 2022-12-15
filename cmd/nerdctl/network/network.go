@@ -32,11 +32,11 @@ func NewNetworkCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	networkCommand.AddCommand(
-		NewNetworkLsCommand(),
-		NewNetworkInspectCommand(),
-		NewNetworkCreateCommand(),
-		NewNetworkRmCommand(),
-		NewNetworkPruneCommand(),
+		NewLsCommand(),
+		NewInspectCommand(),
+		NewCreateCommand(),
+		NewRmCommand(),
+		NewPruneCommand(),
 	)
 	return networkCommand
 }

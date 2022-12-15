@@ -18,9 +18,6 @@ package container
 
 import (
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
-	"github.com/containerd/nerdctl/cmd/nerdctl/container/cp"
-	"github.com/containerd/nerdctl/cmd/nerdctl/container/exec"
-	"github.com/containerd/nerdctl/cmd/nerdctl/ps"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
 	"github.com/spf13/cobra"
 )
@@ -38,9 +35,9 @@ func NewContainerCommand() *cobra.Command {
 		NewCreateCommand(),
 		NewRunCommand(),
 		NewUpdateCommand(),
-		exec.NewExecCommand(),
-		LsCommand(),
-		NewContainerInspectCommand(),
+		NewExecCommand(),
+		NewLsCommand(),
+		NewInspectCommand(),
 		NewLogsCommand(),
 		NewPortCommand(),
 		NewRmCommand(),
@@ -53,14 +50,16 @@ func NewContainerCommand() *cobra.Command {
 		NewUnpauseCommand(),
 		NewCommitCommand(),
 		NewRenameCommand(),
-		NewContainerPruneCommand(),
+		NewPruneCommand(),
+		NewTopCommand(),
+		NewStatsCommand(),
 	)
-	cp.AddCpCommand(containerCommand)
+	AddCpCommand(containerCommand)
 	return containerCommand
 }
 
-func LsCommand() *cobra.Command {
-	x := ps.NewPsCommand()
+func NewLsCommand() *cobra.Command {
+	x := NewPsCommandForMain()
 	x.Use = "ls"
 	x.Aliases = []string{"list"}
 	return x

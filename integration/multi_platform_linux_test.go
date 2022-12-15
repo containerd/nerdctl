@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/nerdctl/cmd/nerdctl/build"
+	"github.com/containerd/nerdctl/cmd/nerdctl/builder"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/pkg/testutil/testregistry"
@@ -69,7 +69,7 @@ func TestMultiPlatformBuildPush(t *testing.T) {
 RUN echo dummy
 	`, testutil.AlpineImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -98,7 +98,7 @@ func TestMultiPlatformBuildPushNoRun(t *testing.T) {
 CMD echo dummy
 	`, testutil.AlpineImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 

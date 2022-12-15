@@ -33,7 +33,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewImageInspectCommand() *cobra.Command {
+func NewInspectCommand() *cobra.Command {
 	var imageInspectCommand = &cobra.Command{
 		Use:               "inspect [flags] IMAGE [IMAGE...]",
 		Args:              cobra.MinimumNArgs(1),

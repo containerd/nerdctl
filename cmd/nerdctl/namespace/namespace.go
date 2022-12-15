@@ -43,15 +43,15 @@ func NewNamespaceCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	namespaceCommand.AddCommand(NewNamespaceLsCommand())
-	namespaceCommand.AddCommand(NewNamespaceRmCommand())
-	namespaceCommand.AddCommand(NewNamespaceCreateCommand())
-	namespaceCommand.AddCommand(NewNamespacelabelUpdateCommand())
-	namespaceCommand.AddCommand(NewNamespaceInspectCommand())
+	namespaceCommand.AddCommand(NewLsCommand())
+	namespaceCommand.AddCommand(NewRmCommand())
+	namespaceCommand.AddCommand(NewCreateCommand())
+	namespaceCommand.AddCommand(NewUpdateCommand())
+	namespaceCommand.AddCommand(NewInspectCommand())
 	return namespaceCommand
 }
 
-func NewNamespaceLsCommand() *cobra.Command {
+func NewLsCommand() *cobra.Command {
 	namespaceLsCommand := &cobra.Command{
 		Use:           "ls",
 		Aliases:       []string{"list"},

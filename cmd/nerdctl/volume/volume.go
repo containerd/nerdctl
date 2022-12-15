@@ -32,11 +32,11 @@ func NewVolumeCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	volumeCommand.AddCommand(
-		NewVolumeLsCommand(),
-		NewVolumeInspectCommand(),
-		NewVolumeCreateCommand(),
-		NewVolumeRmCommand(),
-		NewVolumePruneCommand(),
+		NewLsCommand(),
+		NewInspectCommand(),
+		NewCreateCommand(),
+		NewRmCommand(),
+		NewPruneCommand(),
 	)
 	return volumeCommand
 }

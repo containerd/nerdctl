@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewNamespaceRmCommand() *cobra.Command {
+func NewRmCommand() *cobra.Command {
 	namespaceRmCommand := &cobra.Command{
 		Use:           "remove [flags] NAMESPACE [NAMESPACE...]",
 		Aliases:       []string{"rm"},

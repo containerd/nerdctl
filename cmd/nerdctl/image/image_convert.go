@@ -59,7 +59,7 @@ For encryption and decryption, use 'nerdctl image (encrypt|decrypt)' command.
 `
 
 // imageConvertCommand is from https://github.com/containerd/stargz-snapshotter/blob/d58f43a8235e46da73fb94a1a35280cb4d607b2c/cmd/ctr-remote/commands/convert.go
-func NewImageConvertCommand() *cobra.Command {
+func NewConvertCommand() *cobra.Command {
 	imageConvertCommand := &cobra.Command{
 		Use:               "convert [flags] <source_ref> <target_ref>...",
 		Short:             "convert an image",

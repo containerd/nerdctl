@@ -34,7 +34,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewVolumeLsCommand() *cobra.Command {
+func NewLsCommand() *cobra.Command {
 	volumeLsCommand := &cobra.Command{
 		Use:           "ls",
 		Aliases:       []string{"list"},

@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewNamespaceInspectCommand() *cobra.Command {
+func NewInspectCommand() *cobra.Command {
 	namespaceInspectCommand := &cobra.Command{
 		Use:           "inspect NAMESPACE",
 		Short:         "Display detailed information on one or more namespaces.",

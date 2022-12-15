@@ -31,7 +31,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewVolumeRmCommand() *cobra.Command {
+func NewRmCommand() *cobra.Command {
 	volumeRmCommand := &cobra.Command{
 		Use:               "rm [flags] VOLUME [VOLUME...]",
 		Aliases:           []string{"remove"},

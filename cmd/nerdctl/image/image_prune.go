@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewImagePruneCommand() *cobra.Command {
+func NewPruneCommand() *cobra.Command {
 	imagePruneCommand := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove unused images",

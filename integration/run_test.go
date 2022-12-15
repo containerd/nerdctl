@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/containerd/nerdctl/cmd/nerdctl/build"
+	"github.com/containerd/nerdctl/cmd/nerdctl/builder"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
@@ -47,7 +47,7 @@ ENTRYPOINT ["echo", "foo"]
 CMD ["echo", "bar"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 
@@ -431,7 +431,7 @@ FROM scratch
 COPY --from=builder /go/src/logger/logger /
 	`
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 	tmpDir := t.TempDir()

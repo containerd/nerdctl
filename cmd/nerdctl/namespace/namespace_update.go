@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewNamespacelabelUpdateCommand() *cobra.Command {
+func NewUpdateCommand() *cobra.Command {
 	namespaceLableCommand := &cobra.Command{
 		Use:           "update [flags] NAMESPACE",
 		Short:         "Update labels for a namespace",

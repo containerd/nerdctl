@@ -29,7 +29,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewSystemPruneCommand() *cobra.Command {
+func NewPruneCommand() *cobra.Command {
 	systemPruneCommand := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove unused data",

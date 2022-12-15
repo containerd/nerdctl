@@ -27,33 +27,19 @@ import (
 	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/nerdctl/cmd/nerdctl/apparmor"
-	"github.com/containerd/nerdctl/cmd/nerdctl/build"
 	"github.com/containerd/nerdctl/cmd/nerdctl/builder"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/cmd/nerdctl/compose"
 	"github.com/containerd/nerdctl/cmd/nerdctl/container"
-	"github.com/containerd/nerdctl/cmd/nerdctl/container/cp"
-	"github.com/containerd/nerdctl/cmd/nerdctl/container/exec"
-	"github.com/containerd/nerdctl/cmd/nerdctl/event"
-	"github.com/containerd/nerdctl/cmd/nerdctl/history"
 	"github.com/containerd/nerdctl/cmd/nerdctl/image"
 	"github.com/containerd/nerdctl/cmd/nerdctl/inspect"
 	"github.com/containerd/nerdctl/cmd/nerdctl/internal"
 	"github.com/containerd/nerdctl/cmd/nerdctl/ipfs"
-	"github.com/containerd/nerdctl/cmd/nerdctl/load"
 	"github.com/containerd/nerdctl/cmd/nerdctl/login"
 	"github.com/containerd/nerdctl/cmd/nerdctl/logout"
 	"github.com/containerd/nerdctl/cmd/nerdctl/namespace"
 	"github.com/containerd/nerdctl/cmd/nerdctl/network"
-	"github.com/containerd/nerdctl/cmd/nerdctl/ps"
-	"github.com/containerd/nerdctl/cmd/nerdctl/pull"
-	"github.com/containerd/nerdctl/cmd/nerdctl/push"
-	"github.com/containerd/nerdctl/cmd/nerdctl/rmi"
-	"github.com/containerd/nerdctl/cmd/nerdctl/save"
-	"github.com/containerd/nerdctl/cmd/nerdctl/stats"
 	"github.com/containerd/nerdctl/cmd/nerdctl/system"
-	"github.com/containerd/nerdctl/cmd/nerdctl/tag"
-	"github.com/containerd/nerdctl/cmd/nerdctl/top"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
 	version2 "github.com/containerd/nerdctl/cmd/nerdctl/version"
@@ -296,11 +282,11 @@ Config file ($NERDCTL_TOML): %s
 		// #region Run & Exec
 		container.NewRunCommand(),
 		container.NewUpdateCommand(),
-		exec.NewExecCommand(),
+		container.NewExecCommand(),
 		// #endregion
 
 		// #region Container management
-		ps.NewPsCommand(),
+		container.NewPsCommandForMain(),
 		container.NewLogsCommand(),
 		container.NewPortCommand(),
 		container.NewStopCommand(),
@@ -316,21 +302,21 @@ Config file ($NERDCTL_TOML): %s
 		// #endregion
 
 		// Build
-		build.NewBuildCommand(),
+		builder.NewBuildCommand(),
 
 		// #region Image management
-		image.NewImagesCommand(),
-		pull.NewPullCommand(),
-		push.NewPushCommand(),
-		load.NewLoadCommand(),
-		save.NewSaveCommand(),
-		tag.NewTagCommand(),
-		rmi.NewRmiCommand(),
-		history.NewHistoryCommand(),
+		image.NewImagesCommandForMain(),
+		image.NewPullCommand(),
+		image.NewPushCommand(),
+		image.NewLoadCommand(),
+		image.NewSaveCommand(),
+		image.NewTagCommand(),
+		image.NewRmiCommandForMain(),
+		image.NewHistoryCommand(),
 		// #endregion
 
 		// #region System
-		event.NewEventsCommand(),
+		system.NewEventsCommand(),
 		system.NewInfoCommand(),
 		version2.NewVersionCommand(),
 		// #endregion
@@ -339,8 +325,8 @@ Config file ($NERDCTL_TOML): %s
 		inspect.NewInspectCommand(),
 
 		// stats
-		top.NewTopCommand(),
-		stats.NewStatsCommand(),
+		container.NewTopCommand(),
+		container.NewStatsCommand(),
 
 		// #region Management
 		container.NewContainerCommand(),
@@ -368,7 +354,7 @@ Config file ($NERDCTL_TOML): %s
 		ipfs.NewIPFSCommand(),
 	)
 	apparmor.AddApparmorCommand(rootCmd)
-	cp.AddCpCommand(rootCmd)
+	container.AddCpCommand(rootCmd)
 
 	// add aliasToBeInherited to subCommand(s) InheritedFlags
 	for _, subCmd := range rootCmd.Commands() {

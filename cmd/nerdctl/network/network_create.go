@@ -28,7 +28,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewNetworkCreateCommand() *cobra.Command {
+func NewCreateCommand() *cobra.Command {
 	var networkCreateCommand = &cobra.Command{
 		Use:           "create [flags] NETWORK",
 		Short:         "Create a network",

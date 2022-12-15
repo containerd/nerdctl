@@ -45,7 +45,7 @@ CAUTION: This command only encrypts image layers, but does NOT encrypt container
 To see non-encrypted information, run 'nerdctl image inspect --mode=native --platform=PLATFORM example.com/foo:encrypted' .
 `
 
-func NewImageEncryptCommand() *cobra.Command {
+func NewEncryptCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "encrypt [flags] <source_ref> <target_ref>...",
 		Short:             "encrypt image layers",

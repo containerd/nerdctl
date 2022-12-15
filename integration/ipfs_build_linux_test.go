@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/nerdctl/cmd/nerdctl/build"
+	"github.com/containerd/nerdctl/cmd/nerdctl/builder"
 	"github.com/containerd/nerdctl/pkg/testutil"
 
 	"gotest.tools/v3/assert"
@@ -44,7 +44,7 @@ func TestIPFSBuild(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, ipfsCIDBase)
 
-	buildCtx, err := build.CreateBuildContext(dockerfile)
+	buildCtx, err := builder.CreateBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
 

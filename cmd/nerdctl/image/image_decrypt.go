@@ -45,7 +45,7 @@ Example (decrypt):
   nerdctl image decrypt --key=mykey.pem example.com/foo:encrypted foo:decrypted
 `
 
-func NewImageDecryptCommand() *cobra.Command {
+func NewDecryptCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "decrypt [flags] <source_ref> <target_ref>...",
 		Short:             "decrypt an image",

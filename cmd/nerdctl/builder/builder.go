@@ -22,7 +22,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/containerd/nerdctl/cmd/nerdctl/build"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
@@ -42,13 +41,14 @@ func NewBuilderCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	builderCommand.AddCommand(
-		newBuilderPruneCommand(),
-		newBuilderDebugCommand(),
+		NewBuildCommand(),
+		NewPruneCommand(),
+		NewDebugCommand(),
 	)
 	return builderCommand
 }
 
-func newBuilderPruneCommand() *cobra.Command {
+func NewPruneCommand() *cobra.Command {
 	shortHelp := `Clean up BuildKit build cache`
 	var buildPruneCommand = &cobra.Command{
 		Use:           "prune",
@@ -64,7 +64,7 @@ func newBuilderPruneCommand() *cobra.Command {
 }
 
 func builderPruneAction(cmd *cobra.Command, _ []string) error {
-	buildkitHost, err := build.GetBuildkitHost(cmd)
+	buildkitHost, err := GetBuildkitHost(cmd)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func builderPruneAction(cmd *cobra.Command, _ []string) error {
 	return buildctlCmd.Run()
 }
 
-func newBuilderDebugCommand() *cobra.Command {
+func NewDebugCommand() *cobra.Command {
 	shortHelp := `Debug Dockerfile`
 	var buildDebugCommand = &cobra.Command{
 		Use:           "debug",

@@ -48,7 +48,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewImagesCommand() *cobra.Command {
+// NewImagesCommandForMain is a top-level subcommand.
+func NewImagesCommandForMain() *cobra.Command {
 	shortHelp := "List images"
 	longHelp := shortHelp + `
 

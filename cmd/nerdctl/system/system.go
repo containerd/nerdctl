@@ -18,7 +18,6 @@ package system
 
 import (
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
-	"github.com/containerd/nerdctl/cmd/nerdctl/event"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
 	"github.com/spf13/cobra"
 )
@@ -34,9 +33,9 @@ func NewSystemCommand() *cobra.Command {
 	}
 	// versionCommand is not here
 	systemCommand.AddCommand(
-		event.NewEventsCommand(),
+		NewEventsCommand(),
 		NewInfoCommand(),
-		NewSystemPruneCommand(),
+		NewPruneCommand(),
 	)
 	return systemCommand
 }

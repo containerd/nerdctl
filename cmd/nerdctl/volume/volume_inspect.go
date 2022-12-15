@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewVolumeInspectCommand() *cobra.Command {
+func NewInspectCommand() *cobra.Command {
 	volumeInspectCommand := &cobra.Command{
 		Use:               "inspect [flags] VOLUME [VOLUME...]",
 		Short:             "Display detailed information on one or more volumes",

@@ -27,7 +27,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewVolumeCreateCommand() *cobra.Command {
+func NewCreateCommand() *cobra.Command {
 	volumeCreateCommand := &cobra.Command{
 		Use:           "create [flags] VOLUME",
 		Short:         "Create a volume",

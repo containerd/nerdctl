@@ -29,7 +29,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewNetworkLsCommand() *cobra.Command {
+func NewLsCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "ls",
 		Aliases:       []string{"list"},

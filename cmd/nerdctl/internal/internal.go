@@ -30,7 +30,7 @@ func NewInternalCommand() *cobra.Command {
 	}
 
 	internalCommand.AddCommand(
-		NewInternalOCIHookCommandCommand(),
+		newOCIHookCommand(),
 	)
 
 	return internalCommand
