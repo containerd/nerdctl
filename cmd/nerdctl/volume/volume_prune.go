@@ -48,7 +48,7 @@ func volumePruneAction(cmd *cobra.Command, _ []string) error {
 
 	if !force {
 		var confirm string
-		msg := "This will remove all local volume not used by at least one container."
+		msg := "This will remove all local volumes not used by at least one container."
 		msg += "\nAre you sure you want to continue? [y/N] "
 		fmt.Fprintf(cmd.OutOrStdout(), "WARNING! %s", msg)
 		fmt.Fscanf(cmd.InOrStdin(), "%s", &confirm)

@@ -24,8 +24,8 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/plugin"
-	options2 "github.com/containerd/containerd/runtime/v2/runc/options"
-	"github.com/opencontainers/runtime-spec/specs-go"
+	runcoptions "github.com/containerd/containerd/runtime/v2/runc/options"
+	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -33,7 +33,7 @@ import (
 func GenerateRuntimeCOpts(cmd *cobra.Command) ([]containerd.NewContainerOpts, error) {
 	runtime := plugin.RuntimeRuncV2
 	var (
-		runcOpts    options2.Options
+		runcOpts    runcoptions.Options
 		runtimeOpts interface{} = &runcOpts
 	)
 	cgm, err := cmd.Flags().GetString("cgroup-manager")
@@ -67,9 +67,9 @@ func GenerateRuntimeCOpts(cmd *cobra.Command) ([]containerd.NewContainerOpts, er
 
 // WithSysctls sets the provided sysctls onto the spec
 func WithSysctls(sysctls map[string]string) oci.SpecOpts {
-	return func(ctx context.Context, client oci.Client, c *containers.Container, s *specs.Spec) error {
+	return func(ctx context.Context, client oci.Client, c *containers.Container, s *runtimespec.Spec) error {
 		if s.Linux == nil {
-			s.Linux = &specs.Linux{}
+			s.Linux = &runtimespec.Linux{}
 		}
 		if s.Linux.Sysctl == nil {
 			s.Linux.Sysctl = make(map[string]string)

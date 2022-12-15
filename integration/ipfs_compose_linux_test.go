@@ -60,7 +60,7 @@ func TestIPFSComposeUp(t *testing.T) {
 				ipfsImgs[i] = pushImageToIPFS(t, base, img, tt.pushOptions...)
 			}
 			base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER="+tt.snapshotter)
-			ComposeUpInTest(t, base, fmt.Sprintf(`
+			testComposeUp(t, base, fmt.Sprintf(`
 version: '3.1'
 
 services:

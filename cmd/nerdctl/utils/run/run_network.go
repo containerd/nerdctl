@@ -29,7 +29,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/go-cni"
+	gocni "github.com/containerd/go-cni"
 	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
 	"github.com/containerd/nerdctl/pkg/dnsutil"
@@ -59,7 +59,7 @@ func WithCustomEtcHostname(src string) func(context.Context, oci.Client, *contai
 	}
 }
 
-func GetNetworkSlice(cmd *cobra.Command) ([]string, error) {
+func getNetworkSlice(cmd *cobra.Command) ([]string, error) {
 	var netSlice = []string{}
 	var networkSet = false
 	if cmd.Flags().Lookup("network").Changed {
@@ -113,7 +113,7 @@ func WithCustomHosts(src string) func(context.Context, oci.Client, *containers.C
 	}
 }
 
-func GenerateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]oci.SpecOpts, []string, string, []cni.PortMapping, string, error) {
+func GenerateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]oci.SpecOpts, []string, string, []gocni.PortMapping, string, error) {
 	opts := []oci.SpecOpts{}
 	portSlice, err := cmd.Flags().GetStringSlice("publish")
 	if err != nil {
@@ -123,7 +123,7 @@ func GenerateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 	if err != nil {
 		return nil, nil, "", nil, "", err
 	}
-	netSlice, err := GetNetworkSlice(cmd)
+	netSlice, err := getNetworkSlice(cmd)
 	if err != nil {
 		return nil, nil, "", nil, "", err
 	}
@@ -137,7 +137,7 @@ func GenerateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 		return nil, nil, "", nil, "", err
 	}
 
-	ports := make([]cni.PortMapping, 0)
+	ports := make([]gocni.PortMapping, 0)
 	netType, err := nettype.Detect(netSlice)
 	if err != nil {
 		return nil, nil, "", nil, "", err

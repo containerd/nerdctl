@@ -31,7 +31,7 @@ func newComposeDownCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeDownCommand.Flags().BoolP("volumes", "v", false, "Remove named volume declared in the `volume` section of the Compose file and anonymous volume attached to containers.")
+	composeDownCommand.Flags().BoolP("volumes", "v", false, "Remove named volumes declared in the `volumes` section of the Compose file and anonymous volumes attached to containers.")
 	return composeDownCommand
 }
 

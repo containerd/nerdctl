@@ -370,7 +370,7 @@ Config file ($NERDCTL_TOML): %s
 	apparmor.AddApparmorCommand(rootCmd)
 	cp.AddCpCommand(rootCmd)
 
-	// Add aliasToBeInherited to subCommand(s) InheritedFlags
+	// add aliasToBeInherited to subCommand(s) InheritedFlags
 	for _, subCmd := range rootCmd.Commands() {
 		subCmd.InheritedFlags().AddFlagSet(aliasToBeInherited)
 	}

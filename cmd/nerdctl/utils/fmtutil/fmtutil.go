@@ -77,7 +77,7 @@ func FormatSlice(cmd *cobra.Command, x []interface{}) error {
 			if err := tmpl.Execute(&b, f); err != nil {
 				if _, ok := err.(template.ExecError); ok {
 					// FallBack to Raw Format
-					if err = TryRawFormat(&b, f, tmpl); err != nil {
+					if err = tryRawFormat(&b, f, tmpl); err != nil {
 						return err
 					}
 				}
@@ -90,7 +90,7 @@ func FormatSlice(cmd *cobra.Command, x []interface{}) error {
 	return nil
 }
 
-func TryRawFormat(b *bytes.Buffer, f interface{}, tmpl *template.Template) error {
+func tryRawFormat(b *bytes.Buffer, f interface{}, tmpl *template.Template) error {
 	m, err := json.MarshalIndent(f, "", "    ")
 	if err != nil {
 		return err

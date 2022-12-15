@@ -32,7 +32,7 @@ func NewPauseCommand() *cobra.Command {
 	var pauseCommand = &cobra.Command{
 		Use:               "pause [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
-		Short:             "Pause all processes within one or more Containers",
+		Short:             "Pause all processes within one or more containers",
 		RunE:              pauseAction,
 		ValidArgsFunction: completion.PauseShellComplete,
 		SilenceUsage:      true,

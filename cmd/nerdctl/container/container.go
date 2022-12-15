@@ -29,7 +29,7 @@ func NewContainerCommand() *cobra.Command {
 	containerCommand := &cobra.Command{
 		Annotations:   map[string]string{common.Category: common.Management},
 		Use:           "container",
-		Short:         "Manage Containers",
+		Short:         "Manage containers",
 		RunE:          completion.UnknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,

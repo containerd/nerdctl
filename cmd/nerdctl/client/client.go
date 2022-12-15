@@ -101,7 +101,7 @@ func GetDataStore(cmd *cobra.Command) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	addrHash, err := GetAddrHash(address)
+	addrHash, err := getAddrHash(address)
 	if err != nil {
 		return "", err
 	}
@@ -112,7 +112,7 @@ func GetDataStore(cmd *cobra.Command) (string, error) {
 	return dataStore, nil
 }
 
-func GetAddrHash(addr string) (string, error) {
+func getAddrHash(addr string) (string, error) {
 	const addrHashLen = 8
 
 	if runtime.GOOS != "windows" {

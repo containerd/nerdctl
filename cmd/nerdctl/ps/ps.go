@@ -46,7 +46,7 @@ func NewPsCommand() *cobra.Command {
 	var psCommand = &cobra.Command{
 		Use:           "ps",
 		Args:          cobra.NoArgs,
-		Short:         "List Containers",
+		Short:         "List containers",
 		RunE:          psAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,

@@ -26,7 +26,7 @@ func NewVolumeCommand() *cobra.Command {
 	volumeCommand := &cobra.Command{
 		Annotations:   map[string]string{common.Category: common.Management},
 		Use:           "volume",
-		Short:         "Manage volume",
+		Short:         "Manage volumes",
 		RunE:          completion.UnknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,

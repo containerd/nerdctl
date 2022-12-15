@@ -48,7 +48,7 @@ func NewBuildCommand() *cobra.Command {
 		Short: "Build an image from a Dockerfile. Needs buildkitd to be running.",
 		Long: `Build an image from a Dockerfile. Needs buildkitd to be running.
 If Dockerfile is not present and -f is not specified, it will look for Containerfile and build with it. `,
-		RunE:          RunBuildAction,
+		RunE:          buildAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -128,7 +128,7 @@ func isImageSharable(buildkitHost string, namespace, uuid, snapshotter string, p
 	return executor == "containerd" && containerdUUID == uuid && containerdNamespace == namespace && workerSnapshotter == snapshotter && len(platform) == 0, nil
 }
 
-func RunBuildAction(cmd *cobra.Command, args []string) error {
+func buildAction(cmd *cobra.Command, args []string) error {
 	platform, err := cmd.Flags().GetStringSlice("platform")
 	if err != nil {
 		return err

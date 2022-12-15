@@ -38,7 +38,7 @@ import (
 func NewKillCommand() *cobra.Command {
 	var killCommand = &cobra.Command{
 		Use:               "kill [flags] CONTAINER [CONTAINER, ...]",
-		Short:             "Kill one or more running Containers",
+		Short:             "Kill one or more running containers",
 		Args:              cobra.MinimumNArgs(1),
 		RunE:              killAction,
 		ValidArgsFunction: killShellComplete,

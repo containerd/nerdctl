@@ -34,7 +34,7 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-func ComposeUpInTest(t *testing.T, base *testutil.Base, dockerComposeYAML string) {
+func testComposeUp(t *testing.T, base *testutil.Base, dockerComposeYAML string) {
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
@@ -87,7 +87,7 @@ func ComposeUpInTest(t *testing.T, base *testutil.Base, dockerComposeYAML string
 
 func TestComposeUp(t *testing.T) {
 	base := testutil.NewBase(t)
-	ComposeUpInTest(t, base, fmt.Sprintf(`
+	testComposeUp(t, base, fmt.Sprintf(`
 version: '3.1'
 
 services:
@@ -504,7 +504,7 @@ func TestComposeUpWithBypass4netns(t *testing.T) {
 	testutil.RequireKernelVersion(t, ">= 5.9.0-0")
 	testutil.RequireSystemService(t, "bypass4netnsd")
 	base := testutil.NewBase(t)
-	ComposeUpInTest(t, base, fmt.Sprintf(`
+	testComposeUp(t, base, fmt.Sprintf(`
 version: '3.1'
 
 services:

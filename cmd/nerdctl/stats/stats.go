@@ -255,7 +255,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 		defer close(eventChan)
 		<-started
 
-		// Start a goroutine to retrieve the initial list of Containers stats.
+		// Start a goroutine to retrieve the initial list of containers stats.
 		getContainerList()
 
 		// make sure each container get at least one valid stat data
