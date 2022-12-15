@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/containerd/nerdctl/pkg/strutil"
 
 	"github.com/sirupsen/logrus"
 )
@@ -36,21 +36,18 @@ type RestartOptions struct {
 // Restart restarts running/stopped containers in `services`. It calls
 // `nerdctl restart CONTAINER_ID` to do the actual job.
 func (c *Composer) Restart(ctx context.Context, opt RestartOptions, services []string) error {
-	serviceNames, err := c.ServiceNames(services...)
-	if err != nil {
-		return err
-	}
-	// reverse dependency order
-	for _, svc := range strutil.ReverseStrSlice(serviceNames) {
-		containers, err := c.Containers(ctx, svc)
+	// in dependency order
+	return c.project.WithServices(services, func(svc types.ServiceConfig) error {
+		containers, err := c.Containers(ctx, svc.Name)
 		if err != nil {
 			return err
 		}
+
 		if err := c.restartContainers(ctx, containers, opt); err != nil {
 			return err
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 func (c *Composer) restartContainers(ctx context.Context, containers []containerd.Container, opt RestartOptions) error {
