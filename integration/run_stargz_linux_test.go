@@ -19,7 +19,7 @@ package integration
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils/run"
+	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action/run"
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 

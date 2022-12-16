@@ -30,7 +30,7 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils/run"
+	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action/run"
 	"github.com/containerd/nerdctl/pkg/flagutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"

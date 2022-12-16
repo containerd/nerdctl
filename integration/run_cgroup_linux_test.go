@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/cgroups"
 	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/continuity/testutil/loopback"
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils/run"
+	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action/run"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 )

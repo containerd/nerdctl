@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils/run"
+	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action/run"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
 	"gotest.tools/v3/assert"

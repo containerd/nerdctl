@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils/run"
+	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action/run"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
