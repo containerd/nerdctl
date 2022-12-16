@@ -14,15 +14,6 @@
    limitations under the License.
 */
 
-/*
-   Portions from:
-   - https://github.com/moby/moby/blob/v20.10.6/api/types/container/container_top.go
-   - https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go
-   Copyright (C) The Moby authors.
-   Licensed under the Apache License, Version 2.0
-   NOTICE: https://github.com/moby/moby/blob/v20.10.6/NOTICE
-*/
-
 package container
 
 import (
