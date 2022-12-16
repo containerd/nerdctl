@@ -22,7 +22,7 @@ import (
 
 	"github.com/containerd/containerd"
 	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
+	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -67,7 +67,7 @@ func composePauseAction(cmd *cobra.Command, args []string) error {
 	for _, c := range containers {
 		c := c
 		eg.Go(func() error {
-			if err := utils.PauseContainer(ctx, client, c.ID()); err != nil {
+			if err := action.PauseContainer(ctx, client, c.ID()); err != nil {
 				return err
 			}
 			info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
@@ -125,7 +125,7 @@ func composeUnpauseAction(cmd *cobra.Command, args []string) error {
 	for _, c := range containers {
 		c := c
 		eg.Go(func() error {
-			if err := utils.UnpauseContainer(ctx, client, c.ID()); err != nil {
+			if err := action.UnpauseContainer(ctx, client, c.ID()); err != nil {
 				return err
 			}
 			info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
