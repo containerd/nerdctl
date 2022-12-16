@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/spf13/cobra"
 )
@@ -58,7 +59,7 @@ func composeTopAction(cmd *cobra.Command, args []string) error {
 
 	stdout := cmd.OutOrStdout()
 	for _, c := range containers {
-		cStatus, err := containerStatus(ctx, c)
+		cStatus, err := containerutil.ContainerStatus(ctx, c)
 		if err != nil {
 			return err
 		}

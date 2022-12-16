@@ -20,10 +20,10 @@ import (
 	"context"
 	"fmt"
 	"text/tabwriter"
-	"time"
 
 	"github.com/containerd/containerd"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/portutil"
@@ -178,7 +178,7 @@ func composeContainerPrintableJSON(ctx context.Context, container containerd.Con
 		state    string
 		exitCode uint32
 	)
-	status, err := containerStatus(ctx, container)
+	status, err := containerutil.ContainerStatus(ctx, container)
 	if err == nil {
 		// show exitCode only when container is exited/stopped
 		if status.Status == containerd.Stopped {
@@ -200,19 +200,6 @@ func composeContainerPrintableJSON(ctx context.Context, container containerd.Con
 		ExitCode:   exitCode,
 		Publishers: formatPublishers(info.Labels),
 	}, nil
-}
-
-func containerStatus(ctx context.Context, c containerd.Container) (containerd.Status, error) {
-	// Just in case, there is something wrong in server.
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	task, err := c.Task(ctx, nil)
-	if err != nil {
-		return containerd.Status{}, err
-	}
-
-	return task.Status(ctx)
 }
 
 // PortPublisher hold status about published port
