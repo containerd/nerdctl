@@ -17,13 +17,21 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"strings"
 	"testing"
 
+	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/sirupsen/logrus"
 )
 
 func TestSystemPrune(t *testing.T) {
+	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	base.Cmd("container", "prune", "-f").AssertOK()
 	base.Cmd("network", "prune", "-f").AssertOK()
@@ -51,4 +59,35 @@ func TestSystemPrune(t *testing.T) {
 	base.Cmd("ps", "-a").AssertNoOut(tID)
 	base.Cmd("network", "ls").AssertNoOut(nID)
 	base.Cmd("images").AssertNoOut("alpine")
+
+	if testutil.GetTarget() != testutil.Nerdctl {
+		t.Skip("test skipped for buildkitd is not available with docker-compatible tests")
+	}
+
+	buildctlBinary, err := buildkitutil.BuildctlBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	host, err := buildkitutil.GetBuildkitHost(testutil.Namespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	buildctlArgs := buildkitutil.BuildctlBaseArgs(host)
+	buildctlArgs = append(buildctlArgs, "du")
+	logrus.Debugf("running %s %v", buildctlBinary, buildctlArgs)
+	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
+	buildctlCmd.Env = os.Environ()
+	stdout := bytes.NewBuffer(nil)
+	buildctlCmd.Stdout = stdout
+	if err := buildctlCmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+	readAll, err := io.ReadAll(stdout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readAll), "Total:\t\t0B") {
+		t.Errorf("buildkit cache is not pruned: %s", string(readAll))
+	}
 }
