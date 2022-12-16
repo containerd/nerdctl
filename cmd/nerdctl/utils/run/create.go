@@ -150,7 +150,7 @@ func CreateContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		opts = append(opts, oci.WithTTY)
 	}
 
-	mountOpts, anonVolumes, mountPoints, err := utils.GenerateMountOpts(ctx, cmd, client, ensuredImage)
+	mountOpts, anonVolumes, mountPoints, err := GenerateMountOpts(ctx, cmd, client, ensuredImage)
 	if err != nil {
 		return nil, nil, err
 	}
