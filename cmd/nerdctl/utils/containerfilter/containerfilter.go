@@ -18,6 +18,7 @@ package containerfilter
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/volume"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/sirupsen/logrus"
 )
 
@@ -353,7 +355,7 @@ func (cl *FilterContext) matchesNetworkFilter(info containers.Container) bool {
 	if len(cl.NetworkFilterFuncs) == 0 {
 		return true
 	}
-	networks := utils.ContainerNetworks(info.Labels)
+	networks := containerNetworks(info.Labels)
 	for _, networkFilterFunc := range cl.NetworkFilterFuncs {
 		if !networkFilterFunc(networks) {
 			continue
@@ -374,4 +376,14 @@ func idOrNameFilter(ctx context.Context, containers []containerd.Container, valu
 		}
 	}
 	return nil, fmt.Errorf("no such container %s", value)
+}
+
+func containerNetworks(containerLables map[string]string) []string {
+	var networks []string
+	if names, ok := containerLables[labels.Networks]; ok {
+		if err := json.Unmarshal([]byte(names), &networks); err != nil {
+			logrus.Warn(err)
+		}
+	}
+	return networks
 }
