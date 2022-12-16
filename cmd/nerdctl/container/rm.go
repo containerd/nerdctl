@@ -22,7 +22,7 @@ import (
 
 	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils/container"
+	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -65,7 +65,7 @@ func rmAction(cmd *cobra.Command, args []string) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := container.RemoveContainer(ctx, cmd, found.Container, force, removeAnonVolumes); err != nil {
+			if err := action.RemoveContainer(ctx, cmd, found.Container, force, removeAnonVolumes); err != nil {
 				return err
 			}
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)

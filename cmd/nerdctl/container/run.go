@@ -27,8 +27,8 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
+	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
-	containerUtils "github.com/containerd/nerdctl/cmd/nerdctl/utils/container"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/run"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/taskutil"
@@ -91,7 +91,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	container, gc, err := containerUtils.CreateContainer(ctx, cmd, client, args, platform, flagI, flagT, flagD)
+	container, gc, err := run.CreateContainer(ctx, cmd, client, args, platform, flagI, flagT, flagD)
 	if err != nil {
 		if gc != nil {
 			defer gc()
@@ -109,7 +109,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 			return errors.New("flag -d and --rm cannot be specified together")
 		}
 		defer func() {
-			if err := containerUtils.RemoveContainer(ctx, cmd, container, true, true); err != nil {
+			if err := action.RemoveContainer(ctx, cmd, container, true, true); err != nil {
 				logrus.WithError(err).Warnf("failed to remove container %s", id)
 			}
 		}()

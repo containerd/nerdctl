@@ -30,7 +30,6 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
-	containerUtils "github.com/containerd/nerdctl/cmd/nerdctl/utils/container"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/run"
 	"github.com/containerd/nerdctl/pkg/flagutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
@@ -251,7 +250,7 @@ func generateExecProcessSpec(ctx context.Context, cmd *cobra.Command, args []str
 	if err != nil {
 		return nil, err
 	}
-	envs, err := containerUtils.GenerateEnvs(envFile, env)
+	envs, err := run.GenerateEnvs(envFile, env)
 	if err != nil {
 		return nil, err
 	}

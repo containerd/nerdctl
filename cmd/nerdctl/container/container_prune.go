@@ -24,8 +24,8 @@ import (
 
 	"github.com/containerd/containerd"
 	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
-	containerUtils "github.com/containerd/nerdctl/cmd/nerdctl/utils/container"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -79,7 +79,7 @@ func Prune(ctx context.Context, cmd *cobra.Command, client *containerd.Client) e
 
 	var deleted []string
 	for _, container := range containers {
-		err = containerUtils.RemoveContainer(ctx, cmd, container, false, true)
+		err = action.RemoveContainer(ctx, cmd, container, false, true)
 		if err == nil {
 			deleted = append(deleted, container.ID())
 			continue

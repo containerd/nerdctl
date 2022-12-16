@@ -22,7 +22,6 @@ import (
 
 	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils/container"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/run"
 	"github.com/spf13/cobra"
 )
@@ -74,7 +73,7 @@ func createAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	container, gc, err := container.CreateContainer(ctx, cmd, client, args, platform, false, false, true)
+	container, gc, err := run.CreateContainer(ctx, cmd, client, args, platform, false, false, true)
 	if err != nil {
 		if gc != nil {
 			gc()

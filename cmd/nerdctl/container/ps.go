@@ -30,10 +30,12 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/pkg/progress"
 	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils/container"
+	"github.com/containerd/nerdctl/cmd/nerdctl/utils/containerfilter"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/fmtutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -97,7 +99,7 @@ func psAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	filterCtx, err := container.FoldContainerFilters(ctx, containers, filters)
+	filterCtx, err := containerfilter.FoldContainerFilters(ctx, containers, filters)
 	if err != nil {
 		return err
 	}
@@ -233,7 +235,7 @@ func printContainers(ctx context.Context, client *containerd.Client, cmd *cobra.
 		}
 
 		if size || wide {
-			containerSize, err := container.ContainerSize(ctx, client, c, info)
+			containerSize, err := containerSize(ctx, client, c, info)
 			if err != nil {
 				return err
 			}
@@ -282,4 +284,33 @@ func printContainers(ctx context.Context, client *containerd.Client, cmd *cobra.
 		return f.Flush()
 	}
 	return nil
+}
+
+func containerSize(ctx context.Context, client *containerd.Client, c containerd.Container, info containers.Container) (string, error) {
+	// get container snapshot size
+	snapshotKey := info.SnapshotKey
+	var containerSize int64
+
+	if snapshotKey != "" {
+		usage, err := client.SnapshotService(info.Snapshotter).Usage(ctx, snapshotKey)
+		if err != nil {
+			return "", err
+		}
+		containerSize = usage.Size
+	}
+
+	// get the image interface
+	image, err := c.Image(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	sn := client.SnapshotService(info.Snapshotter)
+
+	imageSize, err := utils.UnpackedImageSize(ctx, sn, image)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s (virtual %s)", progress.Bytes(containerSize).String(), progress.Bytes(imageSize).String()), nil
 }

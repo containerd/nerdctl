@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package container
+package run
 
 import (
 	"bufio"
@@ -37,7 +37,6 @@ import (
 	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils/run"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -104,7 +103,7 @@ func CreateContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		oci.WithDefaultSpec(),
 	)
 
-	opts, internalLabels, err = run.SetPlatformOptions(ctx, opts, cmd, client, id, internalLabels)
+	opts, internalLabels, err = SetPlatformOptions(ctx, opts, cmd, client, id, internalLabels)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -209,7 +208,7 @@ func CreateContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	if err != nil {
 		return nil, nil, err
 	}
-	restartOpts, err := run.GenerateRestartOpts(ctx, client, restartValue, logURI)
+	restartOpts, err := GenerateRestartOpts(ctx, client, restartValue, logURI)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -241,10 +240,10 @@ func CreateContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		if err := os.WriteFile(hostnamePath, []byte(hostname+"\n"), 0644); err != nil {
 			return nil, nil, err
 		}
-		opts = append(opts, run.WithCustomEtcHostname(hostnamePath))
+		opts = append(opts, WithCustomEtcHostname(hostnamePath))
 	}
 
-	netOpts, netSlice, ipAddress, ports, macAddress, err := run.GenerateNetOpts(cmd, dataStore, stateDir, ns, id)
+	netOpts, netSlice, ipAddress, ports, macAddress, err := GenerateNetOpts(cmd, dataStore, stateDir, ns, id)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -260,25 +259,25 @@ func CreateContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	}
 	opts = append(opts, hookOpt)
 
-	uOpts, err := run.GenerateUserOpts(cmd)
+	uOpts, err := GenerateUserOpts(cmd)
 	if err != nil {
 		return nil, nil, err
 	}
 	opts = append(opts, uOpts...)
 
-	gOpts, err := run.GenerateGroupsOpts(cmd)
+	gOpts, err := GenerateGroupsOpts(cmd)
 	if err != nil {
 		return nil, nil, err
 	}
 	opts = append(opts, gOpts...)
 
-	umaskOpts, err := run.GenerateUmaskOpts(cmd)
+	umaskOpts, err := GenerateUmaskOpts(cmd)
 	if err != nil {
 		return nil, nil, err
 	}
 	opts = append(opts, umaskOpts...)
 
-	rtCOpts, err := run.GenerateRuntimeCOpts(cmd)
+	rtCOpts, err := GenerateRuntimeCOpts(cmd)
 	if err != nil {
 		return nil, nil, err
 	}
