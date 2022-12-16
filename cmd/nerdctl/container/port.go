@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
@@ -72,7 +72,7 @@ func portAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

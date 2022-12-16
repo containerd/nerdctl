@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/container"
 	"github.com/containerd/nerdctl/cmd/nerdctl/image"
 	"github.com/containerd/nerdctl/cmd/nerdctl/network"
@@ -87,7 +87,7 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

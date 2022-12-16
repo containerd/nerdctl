@@ -25,7 +25,7 @@ import (
 	"syscall"
 
 	"github.com/containerd/containerd"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
@@ -54,7 +54,7 @@ func NewLogsCommand() *cobra.Command {
 }
 
 func logsAction(cmd *cobra.Command, args []string) error {
-	dataStore, err := nerdClient.GetDataStore(cmd)
+	dataStore, err := ncclient.GetDataStore(cmd)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func logsAction(cmd *cobra.Command, args []string) error {
 		logrus.Warn("Currently, `nerdctl logs` only supports containers created with `nerdctl run -d`")
 	}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

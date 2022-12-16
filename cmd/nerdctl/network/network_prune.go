@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/sirupsen/logrus"
@@ -63,7 +63,7 @@ func networkPruneAction(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

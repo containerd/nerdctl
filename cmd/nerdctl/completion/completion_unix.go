@@ -19,7 +19,7 @@
 package completion
 
 import (
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/sirupsen/logrus"
@@ -32,7 +32,7 @@ func ShellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete s
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -53,7 +53,7 @@ func ShellCompleteSnapshotterNames(cmd *cobra.Command, args []string, toComplete
 		_ = rootlessutil.ParentMain()
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}

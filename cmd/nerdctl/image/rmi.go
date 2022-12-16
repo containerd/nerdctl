@@ -23,7 +23,7 @@ import (
 
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
@@ -61,7 +61,7 @@ func rmiAction(cmd *cobra.Command, args []string) error {
 		delOpts = append(delOpts, images.SynchronousDelete())
 	}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

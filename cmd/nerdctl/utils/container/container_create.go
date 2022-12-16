@@ -34,7 +34,7 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/run"
@@ -86,7 +86,7 @@ func CreateContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		}
 	}
 
-	dataStore, err := nerdClient.GetDataStore(cmd)
+	dataStore, err := ncclient.GetDataStore(cmd)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/spf13/cobra"
@@ -40,7 +40,7 @@ func NewDownCommand() *cobra.Command {
 }
 
 func ipfsRegistryDownAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

@@ -30,7 +30,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/images/converter/uncompress"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	converterutil "github.com/containerd/nerdctl/pkg/imgutil/converter"
 	"github.com/containerd/nerdctl/pkg/platformutil"
@@ -180,7 +180,7 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -460,7 +460,7 @@ func getNydusConvertOpts(cmd *cobra.Command) (*nydusconvert.PackOption, error) {
 		return nil, err
 	}
 	if workDir == "" {
-		workDir, err = nerdClient.GetDataStore(cmd)
+		workDir, err = ncclient.GetDataStore(cmd)
 		if err != nil {
 			return nil, err
 		}

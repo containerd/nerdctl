@@ -24,7 +24,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/containerd/containerd/namespaces"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
@@ -65,7 +65,7 @@ func NewLsCommand() *cobra.Command {
 }
 
 func namespaceLsAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func namespaceLsAction(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	dataStore, err := nerdClient.GetDataStore(cmd)
+	dataStore, err := ncclient.GetDataStore(cmd)
 	if err != nil {
 		return err
 	}

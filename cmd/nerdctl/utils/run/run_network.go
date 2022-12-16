@@ -30,7 +30,7 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
 	"github.com/containerd/nerdctl/pkg/dnsutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
@@ -192,7 +192,7 @@ func GenerateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 			return nil, nil, "", nil, "", fmt.Errorf("invalid network: %s, should be \"container:<id|name>\"", netSlice[0])
 		}
 		containerName := network[1]
-		client, ctx, cancel, err := nerdClient.NewClient(cmd)
+		client, ctx, cancel, err := ncclient.NewClient(cmd)
 		if err != nil {
 			return nil, nil, "", nil, "", err
 		}

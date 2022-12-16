@@ -24,7 +24,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/opencontainers/go-digest"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -75,7 +75,7 @@ func imagePruneAction(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

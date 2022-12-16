@@ -23,7 +23,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/platforms"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/fmtutil"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
@@ -79,7 +79,7 @@ func InspectActionWithPlatform(cmd *cobra.Command, args []string, platform strin
 		platformM := platforms.Only(platformParsed)
 		clientOpts = append(clientOpts, containerd.WithDefaultPlatform(platformM))
 	}
-	client, ctx, cancel, err := nerdClient.NewClient(cmd, clientOpts...)
+	client, ctx, cancel, err := ncclient.NewClient(cmd, clientOpts...)
 	if err != nil {
 		return err
 	}

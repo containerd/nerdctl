@@ -30,7 +30,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	dockerreference "github.com/containerd/containerd/reference/docker"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
@@ -215,7 +215,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 
 	if len(tags) > 1 {
 		logrus.Debug("Found more than 1 tag")
-		client, ctx, cancel, err := nerdClient.NewClient(cmd)
+		client, ctx, cancel, err := ncclient.NewClient(cmd)
 		if err != nil {
 			return fmt.Errorf("unable to tag images: %s", err)
 		}
@@ -260,7 +260,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 		return "", nil, false, "", nil, nil, err
 	}
 	if output == "" {
-		client, ctx, cancel, err := nerdClient.NewClient(cmd)
+		client, ctx, cancel, err := ncclient.NewClient(cmd)
 		if err != nil {
 			return "", nil, false, "", nil, nil, err
 		}

@@ -23,7 +23,7 @@ import (
 	"strings"
 	"text/template"
 
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/fmtutil"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -75,7 +75,7 @@ func infoAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

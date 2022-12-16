@@ -24,7 +24,7 @@ import (
 
 	"github.com/containerd/containerd"
 	gocni "github.com/containerd/go-cni"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/portutil"
@@ -69,7 +69,7 @@ func composePsAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unsupported format %s, supported formats are: [json]", format)
 	}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

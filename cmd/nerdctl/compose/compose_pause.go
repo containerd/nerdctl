@@ -21,7 +21,7 @@ import (
 	"sync"
 
 	"github.com/containerd/containerd"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/spf13/cobra"
@@ -41,7 +41,7 @@ func newComposePauseCommand() *cobra.Command {
 }
 
 func composePauseAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func newComposeUnpauseCommand() *cobra.Command {
 }
 
 func composeUnpauseAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

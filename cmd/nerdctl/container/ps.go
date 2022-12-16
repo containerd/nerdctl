@@ -31,7 +31,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/container"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/fmtutil"
@@ -69,7 +69,7 @@ func NewPsCommandForMain() *cobra.Command {
 }
 
 func psAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

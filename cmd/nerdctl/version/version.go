@@ -23,7 +23,7 @@ import (
 	"os"
 	"text/template"
 
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/fmtutil"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -103,7 +103,7 @@ func versionInfo(cmd *cobra.Command) (dockercompat.VersionInfo, error) {
 	v := dockercompat.VersionInfo{
 		Client: infoutil.ClientVersion(),
 	}
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return v, err
 	}

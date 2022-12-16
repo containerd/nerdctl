@@ -26,7 +26,7 @@ import (
 
 	"github.com/containerd/containerd/events"
 	"github.com/containerd/containerd/log"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/fmtutil"
 	"github.com/containerd/typeurl"
 
@@ -64,7 +64,7 @@ type Out struct {
 
 // eventsActions is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/events/events.go
 func eventsAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

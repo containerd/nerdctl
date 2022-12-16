@@ -18,7 +18,7 @@ package namespace
 
 import (
 	"github.com/containerd/containerd/cmd/ctr/commands"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +42,7 @@ func namespaceCreateAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

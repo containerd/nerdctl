@@ -18,7 +18,7 @@ package namespace
 
 import (
 	"github.com/containerd/containerd/namespaces"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/fmtutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/spf13/cobra"
@@ -41,7 +41,7 @@ func NewInspectCommand() *cobra.Command {
 }
 
 func labelInspectAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

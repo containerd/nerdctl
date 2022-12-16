@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/imgcrypt/images/encryption"
 	"github.com/containerd/imgcrypt/images/encryption/parsehelpers"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
@@ -138,7 +138,7 @@ func getImgcryptAction(encrypt bool) func(cmd *cobra.Command, args []string) err
 			return err
 		}
 
-		client, ctx, cancel, err := nerdClient.NewClient(cmd)
+		client, ctx, cancel, err := ncclient.NewClient(cmd)
 		if err != nil {
 			return err
 		}

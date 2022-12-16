@@ -30,7 +30,7 @@ import (
 	eventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/fmtutil"
 	"github.com/containerd/nerdctl/pkg/containerinspector"
@@ -151,7 +151,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 	waitFirst := &sync.WaitGroup{}
 	cStats := stats{}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -392,7 +392,7 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 		}
 	}()
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		s.SetError(err)
 		return

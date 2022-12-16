@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
 	containerUtils "github.com/containerd/nerdctl/cmd/nerdctl/utils/container"
@@ -73,7 +73,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := nerdClient.NewClientWithPlatform(cmd, platform)
+	client, ctx, cancel, err := ncclient.NewClientWithPlatform(cmd, platform)
 	if err != nil {
 		return err
 	}

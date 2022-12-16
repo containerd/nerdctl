@@ -21,7 +21,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +41,7 @@ func NewRmCommand() *cobra.Command {
 
 func namespaceRmAction(cmd *cobra.Command, args []string) error {
 	var exitErr error
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

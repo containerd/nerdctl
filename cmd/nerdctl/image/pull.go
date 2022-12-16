@@ -17,7 +17,7 @@
 package image
 
 import (
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
 	"github.com/containerd/nerdctl/pkg/platformutil"
@@ -61,7 +61,7 @@ func NewPullCommand() *cobra.Command {
 
 func pullAction(cmd *cobra.Command, args []string) error {
 	rawRef := args[0]
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

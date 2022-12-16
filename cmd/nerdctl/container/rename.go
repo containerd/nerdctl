@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
@@ -45,7 +45,7 @@ func NewRenameCommand() *cobra.Command {
 }
 
 func renameAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func renameAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	dataStore, err := nerdClient.GetDataStore(cmd)
+	dataStore, err := ncclient.GetDataStore(cmd)
 	if err != nil {
 		return err
 	}

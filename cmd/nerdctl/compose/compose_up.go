@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
@@ -100,7 +100,7 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		scale[parts[0]] = uint64(replicas)
 	}
 
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}

@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/containerd/images/archive"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/snapshots"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils/common"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/sirupsen/logrus"
@@ -38,7 +38,7 @@ import (
 func LoadImage(in io.Reader, cmd *cobra.Command, platMC platforms.MatchComparer, quiet bool) error {
 	// In addition to passing WithImagePlatform() to client.Import(), we also need to pass WithDefaultPlatform() to NewClient().
 	// Otherwise unpacking may fail.
-	client, ctx, cancel, err := nerdClient.NewClient(cmd, containerd.WithDefaultPlatform(platMC))
+	client, ctx, cancel, err := ncclient.NewClient(cmd, containerd.WithDefaultPlatform(platMC))
 	if err != nil {
 		return err
 	}

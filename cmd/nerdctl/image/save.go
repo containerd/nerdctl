@@ -22,7 +22,7 @@ import (
 	"os"
 
 	"github.com/containerd/containerd/images/archive"
-	nerdClient "github.com/containerd/nerdctl/cmd/nerdctl/client"
+	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
@@ -85,7 +85,7 @@ func saveAction(cmd *cobra.Command, args []string) error {
 }
 
 func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, cmd *cobra.Command) error {
-	client, ctx, cancel, err := nerdClient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.NewClient(cmd)
 	if err != nil {
 		return err
 	}
