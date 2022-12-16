@@ -570,6 +570,16 @@ func RequireSystemService(t testing.TB, sv string) {
 	}
 }
 
+func RequireStargz(base *Base) {
+	info := base.Info()
+	for _, p := range info.Plugins.Storage {
+		if p == "stargz" {
+			return
+		}
+	}
+	base.T.Skip("test requires stargz")
+}
+
 const Namespace = "nerdctl-test"
 
 func NewBaseWithNamespace(t *testing.T, ns string) *Base {

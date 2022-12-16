@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action/run"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -91,7 +90,7 @@ func TestIPFSWithLazyPulling(t *testing.T) {
 	requiresIPFS(t)
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	run.RequiresStargz(base)
+	testutil.RequireStargz(base)
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, "--estargz")
 
 	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=stargz")
@@ -107,7 +106,7 @@ func TestIPFSWithLazyPullingCommit(t *testing.T) {
 	}
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	run.RequiresStargz(base)
+	testutil.RequireStargz(base)
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, "--estargz")
 
 	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=stargz")

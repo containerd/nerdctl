@@ -23,7 +23,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action/run"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
 	"gotest.tools/v3/assert"
@@ -53,7 +52,7 @@ func TestIPFSComposeUp(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			base := testutil.NewBase(t)
 			if tt.requiresStargz {
-				run.RequiresStargz(base)
+				testutil.RequireStargz(base)
 			}
 			ipfsImgs := make([]string, 2)
 			for i, img := range []string{testutil.WordpressImage, testutil.MariaDBImage} {

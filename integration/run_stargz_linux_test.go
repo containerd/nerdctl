@@ -19,14 +19,13 @@ package integration
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action/run"
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
 func TestRunStargz(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	run.RequiresStargz(base)
+	testutil.RequireStargz(base)
 	// if stargz snapshotter is functional, "/.stargz-snapshotter" appears
 	base.Cmd("--snapshotter=stargz", "run", "--rm", testutil.FedoraESGZImage, "ls", "/.stargz-snapshotter").AssertOK()
 }
