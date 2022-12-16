@@ -68,7 +68,7 @@ func volumePruneAction(cmd *cobra.Command, _ []string) error {
 }
 
 func Prune(ctx context.Context, cmd *cobra.Command, client *containerd.Client) error {
-	volStore, err := volume.GetVolumeStore(cmd)
+	volStore, err := volume.Store(cmd)
 	if err != nil {
 		return err
 	}

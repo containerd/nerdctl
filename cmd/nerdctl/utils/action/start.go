@@ -142,7 +142,7 @@ func reconfigNetContainer(ctx context.Context, c containerd.Container, client *c
 		if err != nil {
 			return err
 		}
-		netNSPath, err := run.GetContainerNetNSPath(ctx, targetCon)
+		netNSPath, err := run.ContainerNetNSPath(ctx, targetCon)
 		if err != nil {
 			return err
 		}

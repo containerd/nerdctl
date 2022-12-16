@@ -460,7 +460,7 @@ func getNydusConvertOpts(cmd *cobra.Command) (*nydusconvert.PackOption, error) {
 		return nil, err
 	}
 	if workDir == "" {
-		workDir, err = ncclient.GetDataStore(cmd)
+		workDir, err = ncclient.DataStore(cmd)
 		if err != nil {
 			return nil, err
 		}

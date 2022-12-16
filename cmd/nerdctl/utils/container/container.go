@@ -303,7 +303,7 @@ func (cl *FilterContext) matchesNameFilter(info containers.Container) bool {
 	if len(cl.NameFilterFuncs) == 0 {
 		return true
 	}
-	cName := utils.GetPrintableContainerName(info.Labels)
+	cName := utils.PrintableContainerName(info.Labels)
 	for _, nameFilterFunc := range cl.NameFilterFuncs {
 		if !nameFilterFunc(cName) {
 			continue
@@ -352,7 +352,7 @@ func (cl *FilterContext) matchesVolumeFilter(info containers.Container) bool {
 	if len(cl.VolumeFilterFuncs) == 0 {
 		return true
 	}
-	vols := volume.GetContainerVolumes(info.Labels)
+	vols := volume.ContainerVolumes(info.Labels)
 	for _, volumeFilterFunc := range cl.VolumeFilterFuncs {
 		if !volumeFilterFunc(vols) {
 			continue
@@ -366,7 +366,7 @@ func (cl *FilterContext) matchesNetworkFilter(info containers.Container) bool {
 	if len(cl.NetworkFilterFuncs) == 0 {
 		return true
 	}
-	networks := utils.GetContainerNetworks(info.Labels)
+	networks := utils.ContainerNetworks(info.Labels)
 	for _, networkFilterFunc := range cl.NetworkFilterFuncs {
 		if !networkFilterFunc(networks) {
 			continue
@@ -382,14 +382,14 @@ func IDOrNameFilter(ctx context.Context, containers []containerd.Container, valu
 		if err != nil {
 			return nil, err
 		}
-		if strings.HasPrefix(info.ID, value) || strings.Contains(utils.GetPrintableContainerName(info.Labels), value) {
+		if strings.HasPrefix(info.ID, value) || strings.Contains(utils.PrintableContainerName(info.Labels), value) {
 			return &info, nil
 		}
 	}
 	return nil, fmt.Errorf("no such container %s", value)
 }
 
-func GetContainerSize(ctx context.Context, client *containerd.Client, c containerd.Container, info containers.Container) (string, error) {
+func ContainerSize(ctx context.Context, client *containerd.Client, c containerd.Container, info containers.Container) (string, error) {
 	// get container snapshot size
 	snapshotKey := info.SnapshotKey
 	var containerSize int64
@@ -432,7 +432,7 @@ func RemoveContainer(ctx context.Context, cmd *cobra.Command, container containe
 	stateDir := l[labels.StateDir]
 	name := l[labels.Name]
 
-	dataStore, err := client.GetDataStore(cmd)
+	dataStore, err := client.DataStore(cmd)
 	if err != nil {
 		return err
 	}
@@ -466,7 +466,7 @@ func RemoveContainer(ctx context.Context, cmd *cobra.Command, container containe
 		if err := json.Unmarshal([]byte(anonVolumesJSON), &anonVolumes); err != nil {
 			return err
 		}
-		volStore, err := volume.GetVolumeStore(cmd)
+		volStore, err := volume.Store(cmd)
 		if err != nil {
 			return err
 		}

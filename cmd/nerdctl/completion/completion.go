@@ -131,7 +131,7 @@ func ShellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, 
 }
 
 func ShellCompleteVolumeNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
-	vols, err := volume.GetVolumes(cmd)
+	vols, err := volume.Volumes(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}

@@ -27,6 +27,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// ContainerVolume is a misnomer.
+// TODO: find a better name.
 type ContainerVolume struct {
 	Type        string
 	Name        string
@@ -37,22 +39,22 @@ type ContainerVolume struct {
 	Propagation string
 }
 
-// GetVolumeStore returns a volume store
+// Store returns a volume store
 // that corresponds to a directory like `/var/lib/nerdctl/1935db59/volume/default`
-func GetVolumeStore(cmd *cobra.Command) (volumestore.VolumeStore, error) {
+func Store(cmd *cobra.Command) (volumestore.VolumeStore, error) {
 	ns, err := cmd.Flags().GetString("namespace")
 	if err != nil {
 		return nil, err
 	}
-	dataStore, err := client.GetDataStore(cmd)
+	dataStore, err := client.DataStore(cmd)
 	if err != nil {
 		return nil, err
 	}
 	return volumestore.New(dataStore, ns)
 }
 
-func GetVolumes(cmd *cobra.Command) (map[string]native.Volume, error) {
-	volStore, err := GetVolumeStore(cmd)
+func Volumes(cmd *cobra.Command) (map[string]native.Volume, error) {
+	volStore, err := Store(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +65,9 @@ func GetVolumes(cmd *cobra.Command) (map[string]native.Volume, error) {
 	return volStore.List(volumeSize)
 }
 
-func GetContainerVolumes(containerLabels map[string]string) []*ContainerVolume {
+// ContainerVolumes is a misnomer.
+// TODO: find a better name.
+func ContainerVolumes(containerLabels map[string]string) []*ContainerVolume {
 	var vols []*ContainerVolume
 	volLabels := []string{labels.AnonymousVolumes, labels.Mounts}
 	for _, volLabel := range volLabels {

@@ -86,12 +86,12 @@ func CreateContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		}
 	}
 
-	dataStore, err := ncclient.GetDataStore(cmd)
+	dataStore, err := ncclient.DataStore(cmd)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	stateDir, err := common.GetContainerStateDirPath(cmd, dataStore, id)
+	stateDir, err := common.ContainerStateDirPath(cmd, dataStore, id)
 	if err != nil {
 		return nil, nil, err
 	}

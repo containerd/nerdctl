@@ -263,7 +263,7 @@ func ReadKVStringsMapfFromLabel(cmd *cobra.Command) (map[string]string, error) {
 	return strutil.ConvertKVStringsToMap(labels), nil
 }
 
-func GetContainerStateDirPath(cmd *cobra.Command, dataStore, id string) (string, error) {
+func ContainerStateDirPath(cmd *cobra.Command, dataStore, id string) (string, error) {
 	ns, err := cmd.Flags().GetString("namespace")
 	if err != nil {
 		return "", err

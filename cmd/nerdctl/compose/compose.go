@@ -158,7 +158,7 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 		return false, nil
 	}
 
-	volStore, err := volume.GetVolumeStore(cmd)
+	volStore, err := volume.Store(cmd)
 	if err != nil {
 		return nil, err
 	}

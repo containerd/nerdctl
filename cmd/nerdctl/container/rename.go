@@ -55,7 +55,7 @@ func renameAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	dataStore, err := ncclient.GetDataStore(cmd)
+	dataStore, err := ncclient.DataStore(cmd)
 	if err != nil {
 		return err
 	}

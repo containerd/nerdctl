@@ -46,7 +46,7 @@ func volumeCreateAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("malformed name %s: %w", name, err)
 	}
 
-	volStore, err := volume.GetVolumeStore(cmd)
+	volStore, err := volume.Store(cmd)
 	if err != nil {
 		return err
 	}

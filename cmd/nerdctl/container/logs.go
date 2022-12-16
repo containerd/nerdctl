@@ -54,7 +54,7 @@ func NewLogsCommand() *cobra.Command {
 }
 
 func logsAction(cmd *cobra.Command, args []string) error {
-	dataStore, err := ncclient.GetDataStore(cmd)
+	dataStore, err := ncclient.DataStore(cmd)
 	if err != nil {
 		return err
 	}

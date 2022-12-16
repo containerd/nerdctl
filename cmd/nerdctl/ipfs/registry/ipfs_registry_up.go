@@ -94,7 +94,7 @@ func runRegistryAsContainer(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	dataStore, err := ncclient.GetDataStore(cmd)
+	dataStore, err := ncclient.DataStore(cmd)
 	if err != nil {
 		return err
 	}

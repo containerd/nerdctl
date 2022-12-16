@@ -80,7 +80,7 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 	return buildCommand
 }
 
-func GetBuildkitHost(cmd *cobra.Command) (string, error) {
+func BuildkitHost(cmd *cobra.Command) (string, error) {
 	if cmd.Flags().Changed("buildkit-host") || os.Getenv("BUILDKIT_HOST") != "" {
 		// If address is explicitly specified, use it.
 		buildkitHost, err := cmd.Flags().GetString("buildkit-host")
@@ -135,7 +135,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	}
 	platform = strutil.DedupeStrSlice(platform)
 
-	buildkitHost, err := GetBuildkitHost(cmd)
+	buildkitHost, err := BuildkitHost(cmd)
 	if err != nil {
 		return err
 	}

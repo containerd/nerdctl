@@ -23,7 +23,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/labels/k8slabels"
 )
 
-func GetPrintableContainerName(containerLabels map[string]string) string {
+func PrintableContainerName(containerLabels map[string]string) string {
 	if name, ok := containerLabels[labels.Name]; ok {
 		return name
 	}

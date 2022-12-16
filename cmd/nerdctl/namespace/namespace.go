@@ -87,7 +87,7 @@ func namespaceLsAction(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	dataStore, err := ncclient.GetDataStore(cmd)
+	dataStore, err := ncclient.DataStore(cmd)
 	if err != nil {
 		return err
 	}

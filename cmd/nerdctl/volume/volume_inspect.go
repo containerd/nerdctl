@@ -47,7 +47,7 @@ func volumeInspectAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	volStore, err := volume.GetVolumeStore(cmd)
+	volStore, err := volume.Store(cmd)
 	if err != nil {
 		return err
 	}

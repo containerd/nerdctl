@@ -124,7 +124,7 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	vols, err := volume.GetVolumes(cmd)
+	vols, err := volume.Volumes(cmd)
 	if err != nil {
 		return err
 	}

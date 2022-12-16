@@ -132,7 +132,7 @@ func GenerateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 		logrus.Warnf("You have assign an IP address %s but no network, So we will use the default network", ipAddress)
 	}
 
-	macAddress, err := GetMACAddress(cmd, netSlice)
+	macAddress, err := MACAddress(cmd, netSlice)
 	if err != nil {
 		return nil, nil, "", nil, "", err
 	}
@@ -206,7 +206,7 @@ func GenerateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 				}
 				containerID := found.Container.ID()
 
-				conStateDir, err := common.GetContainerStateDirPath(cmd, dataStore, containerID)
+				conStateDir, err := common.ContainerStateDirPath(cmd, dataStore, containerID)
 				if err != nil {
 					return err
 				}
@@ -219,7 +219,7 @@ func GenerateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 				hostnamePath := filepath.Join(conStateDir, "hostname")
 				resolvConfPath := filepath.Join(conStateDir, "resolv.conf")
 				etcHostsPath := hostsstore.HostsPath(dataStore, ns, containerID)
-				netNSPath, err := GetContainerNetNSPath(ctx, found.Container)
+				netNSPath, err := ContainerNetNSPath(ctx, found.Container)
 				if err != nil {
 					return err
 				}
@@ -251,7 +251,7 @@ func GenerateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 	return opts, netSlice, ipAddress, ports, macAddress, nil
 }
 
-func GetContainerNetNSPath(ctx context.Context, c containerd.Container) (string, error) {
+func ContainerNetNSPath(ctx context.Context, c containerd.Container) (string, error) {
 	task, err := c.Task(ctx, nil)
 	if err != nil {
 		return "", err
@@ -387,7 +387,7 @@ func BuildResolvConf(cmd *cobra.Command, resolvConfPath string) error {
 	return nil
 }
 
-func GetMACAddress(cmd *cobra.Command, netSlice []string) (string, error) {
+func MACAddress(cmd *cobra.Command, netSlice []string) (string, error) {
 	macAddress, err := cmd.Flags().GetString("mac-address")
 	if err != nil {
 		return "", err

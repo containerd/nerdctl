@@ -45,7 +45,7 @@ func internalOCIHookAction(cmd *cobra.Command, args []string) error {
 	if event == "" {
 		return errors.New("event type needs to be passed")
 	}
-	dataStore, err := client.GetDataStore(cmd)
+	dataStore, err := client.DataStore(cmd)
 	if err != nil {
 		return err
 	}

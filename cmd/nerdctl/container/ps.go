@@ -225,7 +225,7 @@ func printContainers(ctx context.Context, client *containerd.Client, cmd *cobra.
 			ID:        id,
 			Image:     imageName,
 			Platform:  info.Labels[labels.Platform],
-			Names:     utils.GetPrintableContainerName(info.Labels),
+			Names:     utils.PrintableContainerName(info.Labels),
 			Ports:     formatter.FormatPorts(info.Labels),
 			Status:    cStatus,
 			Runtime:   info.Runtime.Name,
@@ -233,7 +233,7 @@ func printContainers(ctx context.Context, client *containerd.Client, cmd *cobra.
 		}
 
 		if size || wide {
-			containerSize, err := container.GetContainerSize(ctx, client, c, info)
+			containerSize, err := container.ContainerSize(ctx, client, c, info)
 			if err != nil {
 				return err
 			}

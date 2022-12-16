@@ -96,7 +96,7 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	isDefaultRegistry := serverAddress == dockerconfigresolver.IndexServer
 
-	authConfig, err := GetDefaultAuthConfig(options.username == "" && options.password == "", serverAddress, isDefaultRegistry)
+	authConfig, err := DefaultAuthConfig(options.username == "" && options.password == "", serverAddress, isDefaultRegistry)
 	if authConfig == nil {
 		authConfig = &types.AuthConfig{ServerAddress: serverAddress}
 	}
@@ -174,10 +174,10 @@ func verifyloginOptions(cmd *cobra.Command, options *loginOptions) error {
 
 }
 
-// Code from github.com/docker/cli/cli/command (v20.10.3)
-// GetDefaultAuthConfig gets the default auth config given a serverAddress
+// DefaultAuthConfig gets the default auth config given a serverAddress
 // If credentials for given serverAddress exists in the credential store, the configuration will be populated with values in it
-func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRegistry bool) (*types.AuthConfig, error) {
+// Code from github.com/docker/cli/cli/command (v20.10.3)
+func DefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRegistry bool) (*types.AuthConfig, error) {
 	if !isDefaultRegistry {
 		var err error
 		serverAddress, err = convertToHostname(serverAddress)

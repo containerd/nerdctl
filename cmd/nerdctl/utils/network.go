@@ -23,7 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func GetContainerNetworks(containerLables map[string]string) []string {
+func ContainerNetworks(containerLables map[string]string) []string {
 	var networks []string
 	if names, ok := containerLables[labels.Networks]; ok {
 		if err := json.Unmarshal([]byte(names), &networks); err != nil {
