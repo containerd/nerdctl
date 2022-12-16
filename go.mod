@@ -33,7 +33,7 @@ require (
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-ipfs-files v0.2.0
 	github.com/ipfs/go-ipfs-http-client v0.4.0
-	github.com/ipfs/interface-go-ipfs-core v0.8.0
+	github.com/ipfs/interface-go-ipfs-core v0.8.1
 	github.com/klauspost/compress v1.15.12
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mitchellh/mapstructure v1.5.0
