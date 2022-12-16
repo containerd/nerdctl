@@ -56,7 +56,7 @@ func stopAction(cmd *cobra.Command, args []string) error {
 		timeout = &t
 	}
 
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

@@ -85,7 +85,7 @@ func saveAction(cmd *cobra.Command, args []string) error {
 }
 
 func saveImage(images []string, out io.Writer, saveOpts []archive.ExportOpt, cmd *cobra.Command) error {
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

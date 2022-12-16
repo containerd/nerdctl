@@ -100,7 +100,7 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		scale[parts[0]] = uint64(replicas)
 	}
 
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

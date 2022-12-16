@@ -38,7 +38,7 @@ import (
 func LoadImage(in io.Reader, cmd *cobra.Command, platMC platforms.MatchComparer, quiet bool) error {
 	// In addition to passing WithImagePlatform() to client.Import(), we also need to pass WithDefaultPlatform() to NewClient().
 	// Otherwise unpacking may fail.
-	client, ctx, cancel, err := ncclient.NewClient(cmd, containerd.WithDefaultPlatform(platMC))
+	client, ctx, cancel, err := ncclient.New(cmd, containerd.WithDefaultPlatform(platMC))
 	if err != nil {
 		return err
 	}

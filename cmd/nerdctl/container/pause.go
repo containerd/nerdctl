@@ -42,7 +42,7 @@ func NewPauseCommand() *cobra.Command {
 }
 
 func pauseAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

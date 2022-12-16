@@ -63,7 +63,7 @@ func networkPruneAction(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

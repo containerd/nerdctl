@@ -70,7 +70,7 @@ func topAction(cmd *cobra.Command, args []string) error {
 		return errors.New("cgroup manager must not be \"none\"")
 	}
 
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

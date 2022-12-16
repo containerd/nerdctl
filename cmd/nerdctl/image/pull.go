@@ -61,7 +61,7 @@ func NewPullCommand() *cobra.Command {
 
 func pullAction(cmd *cobra.Command, args []string) error {
 	rawRef := args[0]
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

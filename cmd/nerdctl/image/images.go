@@ -101,7 +101,7 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 		filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
 		filters = append(filters, fmt.Sprintf("name==%s", args[0]))
 	}
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

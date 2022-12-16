@@ -68,7 +68,7 @@ func createAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%s requires experimental mode to be enabled", platform)
 	}
 
-	client, ctx, cancel, err := ncclient.NewClientWithPlatform(cmd, platform)
+	client, ctx, cancel, err := ncclient.NewWithPlatform(cmd, platform)
 	if err != nil {
 		return err
 	}

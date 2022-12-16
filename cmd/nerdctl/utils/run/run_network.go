@@ -192,7 +192,7 @@ func GenerateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 			return nil, nil, "", nil, "", fmt.Errorf("invalid network: %s, should be \"container:<id|name>\"", netSlice[0])
 		}
 		containerName := network[1]
-		client, ctx, cancel, err := ncclient.NewClient(cmd)
+		client, ctx, cancel, err := ncclient.New(cmd)
 		if err != nil {
 			return nil, nil, "", nil, "", err
 		}

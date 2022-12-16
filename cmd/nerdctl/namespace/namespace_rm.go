@@ -41,7 +41,7 @@ func NewRmCommand() *cobra.Command {
 
 func namespaceRmAction(cmd *cobra.Command, args []string) error {
 	var exitErr error
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

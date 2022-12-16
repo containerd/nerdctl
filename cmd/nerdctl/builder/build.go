@@ -215,7 +215,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 
 	if len(tags) > 1 {
 		logrus.Debug("Found more than 1 tag")
-		client, ctx, cancel, err := ncclient.NewClient(cmd)
+		client, ctx, cancel, err := ncclient.New(cmd)
 		if err != nil {
 			return fmt.Errorf("unable to tag images: %s", err)
 		}
@@ -260,7 +260,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 		return "", nil, false, "", nil, nil, err
 	}
 	if output == "" {
-		client, ctx, cancel, err := ncclient.NewClient(cmd)
+		client, ctx, cancel, err := ncclient.New(cmd)
 		if err != nil {
 			return "", nil, false, "", nil, nil, err
 		}

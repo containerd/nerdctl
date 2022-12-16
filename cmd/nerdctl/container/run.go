@@ -73,7 +73,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := ncclient.NewClientWithPlatform(cmd, platform)
+	client, ctx, cancel, err := ncclient.NewWithPlatform(cmd, platform)
 	if err != nil {
 		return err
 	}

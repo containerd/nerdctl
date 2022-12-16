@@ -76,7 +76,7 @@ func execAction(cmd *cobra.Command, args []string) error {
 		args = newArg
 	}
 
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

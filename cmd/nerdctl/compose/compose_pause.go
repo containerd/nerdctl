@@ -41,7 +41,7 @@ func newComposePauseCommand() *cobra.Command {
 }
 
 func composePauseAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func newComposeUnpauseCommand() *cobra.Command {
 }
 
 func composeUnpauseAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

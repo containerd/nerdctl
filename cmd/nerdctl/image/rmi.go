@@ -61,7 +61,7 @@ func rmiAction(cmd *cobra.Command, args []string) error {
 		delOpts = append(delOpts, images.SynchronousDelete())
 	}
 
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

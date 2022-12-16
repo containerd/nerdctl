@@ -31,7 +31,7 @@ import (
 )
 
 func ShellCompleteImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
-	client, ctx, cancel, err := client.NewClient(cmd)
+	client, ctx, cancel, err := client.New(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -50,7 +50,7 @@ func ShellCompleteImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirec
 }
 
 func ShellCompleteContainerNames(cmd *cobra.Command, filterFunc func(containerd.ProcessStatus) bool) ([]string, cobra.ShellCompDirective) {
-	client, ctx, cancel, err := client.NewClient(cmd)
+	client, ctx, cancel, err := client.New(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}

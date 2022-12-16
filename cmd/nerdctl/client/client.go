@@ -35,7 +35,7 @@ import (
 	"github.com/opencontainers/go-digest"
 )
 
-func NewClient(cmd *cobra.Command, opts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
+func New(cmd *cobra.Command, opts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
 	ctx := cmd.Context()
 	namespace, err := cmd.Flags().GetString("namespace")
 	if err != nil {
@@ -65,7 +65,7 @@ func NewClient(cmd *cobra.Command, opts ...containerd.ClientOpt) (*containerd.Cl
 	return client, ctx, cancel, nil
 }
 
-func NewClientWithPlatform(cmd *cobra.Command, platform string, clientOpts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
+func NewWithPlatform(cmd *cobra.Command, platform string, clientOpts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
 	if platform != "" {
 		if canExec, canExecErr := platformutil.CanExecProbably(platform); !canExec {
 			warn := fmt.Sprintf("Platform %q seems incompatible with the host platform %q. If you see \"exec format error\", see https://github.com/containerd/nerdctl/blob/main/docs/multi-platform.md",
@@ -83,7 +83,7 @@ func NewClientWithPlatform(cmd *cobra.Command, platform string, clientOpts ...co
 		platformM := platforms.Only(platformParsed)
 		clientOpts = append(clientOpts, containerd.WithDefaultPlatform(platformM))
 	}
-	return NewClient(cmd, clientOpts...)
+	return New(cmd, clientOpts...)
 }
 
 // GetDataStore returns a string like "/var/lib/nerdctl/1935db59".

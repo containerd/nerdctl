@@ -69,7 +69,7 @@ func composePsAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unsupported format %s, supported formats are: [json]", format)
 	}
 
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

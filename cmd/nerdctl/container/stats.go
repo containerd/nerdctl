@@ -151,7 +151,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 	waitFirst := &sync.WaitGroup{}
 	cStats := stats{}
 
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}
@@ -392,7 +392,7 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 		}
 	}()
 
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		s.SetError(err)
 		return

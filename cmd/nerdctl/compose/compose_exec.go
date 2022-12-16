@@ -95,7 +95,7 @@ func composeExecAction(cmd *cobra.Command, args []string) error {
 		return errors.New("currently flag -t and -d cannot be specified together (FIXME)")
 	}
 
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

@@ -79,7 +79,7 @@ func InspectActionWithPlatform(cmd *cobra.Command, args []string, platform strin
 		platformM := platforms.Only(platformParsed)
 		clientOpts = append(clientOpts, containerd.WithDefaultPlatform(platformM))
 	}
-	client, ctx, cancel, err := ncclient.NewClient(cmd, clientOpts...)
+	client, ctx, cancel, err := ncclient.New(cmd, clientOpts...)
 	if err != nil {
 		return err
 	}

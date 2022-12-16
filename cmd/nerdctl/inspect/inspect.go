@@ -76,7 +76,7 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%q is not a valid value for --type", inspectType)
 	}
 
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return err
 	}

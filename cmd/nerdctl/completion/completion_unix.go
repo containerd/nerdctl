@@ -32,7 +32,7 @@ func ShellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete s
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -53,7 +53,7 @@ func ShellCompleteSnapshotterNames(cmd *cobra.Command, args []string, toComplete
 		_ = rootlessutil.ParentMain()
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	client, ctx, cancel, err := ncclient.NewClient(cmd)
+	client, ctx, cancel, err := ncclient.New(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
