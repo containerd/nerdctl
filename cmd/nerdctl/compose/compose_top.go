@@ -21,7 +21,7 @@ import (
 
 	"github.com/containerd/containerd"
 	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
+	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/spf13/cobra"
 )
@@ -74,7 +74,7 @@ func composeTopAction(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Fprintf(stdout, "%s\n", info.Labels[labels.Name])
 		// `compose ps` uses empty ps args
-		err = utils.ContainerTop(ctx, cmd, client, c.ID(), "")
+		err = action.ContainerTop(ctx, cmd, client, c.ID(), "")
 		if err != nil {
 			return err
 		}

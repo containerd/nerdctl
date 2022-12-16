@@ -33,7 +33,7 @@ import (
 
 	ncclient "github.com/containerd/nerdctl/cmd/nerdctl/client"
 	"github.com/containerd/nerdctl/cmd/nerdctl/completion"
-	"github.com/containerd/nerdctl/cmd/nerdctl/utils"
+	"github.com/containerd/nerdctl/cmd/nerdctl/utils/action"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
@@ -82,7 +82,7 @@ func topAction(cmd *cobra.Command, args []string) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := utils.ContainerTop(ctx, cmd, client, found.Container.ID(), strings.Join(args[1:], " ")); err != nil {
+			if err := action.ContainerTop(ctx, cmd, client, found.Container.ID(), strings.Join(args[1:], " ")); err != nil {
 				return err
 			}
 			return nil
