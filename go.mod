@@ -34,7 +34,7 @@ require (
 	github.com/ipfs/go-ipfs-files v0.2.0
 	github.com/ipfs/go-ipfs-http-client v0.4.0
 	github.com/ipfs/interface-go-ipfs-core v0.8.0
-	github.com/klauspost/compress v1.15.12
+	github.com/klauspost/compress v1.15.13
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/moby/buildkit v0.10.6
