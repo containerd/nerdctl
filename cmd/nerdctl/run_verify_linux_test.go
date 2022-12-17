@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -28,9 +27,7 @@ import (
 )
 
 func TestRunVerifyCosign(t *testing.T) {
-	if _, err := exec.LookPath("cosign"); err != nil {
-		t.Skip()
-	}
+	testutil.RequireExecutable(t, "cosign")
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
 	t.Setenv("COSIGN_PASSWORD", "1")

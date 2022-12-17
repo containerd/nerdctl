@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -412,9 +411,7 @@ services:
 }
 
 func TestComposePushAndPullWithCosignVerify(t *testing.T) {
-	if _, err := exec.LookPath("cosign"); err != nil {
-		t.Skip()
-	}
+	testutil.RequireExecutable(t, "cosign")
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)

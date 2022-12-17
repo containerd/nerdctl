@@ -58,9 +58,7 @@ func newCosignKeyPair(t testing.TB, path string) *cosignKeyPair {
 }
 
 func TestImageVerifyWithCosign(t *testing.T) {
-	if _, err := exec.LookPath("cosign"); err != nil {
-		t.Skip()
-	}
+	testutil.RequireExecutable(t, "cosign")
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
 	t.Setenv("COSIGN_PASSWORD", "1")
@@ -114,9 +112,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 }
 
 func TestImageVerifyWithCosignShouldFailWhenKeyIsNotCorrect(t *testing.T) {
-	if _, err := exec.LookPath("cosign"); err != nil {
-		t.Skip()
-	}
+	testutil.RequireExecutable(t, "cosign")
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
 	t.Setenv("COSIGN_PASSWORD", "1")

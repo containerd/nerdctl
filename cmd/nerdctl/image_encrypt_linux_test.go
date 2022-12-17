@@ -36,9 +36,7 @@ type jweKeyPair struct {
 }
 
 func newJWEKeyPair(t testing.TB) *jweKeyPair {
-	if _, err := exec.LookPath("openssl"); err != nil {
-		t.Skip(err)
-	}
+	testutil.RequireExecutable(t, "openssl")
 	td, err := os.MkdirTemp(t.TempDir(), "jwe-key-pair")
 	assert.NilError(t, err)
 	prv := filepath.Join(td, "mykey.pem")

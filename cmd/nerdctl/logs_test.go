@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -104,10 +103,7 @@ func TestLogsWithInheritedFlags(t *testing.T) {
 
 func TestLogsOfJournaldDriver(t *testing.T) {
 	t.Parallel()
-	_, err := exec.LookPath("journalctl")
-	if err != nil {
-		t.Skipf("`journalctl` executable is required for this test: %s", err)
-	}
+	testutil.RequireExecutable(t, "journalctl")
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
 
