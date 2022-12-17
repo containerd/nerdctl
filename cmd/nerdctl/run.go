@@ -98,7 +98,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	// No "-h" alias for "--help", because "-h" for "--hostname".
 	cmd.Flags().Bool("help", false, "show help")
 
-	cmd.Flags().BoolP("tty", "t", false, "(Currently -t needs to correspond to -i)")
+	cmd.Flags().BoolP("tty", "t", false, "Allocate a pseudo-TTY")
 	cmd.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
 	cmd.Flags().String("restart", "no", `Restart policy to apply when a container exits (implemented values: "no"|"always")`)
 	cmd.RegisterFlagCompletionFunc("restart", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -322,7 +322,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 
 	var con console.Console
-	if flagT {
+	if flagT && !flagD {
 		con = console.Current()
 		defer con.Reset()
 		if err := con.SetRaw(); err != nil {
@@ -336,7 +336,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 	logURI := lab[labels.LogURI]
 
-	task, err := taskutil.NewTask(ctx, client, container, flagI, flagT, flagD, con, logURI)
+	task, err := taskutil.NewTask(ctx, client, container, false, flagI, flagT, flagD, con, logURI)
 	if err != nil {
 		return err
 	}
@@ -477,9 +477,6 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	}
 
 	if flagT {
-		if flagD {
-			return nil, nil, errors.New("currently flag -t and -d cannot be specified together (FIXME)")
-		}
 		opts = append(opts, oci.WithTTY)
 	}
 
@@ -491,8 +488,14 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	internalLabels.mountPoints = mountPoints
 	opts = append(opts, mountOpts...)
 
+	// always set internalLabels.logURI
+	// to support restart the container that run with "-it", like
+	//
+	// 1, nerdctl run --name demo -it imagename
+	// 2, ctrl + c to stop demo container
+	// 3, nerdctl start/restart demo
 	var logURI string
-	if flagD {
+	{
 		// json-file is the built-in and default log driver for nerdctl
 		logDriver, err := cmd.Flags().GetString("log-driver")
 		if err != nil {

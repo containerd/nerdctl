@@ -21,19 +21,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
-	"os"
 	"runtime"
 	"strings"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
+	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/sirupsen/logrus"
@@ -116,23 +114,13 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 		return err
 	}
 
-	taskCIO := cio.NullIO
+	process, err := container.Spec(ctx)
+	if err != nil {
+		return err
+	}
+	flagT := process.Process.Terminal
 
-	// Choosing the user selected option over the labels
-	if flagA {
-		taskCIO = cio.NewCreator(cio.WithStreams(os.Stdin, os.Stdout, os.Stderr))
-	}
-	if logURIStr := lab[labels.LogURI]; logURIStr != "" {
-		logURI, err := url.Parse(logURIStr)
-		if err != nil {
-			return err
-		}
-		if flagA {
-			logrus.Debug("attaching output instead of using the log-uri")
-		} else {
-			taskCIO = cio.LogURI(logURI)
-		}
-	}
+	logURI := lab[labels.LogURI]
 
 	cStatus := formatter.ContainerStatus(ctx, container)
 	if cStatus == "Up" {
@@ -147,7 +135,7 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 			logrus.WithError(err).Debug("failed to delete old task")
 		}
 	}
-	task, err := container.NewTask(ctx, taskCIO)
+	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, nil, logURI)
 	if err != nil {
 		return err
 	}

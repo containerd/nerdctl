@@ -70,7 +70,12 @@ func createAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	container, gc, err := createContainer(ctx, cmd, client, args, platform, false, false, true)
+	flagT, err := cmd.Flags().GetBool("tty")
+	if err != nil {
+		return err
+	}
+
+	container, gc, err := createContainer(ctx, cmd, client, args, platform, false, flagT, true)
 	if err != nil {
 		if gc != nil {
 			gc()
