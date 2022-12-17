@@ -48,10 +48,10 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 		containers   = make(map[string]serviceparser.Container) // key: container ID
 		services     = []string{}
 		containersMu sync.Mutex
-		runEG        errgroup.Group
 	)
 	for _, ps := range parsedServices {
 		ps := ps
+		var runEG errgroup.Group
 		services = append(services, ps.Unparsed.Name)
 		for _, container := range ps.Containers {
 			container := container
@@ -66,9 +66,9 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 				return nil
 			})
 		}
-	}
-	if err := runEG.Wait(); err != nil {
-		return err
+		if err := runEG.Wait(); err != nil {
+			return err
+		}
 	}
 
 	if uo.Detach {

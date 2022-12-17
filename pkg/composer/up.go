@@ -70,8 +70,7 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 	var parsedServices []*serviceparser.Service
 	// use WithServices to sort the services in dependency order
 	if err := c.project.WithServices(services, func(svc types.ServiceConfig) error {
-		replicas, ok := uo.Scale[svc.Name]
-		if ok {
+		if replicas, ok := uo.Scale[svc.Name]; ok {
 			if svc.Deploy == nil {
 				svc.Deploy = &types.DeployConfig{}
 			}
