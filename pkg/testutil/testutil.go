@@ -570,6 +570,13 @@ func RequireSystemService(t testing.TB, sv string) {
 	}
 }
 
+// RequireExecutable skips tests when executable `name` is not present in PATH.
+func RequireExecutable(t testing.TB, name string) {
+	if _, err := exec.LookPath(name); err != nil {
+		t.Skipf("required executable doesn't exist in PATH: %s", name)
+	}
+}
+
 const Namespace = "nerdctl-test"
 
 func NewBaseWithNamespace(t *testing.T, ns string) *Base {

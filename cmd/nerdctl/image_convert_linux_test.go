@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"os/exec"
 	"runtime"
 	"testing"
 
@@ -32,7 +31,7 @@ func TestImageConvertNydus(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("no windows support yet")
 	}
-
+	testutil.RequireExecutable(t, "nydus-image")
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	convertedImage := testutil.Identifier(t) + ":nydus"
@@ -50,9 +49,7 @@ func TestImageConvertNydus(t *testing.T) {
 	}
 
 	// skip if nydusify is not installed
-	if _, err := exec.LookPath("nydusify"); err != nil {
-		t.Skip("Nydusify is not installed")
-	}
+	testutil.RequireExecutable(t, "nydusify")
 
 	// setup local docker registry
 	registryPort := 15000
