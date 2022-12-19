@@ -104,6 +104,7 @@ func TestRunAddGroup(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
+		testCase := testCase
 		t.Run(testCase.user, func(t *testing.T) {
 			t.Parallel()
 			cmd := []string{"run", "--rm"}
