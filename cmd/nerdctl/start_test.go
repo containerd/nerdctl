@@ -17,9 +17,7 @@
 package main
 
 import (
-	"errors"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -32,13 +30,7 @@ func TestStart(t *testing.T) {
 
 	defer base.Cmd("rm", "-f", containerName).AssertOK()
 	base.Cmd("run", "--name", containerName, testutil.CommonImage).AssertOK()
-	base.Cmd("start", containerName).AssertOutWithFunc(func(stdout string) error {
-		if !strings.Contains(stdout, containerName) {
-			t.Log(stdout)
-			return errors.New("got bad container name output on start")
-		}
-		return nil
-	})
+	base.Cmd("start", containerName).AssertOutContains(containerName)
 }
 
 func TestStartAttach(t *testing.T) {
@@ -51,10 +43,5 @@ func TestStartAttach(t *testing.T) {
 
 	defer base.Cmd("rm", "-f", containerName).AssertOK()
 	base.Cmd("run", "--name", containerName, testutil.CommonImage, "sh", "-euxc", "echo foo").AssertOK()
-	base.Cmd("start", "-a", containerName).AssertOutWithFunc(func(stdout string) error {
-		if !strings.Contains(stdout, "foo") {
-			return errors.New("got bad attached output on start")
-		}
-		return nil
-	})
+	base.Cmd("start", "-a", containerName).AssertOutContains("foo")
 }

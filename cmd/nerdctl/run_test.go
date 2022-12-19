@@ -51,13 +51,7 @@ CMD ["echo", "bar"]
 	defer os.RemoveAll(buildCtx)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
-	base.Cmd("run", "--rm", imageName).AssertOutWithFunc(func(stdout string) error {
-		expected := "foo echo bar\n"
-		if stdout != expected {
-			return fmt.Errorf("expected %q, got %q", expected, stdout)
-		}
-		return nil
-	})
+	base.Cmd("run", "--rm", imageName).AssertOutExactly("foo echo bar\n")
 	base.Cmd("run", "--rm", "--entrypoint", "", imageName).AssertFail()
 	base.Cmd("run", "--rm", "--entrypoint", "", imageName, "echo", "blah").AssertOutWithFunc(func(stdout string) error {
 		if !strings.Contains(stdout, "blah") {

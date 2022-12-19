@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -69,18 +68,7 @@ volumes:
 
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "kill", "db").AssertOK()
 	time.Sleep(3 * time.Second)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(func(stdout string) error {
-		// Docker Compose v1: "Exit 137", v2: "exited (137)"
-		if !strings.Contains(stdout, " 137") && !strings.Contains(stdout, "(137)") {
-			return fmt.Errorf("service \"db\" must have exited with code 137")
-		}
-		return nil
-	})
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutWithFunc(func(stdout string) error {
-		// Docker Compose v1: "Up", v2: "running"
-		if !strings.Contains(stdout, "Up") && !strings.Contains(stdout, "running") {
-			return fmt.Errorf("service \"wordpress\" must have been still running")
-		}
-		return nil
-	})
+	// Docker Compose v1: "Exit 137", v2: "exited (137)"
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutContainsAny(" 137", "(137)")
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutContainsAny("Up", "running")
 }

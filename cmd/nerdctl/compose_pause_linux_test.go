@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -51,31 +50,12 @@ services:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
 
-	pausedAssertHandler := func(svc string) func(stdout string) error {
-		return func(stdout string) error {
-			// Docker Compose v1: "Paused", v2: "paused"
-			if !strings.Contains(stdout, "Paused") && !strings.Contains(stdout, "paused") {
-				return fmt.Errorf("service \"%s\" must have paused", svc)
-			}
-			return nil
-		}
-	}
-	upAssertHandler := func(svc string) func(stdout string) error {
-		return func(stdout string) error {
-			// Docker Compose v1: "Up", v2: "running"
-			if !strings.Contains(stdout, "Up") && !strings.Contains(stdout, "running") {
-				return fmt.Errorf("service \"%s\" must have been still running", svc)
-			}
-			return nil
-		}
-	}
-
 	// pause a service should (only) pause its own container
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "pause", "svc0").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0").AssertOutWithFunc(pausedAssertHandler("svc0"))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc1").AssertOutWithFunc(upAssertHandler("svc1"))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0").AssertOutContainsAny("Paused", "paused")
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc1").AssertOutContainsAny("Up", "running")
 
 	// unpause should be able to recover the paused service container
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "unpause", "svc0").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0").AssertOutWithFunc(upAssertHandler("svc0"))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0").AssertOutContainsAny("Up", "running")
 }

@@ -359,13 +359,40 @@ func (c *Cmd) AssertCombinedOutContains(s string) {
 	assert.Assert(c.Base.T, strings.Contains(res.Combined(), s))
 }
 
+// AssertOutContainsAll checks if command output contains All strings in `strs`.
+func (c *Cmd) AssertOutContainsAll(strs ...string) {
+	c.Base.T.Helper()
+	fn := func(stdout string) error {
+		for _, s := range strs {
+			if !strings.Contains(stdout, s) {
+				return fmt.Errorf("expected stdout to contain %q", s)
+			}
+		}
+		return nil
+	}
+	c.AssertOutWithFunc(fn)
+}
+
+// AssertOutContainsAny checks if command output contains Any string in `strs`.
+func (c *Cmd) AssertOutContainsAny(strs ...string) {
+	c.Base.T.Helper()
+	fn := func(stdout string) error {
+		for _, s := range strs {
+			if strings.Contains(stdout, s) {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected stdout to contain any of %q", strings.Join(strs, "|"))
+	}
+	c.AssertOutWithFunc(fn)
+}
+
 func (c *Cmd) AssertOutNotContains(s string) {
 	c.AssertOutWithFunc(func(stdout string) error {
 		if strings.Contains(stdout, s) {
 			return fmt.Errorf("expected stdout to not contain %q", s)
 		}
 		return nil
-
 	})
 }
 

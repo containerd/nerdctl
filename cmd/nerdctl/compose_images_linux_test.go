@@ -64,23 +64,14 @@ volumes:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
-	ImageAssertHandler := func(svc string, image string, exist bool) func(stdout string) error {
-		return func(stdout string) error {
-			if strings.Contains(stdout, image) != exist {
-				return fmt.Errorf("image %s from service %s: expect in output (%t), actual (%t)", image, svc, exist, !exist)
-			}
-			return nil
-		}
-	}
-
 	wordpressImageName := strings.Split(testutil.WordpressImage, ":")[0]
 	dbImageName := strings.Split(testutil.MariaDBImage, ":")[0]
 
 	// check one service image
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "db").AssertOutWithFunc(ImageAssertHandler("db", dbImageName, true))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "db").AssertOutWithFunc(ImageAssertHandler("wordpress", wordpressImageName, false))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "db").AssertOutContains(dbImageName)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "db").AssertOutNotContains(wordpressImageName)
 
 	// check all service images
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images").AssertOutWithFunc(ImageAssertHandler("db", dbImageName, true))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images").AssertOutWithFunc(ImageAssertHandler("wordpress", wordpressImageName, true))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "images").AssertOutContains(dbImageName)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "images").AssertOutContains(wordpressImageName)
 }
