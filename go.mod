@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/Masterminds/semver/v3 v3.2.0
 	github.com/Microsoft/go-winio v0.6.0
-	github.com/compose-spec/compose-go v1.8.0
+	github.com/compose-spec/compose-go v1.8.1
 	github.com/containerd/accelerated-container-image v0.5.3-0.20221209054854-fbdabc5a08b6
 	github.com/containerd/cgroups v1.0.5-0.20220816231112-7083cd60b721
 	github.com/containerd/console v1.0.3
@@ -65,9 +65,10 @@ require (
 )
 
 require (
-	cloud.google.com/go/compute v1.14.0 // indirect
+	cloud.google.com/go/compute v1.9.0 // indirect
 	github.com/containerd/cgroups/v3 v3.0.0-20221112182753-e8802a182774 // indirect
-	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783 // indirect
+	golang.org/x/oauth2 v0.0.0-20220622183110-fd043fe589d2 // indirect
+	google.golang.org/genproto v0.0.0-20221107162902-2d387536bcdd // indirect
 )
 
 require (
@@ -183,7 +184,6 @@ require (
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	google.golang.org/genproto v0.0.0-20221202195650-67e5cbc046fd // indirect
 	google.golang.org/grpc v1.50.1 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
