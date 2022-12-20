@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -46,16 +45,6 @@ services:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
 
-	upAssertHandler := func(svc string) func(stdout string) error {
-		return func(stdout string) error {
-			// Docker Compose v1: "Up", v2: "running"
-			if !strings.Contains(stdout, "Up") && !strings.Contains(stdout, "running") {
-				return fmt.Errorf("service \"%s\" must have been still running", svc)
-			}
-			return nil
-		}
-	}
-
 	// calling `compose start` after all services up has no effect.
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "start").AssertOK()
 
@@ -63,8 +52,8 @@ services:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "--timeout", "1", "svc0").AssertOK()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "kill", "svc1").AssertOK()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "start").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0").AssertOutWithFunc(upAssertHandler("svc0"))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc1").AssertOutWithFunc(upAssertHandler("svc1"))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0").AssertOutContainsAny("Up", "running")
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc1").AssertOutContainsAny("Up", "running")
 }
 
 func TestComposeStartFailWhenServicePause(t *testing.T) {

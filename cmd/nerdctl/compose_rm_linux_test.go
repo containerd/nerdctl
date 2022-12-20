@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -67,37 +66,19 @@ volumes:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
-	rmAssertHandler := func(svc string) func(stdout string) error {
-		return func(stdout string) error {
-			if strings.Contains(stdout, svc) {
-				return fmt.Errorf("service \"%s\" still has remaining containers", svc)
-			}
-			return nil
-		}
-	}
-	upAssertHandler := func(svc string) func(stdout string) error {
-		return func(stdout string) error {
-			// Docker Compose v1: "Up", v2: "running"
-			if !strings.Contains(stdout, "Up") && !strings.Contains(stdout, "running") {
-				return fmt.Errorf("service \"%s\" must have been still running", svc)
-			}
-			return nil
-		}
-	}
-
 	// no stopped containers
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "rm", "-f").AssertOK()
 	time.Sleep(3 * time.Second)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutWithFunc(upAssertHandler("wordpress"))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(upAssertHandler("db"))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutContainsAny("Up", "running")
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutContainsAny("Up", "running")
 	// remove one stopped service
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "wordpress").AssertOK()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "rm", "-f", "wordpress").AssertOK()
 	time.Sleep(3 * time.Second)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutWithFunc(rmAssertHandler("wordpress"))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(upAssertHandler("db"))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutNotContains("wordpress")
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutContainsAny("Up", "running")
 	// remove all services with `--stop`
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "rm", "-f", "-s").AssertOK()
 	time.Sleep(3 * time.Second)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(rmAssertHandler("db"))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutNotContains("db")
 }

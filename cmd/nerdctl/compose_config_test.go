@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -128,14 +127,6 @@ services:
 	base.Env = append(os.Environ(), "COMPOSE_FILE="+comp.YAMLFullPath()+","+filepath.Join(comp.Dir(), "docker-compose.test.yml"), "COMPOSE_PATH_SEPARATOR=,")
 
 	base.ComposeCmd("config").AssertOutContains("alpine:3.14")
-	base.ComposeCmd("--project-directory", comp.Dir(), "config", "--services").AssertOutWithFunc(func(out string) error {
-		if !strings.Contains(out, "hello1\n") {
-			return fmt.Errorf("expected hello1, got %s", out)
-		}
-		if !strings.Contains(out, "hello2\n") {
-			return fmt.Errorf("expected hello2, got %s", out)
-		}
-		return nil
-	})
+	base.ComposeCmd("--project-directory", comp.Dir(), "config", "--services").AssertOutContainsAll("hello1\n", "hello2\n")
 	base.ComposeCmd("--project-directory", comp.Dir(), "config").AssertOutContains("alpine:3.14")
 }
