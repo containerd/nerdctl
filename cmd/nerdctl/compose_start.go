@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/spf13/cobra"
@@ -86,7 +87,13 @@ func startContainers(ctx context.Context, client *containerd.Client, containers 
 		c := c
 		eg.Go(func() error {
 			if cStatus, err := containerutil.ContainerStatus(ctx, c); err != nil {
-				return err
+				// NOTE: NotFound doesn't mean that container hasn't started.
+				// In docker/CRI-containerd plugin, the task will be deleted
+				// when it exits. So, the status will be "created" for this
+				// case.
+				if !errdefs.IsNotFound(err) {
+					return err
+				}
 			} else if cStatus.Status == containerd.Running {
 				return nil
 			}

@@ -331,6 +331,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl compose up](#whale-nerdctl-compose-up)
     - [:whale: nerdctl compose logs](#whale-nerdctl-compose-logs)
     - [:whale: nerdctl compose build](#whale-nerdctl-compose-build)
+    - [:whale: nerdctl compose create](#whale-nerdctl-compose-create)
     - [:whale: nerdctl compose exec](#whale-nerdctl-compose-exec)
     - [:whale: nerdctl compose down](#whale-nerdctl-compose-down)
     - [:whale: nerdctl compose images](#whale-nerdctl-compose-images)
@@ -1445,6 +1446,20 @@ Flags:
 
 Unimplemented `docker-compose build` (V1) flags:  `--compress`, `--force-rm`, `--memory`, `--no-rm`, `--parallel`, `--pull`, `--quiet`
 
+### :whale: nerdctl compose create
+
+Creates containers for one or more services.
+
+Usage: `nerdctl compose create [OPTIONS] [SERVICE...]`
+
+Flags:
+
+- :whale: `--build`: Build images before starting containers
+- :whale: `--force-recreate`: Recreate containers even if their configuration and image haven't changed
+- :whale: `--no-build`: Don't build an image even if it's missing, conflict with `--build`
+- :whale: `--no-recreate`: Don't recreate containers if they exist, conflict with `--force-recreate`
+- :whale: `--pull`: Pull images before running. (support always|missing|never) (default "missing")
+
 ### :whale: nerdctl compose exec
 
 Execute a command on a running container of the service.
@@ -1687,7 +1702,7 @@ Registry:
 - `docker search`
 
 Compose:
-- `docker-compose create|events|scale`
+- `docker-compose events|scale`
 
 Others:
 - `docker system df`

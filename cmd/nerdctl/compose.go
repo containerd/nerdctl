@@ -75,6 +75,7 @@ func newComposeCommand() *cobra.Command {
 		newComposePauseCommand(),
 		newComposeUnpauseCommand(),
 		newComposeTopCommand(),
+		newComposeCreateCommand(),
 	)
 
 	return composeCommand
