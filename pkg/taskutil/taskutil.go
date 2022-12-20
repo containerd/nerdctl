@@ -36,9 +36,40 @@ import (
 )
 
 // NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108
-func NewTask(ctx context.Context, client *containerd.Client, container containerd.Container, flagI, flagT, flagD bool, con console.Console, logURI string) (containerd.Task, error) {
+func NewTask(ctx context.Context, client *containerd.Client, container containerd.Container,
+	flagA, flagI, flagT, flagD bool, con console.Console, logURI string) (containerd.Task, error) {
 	var ioCreator cio.Creator
-	if flagT {
+	if flagA {
+		logrus.Debug("attaching output instead of using the log-uri")
+		if flagT {
+			ioCreator = cio.NewCreator(cio.WithStreams(os.Stdin, os.Stdout, os.Stderr), cio.WithTerminal)
+		} else {
+			ioCreator = cio.NewCreator(cio.WithStreams(os.Stdin, os.Stdout, os.Stderr))
+		}
+
+	} else if flagT && flagD {
+		u, err := url.Parse(logURI)
+		if err != nil {
+			return nil, err
+		}
+
+		var args []string
+		for k, vs := range u.Query() {
+			args = append(args, k)
+			if len(vs) > 0 {
+				args = append(args, vs[0])
+			}
+		}
+
+		// args[0]: _NERDCTL_INTERNAL_LOGGING
+		// args[1]: /var/lib/nerdctl/1935db59
+		if len(args) != 2 {
+			return nil, errors.New("parse logging path error")
+		}
+		ioCreator = cio.TerminalBinaryIO(u.Path, map[string]string{
+			args[0]: args[1],
+		})
+	} else if flagT && !flagD {
 		if con == nil {
 			return nil, errors.New("got nil con with flagT=true")
 		}

@@ -18,10 +18,12 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
+	"gotest.tools/v3/assert"
 )
 
 func TestCreate(t *testing.T) {
@@ -105,4 +107,30 @@ func TestCreateWithMACAddress(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestCreateWithTty(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("json-file log driver is not yet implemented on Windows")
+	}
+	base := testutil.NewBase(t)
+	imageName := testutil.CommonImage
+	withoutTtyContainerName := "without-terminal-" + testutil.Identifier(t)
+	withTtyContainerName := "with-terminal-" + testutil.Identifier(t)
+
+	// without -t, fail
+	base.Cmd("create", "--name", withoutTtyContainerName, imageName, "stty").AssertOK()
+	base.Cmd("start", withoutTtyContainerName).AssertOK()
+	defer base.Cmd("container", "rm", "-f", withoutTtyContainerName).AssertOK()
+	base.Cmd("logs", withoutTtyContainerName).AssertCombinedOutContains("stty: standard input: Not a tty")
+	withoutTtyContainer := base.InspectContainer(withoutTtyContainerName)
+	assert.Equal(base.T, 1, withoutTtyContainer.State.ExitCode)
+
+	// with -t, success
+	base.Cmd("create", "-t", "--name", withTtyContainerName, imageName, "stty").AssertOK()
+	base.Cmd("start", withTtyContainerName).AssertOK()
+	defer base.Cmd("container", "rm", "-f", withTtyContainerName).AssertOK()
+	base.Cmd("logs", withTtyContainerName).AssertCombinedOutContains("speed 38400 baud; line = 0;")
+	withTtyContainer := base.InspectContainer(withTtyContainerName)
+	assert.Equal(base.T, 0, withTtyContainer.State.ExitCode)
 }
