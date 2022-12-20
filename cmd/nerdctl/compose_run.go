@@ -34,6 +34,7 @@ func newComposeRunCommand() *cobra.Command {
 		SilenceErrors:         true,
 		DisableFlagsInUseLine: true,
 	}
+	composeRunCommand.Flags().SetInterspersed(false)
 	composeRunCommand.Flags().BoolP("detach", "d", false, "Detached mode: Run containers in the background")
 	composeRunCommand.Flags().Bool("no-build", false, "Don't build an image, even if it's missing.")
 	composeRunCommand.Flags().Bool("no-color", false, "Produce monochrome output")
