@@ -31,7 +31,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
-	httpapi "github.com/ipfs/go-ipfs-http-client"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 
@@ -199,11 +198,7 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 
 		// IPFS reference
 		if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(imageName); err == nil {
-			ipfsClient, err := httpapi.NewLocalApi()
-			if err != nil {
-				return err
-			}
-			_, err = ipfs.EnsureImage(ctx, client, ipfsClient, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
+			_, err = ipfs.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
 				pullMode, ocispecPlatforms, nil, quiet)
 			return err
 		}

@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/defaults"
@@ -443,6 +444,58 @@ func AddStringFlag(cmd *cobra.Command, name string, aliases []string, value stri
 			flags.StringVarP(p, a, a, value, aliasesUsage)
 		} else {
 			flags.StringVar(p, a, value, aliasesUsage)
+		}
+	}
+}
+
+// AddIntFlag is similar to cmd.Flags().Int but supports aliases and env var
+func AddIntFlag(cmd *cobra.Command, name string, aliases []string, value int, env, usage string) {
+	if env != "" {
+		usage = fmt.Sprintf("%s [$%s]", usage, env)
+	}
+	if envV, ok := os.LookupEnv(env); ok {
+		v, err := strconv.ParseInt(envV, 10, 64)
+		if err != nil {
+			logrus.WithError(err).Warnf("Invalid int value for `%s`", env)
+		}
+		value = int(v)
+	}
+	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
+	p := new(int)
+	flags := cmd.Flags()
+	flags.IntVar(p, name, value, usage)
+	for _, a := range aliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			flags.IntVarP(p, a, a, value, aliasesUsage)
+		} else {
+			flags.IntVar(p, a, value, aliasesUsage)
+		}
+	}
+}
+
+// AddDurationFlag is similar to cmd.Flags().Duration but supports aliases and env var
+func AddDurationFlag(cmd *cobra.Command, name string, aliases []string, value time.Duration, env, usage string) {
+	if env != "" {
+		usage = fmt.Sprintf("%s [$%s]", usage, env)
+	}
+	if envV, ok := os.LookupEnv(env); ok {
+		var err error
+		value, err = time.ParseDuration(envV)
+		if err != nil {
+			logrus.WithError(err).Warnf("Invalid duration value for `%s`", env)
+		}
+	}
+	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
+	p := new(time.Duration)
+	flags := cmd.Flags()
+	flags.DurationVar(p, name, value, usage)
+	for _, a := range aliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			flags.DurationVarP(p, a, a, value, aliasesUsage)
+		} else {
+			flags.DurationVar(p, a, value, aliasesUsage)
 		}
 	}
 }

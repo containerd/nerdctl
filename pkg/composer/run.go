@@ -38,7 +38,6 @@ type RunOptions struct {
 	NoColor       bool
 	NoLogPrefix   bool
 	ForceBuild    bool
-	IPFS          bool
 	QuietPull     bool
 	RemoveOrphans bool
 
@@ -216,7 +215,7 @@ func (c *Composer) runServices(ctx context.Context, parsedServices []*servicepar
 
 	// TODO: parallelize loop for ensuring images (make sure not to mess up tty)
 	for _, ps := range parsedServices {
-		if err := c.ensureServiceImage(ctx, ps, !ro.NoBuild, ro.ForceBuild, BuildOptions{IPFS: ro.IPFS}, ro.QuietPull); err != nil {
+		if err := c.ensureServiceImage(ctx, ps, !ro.NoBuild, ro.ForceBuild, BuildOptions{}, ro.QuietPull); err != nil {
 			return err
 		}
 	}

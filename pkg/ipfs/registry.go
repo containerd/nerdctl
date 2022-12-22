@@ -24,18 +24,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/hashicorp/go-multierror"
-	"github.com/ipfs/go-cid"
-	files "github.com/ipfs/go-ipfs-files"
-	httpapi "github.com/ipfs/go-ipfs-http-client"
-	iface "github.com/ipfs/interface-go-ipfs-core"
-	ipath "github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
@@ -49,19 +47,18 @@ type RegistryOptions struct {
 
 	// ReadTimeout is timeout duration of a read request to IPFS. Zero means no timeout.
 	ReadTimeout time.Duration
+
+	// IpfsPath is the IPFS_PATH value to be used for ipfs command.
+	IpfsPath string
 }
 
-func NewRegistry(ipfsClient iface.CoreAPI, options RegistryOptions) (http.Handler, error) {
-	if _, ok := ipfsClient.(*httpapi.HttpApi); !ok {
-		return nil, fmt.Errorf("IPFS client must be *HttpApi")
-	}
-	return &server{ipfsClient, options}, nil
+func NewRegistry(options RegistryOptions) (http.Handler, error) {
+	return &server{options}, nil
 }
 
 // server is a read-only registry which converts OCI Distribution Spec's pull-related API to IPFS
 // https://github.com/opencontainers/distribution-spec/blob/v1.0/spec.md#pull
 type server struct {
-	api    iface.CoreAPI
 	config RegistryOptions
 }
 
@@ -134,11 +131,8 @@ func (s *server) serve(r *http.Request) (string, io.ReadSeeker, string, int64, e
 	return "", nil, "", 0, fmt.Errorf("unsupported path")
 }
 
-func (s *server) serveContentByCID(ctx context.Context, cidStr string) (resC string, r io.ReadSeeker, mediaType string, size int64, err error) {
-	targetCID, err := cid.Decode(cidStr)
-	if err != nil {
-		return "", nil, "", 0, err
-	}
+func (s *server) serveContentByCID(ctx context.Context, targetCID string) (resC string, r io.ReadSeeker, mediaType string, size int64, err error) {
+	// TODO: make sure cidStr is a vaild CID?
 	c, desc, err := s.resolveCIDOfRootBlob(ctx, targetCID)
 	if err != nil {
 		return "", nil, "", 0, err
@@ -147,14 +141,10 @@ func (s *server) serveContentByCID(ctx context.Context, cidStr string) (resC str
 	if err != nil {
 		return "", nil, "", 0, err
 	}
-	return c.String(), rc, getMediaType(desc), desc.Size, nil
+	return c, rc, getMediaType(desc), desc.Size, nil
 }
 
-func (s *server) serveContentByDigest(ctx context.Context, rootCIDStr, digestStr string) (resC string, r io.ReadSeeker, mediaType string, size int64, err error) {
-	rootCID, err := cid.Decode(rootCIDStr)
-	if err != nil {
-		return "", nil, "", 0, err
-	}
+func (s *server) serveContentByDigest(ctx context.Context, rootCID, digestStr string) (resC string, r io.ReadSeeker, mediaType string, size int64, err error) {
 	dgst, err := digest.Parse(digestStr)
 	if err != nil {
 		return "", nil, "", 0, err
@@ -171,10 +161,10 @@ func (s *server) serveContentByDigest(ctx context.Context, rootCIDStr, digestStr
 	if err != nil {
 		return "", nil, "", 0, err
 	}
-	return targetCID.String(), rc, getMediaType(targetDesc), targetDesc.Size, nil
+	return targetCID, rc, getMediaType(targetDesc), targetDesc.Size, nil
 }
 
-func (s *server) getReadSeeker(ctx context.Context, c cid.Cid) (io.ReadSeeker, error) {
+func (s *server) getReadSeeker(ctx context.Context, c string) (io.ReadSeeker, error) {
 	sr, err := s.getFile(ctx, c)
 	if err != nil {
 		return nil, err
@@ -182,30 +172,28 @@ func (s *server) getReadSeeker(ctx context.Context, c cid.Cid) (io.ReadSeeker, e
 	return newBufReadSeeker(sr), nil
 }
 
-func (s *server) getFile(ctx context.Context, c cid.Cid) (*io.SectionReader, error) {
-	target := ipath.IpfsPath(c) // only IPFS CID is supported
-	n, err := s.api.Unixfs().Get(ctx, target)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get file %q: %v", c.String(), err)
+func (s *server) getFile(ctx context.Context, c string) (*io.SectionReader, error) {
+	ipfsBin := "ipfs"
+	cmd := exec.Command(ipfsBin, "files", "stat", "--format=<size>", "/ipfs/"+c)
+	if s.config.IpfsPath != "" {
+		cmd.Env = append(os.Environ(), fmt.Sprintf("IPFS_PATH=%s", s.config.IpfsPath))
 	}
-	f := files.ToFile(n)
-	defer f.Close()
-	size, err := f.Size()
+	sizeB, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get size: %v", err)
+		return nil, err
+	}
+	size, err := strconv.ParseInt(strings.TrimSuffix(string(sizeB), "\n"), 10, 64)
+	if err != nil {
+		return nil, err
 	}
 	ra := &retryReaderAt{
 		ctx: ctx,
 		readAtFunc: func(ctx context.Context, p []byte, off int64) (int, error) {
-			resp, err := s.api.(*httpapi.HttpApi).Request("cat", target.String()).Option("offset", off).Option("length", len(p)).Send(ctx)
+			r, err := ipfsCat(ctx, ipfsBin, c, off, size, s.config.IpfsPath)
 			if err != nil {
 				return 0, err
 			}
-			if resp.Error != nil {
-				return 0, resp.Error
-			}
-			defer resp.Output.Close()
-			return io.ReadFull(resp.Output, p)
+			return io.ReadFull(r, p)
 		},
 		timeout: s.config.ReadTimeout,
 		retry:   s.config.ReadRetryNum,
@@ -213,41 +201,41 @@ func (s *server) getFile(ctx context.Context, c cid.Cid) (*io.SectionReader, err
 	return io.NewSectionReader(ra, 0, size), nil
 }
 
-func (s *server) resolveCIDOfRootBlob(ctx context.Context, c cid.Cid) (cid.Cid, ocispec.Descriptor, error) {
+func (s *server) resolveCIDOfRootBlob(ctx context.Context, c string) (string, ocispec.Descriptor, error) {
 	rc, err := s.getReadSeeker(ctx, c)
 	if err != nil {
-		return cid.Cid{}, ocispec.Descriptor{}, err
+		return "", ocispec.Descriptor{}, err
 	}
 	var desc ocispec.Descriptor
 	if err := json.NewDecoder(rc).Decode(&desc); err != nil {
-		return cid.Cid{}, ocispec.Descriptor{}, err
+		return "", ocispec.Descriptor{}, err
 	}
 	c, err = getIPFSCID(desc)
 	if err != nil {
-		return cid.Cid{}, ocispec.Descriptor{}, err
+		return "", ocispec.Descriptor{}, err
 	}
 	return c, desc, nil
 }
 
-func (s *server) resolveCIDOfDigest(ctx context.Context, dgst digest.Digest, desc ocispec.Descriptor) (cid.Cid, ocispec.Descriptor, error) {
+func (s *server) resolveCIDOfDigest(ctx context.Context, dgst digest.Digest, desc ocispec.Descriptor) (string, ocispec.Descriptor, error) {
 	c, err := getIPFSCID(desc)
 	if err != nil {
-		return cid.Cid{}, ocispec.Descriptor{}, err
+		return "", ocispec.Descriptor{}, err
 	}
 	if desc.Digest == dgst {
 		return c, desc, nil // hit
 	}
 	if !images.IsManifestType(desc.MediaType) && !images.IsIndexType(desc.MediaType) {
 		// This is not the target blob and have no child. Early return here and avoid querying this blob.
-		return cid.Cid{}, ocispec.Descriptor{}, fmt.Errorf("blob doesn't match")
+		return "", ocispec.Descriptor{}, fmt.Errorf("blob doesn't match")
 	}
 	sr, err := s.getFile(ctx, c)
 	if err != nil {
-		return cid.Cid{}, ocispec.Descriptor{}, err
+		return "", ocispec.Descriptor{}, err
 	}
 	descs, err := images.Children(ctx, &readerProvider{desc, sr}, desc)
 	if err != nil {
-		return cid.Cid{}, ocispec.Descriptor{}, err
+		return "", ocispec.Descriptor{}, err
 	}
 	var allErr error
 	for _, desc := range descs {
@@ -259,19 +247,19 @@ func (s *server) resolveCIDOfDigest(ctx context.Context, dgst digest.Digest, des
 		return gotCID, gotDesc, nil
 	}
 	if allErr == nil {
-		return cid.Cid{}, ocispec.Descriptor{}, fmt.Errorf("not found")
+		return "", ocispec.Descriptor{}, fmt.Errorf("not found")
 	}
-	return cid.Cid{}, ocispec.Descriptor{}, allErr
+	return "", ocispec.Descriptor{}, allErr
 }
 
-func getIPFSCID(desc ocispec.Descriptor) (cid.Cid, error) {
+func getIPFSCID(desc ocispec.Descriptor) (string, error) {
 	for _, u := range desc.URLs {
 		if strings.HasPrefix(u, "ipfs://") {
 			// support only content addressable URL (ipfs://<CID>)
-			return cid.Decode(u[7:])
+			return u[7:], nil
 		}
 	}
-	return cid.Cid{}, fmt.Errorf("no CID is recorded in %s", desc.Digest)
+	return "", fmt.Errorf("no CID is recorded in %s", desc.Digest)
 }
 
 func getMediaType(desc ocispec.Descriptor) string {

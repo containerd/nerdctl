@@ -42,7 +42,6 @@ func newComposeRunCommand() *cobra.Command {
 	composeRunCommand.Flags().Bool("build", false, "Build images before starting containers.")
 	composeRunCommand.Flags().Bool("quiet-pull", false, "Pull without printing progress information")
 	composeRunCommand.Flags().Bool("remove-orphans", false, "Remove containers for services not defined in the Compose file.")
-	composeRunCommand.Flags().Bool("ipfs", false, "Allow pulling base images from IPFS during build")
 
 	composeRunCommand.Flags().String("name", "", "Assign a name to the container")
 	composeRunCommand.Flags().Bool("no-deps", false, "Don't start dependencies")
@@ -89,10 +88,6 @@ func composeRunAction(cmd *cobra.Command, args []string) error {
 	}
 	if build && noBuild {
 		return errors.New("--build and --no-build can not be combined")
-	}
-	enableIPFS, err := cmd.Flags().GetBool("ipfs")
-	if err != nil {
-		return err
 	}
 	quietPull, err := cmd.Flags().GetBool("quiet-pull")
 	if err != nil {
@@ -185,7 +180,6 @@ func composeRunAction(cmd *cobra.Command, args []string) error {
 		NoColor:       noColor,
 		NoLogPrefix:   noLogPrefix,
 		ForceBuild:    build,
-		IPFS:          enableIPFS,
 		QuietPull:     quietPull,
 		RemoveOrphans: removeOrphans,
 

@@ -25,7 +25,7 @@ import (
 )
 
 func TestIPFSRegistry(t *testing.T) {
-	requiresIPFS(t)
+	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
@@ -34,14 +34,14 @@ func TestIPFSRegistry(t *testing.T) {
 	ipfsRegistryAddr := "localhost:5555"
 	ipfsRegistryRef := ipfsRegistryReference(ipfsRegistryAddr, ipfsCID)
 
-	base.Cmd("ipfs", "registry", "up", "--listen-registry", ipfsRegistryAddr).AssertOK()
+	done := ipfsRegistryUp(t, base, "--listen-registry", ipfsRegistryAddr)
+	defer done()
 	base.Cmd("pull", ipfsRegistryRef).AssertOK()
 	base.Cmd("run", "--rm", ipfsRegistryRef, "echo", "hello").AssertOK()
-	base.Cmd("ipfs", "registry", "down").AssertOK()
 }
 
 func TestIPFSRegistryWithLazyPulling(t *testing.T) {
-	requiresIPFS(t)
+	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
@@ -51,10 +51,10 @@ func TestIPFSRegistryWithLazyPulling(t *testing.T) {
 	ipfsRegistryAddr := "localhost:5555"
 	ipfsRegistryRef := ipfsRegistryReference(ipfsRegistryAddr, ipfsCID)
 
-	base.Cmd("ipfs", "registry", "up", "--listen-registry", ipfsRegistryAddr).AssertOK()
+	done := ipfsRegistryUp(t, base, "--listen-registry", ipfsRegistryAddr)
+	defer done()
 	base.Cmd("pull", ipfsRegistryRef).AssertOK()
 	base.Cmd("run", "--rm", ipfsRegistryRef, "ls", "/.stargz-snapshotter").AssertOK()
-	base.Cmd("ipfs", "registry", "down").AssertOK()
 }
 
 func ipfsRegistryReference(addr string, c string) string {

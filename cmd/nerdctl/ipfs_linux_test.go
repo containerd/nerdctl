@@ -24,14 +24,12 @@ import (
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/ipfs/go-cid"
-	httpapi "github.com/ipfs/go-ipfs-http-client"
 
 	"gotest.tools/v3/assert"
 )
 
 func TestIPFS(t *testing.T) {
-	requiresIPFS(t)
+	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage)
@@ -61,7 +59,7 @@ func TestIPFS(t *testing.T) {
 }
 
 func TestIPFSCommit(t *testing.T) {
-	requiresIPFS(t)
+	testutil.RequireExecutable(t, "ipfs")
 	// cgroup is required for nerdctl commit
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
 		t.Skip("test skipped for rootless containers on cgroup v1")
@@ -86,7 +84,7 @@ func TestIPFSCommit(t *testing.T) {
 }
 
 func TestIPFSWithLazyPulling(t *testing.T) {
-	requiresIPFS(t)
+	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	requiresStargz(base)
@@ -98,7 +96,7 @@ func TestIPFSWithLazyPulling(t *testing.T) {
 }
 
 func TestIPFSWithLazyPullingCommit(t *testing.T) {
-	requiresIPFS(t)
+	testutil.RequireExecutable(t, "ipfs")
 	// cgroup is required for nerdctl commit
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
 		t.Skip("test skipped for rootless containers on cgroup v1")
@@ -134,13 +132,5 @@ func pushImageToIPFS(t *testing.T, base *testutil.Base, name string, opts ...str
 
 func cidOf(t *testing.T, lines []string) string {
 	assert.Equal(t, len(lines) >= 2, true)
-	c, err := cid.Decode(lines[len(lines)-2])
-	assert.NilError(t, err)
-	return "ipfs://" + c.String()
-}
-
-func requiresIPFS(t *testing.T) {
-	if _, err := httpapi.NewLocalApi(); err != nil {
-		t.Skipf("test requires ipfs daemon, but got: %v", err)
-	}
+	return "ipfs://" + lines[len(lines)-2]
 }
