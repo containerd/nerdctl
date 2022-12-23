@@ -154,7 +154,6 @@ func (u *updater) phase2() error {
 			serviceHosts[strings.Join(host, " ")] = ip
 		}
 
-		// TODO: cut off entries for the containers in other networks
 		for ip, nwName := range u.nwNameByIPStr {
 			meta := u.metaByIPStr[ip]
 			if line := createLine(nwName, meta, myNetworks); len(line) != 0 {
