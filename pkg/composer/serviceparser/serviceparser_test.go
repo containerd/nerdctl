@@ -348,6 +348,10 @@ services:
   foo:
     image: nginx:alpine
     network_mode: host
+    container_name: nginx
+  bar:
+    image: alpine:3.14
+    network_mode: container:nginx
 `
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -365,6 +369,19 @@ services:
 	for _, c := range foo.Containers {
 		assert.Assert(t, in(c.RunArgs, "--net=host"))
 	}
+
+	barSvc, err := project.GetService("bar")
+	assert.NilError(t, err)
+
+	bar, err := Parse(project, barSvc)
+	assert.NilError(t, err)
+
+	t.Logf("bar: %+v", bar)
+	for _, c := range bar.Containers {
+		assert.Assert(t, in(c.RunArgs, "--net=container:nginx"))
+		assert.Assert(t, !in(c.RunArgs, "--hostname=bar"))
+	}
+
 }
 
 func TestParseConfigs(t *testing.T) {

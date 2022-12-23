@@ -523,12 +523,6 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--add-host=%s:%s", k, v))
 	}
 
-	hostname := svc.Hostname
-	if hostname == "" {
-		hostname = svc.Name
-	}
-	c.RunArgs = append(c.RunArgs, fmt.Sprintf("--hostname=%s", hostname))
-
 	if svc.Init != nil && *svc.Init {
 		c.RunArgs = append(c.RunArgs, "--init")
 	}
@@ -570,13 +564,28 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 	if err != nil {
 		return nil, err
 	}
+	netTypeContainer := false
 	for _, net := range networks {
+		if strings.HasPrefix(net.fullName, "container:") {
+			netTypeContainer = true
+		}
 		c.RunArgs = append(c.RunArgs, "--net="+net.fullName)
 		if value, ok := svc.Networks[net.shortNetworkName]; ok {
 			if value != nil && value.Ipv4Address != "" {
 				c.RunArgs = append(c.RunArgs, "--ip="+value.Ipv4Address)
 			}
 		}
+	}
+
+	if netTypeContainer && svc.Hostname != "" {
+		return nil, fmt.Errorf("conflicting options: hostname and container network mode")
+	}
+	if !netTypeContainer {
+		hostname := svc.Hostname
+		if hostname == "" {
+			hostname = svc.Name
+		}
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--hostname=%s", hostname))
 	}
 
 	if svc.Pid != "" {
