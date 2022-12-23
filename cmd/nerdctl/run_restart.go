@@ -27,39 +27,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/strutil"
 )
 
-func generateRestartOpts(ctx context.Context, client *containerd.Client, restartFlag, logURI string) ([]containerd.NewContainerOpts, error) {
-	if _, err := checkRestartCapabilities(ctx, client, restartFlag); err != nil {
-		return nil, err
-	}
-	policy, err := restart.NewPolicy(restartFlag)
-	if err != nil {
-		return nil, err
-	}
-	opts := []containerd.NewContainerOpts{restart.WithPolicy(policy), restart.WithStatus(containerd.Running)}
-	if logURI != "" {
-		opts = append(opts, restart.WithLogURIString(logURI))
-	}
-	return opts, nil
-}
-
-func updateContainerStoppedLabel(ctx context.Context, container containerd.Container, stopped bool) error {
-	opt := containerd.WithAdditionalContainerLabels(map[string]string{
-		restart.ExplicitlyStoppedLabel: strconv.FormatBool(stopped),
-	})
-	return container.Update(ctx, containerd.UpdateContainerOpts(opt))
-}
-
-func updateContainerRestartPolicyLabel(ctx context.Context, client *containerd.Client, container containerd.Container, policyLabel string) error {
-	if _, err := checkRestartCapabilities(ctx, client, policyLabel); err != nil {
-		return err
-	}
-	policy, err := restart.NewPolicy(policyLabel)
-	if err != nil {
-		return err
-	}
-	return container.Update(ctx, restart.WithPolicy(policy))
-}
-
 func checkRestartCapabilities(ctx context.Context, client *containerd.Client, restartFlag string) (bool, error) {
 	policySlice := strings.Split(restartFlag, ":")
 	switch policySlice[0] {
@@ -82,4 +49,41 @@ func checkRestartCapabilities(ctx context.Context, client *containerd.Client, re
 		return false, fmt.Errorf("unsupported restart policy %q, supported policies are: %q", policySlice[0], restartPlugin.Capabilities)
 	}
 	return true, nil
+}
+
+func generateRestartOpts(ctx context.Context, client *containerd.Client, restartFlag, logURI string) ([]containerd.NewContainerOpts, error) {
+	if restartFlag == "" || restartFlag == "no" {
+		return nil, nil
+	}
+	if _, err := checkRestartCapabilities(ctx, client, restartFlag); err != nil {
+		return nil, err
+	}
+
+	policy, err := restart.NewPolicy(restartFlag)
+	if err != nil {
+		return nil, err
+	}
+	opts := []containerd.NewContainerOpts{restart.WithPolicy(policy), restart.WithStatus(containerd.Running)}
+	if logURI != "" {
+		opts = append(opts, restart.WithLogURIString(logURI))
+	}
+	return opts, nil
+}
+
+func updateContainerStoppedLabel(ctx context.Context, container containerd.Container, stopped bool) error {
+	opt := containerd.WithAdditionalContainerLabels(map[string]string{
+		restart.ExplicitlyStoppedLabel: strconv.FormatBool(stopped),
+	})
+	return container.Update(ctx, containerd.UpdateContainerOpts(opt))
+}
+
+func updateContainerRestartPolicyLabel(ctx context.Context, client *containerd.Client, container containerd.Container, restartFlag string) error {
+	if _, err := checkRestartCapabilities(ctx, client, restartFlag); err != nil {
+		return err
+	}
+	policy, err := restart.NewPolicy(restartFlag)
+	if err != nil {
+		return err
+	}
+	return container.Update(ctx, restart.WithPolicy(policy))
 }

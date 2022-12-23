@@ -141,8 +141,8 @@ func TestUpdateRestartPolicy(t *testing.T) {
 	}
 	tID := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", tID).Run()
-	base.Cmd("run", "-d", "--restart=on-failure:2", "--name", tID, testutil.AlpineImage, "sh", "-c", "exit 1").AssertOK()
-	base.Cmd("update", "--restart=on-failure:3", tID).AssertOK()
+	base.Cmd("run", "-d", "--restart=on-failure:1", "--name", tID, testutil.AlpineImage, "sh", "-c", "exit 1").AssertOK()
+	base.Cmd("update", "--restart=on-failure:2", tID).AssertOK()
 	check := func(log poll.LogT) poll.Result {
 		inspect := base.InspectContainer(tID)
 		if inspect.State != nil && inspect.State.Status == "exited" {
@@ -152,5 +152,5 @@ func TestUpdateRestartPolicy(t *testing.T) {
 	}
 	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(60*time.Second))
 	inspect := base.InspectContainer(tID)
-	assert.Equal(t, inspect.RestartCount, 3)
+	assert.Equal(t, inspect.RestartCount, 2)
 }
