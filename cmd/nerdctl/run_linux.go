@@ -136,17 +136,6 @@ func setPlatformOptions(
 		opts = append(opts, oci.WithDevShmSize(shmBytes/1024))
 	}
 
-	pid, err := cmd.Flags().GetString("pid")
-	if err != nil {
-		return nil, err
-	}
-	pidOpts, pidInternalLabel, err := generatePIDOpts(ctx, client, pid)
-	if err != nil {
-		return nil, err
-	}
-	internalLabels.pidContainer = pidInternalLabel
-	opts = append(opts, pidOpts...)
-
 	ulimitOpts, err := generateUlimitsOpts(cmd)
 	if err != nil {
 		return nil, err
@@ -175,17 +164,48 @@ func setPlatformOptions(
 		opts = append(opts, oci.WithRdt(rdtClass, "", ""))
 	}
 
+	// UTS
+	uts, err := cmd.Flags().GetString("uts")
+	if err != nil {
+		return nil, err
+	}
+
+	switch uts {
+	case "host":
+		opts = append(opts, oci.WithHostNamespace(specs.UTSNamespace))
+	case "":
+		// Default, do nothing. Every container gets its own UTS ns by default.
+	default:
+		return nil, fmt.Errorf("unknown uts value. valid value(s) are 'host', got: %q", uts)
+	}
+
+	// IPC
 	ipc, err := cmd.Flags().GetString("ipc")
 	if err != nil {
 		return nil, err
 	}
-	// if nothing is specified, or if private, default to normal behavior
-	if ipc == "host" {
+
+	switch ipc {
+	case "host":
 		opts = append(opts, oci.WithHostNamespace(specs.IPCNamespace))
 		opts = append(opts, withBindMountHostIPC)
-	} else if ipc != "" && ipc != "private" {
-		return nil, fmt.Errorf("error: %v", "invalid ipc value, supported values are 'private' or 'host'")
+	case "private", "":
+		// If nothing is specified, or if private, default to normal behavior
+	default:
+		return nil, fmt.Errorf("unknown ipc value. valid values are 'private' or 'host', got: %q", ipc)
 	}
+
+	// PID
+	pid, err := cmd.Flags().GetString("pid")
+	if err != nil {
+		return nil, err
+	}
+	pidOpts, pidLabel, err := generatePIDOpts(ctx, client, pid)
+	if err != nil {
+		return nil, err
+	}
+	internalLabels.pidContainer = pidLabel
+	opts = append(opts, pidOpts...)
 
 	opts, err = setOOMScoreAdj(opts, cmd)
 	if err != nil {

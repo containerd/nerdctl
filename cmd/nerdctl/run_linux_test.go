@@ -75,6 +75,21 @@ func TestRunPidHost(t *testing.T) {
 	base.Cmd("run", "--rm", "--pid=host", testutil.AlpineImage, "ps", "auxw").AssertOutContains(strconv.Itoa(pid))
 }
 
+func TestRunUtsHost(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	// Was thinking of os.ReadLink("/proc/1/ns/uts")
+	// but you'd get EPERM for rootless. Just validate the
+	// hostname is the same.
+	hostName, err := os.Hostname()
+	assert.NilError(base.T, err)
+
+	base.Cmd("run", "--rm", "--uts=host", testutil.AlpineImage, "hostname").AssertOutContains(hostName)
+	// Validate we can't provide a hostname with uts=host
+	base.Cmd("run", "--rm", "--uts=host", "--hostname=foobar", testutil.AlpineImage, "hostname").AssertFail()
+}
+
 func TestRunPidContainer(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
