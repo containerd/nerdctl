@@ -104,11 +104,6 @@ func (u *updater) phase1() error {
 	return nil
 }
 
-const (
-	markerBegin = "<nerdctl>"
-	markerEnd   = "</nerdctl>"
-)
-
 // phase2: write hosts
 func (u *updater) phase2() error {
 	writeHostsWF := func(path string, _ os.FileInfo, walkErr error) error {
@@ -129,8 +124,20 @@ func (u *updater) phase2() error {
 			myNetworks[nwName] = struct{}{}
 		}
 
+		// parse the hosts file, keep the original host record
+		// retain custom /etc/hosts entries outside <nerdctl> </nerdctl> region
+		r, err := os.Open(path)
+		if err != nil {
+			return err
+		}
 		var buf bytes.Buffer
-		buf.WriteString(fmt.Sprintf("# %s\n", markerBegin))
+		if r != nil {
+			if err := parseHostsButSkipMarkedRegion(&buf, r); err != nil {
+				logrus.WithError(err).Warn("failed to read hosts file")
+			}
+		}
+
+		buf.WriteString(fmt.Sprintf("# %s\n", MarkerBegin))
 		buf.WriteString("127.0.0.1	localhost localhost.localdomain\n")
 		buf.WriteString("::1		localhost localhost.localdomain\n")
 
@@ -141,37 +148,18 @@ func (u *updater) phase2() error {
 			}
 		}
 
-		// parse the hosts file, keep the original host record
-		hosts, err := ParseHosts(os.ReadFile(path))
-		if err != nil {
-			return err
-		}
-		serviceHosts := make(map[string]string)
-		for ip, host := range hosts {
-			if ip == "127.0.0.1" || ip == "::1" {
-				continue
-			}
-			serviceHosts[strings.Join(host, " ")] = ip
-		}
-
 		for ip, nwName := range u.nwNameByIPStr {
 			meta := u.metaByIPStr[ip]
 			if line := createLine(nwName, meta, myNetworks); len(line) != 0 {
-				serviceHosts[strings.Join(line, " ")] = ip
+				buf.WriteString(fmt.Sprintf("%-15s %s\n", ip, strings.Join(line, " ")))
 			}
 		}
 
-		for line, ip := range serviceHosts {
-			buf.WriteString(fmt.Sprintf("%-15s %s\n", ip, line))
-		}
-
-		buf.WriteString(fmt.Sprintf("# %s\n", markerEnd))
+		buf.WriteString(fmt.Sprintf("# %s\n", MarkerEnd))
 		err = os.WriteFile(path, buf.Bytes(), 0644)
 		if err != nil {
 			return err
 		}
-		// FIXME: retain custom /etc/hosts entries outside <nerdctl></nerdctl>
-		// See https://github.com/norouter/norouter/blob/v0.6.2/pkg/agent/etchosts/etchosts.go#L113-L152
 		return nil
 	}
 	if err := filepath.Walk(u.hostsD, writeHostsWF); err != nil {
