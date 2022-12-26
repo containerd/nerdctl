@@ -32,6 +32,7 @@ func TestCreateLine(t *testing.T) {
 		thatHostname string // nerdctl run --hostname
 		thatName     string // nerdctl run --name
 		myNetwork    string
+		myID         string
 		expected     string
 	}
 	testCases := []testCase{
@@ -41,13 +42,23 @@ func TestCreateLine(t *testing.T) {
 			thatHostname: "bar",
 			thatName:     "foo",
 			myNetwork:    "n1",
+			myID:         "984d63ce45ae",
 			expected:     "bar bar.n1 foo foo.n1",
+		},
+		{
+			thatIP:       "10.4.2.2",
+			thatNetwork:  "n1",
+			thatHostname: "bar",
+			thatName:     "foo",
+			myNetwork:    "n1",
+			expected:     "foo foo.n1",
 		},
 		{
 			thatIP:       "10.4.2.3",
 			thatNetwork:  "n1",
 			thatHostname: "bar",
 			myNetwork:    "n1",
+			myID:         "984d63ce45ae",
 			expected:     "bar bar.n1",
 		},
 		{
@@ -97,7 +108,7 @@ func TestCreateLine(t *testing.T) {
 		myNetworks := map[string]struct{}{
 			tc.myNetwork: {},
 		}
-		lines := createLine(tc.thatNetwork, thatMeta, myNetworks)
+		lines := createLine(tc.thatNetwork, thatMeta, tc.myID, myNetworks)
 		line := strings.Join(lines, " ")
 		t.Logf("tc=%+v, line=%q", tc, line)
 		assert.Equal(t, tc.expected, line)

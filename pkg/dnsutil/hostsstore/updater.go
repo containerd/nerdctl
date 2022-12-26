@@ -157,7 +157,7 @@ func (u *updater) phase2() error {
 		// TODO: cut off entries for the containers in other networks
 		for ip, nwName := range u.nwNameByIPStr {
 			meta := u.metaByIPStr[ip]
-			if line := createLine(nwName, meta, myNetworks); len(line) != 0 {
+			if line := createLine(nwName, meta, myMeta.ID, myNetworks); len(line) != 0 {
 				serviceHosts[strings.Join(line, " ")] = ip
 			}
 		}
@@ -186,13 +186,17 @@ func (u *updater) phase2() error {
 // for `nerdctl --name=foo --hostname=bar --network=n0`.
 //
 // May return an empty string slice
-func createLine(thatNetwork string, meta *Meta, myNetworks map[string]struct{}) []string {
+func createLine(thatNetwork string, meta *Meta, myID string, myNetworks map[string]struct{}) []string {
 	line := []string{}
 	if _, ok := myNetworks[thatNetwork]; !ok {
 		// Do not add lines for other networks
 		return line
 	}
-	baseHostnames := []string{meta.Hostname}
+	var baseHostnames []string
+	// hostname is a unique name for a container in a network.
+	if myID == meta.ID {
+		baseHostnames = append(baseHostnames, meta.Hostname)
+	}
 	if meta.Name != "" {
 		baseHostnames = append(baseHostnames, meta.Name)
 	}
