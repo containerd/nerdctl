@@ -349,6 +349,9 @@ Config file ($NERDCTL_TOML): %s
 
 		// IPFS
 		newIPFSCommand(),
+
+		// fanotify
+		newFanotifyCommand(),
 	)
 	addApparmorCommand(rootCmd)
 	addCpCommand(rootCmd)

@@ -573,6 +573,13 @@ Verify flags:
 - :nerd_face: `--verify`: Verify the image (none|cosign). See [`docs/cosign.md`](./docs/cosign.md) for details.
 - :nerd_face: `--cosign-key`: Path to the public key file, KMS, URI or Kubernetes Secret for `--verify=cosign`
 
+Fanotify flags:
+- :nerd_face: `--fanotify`: Enable fanotify to record accessed files when task running.
+- :nerd_face: `--wait-time`: Available when set `--fanotify` flag. The run time of the `fanotify server` to record accessed files.
+- :nerd_face: `--wait-line`: Available when set `--fanotify` flag. The fanotify server runs until it detaches the string line from the container standard output.
+- :nerd_face: `--wait-signal`: Available when set `--fanotify` flag. The fanotify server runs until it gets the SIGINT (ctrl + C) signal.
+- :nerd_face: `--output`: The output path for fanotify.
+
 Unimplemented `docker run` flags:
     `--attach`, `--blkio-weight-device`, `--cgroup-parent`, `--cpu-rt-*`, `--detach-keys`, `--device-*`,
     `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--ip6`, `--isolation`, `--no-healthcheck`,
