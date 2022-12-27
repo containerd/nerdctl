@@ -27,18 +27,18 @@ import (
 	"github.com/containerd/nerdctl/pkg/strutil"
 )
 
-func generateRestartOpts(ctx context.Context, client *containerd.Client, restartFlag, logURI string) ([]containerd.NewContainerOpts, error) {
+func checkRestartCapabilities(ctx context.Context, client *containerd.Client, restartFlag string) (bool, error) {
 	policySlice := strings.Split(restartFlag, ":")
 	switch policySlice[0] {
 	case "", "no":
-		return nil, nil
+		return true, nil
 	}
 	res, err := client.IntrospectionService().Plugins(ctx, []string{"id==restart"})
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 	if len(res.Plugins) == 0 {
-		return nil, fmt.Errorf("no restart plugin found")
+		return false, fmt.Errorf("no restart plugin found")
 	}
 	restartPlugin := res.Plugins[0]
 	capabilities := restartPlugin.Capabilities
@@ -46,8 +46,19 @@ func generateRestartOpts(ctx context.Context, client *containerd.Client, restart
 		capabilities = []string{"always"}
 	}
 	if !strutil.InStringSlice(capabilities, policySlice[0]) {
-		return nil, fmt.Errorf("unsupported restart policy %q, supported policies are: %q", policySlice[0], restartPlugin.Capabilities)
+		return false, fmt.Errorf("unsupported restart policy %q, supported policies are: %q", policySlice[0], restartPlugin.Capabilities)
 	}
+	return true, nil
+}
+
+func generateRestartOpts(ctx context.Context, client *containerd.Client, restartFlag, logURI string) ([]containerd.NewContainerOpts, error) {
+	if restartFlag == "" || restartFlag == "no" {
+		return nil, nil
+	}
+	if _, err := checkRestartCapabilities(ctx, client, restartFlag); err != nil {
+		return nil, err
+	}
+
 	policy, err := restart.NewPolicy(restartFlag)
 	if err != nil {
 		return nil, err
@@ -64,4 +75,15 @@ func updateContainerStoppedLabel(ctx context.Context, container containerd.Conta
 		restart.ExplicitlyStoppedLabel: strconv.FormatBool(stopped),
 	})
 	return container.Update(ctx, containerd.UpdateContainerOpts(opt))
+}
+
+func updateContainerRestartPolicyLabel(ctx context.Context, client *containerd.Client, container containerd.Container, restartFlag string) error {
+	if _, err := checkRestartCapabilities(ctx, client, restartFlag); err != nil {
+		return err
+	}
+	policy, err := restart.NewPolicy(restartFlag)
+	if err != nil {
+		return err
+	}
+	return container.Update(ctx, restart.WithPolicy(policy))
 }

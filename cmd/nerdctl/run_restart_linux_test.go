@@ -133,3 +133,24 @@ func TestRunRestartWithUnlessStopped(t *testing.T) {
 	inspect := base.InspectContainer(tID)
 	assert.Equal(t, inspect.RestartCount, 2)
 }
+
+func TestUpdateRestartPolicy(t *testing.T) {
+	base := testutil.NewBase(t)
+	if testutil.GetTarget() == testutil.Nerdctl {
+		testutil.RequireContainerdPlugin(base, "io.containerd.internal.v1", "restart", []string{"on-failure"})
+	}
+	tID := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", tID).Run()
+	base.Cmd("run", "-d", "--restart=on-failure:1", "--name", tID, testutil.AlpineImage, "sh", "-c", "exit 1").AssertOK()
+	base.Cmd("update", "--restart=on-failure:2", tID).AssertOK()
+	check := func(log poll.LogT) poll.Result {
+		inspect := base.InspectContainer(tID)
+		if inspect.State != nil && inspect.State.Status == "exited" {
+			return poll.Success()
+		}
+		return poll.Continue("container is not yet exited")
+	}
+	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(60*time.Second))
+	inspect := base.InspectContainer(tID)
+	assert.Equal(t, inspect.RestartCount, 2)
+}

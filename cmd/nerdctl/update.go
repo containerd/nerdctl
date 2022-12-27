@@ -78,6 +78,10 @@ func setUpdateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("cpuset-mems", "", "MEMs in which to allow execution (0-3, 0,1)")
 	cmd.Flags().Int64("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
 	cmd.Flags().Uint16("blkio-weight", 0, "Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)")
+	cmd.Flags().String("restart", "no", `Restart policy to apply when a container exits (implemented values: "no"|"always|on-failure:n|unless-stopped")`)
+	cmd.RegisterFlagCompletionFunc("restart", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"no", "always", "on-failure", "unless-stopped"}, cobra.ShellCompDirectiveNoFileComp
+	})
 }
 
 func updateAction(cmd *cobra.Command, args []string) error {
@@ -238,7 +242,7 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 	return options, nil
 }
 
-func updateContainer(ctx context.Context, client *containerd.Client, id string, opts updateResourceOptions, cmd *cobra.Command) (retErr error) {
+func updateContainer(ctx context.Context, client *containerd.Client, id string, opts updateResourceOptions, cmd *cobra.Command) error {
 	container, err := client.LoadContainer(ctx, id)
 	if err != nil {
 		return err
@@ -333,15 +337,21 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 
 	if err := updateContainerSpec(ctx, container, spec); err != nil {
 		log.G(ctx).WithError(err).Errorf("Failed to update spec %+v for container %q", spec, id)
-	}
-	defer func() {
-		if retErr != nil {
-			// Reset spec on error.
-			if err := updateContainerSpec(ctx, container, oldSpec); err != nil {
-				log.G(ctx).WithError(err).Errorf("Failed to update spec %+v for container %q", oldSpec, id)
-			}
+		// reset spec on error.
+		if err := updateContainerSpec(ctx, container, oldSpec); err != nil {
+			log.G(ctx).WithError(err).Errorf("Failed to update spec %+v for container %q", oldSpec, id)
 		}
-	}()
+	}
+
+	restart, err := cmd.Flags().GetString("restart")
+	if err != nil {
+		return err
+	}
+	if cmd.Flags().Changed("restart") && restart != "" {
+		if err := updateContainerRestartPolicyLabel(ctx, client, container, restart); err != nil {
+			return err
+		}
+	}
 
 	// If container is not running, only update spec is enough, new resource
 	// limit will be applied when container start.

@@ -100,7 +100,7 @@ func setCreateFlags(cmd *cobra.Command) {
 
 	cmd.Flags().BoolP("tty", "t", false, "Allocate a pseudo-TTY")
 	cmd.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
-	cmd.Flags().String("restart", "no", `Restart policy to apply when a container exits (implemented values: "no"|"always")`)
+	cmd.Flags().String("restart", "no", `Restart policy to apply when a container exits (implemented values: "no"|"always|on-failure:n|unless-stopped")`)
 	cmd.RegisterFlagCompletionFunc("restart", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"no", "always", "on-failure", "unless-stopped"}, cobra.ShellCompDirectiveNoFileComp
 	})
