@@ -48,23 +48,6 @@ func TestSave(t *testing.T) {
 	assert.Assert(t, strings.Contains(etcOSRelease, "Alpine"))
 }
 
-func TestSaveById(t *testing.T) {
-	base := testutil.NewBase(t)
-	base.Cmd("pull", testutil.AlpineImage).AssertOK()
-	inspect := base.InspectImage(testutil.AlpineImage)
-	var id string
-	if testutil.GetTarget() == testutil.Docker {
-		id = inspect.ID
-	} else {
-		id = strings.Split(inspect.RepoDigests[0], ":")[1]
-	}
-	archiveTarPath := filepath.Join(t.TempDir(), "id.tar")
-	base.Cmd("save", "-o", archiveTarPath, id).AssertOK()
-	base.Cmd("rmi", "-f", testutil.AlpineImage).AssertOK()
-	base.Cmd("load", "-i", archiveTarPath).AssertOK()
-	base.Cmd("run", "--rm", id, "date").AssertOK()
-}
-
 func extractDockerArchive(archiveTarPath, rootfsPath string) error {
 	if err := os.MkdirAll(rootfsPath, 0755); err != nil {
 		return err
