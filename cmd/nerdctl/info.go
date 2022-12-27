@@ -23,11 +23,11 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/containerd/nerdctl/pkg/formatter"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
 	"github.com/containerd/containerd/api/services/introspection/v1"
+	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"

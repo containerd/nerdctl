@@ -17,14 +17,8 @@
 package main
 
 import (
-	"bytes"
-	"errors"
-	"fmt"
-	"text/tabwriter"
-	"text/template"
-
-	"github.com/containerd/nerdctl/pkg/apparmorutil"
-	"github.com/containerd/nerdctl/pkg/formatter"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/apparmor"
 	"github.com/spf13/cobra"
 )
 
@@ -48,57 +42,17 @@ func newApparmorLsCommand() *cobra.Command {
 }
 
 func apparmorLsAction(cmd *cobra.Command, args []string) error {
+	options := &types.LsCommandOptions{}
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return err
 	}
-	w := cmd.OutOrStdout()
-	var tmpl *template.Template
+	options.Quiet = quiet
+	options.Writer = cmd.OutOrStdout()
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
 		return err
 	}
-	switch format {
-	case "", "table", "wide":
-		w = tabwriter.NewWriter(cmd.OutOrStdout(), 4, 8, 4, ' ', 0)
-		if !quiet {
-			fmt.Fprintln(w, "NAME\tMODE")
-		}
-	case "raw":
-		return errors.New("unsupported format: \"raw\"")
-	default:
-		if quiet {
-			return errors.New("format and quiet must not be specified together")
-		}
-		var err error
-		tmpl, err = formatter.ParseTemplate(format)
-		if err != nil {
-			return err
-		}
-	}
-
-	profiles, err := apparmorutil.Profiles()
-	if err != nil {
-		return err
-	}
-
-	for _, f := range profiles {
-		if tmpl != nil {
-			var b bytes.Buffer
-			if err := tmpl.Execute(&b, f); err != nil {
-				return err
-			}
-			if _, err = fmt.Fprintf(w, b.String()+"\n"); err != nil {
-				return err
-			}
-		} else if quiet {
-			fmt.Fprintln(w, f.Name)
-		} else {
-			fmt.Fprintf(w, "%s\t%s\n", f.Name, f.Mode)
-		}
-	}
-	if f, ok := w.(formatter.Flusher); ok {
-		return f.Flush()
-	}
-	return nil
+	options.Format = format
+	return apparmor.Ls(options)
 }
