@@ -57,7 +57,14 @@ func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
-func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Command, client *containerd.Client, id string, internalLabels internalLabels) ([]oci.SpecOpts, internalLabels, error) {
+func setPlatformOptions(
+	ctx context.Context,
+	cmd *cobra.Command,
+	client *containerd.Client,
+	id string,
+	internalLabels *internalLabels,
+) ([]oci.SpecOpts, error) {
+	var opts []oci.SpecOpts
 	opts = append(opts,
 		oci.WithDefaultUnixDevices,
 		WithoutRunMount(), // unmount default tmpfs on "/run": https://github.com/containerd/nerdctl/issues/157)
@@ -70,122 +77,122 @@ func setPlatformOptions(ctx context.Context, opts []oci.SpecOpts, cmd *cobra.Com
 
 	cgOpts, err := generateCgroupOpts(cmd, id)
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	opts = append(opts, cgOpts...)
 
 	labelsMap, err := readKVStringsMapfFromLabel(cmd)
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 
 	capAdd, err := cmd.Flags().GetStringSlice("cap-add")
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	capDrop, err := cmd.Flags().GetStringSlice("cap-drop")
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	capOpts, err := generateCapOpts(
 		strutil.DedupeStrSlice(capAdd),
 		strutil.DedupeStrSlice(capDrop))
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	opts = append(opts, capOpts...)
 
 	privileged, err := cmd.Flags().GetBool("privileged")
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 
 	securityOpt, err := cmd.Flags().GetStringArray("security-opt")
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	securityOptsMaps := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(securityOpt))
 	secOpts, err := generateSecurityOpts(privileged, securityOptsMaps)
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	opts = append(opts, secOpts...)
 
 	b4nnOpts, err := bypass4netnsutil.GenerateBypass4netnsOpts(securityOptsMaps, labelsMap, id)
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	opts = append(opts, b4nnOpts...)
 
 	shmSize, err := cmd.Flags().GetString("shm-size")
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	if len(shmSize) > 0 {
 		shmBytes, err := units.RAMInBytes(shmSize)
 		if err != nil {
-			return nil, internalLabels, err
+			return nil, err
 		}
 		opts = append(opts, oci.WithDevShmSize(shmBytes/1024))
 	}
 
 	pid, err := cmd.Flags().GetString("pid")
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	pidOpts, pidInternalLabel, err := generatePIDOpts(ctx, client, pid)
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	internalLabels.pidContainer = pidInternalLabel
 	opts = append(opts, pidOpts...)
 
 	ulimitOpts, err := generateUlimitsOpts(cmd)
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	opts = append(opts, ulimitOpts...)
 
 	sysctl, err := cmd.Flags().GetStringArray("sysctl")
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(sysctl)))
 
 	gpus, err := cmd.Flags().GetStringArray("gpus")
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	gpuOpt, err := parseGPUOpts(gpus)
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	opts = append(opts, gpuOpt...)
 
 	if rdtClass, err := cmd.Flags().GetString("rdt-class"); err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	} else if rdtClass != "" {
 		opts = append(opts, oci.WithRdt(rdtClass, "", ""))
 	}
 
 	ipc, err := cmd.Flags().GetString("ipc")
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 	// if nothing is specified, or if private, default to normal behavior
 	if ipc == "host" {
 		opts = append(opts, oci.WithHostNamespace(specs.IPCNamespace))
 		opts = append(opts, withBindMountHostIPC)
 	} else if ipc != "" && ipc != "private" {
-		return nil, internalLabels, fmt.Errorf("error: %v", "invalid ipc value, supported values are 'private' or 'host'")
+		return nil, fmt.Errorf("error: %v", "invalid ipc value, supported values are 'private' or 'host'")
 	}
 
 	opts, err = setOOMScoreAdj(opts, cmd)
 	if err != nil {
-		return nil, internalLabels, err
+		return nil, err
 	}
 
-	return opts, internalLabels, nil
+	return opts, nil
 }
 
 func setOOMScoreAdj(opts []oci.SpecOpts, cmd *cobra.Command) ([]oci.SpecOpts, error) {
