@@ -436,10 +436,11 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		oci.WithDefaultSpec(),
 	)
 
-	opts, internalLabels, err = setPlatformOptions(ctx, opts, cmd, client, id, internalLabels)
+	platformOpts, err := setPlatformOptions(ctx, cmd, client, id, &internalLabels)
 	if err != nil {
 		return nil, nil, err
 	}
+	opts = append(opts, platformOpts...)
 
 	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, platform, cmd, args, id)
 	if err != nil {
