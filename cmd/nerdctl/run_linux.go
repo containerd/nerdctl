@@ -164,6 +164,30 @@ func setPlatformOptions(
 		opts = append(opts, oci.WithRdt(rdtClass, "", ""))
 	}
 
+	nsOpts, err := generateNamespaceOpts(ctx, cmd, client, internalLabels)
+	if err != nil {
+		return nil, err
+	}
+	opts = append(opts, nsOpts...)
+
+	opts, err = setOOMScoreAdj(opts, cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	return opts, nil
+}
+
+// Helper to validate the namespace options exposed via run and return the correct
+// opts.
+func generateNamespaceOpts(
+	ctx context.Context,
+	cmd *cobra.Command,
+	client *containerd.Client,
+	internalLabels *internalLabels,
+) ([]oci.SpecOpts, error) {
+	var opts []oci.SpecOpts
+
 	// UTS
 	uts, err := cmd.Flags().GetString("uts")
 	if err != nil {
@@ -206,11 +230,6 @@ func setPlatformOptions(
 	}
 	internalLabels.pidContainer = pidLabel
 	opts = append(opts, pidOpts...)
-
-	opts, err = setOOMScoreAdj(opts, cmd)
-	if err != nil {
-		return nil, err
-	}
 
 	return opts, nil
 }
