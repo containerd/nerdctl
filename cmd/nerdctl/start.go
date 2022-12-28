@@ -135,7 +135,7 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 			logrus.WithError(err).Debug("failed to delete old task")
 		}
 	}
-	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, nil, logURI)
+	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, logURI)
 	if err != nil {
 		return err
 	}

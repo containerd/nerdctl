@@ -27,7 +27,6 @@ import (
 	"syscall"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/nerdctl/pkg/infoutil"
@@ -37,7 +36,7 @@ import (
 
 // NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108
 func NewTask(ctx context.Context, client *containerd.Client, container containerd.Container,
-	flagA, flagI, flagT, flagD bool, con console.Console, logURI string) (containerd.Task, error) {
+	flagA, flagI, flagT, flagD bool, logURI string) (containerd.Task, error) {
 	var ioCreator cio.Creator
 	if flagA {
 		logrus.Debug("attaching output instead of using the log-uri")
@@ -70,18 +69,15 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			args[0]: args[1],
 		})
 	} else if flagT && !flagD {
-		if con == nil {
-			return nil, errors.New("got nil con with flagT=true")
-		}
 		var in io.Reader
 		if flagI {
 			// FIXME: check IsTerminal on Windows too
 			if runtime.GOOS != "windows" && !term.IsTerminal(0) {
 				return nil, errors.New("the input device is not a TTY")
 			}
-			in = con
+			in = os.Stdin
 		}
-		ioCreator = cio.NewCreator(cio.WithStreams(in, con, nil), cio.WithTerminal)
+		ioCreator = cio.NewCreator(cio.WithStreams(in, os.Stdout, nil), cio.WithTerminal)
 	} else if flagD && logURI != "" {
 		// TODO: support logURI for `nerdctl run -it`
 		u, err := url.Parse(logURI)
