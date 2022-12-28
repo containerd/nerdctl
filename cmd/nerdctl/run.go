@@ -160,6 +160,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("oom-kill-disable", false, "Disable OOM Killer")
 	cmd.Flags().Int("oom-score-adj", 0, "Tune container’s OOM preferences (-1000 to 1000, rootless: 100 to 1000)")
 	cmd.Flags().String("pid", "", "PID namespace to use")
+	cmd.Flags().String("uts", "", "UTS namespace to use")
 	cmd.RegisterFlagCompletionFunc("pid", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"host"}, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -566,18 +567,30 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	if err != nil {
 		return nil, nil, err
 	}
+
+	uts, err := cmd.Flags().GetString("uts")
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if customHostname != "" {
+		// Docker considers this a validation error so keep compat.
+		if uts != "" {
+			return nil, nil, errors.New("conflicting options: hostname and UTS mode")
+		}
 		hostname = customHostname
 	}
-	opts = append(opts, oci.WithHostname(hostname))
-	internalLabels.hostname = hostname
-	// `/etc/hostname` does not exist on FreeBSD
-	if runtime.GOOS == "linux" {
-		hostnamePath := filepath.Join(stateDir, "hostname")
-		if err := os.WriteFile(hostnamePath, []byte(hostname+"\n"), 0644); err != nil {
-			return nil, nil, err
+	if uts == "" {
+		opts = append(opts, oci.WithHostname(hostname))
+		internalLabels.hostname = hostname
+		// `/etc/hostname` does not exist on FreeBSD
+		if runtime.GOOS == "linux" {
+			hostnamePath := filepath.Join(stateDir, "hostname")
+			if err := os.WriteFile(hostnamePath, []byte(hostname+"\n"), 0644); err != nil {
+				return nil, nil, err
+			}
+			opts = append(opts, withCustomEtcHostname(hostnamePath))
 		}
-		opts = append(opts, withCustomEtcHostname(hostnamePath))
 	}
 
 	netOpts, netSlice, ipAddress, ports, macAddress, err := generateNetOpts(cmd, dataStore, stateDir, ns, id)

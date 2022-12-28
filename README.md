@@ -382,6 +382,7 @@ Basic flags:
 - :whale: `--pull=(always|missing|never)`: Pull image before running
   - Default: "missing"
 - :whale: `--pid=(host|container:<container>)`: PID namespace to use
+- :whale: `--uts=(host)` : UTS namespace to use
 - :whale: `--stop-signal`: Signal to stop a container (default "SIGTERM")
 - :whale: `--stop-timeout`: Timeout (in seconds) to stop a container
 
@@ -577,7 +578,7 @@ Unimplemented `docker run` flags:
     `--attach`, `--blkio-weight-device`, `--cgroup-parent`, `--cpu-rt-*`, `--detach-keys`, `--device-*`,
     `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--ip6`, `--isolation`, `--no-healthcheck`,
     `--link*`, `--mac-address`, `--publish-all`, `--sig-proxy`, `--storage-opt`,
-    `--userns`, `--uts`, `--volume-driver`, `--volumes-from`
+    `--userns`, `--volume-driver`, `--volumes-from`
 
 ### :whale: :blue_square: nerdctl exec
 Run a command in a running container.
