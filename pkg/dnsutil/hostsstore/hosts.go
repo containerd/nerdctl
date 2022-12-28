@@ -31,34 +31,60 @@
 
 package hostsstore
 
-import "strings"
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"strings"
+)
 
-// ParseHosts takes in hosts file content and returns a map of parsed results.
-// Copy from https://github.com/jaytaylor/go-hostsfile/blob/59e7508e09b9e08c57183ae15eabf1b757328ebf/hosts.go#L18
-func ParseHosts(hostsFileContent []byte, err error) (map[string][]string, error) {
-	if err != nil {
-		return nil, err
-	}
-	hostsMap := map[string][]string{}
+const (
+	MarkerBegin = "<nerdctl>"
+	MarkerEnd   = "</nerdctl>"
+)
 
+// parseHostsButSkipMarkedRegion parses hosts file content but skips the <nerdctl> </nerdctl> region
+// mimics  https://github.com/jaytaylor/go-hostsfile/blob/59e7508e09b9e08c57183ae15eabf1b757328ebf/hosts.go#L18
+// mimics  https://github.com/norouter/norouter/blob/v0.6.2/pkg/agent/etchosts/etchosts.go#L128-L152
+func parseHostsButSkipMarkedRegion(w io.Writer, r io.Reader) error {
+	scanner := bufio.NewScanner(r)
+	skip := false
 LINE:
-	for _, line := range strings.Split(strings.Trim(string(hostsFileContent), " \t\r\n"), "\n") {
+	for scanner.Scan() {
+		line := scanner.Text()
 		line = strings.Replace(strings.Trim(line, " \t"), "\t", " ", -1)
-		if len(line) == 0 || line[0] == ';' || line[0] == '#' {
-			continue
+		sawMarkerEnd := false
+		if strings.HasPrefix(line, "#") {
+			com := strings.TrimSpace(line[1:])
+			switch com {
+			case MarkerBegin:
+				skip = true
+			case MarkerEnd:
+				sawMarkerEnd = true
+			}
 		}
-		pieces := strings.SplitN(line, " ", 2)
-		if len(pieces) > 1 && len(pieces[0]) > 0 {
-			if names := strings.Fields(pieces[1]); len(names) > 0 {
-				for _, name := range names {
-					if strings.HasPrefix(name, "#") {
-						continue LINE
+		if !skip {
+			if len(line) == 0 || line[0] == ';' || line[0] == '#' {
+				continue
+			}
+			pieces := strings.SplitN(line, " ", 2)
+			if len(pieces) > 1 && len(pieces[0]) > 0 {
+				if pieces[0] == "127.0.0.1" || pieces[0] == "::1" {
+					continue LINE
+				}
+				if names := strings.Fields(pieces[1]); len(names) > 0 {
+					for _, name := range names {
+						if strings.HasPrefix(name, "#") {
+							continue LINE
+						}
 					}
-					hostsMap[pieces[0]] = append(hostsMap[pieces[0]], name)
+					fmt.Fprintln(w, line)
 				}
 			}
 		}
-
+		if sawMarkerEnd {
+			skip = false
+		}
 	}
-	return hostsMap, nil
+	return scanner.Err()
 }
