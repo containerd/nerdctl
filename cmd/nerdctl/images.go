@@ -37,6 +37,7 @@ import (
 	"github.com/containerd/containerd/platforms"
 	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/snapshots"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
@@ -98,7 +99,15 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 		filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
 		filters = append(filters, fmt.Sprintf("name==%s", args[0]))
 	}
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}

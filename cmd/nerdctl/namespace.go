@@ -24,6 +24,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -62,7 +63,15 @@ func newNamespaceLsCommand() *cobra.Command {
 }
 
 func namespaceLsAction(cmd *cobra.Command, args []string) error {
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}
@@ -83,8 +92,11 @@ func namespaceLsAction(cmd *cobra.Command, args []string) error {
 		}
 		return nil
 	}
-
-	dataStore, err := getDataStore(cmd)
+	dataRoot, err := cmd.Flags().GetString("data-root")
+	if err != nil {
+		return err
+	}
+	dataStore, err := clientutil.DataStore(dataRoot, address)
 	if err != nil {
 		return err
 	}

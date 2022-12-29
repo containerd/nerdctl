@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -194,10 +195,17 @@ func buildAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if len(tags) > 1 {
 		logrus.Debug("Found more than 1 tag")
-		client, ctx, cancel, err := newClient(cmd)
 		if err != nil {
 			return fmt.Errorf("unable to tag images: %s", err)
 		}
@@ -241,8 +249,16 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 	if err != nil {
 		return "", nil, false, "", nil, nil, err
 	}
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return "", nil, false, "", nil, nil, err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return "", nil, false, "", nil, nil, err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if output == "" {
-		client, ctx, cancel, err := newClient(cmd)
 		if err != nil {
 			return "", nil, false, "", nil, nil, err
 		}

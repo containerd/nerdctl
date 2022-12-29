@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -65,8 +66,15 @@ func rmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}
@@ -114,8 +122,15 @@ func removeContainer(ctx context.Context, cmd *cobra.Command, container containe
 	}
 	stateDir := l[labels.StateDir]
 	name := l[labels.Name]
-
-	dataStore, err := getDataStore(cmd)
+	dataRoot, err := cmd.Flags().GetString("data-root")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	dataStore, err := clientutil.DataStore(dataRoot, address)
 	if err != nil {
 		return err
 	}

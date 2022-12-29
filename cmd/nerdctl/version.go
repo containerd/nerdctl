@@ -23,6 +23,7 @@ import (
 	"os"
 	"text/template"
 
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -102,7 +103,15 @@ func versionInfo(cmd *cobra.Command) (dockercompat.VersionInfo, error) {
 	v := dockercompat.VersionInfo{
 		Client: infoutil.ClientVersion(),
 	}
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return v, err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return v, err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return v, err
 	}

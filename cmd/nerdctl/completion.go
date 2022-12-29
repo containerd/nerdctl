@@ -21,13 +21,22 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/spf13/cobra"
 )
 
 func shellCompleteImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -46,7 +55,15 @@ func shellCompleteImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirec
 }
 
 func shellCompleteContainerNames(cmd *cobra.Command, filterFunc func(containerd.ProcessStatus) bool) ([]string, cobra.ShellCompDirective) {
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}

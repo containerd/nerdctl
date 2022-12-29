@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
@@ -162,8 +163,15 @@ func composeRunAction(cmd *cobra.Command, args []string) error {
 	if tty && detach {
 		return errors.New("currently flag -t and -d cannot be specified together (FIXME)")
 	}
-
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}

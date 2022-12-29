@@ -19,6 +19,7 @@ package main
 import (
 	"errors"
 
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
@@ -63,7 +64,15 @@ func composeCreateAction(cmd *cobra.Command, args []string) error {
 		return errors.New("flag --force-recreate and --no-recreate cannot be specified together")
 	}
 
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}
