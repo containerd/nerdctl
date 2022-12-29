@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/spf13/cobra"
 )
 
@@ -57,8 +58,12 @@ func volumeInspectAction(cmd *cobra.Command, args []string) error {
 		}
 		result[i] = vol
 	}
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
 
-	return formatSlice(cmd, result)
+	return formatter.FormatSlice(format, cmd.OutOrStdout(), result)
 }
 
 func volumeInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

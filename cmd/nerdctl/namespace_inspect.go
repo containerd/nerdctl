@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/spf13/cobra"
 )
@@ -58,5 +59,9 @@ func labelInspectAction(cmd *cobra.Command, args []string) error {
 		}
 		result[index] = nsInspect
 	}
-	return formatSlice(cmd, result)
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	return formatter.FormatSlice(format, cmd.OutOrStdout(), result)
 }

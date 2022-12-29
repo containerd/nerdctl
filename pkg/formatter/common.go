@@ -14,17 +14,17 @@
    limitations under the License.
 */
 
-package main
+package formatter
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"text/template"
 
 	"github.com/docker/cli/templates"
-	"github.com/spf13/cobra"
 )
 
 // Flusher is implemented by text/tabwriter.Writer
@@ -32,43 +32,26 @@ type Flusher interface {
 	Flush() error
 }
 
-func formatLabels(labels map[string]string) string {
-	var res string
-	for k, v := range labels {
-		s := k + "=" + v
-		if res == "" {
-			res = s
-		} else {
-			res += "," + s
-		}
-	}
-	return res
-}
-
-// formatSlice formats the slice with `--format` flag.
+// FormatSlice formats the slice with `--format` flag.
 //
 // --format="" (default): JSON
 // --format='{{json .}}': JSON lines
 //
-// formatSlice is expected to be only used for `nerdctl OBJECT inspect` commands.
-func formatSlice(cmd *cobra.Command, x []interface{}) error {
+// FormatSlice is expected to be only used for `nerdctl OBJECT inspect` commands.
+func FormatSlice(format string, writer io.Writer, x []interface{}) error {
 	var tmpl *template.Template
-	format, err := cmd.Flags().GetString("format")
-	if err != nil {
-		return err
-	}
 	switch format {
 	case "":
 		b, err := json.MarshalIndent(x, "", "    ")
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), string(b))
+		fmt.Fprintln(writer, string(b))
 	case "raw", "table", "wide":
 		return errors.New("unsupported format: \"raw\", \"table\", and \"wide\"")
 	default:
 		var err error
-		tmpl, err = parseTemplate(format)
+		tmpl, err = ParseTemplate(format)
 		if err != nil {
 			return err
 		}
@@ -82,7 +65,7 @@ func formatSlice(cmd *cobra.Command, x []interface{}) error {
 					}
 				}
 			}
-			if _, err = fmt.Fprintf(cmd.OutOrStdout(), b.String()+"\n"); err != nil {
+			if _, err = fmt.Fprintf(writer, b.String()+"\n"); err != nil {
 				return err
 			}
 		}
@@ -113,9 +96,9 @@ func tryRawFormat(b *bytes.Buffer, f interface{}, tmpl *template.Template) error
 	return nil
 }
 
-// parseTemplate wraps github.com/docker/cli/templates.Parse() to allow `json` as an alias of `{{json .}}`.
-// parseTemplate can be removed when https://github.com/docker/cli/pull/3355 gets merged and tagged (Docker 22.XX).
-func parseTemplate(format string) (*template.Template, error) {
+// ParseTemplate wraps github.com/docker/cli/templates.Parse() to allow `json` as an alias of `{{json .}}`.
+// ParseTemplate can be removed when https://github.com/docker/cli/pull/3355 gets merged and tagged (Docker 22.XX).
+func ParseTemplate(format string) (*template.Template, error) {
 	aliases := map[string]string{
 		"json": "{{json .}}",
 	}

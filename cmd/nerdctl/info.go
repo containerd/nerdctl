@@ -23,6 +23,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/containerd/nerdctl/pkg/formatter"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -67,7 +68,7 @@ func infoAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if format != "" {
-		tmpl, err = parseTemplate(format)
+		tmpl, err = formatter.ParseTemplate(format)
 		if err != nil {
 			return err
 		}

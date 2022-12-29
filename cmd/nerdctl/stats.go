@@ -134,7 +134,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 	case "raw":
 		return errors.New("unsupported format: \"raw\"")
 	default:
-		tmpl, err = parseTemplate(format)
+		tmpl, err = formatter.ParseTemplate(format)
 		if err != nil {
 			return err
 		}
@@ -348,7 +348,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
-		if f, ok := w.(Flusher); ok {
+		if f, ok := w.(formatter.Flusher); ok {
 			f.Flush()
 		}
 

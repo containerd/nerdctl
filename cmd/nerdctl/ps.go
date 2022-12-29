@@ -182,7 +182,7 @@ func printContainers(ctx context.Context, client *containerd.Client, cmd *cobra.
 			return errors.New("format and quiet must not be specified together")
 		}
 		var err error
-		tmpl, err = parseTemplate(format)
+		tmpl, err = formatter.ParseTemplate(format)
 		if err != nil {
 			return err
 		}
@@ -277,7 +277,7 @@ func printContainers(ctx context.Context, client *containerd.Client, cmd *cobra.
 		}
 
 	}
-	if f, ok := w.(Flusher); ok {
+	if f, ok := w.(formatter.Flusher); ok {
 		return f.Flush()
 	}
 	return nil
