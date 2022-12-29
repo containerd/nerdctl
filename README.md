@@ -430,6 +430,7 @@ Resource flags:
 - :whale: `--blkio-weight`: Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)
 - :whale: `--cgroupns=(host|private)`: Cgroup namespace to use
   - Default: "private" on cgroup v2 hosts, "host" on cgroup v1 hosts
+- :whale: `--cgroup-parent`: Optional parent cgroup for the container
 - :whale: `--device`: Add a host device to the container
 
 Intel RDT flags:
@@ -575,7 +576,7 @@ Verify flags:
 - :nerd_face: `--cosign-key`: Path to the public key file, KMS, URI or Kubernetes Secret for `--verify=cosign`
 
 Unimplemented `docker run` flags:
-    `--attach`, `--blkio-weight-device`, `--cgroup-parent`, `--cpu-rt-*`, `--detach-keys`, `--device-*`,
+    `--attach`, `--blkio-weight-device`, `--cpu-rt-*`, `--detach-keys`, `--device-*`,
     `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--ip6`, `--isolation`, `--no-healthcheck`,
     `--link*`, `--mac-address`, `--publish-all`, `--sig-proxy`, `--storage-opt`,
     `--userns`, `--volume-driver`, `--volumes-from`

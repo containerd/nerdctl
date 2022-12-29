@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/containerd/cgroups"
@@ -261,7 +262,6 @@ func TestParseDevice(t *testing.T) {
 			assert.ErrorContains(t, err, tc.err)
 		}
 	}
-
 }
 
 func TestRunCgroupConf(t *testing.T) {
@@ -281,6 +281,51 @@ func TestRunCgroupConf(t *testing.T) {
 	}
 	base.Cmd("run", "--rm", "--cgroup-conf", "memory.high=33554432", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
 		"cat", "memory.high").AssertOutExactly("33554432\n")
+}
+
+func TestRunCgroupParent(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	info := base.Info()
+	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", containerName).Run()
+
+	switch info.CgroupDriver {
+	case "none", "":
+		t.Skip("test requires cgroup driver")
+	}
+
+	t.Logf("Using %q cgroup driver", info.CgroupDriver)
+
+	parent := "/foobarbaz"
+	if info.CgroupDriver == "systemd" {
+		// Path separators aren't allowed in systemd path. runc
+		// explicitly checks for this.
+		// https://github.com/opencontainers/runc/blob/016a0d29d1750180b2a619fc70d6fe0d80111be0/libcontainer/cgroups/systemd/common.go#L65-L68
+		parent = "foobarbaz.slice"
+	}
+
+	// cgroup2 without host cgroup ns will just output 0::/ which doesn't help much to verify
+	// we got our expected path. This approach should work for both cgroup1 and 2, there will
+	// just be many more entries for cgroup1 as there'll be an entry per controller.
+	base.Cmd(
+		"run",
+		"-d",
+		"--name",
+		containerName,
+		"--cgroupns=host",
+		"--cgroup-parent", parent,
+		testutil.AlpineImage,
+		"sleep",
+		"infinity",
+	).AssertOK()
+
+	id := base.InspectContainer(containerName).ID
+	expected := filepath.Join(parent, id)
+	if info.CgroupDriver == "systemd" {
+		expected = filepath.Join(parent, fmt.Sprintf("nerdctl-%s", id))
+	}
+	base.Cmd("exec", containerName, "cat", "/proc/self/cgroup").AssertOutContains(expected)
 }
 
 func TestRunBlkioWeightCgroupV2(t *testing.T) {
