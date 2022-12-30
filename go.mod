@@ -31,7 +31,7 @@ require (
 	github.com/fluent/fluent-logger-golang v1.9.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ipfs/go-cid v0.3.2
-	github.com/mattn/go-isatty v0.0.16
+	github.com/mattn/go-isatty v0.0.17
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/moby/buildkit v0.10.6
 	github.com/moby/sys/mount v0.3.3
