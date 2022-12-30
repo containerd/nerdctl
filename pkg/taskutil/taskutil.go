@@ -42,9 +42,9 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 	if flagA {
 		logrus.Debug("attaching output instead of using the log-uri")
 		if flagT {
-			ioCreator = cio.NewCreator(cio.WithStreams(os.Stdin, os.Stdout, os.Stderr), cio.WithTerminal)
+			ioCreator = cio.NewCreator(cio.WithStreams(con, con, nil), cio.WithTerminal)
 		} else {
-			ioCreator = cio.NewCreator(cio.WithStreams(os.Stdin, os.Stdout, os.Stderr))
+			ioCreator = cio.NewCreator(cio.WithStdio)
 		}
 
 	} else if flagT && flagD {
