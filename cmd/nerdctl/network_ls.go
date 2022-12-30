@@ -23,6 +23,7 @@ import (
 	"text/tabwriter"
 	"text/template"
 
+	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/netutil"
 
 	"github.com/spf13/cobra"
@@ -79,7 +80,7 @@ func networkLsAction(cmd *cobra.Command, args []string) error {
 			return errors.New("format and quiet must not be specified together")
 		}
 		var err error
-		tmpl, err = parseTemplate(format)
+		tmpl, err = formatter.ParseTemplate(format)
 		if err != nil {
 			return err
 		}
@@ -114,7 +115,7 @@ func networkLsAction(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if n.NerdctlLabels != nil {
-			p.Labels = formatLabels(*n.NerdctlLabels)
+			p.Labels = formatter.FormatLabels(*n.NerdctlLabels)
 		}
 		pp[i] = p
 	}
@@ -146,7 +147,7 @@ func networkLsAction(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(w, "%s\t%s\t%s\n", p.ID, p.Name, p.file)
 		}
 	}
-	if f, ok := w.(Flusher); ok {
+	if f, ok := w.(formatter.Flusher); ok {
 		return f.Flush()
 	}
 	return nil

@@ -23,6 +23,7 @@ import (
 	"os"
 	"text/template"
 
+	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/spf13/cobra"
@@ -54,7 +55,7 @@ func versionAction(cmd *cobra.Command, args []string) error {
 	}
 	if format != "" {
 		var err error
-		tmpl, err = parseTemplate(format)
+		tmpl, err = formatter.ParseTemplate(format)
 		if err != nil {
 			return err
 		}

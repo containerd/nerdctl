@@ -267,7 +267,7 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 			return errors.New("format and quiet must not be specified together")
 		}
 		var err error
-		tmpl, err = parseTemplate(format)
+		tmpl, err = formatter.ParseTemplate(format)
 		if err != nil {
 			return err
 		}
@@ -295,7 +295,7 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 			logrus.Warn(err)
 		}
 	}
-	if f, ok := w.(Flusher); ok {
+	if f, ok := w.(formatter.Flusher); ok {
 		return f.Flush()
 	}
 	return nil

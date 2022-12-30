@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/containerinspector"
+	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 
@@ -81,8 +82,11 @@ func containerInspectAction(cmd *cobra.Command, args []string) error {
 	if len(errs) > 0 {
 		return fmt.Errorf("%d errors: %v", len(errs), errs)
 	}
-
-	return formatSlice(cmd, f.entries)
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	return formatter.FormatSlice(format, cmd.OutOrStdout(), f.entries)
 }
 
 type containerInspector struct {

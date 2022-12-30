@@ -23,6 +23,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/imageinspector"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -128,8 +129,11 @@ func imageInspectActionWithPlatform(cmd *cobra.Command, args []string, platform 
 	if len(errs) > 0 {
 		return fmt.Errorf("%d errors: %v", len(errs), errs)
 	}
-
-	return formatSlice(cmd, f.entries)
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	return formatter.FormatSlice(format, cmd.OutOrStdout(), f.entries)
 }
 
 type imageInspector struct {
