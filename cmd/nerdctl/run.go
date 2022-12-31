@@ -31,6 +31,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/compose-spec/compose-go/types"
+	"github.com/containerd/nerdctl/pkg/netutil"
+
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -47,7 +50,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/namestore"
-	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
@@ -63,7 +65,7 @@ const (
 	tiniInitBinary = "tini"
 )
 
-func newRunCommand() *cobra.Command {
+func newRunCommand(cfg *types.ServiceConfig) *cobra.Command {
 	shortHelp := "Run a command in a new container. Optionally specify \"ipfs://\" or \"ipns://\" scheme to pull image from IPFS."
 	longHelp := shortHelp
 	switch runtime.GOOS {
@@ -86,14 +88,14 @@ func newRunCommand() *cobra.Command {
 	}
 
 	runCommand.Flags().SetInterspersed(false)
-	setCreateFlags(runCommand)
+	setCreateFlags(runCommand, cfg)
 
 	runCommand.Flags().BoolP("detach", "d", false, "Run container in background and print container ID")
 
 	return runCommand
 }
 
-func setCreateFlags(cmd *cobra.Command) {
+func setCreateFlags(cmd *cobra.Command, cfg *types.ServiceConfig) {
 
 	// No "-h" alias for "--help", because "-h" for "--hostname".
 	cmd.Flags().Bool("help", false, "show help")
@@ -118,7 +120,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	// #endregion
 
 	// #region platform flags
-	cmd.Flags().String("platform", "", "Set platform (e.g. \"amd64\", \"arm64\")") // not a slice, and there is no --all-platforms
+	cmd.Flags().String("platform", cfg.Platform, "Set platform (e.g. \"amd64\", \"arm64\")") // not a slice, and there is no --all-platforms
 	cmd.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 	// #endregion
 

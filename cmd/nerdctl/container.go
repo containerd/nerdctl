@@ -17,10 +17,11 @@
 package main
 
 import (
+	"github.com/compose-spec/compose-go/types"
 	"github.com/spf13/cobra"
 )
 
-func newContainerCommand() *cobra.Command {
+func newContainerCommand(cfg *types.ServiceConfig) *cobra.Command {
 	containerCommand := &cobra.Command{
 		Annotations:   map[string]string{Category: Management},
 		Use:           "container",
@@ -29,9 +30,10 @@ func newContainerCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+
 	containerCommand.AddCommand(
-		newCreateCommand(),
-		newRunCommand(),
+		newCreateCommand(cfg),
+		newRunCommand(cfg),
 		newUpdateCommand(),
 		newExecCommand(),
 		containerLsCommand(),

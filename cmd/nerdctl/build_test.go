@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
@@ -419,4 +420,54 @@ CMD ["echo", "nerdctl-build-notag-string"]
 	base.Cmd("build", buildCtx).AssertOK()
 	base.Cmd("images").AssertOutContains("<none>")
 	base.Cmd("image", "prune", "--force", "--all").AssertOK()
+}
+
+func TestBuildWithConfigFile(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").AssertOK()
+
+	tomlPath := ncdefaults.NerdctlTOML()
+	err := os.MkdirAll(filepath.Dir(tomlPath), 0755)
+	assert.NilError(t, err)
+	defer func(path string) {
+		_ = os.Remove(path)
+	}(tomlPath)
+
+	err = os.WriteFile(tomlPath, []byte(`
+namespace = "normal"
+[default_config]
+
+[default_config.normal]
+build = {Platforms=["linux/amd64", "linux/arm64"]}
+`), 0755)
+	assert.NilError(t, err)
+
+	if len(base.Env) == 0 {
+		base.Env = os.Environ()
+	}
+	base.Env = append(base.Env, "NERDCTL_TOML="+tomlPath)
+
+	imageName := testutil.Identifier(t)
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "dummy"]
+	`, testutil.CommonImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	testCases := map[string]string{
+		"amd64": "x86_64",
+		"arm64": "aarch64",
+	}
+	for plat, expectedUnameM := range testCases {
+		t.Logf("Testing %q (%q)", plat, expectedUnameM)
+		cmd := base.Cmd("run", "--rm", "--platform="+plat, imageName, "uname", "-m")
+		cmd.AssertOutExactly(expectedUnameM + "\n")
+	}
 }

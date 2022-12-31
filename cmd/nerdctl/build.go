@@ -28,6 +28,7 @@ import (
 
 	"path/filepath"
 
+	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd/errdefs"
 	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
@@ -39,7 +40,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newBuildCommand() *cobra.Command {
+func newBuildCommand(cfg *types.BuildConfig) *cobra.Command {
 	var buildCommand = &cobra.Command{
 		Use:   "build [flags] PATH",
 		Short: "Build an image from a Dockerfile. Needs buildkitd to be running.",
@@ -66,7 +67,7 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
-	buildCommand.Flags().StringSlice("platform", []string{}, "Set target platform for build (e.g., \"amd64\", \"arm64\")")
+	buildCommand.Flags().StringSlice("platform", cfg.Platforms, "Set target platform for build (e.g., \"amd64\", \"arm64\")")
 	buildCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
 	// #endregion
 

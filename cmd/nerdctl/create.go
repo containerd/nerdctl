@@ -20,10 +20,11 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/compose-spec/compose-go/types"
 	"github.com/spf13/cobra"
 )
 
-func newCreateCommand() *cobra.Command {
+func newCreateCommand(cfg *types.ServiceConfig) *cobra.Command {
 	shortHelp := "Create a new container. Optionally specify \"ipfs://\" or \"ipns://\" scheme to pull image from IPFS."
 	longHelp := shortHelp
 	switch runtime.GOOS {
@@ -45,7 +46,7 @@ func newCreateCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 	createCommand.Flags().SetInterspersed(false)
-	setCreateFlags(createCommand)
+	setCreateFlags(createCommand, cfg)
 	return createCommand
 }
 
