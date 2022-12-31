@@ -119,6 +119,10 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
+		if f.Dangling != nil {
+			imageList = filterDangling(imageList, *f.Dangling)
+		}
+
 		imageList, err = filterByLabel(ctx, client, imageList, f.Labels)
 		if err != nil {
 			return err
@@ -180,6 +184,21 @@ func filterByReference(imageList []images.Image, filters []string) ([]images.Ima
 		}
 	}
 	return filteredImageList, nil
+}
+
+func filterDangling(imageList []images.Image, dangling bool) []images.Image {
+	var filtered []images.Image
+	for _, image := range imageList {
+		_, tag := imgutil.ParseRepoTag(image.Name)
+
+		if dangling && tag == "" {
+			filtered = append(filtered, image)
+		}
+		if !dangling && tag != "" {
+			filtered = append(filtered, image)
+		}
+	}
+	return filtered
 }
 
 func filterByLabel(ctx context.Context, client *containerd.Client, imageList []images.Image, filters map[string]string) ([]images.Image, error) {

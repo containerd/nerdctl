@@ -56,6 +56,7 @@ var (
 	FilterSinceType     = "since"
 	FilterLabelType     = "label"
 	FilterReferenceType = "reference"
+	FilterDanglingType  = "dangling"
 )
 
 // PullMode is either one of "always", "missing", "never"
@@ -369,7 +370,7 @@ func ParseRepoTag(imgName string) (string, string) {
 
 	ref, err := refdocker.ParseDockerRef(imgName)
 	if err != nil {
-		logrus.WithError(err).Warnf("unparsable image name %q", imgName)
+		logrus.WithError(err).Debugf("unparsable image name %q", imgName)
 		return "", ""
 	}
 
@@ -388,6 +389,7 @@ type Filters struct {
 	Since     []string
 	Labels    map[string]string
 	Reference []string
+	Dangling  *bool
 }
 
 func ParseFilters(filters []string) (*Filters, error) {
@@ -398,7 +400,17 @@ func ParseFilters(filters []string) (*Filters, error) {
 		case 1:
 			return nil, fmt.Errorf("invalid filter %q", filter)
 		case 2:
-			if tempFilterToken[0] == FilterBeforeType {
+			if tempFilterToken[0] == FilterDanglingType {
+				var isDangling bool
+				if tempFilterToken[1] == "true" {
+					isDangling = true
+				} else if tempFilterToken[1] == "false" {
+					isDangling = false
+				} else {
+					return nil, fmt.Errorf("invalid filter %q", filter)
+				}
+				f.Dangling = &isDangling
+			} else if tempFilterToken[0] == FilterBeforeType {
 				canonicalRef, err := referenceutil.ParseAny(tempFilterToken[1])
 				if err != nil {
 					return nil, err
