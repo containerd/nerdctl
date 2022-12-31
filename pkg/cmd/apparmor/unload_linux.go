@@ -14,28 +14,15 @@
    limitations under the License.
 */
 
-package main
+package apparmor
 
 import (
-	"fmt"
-
-	"github.com/containerd/nerdctl/pkg/cmd/apparmor"
-	"github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/spf13/cobra"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/apparmorutil"
+	"github.com/sirupsen/logrus"
 )
 
-func newApparmorLoadCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:           "load",
-		Short:         fmt.Sprintf("Load the default AppArmor profile %q. Requires root.", defaults.AppArmorProfileName),
-		Args:          cobra.NoArgs,
-		RunE:          apparmorLoadAction,
-		SilenceUsage:  true,
-		SilenceErrors: true,
-	}
-	return cmd
-}
-
-func apparmorLoadAction(cmd *cobra.Command, args []string) error {
-	return apparmor.Load()
+func Unload(options *types.UnloadCommandOptions) error {
+	logrus.Infof("Unloading profile %q", options.Target)
+	return apparmorutil.Unload(options.Target)
 }

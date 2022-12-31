@@ -19,9 +19,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/containerd/nerdctl/pkg/apparmorutil"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/apparmor"
 	"github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -43,8 +43,9 @@ func apparmorUnloadAction(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		target = args[0]
 	}
-	logrus.Infof("Unloading profile %q", target)
-	return apparmorutil.Unload(target)
+	options := &types.UnloadCommandOptions{}
+	options.Target = target
+	return apparmor.Unload(options)
 }
 
 func apparmorUnloadShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

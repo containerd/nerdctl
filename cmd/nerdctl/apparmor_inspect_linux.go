@@ -19,7 +19,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/containerd/containerd/contrib/apparmor"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/apparmor"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/spf13/cobra"
 )
@@ -37,10 +38,7 @@ func newApparmorInspectCommand() *cobra.Command {
 }
 
 func apparmorInspectAction(cmd *cobra.Command, args []string) error {
-	b, err := apparmor.DumpDefaultProfile(defaults.AppArmorProfileName)
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprint(cmd.OutOrStdout(), b)
-	return err
+	options := &types.InspectCommandOptions{}
+	options.Writer = cmd.OutOrStdout()
+	return apparmor.Inspect(options)
 }
