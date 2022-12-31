@@ -116,3 +116,22 @@ LABEL version=0.1`, testutil.CommonImage)
 	base.Cmd("images", "--filter", "reference=busy*:*libc*").AssertOutContains("glibc")
 	base.Cmd("images", "--filter", "reference=busy*:*libc*").AssertOutContains("uclibc")
 }
+
+func TestImagesFilterDangling(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	base.Cmd("images", "prune", "--all").AssertOK()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-notag-string"]
+	`, testutil.CommonImage)
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+
+	defer os.RemoveAll(buildCtx)
+	base.Cmd("build", "-f", buildCtx+"/Dockerfile", buildCtx).AssertOK()
+
+	// dangling image test
+	base.Cmd("images", "--filter", "dangling=true").AssertOutContains("<none>")
+	base.Cmd("images", "--filter", "dangling=false").AssertOutNotContains("<none>")
+}
