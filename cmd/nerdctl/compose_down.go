@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
@@ -40,12 +41,20 @@ func composeDownAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	removeOrphans, err := cmd.Flags().GetBool("remove-orphans")
+	namespace, err := cmd.Flags().GetString("namespace")
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := newClient(cmd)
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	if err != nil {
+		return err
+	}
+
+	removeOrphans, err := cmd.Flags().GetBool("remove-orphans")
 	if err != nil {
 		return err
 	}

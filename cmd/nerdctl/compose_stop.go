@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
@@ -43,8 +44,15 @@ func composeStopAction(cmd *cobra.Command, args []string) error {
 		}
 		opt.Timeout = &timeValue
 	}
-
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}

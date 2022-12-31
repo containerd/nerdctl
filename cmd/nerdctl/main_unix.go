@@ -19,6 +19,7 @@
 package main
 
 import (
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/sirupsen/logrus"
@@ -30,8 +31,15 @@ func shellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete s
 		_ = rootlessutil.ParentMain()
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -52,7 +60,15 @@ func shellCompleteSnapshotterNames(cmd *cobra.Command, args []string, toComplete
 		_ = rootlessutil.ParentMain()
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}

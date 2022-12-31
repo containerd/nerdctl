@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 
@@ -69,8 +70,15 @@ func portAction(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to parse %q", portProto)
 		}
 	}
-
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}

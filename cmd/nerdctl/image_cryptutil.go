@@ -25,6 +25,7 @@ import (
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/imgcrypt/images/encryption"
 	"github.com/containerd/imgcrypt/images/encryption/parsehelpers"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -135,8 +136,15 @@ func getImgcryptAction(encrypt bool) func(cmd *cobra.Command, args []string) err
 		if err != nil {
 			return err
 		}
-
-		client, ctx, cancel, err := newClient(cmd)
+		namespace, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			return err
+		}
+		address, err := cmd.Flags().GetString("address")
+		if err != nil {
+			return err
+		}
+		client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 		if err != nil {
 			return err
 		}

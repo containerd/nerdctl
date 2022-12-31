@@ -25,6 +25,7 @@ import (
 	"syscall"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
@@ -51,7 +52,15 @@ func newLogsCommand() *cobra.Command {
 }
 
 func logsAction(cmd *cobra.Command, args []string) error {
-	dataStore, err := getDataStore(cmd)
+	dataRoot, err := cmd.Flags().GetString("data-root")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	dataStore, err := clientutil.DataStore(dataRoot, address)
 	if err != nil {
 		return err
 	}
@@ -64,8 +73,11 @@ func logsAction(cmd *cobra.Command, args []string) error {
 	case "moby", "k8s.io":
 		logrus.Warn("Currently, `nerdctl logs` only supports containers created with `nerdctl run -d`")
 	}
-
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}

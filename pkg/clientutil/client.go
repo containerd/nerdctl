@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package clientutil
 
 import (
 	"context"
@@ -24,28 +24,19 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/systemutil"
 	"github.com/opencontainers/go-digest"
+	"github.com/sirupsen/logrus"
 )
 
-func newClient(cmd *cobra.Command, opts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
-	ctx := cmd.Context()
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return nil, nil, nil, err
-	}
+func NewClient(ctx context.Context, namespace, address string, opts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
+
 	ctx = namespaces.WithNamespace(ctx, namespace)
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return nil, nil, nil, err
-	}
+
 	address = strings.TrimPrefix(address, "unix://")
 	const dockerContainerdaddress = "/var/run/docker/containerd/containerd.sock"
 	if err := systemutil.IsSocketAccessible(address); err != nil {
@@ -65,7 +56,7 @@ func newClient(cmd *cobra.Command, opts ...containerd.ClientOpt) (*containerd.Cl
 	return client, ctx, cancel, nil
 }
 
-func newClientWithPlatform(cmd *cobra.Command, platform string, clientOpts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
+func NewClientWithPlatform(ctx context.Context, namespace, address, platform string, clientOpts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
 	if platform != "" {
 		if canExec, canExecErr := platformutil.CanExecProbably(platform); !canExec {
 			warn := fmt.Sprintf("Platform %q seems incompatible with the host platform %q. If you see \"exec format error\", see https://github.com/containerd/nerdctl/blob/main/docs/multi-platform.md",
@@ -83,22 +74,14 @@ func newClientWithPlatform(cmd *cobra.Command, platform string, clientOpts ...co
 		platformM := platforms.Only(platformParsed)
 		clientOpts = append(clientOpts, containerd.WithDefaultPlatform(platformM))
 	}
-	return newClient(cmd, clientOpts...)
+	return NewClient(ctx, namespace, address, clientOpts...)
 }
 
-// getDataStore returns a string like "/var/lib/nerdctl/1935db59".
+// DataStore returns a string like "/var/lib/nerdctl/1935db59".
 // "1935db9" is from `$(echo -n "/run/containerd/containerd.sock" | sha256sum | cut -c1-8)`
 // on Windows it will return "%PROGRAMFILES%/nerdctl/1935db59"
-func getDataStore(cmd *cobra.Command) (string, error) {
-	dataRoot, err := cmd.Flags().GetString("data-root")
-	if err != nil {
-		return "", err
-	}
+func DataStore(dataRoot, address string) (string, error) {
 	if err := os.MkdirAll(dataRoot, 0700); err != nil {
-		return "", err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
 		return "", err
 	}
 	addrHash, err := getAddrHash(address)

@@ -21,6 +21,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +41,15 @@ func newNamespaceRmCommand() *cobra.Command {
 
 func namespaceRmAction(cmd *cobra.Command, args []string) error {
 	var exitErr error
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}

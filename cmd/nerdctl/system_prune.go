@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	buildkitclient "github.com/moby/buildkit/client"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -84,8 +85,15 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 	}
-
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}

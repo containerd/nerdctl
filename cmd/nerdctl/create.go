@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/spf13/cobra"
 )
 
@@ -63,8 +64,15 @@ func createAction(cmd *cobra.Command, args []string) error {
 	if (platform == "windows" || platform == "freebsd") && !experimental {
 		return fmt.Errorf("%s requires experimental mode to be enabled", platform)
 	}
-
-	client, ctx, cancel, err := newClientWithPlatform(cmd, platform)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClientWithPlatform(cmd.Context(), namespace, address, platform)
 	if err != nil {
 		return err
 	}

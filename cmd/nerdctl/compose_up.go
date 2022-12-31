@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
@@ -98,8 +99,16 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		}
 		scale[parts[0]] = uint64(replicas)
 	}
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
 
-	client, ctx, cancel, err := newClient(cmd)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}

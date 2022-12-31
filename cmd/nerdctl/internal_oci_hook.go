@@ -20,6 +20,7 @@ import (
 	"errors"
 	"os"
 
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/ocihook"
 
 	"github.com/spf13/cobra"
@@ -41,10 +42,18 @@ func internalOCIHookAction(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		event = args[0]
 	}
+	dataRoot, err := cmd.Flags().GetString("data-root")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
 	if event == "" {
 		return errors.New("event type needs to be passed")
 	}
-	dataStore, err := getDataStore(cmd)
+	dataStore, err := clientutil.DataStore(dataRoot, address)
 	if err != nil {
 		return err
 	}

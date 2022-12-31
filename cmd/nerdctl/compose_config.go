@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
@@ -62,8 +63,16 @@ func composeConfigAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
 
-	client, ctx, cancel, err := newClient(cmd)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}

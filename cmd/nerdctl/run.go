@@ -39,6 +39,7 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
@@ -280,7 +281,15 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := newClientWithPlatform(cmd, platform)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClientWithPlatform(cmd.Context(), namespace, address, platform)
 	if err != nil {
 		return err
 	}
@@ -418,8 +427,15 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 			return nil, nil, err
 		}
 	}
-
-	dataStore, err := getDataStore(cmd)
+	dataRoot, err := cmd.Flags().GetString("data-root")
+	if err != nil {
+		return nil, nil, err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return nil, nil, err
+	}
+	dataStore, err := clientutil.DataStore(dataRoot, address)
 	if err != nil {
 		return nil, nil, err
 	}

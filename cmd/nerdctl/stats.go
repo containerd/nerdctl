@@ -31,6 +31,7 @@ import (
 	eventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/containerinspector"
 	"github.com/containerd/nerdctl/pkg/eventutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
@@ -148,8 +149,15 @@ func statsAction(cmd *cobra.Command, args []string) error {
 	// waitFirst is a WaitGroup to wait first stat data's reach for each container
 	waitFirst := &sync.WaitGroup{}
 	cStats := stats{}
-
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return err
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		return err
 	}
@@ -389,8 +397,15 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 			waitFirst.Done()
 		}
 	}()
-
-	client, ctx, cancel, err := newClient(cmd)
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return
+	}
+	address, err := cmd.Flags().GetString("address")
+	if err != nil {
+		return
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
 		s.SetError(err)
 		return
