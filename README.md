@@ -36,7 +36,7 @@ To run a container with the default `bridge` CNI network (10.4.0.0/24):
 
 To build an image using BuildKit:
 ```console
-# nerdctl build -t foo /some-dockerfile-directory
+# nerdctl build <path_to_folder> [flags]
 # nerdctl run -it --rm foo
 ```
 
@@ -801,7 +801,7 @@ Build an image from a Dockerfile.
 
 :information_source: Needs buildkitd to be running. See also [the document about setting up `nerdctl build` with BuildKit](./docs/build.md).
 
-Usage: `nerdctl build [OPTIONS] PATH`
+Usage: `nerdctl build <path_to_folder> [flags]`
 
 Flags:
 - :nerd_face: `--buildkit-host=<BUILDKIT_HOST>`: BuildKit address
@@ -1730,3 +1730,4 @@ Implementation details:
 
 Misc:
 - [`./docs/faq.md`](./docs/faq.md): FAQs and Troubleshooting
+
