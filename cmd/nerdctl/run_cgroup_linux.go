@@ -86,28 +86,35 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	parent, err := cmd.Flags().GetString("cgroup-parent")
+	if err != nil {
+		return nil, err
+	}
+
 	if cgroupManager == "none" {
 		if !rootlessutil.IsRootless() {
-			return nil, errors.New("cgroup-manager \"none\" is only supported for rootless")
+			return nil, errors.New(`cgroup-manager "none" is only supported for rootless`)
 		}
 
 		if cpus > 0.0 || memStr != "" || memSwap != "" || pidsLimit > 0 {
-			logrus.Warn("cgroup manager is set to \"none\", discarding resource limit requests. " +
+			logrus.Warn(`cgroup manager is set to "none", discarding resource limit requests. ` +
 				"(Hint: enable cgroup v2 with systemd: https://rootlesscontaine.rs/getting-started/common/cgroup2/)")
+		}
+		if parent != "" {
+			logrus.Warnf(`cgroup manager is set to "none", ignoring cgroup parent %q`+
+				"(Hint: enable cgroup v2 with systemd: https://rootlesscontaine.rs/getting-started/common/cgroup2/)", parent)
 		}
 		return []oci.SpecOpts{oci.WithCgroup("")}, nil
 	}
 
 	var opts []oci.SpecOpts // nolint: prealloc
-
-	if cgroupManager == "systemd" {
-		slice := "system.slice"
-		if rootlessutil.IsRootlessChild() {
-			slice = "user.slice"
-		}
-		//  "slice:prefix:name"
-		cg := slice + ":nerdctl:" + id
-		opts = append(opts, oci.WithCgroup(cg))
+	path, err := generateCgroupPath(cmd, cgroupManager, parent, id)
+	if err != nil {
+		return nil, err
+	}
+	if path != "" {
+		opts = append(opts, oci.WithCgroup(path))
 	}
 
 	// cpus: from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/run/run_unix.go#L187-L193
@@ -155,6 +162,7 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	if cpusetMems != "" {
 		opts = append(opts, oci.WithCPUsMems(cpusetMems))
 	}
+
 	var mem64 int64
 	if memStr != "" {
 		mem64, err = units.RAMInBytes(memStr)
@@ -162,8 +170,8 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 			return nil, fmt.Errorf("failed to parse memory bytes %q: %w", memStr, err)
 		}
 		opts = append(opts, oci.WithMemoryLimit(uint64(mem64)))
-
 	}
+
 	var memReserve64 int64
 	if memReserve != "" {
 		memReserve64, err = units.RAMInBytes(memReserve)
@@ -278,6 +286,44 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 		opts = append(opts, oci.WithLinuxDevice(devPath, mode))
 	}
 	return opts, nil
+}
+
+func generateCgroupPath(cmd *cobra.Command, cgroupManager, parent, id string) (string, error) {
+	var (
+		path         string
+		usingSystemd = cgroupManager == "systemd"
+		slice        = "system.slice"
+		scopePrefix  = ":nerdctl:"
+	)
+	if rootlessutil.IsRootlessChild() {
+		slice = "user.slice"
+	}
+
+	if parent == "" {
+		if usingSystemd {
+			// "slice:prefix:name"
+			path = slice + scopePrefix + id
+		}
+		// Nothing to do for the non-systemd case if a parent wasn't supplied,
+		// containerd already sets a default cgroup path as /<namespace>/<containerID>
+		return path, nil
+	}
+
+	// If the user asked for a cgroup parent and we're using systemd,
+	// Docker uses the following:
+	// parent + prefix (in our case, nerdctl) + containerID.
+	//
+	// In the non systemd case, it's just /parent/containerID
+	if usingSystemd {
+		if len(parent) <= 6 || !strings.HasSuffix(parent, ".slice") {
+			return "", errors.New(`cgroup-parent for systemd cgroup should be a valid slice named as "xxx.slice"`)
+		}
+		path = parent + scopePrefix + id
+	} else {
+		path = filepath.Join(parent, id)
+	}
+
+	return path, nil
 }
 
 func parseDevice(s string) (hostDevPath string, mode string, err error) {

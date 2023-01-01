@@ -169,6 +169,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSlice("cgroup-conf", nil, "Configure cgroup v2 (key=value)")
 	cmd.Flags().Uint16("blkio-weight", 0, "Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)")
 	cmd.Flags().String("cgroupns", defaults.CgroupnsMode(), `Cgroup namespace to use, the default depends on the cgroup version ("host"|"private")`)
+	cmd.Flags().String("cgroup-parent", "", "Optional parent cgroup for the container")
 	cmd.RegisterFlagCompletionFunc("cgroupns", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"host", "private"}, cobra.ShellCompDirectiveNoFileComp
 	})
