@@ -187,7 +187,7 @@ func TestRunDevice(t *testing.T) {
 
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", containerName).Run()
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
 	// lo0 is readable but not writable.
 	// lo1 is readable and writable
 	// lo2 is not accessible.
@@ -343,7 +343,7 @@ func TestRunBlkioWeightCgroupV2(t *testing.T) {
 		t.Skip("test requires cgroup driver")
 	}
 	containerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", containerName).Run()
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
 	// when bfq io scheduler is used, the io.weight knob is exposed as io.bfq.weight
 	base.Cmd("run", "--name", containerName, "--blkio-weight", "300", "-w", "/sys/fs/cgroup", testutil.AlpineImage, "sleep", "infinity").AssertOK()
 	base.Cmd("exec", containerName, "cat", "io.bfq.weight").AssertOutExactly("default 300\n")

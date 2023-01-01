@@ -50,7 +50,7 @@ func TestRunVolume(t *testing.T) {
 	}
 
 	containerName := tID
-	defer base.Cmd("rm", "-f", containerName).Run()
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
 	base.Cmd("run",
 		"-d",
 		"--name", containerName,
@@ -302,7 +302,7 @@ func TestRunBindMountBind(t *testing.T) {
 	}
 
 	containerName := tID
-	defer base.Cmd("rm", "-f", containerName).Run()
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
 	base.Cmd("run",
 		"-d",
 		"--name", containerName,
