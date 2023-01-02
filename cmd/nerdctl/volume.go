@@ -17,7 +17,7 @@
 package main
 
 import (
-	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/cmd/volume"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/spf13/cobra"
 )
@@ -56,9 +56,5 @@ func getVolumeStore(cmd *cobra.Command) (volumestore.VolumeStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	dataStore, err := clientutil.DataStore(dataRoot, address)
-	if err != nil {
-		return nil, err
-	}
-	return volumestore.New(dataStore, ns)
+	return volume.Store(ns, dataRoot, address)
 }
