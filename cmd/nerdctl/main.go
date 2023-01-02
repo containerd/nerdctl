@@ -25,9 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/defaults"
-	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/nerdctl/pkg/config"
 	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
@@ -134,44 +132,8 @@ func xmain() error {
 	return app.Execute()
 }
 
-// Config corresponds to nerdctl.toml .
-// See docs/config.md .
-type Config struct {
-	Debug            bool     `toml:"debug"`
-	DebugFull        bool     `toml:"debug_full"`
-	Address          string   `toml:"address"`
-	Namespace        string   `toml:"namespace"`
-	Snapshotter      string   `toml:"snapshotter"`
-	CNIPath          string   `toml:"cni_path"`
-	CNINetConfPath   string   `toml:"cni_netconfpath"`
-	DataRoot         string   `toml:"data_root"`
-	CgroupManager    string   `toml:"cgroup_manager"`
-	InsecureRegistry bool     `toml:"insecure_registry"`
-	HostsDir         []string `toml:"hosts_dir"`
-	Experimental     bool     `toml:"experimental"`
-}
-
-// NewConfig creates a default Config object statically,
-// without interpolating CLI flags, env vars, and toml.
-func NewConfig() *Config {
-	return &Config{
-		Debug:            false,
-		DebugFull:        false,
-		Address:          defaults.DefaultAddress,
-		Namespace:        namespaces.Default,
-		Snapshotter:      containerd.DefaultSnapshotter,
-		CNIPath:          ncdefaults.CNIPath(),
-		CNINetConfPath:   ncdefaults.CNINetConfPath(),
-		DataRoot:         ncdefaults.DataRoot(),
-		CgroupManager:    ncdefaults.CgroupManager(),
-		InsecureRegistry: false,
-		HostsDir:         ncdefaults.HostsDirs(),
-		Experimental:     true,
-	}
-}
-
 func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, error) {
-	cfg := NewConfig()
+	cfg := config.New()
 	if r, err := os.Open(tomlPath); err == nil {
 		logrus.Debugf("Loading config from %q", tomlPath)
 		defer r.Close()
