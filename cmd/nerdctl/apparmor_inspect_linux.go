@@ -38,7 +38,7 @@ func newApparmorInspectCommand() *cobra.Command {
 }
 
 func apparmorInspectAction(cmd *cobra.Command, args []string) error {
-	options := &types.InspectCommandOptions{}
+	options := &types.ApparmorInspectCommandOptions{}
 	options.Writer = cmd.OutOrStdout()
 	return apparmor.Inspect(options)
 }
