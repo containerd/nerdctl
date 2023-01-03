@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/formatter"
 )
 
-func Ls(options *types.LsCommandOptions) error {
+func Ls(options *types.ApparmorLsCommandOptions) error {
 	quiet := options.Quiet
 	w := options.Writer
 	var tmpl *template.Template

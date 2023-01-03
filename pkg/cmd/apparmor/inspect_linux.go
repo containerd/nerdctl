@@ -24,7 +24,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/defaults"
 )
 
-func Inspect(options *types.InspectCommandOptions) error {
+func Inspect(options *types.ApparmorInspectCommandOptions) error {
 	b, err := apparmor.DumpDefaultProfile(defaults.AppArmorProfileName)
 	if err != nil {
 		return err

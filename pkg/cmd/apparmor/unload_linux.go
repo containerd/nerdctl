@@ -22,7 +22,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Unload(options *types.UnloadCommandOptions) error {
+func Unload(options *types.ApparmorUnloadCommandOptions) error {
 	logrus.Infof("Unloading profile %q", options.Target)
 	return apparmorutil.Unload(options.Target)
 }

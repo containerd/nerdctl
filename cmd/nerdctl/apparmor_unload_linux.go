@@ -43,7 +43,7 @@ func apparmorUnloadAction(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		target = args[0]
 	}
-	options := &types.UnloadCommandOptions{}
+	options := &types.ApparmorUnloadCommandOptions{}
 	options.Target = target
 	return apparmor.Unload(options)
 }
