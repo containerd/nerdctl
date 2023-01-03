@@ -43,6 +43,10 @@ func newSystemPruneCommand() *cobra.Command {
 }
 
 func systemPruneAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	all, err := cmd.Flags().GetBool("all")
 	if err != nil {
 		return err
@@ -85,35 +89,27 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	if err := containerPrune(ctx, cmd, client); err != nil {
+	if err := containerPrune(ctx, cmd, globalOptions, client); err != nil {
 		return err
 	}
-	if err := networkPrune(ctx, cmd, client); err != nil {
+	if err := networkPrune(ctx, cmd, client, globalOptions); err != nil {
 		return err
 	}
 	if vFlag {
-		if err := volumePrune(ctx, cmd, client); err != nil {
+		if err := volumePrune(ctx, cmd, client, globalOptions); err != nil {
 			return err
 		}
 	}
 	if err := imagePrune(ctx, cmd, client); err != nil {
 		return nil
 	}
-	prunedObjects, err := buildCachePrune(ctx, cmd, all)
+	prunedObjects, err := buildCachePrune(ctx, cmd, all, globalOptions.Namespace)
 	if err != nil {
 		return err
 	}
@@ -135,8 +131,8 @@ type cacheUsageInfo struct {
 	Size int64
 }
 
-func buildCachePrune(ctx context.Context, cmd *cobra.Command, pruneAll bool) ([]cacheUsageInfo, error) {
-	buildkitHost, err := getBuildkitHost(cmd)
+func buildCachePrune(ctx context.Context, cmd *cobra.Command, pruneAll bool, namespace string) ([]cacheUsageInfo, error) {
+	buildkitHost, err := getBuildkitHost(cmd, namespace)
 	if err != nil {
 		return nil, err
 	}

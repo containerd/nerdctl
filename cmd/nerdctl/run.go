@@ -39,6 +39,7 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/idgen"
@@ -278,19 +279,15 @@ func setCreateFlags(cmd *cobra.Command) {
 // runAction is heavily based on ctr implementation:
 // https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/run/run.go
 func runAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	platform, err := cmd.Flags().GetString("platform")
 	if err != nil {
 		return err
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClientWithPlatform(cmd.Context(), namespace, address, platform)
+	client, ctx, cancel, err := clientutil.NewClientWithPlatform(cmd.Context(), globalOptions.Namespace, globalOptions.Address, platform)
 	if err != nil {
 		return err
 	}
@@ -308,7 +305,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	container, gc, err := createContainer(ctx, cmd, client, args, platform, flagI, flagT, flagD)
+	container, gc, err := createContainer(ctx, cmd, globalOptions, client, args, platform, flagI, flagT, flagD)
 	if err != nil {
 		if gc != nil {
 			defer gc()
@@ -326,7 +323,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 			return errors.New("flag -d and --rm cannot be specified together")
 		}
 		defer func() {
-			if err := removeContainer(ctx, cmd, container, true, true); err != nil {
+			if err := removeContainer(ctx, cmd, globalOptions, container, true, true); err != nil {
 				logrus.WithError(err).Warnf("failed to remove container %s", id)
 			}
 		}()
@@ -396,7 +393,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 }
 
 // FIXME: split to smaller functions
-func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd.Client, args []string, platform string, flagI, flagT, flagD bool) (containerd.Container, func(), error) {
+func createContainer(ctx context.Context, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, client *containerd.Client, args []string, platform string, flagI, flagT, flagD bool) (containerd.Container, func(), error) {
 	// simulate the behavior of double dash
 	newArg := []string{}
 	if len(args) >= 2 && args[1] == "--" {
@@ -407,11 +404,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	var internalLabels internalLabels
 	internalLabels.platform = platform
 
-	ns, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return nil, nil, err
-	}
-	internalLabels.namespace = ns
+	internalLabels.namespace = globalOptions.Namespace
 
 	var (
 		opts  []oci.SpecOpts
@@ -428,20 +421,12 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 			return nil, nil, err
 		}
 	}
-	dataRoot, err := cmd.Flags().GetString("data-root")
-	if err != nil {
-		return nil, nil, err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return nil, nil, err
-	}
-	dataStore, err := clientutil.DataStore(dataRoot, address)
+	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	stateDir, err := getContainerStateDirPath(cmd, dataStore, id)
+	stateDir, err := getContainerStateDirPath(cmd, globalOptions, dataStore, id)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -454,13 +439,13 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		oci.WithDefaultSpec(),
 	)
 
-	platformOpts, err := setPlatformOptions(ctx, cmd, client, id, &internalLabels)
+	platformOpts, err := setPlatformOptions(ctx, cmd, globalOptions, client, id, &internalLabels)
 	if err != nil {
 		return nil, nil, err
 	}
 	opts = append(opts, platformOpts...)
 
-	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, platform, cmd, args, id)
+	rootfsOpts, rootfsCOpts, ensuredImage, err := generateRootfsOpts(ctx, client, platform, cmd, globalOptions, args, id)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -499,7 +484,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		opts = append(opts, oci.WithTTY)
 	}
 
-	mountOpts, anonVolumes, mountPoints, err := generateMountOpts(ctx, cmd, client, ensuredImage)
+	mountOpts, anonVolumes, mountPoints, err := generateMountOpts(ctx, cmd, globalOptions, client, ensuredImage)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -533,7 +518,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 			if err != nil {
 				return nil, nil, err
 			}
-			if err := logDriverInst.Init(dataStore, ns, id); err != nil {
+			if err := logDriverInst.Init(dataStore, globalOptions.Namespace, id); err != nil {
 				return nil, nil, err
 			}
 			logConfig := &logging.LogConfig{
@@ -544,7 +529,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 			if err != nil {
 				return nil, nil, err
 			}
-			logConfigFilePath := logging.LogConfigFilePath(dataStore, ns, id)
+			logConfigFilePath := logging.LogConfigFilePath(dataStore, globalOptions.Namespace, id)
 			if err = os.WriteFile(logConfigFilePath, logConfigB, 0600); err != nil {
 				return nil, nil, err
 			}
@@ -610,7 +595,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		}
 	}
 
-	netOpts, netSlice, ipAddress, ports, macAddress, err := generateNetOpts(cmd, dataStore, stateDir, ns, id)
+	netOpts, netSlice, ipAddress, ports, macAddress, err := generateNetOpts(cmd, globalOptions, dataStore, stateDir, globalOptions.Namespace, id)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -644,7 +629,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	}
 	opts = append(opts, umaskOpts...)
 
-	rtCOpts, err := generateRuntimeCOpts(cmd)
+	rtCOpts, err := generateRuntimeCOpts(cmd, globalOptions)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -670,7 +655,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		name = referenceutil.SuggestContainerName(imageRef, id)
 	}
 	if name != "" {
-		containerNameStore, err = namestore.New(dataStore, ns)
+		containerNameStore, err = namestore.New(dataStore, globalOptions.Namespace)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -722,7 +707,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 			}
 			if name != "" {
 				var errE error
-				if containerNameStore, errE = namestore.New(dataStore, ns); errE != nil {
+				if containerNameStore, errE = namestore.New(dataStore, globalOptions.Namespace); errE != nil {
 					isErr = true
 				}
 				if errE = containerNameStore.Release(name, id); errE != nil {
@@ -739,7 +724,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	return container, nil, nil
 }
 
-func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform string, cmd *cobra.Command, args []string, id string) ([]oci.SpecOpts, []containerd.NewContainerOpts, *imgutil.EnsuredImage, error) {
+func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform string, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, args []string, id string) ([]oci.SpecOpts, []containerd.NewContainerOpts, *imgutil.EnsuredImage, error) {
 	var (
 		ensured *imgutil.EnsuredImage
 		err     error
@@ -762,7 +747,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 			return nil, nil, nil, err
 		}
 		rawRef := args[0]
-		ensured, err = ensureImage(ctx, cmd, client, rawRef, ocispecPlatforms, pull, nil, false)
+		ensured, err = ensureImage(ctx, cmd, globalOptions, client, rawRef, ocispecPlatforms, pull, nil, false)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -959,18 +944,15 @@ func withNerdctlOCIHook(cmd *cobra.Command, id string) (oci.SpecOpts, error) {
 	}, nil
 }
 
-func getContainerStateDirPath(cmd *cobra.Command, dataStore, id string) (string, error) {
-	ns, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return "", err
-	}
-	if ns == "" {
+func getContainerStateDirPath(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, dataStore, id string) (string, error) {
+
+	if globalOptions.Namespace == "" {
 		return "", errors.New("namespace is required")
 	}
-	if strings.Contains(ns, "/") {
+	if strings.Contains(globalOptions.Namespace, "/") {
 		return "", errors.New("namespace with '/' is unsupported")
 	}
-	return filepath.Join(dataStore, "containers", ns, id), nil
+	return filepath.Join(dataStore, "containers", globalOptions.Namespace, id), nil
 }
 
 func withContainerLabels(cmd *cobra.Command) ([]containerd.NewContainerOpts, error) {

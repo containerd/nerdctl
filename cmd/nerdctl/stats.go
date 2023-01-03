@@ -31,6 +31,7 @@ import (
 	eventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/containerinspector"
 	"github.com/containerd/nerdctl/pkg/eventutil"
@@ -106,6 +107,10 @@ func statsAction(cmd *cobra.Command, args []string) error {
 
 	// NOTE: rootless container does not rely on cgroupv1.
 	// more details about possible ways to resolve this concern: #223
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
 		return errors.New("stats requires cgroup v2 for rootless containers, see https://rootlesscontaine.rs/getting-started/common/cgroup2/")
 	}
@@ -149,15 +154,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 	// waitFirst is a WaitGroup to wait first stat data's reach for each container
 	waitFirst := &sync.WaitGroup{}
 	cStats := stats{}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
@@ -200,7 +197,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 			s := statsutil.NewStats(c.ID())
 			if cStats.add(s) {
 				waitFirst.Add(1)
-				go collect(cmd, s, waitFirst, c.ID(), !noStream)
+				go collect(cmd, globalOptions, s, waitFirst, c.ID(), !noStream)
 			}
 		}
 	}
@@ -231,7 +228,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 			s := statsutil.NewStats(datacc.ID)
 			if cStats.add(s) {
 				waitFirst.Add(1)
-				go collect(cmd, s, waitFirst, datacc.ID, !noStream)
+				go collect(cmd, globalOptions, s, waitFirst, datacc.ID, !noStream)
 			}
 		})
 
@@ -274,7 +271,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 				s := statsutil.NewStats(found.Container.ID())
 				if cStats.add(s) {
 					waitFirst.Add(1)
-					go collect(cmd, s, waitFirst, found.Container.ID(), !noStream)
+					go collect(cmd, globalOptions, s, waitFirst, found.Container.ID(), !noStream)
 				}
 				return nil
 			},
@@ -382,8 +379,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, id string, noStream bool) {
-
+func collect(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, s *statsutil.Stats, waitFirst *sync.WaitGroup, id string, noStream bool) {
 	logrus.Debugf("collecting stats for %s", s.Container)
 	var (
 		getFirst = true
@@ -397,15 +393,7 @@ func collect(cmd *cobra.Command, s *statsutil.Stats, waitFirst *sync.WaitGroup, 
 			waitFirst.Done()
 		}
 	}()
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		s.SetError(err)
 		return

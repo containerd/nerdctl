@@ -60,7 +60,11 @@ func newBuilderPruneCommand() *cobra.Command {
 }
 
 func builderPruneAction(cmd *cobra.Command, _ []string) error {
-	buildkitHost, err := getBuildkitHost(cmd)
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
+	buildkitHost, err := getBuildkitHost(cmd, globalOptions.Namespace)
 	if err != nil {
 		return err
 	}
@@ -97,6 +101,10 @@ func newBuilderDebugCommand() *cobra.Command {
 }
 
 func builderDebugAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	if len(args) < 1 {
 		return fmt.Errorf("context needs to be specified")
 	}
@@ -106,10 +114,9 @@ func builderDebugAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	buildgArgs := []string{"debug"}
-	debugLog, err := cmd.Flags().GetBool("debug")
 	if err != nil {
 		return err
-	} else if debugLog {
+	} else if globalOptions.Debug {
 		buildgArgs = append([]string{"--debug"}, buildgArgs...)
 	}
 

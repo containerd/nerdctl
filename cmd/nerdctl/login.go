@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/remotes/docker"
 	dockerconfig "github.com/containerd/containerd/remotes/docker/config"
+	ncTypes "github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	dockercliconfig "github.com/docker/cli/cli/config"
@@ -85,7 +86,10 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	}
 
 	var serverAddress string
-
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	if options.serverAddress == "" {
 		serverAddress = dockerconfigresolver.IndexServer
 	} else {
@@ -102,7 +106,7 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	}
 	if err == nil && authConfig.Username != "" && authConfig.Password != "" {
 		//login With StoreCreds
-		responseIdentityToken, err = loginClientSide(ctx, cmd, *authConfig)
+		responseIdentityToken, err = loginClientSide(ctx, cmd, globalOptions, *authConfig)
 	}
 
 	if err != nil || authConfig.Username == "" || authConfig.Password == "" {
@@ -111,7 +115,7 @@ func loginAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		responseIdentityToken, err = loginClientSide(ctx, cmd, *authConfig)
+		responseIdentityToken, err = loginClientSide(ctx, cmd, globalOptions, *authConfig)
 		if err != nil {
 			return err
 		}
@@ -202,25 +206,17 @@ func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRe
 	return &res, nil
 }
 
-func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthConfig) (string, error) {
+func loginClientSide(ctx context.Context, cmd *cobra.Command, globalOptions *ncTypes.GlobalCommandOptions, auth types.AuthConfig) (string, error) {
 	host, err := convertToHostname(auth.ServerAddress)
 	if err != nil {
 		return "", err
 	}
 	var dOpts []dockerconfigresolver.Opt
-	insecure, err := cmd.Flags().GetBool("insecure-registry")
-	if err != nil {
-		return "", err
-	}
-	if insecure {
+	if globalOptions.InsecureRegistry {
 		logrus.Warnf("skipping verifying HTTPS certs for %q", host)
 		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
-	hostsDirs, err := cmd.Flags().GetStringSlice("hosts-dir")
-	if err != nil {
-		return "", err
-	}
-	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(hostsDirs))
+	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(globalOptions.HostsDir))
 
 	authCreds := func(acArg string) (string, string, error) {
 		if acArg == host {
@@ -255,7 +251,7 @@ func loginClientSide(ctx context.Context, cmd *cobra.Command, auth types.AuthCon
 	}
 	for i, rh := range regHosts {
 		err = tryLoginWithRegHost(ctx, rh)
-		if err != nil && insecure && (errutil.IsErrHTTPResponseToHTTPSClient(err) || errutil.IsErrConnectionRefused(err)) {
+		if err != nil && globalOptions.InsecureRegistry && (errutil.IsErrHTTPResponseToHTTPSClient(err) || errutil.IsErrConnectionRefused(err)) {
 			rh.Scheme = "http"
 			err = tryLoginWithRegHost(ctx, rh)
 		}

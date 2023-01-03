@@ -25,22 +25,19 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/plugin"
 	runcoptions "github.com/containerd/containerd/runtime/v2/runc/options"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-func generateRuntimeCOpts(cmd *cobra.Command) ([]containerd.NewContainerOpts, error) {
+func generateRuntimeCOpts(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) ([]containerd.NewContainerOpts, error) {
 	runtime := plugin.RuntimeRuncV2
 	var (
 		runcOpts    runcoptions.Options
 		runtimeOpts interface{} = &runcOpts
 	)
-	cgm, err := cmd.Flags().GetString("cgroup-manager")
-	if err != nil {
-		return nil, err
-	}
-	if cgm == "systemd" {
+	if globalOptions.CgroupManager == "systemd" {
 		runcOpts.SystemdCgroup = true
 	}
 	runtimeStr, err := cmd.Flags().GetString("runtime")
@@ -51,8 +48,8 @@ func generateRuntimeCOpts(cmd *cobra.Command) ([]containerd.NewContainerOpts, er
 		if strings.HasPrefix(runtimeStr, "io.containerd.") || runtimeStr == "wtf.sbk.runj.v1" {
 			runtime = runtimeStr
 			if !strings.HasPrefix(runtimeStr, "io.containerd.runc.") {
-				if cgm == "systemd" {
-					logrus.Warnf("cannot set cgroup manager to %q for runtime %q", cgm, runtimeStr)
+				if globalOptions.CgroupManager == "systemd" {
+					logrus.Warnf("cannot set cgroup manager to %q for runtime %q", globalOptions.CgroupManager, runtimeStr)
 				}
 				runtimeOpts = nil
 			}

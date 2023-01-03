@@ -43,32 +43,20 @@ func newRenameCommand() *cobra.Command {
 }
 
 func renameAction(cmd *cobra.Command, args []string) error {
-	namespace, err := cmd.Flags().GetString("namespace")
+	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
-	ns, err := cmd.Flags().GetString("namespace")
+	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
 	if err != nil {
 		return err
 	}
-	dataRoot, err := cmd.Flags().GetString("data-root")
-	if err != nil {
-		return err
-	}
-	dataStore, err := clientutil.DataStore(dataRoot, address)
-	if err != nil {
-		return err
-	}
-	namest, err := namestore.New(dataStore, ns)
+	namest, err := namestore.New(dataStore, globalOptions.Namespace)
 	if err != nil {
 		return err
 	}
@@ -82,7 +70,7 @@ func renameAction(cmd *cobra.Command, args []string) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			return renameContainer(ctx, found.Container, args[1], ns, namest, hostst)
+			return renameContainer(ctx, found.Container, args[1], globalOptions.Namespace, namest, hostst)
 		},
 	}
 	req := args[0]

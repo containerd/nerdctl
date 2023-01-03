@@ -57,15 +57,11 @@ func newStartCommand() *cobra.Command {
 }
 
 func startAction(cmd *cobra.Command, args []string) error {
-	namespace, err := cmd.Flags().GetString("namespace")
+	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}

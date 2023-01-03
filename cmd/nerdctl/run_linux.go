@@ -26,6 +26,7 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/pkg/cap"
 	"github.com/containerd/containerd/pkg/userns"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
@@ -57,13 +58,7 @@ func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
-func setPlatformOptions(
-	ctx context.Context,
-	cmd *cobra.Command,
-	client *containerd.Client,
-	id string,
-	internalLabels *internalLabels,
-) ([]oci.SpecOpts, error) {
+func setPlatformOptions(ctx context.Context, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, client *containerd.Client, id string, internalLabels *internalLabels) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
 	opts = append(opts,
 		oci.WithDefaultUnixDevices,
@@ -75,7 +70,7 @@ func setPlatformOptions(
 			{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"ro", "nosuid", "noexec", "nodev"}},
 		}))
 
-	cgOpts, err := generateCgroupOpts(cmd, id)
+	cgOpts, err := generateCgroupOpts(cmd, globalOptions, id)
 	if err != nil {
 		return nil, err
 	}

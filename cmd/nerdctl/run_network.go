@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
@@ -112,7 +113,7 @@ func withCustomHosts(src string) func(context.Context, oci.Client, *containers.C
 	}
 }
 
-func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]oci.SpecOpts, []string, string, []gocni.PortMapping, string, error) {
+func generateNetOpts(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, dataStore, stateDir, ns, id string) ([]oci.SpecOpts, []string, string, []gocni.PortMapping, string, error) {
 	opts := []oci.SpecOpts{}
 	portSlice, err := cmd.Flags().GetStringSlice("publish")
 	if err != nil {
@@ -155,7 +156,7 @@ func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 	case nettype.CNI:
 		// We only verify flags and generate resolv.conf here.
 		// The actual network is configured in the oci hook.
-		if err := verifyCNINetwork(cmd, netSlice, macAddress); err != nil {
+		if err := verifyCNINetwork(cmd, netSlice, macAddress, globalOptions); err != nil {
 			return nil, nil, "", nil, "", err
 		}
 
@@ -191,15 +192,7 @@ func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 			return nil, nil, "", nil, "", fmt.Errorf("invalid network: %s, should be \"container:<id|name>\"", netSlice[0])
 		}
 		containerName := network[1]
-		namespace, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			return nil, nil, "", nil, "", err
-		}
-		address, err := cmd.Flags().GetString("address")
-		if err != nil {
-			return nil, nil, "", nil, "", err
-		}
-		client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+		client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 		if err != nil {
 			return nil, nil, "", nil, "", err
 		}
@@ -213,7 +206,7 @@ func generateNetOpts(cmd *cobra.Command, dataStore, stateDir, ns, id string) ([]
 				}
 				containerID := found.Container.ID()
 
-				conStateDir, err := getContainerStateDirPath(cmd, dataStore, containerID)
+				conStateDir, err := getContainerStateDirPath(cmd, globalOptions, dataStore, containerID)
 				if err != nil {
 					return err
 				}
@@ -273,16 +266,8 @@ func getContainerNetNSPath(ctx context.Context, c containerd.Container) (string,
 	return fmt.Sprintf("/proc/%d/ns/net", task.Pid()), nil
 }
 
-func verifyCNINetwork(cmd *cobra.Command, netSlice []string, macAddress string) error {
-	cniPath, err := cmd.Flags().GetString("cni-path")
-	if err != nil {
-		return err
-	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
-	if err != nil {
-		return err
-	}
-	e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath, netutil.WithDefaultNetwork())
+func verifyCNINetwork(cmd *cobra.Command, netSlice []string, macAddress string, globalOptions *types.GlobalCommandOptions) error {
+	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath, netutil.WithDefaultNetwork())
 	if err != nil {
 		return err
 	}

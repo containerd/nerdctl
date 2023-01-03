@@ -40,12 +40,16 @@ func newVolumeInspectCommand() *cobra.Command {
 }
 
 func volumeInspectAction(cmd *cobra.Command, args []string) error {
-	var volumeSize, err = cmd.Flags().GetBool("size")
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
+	volumeSize, err := cmd.Flags().GetBool("size")
 	if err != nil {
 		return err
 	}
 
-	volStore, err := getVolumeStore(cmd)
+	volStore, err := getVolumeStore(globalOptions)
 	if err != nil {
 		return err
 	}

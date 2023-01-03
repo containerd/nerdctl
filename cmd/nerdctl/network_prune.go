@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -45,6 +46,10 @@ func newNetworkPruneCommand() *cobra.Command {
 }
 
 func networkPruneAction(cmd *cobra.Command, _ []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
@@ -62,33 +67,17 @@ func networkPruneAction(cmd *cobra.Command, _ []string) error {
 			return nil
 		}
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	return networkPrune(ctx, cmd, client)
+	return networkPrune(ctx, cmd, client, globalOptions)
 }
 
-func networkPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client) error {
-	cniPath, err := cmd.Flags().GetString("cni-path")
-	if err != nil {
-		return err
-	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
-	if err != nil {
-		return err
-	}
-	e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
+func networkPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions *types.GlobalCommandOptions) error {
+	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath)
 	if err != nil {
 		return err
 	}

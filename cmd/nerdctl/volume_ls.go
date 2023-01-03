@@ -17,7 +17,7 @@
 package main
 
 import (
-	types "github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/cmd/volume"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 
@@ -46,6 +46,11 @@ func newVolumeLsCommand() *cobra.Command {
 }
 
 func volumeLsAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
+
 	options := &types.VolumeLsCommandOptions{}
 	options.Writer = cmd.OutOrStdout()
 	quiet, err := cmd.Flags().GetBool("quiet")
@@ -68,40 +73,16 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	options.Filters = filters
-	ns, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	options.Namespace = ns
-	dataRoot, err := cmd.Flags().GetString("data-root")
-	if err != nil {
-		return err
-	}
-	options.DataRoot = dataRoot
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	options.Address = address
+	options.Namespace = globalOptions.Namespace
+	options.DataRoot = globalOptions.DataRoot
+	options.Address = globalOptions.Address
 	return volume.Ls(options)
 }
 
-func getVolumes(cmd *cobra.Command) (map[string]native.Volume, error) {
-	ns, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return nil, err
-	}
-	dataRoot, err := cmd.Flags().GetString("data-root")
-	if err != nil {
-		return nil, err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return nil, err
-	}
+func getVolumes(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (map[string]native.Volume, error) {
 	volumeSize, err := cmd.Flags().GetBool("size")
 	if err != nil {
 		return nil, err
 	}
-	return volume.Volumes(ns, dataRoot, address, volumeSize)
+	return volume.Volumes(globalOptions.Namespace, globalOptions.DataRoot, globalOptions.Address, volumeSize)
 }

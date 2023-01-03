@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/continuity/fs"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/mountutil"
@@ -120,8 +121,8 @@ func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*m
 
 // generateMountOpts generates volume-related mount opts.
 // Other mounts such as procfs mount are not handled here.
-func generateMountOpts(ctx context.Context, cmd *cobra.Command, client *containerd.Client, ensuredImage *imgutil.EnsuredImage) ([]oci.SpecOpts, []string, []*mountutil.Processed, error) {
-	volStore, err := getVolumeStore(cmd)
+func generateMountOpts(ctx context.Context, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, client *containerd.Client, ensuredImage *imgutil.EnsuredImage) ([]oci.SpecOpts, []string, []*mountutil.Processed, error) {
+	volStore, err := getVolumeStore(globalOptions)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -136,16 +137,10 @@ func generateMountOpts(ctx context.Context, cmd *cobra.Command, client *containe
 	mounted := make(map[string]struct{})
 	var imageVolumes map[string]struct{}
 	var tempDir string
-
 	if ensuredImage != nil {
 		imageVolumes = ensuredImage.ImageConfig.Volumes
 
-		snapshotter, err := cmd.Flags().GetString("snapshotter")
-		if err != nil {
-			return nil, nil, nil, err
-		}
-
-		if err := ensuredImage.Image.Unpack(ctx, snapshotter); err != nil {
+		if err := ensuredImage.Image.Unpack(ctx, globalOptions.Snapshotter); err != nil {
 			return nil, nil, nil, fmt.Errorf("error unpacking image: %w", err)
 		}
 
@@ -155,7 +150,7 @@ func generateMountOpts(ctx context.Context, cmd *cobra.Command, client *containe
 		}
 		chainID := identity.ChainID(diffIDs).String()
 
-		s := client.SnapshotService(snapshotter)
+		s := client.SnapshotService(globalOptions.Snapshotter)
 		tempDir, err = os.MkdirTemp("", "initialC")
 		if err != nil {
 			return nil, nil, nil, err

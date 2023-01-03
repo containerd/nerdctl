@@ -23,6 +23,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 )
@@ -44,6 +45,7 @@ func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 func setPlatformOptions(
 	ctx context.Context,
 	cmd *cobra.Command,
+	_ *types.GlobalCommandOptions,
 	client *containerd.Client,
 	id string,
 	internalLabels *internalLabels,

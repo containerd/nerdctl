@@ -43,6 +43,10 @@ func newComposeConfigCommand() *cobra.Command {
 }
 
 func composeConfigAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	if len(args) != 0 {
 		// TODO: support specifying service names as args
 		return fmt.Errorf("arguments %v not supported", args)
@@ -63,22 +67,14 @@ func composeConfigAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
 
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	c, err := getComposer(cmd, client)
+	c, err := getComposer(cmd, client, globalOptions)
 	if err != nil {
 		return err
 	}

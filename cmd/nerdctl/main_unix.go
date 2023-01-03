@@ -27,19 +27,18 @@ import (
 )
 
 func shellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
 	if rootlessutil.IsRootlessParent() {
 		_ = rootlessutil.ParentMain()
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -56,19 +55,15 @@ func shellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete s
 }
 
 func shellCompleteSnapshotterNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
 	if rootlessutil.IsRootlessParent() {
 		_ = rootlessutil.ParentMain()
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}

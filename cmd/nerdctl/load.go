@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/archive"
 	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/spf13/cobra"
@@ -58,6 +59,10 @@ func newLoadCommand() *cobra.Command {
 func loadAction(cmd *cobra.Command, _ []string) error {
 	in := cmd.InOrStdin()
 	input, err := cmd.Flags().GetString("input")
+	if err != nil {
+		return err
+	}
+	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
@@ -96,33 +101,21 @@ func loadAction(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	return loadImage(decompressor, cmd, platMC, false)
+	return loadImage(decompressor, cmd, globalOptions, platMC, false)
 }
 
-func loadImage(in io.Reader, cmd *cobra.Command, platMC platforms.MatchComparer, quiet bool) error {
+func loadImage(in io.Reader, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, platMC platforms.MatchComparer, quiet bool) error {
 	// In addition to passing WithImagePlatform() to client.Import(), we also need to pass WithDefaultPlatform() to NewClient().
 	// Otherwise unpacking may fail.
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address, containerd.WithDefaultPlatform(platMC))
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address, containerd.WithDefaultPlatform(platMC))
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	sn, err := cmd.Flags().GetString("snapshotter")
-	if err != nil {
-		return err
-	}
-
 	r := &readCounter{Reader: in}
-	imgs, err := client.Import(ctx, r, containerd.WithDigestRef(archive.DigestTranslator(sn)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithImportPlatform(platMC))
+	imgs, err := client.Import(ctx, r, containerd.WithDigestRef(archive.DigestTranslator(globalOptions.Snapshotter)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithImportPlatform(platMC))
 	if err != nil {
 		if r.N == 0 {
 			// Avoid confusing "unrecognized image format"
@@ -140,7 +133,7 @@ func loadImage(in io.Reader, cmd *cobra.Command, platMC platforms.MatchComparer,
 		if !quiet {
 			fmt.Fprintf(cmd.OutOrStdout(), "unpacking %s (%s)...\n", img.Name, img.Target.Digest)
 		}
-		err = image.Unpack(ctx, sn)
+		err = image.Unpack(ctx, globalOptions.Snapshotter)
 		if err != nil {
 			return err
 		}

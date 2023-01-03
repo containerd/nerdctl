@@ -23,6 +23,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -60,9 +61,12 @@ func newInfoCommand() *cobra.Command {
 }
 
 func infoAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	var (
 		tmpl *template.Template
-		err  error
 	)
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
@@ -74,15 +78,7 @@ func infoAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
@@ -103,20 +99,12 @@ func infoAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		infoNative, err = fulfillNativeInfo(cmd, di)
+		infoNative, err = fulfillNativeInfo(cmd, di, globalOptions)
 		if err != nil {
 			return err
 		}
 	case "dockercompat":
-		snapshotter, err := cmd.Flags().GetString("snapshotter")
-		if err != nil {
-			return err
-		}
-		cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
-		if err != nil {
-			return err
-		}
-		infoCompat, err = infoutil.Info(ctx, client, snapshotter, cgroupManager)
+		infoCompat, err = infoutil.Info(ctx, client, globalOptions.Snapshotter, globalOptions.CgroupManager)
 		if err != nil {
 			return err
 		}
@@ -141,29 +129,18 @@ func infoAction(cmd *cobra.Command, args []string) error {
 	case "native":
 		return prettyPrintInfoNative(cmd.OutOrStdout(), infoNative)
 	case "dockercompat":
-		return prettyPrintInfoDockerCompat(cmd, infoCompat)
+		return prettyPrintInfoDockerCompat(cmd, infoCompat, globalOptions)
 	}
 	return nil
 }
 
-func fulfillNativeInfo(cmd *cobra.Command, di *native.DaemonInfo) (*native.Info, error) {
+func fulfillNativeInfo(cmd *cobra.Command, di *native.DaemonInfo, globalOptions *types.GlobalCommandOptions) (*native.Info, error) {
 	info := &native.Info{
 		Daemon: di,
 	}
-	flags := cmd.Flags()
-	var err error
-	info.Namespace, err = flags.GetString("namespace")
-	if err != nil {
-		return nil, err
-	}
-	info.Snapshotter, err = flags.GetString("snapshotter")
-	if err != nil {
-		return nil, err
-	}
-	info.CgroupManager, err = flags.GetString("cgroup-manager")
-	if err != nil {
-		return nil, err
-	}
+	info.Namespace = globalOptions.Namespace
+	info.Snapshotter = globalOptions.Snapshotter
+	info.CgroupManager = globalOptions.CgroupManager
 	info.Rootless = rootlessutil.IsRootless()
 	return info, nil
 }
@@ -201,19 +178,11 @@ func prettyPrintInfoNative(w io.Writer, info *native.Info) error {
 	return nil
 }
 
-func prettyPrintInfoDockerCompat(cmd *cobra.Command, info *dockercompat.Info) error {
+func prettyPrintInfoDockerCompat(cmd *cobra.Command, info *dockercompat.Info, globalOptions *types.GlobalCommandOptions) error {
 	w := cmd.OutOrStdout()
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	debug, err := cmd.Flags().GetBool("debug")
-	if err != nil {
-		return err
-	}
-
+	debug := globalOptions.Debug
 	fmt.Fprintf(w, "Client:\n")
-	fmt.Fprintf(w, " Namespace:\t%s\n", namespace)
+	fmt.Fprintf(w, " Namespace:\t%s\n", globalOptions.Namespace)
 	fmt.Fprintf(w, " Debug Mode:\t%v\n", debug)
 	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "Server:\n")

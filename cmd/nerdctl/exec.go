@@ -65,6 +65,10 @@ func newExecCommand() *cobra.Command {
 }
 
 func execAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	// simulate the behavior of double dash
 	newArg := []string{}
 	if len(args) >= 2 && args[1] == "--" {
@@ -72,15 +76,7 @@ func execAction(cmd *cobra.Command, args []string) error {
 		newArg = append(newArg, args[2:]...)
 		args = newArg
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}

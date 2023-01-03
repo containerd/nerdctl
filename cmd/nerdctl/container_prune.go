@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -42,6 +43,10 @@ func newContainerPruneCommand() *cobra.Command {
 }
 
 func containerPruneAction(cmd *cobra.Command, _ []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
@@ -58,25 +63,17 @@ func containerPruneAction(cmd *cobra.Command, _ []string) error {
 			return nil
 		}
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
 
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	return containerPrune(ctx, cmd, client)
+	return containerPrune(ctx, cmd, globalOptions, client)
 }
 
-func containerPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client) error {
+func containerPrune(ctx context.Context, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, client *containerd.Client) error {
 	containers, err := client.Containers(ctx)
 	if err != nil {
 		return err
@@ -84,7 +81,7 @@ func containerPrune(ctx context.Context, cmd *cobra.Command, client *containerd.
 
 	var deleted []string
 	for _, container := range containers {
-		err = removeContainer(ctx, cmd, container, false, true)
+		err = removeContainer(ctx, cmd, globalOptions, container, false, true)
 		if err == nil {
 			deleted = append(deleted, container.ID())
 			continue

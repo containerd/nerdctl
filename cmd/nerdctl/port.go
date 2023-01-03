@@ -43,7 +43,10 @@ func newPortCommand() *cobra.Command {
 }
 
 func portAction(cmd *cobra.Command, args []string) error {
-
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	argPort := -1
 	argProto := ""
 	portProto := ""
@@ -70,15 +73,7 @@ func portAction(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to parse %q", portProto)
 		}
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
