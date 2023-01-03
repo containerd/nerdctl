@@ -17,13 +17,17 @@
 package namestore
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/identifiers"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/lockutil"
+	"golang.org/x/sync/errgroup"
 )
 
 func New(dataStore, ns string) (NameStore, error) {
@@ -38,7 +42,7 @@ func New(dataStore, ns string) (NameStore, error) {
 }
 
 type NameStore interface {
-	Acquire(name, id string) error
+	Acquire(ctx context.Context, client *containerd.Client, name, id string) error
 	Release(name, id string) error
 	Rename(oldName, id, newName string) error
 }
@@ -47,7 +51,7 @@ type nameStore struct {
 	dir string
 }
 
-func (x *nameStore) Acquire(name, id string) error {
+func (x *nameStore) Acquire(ctx context.Context, client *containerd.Client, name, id string) error {
 	if err := identifiers.Validate(name); err != nil {
 		return fmt.Errorf("invalid name %q: %w", name, err)
 	}
@@ -58,6 +62,27 @@ func (x *nameStore) Acquire(name, id string) error {
 		fileName := filepath.Join(x.dir, name)
 		if b, err := os.ReadFile(fileName); err == nil {
 			return fmt.Errorf("name %q is already used by ID %q", name, string(b))
+		}
+		containers, err := client.Containers(ctx)
+		if err != nil {
+			return err
+		}
+		var eg errgroup.Group
+		for _, c := range containers {
+			c := c
+			eg.Go(func() error {
+				info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
+				if err != nil {
+					return err
+				}
+				if getContainerName(info.Labels) == name {
+					return fmt.Errorf("name %q is already used by ID %q", name, info.ID)
+				}
+				return nil
+			})
+		}
+		if err := eg.Wait(); err != nil {
+			return err
 		}
 		return os.WriteFile(fileName, []byte(id), 0600)
 	}
@@ -114,4 +139,11 @@ func (x *nameStore) Rename(oldName, id, newName string) error {
 		return os.Rename(oldFileName, newFileName)
 	}
 	return lockutil.WithDirLock(x.dir, fn)
+}
+
+func getContainerName(containerLabels map[string]string) string {
+	if name, ok := containerLabels[labels.Name]; ok {
+		return name
+	}
+	return ""
 }

@@ -674,7 +674,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := containerNameStore.Acquire(name, id); err != nil {
+		if err := containerNameStore.Acquire(ctx, client, name, id); err != nil {
 			return nil, nil, err
 		}
 	}
