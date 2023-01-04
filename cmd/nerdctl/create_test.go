@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/sirupsen/logrus"
 	"gotest.tools/v3/assert"
 )
 
@@ -37,7 +38,9 @@ func TestCreateDuplicateName(t *testing.T) {
 	base.Cmd("create", "--name", containerName, imageName).AssertOK()
 	defer base.Cmd("container", "rm", "-f", containerName).AssertOK()
 
+	logrus.Printf("inspect:%v", base.InspectContainer(containerName))
 	store := strings.Split(base.InspectContainer(containerName).ResolvConfPath, "/containers/")
+	logrus.Printf("store: %v", store)
 	if len(store) != 2 {
 		t.Fatalf("parse store path fail")
 	}
