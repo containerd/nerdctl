@@ -9,7 +9,7 @@ require (
 	github.com/containerd/accelerated-container-image v0.5.3-0.20221209054854-fbdabc5a08b6
 	github.com/containerd/cgroups v1.0.5-0.20220816231112-7083cd60b721
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.7.0-beta.1
+	github.com/containerd/containerd v1.7.0-beta.2
 	github.com/containerd/continuity v0.3.0
 	github.com/containerd/go-cni v1.1.7
 	github.com/containerd/imgcrypt v1.1.7
@@ -62,12 +62,12 @@ require (
 require (
 	github.com/containerd/cgroups/v3 v3.0.0-20221112182753-e8802a182774 // indirect
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783 // indirect
-	google.golang.org/genproto v0.0.0-20221202195650-67e5cbc046fd // indirect
+	google.golang.org/genproto v0.0.0-20221206210731-b1a01be3a5f6 // indirect
 )
 
 require (
-	github.com/AdaLogics/go-fuzz-headers v0.0.0-20221118232415-3345c89a7c72 // indirect
-	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20221121202950-b2031950a318 // indirect
+	github.com/AdaLogics/go-fuzz-headers v0.0.0-20221206110420-d395f97c4830 // indirect
+	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20221215162035-5330a85ea652 // indirect
 	github.com/Microsoft/hcsshim v0.10.0-rc.1 // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
@@ -138,7 +138,7 @@ require (
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
-	google.golang.org/grpc v1.50.1 // indirect
+	google.golang.org/grpc v1.51.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
