@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/infoutil"
@@ -56,6 +57,36 @@ func TestIPFS(t *testing.T) {
 	base.Cmd("image", "decrypt", "--key="+keyPair.pub, ipfsCIDEnc, decryptImageRef).AssertFail() // decryption needs prv key, not pub key
 	base.Cmd("image", "decrypt", "--key="+keyPair.prv, ipfsCIDEnc, decryptImageRef).AssertOK()
 	base.Cmd("run", "--rm", decryptImageRef, "/bin/sh", "-c", "echo hello").AssertOK()
+}
+
+var iplineRegexp = regexp.MustCompile(`"([0-9\.]*)"`)
+
+func TestIPFSAddress(t *testing.T) {
+	testutil.RequireExecutable(t, "ipfs")
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	ipfsaddr, done := runIPFSDaemonContainer(t, base)
+	defer done()
+	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, fmt.Sprintf("--ipfs-address=%s", ipfsaddr))
+	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=overlayfs")
+	base.Cmd("pull", "--ipfs-address", ipfsaddr, ipfsCID).AssertOK()
+	base.Cmd("run", "--ipfs-address", ipfsaddr, "--rm", ipfsCID, "echo", "hello").AssertOK()
+}
+
+func runIPFSDaemonContainer(t *testing.T, base *testutil.Base) (ipfsAddress string, done func()) {
+	name := "test-ipfs-address"
+	base.Cmd("run", "-d", "--name", name, "--entrypoint=/bin/sh", testutil.KuboImage, "-c", "ipfs init && ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001 && ipfs daemon --offline").AssertOK()
+	iplines := base.Cmd("inspect", name, "-f", "'{{json .NetworkSettings.IPAddress}}'").OutLines()
+	t.Logf("IPAddress=%v", iplines)
+	assert.Equal(t, len(iplines), 2)
+	matches := iplineRegexp.FindStringSubmatch(iplines[0])
+	t.Logf("ip address matches=%v", matches)
+	assert.Equal(t, len(matches), 2)
+	ipfsaddr := fmt.Sprintf("/ip4/%s/tcp/5001", matches[1])
+	return ipfsaddr, func() {
+		base.Cmd("kill", "test-ipfs-address").AssertOK()
+		base.Cmd("rm", "test-ipfs-address").AssertOK()
+	}
 }
 
 func TestIPFSCommit(t *testing.T) {

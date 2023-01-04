@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
@@ -97,8 +99,20 @@ func New(client *containerd.Client, globalOptions *types.GlobalCommandOptions, o
 
 		// IPFS reference
 		if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(imageName); err == nil {
+			var ipfsPath *string
+			if ipfsAddress := options.IPFSAddress; ipfsAddress != "" {
+				dir, err := os.MkdirTemp("", "apidirtmp")
+				if err != nil {
+					return err
+				}
+				defer os.RemoveAll(dir)
+				if err := os.WriteFile(filepath.Join(dir, "api"), []byte(ipfsAddress), 0600); err != nil {
+					return err
+				}
+				ipfsPath = &dir
+			}
 			_, err = ipfs.EnsureImage(ctx, client, stdout, stderr, globalOptions.Snapshotter, scheme, ref,
-				pullMode, ocispecPlatforms, nil, quiet)
+				pullMode, ocispecPlatforms, nil, quiet, ipfsPath)
 			return err
 		}
 

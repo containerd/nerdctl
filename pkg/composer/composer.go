@@ -46,6 +46,7 @@ type Options struct {
 	EnsureImage      func(ctx context.Context, imageName, pullMode, platform string, ps *serviceparser.Service, quiet bool) error
 	DebugPrintFull   bool // full debug print, may leak secret env var to logs
 	Experimental     bool // enable experimental features
+	IPFSAddress      string
 }
 
 func New(o Options, client *containerd.Client) (*Composer, error) {

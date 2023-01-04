@@ -16,7 +16,7 @@ require (
 	github.com/containerd/nydus-snapshotter v0.5.0
 	github.com/containerd/stargz-snapshotter v0.13.0
 	github.com/containerd/stargz-snapshotter/estargz v0.13.0
-	github.com/containerd/stargz-snapshotter/ipfs v0.13.1-0.20221214033845-6814ce4c2bf4
+	github.com/containerd/stargz-snapshotter/ipfs v0.13.1-0.20230106161838-6844dbb4c428
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67
 	github.com/containernetworking/cni v1.1.2
 	github.com/containernetworking/plugins v1.1.1

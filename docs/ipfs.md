@@ -34,6 +34,8 @@ containerd-rootless-setuptool.sh -- install-ipfs --init
 
 :information_source: If you don't want IPFS to communicate with nodes on the internet, you can run IPFS daemon in offline mode using `--offline` flag or you can create a private IPFS network as described [here](https://github.com/containerd/stargz-snapshotter/blob/main/docs/ipfs.md#appendix-1-creating-ipfs-private-network).
 
+:information_source: Instead of locally launching IPFS daemon, you can specify the address of the IPFS API using `--ipfs-address` flag.
+
 ## IPFS-enabled image and OCI Compatibility
 
 Image distribution on IPFS is achieved by OCI-compatible *IPFS-enabled image format*.
