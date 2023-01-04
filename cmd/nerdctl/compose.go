@@ -17,22 +17,10 @@
 package main
 
 import (
-	"context"
-	"errors"
-	"fmt"
-
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/pkg/composer"
-	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
-	"github.com/containerd/nerdctl/pkg/cosignutil"
-	"github.com/containerd/nerdctl/pkg/imgutil"
-	"github.com/containerd/nerdctl/pkg/ipfs"
-	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/containerd/nerdctl/pkg/referenceutil"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 )
@@ -80,157 +68,45 @@ func newComposeCommand() *cobra.Command {
 	return composeCommand
 }
 
-func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Composer, error) {
-	nerdctlCmd, nerdctlArgs := globalFlags(cmd)
-	projectDirectory, err := cmd.Flags().GetString("project-directory")
+func getComposer(cmd *cobra.Command, client *containerd.Client, globalOptions *types.GlobalCommandOptions) (*composer.Composer, error) {
+	options, err := getComposeOptions(cmd)
 	if err != nil {
 		return nil, err
 	}
-	envFile, err := cmd.Flags().GetString("env-file")
-	if err != nil {
-		return nil, err
-	}
-	projectName, err := cmd.Flags().GetString("project-name")
-	if err != nil {
-		return nil, err
-	}
-	debugFull, err := cmd.Flags().GetBool("debug-full")
-	if err != nil {
-		return nil, err
-	}
-	files, err := cmd.Flags().GetStringArray("file")
-	if err != nil {
-		return nil, err
-	}
-	insecure, err := cmd.Flags().GetBool("insecure-registry")
-	if err != nil {
-		return nil, err
-	}
-	cniPath, err := cmd.Flags().GetString("cni-path")
-	if err != nil {
-		return nil, err
-	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
-	if err != nil {
-		return nil, err
-	}
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
-	if err != nil {
-		return nil, err
-	}
-	hostsDirs, err := cmd.Flags().GetStringSlice("hosts-dir")
-	if err != nil {
-		return nil, err
-	}
-	experimental, err := cmd.Flags().GetBool("experimental")
-	if err != nil {
-		return nil, err
-	}
-
-	o := composer.Options{
-		Project:          projectName,
-		ProjectDirectory: projectDirectory,
-		ConfigPaths:      files,
-		EnvFile:          envFile,
-		NerdctlCmd:       nerdctlCmd,
-		NerdctlArgs:      nerdctlArgs,
-		DebugPrintFull:   debugFull,
-		Experimental:     experimental,
-	}
-
-	cniEnv, err := netutil.NewCNIEnv(cniPath, cniNetconfpath, netutil.WithDefaultNetwork())
-	if err != nil {
-		return nil, err
-	}
-	networkConfigs, err := cniEnv.NetworkList()
-	if err != nil {
-		return nil, err
-	}
-
-	o.NetworkExists = func(netName string) (bool, error) {
-		for _, f := range networkConfigs {
-			if f.Name == netName {
-				return true, nil
-			}
-		}
-		return false, nil
-	}
-
 	volStore, err := getVolumeStore(cmd)
 	if err != nil {
 		return nil, err
 	}
+	return compose.GetComposer(options, client, volStore, cmd.OutOrStdout(), cmd.ErrOrStderr(), globalOptions)
+}
 
-	o.VolumeExists = func(volName string) (bool, error) {
-		if _, volGetErr := volStore.Get(volName, false); volGetErr == nil {
-			return true, nil
-		} else if errors.Is(volGetErr, errdefs.ErrNotFound) {
-			return false, nil
-		} else {
-			return false, volGetErr
-		}
+func getComposeOptions(cmd *cobra.Command) (*composer.Options, error) {
+	options := &composer.Options{}
+	options.NerdctlCmd, options.NerdctlArgs = globalFlags(cmd)
+	var err error
+	options.ProjectDirectory, err = cmd.Flags().GetString("project-directory")
+	if err != nil {
+		return nil, err
 	}
-
-	o.ImageExists = func(ctx context.Context, rawRef string) (bool, error) {
-		refNamed, err := referenceutil.ParseAny(rawRef)
-		if err != nil {
-			return false, err
-		}
-		ref := refNamed.String()
-		if _, err := client.ImageService().Get(ctx, ref); err != nil {
-			if errors.Is(err, errdefs.ErrNotFound) {
-				return false, nil
-			}
-			return false, err
-		}
-		return true, nil
+	options.EnvFile, err = cmd.Flags().GetString("env-file")
+	if err != nil {
+		return nil, err
 	}
-
-	o.EnsureImage = func(ctx context.Context, imageName, pullMode, platform string, ps *serviceparser.Service, quiet bool) error {
-		ocispecPlatforms := []ocispec.Platform{platforms.DefaultSpec()}
-		if platform != "" {
-			parsed, err := platforms.Parse(platform)
-			if err != nil {
-				return err
-			}
-			ocispecPlatforms = []ocispec.Platform{parsed} // no append
-		}
-
-		// IPFS reference
-		if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(imageName); err == nil {
-			_, err = ipfs.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
-				pullMode, ocispecPlatforms, nil, quiet)
-			return err
-		}
-
-		ref := imageName
-		if verifier, ok := ps.Unparsed.Extensions[serviceparser.ComposeVerify]; ok {
-			switch verifier {
-			case "cosign":
-				if !o.Experimental {
-					return fmt.Errorf("cosign only work with enable experimental feature")
-				}
-
-				// if key is given, use key mode, otherwise use keyless mode.
-				keyRef := ""
-				if keyVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]; ok {
-					keyRef = keyVal.(string)
-				}
-
-				ref, err = cosignutil.VerifyCosign(ctx, ref, keyRef, hostsDirs)
-				if err != nil {
-					return err
-				}
-			case "none":
-				logrus.Debugf("verification process skipped")
-			default:
-				return fmt.Errorf("no verifier found: %s", verifier)
-			}
-		}
-		_, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, ref,
-			pullMode, insecure, hostsDirs, ocispecPlatforms, nil, quiet)
-		return err
+	options.Project, err = cmd.Flags().GetString("project-name")
+	if err != nil {
+		return nil, err
 	}
-
-	return composer.New(o, client)
+	options.DebugPrintFull, err = cmd.Flags().GetBool("debug-full")
+	if err != nil {
+		return nil, err
+	}
+	options.ConfigPaths, err = cmd.Flags().GetStringArray("file")
+	if err != nil {
+		return nil, err
+	}
+	options.Experimental, err = cmd.Flags().GetBool("experimental")
+	if err != nil {
+		return nil, err
+	}
+	return options, nil
 }

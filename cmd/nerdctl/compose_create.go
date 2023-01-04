@@ -64,21 +64,18 @@ func composeCreateAction(cmd *cobra.Command, args []string) error {
 		return errors.New("flag --force-recreate and --no-recreate cannot be specified together")
 	}
 
-	namespace, err := cmd.Flags().GetString("namespace")
+	globalOptions, err := processGlobalFlag(cmd)
 	if err != nil {
 		return err
 	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	c, err := getComposer(cmd, client)
+	c, err := getComposer(cmd, client, globalOptions)
 	if err != nil {
 		return err
 	}
