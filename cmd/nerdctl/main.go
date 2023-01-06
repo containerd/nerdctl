@@ -174,6 +174,7 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, 
 }
 
 func newApp() (*cobra.Command, error) {
+
 	tomlPath := ncdefaults.NerdctlTOML()
 	if v, ok := os.LookupEnv("NERDCTL_TOML"); ok {
 		tomlPath = v
@@ -201,27 +202,22 @@ Config file ($NERDCTL_TOML): %s
 	}
 
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		debug, err := cmd.Flags().GetBool("debug-full")
+		globalOptions, err := processRootCmdFlags(cmd)
 		if err != nil {
 			return err
 		}
+		debug := globalOptions.DebugFull
 		if !debug {
-			debug, err = cmd.Flags().GetBool("debug")
-			if err != nil {
-				return err
-			}
+			debug = globalOptions.Debug
 		}
 		if debug {
 			logrus.SetLevel(logrus.DebugLevel)
 		}
-		address := cmd.Flags().Lookup("address").Value.String()
+		address := globalOptions.Address
 		if strings.Contains(address, "://") && !strings.HasPrefix(address, "unix://") {
 			return fmt.Errorf("invalid address %q", address)
 		}
-		cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
-		if err != nil {
-			return err
-		}
+		cgroupManager := globalOptions.CgroupManager
 		if runtime.GOOS == "linux" {
 			switch cgroupManager {
 			case "systemd", "cgroupfs", "none":
@@ -585,11 +581,11 @@ func AddPersistentStringArrayFlag(cmd *cobra.Command, name string, aliases, nonP
 
 func checkExperimental(feature string) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		experimental, err := cmd.Flags().GetBool("experimental")
+		globalOptions, err := processRootCmdFlags(cmd)
 		if err != nil {
 			return err
 		}
-		if !experimental {
+		if !globalOptions.Experimental {
 			return fmt.Errorf("%s is experimental feature, you should enable experimental config", feature)
 		}
 		return nil

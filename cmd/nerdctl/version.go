@@ -23,6 +23,7 @@ import (
 	"os"
 	"text/template"
 
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/infoutil"
@@ -49,7 +50,10 @@ func newVersionCommand() *cobra.Command {
 func versionAction(cmd *cobra.Command, args []string) error {
 	var w io.Writer = os.Stdout
 	var tmpl *template.Template
-
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
 		return err
@@ -62,7 +66,7 @@ func versionAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	v, vErr := versionInfo(cmd)
+	v, vErr := versionInfo(cmd, globalOptions)
 	if tmpl != nil {
 		var b bytes.Buffer
 		if err := tmpl.Execute(&b, v); err != nil {
@@ -99,19 +103,12 @@ func versionAction(cmd *cobra.Command, args []string) error {
 }
 
 // versionInfo may return partial VersionInfo on error
-func versionInfo(cmd *cobra.Command) (dockercompat.VersionInfo, error) {
+func versionInfo(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (dockercompat.VersionInfo, error) {
+
 	v := dockercompat.VersionInfo{
 		Client: infoutil.ClientVersion(),
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return v, err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return v, err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return v, err
 	}

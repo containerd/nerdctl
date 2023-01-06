@@ -38,6 +38,10 @@ func newComposeBuildCommand() *cobra.Command {
 }
 
 func composeBuildAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	buildArg, err := cmd.Flags().GetStringArray("build-arg")
 	if err != nil {
 		return err
@@ -50,22 +54,14 @@ func composeBuildAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
 
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	c, err := getComposer(cmd, client)
+	c, err := getComposer(cmd, client, globalOptions)
 	if err != nil {
 		return err
 	}

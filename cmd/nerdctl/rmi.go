@@ -47,6 +47,10 @@ func newRmiCommand() *cobra.Command {
 }
 
 func rmiAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
@@ -58,15 +62,7 @@ func rmiAction(cmd *cobra.Command, args []string) error {
 	} else if !async {
 		delOpts = append(delOpts, images.SynchronousDelete())
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}

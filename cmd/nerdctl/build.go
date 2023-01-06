@@ -30,6 +30,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	dockerreference "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
@@ -77,7 +78,7 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 	return buildCommand
 }
 
-func getBuildkitHost(cmd *cobra.Command) (string, error) {
+func getBuildkitHost(cmd *cobra.Command, ns string) (string, error) {
 	if cmd.Flags().Changed("buildkit-host") || os.Getenv("BUILDKIT_HOST") != "" {
 		// If address is explicitly specified, use it.
 		buildkitHost, err := cmd.Flags().GetString("buildkit-host")
@@ -88,10 +89,6 @@ func getBuildkitHost(cmd *cobra.Command) (string, error) {
 			return "", err
 		}
 		return buildkitHost, nil
-	}
-	ns, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return "", err
 	}
 	return buildkitutil.GetBuildkitHost(ns)
 }
@@ -126,18 +123,21 @@ func isImageSharable(buildkitHost string, namespace, uuid, snapshotter string, p
 }
 
 func buildAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	platform, err := cmd.Flags().GetStringSlice("platform")
 	if err != nil {
 		return err
 	}
 	platform = strutil.DedupeStrSlice(platform)
-
-	buildkitHost, err := getBuildkitHost(cmd)
+	buildkitHost, err := getBuildkitHost(cmd, globalOptions.Namespace)
 	if err != nil {
 		return err
 	}
 
-	buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, err := generateBuildctlArgs(cmd, buildkitHost, platform, args)
+	buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, err := generateBuildctlArgs(cmd, globalOptions, buildkitHost, platform, args)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err = loadImage(buildctlStdout, cmd, platMC, quiet); err != nil {
+		if err = loadImage(buildctlStdout, cmd, globalOptions, platMC, quiet); err != nil {
 			return err
 		}
 	}
@@ -195,15 +195,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if len(tags) > 1 {
 		logrus.Debug("Found more than 1 tag")
 		if err != nil {
@@ -230,7 +222,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, args []string) (buildCtlBinary string,
+func generateBuildctlArgs(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, buildkitHost string, platform, args []string) (buildCtlBinary string,
 	buildctlArgs []string, needsLoading bool, metaFile string, tags []string, cleanup func(), err error) {
 	if len(args) < 1 {
 		return "", nil, false, "", nil, nil, errors.New("context needs to be specified")
@@ -249,15 +241,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 	if err != nil {
 		return "", nil, false, "", nil, nil, err
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return "", nil, false, "", nil, nil, err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return "", nil, false, "", nil, nil, err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if output == "" {
 		if err != nil {
 			return "", nil, false, "", nil, nil, err
@@ -267,15 +251,7 @@ func generateBuildctlArgs(cmd *cobra.Command, buildkitHost string, platform, arg
 		if err != nil {
 			return "", nil, false, "", nil, nil, err
 		}
-		ns, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			return "", nil, false, "", nil, nil, err
-		}
-		snapshotter, err := cmd.Flags().GetString("snapshotter")
-		if err != nil {
-			return "", nil, false, "", nil, nil, err
-		}
-		sharable, err := isImageSharable(buildkitHost, ns, info.UUID, snapshotter, platform)
+		sharable, err := isImageSharable(buildkitHost, globalOptions.Namespace, info.UUID, globalOptions.Snapshotter, platform)
 		if err != nil {
 			return "", nil, false, "", nil, nil, err
 		}

@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/pkg/cri/util"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
@@ -86,20 +87,16 @@ func setUpdateFlags(cmd *cobra.Command) {
 }
 
 func updateAction(cmd *cobra.Command, args []string) error {
-	namespace, err := cmd.Flags().GetString("namespace")
+	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
-	options, err := getUpdateOption(cmd)
+	options, err := getUpdateOption(cmd, globalOptions)
 	if err != nil {
 		return err
 	}
@@ -124,7 +121,7 @@ func updateAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
+func getUpdateOption(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (updateResourceOptions, error) {
 	var options updateResourceOptions
 	cpus, err := cmd.Flags().GetFloat64("cpus")
 	if err != nil {
@@ -223,11 +220,7 @@ func getUpdateOption(cmd *cobra.Command) (updateResourceOptions, error) {
 	if err != nil {
 		return options, err
 	}
-	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
-	if err != nil {
-		return options, err
-	}
-	if blkioWeight != 0 && !infoutil.BlockIOWeight(cgroupManager) {
+	if blkioWeight != 0 && !infoutil.BlockIOWeight(globalOptions.CgroupManager) {
 		return options, fmt.Errorf("kernel support for cgroup blkio weight missing, weight discarded")
 	}
 	if blkioWeight > 0 && blkioWeight < 10 || blkioWeight > 1000 {

@@ -51,15 +51,14 @@ func newNetworkCreateCommand() *cobra.Command {
 }
 
 func networkCreateAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	name := args[0]
 	if err := identifiers.Validate(name); err != nil {
 		return fmt.Errorf("malformed name %s: %w", name, err)
 	}
-	cniPath, err := cmd.Flags().GetString("cni-path")
-	if err != nil {
-		return err
-	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
 	if err != nil {
 		return err
 	}
@@ -103,7 +102,7 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
+	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath)
 	if err != nil {
 		return err
 	}

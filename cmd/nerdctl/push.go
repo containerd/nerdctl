@@ -84,16 +84,12 @@ func newPushCommand() *cobra.Command {
 }
 
 func pushAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	rawRef := args[0]
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
@@ -159,11 +155,6 @@ func pushAction(cmd *cobra.Command, args []string) error {
 	ref := named.String()
 	refDomain := refdocker.Domain(named)
 
-	insecure, err := cmd.Flags().GetBool("insecure-registry")
-	if err != nil {
-		return err
-	}
-
 	platMC, err := platformutil.NewMatchComparer(allPlatforms, platform)
 	if err != nil {
 		return err
@@ -203,15 +194,11 @@ func pushAction(cmd *cobra.Command, args []string) error {
 	}
 
 	var dOpts []dockerconfigresolver.Opt
-	if insecure {
+	if globalOptions.InsecureRegistry {
 		logrus.Warnf("skipping verifying HTTPS certs for %q", refDomain)
 		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
-	hostsDirs, err := cmd.Flags().GetStringSlice("hosts-dir")
-	if err != nil {
-		return err
-	}
-	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(hostsDirs))
+	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(globalOptions.HostsDir))
 	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
 	if err != nil {
 		return err
@@ -221,7 +208,7 @@ func pushAction(cmd *cobra.Command, args []string) error {
 		if !errutil.IsErrHTTPResponseToHTTPSClient(err) && !errutil.IsErrConnectionRefused(err) {
 			return err
 		}
-		if insecure {
+		if globalOptions.InsecureRegistry {
 			logrus.WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
 			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
 			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
@@ -242,12 +229,8 @@ func pushAction(cmd *cobra.Command, args []string) error {
 	}
 	switch signer {
 	case "cosign":
-		experimental, err := cmd.Flags().GetBool("experimental")
-		if err != nil {
-			return err
-		}
 
-		if !experimental {
+		if !globalOptions.Experimental {
 			return fmt.Errorf("cosign only work with enable experimental feature")
 		}
 

@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/images/converter/uncompress"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	converterutil "github.com/containerd/nerdctl/pkg/imgutil/converter"
 	"github.com/containerd/nerdctl/pkg/platformutil"
@@ -119,6 +120,10 @@ func newImageConvertCommand() *cobra.Command {
 }
 
 func imageConvertAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	var (
 		convertOpts = []converter.Opt{}
 	)
@@ -178,15 +183,7 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
@@ -216,13 +213,13 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 		var convertType string
 		switch {
 		case estargz:
-			convertFunc, finalize, err = getESGZConverter(cmd)
+			convertFunc, finalize, err = getESGZConverter(cmd, globalOptions)
 			if err != nil {
 				return err
 			}
 			convertType = "estargz"
 		case zstdchunked:
-			convertFunc, err = getZstdchunkedConverter(cmd)
+			convertFunc, err = getZstdchunkedConverter(cmd, globalOptions)
 			if err != nil {
 				return err
 			}
@@ -238,7 +235,7 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 			convertOpts = append(convertOpts, converter.WithIndexConvertFunc(convertFunc))
 			convertType = "overlaybd"
 		case nydus:
-			nydusOpts, err := getNydusConvertOpts(cmd)
+			nydusOpts, err := getNydusConvertOpts(cmd, globalOptions)
 			if err != nil {
 				return err
 			}
@@ -314,12 +311,7 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 	return printConvertedImage(cmd, res)
 }
 
-func getESGZConverter(cmd *cobra.Command) (convertFunc converter.ConvertFunc, finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error), _ error) {
-	experimental, err := cmd.Flags().GetBool("experimental")
-	if err != nil {
-		return nil, nil, err
-	}
-
+func getESGZConverter(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (convertFunc converter.ConvertFunc, finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error), _ error) {
 	externalTOC, err := cmd.Flags().GetBool("estargz-external-toc")
 	if err != nil {
 		return nil, nil, err
@@ -328,7 +320,7 @@ func getESGZConverter(cmd *cobra.Command) (convertFunc converter.ConvertFunc, fi
 	if err != nil {
 		return nil, nil, err
 	}
-	if externalTOC && !experimental {
+	if externalTOC && !globalOptions.Experimental {
 		return nil, nil, fmt.Errorf("estargz-external-toc requires experimental mode to be enabled")
 	}
 	if keepDiffID && !externalTOC {
@@ -340,7 +332,7 @@ func getESGZConverter(cmd *cobra.Command) (convertFunc converter.ConvertFunc, fi
 			return nil, nil, err
 		}
 		if !keepDiffID {
-			esgzOpts, err := getESGZConvertOpts(cmd)
+			esgzOpts, err := getESGZConvertOpts(cmd, globalOptions)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -361,7 +353,7 @@ func getESGZConverter(cmd *cobra.Command) (convertFunc converter.ConvertFunc, fi
 			})
 		}
 	} else {
-		esgzOpts, err := getESGZConvertOpts(cmd)
+		esgzOpts, err := getESGZConvertOpts(cmd, globalOptions)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -370,7 +362,7 @@ func getESGZConverter(cmd *cobra.Command) (convertFunc converter.ConvertFunc, fi
 	return convertFunc, finalize, nil
 }
 
-func getESGZConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
+func getESGZConvertOpts(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) ([]estargz.Option, error) {
 	estargzCompressionLevel, err := cmd.Flags().GetInt("estargz-compression-level")
 	if err != nil {
 		return nil, err
@@ -394,13 +386,8 @@ func getESGZConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
 		estargz.WithMinChunkSize(estargzMinChunkSize),
 	}
 
-	experimental, err := cmd.Flags().GetBool("experimental")
-	if err != nil {
-		return nil, err
-	}
-
 	if estargzRecordIn != "" {
-		if !experimental {
+		if !globalOptions.Experimental {
 			return nil, fmt.Errorf("estargz-record-in requires experimental mode to be enabled")
 		}
 
@@ -416,7 +403,7 @@ func getESGZConvertOpts(cmd *cobra.Command) ([]estargz.Option, error) {
 	return esgzOpts, nil
 }
 
-func getZstdchunkedConverter(cmd *cobra.Command) (converter.ConvertFunc, error) {
+func getZstdchunkedConverter(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (converter.ConvertFunc, error) {
 	zstdchunkedCompressionLevel, err := cmd.Flags().GetInt("zstdchunked-compression-level")
 	if err != nil {
 		return nil, err
@@ -434,13 +421,8 @@ func getZstdchunkedConverter(cmd *cobra.Command) (converter.ConvertFunc, error) 
 		estargz.WithChunkSize(zstdchunkedChunkSize),
 	}
 
-	experimental, err := cmd.Flags().GetBool("experimental")
-	if err != nil {
-		return nil, err
-	}
-
 	if zstdchunkedRecordIn != "" {
-		if !experimental {
+		if !globalOptions.Experimental {
 			return nil, fmt.Errorf("zstdchunked-record-in requires experimental mode to be enabled")
 		}
 
@@ -456,7 +438,7 @@ func getZstdchunkedConverter(cmd *cobra.Command) (converter.ConvertFunc, error) 
 	return zstdchunkedconvert.LayerConvertFuncWithCompressionLevel(zstd.EncoderLevelFromZstd(zstdchunkedCompressionLevel), esgzOpts...), nil
 }
 
-func getNydusConvertOpts(cmd *cobra.Command) (*nydusconvert.PackOption, error) {
+func getNydusConvertOpts(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (*nydusconvert.PackOption, error) {
 	builderPath, err := cmd.Flags().GetString("nydus-builder-path")
 	if err != nil {
 		return nil, err
@@ -465,16 +447,8 @@ func getNydusConvertOpts(cmd *cobra.Command) (*nydusconvert.PackOption, error) {
 	if err != nil {
 		return nil, err
 	}
-	dataRoot, err := cmd.Flags().GetString("data-root")
-	if err != nil {
-		return nil, err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return nil, err
-	}
 	if workDir == "" {
-		workDir, err = clientutil.DataStore(dataRoot, address)
+		workDir, err = clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
 		if err != nil {
 			return nil, err
 		}

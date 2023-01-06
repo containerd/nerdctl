@@ -67,6 +67,10 @@ func newComposeRunCommand() *cobra.Command {
 }
 
 func composeRunAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	detach, err := cmd.Flags().GetBool("detach")
 	if err != nil {
 		return err
@@ -163,21 +167,13 @@ func composeRunAction(cmd *cobra.Command, args []string) error {
 	if tty && detach {
 		return errors.New("currently flag -t and -d cannot be specified together (FIXME)")
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	c, err := getComposer(cmd, client)
+	c, err := getComposer(cmd, client, globalOptions)
 	if err != nil {
 		return err
 	}

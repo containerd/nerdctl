@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
@@ -58,6 +59,10 @@ type statusError struct {
 }
 
 func rmAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
@@ -66,15 +71,7 @@ func rmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
@@ -86,7 +83,7 @@ func rmAction(cmd *cobra.Command, args []string) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := removeContainer(ctx, cmd, found.Container, force, removeAnonVolumes); err != nil {
+			if err := removeContainer(ctx, cmd, globalOptions, found.Container, force, removeAnonVolumes); err != nil {
 				return err
 			}
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
@@ -109,12 +106,11 @@ func rmAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func removeContainer(ctx context.Context, cmd *cobra.Command, container containerd.Container, force bool, removeAnonVolumes bool) (retErr error) {
+func removeContainer(ctx context.Context, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, container containerd.Container, force bool, removeAnonVolumes bool) (retErr error) {
 	ns, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
 		return err
 	}
-
 	id := container.ID()
 	l, err := container.Labels(ctx)
 	if err != nil {
@@ -122,15 +118,7 @@ func removeContainer(ctx context.Context, cmd *cobra.Command, container containe
 	}
 	stateDir := l[labels.StateDir]
 	name := l[labels.Name]
-	dataRoot, err := cmd.Flags().GetString("data-root")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	dataStore, err := clientutil.DataStore(dataRoot, address)
+	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
 	if err != nil {
 		return err
 	}
@@ -164,7 +152,7 @@ func removeContainer(ctx context.Context, cmd *cobra.Command, container containe
 		if err := json.Unmarshal([]byte(anonVolumesJSON), &anonVolumes); err != nil {
 			return err
 		}
-		volStore, err := getVolumeStore(cmd)
+		volStore, err := getVolumeStore(globalOptions)
 		if err != nil {
 			return err
 		}

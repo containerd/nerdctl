@@ -99,6 +99,10 @@ func parseImgcryptFlags(cmd *cobra.Command, encrypt bool) (parsehelpers.EncArgs,
 
 func getImgcryptAction(encrypt bool) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
+		globalOptions, err := processRootCmdFlags(cmd)
+		if err != nil {
+			return err
+		}
 		var convertOpts = []converter.Opt{}
 		srcRawRef := args[0]
 		targetRawRef := args[1]
@@ -136,15 +140,7 @@ func getImgcryptAction(encrypt bool) func(cmd *cobra.Command, args []string) err
 		if err != nil {
 			return err
 		}
-		namespace, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			return err
-		}
-		address, err := cmd.Flags().GetString("address")
-		if err != nil {
-			return err
-		}
-		client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+		client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 		if err != nil {
 			return err
 		}

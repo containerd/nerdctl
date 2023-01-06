@@ -44,28 +44,16 @@ func newNetworkRmCommand() *cobra.Command {
 }
 
 func networkRmAction(cmd *cobra.Command, args []string) error {
-	namespace, err := cmd.Flags().GetString("namespace")
+	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
-	cniPath, err := cmd.Flags().GetString("cni-path")
-	if err != nil {
-		return err
-	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
-	if err != nil {
-		return err
-	}
-	e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
+	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath)
 	if err != nil {
 		return err
 	}

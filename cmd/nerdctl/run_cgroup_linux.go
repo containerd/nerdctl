@@ -25,6 +25,7 @@ import (
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-units"
@@ -39,11 +40,7 @@ type customMemoryOptions struct {
 	disableOOMKiller  *bool
 }
 
-func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
-	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
-	if err != nil {
-		return nil, err
-	}
+func generateCgroupOpts(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, id string) ([]oci.SpecOpts, error) {
 	cpus, err := cmd.Flags().GetFloat64("cpus")
 	if err != nil {
 		return nil, err
@@ -92,7 +89,7 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 		return nil, err
 	}
 
-	if cgroupManager == "none" {
+	if globalOptions.CgroupManager == "none" {
 		if !rootlessutil.IsRootless() {
 			return nil, errors.New(`cgroup-manager "none" is only supported for rootless`)
 		}
@@ -109,7 +106,7 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	}
 
 	var opts []oci.SpecOpts // nolint: prealloc
-	path, err := generateCgroupPath(cmd, cgroupManager, parent, id)
+	path, err := generateCgroupPath(cmd, globalOptions.CgroupManager, parent, id)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +246,7 @@ func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
 	if err != nil {
 		return nil, err
 	}
-	if blkioWeight != 0 && !infoutil.BlockIOWeight(cgroupManager) {
+	if blkioWeight != 0 && !infoutil.BlockIOWeight(globalOptions.CgroupManager) {
 		logrus.Warn("kernel support for cgroup blkio weight missing, weight discarded")
 		blkioWeight = 0
 	}

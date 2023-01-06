@@ -57,6 +57,10 @@ type networkPrintable struct {
 }
 
 func networkLsAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return err
@@ -86,15 +90,7 @@ func networkLsAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	cniPath, err := cmd.Flags().GetString("cni-path")
-	if err != nil {
-		return err
-	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
-	if err != nil {
-		return err
-	}
-	e, err := netutil.NewCNIEnv(cniPath, cniNetconfpath)
+	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath)
 	if err != nil {
 		return err
 	}

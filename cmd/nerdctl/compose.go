@@ -24,6 +24,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/cosignutil"
@@ -80,7 +81,7 @@ func newComposeCommand() *cobra.Command {
 	return composeCommand
 }
 
-func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Composer, error) {
+func getComposer(cmd *cobra.Command, client *containerd.Client, globalOptions *types.GlobalCommandOptions) (*composer.Composer, error) {
 	nerdctlCmd, nerdctlArgs := globalFlags(cmd)
 	projectDirectory, err := cmd.Flags().GetString("project-directory")
 	if err != nil {
@@ -94,38 +95,17 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 	if err != nil {
 		return nil, err
 	}
-	debugFull, err := cmd.Flags().GetBool("debug-full")
-	if err != nil {
-		return nil, err
-	}
+	debugFull := globalOptions.DebugFull
+	snapshotter := globalOptions.Snapshotter
 	files, err := cmd.Flags().GetStringArray("file")
 	if err != nil {
 		return nil, err
 	}
-	insecure, err := cmd.Flags().GetBool("insecure-registry")
-	if err != nil {
-		return nil, err
-	}
-	cniPath, err := cmd.Flags().GetString("cni-path")
-	if err != nil {
-		return nil, err
-	}
-	cniNetconfpath, err := cmd.Flags().GetString("cni-netconfpath")
-	if err != nil {
-		return nil, err
-	}
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
-	if err != nil {
-		return nil, err
-	}
-	hostsDirs, err := cmd.Flags().GetStringSlice("hosts-dir")
-	if err != nil {
-		return nil, err
-	}
-	experimental, err := cmd.Flags().GetBool("experimental")
-	if err != nil {
-		return nil, err
-	}
+	insecure := globalOptions.InsecureRegistry
+	cniPath := globalOptions.CNIPath
+	cniNetconfpath := globalOptions.CNINetConfPath
+	hostsDirs := globalOptions.HostsDir
+	experimental := globalOptions.Experimental
 
 	o := composer.Options{
 		Project:          projectName,
@@ -156,7 +136,7 @@ func getComposer(cmd *cobra.Command, client *containerd.Client) (*composer.Compo
 		return false, nil
 	}
 
-	volStore, err := getVolumeStore(cmd)
+	volStore, err := getVolumeStore(globalOptions)
 	if err != nil {
 		return nil, err
 	}

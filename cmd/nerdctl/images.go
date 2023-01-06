@@ -37,6 +37,7 @@ import (
 	"github.com/containerd/containerd/platforms"
 	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/snapshots"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/imgutil"
@@ -89,6 +90,10 @@ Properties:
 }
 
 func imagesAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	var filters []string
 
 	if len(args) > 0 {
@@ -99,15 +104,7 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 		filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
 		filters = append(filters, fmt.Sprintf("name==%s", args[0]))
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
@@ -159,7 +156,7 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 
 		imageList = imgutil.FilterImages(imageList, beforeImages, sinceImages)
 	}
-	return printImages(ctx, cmd, client, imageList)
+	return printImages(ctx, cmd, globalOptions, client, imageList)
 }
 
 func filterByReference(imageList []images.Image, filters []string) ([]images.Image, error) {
@@ -245,7 +242,7 @@ type imagePrintable struct {
 	Platform string // nerdctl extension
 }
 
-func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Client, imageList []images.Image) error {
+func printImages(ctx context.Context, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, client *containerd.Client, imageList []images.Image) error {
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return err
@@ -301,11 +298,6 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 		}
 	}
 
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
-	if err != nil {
-		return err
-	}
-
 	printer := &imagePrinter{
 		w:            w,
 		quiet:        quiet,
@@ -315,7 +307,7 @@ func printImages(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 		tmpl:         tmpl,
 		client:       client,
 		contentStore: client.ContentStore(),
-		snapshotter:  client.SnapshotService(snapshotter),
+		snapshotter:  client.SnapshotService(globalOptions.Snapshotter),
 	}
 
 	for _, img := range imageList {

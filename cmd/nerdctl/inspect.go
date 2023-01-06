@@ -64,6 +64,12 @@ func addInspectFlags(cmd *cobra.Command) {
 }
 
 func inspectAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
+	namespace := globalOptions.Namespace
+	address := globalOptions.Address
 	inspectType, err := cmd.Flags().GetString("type")
 	if err != nil {
 		return err
@@ -71,14 +77,6 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 
 	if len(inspectType) > 0 && !validInspectType[inspectType] {
 		return fmt.Errorf("%q is not a valid value for --type", inspectType)
-	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
 	}
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
 	if err != nil {
@@ -129,7 +127,7 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 			continue
 		}
 		if ni != 0 {
-			if err := imageInspectActionWithPlatform(cmd, []string{req}, ""); err != nil {
+			if err := imageInspectActionWithPlatform(cmd, []string{req}, "", globalOptions); err != nil {
 				errs = append(errs, err)
 			}
 			continue

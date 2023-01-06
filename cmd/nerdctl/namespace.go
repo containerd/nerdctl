@@ -63,15 +63,11 @@ func newNamespaceLsCommand() *cobra.Command {
 }
 
 func namespaceLsAction(cmd *cobra.Command, args []string) error {
-	namespace, err := cmd.Flags().GetString("namespace")
+	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
@@ -92,11 +88,7 @@ func namespaceLsAction(cmd *cobra.Command, args []string) error {
 		}
 		return nil
 	}
-	dataRoot, err := cmd.Flags().GetString("data-root")
-	if err != nil {
-		return err
-	}
-	dataStore, err := clientutil.DataStore(dataRoot, address)
+	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
 	if err != nil {
 		return err
 	}

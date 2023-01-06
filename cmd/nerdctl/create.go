@@ -51,28 +51,18 @@ func newCreateCommand() *cobra.Command {
 }
 
 func createAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	platform, err := cmd.Flags().GetString("platform")
 	if err != nil {
 		return err
 	}
-
-	experimental, err := cmd.Flags().GetBool("experimental")
-	if err != nil {
-		return err
-	}
-
-	if (platform == "windows" || platform == "freebsd") && !experimental {
+	if (platform == "windows" || platform == "freebsd") && !globalOptions.Experimental {
 		return fmt.Errorf("%s requires experimental mode to be enabled", platform)
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClientWithPlatform(cmd.Context(), namespace, address, platform)
+	client, ctx, cancel, err := clientutil.NewClientWithPlatform(cmd.Context(), globalOptions.Namespace, globalOptions.Address, platform)
 	if err != nil {
 		return err
 	}
@@ -83,7 +73,7 @@ func createAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	container, gc, err := createContainer(ctx, cmd, client, args, platform, false, flagT, true)
+	container, gc, err := createContainer(ctx, cmd, globalOptions, client, args, platform, false, flagT, true)
 	if err != nil {
 		if gc != nil {
 			gc()

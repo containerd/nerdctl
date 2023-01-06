@@ -23,6 +23,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
@@ -61,14 +62,19 @@ func newImageInspectCommand() *cobra.Command {
 }
 
 func imageInspectAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	platform, err := cmd.Flags().GetString("platform")
 	if err != nil {
 		return err
 	}
-	return imageInspectActionWithPlatform(cmd, args, platform)
+	return imageInspectActionWithPlatform(cmd, args, platform, globalOptions)
 }
 
-func imageInspectActionWithPlatform(cmd *cobra.Command, args []string, platform string) error {
+func imageInspectActionWithPlatform(cmd *cobra.Command, args []string, platform string, globalOptions *types.GlobalCommandOptions) error {
+
 	var clientOpts []containerd.ClientOpt
 	if platform != "" {
 		platformParsed, err := platforms.Parse(platform)
@@ -78,15 +84,7 @@ func imageInspectActionWithPlatform(cmd *cobra.Command, args []string, platform 
 		platformM := platforms.Only(platformParsed)
 		clientOpts = append(clientOpts, containerd.WithDefaultPlatform(platformM))
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address, clientOpts...)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address, clientOpts...)
 	if err != nil {
 		return err
 	}

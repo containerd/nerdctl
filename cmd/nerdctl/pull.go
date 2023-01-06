@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cosignutil"
 	"github.com/containerd/nerdctl/pkg/imgutil"
@@ -70,16 +71,12 @@ func newPullCommand() *cobra.Command {
 }
 
 func pullAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	rawRef := args[0]
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
@@ -110,7 +107,7 @@ func pullAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = ensureImage(ctx, cmd, client, rawRef, ocispecPlatforms, "always", unpack, quiet)
+	_, err = ensureImage(ctx, cmd, globalOptions, client, rawRef, ocispecPlatforms, "always", unpack, quiet)
 	if err != nil {
 		return err
 	}
@@ -118,22 +115,10 @@ func pullAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func ensureImage(ctx context.Context, cmd *cobra.Command, client *containerd.Client, rawRef string, ocispecPlatforms []v1.Platform,
-	pull string, unpack *bool, quiet bool) (*imgutil.EnsuredImage, error) {
+func ensureImage(ctx context.Context, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, client *containerd.Client, rawRef string, ocispecPlatforms []v1.Platform, pull string, unpack *bool, quiet bool) (*imgutil.EnsuredImage, error) {
 
 	var ensured *imgutil.EnsuredImage
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
-	if err != nil {
-		return nil, err
-	}
-	insecureRegistry, err := cmd.Flags().GetBool("insecure-registry")
-	if err != nil {
-		return nil, err
-	}
-	hostsDirs, err := cmd.Flags().GetStringSlice("hosts-dir")
-	if err != nil {
-		return nil, err
-	}
+
 	verifier, err := cmd.Flags().GetString("verify")
 	if err != nil {
 		return nil, err
@@ -144,7 +129,7 @@ func ensureImage(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 			return nil, errors.New("--verify flag is not supported on IPFS as of now")
 		}
 
-		ensured, err = ipfs.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
+		ensured, err = ipfs.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), globalOptions.Snapshotter, scheme, ref,
 			pull, ocispecPlatforms, unpack, quiet)
 		if err != nil {
 			return nil, err
@@ -155,10 +140,7 @@ func ensureImage(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 	ref := rawRef
 	switch verifier {
 	case "cosign":
-		experimental, err := cmd.Flags().GetBool("experimental")
-		if err != nil {
-			return nil, err
-		}
+		experimental := globalOptions.Experimental
 
 		if !experimental {
 			return nil, fmt.Errorf("cosign only work with enable experimental feature")
@@ -169,7 +151,7 @@ func ensureImage(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 			return nil, err
 		}
 
-		ref, err = cosignutil.VerifyCosign(ctx, rawRef, keyRef, hostsDirs)
+		ref, err = cosignutil.VerifyCosign(ctx, rawRef, keyRef, globalOptions.HostsDir)
 		if err != nil {
 			return nil, err
 		}
@@ -179,8 +161,8 @@ func ensureImage(ctx context.Context, cmd *cobra.Command, client *containerd.Cli
 		return nil, fmt.Errorf("no verifier found: %s", verifier)
 	}
 
-	ensured, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, ref,
-		pull, insecureRegistry, hostsDirs, ocispecPlatforms, unpack, quiet)
+	ensured, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), globalOptions.Snapshotter, ref,
+		pull, globalOptions.InsecureRegistry, globalOptions.HostsDir, ocispecPlatforms, unpack, quiet)
 	if err != nil {
 		return nil, err
 	}

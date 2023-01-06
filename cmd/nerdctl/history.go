@@ -70,24 +70,15 @@ type historyPrintable struct {
 }
 
 func historyAction(cmd *cobra.Command, args []string) error {
-	namespace, err := cmd.Flags().GetString("namespace")
+	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
-
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
-	if err != nil {
-		return err
-	}
 
 	walker := &imagewalker.ImageWalker{
 		Client: client,
@@ -119,7 +110,7 @@ func historyAction(cmd *cobra.Command, args []string) error {
 					diffIDs := diffIDs[0 : layerCounter+1]
 					chainID := identity.ChainID(diffIDs).String()
 
-					s := client.SnapshotService(snapshotter)
+					s := client.SnapshotService(globalOptions.Snapshotter)
 					stat, err := s.Stat(ctx, chainID)
 					if err != nil {
 						return fmt.Errorf("failed to get stat: %w", err)

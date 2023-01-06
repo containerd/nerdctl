@@ -47,25 +47,22 @@ func newComposeImagesCommand() *cobra.Command {
 }
 
 func composeImagesAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
+
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return err
 	}
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return err
-	}
-	address, err := cmd.Flags().GetString("address")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	c, err := getComposer(cmd, client)
+	c, err := getComposer(cmd, client, globalOptions)
 	if err != nil {
 		return err
 	}
@@ -84,11 +81,7 @@ func composeImagesAction(cmd *cobra.Command, args []string) error {
 		return printComposeImageIDs(ctx, containers)
 	}
 
-	snapshotter, err := cmd.Flags().GetString("snapshotter")
-	if err != nil {
-		return err
-	}
-	sn := client.SnapshotService(snapshotter)
+	sn := client.SnapshotService(globalOptions.Snapshotter)
 
 	return printComposeImages(ctx, cmd, containers, sn)
 }

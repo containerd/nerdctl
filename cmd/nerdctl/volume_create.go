@@ -39,12 +39,16 @@ func newVolumeCreateCommand() *cobra.Command {
 }
 
 func volumeCreateAction(cmd *cobra.Command, args []string) error {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return err
+	}
 	name := args[0]
 	if err := identifiers.Validate(name); err != nil {
 		return fmt.Errorf("malformed name %s: %w", name, err)
 	}
 
-	volStore, err := getVolumeStore(cmd)
+	volStore, err := getVolumeStore(globalOptions)
 	if err != nil {
 		return err
 	}
