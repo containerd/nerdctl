@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
@@ -42,15 +43,16 @@ func composeBuildAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	buildArg, err := cmd.Flags().GetStringArray("build-arg")
+	options := &types.ComposeBuildCommandOptions{}
+	options.BuildArgs, err = cmd.Flags().GetStringArray("build-arg")
 	if err != nil {
 		return err
 	}
-	noCache, err := cmd.Flags().GetBool("no-cache")
+	options.NoCache, err = cmd.Flags().GetBool("no-cache")
 	if err != nil {
 		return err
 	}
-	progress, err := cmd.Flags().GetString("progress")
+	options.Progress, err = cmd.Flags().GetString("progress")
 	if err != nil {
 		return err
 	}
@@ -66,9 +68,9 @@ func composeBuildAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	bo := composer.BuildOptions{
-		Args:     buildArg,
-		NoCache:  noCache,
-		Progress: progress,
+		Args:     options.BuildArgs,
+		NoCache:  options.NoCache,
+		Progress: options.Progress,
 	}
 	return c.Build(ctx, bo, args)
 }
