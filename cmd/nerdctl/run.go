@@ -305,6 +305,15 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	rm, err := cmd.Flags().GetBool("rm")
+	if err != nil {
+		return err
+	}
+
+	if rm && flagD {
+		return errors.New("flags -d and --rm cannot be specified together")
+	}
+
 	container, gc, err := createContainer(ctx, cmd, globalOptions, client, args, platform, flagI, flagT, flagD)
 	if err != nil {
 		if gc != nil {
@@ -314,14 +323,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 
 	id := container.ID()
-	rm, err := cmd.Flags().GetBool("rm")
-	if err != nil {
-		return err
-	}
-	if rm {
-		if flagD {
-			return errors.New("flag -d and --rm cannot be specified together")
-		}
+	if rm && !flagD {
 		defer func() {
 			if err := removeContainer(ctx, cmd, globalOptions, container, true, true); err != nil {
 				logrus.WithError(err).Warnf("failed to remove container %s", id)
