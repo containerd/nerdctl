@@ -29,7 +29,6 @@ import (
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
-
 	"github.com/sirupsen/logrus"
 )
 

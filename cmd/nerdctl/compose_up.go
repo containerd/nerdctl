@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
@@ -109,11 +110,15 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		return err
 	}
 	defer cancel()
-
-	c, err := getComposer(cmd, client, globalOptions)
+	options, err := getComposeOptions(cmd, globalOptions.DebugFull, globalOptions.Experimental)
 	if err != nil {
 		return err
 	}
+	c, err := compose.New(client, globalOptions, options, cmd.OutOrStdout(), cmd.ErrOrStderr())
+	if err != nil {
+		return err
+	}
+
 	uo := composer.UpOptions{
 		Detach:        detach,
 		NoBuild:       noBuild,

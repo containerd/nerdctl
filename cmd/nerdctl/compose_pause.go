@@ -22,6 +22,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -44,16 +45,21 @@ func composePauseAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
-
-	c, err := getComposer(cmd, client, globalOptions)
+	options, err := getComposeOptions(cmd, globalOptions.DebugFull, globalOptions.Experimental)
 	if err != nil {
 		return err
 	}
+	c, err := compose.New(client, globalOptions, options, cmd.OutOrStdout(), cmd.ErrOrStderr())
+	if err != nil {
+		return err
+	}
+
 	serviceNames, err := c.ServiceNames(args...)
 	if err != nil {
 		return err
@@ -112,7 +118,11 @@ func composeUnpauseAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	c, err := getComposer(cmd, client, globalOptions)
+	options, err := getComposeOptions(cmd, globalOptions.DebugFull, globalOptions.Experimental)
+	if err != nil {
+		return err
+	}
+	c, err := compose.New(client, globalOptions, options, cmd.OutOrStdout(), cmd.ErrOrStderr())
 	if err != nil {
 		return err
 	}
