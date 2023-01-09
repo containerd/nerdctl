@@ -17,19 +17,8 @@
 package main
 
 import (
-	"errors"
-	"fmt"
-	"io"
-	"os"
-
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/archive/compression"
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/images/archive"
-	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/platformutil"
+	"github.com/containerd/nerdctl/pkg/cmd/load"
 	"github.com/spf13/cobra"
 )
 
@@ -56,106 +45,35 @@ func newLoadCommand() *cobra.Command {
 	return loadCommand
 }
 
-func loadAction(cmd *cobra.Command, _ []string) error {
-	in := cmd.InOrStdin()
+func processLoadCommandFlags(cmd *cobra.Command) (types.LoadCommandOptions, error) {
 	input, err := cmd.Flags().GetString("input")
 	if err != nil {
-		return err
+		return types.LoadCommandOptions{}, err
 	}
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.LoadCommandOptions{}, err
 	}
-	if input != "" {
-		f, err := os.Open(input)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		in = f
-	} else {
-		// check if stdin is empty.
-		stdinStat, err := os.Stdin.Stat()
-		if err != nil {
-			return err
-		}
-		if stdinStat.Size() == 0 && (stdinStat.Mode()&os.ModeNamedPipe) == 0 {
-			return errors.New("stdin is empty and input flag is not specified")
-		}
-	}
-	decompressor, err := compression.DecompressStream(in)
-	if err != nil {
-		return err
-	}
-
 	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
 	if err != nil {
-		return err
+		return types.LoadCommandOptions{}, err
 	}
 	platform, err := cmd.Flags().GetStringSlice("platform")
 	if err != nil {
-		return err
+		return types.LoadCommandOptions{}, err
 	}
-	platMC, err := platformutil.NewMatchComparer(allPlatforms, platform)
+	return types.LoadCommandOptions{
+		GOptions:     *globalOptions,
+		Input:        input,
+		Platform:     platform,
+		AllPlatforms: allPlatforms,
+	}, nil
+}
+
+func loadAction(cmd *cobra.Command, _ []string) error {
+	options, err := processLoadCommandFlags(cmd)
 	if err != nil {
 		return err
 	}
-
-	return loadImage(decompressor, cmd, globalOptions, platMC, false)
-}
-
-func loadImage(in io.Reader, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, platMC platforms.MatchComparer, quiet bool) error {
-	// In addition to passing WithImagePlatform() to client.Import(), we also need to pass WithDefaultPlatform() to NewClient().
-	// Otherwise unpacking may fail.
-
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address, containerd.WithDefaultPlatform(platMC))
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
-	r := &readCounter{Reader: in}
-	imgs, err := client.Import(ctx, r, containerd.WithDigestRef(archive.DigestTranslator(globalOptions.Snapshotter)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithImportPlatform(platMC))
-	if err != nil {
-		if r.N == 0 {
-			// Avoid confusing "unrecognized image format"
-			return errors.New("no image was built")
-		}
-		if errors.Is(err, images.ErrEmptyWalk) {
-			err = fmt.Errorf("%w (Hint: set `--platform=PLATFORM` or `--all-platforms`)", err)
-		}
-		return err
-	}
-	for _, img := range imgs {
-		image := containerd.NewImageWithPlatform(client, img, platMC)
-
-		// TODO: Show unpack status
-		if !quiet {
-			fmt.Fprintf(cmd.OutOrStdout(), "unpacking %s (%s)...\n", img.Name, img.Target.Digest)
-		}
-		err = image.Unpack(ctx, globalOptions.Snapshotter)
-		if err != nil {
-			return err
-		}
-		if quiet {
-			fmt.Fprintln(cmd.OutOrStdout(), img.Target.Digest)
-		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "Loaded image: %s\n", img.Name)
-		}
-	}
-
-	return nil
-}
-
-type readCounter struct {
-	io.Reader
-	N int
-}
-
-func (r *readCounter) Read(p []byte) (int, error) {
-	n, err := r.Reader.Read(p)
-	if n > 0 {
-		r.N += n
-	}
-	return n, err
+	return load.Load(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout(), options)
 }
