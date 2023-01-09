@@ -3,7 +3,7 @@
 _output
 
 # golangci-lint
-build
+/build
 
 # vagrant
 /.vagrant
