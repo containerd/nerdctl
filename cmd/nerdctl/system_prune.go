@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/cmd/volume"
 	buildkitclient "github.com/moby/buildkit/client"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -102,7 +104,10 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if vFlag {
-		if err := volumePrune(ctx, cmd, client, globalOptions); err != nil {
+		if err := volume.Prune(ctx, &types.VolumePruneCommandOptions{
+			GOptions: globalOptions,
+			Force:    true,
+		}, cmd.InOrStdin(), cmd.OutOrStdout()); err != nil {
 			return err
 		}
 	}
