@@ -17,15 +17,8 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-
-	"github.com/containerd/containerd"
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
-	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/containerd/nerdctl/pkg/mountutil"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/volume"
 	"github.com/spf13/cobra"
 )
 
@@ -50,73 +43,13 @@ func volumeRmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-	containers, err := client.Containers(ctx)
-	if err != nil {
-		return err
-	}
-	volStore, err := getVolumeStore(globalOptions)
-	if err != nil {
-		return err
-	}
-	names := args
-	usedVolumes, err := usedVolumes(ctx, containers)
-	if err != nil {
-		return err
-	}
-
-	var volumenames []string // nolint: prealloc
-	for _, name := range names {
-		volume, err := volStore.Get(name, false)
-		if err != nil {
-			return err
-		}
-		if _, ok := usedVolumes[volume.Name]; ok {
-			return fmt.Errorf("volume %q is in use", name)
-		}
-		volumenames = append(volumenames, name)
-	}
-	removedNames, err := volStore.Remove(volumenames)
-	if err != nil {
-		return err
-	}
-	for _, name := range removedNames {
-		fmt.Fprintln(cmd.OutOrStdout(), name)
-	}
-	return err
+	return volume.Rm(cmd.Context(), &types.VolumeRmCommandOptions{
+		GOptions: globalOptions,
+		Volumes:  args,
+	}, cmd.OutOrStdout())
 }
 
 func volumeRmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show volume names
 	return shellCompleteVolumeNames(cmd)
-}
-
-func usedVolumes(ctx context.Context, containers []containerd.Container) (map[string]struct{}, error) {
-	usedVolumes := make(map[string]struct{})
-	for _, c := range containers {
-		l, err := c.Labels(ctx)
-		if err != nil {
-			return nil, err
-		}
-		mountsJSON, ok := l[labels.Mounts]
-		if !ok {
-			continue
-		}
-
-		var mounts []dockercompat.MountPoint
-		err = json.Unmarshal([]byte(mountsJSON), &mounts)
-		if err != nil {
-			return nil, err
-		}
-		for _, m := range mounts {
-			if m.Type == mountutil.Volume {
-				usedVolumes[m.Name] = struct{}{}
-			}
-		}
-	}
-	return usedVolumes, nil
 }

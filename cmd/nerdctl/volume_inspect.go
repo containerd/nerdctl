@@ -17,7 +17,8 @@
 package main
 
 import (
-	"github.com/containerd/nerdctl/pkg/formatter"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/volume"
 	"github.com/spf13/cobra"
 )
 
@@ -48,26 +49,16 @@ func volumeInspectAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	volStore, err := getVolumeStore(globalOptions)
-	if err != nil {
-		return err
-	}
-	result := make([]interface{}, len(args))
-
-	for i, name := range args {
-		var vol, err = volStore.Get(name, volumeSize)
-		if err != nil {
-			return err
-		}
-		result[i] = vol
-	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
 		return err
 	}
-
-	return formatter.FormatSlice(format, cmd.OutOrStdout(), result)
+	return volume.Inspect(&types.VolumeInspectCommandOptions{
+		GOptions: globalOptions,
+		Format:   format,
+		Size:     volumeSize,
+		Volumes:  args,
+	}, cmd.OutOrStdout())
 }
 
 func volumeInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

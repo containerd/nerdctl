@@ -50,33 +50,29 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	options := &types.VolumeLsCommandOptions{}
-	options.Writer = cmd.OutOrStdout()
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return err
 	}
-	options.Quiet = quiet
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
 		return err
 	}
-	options.Format = format
 	size, err := cmd.Flags().GetBool("size")
 	if err != nil {
 		return err
 	}
-	options.Size = size
 	filters, err := cmd.Flags().GetStringSlice("filter")
 	if err != nil {
 		return err
 	}
-	options.Filters = filters
-	options.Namespace = globalOptions.Namespace
-	options.DataRoot = globalOptions.DataRoot
-	options.Address = globalOptions.Address
-	return volume.Ls(options)
+	return volume.Ls(&types.VolumeLsCommandOptions{
+		GOptions: globalOptions,
+		Quiet:    quiet,
+		Format:   format,
+		Size:     size,
+		Filters:  filters,
+	}, cmd.OutOrStdout())
 }
 
 func getVolumes(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (map[string]native.Volume, error) {

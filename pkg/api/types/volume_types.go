@@ -16,11 +16,26 @@
 
 package types
 
-import "io"
+type VolumeCreateCommandOptions struct {
+	GOptions *GlobalCommandOptions
+	// Name is the volume name
+	Name string
+	// Labels are the volume labels
+	Labels []string
+}
+
+type VolumeInspectCommandOptions struct {
+	GOptions *GlobalCommandOptions
+	// Format the output using the given go template
+	Format string
+	// Display the disk usage of volumes. Can be slow with volumes having loads of directories.
+	Size bool
+	// Volumes are the volumes to be inspected
+	Volumes []string
+}
 
 type VolumeLsCommandOptions struct {
-	// Writer is the output writer
-	Writer io.Writer
+	GOptions *GlobalCommandOptions
 	// Only display volume names
 	Quiet bool
 	// Format the output using the given go template
@@ -29,10 +44,16 @@ type VolumeLsCommandOptions struct {
 	Size bool
 	// Filter matches volumes based on given conditions
 	Filters []string
-	// containerd namespace
-	Namespace string
-	// Root directory of persistent nerdctl state
-	DataRoot string
-	// containerd address
-	Address string
+}
+
+type VolumePruneCommandOptions struct {
+	GOptions *GlobalCommandOptions
+	// Do not prompt for confirmation
+	Force bool
+}
+
+type VolumeRmCommandOptions struct {
+	GOptions *GlobalCommandOptions
+	// Volumes are the volumes to be removed
+	Volumes []string
 }
