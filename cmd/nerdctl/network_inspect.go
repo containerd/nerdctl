@@ -17,14 +17,8 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-
-	"github.com/containerd/nerdctl/pkg/formatter"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
-	"github.com/containerd/nerdctl/pkg/netutil"
-
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/network"
 	"github.com/spf13/cobra"
 )
 
@@ -54,54 +48,20 @@ func networkInspectAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath)
+	mode, err := cmd.Flags().GetString("mode")
 	if err != nil {
 		return err
-	}
-
-	netMap, err := e.NetworkMap()
-	if err != nil {
-		return err
-	}
-
-	result := make([]interface{}, len(args))
-	for i, name := range args {
-		if name == "host" || name == "none" {
-			return fmt.Errorf("pseudo network %q cannot be inspected", name)
-		}
-		l, ok := netMap[name]
-		if !ok {
-			return fmt.Errorf("no such network: %s", name)
-		}
-
-		r := &native.Network{
-			CNI:           json.RawMessage(l.Bytes),
-			NerdctlID:     l.NerdctlID,
-			NerdctlLabels: l.NerdctlLabels,
-			File:          l.File,
-		}
-		mode, err := cmd.Flags().GetString("mode")
-		if err != nil {
-			return err
-		}
-		switch mode {
-		case "native":
-			result[i] = r
-		case "dockercompat":
-			compat, err := dockercompat.NetworkFromNative(r)
-			if err != nil {
-				return err
-			}
-			result[i] = compat
-		default:
-			return fmt.Errorf("unknown mode %q", mode)
-		}
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
 		return err
 	}
-	return formatter.FormatSlice(format, cmd.OutOrStdout(), result)
+	return network.Inspect(types.NetworkInspectCommandOptions{
+		GOptions: globalOptions,
+		Mode:     mode,
+		Format:   format,
+		Networks: args,
+	}, cmd.OutOrStdout())
 }
 
 func networkInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

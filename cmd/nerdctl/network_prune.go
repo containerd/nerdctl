@@ -17,16 +17,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
-	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/nerdctl/pkg/cmd/network"
 	"github.com/spf13/cobra"
 )
 
@@ -67,55 +62,9 @@ func networkPruneAction(cmd *cobra.Command, _ []string) error {
 			return nil
 		}
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
 
-	return networkPrune(ctx, cmd, client, globalOptions)
-}
-
-func networkPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions types.GlobalCommandOptions) error {
-	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath)
-	if err != nil {
-		return err
-	}
-
-	usedNetworks, err := netutil.UsedNetworks(ctx, client)
-	if err != nil {
-		return err
-	}
-
-	networkConfigs, err := e.NetworkList()
-	if err != nil {
-		return err
-	}
-
-	var removedNetworks []string // nolint: prealloc
-	for _, net := range networkConfigs {
-		if strutil.InStringSlice(networkDriversToKeep, net.Name) {
-			continue
-		}
-		if net.NerdctlID == nil || net.File == "" {
-			continue
-		}
-		if _, ok := usedNetworks[net.Name]; ok {
-			continue
-		}
-		if err := e.RemoveNetwork(net); err != nil {
-			logrus.WithError(err).Errorf("failed to remove network %s", net.Name)
-			continue
-		}
-		removedNetworks = append(removedNetworks, net.Name)
-	}
-
-	if len(removedNetworks) > 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "Deleted Networks:")
-		for _, name := range removedNetworks {
-			fmt.Fprintln(cmd.OutOrStdout(), name)
-		}
-		fmt.Fprintln(cmd.OutOrStdout(), "")
-	}
-	return nil
+	return network.Prune(cmd.Context(), types.NetworkPruneCommandOptions{
+		GOptions:             globalOptions,
+		NetworkDriversToKeep: networkDriversToKeep},
+		cmd.InOrStdin(), cmd.OutOrStdout())
 }

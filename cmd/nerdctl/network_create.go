@@ -19,8 +19,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/identifiers"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/network"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 
@@ -96,34 +97,18 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 	}
 	labels = strutil.DedupeStrSlice(labels)
 
-	if subnetStr == "" {
-		if gatewayStr != "" || ipRangeStr != "" {
-			return fmt.Errorf("cannot set gateway or ip-range without subnet, specify --subnet manually")
-		}
-	}
-
-	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath)
-	if err != nil {
-		return err
-	}
-	createOpts := netutil.CreateOptions{
-		Name:        name,
-		Driver:      driver,
-		Options:     strutil.ConvertKVStringsToMap(opts),
-		IPAMDriver:  ipamDriver,
-		IPAMOptions: strutil.ConvertKVStringsToMap(ipamOpts),
-		Subnet:      subnetStr,
-		Gateway:     gatewayStr,
-		IPRange:     ipRangeStr,
-		Labels:      labels,
-	}
-	net, err := e.CreateNetwork(createOpts)
-	if err != nil {
-		if errdefs.IsAlreadyExists(err) {
-			return fmt.Errorf("network with name %s already exists", name)
-		}
-		return err
-	}
-	_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", *net.NerdctlID)
-	return err
+	return network.Create(types.NetworkCreateCommandOptions{
+		GOptions: globalOptions,
+		CreateOptions: netutil.CreateOptions{
+			Name:        name,
+			Driver:      driver,
+			Options:     strutil.ConvertKVStringsToMap(opts),
+			IPAMDriver:  ipamDriver,
+			IPAMOptions: strutil.ConvertKVStringsToMap(ipamOpts),
+			Subnet:      subnetStr,
+			Gateway:     gatewayStr,
+			IPRange:     ipRangeStr,
+			Labels:      labels,
+		},
+	}, cmd.OutOrStdout())
 }
