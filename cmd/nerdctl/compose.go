@@ -17,24 +17,7 @@
 package main
 
 import (
-	"context"
-	"errors"
-	"fmt"
-
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/containerd/platforms"
-	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/composer"
-	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
-	"github.com/containerd/nerdctl/pkg/cosignutil"
-	"github.com/containerd/nerdctl/pkg/imgutil"
-	"github.com/containerd/nerdctl/pkg/ipfs"
-	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/containerd/nerdctl/pkg/referenceutil"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
-
 	"github.com/spf13/cobra"
 )
 
@@ -81,33 +64,26 @@ func newComposeCommand() *cobra.Command {
 	return composeCommand
 }
 
-func getComposer(cmd *cobra.Command, client *containerd.Client, globalOptions *types.GlobalCommandOptions) (*composer.Composer, error) {
+func getComposeOptions(cmd *cobra.Command, debugFull, experimental bool) (composer.Options, error) {
 	nerdctlCmd, nerdctlArgs := globalFlags(cmd)
 	projectDirectory, err := cmd.Flags().GetString("project-directory")
 	if err != nil {
-		return nil, err
+		return composer.Options{}, err
 	}
 	envFile, err := cmd.Flags().GetString("env-file")
 	if err != nil {
-		return nil, err
+		return composer.Options{}, err
 	}
 	projectName, err := cmd.Flags().GetString("project-name")
 	if err != nil {
-		return nil, err
+		return composer.Options{}, err
 	}
-	debugFull := globalOptions.DebugFull
-	snapshotter := globalOptions.Snapshotter
 	files, err := cmd.Flags().GetStringArray("file")
 	if err != nil {
-		return nil, err
+		return composer.Options{}, err
 	}
-	insecure := globalOptions.InsecureRegistry
-	cniPath := globalOptions.CNIPath
-	cniNetconfpath := globalOptions.CNINetConfPath
-	hostsDirs := globalOptions.HostsDir
-	experimental := globalOptions.Experimental
 
-	o := composer.Options{
+	return composer.Options{
 		Project:          projectName,
 		ProjectDirectory: projectDirectory,
 		ConfigPaths:      files,
@@ -116,101 +92,5 @@ func getComposer(cmd *cobra.Command, client *containerd.Client, globalOptions *t
 		NerdctlArgs:      nerdctlArgs,
 		DebugPrintFull:   debugFull,
 		Experimental:     experimental,
-	}
-
-	cniEnv, err := netutil.NewCNIEnv(cniPath, cniNetconfpath, netutil.WithDefaultNetwork())
-	if err != nil {
-		return nil, err
-	}
-	networkConfigs, err := cniEnv.NetworkList()
-	if err != nil {
-		return nil, err
-	}
-
-	o.NetworkExists = func(netName string) (bool, error) {
-		for _, f := range networkConfigs {
-			if f.Name == netName {
-				return true, nil
-			}
-		}
-		return false, nil
-	}
-
-	volStore, err := getVolumeStore(globalOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	o.VolumeExists = func(volName string) (bool, error) {
-		if _, volGetErr := volStore.Get(volName, false); volGetErr == nil {
-			return true, nil
-		} else if errors.Is(volGetErr, errdefs.ErrNotFound) {
-			return false, nil
-		} else {
-			return false, volGetErr
-		}
-	}
-
-	o.ImageExists = func(ctx context.Context, rawRef string) (bool, error) {
-		refNamed, err := referenceutil.ParseAny(rawRef)
-		if err != nil {
-			return false, err
-		}
-		ref := refNamed.String()
-		if _, err := client.ImageService().Get(ctx, ref); err != nil {
-			if errors.Is(err, errdefs.ErrNotFound) {
-				return false, nil
-			}
-			return false, err
-		}
-		return true, nil
-	}
-
-	o.EnsureImage = func(ctx context.Context, imageName, pullMode, platform string, ps *serviceparser.Service, quiet bool) error {
-		ocispecPlatforms := []ocispec.Platform{platforms.DefaultSpec()}
-		if platform != "" {
-			parsed, err := platforms.Parse(platform)
-			if err != nil {
-				return err
-			}
-			ocispecPlatforms = []ocispec.Platform{parsed} // no append
-		}
-
-		// IPFS reference
-		if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(imageName); err == nil {
-			_, err = ipfs.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, scheme, ref,
-				pullMode, ocispecPlatforms, nil, quiet)
-			return err
-		}
-
-		ref := imageName
-		if verifier, ok := ps.Unparsed.Extensions[serviceparser.ComposeVerify]; ok {
-			switch verifier {
-			case "cosign":
-				if !o.Experimental {
-					return fmt.Errorf("cosign only work with enable experimental feature")
-				}
-
-				// if key is given, use key mode, otherwise use keyless mode.
-				keyRef := ""
-				if keyVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]; ok {
-					keyRef = keyVal.(string)
-				}
-
-				ref, err = cosignutil.VerifyCosign(ctx, ref, keyRef, hostsDirs)
-				if err != nil {
-					return err
-				}
-			case "none":
-				logrus.Debugf("verification process skipped")
-			default:
-				return fmt.Errorf("no verifier found: %s", verifier)
-			}
-		}
-		_, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), snapshotter, ref,
-			pullMode, insecure, hostsDirs, ocispecPlatforms, nil, quiet)
-		return err
-	}
-
-	return composer.New(o, client)
+	}, nil
 }

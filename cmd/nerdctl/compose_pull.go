@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/spf13/cobra"
 )
@@ -39,16 +40,21 @@ func composePullAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
-
-	c, err := getComposer(cmd, client, globalOptions)
+	options, err := getComposeOptions(cmd, globalOptions.DebugFull, globalOptions.Experimental)
 	if err != nil {
 		return err
 	}
+	c, err := compose.New(client, globalOptions, options, cmd.OutOrStdout(), cmd.ErrOrStderr())
+	if err != nil {
+		return err
+	}
+
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return err

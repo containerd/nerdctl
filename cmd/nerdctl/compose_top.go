@@ -21,6 +21,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/spf13/cobra"
@@ -49,8 +50,11 @@ func composeTopAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer cancel()
-
-	c, err := getComposer(cmd, client, globalOptions)
+	options, err := getComposeOptions(cmd, globalOptions.DebugFull, globalOptions.Experimental)
+	if err != nil {
+		return err
+	}
+	c, err := compose.New(client, globalOptions, options, cmd.OutOrStdout(), cmd.ErrOrStderr())
 	if err != nil {
 		return err
 	}
@@ -62,7 +66,6 @@ func composeTopAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	stdout := cmd.OutOrStdout()
 	for _, c := range containers {
 		cStatus, err := containerutil.ContainerStatus(ctx, c)
