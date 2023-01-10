@@ -56,6 +56,7 @@ func newBuilderPruneCommand() *cobra.Command {
 	}
 
 	AddStringFlag(buildPruneCommand, "buildkit-host", nil, defaults.BuildKitHost(), "BUILDKIT_HOST", "BuildKit address")
+	buildPruneCommand.Flags().BoolP("all", "a", false, "Include internal/frontend images")
 	return buildPruneCommand
 }
 
@@ -72,8 +73,15 @@ func builderPruneAction(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	all, err := cmd.Flags().GetBool("all")
+	if err != nil {
+		return err
+	}
 	buildctlArgs := buildkitutil.BuildctlBaseArgs(buildkitHost)
 	buildctlArgs = append(buildctlArgs, "prune")
+	if all {
+		buildctlArgs = append(buildctlArgs, "--all")
+	}
 	logrus.Debugf("running %s %v", buildctlBinary, buildctlArgs)
 	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
 	buildctlCmd.Env = os.Environ()

@@ -66,7 +66,7 @@ func rmiAll(base *testutil.Base) {
 	imageIDs := base.Cmd("images", "--no-trunc", "-a", "-q").OutLines()
 	base.Cmd(append([]string{"rmi", "-f"}, imageIDs...)...).AssertOK()
 	if _, err := buildkitutil.GetBuildkitHost(testutil.Namespace); err == nil {
-		base.Cmd("builder", "prune").AssertOK()
+		base.Cmd("builder", "prune", "--all").AssertOK()
 	}
 }
 
