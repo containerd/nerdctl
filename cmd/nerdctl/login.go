@@ -206,7 +206,7 @@ func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRe
 	return &res, nil
 }
 
-func loginClientSide(ctx context.Context, cmd *cobra.Command, globalOptions *ncTypes.GlobalCommandOptions, auth types.AuthConfig) (string, error) {
+func loginClientSide(ctx context.Context, cmd *cobra.Command, globalOptions ncTypes.GlobalCommandOptions, auth types.AuthConfig) (string, error) {
 	host, err := convertToHostname(auth.ServerAddress)
 	if err != nil {
 		return "", err

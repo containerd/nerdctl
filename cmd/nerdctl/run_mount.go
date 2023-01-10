@@ -121,7 +121,7 @@ func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*m
 
 // generateMountOpts generates volume-related mount opts.
 // Other mounts such as procfs mount are not handled here.
-func generateMountOpts(ctx context.Context, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, client *containerd.Client, ensuredImage *imgutil.EnsuredImage) ([]oci.SpecOpts, []string, []*mountutil.Processed, error) {
+func generateMountOpts(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions types.GlobalCommandOptions, ensuredImage *imgutil.EnsuredImage) ([]oci.SpecOpts, []string, []*mountutil.Processed, error) {
 	volStore, err := getVolumeStore(globalOptions)
 	if err != nil {
 		return nil, nil, nil, err

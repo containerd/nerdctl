@@ -76,7 +76,7 @@ func networkPruneAction(cmd *cobra.Command, _ []string) error {
 	return networkPrune(ctx, cmd, client, globalOptions)
 }
 
-func networkPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions *types.GlobalCommandOptions) error {
+func networkPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions types.GlobalCommandOptions) error {
 	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath)
 	if err != nil {
 		return err

@@ -97,7 +97,7 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	if err := containerPrune(ctx, cmd, globalOptions, client); err != nil {
+	if err := containerPrune(ctx, cmd, client, globalOptions); err != nil {
 		return err
 	}
 	if err := networkPrune(ctx, cmd, client, globalOptions); err != nil {

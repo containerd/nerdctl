@@ -73,7 +73,7 @@ func imageInspectAction(cmd *cobra.Command, args []string) error {
 	return imageInspectActionWithPlatform(cmd, args, platform, globalOptions)
 }
 
-func imageInspectActionWithPlatform(cmd *cobra.Command, args []string, platform string, globalOptions *types.GlobalCommandOptions) error {
+func imageInspectActionWithPlatform(cmd *cobra.Command, args []string, platform string, globalOptions types.GlobalCommandOptions) error {
 
 	var clientOpts []containerd.ClientOpt
 	if platform != "" {

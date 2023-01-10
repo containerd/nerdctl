@@ -44,6 +44,6 @@ func newVolumeCommand() *cobra.Command {
 
 // getVolumeStore returns a volume store
 // that corresponds to a directory like `/var/lib/nerdctl/1935db59/volumes/default`
-func getVolumeStore(globalOptions *types.GlobalCommandOptions) (volumestore.VolumeStore, error) {
+func getVolumeStore(globalOptions types.GlobalCommandOptions) (volumestore.VolumeStore, error) {
 	return volume.Store(globalOptions.Namespace, globalOptions.DataRoot, globalOptions.Address)
 }

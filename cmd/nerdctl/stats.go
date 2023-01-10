@@ -379,7 +379,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-func collect(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, s *statsutil.Stats, waitFirst *sync.WaitGroup, id string, noStream bool) {
+func collect(cmd *cobra.Command, globalOptions types.GlobalCommandOptions, s *statsutil.Stats, waitFirst *sync.WaitGroup, id string, noStream bool) {
 	logrus.Debugf("collecting stats for %s", s.Container)
 	var (
 		getFirst = true

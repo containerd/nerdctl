@@ -21,56 +21,56 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func processRootCmdFlags(cmd *cobra.Command) (*types.GlobalCommandOptions, error) {
+func processRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error) {
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
-		return nil, err
+		return types.GlobalCommandOptions{}, err
 	}
 	debugFull, err := cmd.Flags().GetBool("debug-full")
 	if err != nil {
-		return nil, err
+		return types.GlobalCommandOptions{}, err
 	}
 	address, err := cmd.Flags().GetString("address")
 	if err != nil {
-		return nil, err
+		return types.GlobalCommandOptions{}, err
 	}
 	namespace, err := cmd.Flags().GetString("namespace")
 	if err != nil {
-		return nil, err
+		return types.GlobalCommandOptions{}, err
 	}
 	snapshotter, err := cmd.Flags().GetString("snapshotter")
 	if err != nil {
-		return nil, err
+		return types.GlobalCommandOptions{}, err
 	}
 	cniPath, err := cmd.Flags().GetString("cni-path")
 	if err != nil {
-		return nil, err
+		return types.GlobalCommandOptions{}, err
 	}
 	cniConfigPath, err := cmd.Flags().GetString("cni-netconfpath")
 	if err != nil {
-		return nil, err
+		return types.GlobalCommandOptions{}, err
 	}
 	dataRoot, err := cmd.Flags().GetString("data-root")
 	if err != nil {
-		return nil, err
+		return types.GlobalCommandOptions{}, err
 	}
 	cgroupManager, err := cmd.Flags().GetString("cgroup-manager")
 	if err != nil {
-		return nil, err
+		return types.GlobalCommandOptions{}, err
 	}
 	insecureRegistry, err := cmd.Flags().GetBool("insecure-registry")
 	if err != nil {
-		return nil, err
+		return types.GlobalCommandOptions{}, err
 	}
 	hostsDir, err := cmd.Flags().GetStringSlice("hosts-dir")
 	if err != nil {
-		return nil, err
+		return types.GlobalCommandOptions{}, err
 	}
 	experimental, err := cmd.Flags().GetBool("experimental")
 	if err != nil {
-		return nil, err
+		return types.GlobalCommandOptions{}, err
 	}
-	return &types.GlobalCommandOptions{
+	return types.GlobalCommandOptions{
 		Debug:            debug,
 		DebugFull:        debugFull,
 		Address:          address,

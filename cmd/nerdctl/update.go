@@ -121,7 +121,7 @@ func updateAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getUpdateOption(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (updateResourceOptions, error) {
+func getUpdateOption(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (updateResourceOptions, error) {
 	var options updateResourceOptions
 	cpus, err := cmd.Flags().GetFloat64("cpus")
 	if err != nil {

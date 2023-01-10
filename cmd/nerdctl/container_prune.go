@@ -70,10 +70,10 @@ func containerPruneAction(cmd *cobra.Command, _ []string) error {
 	}
 	defer cancel()
 
-	return containerPrune(ctx, cmd, globalOptions, client)
+	return containerPrune(ctx, cmd, client, globalOptions)
 }
 
-func containerPrune(ctx context.Context, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, client *containerd.Client) error {
+func containerPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions types.GlobalCommandOptions) error {
 	containers, err := client.Containers(ctx)
 	if err != nil {
 		return err

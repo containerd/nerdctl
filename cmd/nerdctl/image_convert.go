@@ -311,7 +311,7 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 	return printConvertedImage(cmd, res)
 }
 
-func getESGZConverter(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (convertFunc converter.ConvertFunc, finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error), _ error) {
+func getESGZConverter(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (convertFunc converter.ConvertFunc, finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error), _ error) {
 	externalTOC, err := cmd.Flags().GetBool("estargz-external-toc")
 	if err != nil {
 		return nil, nil, err
@@ -362,7 +362,7 @@ func getESGZConverter(cmd *cobra.Command, globalOptions *types.GlobalCommandOpti
 	return convertFunc, finalize, nil
 }
 
-func getESGZConvertOpts(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) ([]estargz.Option, error) {
+func getESGZConvertOpts(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) ([]estargz.Option, error) {
 	estargzCompressionLevel, err := cmd.Flags().GetInt("estargz-compression-level")
 	if err != nil {
 		return nil, err
@@ -403,7 +403,7 @@ func getESGZConvertOpts(cmd *cobra.Command, globalOptions *types.GlobalCommandOp
 	return esgzOpts, nil
 }
 
-func getZstdchunkedConverter(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (converter.ConvertFunc, error) {
+func getZstdchunkedConverter(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (converter.ConvertFunc, error) {
 	zstdchunkedCompressionLevel, err := cmd.Flags().GetInt("zstdchunked-compression-level")
 	if err != nil {
 		return nil, err
@@ -438,7 +438,7 @@ func getZstdchunkedConverter(cmd *cobra.Command, globalOptions *types.GlobalComm
 	return zstdchunkedconvert.LayerConvertFuncWithCompressionLevel(zstd.EncoderLevelFromZstd(zstdchunkedCompressionLevel), esgzOpts...), nil
 }
 
-func getNydusConvertOpts(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (*nydusconvert.PackOption, error) {
+func getNydusConvertOpts(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (*nydusconvert.PackOption, error) {
 	builderPath, err := cmd.Flags().GetString("nydus-builder-path")
 	if err != nil {
 		return nil, err

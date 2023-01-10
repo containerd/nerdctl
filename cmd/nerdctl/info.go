@@ -134,7 +134,7 @@ func infoAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func fulfillNativeInfo(cmd *cobra.Command, di *native.DaemonInfo, globalOptions *types.GlobalCommandOptions) (*native.Info, error) {
+func fulfillNativeInfo(cmd *cobra.Command, di *native.DaemonInfo, globalOptions types.GlobalCommandOptions) (*native.Info, error) {
 	info := &native.Info{
 		Daemon: di,
 	}
@@ -178,7 +178,7 @@ func prettyPrintInfoNative(w io.Writer, info *native.Info) error {
 	return nil
 }
 
-func prettyPrintInfoDockerCompat(cmd *cobra.Command, info *dockercompat.Info, globalOptions *types.GlobalCommandOptions) error {
+func prettyPrintInfoDockerCompat(cmd *cobra.Command, info *dockercompat.Info, globalOptions types.GlobalCommandOptions) error {
 	w := cmd.OutOrStdout()
 	debug := globalOptions.Debug
 	fmt.Fprintf(w, "Client:\n")

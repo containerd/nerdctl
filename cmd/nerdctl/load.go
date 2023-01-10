@@ -63,7 +63,7 @@ func processLoadCommandFlags(cmd *cobra.Command) (types.LoadCommandOptions, erro
 		return types.LoadCommandOptions{}, err
 	}
 	return types.LoadCommandOptions{
-		GOptions:     *globalOptions,
+		GOptions:     globalOptions,
 		Input:        input,
 		Platform:     platform,
 		AllPlatforms: allPlatforms,

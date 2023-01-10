@@ -31,7 +31,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func generateRuntimeCOpts(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) ([]containerd.NewContainerOpts, error) {
+func generateRuntimeCOpts(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) ([]containerd.NewContainerOpts, error) {
 	runtime := plugin.RuntimeRuncV2
 	var (
 		runcOpts    runcoptions.Options

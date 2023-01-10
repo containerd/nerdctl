@@ -43,8 +43,8 @@ func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 func setPlatformOptions(
 	ctx context.Context,
 	cmd *cobra.Command,
-	_ *types.GlobalCommandOptions,
 	client *containerd.Client,
+	_ types.GlobalCommandOptions,
 	id string,
 	internalLabels *internalLabels,
 ) ([]oci.SpecOpts, error) {
