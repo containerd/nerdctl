@@ -22,8 +22,8 @@ require (
 	github.com/containernetworking/plugins v1.1.1
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.2.3
-	github.com/docker/cli v20.10.22+incompatible
-	github.com/docker/docker v20.10.21+incompatible
+	github.com/docker/cli v23.0.0-rc.1+incompatible
+	github.com/docker/docker v23.0.0-rc.1+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.1.3
@@ -33,7 +33,7 @@ require (
 	github.com/ipfs/go-cid v0.3.2
 	github.com/mattn/go-isatty v0.0.17
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/moby/buildkit v0.10.6
+	github.com/moby/buildkit v0.11.0
 	github.com/moby/sys/mount v0.3.3
 	github.com/moby/sys/signal v0.7.0
 	github.com/opencontainers/go-digest v1.0.0
@@ -61,6 +61,7 @@ require (
 
 require (
 	github.com/containerd/cgroups/v3 v3.0.0-20221112182753-e8802a182774 // indirect
+	github.com/moby/patternmatcher v0.5.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783 // indirect
 	google.golang.org/genproto v0.0.0-20221206210731-b1a01be3a5f6 // indirect
 )
@@ -77,7 +78,7 @@ require (
 	github.com/distribution/distribution/v3 v3.0.0-20221103125252-ebfa2a0ac0a9 // indirect
 	github.com/djherbis/times v1.5.0 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
-	github.com/docker/docker-credential-helpers v0.6.4 // indirect
+	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/frankban/quicktest v1.14.2 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
@@ -122,7 +123,7 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tinylib/msgp v1.1.6 // indirect
-	github.com/tonistiigi/fsutil v0.0.0-20220315205639-9ed612626da3 // indirect
+	github.com/tonistiigi/fsutil v0.0.0-20230105215944-fb433841cbfa // indirect
 	github.com/urfave/cli v1.22.10 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
