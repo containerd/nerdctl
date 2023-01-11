@@ -18,7 +18,7 @@ package types
 
 type BuildCommandOptions struct {
 	// GOptions is the global options
-	GOptions *GlobalCommandOptions
+	GOptions GlobalCommandOptions
 	// BuildKitHost is the buildkit host
 	BuildKitHost string
 	// Tag is the tag of the image

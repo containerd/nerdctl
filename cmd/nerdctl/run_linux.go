@@ -58,7 +58,7 @@ func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
-func setPlatformOptions(ctx context.Context, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, client *containerd.Client, id string, internalLabels *internalLabels) ([]oci.SpecOpts, error) {
+func setPlatformOptions(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions types.GlobalCommandOptions, id string, internalLabels *internalLabels) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
 	opts = append(opts,
 		oci.WithDefaultUnixDevices,

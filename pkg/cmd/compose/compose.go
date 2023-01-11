@@ -40,7 +40,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func New(client *containerd.Client, globalOptions *types.GlobalCommandOptions, options composer.Options, stdout, stderr io.Writer) (*composer.Composer, error) {
+func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, options composer.Options, stdout, stderr io.Writer) (*composer.Composer, error) {
 	cniEnv, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath, netutil.WithDefaultNetwork())
 	if err != nil {
 		return nil, err

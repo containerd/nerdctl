@@ -113,7 +113,7 @@ func withCustomHosts(src string) func(context.Context, oci.Client, *containers.C
 	}
 }
 
-func generateNetOpts(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, dataStore, stateDir, ns, id string) ([]oci.SpecOpts, []string, string, []gocni.PortMapping, string, error) {
+func generateNetOpts(cmd *cobra.Command, globalOptions types.GlobalCommandOptions, dataStore, stateDir, ns, id string) ([]oci.SpecOpts, []string, string, []gocni.PortMapping, string, error) {
 	opts := []oci.SpecOpts{}
 	portSlice, err := cmd.Flags().GetStringSlice("publish")
 	if err != nil {
@@ -266,7 +266,7 @@ func getContainerNetNSPath(ctx context.Context, c containerd.Container) (string,
 	return fmt.Sprintf("/proc/%d/ns/net", task.Pid()), nil
 }
 
-func verifyCNINetwork(cmd *cobra.Command, netSlice []string, macAddress string, globalOptions *types.GlobalCommandOptions) error {
+func verifyCNINetwork(cmd *cobra.Command, netSlice []string, macAddress string, globalOptions types.GlobalCommandOptions) error {
 	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath, netutil.WithDefaultNetwork())
 	if err != nil {
 		return err

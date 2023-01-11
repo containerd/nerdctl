@@ -109,7 +109,7 @@ func processImagesFlag(cmd *cobra.Command, args []string) (types.ImageListComman
 		return types.ImageListCommandOptions{}, err
 	}
 	return types.ImageListCommandOptions{
-		GOptions:         *globalOptions,
+		GOptions:         globalOptions,
 		Quiet:            quiet,
 		NoTrunc:          noTrunc,
 		Format:           format,

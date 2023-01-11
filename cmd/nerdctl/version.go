@@ -103,7 +103,7 @@ func versionAction(cmd *cobra.Command, args []string) error {
 }
 
 // versionInfo may return partial VersionInfo on error
-func versionInfo(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (dockercompat.VersionInfo, error) {
+func versionInfo(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (dockercompat.VersionInfo, error) {
 
 	v := dockercompat.VersionInfo{
 		Client: infoutil.ClientVersion(),

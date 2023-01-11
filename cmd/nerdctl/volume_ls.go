@@ -75,7 +75,7 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 	}, cmd.OutOrStdout())
 }
 
-func getVolumes(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions) (map[string]native.Volume, error) {
+func getVolumes(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (map[string]native.Volume, error) {
 	volumeSize, err := cmd.Flags().GetBool("size")
 	if err != nil {
 		return nil, err

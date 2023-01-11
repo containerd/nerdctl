@@ -316,7 +316,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return errors.New("flags -d and --rm cannot be specified together")
 	}
 
-	container, gc, err := createContainer(ctx, cmd, globalOptions, client, args, platform, flagI, flagT, flagD)
+	container, gc, err := createContainer(ctx, cmd, client, globalOptions, args, platform, flagI, flagT, flagD)
 	if err != nil {
 		if gc != nil {
 			defer gc()
@@ -397,7 +397,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 }
 
 // FIXME: split to smaller functions
-func createContainer(ctx context.Context, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, client *containerd.Client, args []string, platform string, flagI, flagT, flagD bool) (containerd.Container, func(), error) {
+func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions types.GlobalCommandOptions, args []string, platform string, flagI, flagT, flagD bool) (containerd.Container, func(), error) {
 	// simulate the behavior of double dash
 	newArg := []string{}
 	if len(args) >= 2 && args[1] == "--" {
@@ -443,7 +443,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, globalOptions *typ
 		oci.WithDefaultSpec(),
 	)
 
-	platformOpts, err := setPlatformOptions(ctx, cmd, globalOptions, client, id, &internalLabels)
+	platformOpts, err := setPlatformOptions(ctx, cmd, client, globalOptions, id, &internalLabels)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -488,7 +488,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, globalOptions *typ
 		opts = append(opts, oci.WithTTY)
 	}
 
-	mountOpts, anonVolumes, mountPoints, err := generateMountOpts(ctx, cmd, globalOptions, client, ensuredImage)
+	mountOpts, anonVolumes, mountPoints, err := generateMountOpts(ctx, cmd, client, globalOptions, ensuredImage)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -728,7 +728,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, globalOptions *typ
 	return container, nil, nil
 }
 
-func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform string, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, args []string, id string) ([]oci.SpecOpts, []containerd.NewContainerOpts, *imgutil.EnsuredImage, error) {
+func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform string, cmd *cobra.Command, globalOptions types.GlobalCommandOptions, args []string, id string) ([]oci.SpecOpts, []containerd.NewContainerOpts, *imgutil.EnsuredImage, error) {
 	var (
 		ensured *imgutil.EnsuredImage
 		err     error
@@ -751,7 +751,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 			return nil, nil, nil, err
 		}
 		rawRef := args[0]
-		ensured, err = ensureImage(ctx, cmd, globalOptions, client, rawRef, ocispecPlatforms, pull, nil, false)
+		ensured, err = ensureImage(ctx, cmd, client, globalOptions, rawRef, ocispecPlatforms, pull, nil, false)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -948,7 +948,7 @@ func withNerdctlOCIHook(cmd *cobra.Command, id string) (oci.SpecOpts, error) {
 	}, nil
 }
 
-func getContainerStateDirPath(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, dataStore, id string) (string, error) {
+func getContainerStateDirPath(cmd *cobra.Command, globalOptions types.GlobalCommandOptions, dataStore, id string) (string, error) {
 
 	if globalOptions.Namespace == "" {
 		return "", errors.New("namespace is required")

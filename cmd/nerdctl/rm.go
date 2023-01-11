@@ -106,7 +106,7 @@ func rmAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func removeContainer(ctx context.Context, cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, container containerd.Container, force bool, removeAnonVolumes bool) (retErr error) {
+func removeContainer(ctx context.Context, cmd *cobra.Command, globalOptions types.GlobalCommandOptions, container containerd.Container, force bool, removeAnonVolumes bool) (retErr error) {
 	ns, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
 		return err

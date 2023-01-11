@@ -17,7 +17,7 @@
 package types
 
 type VolumeCreateCommandOptions struct {
-	GOptions *GlobalCommandOptions
+	GOptions GlobalCommandOptions
 	// Name is the volume name
 	Name string
 	// Labels are the volume labels
@@ -25,7 +25,7 @@ type VolumeCreateCommandOptions struct {
 }
 
 type VolumeInspectCommandOptions struct {
-	GOptions *GlobalCommandOptions
+	GOptions GlobalCommandOptions
 	// Format the output using the given go template
 	Format string
 	// Display the disk usage of volumes. Can be slow with volumes having loads of directories.
@@ -35,7 +35,7 @@ type VolumeInspectCommandOptions struct {
 }
 
 type VolumeLsCommandOptions struct {
-	GOptions *GlobalCommandOptions
+	GOptions GlobalCommandOptions
 	// Only display volume names
 	Quiet bool
 	// Format the output using the given go template
@@ -47,13 +47,13 @@ type VolumeLsCommandOptions struct {
 }
 
 type VolumePruneCommandOptions struct {
-	GOptions *GlobalCommandOptions
+	GOptions GlobalCommandOptions
 	// Do not prompt for confirmation
 	Force bool
 }
 
 type VolumeRmCommandOptions struct {
-	GOptions *GlobalCommandOptions
+	GOptions GlobalCommandOptions
 	// Volumes are the volumes to be removed
 	Volumes []string
 }

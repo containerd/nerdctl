@@ -40,7 +40,7 @@ type customMemoryOptions struct {
 	disableOOMKiller  *bool
 }
 
-func generateCgroupOpts(cmd *cobra.Command, globalOptions *types.GlobalCommandOptions, id string) ([]oci.SpecOpts, error) {
+func generateCgroupOpts(cmd *cobra.Command, globalOptions types.GlobalCommandOptions, id string) ([]oci.SpecOpts, error) {
 	cpus, err := cmd.Flags().GetFloat64("cpus")
 	if err != nil {
 		return nil, err
