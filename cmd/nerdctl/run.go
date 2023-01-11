@@ -274,6 +274,8 @@ func setCreateFlags(cmd *cobra.Command) {
 	})
 	cmd.Flags().String("cosign-key", "", "Path to the public key file, KMS, URI or Kubernetes Secret for --verify=cosign")
 	// #endregion
+
+	cmd.Flags().String("ipfs-address", "", "multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)")
 }
 
 // runAction is heavily based on ctr implementation:

@@ -575,6 +575,9 @@ Verify flags:
 - :nerd_face: `--verify`: Verify the image (none|cosign). See [`docs/cosign.md`](./docs/cosign.md) for details.
 - :nerd_face: `--cosign-key`: Path to the public key file, KMS, URI or Kubernetes Secret for `--verify=cosign`
 
+IPFS flags:
+- :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
+
 Unimplemented `docker run` flags:
     `--attach`, `--blkio-weight-device`, `--cpu-rt-*`, `--detach-keys`, `--device-*`,
     `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--ip6`, `--isolation`, `--no-healthcheck`,
@@ -886,6 +889,7 @@ Flags:
 - :whale: `-q, --quiet`: Suppress verbose output
 - :nerd_face: `--verify`: Verify the image (none|cosign). See [`docs/cosign.md`](./docs/cosign.md) for details.
 - :nerd_face: `--cosign-key`: Path to the public key file, KMS, URI or Kubernetes Secret for `--verify=cosign`
+- :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker pull` flags: `--all-tags`, `--disable-content-trust` (default true)
 
@@ -1399,6 +1403,7 @@ Usage: `nerdctl compose [OPTIONS] [COMMAND]`
 Flags:
 - :whale: `-f, --file`: Specify an alternate compose file
 - :whale: `-p, --project-name`: Specify an alternate project name
+- :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 ### :whale: nerdctl compose up
 Create and start containers

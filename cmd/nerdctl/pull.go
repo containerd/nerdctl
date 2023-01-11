@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
@@ -66,6 +68,8 @@ func newPullCommand() *cobra.Command {
 	// #endregion
 
 	pullCommand.Flags().BoolP("quiet", "q", false, "Suppress verbose output")
+
+	pullCommand.Flags().String("ipfs-address", "", "multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)")
 
 	return pullCommand
 }
@@ -129,8 +133,26 @@ func ensureImage(ctx context.Context, cmd *cobra.Command, globalOptions *types.G
 			return nil, errors.New("--verify flag is not supported on IPFS as of now")
 		}
 
+		ipfsAddressStr, err := cmd.Flags().GetString("ipfs-address")
+		if err != nil {
+			return nil, err
+		}
+
+		var ipfsPath *string
+		if ipfsAddressStr != "" {
+			dir, err := os.MkdirTemp("", "apidirtmp")
+			if err != nil {
+				return nil, err
+			}
+			defer os.RemoveAll(dir)
+			if err := os.WriteFile(filepath.Join(dir, "api"), []byte(ipfsAddressStr), 0600); err != nil {
+				return nil, err
+			}
+			ipfsPath = &dir
+		}
+
 		ensured, err = ipfs.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), globalOptions.Snapshotter, scheme, ref,
-			pull, ocispecPlatforms, unpack, quiet)
+			pull, ocispecPlatforms, unpack, quiet, ipfsPath)
 		if err != nil {
 			return nil, err
 		}

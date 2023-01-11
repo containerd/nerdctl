@@ -41,7 +41,7 @@ import (
 )
 
 // EnsureImage pull the specified image from IPFS.
-func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter string, scheme string, ref string, mode imgutil.PullMode, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool) (*imgutil.EnsuredImage, error) {
+func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter string, scheme string, ref string, mode imgutil.PullMode, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool, ipfsPath *string) (*imgutil.EnsuredImage, error) {
 	switch mode {
 	case "always", "missing", "never":
 		// NOP
@@ -68,8 +68,13 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 	if mode == "never" {
 		return nil, fmt.Errorf("image %q is not available", ref)
 	}
+	var ipath string
+	if ipfsPath != nil {
+		ipath = *ipfsPath
+	}
 	r, err := ipfs.NewResolver(ipfs.ResolverOptions{
-		Scheme: scheme,
+		Scheme:   scheme,
+		IPFSPath: ipath,
 	})
 	if err != nil {
 		return nil, err

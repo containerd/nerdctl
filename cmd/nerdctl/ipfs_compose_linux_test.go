@@ -31,10 +31,14 @@ import (
 func TestIPFSComposeUp(t *testing.T) {
 	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	ipfsaddr, done := runIPFSDaemonContainer(t, base)
+	defer done()
 	tests := []struct {
 		name           string
 		snapshotter    string
 		pushOptions    []string
+		composeOptions []string
 		requiresStargz bool
 	}{
 		{
@@ -46,6 +50,12 @@ func TestIPFSComposeUp(t *testing.T) {
 			snapshotter:    "stargz",
 			pushOptions:    []string{"--estargz"},
 			requiresStargz: true,
+		},
+		{
+			name:           "ipfs-address",
+			snapshotter:    "overlayfs",
+			pushOptions:    []string{fmt.Sprintf("--ipfs-address=%s", ipfsaddr)},
+			composeOptions: []string{fmt.Sprintf("--ipfs-address=%s", ipfsaddr)},
 		},
 	}
 	for _, tt := range tests {
@@ -95,7 +105,7 @@ services:
 volumes:
   wordpress:
   db:
-`, ipfsImgs[0], ipfsImgs[1]))
+`, ipfsImgs[0], ipfsImgs[1]), tt.composeOptions...)
 		})
 	}
 }

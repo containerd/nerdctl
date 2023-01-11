@@ -71,14 +71,14 @@ volumes:
 `, testutil.WordpressImage, testutil.MariaDBImage))
 }
 
-func testComposeUp(t *testing.T, base *testutil.Base, dockerComposeYAML string) {
+func testComposeUp(t *testing.T, base *testutil.Base, dockerComposeYAML string, opts ...string) {
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
 	projectName := comp.ProjectName()
 	t.Logf("projectName=%q", projectName)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	base.ComposeCmd(append(append([]string{"-f", comp.YAMLFullPath()}, opts...), "up", "-d")...).AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 	base.Cmd("volume", "inspect", fmt.Sprintf("%s_db", projectName)).AssertOK()
 	base.Cmd("network", "inspect", fmt.Sprintf("%s_default", projectName)).AssertOK()

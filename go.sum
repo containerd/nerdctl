@@ -104,7 +104,6 @@ github.com/Microsoft/hcsshim v0.8.21/go.mod h1:+w2gRZ5ReXQhFOrvSQeNfhrYB/dg3oDwT
 github.com/Microsoft/hcsshim v0.8.23/go.mod h1:4zegtUJth7lAvFyc6cH2gGQ5B3OFQim01nnU2M8jKDg=
 github.com/Microsoft/hcsshim v0.9.2/go.mod h1:7pLA8lDk46WKDWlVsENo92gC0XFa8rbKfyFRBqxEbCc=
 github.com/Microsoft/hcsshim v0.9.4/go.mod h1:7pLA8lDk46WKDWlVsENo92gC0XFa8rbKfyFRBqxEbCc=
-github.com/Microsoft/hcsshim v0.9.5/go.mod h1:7pLA8lDk46WKDWlVsENo92gC0XFa8rbKfyFRBqxEbCc=
 github.com/Microsoft/hcsshim v0.10.0-rc.1 h1:Lms8jwpaIdIUvoBNee8ZuvIi1XnNy9uvnxSC9L1q1x4=
 github.com/Microsoft/hcsshim v0.10.0-rc.1/go.mod h1:7XX96hdvnwWGdXnksDNdhfFcUH1BtQY6bL2L3f9Abyk=
 github.com/Microsoft/hcsshim/test v0.0.0-20201218223536-d3e5debf77da/go.mod h1:5hlzMzRKMLyo42nCZ9oml8AdTlq/0cvIaBv6tK1RehU=
@@ -236,7 +235,6 @@ github.com/containerd/containerd v1.5.8/go.mod h1:YdFSv5bTFLpG2HIYmfqDpSYYTDX+mc
 github.com/containerd/containerd v1.6.1/go.mod h1:1nJz5xCZPusx6jJU8Frfct988y0NpumIq9ODB0kLtoE=
 github.com/containerd/containerd v1.6.8/go.mod h1:By6p5KqPK0/7/CgO/A6t/Gz+CUYUu2zf1hUaaymVXB0=
 github.com/containerd/containerd v1.6.9/go.mod h1:XVicUvkxOrftE2Q1YWUXgZwkkAxwQYNOFzYWvfVfEfQ=
-github.com/containerd/containerd v1.6.10/go.mod h1:CVqfxdJ95PDgORwA219AwwLrREZgrTFybXu2HfMKRG0=
 github.com/containerd/containerd v1.7.0-beta.2 h1:GWmC96y8j7jlFJX0Wh+covft0M1hHBqQL7lo+N6qvxg=
 github.com/containerd/containerd v1.7.0-beta.2/go.mod h1:RR01Jsm/jovDKK48sFCVqWyKAH2APMPi88Aeu1on63I=
 github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc/go.mod h1:GL3xCUCBDV3CZiTSEKksMWbLE66hEyuu9qyDOOqM47Y=
@@ -286,8 +284,8 @@ github.com/containerd/stargz-snapshotter v0.13.0/go.mod h1:01uOvoNzN1T4kV+8HeVt9
 github.com/containerd/stargz-snapshotter/estargz v0.4.1/go.mod h1:x7Q9dg9QYb4+ELgxmo4gBUeJB0tl5dqH1Sdz0nJU1QM=
 github.com/containerd/stargz-snapshotter/estargz v0.13.0 h1:fD7AwuVV+B40p0d9qVkH/Au1qhp8hn/HWJHIYjpEcfw=
 github.com/containerd/stargz-snapshotter/estargz v0.13.0/go.mod h1:m+9VaGJGlhCnrcEUod8mYumTmRgblwd3rC5UCEh2Yp0=
-github.com/containerd/stargz-snapshotter/ipfs v0.13.1-0.20221214033845-6814ce4c2bf4 h1:ReVKY+lGLupesorAUthXO0oLdQPepLMNISPe1N+mgEc=
-github.com/containerd/stargz-snapshotter/ipfs v0.13.1-0.20221214033845-6814ce4c2bf4/go.mod h1:b7vEGFciUxKxCBURTeZoyZgWAMl7Ni3c5ZCjf299qPU=
+github.com/containerd/stargz-snapshotter/ipfs v0.13.1-0.20230106161838-6844dbb4c428 h1:azct97pvPcgqSH3cHh3IYsVyEM2ZxMzodz19TUy8CNs=
+github.com/containerd/stargz-snapshotter/ipfs v0.13.1-0.20230106161838-6844dbb4c428/go.mod h1:J1NjiZfaNyZ7oo5aDgE3c9LMibP+9kmFhDzInXyOogI=
 github.com/containerd/ttrpc v0.0.0-20190828154514-0e0f228740de/go.mod h1:PvCDdDGpgqzQIzDW1TphrGLssLDZp2GuS+X5DkEJB8o=
 github.com/containerd/ttrpc v0.0.0-20190828172938-92c8520ef9f8/go.mod h1:PvCDdDGpgqzQIzDW1TphrGLssLDZp2GuS+X5DkEJB8o=
 github.com/containerd/ttrpc v0.0.0-20191028202541-4f1b8fe65a5c/go.mod h1:LPm1u0xBw8r8NOKoOdNMeVHSawSsltak+Ihv+etqsE8=
