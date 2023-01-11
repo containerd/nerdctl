@@ -25,9 +25,11 @@ import (
 	"syscall"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/api/types/cri"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/labels/k8slabels"
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -62,8 +64,8 @@ func logsAction(cmd *cobra.Command, args []string) error {
 	}
 
 	switch globalOptions.Namespace {
-	case "moby", "k8s.io":
-		logrus.Warn("Currently, `nerdctl logs` only supports containers created with `nerdctl run -d`")
+	case "moby":
+		logrus.Warn("Currently, `nerdctl logs` only supports containers created with `nerdctl run -d` or CRI")
 	}
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
@@ -113,6 +115,12 @@ func logsAction(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+
+			logPath, err := getLogPath(ctx, found.Container)
+			if err != nil {
+				return err
+			}
+
 			task, err := found.Container.Task(ctx, nil)
 			if err != nil {
 				return err
@@ -143,13 +151,14 @@ func logsAction(cmd *cobra.Command, args []string) error {
 				ContainerID:       found.Container.ID(),
 				Namespace:         l[labels.Namespace],
 				DatastoreRootPath: dataStore,
+				LogPath:           logPath,
 				Follow:            follow,
 				Timestamps:        timestamps,
 				Tail:              tail,
 				Since:             since,
 				Until:             until,
 			}
-			logViewer, err := logging.InitContainerLogViewer(logViewOpts, stopChannel)
+			logViewer, err := logging.InitContainerLogViewer(l, logViewOpts, stopChannel)
 			if err != nil {
 				return err
 			}
@@ -165,6 +174,23 @@ func logsAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no such container %s", req)
 	}
 	return nil
+}
+
+func getLogPath(ctx context.Context, container containerd.Container) (string, error) {
+	extensions, err := container.Extensions(ctx)
+	if err != nil {
+		return "", fmt.Errorf("get extensions for container %s,failed: %#v", container.ID(), err)
+	}
+	metaData := extensions[k8slabels.ContainerMetadataExtension]
+	var meta cri.ContainerMetadata
+	if metaData != nil {
+		err = meta.UnmarshalJSON(metaData.GetValue())
+		if err != nil {
+			return "", fmt.Errorf("unmarshal extensions for container %s,failed: %#v", container.ID(), err)
+		}
+	}
+
+	return meta.LogPath, nil
 }
 
 func logsShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

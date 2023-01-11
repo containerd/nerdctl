@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/containerd/nerdctl/pkg/labels/k8slabels"
 	"github.com/sirupsen/logrus"
 )
 
@@ -44,6 +45,7 @@ func RegisterLogViewer(driverName string, lvfn LogViewerFunc) {
 func init() {
 	RegisterLogViewer("json-file", viewLogsJSONFile)
 	RegisterLogViewer("journald", viewLogsJournald)
+	RegisterLogViewer("cri", viewLogsCRI)
 }
 
 // Returns a LogViewerFunc for the provided logging driver name.
@@ -63,6 +65,9 @@ type LogViewOptions struct {
 
 	// Absolute path to the nerdctl datastore's root.
 	DatastoreRootPath string
+
+	// LogPath specify the log path for container created via CRI
+	LogPath string
 
 	// Whether or not to follow the output of the container logs.
 	Follow bool
@@ -110,15 +115,21 @@ type ContainerLogViewer struct {
 
 // Validates the given LogViewOptions, loads the logging config for the
 // given container and returns a ContainerLogViewer.
-func InitContainerLogViewer(lvopts LogViewOptions, stopChannel chan os.Signal) (*ContainerLogViewer, error) {
-	if err := lvopts.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid LogViewOptions provided (%#v): %s", lvopts, err)
+func InitContainerLogViewer(containerLabels map[string]string, lvopts LogViewOptions, stopChannel chan os.Signal) (contlv *ContainerLogViewer, err error) {
+	var lcfg LogConfig
+	if _, ok := containerLabels[k8slabels.ContainerType]; ok {
+		lcfg.Driver = "cri"
+	} else {
+		if err := lvopts.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid LogViewOptions provided (%#v): %s", lvopts, err)
+		}
+
+		lcfg, err = LoadLogConfig(lvopts.DatastoreRootPath, lvopts.Namespace, lvopts.ContainerID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load logging config: %s", err)
+		}
 	}
 
-	lcfg, err := LoadLogConfig(lvopts.DatastoreRootPath, lvopts.Namespace, lvopts.ContainerID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load logging config: %s", err)
-	}
 	lv := &ContainerLogViewer{
 		loggingConfig:     lcfg,
 		logViewingOptions: lvopts,

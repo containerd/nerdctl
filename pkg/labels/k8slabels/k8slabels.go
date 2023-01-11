@@ -21,4 +21,7 @@ const (
 	PodNamespace  = "io.kubernetes.pod.namespace"
 	PodName       = "io.kubernetes.pod.name"
 	ContainerName = "io.kubernetes.container.name"
+
+	ContainerMetadataExtension = "io.cri-containerd.container.metadata"
+	ContainerType              = "io.cri-containerd.kind"
 )
