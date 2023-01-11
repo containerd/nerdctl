@@ -48,18 +48,49 @@ func List(options types.VolumeListCommandOptions, stdout io.Writer) error {
 		logrus.Warn("cannot use --size and --quiet together, ignoring --size")
 		options.Size = false
 	}
-	labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs, isFilter, err := getVolumeFilterFuncs(options.Filters)
-	if err != nil {
-		return err
-	}
-	if len(sizeFilterFuncs) > 0 && options.Quiet {
+	sizeFilter := hasSizeFilter(options.Filters)
+	if sizeFilter && options.Quiet {
 		logrus.Warn("cannot use --filter=size and --quiet together, ignoring --filter=size")
-		sizeFilterFuncs = nil
+		options.Filters = removeSizeFilters(options.Filters)
 	}
-	if len(sizeFilterFuncs) > 0 && !options.Size {
+	if sizeFilter && !options.Size {
 		logrus.Warn("should use --filter=size and --size together")
 		options.Size = true
 	}
+
+	vols, err := Volumes(
+		options.GOptions.Namespace,
+		options.GOptions.DataRoot,
+		options.GOptions.Address,
+		options.Size,
+		options.Filters,
+	)
+	if err != nil {
+		return err
+	}
+	return lsPrintOutput(vols, options, stdout)
+}
+
+func hasSizeFilter(filters []string) bool {
+	for _, filter := range filters {
+		if strings.HasPrefix(filter, "size") {
+			return true
+		}
+	}
+	return false
+}
+
+func removeSizeFilters(filters []string) []string {
+	var res []string
+	for _, filter := range filters {
+		if !strings.HasPrefix(filter, "size") {
+			res = append(res, filter)
+		}
+	}
+	return res
+}
+
+func lsPrintOutput(vols map[string]native.Volume, options types.VolumeListCommandOptions, stdout io.Writer) error {
 	w := stdout
 	var tmpl *template.Template
 	switch options.Format {
@@ -85,15 +116,7 @@ func List(options types.VolumeListCommandOptions, stdout io.Writer) error {
 		}
 	}
 
-	vols, err := Volumes(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address, options.Size)
-	if err != nil {
-		return err
-	}
-
 	for _, v := range vols {
-		if isFilter && !volumeMatchesFilter(v, labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs) {
-			continue
-		}
 		p := volumePrintable{
 			Driver:     "local",
 			Labels:     "",
@@ -112,7 +135,7 @@ func List(options types.VolumeListCommandOptions, stdout io.Writer) error {
 			if err := tmpl.Execute(&b, p); err != nil {
 				return err
 			}
-			if _, err = fmt.Fprintf(w, b.String()+"\n"); err != nil {
+			if _, err := fmt.Fprintf(w, b.String()+"\n"); err != nil {
 				return err
 			}
 		} else if options.Quiet {
@@ -129,12 +152,41 @@ func List(options types.VolumeListCommandOptions, stdout io.Writer) error {
 	return nil
 }
 
-func Volumes(ns string, dataRoot string, address string, volumeSize bool) (map[string]native.Volume, error) {
+// Volumes returns volumes that match the given filters.
+//
+// Supported filters:
+//   - label=<key>=<value>: Match volumes by label on both key and value.
+//     If value is left empty, match all volumes with key regardless of its value.
+//   - name=<value>: Match all volumes with a name containing the value string.
+//   - size=<value>: Match all volumes with a size meets the value.
+//     Size operand can be >=, <=, >, <, = and value must be an integer.
+//
+// Unsupported filters:
+//   - dangling=true: Filter volumes by dangling.
+//   - driver=local: Filter volumes by driver.
+func Volumes(ns string, dataRoot string, address string, volumeSize bool, filters []string) (map[string]native.Volume, error) {
 	volStore, err := Store(ns, dataRoot, address)
 	if err != nil {
 		return nil, err
 	}
-	return volStore.List(volumeSize)
+	vols, err := volStore.List(volumeSize)
+	if err != nil {
+		return nil, err
+	}
+
+	labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs, isFilter, err := getVolumeFilterFuncs(filters)
+	if err != nil {
+		return nil, err
+	}
+	if !isFilter {
+		return vols, nil
+	}
+	for k, v := range vols {
+		if !volumeMatchesFilter(v, labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs) {
+			delete(vols, k)
+		}
+	}
+	return vols, nil
 }
 
 func getVolumeFilterFuncs(filters []string) ([]func(*map[string]string) bool, []func(string) bool, []func(int64) bool, bool, error) {
