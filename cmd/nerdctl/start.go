@@ -24,8 +24,10 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cmd/ctr/commands"
+	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
@@ -124,6 +126,14 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 		return err
 	}
 	flagT := process.Process.Terminal
+	var con console.Console
+	if flagA && flagT {
+		con = console.Current()
+		defer con.Reset()
+		if err := con.SetRaw(); err != nil {
+			return err
+		}
+	}
 
 	logURI := lab[labels.LogURI]
 
@@ -140,7 +150,7 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 			logrus.WithError(err).Debug("failed to delete old task")
 		}
 	}
-	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, nil, logURI)
+	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, con, logURI)
 	if err != nil {
 		return err
 	}
@@ -159,6 +169,11 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 
 	if !flagA {
 		return nil
+	}
+	if flagA && flagT {
+		if err := tasks.HandleConsoleResize(ctx, task, con); err != nil {
+			logrus.WithError(err).Error("console resize")
+		}
 	}
 
 	sigc := commands.ForwardAllSignals(ctx, task)
