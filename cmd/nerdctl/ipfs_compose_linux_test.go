@@ -29,6 +29,7 @@ import (
 )
 
 func TestIPFSComposeUp(t *testing.T) {
+	t.Parallel()
 	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
@@ -111,6 +112,7 @@ volumes:
 }
 
 func TestIPFSComposeUpBuild(t *testing.T) {
+	t.Parallel()
 	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
