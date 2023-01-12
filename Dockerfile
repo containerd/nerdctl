@@ -23,7 +23,7 @@ ARG RUNC_VERSION=v1.1.4
 ARG CNI_PLUGINS_VERSION=v1.1.1
 
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.11.0-rc1-90-gab0d1a6e
+ARG BUILDKIT_VERSION=v0.11.0-rc1-87-g179bed6b
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.13.0
 # Extra deps: Nydus Lazy-pulling
