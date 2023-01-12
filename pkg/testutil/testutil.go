@@ -23,12 +23,14 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -288,6 +290,29 @@ func (b *Base) InfoNative() native.Info {
 	}
 	return info
 }
+
+func (b *Base) ContainerdAddress() string {
+	b.T.Helper()
+	if GetTarget() != Nerdctl {
+		b.T.Skip("ContainerdAddress() should not be called for non-nerdctl target")
+	}
+	if os.Geteuid() == 0 {
+		return defaults.DefaultAddress
+	}
+	xdr, err := rootlessutil.XDGRuntimeDir()
+	if err != nil {
+		b.T.Log(err)
+		xdr = fmt.Sprintf("/run/user/%d", os.Geteuid())
+	}
+	pidFile := filepath.Join(xdr, "containerd-rootless", "child_pid")
+	pidB, err := os.ReadFile(pidFile)
+	if err != nil {
+		b.T.Fatal(err)
+	}
+	pidS := strings.TrimSpace(string(pidB))
+	return filepath.Join("/proc", pidS, "root", defaults.DefaultAddress)
+}
+
 func (b *Base) EnsureContainerStarted(con string) {
 	b.T.Helper()
 
