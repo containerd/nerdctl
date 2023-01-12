@@ -23,7 +23,7 @@ ARG RUNC_VERSION=v1.1.4
 ARG CNI_PLUGINS_VERSION=v1.1.1
 
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.11.0-rc2
+ARG BUILDKIT_VERSION=v0.11.0-rc1-63-g0e1e7d6e
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.13.0
 # Extra deps: Nydus Lazy-pulling
@@ -136,11 +136,11 @@ RUN fname="cni-plugins-${TARGETOS:-linux}-${TARGETARCH:-amd64}-${CNI_PLUGINS_VER
   rm -f "${fname}" && \
   echo "- CNI plugins: ${CNI_PLUGINS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG BUILDKIT_VERSION
-RUN fname="buildkit-${BUILDKIT_VERSION}.${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
-  curl -o "${fname}" -fSL "https://github.com/moby/buildkit/releases/download/${BUILDKIT_VERSION}/${fname}" && \
-  grep "${fname}" "/SHA256SUMS.d/buildkit-${BUILDKIT_VERSION}" | sha256sum -c && \
-  tar xzf "${fname}" -C /out && \
-  rm -f "${fname}" /out/bin/buildkit-qemu-* /out/bin/buildkit-runc && \
+RUN git clone https://github.com/moby/buildkit.git /go/src/github.com/moby/buildkit && \
+  cd /go/src/github.com/moby/buildkit && \
+  git checkout "${BUILDKIT_VERSION}" && \
+  CGO_ENABLED=0 go build -o /out/bin/buildctl  ./cmd/buildctl && \
+  CGO_ENABLED=0 go build -o /out/bin/buildkitd ./cmd/buildkitd && \
   echo "- BuildKit: ${BUILDKIT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 # NOTE: github.com/moby/buildkit/examples/systemd is not included in BuildKit v0.8.x, will be included in v0.9.x
 RUN cd /out/lib/systemd/system && \
