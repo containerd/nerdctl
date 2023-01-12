@@ -265,7 +265,7 @@ It does not necessarily mean that the corresponding features are missing in cont
     - [:whale: nerdctl kill](#whale-nerdctl-kill)
     - [:whale: nerdctl pause](#whale-nerdctl-pause)
     - [:whale: nerdctl unpause](#whale-nerdctl-unpause)
-    - [:whale: docker rename](#whale-docker-rename)
+    - [:whale: nerdctl rename](#whale-nerdctl-rename)
     - [:whale: nerdctl container prune](#whale-nerdctl-container-prune)
   - [Build](#build)
     - [:whale: nerdctl build](#whale-nerdctl-build)
@@ -784,7 +784,7 @@ Unpause all processes within one or more containers.
 
 Usage: `nerdctl unpause CONTAINER [CONTAINER...]`
 
-### :whale: docker rename
+### :whale: nerdctl rename
 Rename a container.
 
 Usage: `nerdctl rename CONTAINER NEW_NAME`
