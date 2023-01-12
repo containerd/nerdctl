@@ -16,9 +16,20 @@
 
 package types
 
+// KillCommandOptions specifies options for `nerdctl kill`.
 type KillCommandOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// KillSignal is the signal to send to the container
 	KillSignal string
+}
+
+// ContainerRemoveCommandOptions specifies options for `nerdctl (container) rm`.
+type ContainerRemoveCommandOptions struct {
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// Force enables to remove a running|paused|unknown container (uses SIGKILL)
+	Force bool
+	// Volumes removes anonymous volumes associated with the container
+	Volumes bool
 }
