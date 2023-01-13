@@ -24,7 +24,7 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
-	"github.com/containerd/nerdctl/pkg/cmd/build"
+	"github.com/containerd/nerdctl/pkg/cmd/builder"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/strutil"
 
@@ -196,7 +196,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := build.Build(cmd.Context(), options, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+	if err := builder.Build(cmd.Context(), options, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
 		return err
 	}
 	return nil
