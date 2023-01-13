@@ -18,7 +18,7 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/cmd/load"
+	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/spf13/cobra"
 )
 
@@ -75,5 +75,5 @@ func loadAction(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	return load.Load(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout(), options)
+	return image.Load(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout(), options)
 }
