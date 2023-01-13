@@ -42,6 +42,13 @@ type ContainerStopOptions struct {
 	Timeout *time.Duration
 }
 
+// ContainerTopOptions specifies options for `nerdctl top`.
+type ContainerTopOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+}
+
 // ContainerRemoveOptions specifies options for `nerdctl (container) rm`.
 type ContainerRemoveOptions struct {
 	Stdout io.Writer
