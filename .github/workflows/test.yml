@@ -26,6 +26,8 @@ jobs:
           repo-access-token: ${{ secrets.GITHUB_TOKEN }}
       - run: ./hack/verify-no-patent.sh
         working-directory: src/github.com/containerd/nerdctl
+      - run: ./hack/verify-pkg-isolation.sh
+        working-directory: src/github.com/containerd/nerdctl
 
   lint:
     runs-on: ubuntu-22.04
