@@ -66,7 +66,7 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return volume.Ls(&types.VolumeLsCommandOptions{
+	return volume.List(&types.VolumeListCommandOptions{
 		GOptions: globalOptions,
 		Quiet:    quiet,
 		Format:   format,
