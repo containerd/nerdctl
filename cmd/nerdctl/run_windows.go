@@ -19,19 +19,23 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/containerd/containerd/containers"
+	"github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 )
 
-func WithoutRunMount() func(ctx context.Context, client oci.Client, c *containers.Container, s *oci.Spec) error {
-	// not valid on windows
-	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error { return nil }
-}
+const (
+	// HostProcessInheritUser inherits permissions of containerd process
+	hostProcessInheritUser = "microsoft.com/hostprocess-inherit-user"
+
+	// HostProcessContainer will launch a host process container
+	hostProcessContainer = "microsoft.com/hostprocess-container"
+)
 
 func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	candidates := []string{}
@@ -71,9 +75,54 @@ func setPlatformOptions(
 		opts = append(opts, oci.WithMemoryLimit(uint64(mem64)))
 	}
 
+	// TODO implement hyper-v isolation
+	isolation, err := cmd.Flags().GetString("isolation")
+	if err != nil {
+		return nil, err
+	}
+	switch isolation {
+	case "host":
+		hpAnnotations := map[string]string{
+			hostProcessContainer: "true",
+		}
+
+		// If user is set we will attempt to start container with that user (must be present on the host)
+		// Otherwise we will inherit permissions from the user that the containerd process is running as
+		user, err := cmd.Flags().GetString("user")
+		if err != nil {
+			return nil, err
+		}
+		if user == "" {
+			hpAnnotations[hostProcessInheritUser] = "true"
+		}
+
+		opts = append(opts, oci.WithAnnotations(hpAnnotations))
+	case "process":
+		// override the default isolation mode in the case where
+		// the containerd default_runtime is set to hyper-v
+		opts = append(opts, WithWindowsProcessIsolated())
+	case "default":
+		// no op
+		// use containerd's default runtime option `default_runtime` set in the config.toml
+	default:
+		return nil, fmt.Errorf("unknown isolation value %q. valid values are 'host', 'process' or 'default'", isolation)
+	}
+
 	opts = append(opts,
 		oci.WithWindowNetworksAllowUnqualifiedDNSQuery(),
 		oci.WithWindowsIgnoreFlushesDuringBoot())
 
 	return opts, nil
+}
+
+func WithWindowsProcessIsolated() oci.SpecOpts {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
+		if s.Windows == nil {
+			s.Windows = &specs.Windows{}
+		}
+		if s.Windows.HyperV != nil {
+			s.Windows.HyperV = nil
+		}
+		return nil
+	}
 }

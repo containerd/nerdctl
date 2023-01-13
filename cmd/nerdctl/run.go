@@ -276,6 +276,15 @@ func setCreateFlags(cmd *cobra.Command) {
 	// #endregion
 
 	cmd.Flags().String("ipfs-address", "", "multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)")
+
+	cmd.Flags().String("isolation", "default", "Specify isolation technology for container. On Linux the only valid value is default. Windows options are host or process with process isolation as the default")
+	cmd.RegisterFlagCompletionFunc("isolation", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if runtime.GOOS == "windows" {
+			return []string{"default", "host", "process"}, cobra.ShellCompDirectiveNoFileComp
+		}
+		return []string{"default"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
 }
 
 // runAction is heavily based on ctr implementation:
