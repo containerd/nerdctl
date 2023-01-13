@@ -164,7 +164,7 @@ Init process flags:
 
 Isolation flags:
 
-- :whale: :blue_square: :nerd_face: `--isolation=(default|process|host)`: Used on Windows to change process isolation level. `default` will use the runtime options configured in `default_runtime` in the [containerd configuration](https://github.com/containerd/containerd/blob/master/docs/cri/config.md#cri-plugin-config-guide) which is `process` in containerd by default. `process` runs process isolated containers.  `host` runs [Host Process containers](https://kubernetes.io/docs/tasks/configure-pod-container/create-hostprocess-pod/).  Host process containers inherit permissions from containerd process unless `--user` is specified then will start with user specified and the user specified must be present on the host.  `host` requires Containerd 1.7+. Not implemented for Linux.
+- :whale: :blue_square: :nerd_face: `--isolation=(default|process|host|hyperv)`: Used on Windows to change process isolation level. `default` will use the runtime options configured in `default_runtime` in the [containerd configuration](https://github.com/containerd/containerd/blob/master/docs/cri/config.md#cri-plugin-config-guide) which is `process` in containerd by default. `process` runs process isolated containers.  `host` runs [Host Process containers](https://kubernetes.io/docs/tasks/configure-pod-container/create-hostprocess-pod/).  Host process containers inherit permissions from containerd process unless `--user` is specified then will start with user specified and the user specified must be present on the host.  `host` requires Containerd 1.7+. `hyperv` runs Hyper-V hypervisor partition-based isolated containers. Not implemented for Linux.
 
 Network flags:
 

@@ -19,13 +19,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/containerd/containerd/containers"
-	"github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/docker/go-units"
+	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +35,8 @@ const (
 
 	// HostProcessContainer will launch a host process container
 	hostProcessContainer = "microsoft.com/hostprocess-container"
+	uvmMemorySizeInMB    = "io.microsoft.virtualmachine.computetopology.memory.sizeinmb"
+	uvmCPUCount          = "io.microsoft.virtualmachine.computetopology.processor.count"
 )
 
 func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -75,12 +77,30 @@ func setPlatformOptions(
 		opts = append(opts, oci.WithMemoryLimit(uint64(mem64)))
 	}
 
-	// TODO implement hyper-v isolation
 	isolation, err := cmd.Flags().GetString("isolation")
 	if err != nil {
 		return nil, err
 	}
 	switch isolation {
+	case "hyperv":
+		if memStr != "" {
+			mem64, err := units.RAMInBytes(memStr)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse memory bytes %q: %w", memStr, err)
+			}
+			UVMMemmory := map[string]string{
+				uvmMemorySizeInMB: fmt.Sprintf("%v", mem64),
+			}
+			opts = append(opts, oci.WithAnnotations(UVMMemmory))
+		}
+
+		if cpus > 0.0 {
+			UVMCPU := map[string]string{
+				uvmCPUCount: fmt.Sprintf("%v", cpus),
+			}
+			opts = append(opts, oci.WithAnnotations(UVMCPU))
+		}
+		opts = append(opts, oci.WithWindowsHyperV)
 	case "host":
 		hpAnnotations := map[string]string{
 			hostProcessContainer: "true",
