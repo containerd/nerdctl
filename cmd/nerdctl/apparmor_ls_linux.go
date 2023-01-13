@@ -42,7 +42,7 @@ func newApparmorLsCommand() *cobra.Command {
 }
 
 func apparmorLsAction(cmd *cobra.Command, args []string) error {
-	options := &types.ApparmorLsCommandOptions{}
+	options := &types.ApparmorListCommandOptions{}
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return err
@@ -54,5 +54,5 @@ func apparmorLsAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	options.Format = format
-	return apparmor.Ls(options)
+	return apparmor.List(options)
 }

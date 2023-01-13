@@ -43,7 +43,7 @@ type volumePrintable struct {
 	// TODO: "Links"
 }
 
-func Ls(options *types.VolumeLsCommandOptions, stdout io.Writer) error {
+func List(options *types.VolumeListCommandOptions, stdout io.Writer) error {
 	if options.Quiet && options.Size {
 		logrus.Warn("cannot use --size and --quiet together, ignoring --size")
 		options.Size = false

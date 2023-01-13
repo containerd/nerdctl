@@ -28,7 +28,7 @@ type ApparmorUnloadCommandOptions struct {
 	Target string
 }
 
-type ApparmorLsCommandOptions struct {
+type ApparmorListCommandOptions struct {
 	// Only display profile names
 	Quiet bool
 	// Format the output using the given go template

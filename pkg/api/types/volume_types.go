@@ -34,7 +34,7 @@ type VolumeInspectCommandOptions struct {
 	Volumes []string
 }
 
-type VolumeLsCommandOptions struct {
+type VolumeListCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Only display volume names
 	Quiet bool
