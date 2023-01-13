@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package load
+package image
 
 import (
 	"context"
