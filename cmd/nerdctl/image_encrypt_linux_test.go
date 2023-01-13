@@ -17,12 +17,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/images"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/testregistry"
@@ -63,10 +67,45 @@ func newJWEKeyPair(t testing.TB) *jweKeyPair {
 }
 
 func rmiAll(base *testutil.Base) {
+	base.T.Logf("Pruning images")
 	imageIDs := base.Cmd("images", "--no-trunc", "-a", "-q").OutLines()
 	base.Cmd(append([]string{"rmi", "-f"}, imageIDs...)...).AssertOK()
+
+	base.T.Logf("Pruning build caches")
 	if _, err := buildkitutil.GetBuildkitHost(testutil.Namespace); err == nil {
 		base.Cmd("builder", "prune").AssertOK()
+	}
+
+	// For BuildKit >= 0.11, pruning cache isn't enough to remove manifest blobs that are referred by build history blobs
+	// https://github.com/containerd/nerdctl/pull/1833
+	if base.Target == testutil.Nerdctl {
+		base.T.Logf("Pruning all content blobs")
+		addr := base.ContainerdAddress()
+		client, err := containerd.New(addr, containerd.WithDefaultNamespace(testutil.Namespace))
+		assert.NilError(base.T, err)
+		cs := client.ContentStore()
+		ctx := context.TODO()
+		wf := func(info content.Info) error {
+			base.T.Logf("Pruning blob %+v", info)
+			if err := cs.Delete(ctx, info.Digest); err != nil {
+				base.T.Log(err)
+			}
+			return nil
+		}
+		if err := cs.Walk(ctx, wf); err != nil {
+			base.T.Log(err)
+		}
+
+		base.T.Logf("Pruning all images (again?)")
+		is := client.ImageService()
+		imgs, err := is.List(ctx)
+		assert.NilError(base.T, err)
+		for _, img := range imgs {
+			base.T.Logf("Pruning image %+v", img)
+			if err := is.Delete(ctx, img.Name, images.SynchronousDelete()); err != nil {
+				base.T.Log(err)
+			}
+		}
 	}
 }
 

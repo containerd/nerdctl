@@ -18,13 +18,16 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"os/exec"
 	"strings"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/volume"
-	buildkitclient "github.com/moby/buildkit/client"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -131,47 +134,45 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-type cacheUsageInfo struct {
-	ID   string
-	Size int64
-}
-
-func buildCachePrune(ctx context.Context, cmd *cobra.Command, pruneAll bool, namespace string) ([]cacheUsageInfo, error) {
+func buildCachePrune(ctx context.Context, cmd *cobra.Command, pruneAll bool, namespace string) ([]buildkitutil.UsageInfo, error) {
 	buildkitHost, err := getBuildkitHost(cmd, namespace)
 	if err != nil {
 		return nil, err
 	}
-	opts := []buildkitclient.ClientOpt{buildkitclient.WithFailFast()}
-	client, err := buildkitclient.New(ctx, buildkitHost, opts)
+	buildctlBinary, err := buildkitutil.BuildctlBinary()
 	if err != nil {
 		return nil, err
 	}
-	var pruneOpts []buildkitclient.PruneOption
+	buildctlArgs := buildkitutil.BuildctlBaseArgs(buildkitHost)
+	buildctlArgs = append(buildctlArgs, "prune", "--format={{json .}}")
 	if pruneAll {
-		pruneOpts = append(pruneOpts, buildkitclient.PruneAll)
+		buildctlArgs = append(buildctlArgs, "--all")
 	}
-
-	var usageInfos []buildkitclient.UsageInfo
-	usageCh := make(chan buildkitclient.UsageInfo)
-
-	go func() {
-		for item := range usageCh {
-			usageInfos = append(usageInfos, item)
-		}
-	}()
-
-	err = client.Prune(ctx, usageCh, pruneOpts...)
-	close(usageCh)
+	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
+	logrus.Debugf("running %v", buildctlCmd.Args)
+	buildctlCmd.Stderr = cmd.ErrOrStderr()
+	stdout, err := buildctlCmd.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("faild to get stdout piper for %v: %w", buildctlCmd.Args, err)
+	}
+	defer stdout.Close()
+	if err = buildctlCmd.Start(); err != nil {
+		return nil, fmt.Errorf("faild to start %v: %w", buildctlCmd.Args, err)
+	}
+	dec := json.NewDecoder(stdout)
+	result := make([]buildkitutil.UsageInfo, 0)
+	for {
+		var v buildkitutil.UsageInfo
+		if err := dec.Decode(&v); err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, fmt.Errorf("faild to decode output from %v: %w", buildctlCmd.Args, err)
+		}
+		result = append(result, v)
+	}
+	if err = buildctlCmd.Wait(); err != nil {
+		return nil, fmt.Errorf("faild to wait for %v to complete: %w", buildctlCmd.Args, err)
 	}
 
-	result := make([]cacheUsageInfo, len(usageInfos))
-	for i, item := range usageInfos {
-		result[i] = cacheUsageInfo{
-			ID:   item.ID,
-			Size: item.Size,
-		}
-	}
 	return result, nil
 }

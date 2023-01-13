@@ -101,6 +101,7 @@ In addition to containerd, the following components should be installed:
 - [CNI plugins](https://github.com/containernetworking/plugins): for using `nerdctl run`.
    - v1.1.0 or later is highly recommended. Older versions require extra [CNI isolation plugin](https://github.com/AkihiroSuda/cni-isolation) for isolating bridge networks (`nerdctl network create`).
 - [BuildKit](https://github.com/moby/buildkit) (OPTIONAL): for using `nerdctl build`. BuildKit daemon (`buildkitd`) needs to be running. See also [the document about setting up BuildKit](./docs/build.md).
+   - v0.11.0 or later is highly recommended. Some features, such as pruning caches with `nerdctl system prune`, do not work with older versions.
 - [RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns) (OPTIONAL): for [Rootless mode](./docs/rootless.md)
    - RootlessKit needs to be v0.10.0 or later. v0.14.1 or later is recommended.
    - slirp4netns needs to be v0.4.0 or later. v1.1.7 or later is recommended.
