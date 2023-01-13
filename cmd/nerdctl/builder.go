@@ -38,6 +38,7 @@ func newBuilderCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	builderCommand.AddCommand(
+		newBuildCommand(),
 		newBuilderPruneCommand(),
 		newBuilderDebugCommand(),
 	)
