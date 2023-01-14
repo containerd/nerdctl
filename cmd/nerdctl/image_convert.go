@@ -18,33 +18,9 @@ package main
 
 import (
 	"compress/gzip"
-	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"os"
-	"strings"
 
-	overlaybdconvert "github.com/containerd/accelerated-container-image/pkg/convertor"
-	"github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/images/converter"
-	"github.com/containerd/containerd/images/converter/uncompress"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	converterutil "github.com/containerd/nerdctl/pkg/imgutil/converter"
-	"github.com/containerd/nerdctl/pkg/platformutil"
-	"github.com/containerd/nerdctl/pkg/referenceutil"
-	nydusconvert "github.com/containerd/nydus-snapshotter/pkg/converter"
-	"github.com/containerd/stargz-snapshotter/estargz"
-	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
-	estargzexternaltocconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz/externaltoc"
-	zstdchunkedconvert "github.com/containerd/stargz-snapshotter/nativeconverter/zstdchunked"
-	"github.com/containerd/stargz-snapshotter/recorder"
-	"github.com/klauspost/compress/zstd"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/spf13/cobra"
 )
 
@@ -119,431 +95,178 @@ func newImageConvertCommand() *cobra.Command {
 	return imageConvertCommand
 }
 
-func imageConvertAction(cmd *cobra.Command, args []string) error {
+func processImageConvertCommandOptions(cmd *cobra.Command) (types.ImageConvertCommandOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.ImageConvertCommandOptions{}, err
 	}
-	var (
-		convertOpts = []converter.Opt{}
-	)
-	srcRawRef := args[0]
-	targetRawRef := args[1]
-	if srcRawRef == "" || targetRawRef == "" {
-		return errors.New("src and target image need to be specified")
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
 	}
 
-	srcNamed, err := referenceutil.ParseAny(srcRawRef)
-	if err != nil {
-		return err
-	}
-	srcRef := srcNamed.String()
-
-	targetNamed, err := referenceutil.ParseDockerRef(targetRawRef)
-	if err != nil {
-		return err
-	}
-	targetRef := targetNamed.String()
-
-	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
-	if err != nil {
-		return err
-	}
-	platform, err := cmd.Flags().GetStringSlice("platform")
-	if err != nil {
-		return err
-	}
-	platMC, err := platformutil.NewMatchComparer(allPlatforms, platform)
-	if err != nil {
-		return err
-	}
-	convertOpts = append(convertOpts, converter.WithPlatform(platMC))
-
+	// #region estargz flags
 	estargz, err := cmd.Flags().GetBool("estargz")
 	if err != nil {
-		return err
-	}
-	zstdchunked, err := cmd.Flags().GetBool("zstdchunked")
-	if err != nil {
-		return err
-	}
-	nydus, err := cmd.Flags().GetBool("nydus")
-	if err != nil {
-		return err
-	}
-	overlaybd, err := cmd.Flags().GetBool("overlaybd")
-	if err != nil {
-		return err
-	}
-	oci, err := cmd.Flags().GetBool("oci")
-	if err != nil {
-		return err
-	}
-	uncompressValue, err := cmd.Flags().GetBool("uncompress")
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
-	var finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error)
-	if estargz || zstdchunked || overlaybd || nydus {
-		convertCount := 0
-		if estargz {
-			convertCount++
-		}
-		if zstdchunked {
-			convertCount++
-		}
-		if overlaybd {
-			convertCount++
-		}
-		if nydus {
-			convertCount++
-		}
-
-		if convertCount > 1 {
-			return errors.New("options --estargz, --zstdchunked, --overlaybd and --nydus lead to conflict, only one of them can be used")
-		}
-
-		var convertFunc converter.ConvertFunc
-		var convertType string
-		switch {
-		case estargz:
-			convertFunc, finalize, err = getESGZConverter(cmd, globalOptions)
-			if err != nil {
-				return err
-			}
-			convertType = "estargz"
-		case zstdchunked:
-			convertFunc, err = getZstdchunkedConverter(cmd, globalOptions)
-			if err != nil {
-				return err
-			}
-			convertType = "zstdchunked"
-		case overlaybd:
-			obdOpts, err := getOBDConvertOpts(cmd)
-			if err != nil {
-				return err
-			}
-			obdOpts = append(obdOpts, overlaybdconvert.WithClient(client))
-			obdOpts = append(obdOpts, overlaybdconvert.WithImageRef(srcRef))
-			convertFunc = overlaybdconvert.IndexConvertFunc(obdOpts...)
-			convertOpts = append(convertOpts, converter.WithIndexConvertFunc(convertFunc))
-			convertType = "overlaybd"
-		case nydus:
-			nydusOpts, err := getNydusConvertOpts(cmd, globalOptions)
-			if err != nil {
-				return err
-			}
-			convertHooks := converter.ConvertHooks{
-				PostConvertHook: nydusconvert.ConvertHookFunc(nydusconvert.MergeOption{
-					WorkDir:          nydusOpts.WorkDir,
-					BuilderPath:      nydusOpts.BuilderPath,
-					FsVersion:        nydusOpts.FsVersion,
-					ChunkDictPath:    nydusOpts.ChunkDictPath,
-					PrefetchPatterns: nydusOpts.PrefetchPatterns,
-				}),
-			}
-			convertOpts = append(convertOpts, converter.WithIndexConvertFunc(
-				converter.IndexConvertFuncWithHook(
-					nydusconvert.LayerConvertFunc(*nydusOpts),
-					true,
-					platMC,
-					convertHooks,
-				)),
-			)
-			convertType = "nydus"
-		}
-
-		if convertType != "overlaybd" {
-			convertOpts = append(convertOpts, converter.WithLayerConvertFunc(convertFunc))
-		}
-		if !oci {
-			if nydus || overlaybd {
-				logrus.Warnf("option --%s should be used in conjunction with --oci, forcibly enabling on oci mediatype for %s conversion", convertType, convertType)
-			} else {
-				logrus.Warnf("option --%s should be used in conjunction with --oci", convertType)
-			}
-		}
-		if uncompressValue {
-			return fmt.Errorf("option --%s conflicts with --uncompress", convertType)
-		}
-	}
-
-	if uncompressValue {
-		convertOpts = append(convertOpts, converter.WithLayerConvertFunc(uncompress.LayerConvertFunc))
-	}
-
-	if oci {
-		convertOpts = append(convertOpts, converter.WithDockerToOCI(true))
-	}
-
-	// converter.Convert() gains the lease by itself
-	newImg, err := converter.Convert(ctx, client, targetRef, srcRef, convertOpts...)
-	if err != nil {
-		return err
-	}
-	res := converterutil.ConvertedImageInfo{
-		Image: newImg.Name + "@" + newImg.Target.Digest.String(),
-	}
-	if finalize != nil {
-		ctx, done, err := client.WithLease(ctx)
-		if err != nil {
-			return err
-		}
-		defer done(ctx)
-		newI, err := finalize(ctx, client.ContentStore(), targetRef, &newImg.Target)
-		if err != nil {
-			return err
-		}
-		is := client.ImageService()
-		_ = is.Delete(ctx, newI.Name)
-		finimg, err := is.Create(ctx, *newI)
-		if err != nil {
-			return err
-		}
-		res.ExtraImages = append(res.ExtraImages, finimg.Name+"@"+finimg.Target.Digest.String())
-	}
-	return printConvertedImage(cmd, res)
-}
-
-func getESGZConverter(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (convertFunc converter.ConvertFunc, finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error), _ error) {
-	externalTOC, err := cmd.Flags().GetBool("estargz-external-toc")
-	if err != nil {
-		return nil, nil, err
-	}
-	keepDiffID, err := cmd.Flags().GetBool("estargz-keep-diff-id")
-	if err != nil {
-		return nil, nil, err
-	}
-	if externalTOC && !globalOptions.Experimental {
-		return nil, nil, fmt.Errorf("estargz-external-toc requires experimental mode to be enabled")
-	}
-	if keepDiffID && !externalTOC {
-		return nil, nil, fmt.Errorf("option --estargz-keep-diff-id must be specified with --estargz-external-toc")
-	}
-	if externalTOC {
-		estargzCompressionLevel, err := cmd.Flags().GetInt("estargz-compression-level")
-		if err != nil {
-			return nil, nil, err
-		}
-		if !keepDiffID {
-			esgzOpts, err := getESGZConvertOpts(cmd, globalOptions)
-			if err != nil {
-				return nil, nil, err
-			}
-			convertFunc, finalize = estargzexternaltocconvert.LayerConvertFunc(esgzOpts, estargzCompressionLevel)
-		} else {
-			estargzChunkSize, err := cmd.Flags().GetInt("estargz-chunk-size")
-			if err != nil {
-				return nil, nil, err
-			}
-			estargzMinChunkSize, err := cmd.Flags().GetInt("estargz-min-chunk-size")
-			if err != nil {
-				return nil, nil, err
-			}
-			convertFunc, finalize = estargzexternaltocconvert.LayerConvertLossLessFunc(estargzexternaltocconvert.LayerConvertLossLessConfig{
-				CompressionLevel: estargzCompressionLevel,
-				ChunkSize:        estargzChunkSize,
-				MinChunkSize:     estargzMinChunkSize,
-			})
-		}
-	} else {
-		esgzOpts, err := getESGZConvertOpts(cmd, globalOptions)
-		if err != nil {
-			return nil, nil, err
-		}
-		convertFunc = estargzconvert.LayerConvertFunc(esgzOpts...)
-	}
-	return convertFunc, finalize, nil
-}
-
-func getESGZConvertOpts(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) ([]estargz.Option, error) {
-	estargzCompressionLevel, err := cmd.Flags().GetInt("estargz-compression-level")
-	if err != nil {
-		return nil, err
-	}
-	estargzChunkSize, err := cmd.Flags().GetInt("estargz-chunk-size")
-	if err != nil {
-		return nil, err
-	}
-	estargzMinChunkSize, err := cmd.Flags().GetInt("estargz-min-chunk-size")
-	if err != nil {
-		return nil, err
+		return types.ImageConvertCommandOptions{}, err
 	}
 	estargzRecordIn, err := cmd.Flags().GetString("estargz-record-in")
 	if err != nil {
-		return nil, err
+		return types.ImageConvertCommandOptions{}, err
 	}
-
-	esgzOpts := []estargz.Option{
-		estargz.WithCompressionLevel(estargzCompressionLevel),
-		estargz.WithChunkSize(estargzChunkSize),
-		estargz.WithMinChunkSize(estargzMinChunkSize),
-	}
-
-	if estargzRecordIn != "" {
-		if !globalOptions.Experimental {
-			return nil, fmt.Errorf("estargz-record-in requires experimental mode to be enabled")
-		}
-
-		logrus.Warn("--estargz-record-in flag is experimental and subject to change")
-		paths, err := readPathsFromRecordFile(estargzRecordIn)
-		if err != nil {
-			return nil, err
-		}
-		esgzOpts = append(esgzOpts, estargz.WithPrioritizedFiles(paths))
-		var ignored []string
-		esgzOpts = append(esgzOpts, estargz.WithAllowPrioritizeNotFound(&ignored))
-	}
-	return esgzOpts, nil
-}
-
-func getZstdchunkedConverter(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (converter.ConvertFunc, error) {
-	zstdchunkedCompressionLevel, err := cmd.Flags().GetInt("zstdchunked-compression-level")
+	estargzCompressionLevel, err := cmd.Flags().GetInt("estargz-compression-level")
 	if err != nil {
-		return nil, err
+		return types.ImageConvertCommandOptions{}, err
 	}
-	zstdchunkedChunkSize, err := cmd.Flags().GetInt("zstdchunked-chunk-size")
+	estargzChunkSize, err := cmd.Flags().GetInt("estargz-chunk-size")
 	if err != nil {
-		return nil, err
+		return types.ImageConvertCommandOptions{}, err
 	}
-	zstdchunkedRecordIn, err := cmd.Flags().GetString("zstdchunked-record-in")
+	estargzMinChunkSize, err := cmd.Flags().GetInt("estargz-min-chunk-size")
 	if err != nil {
-		return nil, err
+		return types.ImageConvertCommandOptions{}, err
 	}
+	estargzExternalTOC, err := cmd.Flags().GetBool("estargz-external-toc")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
+	}
+	estargzKeepDiffID, err := cmd.Flags().GetBool("estargz-keep-diff-id")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
+	}
+	// #endregion
 
-	esgzOpts := []estargz.Option{
-		estargz.WithChunkSize(zstdchunkedChunkSize),
+	// #region zstd:chunked flags
+	zstdchunked, err := cmd.Flags().GetBool("zstdchunked")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
 	}
+	zstdChunkedCompressionLevel, err := cmd.Flags().GetInt("zstdchunked-compression-level")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
+	}
+	zstdChunkedChunkSize, err := cmd.Flags().GetInt("zstdchunked-chunk-size")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
+	}
+	zstdChunkedRecordIn, err := cmd.Flags().GetString("zstdchunked-record-in")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
+	}
+	// #endregion
 
-	if zstdchunkedRecordIn != "" {
-		if !globalOptions.Experimental {
-			return nil, fmt.Errorf("zstdchunked-record-in requires experimental mode to be enabled")
-		}
+	// #region nydus flags
+	nydus, err := cmd.Flags().GetBool("nydus")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
+	}
+	nydusBuilderPath, err := cmd.Flags().GetString("nydus-builder-path")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
+	}
+	nydusWorkDir, err := cmd.Flags().GetString("nydus-work-dir")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
+	}
+	nydusPrefetchPatterns, err := cmd.Flags().GetString("nydus-prefetch-patterns")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
+	}
+	nydusCompressor, err := cmd.Flags().GetString("nydus-compressor")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
+	}
+	// #endregion
 
-		logrus.Warn("--zstdchunked-record-in flag is experimental and subject to change")
-		paths, err := readPathsFromRecordFile(zstdchunkedRecordIn)
-		if err != nil {
-			return nil, err
-		}
-		esgzOpts = append(esgzOpts, estargz.WithPrioritizedFiles(paths))
-		var ignored []string
-		esgzOpts = append(esgzOpts, estargz.WithAllowPrioritizeNotFound(&ignored))
+	// #region overlaybd flags
+	overlaybd, err := cmd.Flags().GetBool("overlaybd")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
 	}
-	return zstdchunkedconvert.LayerConvertFuncWithCompressionLevel(zstd.EncoderLevelFromZstd(zstdchunkedCompressionLevel), esgzOpts...), nil
-}
+	overlaybdFsType, err := cmd.Flags().GetString("overlaybd-fs-type")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
+	}
+	overlaybdDbstr, err := cmd.Flags().GetString("overlaybd-dbstr")
+	if err != nil {
+		return types.ImageConvertCommandOptions{}, err
+	}
+	// #endregion
 
-func getNydusConvertOpts(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (*nydusconvert.PackOption, error) {
-	builderPath, err := cmd.Flags().GetString("nydus-builder-path")
+	// #region generic flags
+	uncompress, err := cmd.Flags().GetBool("uncompress")
 	if err != nil {
-		return nil, err
+		return types.ImageConvertCommandOptions{}, err
 	}
-	workDir, err := cmd.Flags().GetString("nydus-work-dir")
+	oci, err := cmd.Flags().GetBool("oci")
 	if err != nil {
-		return nil, err
+		return types.ImageConvertCommandOptions{}, err
 	}
-	if workDir == "" {
-		workDir, err = clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
-		if err != nil {
-			return nil, err
-		}
-	}
-	prefetchPatterns, err := cmd.Flags().GetString("nydus-prefetch-patterns")
+	// #endregion
+
+	// #region platform flags
+	platforms, err := cmd.Flags().GetStringSlice("platform")
 	if err != nil {
-		return nil, err
+		return types.ImageConvertCommandOptions{}, err
 	}
-	compressor, err := cmd.Flags().GetString("nydus-compressor")
+	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
 	if err != nil {
-		return nil, err
+		return types.ImageConvertCommandOptions{}, err
 	}
-	return &nydusconvert.PackOption{
-		BuilderPath: builderPath,
-		// the path will finally be used is <NERDCTL_DATA_ROOT>/nydus-converter-<hash>,
-		// for example: /var/lib/nerdctl/1935db59/nydus-converter-3269662176/,
-		// and it will be deleted after the conversion
-		WorkDir:          workDir,
-		PrefetchPatterns: prefetchPatterns,
-		Compressor:       compressor,
-		FsVersion:        "6",
+	// #endregion
+
+	return types.ImageConvertCommandOptions{
+		GOptions: globalOptions,
+		Format:   format,
+		// #region estargz flags
+		Estargz:                 estargz,
+		EstargzRecordIn:         estargzRecordIn,
+		EstargzCompressionLevel: estargzCompressionLevel,
+		EstargzChunkSize:        estargzChunkSize,
+		EstargzMinChunkSize:     estargzMinChunkSize,
+		EstargzExternalToc:      estargzExternalTOC,
+		EstargzKeepDiffID:       estargzKeepDiffID,
+		// #endregion
+		// #region zstd:chunked flags
+		ZstdChunked:                 zstdchunked,
+		ZstdChunkedCompressionLevel: zstdChunkedCompressionLevel,
+		ZstdChunkedChunkSize:        zstdChunkedChunkSize,
+		ZstdChunkedRecordIn:         zstdChunkedRecordIn,
+		// #endregion
+		// #region nydus flags
+		Nydus:                 nydus,
+		NydusBuilderPath:      nydusBuilderPath,
+		NydusWorkDir:          nydusWorkDir,
+		NydusPrefetchPatterns: nydusPrefetchPatterns,
+		NydusCompressor:       nydusCompressor,
+		// #endregion
+		// #region overlaybd flags
+		Overlaybd:      overlaybd,
+		OverlayFsType:  overlaybdFsType,
+		OverlaydbDBStr: overlaybdDbstr,
+		// #endregion
+		// #region generic flags
+		Uncompress: uncompress,
+		Oci:        oci,
+		// #endregion
+		// #region platform flags
+		Platforms:    platforms,
+		AllPlatforms: allPlatforms,
+		// #endregion
 	}, nil
 }
 
-func getOBDConvertOpts(cmd *cobra.Command) ([]overlaybdconvert.Option, error) {
-	obdFsType, err := cmd.Flags().GetString("overlaybd-fs-type")
+func imageConvertAction(cmd *cobra.Command, args []string) error {
+	options, err := processImageConvertCommandOptions(cmd)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	obdDbstr, err := cmd.Flags().GetString("overlaybd-dbstr")
-	if err != nil {
-		return nil, err
-	}
-
-	obdOpts := []overlaybdconvert.Option{
-		overlaybdconvert.WithFsType(obdFsType),
-		overlaybdconvert.WithDbstr(obdDbstr),
-	}
-	return obdOpts, nil
-}
-
-func readPathsFromRecordFile(filename string) ([]string, error) {
-	r, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-	dec := json.NewDecoder(r)
-	var paths []string
-	added := make(map[string]struct{})
-	for dec.More() {
-		var e recorder.Entry
-		if err := dec.Decode(&e); err != nil {
-			return nil, err
-		}
-		if _, ok := added[e.Path]; !ok {
-			paths = append(paths, e.Path)
-			added[e.Path] = struct{}{}
-		}
-	}
-	return paths, nil
+	srcRawRef := args[0]
+	destRawRef := args[1]
+	return image.Convert(cmd.Context(), srcRawRef, destRawRef, options, cmd.OutOrStdout())
 }
 
 func imageConvertShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
 	return shellCompleteImageNames(cmd)
-}
-
-func printConvertedImage(cmd *cobra.Command, img converterutil.ConvertedImageInfo) error {
-	format, err := cmd.Flags().GetString("format")
-	if err != nil {
-		return err
-	}
-	switch format {
-	case "json":
-		b, err := json.MarshalIndent(img, "", "    ")
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(cmd.OutOrStdout(), string(b))
-	default:
-		for i, e := range img.ExtraImages {
-			elems := strings.SplitN(e, "@", 2)
-			if len(elems) < 2 {
-				logrus.Errorf("extra reference %q doesn't contain digest", e)
-			} else {
-				logrus.Infof("Extra image(%d) %s", i, elems[0])
-			}
-		}
-		elems := strings.SplitN(img.Image, "@", 2)
-		if len(elems) < 2 {
-			logrus.Errorf("reference %q doesn't contain digest", img.Image)
-		} else {
-			fmt.Fprintln(cmd.OutOrStdout(), elems[1])
-		}
-	}
-	return nil
 }

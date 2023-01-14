@@ -17,19 +17,8 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"time"
-
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/formatter"
-	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
-	"github.com/containerd/nerdctl/pkg/imageinspector"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
-
+	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/spf13/cobra"
 )
 
@@ -61,91 +50,40 @@ func newImageInspectCommand() *cobra.Command {
 	return imageInspectCommand
 }
 
-func imageInspectAction(cmd *cobra.Command, args []string) error {
+func processImageInspectCommandOptions(cmd *cobra.Command, platform *string) (types.ImageInspectCommandOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.ImageInspectCommandOptions{}, err
 	}
-	platform, err := cmd.Flags().GetString("platform")
-	if err != nil {
-		return err
-	}
-	return imageInspectActionWithPlatform(cmd, args, platform, globalOptions)
-}
-
-func imageInspectActionWithPlatform(cmd *cobra.Command, args []string, platform string, globalOptions types.GlobalCommandOptions) error {
-
-	var clientOpts []containerd.ClientOpt
-	if platform != "" {
-		platformParsed, err := platforms.Parse(platform)
-		if err != nil {
-			return err
-		}
-		platformM := platforms.Only(platformParsed)
-		clientOpts = append(clientOpts, containerd.WithDefaultPlatform(platformM))
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address, clientOpts...)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
 	mode, err := cmd.Flags().GetString("mode")
 	if err != nil {
-		return err
-	}
-
-	f := &imageInspector{
-		mode: mode,
-	}
-	walker := &imagewalker.ImageWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found imagewalker.Found) error {
-			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			defer cancel()
-
-			n, err := imageinspector.Inspect(ctx, client, found.Image)
-			if err != nil {
-				return err
-			}
-			switch f.mode {
-			case "native":
-				f.entries = append(f.entries, n)
-			case "dockercompat":
-				d, err := dockercompat.ImageFromNative(n)
-				if err != nil {
-					return err
-				}
-				f.entries = append(f.entries, d)
-			default:
-				return fmt.Errorf("unknown mode %q", f.mode)
-			}
-			return nil
-		},
-	}
-
-	var errs []error
-	for _, req := range args {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			errs = append(errs, err)
-		} else if n == 0 {
-			errs = append(errs, fmt.Errorf("no such object: %s", req))
-		}
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("%d errors: %v", len(errs), errs)
+		return types.ImageInspectCommandOptions{}, err
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
-		return err
+		return types.ImageInspectCommandOptions{}, err
 	}
-	return formatter.FormatSlice(format, cmd.OutOrStdout(), f.entries)
+	if platform == nil {
+		tempPlatform, err := cmd.Flags().GetString("platform")
+		if err != nil {
+			return types.ImageInspectCommandOptions{}, err
+		}
+		platform = &tempPlatform
+	}
+	return types.ImageInspectCommandOptions{
+		GOptions: globalOptions,
+		Mode:     mode,
+		Format:   format,
+		Platform: *platform,
+	}, nil
 }
 
-type imageInspector struct {
-	mode    string
-	entries []interface{}
+func imageInspectAction(cmd *cobra.Command, args []string) error {
+	options, err := processImageInspectCommandOptions(cmd, nil)
+	if err != nil {
+		return err
+	}
+	return image.Inspect(cmd.Context(), options, cmd.OutOrStdout(), args)
 }
 
 func imageInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
