@@ -17,24 +17,8 @@
 package main
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/cosignutil"
-	"github.com/containerd/nerdctl/pkg/imgutil"
-	"github.com/containerd/nerdctl/pkg/ipfs"
-	"github.com/containerd/nerdctl/pkg/platformutil"
-	"github.com/containerd/nerdctl/pkg/referenceutil"
-	"github.com/containerd/nerdctl/pkg/strutil"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
-
+	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/spf13/cobra"
 )
 
@@ -74,119 +58,57 @@ func newPullCommand() *cobra.Command {
 	return pullCommand
 }
 
-func pullAction(cmd *cobra.Command, args []string) error {
+func processPullCommandFlags(cmd *cobra.Command) (types.PullCommandOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.PullCommandOptions{}, err
 	}
-	rawRef := args[0]
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
 	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
 	if err != nil {
-		return err
+		return types.PullCommandOptions{}, err
 	}
 	platform, err := cmd.Flags().GetStringSlice("platform")
 	if err != nil {
-		return err
-	}
-	ocispecPlatforms, err := platformutil.NewOCISpecPlatformSlice(allPlatforms, platform)
-	if err != nil {
-		return err
+		return types.PullCommandOptions{}, err
 	}
 
 	unpackStr, err := cmd.Flags().GetString("unpack")
 	if err != nil {
-		return err
-	}
-	unpack, err := strutil.ParseBoolOrAuto(unpackStr)
-	if err != nil {
-		return err
+		return types.PullCommandOptions{}, err
 	}
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
-		return err
+		return types.PullCommandOptions{}, err
 	}
-
-	_, err = ensureImage(ctx, cmd, client, globalOptions, rawRef, ocispecPlatforms, "always", unpack, quiet)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ensureImage(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions types.GlobalCommandOptions, rawRef string, ocispecPlatforms []v1.Platform, pull string, unpack *bool, quiet bool) (*imgutil.EnsuredImage, error) {
-
-	var ensured *imgutil.EnsuredImage
-
 	verifier, err := cmd.Flags().GetString("verify")
 	if err != nil {
-		return nil, err
+		return types.PullCommandOptions{}, err
 	}
-
-	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
-		if verifier != "none" {
-			return nil, errors.New("--verify flag is not supported on IPFS as of now")
-		}
-
-		ipfsAddressStr, err := cmd.Flags().GetString("ipfs-address")
-		if err != nil {
-			return nil, err
-		}
-
-		var ipfsPath *string
-		if ipfsAddressStr != "" {
-			dir, err := os.MkdirTemp("", "apidirtmp")
-			if err != nil {
-				return nil, err
-			}
-			defer os.RemoveAll(dir)
-			if err := os.WriteFile(filepath.Join(dir, "api"), []byte(ipfsAddressStr), 0600); err != nil {
-				return nil, err
-			}
-			ipfsPath = &dir
-		}
-
-		ensured, err = ipfs.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), globalOptions.Snapshotter, scheme, ref,
-			pull, ocispecPlatforms, unpack, quiet, ipfsPath)
-		if err != nil {
-			return nil, err
-		}
-		return ensured, nil
-	}
-
-	ref := rawRef
-	switch verifier {
-	case "cosign":
-		experimental := globalOptions.Experimental
-
-		if !experimental {
-			return nil, fmt.Errorf("cosign only work with enable experimental feature")
-		}
-
-		keyRef, err := cmd.Flags().GetString("cosign-key")
-		if err != nil {
-			return nil, err
-		}
-
-		ref, err = cosignutil.VerifyCosign(ctx, rawRef, keyRef, globalOptions.HostsDir)
-		if err != nil {
-			return nil, err
-		}
-	case "none":
-		logrus.Debugf("verification process skipped")
-	default:
-		return nil, fmt.Errorf("no verifier found: %s", verifier)
-	}
-
-	ensured, err = imgutil.EnsureImage(ctx, client, cmd.OutOrStdout(), cmd.ErrOrStderr(), globalOptions.Snapshotter, ref,
-		pull, globalOptions.InsecureRegistry, globalOptions.HostsDir, ocispecPlatforms, unpack, quiet)
+	cosignKey, err := cmd.Flags().GetString("cosign-key")
 	if err != nil {
-		return nil, err
+		return types.PullCommandOptions{}, err
 	}
-	return ensured, err
+	ipfsAddressStr, err := cmd.Flags().GetString("ipfs-address")
+	if err != nil {
+		return types.PullCommandOptions{}, err
+	}
+	return types.PullCommandOptions{
+		GOptions:     globalOptions,
+		AllPlatforms: allPlatforms,
+		Platform:     platform,
+		Unpack:       unpackStr,
+		Quiet:        quiet,
+		Verify:       verifier,
+		CosignKey:    cosignKey,
+		IPFSAddress:  ipfsAddressStr,
+	}, nil
+}
+
+func pullAction(cmd *cobra.Command, args []string) error {
+	var pullOptions, err = processPullCommandFlags(cmd)
+	if err != nil {
+		return err
+	}
+
+	return image.Pull(cmd.Context(), args[0], cmd.OutOrStdout(), cmd.ErrOrStderr(), pullOptions)
 }
