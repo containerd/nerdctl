@@ -40,25 +40,32 @@ func newVolumeInspectCommand() *cobra.Command {
 	return volumeInspectCommand
 }
 
-func volumeInspectAction(cmd *cobra.Command, args []string) error {
+func processVolumeInspectCommandOptions(cmd *cobra.Command) (types.VolumeInspectCommandOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.VolumeInspectCommandOptions{}, err
 	}
 	volumeSize, err := cmd.Flags().GetBool("size")
 	if err != nil {
-		return err
+		return types.VolumeInspectCommandOptions{}, err
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
-		return err
+		return types.VolumeInspectCommandOptions{}, err
 	}
-	return volume.Inspect(&types.VolumeInspectCommandOptions{
+	return types.VolumeInspectCommandOptions{
 		GOptions: globalOptions,
 		Format:   format,
 		Size:     volumeSize,
-		Volumes:  args,
-	}, cmd.OutOrStdout())
+	}, nil
+}
+
+func volumeInspectAction(cmd *cobra.Command, args []string) error {
+	options, err := processVolumeInspectCommandOptions(cmd)
+	if err != nil {
+		return err
+	}
+	return volume.Inspect(args, options, cmd.OutOrStdout())
 }
 
 func volumeInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

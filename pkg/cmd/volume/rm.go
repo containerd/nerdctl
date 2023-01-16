@@ -30,7 +30,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/mountutil"
 )
 
-func Rm(ctx context.Context, options *types.VolumeRmCommandOptions, stdout io.Writer) error {
+func Remove(ctx context.Context, volumes []string, options types.VolumeRemoveCommandOptions, stdout io.Writer) error {
 	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func Rm(ctx context.Context, options *types.VolumeRmCommandOptions, stdout io.Wr
 	}
 
 	var volumenames []string // nolint: prealloc
-	for _, name := range options.Volumes {
+	for _, name := range volumes {
 		volume, err := volStore.Get(name, false)
 		if err != nil {
 			return err

@@ -26,7 +26,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/clientutil"
 )
 
-func Prune(ctx context.Context, options *types.VolumePruneCommandOptions, stdin io.Reader, stdout io.Writer) error {
+func Prune(ctx context.Context, options types.VolumePruneCommandOptions, stdin io.Reader, stdout io.Writer) error {
 	if !options.Force {
 		var confirm string
 		msg := "This will remove all local volumes not used by at least one container."

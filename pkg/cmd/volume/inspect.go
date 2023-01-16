@@ -23,14 +23,14 @@ import (
 	"github.com/containerd/nerdctl/pkg/formatter"
 )
 
-func Inspect(options *types.VolumeInspectCommandOptions, stdout io.Writer) error {
+func Inspect(volumes []string, options types.VolumeInspectCommandOptions, stdout io.Writer) error {
 	volStore, err := Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
-	result := make([]interface{}, len(options.Volumes))
+	result := make([]interface{}, len(volumes))
 
-	for i, name := range options.Volumes {
+	for i, name := range volumes {
 		var vol, err = volStore.Get(name, options.Size)
 		if err != nil {
 			return err
