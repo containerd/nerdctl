@@ -27,6 +27,7 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/config"
 	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/version"
@@ -113,7 +114,7 @@ func usage(c *cobra.Command) error {
 
 func main() {
 	if err := xmain(); err != nil {
-		HandleExitCoder(err)
+		errutil.HandleExitCoder(err)
 		logrus.Fatal(err)
 	}
 }
@@ -339,30 +340,6 @@ func globalFlags(cmd *cobra.Command) (string, []string) {
 		}
 	})
 	return args0, args
-}
-
-type ExitCoder interface {
-	error
-	ExitCode() int
-}
-
-type ExitCodeError struct {
-	error
-	exitCode int
-}
-
-func (e ExitCodeError) ExitCode() int {
-	return e.exitCode
-}
-
-func HandleExitCoder(err error) {
-	if err == nil {
-		return
-	}
-
-	if exitErr, ok := err.(ExitCoder); ok {
-		os.Exit(exitErr.ExitCode())
-	}
 }
 
 // unknownSubcommandAction is needed to let `nerdctl system non-existent-command` fail

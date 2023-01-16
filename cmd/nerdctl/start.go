@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -184,9 +185,7 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 		return err
 	}
 	if code != 0 {
-		return ExitCodeError{
-			exitCode: int(code),
-		}
+		return errutil.NewExitCoderErr(int(code))
 	}
 	return nil
 }
