@@ -17,20 +17,9 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"os"
-	"strings"
-	"syscall"
-
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-
-	"github.com/moby/sys/signal"
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/spf13/cobra"
 )
 
@@ -57,87 +46,17 @@ func killAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if !strings.HasPrefix(killSignal, "SIG") {
-		killSignal = "SIG" + killSignal
+	options := types.KillCommandOptions{
+		GOptions:   globalOptions,
+		KillSignal: killSignal,
 	}
-
-	signal, err := signal.ParseSignal(killSignal)
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
-	walker := &containerwalker.ContainerWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if found.MatchCount > 1 {
-				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
-			}
-			if err := killContainer(ctx, found.Container, signal); err != nil {
-				if errdefs.IsNotFound(err) {
-					fmt.Fprintf(cmd.ErrOrStderr(), "No such container: %s\n", found.Req)
-					os.Exit(1)
-				}
-				return err
-			}
-			_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Container.ID())
-			return err
-		},
-	}
-	for _, req := range args {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			return err
-		} else if n == 0 {
-			return fmt.Errorf("no such container %s", req)
-		}
-	}
-	return nil
+	return container.Kill(cmd.Context(), args, options, cmd.OutOrStdout(), cmd.ErrOrStderr())
 }
 
-func killContainer(ctx context.Context, container containerd.Container, signal syscall.Signal) error {
-	task, err := container.Task(ctx, cio.Load)
-	if err != nil {
-		return err
-	}
-
-	status, err := task.Status(ctx)
-	if err != nil {
-		return err
-	}
-
-	paused := false
-
-	switch status.Status {
-	case containerd.Created, containerd.Stopped:
-		return fmt.Errorf("cannot kill container: %s: Container %s is not running", container.ID(), container.ID())
-	case containerd.Paused, containerd.Pausing:
-		paused = true
-	default:
-	}
-
-	if err := task.Kill(ctx, signal); err != nil {
-		return err
-	}
-
-	// signal will be sent once resume is finished
-	if paused {
-		if err := task.Resume(ctx); err != nil {
-			logrus.Warnf("Cannot unpause container %s: %s", container.ID(), err)
-		}
-	}
-	return nil
-}
-
-func killShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func killShellComplete(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	// show non-stopped container names
 	statusFilterFn := func(st containerd.ProcessStatus) bool {
 		return st != containerd.Stopped && st != containerd.Created && st != containerd.Unknown
 	}
 	return shellCompleteContainerNames(cmd, statusFilterFn)
-
 }
