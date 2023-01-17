@@ -16,6 +16,17 @@
 
 package types
 
+type NetworkInspectCommandOptions struct {
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// Format the output using the given go template
+	Format string
+	// Mode Inspect mode
+	Mode string
+	// Networks are the networks to be inspected
+	Networks []string
+}
+
 type NetworkListCommandOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
