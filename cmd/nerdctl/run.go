@@ -43,6 +43,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -399,9 +400,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if code != 0 {
-		return ExitCodeError{
-			exitCode: int(code),
-		}
+		return errutil.NewExitCoderErr(int(code))
 	}
 	return nil
 }

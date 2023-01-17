@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/idutil/netwalker"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/sirupsen/logrus"
@@ -110,9 +111,7 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 	// compatible with docker
 	// ExitCodeError is to allow the program to exit with status code 1 without outputting an error message.
 	if code != 0 {
-		return ExitCodeError{
-			exitCode: code,
-		}
+		return errutil.NewExitCoderErr(code)
 	}
 	return nil
 }
