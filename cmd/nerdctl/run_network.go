@@ -26,12 +26,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
@@ -219,7 +219,7 @@ func generateNetOpts(cmd *cobra.Command, globalOptions types.GlobalCommandOption
 				hostnamePath := filepath.Join(conStateDir, "hostname")
 				resolvConfPath := filepath.Join(conStateDir, "resolv.conf")
 				etcHostsPath := hostsstore.HostsPath(dataStore, ns, containerID)
-				netNSPath, err := getContainerNetNSPath(ctx, found.Container)
+				netNSPath, err := containerutil.ContainerNetNSPath(ctx, found.Container)
 				if err != nil {
 					return err
 				}
@@ -249,21 +249,6 @@ func generateNetOpts(cmd *cobra.Command, globalOptions types.GlobalCommandOption
 		return nil, nil, "", nil, "", fmt.Errorf("unexpected network type %v", netType)
 	}
 	return opts, netSlice, ipAddress, ports, macAddress, nil
-}
-
-func getContainerNetNSPath(ctx context.Context, c containerd.Container) (string, error) {
-	task, err := c.Task(ctx, nil)
-	if err != nil {
-		return "", err
-	}
-	status, err := task.Status(ctx)
-	if err != nil {
-		return "", err
-	}
-	if status.Status != containerd.Running {
-		return "", fmt.Errorf("invalid target container: %s, should be running", c.ID())
-	}
-	return fmt.Sprintf("/proc/%d/ns/net", task.Pid()), nil
 }
 
 func verifyCNINetwork(cmd *cobra.Command, netSlice []string, macAddress string, globalOptions types.GlobalCommandOptions) error {
