@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 
@@ -127,7 +128,12 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 			continue
 		}
 		if ni != 0 {
-			if err := imageInspectActionWithPlatform(cmd, []string{req}, "", globalOptions); err != nil {
+			platform := ""
+			imageInspectOptions, err := processImageInspectCommandOptions(cmd, &platform)
+			if err != nil {
+				return err
+			}
+			if err := image.Inspect(cmd.Context(), imageInspectOptions, cmd.OutOrStdout(), []string{req}); err != nil {
 				errs = append(errs, err)
 			}
 			continue
