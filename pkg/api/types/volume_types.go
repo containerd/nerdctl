@@ -18,8 +18,6 @@ package types
 
 type VolumeCreateCommandOptions struct {
 	GOptions GlobalCommandOptions
-	// Name is the volume name
-	Name string
 	// Labels are the volume labels
 	Labels []string
 }
@@ -30,8 +28,6 @@ type VolumeInspectCommandOptions struct {
 	Format string
 	// Display the disk usage of volumes. Can be slow with volumes having loads of directories.
 	Size bool
-	// Volumes are the volumes to be inspected
-	Volumes []string
 }
 
 type VolumeListCommandOptions struct {
@@ -52,8 +48,8 @@ type VolumePruneCommandOptions struct {
 	Force bool
 }
 
-type VolumeRmCommandOptions struct {
+type VolumeRemoveCommandOptions struct {
 	GOptions GlobalCommandOptions
-	// Volumes are the volumes to be removed
-	Volumes []string
+	// Force the removal of one or more volumes
+	Force bool
 }

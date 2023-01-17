@@ -27,7 +27,7 @@ import (
 	"text/template"
 
 	"github.com/containerd/containerd/pkg/progress"
-	types "github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/sirupsen/logrus"
@@ -43,7 +43,7 @@ type volumePrintable struct {
 	// TODO: "Links"
 }
 
-func List(options *types.VolumeListCommandOptions, stdout io.Writer) error {
+func List(options types.VolumeListCommandOptions, stdout io.Writer) error {
 	if options.Quiet && options.Size {
 		logrus.Warn("cannot use --size and --quiet together, ignoring --size")
 		options.Size = false

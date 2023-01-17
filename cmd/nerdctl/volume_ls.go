@@ -45,34 +45,42 @@ func newVolumeLsCommand() *cobra.Command {
 	return volumeLsCommand
 }
 
-func volumeLsAction(cmd *cobra.Command, args []string) error {
+func processVolumeLsCommandOptions(cmd *cobra.Command) (types.VolumeListCommandOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.VolumeListCommandOptions{}, err
 	}
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
-		return err
+		return types.VolumeListCommandOptions{}, err
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
-		return err
+		return types.VolumeListCommandOptions{}, err
 	}
 	size, err := cmd.Flags().GetBool("size")
 	if err != nil {
-		return err
+		return types.VolumeListCommandOptions{}, err
 	}
 	filters, err := cmd.Flags().GetStringSlice("filter")
 	if err != nil {
-		return err
+		return types.VolumeListCommandOptions{}, err
 	}
-	return volume.List(&types.VolumeListCommandOptions{
+	return types.VolumeListCommandOptions{
 		GOptions: globalOptions,
 		Quiet:    quiet,
 		Format:   format,
 		Size:     size,
 		Filters:  filters,
-	}, cmd.OutOrStdout())
+	}, nil
+}
+
+func volumeLsAction(cmd *cobra.Command, args []string) error {
+	options, err := processVolumeLsCommandOptions(cmd)
+	if err != nil {
+		return err
+	}
+	return volume.List(options, cmd.OutOrStdout())
 }
 
 func getVolumes(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (map[string]native.Volume, error) {

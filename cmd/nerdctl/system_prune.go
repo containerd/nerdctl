@@ -107,7 +107,7 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if vFlag {
-		if err := volume.Prune(ctx, &types.VolumePruneCommandOptions{
+		if err := volume.Prune(ctx, types.VolumePruneCommandOptions{
 			GOptions: globalOptions,
 			Force:    true,
 		}, cmd.InOrStdin(), cmd.OutOrStdout()); err != nil {
