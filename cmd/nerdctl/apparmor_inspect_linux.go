@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/cmd/apparmor"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/spf13/cobra"
@@ -38,7 +37,5 @@ func newApparmorInspectCommand() *cobra.Command {
 }
 
 func apparmorInspectAction(cmd *cobra.Command, args []string) error {
-	options := &types.ApparmorInspectCommandOptions{}
-	options.Writer = cmd.OutOrStdout()
-	return apparmor.Inspect(options)
+	return apparmor.Inspect(cmd.OutOrStdout())
 }

@@ -17,12 +17,11 @@
 package apparmor
 
 import (
-	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/apparmorutil"
 	"github.com/sirupsen/logrus"
 )
 
-func Unload(options *types.ApparmorUnloadCommandOptions) error {
-	logrus.Infof("Unloading profile %q", options.Target)
-	return apparmorutil.Unload(options.Target)
+func Unload(target string) error {
+	logrus.Infof("Unloading profile %q", target)
+	return apparmorutil.Unload(target)
 }

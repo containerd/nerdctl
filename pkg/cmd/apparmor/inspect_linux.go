@@ -18,17 +18,17 @@ package apparmor
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/containerd/containerd/contrib/apparmor"
-	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/defaults"
 )
 
-func Inspect(options *types.ApparmorInspectCommandOptions) error {
+func Inspect(stdout io.Writer) error {
 	b, err := apparmor.DumpDefaultProfile(defaults.AppArmorProfileName)
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprint(options.Writer, b)
+	_, err = fmt.Fprint(stdout, b)
 	return err
 }
