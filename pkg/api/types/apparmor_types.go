@@ -16,23 +16,9 @@
 
 package types
 
-import "io"
-
-type ApparmorInspectCommandOptions struct {
-	// Writer is the output writer
-	Writer io.Writer
-}
-
-type ApparmorUnloadCommandOptions struct {
-	// Target is the profile name
-	Target string
-}
-
 type ApparmorListCommandOptions struct {
 	// Only display profile names
 	Quiet bool
 	// Format the output using the given go template
 	Format string
-	// Writer is the output writer
-	Writer io.Writer
 }

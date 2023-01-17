@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"text/tabwriter"
 	"text/template"
 
@@ -28,14 +29,14 @@ import (
 	"github.com/containerd/nerdctl/pkg/formatter"
 )
 
-func List(options *types.ApparmorListCommandOptions) error {
+func List(options types.ApparmorListCommandOptions, stdout io.Writer) error {
 	quiet := options.Quiet
-	w := options.Writer
+	w := stdout
 	var tmpl *template.Template
 	format := options.Format
 	switch format {
 	case "", "table", "wide":
-		w = tabwriter.NewWriter(options.Writer, 4, 8, 4, ' ', 0)
+		w = tabwriter.NewWriter(stdout, 4, 8, 4, ' ', 0)
 		if !quiet {
 			fmt.Fprintln(w, "NAME\tMODE")
 		}
