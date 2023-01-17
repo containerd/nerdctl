@@ -17,10 +17,8 @@
 package main
 
 import (
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/formatter"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/namespace"
 	"github.com/spf13/cobra"
 )
 
@@ -40,33 +38,25 @@ func newNamespaceInspectCommand() *cobra.Command {
 	return namespaceInspectCommand
 }
 
-func labelInspectAction(cmd *cobra.Command, args []string) error {
+func processNamespaceInspectCommandOptions(cmd *cobra.Command) (types.NamespaceInspectCommandOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
-	result := make([]interface{}, len(args))
-	for index, ns := range args {
-		ctx = namespaces.WithNamespace(ctx, ns)
-		labels, err := client.NamespaceService().Labels(ctx, ns)
-		if err != nil {
-			return err
-		}
-		nsInspect := native.Namespace{
-			Name:   ns,
-			Labels: &labels,
-		}
-		result[index] = nsInspect
+		return types.NamespaceInspectCommandOptions{}, err
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
+		return types.NamespaceInspectCommandOptions{}, err
+	}
+	return types.NamespaceInspectCommandOptions{
+		GOptions: globalOptions,
+		Format:   format,
+	}, nil
+}
+
+func labelInspectAction(cmd *cobra.Command, args []string) error {
+	options, err := processNamespaceInspectCommandOptions(cmd)
+	if err != nil {
 		return err
 	}
-	return formatter.FormatSlice(format, cmd.OutOrStdout(), result)
+	return namespace.Inspect(cmd.Context(), args, options, cmd.OutOrStdout())
 }

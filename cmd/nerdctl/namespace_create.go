@@ -17,8 +17,8 @@
 package main
 
 import (
-	"github.com/containerd/containerd/cmd/ctr/commands"
-	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/namespace"
 	"github.com/spf13/cobra"
 )
 
@@ -36,28 +36,25 @@ func newNamespaceCreateCommand() *cobra.Command {
 	return namespaceCreateCommand
 }
 
-func namespaceCreateAction(cmd *cobra.Command, args []string) error {
+func processNamespaceCreateCommandOption(cmd *cobra.Command) (types.NamespaceCreateCommandOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.NamespaceCreateCommandOptions{}, err
 	}
-	flagVSlice, err := cmd.Flags().GetStringArray("label")
+	labels, err := cmd.Flags().GetStringArray("label")
 	if err != nil {
-		return err
+		return types.NamespaceCreateCommandOptions{}, err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-	labelsArg := ObjectWithLabelArgs(flagVSlice)
-	namespaces := client.NamespaceService()
-	return namespaces.Create(ctx, args[0], labelsArg)
+	return types.NamespaceCreateCommandOptions{
+		GOptions: globalOptions,
+		Labels:   labels,
+	}, nil
 }
 
-func ObjectWithLabelArgs(args []string) map[string]string {
-	if len(args) >= 1 {
-		return commands.LabelArgs(args)
+func namespaceCreateAction(cmd *cobra.Command, args []string) error {
+	options, err := processNamespaceCreateCommandOption(cmd)
+	if err != nil {
+		return err
 	}
-	return nil
+	return namespace.Create(cmd.Context(), args[0], options)
 }

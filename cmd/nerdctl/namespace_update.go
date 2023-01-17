@@ -17,7 +17,8 @@
 package main
 
 import (
-	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/namespace"
 	"github.com/spf13/cobra"
 )
 
@@ -34,26 +35,25 @@ func newNamespacelabelUpdateCommand() *cobra.Command {
 	return namespaceLableCommand
 }
 
-func labelUpdateAction(cmd *cobra.Command, args []string) error {
+func processNamespaceUpdateCommandOption(cmd *cobra.Command) (types.NamespaceUpdateCommandOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.NamespaceUpdateCommandOptions{}, err
 	}
-	flagVSlice, err := cmd.Flags().GetStringArray("label")
+	labels, err := cmd.Flags().GetStringArray("label")
+	if err != nil {
+		return types.NamespaceUpdateCommandOptions{}, err
+	}
+	return types.NamespaceUpdateCommandOptions{
+		GOptions: globalOptions,
+		Labels:   labels,
+	}, nil
+}
+
+func labelUpdateAction(cmd *cobra.Command, args []string) error {
+	options, err := processNamespaceUpdateCommandOption(cmd)
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-	labelsArg := ObjectWithLabelArgs(flagVSlice)
-	namespaces := client.NamespaceService()
-	for k, v := range labelsArg {
-		if err := namespaces.SetLabel(ctx, args[0], k, v); err != nil {
-			return err
-		}
-	}
-	return nil
+	return namespace.Update(cmd.Context(), args[0], options)
 }

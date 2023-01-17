@@ -14,14 +14,22 @@
    limitations under the License.
 */
 
-package main
+package namespace
 
 import (
-	"github.com/containerd/containerd/namespaces"
-	"github.com/spf13/cobra"
+	"context"
+
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 )
 
-func namespaceDeleteOpts(cmd *cobra.Command) ([]namespaces.DeleteOpts, error) {
-	var delOpts []namespaces.DeleteOpts
-	return delOpts, nil
+func Create(ctx context.Context, namespace string, options types.NamespaceCreateCommandOptions) error {
+	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	labelsArg := objectWithLabelArgs(options.Labels)
+	namespaces := client.NamespaceService()
+	return namespaces.Create(ctx, namespace, labelsArg)
 }
