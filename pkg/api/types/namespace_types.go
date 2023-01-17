@@ -14,14 +14,24 @@
    limitations under the License.
 */
 
-package main
+package types
 
-import (
-	"github.com/containerd/containerd/namespaces"
-	"github.com/spf13/cobra"
-)
+type NamespaceCreateCommandOptions struct {
+	GOptions GlobalCommandOptions
+	// Labels are the namespace labels
+	Labels []string
+}
 
-func namespaceDeleteOpts(cmd *cobra.Command) ([]namespaces.DeleteOpts, error) {
-	var delOpts []namespaces.DeleteOpts
-	return delOpts, nil
+type NamespaceUpdateCommandOptions NamespaceCreateCommandOptions
+
+type NamespaceRemoveCommandOptions struct {
+	GOptions GlobalCommandOptions
+	// CGroup delete the namespace's cgroup
+	CGroup bool
+}
+
+type NamespaceInspectCommandOptions struct {
+	GOptions GlobalCommandOptions
+	// Format the output using the given Go template, e.g, '{{json .}}'
+	Format string
 }

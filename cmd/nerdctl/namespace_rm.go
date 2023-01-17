@@ -17,11 +17,8 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/containerd/log"
-	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/namespace"
 	"github.com/spf13/cobra"
 )
 
@@ -39,34 +36,25 @@ func newNamespaceRmCommand() *cobra.Command {
 	return namespaceRmCommand
 }
 
-func namespaceRmAction(cmd *cobra.Command, args []string) error {
+func processNamespaceRemoveCommandOptions(cmd *cobra.Command) (types.NamespaceRemoveCommandOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.NamespaceRemoveCommandOptions{}, err
 	}
-	var exitErr error
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+	cgroup, err := cmd.Flags().GetBool("cgroup")
+	if err != nil {
+		return types.NamespaceRemoveCommandOptions{}, err
+	}
+	return types.NamespaceRemoveCommandOptions{
+		GOptions: globalOptions,
+		CGroup:   cgroup,
+	}, nil
+}
+
+func namespaceRmAction(cmd *cobra.Command, args []string) error {
+	options, err := processNamespaceRemoveCommandOptions(cmd)
 	if err != nil {
 		return err
 	}
-	defer cancel()
-	opts, err := namespaceDeleteOpts(cmd)
-	if err != nil {
-		return err
-	}
-	namespaces := client.NamespaceService()
-	for _, target := range args {
-		if err := namespaces.Delete(ctx, target, opts...); err != nil {
-			if !errdefs.IsNotFound(err) {
-				if exitErr == nil {
-					exitErr = fmt.Errorf("unable to delete %s", target)
-				}
-				log.G(ctx).WithError(err).Errorf("unable to delete %v", target)
-				continue
-			}
-		}
-		_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\n", target)
-		return err
-	}
-	return exitErr
+	return namespace.Remove(cmd.Context(), args, options, cmd.OutOrStdout())
 }
