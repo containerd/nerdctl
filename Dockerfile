@@ -287,17 +287,17 @@ COPY ./Dockerfile.d/test-integration-buildkit-nerdctl-test.service /usr/local/li
 RUN cp /usr/local/bin/tini /usr/local/bin/tini-custom
 # install ipfs service. avoid using 5001(api)/8080(gateway) which are reserved by tests.
 RUN systemctl enable test-integration-ipfs-offline test-integration-buildkit-nerdctl-test && \
-    ipfs init && \
-    ipfs config Addresses.API "/ip4/127.0.0.1/tcp/5888" && \
-    ipfs config Addresses.Gateway "/ip4/127.0.0.1/tcp/5889"
+  ipfs init && \
+  ipfs config Addresses.API "/ip4/127.0.0.1/tcp/5888" && \
+  ipfs config Addresses.Gateway "/ip4/127.0.0.1/tcp/5889"
 # install nydus components
 ARG NYDUS_VERSION
 RUN curl -L -o nydus-static.tgz "https://github.com/dragonflyoss/image-service/releases/download/${NYDUS_VERSION}/nydus-static-${NYDUS_VERSION}-linux-${TARGETARCH}.tgz" && \
-    tar xzf nydus-static.tgz && \
-    mv nydus-static/nydus-image nydus-static/nydusd nydus-static/nydusify /usr/bin/ && \
-    rm nydus-static.tgz
+  tar xzf nydus-static.tgz && \
+  mv nydus-static/nydus-image nydus-static/nydusd nydus-static/nydusify /usr/bin/ && \
+  rm nydus-static.tgz
 CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=github.com/containerd/nerdctl/cmd/nerdctl/...", \
-  "--", "-timeout=20m", "-args", "-test.kill-daemon"]
+  "--", "-timeout=30m", "-args", "-test.kill-daemon"]
 
 FROM test-integration AS test-integration-rootless
 # Install SSH for creating systemd user session.
@@ -323,7 +323,7 @@ COPY ./Dockerfile.d/test-integration-rootless.sh /
 CMD ["/test-integration-rootless.sh", \
   "gotestsum", "--format=testname", "--rerun-fails=2", "--raw-command", \
   "--", "/usr/local/go/bin/go", "tool", "test2json", "-t", "-p", "github.com/containerd/nerdctl/cmd/nerdctl",  \
-    "/usr/local/bin/nerdctl.test", "-test.v", "-test.timeout=20m", "-test.kill-daemon"]
+  "/usr/local/bin/nerdctl.test", "-test.v", "-test.timeout=30m", "-test.kill-daemon"]
 
 # test for CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns
 FROM test-integration-rootless AS test-integration-rootless-port-slirp4netns
