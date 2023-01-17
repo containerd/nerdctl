@@ -33,3 +33,15 @@ type ContainerRemoveCommandOptions struct {
 	// Volumes removes anonymous volumes associated with the container
 	Volumes bool
 }
+
+// ContainerInspectCommandOptions specifies options for `nerdctl container inspect`
+type ContainerInspectCommandOptions struct {
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// Format of the output
+	Format string
+	// Inspect mode, either dockercompat or native
+	Mode string
+	// Containers are the containers to be inspected
+	Containers []string
+}
