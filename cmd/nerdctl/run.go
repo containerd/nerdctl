@@ -41,6 +41,7 @@ import (
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
@@ -325,7 +326,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return errors.New("flags -d and --rm cannot be specified together")
 	}
 
-	container, gc, err := createContainer(ctx, cmd, client, globalOptions, args, platform, flagI, flagT, flagD)
+	c, gc, err := createContainer(ctx, cmd, client, globalOptions, args, platform, flagI, flagT, flagD)
 	if err != nil {
 		if gc != nil {
 			defer gc()
@@ -333,10 +334,10 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	id := container.ID()
+	id := c.ID()
 	if rm && !flagD {
 		defer func() {
-			if err := removeContainer(ctx, cmd, globalOptions, container, true, true); err != nil {
+			if err := container.RemoveContainer(ctx, c, globalOptions, true, true); err != nil {
 				logrus.WithError(err).Warnf("failed to remove container %s", id)
 			}
 		}()
@@ -351,13 +352,13 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	lab, err := container.Labels(ctx)
+	lab, err := c.Labels(ctx)
 	if err != nil {
 		return err
 	}
 	logURI := lab[labels.LogURI]
 
-	task, err := taskutil.NewTask(ctx, client, container, false, flagI, flagT, flagD, con, logURI)
+	task, err := taskutil.NewTask(ctx, client, c, false, flagI, flagT, flagD, con, logURI)
 	if err != nil {
 		return err
 	}

@@ -25,6 +25,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -80,16 +81,16 @@ func containerPrune(ctx context.Context, cmd *cobra.Command, client *containerd.
 	}
 
 	var deleted []string
-	for _, container := range containers {
-		err = removeContainer(ctx, cmd, globalOptions, container, false, true)
+	for _, c := range containers {
+		err = container.RemoveContainer(ctx, c, globalOptions, false, true)
 		if err == nil {
-			deleted = append(deleted, container.ID())
+			deleted = append(deleted, c.ID())
 			continue
 		}
-		if errors.As(err, &statusError{}) {
+		if errors.As(err, &container.ErrContainerStatus{}) {
 			continue
 		}
-		logrus.WithError(err).Warnf("failed to remove container %s", container.ID())
+		logrus.WithError(err).Warnf("failed to remove container %s", c.ID())
 	}
 
 	if len(deleted) > 0 {
