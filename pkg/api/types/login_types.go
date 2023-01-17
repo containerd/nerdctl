@@ -1,5 +1,3 @@
-//go:build freebsd || linux
-
 /*
    Copyright The containerd Authors.
 
@@ -16,32 +14,20 @@
    limitations under the License.
 */
 
-package main
+package types
 
-import (
-	"fmt"
-	"os"
-	"syscall"
-
-	"golang.org/x/term"
-)
-
-func readPassword() (string, error) {
-	var fd int
-	if term.IsTerminal(syscall.Stdin) {
-		fd = syscall.Stdin
-	} else {
-		tty, err := os.Open("/dev/tty")
-		if err != nil {
-			return "", fmt.Errorf("error allocating terminal: %w", err)
-		}
-		defer tty.Close()
-		fd = int(tty.Fd())
-	}
-	bytePassword, err := term.ReadPassword(fd)
-	if err != nil {
-		return "", fmt.Errorf("error reading password: %w", err)
-	}
-
-	return string(bytePassword), nil
+type LoginCommandOptions struct {
+	// GOptions is the global options.
+	GOptions GlobalCommandOptions
+	// ServerAddress is the server address to log in to.
+	ServerAddress string
+	// Username is the username to log in as.
+	//
+	// If it's empty, it will be inferred from the default auth config.
+	// If nothing is in the auth config, the user will be prompted to provide it.
+	Username string
+	// Password is the password of the user.
+	//
+	// If it's empty, the user will be prompted to provide it.
+	Password string
 }
