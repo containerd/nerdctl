@@ -19,7 +19,7 @@ require (
 	github.com/containerd/stargz-snapshotter/ipfs v0.13.1-0.20230106161838-6844dbb4c428
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67
 	github.com/containernetworking/cni v1.1.2
-	github.com/containernetworking/plugins v1.1.1
+	github.com/containernetworking/plugins v1.2.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/docker/cli v23.0.0-rc.2+incompatible
@@ -99,7 +99,6 @@ require (
 	github.com/multiformats/go-multibase v0.1.1 // indirect
 	github.com/multiformats/go-multihash v0.2.1 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
-	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/opencontainers/runc v1.1.4 // indirect
 	github.com/opencontainers/selinux v1.10.2 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
