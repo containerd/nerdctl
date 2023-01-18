@@ -17,15 +17,10 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"time"
 
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/containerinspector"
-	"github.com/containerd/nerdctl/pkg/formatter"
-	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/container"
 
 	"github.com/spf13/cobra"
 )
@@ -52,74 +47,33 @@ func newContainerInspectCommand() *cobra.Command {
 	return containerInspectCommand
 }
 
+var validModeType = map[string]bool{
+	"native":       true,
+	"dockercompat": true,
+}
+
 func containerInspectAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
 	mode, err := cmd.Flags().GetString("mode")
 	if err != nil {
 		return err
 	}
-	f := &containerInspector{
-		mode: mode,
-	}
-	walker := &containerwalker.ContainerWalker{
-		Client:  client,
-		OnFound: f.Handler,
-	}
-
-	var errs []error
-	for _, req := range args {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			errs = append(errs, err)
-		} else if n == 0 {
-			errs = append(errs, fmt.Errorf("no such object: %s", req))
-		}
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("%d errors: %v", len(errs), errs)
+	if len(mode) > 0 && !validModeType[mode] {
+		return fmt.Errorf("%q is not a valid value for --mode", mode)
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
 		return err
 	}
-	return formatter.FormatSlice(format, cmd.OutOrStdout(), f.entries)
-}
-
-type containerInspector struct {
-	mode    string
-	entries []interface{}
-}
-
-func (x *containerInspector) Handler(ctx context.Context, found containerwalker.Found) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	n, err := containerinspector.Inspect(ctx, found.Container)
-	if err != nil {
-		return err
-	}
-	switch x.mode {
-	case "native":
-		x.entries = append(x.entries, n)
-	case "dockercompat":
-		d, err := dockercompat.ContainerFromNative(n)
-		if err != nil {
-			return err
-		}
-		x.entries = append(x.entries, d)
-	default:
-		return fmt.Errorf("unknown mode %q", x.mode)
-	}
-	return nil
+	return container.Inspect(cmd.Context(), types.ContainerInspectCommandOptions{
+		GOptions:   globalOptions,
+		Format:     format,
+		Mode:       mode,
+		Containers: args,
+	}, cmd.OutOrStdout())
 }
 
 func containerInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
