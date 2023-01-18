@@ -44,12 +44,12 @@ type NetworkWalker struct {
 func (w *NetworkWalker) Walk(ctx context.Context, req string) (int, error) {
 	longIDExp, err := regexp.Compile(fmt.Sprintf("^sha256:%s.*", regexp.QuoteMeta(req)))
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 
 	shortIDExp, err := regexp.Compile(fmt.Sprintf("^%s", regexp.QuoteMeta(req)))
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 
 	idFilterF := func(n *netutil.NetworkConfig) bool {
@@ -61,7 +61,7 @@ func (w *NetworkWalker) Walk(ctx context.Context, req string) (int, error) {
 	}
 	networks, err := w.Client.FilterNetworks(idFilterF)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 
 	matchCount := len(networks)
