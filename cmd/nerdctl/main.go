@@ -28,7 +28,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/config"
 	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/errutil"
-	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/version"
 	"github.com/fatih/color"
@@ -120,11 +119,6 @@ func main() {
 }
 
 func xmain() error {
-	if len(os.Args) == 3 && os.Args[1] == logging.MagicArgv1 {
-		// containerd runtime v2 logging plugin mode.
-		// "binary://BIN?KEY=VALUE" URI is parsed into Args {BIN, KEY, VALUE}.
-		return logging.Main(os.Args[2])
-	}
 	// nerdctl CLI mode
 	app, err := newApp()
 	if err != nil {

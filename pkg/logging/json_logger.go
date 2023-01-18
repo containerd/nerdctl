@@ -19,6 +19,8 @@ package logging
 import (
 	"errors"
 	"fmt"
+	"github.com/containerd/containerd/runtime/v2/logging"
+	"github.com/docker/go-units"
 	"io"
 	"os"
 	"os/exec"
@@ -26,10 +28,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/docker/go-units"
 	"github.com/fahedouch/go-logrotate"
 	"github.com/sirupsen/logrus"
 )
@@ -73,12 +73,10 @@ func (jsonLogger *JSONLogger) Init(dataStore, ns, id string) error {
 	return nil
 }
 
-func (jsonLogger *JSONLogger) PreProcess(dataStore string, config *logging.Config) error {
+func (jsonLogger *JSONLogger) PreProcess(config *logging.Config) error {
 	var jsonFilePath string
 	if logPath, ok := jsonLogger.Opts[LogPath]; ok {
 		jsonFilePath = logPath
-	} else {
-		jsonFilePath = jsonfile.Path(dataStore, config.Namespace, config.ID)
 	}
 	l := &logrotate.Logger{
 		Filename: jsonFilePath,
@@ -87,13 +85,17 @@ func (jsonLogger *JSONLogger) PreProcess(dataStore string, config *logging.Confi
 	var capVal int64
 	capVal = -1
 	if capacity, ok := jsonLogger.Opts[MaxSize]; ok {
-		var err error
-		capVal, err = units.FromHumanSize(capacity)
-		if err != nil {
-			return err
-		}
-		if capVal <= 0 {
-			return fmt.Errorf("max-size must be a positive number")
+		if capacity == "-1" {
+			capVal = -1
+		} else {
+			var err error
+			capVal, err = units.FromHumanSize(capacity)
+			if err != nil {
+				return err
+			}
+			if capVal <= 0 {
+				return fmt.Errorf("max-size must be a positive number")
+			}
 		}
 	}
 	l.MaxBytes = capVal

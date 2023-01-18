@@ -49,16 +49,19 @@ help:
 
 nerdctl:
 	$(GO_BUILD) $(VERBOSE_FLAG) -o $(CURDIR)/_output/nerdctl$(BIN_EXT) $(PACKAGE)/cmd/nerdctl
+containerd-logging-driver:
+	$(GO_BUILD) $(VERBOSE_FLAG) -o $(CURDIR)/_output/containerd-logging-driver$(BIN_EXT) $(PACKAGE)/cmd/containerd-logging-driver
 
 clean:
 	find . -name \*~ -delete
 	find . -name \#\* -delete
 	rm -rf _output/* vendor
 
-binaries: nerdctl
+binaries: nerdctl containerd-logging-driver
 
 install:
 	install -D -m 755 $(CURDIR)/_output/nerdctl $(DESTDIR)$(BINDIR)/nerdctl
+	install -D -m 755 $(CURDIR)/_output/containerd-logging-driver $(DESTDIR)$(BINDIR)/containerd-logging-driver
 	install -D -m 755 $(CURDIR)/extras/rootless/containerd-rootless.sh $(DESTDIR)$(BINDIR)/containerd-rootless.sh
 	install -D -m 755 $(CURDIR)/extras/rootless/containerd-rootless-setuptool.sh $(DESTDIR)$(BINDIR)/containerd-rootless-setuptool.sh
 
@@ -106,6 +109,7 @@ artifacts: clean
 .PHONY: \
 	help \
 	nerdctl \
+	containerd-logging-driver \
 	clean \
 	binaries \
 	install \

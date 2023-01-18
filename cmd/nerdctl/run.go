@@ -51,6 +51,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
+	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
 	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/netutil"
@@ -548,7 +549,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 			if err = os.WriteFile(logConfigFilePath, logConfigB, 0600); err != nil {
 				return nil, nil, err
 			}
-			if lu, err := generateLogURI(dataStore); err != nil {
+			if lu, err := generateLogURI(dataStore, globalOptions.Namespace, id); err != nil {
 				return nil, nil, err
 			} else if lu != nil {
 				logrus.Debugf("generated log driver: %s", lu.String())
@@ -914,16 +915,46 @@ func withBindMountHostIPC(_ context.Context, _ oci.Client, _ *containers.Contain
 	return nil
 }
 
-func generateLogURI(dataStore string) (*url.URL, error) {
-	selfExe, err := os.Executable()
+func generateLogURI(dataStore, ns, id string) (*url.URL, error) {
+	nlogDriver, err := exec.LookPath("containerd-logging-driver")
 	if err != nil {
 		return nil, err
 	}
-	args := map[string]string{
-		logging.MagicArgv1: dataStore,
+	logConfig, err := logging.LoadLogConfig(dataStore, ns, id)
+	if err != nil {
+		return nil, err
+	}
+	logPath := jsonfile.Path(dataStore, ns, id)
+	args := make(map[string]string)
+	opts := logConfig.Opts
+	if logPath != "" && logConfig.Driver == "json-file" {
+		args["-"+logging.LogPath] = logPath
+	}
+	maxSize, ok := opts[logging.MaxSize]
+	if ok {
+		if maxSize != "" {
+			args["-"+logging.MaxSize] = maxSize
+		}
 	}
 
-	return cio.LogURIGenerator("binary", selfExe, args)
+	maxFile, ok := opts[logging.MaxFile]
+	if ok {
+		if maxFile != "" {
+			args["-"+logging.MaxFile] = maxFile
+		}
+	}
+
+	tag, ok := opts[logging.Tag]
+	if ok {
+		if tag != "" {
+			args["-"+logging.Tag] = tag
+		}
+	}
+
+	if logConfig.Driver != "" {
+		args["-"+logging.LogDriver] = logConfig.Driver
+	}
+	return cio.LogURIGenerator("binary", nlogDriver, args)
 }
 
 func withNerdctlOCIHook(cmd *cobra.Command, id string) (oci.SpecOpts, error) {

@@ -64,7 +64,7 @@ func (journaldLogger *JournaldLogger) Init(dataStore, ns, id string) error {
 	return nil
 }
 
-func (journaldLogger *JournaldLogger) PreProcess(dataStore string, config *logging.Config) error {
+func (journaldLogger *JournaldLogger) PreProcess(config *logging.Config) error {
 	if !journal.Enabled() {
 		return errors.New("the local systemd journal is not available for logging")
 	}
