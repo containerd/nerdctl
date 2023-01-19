@@ -157,3 +157,12 @@ type ImagePushCommandOptions struct {
 	// AllowNondistributableArtifacts allow pushing non-distributable artifacts
 	AllowNondistributableArtifacts bool
 }
+
+type ImageTagCommandOptions struct {
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// Source is the image to be referenced.
+	Source string
+	// Target is the image to be created.
+	Target string
+}

@@ -14,39 +14,21 @@
    limitations under the License.
 */
 
-package main
+package image
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
-
-	"github.com/spf13/cobra"
 )
 
-func newTagCommand() *cobra.Command {
-	var tagCommand = &cobra.Command{
-		Use:               "tag [flags] SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]",
-		Short:             "Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE",
-		Args:              IsExactArgs(2),
-		RunE:              tagAction,
-		ValidArgsFunction: tagShellComplete,
-		SilenceUsage:      true,
-		SilenceErrors:     true,
-	}
-	return tagCommand
-}
-
-func tagAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+func Tag(ctx context.Context, options types.ImageTagCommandOptions) error {
+	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
@@ -63,15 +45,15 @@ func tagAction(cmd *cobra.Command, args []string) error {
 			return nil
 		},
 	}
-	matchCount, err := imagewalker.Walk(ctx, args[0])
+	matchCount, err := imagewalker.Walk(ctx, options.Source)
 	if err != nil {
 		return err
 	}
 	if matchCount < 1 {
-		return fmt.Errorf("%s: not found", args[0])
+		return fmt.Errorf("%s: not found", options.Source)
 	}
 
-	target, err := referenceutil.ParseDockerRef(args[1])
+	target, err := referenceutil.ParseDockerRef(options.Target)
 	if err != nil {
 		return err
 	}
@@ -100,12 +82,4 @@ func tagAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
-}
-
-func tagShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	if len(args) < 2 {
-		// show image names
-		return shellCompleteImageNames(cmd)
-	}
-	return nil, cobra.ShellCompDirectiveNoFileComp
 }
