@@ -348,6 +348,12 @@ sudo apt-get install -y dbus-user-session
 systemctl --user start dbus
 ```
 
+To manually install the dbus-user-session files, consume them from:
+
+https://github.com/sshedi/nerdctl/tree/main/extras/dbus-user-session
+
+And do: `cp -pr extras/dbus-user-session/* /usr/lib/systemd/user/`
+
 ### How to uninstall ? / Can't remove `~/.local/share/containerd`
 
 Run the following commands:
