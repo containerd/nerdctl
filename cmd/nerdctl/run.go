@@ -42,6 +42,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
+	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
@@ -737,6 +738,28 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	return container, nil, nil
 }
 
+// When refactor `nerdctl run`, this func should be removed and replaced by
+// creating a `PullCommandOptions` directly from `RunCommandOptions`.
+func processPullCommandFlagsInRun(cmd *cobra.Command) (types.PullCommandOptions, error) {
+	verifier, err := cmd.Flags().GetString("verify")
+	if err != nil {
+		return types.PullCommandOptions{}, err
+	}
+	cosignKey, err := cmd.Flags().GetString("cosign-key")
+	if err != nil {
+		return types.PullCommandOptions{}, err
+	}
+	ipfsAddressStr, err := cmd.Flags().GetString("ipfs-address")
+	if err != nil {
+		return types.PullCommandOptions{}, err
+	}
+	return types.PullCommandOptions{
+		Verify:      verifier,
+		CosignKey:   cosignKey,
+		IPFSAddress: ipfsAddressStr,
+	}, nil
+}
+
 func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform string, cmd *cobra.Command, globalOptions types.GlobalCommandOptions, args []string, id string) ([]oci.SpecOpts, []containerd.NewContainerOpts, *imgutil.EnsuredImage, error) {
 	var (
 		ensured *imgutil.EnsuredImage
@@ -760,7 +783,15 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 			return nil, nil, nil, err
 		}
 		rawRef := args[0]
-		ensured, err = ensureImage(ctx, cmd, client, globalOptions, rawRef, ocispecPlatforms, pull, nil, false)
+
+		options, err := processPullCommandFlagsInRun(cmd)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		options.GOptions = globalOptions
+
+		ensured, err = image.EnsureImage(ctx, client, rawRef, cmd.OutOrStdout(), cmd.ErrOrStderr(), options, ocispecPlatforms, pull, nil, false)
 		if err != nil {
 			return nil, nil, nil, err
 		}
