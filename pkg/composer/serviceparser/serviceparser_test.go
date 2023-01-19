@@ -143,6 +143,9 @@ volumes:
 	assert.NilError(t, err)
 
 	wp, err := Parse(project, wpSvc)
+	for i := range wp.Containers {
+		wp.Containers[i].Detached = true
+	}
 	assert.NilError(t, err)
 
 	t.Logf("wordpress: %+v", wp)
@@ -176,6 +179,9 @@ volumes:
 	assert.NilError(t, err)
 
 	db, err := Parse(project, dbSvc)
+	for i := range db.Containers {
+		db.Containers[i].Detached = true
+	}
 	assert.NilError(t, err)
 
 	t.Logf("db: %+v", db)
@@ -211,6 +217,9 @@ services:
 	assert.NilError(t, err)
 
 	foo, err := Parse(project, fooSvc)
+	for i := range foo.Containers {
+		foo.Containers[i].Detached = true
+	}
 	assert.NilError(t, err)
 
 	t.Logf("foo: %+v", foo)
@@ -268,6 +277,9 @@ services:
 	assert.NilError(t, err)
 
 	foo, err := Parse(project, fooSvc)
+	for i := range foo.Containers {
+		foo.Containers[i].Detached = true
+	}
 	assert.NilError(t, err)
 
 	t.Logf("foo: %+v", foo)
@@ -285,6 +297,9 @@ services:
 	assert.NilError(t, err)
 
 	bar, err := Parse(project, barSvc)
+	for i := range bar.Containers {
+		bar.Containers[i].Detached = true
+	}
 	assert.NilError(t, err)
 
 	t.Logf("bar: %+v", bar)
@@ -299,6 +314,9 @@ services:
 	assert.NilError(t, err)
 
 	baz, err := Parse(project, bazSvc)
+	for i := range baz.Containers {
+		baz.Containers[i].Detached = true
+	}
 	assert.NilError(t, err)
 
 	t.Logf("baz: %+v", baz)
@@ -331,6 +349,9 @@ services:
 	assert.NilError(t, err)
 
 	foo, err := Parse(project, fooSvc)
+	for i := range foo.Containers {
+		foo.Containers[i].Detached = true
+	}
 	assert.NilError(t, err)
 
 	t.Logf("foo: %+v", foo)
@@ -363,6 +384,9 @@ services:
 	assert.NilError(t, err)
 
 	foo, err := Parse(project, fooSvc)
+	for i := range foo.Containers {
+		foo.Containers[i].Detached = true
+	}
 	assert.NilError(t, err)
 
 	t.Logf("foo: %+v", foo)
@@ -374,6 +398,9 @@ services:
 	assert.NilError(t, err)
 
 	bar, err := Parse(project, barSvc)
+	for i := range bar.Containers {
+		bar.Containers[i].Detached = true
+	}
 	assert.NilError(t, err)
 
 	t.Logf("bar: %+v", bar)
@@ -428,6 +455,9 @@ configs:
 	assert.NilError(t, err)
 
 	foo, err := Parse(project, fooSvc)
+	for i := range foo.Containers {
+		foo.Containers[i].Detached = true
+	}
 	assert.NilError(t, err)
 
 	t.Logf("foo: %+v", foo)
@@ -467,6 +497,9 @@ services:
 		svcConfig, err := project.GetService(svcName)
 		assert.NilError(t, err)
 		svc, err := Parse(project, svcConfig)
+		for i := range svc.Containers {
+			svc.Containers[i].Detached = true
+		}
 		assert.NilError(t, err)
 
 		return svc.Containers

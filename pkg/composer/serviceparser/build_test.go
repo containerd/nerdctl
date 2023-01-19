@@ -54,6 +54,9 @@ services:
 	assert.NilError(t, err)
 
 	foo, err := Parse(project, fooSvc)
+	for i := range foo.Containers {
+		foo.Containers[i].Detached = true
+	}
 	assert.NilError(t, err)
 
 	t.Logf("foo: %+v", foo)
@@ -65,6 +68,9 @@ services:
 	assert.NilError(t, err)
 
 	bar, err := Parse(project, barSvc)
+	for i := range bar.Containers {
+		bar.Containers[i].Detached = true
+	}
 	assert.NilError(t, err)
 
 	t.Logf("bar: %+v", foo)

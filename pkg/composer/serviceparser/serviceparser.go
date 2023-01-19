@@ -462,7 +462,6 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		c.Name = svc.ContainerName
 	}
 
-	c.Detached = true
 	c.RunArgs = []string{
 		"--name=" + c.Name,
 		"--pull=never", // because image will be ensured before running replicas with `nerdctl run`.
