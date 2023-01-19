@@ -88,5 +88,5 @@ func getVolumes(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (m
 	if err != nil {
 		return nil, err
 	}
-	return volume.Volumes(globalOptions.Namespace, globalOptions.DataRoot, globalOptions.Address, volumeSize)
+	return volume.Volumes(globalOptions.Namespace, globalOptions.DataRoot, globalOptions.Address, volumeSize, nil)
 }
