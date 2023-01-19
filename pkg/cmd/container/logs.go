@@ -14,17 +14,17 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
 	"context"
 	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/api/types/cri"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
@@ -32,74 +32,23 @@ import (
 	"github.com/containerd/nerdctl/pkg/labels/k8slabels"
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 )
 
-func newLogsCommand() *cobra.Command {
-	var logsCommand = &cobra.Command{
-		Use:               "logs [flags] CONTAINER",
-		Args:              IsExactArgs(1),
-		Short:             "Fetch the logs of a container. Currently, only containers created with `nerdctl run -d` are supported.",
-		RunE:              logsAction,
-		ValidArgsFunction: logsShellComplete,
-		SilenceUsage:      true,
-		SilenceErrors:     true,
-	}
-	logsCommand.Flags().BoolP("follow", "f", false, "Follow log output")
-	logsCommand.Flags().BoolP("timestamps", "t", false, "Show timestamps")
-	logsCommand.Flags().StringP("tail", "n", "all", "Number of lines to show from the end of the logs")
-	logsCommand.Flags().String("since", "", "Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)")
-	logsCommand.Flags().String("until", "", "Show logs before a timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)")
-	return logsCommand
-}
-
-func logsAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
-	if err != nil {
-		return err
-	}
-	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
+func Logs(ctx context.Context, container string, options types.ContainerLogsOptions) error {
+	dataStore, err := clientutil.DataStore(options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
 
-	switch globalOptions.Namespace {
+	switch options.GOptions.Namespace {
 	case "moby":
 		logrus.Warn("Currently, `nerdctl logs` only supports containers created with `nerdctl run -d` or CRI")
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
-
-	follow, err := cmd.Flags().GetBool("follow")
-	if err != nil {
-		return err
-	}
-	tailArg, err := cmd.Flags().GetString("tail")
-	if err != nil {
-		return err
-	}
-	var tail uint
-	if tailArg != "" {
-		tail, err = getTailArgAsUint(tailArg)
-		if err != nil {
-			return err
-		}
-	}
-	timestamps, err := cmd.Flags().GetBool("timestamps")
-	if err != nil {
-		return err
-	}
-	since, err := cmd.Flags().GetString("since")
-	if err != nil {
-		return err
-	}
-	until, err := cmd.Flags().GetString("until")
-	if err != nil {
-		return err
-	}
 
 	stopChannel := make(chan os.Signal, 1)
 	// catch OS signals:
@@ -130,10 +79,10 @@ func logsAction(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			if status.Status != containerd.Running {
-				follow = false
+				options.Follow = false
 			}
 
-			if follow {
+			if options.Follow {
 				waitCh, err := task.Wait(ctx)
 				if err != nil {
 					return fmt.Errorf("failed to get wait channel for task %#v: %s", task, err)
@@ -152,26 +101,25 @@ func logsAction(cmd *cobra.Command, args []string) error {
 				Namespace:         l[labels.Namespace],
 				DatastoreRootPath: dataStore,
 				LogPath:           logPath,
-				Follow:            follow,
-				Timestamps:        timestamps,
-				Tail:              tail,
-				Since:             since,
-				Until:             until,
+				Follow:            options.Follow,
+				Timestamps:        options.Timestamps,
+				Tail:              options.Tail,
+				Since:             options.Since,
+				Until:             options.Until,
 			}
 			logViewer, err := logging.InitContainerLogViewer(l, logViewOpts, stopChannel)
 			if err != nil {
 				return err
 			}
 
-			return logViewer.PrintLogsTo(os.Stdout, os.Stderr)
+			return logViewer.PrintLogsTo(options.Stdout, options.Stderr)
 		},
 	}
-	req := args[0]
-	n, err := walker.Walk(ctx, req)
+	n, err := walker.Walk(ctx, container)
 	if err != nil {
 		return err
 	} else if n == 0 {
-		return fmt.Errorf("no such container %s", req)
+		return fmt.Errorf("no such container %s", container)
 	}
 	return nil
 }
@@ -191,24 +139,4 @@ func getLogPath(ctx context.Context, container containerd.Container) (string, er
 	}
 
 	return meta.LogPath, nil
-}
-
-func logsShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	// show container names (TODO: only show containers with logs)
-	return shellCompleteContainerNames(cmd, nil)
-}
-
-// Attempts to parse the argument given to `-n/--tail` as a uint.
-func getTailArgAsUint(arg string) (uint, error) {
-	if arg == "all" {
-		return 0, nil
-	}
-	num, err := strconv.Atoi(arg)
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse `-n/--tail` argument %q: %s", arg, err)
-	}
-	if num < 0 {
-		return 0, fmt.Errorf("`-n/--tail` argument must be positive, got: %d", num)
-	}
-	return uint(num), nil
 }

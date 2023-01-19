@@ -66,3 +66,22 @@ type ContainerCommitOptions struct {
 	// Pause container during commit
 	Pause bool
 }
+
+// ContainerLogsOptions specifies options for `nerdctl container logs`.
+type ContainerLogsOptions struct {
+	Stdout io.Writer
+	Stderr io.Writer
+	// GOptions is the global options.
+	GOptions GlobalCommandOptions
+	// Follow specifies whether to stream the logs or just print the existing logs.
+	Follow bool
+	// Timestamps specifies whether to show the timestamps of the logs.
+	Timestamps bool
+	// Tail specifies the number of lines to show from the end of the logs.
+	// Specify 0 to show all logs.
+	Tail uint
+	// Show logs since timestamp (e.g., 2013-01-02T13:23:37Z) or relative (e.g., 42m for 42 minutes).
+	Since string
+	// Show logs before a timestamp (e.g., 2013-01-02T13:23:37Z) or relative (e.g., 42m for 42 minutes).
+	Until string
+}
