@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
@@ -212,7 +213,7 @@ func reconfigNetContainer(ctx context.Context, c containerd.Container, client *c
 		if err != nil {
 			return err
 		}
-		netNSPath, err := getContainerNetNSPath(ctx, targetCon)
+		netNSPath, err := containerutil.ContainerNetNSPath(ctx, targetCon)
 		if err != nil {
 			return err
 		}

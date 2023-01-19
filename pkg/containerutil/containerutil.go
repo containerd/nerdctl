@@ -68,3 +68,19 @@ func ContainerStatus(ctx context.Context, c containerd.Container) (containerd.St
 
 	return task.Status(ctx)
 }
+
+// ContainerNetNSPath returns the netns path of a container.
+func ContainerNetNSPath(ctx context.Context, c containerd.Container) (string, error) {
+	task, err := c.Task(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	status, err := task.Status(ctx)
+	if err != nil {
+		return "", err
+	}
+	if status.Status != containerd.Running {
+		return "", fmt.Errorf("invalid target container: %s, should be running", c.ID())
+	}
+	return fmt.Sprintf("/proc/%d/ns/net", task.Pid()), nil
+}
