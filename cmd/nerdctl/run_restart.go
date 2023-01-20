@@ -19,7 +19,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/containerd/containerd"
@@ -68,13 +67,6 @@ func generateRestartOpts(ctx context.Context, client *containerd.Client, restart
 		opts = append(opts, restart.WithLogURIString(logURI))
 	}
 	return opts, nil
-}
-
-func updateContainerStoppedLabel(ctx context.Context, container containerd.Container, stopped bool) error {
-	opt := containerd.WithAdditionalContainerLabels(map[string]string{
-		restart.ExplicitlyStoppedLabel: strconv.FormatBool(stopped),
-	})
-	return container.Update(ctx, containerd.UpdateContainerOpts(opt))
 }
 
 func updateContainerRestartPolicyLabel(ctx context.Context, client *containerd.Client, container containerd.Container, restartFlag string) error {

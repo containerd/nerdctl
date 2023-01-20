@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/containerd"
@@ -98,7 +99,7 @@ func stopAction(cmd *cobra.Command, args []string) error {
 }
 
 func stopContainer(ctx context.Context, container containerd.Container, timeout *time.Duration) error {
-	if err := updateContainerStoppedLabel(ctx, container, true); err != nil {
+	if err := containerutil.UpdateExplicitlyStoppedLabel(ctx, container, true); err != nil {
 		return err
 	}
 

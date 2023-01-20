@@ -20,10 +20,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/runtime/restart"
 	"github.com/containerd/nerdctl/pkg/portutil"
 )
 
@@ -83,4 +85,13 @@ func ContainerNetNSPath(ctx context.Context, c containerd.Container) (string, er
 		return "", fmt.Errorf("invalid target container: %s, should be running", c.ID())
 	}
 	return fmt.Sprintf("/proc/%d/ns/net", task.Pid()), nil
+}
+
+// UpdateExplicitlyStoppedLabel updates the "containerd.io/restart.explicitly-stopped"
+// label of the container according to the value of explicitlyStopped.
+func UpdateExplicitlyStoppedLabel(ctx context.Context, container containerd.Container, explicitlyStopped bool) error {
+	opt := containerd.WithAdditionalContainerLabels(map[string]string{
+		restart.ExplicitlyStoppedLabel: strconv.FormatBool(explicitlyStopped),
+	})
+	return container.Update(ctx, containerd.UpdateContainerOpts(opt))
 }
