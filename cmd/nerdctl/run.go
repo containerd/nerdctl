@@ -43,7 +43,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
-	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
@@ -56,7 +55,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	dopts "github.com/docker/cli/opts"
@@ -1235,49 +1233,6 @@ func withOSEnv(envs []string) ([]string, error) {
 	}
 
 	return newEnvs, nil
-}
-
-func generateSharingPIDOpts(ctx context.Context, targetCon containerd.Container) ([]oci.SpecOpts, error) {
-	opts := make([]oci.SpecOpts, 0)
-
-	task, err := targetCon.Task(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	status, err := task.Status(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if status.Status != containerd.Running {
-		return nil, fmt.Errorf("shared container is not running")
-	}
-
-	spec, err := targetCon.Spec(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	isHost := true
-	for _, n := range spec.Linux.Namespaces {
-		if n.Type == specs.PIDNamespace {
-			isHost = false
-		}
-	}
-	if isHost {
-		opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
-		if rootlessutil.IsRootless() {
-			opts = append(opts, containerutil.WithBindMountHostProcfs)
-		}
-	} else {
-		ns := specs.LinuxNamespace{
-			Type: specs.PIDNamespace,
-			Path: fmt.Sprintf("/proc/%d/ns/pid", task.Pid()),
-		}
-		opts = append(opts, oci.WithLinuxNamespace(ns))
-	}
-
-	return opts, nil
 }
 
 // generateEnvs combines environment variables from `--env-file` and `--env`.

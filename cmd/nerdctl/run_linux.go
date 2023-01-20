@@ -297,7 +297,7 @@ func generatePIDOpts(ctx context.Context, client *containerd.Client, pid string)
 					return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 				}
 
-				o, err := generateSharingPIDOpts(ctx, found.Container)
+				o, err := containerutil.GenerateSharingPIDOpts(ctx, found.Container)
 				if err != nil {
 					return err
 				}
