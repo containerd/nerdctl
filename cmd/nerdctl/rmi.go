@@ -17,16 +17,8 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"strings"
-
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/platforms"
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/formatter"
-	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/spf13/cobra"
 )
 
@@ -46,93 +38,36 @@ func newRmiCommand() *cobra.Command {
 	return rmiCommand
 }
 
-func rmiAction(cmd *cobra.Command, args []string) error {
+func processImageRemoveOptions(cmd *cobra.Command) (types.ImageRemoveOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.ImageRemoveOptions{}, err
 	}
+
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
-		return err
+		return types.ImageRemoveOptions{}, err
+	}
+	async, err := cmd.Flags().GetBool("async")
+	if err != nil {
+		return types.ImageRemoveOptions{}, err
 	}
 
-	var delOpts []images.DeleteOpt
-	if async, err := cmd.Flags().GetBool("async"); err != nil {
-		return err
-	} else if !async {
-		delOpts = append(delOpts, images.SynchronousDelete())
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+	return types.ImageRemoveOptions{
+		Stdout:   cmd.OutOrStdout(),
+		GOptions: globalOptions,
+		Force:    force,
+		Async:    async,
+	}, nil
+}
+
+func rmiAction(cmd *cobra.Command, args []string) error {
+	options, err := processImageRemoveOptions(cmd)
 	if err != nil {
 		return err
 	}
-	defer cancel()
 
-	cs := client.ContentStore()
-	is := client.ImageService()
-	containerList, err := client.Containers(ctx)
-	if err != nil {
-		return err
-	}
-	usedImages := make(map[string]struct{})
-	runningImages := make(map[string]struct{})
-	for _, container := range containerList {
-		image, err := container.Image(ctx)
-		if err != nil {
-			return err
-		}
-		cStatus := formatter.ContainerStatus(ctx, container)
-		if strings.HasPrefix(cStatus, "Up") {
-			runningImages[image.Name()] = struct{}{}
-		} else {
-			usedImages[image.Name()] = struct{}{}
-		}
-	}
-
-	walker := &imagewalker.ImageWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found imagewalker.Found) error {
-			// if found multiple images, return error unless in force-mode and
-			// there is only 1 unique image.
-			if found.MatchCount > 1 && !(force && found.UniqueImages == 1) {
-				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
-			}
-			if _, ok := runningImages[found.Image.Name]; ok {
-				return fmt.Errorf("image %s is running, can't be forced removed", found.Image.Name)
-			}
-			if _, ok := usedImages[found.Image.Name]; ok && !force {
-				return fmt.Errorf("conflict: unable to remove repository reference %q (must force)", found.Req)
-			}
-			// digests is used only for emulating human-readable output of `docker rmi`
-			digests, err := found.Image.RootFS(ctx, cs, platforms.DefaultStrict())
-			if err != nil {
-				logrus.WithError(err).Warning("failed to enumerate rootfs")
-			}
-
-			if err := is.Delete(ctx, found.Image.Name, delOpts...); err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Untagged: %s@%s\n", found.Image.Name, found.Image.Target.Digest)
-			for _, digest := range digests {
-				fmt.Fprintf(cmd.OutOrStdout(), "Deleted: %s\n", digest)
-			}
-			return nil
-		},
-	}
-	for _, req := range args {
-		n, err := walker.Walk(ctx, req)
-		if err == nil && n == 0 {
-			err = fmt.Errorf("no such image %s", req)
-		}
-		if err != nil {
-			if force {
-				logrus.Error(err)
-			} else {
-				return err
-			}
-		}
-	}
-	return nil
+	return image.Remove(cmd.Context(), args, options)
 }
 
 func rmiShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
