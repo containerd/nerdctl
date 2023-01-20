@@ -144,7 +144,7 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 		logrus.Warnf("container %s is already running", container.ID())
 		return nil
 	}
-	if err := updateContainerStoppedLabel(ctx, container, false); err != nil {
+	if err := containerutil.UpdateExplicitlyStoppedLabel(ctx, container, false); err != nil {
 		return err
 	}
 	if oldTask, err := container.Task(ctx, nil); err == nil {
