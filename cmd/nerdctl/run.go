@@ -901,23 +901,14 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 // Required for --ipc=host on rootless.
 func withBindMountHostIPC(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
 	for i, m := range s.Mounts {
-		if path.Clean(m.Destination) == "/dev/shm" {
-			newM := specs.Mount{
-				Destination: "/dev/shm",
+		switch p := path.Clean(m.Destination); p {
+		case "/dev/shm", "/dev/mqueue":
+			s.Mounts[i] = specs.Mount{
+				Destination: p,
 				Type:        "bind",
-				Source:      "/dev/shm",
+				Source:      p,
 				Options:     []string{"rbind", "nosuid", "noexec", "nodev"},
 			}
-			s.Mounts[i] = newM
-		}
-		if path.Clean(m.Destination) == "/dev/mqueue" {
-			newM := specs.Mount{
-				Destination: "/dev/mqueue",
-				Type:        "bind",
-				Source:      "/dev/mqueue",
-				Options:     []string{"rbind", "nosuid", "noexec", "nodev"},
-			}
-			s.Mounts[i] = newM
 		}
 	}
 	return nil
