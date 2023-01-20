@@ -43,6 +43,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
@@ -922,36 +923,6 @@ func withBindMountHostIPC(_ context.Context, _ oci.Client, _ *containers.Contain
 	return nil
 }
 
-// withBindMountHostProcfs replaces procfs mount with rbind.
-// Required for --pid=host on rootless.
-//
-// https://github.com/moby/moby/pull/41893/files
-// https://github.com/containers/podman/blob/v3.0.0-rc1/pkg/specgen/generate/oci.go#L248-L257
-func withBindMountHostProcfs(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
-	for i, m := range s.Mounts {
-		if path.Clean(m.Destination) == "/proc" {
-			newM := specs.Mount{
-				Destination: "/proc",
-				Type:        "bind",
-				Source:      "/proc",
-				Options:     []string{"rbind", "nosuid", "noexec", "nodev"},
-			}
-			s.Mounts[i] = newM
-		}
-	}
-
-	// Remove ReadonlyPaths for /proc/*
-	newROP := s.Linux.ReadonlyPaths[:0]
-	for _, x := range s.Linux.ReadonlyPaths {
-		x = path.Clean(x)
-		if !strings.HasPrefix(x, "/proc/") {
-			newROP = append(newROP, x)
-		}
-	}
-	s.Linux.ReadonlyPaths = newROP
-	return nil
-}
-
 func generateLogURI(dataStore string) (*url.URL, error) {
 	selfExe, err := os.Executable()
 	if err != nil {
@@ -1296,7 +1267,7 @@ func generateSharingPIDOpts(ctx context.Context, targetCon containerd.Container)
 	if isHost {
 		opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
 		if rootlessutil.IsRootless() {
-			opts = append(opts, withBindMountHostProcfs)
+			opts = append(opts, containerutil.WithBindMountHostProcfs)
 		}
 	} else {
 		ns := specs.LinuxNamespace{
