@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -280,7 +281,7 @@ func generatePIDOpts(ctx context.Context, client *containerd.Client, pid string)
 	case "host":
 		opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
 		if rootlessutil.IsRootless() {
-			opts = append(opts, withBindMountHostProcfs)
+			opts = append(opts, containerutil.WithBindMountHostProcfs)
 		}
 	default: // container:<id|name>
 		parsed := strings.Split(pid, ":")
