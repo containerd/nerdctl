@@ -17,13 +17,11 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"time"
 
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/containerutil"
-	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/spf13/cobra"
 )
 
@@ -41,51 +39,41 @@ func newRestartCommand() *cobra.Command {
 	return restartCommand
 }
 
-func restartAction(cmd *cobra.Command, args []string) error {
-	// Time to wait after sending a SIGTERM and before sending a SIGKILL.
+func processContainerRestartOptions(cmd *cobra.Command) (types.ContainerRestartOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.ContainerRestartOptions{}, err
 	}
+
 	var timeout *time.Duration
 	if cmd.Flags().Changed("time") {
+		// Seconds to wait for stop before killing it
 		timeValue, err := cmd.Flags().GetUint("time")
 		if err != nil {
-			return err
+			return types.ContainerRestartOptions{}, err
 		}
 		t := time.Duration(timeValue) * time.Second
 		timeout = &t
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+
+	return types.ContainerRestartOptions{
+		Stdout:  cmd.OutOrStdout(),
+		GOption: globalOptions,
+		Timeout: timeout,
+	}, err
+}
+
+func restartAction(cmd *cobra.Command, args []string) error {
+	options, err := processContainerRestartOptions(cmd)
+	if err != nil {
+		return err
+	}
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOption.Namespace, options.GOption.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	walker := &containerwalker.ContainerWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if found.MatchCount > 1 {
-				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
-			}
-			if err := containerutil.Stop(ctx, found.Container, timeout); err != nil {
-				return err
-			}
-			if err := containerutil.Start(ctx, found.Container, false, client); err != nil {
-				return err
-			}
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
-			return err
-		},
-	}
-	for _, req := range args {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			return err
-		} else if n == 0 {
-			return fmt.Errorf("no such container %s", req)
-		}
-	}
-
-	return nil
+	return container.Restart(ctx, client, args, options)
 }
