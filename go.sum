@@ -183,8 +183,8 @@ github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa/go.mod h1:z
 github.com/cockroachdb/datadriven v0.0.0-20200714090401-bf6692d28da5/go.mod h1:h6jFvWxBdQXxjopDMZyH2UVceIRfR84bdzbkoKrsWNo=
 github.com/cockroachdb/errors v1.2.4/go.mod h1:rQD95gz6FARkaKkQXUksEje/d9a6wBJoCr5oaCLELYA=
 github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f/go.mod h1:i/u985jwjWRlyHXQbwatDASoW0RMlZ/3i9yJHE2xLkI=
-github.com/compose-spec/compose-go v1.8.2 h1:sUQvDxnPgpcOyoxC/lz7mFTrTlHeZ6LWyuASYetkOqw=
-github.com/compose-spec/compose-go v1.8.2/go.mod h1:Tb5Ae2PsYN3GTqYqzl2IRbTPiJtPZZjMw8UKUvmehFk=
+github.com/compose-spec/compose-go v1.9.0 h1:oaewhNhUP/AClVs6ytHzcjw1xwK+2EMWuvHXj6tYvRc=
+github.com/compose-spec/compose-go v1.9.0/go.mod h1:Tb5Ae2PsYN3GTqYqzl2IRbTPiJtPZZjMw8UKUvmehFk=
 github.com/containerd/accelerated-container-image v0.5.3-0.20221209054854-fbdabc5a08b6 h1:L0LcBpw/BXHJ06kFRoZvrvwCPuwocXpkVGcIfnn3g5Q=
 github.com/containerd/accelerated-container-image v0.5.3-0.20221209054854-fbdabc5a08b6/go.mod h1:iurlfUVktJOqx1URYkMwLFabU44SucehGCgMzN3ScoY=
 github.com/containerd/aufs v0.0.0-20200908144142-dab0cbea06f4/go.mod h1:nukgQABAEopAHvB6j7cnP5zJ+/3aVcE7hCYqvIwAHyE=
