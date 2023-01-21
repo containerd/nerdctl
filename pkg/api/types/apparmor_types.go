@@ -16,10 +16,18 @@
 
 package types
 
-// ApparmorListCommandOptions specifies options for `nerdctl apparmor ls`.
-type ApparmorListCommandOptions struct {
+import "io"
+
+// ApparmorListOptions specifies options for `nerdctl apparmor ls`.
+type ApparmorListOptions struct {
+	Stdout io.Writer
 	// Only display profile names
 	Quiet bool
 	// Format the output using the given go template
 	Format string
+}
+
+// ApparmorInspectOptions specifies options for `nerdctl apparmor inspect`
+type ApparmorInspectOptions struct {
+	Stdout io.Writer
 }

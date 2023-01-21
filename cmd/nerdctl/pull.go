@@ -58,41 +58,41 @@ func newPullCommand() *cobra.Command {
 	return pullCommand
 }
 
-func processPullCommandFlags(cmd *cobra.Command) (types.PullCommandOptions, error) {
+func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.PullCommandOptions{}, err
+		return types.ImagePullOptions{}, err
 	}
 	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
 	if err != nil {
-		return types.PullCommandOptions{}, err
+		return types.ImagePullOptions{}, err
 	}
 	platform, err := cmd.Flags().GetStringSlice("platform")
 	if err != nil {
-		return types.PullCommandOptions{}, err
+		return types.ImagePullOptions{}, err
 	}
 
 	unpackStr, err := cmd.Flags().GetString("unpack")
 	if err != nil {
-		return types.PullCommandOptions{}, err
+		return types.ImagePullOptions{}, err
 	}
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
-		return types.PullCommandOptions{}, err
+		return types.ImagePullOptions{}, err
 	}
 	verifier, err := cmd.Flags().GetString("verify")
 	if err != nil {
-		return types.PullCommandOptions{}, err
+		return types.ImagePullOptions{}, err
 	}
 	cosignKey, err := cmd.Flags().GetString("cosign-key")
 	if err != nil {
-		return types.PullCommandOptions{}, err
+		return types.ImagePullOptions{}, err
 	}
 	ipfsAddressStr, err := cmd.Flags().GetString("ipfs-address")
 	if err != nil {
-		return types.PullCommandOptions{}, err
+		return types.ImagePullOptions{}, err
 	}
-	return types.PullCommandOptions{
+	return types.ImagePullOptions{
 		GOptions:     globalOptions,
 		AllPlatforms: allPlatforms,
 		Platform:     platform,
@@ -101,6 +101,8 @@ func processPullCommandFlags(cmd *cobra.Command) (types.PullCommandOptions, erro
 		Verify:       verifier,
 		CosignKey:    cosignKey,
 		IPFSAddress:  ipfsAddressStr,
+		Stdout:       cmd.OutOrStdout(),
+		Stderr:       cmd.OutOrStderr(),
 	}, nil
 }
 
@@ -110,5 +112,5 @@ func pullAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return image.Pull(cmd.Context(), args[0], cmd.OutOrStdout(), cmd.ErrOrStderr(), pullOptions)
+	return image.Pull(cmd.Context(), args[0], pullOptions)
 }

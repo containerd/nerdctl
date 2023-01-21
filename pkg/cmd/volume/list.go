@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -43,7 +42,7 @@ type volumePrintable struct {
 	// TODO: "Links"
 }
 
-func List(options types.VolumeListCommandOptions, stdout io.Writer) error {
+func List(options types.VolumeListOptions) error {
 	if options.Quiet && options.Size {
 		logrus.Warn("cannot use --size and --quiet together, ignoring --size")
 		options.Size = false
@@ -68,7 +67,7 @@ func List(options types.VolumeListCommandOptions, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return lsPrintOutput(vols, options, stdout)
+	return lsPrintOutput(vols, options)
 }
 
 func hasSizeFilter(filters []string) bool {
@@ -90,12 +89,12 @@ func removeSizeFilters(filters []string) []string {
 	return res
 }
 
-func lsPrintOutput(vols map[string]native.Volume, options types.VolumeListCommandOptions, stdout io.Writer) error {
-	w := stdout
+func lsPrintOutput(vols map[string]native.Volume, options types.VolumeListOptions) error {
+	w := options.Stdout
 	var tmpl *template.Template
 	switch options.Format {
 	case "", "table", "wide":
-		w = tabwriter.NewWriter(stdout, 4, 8, 4, ' ', 0)
+		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
 		if !options.Quiet {
 			if options.Size {
 				fmt.Fprintln(w, "VOLUME NAME\tDIRECTORY\tSIZE")

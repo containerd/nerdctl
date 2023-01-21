@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
@@ -30,7 +29,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/mountutil"
 )
 
-func Remove(ctx context.Context, volumes []string, options types.VolumeRemoveCommandOptions, stdout io.Writer) error {
+func Remove(ctx context.Context, volumes []string, options types.VolumeRemoveOptions) error {
 	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
@@ -66,7 +65,7 @@ func Remove(ctx context.Context, volumes []string, options types.VolumeRemoveCom
 		return err
 	}
 	for _, name := range removedNames {
-		fmt.Fprintln(stdout, name)
+		fmt.Fprintln(options.Stdout, name)
 	}
 	return err
 }

@@ -40,7 +40,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Info(ctx context.Context, stdout io.Writer, stderr io.Writer, options types.InfoCommandOptions) error {
+func Info(ctx context.Context, options types.SystemInfoOptions) error {
 	var (
 		tmpl *template.Template
 		err  error
@@ -85,7 +85,7 @@ func Info(ctx context.Context, stdout io.Writer, stderr io.Writer, options types
 		if infoCompat != nil {
 			x = infoCompat
 		}
-		w := stdout
+		w := options.Stdout
 		if err := tmpl.Execute(w, x); err != nil {
 			return err
 		}
@@ -95,9 +95,9 @@ func Info(ctx context.Context, stdout io.Writer, stderr io.Writer, options types
 
 	switch options.Mode {
 	case "native":
-		return prettyPrintInfoNative(stdout, infoNative)
+		return prettyPrintInfoNative(options.Stdout, infoNative)
 	case "dockercompat":
-		return prettyPrintInfoDockerCompat(stdout, stderr, infoCompat, options.GOptions)
+		return prettyPrintInfoDockerCompat(options.Stdout, options.Stderr, infoCompat, options.GOptions)
 	}
 	return nil
 }

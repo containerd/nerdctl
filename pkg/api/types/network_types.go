@@ -16,18 +16,23 @@
 
 package types
 
-import "github.com/containerd/nerdctl/pkg/netutil"
+import (
+	"io"
 
-// NetworkCreateCommandOptions specifies options for `nerdctl network create`.
-type NetworkCreateCommandOptions struct {
+	"github.com/containerd/nerdctl/pkg/netutil"
+)
+
+// NetworkCreateOptions specifies options for `nerdctl network create`.
+type NetworkCreateOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// CreateOptions is the option for creating network
 	CreateOptions netutil.CreateOptions
 }
 
-// NetworkInspectCommandOptions specifies options for `nerdctl network inspect`.
-type NetworkInspectCommandOptions struct {
+// NetworkInspectOptions specifies options for `nerdctl network inspect`.
+type NetworkInspectOptions struct {
+	Stdout io.Writer
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// Inspect mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output
@@ -38,8 +43,9 @@ type NetworkInspectCommandOptions struct {
 	Networks []string
 }
 
-// NetworkListCommandOptions specifies options for `nerdctl network ls`.
-type NetworkListCommandOptions struct {
+// NetworkListOptions specifies options for `nerdctl network ls`.
+type NetworkListOptions struct {
+	Stdout io.Writer
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// Quiet only show numeric IDs
@@ -48,16 +54,18 @@ type NetworkListCommandOptions struct {
 	Format string
 }
 
-// NetworkPruneCommandOptions specifies options for `nerdctl network prune`.
-type NetworkPruneCommandOptions struct {
+// NetworkPruneOptions specifies options for `nerdctl network prune`.
+type NetworkPruneOptions struct {
+	Stdout io.Writer
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// Network drivers to keep while pruning
 	NetworkDriversToKeep []string
 }
 
-// NetworkRemoveCommandOptions specifies options for `nerdctl network rm`.
-type NetworkRemoveCommandOptions struct {
+// NetworkRemoveOptions specifies options for `nerdctl network rm`.
+type NetworkRemoveOptions struct {
+	Stdout io.Writer
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// Networks are the networks to be removed

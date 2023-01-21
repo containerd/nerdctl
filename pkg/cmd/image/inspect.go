@@ -19,7 +19,6 @@ package image
 import (
 	"context"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/containerd/containerd"
@@ -32,7 +31,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 )
 
-func Inspect(ctx context.Context, options types.ImageInspectCommandOptions, stdout io.Writer, imageFilter []string) error {
+func Inspect(ctx context.Context, imageFilter []string, options types.ImageInspectOptions) error {
 	var clientOpts []containerd.ClientOpt
 	if options.Platform != "" {
 		platformParsed, err := platforms.Parse(options.Platform)
@@ -89,7 +88,7 @@ func Inspect(ctx context.Context, options types.ImageInspectCommandOptions, stdo
 	if len(errs) > 0 {
 		return fmt.Errorf("%d errors: %v", len(errs), errs)
 	}
-	return formatter.FormatSlice(options.Format, stdout, f.entries)
+	return formatter.FormatSlice(options.Format, options.Stdout, f.entries)
 }
 
 type imageInspector struct {

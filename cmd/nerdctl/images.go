@@ -66,49 +66,49 @@ Properties:
 	return imagesCommand
 }
 
-func processImagesFlag(cmd *cobra.Command, args []string) (types.ImageListCommandOptions, error) {
+func processImagesFlag(cmd *cobra.Command, args []string) (types.ImageListOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.ImageListCommandOptions{}, err
+		return types.ImageListOptions{}, err
 	}
 	var filters []string
 
 	if len(args) > 0 {
 		canonicalRef, err := referenceutil.ParseAny(args[0])
 		if err != nil {
-			return types.ImageListCommandOptions{}, err
+			return types.ImageListOptions{}, err
 		}
 		filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
 		filters = append(filters, fmt.Sprintf("name==%s", args[0]))
 	}
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
-		return types.ImageListCommandOptions{}, err
+		return types.ImageListOptions{}, err
 	}
 	noTrunc, err := cmd.Flags().GetBool("no-trunc")
 	if err != nil {
-		return types.ImageListCommandOptions{}, err
+		return types.ImageListOptions{}, err
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
-		return types.ImageListCommandOptions{}, err
+		return types.ImageListOptions{}, err
 	}
 	var inputFilters []string
 	if cmd.Flags().Changed("filter") {
 		inputFilters, err = cmd.Flags().GetStringSlice("filter")
 		if err != nil {
-			return types.ImageListCommandOptions{}, err
+			return types.ImageListOptions{}, err
 		}
 	}
 	digests, err := cmd.Flags().GetBool("digests")
 	if err != nil {
-		return types.ImageListCommandOptions{}, err
+		return types.ImageListOptions{}, err
 	}
 	names, err := cmd.Flags().GetBool("names")
 	if err != nil {
-		return types.ImageListCommandOptions{}, err
+		return types.ImageListOptions{}, err
 	}
-	return types.ImageListCommandOptions{
+	return types.ImageListOptions{
 		GOptions:         globalOptions,
 		Quiet:            quiet,
 		NoTrunc:          noTrunc,

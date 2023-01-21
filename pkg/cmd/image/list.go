@@ -46,7 +46,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func List(ctx context.Context, options types.ImageListCommandOptions) error {
+func List(ctx context.Context, options types.ImageListOptions) error {
 	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
@@ -181,7 +181,7 @@ type imagePrintable struct {
 	Platform string // nerdctl extension
 }
 
-func printImages(ctx context.Context, options types.ImageListCommandOptions, client *containerd.Client, imageList []images.Image) error {
+func printImages(ctx context.Context, options types.ImageListOptions, client *containerd.Client, imageList []images.Image) error {
 	digestsFlag := options.Digests
 	var w io.Writer
 	w = os.Stdout

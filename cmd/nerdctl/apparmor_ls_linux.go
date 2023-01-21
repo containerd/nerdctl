@@ -41,25 +41,26 @@ func newApparmorLsCommand() *cobra.Command {
 	return cmd
 }
 
-func processApparmorListCommandOptions(cmd *cobra.Command) (types.ApparmorListCommandOptions, error) {
+func processApparmorListOptions(cmd *cobra.Command) (types.ApparmorListOptions, error) {
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
-		return types.ApparmorListCommandOptions{}, err
+		return types.ApparmorListOptions{}, err
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
-		return types.ApparmorListCommandOptions{}, err
+		return types.ApparmorListOptions{}, err
 	}
-	return types.ApparmorListCommandOptions{
+	return types.ApparmorListOptions{
 		Quiet:  quiet,
 		Format: format,
+		Stdout: cmd.OutOrStdout(),
 	}, nil
 }
 
 func apparmorLsAction(cmd *cobra.Command, args []string) error {
-	options, err := processApparmorListCommandOptions(cmd)
+	options, err := processApparmorListOptions(cmd)
 	if err != nil {
 		return err
 	}
-	return apparmor.List(options, cmd.OutOrStdout())
+	return apparmor.List(options)
 }

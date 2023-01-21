@@ -46,11 +46,12 @@ func killAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	options := types.KillCommandOptions{
+	return container.Kill(cmd.Context(), args, types.KillOptions{
 		GOptions:   globalOptions,
 		KillSignal: killSignal,
-	}
-	return container.Kill(cmd.Context(), args, options, cmd.OutOrStdout(), cmd.ErrOrStderr())
+		Stdout:     cmd.OutOrStdout(),
+		Stderr:     cmd.ErrOrStderr(),
+	})
 }
 
 func killShellComplete(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {

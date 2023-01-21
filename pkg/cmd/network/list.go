@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"text/tabwriter"
 	"text/template"
 
@@ -38,16 +37,16 @@ type networkPrintable struct {
 	file string `json:"-"`
 }
 
-func List(ctx context.Context, options types.NetworkListCommandOptions, out io.Writer) error {
+func List(ctx context.Context, options types.NetworkListOptions) error {
 	globalOptions := options.GOptions
 	quiet := options.Quiet
 	format := options.Format
-	w := out
+	w := options.Stdout
 	var tmpl *template.Template
 
 	switch format {
 	case "", "table", "wide":
-		w = tabwriter.NewWriter(out, 4, 8, 4, ' ', 0)
+		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
 		if !quiet {
 			fmt.Fprintln(w, "NETWORK ID\tNAME\tFILE")
 		}

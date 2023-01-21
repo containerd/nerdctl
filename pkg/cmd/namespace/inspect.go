@@ -18,7 +18,6 @@ package namespace
 
 import (
 	"context"
-	"io"
 
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/nerdctl/pkg/api/types"
@@ -27,7 +26,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 )
 
-func Inspect(ctx context.Context, inspectedNamespaces []string, options types.NamespaceInspectCommandOptions, stdout io.Writer) error {
+func Inspect(ctx context.Context, inspectedNamespaces []string, options types.NamespaceInspectOptions) error {
 	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
@@ -47,5 +46,5 @@ func Inspect(ctx context.Context, inspectedNamespaces []string, options types.Na
 		}
 		result[index] = nsInspect
 	}
-	return formatter.FormatSlice(options.Format, stdout, result)
+	return formatter.FormatSlice(options.Format, options.Stdout, result)
 }

@@ -38,25 +38,26 @@ func newNamespaceInspectCommand() *cobra.Command {
 	return namespaceInspectCommand
 }
 
-func processNamespaceInspectCommandOptions(cmd *cobra.Command) (types.NamespaceInspectCommandOptions, error) {
+func processNamespaceInspectOptions(cmd *cobra.Command) (types.NamespaceInspectOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.NamespaceInspectCommandOptions{}, err
+		return types.NamespaceInspectOptions{}, err
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
-		return types.NamespaceInspectCommandOptions{}, err
+		return types.NamespaceInspectOptions{}, err
 	}
-	return types.NamespaceInspectCommandOptions{
+	return types.NamespaceInspectOptions{
 		GOptions: globalOptions,
 		Format:   format,
+		Stdout:   cmd.OutOrStdout(),
 	}, nil
 }
 
 func labelInspectAction(cmd *cobra.Command, args []string) error {
-	options, err := processNamespaceInspectCommandOptions(cmd)
+	options, err := processNamespaceInspectOptions(cmd)
 	if err != nil {
 		return err
 	}
-	return namespace.Inspect(cmd.Context(), args, options, cmd.OutOrStdout())
+	return namespace.Inspect(cmd.Context(), args, options)
 }

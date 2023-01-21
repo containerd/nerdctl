@@ -18,14 +18,13 @@ package volume
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/strutil"
 )
 
-func Create(name string, options types.VolumeCreateCommandOptions, stdout io.Writer) error {
+func Create(name string, options types.VolumeCreateOptions) error {
 	if err := identifiers.Validate(name); err != nil {
 		return fmt.Errorf("malformed name %s: %w", name, err)
 	}
@@ -37,6 +36,6 @@ func Create(name string, options types.VolumeCreateCommandOptions, stdout io.Wri
 	if _, err := volStore.Create(name, labels); err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "%s\n", name)
+	fmt.Fprintf(options.Stdout, "%s\n", name)
 	return nil
 }

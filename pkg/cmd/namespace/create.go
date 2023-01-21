@@ -23,7 +23,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/clientutil"
 )
 
-func Create(ctx context.Context, namespace string, options types.NamespaceCreateCommandOptions) error {
+func Create(ctx context.Context, namespace string, options types.NamespaceCreateOptions) error {
 	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err

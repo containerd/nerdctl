@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -37,7 +36,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Pull(ctx context.Context, rawRef string, stdout io.Writer, stderr io.Writer, options types.PullCommandOptions) error {
+func Pull(ctx context.Context, rawRef string, options types.ImagePullOptions) error {
 	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
@@ -54,7 +53,7 @@ func Pull(ctx context.Context, rawRef string, stdout io.Writer, stderr io.Writer
 		return err
 	}
 
-	_, err = EnsureImage(ctx, client, rawRef, stdout, stderr, options, ocispecPlatforms, "always", unpack, options.Quiet)
+	_, err = EnsureImage(ctx, client, rawRef, ocispecPlatforms, "always", unpack, options.Quiet, options)
 	if err != nil {
 		return err
 	}
@@ -62,7 +61,7 @@ func Pull(ctx context.Context, rawRef string, stdout io.Writer, stderr io.Writer
 	return nil
 }
 
-func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, stdout io.Writer, stderr io.Writer, options types.PullCommandOptions, ocispecPlatforms []v1.Platform, pull string, unpack *bool, quiet bool) (*imgutil.EnsuredImage, error) {
+func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, ocispecPlatforms []v1.Platform, pull string, unpack *bool, quiet bool, options types.ImagePullOptions) (*imgutil.EnsuredImage, error) {
 
 	var ensured *imgutil.EnsuredImage
 
@@ -84,7 +83,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 			ipfsPath = &dir
 		}
 
-		ensured, err = ipfs.EnsureImage(ctx, client, stdout, stderr, options.GOptions.Snapshotter, scheme, ref,
+		ensured, err = ipfs.EnsureImage(ctx, client, options.Stdout, options.Stderr, options.GOptions.Snapshotter, scheme, ref,
 			pull, ocispecPlatforms, unpack, quiet, ipfsPath)
 		if err != nil {
 			return nil, err
@@ -112,7 +111,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 		return nil, fmt.Errorf("no verifier found: %s", options.Verify)
 	}
 
-	ensured, err = imgutil.EnsureImage(ctx, client, stdout, stderr, options.GOptions.Snapshotter, ref,
+	ensured, err = imgutil.EnsureImage(ctx, client, options.Stdout, options.Stderr, options.GOptions.Snapshotter, ref,
 		pull, options.GOptions.InsecureRegistry, options.GOptions.HostsDir, ocispecPlatforms, unpack, quiet)
 	if err != nil {
 		return nil, err

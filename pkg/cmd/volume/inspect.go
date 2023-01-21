@@ -17,13 +17,11 @@
 package volume
 
 import (
-	"io"
-
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/formatter"
 )
 
-func Inspect(volumes []string, options types.VolumeInspectCommandOptions, stdout io.Writer) error {
+func Inspect(volumes []string, options types.VolumeInspectOptions) error {
 	volStore, err := Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {
 		return err
@@ -37,5 +35,5 @@ func Inspect(volumes []string, options types.VolumeInspectCommandOptions, stdout
 		}
 		result[i] = vol
 	}
-	return formatter.FormatSlice(options.Format, stdout, result)
+	return formatter.FormatSlice(options.Format, options.Stdout, result)
 }

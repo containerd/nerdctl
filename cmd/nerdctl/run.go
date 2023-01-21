@@ -741,23 +741,25 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 
 // When refactor `nerdctl run`, this func should be removed and replaced by
 // creating a `PullCommandOptions` directly from `RunCommandOptions`.
-func processPullCommandFlagsInRun(cmd *cobra.Command) (types.PullCommandOptions, error) {
+func processPullCommandFlagsInRun(cmd *cobra.Command) (types.ImagePullOptions, error) {
 	verifier, err := cmd.Flags().GetString("verify")
 	if err != nil {
-		return types.PullCommandOptions{}, err
+		return types.ImagePullOptions{}, err
 	}
 	cosignKey, err := cmd.Flags().GetString("cosign-key")
 	if err != nil {
-		return types.PullCommandOptions{}, err
+		return types.ImagePullOptions{}, err
 	}
 	ipfsAddressStr, err := cmd.Flags().GetString("ipfs-address")
 	if err != nil {
-		return types.PullCommandOptions{}, err
+		return types.ImagePullOptions{}, err
 	}
-	return types.PullCommandOptions{
+	return types.ImagePullOptions{
 		Verify:      verifier,
 		CosignKey:   cosignKey,
 		IPFSAddress: ipfsAddressStr,
+		Stdout:      cmd.OutOrStdout(),
+		Stderr:      cmd.ErrOrStderr(),
 	}, nil
 }
 
@@ -791,8 +793,7 @@ func generateRootfsOpts(ctx context.Context, client *containerd.Client, platform
 		}
 
 		options.GOptions = globalOptions
-
-		ensured, err = image.EnsureImage(ctx, client, rawRef, cmd.OutOrStdout(), cmd.ErrOrStderr(), options, ocispecPlatforms, pull, nil, false)
+		ensured, err = image.EnsureImage(ctx, client, rawRef, ocispecPlatforms, pull, nil, false, options)
 		if err != nil {
 			return nil, nil, nil, err
 		}

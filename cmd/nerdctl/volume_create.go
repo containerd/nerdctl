@@ -36,25 +36,26 @@ func newVolumeCreateCommand() *cobra.Command {
 	return volumeCreateCommand
 }
 
-func processVolumeCreateCommandOptions(cmd *cobra.Command) (types.VolumeCreateCommandOptions, error) {
+func processVolumeCreateOptions(cmd *cobra.Command) (types.VolumeCreateOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.VolumeCreateCommandOptions{}, err
+		return types.VolumeCreateOptions{}, err
 	}
 	labels, err := cmd.Flags().GetStringArray("label")
 	if err != nil {
-		return types.VolumeCreateCommandOptions{}, err
+		return types.VolumeCreateOptions{}, err
 	}
-	return types.VolumeCreateCommandOptions{
+	return types.VolumeCreateOptions{
 		GOptions: globalOptions,
 		Labels:   labels,
+		Stdout:   cmd.OutOrStdout(),
 	}, nil
 }
 
 func volumeCreateAction(cmd *cobra.Command, args []string) error {
-	options, err := processVolumeCreateCommandOptions(cmd)
+	options, err := processVolumeCreateOptions(cmd)
 	if err != nil {
 		return nil
 	}
-	return volume.Create(args[0], options, cmd.OutOrStdout())
+	return volume.Create(args[0], options)
 }

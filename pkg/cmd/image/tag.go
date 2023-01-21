@@ -27,7 +27,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 )
 
-func Tag(ctx context.Context, options types.ImageTagCommandOptions) error {
+func Tag(ctx context.Context, options types.ImageTagOptions) error {
 	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err

@@ -68,12 +68,13 @@ func containerInspectAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return container.Inspect(cmd.Context(), types.ContainerInspectCommandOptions{
+	return container.Inspect(cmd.Context(), types.ContainerInspectOptions{
 		GOptions:   globalOptions,
 		Format:     format,
 		Mode:       mode,
 		Containers: args,
-	}, cmd.OutOrStdout())
+		Stdout:     cmd.OutOrStdout(),
+	})
 }
 
 func containerInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

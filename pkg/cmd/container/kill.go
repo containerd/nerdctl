@@ -19,7 +19,6 @@ package container
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"syscall"
@@ -34,16 +33,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Kill(ctx context.Context, reqs []string, opt types.KillCommandOptions, stdout, stderr io.Writer) error {
-	if !strings.HasPrefix(opt.KillSignal, "SIG") {
-		opt.KillSignal = "SIG" + opt.KillSignal
+func Kill(ctx context.Context, reqs []string, options types.KillOptions) error {
+	if !strings.HasPrefix(options.KillSignal, "SIG") {
+		options.KillSignal = "SIG" + options.KillSignal
 	}
 
-	parsedSignal, err := signal.ParseSignal(opt.KillSignal)
+	parsedSignal, err := signal.ParseSignal(options.KillSignal)
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(ctx, opt.GOptions.Namespace, opt.GOptions.Address)
+	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
@@ -57,12 +56,12 @@ func Kill(ctx context.Context, reqs []string, opt types.KillCommandOptions, stdo
 			}
 			if err := killContainer(ctx, found.Container, parsedSignal); err != nil {
 				if errdefs.IsNotFound(err) {
-					fmt.Fprintf(stderr, "No such container: %s\n", found.Req)
+					fmt.Fprintf(options.Stderr, "No such container: %s\n", found.Req)
 					os.Exit(1)
 				}
 				return err
 			}
-			_, err := fmt.Fprintf(stdout, "%s\n", found.Container.ID())
+			_, err := fmt.Fprintf(options.Stdout, "%s\n", found.Container.ID())
 			return err
 		},
 	}
