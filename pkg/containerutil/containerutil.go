@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/runtime/restart"
 	"github.com/containerd/nerdctl/pkg/portutil"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
@@ -128,4 +129,48 @@ func WithBindMountHostProcfs(_ context.Context, _ oci.Client, _ *containers.Cont
 	}
 	s.Linux.ReadonlyPaths = newROP
 	return nil
+}
+
+// GenerateSharingPIDOpts returns the oci.SpecOpts that shares the host linux namespace from `targetCon`
+// If `targetCon` doesn't have a `PIDNamespace`, a new one is generated from its `Pid`.
+func GenerateSharingPIDOpts(ctx context.Context, targetCon containerd.Container) ([]oci.SpecOpts, error) {
+	opts := make([]oci.SpecOpts, 0)
+
+	task, err := targetCon.Task(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	status, err := task.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if status.Status != containerd.Running {
+		return nil, fmt.Errorf("shared container is not running")
+	}
+
+	spec, err := targetCon.Spec(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	isHost := true
+	for _, n := range spec.Linux.Namespaces {
+		if n.Type == specs.PIDNamespace {
+			isHost = false
+		}
+	}
+	if isHost {
+		opts = append(opts, oci.WithHostNamespace(specs.PIDNamespace))
+		if rootlessutil.IsRootless() {
+			opts = append(opts, WithBindMountHostProcfs)
+		}
+	} else {
+		ns := specs.LinuxNamespace{
+			Type: specs.PIDNamespace,
+			Path: fmt.Sprintf("/proc/%d/ns/pid", task.Pid()),
+		}
+		opts = append(opts, oci.WithLinuxNamespace(ns))
+	}
+	return opts, nil
 }

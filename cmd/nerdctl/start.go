@@ -38,7 +38,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -250,7 +249,7 @@ func reconfigPIDContainer(ctx context.Context, c containerd.Container, client *c
 		return err
 	}
 
-	opts, err := generateSharingPIDOpts(ctx, targetCon)
+	opts, err := containerutil.GenerateSharingPIDOpts(ctx, targetCon)
 	if err != nil {
 		return err
 	}
