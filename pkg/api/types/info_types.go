@@ -16,6 +16,7 @@
 
 package types
 
+// InfoCommandOptions specifies options for `nerdctl (system) info`.
 type InfoCommandOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions

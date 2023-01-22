@@ -18,7 +18,7 @@ package types
 
 import "github.com/containerd/nerdctl/pkg/netutil"
 
-// NetworkCreateCommandOptions specifies options for nerdctl network create
+// NetworkCreateCommandOptions specifies options for `nerdctl network create`.
 type NetworkCreateCommandOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
@@ -26,7 +26,7 @@ type NetworkCreateCommandOptions struct {
 	CreateOptions netutil.CreateOptions
 }
 
-// NetworkCreateCommandOptions specifies options for nerdctl network inspect
+// NetworkInspectCommandOptions specifies options for `nerdctl network inspect`.
 type NetworkInspectCommandOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
@@ -38,7 +38,7 @@ type NetworkInspectCommandOptions struct {
 	Networks []string
 }
 
-// NetworkCreateCommandOptions specifies options for nerdctl network ls
+// NetworkListCommandOptions specifies options for `nerdctl network ls`.
 type NetworkListCommandOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
@@ -48,7 +48,7 @@ type NetworkListCommandOptions struct {
 	Format string
 }
 
-// NetworkCreateCommandOptions specifies options for nerdctl network prune
+// NetworkPruneCommandOptions specifies options for `nerdctl network prune`.
 type NetworkPruneCommandOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
@@ -56,7 +56,7 @@ type NetworkPruneCommandOptions struct {
 	NetworkDriversToKeep []string
 }
 
-// NetworkCreateCommandOptions specifies options for nerdctl network rm
+// NetworkRemoveCommandOptions specifies options for `nerdctl network rm`.
 type NetworkRemoveCommandOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions

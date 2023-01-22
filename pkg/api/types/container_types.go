@@ -16,7 +16,7 @@
 
 package types
 
-// KillCommandOptions specifies options for `nerdctl kill`.
+// KillCommandOptions specifies options for `nerdctl (container) kill`.
 type KillCommandOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions

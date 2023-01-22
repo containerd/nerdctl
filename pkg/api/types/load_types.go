@@ -16,6 +16,7 @@
 
 package types
 
+// LoadCommandOptions specifies options for `nerdctl (image) load`.
 type LoadCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Input read from tar archive file, instead of STDIN

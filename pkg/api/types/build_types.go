@@ -16,6 +16,7 @@
 
 package types
 
+// BuildCommandOptions specifies options for `nerdctl (image/builder) build`.
 type BuildCommandOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
