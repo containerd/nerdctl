@@ -16,20 +16,24 @@
 
 package types
 
+// NamespaceCreateCommandOptions specifies options for `nerdctl namespace create`.
 type NamespaceCreateCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Labels are the namespace labels
 	Labels []string
 }
 
+// NamespaceUpdateCommandOptions specifies options for `nerdctl namespace update`.
 type NamespaceUpdateCommandOptions NamespaceCreateCommandOptions
 
+// NamespaceRemoveCommandOptions specifies options for `nerdctl namespace rm`.
 type NamespaceRemoveCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// CGroup delete the namespace's cgroup
 	CGroup bool
 }
 
+// NamespaceInspectCommandOptions specifies options for `nerdctl namespace inspect`.
 type NamespaceInspectCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Format the output using the given Go template, e.g, '{{json .}}'

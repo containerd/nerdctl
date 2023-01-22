@@ -16,6 +16,7 @@
 
 package types
 
+// ImageListCommandOptions specifies options for `nerdctl image ls`.
 type ImageListCommandOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
@@ -37,6 +38,7 @@ type ImageListCommandOptions struct {
 	All bool
 }
 
+// ImageConvertCommandOptions specifies options for `nerdctl image convert`.
 type ImageConvertCommandOptions struct {
 	GOptions GlobalCommandOptions
 
@@ -109,6 +111,7 @@ type ImageConvertCommandOptions struct {
 
 }
 
+// ImageCryptCommandOptions specifies options for `nerdctl image encrypt` and `nerdctl image decrypt`.
 type ImageCryptCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Platforms convert content for a specific platform
@@ -127,6 +130,7 @@ type ImageCryptCommandOptions struct {
 	Recipients []string
 }
 
+// ImageInspectCommandOptions specifies options for `nerdctl image inspect`.
 type ImageInspectCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Mode Inspect mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output
@@ -137,6 +141,7 @@ type ImageInspectCommandOptions struct {
 	Platform string
 }
 
+// ImagePushCommandOptions specifies options for `nerdctl (image) push`.
 type ImagePushCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Platforms convert content for a specific platform
@@ -158,6 +163,7 @@ type ImagePushCommandOptions struct {
 	AllowNondistributableArtifacts bool
 }
 
+// ImageTagCommandOptions specifies options for `nerdctl (image) tag`.
 type ImageTagCommandOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions

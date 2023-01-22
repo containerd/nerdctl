@@ -16,12 +16,14 @@
 
 package types
 
+// VolumeCreateCommandOptions specifies options for `nerdctl volume create`.
 type VolumeCreateCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Labels are the volume labels
 	Labels []string
 }
 
+// VolumeInspectCommandOptions specifies options for `nerdctl volume inspect`.
 type VolumeInspectCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Format the output using the given go template
@@ -30,6 +32,7 @@ type VolumeInspectCommandOptions struct {
 	Size bool
 }
 
+// VolumeListCommandOptions specifies options for `nerdctl volume ls`.
 type VolumeListCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Only display volume names
@@ -42,12 +45,14 @@ type VolumeListCommandOptions struct {
 	Filters []string
 }
 
+// VolumePruneCommandOptions specifies options for `nerdctl volume prune`.
 type VolumePruneCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Do not prompt for confirmation
 	Force bool
 }
 
+// VolumeRemoveCommandOptions specifies options for `nerdctl volume rm`.
 type VolumeRemoveCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Force the removal of one or more volumes

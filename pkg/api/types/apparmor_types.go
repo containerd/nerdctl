@@ -16,6 +16,7 @@
 
 package types
 
+// ApparmorListCommandOptions specifies options for `nerdctl apparmor ls`.
 type ApparmorListCommandOptions struct {
 	// Only display profile names
 	Quiet bool

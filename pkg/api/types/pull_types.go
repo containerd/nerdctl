@@ -16,6 +16,7 @@
 
 package types
 
+// PullCommandOptions specifies options for `nerdctl (image) pull`.
 type PullCommandOptions struct {
 	GOptions GlobalCommandOptions
 	// Unpack the image for the current single platform (auto/true/false)
