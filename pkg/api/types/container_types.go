@@ -51,3 +51,18 @@ type ContainerInspectOptions struct {
 	// Containers are the containers to be inspected
 	Containers []string
 }
+
+// ContainerCommitOptions specifies options for `nerdctl (container) commit`.
+type ContainerCommitOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// Author (e.g., "nerdctl contributor <nerdctl-dev@example.com>")
+	Author string
+	// Commit message
+	Message string
+	// Apply Dockerfile instruction to the created image (supported directives: [CMD, ENTRYPOINT])
+	Change []string
+	// Pause container during commit
+	Pause bool
+}
