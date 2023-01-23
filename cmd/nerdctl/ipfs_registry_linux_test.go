@@ -25,7 +25,6 @@ import (
 )
 
 func TestIPFSRegistry(t *testing.T) {
-	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
@@ -41,7 +40,6 @@ func TestIPFSRegistry(t *testing.T) {
 }
 
 func TestIPFSRegistryWithLazyPulling(t *testing.T) {
-	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)

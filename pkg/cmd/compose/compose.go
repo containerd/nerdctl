@@ -99,7 +99,7 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 
 		// IPFS reference
 		if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(imageName); err == nil {
-			var ipfsPath *string
+			var ipfsPath string
 			if ipfsAddress := options.IPFSAddress; ipfsAddress != "" {
 				dir, err := os.MkdirTemp("", "apidirtmp")
 				if err != nil {
@@ -109,7 +109,7 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 				if err := os.WriteFile(filepath.Join(dir, "api"), []byte(ipfsAddress), 0600); err != nil {
 					return err
 				}
-				ipfsPath = &dir
+				ipfsPath = dir
 			}
 			_, err = ipfs.EnsureImage(ctx, client, stdout, stderr, globalOptions.Snapshotter, scheme, ref,
 				pullMode, ocispecPlatforms, nil, quiet, ipfsPath)

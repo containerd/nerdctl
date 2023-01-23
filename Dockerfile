@@ -25,7 +25,7 @@ ARG CNI_PLUGINS_VERSION=v1.1.1
 # Extra deps: Build
 ARG BUILDKIT_VERSION=v0.11.0
 # Extra deps: Lazy-pulling
-ARG STARGZ_SNAPSHOTTER_VERSION=v0.13.0
+ARG STARGZ_SNAPSHOTTER_VERSION=v0.14.1
 # Extra deps: Nydus Lazy-pulling
 ARG NYDUS_VERSION=v2.1.1
 # Extra deps: Encryption

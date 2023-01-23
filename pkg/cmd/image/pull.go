@@ -70,7 +70,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 			return nil, errors.New("--verify flag is not supported on IPFS as of now")
 		}
 
-		var ipfsPath *string
+		var ipfsPath string
 		if options.IPFSAddress != "" {
 			dir, err := os.MkdirTemp("", "apidirtmp")
 			if err != nil {
@@ -80,7 +80,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 			if err := os.WriteFile(filepath.Join(dir, "api"), []byte(options.IPFSAddress), 0600); err != nil {
 				return nil, err
 			}
-			ipfsPath = &dir
+			ipfsPath = dir
 		}
 
 		ensured, err = ipfs.EnsureImage(ctx, client, options.Stdout, options.Stderr, options.GOptions.Snapshotter, scheme, ref,
