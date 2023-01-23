@@ -18,8 +18,9 @@ package types
 
 import "io"
 
-// ImageListOptions specifies options for `nerdctl image ls`.
+// ImageListOptions specifies options for `nerdctl image list`.
 type ImageListOptions struct {
+	Stdout io.Writer
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// Quiet only show numeric IDs

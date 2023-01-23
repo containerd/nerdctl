@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"strings"
 	"text/tabwriter"
@@ -95,7 +94,7 @@ func List(ctx context.Context, options types.ImageListOptions) error {
 
 		imageList = imgutil.FilterImages(imageList, beforeImages, sinceImages)
 	}
-	return printImages(ctx, options, client, imageList)
+	return printImages(ctx, client, imageList, options)
 }
 
 func filterByReference(imageList []images.Image, filters []string) ([]images.Image, error) {
@@ -181,10 +180,9 @@ type imagePrintable struct {
 	Platform string // nerdctl extension
 }
 
-func printImages(ctx context.Context, options types.ImageListOptions, client *containerd.Client, imageList []images.Image) error {
+func printImages(ctx context.Context, client *containerd.Client, imageList []images.Image, options types.ImageListOptions) error {
+	w := options.Stdout
 	digestsFlag := options.Digests
-	var w io.Writer
-	w = os.Stdout
 	if options.Format == "wide" {
 		digestsFlag = true
 	}

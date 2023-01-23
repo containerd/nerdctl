@@ -66,7 +66,7 @@ Properties:
 	return imagesCommand
 }
 
-func processImagesFlag(cmd *cobra.Command, args []string) (types.ImageListOptions, error) {
+func processImageListOptions(cmd *cobra.Command, args []string) (types.ImageListOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
 		return types.ImageListOptions{}, err
@@ -118,12 +118,13 @@ func processImagesFlag(cmd *cobra.Command, args []string) (types.ImageListOption
 		Digests:          digests,
 		Names:            names,
 		All:              true,
+		Stdout:           cmd.OutOrStdout(),
 	}, nil
 
 }
 
 func imagesAction(cmd *cobra.Command, args []string) error {
-	options, err := processImagesFlag(cmd, args)
+	options, err := processImageListOptions(cmd, args)
 	if err != nil {
 		return err
 	}
