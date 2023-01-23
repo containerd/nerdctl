@@ -18,7 +18,7 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/cmd/info"
+	"github.com/containerd/nerdctl/pkg/cmd/system"
 	"github.com/spf13/cobra"
 )
 
@@ -70,5 +70,5 @@ func infoAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return info.Info(cmd.Context(), options)
+	return system.Info(cmd.Context(), options)
 }

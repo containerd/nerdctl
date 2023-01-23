@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package info
+package system
 
 import (
 	"context"
