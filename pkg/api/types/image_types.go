@@ -178,3 +178,14 @@ type ImageTagOptions struct {
 	// Target is the image to be created.
 	Target string
 }
+
+// ImageRemoveOptions specifies options for `nerdctl rmi` and `nerdctl image rm`.
+type ImageRemoveOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// Force removal of the image
+	Force bool
+	// Asynchronous mode
+	Async bool
+}
