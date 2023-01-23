@@ -18,26 +18,19 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"runtime"
-	"strings"
 
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
-	"github.com/containerd/containerd/oci"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/taskutil"
-	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -114,11 +107,11 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 		return err
 	}
 
-	if err := reconfigNetContainer(ctx, container, client, lab); err != nil {
+	if err := containerutil.ReconfigNetContainer(ctx, container, client, lab); err != nil {
 		return err
 	}
 
-	if err := reconfigPIDContainer(ctx, container, client, lab); err != nil {
+	if err := containerutil.ReconfigPIDContainer(ctx, container, client, lab); err != nil {
 		return err
 	}
 
@@ -187,85 +180,6 @@ func startContainer(ctx context.Context, container containerd.Container, flagA b
 	if code != 0 {
 		return errutil.NewExitCoderErr(int(code))
 	}
-	return nil
-}
-
-func reconfigNetContainer(ctx context.Context, c containerd.Container, client *containerd.Client, lab map[string]string) error {
-	networksJSON, ok := lab[labels.Networks]
-	if !ok {
-		return nil
-	}
-	var networks []string
-	if err := json.Unmarshal([]byte(networksJSON), &networks); err != nil {
-		return err
-	}
-	netType, err := nettype.Detect(networks)
-	if err != nil {
-		return err
-	}
-	if netType == nettype.Container {
-		network := strings.Split(networks[0], ":")
-		if len(network) != 2 {
-			return fmt.Errorf("invalid network: %s, should be \"container:<id|name>\"", networks[0])
-		}
-		targetCon, err := client.LoadContainer(ctx, network[1])
-		if err != nil {
-			return err
-		}
-		netNSPath, err := containerutil.ContainerNetNSPath(ctx, targetCon)
-		if err != nil {
-			return err
-		}
-		spec, err := c.Spec(ctx)
-		if err != nil {
-			return err
-		}
-		err = c.Update(ctx, containerd.UpdateContainerOpts(
-			containerd.WithSpec(spec, oci.WithLinuxNamespace(
-				specs.LinuxNamespace{
-					Type: specs.NetworkNamespace,
-					Path: netNSPath,
-				}))))
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func reconfigPIDContainer(ctx context.Context, c containerd.Container, client *containerd.Client, lab map[string]string) error {
-	targetContainerID, ok := lab[labels.PIDContainer]
-	if !ok {
-		return nil
-	}
-
-	if runtime.GOOS != "linux" {
-		return errors.New("--pid only supported on linux")
-	}
-
-	targetCon, err := client.LoadContainer(ctx, targetContainerID)
-	if err != nil {
-		return err
-	}
-
-	opts, err := containerutil.GenerateSharingPIDOpts(ctx, targetCon)
-	if err != nil {
-		return err
-	}
-
-	spec, err := c.Spec(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = c.Update(ctx, containerd.UpdateContainerOpts(
-		containerd.WithSpec(spec, oci.Compose(opts...)),
-	))
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
