@@ -21,21 +21,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/containerinspector"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 )
 
-func Inspect(ctx context.Context, options types.ContainerInspectOptions) error {
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
+// Inspect prints detailed information for each container in `containers`.
+func Inspect(ctx context.Context, client *containerd.Client, containers []string, options types.ContainerInspectOptions) error {
 	f := &containerInspector{
 		mode: options.Mode,
 	}
@@ -46,7 +41,7 @@ func Inspect(ctx context.Context, options types.ContainerInspectOptions) error {
 	}
 
 	var errs []error
-	for _, req := range options.Containers {
+	for _, req := range containers {
 		n, err := walker.Walk(ctx, req)
 		if err != nil {
 			errs = append(errs, err)

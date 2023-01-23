@@ -62,8 +62,6 @@ type ContainerInspectOptions struct {
 	Format string
 	// Inspect mode, either dockercompat or native
 	Mode string
-	// Containers are the containers to be inspected
-	Containers []string
 }
 
 // ContainerCommitOptions specifies options for `nerdctl (container) commit`.

@@ -22,31 +22,15 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/imageinspector"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 )
 
-func Inspect(ctx context.Context, imageFilter []string, options types.ImageInspectOptions) error {
-	var clientOpts []containerd.ClientOpt
-	if options.Platform != "" {
-		platformParsed, err := platforms.Parse(options.Platform)
-		if err != nil {
-			return err
-		}
-		platformM := platforms.Only(platformParsed)
-		clientOpts = append(clientOpts, containerd.WithDefaultPlatform(platformM))
-	}
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address, clientOpts...)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
+// Inspect prints detailed information of each image in `images`.
+func Inspect(ctx context.Context, client *containerd.Client, images []string, options types.ImageInspectOptions) error {
 	f := &imageInspector{
 		mode: options.Mode,
 	}
@@ -77,7 +61,7 @@ func Inspect(ctx context.Context, imageFilter []string, options types.ImageInspe
 	}
 
 	var errs []error
-	for _, req := range imageFilter {
+	for _, req := range images {
 		n, err := walker.Walk(ctx, req)
 		if err != nil {
 			errs = append(errs, err)

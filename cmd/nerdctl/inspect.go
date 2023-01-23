@@ -130,11 +130,15 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 		if ni != 0 {
 			platform := ""
 			imageInspectOptions, err := processImageInspectOptions(cmd, &platform)
-			imageInspectOptions.Stdout = cmd.OutOrStdout()
 			if err != nil {
 				return err
 			}
-			if err := image.Inspect(cmd.Context(), []string{req}, imageInspectOptions); err != nil {
+			client, ctx, cancel, err := clientutil.NewClientWithPlatform(cmd.Context(), imageInspectOptions.GOptions.Namespace, imageInspectOptions.GOptions.Address, imageInspectOptions.Platform)
+			if err != nil {
+				return err
+			}
+			defer cancel()
+			if err := image.Inspect(ctx, client, []string{req}, imageInspectOptions); err != nil {
 				errs = append(errs, err)
 			}
 			continue
