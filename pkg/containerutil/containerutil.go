@@ -25,14 +25,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/containerd/cmd/ctr/commands"
+	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/runtime/restart"
+	"github.com/containerd/nerdctl/pkg/errutil"
+	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/portutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/moby/sys/signal"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
@@ -177,6 +183,89 @@ func GenerateSharingPIDOpts(ctx context.Context, targetCon containerd.Container)
 		opts = append(opts, oci.WithLinuxNamespace(ns))
 	}
 	return opts, nil
+}
+
+// Start starts `container` with `attach` flag. If `attach` is true, it will attach to the container's stdio.
+func Start(ctx context.Context, container containerd.Container, flagA bool, client *containerd.Client) error {
+	lab, err := container.Labels(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := ReconfigNetContainer(ctx, container, client, lab); err != nil {
+		return err
+	}
+
+	if err := ReconfigPIDContainer(ctx, container, client, lab); err != nil {
+		return err
+	}
+
+	process, err := container.Spec(ctx)
+	if err != nil {
+		return err
+	}
+	flagT := process.Process.Terminal
+	var con console.Console
+	if flagA && flagT {
+		con = console.Current()
+		defer con.Reset()
+		if err := con.SetRaw(); err != nil {
+			return err
+		}
+	}
+
+	logURI := lab[labels.LogURI]
+
+	cStatus := formatter.ContainerStatus(ctx, container)
+	if cStatus == "Up" {
+		logrus.Warnf("container %s is already running", container.ID())
+		return nil
+	}
+	if err := UpdateExplicitlyStoppedLabel(ctx, container, false); err != nil {
+		return err
+	}
+	if oldTask, err := container.Task(ctx, nil); err == nil {
+		if _, err := oldTask.Delete(ctx); err != nil {
+			logrus.WithError(err).Debug("failed to delete old task")
+		}
+	}
+	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, con, logURI)
+	if err != nil {
+		return err
+	}
+
+	var statusC <-chan containerd.ExitStatus
+	if flagA {
+		statusC, err = task.Wait(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := task.Start(ctx); err != nil {
+		return err
+	}
+
+	if !flagA {
+		return nil
+	}
+	if flagA && flagT {
+		if err := tasks.HandleConsoleResize(ctx, task, con); err != nil {
+			logrus.WithError(err).Error("console resize")
+		}
+	}
+
+	sigc := commands.ForwardAllSignals(ctx, task)
+	defer commands.StopCatch(sigc)
+	status := <-statusC
+	code, _, err := status.Result()
+	if err != nil {
+		return err
+	}
+	if code != 0 {
+		return errutil.NewExitCoderErr(int(code))
+	}
+	return nil
 }
 
 // Stop stops `container` by sending SIGTERM. If the container is not stopped after `timeout`, it sends a SIGKILL.

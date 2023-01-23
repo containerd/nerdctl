@@ -71,7 +71,7 @@ func restartAction(cmd *cobra.Command, args []string) error {
 			if err := containerutil.Stop(ctx, found.Container, timeout); err != nil {
 				return err
 			}
-			if err := startContainer(ctx, found.Container, false, client); err != nil {
+			if err := containerutil.Start(ctx, found.Container, false, client); err != nil {
 				return err
 			}
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
