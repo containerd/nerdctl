@@ -17,16 +17,8 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"strings"
-
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-	"github.com/containerd/nerdctl/pkg/imgutil/commit"
-	"github.com/containerd/nerdctl/pkg/referenceutil"
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/spf13/cobra"
 )
 
@@ -47,121 +39,46 @@ func newCommitCommand() *cobra.Command {
 	return commitCommand
 }
 
-func commitAction(cmd *cobra.Command, args []string) error {
+func processCommitCommandOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.ContainerCommitOptions{}, err
 	}
-	opts, err := newCommitOpts(cmd, args)
-	if err != nil {
-		return err
-	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
-	walker := &containerwalker.ContainerWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if found.MatchCount > 1 {
-				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
-			}
-			imageID, err := commit.Commit(ctx, client, found.Container, opts)
-			if err != nil {
-				return err
-			}
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", imageID)
-			return err
-		},
-	}
-	req := args[0]
-	n, err := walker.Walk(ctx, req)
-	if err != nil {
-		return err
-	} else if n == 0 {
-		return fmt.Errorf("no such container %s", req)
-	}
-	return nil
-}
-
-func parseChanges(cmd *cobra.Command) (commit.Changes, error) {
-	const (
-		// XXX: Where can I get a constants for this?
-		commandDirective    = "CMD"
-		entrypointDirective = "ENTRYPOINT"
-	)
-	userChanges, err := cmd.Flags().GetStringArray("change")
-	if err != nil || userChanges == nil {
-		return commit.Changes{}, err
-	}
-	var changes commit.Changes
-	for _, change := range userChanges {
-		if change == "" {
-			return commit.Changes{}, fmt.Errorf("received an empty value in change flag")
-		}
-		changeFields := strings.Fields(change)
-
-		switch changeFields[0] {
-		case commandDirective:
-			var overrideCMD []string
-			if err := json.Unmarshal([]byte(change[len(changeFields[0]):]), &overrideCMD); err != nil {
-				return commit.Changes{}, fmt.Errorf("malformed json in change flag value %q", change)
-			}
-			if changes.CMD != nil {
-				logrus.Warn("multiple change flags supplied for the CMD directive, overriding with last supplied")
-			}
-			changes.CMD = overrideCMD
-		case entrypointDirective:
-			var overrideEntrypoint []string
-			if err := json.Unmarshal([]byte(change[len(changeFields[0]):]), &overrideEntrypoint); err != nil {
-				return commit.Changes{}, fmt.Errorf("malformed json in change flag value %q", change)
-			}
-			if changes.Entrypoint != nil {
-				logrus.Warnf("multiple change flags supplied for the Entrypoint directive, overriding with last supplied")
-			}
-			changes.Entrypoint = overrideEntrypoint
-		default: // TODO: Support the rest of the change directives
-			return commit.Changes{}, fmt.Errorf("unknown change directive %q", changeFields[0])
-		}
-	}
-	return changes, nil
-}
-
-func newCommitOpts(cmd *cobra.Command, args []string) (*commit.Opts, error) {
-	rawRef := args[1]
-
-	named, err := referenceutil.ParseDockerRef(rawRef)
-	if err != nil {
-		return nil, err
-	}
-
 	author, err := cmd.Flags().GetString("author")
 	if err != nil {
-		return nil, err
+		return types.ContainerCommitOptions{}, err
 	}
 	message, err := cmd.Flags().GetString("message")
 	if err != nil {
-		return nil, err
+		return types.ContainerCommitOptions{}, err
 	}
 	pause, err := cmd.Flags().GetBool("pause")
 	if err != nil {
-		return nil, err
+		return types.ContainerCommitOptions{}, err
 	}
 
-	changes, err := parseChanges(cmd)
+	change, err := cmd.Flags().GetStringArray("change")
 	if err != nil {
-		return nil, err
+		return types.ContainerCommitOptions{}, err
 	}
 
-	return &commit.Opts{
-		Author:  author,
-		Message: message,
-		Ref:     named.String(),
-		Pause:   pause,
-		Changes: changes,
+	return types.ContainerCommitOptions{
+		Stdout:   cmd.OutOrStdout(),
+		GOptions: globalOptions,
+		Author:   author,
+		Message:  message,
+		Pause:    pause,
+		Change:   change,
 	}, nil
+
+}
+
+func commitAction(cmd *cobra.Command, args []string) error {
+	options, err := processCommitCommandOptions(cmd)
+	if err != nil {
+		return err
+	}
+	return container.Commit(cmd.Context(), args[1], args[0], options)
 }
 
 func commitShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
