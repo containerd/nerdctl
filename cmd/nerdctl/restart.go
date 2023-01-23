@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/spf13/cobra"
 )
@@ -67,7 +68,7 @@ func restartAction(cmd *cobra.Command, args []string) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := stopContainer(ctx, found.Container, timeout); err != nil {
+			if err := containerutil.Stop(ctx, found.Container, timeout); err != nil {
 				return err
 			}
 			if err := startContainer(ctx, found.Container, false, client); err != nil {

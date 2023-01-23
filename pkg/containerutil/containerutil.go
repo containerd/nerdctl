@@ -26,12 +26,16 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/runtime/restart"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/portutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/moby/sys/signal"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/sirupsen/logrus"
 )
 
 // PrintHostPort writes to `writer` the public (HostIP:HostPort) of a given `containerPort/protocol` in a container.
@@ -173,4 +177,123 @@ func GenerateSharingPIDOpts(ctx context.Context, targetCon containerd.Container)
 		opts = append(opts, oci.WithLinuxNamespace(ns))
 	}
 	return opts, nil
+}
+
+// Stop stops `container` by sending SIGTERM. If the container is not stopped after `timeout`, it sends a SIGKILL.
+func Stop(ctx context.Context, container containerd.Container, timeout *time.Duration) error {
+	if err := UpdateExplicitlyStoppedLabel(ctx, container, true); err != nil {
+		return err
+	}
+
+	l, err := container.Labels(ctx)
+	if err != nil {
+		return err
+	}
+
+	if timeout == nil {
+		t, ok := l[labels.StopTimout]
+		if !ok {
+			// Default is 10 seconds.
+			t = "10"
+		}
+		td, err := time.ParseDuration(t + "s")
+		if err != nil {
+			return err
+		}
+		timeout = &td
+	}
+
+	task, err := container.Task(ctx, cio.Load)
+	if err != nil {
+		return err
+	}
+
+	status, err := task.Status(ctx)
+	if err != nil {
+		return err
+	}
+
+	paused := false
+
+	switch status.Status {
+	case containerd.Created, containerd.Stopped:
+		return nil
+	case containerd.Paused, containerd.Pausing:
+		paused = true
+	default:
+	}
+
+	// NOTE: ctx is main context so that it's ok to use for task.Wait().
+	exitCh, err := task.Wait(ctx)
+	if err != nil {
+		return err
+	}
+
+	if *timeout > 0 {
+		sig, err := signal.ParseSignal("SIGTERM")
+		if err != nil {
+			return err
+		}
+		if stopSignal, ok := l[containerd.StopSignalLabel]; ok {
+			sig, err = signal.ParseSignal(stopSignal)
+			if err != nil {
+				return err
+			}
+		}
+
+		if err := task.Kill(ctx, sig); err != nil {
+			return err
+		}
+
+		// signal will be sent once resume is finished
+		if paused {
+			if err := task.Resume(ctx); err != nil {
+				logrus.Warnf("Cannot unpause container %s: %s", container.ID(), err)
+			} else {
+				// no need to do it again when send sigkill signal
+				paused = false
+			}
+		}
+
+		sigtermCtx, sigtermCtxCancel := context.WithTimeout(ctx, *timeout)
+		defer sigtermCtxCancel()
+
+		err = waitContainerStop(sigtermCtx, exitCh, container.ID())
+		if err == nil {
+			return nil
+		}
+
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+	}
+
+	sig, err := signal.ParseSignal("SIGKILL")
+	if err != nil {
+		return err
+	}
+
+	if err := task.Kill(ctx, sig); err != nil {
+		return err
+	}
+
+	// signal will be sent once resume is finished
+	if paused {
+		if err := task.Resume(ctx); err != nil {
+			logrus.Warnf("Cannot unpause container %s: %s", container.ID(), err)
+		}
+	}
+	return waitContainerStop(ctx, exitCh, container.ID())
+}
+
+func waitContainerStop(ctx context.Context, exitCh <-chan containerd.ExitStatus, id string) error {
+	select {
+	case <-ctx.Done():
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("wait container %v: %w", id, err)
+		}
+		return nil
+	case status := <-exitCh:
+		return status.Error()
+	}
 }
