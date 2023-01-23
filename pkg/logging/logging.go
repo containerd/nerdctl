@@ -40,13 +40,22 @@ const (
 	MaxSize    = "max-size"
 	MaxFile    = "max-file"
 	Tag        = "tag"
+	LogDriver  = "driver"
 )
 
 type Driver interface {
 	Init(dataStore, ns, id string) error
-	PreProcess(dataStore string, config *logging.Config) error
+	PreProcess(config *logging.Config) error
 	Process(stdout <-chan string, stderr <-chan string) error
 	PostProcess() error
+}
+
+type DriverConfig struct {
+	LogPath string
+	MaxSize string
+	MaxFile string
+	Tag     string
+	Driver  string
 }
 
 type DriverFactory func(map[string]string) (Driver, error)
@@ -102,8 +111,8 @@ func init() {
 // Main is the entrypoint for the containerd runtime v2 logging plugin mode.
 //
 // Should be called only if argv1 == MagicArgv1.
-func Main(argv2 string) error {
-	fn, err := getLoggerFunc(argv2)
+func Main(driverConfig DriverConfig) error {
+	fn, err := getLoggerFunc(driverConfig)
 	if err != nil {
 		return err
 	}
@@ -139,8 +148,8 @@ func LoadLogConfig(dataStore, ns, id string) (LogConfig, error) {
 	return logConfig, nil
 }
 
-func loggingProcessAdapter(driver Driver, dataStore string, config *logging.Config) error {
-	if err := driver.PreProcess(dataStore, config); err != nil {
+func loggingProcessAdapter(driver Driver, config *logging.Config) error {
+	if err := driver.PreProcess(config); err != nil {
 		return err
 	}
 	var wg sync.WaitGroup
@@ -170,33 +179,25 @@ func loggingProcessAdapter(driver Driver, dataStore string, config *logging.Conf
 	return driver.PostProcess()
 }
 
-func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
-	if dataStore == "" {
-		return nil, errors.New("got empty data store")
-	}
+func getLoggerFunc(driverConfig DriverConfig) (logging.LoggerFunc, error) {
 	return func(_ context.Context, config *logging.Config, ready func() error) error {
 		if config.Namespace == "" || config.ID == "" {
 			return errors.New("got invalid config")
 		}
-		logConfigFilePath := LogConfigFilePath(dataStore, config.Namespace, config.ID)
-		if _, err := os.Stat(logConfigFilePath); err == nil {
-			logConfig, err := LoadLogConfig(dataStore, config.Namespace, config.ID)
-			if err != nil {
-				return err
-			}
-			driver, err := GetDriver(logConfig.Driver, logConfig.Opts)
-			if err != nil {
-				return err
-			}
-			if err := ready(); err != nil {
-				return err
-			}
-
-			return loggingProcessAdapter(driver, dataStore, config)
-		} else if !errors.Is(err, os.ErrNotExist) {
-			// the file does not exist if the container was created with nerdctl < 0.20
+		var logConfig LogConfig
+		logConfig.Opts = map[string]string{
+			"max-file": driverConfig.MaxFile,
+			"max-size": driverConfig.MaxSize,
+			"log-path": driverConfig.LogPath,
+		}
+		logConfig.Driver = driverConfig.Driver
+		driver, err := GetDriver(logConfig.Driver, logConfig.Opts)
+		if err != nil {
 			return err
 		}
-		return nil
+		if err := ready(); err != nil {
+			return err
+		}
+		return loggingProcessAdapter(driver, config)
 	}, nil
 }
