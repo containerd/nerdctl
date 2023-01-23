@@ -16,7 +16,10 @@
 
 package types
 
-import "io"
+import (
+	"io"
+	"time"
+)
 
 // KillOptions specifies options for `nerdctl (container) kill`.
 type KillOptions struct {
@@ -26,6 +29,17 @@ type KillOptions struct {
 	GOptions GlobalCommandOptions
 	// KillSignal is the signal to send to the container
 	KillSignal string
+}
+
+// ContainerStopOptions specifies options for `nerdctl (container) stop`.
+type ContainerStopOptions struct {
+	Stdout io.Writer
+	Stderr io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// Timeout specifies how long to wait after sending a SIGTERM and before sending a SIGKILL.
+	// If it's nil, the default is 10 seconds.
+	Timeout *time.Duration
 }
 
 // ContainerRemoveOptions specifies options for `nerdctl (container) rm`.
