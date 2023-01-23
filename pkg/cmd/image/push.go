@@ -45,7 +45,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Push(ctx context.Context, rawRef string, options types.ImagePushCommandOptions, stdout io.Writer) error {
+func Push(ctx context.Context, rawRef string, options types.ImagePushOptions) error {
 	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func Push(ctx context.Context, rawRef string, options types.ImagePushCommandOpti
 			logrus.WithError(err).Warnf("ipfs push failed")
 			return err
 		}
-		fmt.Fprintln(stdout, c)
+		fmt.Fprintln(options.Stdout, c)
 		return nil
 	}
 
@@ -122,7 +122,7 @@ func Push(ctx context.Context, rawRef string, options types.ImagePushCommandOpti
 	}
 
 	pushFunc := func(r remotes.Resolver) error {
-		return push.Push(ctx, client, r, stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts)
+		return push.Push(ctx, client, r, options.Stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts)
 	}
 
 	var dOpts []dockerconfigresolver.Opt

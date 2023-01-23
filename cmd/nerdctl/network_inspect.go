@@ -56,12 +56,13 @@ func networkInspectAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return network.Inspect(types.NetworkInspectCommandOptions{
+	return network.Inspect(types.NetworkInspectOptions{
 		GOptions: globalOptions,
 		Mode:     mode,
 		Format:   format,
 		Networks: args,
-	}, cmd.OutOrStdout())
+		Stdout:   cmd.OutOrStdout(),
+	})
 }
 
 func networkInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

@@ -36,25 +36,26 @@ func newNamespaceRmCommand() *cobra.Command {
 	return namespaceRmCommand
 }
 
-func processNamespaceRemoveCommandOptions(cmd *cobra.Command) (types.NamespaceRemoveCommandOptions, error) {
+func processNamespaceRemoveOptions(cmd *cobra.Command) (types.NamespaceRemoveOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.NamespaceRemoveCommandOptions{}, err
+		return types.NamespaceRemoveOptions{}, err
 	}
 	cgroup, err := cmd.Flags().GetBool("cgroup")
 	if err != nil {
-		return types.NamespaceRemoveCommandOptions{}, err
+		return types.NamespaceRemoveOptions{}, err
 	}
-	return types.NamespaceRemoveCommandOptions{
+	return types.NamespaceRemoveOptions{
 		GOptions: globalOptions,
 		CGroup:   cgroup,
+		Stdout:   cmd.OutOrStdout(),
 	}, nil
 }
 
 func namespaceRmAction(cmd *cobra.Command, args []string) error {
-	options, err := processNamespaceRemoveCommandOptions(cmd)
+	options, err := processNamespaceRemoveOptions(cmd)
 	if err != nil {
 		return err
 	}
-	return namespace.Remove(cmd.Context(), args, options, cmd.OutOrStdout())
+	return namespace.Remove(cmd.Context(), args, options)
 }

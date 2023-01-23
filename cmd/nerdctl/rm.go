@@ -50,11 +50,12 @@ func rmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	return container.Remove(cmd.Context(), args, types.ContainerRemoveCommandOptions{
+	return container.Remove(cmd.Context(), args, types.ContainerRemoveOptions{
 		GOptions: globalOptions,
 		Force:    force,
-		Volumes:  removeAnonVolumes}, cmd.OutOrStdout())
+		Volumes:  removeAnonVolumes,
+		Stdout:   cmd.OutOrStdout(),
+	})
 }
 
 func rmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

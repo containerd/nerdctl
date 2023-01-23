@@ -19,7 +19,6 @@ package network
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
@@ -29,7 +28,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Remove(ctx context.Context, options types.NetworkRemoveCommandOptions, stdout io.Writer) error {
+func Remove(ctx context.Context, options types.NetworkRemoveOptions) error {
 	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
@@ -63,7 +62,7 @@ func Remove(ctx context.Context, options types.NetworkRemoveCommandOptions, stdo
 			if err := e.RemoveNetwork(found.Network); err != nil {
 				return err
 			}
-			fmt.Fprintln(stdout, found.Req)
+			fmt.Fprintln(options.Stdout, found.Req)
 			return nil
 		},
 	}

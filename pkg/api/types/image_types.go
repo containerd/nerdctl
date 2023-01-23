@@ -16,8 +16,10 @@
 
 package types
 
-// ImageListCommandOptions specifies options for `nerdctl image ls`.
-type ImageListCommandOptions struct {
+import "io"
+
+// ImageListOptions specifies options for `nerdctl image ls`.
+type ImageListOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// Quiet only show numeric IDs
@@ -38,8 +40,9 @@ type ImageListCommandOptions struct {
 	All bool
 }
 
-// ImageConvertCommandOptions specifies options for `nerdctl image convert`.
-type ImageConvertCommandOptions struct {
+// ImageConvertOptions specifies options for `nerdctl image convert`.
+type ImageConvertOptions struct {
+	Stdout   io.Writer
 	GOptions GlobalCommandOptions
 
 	// #region generic flags
@@ -111,8 +114,9 @@ type ImageConvertCommandOptions struct {
 
 }
 
-// ImageCryptCommandOptions specifies options for `nerdctl image encrypt` and `nerdctl image decrypt`.
-type ImageCryptCommandOptions struct {
+// ImageCryptOptions specifies options for `nerdctl image encrypt` and `nerdctl image decrypt`.
+type ImageCryptOptions struct {
+	Stdout   io.Writer
 	GOptions GlobalCommandOptions
 	// Platforms convert content for a specific platform
 	Platforms []string
@@ -130,8 +134,9 @@ type ImageCryptCommandOptions struct {
 	Recipients []string
 }
 
-// ImageInspectCommandOptions specifies options for `nerdctl image inspect`.
-type ImageInspectCommandOptions struct {
+// ImageInspectOptions specifies options for `nerdctl image inspect`.
+type ImageInspectOptions struct {
+	Stdout   io.Writer
 	GOptions GlobalCommandOptions
 	// Mode Inspect mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output
 	Mode string
@@ -141,8 +146,9 @@ type ImageInspectCommandOptions struct {
 	Platform string
 }
 
-// ImagePushCommandOptions specifies options for `nerdctl (image) push`.
-type ImagePushCommandOptions struct {
+// ImagePushOptions specifies options for `nerdctl (image) push`.
+type ImagePushOptions struct {
+	Stdout   io.Writer
 	GOptions GlobalCommandOptions
 	// Platforms convert content for a specific platform
 	Platforms []string
@@ -163,8 +169,8 @@ type ImagePushCommandOptions struct {
 	AllowNondistributableArtifacts bool
 }
 
-// ImageTagCommandOptions specifies options for `nerdctl (image) tag`.
-type ImageTagCommandOptions struct {
+// ImageTagOptions specifies options for `nerdctl (image) tag`.
+type ImageTagOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// Source is the image to be referenced.

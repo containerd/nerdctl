@@ -19,7 +19,6 @@ package container
 import (
 	"context"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
@@ -30,7 +29,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 )
 
-func Inspect(ctx context.Context, options types.ContainerInspectCommandOptions, stdout io.Writer) error {
+func Inspect(ctx context.Context, options types.ContainerInspectOptions) error {
 	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
@@ -59,7 +58,7 @@ func Inspect(ctx context.Context, options types.ContainerInspectCommandOptions, 
 		return fmt.Errorf("%d errors: %v", len(errs), errs)
 	}
 
-	return formatter.FormatSlice(options.Format, stdout, f.entries)
+	return formatter.FormatSlice(options.Format, options.Stdout, f.entries)
 }
 
 type containerInspector struct {

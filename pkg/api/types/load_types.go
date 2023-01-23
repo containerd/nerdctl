@@ -16,8 +16,12 @@
 
 package types
 
-// LoadCommandOptions specifies options for `nerdctl (image) load`.
-type LoadCommandOptions struct {
+import "io"
+
+// ImageLoadOptions specifies options for `nerdctl (image) load`.
+type ImageLoadOptions struct {
+	Stdout   io.Writer
+	Stdin    io.Reader
 	GOptions GlobalCommandOptions
 	// Input read from tar archive file, instead of STDIN
 	Input string

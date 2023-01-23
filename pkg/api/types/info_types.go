@@ -16,8 +16,12 @@
 
 package types
 
-// InfoCommandOptions specifies options for `nerdctl (system) info`.
-type InfoCommandOptions struct {
+import "io"
+
+// SystemInfoOptions specifies options for `nerdctl (system) info`.
+type SystemInfoOptions struct {
+	Stdout io.Writer
+	Stderr io.Writer
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// Information mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output

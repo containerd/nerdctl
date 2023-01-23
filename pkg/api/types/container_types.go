@@ -16,16 +16,21 @@
 
 package types
 
-// KillCommandOptions specifies options for `nerdctl (container) kill`.
-type KillCommandOptions struct {
+import "io"
+
+// KillOptions specifies options for `nerdctl (container) kill`.
+type KillOptions struct {
+	Stdout io.Writer
+	Stderr io.Writer
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// KillSignal is the signal to send to the container
 	KillSignal string
 }
 
-// ContainerRemoveCommandOptions specifies options for `nerdctl (container) rm`.
-type ContainerRemoveCommandOptions struct {
+// ContainerRemoveOptions specifies options for `nerdctl (container) rm`.
+type ContainerRemoveOptions struct {
+	Stdout io.Writer
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// Force enables to remove a running|paused|unknown container (uses SIGKILL)
@@ -34,8 +39,9 @@ type ContainerRemoveCommandOptions struct {
 	Volumes bool
 }
 
-// ContainerInspectCommandOptions specifies options for `nerdctl container inspect`
-type ContainerInspectCommandOptions struct {
+// ContainerInspectOptions specifies options for `nerdctl container inspect`
+type ContainerInspectOptions struct {
+	Stdout io.Writer
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// Format of the output

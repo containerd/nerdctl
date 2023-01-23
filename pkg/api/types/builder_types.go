@@ -16,8 +16,13 @@
 
 package types
 
-// BuildCommandOptions specifies options for `nerdctl (image/builder) build`.
-type BuildCommandOptions struct {
+import "io"
+
+// BuilderBuildOptions specifies options for `nerdctl (image/builder) build`.
+type BuilderBuildOptions struct {
+	Stdin  io.Reader
+	Stdout io.Writer
+	Stderr io.Writer
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
 	// BuildKitHost is the buildkit host

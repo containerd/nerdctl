@@ -19,7 +19,6 @@ package network
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/formatter"
@@ -28,7 +27,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil"
 )
 
-func Inspect(options types.NetworkInspectCommandOptions, stdout io.Writer) error {
+func Inspect(options types.NetworkInspectOptions) error {
 	e, err := netutil.NewCNIEnv(options.GOptions.CNIPath, options.GOptions.CNINetConfPath)
 	if err != nil {
 		return err
@@ -68,5 +67,5 @@ func Inspect(options types.NetworkInspectCommandOptions, stdout io.Writer) error
 			return fmt.Errorf("unknown mode %q", options.Mode)
 		}
 	}
-	return formatter.FormatSlice(options.Format, stdout, result)
+	return formatter.FormatSlice(options.Format, options.Stdout, result)
 }

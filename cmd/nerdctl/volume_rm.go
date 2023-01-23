@@ -38,27 +38,28 @@ func newVolumeRmCommand() *cobra.Command {
 	return volumeRmCommand
 }
 
-func processVolumeRmCommandOptions(cmd *cobra.Command) (types.VolumeRemoveCommandOptions, error) {
+func processVolumeRmOptions(cmd *cobra.Command) (types.VolumeRemoveOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.VolumeRemoveCommandOptions{}, err
+		return types.VolumeRemoveOptions{}, err
 	}
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
-		return types.VolumeRemoveCommandOptions{}, err
+		return types.VolumeRemoveOptions{}, err
 	}
-	return types.VolumeRemoveCommandOptions{
+	return types.VolumeRemoveOptions{
 		GOptions: globalOptions,
 		Force:    force,
+		Stdout:   cmd.OutOrStdout(),
 	}, nil
 }
 
 func volumeRmAction(cmd *cobra.Command, args []string) error {
-	options, err := processVolumeRmCommandOptions(cmd)
+	options, err := processVolumeRmOptions(cmd)
 	if err != nil {
 		return err
 	}
-	return volume.Remove(cmd.Context(), args, options, cmd.OutOrStdout())
+	return volume.Remove(cmd.Context(), args, options)
 }
 
 func volumeRmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

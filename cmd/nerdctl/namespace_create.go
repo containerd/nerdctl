@@ -36,16 +36,16 @@ func newNamespaceCreateCommand() *cobra.Command {
 	return namespaceCreateCommand
 }
 
-func processNamespaceCreateCommandOption(cmd *cobra.Command) (types.NamespaceCreateCommandOptions, error) {
+func processNamespaceCreateCommandOption(cmd *cobra.Command) (types.NamespaceCreateOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.NamespaceCreateCommandOptions{}, err
+		return types.NamespaceCreateOptions{}, err
 	}
 	labels, err := cmd.Flags().GetStringArray("label")
 	if err != nil {
-		return types.NamespaceCreateCommandOptions{}, err
+		return types.NamespaceCreateOptions{}, err
 	}
-	return types.NamespaceCreateCommandOptions{
+	return types.NamespaceCreateOptions{
 		GOptions: globalOptions,
 		Labels:   labels,
 	}, nil

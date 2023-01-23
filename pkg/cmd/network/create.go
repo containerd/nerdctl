@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil"
 )
 
-func Create(options types.NetworkCreateCommandOptions, stdout io.Writer) error {
+func Create(options types.NetworkCreateOptions, stdout io.Writer) error {
 	if options.CreateOptions.Subnet == "" {
 		if options.CreateOptions.Gateway != "" || options.CreateOptions.IPRange != "" {
 			return fmt.Errorf("cannot set gateway or ip-range without subnet, specify --subnet manually")

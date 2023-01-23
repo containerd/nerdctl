@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"syscall"
 
@@ -61,8 +60,8 @@ func NewStatusError(id string, status containerd.ProcessStatus) error {
 }
 
 // Remove removes a list of `containers`.
-func Remove(ctx context.Context, containers []string, opt types.ContainerRemoveCommandOptions, out io.Writer) error {
-	client, ctx, cancel, err := clientutil.NewClient(ctx, opt.GOptions.Namespace, opt.GOptions.Address)
+func Remove(ctx context.Context, containers []string, options types.ContainerRemoveOptions) error {
+	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
@@ -74,13 +73,13 @@ func Remove(ctx context.Context, containers []string, opt types.ContainerRemoveC
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := RemoveContainer(ctx, found.Container, opt.GOptions, opt.Force, opt.Volumes); err != nil {
+			if err := RemoveContainer(ctx, found.Container, options.GOptions, options.Force, options.Volumes); err != nil {
 				if errors.As(err, &ErrContainerStatus{}) {
 					err = fmt.Errorf("%s. unpause/stop container first or force removal", err)
 				}
 				return err
 			}
-			_, err = fmt.Fprintf(out, "%s\n", found.Req)
+			_, err = fmt.Fprintf(options.Stdout, "%s\n", found.Req)
 			return err
 		},
 	}
@@ -90,7 +89,7 @@ func Remove(ctx context.Context, containers []string, opt types.ContainerRemoveC
 			err = fmt.Errorf("no such container %s", req)
 		}
 		if err != nil {
-			if opt.Force {
+			if options.Force {
 				logrus.Error(err)
 			} else {
 				return err

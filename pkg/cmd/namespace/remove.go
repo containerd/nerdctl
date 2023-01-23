@@ -19,7 +19,6 @@ package namespace
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
@@ -27,7 +26,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/clientutil"
 )
 
-func Remove(ctx context.Context, deletedNamespaces []string, options types.NamespaceRemoveCommandOptions, stdout io.Writer) error {
+func Remove(ctx context.Context, deletedNamespaces []string, options types.NamespaceRemoveOptions) error {
 	var exitErr error
 	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
@@ -49,7 +48,7 @@ func Remove(ctx context.Context, deletedNamespaces []string, options types.Names
 				continue
 			}
 		}
-		_, err := fmt.Fprintf(stdout, "%s\n", target)
+		_, err := fmt.Fprintf(options.Stdout, "%s\n", target)
 		return err
 	}
 	return exitErr

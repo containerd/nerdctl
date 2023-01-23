@@ -42,32 +42,33 @@ func newInfoCommand() *cobra.Command {
 	return infoCommand
 }
 
-func processInfoCommandOptions(cmd *cobra.Command) (types.InfoCommandOptions, error) {
+func processInfoOptions(cmd *cobra.Command) (types.SystemInfoOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.InfoCommandOptions{}, err
+		return types.SystemInfoOptions{}, err
 	}
 
 	mode, err := cmd.Flags().GetString("mode")
 	if err != nil {
-		return types.InfoCommandOptions{}, err
+		return types.SystemInfoOptions{}, err
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
-		return types.InfoCommandOptions{}, err
+		return types.SystemInfoOptions{}, err
 	}
-
-	return types.InfoCommandOptions{
+	return types.SystemInfoOptions{
 		GOptions: globalOptions,
 		Mode:     mode,
 		Format:   format,
+		Stdout:   cmd.OutOrStdout(),
+		Stderr:   cmd.OutOrStderr(),
 	}, nil
 }
 
 func infoAction(cmd *cobra.Command, args []string) error {
-	options, err := processInfoCommandOptions(cmd)
+	options, err := processInfoOptions(cmd)
 	if err != nil {
 		return err
 	}
-	return info.Info(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), options)
+	return info.Info(cmd.Context(), options)
 }

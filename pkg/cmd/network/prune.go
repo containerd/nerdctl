@@ -19,7 +19,6 @@ package network
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
@@ -28,7 +27,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Prune(ctx context.Context, options types.NetworkPruneCommandOptions, stdin io.Reader, stdout io.Writer) error {
+func Prune(ctx context.Context, options types.NetworkPruneOptions) error {
 	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
@@ -69,11 +68,11 @@ func Prune(ctx context.Context, options types.NetworkPruneCommandOptions, stdin 
 	}
 
 	if len(removedNetworks) > 0 {
-		fmt.Fprintln(stdout, "Deleted Networks:")
+		fmt.Fprintln(options.Stdout, "Deleted Networks:")
 		for _, name := range removedNetworks {
-			fmt.Fprintln(stdout, name)
+			fmt.Fprintln(options.Stdout, name)
 		}
-		fmt.Fprintln(stdout, "")
+		fmt.Fprintln(options.Stdout, "")
 	}
 	return nil
 }

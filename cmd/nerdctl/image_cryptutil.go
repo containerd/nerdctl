@@ -51,43 +51,43 @@ func registerImgcryptFlags(cmd *cobra.Command, encrypt bool) {
 	}
 }
 
-func processImgCryptCommandOptions(cmd *cobra.Command, args []string, encrypt bool) (types.ImageCryptCommandOptions, error) {
+func processImgCryptOptions(cmd *cobra.Command, args []string, encrypt bool) (types.ImageCryptOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.ImageCryptCommandOptions{}, err
+		return types.ImageCryptOptions{}, err
 	}
 	platforms, err := cmd.Flags().GetStringSlice("platform")
 	if err != nil {
-		return types.ImageCryptCommandOptions{}, err
+		return types.ImageCryptOptions{}, err
 	}
 	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
 	if err != nil {
-		return types.ImageCryptCommandOptions{}, err
+		return types.ImageCryptOptions{}, err
 	}
 	gpgHomeDir, err := cmd.Flags().GetString("gpg-homedir")
 	if err != nil {
-		return types.ImageCryptCommandOptions{}, err
+		return types.ImageCryptOptions{}, err
 	}
 	gpgVersion, err := cmd.Flags().GetString("gpg-version")
 	if err != nil {
-		return types.ImageCryptCommandOptions{}, err
+		return types.ImageCryptOptions{}, err
 	}
 	keys, err := cmd.Flags().GetStringSlice("key")
 	if err != nil {
-		return types.ImageCryptCommandOptions{}, err
+		return types.ImageCryptOptions{}, err
 	}
 	decRecipients, err := cmd.Flags().GetStringSlice("dec-recipient")
 	if err != nil {
-		return types.ImageCryptCommandOptions{}, err
+		return types.ImageCryptOptions{}, err
 	}
 	var recipients []string
 	if encrypt {
 		recipients, err = cmd.Flags().GetStringSlice("recipient")
 		if err != nil {
-			return types.ImageCryptCommandOptions{}, err
+			return types.ImageCryptOptions{}, err
 		}
 	}
-	return types.ImageCryptCommandOptions{
+	return types.ImageCryptOptions{
 		GOptions:      globalOptions,
 		Platforms:     platforms,
 		AllPlatforms:  allPlatforms,
@@ -96,18 +96,19 @@ func processImgCryptCommandOptions(cmd *cobra.Command, args []string, encrypt bo
 		Keys:          keys,
 		DecRecipients: decRecipients,
 		Recipients:    recipients,
-	}, err
+		Stdout:        cmd.OutOrStdout(),
+	}, nil
 }
 
 func getImgcryptAction(encrypt bool) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		options, err := processImgCryptCommandOptions(cmd, args, encrypt)
+		options, err := processImgCryptOptions(cmd, args, encrypt)
 		if err != nil {
 			return err
 		}
 		srcRawRef := args[0]
 		targetRawRef := args[1]
-		return image.Crypt(cmd.Context(), options, cmd.OutOrStdout(), srcRawRef, targetRawRef, encrypt)
+		return image.Crypt(cmd.Context(), srcRawRef, targetRawRef, encrypt, options)
 	}
 }
 

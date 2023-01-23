@@ -45,28 +45,30 @@ func newLoadCommand() *cobra.Command {
 	return loadCommand
 }
 
-func processLoadCommandFlags(cmd *cobra.Command) (types.LoadCommandOptions, error) {
+func processLoadCommandFlags(cmd *cobra.Command) (types.ImageLoadOptions, error) {
 	input, err := cmd.Flags().GetString("input")
 	if err != nil {
-		return types.LoadCommandOptions{}, err
+		return types.ImageLoadOptions{}, err
 	}
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.LoadCommandOptions{}, err
+		return types.ImageLoadOptions{}, err
 	}
 	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
 	if err != nil {
-		return types.LoadCommandOptions{}, err
+		return types.ImageLoadOptions{}, err
 	}
 	platform, err := cmd.Flags().GetStringSlice("platform")
 	if err != nil {
-		return types.LoadCommandOptions{}, err
+		return types.ImageLoadOptions{}, err
 	}
-	return types.LoadCommandOptions{
+	return types.ImageLoadOptions{
 		GOptions:     globalOptions,
 		Input:        input,
 		Platform:     platform,
 		AllPlatforms: allPlatforms,
+		Stdout:       cmd.OutOrStdout(),
+		Stdin:        cmd.InOrStdin(),
 	}, nil
 }
 
@@ -75,5 +77,5 @@ func loadAction(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	return image.Load(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout(), options)
+	return image.Load(cmd.Context(), options)
 }

@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images/converter"
@@ -33,7 +32,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-func Crypt(ctx context.Context, options types.ImageCryptCommandOptions, stdout io.Writer, srcRawRef, targetRawRef string, encrypt bool) error {
+func Crypt(ctx context.Context, srcRawRef, targetRawRef string, encrypt bool, options types.ImageCryptOptions) error {
 	var convertOpts = []converter.Opt{}
 	if srcRawRef == "" || targetRawRef == "" {
 		return errors.New("src and target image need to be specified")
@@ -101,12 +100,12 @@ func Crypt(ctx context.Context, options types.ImageCryptCommandOptions, stdout i
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(stdout, newImg.Target.Digest.String())
+	fmt.Fprintln(options.Stdout, newImg.Target.Digest.String())
 	return nil
 }
 
 // parseImgcryptFlags corresponds to https://github.com/containerd/imgcrypt/blob/v1.1.2/cmd/ctr/commands/images/crypt_utils.go#L244-L252
-func parseImgcryptFlags(options types.ImageCryptCommandOptions, encrypt bool) (parsehelpers.EncArgs, error) {
+func parseImgcryptFlags(options types.ImageCryptOptions, encrypt bool) (parsehelpers.EncArgs, error) {
 	var a parsehelpers.EncArgs
 
 	a.GPGHomedir = options.GpgHomeDir

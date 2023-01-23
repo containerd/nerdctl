@@ -54,10 +54,10 @@ func networkLsAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	options := types.NetworkListCommandOptions{
+	return network.List(cmd.Context(), types.NetworkListOptions{
 		GOptions: globalOptions,
 		Quiet:    quiet,
 		Format:   format,
-	}
-	return network.List(cmd.Context(), options, cmd.OutOrStdout())
+		Stdout:   cmd.OutOrStdout(),
+	})
 }

@@ -16,15 +16,19 @@
 
 package types
 
-// VolumeCreateCommandOptions specifies options for `nerdctl volume create`.
-type VolumeCreateCommandOptions struct {
+import "io"
+
+// VolumeCreateOptions specifies options for `nerdctl volume create`.
+type VolumeCreateOptions struct {
+	Stdout   io.Writer
 	GOptions GlobalCommandOptions
 	// Labels are the volume labels
 	Labels []string
 }
 
-// VolumeInspectCommandOptions specifies options for `nerdctl volume inspect`.
-type VolumeInspectCommandOptions struct {
+// VolumeInspectOptions specifies options for `nerdctl volume inspect`.
+type VolumeInspectOptions struct {
+	Stdout   io.Writer
 	GOptions GlobalCommandOptions
 	// Format the output using the given go template
 	Format string
@@ -32,8 +36,9 @@ type VolumeInspectCommandOptions struct {
 	Size bool
 }
 
-// VolumeListCommandOptions specifies options for `nerdctl volume ls`.
-type VolumeListCommandOptions struct {
+// VolumeListOptions specifies options for `nerdctl volume ls`.
+type VolumeListOptions struct {
+	Stdout   io.Writer
 	GOptions GlobalCommandOptions
 	// Only display volume names
 	Quiet bool
@@ -45,15 +50,18 @@ type VolumeListCommandOptions struct {
 	Filters []string
 }
 
-// VolumePruneCommandOptions specifies options for `nerdctl volume prune`.
-type VolumePruneCommandOptions struct {
+// VolumePruneOptions specifies options for `nerdctl volume prune`.
+type VolumePruneOptions struct {
+	Stdout   io.Writer
+	Stdin    io.Reader
 	GOptions GlobalCommandOptions
 	// Do not prompt for confirmation
 	Force bool
 }
 
-// VolumeRemoveCommandOptions specifies options for `nerdctl volume rm`.
-type VolumeRemoveCommandOptions struct {
+// VolumeRemoveOptions specifies options for `nerdctl volume rm`.
+type VolumeRemoveOptions struct {
+	Stdout   io.Writer
 	GOptions GlobalCommandOptions
 	// Force the removal of one or more volumes
 	Force bool

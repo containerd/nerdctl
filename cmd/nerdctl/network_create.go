@@ -97,7 +97,7 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 	}
 	labels = strutil.DedupeStrSlice(labels)
 
-	return network.Create(types.NetworkCreateCommandOptions{
+	return network.Create(types.NetworkCreateOptions{
 		GOptions: globalOptions,
 		CreateOptions: netutil.CreateOptions{
 			Name:        name,

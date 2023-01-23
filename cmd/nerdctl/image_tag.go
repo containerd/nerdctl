@@ -41,7 +41,7 @@ func tagAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return image.Tag(cmd.Context(), types.ImageTagCommandOptions{
+	return image.Tag(cmd.Context(), types.ImageTagOptions{
 		GOptions: globalOptions,
 		Source:   args[0],
 		Target:   args[1],

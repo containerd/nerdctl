@@ -60,44 +60,44 @@ func newPushCommand() *cobra.Command {
 	return pushCommand
 }
 
-func processImagePushCommandOptions(cmd *cobra.Command) (types.ImagePushCommandOptions, error) {
+func processImagePushOptions(cmd *cobra.Command) (types.ImagePushOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.ImagePushCommandOptions{}, err
+		return types.ImagePushOptions{}, err
 	}
 	platform, err := cmd.Flags().GetStringSlice("platform")
 	if err != nil {
-		return types.ImagePushCommandOptions{}, err
+		return types.ImagePushOptions{}, err
 	}
 	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
 	if err != nil {
-		return types.ImagePushCommandOptions{}, err
+		return types.ImagePushOptions{}, err
 	}
 	estargz, err := cmd.Flags().GetBool("estargz")
 	if err != nil {
-		return types.ImagePushCommandOptions{}, err
+		return types.ImagePushOptions{}, err
 	}
 	ipfsEnsureImage, err := cmd.Flags().GetBool("ipfs-ensure-image")
 	if err != nil {
-		return types.ImagePushCommandOptions{}, err
+		return types.ImagePushOptions{}, err
 	}
 	ipfsAddress, err := cmd.Flags().GetString("ipfs-address")
 	if err != nil {
-		return types.ImagePushCommandOptions{}, err
+		return types.ImagePushOptions{}, err
 	}
 	sign, err := cmd.Flags().GetString("sign")
 	if err != nil {
-		return types.ImagePushCommandOptions{}, err
+		return types.ImagePushOptions{}, err
 	}
 	cosignKey, err := cmd.Flags().GetString("cosign-key")
 	if err != nil {
-		return types.ImagePushCommandOptions{}, err
+		return types.ImagePushOptions{}, err
 	}
 	allowNonDist, err := cmd.Flags().GetBool(allowNonDistFlag)
 	if err != nil {
-		return types.ImagePushCommandOptions{}, err
+		return types.ImagePushOptions{}, err
 	}
-	return types.ImagePushCommandOptions{
+	return types.ImagePushOptions{
 		GOptions:                       globalOptions,
 		Platforms:                      platform,
 		AllPlatforms:                   allPlatforms,
@@ -107,16 +107,17 @@ func processImagePushCommandOptions(cmd *cobra.Command) (types.ImagePushCommandO
 		Sign:                           sign,
 		CosignKey:                      cosignKey,
 		AllowNondistributableArtifacts: allowNonDist,
+		Stdout:                         cmd.OutOrStdout(),
 	}, nil
 }
 
 func pushAction(cmd *cobra.Command, args []string) error {
-	options, err := processImagePushCommandOptions(cmd)
+	options, err := processImagePushOptions(cmd)
 	if err != nil {
 		return err
 	}
 	rawRef := args[0]
-	return image.Push(cmd.Context(), rawRef, options, cmd.OutOrStdout())
+	return image.Push(cmd.Context(), rawRef, options)
 }
 
 func pushShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

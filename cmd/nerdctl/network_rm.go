@@ -44,10 +44,11 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return network.Remove(cmd.Context(), types.NetworkRemoveCommandOptions{
+	return network.Remove(cmd.Context(), types.NetworkRemoveOptions{
 		GOptions: globalOptions,
 		Networks: args,
-	}, cmd.OutOrStdout())
+		Stdout:   cmd.OutOrStdout(),
+	})
 }
 
 func networkRmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

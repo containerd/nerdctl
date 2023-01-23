@@ -35,25 +35,28 @@ func newVolumePruneCommand() *cobra.Command {
 	return volumePruneCommand
 }
 
-func processVolumePruneCommandOptions(cmd *cobra.Command) (types.VolumePruneCommandOptions, error) {
+func processVolumePruneOptions(cmd *cobra.Command) (types.VolumePruneOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.VolumePruneCommandOptions{}, err
+		return types.VolumePruneOptions{}, err
 	}
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
-		return types.VolumePruneCommandOptions{}, err
+		return types.VolumePruneOptions{}, err
 	}
-	return types.VolumePruneCommandOptions{
+	options := types.VolumePruneOptions{
 		GOptions: globalOptions,
 		Force:    force,
-	}, nil
+		Stdout:   cmd.OutOrStdout(),
+		Stdin:    cmd.InOrStdin(),
+	}
+	return options, nil
 }
 
 func volumePruneAction(cmd *cobra.Command, _ []string) error {
-	options, err := processVolumePruneCommandOptions(cmd)
+	options, err := processVolumePruneOptions(cmd)
 	if err != nil {
 		return err
 	}
-	return volume.Prune(cmd.Context(), options, cmd.InOrStdin(), cmd.OutOrStdout())
+	return volume.Prune(cmd.Context(), options)
 }

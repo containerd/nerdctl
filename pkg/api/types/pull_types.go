@@ -16,8 +16,12 @@
 
 package types
 
-// PullCommandOptions specifies options for `nerdctl (image) pull`.
-type PullCommandOptions struct {
+import "io"
+
+// ImagePullOptions specifies options for `nerdctl (image) pull`.
+type ImagePullOptions struct {
+	Stdout   io.Writer
+	Stderr   io.Writer
 	GOptions GlobalCommandOptions
 	// Unpack the image for the current single platform (auto/true/false)
 	Unpack string

@@ -46,7 +46,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Convert(ctx context.Context, srcRawRef, targetRawRef string, options types.ImageConvertCommandOptions, stdout io.Writer) error {
+func Convert(ctx context.Context, srcRawRef, targetRawRef string, options types.ImageConvertOptions) error {
 	var (
 		convertOpts = []converter.Opt{}
 	)
@@ -200,10 +200,10 @@ func Convert(ctx context.Context, srcRawRef, targetRawRef string, options types.
 		}
 		res.ExtraImages = append(res.ExtraImages, finimg.Name+"@"+finimg.Target.Digest.String())
 	}
-	return printConvertedImage(stdout, options, res)
+	return printConvertedImage(options.Stdout, options, res)
 }
 
-func getESGZConverter(options types.ImageConvertCommandOptions) (convertFunc converter.ConvertFunc, finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error), _ error) {
+func getESGZConverter(options types.ImageConvertOptions) (convertFunc converter.ConvertFunc, finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error), _ error) {
 	if options.EstargzExternalToc && !options.GOptions.Experimental {
 		return nil, nil, fmt.Errorf("estargz-external-toc requires experimental mode to be enabled")
 	}
@@ -234,7 +234,7 @@ func getESGZConverter(options types.ImageConvertCommandOptions) (convertFunc con
 	return convertFunc, finalize, nil
 }
 
-func getESGZConvertOpts(options types.ImageConvertCommandOptions) ([]estargz.Option, error) {
+func getESGZConvertOpts(options types.ImageConvertOptions) ([]estargz.Option, error) {
 
 	esgzOpts := []estargz.Option{
 		estargz.WithCompressionLevel(options.EstargzCompressionLevel),
@@ -259,7 +259,7 @@ func getESGZConvertOpts(options types.ImageConvertCommandOptions) ([]estargz.Opt
 	return esgzOpts, nil
 }
 
-func getZstdchunkedConverter(options types.ImageConvertCommandOptions) (converter.ConvertFunc, error) {
+func getZstdchunkedConverter(options types.ImageConvertOptions) (converter.ConvertFunc, error) {
 
 	esgzOpts := []estargz.Option{
 		estargz.WithChunkSize(options.ZstdChunkedChunkSize),
@@ -282,7 +282,7 @@ func getZstdchunkedConverter(options types.ImageConvertCommandOptions) (converte
 	return zstdchunkedconvert.LayerConvertFuncWithCompressionLevel(zstd.EncoderLevelFromZstd(options.ZstdChunkedCompressionLevel), esgzOpts...), nil
 }
 
-func getNydusConvertOpts(options types.ImageConvertCommandOptions) (*nydusconvert.PackOption, error) {
+func getNydusConvertOpts(options types.ImageConvertOptions) (*nydusconvert.PackOption, error) {
 	workDir := options.NydusWorkDir
 	if workDir == "" {
 		var err error
@@ -303,7 +303,7 @@ func getNydusConvertOpts(options types.ImageConvertCommandOptions) (*nydusconver
 	}, nil
 }
 
-func getOBDConvertOpts(options types.ImageConvertCommandOptions) ([]overlaybdconvert.Option, error) {
+func getOBDConvertOpts(options types.ImageConvertOptions) ([]overlaybdconvert.Option, error) {
 	obdOpts := []overlaybdconvert.Option{
 		overlaybdconvert.WithFsType(options.OverlayFsType),
 		overlaybdconvert.WithDbstr(options.OverlaydbDBStr),
@@ -333,7 +333,7 @@ func readPathsFromRecordFile(filename string) ([]string, error) {
 	return paths, nil
 }
 
-func printConvertedImage(stdout io.Writer, options types.ImageConvertCommandOptions, img converterutil.ConvertedImageInfo) error {
+func printConvertedImage(stdout io.Writer, options types.ImageConvertOptions, img converterutil.ConvertedImageInfo) error {
 	switch options.Format {
 	case "json":
 		b, err := json.MarshalIndent(img, "", "    ")

@@ -42,8 +42,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Build(ctx context.Context, options *types.BuildCommandOptions, stdin io.Reader, stdout, stderr io.Writer) error {
-	buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, err := generateBuildctlArgs(ctx, stdin, options)
+func Build(ctx context.Context, options types.BuilderBuildOptions) error {
+	buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, err := generateBuildctlArgs(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -62,10 +62,10 @@ func Build(ctx context.Context, options *types.BuildCommandOptions, stdin io.Rea
 			return err
 		}
 	} else {
-		buildctlCmd.Stdout = stdout
+		buildctlCmd.Stdout = options.Stdout
 	}
 	if !options.Quiet {
-		buildctlCmd.Stderr = stderr
+		buildctlCmd.Stderr = options.Stderr
 	}
 
 	if err := buildctlCmd.Start(); err != nil {
@@ -77,7 +77,7 @@ func Build(ctx context.Context, options *types.BuildCommandOptions, stdin io.Rea
 		if err != nil {
 			return err
 		}
-		if err = loadImage(ctx, buildctlStdout, options.GOptions.Namespace, options.GOptions.Address, options.GOptions.Snapshotter, stdout, platMC, options.Quiet); err != nil {
+		if err = loadImage(ctx, buildctlStdout, options.GOptions.Namespace, options.GOptions.Address, options.GOptions.Snapshotter, options.Stdout, platMC, options.Quiet); err != nil {
 			return err
 		}
 	}
@@ -171,7 +171,7 @@ func loadImage(ctx context.Context, in io.Reader, namespace, address, snapshotte
 	return nil
 }
 
-func generateBuildctlArgs(ctx context.Context, stdin io.Reader, options *types.BuildCommandOptions) (buildCtlBinary string,
+func generateBuildctlArgs(ctx context.Context, options types.BuilderBuildOptions) (buildCtlBinary string,
 	buildctlArgs []string, needsLoading bool, metaFile string, tags []string, cleanup func(), err error) {
 
 	buildctlBinary, err := buildkitutil.BuildctlBinary()
@@ -251,7 +251,7 @@ func generateBuildctlArgs(ctx context.Context, stdin io.Reader, options *types.B
 		if options.File == "-" {
 			// Super Warning: this is a special trick to update the dir variable, Don't move this line!!!!!!
 			var err error
-			dir, err = buildkitutil.WriteTempDockerfile(stdin)
+			dir, err = buildkitutil.WriteTempDockerfile(options.Stdin)
 			if err != nil {
 				return "", nil, false, "", nil, nil, err
 			}

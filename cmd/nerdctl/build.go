@@ -68,91 +68,91 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 	return buildCommand
 }
 
-func processBuildCommandFlag(cmd *cobra.Command, args []string) (*types.BuildCommandOptions, error) {
+func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBuildOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	buildKitHost, err := getBuildkitHost(cmd, globalOptions.Namespace)
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	platform, err := cmd.Flags().GetStringSlice("platform")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	platform = strutil.DedupeStrSlice(platform)
 	if len(args) < 1 {
-		return nil, errors.New("context needs to be specified")
+		return types.BuilderBuildOptions{}, errors.New("context needs to be specified")
 	}
 	buildContext := args[0]
 	if buildContext == "-" || strings.Contains(buildContext, "://") {
-		return nil, fmt.Errorf("unsupported build context: %q", buildContext)
+		return types.BuilderBuildOptions{}, fmt.Errorf("unsupported build context: %q", buildContext)
 	}
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	output, err := cmd.Flags().GetString("output")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	tagValue, err := cmd.Flags().GetStringArray("tag")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	progress, err := cmd.Flags().GetString("progress")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	filename, err := cmd.Flags().GetString("file")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	target, err := cmd.Flags().GetString("target")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	buildArgs, err := cmd.Flags().GetStringArray("build-arg")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	label, err := cmd.Flags().GetStringArray("label")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	noCache, err := cmd.Flags().GetBool("no-cache")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	secret, err := cmd.Flags().GetStringArray("secret")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	ssh, err := cmd.Flags().GetStringArray("ssh")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	cacheFrom, err := cmd.Flags().GetStringArray("cache-from")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	cacheTo, err := cmd.Flags().GetStringArray("cache-to")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	rm, err := cmd.Flags().GetBool("rm")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	iidfile, err := cmd.Flags().GetString("iidfile")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
-		return nil, err
+		return types.BuilderBuildOptions{}, err
 	}
-	result := &types.BuildCommandOptions{
+	return types.BuilderBuildOptions{
 		GOptions:     globalOptions,
 		BuildKitHost: buildKitHost,
 		BuildContext: buildContext,
@@ -172,8 +172,10 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (*types.BuildCom
 		IidFile:      iidfile,
 		Quiet:        quiet,
 		Platform:     platform,
-	}
-	return result, nil
+		Stdout:       cmd.OutOrStdout(),
+		Stderr:       cmd.OutOrStderr(),
+		Stdin:        cmd.InOrStdin(),
+	}, nil
 }
 
 func getBuildkitHost(cmd *cobra.Command, namespace string) (string, error) {
@@ -196,7 +198,7 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := builder.Build(cmd.Context(), options, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+	if err := builder.Build(cmd.Context(), options); err != nil {
 		return err
 	}
 	return nil

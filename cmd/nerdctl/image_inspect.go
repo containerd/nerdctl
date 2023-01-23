@@ -50,40 +50,41 @@ func newImageInspectCommand() *cobra.Command {
 	return imageInspectCommand
 }
 
-func processImageInspectCommandOptions(cmd *cobra.Command, platform *string) (types.ImageInspectCommandOptions, error) {
+func processImageInspectOptions(cmd *cobra.Command, platform *string) (types.ImageInspectOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.ImageInspectCommandOptions{}, err
+		return types.ImageInspectOptions{}, err
 	}
 	mode, err := cmd.Flags().GetString("mode")
 	if err != nil {
-		return types.ImageInspectCommandOptions{}, err
+		return types.ImageInspectOptions{}, err
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
-		return types.ImageInspectCommandOptions{}, err
+		return types.ImageInspectOptions{}, err
 	}
 	if platform == nil {
 		tempPlatform, err := cmd.Flags().GetString("platform")
 		if err != nil {
-			return types.ImageInspectCommandOptions{}, err
+			return types.ImageInspectOptions{}, err
 		}
 		platform = &tempPlatform
 	}
-	return types.ImageInspectCommandOptions{
+	return types.ImageInspectOptions{
 		GOptions: globalOptions,
 		Mode:     mode,
 		Format:   format,
 		Platform: *platform,
+		Stdout:   cmd.OutOrStdout(),
 	}, nil
 }
 
 func imageInspectAction(cmd *cobra.Command, args []string) error {
-	options, err := processImageInspectCommandOptions(cmd, nil)
+	options, err := processImageInspectOptions(cmd, nil)
 	if err != nil {
 		return err
 	}
-	return image.Inspect(cmd.Context(), options, cmd.OutOrStdout(), args)
+	return image.Inspect(cmd.Context(), args, options)
 }
 
 func imageInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

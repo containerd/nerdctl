@@ -40,32 +40,33 @@ func newVolumeInspectCommand() *cobra.Command {
 	return volumeInspectCommand
 }
 
-func processVolumeInspectCommandOptions(cmd *cobra.Command) (types.VolumeInspectCommandOptions, error) {
+func processVolumeInspectOptions(cmd *cobra.Command) (types.VolumeInspectOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.VolumeInspectCommandOptions{}, err
+		return types.VolumeInspectOptions{}, err
 	}
 	volumeSize, err := cmd.Flags().GetBool("size")
 	if err != nil {
-		return types.VolumeInspectCommandOptions{}, err
+		return types.VolumeInspectOptions{}, err
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
-		return types.VolumeInspectCommandOptions{}, err
+		return types.VolumeInspectOptions{}, err
 	}
-	return types.VolumeInspectCommandOptions{
+	return types.VolumeInspectOptions{
 		GOptions: globalOptions,
 		Format:   format,
 		Size:     volumeSize,
+		Stdout:   cmd.OutOrStdout(),
 	}, nil
 }
 
 func volumeInspectAction(cmd *cobra.Command, args []string) error {
-	options, err := processVolumeInspectCommandOptions(cmd)
+	options, err := processVolumeInspectOptions(cmd)
 	if err != nil {
 		return err
 	}
-	return volume.Inspect(args, options, cmd.OutOrStdout())
+	return volume.Inspect(args, options)
 }
 
 func volumeInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
