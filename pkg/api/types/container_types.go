@@ -81,7 +81,7 @@ type ContainerCommitOptions struct {
 	Pause bool
 }
 
-// ContainerLogsOptions specifies options for `nerdctl container logs`.
+// ContainerLogsOptions specifies options for `nerdctl (container) logs`.
 type ContainerLogsOptions struct {
 	Stdout io.Writer
 	Stderr io.Writer
@@ -98,4 +98,25 @@ type ContainerLogsOptions struct {
 	Since string
 	// Show logs before a timestamp (e.g., 2013-01-02T13:23:37Z) or relative (e.g., 42m for 42 minutes).
 	Until string
+}
+
+// ContainerExecOptions specifies options for `nerdctl (container) exec`
+type ContainerExecOptions struct {
+	GOptions GlobalCommandOptions
+	// Allocate a pseudo-TTY
+	TTY bool
+	// Keep STDIN open even if not attached
+	Interactive bool
+	// Detached mode: run command in the background
+	Detach bool
+	// Working directory inside the container
+	Workdir string
+	// Set environment variables
+	Env []string
+	// Set environment variables from file
+	EnvFile []string
+	// Give extended privileges to the command
+	Privileged bool
+	// Username or UID (format: <name|uid>[:<group|gid>])
+	User string
 }

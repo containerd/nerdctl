@@ -14,28 +14,13 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
-	"github.com/containerd/containerd/pkg/cap"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 func setExecCapabilities(pspec *specs.Process) error {
-	if pspec.Capabilities == nil {
-		pspec.Capabilities = &specs.LinuxCapabilities{}
-	}
-	allCaps, err := cap.Current()
-	if err != nil {
-		return err
-	}
-	pspec.Capabilities.Bounding = allCaps
-	pspec.Capabilities.Permitted = pspec.Capabilities.Bounding
-	pspec.Capabilities.Inheritable = pspec.Capabilities.Bounding
-	pspec.Capabilities.Effective = pspec.Capabilities.Bounding
-
-	// https://github.com/moby/moby/pull/36466/files
-	// > `docker exec --privileged` does not currently disable AppArmor
-	// > profiles. Privileged configuration of the container is inherited
+	//no op windows
 	return nil
 }

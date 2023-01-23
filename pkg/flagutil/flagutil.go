@@ -16,7 +16,15 @@
 
 package flagutil
 
-import "strings"
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/containerd/nerdctl/pkg/strutil"
+)
 
 // ReplaceOrAppendEnvValues returns the defaults with the overrides either
 // replaced by env key or appended to the list
@@ -59,4 +67,81 @@ func ReplaceOrAppendEnvValues(defaults, overrides []string) []string {
 	}
 
 	return results
+}
+
+func parseEnvVars(paths []string) ([]string, error) {
+	vars := make([]string, 0)
+	for _, path := range paths {
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open env file %s: %w", path, err)
+		}
+		defer f.Close()
+
+		sc := bufio.NewScanner(f)
+		for sc.Scan() {
+			line := strings.TrimSpace(sc.Text())
+			// skip comment lines
+			if strings.HasPrefix(line, "#") {
+				continue
+			}
+			vars = append(vars, line)
+		}
+		if err = sc.Err(); err != nil {
+			return nil, err
+		}
+	}
+	return vars, nil
+}
+
+func withOSEnv(envs []string) ([]string, error) {
+	newEnvs := make([]string, len(envs))
+
+	// from https://github.com/docker/cli/blob/v22.06.0-beta.0/opts/env.go#L18
+	getEnv := func(val string) (string, error) {
+		arr := strings.SplitN(val, "=", 2)
+		if arr[0] == "" {
+			return "", errors.New("invalid environment variable: " + val)
+		}
+		if len(arr) > 1 {
+			return val, nil
+		}
+		if envVal, ok := os.LookupEnv(arr[0]); ok {
+			return arr[0] + "=" + envVal, nil
+		}
+		return val, nil
+	}
+	for i := range envs {
+		env, err := getEnv(envs[i])
+		if err != nil {
+			return nil, err
+		}
+		newEnvs[i] = env
+	}
+
+	return newEnvs, nil
+}
+
+// MergeEnvFileAndOSEnv combines environment variables from `--env-file` and `--env`.
+// Pass an empty slice if any arg is not used.
+func MergeEnvFileAndOSEnv(envFile []string, env []string) ([]string, error) {
+	var envs []string
+	var err error
+
+	if envFiles := strutil.DedupeStrSlice(envFile); len(envFiles) > 0 {
+		envs, err = parseEnvVars(envFiles)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if env := strutil.DedupeStrSlice(env); len(env) > 0 {
+		envs = append(envs, env...)
+	}
+
+	if envs, err = withOSEnv(envs); err != nil {
+		return nil, err
+	}
+
+	return envs, nil
 }

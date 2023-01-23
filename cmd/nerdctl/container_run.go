@@ -17,7 +17,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -45,6 +44,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/errutil"
+	"github.com/containerd/nerdctl/pkg/flagutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -481,7 +481,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	if err != nil {
 		return nil, nil, err
 	}
-	envs, err := generateEnvs(envFile, env)
+	envs, err := flagutil.MergeEnvFileAndOSEnv(envFile, env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -624,19 +624,34 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	}
 	opts = append(opts, hookOpt)
 
-	uOpts, err := generateUserOpts(cmd)
+	user, err := cmd.Flags().GetString("user")
+	if err != nil {
+		return nil, nil, err
+	}
+	uOpts, err := container.GenerateUserOpts(user)
 	if err != nil {
 		return nil, nil, err
 	}
 	opts = append(opts, uOpts...)
 
-	gOpts, err := generateGroupsOpts(cmd)
+	groups, err := cmd.Flags().GetStringSlice("group-add")
+	if err != nil {
+		return nil, nil, err
+	}
+	gOpts, err := container.GenerateGroupsOpts(groups)
 	if err != nil {
 		return nil, nil, err
 	}
 	opts = append(opts, gOpts...)
 
-	umaskOpts, err := generateUmaskOpts(cmd)
+	var umask string
+	if cmd.Flags().Changed("umask") {
+		umask, err = cmd.Flags().GetString("umask")
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	umaskOpts, err := container.GenerateUmaskOpts(umask)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1172,81 +1187,4 @@ func writeCIDFile(path, id string) error {
 	} else {
 		return err
 	}
-}
-
-func parseEnvVars(paths []string) ([]string, error) {
-	vars := make([]string, 0)
-	for _, path := range paths {
-		f, err := os.Open(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open env file %s: %w", path, err)
-		}
-		defer f.Close()
-
-		sc := bufio.NewScanner(f)
-		for sc.Scan() {
-			line := strings.TrimSpace(sc.Text())
-			// skip comment lines
-			if strings.HasPrefix(line, "#") {
-				continue
-			}
-			vars = append(vars, line)
-		}
-		if err = sc.Err(); err != nil {
-			return nil, err
-		}
-	}
-	return vars, nil
-}
-
-func withOSEnv(envs []string) ([]string, error) {
-	newEnvs := make([]string, len(envs))
-
-	// from https://github.com/docker/cli/blob/v22.06.0-beta.0/opts/env.go#L18
-	getEnv := func(val string) (string, error) {
-		arr := strings.SplitN(val, "=", 2)
-		if arr[0] == "" {
-			return "", errors.New("invalid environment variable: " + val)
-		}
-		if len(arr) > 1 {
-			return val, nil
-		}
-		if envVal, ok := os.LookupEnv(arr[0]); ok {
-			return arr[0] + "=" + envVal, nil
-		}
-		return val, nil
-	}
-	for i := range envs {
-		env, err := getEnv(envs[i])
-		if err != nil {
-			return nil, err
-		}
-		newEnvs[i] = env
-	}
-
-	return newEnvs, nil
-}
-
-// generateEnvs combines environment variables from `--env-file` and `--env`.
-// Pass an empty slice if any arg is not used.
-func generateEnvs(envFile []string, env []string) ([]string, error) {
-	var envs []string
-	var err error
-
-	if envFiles := strutil.DedupeStrSlice(envFile); len(envFiles) > 0 {
-		envs, err = parseEnvVars(envFiles)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if env := strutil.DedupeStrSlice(env); len(env) > 0 {
-		envs = append(envs, env...)
-	}
-
-	if envs, err = withOSEnv(envs); err != nil {
-		return nil, err
-	}
-
-	return envs, nil
 }

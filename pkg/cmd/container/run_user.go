@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
 	"context"
@@ -23,28 +23,20 @@ import (
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/spf13/cobra"
 )
 
-func generateUserOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
+func GenerateUserOpts(user string) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
-	user, err := cmd.Flags().GetString("user")
-	if err != nil {
-		return nil, err
-	}
 	if user != "" {
 		opts = append(opts, oci.WithUser(user), withResetAdditionalGIDs(), oci.WithAdditionalGIDs(user))
 	}
 	return opts, nil
 }
 
-func generateUmaskOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
+func GenerateUmaskOpts(umask string) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
-	umask, err := cmd.Flags().GetString("umask")
-	if err != nil {
-		return nil, err
-	}
-	if cmd.Flags().Changed("umask") && umask != "" {
+
+	if umask != "" {
 		decVal, err := strconv.ParseUint(umask, 8, 32)
 		if err != nil {
 			return nil, fmt.Errorf("invalid Umask Value:%s", umask)
@@ -54,12 +46,9 @@ func generateUmaskOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
 	return opts, nil
 }
 
-func generateGroupsOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
+func GenerateGroupsOpts(groups []string) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
-	groups, err := cmd.Flags().GetStringSlice("group-add")
-	if err != nil {
-		return nil, err
-	}
+
 	if len(groups) != 0 {
 		opts = append(opts, oci.WithAppendAdditionalGroups(groups...))
 	}
