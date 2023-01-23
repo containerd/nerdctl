@@ -17,12 +17,8 @@
 package main
 
 import (
-	"net/http"
-	"os"
-	"path/filepath"
-
-	"github.com/containerd/nerdctl/pkg/ipfs"
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/ipfs"
 	"github.com/spf13/cobra"
 )
 
@@ -49,44 +45,35 @@ func newIPFSRegistryServeCommand() *cobra.Command {
 	return ipfsRegistryServeCommand
 }
 
-func ipfsRegistryServeAction(cmd *cobra.Command, args []string) error {
+func processIPFSRegistryServeOptions(cmd *cobra.Command) (opts types.IPFSRegistryServeOptions, err error) {
 	ipfsAddressStr, err := cmd.Flags().GetString("ipfs-address")
 	if err != nil {
-		return err
+		return types.IPFSRegistryServeOptions{}, err
 	}
 	listenAddress, err := cmd.Flags().GetString("listen-registry")
 	if err != nil {
-		return err
+		return types.IPFSRegistryServeOptions{}, err
 	}
 	readTimeout, err := cmd.Flags().GetDuration("read-timeout")
 	if err != nil {
-		return err
+		return types.IPFSRegistryServeOptions{}, err
 	}
 	readRetryNum, err := cmd.Flags().GetInt("read-retry-num")
 	if err != nil {
-		return err
+		return types.IPFSRegistryServeOptions{}, err
 	}
-	var ipfsPath string
-	if ipfsAddressStr != "" {
-		dir, err := os.MkdirTemp("", "apidirtmp")
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(dir)
-		if err := os.WriteFile(filepath.Join(dir, "api"), []byte(ipfsAddressStr), 0600); err != nil {
-			return err
-		}
-		ipfsPath = dir
-	}
-	h, err := ipfs.NewRegistry(ipfs.RegistryOptions{
-		IpfsPath:     ipfsPath,
-		ReadRetryNum: readRetryNum,
-		ReadTimeout:  readTimeout,
-	})
+	return types.IPFSRegistryServeOptions{
+		ListenRegistry: listenAddress,
+		IPFSAddress:    ipfsAddressStr,
+		ReadTimeout:    readTimeout,
+		ReadRetryNum:   readRetryNum,
+	}, nil
+}
+
+func ipfsRegistryServeAction(cmd *cobra.Command, args []string) error {
+	options, err := processIPFSRegistryServeOptions(cmd)
 	if err != nil {
 		return err
 	}
-	logrus.Infof("serving on %v", listenAddress)
-	http.Handle("/", h)
-	return http.ListenAndServe(listenAddress, nil)
+	return ipfs.RegistryServe(options)
 }
