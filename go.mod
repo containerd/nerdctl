@@ -27,7 +27,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.1.3
-	github.com/fatih/color v1.13.0
+	github.com/fatih/color v1.14.1
 	github.com/fluent/fluent-logger-golang v1.9.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ipfs/go-cid v0.3.2
@@ -86,7 +86,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/klauspost/compress v1.15.14
 	github.com/klauspost/cpuid/v2 v2.1.1 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-shellwords v1.0.12 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
