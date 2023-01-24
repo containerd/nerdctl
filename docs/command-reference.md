@@ -688,12 +688,9 @@ Flags:
   - :whale: `--filter=before=<image:tag>`: Images created before given image (exclusive)
   - :whale: `--filter=since=<image:tag>`: Images created after given image (exclusive)
   - :whale: `--filter=label<key>=<value>`: Matches images based on the presence of a label alone or a label and a value
+  - :whale: `--filter=dangling=true`: Filter images by dangling
   - :nerd_face: `--filter=reference=<image:tag>`: Filter images by reference (Matches both docker compatible wildcard pattern and regexp match)
 - :nerd_face: `--names`: Show image names
-
-Following arguments for `--filter` are not supported yet:
-
-1. `--filter=dangling=true`: Filter images by dangling
 
 ### :whale: :blue_square: nerdctl pull
 
