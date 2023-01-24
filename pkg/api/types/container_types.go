@@ -21,6 +21,15 @@ import (
 	"time"
 )
 
+// ContainerStartOptions specifies options for the `nerdctl (container) start`.
+type ContainerStartOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// Attach specifies whether to attach to the container's stdio.
+	Attach bool
+}
+
 // KillOptions specifies options for `nerdctl (container) kill`.
 type KillOptions struct {
 	Stdout io.Writer
