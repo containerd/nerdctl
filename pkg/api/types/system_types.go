@@ -29,3 +29,12 @@ type SystemInfoOptions struct {
 	// Format the output using the given Go template, e.g, '{{json .}}
 	Format string
 }
+
+// SystemEventsOptions specifies options for `nerdctl (system) events`.
+type SystemEventsOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// Format the output using the given Go template, e.g, '{{json .}}
+	Format string
+}
