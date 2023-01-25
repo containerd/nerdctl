@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/system"
 	"github.com/spf13/cobra"
 )
@@ -70,5 +71,12 @@ func infoAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return system.Info(cmd.Context(), options)
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	return system.Info(ctx, client, options)
 }

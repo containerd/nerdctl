@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
 
 	"github.com/spf13/cobra"
@@ -41,11 +42,20 @@ func tagAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return image.Tag(cmd.Context(), types.ImageTagOptions{
+
+	options := types.ImageTagOptions{
 		GOptions: globalOptions,
 		Source:   args[0],
 		Target:   args[1],
-	})
+	}
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	return image.Tag(ctx, client, options)
 }
 
 func tagShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

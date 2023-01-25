@@ -20,6 +20,7 @@ import (
 	"compress/gzip"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/spf13/cobra"
 )
@@ -263,7 +264,14 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 	}
 	srcRawRef := args[0]
 	destRawRef := args[1]
-	return image.Convert(cmd.Context(), srcRawRef, destRawRef, options)
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	return image.Convert(ctx, client, srcRawRef, destRawRef, options)
 }
 
 func imageConvertShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

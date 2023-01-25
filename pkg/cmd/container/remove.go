@@ -60,13 +60,7 @@ func NewStatusError(id string, status containerd.ProcessStatus) error {
 }
 
 // Remove removes a list of `containers`.
-func Remove(ctx context.Context, containers []string, options types.ContainerRemoveOptions) error {
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
+func Remove(ctx context.Context, client *containerd.Client, containers []string, options types.ContainerRemoveOptions) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
@@ -79,7 +73,7 @@ func Remove(ctx context.Context, containers []string, options types.ContainerRem
 				}
 				return err
 			}
-			_, err = fmt.Fprintf(options.Stdout, "%s\n", found.Req)
+			_, err := fmt.Fprintf(options.Stdout, "%s\n", found.Req)
 			return err
 		},
 	}

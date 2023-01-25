@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/spf13/cobra"
 )
@@ -77,5 +78,12 @@ func loadAction(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	return image.Load(cmd.Context(), options)
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	return image.Load(ctx, client, options)
 }

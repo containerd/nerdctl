@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 )
 
-func Prune(ctx context.Context, options types.VolumePruneOptions) error {
+func Prune(ctx context.Context, client *containerd.Client, options types.VolumePruneOptions) error {
 	if !options.Force {
 		var confirm string
 		msg := "This will remove all local volumes not used by at least one container."
@@ -45,11 +45,6 @@ func Prune(ctx context.Context, options types.VolumePruneOptions) error {
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
 
 	containers, err := client.Containers(ctx)
 	if err != nil {

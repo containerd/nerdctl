@@ -20,20 +20,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/idutil/netwalker"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/sirupsen/logrus"
 )
 
-func Remove(ctx context.Context, options types.NetworkRemoveOptions) error {
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
+func Remove(ctx context.Context, client *containerd.Client, options types.NetworkRemoveOptions) error {
 	e, err := netutil.NewCNIEnv(options.GOptions.CNIPath, options.GOptions.CNINetConfPath)
 	if err != nil {
 		return err

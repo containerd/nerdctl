@@ -21,18 +21,18 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/imgcrypt/images/encryption"
 	"github.com/containerd/imgcrypt/images/encryption/parsehelpers"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-func Crypt(ctx context.Context, srcRawRef, targetRawRef string, encrypt bool, options types.ImageCryptOptions) error {
+func Crypt(ctx context.Context, client *containerd.Client, srcRawRef, targetRawRef string, encrypt bool, options types.ImageCryptOptions) error {
 	var convertOpts = []converter.Opt{}
 	if srcRawRef == "" || targetRawRef == "" {
 		return errors.New("src and target image need to be specified")
@@ -60,11 +60,6 @@ func Crypt(ctx context.Context, srcRawRef, targetRawRef string, encrypt bool, op
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
 
 	srcImg, err := client.ImageService().Get(ctx, srcRef)
 	if err != nil {

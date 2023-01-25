@@ -42,8 +42,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Build(ctx context.Context, options types.BuilderBuildOptions) error {
-	buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, err := generateBuildctlArgs(ctx, options)
+func Build(ctx context.Context, client *containerd.Client, options types.BuilderBuildOptions) error {
+	buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, err := generateBuildctlArgs(ctx, client, options)
 	if err != nil {
 		return err
 	}
@@ -97,12 +97,7 @@ func Build(ctx context.Context, options types.BuilderBuildOptions) error {
 	}
 
 	if len(tags) > 1 {
-		client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
 		logrus.Debug("Found more than 1 tag")
-		if err != nil {
-			return fmt.Errorf("unable to tag images: %s", err)
-		}
-		defer cancel()
 		imageService := client.ImageService()
 		image, err := imageService.Get(ctx, tags[0])
 		if err != nil {
@@ -171,7 +166,7 @@ func loadImage(ctx context.Context, in io.Reader, namespace, address, snapshotte
 	return nil
 }
 
-func generateBuildctlArgs(ctx context.Context, options types.BuilderBuildOptions) (buildCtlBinary string,
+func generateBuildctlArgs(ctx context.Context, client *containerd.Client, options types.BuilderBuildOptions) (buildCtlBinary string,
 	buildctlArgs []string, needsLoading bool, metaFile string, tags []string, cleanup func(), err error) {
 
 	buildctlBinary, err := buildkitutil.BuildctlBinary()
@@ -181,11 +176,6 @@ func generateBuildctlArgs(ctx context.Context, options types.BuilderBuildOptions
 
 	output := options.Output
 	if output == "" {
-		client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-		if err != nil {
-			return "", nil, false, "", nil, nil, err
-		}
-		defer cancel()
 		info, err := client.Server(ctx)
 		if err != nil {
 			return "", nil, false, "", nil, nil, err

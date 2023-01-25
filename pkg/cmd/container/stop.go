@@ -20,20 +20,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 )
 
-func Stop(ctx context.Context, reqs []string, opt types.ContainerStopOptions) error {
-	client, ctx, cancel, err := clientutil.NewClient(ctx, opt.GOptions.Namespace, opt.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
+func Stop(ctx context.Context, client *containerd.Client, reqs []string, opt types.ContainerStopOptions) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {

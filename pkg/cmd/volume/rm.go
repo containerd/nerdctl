@@ -23,19 +23,12 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/mountutil"
 )
 
-func Remove(ctx context.Context, volumes []string, options types.VolumeRemoveOptions) error {
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
+func Remove(ctx context.Context, client *containerd.Client, volumes []string, options types.VolumeRemoveOptions) error {
 	containers, err := client.Containers(ctx)
 	if err != nil {
 		return err

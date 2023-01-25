@@ -20,19 +20,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 )
 
-func Remove(ctx context.Context, deletedNamespaces []string, options types.NamespaceRemoveOptions) error {
+func Remove(ctx context.Context, client *containerd.Client, deletedNamespaces []string, options types.NamespaceRemoveOptions) error {
 	var exitErr error
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
 	opts, err := namespaceDeleteOpts(options.CGroup)
 	if err != nil {
 		return err
