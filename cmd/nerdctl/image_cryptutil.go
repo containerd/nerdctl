@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/spf13/cobra"
 )
@@ -108,7 +109,14 @@ func getImgcryptAction(encrypt bool) func(cmd *cobra.Command, args []string) err
 		}
 		srcRawRef := args[0]
 		targetRawRef := args[1]
-		return image.Crypt(cmd.Context(), srcRawRef, targetRawRef, encrypt, options)
+
+		client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+		if err != nil {
+			return err
+		}
+		defer cancel()
+
+		return image.Crypt(ctx, client, srcRawRef, targetRawRef, encrypt, options)
 	}
 }
 

@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/network"
 	"github.com/spf13/cobra"
 )
@@ -67,5 +68,12 @@ func networkPruneAction(cmd *cobra.Command, _ []string) error {
 		NetworkDriversToKeep: networkDriversToKeep,
 		Stdout:               cmd.OutOrStdout(),
 	}
-	return network.Prune(cmd.Context(), options)
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	return network.Prune(ctx, client, options)
 }

@@ -29,7 +29,6 @@ import (
 	"github.com/containerd/containerd/images/archive"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 )
 
@@ -46,7 +45,7 @@ func (r *readCounter) Read(p []byte) (int, error) {
 	return n, err
 }
 
-func Load(ctx context.Context, options types.ImageLoadOptions) error {
+func Load(ctx context.Context, client *containerd.Client, options types.ImageLoadOptions) error {
 	if options.Input != "" {
 		f, err := os.Open(options.Input)
 		if err != nil {
@@ -72,19 +71,12 @@ func Load(ctx context.Context, options types.ImageLoadOptions) error {
 	if err != nil {
 		return err
 	}
-	return loadImage(ctx, decompressor, platMC, false, options)
+	return loadImage(ctx, client, decompressor, platMC, false, options)
 }
 
-func loadImage(ctx context.Context, in io.Reader, platMC platforms.MatchComparer, quiet bool, options types.ImageLoadOptions) error {
+func loadImage(ctx context.Context, client *containerd.Client, in io.Reader, platMC platforms.MatchComparer, quiet bool, options types.ImageLoadOptions) error {
 	// In addition to passing WithImagePlatform() to client.Import(), we also need to pass WithDefaultPlatform() to NewClient().
 	// Otherwise unpacking may fail.
-
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address, containerd.WithDefaultPlatform(platMC))
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
 	r := &readCounter{Reader: in}
 	imgs, err := client.Import(ctx, r, containerd.WithDigestRef(archive.DigestTranslator(options.GOptions.Snapshotter)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithImportPlatform(platMC))
 	if err != nil {

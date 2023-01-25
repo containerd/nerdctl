@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/network"
 	"github.com/containerd/nerdctl/pkg/netutil"
 
@@ -44,11 +45,20 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return network.Remove(cmd.Context(), types.NetworkRemoveOptions{
+
+	options := types.NetworkRemoveOptions{
 		GOptions: globalOptions,
 		Networks: args,
 		Stdout:   cmd.OutOrStdout(),
-	})
+	}
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	return network.Remove(ctx, client, options)
 }
 
 func networkRmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

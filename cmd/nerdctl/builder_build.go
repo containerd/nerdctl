@@ -24,6 +24,7 @@ import (
 
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/builder"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -198,7 +199,14 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := builder.Build(cmd.Context(), options); err != nil {
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := builder.Build(ctx, client, options); err != nil {
 		return err
 	}
 	return nil

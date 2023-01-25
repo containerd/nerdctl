@@ -19,16 +19,11 @@ package namespace
 import (
 	"context"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 )
 
-func Update(ctx context.Context, namespace string, options types.NamespaceUpdateOptions) error {
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
+func Update(ctx context.Context, client *containerd.Client, namespace string, options types.NamespaceUpdateOptions) error {
 	labelsArg := objectWithLabelArgs(options.Labels)
 	namespaces := client.NamespaceService()
 	for k, v := range labelsArg {

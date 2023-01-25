@@ -23,13 +23,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cosignutil"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
@@ -45,13 +45,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Push(ctx context.Context, rawRef string, options types.ImagePushOptions) error {
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
+func Push(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePushOptions) error {
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
 		if scheme != "ipfs" {
 			return fmt.Errorf("ipfs scheme is only supported but got %q", scheme)

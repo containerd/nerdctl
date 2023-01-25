@@ -27,13 +27,13 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/moby/sys/signal"
 	"github.com/sirupsen/logrus"
 )
 
-func Kill(ctx context.Context, reqs []string, options types.KillOptions) error {
+// Kill kills a list of containers
+func Kill(ctx context.Context, client *containerd.Client, reqs []string, options types.KillOptions) error {
 	if !strings.HasPrefix(options.KillSignal, "SIG") {
 		options.KillSignal = "SIG" + options.KillSignal
 	}
@@ -42,11 +42,6 @@ func Kill(ctx context.Context, reqs []string, options types.KillOptions) error {
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
 
 	walker := &containerwalker.ContainerWalker{
 		Client: client,

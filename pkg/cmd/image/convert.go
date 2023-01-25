@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	overlaybdconvert "github.com/containerd/accelerated-container-image/pkg/convertor"
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
@@ -46,7 +47,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Convert(ctx context.Context, srcRawRef, targetRawRef string, options types.ImageConvertOptions) error {
+func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRawRef string, options types.ImageConvertOptions) error {
 	var (
 		convertOpts = []converter.Opt{}
 	)
@@ -72,11 +73,6 @@ func Convert(ctx context.Context, srcRawRef, targetRawRef string, options types.
 	}
 	convertOpts = append(convertOpts, converter.WithPlatform(platMC))
 
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
 	estargz := options.Estargz
 	zstdchunked := options.ZstdChunked
 	overlaybd := options.Overlaybd

@@ -21,6 +21,7 @@ import (
 	"strconv"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/spf13/cobra"
 )
@@ -92,7 +93,14 @@ func logsAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return container.Logs(cmd.Context(), args[0], options)
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	return container.Logs(ctx, client, args[0], options)
 }
 
 func logsShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

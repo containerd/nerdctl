@@ -24,12 +24,12 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
 	"github.com/containerd/containerd/api/services/introspection/v1"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -40,7 +40,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Info(ctx context.Context, options types.SystemInfoOptions) error {
+func Info(ctx context.Context, client *containerd.Client, options types.SystemInfoOptions) error {
 	var (
 		tmpl *template.Template
 		err  error
@@ -51,11 +51,6 @@ func Info(ctx context.Context, options types.SystemInfoOptions) error {
 			return err
 		}
 	}
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
 
 	var (
 		infoNative *native.Info

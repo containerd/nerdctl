@@ -37,7 +37,6 @@ import (
 	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/opencontainers/image-spec/identity"
@@ -45,13 +44,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func List(ctx context.Context, options types.ImageListOptions) error {
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
+func List(ctx context.Context, client *containerd.Client, options types.ImageListOptions) error {
 	var imageStore = client.ImageService()
 	imageList, err := imageStore.List(ctx, options.NameAndRefFilter...)
 	if err != nil {

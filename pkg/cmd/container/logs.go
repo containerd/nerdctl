@@ -34,7 +34,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Logs(ctx context.Context, container string, options types.ContainerLogsOptions) error {
+func Logs(ctx context.Context, client *containerd.Client, container string, options types.ContainerLogsOptions) error {
 	dataStore, err := clientutil.DataStore(options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {
 		return err
@@ -44,11 +44,6 @@ func Logs(ctx context.Context, container string, options types.ContainerLogsOpti
 	case "moby":
 		logrus.Warn("Currently, `nerdctl logs` only supports containers created with `nerdctl run -d` or CRI")
 	}
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
 
 	stopChannel := make(chan os.Signal, 1)
 	// catch OS signals:

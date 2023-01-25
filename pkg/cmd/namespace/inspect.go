@@ -19,20 +19,14 @@ package namespace
 import (
 	"context"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 )
 
-func Inspect(ctx context.Context, inspectedNamespaces []string, options types.NamespaceInspectOptions) error {
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
+func Inspect(ctx context.Context, client *containerd.Client, inspectedNamespaces []string, options types.NamespaceInspectOptions) error {
 	result := make([]interface{}, len(inspectedNamespaces))
 	for index, ns := range inspectedNamespaces {
 		ctx = namespaces.WithNamespace(ctx, ns)

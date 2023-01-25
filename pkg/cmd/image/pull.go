@@ -25,7 +25,6 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cosignutil"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/ipfs"
@@ -36,13 +35,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Pull(ctx context.Context, rawRef string, options types.ImagePullOptions) error {
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
+func Pull(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePullOptions) error {
 	ocispecPlatforms, err := platformutil.NewOCISpecPlatformSlice(options.AllPlatforms, options.Platform)
 	if err != nil {
 		return err

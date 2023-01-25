@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/spf13/cobra"
 )
@@ -50,12 +51,20 @@ func rmAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return container.Remove(cmd.Context(), args, types.ContainerRemoveOptions{
+	options := types.ContainerRemoveOptions{
 		GOptions: globalOptions,
 		Force:    force,
 		Volumes:  removeAnonVolumes,
 		Stdout:   cmd.OutOrStdout(),
-	})
+	}
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	return container.Remove(ctx, client, args, options)
 }
 
 func rmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

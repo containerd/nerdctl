@@ -104,7 +104,7 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 	if err := containerPrune(ctx, cmd, client, globalOptions); err != nil {
 		return err
 	}
-	if err := network.Prune(ctx, types.NetworkPruneOptions{
+	if err := network.Prune(ctx, client, types.NetworkPruneOptions{
 		GOptions:             globalOptions,
 		NetworkDriversToKeep: networkDriversToKeep,
 		Stdout:               cmd.OutOrStdout(),
@@ -112,7 +112,7 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if vFlag {
-		if err := volume.Prune(ctx, types.VolumePruneOptions{
+		if err := volume.Prune(ctx, client, types.VolumePruneOptions{
 			GOptions: globalOptions,
 			Force:    true,
 			Stdout:   cmd.OutOrStdout(),

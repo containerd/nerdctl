@@ -20,20 +20,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 )
 
-func Tag(ctx context.Context, options types.ImageTagOptions) error {
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
+func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagOptions) error {
 	imageService := client.ImageService()
 	var srcName string
 	imagewalker := &imagewalker.ImageWalker{

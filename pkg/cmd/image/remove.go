@@ -21,26 +21,21 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/sirupsen/logrus"
 )
 
 // Remove removes a list of `images`.
-func Remove(ctx context.Context, args []string, options types.ImageRemoveOptions) error {
+func Remove(ctx context.Context, client *containerd.Client, args []string, options types.ImageRemoveOptions) error {
 	var delOpts []images.DeleteOpt
 	if !options.Async {
 		delOpts = append(delOpts, images.SynchronousDelete())
 	}
-	client, ctx, cancel, err := clientutil.NewClient(ctx, options.GOptions.Namespace, options.GOptions.Address)
-	if err != nil {
-		return err
-	}
-	defer cancel()
 
 	cs := client.ContentStore()
 	is := client.ImageService()
