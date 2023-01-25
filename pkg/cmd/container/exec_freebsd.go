@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
 	"github.com/opencontainers/runtime-spec/specs-go"
