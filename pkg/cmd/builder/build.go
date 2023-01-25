@@ -272,8 +272,10 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		buildctlArgs = append(buildctlArgs, "--opt=platform="+strings.Join(options.Platform, ","))
 	}
 
+	seenBuildArgs := make(map[string]struct{})
 	for _, ba := range strutil.DedupeStrSlice(options.BuildArgs) {
 		arr := strings.Split(ba, "=")
+		seenBuildArgs[arr[0]] = struct{}{}
 		if len(arr) == 1 && len(arr[0]) > 0 {
 			// Avoid masking default build arg value from Dockerfile if environment variable is not set
 			// https://github.com/moby/moby/issues/24101
@@ -301,6 +303,14 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 			}
 		} else {
 			return "", nil, false, "", nil, nil, fmt.Errorf("invalid build arg %q", ba)
+		}
+	}
+
+	// Propagate SOURCE_DATE_EPOCH from the client env
+	// https://github.com/docker/buildx/pull/1482
+	if v := os.Getenv("SOURCE_DATE_EPOCH"); v != "" {
+		if _, ok := seenBuildArgs["SOURCE_DATE_EPOCH"]; !ok {
+			buildctlArgs = append(buildctlArgs, "--opt=build-arg:SOURCE_DATE_EPOCH="+v)
 		}
 	}
 

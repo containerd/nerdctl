@@ -420,3 +420,32 @@ CMD ["echo", "nerdctl-build-notag-string"]
 	base.Cmd("images").AssertOutContains("<none>")
 	base.Cmd("image", "prune", "--force", "--all").AssertOK()
 }
+
+// TestBuildSourceDateEpoch tests that $SOURCE_DATE_EPOCH is propagated from the client env
+// https://github.com/docker/buildx/pull/1482
+func TestBuildSourceDateEpoch(t *testing.T) {
+	testutil.RequiresBuild(t)
+	testutil.DockerIncompatible(t) // Needs buildx v0.10 (https://github.com/docker/buildx/pull/1489)
+	base := testutil.NewBase(t)
+	imageName := testutil.Identifier(t)
+	defer base.Cmd("rmi", imageName).AssertOK()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+ARG SOURCE_DATE_EPOCH
+RUN echo $SOURCE_DATE_EPOCH >/source-date-epoch
+CMD ["cat", "/source-date-epoch"]
+	`, testutil.CommonImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	const sourceDateEpochEnvStr = "1111111111"
+	t.Setenv("SOURCE_DATE_EPOCH", sourceDateEpochEnvStr)
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("run", "--rm", imageName).AssertOutExactly(sourceDateEpochEnvStr + "\n")
+
+	const sourceDateEpochArgStr = "2222222222"
+	base.Cmd("build", "-t", imageName, "--build-arg", "SOURCE_DATE_EPOCH="+sourceDateEpochArgStr, buildCtx).AssertOK()
+	base.Cmd("run", "--rm", imageName).AssertOutExactly(sourceDateEpochArgStr + "\n")
+}
