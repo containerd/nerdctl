@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
 
 	"github.com/spf13/cobra"
@@ -52,29 +53,44 @@ var validModeType = map[string]bool{
 	"dockercompat": true,
 }
 
-func containerInspectAction(cmd *cobra.Command, args []string) error {
+func processContainerInspectOptions(cmd *cobra.Command) (opt types.ContainerInspectOptions, err error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return
 	}
 	mode, err := cmd.Flags().GetString("mode")
 	if err != nil {
-		return err
+		return
 	}
 	if len(mode) > 0 && !validModeType[mode] {
-		return fmt.Errorf("%q is not a valid value for --mode", mode)
+		err = fmt.Errorf("%q is not a valid value for --mode", mode)
+		return
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
+		return
+	}
+
+	return types.ContainerInspectOptions{
+		GOptions: globalOptions,
+		Format:   format,
+		Mode:     mode,
+		Stdout:   cmd.OutOrStdout(),
+	}, nil
+}
+
+func containerInspectAction(cmd *cobra.Command, args []string) error {
+	opt, err := processContainerInspectOptions(cmd)
+	if err != nil {
 		return err
 	}
-	return container.Inspect(cmd.Context(), types.ContainerInspectOptions{
-		GOptions:   globalOptions,
-		Format:     format,
-		Mode:       mode,
-		Containers: args,
-		Stdout:     cmd.OutOrStdout(),
-	})
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), opt.GOptions.Namespace, opt.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	return container.Inspect(ctx, client, args, opt)
 }
 
 func containerInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
