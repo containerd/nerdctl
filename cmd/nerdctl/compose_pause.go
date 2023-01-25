@@ -23,6 +23,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/compose"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -76,7 +77,7 @@ func composePauseAction(cmd *cobra.Command, args []string) error {
 	for _, c := range containers {
 		c := c
 		eg.Go(func() error {
-			if err := pauseContainer(ctx, client, c.ID()); err != nil {
+			if err := containerutil.Pause(ctx, client, c.ID()); err != nil {
 				return err
 			}
 			info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
