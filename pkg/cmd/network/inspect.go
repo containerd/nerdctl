@@ -17,55 +17,84 @@
 package network
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
+	"github.com/containerd/nerdctl/pkg/idutil/netwalker"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/sirupsen/logrus"
 )
 
-func Inspect(options types.NetworkInspectOptions) error {
-	e, err := netutil.NewCNIEnv(options.GOptions.CNIPath, options.GOptions.CNINetConfPath)
+func Inspect(ctx context.Context, options types.NetworkInspectOptions) error {
+	globalOptions := options.GOptions
+	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath)
+
 	if err != nil {
 		return err
 	}
-
-	netMap, err := e.NetworkMap()
-	if err != nil {
-		return err
+	if options.Mode != "native" && options.Mode != "dockercompat" {
+		return fmt.Errorf("unknown mode %q", options.Mode)
 	}
 
-	result := make([]interface{}, len(options.Networks))
-	for i, name := range options.Networks {
-		if name == "host" || name == "none" {
-			return fmt.Errorf("pseudo network %q cannot be inspected", name)
-		}
-		l, ok := netMap[name]
-		if !ok {
-			return fmt.Errorf("no such network: %s", name)
-		}
-
-		r := &native.Network{
-			CNI:           json.RawMessage(l.Bytes),
-			NerdctlID:     l.NerdctlID,
-			NerdctlLabels: l.NerdctlLabels,
-			File:          l.File,
-		}
-		switch options.Mode {
-		case "native":
-			result[i] = r
-		case "dockercompat":
-			compat, err := dockercompat.NetworkFromNative(r)
-			if err != nil {
-				return err
+	var result []interface{}
+	var errs []error
+	walker := netwalker.NetworkWalker{
+		Client: e,
+		OnFound: func(ctx context.Context, found netwalker.Found) error {
+			if found.MatchCount > 1 {
+				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			result[i] = compat
-		default:
-			return fmt.Errorf("unknown mode %q", options.Mode)
+			r := &native.Network{
+				CNI:           json.RawMessage(found.Network.Bytes),
+				NerdctlID:     found.Network.NerdctlID,
+				NerdctlLabels: found.Network.NerdctlLabels,
+				File:          found.Network.File,
+			}
+			switch options.Mode {
+			case "native":
+				result = append(result, r)
+			case "dockercompat":
+				compat, err := dockercompat.NetworkFromNative(r)
+				if err != nil {
+					return err
+				}
+				result = append(result, compat)
+			}
+			return nil
+		},
+	}
+
+	for _, name := range options.Networks {
+		if name == "host" || name == "none" {
+			errs = append(errs, fmt.Errorf("pseudo network %q cannot be inspected", name))
+			continue
+		}
+		n, err := walker.Walk(ctx, name)
+		if err != nil {
+			errs = append(errs, err)
+		} else if n == 0 {
+			errs = append(errs, fmt.Errorf("no such network: %s", name))
 		}
 	}
-	return formatter.FormatSlice(options.Format, options.Stdout, result)
+
+	if len(result) > 0 {
+		err = formatter.FormatSlice(options.Format, options.Stdout, result)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) > 0 {
+		for _, err := range errs {
+			logrus.Error(err)
+		}
+		return errutil.NewExitCoderErr(1)
+	}
+	return nil
 }
