@@ -190,3 +190,15 @@ type ImageRemoveOptions struct {
 	// Asynchronous mode
 	Async bool
 }
+
+// ImageSaveOptions specifies options for `nerdctl (image) save`.
+type ImageSaveOptions struct {
+	Stdout   io.Writer
+	GOptions GlobalCommandOptions
+	// Export content for all platforms
+	AllPlatforms bool
+	// Write to a file, instead of STDOUT
+	Output string
+	// Export content for a specific platform
+	Platform []string
+}

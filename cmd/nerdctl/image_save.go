@@ -17,27 +17,13 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"io"
-	"os"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/images/archive"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
-	"github.com/containerd/nerdctl/pkg/platformutil"
-	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/mattn/go-isatty"
+	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/spf13/cobra"
 )
-
-// SaveOptions contain options used by `nerdctl save`.
-type SaveOptions struct {
-	AllPlatforms bool
-	Output       string
-	Platform     []string
-}
 
 func newSaveCommand() *cobra.Command {
 	var saveCommand = &cobra.Command{
@@ -62,93 +48,50 @@ func newSaveCommand() *cobra.Command {
 	return saveCommand
 }
 
-func saveAction(cmd *cobra.Command, args []string) error {
+func processImageSaveOptions(cmd *cobra.Command) (types.ImageSaveOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
-	}
-	if len(args) == 0 {
-		return fmt.Errorf("requires at least 1 argument")
+		return types.ImageSaveOptions{}, err
 	}
 
 	output, err := cmd.Flags().GetString("output")
 	if err != nil {
-		return err
+		return types.ImageSaveOptions{}, err
 	}
 	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
 	if err != nil {
-		return err
+		return types.ImageSaveOptions{}, err
 	}
 	platform, err := cmd.Flags().GetStringSlice("platform")
 	if err != nil {
+		return types.ImageSaveOptions{}, err
+	}
+
+	return types.ImageSaveOptions{
+		GOptions:     globalOptions,
+		Stdout:       cmd.OutOrStdout(),
+		AllPlatforms: allPlatforms,
+		Output:       output,
+		Platform:     platform,
+	}, err
+}
+
+func saveAction(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("requires at least 1 argument")
+	}
+	options, err := processImageSaveOptions(cmd)
+	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	opt := SaveOptions{
-		AllPlatforms: allPlatforms,
-		Output:       output,
-		Platform:     platform,
-	}
-
-	writer := cmd.OutOrStdout()
-	if output != "" {
-		f, err := os.OpenFile(output, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		writer = f
-	} else {
-		if isatty.IsTerminal(os.Stdout.Fd()) {
-			return fmt.Errorf("cowardly refusing to save to a terminal. Use the -o flag or redirect")
-		}
-	}
-	return saveImages(ctx, client, args, writer, opt)
-}
-
-func saveImages(ctx context.Context, client *containerd.Client, images []string, writer io.Writer, opt SaveOptions, exportOpts ...archive.ExportOpt) error {
-	images = strutil.DedupeStrSlice(images)
-
-	platMC, err := platformutil.NewMatchComparer(opt.AllPlatforms, opt.Platform)
-	if err != nil {
-		return err
-	}
-
-	exportOpts = append(exportOpts, archive.WithPlatform(platMC))
-	imageStore := client.ImageService()
-
-	savedImages := make(map[string]struct{})
-	walker := &imagewalker.ImageWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found imagewalker.Found) error {
-			if found.UniqueImages > 1 {
-				return fmt.Errorf("ambiguous digest ID: multiple IDs found with provided prefix %s", found.Req)
-			}
-			imgName := found.Image.Name
-			imgDigest := found.Image.Target.Digest.String()
-			if _, ok := savedImages[imgDigest]; !ok {
-				savedImages[imgDigest] = struct{}{}
-				exportOpts = append(exportOpts, archive.WithImage(imageStore, imgName))
-			}
-			return nil
-		},
-	}
-
-	for _, img := range images {
-		count, err := walker.Walk(ctx, img)
-		if err != nil {
-			return err
-		}
-		if count == 0 {
-			return fmt.Errorf("no such image: %s", img)
-		}
-	}
-	return client.Export(ctx, writer, exportOpts...)
+	return image.Save(ctx, client, args, options)
 }
 
 func saveShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
