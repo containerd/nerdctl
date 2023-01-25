@@ -375,6 +375,33 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 	return waitContainerStop(ctx, exitCh, container.ID())
 }
 
+// Pause pauses a container by its id.
+func Pause(ctx context.Context, client *containerd.Client, id string) error {
+	container, err := client.LoadContainer(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	task, err := container.Task(ctx, cio.Load)
+	if err != nil {
+		return err
+	}
+
+	status, err := task.Status(ctx)
+	if err != nil {
+		return err
+	}
+
+	switch status.Status {
+	case containerd.Paused:
+		return fmt.Errorf("container %s is already paused", id)
+	case containerd.Created, containerd.Stopped:
+		return fmt.Errorf("container %s is not running", id)
+	default:
+		return task.Pause(ctx)
+	}
+}
+
 func waitContainerStop(ctx context.Context, exitCh <-chan containerd.ExitStatus, id string) error {
 	select {
 	case <-ctx.Done():

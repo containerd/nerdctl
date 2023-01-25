@@ -17,14 +17,10 @@
 package main
 
 import (
-	"context"
-	"fmt"
-
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-
+	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/spf13/cobra"
 )
 
@@ -41,66 +37,30 @@ func newPauseCommand() *cobra.Command {
 	return pauseCommand
 }
 
-func pauseAction(cmd *cobra.Command, args []string) error {
+func processContainerPauseOptions(cmd *cobra.Command) (types.ContainerPauseOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return types.ContainerPauseOptions{}, err
+	}
+	return types.ContainerPauseOptions{
+		GOptions: globalOptions,
+		Stdout:   cmd.OutOrStdout(),
+	}, nil
+}
+
+func pauseAction(cmd *cobra.Command, args []string) error {
+	options, err := processContainerPauseOptions(cmd)
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	walker := &containerwalker.ContainerWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if found.MatchCount > 1 {
-				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
-			}
-			if err := pauseContainer(ctx, client, found.Container.ID()); err != nil {
-				return err
-			}
-
-			_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\n", found.Req)
-			return err
-		},
-	}
-	for _, req := range args {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			return err
-		} else if n == 0 {
-			return fmt.Errorf("no such container %s", req)
-		}
-	}
-	return nil
-}
-
-func pauseContainer(ctx context.Context, client *containerd.Client, id string) error {
-	container, err := client.LoadContainer(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	task, err := container.Task(ctx, cio.Load)
-	if err != nil {
-		return err
-	}
-
-	status, err := task.Status(ctx)
-	if err != nil {
-		return err
-	}
-
-	switch status.Status {
-	case containerd.Paused:
-		return fmt.Errorf("container %s is already paused", id)
-	case containerd.Created, containerd.Stopped:
-		return fmt.Errorf("container %s is not running", id)
-	default:
-		return task.Pause(ctx)
-	}
+	return container.Pause(ctx, client, args, options)
 }
 
 func pauseShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
