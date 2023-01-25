@@ -14,8 +14,8 @@ require (
 	github.com/containerd/go-cni v1.1.7
 	github.com/containerd/imgcrypt v1.1.7
 	github.com/containerd/nydus-snapshotter v0.5.0
-	github.com/containerd/stargz-snapshotter v0.13.0
-	github.com/containerd/stargz-snapshotter/estargz v0.13.0
+	github.com/containerd/stargz-snapshotter v0.14.0
+	github.com/containerd/stargz-snapshotter/estargz v0.14.0
 	github.com/containerd/stargz-snapshotter/ipfs v0.13.1-0.20230106161838-6844dbb4c428
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67
 	github.com/containernetworking/cni v1.1.2
@@ -121,7 +121,7 @@ require (
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/genproto v0.0.0-20221206210731-b1a01be3a5f6 // indirect
-	google.golang.org/grpc v1.51.0 // indirect
+	google.golang.org/grpc v1.52.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
