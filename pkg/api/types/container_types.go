@@ -51,11 +51,12 @@ type ContainerStopOptions struct {
 	Timeout *time.Duration
 }
 
-// ContainerTopOptions specifies options for `nerdctl top`.
-type ContainerTopOptions struct {
-	Stdout io.Writer
-	// GOptions is the global options
-	GOptions GlobalCommandOptions
+// ContainerRestartOptions specifies options for `nerdctl (container) restart`.
+type ContainerRestartOptions struct {
+	Stdout  io.Writer
+	GOption GlobalCommandOptions
+	// Time to wait after sending a SIGTERM and before sending a SIGKILL.
+	Timeout *time.Duration
 }
 
 // ContainerPauseOptions specifies options for `nerdctl (container) pause`.
@@ -74,6 +75,13 @@ type ContainerRemoveOptions struct {
 	Force bool
 	// Volumes removes anonymous volumes associated with the container
 	Volumes bool
+}
+
+// ContainerTopOptions specifies options for `nerdctl top`.
+type ContainerTopOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
 }
 
 // ContainerInspectOptions specifies options for `nerdctl container inspect`
