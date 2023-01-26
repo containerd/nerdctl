@@ -17,16 +17,12 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/opencontainers/go-digest"
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/spf13/cobra"
 )
 
@@ -45,28 +41,36 @@ func newImagePruneCommand() *cobra.Command {
 	return imagePruneCommand
 }
 
-func imagePruneAction(cmd *cobra.Command, _ []string) error {
+func processImagePruneOptions(cmd *cobra.Command) (types.ImagePruneOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.ImagePruneOptions{}, err
 	}
 	all, err := cmd.Flags().GetBool("all")
 	if err != nil {
-		return err
-	}
-
-	if !all {
-		logrus.Warn("Currently, `nerdctl image prune` requires --all to be specified. Skip pruning.")
-		// NOP
-		return nil
+		return types.ImagePruneOptions{}, err
 	}
 
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
+		return types.ImagePruneOptions{}, err
+	}
+
+	return types.ImagePruneOptions{
+		Stdout:   cmd.OutOrStdout(),
+		GOptions: globalOptions,
+		All:      all,
+		Force:    force,
+	}, err
+}
+
+func imagePruneAction(cmd *cobra.Command, _ []string) error {
+	options, err := processImagePruneOptions(cmd)
+	if err != nil {
 		return err
 	}
 
-	if !force {
+	if !options.Force {
 		var confirm string
 		msg := "This will remove all images without at least one container associated to them."
 		msg += "\nAre you sure you want to continue? [y/N] "
@@ -78,61 +82,12 @@ func imagePruneAction(cmd *cobra.Command, _ []string) error {
 			return nil
 		}
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	return imagePrune(ctx, cmd, client)
-}
-
-func imagePrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client) error {
-	var (
-		imageStore     = client.ImageService()
-		contentStore   = client.ContentStore()
-		containerStore = client.ContainerService()
-	)
-	imageList, err := imageStore.List(ctx)
-	if err != nil {
-		return err
-	}
-	containerList, err := containerStore.List(ctx)
-	if err != nil {
-		return err
-	}
-	usedImages := make(map[string]struct{})
-	for _, container := range containerList {
-		usedImages[container.Image] = struct{}{}
-	}
-
-	delOpts := []images.DeleteOpt{images.SynchronousDelete()}
-	removedImages := make(map[string][]digest.Digest)
-	for _, image := range imageList {
-		if _, ok := usedImages[image.Name]; ok {
-			continue
-		}
-
-		digests, err := image.RootFS(ctx, contentStore, platforms.DefaultStrict())
-		if err != nil {
-			logrus.WithError(err).Warnf("failed to enumerate rootfs")
-		}
-		if err := imageStore.Delete(ctx, image.Name, delOpts...); err != nil {
-			logrus.WithError(err).Warnf("failed to delete image %s", image.Name)
-			continue
-		}
-		removedImages[image.Name] = digests
-	}
-
-	if len(removedImages) > 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "Deleted Images:")
-		for image, digests := range removedImages {
-			fmt.Fprintf(cmd.OutOrStdout(), "Untagged: %s\n", image)
-			for _, digest := range digests {
-				fmt.Fprintf(cmd.OutOrStdout(), "deleted: %s\n", digest)
-			}
-		}
-		fmt.Fprintln(cmd.OutOrStdout(), "")
-	}
-	return nil
+	return image.Prune(ctx, client, options)
 }
