@@ -17,14 +17,10 @@
 package ipfs
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"strings"
-	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
@@ -35,13 +31,16 @@ import (
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/stargz-snapshotter/ipfs"
+	ipfsclient "github.com/containerd/stargz-snapshotter/ipfs/client"
 	"github.com/docker/docker/errdefs"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 )
 
+const ipfsPathEnv = "IPFS_PATH"
+
 // EnsureImage pull the specified image from IPFS.
-func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter string, scheme string, ref string, mode imgutil.PullMode, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool, ipfsPath *string) (*imgutil.EnsuredImage, error) {
+func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter string, scheme string, ref string, mode imgutil.PullMode, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool, ipfsPath string) (*imgutil.EnsuredImage, error) {
 	switch mode {
 	case "always", "missing", "never":
 		// NOP
@@ -68,13 +67,9 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 	if mode == "never" {
 		return nil, fmt.Errorf("image %q is not available", ref)
 	}
-	var ipath string
-	if ipfsPath != nil {
-		ipath = *ipfsPath
-	}
 	r, err := ipfs.NewResolver(ipfs.ResolverOptions{
 		Scheme:   scheme,
-		IPFSPath: ipath,
+		IPFSPath: lookupIPFSPath(ipfsPath),
 	})
 	if err != nil {
 		return nil, err
@@ -83,15 +78,16 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 }
 
 // Push pushes the specified image to IPFS.
-func Push(ctx context.Context, client *containerd.Client, rawRef string, layerConvert converter.ConvertFunc, allPlatforms bool, platform []string, ensureImage bool, ipfsPath *string) (string, error) {
+func Push(ctx context.Context, client *containerd.Client, rawRef string, layerConvert converter.ConvertFunc, allPlatforms bool, platform []string, ensureImage bool, ipfsPath string) (string, error) {
 	platMC, err := platformutil.NewMatchComparer(allPlatforms, platform)
 	if err != nil {
 		return "", err
 	}
+	ipath := lookupIPFSPath(ipfsPath)
 	if ensureImage {
 		// Ensure image contents are fully downloaded
 		logrus.Infof("ensuring image contents")
-		if err := ensureContentsOfIPFSImage(ctx, client, rawRef, allPlatforms, platform); err != nil {
+		if err := ensureContentsOfIPFSImage(ctx, client, rawRef, allPlatforms, platform, ipath); err != nil {
 			logrus.WithError(err).Warnf("failed to ensure the existence of image %q", rawRef)
 		}
 	}
@@ -99,11 +95,15 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, layerCo
 	if err != nil {
 		return "", err
 	}
-	return ipfs.PushWithIPFSPath(ctx, client, ref.String(), layerConvert, platMC, ipfsPath)
+	return ipfs.PushWithIPFSPath(ctx, client, ref.String(), layerConvert, platMC, &ipath)
 }
 
 // ensureContentsOfIPFSImage ensures that the entire contents of an existing IPFS image are fully downloaded to containerd.
-func ensureContentsOfIPFSImage(ctx context.Context, client *containerd.Client, ref string, allPlatforms bool, platform []string) error {
+func ensureContentsOfIPFSImage(ctx context.Context, client *containerd.Client, ref string, allPlatforms bool, platform []string, ipfsPath string) error {
+	iurl, err := ipfsclient.GetIPFSAPIAddress(ipfsPath, "http")
+	if err != nil {
+		return err
+	}
 	platMC, err := platformutil.NewMatchComparer(allPlatforms, platform)
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func ensureContentsOfIPFSImage(ctx context.Context, client *containerd.Client, r
 	childrenHandler = images.SetChildrenLabels(cs, childrenHandler)
 	childrenHandler = images.FilterPlatforms(childrenHandler, platMC)
 	return images.Dispatch(ctx, images.Handlers(
-		remotes.FetchHandler(cs, &fetcher{}),
+		remotes.FetchHandler(cs, &fetcher{ipfsclient.New(iurl)}),
 		childrenHandler,
 	), nil, img.Target)
 }
@@ -137,98 +137,32 @@ func ensureContentsOfIPFSImage(ctx context.Context, client *containerd.Client, r
 // fetcher fetches a file from IPFS
 // TODO: fix github.com/containerd/stargz-snapshotter/ipfs to export this and we should import that
 type fetcher struct {
+	ipfsclient *ipfsclient.Client
 }
 
 func (f *fetcher) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
-	p, err := ipfs.GetCID(desc)
+	cid, err := ipfs.GetCID(desc)
 	if err != nil {
 		return nil, err
 	}
-	return ipfsCat(context.TODO(), "ipfs", p, 0, desc.Size, "")
+	off, size := 0, int(desc.Size)
+	return f.ipfsclient.Get("/ipfs/"+cid, &off, &size)
 }
 
-func ipfsCat(ctx context.Context, ipfsBin string, c string, off int64, size int64, ipfsPath string) (io.ReadCloser, error) {
-	pr, pw := io.Pipe()
-
-	var curCmd *ongoingIPFSCmd
-	go func() {
-		<-ctx.Done()
-		if curCmd != nil {
-			discardOngoingIPFSCmd(curCmd)
-		}
-	}()
-	go func() {
-		maxretry := 100
-		curOff := off
-		endOff := off + size
-		for i := 0; ; i++ {
-			cont, err := func() (cont bool, _ error) { // defer scope
-				remain := endOff - curOff
-				cmd := exec.Command(ipfsBin, "cat", fmt.Sprintf("--offset=%d", curOff), fmt.Sprintf("--length=%d", remain), c)
-				stderrbuf := new(bytes.Buffer)
-				cmd.Stderr = stderrbuf
-				if ipfsPath != "" {
-					cmd.Env = append(os.Environ(), fmt.Sprintf("IPFS_PATH=%s", ipfsPath))
-				}
-				stdout, err := cmd.StdoutPipe()
-				if err != nil {
-					return false, err
-				}
-				if err := cmd.Start(); err != nil {
-					return false, err
-				}
-				go cmd.Wait()
-
-				curCmd = &ongoingIPFSCmd{cmd, stdout, stderrbuf, false}
-				defer discardOngoingIPFSCmd(curCmd)
-
-				if n, err := io.CopyN(pw, stdout, remain); err != nil {
-					sb, _ := io.ReadAll(stderrbuf)
-					if i < maxretry && strings.Contains(string(sb), "someone else has the lock") {
-						logrus.WithError(err).WithField("stderr", string(sb)).Warnf("retrying copy %q(offset:%d,length:%d,actuallength:%d,retry:%d/%d)", c, curOff, remain, n, i, maxretry)
-						// we need to retry until we can get the lock
-						time.Sleep(time.Second)
-						curOff += n
-						return true, nil
-					}
-					logrus.WithError(err).WithField("stderr", string(sb)).Warnf("failed to copy %q(offset:%d,length:%d,actuallength:%d,retry:%d/%d)", c, curOff, remain, n, i, maxretry)
-					return false, err
-				}
-				return false, nil
-			}()
-			if err != nil {
-				pw.CloseWithError(err)
-				return
-			}
-			if cont {
-				continue
-			}
-			break
-		}
-		pw.Close()
-	}()
-	return pr, nil
-}
-
-type ongoingIPFSCmd struct {
-	cmd     *exec.Cmd
-	outPipe io.ReadCloser
-	errBuf  *bytes.Buffer
-	done    bool
-}
-
-func discardOngoingIPFSCmd(c *ongoingIPFSCmd) {
-	if c.done {
-		return
+// If IPFS_PATH is specified, this will be used.
+// If not, "~/.ipfs" will be used.
+// The behaviour is compatible to kubo: https://github.com/ipfs/go-ipfs-http-client/blob/171fcd55e3b743c38fb9d78a34a3a703ee0b5e89/api.go#L43-L44
+// Optionally takes ipfsPath string having the highest priority.
+func lookupIPFSPath(ipfsPath string) string {
+	var ipath string
+	if idir := os.Getenv(ipfsPathEnv); idir != "" {
+		ipath = idir
 	}
-	defer func() { c.done = true }()
-	// fully read IO until EOF to cleanlly finish the command
-	io.Copy(io.Discard, c.outPipe)
-	sb, _ := io.ReadAll(c.errBuf)
-	time.Sleep(time.Second * 3)
-	if !c.cmd.ProcessState.Exited() {
-		// kill it if hangs
-		logrus.WithField("stderr", string(sb)).Warnf("ipfs command hangs. killing it.")
-		c.cmd.Process.Kill()
+	if ipath == "" {
+		ipath = "~/.ipfs"
 	}
+	if ipfsPath != "" {
+		ipath = ipfsPath
+	}
+	return ipath
 }

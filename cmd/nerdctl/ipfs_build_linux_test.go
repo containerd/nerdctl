@@ -31,7 +31,6 @@ import (
 
 func TestIPFSBuild(t *testing.T) {
 	testutil.DockerIncompatible(t)
-	testutil.RequireExecutable(t, "ipfs")
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	defer base.Cmd("builder", "prune").Run()

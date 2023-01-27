@@ -52,7 +52,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		}
 		logrus.Infof("pushing image %q to IPFS", ref)
 
-		var ipfsPath *string
+		var ipfsPath string
 		if options.IpfsAddress != "" {
 			dir, err := os.MkdirTemp("", "apidirtmp")
 			if err != nil {
@@ -62,7 +62,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 			if err := os.WriteFile(filepath.Join(dir, "api"), []byte(options.IpfsAddress), 0600); err != nil {
 				return err
 			}
-			ipfsPath = &dir
+			ipfsPath = dir
 		}
 
 		var layerConvert converter.ConvertFunc

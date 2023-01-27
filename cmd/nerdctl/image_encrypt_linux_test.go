@@ -26,7 +26,6 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/images"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/testregistry"
@@ -97,15 +96,8 @@ func rmiAll(base *testutil.Base) {
 		}
 
 		base.T.Logf("Pruning all images (again?)")
-		is := client.ImageService()
-		imgs, err := is.List(ctx)
-		assert.NilError(base.T, err)
-		for _, img := range imgs {
-			base.T.Logf("Pruning image %+v", img)
-			if err := is.Delete(ctx, img.Name, images.SynchronousDelete()); err != nil {
-				base.T.Log(err)
-			}
-		}
+		imageIDs = base.Cmd("images", "--no-trunc", "-a", "-q").OutLines()
+		base.Cmd(append([]string{"rmi", "-f"}, imageIDs...)...).AssertOK()
 	}
 }
 

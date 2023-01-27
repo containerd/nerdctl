@@ -24,15 +24,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"os/exec"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
+	ipfsclient "github.com/containerd/stargz-snapshotter/ipfs/client"
 	"github.com/hashicorp/go-multierror"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -53,13 +51,19 @@ type RegistryOptions struct {
 }
 
 func NewRegistry(options RegistryOptions) (http.Handler, error) {
-	return &server{options}, nil
+	// HTTP is only supported as of now. We can add https support here if needed (e.g. for connecting to it via proxy, etc)
+	iurl, err := ipfsclient.GetIPFSAPIAddress(lookupIPFSPath(options.IpfsPath), "http")
+	if err != nil {
+		return nil, err
+	}
+	return &server{options, ipfsclient.New(iurl)}, nil
 }
 
 // server is a read-only registry which converts OCI Distribution Spec's pull-related API to IPFS
 // https://github.com/opencontainers/distribution-spec/blob/v1.0/spec.md#pull
 type server struct {
-	config RegistryOptions
+	config     RegistryOptions
+	ipfsclient *ipfsclient.Client
 }
 
 var manifestRegexp = regexp.MustCompile(`/v2/ipfs/([a-z0-9]+)/manifests/(.*)`)
@@ -173,23 +177,15 @@ func (s *server) getReadSeeker(ctx context.Context, c string) (io.ReadSeeker, er
 }
 
 func (s *server) getFile(ctx context.Context, c string) (*io.SectionReader, error) {
-	ipfsBin := "ipfs"
-	cmd := exec.Command(ipfsBin, "files", "stat", "--format=<size>", "/ipfs/"+c)
-	if s.config.IpfsPath != "" {
-		cmd.Env = append(os.Environ(), fmt.Sprintf("IPFS_PATH=%s", s.config.IpfsPath))
-	}
-	sizeB, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-	size, err := strconv.ParseInt(strings.TrimSuffix(string(sizeB), "\n"), 10, 64)
+	st, err := s.ipfsclient.StatCID(c)
 	if err != nil {
 		return nil, err
 	}
 	ra := &retryReaderAt{
 		ctx: ctx,
 		readAtFunc: func(ctx context.Context, p []byte, off int64) (int, error) {
-			r, err := ipfsCat(ctx, ipfsBin, c, off, size, s.config.IpfsPath)
+			ofst, size := int(off), len(p)
+			r, err := s.ipfsclient.Get("/ipfs/"+c, &ofst, &size)
 			if err != nil {
 				return 0, err
 			}
@@ -198,7 +194,7 @@ func (s *server) getFile(ctx context.Context, c string) (*io.SectionReader, erro
 		timeout: s.config.ReadTimeout,
 		retry:   s.config.ReadRetryNum,
 	}
-	return io.NewSectionReader(ra, 0, size), nil
+	return io.NewSectionReader(ra, 0, int64(st.Size)), nil
 }
 
 func (s *server) resolveCIDOfRootBlob(ctx context.Context, c string) (string, ocispec.Descriptor, error) {

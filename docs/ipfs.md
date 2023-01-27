@@ -9,10 +9,6 @@ IPFS support is completely optional. Your host is NOT connected to any P2P netwo
 
 ## Prerequisites
 
-### ipfs command
-
-nerdctl requires `ipfs` command available on the node via PATH.
-
 ### ipfs daemon
 
 Make sure an IPFS daemon such as [Kubo](https://github.com/ipfs/kubo) (former go-ipfs) is running on your host.

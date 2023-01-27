@@ -30,7 +30,6 @@ import (
 )
 
 func TestIPFS(t *testing.T) {
-	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage)
@@ -62,7 +61,6 @@ func TestIPFS(t *testing.T) {
 var iplineRegexp = regexp.MustCompile(`"([0-9\.]*)"`)
 
 func TestIPFSAddress(t *testing.T) {
-	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	ipfsaddr, done := runIPFSDaemonContainer(t, base)
@@ -90,7 +88,6 @@ func runIPFSDaemonContainer(t *testing.T, base *testutil.Base) (ipfsAddress stri
 }
 
 func TestIPFSCommit(t *testing.T) {
-	testutil.RequireExecutable(t, "ipfs")
 	// cgroup is required for nerdctl commit
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
 		t.Skip("test skipped for rootless containers on cgroup v1")
@@ -115,7 +112,6 @@ func TestIPFSCommit(t *testing.T) {
 }
 
 func TestIPFSWithLazyPulling(t *testing.T) {
-	testutil.RequireExecutable(t, "ipfs")
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	requiresStargz(base)
@@ -127,7 +123,6 @@ func TestIPFSWithLazyPulling(t *testing.T) {
 }
 
 func TestIPFSWithLazyPullingCommit(t *testing.T) {
-	testutil.RequireExecutable(t, "ipfs")
 	// cgroup is required for nerdctl commit
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
 		t.Skip("test skipped for rootless containers on cgroup v1")
