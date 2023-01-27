@@ -30,7 +30,6 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/pkg/progress"
 	"github.com/containerd/containerd/platforms"
@@ -39,7 +38,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/imgutil"
-	"github.com/opencontainers/image-spec/identity"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 )
@@ -281,7 +279,7 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 		logrus.WithError(err).Warnf("failed to get blob size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 	}
 
-	size, err := unpackedImageSize(ctx, x.snapshotter, image)
+	size, err := imgutil.UnpackedImageSize(ctx, x.snapshotter, image)
 	if err != nil {
 		logrus.WithError(err).Warnf("failed to get unpacked size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 	}
@@ -342,57 +340,4 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 		}
 	}
 	return nil
-}
-
-type snapshotKey string
-
-// recursive function to calculate total usage of key's parent
-func (key snapshotKey) add(ctx context.Context, s snapshots.Snapshotter, usage *snapshots.Usage) error {
-	if key == "" {
-		return nil
-	}
-	u, err := s.Usage(ctx, string(key))
-	if err != nil {
-		return err
-	}
-
-	usage.Add(u)
-
-	info, err := s.Stat(ctx, string(key))
-	if err != nil {
-		return err
-	}
-
-	key = snapshotKey(info.Parent)
-	return key.add(ctx, s, usage)
-}
-
-// unpackedImageSize is the size of the unpacked snapshots.
-// Does not contain the size of the blobs in the content store. (Corresponds to Docker).
-func unpackedImageSize(ctx context.Context, s snapshots.Snapshotter, img containerd.Image) (int64, error) {
-	diffIDs, err := img.RootFS(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	chainID := identity.ChainID(diffIDs).String()
-	usage, err := s.Usage(ctx, chainID)
-	if err != nil {
-		if errdefs.IsNotFound(err) {
-			logrus.WithError(err).Debugf("image %q seems not unpacked", img.Name())
-			return 0, nil
-		}
-		return 0, err
-	}
-
-	info, err := s.Stat(ctx, chainID)
-	if err != nil {
-		return 0, err
-	}
-
-	//add ChainID's parent usage to the total usage
-	if err := snapshotKey(info.Parent).add(ctx, s, &usage); err != nil {
-		return 0, err
-	}
-	return usage.Size, nil
 }

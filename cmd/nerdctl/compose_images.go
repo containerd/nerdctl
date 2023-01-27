@@ -137,7 +137,7 @@ func printComposeImages(ctx context.Context, cmd *cobra.Command, containers []co
 				return err
 			}
 
-			size, err := unpackedImageSize(ctx, sn, image)
+			size, err := imgutil.UnpackedImageSize(ctx, sn, image)
 			if err != nil {
 				return err
 			}
