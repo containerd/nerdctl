@@ -27,7 +27,7 @@ ARG BUILDKIT_VERSION=v0.11.2
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.14.1
 # Extra deps: Nydus Lazy-pulling
-ARG NYDUS_VERSION=v2.1.1
+ARG NYDUS_VERSION=v2.1.3
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=v1.1.7
 # Extra deps: Rootless
