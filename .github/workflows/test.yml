@@ -69,11 +69,11 @@ jobs:
         # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
         include:
           - ubuntu: 20.04
-            containerd: v1.5.13
+            containerd: v1.5.17
           - ubuntu: 20.04
-            containerd: v1.6.12
+            containerd: v1.6.16
           - ubuntu: 22.04
-            containerd: v1.6.12
+            containerd: v1.6.16
           - ubuntu: 22.04
             containerd: main
     env:
@@ -105,11 +105,11 @@ jobs:
         # ubuntu-22.04: cgroup v1, ubuntu-22.04: cgroup v2
         include:
           - ubuntu: 20.04
-            containerd: v1.5.13
+            containerd: v1.5.17
           - ubuntu: 20.04
-            containerd: v1.6.12
+            containerd: v1.6.16
           - ubuntu: 22.04
-            containerd: v1.6.12
+            containerd: v1.6.16
           - ubuntu: 22.04
             containerd: main
     env:
