@@ -81,8 +81,8 @@ func parseEnvVars(paths []string) ([]string, error) {
 		sc := bufio.NewScanner(f)
 		for sc.Scan() {
 			line := strings.TrimSpace(sc.Text())
-			// skip comment lines
-			if strings.HasPrefix(line, "#") {
+			// skip comment lines and empty line
+			if len(line) == 0 || strings.HasPrefix(line, "#") {
 				continue
 			}
 			vars = append(vars, line)
