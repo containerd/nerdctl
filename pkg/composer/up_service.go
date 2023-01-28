@@ -140,8 +140,10 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 	defer os.RemoveAll(tempDir)
 	cidFilename := filepath.Join(tempDir, "cid")
 
-	if container.Detached && !service.Unparsed.StdinOpen && !service.Unparsed.Tty {
+	var runFlagD bool
+	if !service.Unparsed.StdinOpen && !service.Unparsed.Tty {
 		container.RunArgs = append([]string{"-d"}, container.RunArgs...)
+		runFlagD = true
 	}
 
 	//add metadata labels to container https://github.com/compose-spec/compose-spec/blob/master/spec.md#labels
@@ -164,11 +166,11 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 	if service.Unparsed.StdinOpen {
 		cmd.Stdin = os.Stdin
 	}
-
-	if !container.Detached {
+	if !runFlagD {
 		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
 	}
+	// Always propagate stderr to print detailed error messages (https://github.com/containerd/nerdctl/issues/1942)
+	cmd.Stderr = os.Stderr
 
 	err = cmd.Run()
 	if err != nil {
