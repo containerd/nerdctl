@@ -20,7 +20,7 @@
 # Basic deps
 ARG CONTAINERD_VERSION=v1.6.16
 ARG RUNC_VERSION=v1.1.4
-ARG CNI_PLUGINS_VERSION=v1.1.1
+ARG CNI_PLUGINS_VERSION=v1.2.0
 
 # Extra deps: Build
 ARG BUILDKIT_VERSION=v0.11.0
@@ -248,7 +248,8 @@ COPY --from=out-full / /usr/local/
 RUN perl -pi -e 's/multi-user.target/docker-entrypoint.target/g' /usr/local/lib/systemd/system/*.service && \
   systemctl enable containerd buildkit stargz-snapshotter && \
   mkdir -p /etc/bash_completion.d && \
-  nerdctl completion bash >/etc/bash_completion.d/nerdctl
+  nerdctl completion bash >/etc/bash_completion.d/nerdctl && \
+  mkdir -p -m 0755 /etc/cni
 COPY ./Dockerfile.d/etc_containerd_config.toml /etc/containerd/config.toml
 COPY ./Dockerfile.d/etc_buildkit_buildkitd.toml /etc/buildkit/buildkitd.toml
 VOLUME /var/lib/containerd
