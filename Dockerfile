@@ -18,16 +18,16 @@
 # TODO: verify commit hash
 
 # Basic deps
-ARG CONTAINERD_VERSION=v1.6.12
+ARG CONTAINERD_VERSION=v1.6.16
 ARG RUNC_VERSION=v1.1.4
-ARG CNI_PLUGINS_VERSION=v1.1.1
+ARG CNI_PLUGINS_VERSION=v1.2.0
 
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.11.0
+ARG BUILDKIT_VERSION=v0.11.2
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.14.1
 # Extra deps: Nydus Lazy-pulling
-ARG NYDUS_VERSION=v2.1.1
+ARG NYDUS_VERSION=v2.1.3
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=v1.1.7
 # Extra deps: Rootless
@@ -39,7 +39,7 @@ ARG BYPASS4NETNS_VERSION=v0.3.0
 ARG FUSE_OVERLAYFS_VERSION=v1.10
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.5
 # Extra deps: IPFS
-ARG KUBO_VERSION=v0.17.0
+ARG KUBO_VERSION=v0.18.0
 # Extra deps: Init
 ARG TINI_VERSION=v0.19.0
 # Extra deps: Debug
@@ -49,7 +49,7 @@ ARG BUILDG_VERSION=v0.4.1
 ARG GO_VERSION=1.19
 ARG UBUNTU_VERSION=22.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
-ARG GOTESTSUM_VERSION=v1.8.2
+ARG GOTESTSUM_VERSION=v1.9.0
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS build-base-debian
 # libbtrfs: for containerd
@@ -248,7 +248,8 @@ COPY --from=out-full / /usr/local/
 RUN perl -pi -e 's/multi-user.target/docker-entrypoint.target/g' /usr/local/lib/systemd/system/*.service && \
   systemctl enable containerd buildkit stargz-snapshotter && \
   mkdir -p /etc/bash_completion.d && \
-  nerdctl completion bash >/etc/bash_completion.d/nerdctl
+  nerdctl completion bash >/etc/bash_completion.d/nerdctl && \
+  mkdir -p -m 0755 /etc/cni
 COPY ./Dockerfile.d/etc_containerd_config.toml /etc/containerd/config.toml
 COPY ./Dockerfile.d/etc_buildkit_buildkitd.toml /etc/buildkit/buildkitd.toml
 VOLUME /var/lib/containerd
