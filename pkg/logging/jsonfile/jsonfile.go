@@ -44,7 +44,7 @@ func Path(dataStore, ns, id string) string {
 	return filepath.Join(dataStore, "containers", ns, id, id+"-json.log")
 }
 
-func Encoode(stdout <-chan string, stderr <-chan string, writer io.Writer) error {
+func Encode(stdout <-chan string, stderr <-chan string, writer io.Writer) error {
 	enc := json.NewEncoder(writer)
 	var encMu sync.Mutex
 	var wg sync.WaitGroup
