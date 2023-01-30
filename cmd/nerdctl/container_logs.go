@@ -27,10 +27,19 @@ import (
 )
 
 func newLogsCommand() *cobra.Command {
+	const shortUsage = "Fetch the logs of a container. Expected to be used with 'nerdctl run -d'."
+	const longUsage = `Fetch the logs of a container.
+
+The following containers are supported:
+- Containers created with 'nerdctl run -d'. The log is currently empty for containers created without '-d'.
+- Containers created with 'nerdctl compose'.
+- Containers created with Kubernetes (EXPERIMENTAL).
+`
 	var logsCommand = &cobra.Command{
 		Use:               "logs [flags] CONTAINER",
 		Args:              IsExactArgs(1),
-		Short:             "Fetch the logs of a container. Currently, only containers created with `nerdctl run -d` are supported.",
+		Short:             shortUsage,
+		Long:              longUsage,
 		RunE:              logsAction,
 		ValidArgsFunction: logsShellComplete,
 		SilenceUsage:      true,

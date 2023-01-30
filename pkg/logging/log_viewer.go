@@ -115,7 +115,7 @@ type ContainerLogViewer struct {
 
 // Validates the given LogViewOptions, loads the logging config for the
 // given container and returns a ContainerLogViewer.
-func InitContainerLogViewer(containerLabels map[string]string, lvopts LogViewOptions, stopChannel chan os.Signal) (contlv *ContainerLogViewer, err error) {
+func InitContainerLogViewer(containerLabels map[string]string, lvopts LogViewOptions, stopChannel chan os.Signal, experimental bool) (contlv *ContainerLogViewer, err error) {
 	var lcfg LogConfig
 	if _, ok := containerLabels[k8slabels.ContainerType]; ok {
 		lcfg.Driver = "cri"
@@ -128,6 +128,10 @@ func InitContainerLogViewer(containerLabels map[string]string, lvopts LogViewOpt
 		if err != nil {
 			return nil, fmt.Errorf("failed to load logging config: %s", err)
 		}
+	}
+
+	if lcfg.Driver == "cri" && !experimental {
+		return nil, fmt.Errorf("the `cri` log viewer requires nerdctl to be running in experimental mode")
 	}
 
 	lv := &ContainerLogViewer{
