@@ -130,7 +130,7 @@ Run a command in a new container.
 
 Usage: `nerdctl run [OPTIONS] IMAGE [COMMAND] [ARG...]`
 
-:nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IPFS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
+:nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IPFS. See [`ipfs.md`](./ipfs.md) for details.
 
 Basic flags:
 
@@ -349,7 +349,7 @@ Shared memory flags:
 
 GPU flags:
 
-- :whale: `--gpus`: GPU devices to add to the container ('all' to pass all GPUs). Please see also [./docs/gpu.md](./docs/gpu.md) for details.
+- :whale: `--gpus`: GPU devices to add to the container ('all' to pass all GPUs). Please see also [`./gpu.md`](./gpu.md) for details.
 
 Ulimit flags:
 
@@ -357,7 +357,7 @@ Ulimit flags:
 
 Verify flags:
 
-- :nerd_face: `--verify`: Verify the image (none|cosign). See [`docs/cosign.md`](./docs/cosign.md) for details.
+- :nerd_face: `--verify`: Verify the image (none|cosign). See [`docs/cosign.md`](./cosign.md) for details.
 - :nerd_face: `--cosign-key`: Path to the public key file, KMS, URI or Kubernetes Secret for `--verify=cosign`
 
 IPFS flags:
@@ -396,7 +396,7 @@ Create a new container.
 
 Usage: `nerdctl create [OPTIONS] IMAGE [COMMAND] [ARG...]`
 
-:nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IPFS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
+:nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IPFS. See [`ipfs.md`](./ipfs.md) for details.
 
 The `nerdctl create` command similar to `nerdctl run -d` except the container is never started. You can then use the `nerdctl start <container_id>` command to start the container at any point.
 
@@ -619,7 +619,7 @@ Unimplemented `docker container prune` flags: `--filter`
 
 Build an image from a Dockerfile.
 
-:information_source: Needs buildkitd to be running. See also [the document about setting up `nerdctl build` with BuildKit](./docs/build.md).
+:information_source: Needs buildkitd to be running. See also [the document about setting up `nerdctl build` with BuildKit](./build.md).
 
 Usage: `nerdctl build [OPTIONS] PATH`
 
@@ -645,7 +645,7 @@ Flags:
 - :whale: `--cache-to=CACHE`: Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir) (compatible with `docker buildx build`)
 - :whale: `--platform=(amd64|arm64|...)`: Set target platform for build (compatible with `docker buildx build`)
 - :whale: `--iidfile=FILE`: Write the image ID to the file
-- :nerd_face: `--ipfs`: Build image with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
+- :nerd_face: `--ipfs`: Build image with pulling base images from IPFS. See [`ipfs.md`](./ipfs.md) for details.
 - :whale: `--label`: Set metadata for an image
 
 Unimplemented `docker build` flags: `--add-host`, `--network`, `--squash`
@@ -698,7 +698,7 @@ Pull an image from a registry.
 
 Usage: `nerdctl pull [OPTIONS] NAME[:TAG|@DIGEST]`
 
-:nerd_face: `ipfs://` prefix can be used for `NAME` to pull it from IPFS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
+:nerd_face: `ipfs://` prefix can be used for `NAME` to pull it from IPFS. See [`ipfs.md`](./ipfs.md) for details.
 
 Flags:
 
@@ -707,7 +707,7 @@ Flags:
 - :nerd_face: `--all-platforms`: Pull content for all platforms
 - :nerd_face: `--unpack`: Unpack the image for the current single platform (auto/true/false)
 - :whale: `-q, --quiet`: Suppress verbose output
-- :nerd_face: `--verify`: Verify the image (none|cosign). See [`docs/cosign.md`](./docs/cosign.md) for details.
+- :nerd_face: `--verify`: Verify the image (none|cosign). See [`docs/cosign.md`](./cosign.md) for details.
 - :nerd_face: `--cosign-key`: Path to the public key file, KMS, URI or Kubernetes Secret for `--verify=cosign`
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
@@ -719,13 +719,13 @@ Push an image to a registry.
 
 Usage: `nerdctl push [OPTIONS] NAME[:TAG]`
 
-:nerd_face: `ipfs://` prefix can be used for `NAME` to push it to IPFS. See [`/docs/ipfs.md`](./docs/ipfs.md) for details.
+:nerd_face: `ipfs://` prefix can be used for `NAME` to push it to IPFS. See [`ipfs.md`](./ipfs.md) for details.
 
 Flags:
 
 - :nerd_face: `--platform=(amd64|arm64|...)`: Push content for a specific platform
 - :nerd_face: `--all-platforms`: Push content for all platforms
-- :nerd_face: `--sign`: Sign the image (none|cosign). See [`docs/cosign.md`](./docs/cosign.md) for details.
+- :nerd_face: `--sign`: Sign the image (none|cosign). See [`docs/cosign.md`](./cosign.md) for details.
 - :nerd_face: `--cosign-key`: Path to the private key file, KMS, URI or Kubernetes Secret for `--sign=cosign`
 - :nerd_face: `--allow-nondistributable-artifacts`: Allow pushing images with non-distributable blobs
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
@@ -834,8 +834,8 @@ Flags:
 - `--estargz-record-in=<FILE>`         : read `ctr-remote optimize --record-out=<FILE>` record file. :warning: This flag is experimental and subject to change.
 - `--estargz-compression-level=<LEVEL>`: eStargz compression level (default: 9)
 - `--estargz-chunk-size=<SIZE>`        : eStargz chunk size
-- `--estargz-min-chunk-size=<SIZE>` : The minimal number of bytes of data must be written in one gzip stream (requires stargz-snapshotter >= v0.13.0). Useful for creating a smaller eStargz image (refer to [`./docs/stargz.md`](./docs/stargz.md) for details).
-- `--estargz-external-toc` : Separate TOC JSON into another image (called \"TOC image\"). The name of TOC image is the original + \"-esgztoc\" suffix. Both eStargz and the TOC image should be pushed to the same registry. (requires stargz-snapshotter >= v0.13.0) Useful for creating a smaller eStargz image (refer to [`./docs/stargz.md`](./docs/stargz.md) for details). :warning: This flag is experimental and subject to change.
+- `--estargz-min-chunk-size=<SIZE>` : The minimal number of bytes of data must be written in one gzip stream (requires stargz-snapshotter >= v0.13.0). Useful for creating a smaller eStargz image (refer to [`./stargz.md`](./stargz.md) for details).
+- `--estargz-external-toc` : Separate TOC JSON into another image (called \"TOC image\"). The name of TOC image is the original + \"-esgztoc\" suffix. Both eStargz and the TOC image should be pushed to the same registry. (requires stargz-snapshotter >= v0.13.0) Useful for creating a smaller eStargz image (refer to [`./stargz.md`](./stargz.md) for details). :warning: This flag is experimental and subject to change.
 - `--estargz-keep-diff-id`: Convert to esgz without changing diffID (cannot be used in conjunction with '--estargz-record-in'. must be specified with '--estargz-external-toc')
 - `--zstdchunked`                      : Use zstd compression instead of gzip (a.k.a zstd:chunked). Should be used in conjunction with '--oci'
 - `--zstdchunked-record-in=<FILE>` : read `ctr-remote optimize --record-out=<FILE>` record file. :warning: This flag is experimental and subject to change.
@@ -848,7 +848,7 @@ Flags:
 
 ### :nerd_face: nerdctl image encrypt
 
-Encrypt image layers. See [`./docs/ocicrypt.md`](./docs/ocicrypt.md).
+Encrypt image layers. See [`./ocicrypt.md`](./ocicrypt.md).
 
 Usage: `nerdctl image encrypt [OPTIONS] SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]`
 
@@ -876,7 +876,7 @@ Flags:
 
 ### :nerd_face: nerdctl image decrypt
 
-Decrypt image layers. See [`./docs/ocicrypt.md`](./docs/ocicrypt.md).
+Decrypt image layers. See [`./ocicrypt.md`](./ocicrypt.md).
 
 Usage: `nerdctl image decrypt [OPTIONS] SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]`
 
@@ -1173,8 +1173,8 @@ Flags:
 ### :nerd_face: nerdctl builder debug
 
 Interactive debugging of Dockerfile using [buildg](https://github.com/ktock/buildg).
-Please refer to [`./docs/builder-debug.md`](./docs/builder-debug.md) for details.
-This is an [experimental](./docs/experimental.md) feature.
+Please refer to [`./builder-debug.md`](./builder-debug.md) for details.
+This is an [experimental](./experimental.md) feature.
 
 :warning: This command currently doesn't use the host's `buildkitd` daemon but uses the patched version of BuildKit provided by buildg. This should be fixed in the future.
 
@@ -1322,7 +1322,7 @@ Flags:
 - :whale: `--no-color`: Produce monochrome output
 - :whale: `--no-log-prefix`: Don't print prefix in logs
 - :whale: `--build`: Build images before starting containers.
-- :nerd_face: `--ipfs`: Build images with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
+- :nerd_face: `--ipfs`: Build images with pulling base images from IPFS. See [`ipfs.md`](./ipfs.md) for details.
 - :whale: `--quiet-pull`: Pull without printing progress information
 - :whale: `--scale`: Scale SERVICE to NUM instances. Overrides the `scale` setting in the Compose file if present.
 - :whale: `--remove-orphans`: Remove containers for services not defined in the Compose file
@@ -1358,7 +1358,7 @@ Flags:
 - :whale: `--build-arg`: Set build-time variables for services
 - :whale: `--no-cache`: Do not use cache when building the image
 - :whale: `--progress`: Set type of progress output (auto, plain, tty). Use plain to show container output
-- :nerd_face: `--ipfs`: Build images with pulling base images from IPFS. See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
+- :nerd_face: `--ipfs`: Build images with pulling base images from IPFS. See [`ipfs.md`](./ipfs.md) for details.
 
 Unimplemented `docker-compose build` (V1) flags:  `--compress`, `--force-rm`, `--memory`, `--no-rm`, `--parallel`, `--pull`, `--quiet`
 
@@ -1574,7 +1574,7 @@ This is needed to run `nerdctl build` with pulling base images from IPFS.
 Other commands (e.g. `nerdctl push ipfs://<image-name>` and `nerdctl pull ipfs://<CID>`) don't require this.
 
 You need to install `ipfs` command on the host.
-See [`./docs/ipfs.md`](./docs/ipfs.md) for details.
+See [`ipfs.md`](./ipfs.md) for details.
 
 Usage: `nerdctl ipfs registry serve [OPTIONS]`
 
@@ -1601,7 +1601,7 @@ Flags:
 - :nerd_face: `--insecure-registry`: skips verifying HTTPS certs, and allows falling back to plain HTTP
 
 The global flags can be also specified in `/etc/nerdctl/nerdctl.toml` (rootful) and `~/.config/nerdctl/nerdctl.toml` (rootless).
-See [`./docs/config.md`](./docs/config.md).
+See [`./config.md`](./config.md).
 
 ## Unimplemented Docker commands
 
@@ -1614,7 +1614,7 @@ Container management:
 Image:
 
 - `docker export` and `docker import`
-- `docker trust *` (Instead, nerdctl supports `nerdctl pull --verify=cosign` and `nerdctl push --sign=cosign`. See [`./docs/cosign.md`](docs/cosign.md).)
+- `docker trust *` (Instead, nerdctl supports `nerdctl pull --verify=cosign` and `nerdctl push --sign=cosign`. See [`./cosign.md`](./cosign.md).)
 - `docker manifest *`
 
 Network management:
