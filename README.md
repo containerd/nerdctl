@@ -87,6 +87,21 @@ To load an image archive (`docker save` format or OCI format) into local Kuberne
 # nerdctl --namespace k8s.io load < /path/to/image.tar
 ```
 
+To read logs (experimental):
+```console
+# nerdctl --namespace=k8s.io ps -a
+CONTAINER ID    IMAGE                                                      COMMAND                   CREATED          STATUS    PORTS    NAMES
+...
+e8793b8cca8b    registry.k8s.io/coredns/coredns:v1.9.3                     "/coredns -conf /etc…"    2 minutes ago    Up                 k8s://kube-system/coredns-787d4945fb-mfx6b/coredns
+...
+
+# nerdctl --namespace=k8s.io logs -f e8793b8cca8b
+[INFO] plugin/reload: Running configuration SHA512 = 591cf328cccc12bc490481273e738df59329c62c0b729d94e8b61db9961c2fa5f046dd37f1cf888b953814040d180f52594972691cd6ff41be96639138a43908
+CoreDNS-1.9.3
+linux/amd64, go1.18.2, 45b0a11
+...
+```
+
 ### Rootless mode
 
 To launch rootless containerd:

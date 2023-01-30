@@ -102,7 +102,7 @@ func Logs(ctx context.Context, client *containerd.Client, container string, opti
 				Since:             options.Since,
 				Until:             options.Until,
 			}
-			logViewer, err := logging.InitContainerLogViewer(l, logViewOpts, stopChannel)
+			logViewer, err := logging.InitContainerLogViewer(l, logViewOpts, stopChannel, options.GOptions.Experimental)
 			if err != nil {
 				return err
 			}
