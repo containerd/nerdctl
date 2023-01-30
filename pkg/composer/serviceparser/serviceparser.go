@@ -176,9 +176,8 @@ func warnUnknownFields(svc types.ServiceConfig) {
 }
 
 type Container struct {
-	Name     string // e.g., "compose-wordpress_wordpress_1"
-	Detached bool
-	RunArgs  []string // {"--pull=never", ...}
+	Name    string   // e.g., "compose-wordpress_wordpress_1"
+	RunArgs []string // {"--pull=never", ...}
 }
 
 type Build struct {
@@ -462,7 +461,6 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		c.Name = svc.ContainerName
 	}
 
-	c.Detached = true
 	c.RunArgs = []string{
 		"--name=" + c.Name,
 		"--pull=never", // because image will be ensured before running replicas with `nerdctl run`.
