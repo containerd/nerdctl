@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/containerd/cgroups"
+	"github.com/containerd/cgroups/v3"
 	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/continuity/testutil/loopback"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
