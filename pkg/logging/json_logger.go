@@ -115,7 +115,7 @@ func (jsonLogger *JSONLogger) PreProcess(dataStore string, config *logging.Confi
 }
 
 func (jsonLogger *JSONLogger) Process(stdout <-chan string, stderr <-chan string) error {
-	return jsonfile.Encoode(stdout, stderr, jsonLogger.logger)
+	return jsonfile.Encode(stdout, stderr, jsonLogger.logger)
 }
 
 func (jsonLogger *JSONLogger) PostProcess() error {
