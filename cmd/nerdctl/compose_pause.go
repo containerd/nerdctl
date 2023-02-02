@@ -17,16 +17,9 @@
 package main
 
 import (
-	"fmt"
-	"sync"
-
-	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/compose"
-	"github.com/containerd/nerdctl/pkg/containerutil"
-	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 )
 
 func newComposePauseCommand() *cobra.Command {
@@ -61,39 +54,7 @@ func composePauseAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	serviceNames, err := c.ServiceNames(args...)
-	if err != nil {
-		return err
-	}
-	containers, err := c.Containers(ctx, serviceNames...)
-	if err != nil {
-		return err
-	}
-
-	stdout := cmd.OutOrStdout()
-	var mu sync.Mutex
-
-	eg, ctx := errgroup.WithContext(ctx)
-	for _, c := range containers {
-		c := c
-		eg.Go(func() error {
-			if err := containerutil.Pause(ctx, client, c.ID()); err != nil {
-				return err
-			}
-			info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
-			if err != nil {
-				return err
-			}
-
-			mu.Lock()
-			defer mu.Unlock()
-			_, err = fmt.Fprintf(stdout, "%s\n", info.Labels[labels.Name])
-
-			return err
-		})
-	}
-
-	return eg.Wait()
+	return c.Pause(ctx, args, cmd.OutOrStdout())
 }
 
 func newComposeUnpauseCommand() *cobra.Command {
@@ -113,6 +74,7 @@ func composeUnpauseAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
@@ -127,37 +89,6 @@ func composeUnpauseAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	serviceNames, err := c.ServiceNames(args...)
-	if err != nil {
-		return err
-	}
-	containers, err := c.Containers(ctx, serviceNames...)
-	if err != nil {
-		return err
-	}
 
-	stdout := cmd.OutOrStdout()
-	var mu sync.Mutex
-
-	eg, ctx := errgroup.WithContext(ctx)
-	for _, c := range containers {
-		c := c
-		eg.Go(func() error {
-			if err := unpauseContainer(ctx, client, c.ID()); err != nil {
-				return err
-			}
-			info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
-			if err != nil {
-				return err
-			}
-
-			mu.Lock()
-			defer mu.Unlock()
-			_, err = fmt.Fprintf(stdout, "%s\n", info.Labels[labels.Name])
-
-			return err
-		})
-	}
-
-	return eg.Wait()
+	return c.Unpause(ctx, args, cmd.OutOrStdout())
 }
