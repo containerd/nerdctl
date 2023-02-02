@@ -34,12 +34,11 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/pkg/progress"
-	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
+	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/labels/k8slabels"
-	"github.com/opencontainers/image-spec/identity"
 	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -380,64 +379,10 @@ func getContainerSize(ctx context.Context, client *containerd.Client, c containe
 
 	sn := client.SnapshotService(info.Snapshotter)
 
-	imageSize, err := unpackedImageSize(ctx, sn, image)
+	imageSize, err := imgutil.UnpackedImageSize(ctx, sn, image)
 	if err != nil {
 		return "", err
 	}
 
 	return fmt.Sprintf("%s (virtual %s)", progress.Bytes(containerSize).String(), progress.Bytes(imageSize).String()), nil
-}
-
-// TODO: this code should be remove to a common package after the refactor completed
-type snapshotKey string
-
-// recursive function to calculate total usage of key's parent
-func (key snapshotKey) add(ctx context.Context, s snapshots.Snapshotter, usage *snapshots.Usage) error {
-	if key == "" {
-		return nil
-	}
-	u, err := s.Usage(ctx, string(key))
-	if err != nil {
-		return err
-	}
-
-	usage.Add(u)
-
-	info, err := s.Stat(ctx, string(key))
-	if err != nil {
-		return err
-	}
-
-	key = snapshotKey(info.Parent)
-	return key.add(ctx, s, usage)
-}
-
-// unpackedImageSize is the size of the unpacked snapshots.
-// Does not contain the size of the blobs in the content store. (Corresponds to Docker).
-func unpackedImageSize(ctx context.Context, s snapshots.Snapshotter, img containerd.Image) (int64, error) {
-	diffIDs, err := img.RootFS(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	chainID := identity.ChainID(diffIDs).String()
-	usage, err := s.Usage(ctx, chainID)
-	if err != nil {
-		if errdefs.IsNotFound(err) {
-			logrus.WithError(err).Debugf("image %q seems not unpacked", img.Name())
-			return 0, nil
-		}
-		return 0, err
-	}
-
-	info, err := s.Stat(ctx, chainID)
-	if err != nil {
-		return 0, err
-	}
-
-	//add ChainID's parent usage to the total usage
-	if err := snapshotKey(info.Parent).add(ctx, s, &usage); err != nil {
-		return 0, err
-	}
-	return usage.Size, nil
 }
