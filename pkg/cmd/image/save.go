@@ -77,14 +77,10 @@ func SaveImages(ctx context.Context, client *containerd.Client, images []string,
 		},
 	}
 
-	for _, img := range images {
-		count, err := walker.Walk(ctx, img)
-		if err != nil {
-			return err
-		}
-		if count == 0 {
-			return fmt.Errorf("no such image: %s", img)
-		}
+	// check if all images exist
+	if err := walker.WalkAll(ctx, images, false); err != nil {
+		return err
 	}
+
 	return client.Export(ctx, options.Stdout, exportOpts...)
 }

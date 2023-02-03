@@ -22,10 +22,8 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/idutil/netwalker"
 	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/sirupsen/logrus"
 )
 
 func Remove(ctx context.Context, client *containerd.Client, options types.NetworkRemoveOptions) error {
@@ -62,31 +60,5 @@ func Remove(ctx context.Context, client *containerd.Client, options types.Networ
 		},
 	}
 
-	code := 0
-	for _, name := range options.Networks {
-		if name == "host" || name == "none" {
-			code = 1
-			logrus.Errorf("pseudo network %q cannot be removed", name)
-			continue
-		}
-
-		n, err := walker.Walk(ctx, name)
-		if err != nil {
-			code = 1
-			logrus.Error(err)
-			continue
-
-		} else if n == 0 {
-			code = 1
-			logrus.Errorf("No such network: %s", name)
-			continue
-		}
-	}
-
-	// compatible with docker
-	// ExitCodeError is to allow the program to exit with status code 1 without outputting an error message.
-	if code != 0 {
-		return errutil.NewExitCoderErr(code)
-	}
-	return nil
+	return walker.WalkAll(ctx, options.Networks, true, false)
 }

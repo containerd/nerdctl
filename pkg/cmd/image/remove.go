@@ -88,18 +88,11 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 			return nil
 		},
 	}
-	for _, req := range args {
-		n, err := walker.Walk(ctx, req)
-		if err == nil && n == 0 {
-			err = fmt.Errorf("no such image %s", req)
-		}
-		if err != nil {
-			if options.Force {
-				logrus.Error(err)
-			} else {
-				return err
-			}
-		}
+
+	err = walker.WalkAll(ctx, args, true)
+	if err != nil && options.Force {
+		logrus.Error(err)
+		return nil
 	}
-	return nil
+	return err
 }

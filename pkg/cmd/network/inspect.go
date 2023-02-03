@@ -22,7 +22,6 @@ import (
 	"fmt"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/netwalker"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -43,7 +42,6 @@ func Inspect(ctx context.Context, options types.NetworkInspectOptions) error {
 	}
 
 	var result []interface{}
-	var errs []error
 	walker := netwalker.NetworkWalker{
 		Client: e,
 		OnFound: func(ctx context.Context, found netwalker.Found) error {
@@ -70,31 +68,12 @@ func Inspect(ctx context.Context, options types.NetworkInspectOptions) error {
 		},
 	}
 
-	for _, name := range options.Networks {
-		if name == "host" || name == "none" {
-			errs = append(errs, fmt.Errorf("pseudo network %q cannot be inspected", name))
-			continue
-		}
-		n, err := walker.Walk(ctx, name)
-		if err != nil {
-			errs = append(errs, err)
-		} else if n == 0 {
-			errs = append(errs, fmt.Errorf("no such network: %s", name))
-		}
-	}
-
+	// `network inspect` doesn't support pseudo network.
+	err = walker.WalkAll(ctx, options.Networks, true, false)
 	if len(result) > 0 {
-		err = formatter.FormatSlice(options.Format, options.Stdout, result)
-		if err != nil {
-			errs = append(errs, err)
+		if formatErr := formatter.FormatSlice(options.Format, options.Stdout, result); formatErr != nil {
+			logrus.Error(formatErr)
 		}
 	}
-
-	if len(errs) > 0 {
-		for _, err := range errs {
-			logrus.Error(err)
-		}
-		return errutil.NewExitCoderErr(1)
-	}
-	return nil
+	return err
 }

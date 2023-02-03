@@ -41,15 +41,11 @@ func Wait(ctx context.Context, client *containerd.Client, reqs []string, options
 		},
 	}
 
-	for _, req := range reqs {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			return err
-		}
-		if n == 0 {
-			return fmt.Errorf("no such container: %s", req)
-		}
+	// check if all containers from `reqs` exist
+	if err := walker.WalkAll(ctx, reqs, false); err != nil {
+		return err
 	}
+
 	var allErr error
 	w := options.Stdout
 	for _, container := range containers {

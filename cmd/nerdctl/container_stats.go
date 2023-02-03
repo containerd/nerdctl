@@ -277,13 +277,8 @@ func statsAction(cmd *cobra.Command, args []string) error {
 			},
 		}
 
-		for _, req := range args {
-			n, err := walker.Walk(ctx, req)
-			if err != nil {
-				return err
-			} else if n == 0 {
-				return fmt.Errorf("no such container %s", req)
-			}
+		if err := walker.WalkAll(ctx, args, false); err != nil {
+			return err
 		}
 
 		// make sure each container get at least one valid stat data

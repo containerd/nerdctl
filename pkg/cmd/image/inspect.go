@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/imageinspector"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/sirupsen/logrus"
 )
 
 // Inspect prints detailed information of each image in `images`.
@@ -60,19 +61,13 @@ func Inspect(ctx context.Context, client *containerd.Client, images []string, op
 		},
 	}
 
-	var errs []error
-	for _, req := range images {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			errs = append(errs, err)
-		} else if n == 0 {
-			errs = append(errs, fmt.Errorf("no such object: %s", req))
+	err := walker.WalkAll(ctx, images, true)
+	if len(f.entries) > 0 {
+		if formatErr := formatter.FormatSlice(options.Format, options.Stdout, f.entries); formatErr != nil {
+			logrus.Error(formatErr)
 		}
 	}
-	if len(errs) > 0 {
-		return fmt.Errorf("%d errors: %v", len(errs), errs)
-	}
-	return formatter.FormatSlice(options.Format, options.Stdout, f.entries)
+	return err
 }
 
 type imageInspector struct {
