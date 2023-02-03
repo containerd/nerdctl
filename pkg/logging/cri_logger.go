@@ -25,7 +25,6 @@ package logging
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -74,13 +73,13 @@ func viewLogsCRI(lvopts LogViewOptions, stdout, stderr io.Writer, stopChannel ch
 		return fmt.Errorf("logpath is nil ")
 	}
 
-	return ReadLogs(context.Background(), &lvopts, stdout, stderr)
+	return ReadLogs(&lvopts, stdout, stderr, stopChannel)
 }
 
 // ReadLogs read the container log and redirect into stdout and stderr.
 // Note that containerID is only needed when following the log, or else
 // just pass in empty string "".
-func ReadLogs(ctx context.Context, opts *LogViewOptions, stdout, stderr io.Writer) error {
+func ReadLogs(opts *LogViewOptions, stdout, stderr io.Writer, stopChannel chan os.Signal) error {
 	var logPath = opts.LogPath
 	evaluated, err := filepath.EvalSymlinks(logPath)
 	if err != nil {
@@ -113,56 +112,62 @@ func ReadLogs(ctx context.Context, opts *LogViewOptions, stdout, stderr io.Write
 	writer := newLogWriter(stdout, stderr, opts)
 	msg := &logMessage{}
 	for {
-		if stop || (limitedMode && limitedNum == 0) {
-			logrus.Debugf("Finished parsing log file, path; %s", logPath)
+		select {
+		case <-stopChannel:
+			logrus.Debugf("received stop signal while reading cri logfile, returning")
 			return nil
-		}
-		l, err := r.ReadBytes(eol[0])
-		if err != nil {
-			if err != io.EOF { // This is an real error
-				return fmt.Errorf("failed to read log file %q: %v", logPath, err)
-			}
-			if opts.Follow {
-
-				// Reset seek so that if this is an incomplete line,
-				// it will be read again.
-				if _, err := f.Seek(-int64(len(l)), io.SeekCurrent); err != nil {
-					return fmt.Errorf("failed to reset seek in log file %q: %v", logPath, err)
-				}
-
-				// If the container exited consume data until the next EOF
-				continue
-			}
-			// Should stop after writing the remaining content.
-			stop = true
-			if len(l) == 0 {
-				continue
-			}
-			logrus.Debugf("Incomplete line in log file, path: %s line: %s", logPath, l)
-		}
-
-		// Parse the log line.
-		msg.reset()
-		if err := ParseCRILog(l, msg); err != nil {
-			logrus.WithError(err).Errorf("Failed when parsing line in log file, path: %s line: %s", logPath, l)
-			continue
-		}
-		// Write the log line into the stream.
-		if err := writer.write(msg, isNewLine); err != nil {
-			if err == errMaximumWrite {
-				logrus.Debugf("Finished parsing log file, hit bytes limit path: %s", logPath)
+		default:
+			if stop || (limitedMode && limitedNum == 0) {
+				logrus.Debugf("finished parsing log file, path: %s", logPath)
 				return nil
 			}
-			logrus.WithError(err).Errorf("Failed when writing line to log file, path: %s line: %s", logPath, l)
-			return err
-		}
-		if limitedMode {
-			limitedNum--
-		}
-		if len(msg.log) > 0 {
-			isNewLine = msg.log[len(msg.log)-1] == eol[0]
-		} else {
-			isNewLine = true
+			l, err := r.ReadBytes(eol[0])
+			if err != nil {
+				if err != io.EOF { // This is an real error
+					return fmt.Errorf("failed to read log file %q: %v", logPath, err)
+				}
+				if opts.Follow {
+
+					// Reset seek so that if this is an incomplete line,
+					// it will be read again.
+					if _, err := f.Seek(-int64(len(l)), io.SeekCurrent); err != nil {
+						return fmt.Errorf("failed to reset seek in log file %q: %v", logPath, err)
+					}
+
+					// If the container exited consume data until the next EOF
+					continue
+				}
+				// Should stop after writing the remaining content.
+				stop = true
+				if len(l) == 0 {
+					continue
+				}
+				logrus.Debugf("incomplete line in log file, path: %s, line: %s", logPath, l)
+			}
+
+			// Parse the log line.
+			msg.reset()
+			if err := ParseCRILog(l, msg); err != nil {
+				logrus.WithError(err).Errorf("failed when parsing line in log file, path: %s, line: %s", logPath, l)
+				continue
+			}
+			// Write the log line into the stream.
+			if err := writer.write(msg, isNewLine); err != nil {
+				if err == errMaximumWrite {
+					logrus.Debugf("finished parsing log file, hit bytes limit path: %s", logPath)
+					return nil
+				}
+				logrus.WithError(err).Errorf("failed when writing line to log file, path: %s, line: %s", logPath, l)
+				return err
+			}
+			if limitedMode {
+				limitedNum--
+			}
+			if len(msg.log) > 0 {
+				isNewLine = msg.log[len(msg.log)-1] == eol[0]
+			} else {
+				isNewLine = true
+			}
 		}
 	}
 }
