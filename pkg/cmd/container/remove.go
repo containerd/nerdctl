@@ -122,10 +122,10 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		if retErr != nil {
 			return
 		}
-
 		if err := os.RemoveAll(stateDir); err != nil {
 			logrus.WithError(retErr).Warnf("failed to remove container state dir %s", stateDir)
 		}
+		// enforce release name here in case the poststop hook name release fails
 		if name != "" {
 			if err := namst.Release(name, id); err != nil {
 				logrus.WithError(retErr).Warnf("failed to release container name %s", name)
@@ -135,6 +135,8 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			logrus.WithError(retErr).Warnf("failed to remove hosts file for container %q", id)
 		}
 	}()
+
+	// volume removal is not handled by the poststop hook lifecycle because it depends on removeAnonVolumes option
 	if anonVolumesJSON, ok := l[labels.AnonymousVolumes]; ok && removeAnonVolumes {
 		var anonVolumes []string
 		if err := json.Unmarshal([]byte(anonVolumesJSON), &anonVolumes); err != nil {

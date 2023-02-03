@@ -138,6 +138,8 @@ func (x *store) Acquire(meta Meta) error {
 	return lockutil.WithDirLock(x.hostsD, fn)
 }
 
+// Release is triggered by Poststop hooks.
+// It is called after the containerd task is deleted but before the delete operation returns.
 func (x *store) Release(ns, id string) error {
 	fn := func() error {
 		metaPath := filepath.Join(x.hostsD, ns, id, metaJSON)

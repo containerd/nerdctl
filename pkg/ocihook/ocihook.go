@@ -32,6 +32,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
@@ -445,6 +446,7 @@ func onCreateRuntime(opts *handlerOpts) error {
 
 func onPostStop(opts *handlerOpts) error {
 	ctx := context.Background()
+	ns := opts.state.Annotations[labels.Namespace]
 	if opts.cni != nil {
 		var err error
 		b4nnEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(opts.state.Annotations)
@@ -497,10 +499,17 @@ func onPostStop(opts *handlerOpts) error {
 		if err != nil {
 			return err
 		}
-		ns := opts.state.Annotations[labels.Namespace]
 		if err := hs.Release(ns, opts.state.ID); err != nil {
 			return err
 		}
+	}
+	namst, err := namestore.New(opts.dataStore, ns)
+	if err != nil {
+		return err
+	}
+	name := opts.state.Annotations[labels.Name]
+	if err := namst.Release(name, opts.state.ID); err != nil {
+		return fmt.Errorf("failed to release container name %s: %w", name, err)
 	}
 	return nil
 }

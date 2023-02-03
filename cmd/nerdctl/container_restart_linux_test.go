@@ -51,11 +51,11 @@ func TestRestartPIDContainer(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	baseContainerName := testutil.Identifier(t)
-	base.Cmd("run", "-d", "--name", baseContainerName, testutil.AlpineImage, "sleep", "infinity").Run()
+	base.Cmd("run", "-d", "--name", baseContainerName, testutil.AlpineImage, "sleep", "infinity").AssertOK()
 	defer base.Cmd("rm", "-f", baseContainerName).Run()
 
-	sharedContainerName := testutil.Identifier(t)
-	base.Cmd("run", "-d", "--name", sharedContainerName, fmt.Sprintf("--pid=container:%s", baseContainerName), testutil.AlpineImage, "sleep", "infinity").Run()
+	sharedContainerName := fmt.Sprintf("%s-shared", baseContainerName)
+	base.Cmd("run", "-d", "--name", sharedContainerName, fmt.Sprintf("--pid=container:%s", baseContainerName), testutil.AlpineImage, "sleep", "infinity").AssertOK()
 	defer base.Cmd("rm", "-f", sharedContainerName).Run()
 
 	base.Cmd("restart", baseContainerName).AssertOK()
