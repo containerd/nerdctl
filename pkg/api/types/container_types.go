@@ -66,6 +66,9 @@ type ContainerPauseOptions struct {
 	GOptions GlobalCommandOptions
 }
 
+// ContainerUnpauseOptions specifies options for `nerdctl (container) unpause`.
+type ContainerUnpauseOptions ContainerPauseOptions
+
 // ContainerRemoveOptions specifies options for `nerdctl (container) rm`.
 type ContainerRemoveOptions struct {
 	Stdout io.Writer
