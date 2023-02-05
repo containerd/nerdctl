@@ -132,6 +132,13 @@ type ContainerLogsOptions struct {
 	Until string
 }
 
+// ContainerWaitOptions specifies options for `nerdctl (container) wait`.
+type ContainerWaitOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options.
+	GOptions GlobalCommandOptions
+}
+
 // ContainerExecOptions specifies options for `nerdctl (container) exec`
 type ContainerExecOptions struct {
 	GOptions GlobalCommandOptions

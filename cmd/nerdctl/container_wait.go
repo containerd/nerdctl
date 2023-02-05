@@ -17,14 +17,10 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"io"
-
 	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-	"github.com/hashicorp/go-multierror"
+	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/spf13/cobra"
 )
 
@@ -41,66 +37,30 @@ func newWaitCommand() *cobra.Command {
 	return waitCommand
 }
 
-func containerWaitAction(cmd *cobra.Command, args []string) error {
+func processContainerWaitOptions(cmd *cobra.Command) (types.ContainerWaitOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return types.ContainerWaitOptions{}, err
+	}
+	return types.ContainerWaitOptions{
+		Stdout:   cmd.OutOrStdout(),
+		GOptions: globalOptions,
+	}, nil
+}
+
+func containerWaitAction(cmd *cobra.Command, args []string) error {
+	options, err := processContainerWaitOptions(cmd)
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	var containers []containerd.Container
-	walker := &containerwalker.ContainerWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if found.MatchCount > 1 {
-				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
-			}
-			containers = append(containers, found.Container)
-			return nil
-		},
-	}
-
-	for _, req := range args {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			return err
-		}
-		if n == 0 {
-			return fmt.Errorf("no such container: %s", req)
-		}
-	}
-	var allErr error
-	w := cmd.OutOrStdout()
-	for _, container := range containers {
-		if waitErr := waitContainer(ctx, w, container); waitErr != nil {
-			allErr = multierror.Append(allErr, waitErr)
-		}
-	}
-	return allErr
-}
-
-func waitContainer(ctx context.Context, w io.Writer, container containerd.Container) error {
-	task, err := container.Task(ctx, nil)
-	if err != nil {
-		return err
-	}
-
-	statusC, err := task.Wait(ctx)
-	if err != nil {
-		return err
-	}
-
-	status := <-statusC
-	code, _, err := status.Result()
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(w, code)
-	return nil
+	return container.Wait(ctx, client, args, options)
 }
 
 func waitShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
