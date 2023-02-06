@@ -18,6 +18,7 @@ package containerutil
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -497,4 +498,52 @@ func ContainerStateDirPath(ns, dataStore, id string) (string, error) {
 		return "", fmt.Errorf("invalid namespace name %q for determining state dir of container %q: %s", ns, id, err)
 	}
 	return filepath.Join(dataStore, "containers", ns, id), nil
+}
+
+// ContainerVolume is a struct representing a volume in a container.
+type ContainerVolume struct {
+	Type        string
+	Name        string
+	Source      string
+	Destination string
+	Mode        string
+	RW          bool
+	Propagation string
+}
+
+// GetContainerVolumes is a function that returns a slice of containerVolume pointers.
+// It accepts a map of container labels as input, where key is the label name and value is its associated value.
+// The function iterates over the predefined volume labels (AnonymousVolumes and Mounts)
+// and for each, it checks if the labels exists in the provided container labels.
+// If yes, it decodes the label value from JSON format and appends the volumes to the result.
+// In case of error during decoding, it logs the error and continues to the next label.
+func GetContainerVolumes(containerLabels map[string]string) []*ContainerVolume {
+	var vols []*ContainerVolume
+	volLabels := []string{labels.AnonymousVolumes, labels.Mounts}
+	for _, volLabel := range volLabels {
+		names, ok := containerLabels[volLabel]
+		if !ok {
+			continue
+		}
+		var (
+			volumes []*ContainerVolume
+			err     error
+		)
+		if volLabel == labels.Mounts {
+			err = json.Unmarshal([]byte(names), &volumes)
+		}
+		if volLabel == labels.AnonymousVolumes {
+			var anonymous []string
+			err = json.Unmarshal([]byte(names), &anonymous)
+			for _, anony := range anonymous {
+				volumes = append(volumes, &ContainerVolume{Name: anony})
+			}
+
+		}
+		if err != nil {
+			logrus.Warn(err)
+		}
+		vols = append(vols, volumes...)
+	}
+	return vols
 }

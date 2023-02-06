@@ -34,6 +34,17 @@ func TestDedupeStrSlice(t *testing.T) {
 
 }
 
+func TestSliceToSet(t *testing.T) {
+	assert.DeepEqual(t,
+		map[string]bool{"apple": true, "banana": true, "chocolate": true},
+		SliceToSet([]string{"apple", "banana", "apple", "chocolate"}))
+
+	assert.DeepEqual(t,
+		map[string]bool{"apple": true, "banana": true, "chocolate": true},
+		SliceToSet([]string{"apple", "apple", "banana", "chocolate", "apple"}))
+
+}
+
 func TestTrimStrSliceRight(t *testing.T) {
 	assert.DeepEqual(t,
 		[]string{"foo", "bar", "baz"},

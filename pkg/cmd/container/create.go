@@ -613,6 +613,23 @@ func dockercompatMounts(mountPoints []*mountutil.Processed) []dockercompat.Mount
 	return result
 }
 
+func processeds(mountPoints []dockercompat.MountPoint) []*mountutil.Processed {
+	result := make([]*mountutil.Processed, len(mountPoints))
+	for i := range mountPoints {
+		mp := mountPoints[i]
+		result[i] = &mountutil.Processed{
+			Type: mp.Type,
+			Name: mp.Name,
+			Mount: specs.Mount{
+				Source:      mp.Source,
+				Destination: mp.Destination,
+			},
+			Mode: mp.Mode,
+		}
+	}
+	return result
+}
+
 func propagateContainerdLabelsToOCIAnnotations() oci.SpecOpts {
 	return func(ctx context.Context, oc oci.Client, c *containers.Container, s *oci.Spec) error {
 		return oci.WithAnnotations(c.Labels)(ctx, oc, c, s)

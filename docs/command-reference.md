@@ -267,6 +267,7 @@ Volume flags:
       Defaults to `1777` or world-writable.
   - Options specific to `volume`:
     - unimplemented options: `volume-nocopy`, `volume-label`, `volume-driver`, `volume-opt`
+- :whale: `--volumes-from`: Mount volumes from the specified container(s), e.g. "--volumes-from my-container".
 
 Rootfs flags:
 
@@ -374,7 +375,7 @@ Unimplemented `docker run` flags:
     `--attach`, `--blkio-weight-device`, `--cpu-rt-*`, `--device-*`,
     `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--ip6`, `--isolation`, `--no-healthcheck`,
     `--link*`, `--mac-address`, `--publish-all`, `--sig-proxy`, `--storage-opt`,
-    `--userns`, `--volume-driver`, `--volumes-from`
+    `--userns`, `--volume-driver`
 
 ### :whale: :blue_square: nerdctl exec
 

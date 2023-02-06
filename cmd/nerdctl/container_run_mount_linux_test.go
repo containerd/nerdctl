@@ -631,3 +631,56 @@ func isRootfsShareableMount() bool {
 
 	return false
 }
+
+func TestRunVolumesFrom(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+	rwDir, err := os.MkdirTemp(t.TempDir(), "rw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	roDir, err := os.MkdirTemp(t.TempDir(), "ro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rwVolName := tID + "-rw"
+	roVolName := tID + "-ro"
+	for _, v := range []string{rwVolName, roVolName} {
+		defer base.Cmd("volume", "rm", "-f", v).Run()
+		base.Cmd("volume", "create", v).AssertOK()
+	}
+
+	fromContainerName := tID + "-from"
+	toContainerName := tID + "-to"
+	defer base.Cmd("rm", "-f", fromContainerName).AssertOK()
+	defer base.Cmd("rm", "-f", toContainerName).AssertOK()
+	base.Cmd("run",
+		"-d",
+		"--name", fromContainerName,
+		"-v", fmt.Sprintf("%s:/mnt1", rwDir),
+		"-v", fmt.Sprintf("%s:/mnt2:ro", roDir),
+		"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
+		"-v", fmt.Sprintf("%s:/mnt4:ro", roVolName),
+		testutil.AlpineImage,
+		"top",
+	).AssertOK()
+	base.Cmd("run",
+		"-d",
+		"--name", toContainerName,
+		"--volumes-from", fromContainerName,
+		testutil.AlpineImage,
+		"top",
+	).AssertOK()
+	base.Cmd("exec", toContainerName, "sh", "-exc", "echo -n str1 > /mnt1/file1").AssertOK()
+	base.Cmd("exec", toContainerName, "sh", "-exc", "echo -n str2 > /mnt2/file2").AssertFail()
+	base.Cmd("exec", toContainerName, "sh", "-exc", "echo -n str3 > /mnt3/file3").AssertOK()
+	base.Cmd("exec", toContainerName, "sh", "-exc", "echo -n str4 > /mnt4/file4").AssertFail()
+	base.Cmd("rm", "-f", toContainerName).AssertOK()
+	base.Cmd("run",
+		"--rm",
+		"--volumes-from", fromContainerName,
+		testutil.AlpineImage,
+		"cat", "/mnt1/file1", "/mnt3/file3",
+	).AssertOutExactly("str1str3")
+}
