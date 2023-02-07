@@ -57,7 +57,8 @@ import (
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
-	dopts "github.com/docker/cli/opts"
+	dockercliopts "github.com/docker/cli/opts"
+	dockeropts "github.com/docker/docker/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -707,9 +708,19 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		return nil, nil, err
 	}
 	extraHosts = strutil.DedupeStrSlice(extraHosts)
-	for _, host := range extraHosts {
-		if _, err := dopts.ValidateExtraHost(host); err != nil {
+	for i, host := range extraHosts {
+		if _, err := dockercliopts.ValidateExtraHost(host); err != nil {
 			return nil, nil, err
+		}
+		parts := strings.SplitN(host, ":", 2)
+		// If the IP Address is a string called "host-gateway", replace this value with the IP address stored
+		// in the daemon level HostGateway IP config variable.
+		if parts[1] == dockeropts.HostGatewayName {
+			if globalOptions.HostGatewayIP == "" {
+				return nil, nil, fmt.Errorf("unable to derive the IP value for host-gateway")
+			}
+			parts[1] = globalOptions.HostGatewayIP
+			extraHosts[i] = fmt.Sprintf(`%s:%s`, parts[0], parts[1])
 		}
 	}
 	internalLabels.extraHosts = extraHosts
@@ -995,7 +1006,7 @@ func readKVStringsMapfFromLabel(cmd *cobra.Command) (map[string]string, error) {
 		return nil, err
 	}
 	labelsFilePath = strutil.DedupeStrSlice(labelsFilePath)
-	labels, err := dopts.ReadKVStrings(labelsFilePath, labelsMap)
+	labels, err := dockercliopts.ReadKVStrings(labelsFilePath, labelsMap)
 	if err != nil {
 		return nil, err
 	}

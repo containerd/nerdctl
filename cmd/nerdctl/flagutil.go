@@ -70,6 +70,10 @@ func processRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 	if err != nil {
 		return types.GlobalCommandOptions{}, err
 	}
+	hostGatewayIP, err := cmd.Flags().GetString("host-gateway-ip")
+	if err != nil {
+		return types.GlobalCommandOptions{}, err
+	}
 	return types.GlobalCommandOptions{
 		Debug:            debug,
 		DebugFull:        debugFull,
@@ -83,5 +87,6 @@ func processRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 		InsecureRegistry: insecureRegistry,
 		HostsDir:         hostsDir,
 		Experimental:     experimental,
+		HostGatewayIP:    hostGatewayIP,
 	}, nil
 }

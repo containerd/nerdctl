@@ -59,3 +59,7 @@ func NerdctlTOML() string {
 func HostsDirs() []string {
 	return []string{"/etc/containerd/certs.d", "/etc/docker/certs.d"}
 }
+
+func HostGatewayIP() string {
+	return ""
+}

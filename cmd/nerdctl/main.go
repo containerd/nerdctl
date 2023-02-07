@@ -171,6 +171,7 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, 
 	rootCmd.PersistentFlags().StringSlice("hosts-dir", cfg.HostsDir, "A directory that contains <HOST:PORT>/hosts.toml (containerd style) or <HOST:PORT>/{ca.cert, cert.pem, key.pem} (docker style)")
 	// Experimental enable experimental feature, see in https://github.com/containerd/nerdctl/blob/main/docs/experimental.md
 	AddPersistentBoolFlag(rootCmd, "experimental", nil, nil, cfg.Experimental, "NERDCTL_EXPERIMENTAL", "Control experimental: https://github.com/containerd/nerdctl/blob/main/docs/experimental.md")
+	AddPersistentStringFlag(rootCmd, "host-gateway-ip", nil, nil, nil, aliasToBeInherited, cfg.HostGatewayIP, "NERDCTL_HOST_GATEWAY_IP", "IP address that the special 'host-gateway' string in --add-host resolves to. Defaults to the IP address of the host. It has no effect without setting --add-host")
 	return aliasToBeInherited, nil
 }
 
@@ -228,7 +229,7 @@ Config file ($NERDCTL_TOML): %s
 		}
 		if appNeedsRootlessParentMain(cmd, args) {
 			// reexec /proc/self/exe with `nsenter` into RootlessKit namespaces
-			return rootlessutil.ParentMain()
+			return rootlessutil.ParentMain(globalOptions.HostGatewayIP)
 		}
 		return nil
 	}

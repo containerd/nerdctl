@@ -32,7 +32,7 @@ func shellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete s
 		return nil, cobra.ShellCompDirectiveError
 	}
 	if rootlessutil.IsRootlessParent() {
-		_ = rootlessutil.ParentMain()
+		_ = rootlessutil.ParentMain(globalOptions.HostGatewayIP)
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 	if err != nil {
@@ -60,7 +60,7 @@ func shellCompleteSnapshotterNames(cmd *cobra.Command, args []string, toComplete
 		return nil, cobra.ShellCompDirectiveError
 	}
 	if rootlessutil.IsRootlessParent() {
-		_ = rootlessutil.ParentMain()
+		_ = rootlessutil.ParentMain(globalOptions.HostGatewayIP)
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
