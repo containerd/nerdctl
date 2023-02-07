@@ -71,8 +71,15 @@ func imagePruneAction(cmd *cobra.Command, _ []string) error {
 	}
 
 	if !options.Force {
-		var confirm string
-		msg := "This will remove all images without at least one container associated to them."
+		var (
+			confirm string
+			msg     string
+		)
+		if !options.All {
+			msg = "This will remove all dangling images."
+		} else {
+			msg = "This will remove all images without at least one container associated to them."
+		}
 		msg += "\nAre you sure you want to continue? [y/N] "
 
 		fmt.Fprintf(cmd.OutOrStdout(), "WARNING! %s", msg)
