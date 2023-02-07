@@ -187,8 +187,19 @@ type ImageRemoveOptions struct {
 	GOptions GlobalCommandOptions
 	// Force removal of the image
 	Force bool
-	// Asynchronous mode
+	// Async asynchronous mode or not
 	Async bool
+}
+
+// ImagePruneOptions specifies options for `nerdctl image prune` and `nerdctl image rm`.
+type ImagePruneOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options.
+	GOptions GlobalCommandOptions
+	// All Remove all unused images, not just dangling ones.
+	All bool
+	// Force will not prompt for confirmation.
+	Force bool
 }
 
 // ImageSaveOptions specifies options for `nerdctl (image) save`.

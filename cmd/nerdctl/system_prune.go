@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/containerd/nerdctl/pkg/cmd/network"
 	"github.com/containerd/nerdctl/pkg/cmd/volume"
 	"github.com/sirupsen/logrus"
@@ -121,7 +122,11 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if err := imagePrune(ctx, cmd, client); err != nil {
+	if err := image.Prune(ctx, client, types.ImagePruneOptions{
+		Stdout:   cmd.OutOrStdout(),
+		GOptions: globalOptions,
+		All:      true,
+	}); err != nil {
 		return nil
 	}
 	prunedObjects, err := buildCachePrune(ctx, cmd, all, globalOptions.Namespace)
