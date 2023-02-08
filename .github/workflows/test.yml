@@ -7,19 +7,22 @@ on:
       - 'release/**'
   pull_request:
 
+env:
+  GO_VERSION: 1.19.x
+
 jobs:
   project:
     name: Project Checks
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-      - uses: actions/setup-go@v3
-        with:
-          go-version: 1.19.x
       - uses: actions/checkout@v3.3.0
         with:
           path: src/github.com/containerd/nerdctl
           fetch-depth: 100
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VERSION }}
       - uses: containerd/project-checks@v1.1.0
         with:
           working-directory: src/github.com/containerd/nerdctl
@@ -38,7 +41,9 @@ jobs:
           fetch-depth: 1
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.19.x
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: true
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3.4.0
         with:
@@ -51,12 +56,14 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-      - uses: actions/setup-go@v3
-        with:
-          go-version: 1.19.x
       - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 1
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: true
       - name: "Run unit tests"
         run: go test -v ./pkg/...
 
@@ -134,12 +141,14 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:
-      - uses: actions/setup-go@v3
-        with:
-          go-version: 1.19.x
       - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 1
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          check-latest: true
       - name: "Cross"
         run: make artifacts
 
@@ -147,12 +156,14 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
-      - uses: actions/setup-go@v3
-        with:
-          go-version: 1.19.x
       - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 1
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          check-latest: true
       - name: "Register QEMU (tonistiigi/binfmt)"
         run: docker run --privileged --rm tonistiigi/binfmt --install all
       - name: "Prepare integration test environment"
