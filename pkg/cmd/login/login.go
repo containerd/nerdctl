@@ -225,8 +225,12 @@ func tryLoginWithRegHost(ctx context.Context, rh docker.RegistryHost) error {
 				req.Header.Add(k, vv)
 			}
 		}
-		if err := rh.Authorizer.Authorize(ctx, req); err != nil {
-			return fmt.Errorf("failed to call rh.Authorizer.Authorize: %w", err)
+		// If stuck in a loop of the same unmet `WWW-Authenticate` challenge,
+		// send a request without `Authorization` header.
+		if !infiniteAuthorizationLoop(ress) {
+			if err := rh.Authorizer.Authorize(ctx, req); err != nil {
+				return fmt.Errorf("failed to call rh.Authorizer.Authorize: %w", err)
+			}
 		}
 		res, err := ctxhttp.Do(ctx, rh.Client, req)
 		if err != nil {
@@ -320,4 +324,29 @@ func convertToHostname(serverAddress string) (string, error) {
 	}
 
 	return serverAddress, nil
+}
+
+func infiniteAuthorizationLoop(responses []*http.Response) bool {
+	n := len(responses)
+	if n == 1 || (n > 1 && !sameUnmetAuthorizationChallenge(responses[n-2], responses[n-1])) {
+		return false
+	}
+
+	return true
+}
+
+func sameUnmetAuthorizationChallenge(r1, r2 *http.Response) bool {
+	if r1.StatusCode != 401 || r2.StatusCode != 401 {
+		return false
+	}
+	if r1.Request.Method != r2.Request.Method {
+		return false
+	}
+	if *r1.Request.URL != *r2.Request.URL {
+		return false
+	}
+	if r1.Header.Get("WWW-Authenticate") != r2.Header.Get("WWW-Authenticate") {
+		return false
+	}
+	return true
 }
