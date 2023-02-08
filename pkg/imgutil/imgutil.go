@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"strings"
-	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
@@ -38,7 +36,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/pkg/imgutil/pull"
-	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/docker/docker/errdefs"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -52,14 +49,6 @@ type EnsuredImage struct {
 	Snapshotter string
 	Remote      bool // true for stargz or overlaybd
 }
-
-var (
-	FilterBeforeType    = "before"
-	FilterSinceType     = "since"
-	FilterLabelType     = "label"
-	FilterReferenceType = "reference"
-	FilterDanglingType  = "dangling"
-)
 
 // PullMode is either one of "always", "missing", "never"
 type PullMode = string
@@ -384,97 +373,6 @@ func ParseRepoTag(imgName string) (string, string) {
 	repository := refdocker.FamiliarName(ref)
 
 	return repository, tag
-}
-
-type Filters struct {
-	Before    []string
-	Since     []string
-	Labels    map[string]string
-	Reference []string
-	Dangling  *bool
-}
-
-func ParseFilters(filters []string) (*Filters, error) {
-	f := &Filters{Labels: make(map[string]string)}
-	for _, filter := range filters {
-		tempFilterToken := strings.Split(filter, "=")
-		switch len(tempFilterToken) {
-		case 1:
-			return nil, fmt.Errorf("invalid filter %q", filter)
-		case 2:
-			if tempFilterToken[0] == FilterDanglingType {
-				var isDangling bool
-				if tempFilterToken[1] == "true" {
-					isDangling = true
-				} else if tempFilterToken[1] == "false" {
-					isDangling = false
-				} else {
-					return nil, fmt.Errorf("invalid filter %q", filter)
-				}
-				f.Dangling = &isDangling
-			} else if tempFilterToken[0] == FilterBeforeType {
-				canonicalRef, err := referenceutil.ParseAny(tempFilterToken[1])
-				if err != nil {
-					return nil, err
-				}
-
-				f.Before = append(f.Before, fmt.Sprintf("name==%s", canonicalRef.String()))
-				f.Before = append(f.Before, fmt.Sprintf("name==%s", tempFilterToken[1]))
-			} else if tempFilterToken[0] == FilterSinceType {
-				canonicalRef, err := referenceutil.ParseAny(tempFilterToken[1])
-				if err != nil {
-					return nil, err
-				}
-				f.Since = append(f.Since, fmt.Sprintf("name==%s", canonicalRef.String()))
-				f.Since = append(f.Since, fmt.Sprintf("name==%s", tempFilterToken[1]))
-			} else if tempFilterToken[0] == FilterLabelType {
-				// To support filtering labels by keys.
-				f.Labels[tempFilterToken[1]] = ""
-			} else if tempFilterToken[0] == FilterReferenceType {
-				f.Reference = append(f.Reference, tempFilterToken[1])
-			} else {
-				return nil, fmt.Errorf("invalid filter %q", filter)
-			}
-		case 3:
-			if tempFilterToken[0] == FilterLabelType {
-				f.Labels[tempFilterToken[1]] = tempFilterToken[2]
-			} else {
-				return nil, fmt.Errorf("invalid filter %q", filter)
-			}
-		default:
-			return nil, fmt.Errorf("invalid filter %q", filter)
-		}
-	}
-	return f, nil
-}
-
-func FilterImages(labelImages []images.Image, beforeImages []images.Image, sinceImages []images.Image) []images.Image {
-
-	var filteredImages []images.Image
-	maxTime := time.Now()
-	minTime := time.Date(1970, time.Month(1), 1, 0, 0, 0, 0, time.UTC)
-	if len(beforeImages) > 0 {
-		maxTime = beforeImages[0].CreatedAt
-		for _, value := range beforeImages {
-			if value.CreatedAt.After(maxTime) {
-				maxTime = value.CreatedAt
-			}
-		}
-	}
-	if len(sinceImages) > 0 {
-		minTime = sinceImages[0].CreatedAt
-		for _, value := range sinceImages {
-			if value.CreatedAt.Before(minTime) {
-				minTime = value.CreatedAt
-			}
-		}
-	}
-	for _, image := range labelImages {
-		if image.CreatedAt.After(minTime) && image.CreatedAt.Before(maxTime) {
-			filteredImages = append(filteredImages, image)
-		}
-	}
-	return filteredImages
 }
 
 type snapshotKey string

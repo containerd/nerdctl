@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 	"text/tabwriter"
 	"text/template"
@@ -33,7 +32,6 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/pkg/progress"
 	"github.com/containerd/containerd/platforms"
-	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/formatter"
@@ -55,15 +53,15 @@ func List(ctx context.Context, client *containerd.Client, options types.ImageLis
 		}
 
 		if f.Dangling != nil {
-			imageList = filterDangling(imageList, *f.Dangling)
+			imageList = imgutil.FilterDangling(imageList, *f.Dangling)
 		}
 
-		imageList, err = filterByLabel(ctx, client, imageList, f.Labels)
+		imageList, err = imgutil.FilterByLabel(ctx, client, imageList, f.Labels)
 		if err != nil {
 			return err
 		}
 
-		imageList, err = filterByReference(imageList, f.Reference)
+		imageList, err = imgutil.FilterByReference(imageList, f.Reference)
 		if err != nil {
 			return err
 		}
@@ -86,74 +84,6 @@ func List(ctx context.Context, client *containerd.Client, options types.ImageLis
 		imageList = imgutil.FilterImages(imageList, beforeImages, sinceImages)
 	}
 	return printImages(ctx, client, imageList, options)
-}
-
-func filterByReference(imageList []images.Image, filters []string) ([]images.Image, error) {
-	var filteredImageList []images.Image
-	logrus.Debug(filters)
-	for _, image := range imageList {
-		logrus.Debug(image.Name)
-		var matches int
-		for _, f := range filters {
-			var ref dockerreference.Reference
-			var err error
-			ref, err = dockerreference.ParseAnyReference(image.Name)
-			if err != nil {
-				return nil, fmt.Errorf("unable to parse image name: %s while filtering by reference because of %s", image.Name, err.Error())
-			}
-
-			familiarMatch, err := dockerreference.FamiliarMatch(f, ref)
-			if err != nil {
-				return nil, err
-			}
-			regexpMatch, err := regexp.MatchString(f, image.Name)
-			if err != nil {
-				return nil, err
-			}
-			if familiarMatch || regexpMatch {
-				matches++
-			}
-		}
-		if matches == len(filters) {
-			filteredImageList = append(filteredImageList, image)
-		}
-	}
-	return filteredImageList, nil
-}
-
-func filterDangling(imageList []images.Image, dangling bool) []images.Image {
-	var filtered []images.Image
-	for _, image := range imageList {
-		_, tag := imgutil.ParseRepoTag(image.Name)
-
-		if dangling && tag == "" {
-			filtered = append(filtered, image)
-		}
-		if !dangling && tag != "" {
-			filtered = append(filtered, image)
-		}
-	}
-	return filtered
-}
-
-func filterByLabel(ctx context.Context, client *containerd.Client, imageList []images.Image, filters map[string]string) ([]images.Image, error) {
-	for lk, lv := range filters {
-		var imageLabels []images.Image
-		for _, img := range imageList {
-			ci := containerd.NewImage(client, img)
-			cfg, _, err := imgutil.ReadImageConfig(ctx, ci)
-			if err != nil {
-				return nil, err
-			}
-			if val, ok := cfg.Config.Labels[lk]; ok {
-				if val == lv || lv == "" {
-					imageLabels = append(imageLabels, img)
-				}
-			}
-		}
-		imageList = imageLabels
-	}
-	return imageList, nil
 }
 
 type imagePrintable struct {
