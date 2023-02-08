@@ -170,6 +170,27 @@ type ImagePushOptions struct {
 	AllowNondistributableArtifacts bool
 }
 
+// ImagePullOptions specifies options for `nerdctl (image) pull`.
+type ImagePullOptions struct {
+	Stdout   io.Writer
+	Stderr   io.Writer
+	GOptions GlobalCommandOptions
+	// Unpack the image for the current single platform (auto/true/false)
+	Unpack string
+	// Pull content for a specific platform
+	Platform []string
+	// Pull content for all platforms
+	AllPlatforms bool
+	// Verify the image (none|cosign)
+	Verify string
+	// Path to the public key file, KMS, URI or Kubernetes Secret for --verify=cosign
+	CosignKey string
+	// Suppress verbose output
+	Quiet bool
+	// multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)
+	IPFSAddress string
+}
+
 // ImageTagOptions specifies options for `nerdctl (image) tag`.
 type ImageTagOptions struct {
 	// GOptions is the global options
