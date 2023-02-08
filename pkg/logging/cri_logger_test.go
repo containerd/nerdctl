@@ -25,7 +25,6 @@ package logging
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -43,6 +42,8 @@ func TestReadLogs(t *testing.T) {
 	file.WriteString(`2016-10-06T00:17:09.669794202Z stdout F line1` + "\n")
 	file.WriteString(`2016-10-06T00:17:10.669794202Z stdout F line2` + "\n")
 	file.WriteString(`2016-10-06T00:17:11.669794202Z stdout F line3` + "\n")
+
+	stopChan := make(chan os.Signal)
 	testCases := []struct {
 		name           string
 		logViewOptions LogViewOptions
@@ -85,7 +86,7 @@ func TestReadLogs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			stdoutBuf := bytes.NewBuffer(nil)
 			stderrBuf := bytes.NewBuffer(nil)
-			err = ReadLogs(context.TODO(), &tc.logViewOptions, stdoutBuf, stderrBuf)
+			err = ReadLogs(&tc.logViewOptions, stdoutBuf, stderrBuf, stopChan)
 
 			if err != nil {
 				t.Fatalf(err.Error())
@@ -177,6 +178,8 @@ func TestReadLogsLimitsWithTimestamps(t *testing.T) {
 		t.Fatalf("unable to create temp file")
 	}
 
+	stopChan := make(chan os.Signal)
+
 	count := 10000
 
 	for i := 0; i < count; i++ {
@@ -198,7 +201,7 @@ func TestReadLogsLimitsWithTimestamps(t *testing.T) {
 	var buf bytes.Buffer
 	w := io.MultiWriter(&buf)
 
-	err = ReadLogs(context.Background(), &LogViewOptions{LogPath: tmpfile.Name(), Tail: 0, Timestamps: true}, w, w)
+	err = ReadLogs(&LogViewOptions{LogPath: tmpfile.Name(), Tail: 0, Timestamps: true}, w, w, stopChan)
 	if err != nil {
 		t.Errorf("ReadLogs file %s failed %s", tmpfile.Name(), err.Error())
 	}
