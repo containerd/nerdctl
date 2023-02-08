@@ -62,3 +62,14 @@ type BuilderBuildOptions struct {
 	// BuildContext is the build context
 	BuildContext string
 }
+
+// BuilderPruneOptions specifies options for `nerdctl builder build`.
+type BuilderPruneOptions struct {
+	Stderr io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// BuildKitHost is the buildkit host
+	BuildKitHost string
+	// All will remove all unused build cache, not just dangling ones
+	All bool
+}

@@ -38,3 +38,19 @@ type SystemEventsOptions struct {
 	// Format the output using the given Go template, e.g, '{{json .}}
 	Format string
 }
+
+// SystemPruneOptions specifies options for `nerdctl system prune`.
+type SystemPruneOptions struct {
+	Stdout io.Writer
+	Stderr io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// All remove all unused images, not just dangling ones
+	All bool
+	// Volumes decide whether prune volumes or not
+	Volumes bool
+	// BuildKitHost the address of BuildKit host
+	BuildKitHost string
+	// NetworkDriversToKeep the network drivers which need to keep
+	NetworkDriversToKeep []string
+}
