@@ -54,12 +54,11 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 		return nil, fmt.Errorf("unexpected scheme: %q", scheme)
 	}
 
+	// if not `always` pull and given one platform and image found locally, return existing image directly.
 	if mode != "always" && len(ocispecPlatforms) == 1 {
-		res, err := imgutil.GetExistingImage(ctx, client, snapshotter, ref, ocispecPlatforms[0])
-		if err == nil {
+		if res, err := imgutil.GetExistingImage(ctx, client, snapshotter, ref, ocispecPlatforms[0]); err == nil {
 			return res, nil
-		}
-		if !errdefs.IsNotFound(err) {
+		} else if !errdefs.IsNotFound(err) {
 			return nil, err
 		}
 	}
