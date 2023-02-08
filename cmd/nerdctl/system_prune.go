@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/containerd/nerdctl/pkg/cmd/network"
 	"github.com/containerd/nerdctl/pkg/cmd/volume"
@@ -102,7 +103,10 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	if err := containerPrune(ctx, cmd, client, globalOptions); err != nil {
+	if err := container.Prune(ctx, client, types.ContainerPruneOptions{
+		Stdout:   cmd.OutOrStdout(),
+		GOptions: globalOptions,
+	}); err != nil {
 		return err
 	}
 	if err := network.Prune(ctx, client, types.NetworkPruneOptions{

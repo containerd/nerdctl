@@ -17,16 +17,12 @@
 package main
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -43,17 +39,30 @@ func newContainerPruneCommand() *cobra.Command {
 	return containerPruneCommand
 }
 
-func containerPruneAction(cmd *cobra.Command, _ []string) error {
+func processContainerPruneOptions(cmd *cobra.Command) (types.ContainerPruneOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.ContainerPruneOptions{}, err
 	}
 	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return types.ContainerPruneOptions{}, err
+	}
+
+	return types.ContainerPruneOptions{
+		Stdout:   cmd.OutOrStdout(),
+		GOptions: globalOptions,
+		Force:    force,
+	}, err
+}
+
+func containerPruneAction(cmd *cobra.Command, _ []string) error {
+	options, err := processContainerPruneOptions(cmd)
 	if err != nil {
 		return err
 	}
 
-	if !force {
+	if !options.Force {
 		var confirm string
 		msg := "This will remove all stopped containers."
 		msg += "\nAre you sure you want to continue? [y/N] "
@@ -65,41 +74,11 @@ func containerPruneAction(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	return containerPrune(ctx, cmd, client, globalOptions)
-}
-
-func containerPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions types.GlobalCommandOptions) error {
-	containers, err := client.Containers(ctx)
-	if err != nil {
-		return err
-	}
-
-	var deleted []string
-	for _, c := range containers {
-		err = container.RemoveContainer(ctx, c, globalOptions, false, true)
-		if err == nil {
-			deleted = append(deleted, c.ID())
-			continue
-		}
-		if errors.As(err, &container.ErrContainerStatus{}) {
-			continue
-		}
-		logrus.WithError(err).Warnf("failed to remove container %s", c.ID())
-	}
-
-	if len(deleted) > 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "Deleted Containers:")
-		for _, id := range deleted {
-			fmt.Fprintln(cmd.OutOrStdout(), id)
-		}
-		fmt.Fprintln(cmd.OutOrStdout(), "")
-	}
-
-	return nil
+	return container.Prune(ctx, client, options)
 }

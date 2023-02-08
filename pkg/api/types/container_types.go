@@ -80,6 +80,15 @@ type ContainerRemoveOptions struct {
 	Volumes bool
 }
 
+// ContainerPruneOptions specifies options for `nerdctl container prune`.
+type ContainerPruneOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// Force will not prompt for confirmation
+	Force bool
+}
+
 // ContainerTopOptions specifies options for `nerdctl top`.
 type ContainerTopOptions struct {
 	Stdout io.Writer
