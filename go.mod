@@ -11,7 +11,7 @@ require (
 	github.com/containerd/console v1.0.3
 	github.com/containerd/containerd v1.7.0-beta.3
 	github.com/containerd/continuity v0.3.0
-	github.com/containerd/go-cni v1.1.7
+	github.com/containerd/go-cni v1.1.8
 	github.com/containerd/imgcrypt v1.1.7
 	github.com/containerd/nydus-snapshotter v0.5.1
 	github.com/containerd/stargz-snapshotter v0.14.1
