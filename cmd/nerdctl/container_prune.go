@@ -17,16 +17,12 @@
 package main
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -43,14 +39,22 @@ func newContainerPruneCommand() *cobra.Command {
 	return containerPruneCommand
 }
 
-func containerPruneAction(cmd *cobra.Command, _ []string) error {
+func processContainerPruneOptions(cmd *cobra.Command) (types.ContainerPruneOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.ContainerPruneOptions{}, err
 	}
+
+	return types.ContainerPruneOptions{
+		GOptions: globalOptions,
+		Stdout:   cmd.OutOrStdout(),
+	}, nil
+}
+
+func grantPrunePermission(cmd *cobra.Command) (bool, error) {
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if !force {
@@ -61,45 +65,29 @@ func containerPruneAction(cmd *cobra.Command, _ []string) error {
 		fmt.Fscanf(cmd.InOrStdin(), "%s", &confirm)
 
 		if strings.ToLower(confirm) != "y" {
-			return nil
+			return false, nil
 		}
 	}
+	return true, nil
+}
 
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+func containerPruneAction(cmd *cobra.Command, _ []string) error {
+	options, err := processContainerPruneOptions(cmd)
+	if err != nil {
+		return err
+	}
+
+	if ok, err := grantPrunePermission(cmd); err != nil {
+		return err
+	} else if !ok {
+		return nil
+	}
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	return containerPrune(ctx, cmd, client, globalOptions)
-}
-
-func containerPrune(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions types.GlobalCommandOptions) error {
-	containers, err := client.Containers(ctx)
-	if err != nil {
-		return err
-	}
-
-	var deleted []string
-	for _, c := range containers {
-		err = container.RemoveContainer(ctx, c, globalOptions, false, true)
-		if err == nil {
-			deleted = append(deleted, c.ID())
-			continue
-		}
-		if errors.As(err, &container.ErrContainerStatus{}) {
-			continue
-		}
-		logrus.WithError(err).Warnf("failed to remove container %s", c.ID())
-	}
-
-	if len(deleted) > 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "Deleted Containers:")
-		for _, id := range deleted {
-			fmt.Fprintln(cmd.OutOrStdout(), id)
-		}
-		fmt.Fprintln(cmd.OutOrStdout(), "")
-	}
-
-	return nil
+	return container.Prune(ctx, client, options)
 }
