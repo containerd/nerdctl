@@ -35,6 +35,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Pull pulls an image specified by `rawRef`.
 func Pull(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePullOptions) error {
 	ocispecPlatforms, err := platformutil.NewOCISpecPlatformSlice(options.AllPlatforms, options.Platform)
 	if err != nil {
@@ -54,8 +55,8 @@ func Pull(ctx context.Context, client *containerd.Client, rawRef string, options
 	return nil
 }
 
+// EnsureImage pulls an image either from ipfs or from registry.
 func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, ocispecPlatforms []v1.Platform, pull string, unpack *bool, quiet bool, options types.ImagePullOptions) (*imgutil.EnsuredImage, error) {
-
 	var ensured *imgutil.EnsuredImage
 
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
