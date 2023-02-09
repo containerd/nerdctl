@@ -19,6 +19,7 @@ package container
 import (
 	"context"
 	"fmt"
+	"runtime"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
@@ -74,8 +75,10 @@ func renameContainer(ctx context.Context, container containerd.Container, newNam
 	if err := namst.Rename(name, container.ID(), newName); err != nil {
 		return err
 	}
-	if err := hostst.Update(ns, container.ID(), newName); err != nil {
-		return err
+	if runtime.GOOS == "linux" {
+		if err := hostst.Update(ns, container.ID(), newName); err != nil {
+			return err
+		}
 	}
 	labels := map[string]string{
 		labels.Name: newName,
