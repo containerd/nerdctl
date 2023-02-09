@@ -110,15 +110,8 @@ func updateAction(cmd *cobra.Command, args []string) error {
 			return err
 		},
 	}
-	for _, req := range args {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			return err
-		} else if n == 0 {
-			return fmt.Errorf("no such container %s", req)
-		}
-	}
-	return nil
+
+	return walker.WalkAll(ctx, args, true)
 }
 
 func getUpdateOption(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (updateResourceOptions, error) {

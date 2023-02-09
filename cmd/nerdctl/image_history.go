@@ -143,19 +143,7 @@ func historyAction(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	var errs []error
-	for _, req := range args {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			errs = append(errs, err)
-		} else if n == 0 {
-			errs = append(errs, fmt.Errorf("no such object: %s", req))
-		}
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("%d errors: %v", len(errs), errs)
-	}
-	return nil
+	return walker.WalkAll(ctx, args, true)
 }
 
 type historyPrinter struct {

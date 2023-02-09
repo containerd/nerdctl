@@ -52,13 +52,5 @@ func Start(ctx context.Context, client *containerd.Client, reqs []string, option
 		},
 	}
 
-	for _, req := range reqs {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			return err
-		} else if n == 0 {
-			return fmt.Errorf("no such container %s", req)
-		}
-	}
-	return nil
+	return walker.WalkAll(ctx, reqs, true)
 }

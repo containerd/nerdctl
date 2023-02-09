@@ -71,3 +71,30 @@ func (w *ContainerWalker) Walk(ctx context.Context, req string) (int, error) {
 	}
 	return matchCount, nil
 }
+
+// WalkAll calls `Walk` for each req in `reqs`.
+//
+// It can be used when the matchCount is not important (e.g., only care if there
+// is any error or if matchCount == 0 (not found error) when walking all reqs).
+// If `forceAll`, it calls `Walk` on every req
+// and return all errors joined by `\n`. If not `forceAll`, it returns the first error
+// encountered while calling `Walk`.
+func (w *ContainerWalker) WalkAll(ctx context.Context, reqs []string, forceAll bool) error {
+	var errs []string
+	for _, req := range reqs {
+		n, err := w.Walk(ctx, req)
+		if err == nil && n == 0 {
+			err = fmt.Errorf("no such container: %s", req)
+		}
+		if err != nil {
+			if !forceAll {
+				return err
+			}
+			errs = append(errs, err.Error())
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("%d errors:\n%s", len(errs), strings.Join(errs, "\n"))
+	}
+	return nil
+}

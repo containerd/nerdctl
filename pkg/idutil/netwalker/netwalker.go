@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/containerd/nerdctl/pkg/netutil"
 )
@@ -78,4 +79,41 @@ func (w *NetworkWalker) Walk(ctx context.Context, req string) (int, error) {
 		}
 	}
 	return matchCount, nil
+}
+
+// WalkAll calls `Walk` for each req in `reqs`.
+//
+// It can be used when the matchCount is not important (e.g., only care if there
+// is any error or if matchCount == 0 (not found error) when walking all reqs).
+// If `forceAll`, it calls `Walk` on every req
+// and return all errors joined by `\n`. If not `forceAll`, it returns the first error
+// encountered while calling `Walk`.
+// `allowSeudoNetwork` allows seudo network (host, none) to be passed to `Walk`, otherwise
+// an error is recorded for it.
+func (w *NetworkWalker) WalkAll(ctx context.Context, reqs []string, forceAll, allowSeudoNetwork bool) error {
+	var errs []string
+	for _, req := range reqs {
+		if !allowSeudoNetwork && (req == "host" || req == "none") {
+			err := fmt.Errorf("pseudo network not allowed: %s", req)
+			if !forceAll {
+				return err
+			}
+			errs = append(errs, err.Error())
+		} else {
+			n, err := w.Walk(ctx, req)
+			if err == nil && n == 0 {
+				err = fmt.Errorf("no such network: %s", req)
+			}
+			if err != nil {
+				if !forceAll {
+					return err
+				}
+				errs = append(errs, err.Error())
+			}
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("%d errors:\n%s", len(errs), strings.Join(errs, "\n"))
+	}
+	return nil
 }

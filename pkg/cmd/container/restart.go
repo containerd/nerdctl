@@ -44,14 +44,6 @@ func Restart(ctx context.Context, client *containerd.Client, containers []string
 			return err
 		},
 	}
-	for _, req := range containers {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			return err
-		} else if n == 0 {
-			return fmt.Errorf("no such container %s", req)
-		}
-	}
 
-	return nil
+	return walker.WalkAll(ctx, containers, true)
 }

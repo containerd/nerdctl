@@ -77,20 +77,13 @@ func Remove(ctx context.Context, client *containerd.Client, containers []string,
 			return err
 		},
 	}
-	for _, req := range containers {
-		n, err := walker.Walk(ctx, req)
-		if err == nil && n == 0 {
-			err = fmt.Errorf("no such container %s", req)
-		}
-		if err != nil {
-			if options.Force {
-				logrus.Error(err)
-			} else {
-				return err
-			}
-		}
+
+	err := walker.WalkAll(ctx, containers, true)
+	if err != nil && options.Force {
+		logrus.Error(err)
+		return nil
 	}
-	return nil
+	return err
 }
 
 // RemoveContainer removes a container from containerd store.

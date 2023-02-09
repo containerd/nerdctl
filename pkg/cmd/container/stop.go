@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 )
 
+// Stop stops a list of containers specified by `reqs`.
 func Stop(ctx context.Context, client *containerd.Client, reqs []string, opt types.ContainerStopOptions) error {
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
@@ -45,13 +46,6 @@ func Stop(ctx context.Context, client *containerd.Client, reqs []string, opt typ
 			return err
 		},
 	}
-	for _, req := range reqs {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			return err
-		} else if n == 0 {
-			return fmt.Errorf("no such container %s", req)
-		}
-	}
-	return nil
+
+	return walker.WalkAll(ctx, reqs, true)
 }

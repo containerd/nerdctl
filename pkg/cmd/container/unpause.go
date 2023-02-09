@@ -18,9 +18,7 @@ package container
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
@@ -45,18 +43,5 @@ func Unpause(ctx context.Context, client *containerd.Client, reqs []string, opti
 		},
 	}
 
-	var errs []string
-	for _, req := range reqs {
-		n, err := walker.Walk(ctx, req)
-		if err != nil {
-			errs = append(errs, err.Error())
-		} else if n == 0 {
-			errs = append(errs, fmt.Sprintf("no such container %s", req))
-		}
-	}
-
-	if len(errs) > 0 {
-		return errors.New(strings.Join(errs, "\n"))
-	}
-	return nil
+	return walker.WalkAll(ctx, reqs, true)
 }
