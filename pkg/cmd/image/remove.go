@@ -18,6 +18,7 @@ package image
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -25,7 +26,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/formatter"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/sirupsen/logrus"
 )
@@ -43,18 +44,20 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 	if err != nil {
 		return err
 	}
-	usedImages := make(map[string]struct{})
-	runningImages := make(map[string]struct{})
+	usedImages := make(map[string]string)
+	runningImages := make(map[string]string)
 	for _, container := range containerList {
 		image, err := container.Image(ctx)
 		if err != nil {
-			return err
+			continue
 		}
-		cStatus := formatter.ContainerStatus(ctx, container)
-		if strings.HasPrefix(cStatus, "Up") {
-			runningImages[image.Name()] = struct{}{}
-		} else {
-			usedImages[image.Name()] = struct{}{}
+
+		// if err != nil, simply go to `default`
+		switch cStatus, _ := containerutil.ContainerStatus(ctx, container); cStatus.Status {
+		case containerd.Running, containerd.Pausing, containerd.Paused:
+			runningImages[image.Name()] = container.ID()
+		default:
+			usedImages[image.Name()] = container.ID()
 		}
 	}
 
@@ -66,11 +69,11 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 			if found.MatchCount > 1 && !(options.Force && found.UniqueImages == 1) {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if _, ok := runningImages[found.Image.Name]; ok {
-				return fmt.Errorf("image %s is running, can't be forced removed", found.Image.Name)
+			if cid, ok := runningImages[found.Image.Name]; ok {
+				return fmt.Errorf("conflict: unable to delete %s (cannot be forced) - image is being used by running container %s", found.Req, cid)
 			}
-			if _, ok := usedImages[found.Image.Name]; ok && !options.Force {
-				return fmt.Errorf("conflict: unable to remove repository reference %q (must force)", found.Req)
+			if cid, ok := usedImages[found.Image.Name]; ok && !options.Force {
+				return fmt.Errorf("conflict: unable to delete %s (must be forced) - image is being used by stopped container %s", found.Req, cid)
 			}
 			// digests is used only for emulating human-readable output of `docker rmi`
 			digests, err := found.Image.RootFS(ctx, cs, platforms.DefaultStrict())
@@ -89,10 +92,27 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 		},
 	}
 
-	err = walker.WalkAll(ctx, args, true)
-	if err != nil && options.Force {
-		logrus.Error(err)
-		return nil
+	var errs []string
+	var fatalErr bool
+	for _, req := range args {
+		n, err := walker.Walk(ctx, req)
+		if err != nil {
+			fatalErr = true
+		}
+		if err == nil && n == 0 {
+			err = fmt.Errorf("no such image: %s", req)
+		}
+		if err != nil {
+			errs = append(errs, err.Error())
+		}
 	}
-	return err
+
+	if len(errs) > 0 {
+		msg := fmt.Sprintf("%d errors:\n%s", len(errs), strings.Join(errs, "\n"))
+		if !options.Force || fatalErr {
+			return errors.New(msg)
+		}
+		logrus.Error(msg)
+	}
+	return nil
 }

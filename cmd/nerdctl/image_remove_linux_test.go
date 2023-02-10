@@ -31,7 +31,7 @@ func TestRemoveImage(t *testing.T) {
 	base.Cmd("rmi", "-f", tID).AssertOK()
 
 	base.Cmd("run", "--name", tID, testutil.CommonImage).AssertOK()
-	defer base.Cmd("rm", "-f", tID).Run()
+	defer base.Cmd("rm", "-f", tID).AssertOK()
 
 	base.Cmd("rmi", testutil.CommonImage).AssertFail()
 	defer base.Cmd("rmi", "-f", testutil.CommonImage).Run()
@@ -41,13 +41,67 @@ func TestRemoveImage(t *testing.T) {
 }
 
 func TestRemoveRunningImage(t *testing.T) {
+	// If an image is associated with a running/paused containers, `docker rmi -f imageName`
+	// untags `imageName` (left a `<none>` image) without deletion; `docker rmi -rf imageID` fails.
+	// In both cases, `nerdctl rmi -f` will fail.
+	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
+
 	base.Cmd("run", "--name", tID, "-d", testutil.CommonImage, "sleep", "infinity").AssertOK()
-	defer base.Cmd("rm", "-f", tID).Run()
+	defer base.Cmd("rm", "-f", tID).AssertOK()
+
 	base.Cmd("rmi", testutil.CommonImage).AssertFail()
+	base.Cmd("rmi", "-f", testutil.CommonImage).AssertFail()
+	base.Cmd("images").AssertOutContains(testutil.ImageRepo(testutil.CommonImage))
+
 	base.Cmd("kill", tID).AssertOK()
 	base.Cmd("rmi", testutil.CommonImage).AssertFail()
 	base.Cmd("rmi", "-f", testutil.CommonImage).AssertOK()
 	base.Cmd("images").AssertNoOut(testutil.ImageRepo(testutil.CommonImage))
+}
+
+func TestRemovePausedImage(t *testing.T) {
+	// If an image is associated with a running/paused containers, `docker rmi -f imageName`
+	// untags `imageName` (left a `<none>` image) without deletion; `docker rmi -rf imageID` fails.
+	// In both cases, `nerdctl rmi -f` will fail.
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	switch base.Info().CgroupDriver {
+	case "none", "":
+		t.Skip("requires cgroup (for pausing)")
+	}
+	tID := testutil.Identifier(t)
+
+	base.Cmd("run", "--name", tID, "-d", testutil.CommonImage, "sleep", "infinity").AssertOK()
+	base.Cmd("pause", tID).AssertOK()
+	defer base.Cmd("rm", "-f", tID).AssertOK()
+
+	base.Cmd("rmi", testutil.CommonImage).AssertFail()
+	base.Cmd("rmi", "-f", testutil.CommonImage).AssertFail()
+	base.Cmd("images").AssertOutContains(testutil.ImageRepo(testutil.CommonImage))
+
+	base.Cmd("kill", tID).AssertOK()
+	base.Cmd("rmi", testutil.CommonImage).AssertFail()
+	base.Cmd("rmi", "-f", testutil.CommonImage).AssertOK()
+	base.Cmd("images").AssertNoOut(testutil.ImageRepo(testutil.CommonImage))
+}
+
+func TestRemoveImageWithCreatedContainer(t *testing.T) {
+	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+
+	base.Cmd("pull", testutil.AlpineImage).AssertOK()
+	base.Cmd("pull", testutil.NginxAlpineImage).AssertOK()
+
+	base.Cmd("create", "--name", tID, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	defer base.Cmd("rm", "-f", tID).AssertOK()
+
+	base.Cmd("rmi", testutil.AlpineImage).AssertFail()
+	base.Cmd("rmi", "-f", testutil.AlpineImage).AssertOK()
+	base.Cmd("images").AssertNoOut(testutil.ImageRepo(testutil.AlpineImage))
+
+	// a created container with removed image doesn't impact other `rmi` command
+	base.Cmd("rmi", "-f", testutil.NginxAlpineImage).AssertOK()
+	base.Cmd("images").AssertNoOut(testutil.ImageRepo(testutil.NginxAlpineImage))
 }
