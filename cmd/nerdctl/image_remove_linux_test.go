@@ -37,7 +37,7 @@ func TestRemoveImage(t *testing.T) {
 	defer base.Cmd("rmi", "-f", testutil.CommonImage).Run()
 	base.Cmd("rmi", "-f", testutil.CommonImage).AssertOK()
 
-	base.Cmd("images").AssertNoOut(testutil.CommonImage)
+	base.Cmd("images").AssertNoOut(testutil.ImageRepo(testutil.CommonImage))
 }
 
 func TestRemoveRunningImage(t *testing.T) {
@@ -49,5 +49,5 @@ func TestRemoveRunningImage(t *testing.T) {
 	base.Cmd("kill", tID).AssertOK()
 	base.Cmd("rmi", testutil.CommonImage).AssertFail()
 	base.Cmd("rmi", "-f", testutil.CommonImage).AssertOK()
-	base.Cmd("images").AssertNoOut(testutil.CommonImage)
+	base.Cmd("images").AssertNoOut(testutil.ImageRepo(testutil.CommonImage))
 }

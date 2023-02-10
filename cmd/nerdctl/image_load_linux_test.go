@@ -47,7 +47,7 @@ func TestLoadStdinFromPipe(t *testing.T) {
 	assert.NilError(t, err)
 
 	assert.Assert(t, strings.Contains(string(fb), fmt.Sprintf("Loaded image: %s:latest", img)))
-	base.Cmd("images").AssertOutContains(strings.Split(img, ":")[0])
+	base.Cmd("images").AssertOutContains(testutil.ImageRepo(testutil.CommonImage))
 }
 
 func TestLoadStdinEmpty(t *testing.T) {

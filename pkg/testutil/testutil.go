@@ -32,6 +32,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
@@ -683,4 +684,11 @@ func Identifier(t testing.TB) string {
 		s = "nerdctl-" + digest.SHA256.FromString(t.Name()).Encoded()
 	}
 	return s
+}
+
+// ImageRepo returns the image repo that can be used to, e.g, validate output
+// from `nerdctl images`.
+func ImageRepo(s string) string {
+	repo, _ := imgutil.ParseRepoTag(s)
+	return repo
 }
