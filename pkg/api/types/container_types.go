@@ -113,6 +113,21 @@ type ContainerCommitOptions struct {
 	Pause bool
 }
 
+// ContainerListOptions specifies options for `nerdctl (container) ps`.
+type ContainerListOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	//
+	All     bool
+	Filters []string
+	Format  string
+	LastN   int
+	NoTrunc bool
+	Quiet   bool
+	Size    bool
+}
+
 // ContainerLogsOptions specifies options for `nerdctl (container) logs`.
 type ContainerLogsOptions struct {
 	Stdout io.Writer
