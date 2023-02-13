@@ -232,6 +232,7 @@ FROM scratch AS out-full
 COPY --from=build-full /out /
 
 FROM ubuntu:${UBUNTU_VERSION} AS base
+ARG DEBIAN_FRONTEND=noninteractive
 # fuse3 is required by stargz snapshotter
 RUN apt-get update && \
   apt-get install -qq -y --no-install-recommends \
@@ -240,7 +241,15 @@ RUN apt-get update && \
   ca-certificates curl \
   iproute2 iptables \
   dbus dbus-user-session systemd systemd-sysv \
-  fuse3
+  fuse3 \
+  # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
+  expect \
+  git \
+  uidmap \
+  # Install SSH for creating systemd user session.
+  # (`sudo` does not work for this purpose,
+  #  OTOH `machinectl shell` can create the session but does not propagate exit code)
+  openssh-server openssh-client
 ARG CONTAINERIZED_SYSTEMD_VERSION
 RUN curl -L -o /docker-entrypoint.sh https://raw.githubusercontent.com/AkihiroSuda/containerized-systemd/${CONTAINERIZED_SYSTEMD_VERSION}/docker-entrypoint.sh && \
   chmod +x /docker-entrypoint.sh
@@ -264,11 +273,6 @@ FROM golang:${GO_VERSION}-alpine AS goversion
 RUN go env GOVERSION > /GOVERSION
 
 FROM base AS test-integration
-ARG DEBIAN_FRONTEND=noninteractive
-# `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
-RUN apt-get update && \
-  apt-get install -qq -y \
-  expect git
 COPY --from=goversion /GOVERSION /GOVERSION
 ARG TARGETARCH
 RUN curl -L https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local
@@ -301,13 +305,6 @@ CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=github.com
   "--", "-timeout=30m", "-args", "-test.kill-daemon"]
 
 FROM test-integration AS test-integration-rootless
-# Install SSH for creating systemd user session.
-# (`sudo` does not work for this purpose,
-#  OTOH `machinectl shell` can create the session but does not propagate exit code)
-RUN apt-get update && \
-  apt-get install -qq -y \
-  uidmap \
-  openssh-server openssh-client
 # TODO: update containerized-systemd to enable sshd by default, or allow `systemctl wants <TARGET> sshd` here
 RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
   useradd -m -s /bin/bash rootless && \
