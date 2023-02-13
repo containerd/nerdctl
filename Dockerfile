@@ -99,8 +99,10 @@ RUN GOARCH=amd64 CC=x86_64-linux-gnu-gcc make static && \
 RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make static && \
   cp -a bypass4netns bypass4netnsd /out/arm64
 
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS build-base
-RUN apk add --no-cache make git curl
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS build-base
+RUN dpkg --add-architecture arm64 && \
+  dpkg --add-architecture amd64 && \
+  apt-get update && apt-get install make git curl
 COPY . /go/src/github.com/containerd/nerdctl
 WORKDIR /go/src/github.com/containerd/nerdctl
 
@@ -188,7 +190,7 @@ RUN fname="fuse-overlayfs-$(cat /target_uname_m)" && \
   chmod +x /out/bin/fuse-overlayfs && \
   echo "- fuse-overlayfs: ${FUSE_OVERLAYFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION
-RUN fname="containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION/v}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
+RUN fname=containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION#"v"}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz && \
   curl -o "${fname}" -fSL "https://github.com/containerd/fuse-overlayfs-snapshotter/releases/download/${CONTAINERD_FUSE_OVERLAYFS_VERSION}/${fname}" && \
   grep "${fname}" "/SHA256SUMS.d/containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION}" | sha256sum -c && \
   tar xzf "${fname}" -C /out/bin && \
@@ -260,7 +262,7 @@ ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["bash", "--login", "-i"]
 
 # convert GO_VERSION=1.16 to the latest release such as "go1.16.1"
-FROM golang:${GO_VERSION}-alpine AS goversion
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS goversion
 RUN go env GOVERSION > /GOVERSION
 
 FROM base AS test-integration
