@@ -59,23 +59,39 @@ RUN dpkg --add-architecture arm64 && \
   apt-get update && \
   apt-get install -y crossbuild-essential-amd64 crossbuild-essential-arm64 git libbtrfs-dev:amd64 libbtrfs-dev:arm64 libseccomp-dev:amd64 libseccomp-dev:arm64
 
-FROM build-base-debian AS build-containerd
+FROM build-base-debian AS build-containerd-amd64
 ARG CONTAINERD_VERSION
 RUN git clone https://github.com/containerd/containerd.git /go/src/github.com/containerd/containerd
 WORKDIR /go/src/github.com/containerd/containerd
 RUN git checkout ${CONTAINERD_VERSION} && \
-  mkdir -p /out /out/amd64 /out/arm64 && \
-  cp -a containerd.service /out
+  mkdir -p /out /out/amd64
 ENV CGO_ENABLED=1
 ENV GO111MODULE=off
 # TODO: how to build containerd as static binaries? https://github.com/containerd/containerd/issues/6158
 RUN GOARCH=amd64 CC=x86_64-linux-gnu-gcc make && \
   cp -a bin/containerd bin/containerd-shim-runc-v2 bin/ctr /out/amd64
-RUN git clean -xfd
+
+FROM build-base-debian AS build-containerd-arm64
+ARG CONTAINERD_VERSION
+RUN git clone https://github.com/containerd/containerd.git /go/src/github.com/containerd/containerd
+WORKDIR /go/src/github.com/containerd/containerd
+RUN git checkout ${CONTAINERD_VERSION} && \
+  mkdir -p /out /out/arm64
+ENV CGO_ENABLED=1
+ENV GO111MODULE=off
+# TODO: how to build containerd as static binaries? https://github.com/containerd/containerd/issues/6158
 RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make && \
   cp -a bin/containerd bin/containerd-shim-runc-v2 bin/ctr /out/arm64
 
-FROM build-base-debian AS build-runc
+
+FROM build-base-debian AS build-containerd
+WORKDIR /go/src/github.com/containerd/containerd
+COPY --from=build-containerd-amd64 /out/amd64 /out/amd64
+COPY --from=build-containerd-arm64 /out/arm64 /out/arm64
+RUN cp -a containerd.service /out
+
+
+FROM build-base-debian AS build-runc-amd64
 ARG RUNC_VERSION
 RUN git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc
 WORKDIR /go/src/github.com/opencontainers/runc
@@ -84,8 +100,21 @@ RUN git checkout ${RUNC_VERSION} && \
 ENV CGO_ENABLED=1
 RUN GOARCH=amd64 CC=x86_64-linux-gnu-gcc make static && \
   cp -a runc /out/runc.amd64
+
+FROM build-base-debian AS build-runc-arm64
+ARG RUNC_VERSION
+RUN git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc
+WORKDIR /go/src/github.com/opencontainers/runc
+RUN git checkout ${RUNC_VERSION} && \
+  mkdir -p /out
+ENV CGO_ENABLED=1
 RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make static && \
   cp -a runc /out/runc.arm64
+
+
+FROM build-base-debian AS build-runc
+COPY --from=build-runc-amd64 /out/runc.amd64 /out
+COPY --from=build-runc-arm64 /out/runc.arm64 /out
 
 FROM build-base-debian AS build-bypass4netns
 ARG BYPASS4NETNS_VERSION
@@ -105,13 +134,21 @@ COPY . /go/src/github.com/containerd/nerdctl
 WORKDIR /go/src/github.com/containerd/nerdctl
 
 FROM build-base AS build-minimal
+ARG TARGETARCH
+ENV GOARCH=${TARGETARCH}
 RUN BINDIR=/out/bin make binaries install
 # We do not set CMD to `go test` here, because it requires systemd
+
+FROM build-base AS build-imgcrypt
+ARG IMGCRYPT_VERSION
+RUN git clone https://github.com/containerd/imgcrypt.git /go/src/github.com/containerd/imgcrypt && \
+  cd /go/src/github.com/containerd/imgcrypt && \
+  CGO_ENABLED=0 make && DESTDIR=/out make install
 
 FROM build-base AS build-full
 ARG TARGETARCH
 ENV GOARCH=${TARGETARCH}
-RUN BINDIR=/out/bin make binaries install
+COPY --from=build-minimal /out/bin /out/bin
 WORKDIR /nowhere
 COPY ./Dockerfile.d/SHA256SUMS.d/ /SHA256SUMS.d
 COPY README.md /out/share/doc/nerdctl/
@@ -128,13 +165,7 @@ ARG RUNC_VERSION
 COPY --from=build-runc /out/runc.${TARGETARCH:-amd64} /out/bin/runc
 RUN echo "- runc: ${RUNC_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG CNI_PLUGINS_VERSION
-RUN fname="cni-plugins-${TARGETOS:-linux}-${TARGETARCH:-amd64}-${CNI_PLUGINS_VERSION}.tgz" && \
-  curl -o "${fname}" -fSL "https://github.com/containernetworking/plugins/releases/download/${CNI_PLUGINS_VERSION}/${fname}" && \
-  grep "${fname}" "/SHA256SUMS.d/cni-plugins-${CNI_PLUGINS_VERSION}" | sha256sum -c && \
-  mkdir -p /out/libexec/cni && \
-  tar xzf "${fname}" -C /out/libexec/cni && \
-  rm -f "${fname}" && \
-  echo "- CNI plugins: ${CNI_PLUGINS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+RUN  echo "- CNI plugins: ${CNI_PLUGINS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG BUILDKIT_VERSION
 RUN fname="buildkit-${BUILDKIT_VERSION}.${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
   curl -o "${fname}" -fSL "https://github.com/moby/buildkit/releases/download/${BUILDKIT_VERSION}/${fname}" && \
@@ -158,11 +189,10 @@ RUN fname="stargz-snapshotter-${STARGZ_SNAPSHOTTER_VERSION}-${TARGETOS:-linux}-$
   rm -f "${fname}" /out/bin/stargz-store && \
   mv stargz-snapshotter.service /out/lib/systemd/system/stargz-snapshotter.service && \
   echo "- Stargz Snapshotter: ${STARGZ_SNAPSHOTTER_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+
 ARG IMGCRYPT_VERSION
-RUN git clone https://github.com/containerd/imgcrypt.git /go/src/github.com/containerd/imgcrypt && \
-  cd /go/src/github.com/containerd/imgcrypt && \
-  CGO_ENABLED=0 make && DESTDIR=/out make install && \
-  echo "- imgcrypt: ${IMGCRYPT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+COPY --from=build-imgcrypt /out/* /out/
+RUN echo "- imgcrypt: ${IMGCRYPT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG ROOTLESSKIT_VERSION
 RUN fname="rootlesskit-$(cat /target_uname_m).tar.gz" && \
   curl -o "${fname}" -fSL "https://github.com/rootless-containers/rootlesskit/releases/download/${ROOTLESSKIT_VERSION}/${fname}" && \
