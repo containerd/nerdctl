@@ -152,6 +152,14 @@ RUN git clone https://github.com/containerd/imgcrypt.git /go/src/github.com/cont
 FROM build-base AS build-full
 ARG TARGETARCH
 ENV GOARCH=${TARGETARCH}
+ARG CONTAINERD_VERSION
+COPY --from=build-containerd /out/${TARGETARCH:-amd64}/* /out/bin/
+COPY --from=build-containerd /out/containerd.service /out/lib/systemd/system/containerd.service
+RUN echo "- containerd: ${CONTAINERD_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+ARG RUNC_VERSION
+COPY --from=build-runc /out/runc.${TARGETARCH:-amd64} /out/bin/runc
+RUN echo "- runc: ${RUNC_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+
 COPY --from=build-minimal /out/bin /out/bin
 WORKDIR /nowhere
 COPY ./Dockerfile.d/SHA256SUMS.d/ /SHA256SUMS.d
@@ -161,14 +169,14 @@ RUN echo "${TARGETARCH:-amd64}" | sed -e s/amd64/x86_64/ -e s/arm64/aarch64/ | t
 RUN mkdir -p /out/share/doc/nerdctl-full && \
   echo "# nerdctl (full distribution)" > /out/share/doc/nerdctl-full/README.md && \
   echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)" >> /out/share/doc/nerdctl-full/README.md
-ARG CONTAINERD_VERSION
-COPY --from=build-containerd /out/${TARGETARCH:-amd64}/* /out/bin/
-COPY --from=build-containerd /out/containerd.service /out/lib/systemd/system/containerd.service
-RUN echo "- containerd: ${CONTAINERD_VERSION}" >> /out/share/doc/nerdctl-full/README.md
-ARG RUNC_VERSION
-COPY --from=build-runc /out/runc.${TARGETARCH:-amd64} /out/bin/runc
-RUN echo "- runc: ${RUNC_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG CNI_PLUGINS_VERSION
+RUN fname="cni-plugins-${TARGETOS:-linux}-${TARGETARCH:-amd64}-${CNI_PLUGINS_VERSION}.tgz" && \
+  curl -o "${fname}" -fSL "https://github.com/containernetworking/plugins/releases/download/${CNI_PLUGINS_VERSION}/${fname}" && \
+  grep "${fname}" "/SHA256SUMS.d/cni-plugins-${CNI_PLUGINS_VERSION}" | sha256sum -c && \
+  mkdir -p /out/libexec/cni && \
+  tar xzf "${fname}" -C /out/libexec/cni && \
+  rm -f "${fname}" && \
+  echo "- CNI plugins: ${CNI_PLUGINS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 RUN  echo "- CNI plugins: ${CNI_PLUGINS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG BUILDKIT_VERSION
 RUN fname="buildkit-${BUILDKIT_VERSION}.${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
