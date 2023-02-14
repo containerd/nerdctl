@@ -29,12 +29,15 @@ import (
 )
 
 func TestLoadStdinFromPipe(t *testing.T) {
+	t.Parallel()
 	base := testutil.NewBase(t)
 
 	tmp := t.TempDir()
+	img := testutil.Identifier(t) + "image"
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	base.Cmd("save", testutil.CommonImage, "-o", filepath.Join(tmp, "common.tar")).AssertOK()
-	base.Cmd("rmi", testutil.CommonImage).AssertOK()
+	base.Cmd("tag", testutil.CommonImage, img).AssertOK()
+	base.Cmd("save", img, "-o", filepath.Join(tmp, "common.tar")).AssertOK()
+	base.Cmd("rmi", "-f", img).AssertOK()
 	loadCmd := strings.Join(base.Cmd("load").Command, " ")
 	output := filepath.Join(tmp, "output")
 
@@ -43,8 +46,8 @@ func TestLoadStdinFromPipe(t *testing.T) {
 	fb, err := os.ReadFile(output)
 	assert.NilError(t, err)
 
-	assert.Assert(t, strings.Contains(string(fb), fmt.Sprintf("Loaded image: %s", testutil.CommonImage)))
-	base.Cmd("images").AssertOutContains(strings.Split(testutil.CommonImage, ":")[0])
+	assert.Assert(t, strings.Contains(string(fb), fmt.Sprintf("Loaded image: %s:latest", img)))
+	base.Cmd("images").AssertOutContains(strings.Split(img, ":")[0])
 }
 
 func TestLoadStdinEmpty(t *testing.T) {
