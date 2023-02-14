@@ -85,10 +85,13 @@ RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make && \
 
 
 FROM build-base-debian AS build-containerd
+ARG CONTAINERD_VERSION
+RUN git clone https://github.com/containerd/containerd.git /go/src/github.com/containerd/containerd
 WORKDIR /go/src/github.com/containerd/containerd
+RUN mkdir -p /out && \
+  cp -a containerd.service /out
 COPY --from=build-containerd-amd64 /out/amd64 /out/amd64
 COPY --from=build-containerd-arm64 /out/arm64 /out/arm64
-RUN cp -a containerd.service /out
 
 
 FROM build-base-debian AS build-runc-amd64
@@ -113,6 +116,7 @@ RUN GOARCH=arm64 CC=aarch64-linux-gnu-gcc make static && \
 
 
 FROM build-base-debian AS build-runc
+RUN mkdir -p /out
 COPY --from=build-runc-amd64 /out/runc.amd64 /out
 COPY --from=build-runc-arm64 /out/runc.arm64 /out
 
