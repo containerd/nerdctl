@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/containerd/images/archive"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 )
 
@@ -103,7 +104,8 @@ func loadImage(ctx context.Context, client *containerd.Client, in io.Reader, pla
 		if quiet {
 			fmt.Fprintln(options.Stdout, img.Target.Digest)
 		} else {
-			fmt.Fprintf(options.Stdout, "Loaded image: %s\n", img.Name)
+			repo, tag := imgutil.ParseRepoTag(img.Name)
+			fmt.Fprintf(options.Stdout, "Loaded image: %s:%s\n", repo, tag)
 		}
 	}
 
