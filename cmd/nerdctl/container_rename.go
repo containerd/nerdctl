@@ -17,15 +17,9 @@
 package main
 
 import (
-	"context"
-	"fmt"
-
-	"github.com/containerd/containerd"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
-	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
-	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/containerd/nerdctl/pkg/namestore"
+	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/spf13/cobra"
 )
 
@@ -42,68 +36,29 @@ func newRenameCommand() *cobra.Command {
 	return renameCommand
 }
 
-func renameAction(cmd *cobra.Command, args []string) error {
+func processContainerRenameOptions(cmd *cobra.Command) (types.ContainerRenameOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return types.ContainerRenameOptions{}, err
+	}
+	return types.ContainerRenameOptions{
+		GOptions: globalOptions,
+		Stdout:   cmd.OutOrStdout(),
+	}, nil
+}
+
+func renameAction(cmd *cobra.Command, args []string) error {
+	options, err := processContainerRenameOptions(cmd)
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
-	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
-	if err != nil {
-		return err
-	}
-	namest, err := namestore.New(dataStore, globalOptions.Namespace)
-	if err != nil {
-		return err
-	}
-	hostst, err := hostsstore.NewStore(dataStore)
-	if err != nil {
-		return err
-	}
-	walker := &containerwalker.ContainerWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if found.MatchCount > 1 {
-				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
-			}
-			return renameContainer(ctx, found.Container, args[1], globalOptions.Namespace, namest, hostst)
-		},
-	}
-	req := args[0]
-	n, err := walker.Walk(ctx, req)
-	if err != nil {
-		return err
-	} else if n == 0 {
-		return fmt.Errorf("no such container %s", req)
-	}
-	return nil
+	return container.Rename(ctx, client, args[0], args[1], options)
 }
-
-func renameContainer(ctx context.Context, container containerd.Container, newName, ns string, namst namestore.NameStore, hostst hostsstore.Store) error {
-	l, err := container.Labels(ctx)
-	if err != nil {
-		return err
-	}
-	name := l[labels.Name]
-	if err := namst.Rename(name, container.ID(), newName); err != nil {
-		return err
-	}
-	if err := hostst.Update(ns, container.ID(), newName); err != nil {
-		return err
-	}
-	labels := map[string]string{
-		labels.Name: newName,
-	}
-	if _, err = container.SetLabels(ctx, labels); err != nil {
-		return err
-	}
-	return nil
-}
-
 func renameShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return shellCompleteContainerNames(cmd, nil)
 }

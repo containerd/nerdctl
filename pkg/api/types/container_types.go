@@ -66,6 +66,13 @@ type ContainerPauseOptions struct {
 	GOptions GlobalCommandOptions
 }
 
+// ContainerPruneOptions specifies options for `nerdctl (container) prune`.
+type ContainerPruneOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+}
+
 // ContainerUnpauseOptions specifies options for `nerdctl (container) unpause`.
 type ContainerUnpauseOptions ContainerPauseOptions
 
@@ -78,6 +85,13 @@ type ContainerRemoveOptions struct {
 	Force bool
 	// Volumes removes anonymous volumes associated with the container
 	Volumes bool
+}
+
+// ContainerRenameOptions specifies options for `nerdctl (container) rename`.
+type ContainerRenameOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
 }
 
 // ContainerTopOptions specifies options for `nerdctl top`.
