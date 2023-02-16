@@ -24,6 +24,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/opencontainers/go-digest"
 	"github.com/sirupsen/logrus"
 )
@@ -40,21 +41,33 @@ func Prune(ctx context.Context, client *containerd.Client, options types.ImagePr
 	if err != nil {
 		return err
 	}
-	containerList, err := containerStore.List(ctx)
-	if err != nil {
-		return err
-	}
-	usedImages := make(map[string]struct{})
-	for _, container := range containerList {
-		usedImages[container.Image] = struct{}{}
+
+	var filteredImages []images.Image
+
+	if options.All {
+		containerList, err := containerStore.List(ctx)
+		if err != nil {
+			return err
+		}
+		usedImages := make(map[string]struct{})
+		for _, container := range containerList {
+			usedImages[container.Image] = struct{}{}
+		}
+
+		for _, image := range imageList {
+			if _, ok := usedImages[image.Name]; ok {
+				continue
+			}
+
+			filteredImages = append(filteredImages, image)
+		}
+	} else {
+		filteredImages = imgutil.FilterDangling(imageList, true)
 	}
 
 	delOpts := []images.DeleteOpt{images.SynchronousDelete()}
 	removedImages := make(map[string][]digest.Digest)
-	for _, image := range imageList {
-		if _, ok := usedImages[image.Name]; ok {
-			continue
-		}
+	for _, image := range filteredImages {
 		digests, err := image.RootFS(ctx, contentStore, platforms.DefaultStrict())
 		if err != nil {
 			logrus.WithError(err).Warnf("failed to enumerate rootfs")

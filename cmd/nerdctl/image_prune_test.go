@@ -29,9 +29,32 @@ func TestImagePrune(t *testing.T) {
 	testutil.RequiresBuild(t)
 
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
+	defer base.Cmd("builder", "prune").AssertOK()
 	imageName := testutil.Identifier(t)
-	defer base.Cmd("rmi", imageName).Run()
+	defer base.Cmd("rmi", imageName).AssertOK()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+	CMD ["echo", "nerdctl-test-image-prune"]`, testutil.CommonImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", buildCtx).AssertOK()
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("images").AssertOutContainsAll(imageName, "<none>")
+
+	base.Cmd("image", "prune", "--force").AssertNoOut(imageName)
+	base.Cmd("images").AssertNoOut("<none>")
+	base.Cmd("images").AssertOutContains(imageName)
+}
+
+func TestImagePruneAll(t *testing.T) {
+	testutil.RequiresBuild(t)
+
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").AssertOK()
+	imageName := testutil.Identifier(t)
 
 	dockerfile := fmt.Sprintf(`FROM %s
 	CMD ["echo", "nerdctl-test-image-prune"]`, testutil.CommonImage)
@@ -41,11 +64,12 @@ func TestImagePrune(t *testing.T) {
 	defer os.RemoveAll(buildCtx)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	// The following commands will clean up all images, so it should fail at this point.
+	defer base.Cmd("rmi", imageName).AssertFail()
 	base.Cmd("images").AssertOutContains(imageName)
 
 	tID := testutil.Identifier(t)
 	base.Cmd("run", "--name", tID, imageName).AssertOK()
-	defer base.Cmd("rm", "-f", tID).Run()
 	base.Cmd("image", "prune", "--force", "--all").AssertNoOut(imageName)
 	base.Cmd("images").AssertOutContains(imageName)
 
