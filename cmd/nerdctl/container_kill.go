@@ -47,7 +47,7 @@ func killAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	options := types.KillOptions{
+	options := types.ContainerKillOptions{
 		GOptions:   globalOptions,
 		KillSignal: killSignal,
 		Stdout:     cmd.OutOrStdout(),
