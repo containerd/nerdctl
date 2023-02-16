@@ -81,7 +81,6 @@ func TestImagesFilter(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	tempName := testutil.Identifier(base.T)
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
 
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-string"] \n
@@ -91,7 +90,7 @@ LABEL version=0.1`, testutil.CommonImage)
 	buildCtx, err := createBuildContext(dockerfile)
 	assert.NilError(t, err)
 	defer os.RemoveAll(buildCtx)
-	base.Cmd("build", "-t", tempName, "-f", buildCtx+"/Dockerfile", buildCtx).AssertOK()
+	base.Cmd("build", "--no-cache", "-t", tempName, "-f", buildCtx+"/Dockerfile", buildCtx).AssertOK()
 	defer base.Cmd("rmi", tempName).AssertOK()
 
 	busyboxGlibc, busyboxUclibc := "busybox:glibc", "busybox:uclibc"
