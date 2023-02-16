@@ -33,7 +33,7 @@ import (
 )
 
 // Kill kills a list of containers
-func Kill(ctx context.Context, client *containerd.Client, reqs []string, options types.KillOptions) error {
+func Kill(ctx context.Context, client *containerd.Client, reqs []string, options types.ContainerKillOptions) error {
 	if !strings.HasPrefix(options.KillSignal, "SIG") {
 		options.KillSignal = "SIG" + options.KillSignal
 	}

@@ -30,8 +30,8 @@ type ContainerStartOptions struct {
 	Attach bool
 }
 
-// KillOptions specifies options for `nerdctl (container) kill`.
-type KillOptions struct {
+// ContainerKillOptions specifies options for `nerdctl (container) kill`.
+type ContainerKillOptions struct {
 	Stdout io.Writer
 	Stderr io.Writer
 	// GOptions is the global options
