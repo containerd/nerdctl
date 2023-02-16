@@ -41,7 +41,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/statsutil"
-	"github.com/containerd/typeurl"
+	"github.com/containerd/typeurl/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

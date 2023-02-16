@@ -7,17 +7,17 @@ require (
 	github.com/Microsoft/go-winio v0.6.0
 	github.com/compose-spec/compose-go v1.10.0
 	github.com/containerd/accelerated-container-image v0.6.0
-	github.com/containerd/cgroups v1.0.5-0.20220816231112-7083cd60b721
+	github.com/containerd/cgroups v1.1.0
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.7.0-beta.3
+	github.com/containerd/containerd v1.7.0-beta.4
 	github.com/containerd/continuity v0.3.0
-	github.com/containerd/go-cni v1.1.8
+	github.com/containerd/go-cni v1.1.9-0.20230211172349-6603d5bd8941
 	github.com/containerd/imgcrypt v1.1.7
 	github.com/containerd/nydus-snapshotter v0.5.1
 	github.com/containerd/stargz-snapshotter v0.14.1
 	github.com/containerd/stargz-snapshotter/estargz v0.14.1
 	github.com/containerd/stargz-snapshotter/ipfs v0.14.1
-	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67
+	github.com/containerd/typeurl/v2 v2.1.0
 	github.com/containernetworking/cni v1.1.2
 	github.com/containernetworking/plugins v1.2.0
 	github.com/coreos/go-systemd/v22 v22.5.0
@@ -61,11 +61,12 @@ require (
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20221215162035-5330a85ea652 // indirect
-	github.com/Microsoft/hcsshim v0.10.0-rc.4 // indirect
+	github.com/Microsoft/hcsshim v0.10.0-rc.5 // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
-	github.com/containerd/cgroups/v3 v3.0.0-20221112182753-e8802a182774 // indirect
+	github.com/containerd/cgroups/v3 v3.0.0 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
-	github.com/containerd/ttrpc v1.1.1-0.20220420014843-944ef4a40df3 // indirect
+	github.com/containerd/ttrpc v1.1.1-0.20230127163717-32fab2374638 // indirect
+	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67 // indirect
 	github.com/containers/ocicrypt v1.1.6 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/distribution/distribution/v3 v3.0.0-20221103125252-ebfa2a0ac0a9 // indirect
@@ -111,19 +112,19 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tinylib/msgp v1.1.6 // indirect
-	github.com/urfave/cli v1.22.10 // indirect
+	github.com/urfave/cli v1.22.12 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	go.opentelemetry.io/otel v1.11.1 // indirect
-	go.opentelemetry.io/otel/trace v1.11.1 // indirect
-	golang.org/x/mod v0.6.0 // indirect
-	golang.org/x/tools v0.2.0 // indirect
-	google.golang.org/genproto v0.0.0-20221206210731-b1a01be3a5f6 // indirect
-	google.golang.org/grpc v1.52.1 // indirect
+	go.opentelemetry.io/otel v1.12.0 // indirect
+	go.opentelemetry.io/otel/trace v1.12.0 // indirect
+	golang.org/x/mod v0.7.0 // indirect
+	golang.org/x/tools v0.5.0 // indirect
+	google.golang.org/genproto v0.0.0-20230131230820-1c016267d619 // indirect
+	google.golang.org/grpc v1.52.3 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

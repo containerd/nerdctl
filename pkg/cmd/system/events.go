@@ -31,7 +31,7 @@ import (
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/formatter"
-	"github.com/containerd/typeurl"
+	"github.com/containerd/typeurl/v2"
 )
 
 // EventOut contains information about an event.
