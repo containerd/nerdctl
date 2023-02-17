@@ -375,7 +375,7 @@ After update, the following will be written to your Docker config file located a
     "us.gcr.io": "gcloud",
     "eu.gcr.io": "gcloud",
     "asia.gcr.io": "gcloud",
-    "staging-k8s.gcr.io": "gcloud",
+    "staging-registry.k8s.io": "gcloud",
     "marketplace.gcr.io": "gcloud"
   }
 }
