@@ -21,7 +21,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
-	"github.com/containerd/typeurl"
+	"github.com/containerd/typeurl/v2"
 	"github.com/sirupsen/logrus"
 )
 
