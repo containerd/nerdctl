@@ -119,3 +119,65 @@ func TestRunAddGroup(t *testing.T) {
 		})
 	}
 }
+
+// TestRunAddGroup_CVE_2023_25173 tests https://github.com/advisories/GHSA-hmfx-3pcx-653p
+//
+// Equates to https://github.com/containerd/containerd/commit/286a01f350a2298b4fdd7e2a0b31c04db3937ea8
+func TestRunAddGroup_CVE_2023_25173(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	testCases := []struct {
+		user     string
+		groups   []string
+		expected string
+	}{
+		{
+			user:     "",
+			groups:   nil,
+			expected: "groups=0(root),10(wheel)",
+		},
+		{
+			user:     "",
+			groups:   []string{"1", "1234"},
+			expected: "groups=0(root),1(daemon),10(wheel),1234",
+		},
+		{
+			user:     "1234",
+			groups:   nil,
+			expected: "groups=0(root)",
+		},
+		{
+			user:     "1234:1234",
+			groups:   nil,
+			expected: "groups=1234",
+		},
+		{
+			user:     "1234",
+			groups:   []string{"1234"},
+			expected: "groups=0(root),1234",
+		},
+		{
+			user:     "daemon",
+			groups:   nil,
+			expected: "groups=1(daemon)",
+		},
+		{
+			user:     "daemon",
+			groups:   []string{"1234"},
+			expected: "groups=1(daemon),1234",
+		},
+	}
+
+	base.Cmd("pull", testutil.BusyboxImage).AssertOK()
+	for _, testCase := range testCases {
+		cmd := []string{"run", "--rm"}
+		if testCase.user != "" {
+			cmd = append(cmd, "--user", testCase.user)
+		}
+		for _, group := range testCase.groups {
+			cmd = append(cmd, "--group-add", group)
+		}
+		cmd = append(cmd, testutil.BusyboxImage, "id")
+		base.Cmd(cmd...).AssertOutContains(testCase.expected + "\n")
+	}
+}

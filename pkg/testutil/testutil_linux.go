@@ -24,6 +24,7 @@ func mirrorOf(s string) string {
 }
 
 var (
+	BusyboxImage                = "ghcr.io/containerd/busybox:1.28"
 	AlpineImage                 = mirrorOf("alpine:3.13")
 	NginxAlpineImage            = mirrorOf("nginx:1.19-alpine")
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
