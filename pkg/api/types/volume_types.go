@@ -53,7 +53,6 @@ type VolumeListOptions struct {
 // VolumePruneOptions specifies options for `nerdctl volume prune`.
 type VolumePruneOptions struct {
 	Stdout   io.Writer
-	Stdin    io.Reader
 	GOptions GlobalCommandOptions
 	// Do not prompt for confirmation
 	Force bool

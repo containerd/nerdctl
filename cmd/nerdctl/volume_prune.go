@@ -17,6 +17,9 @@
 package main
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/volume"
@@ -41,15 +44,16 @@ func processVolumePruneOptions(cmd *cobra.Command) (types.VolumePruneOptions, er
 	if err != nil {
 		return types.VolumePruneOptions{}, err
 	}
+
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return types.VolumePruneOptions{}, err
 	}
+
 	options := types.VolumePruneOptions{
 		GOptions: globalOptions,
 		Force:    force,
 		Stdout:   cmd.OutOrStdout(),
-		Stdin:    cmd.InOrStdin(),
 	}
 	return options, nil
 }
@@ -58,6 +62,18 @@ func volumePruneAction(cmd *cobra.Command, _ []string) error {
 	options, err := processVolumePruneOptions(cmd)
 	if err != nil {
 		return err
+	}
+
+	if !options.Force {
+		var confirm string
+		msg := "This will remove all local volumes not used by at least one container."
+		msg += "\nAre you sure you want to continue? [y/N] "
+		fmt.Fprintf(options.Stdout, "WARNING! %s", msg)
+		fmt.Fscanf(cmd.InOrStdin(), "%s", &confirm)
+
+		if strings.ToLower(confirm) != "y" {
+			return nil
+		}
 	}
 
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
