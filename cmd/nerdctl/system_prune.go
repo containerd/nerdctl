@@ -121,7 +121,6 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 			GOptions: globalOptions,
 			Force:    true,
 			Stdout:   cmd.OutOrStdout(),
-			Stdin:    cmd.InOrStdin(),
 		}); err != nil {
 			return err
 		}

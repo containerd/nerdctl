@@ -19,24 +19,12 @@ package volume
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
 )
 
 func Prune(ctx context.Context, client *containerd.Client, options types.VolumePruneOptions) error {
-	if !options.Force {
-		var confirm string
-		msg := "This will remove all local volumes not used by at least one container."
-		msg += "\nAre you sure you want to continue? [y/N] "
-		fmt.Fprintf(options.Stdout, "WARNING! %s", msg)
-		fmt.Fscanf(options.Stdin, "%s", &confirm)
-
-		if strings.ToLower(confirm) != "y" {
-			return nil
-		}
-	}
 	volStore, err := Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {
 		return err
