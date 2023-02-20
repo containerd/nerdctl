@@ -19,7 +19,6 @@ package image
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images/archive"
@@ -27,29 +26,10 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/mattn/go-isatty"
 )
 
-// Save will save one or more images to a tar archive (streamed to STDOUT by default).
-func Save(ctx context.Context, client *containerd.Client, images []string, options types.ImageSaveOptions) error {
-	if options.Output != "" {
-		f, err := os.OpenFile(options.Output, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		options.Stdout = f
-	} else {
-		if isatty.IsTerminal(os.Stdout.Fd()) {
-			return fmt.Errorf("cowardly refusing to save to a terminal. Use the -o flag or redirect")
-		}
-	}
-
-	return SaveImages(ctx, client, images, options)
-}
-
-// SaveImages exports `images` to a `io.Writer` (e.g., a file writer, or os.Stdout) specified by `opt.Stdout`.
-func SaveImages(ctx context.Context, client *containerd.Client, images []string, options types.ImageSaveOptions, exportOpts ...archive.ExportOpt) error {
+// Save exports `images` to a `io.Writer` (e.g., a file writer, or os.Stdout) specified by `options.Stdout`.
+func Save(ctx context.Context, client *containerd.Client, images []string, options types.ImageSaveOptions, exportOpts ...archive.ExportOpt) error {
 	images = strutil.DedupeStrSlice(images)
 
 	platMC, err := platformutil.NewMatchComparer(options.AllPlatforms, options.Platform)

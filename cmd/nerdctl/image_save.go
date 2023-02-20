@@ -18,10 +18,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
 
@@ -54,10 +56,6 @@ func processImageSaveOptions(cmd *cobra.Command) (types.ImageSaveOptions, error)
 		return types.ImageSaveOptions{}, err
 	}
 
-	output, err := cmd.Flags().GetString("output")
-	if err != nil {
-		return types.ImageSaveOptions{}, err
-	}
 	allPlatforms, err := cmd.Flags().GetBool("all-platforms")
 	if err != nil {
 		return types.ImageSaveOptions{}, err
@@ -69,21 +67,32 @@ func processImageSaveOptions(cmd *cobra.Command) (types.ImageSaveOptions, error)
 
 	return types.ImageSaveOptions{
 		GOptions:     globalOptions,
-		Stdout:       cmd.OutOrStdout(),
 		AllPlatforms: allPlatforms,
-		Output:       output,
 		Platform:     platform,
 	}, err
 }
 
 func saveAction(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("requires at least 1 argument")
-	}
 	options, err := processImageSaveOptions(cmd)
 	if err != nil {
 		return err
 	}
+
+	output := cmd.OutOrStdout()
+	outputPath, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return err
+	} else if outputPath != "" {
+		f, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return err
+		}
+		output = f
+		defer f.Close()
+	} else if out, ok := output.(*os.File); ok && isatty.IsTerminal(out.Fd()) {
+		return fmt.Errorf("cowardly refusing to save to a terminal. Use the -o flag or redirect")
+	}
+	options.Stdout = output
 
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
@@ -91,7 +100,10 @@ func saveAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	return image.Save(ctx, client, args, options)
+	if err = image.Save(ctx, client, args, options); err != nil && outputPath != "" {
+		os.Remove(outputPath)
+	}
+	return err
 }
 
 func saveShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
