@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -89,7 +88,7 @@ func printContainers(ctx context.Context, client *containerd.Client, containers 
 	)
 	switch options.Format {
 	case "", "table":
-		w = tabwriter.NewWriter(os.Stdout, 4, 8, 4, ' ', 0)
+		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
 		if !options.Quiet {
 			printHeader := "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES"
 			if options.Size {
@@ -100,7 +99,7 @@ func printContainers(ctx context.Context, client *containerd.Client, containers 
 	case "raw":
 		return errors.New("unsupported format: \"raw\"")
 	case "wide":
-		w = tabwriter.NewWriter(os.Stdout, 4, 8, 4, ' ', 0)
+		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
 		if !options.Quiet {
 			fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\tRUNTIME\tPLATFORM\tSIZE")
 			wide = true
