@@ -139,7 +139,7 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	return image.List(ctx, client, options)
+	return image.ListCommandHandler(ctx, client, options)
 }
 
 func imagesShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

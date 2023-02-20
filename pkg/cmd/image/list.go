@@ -40,16 +40,38 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func List(ctx context.Context, client *containerd.Client, options types.ImageListOptions) error {
-	var imageStore = client.ImageService()
-	imageList, err := imageStore.List(ctx, options.NameAndRefFilter...)
+// ListCommandHandler `List` and print images matching filters in `options`.
+func ListCommandHandler(ctx context.Context, client *containerd.Client, options types.ImageListOptions) error {
+	imageList, err := List(ctx, client, options.Filters, options.NameAndRefFilter)
 	if err != nil {
 		return err
 	}
-	if len(options.Filters) > 0 {
-		f, err := imgutil.ParseFilters(options.Filters)
+	return printImages(ctx, client, imageList, options)
+}
+
+// List queries containerd client to get image list and only returns those matching given filters.
+//
+// Supported filters:
+// - before=<image>[:<tag>]: Images created before given image (exclusive)
+// - since=<image>[:<tag>]: Images created after given image (exclusive)
+// - label=<key>[=<value>]: Matches images based on the presence of a label alone or a label and a value
+// - dangling=true: Filter images by dangling
+// - reference=<image>[:<tag>]: Filter images by reference (Matches both docker compatible wildcard pattern and regexp
+//
+// nameAndRefFilter has the format of `name==(<image>[:<tag>])|ID`,
+// and they will be used when getting images from containerd,
+// while the remaining filters are only applied after getting images from containerd,
+// which means that having nameAndRefFilter may speed up the process if there are a lot of images in containerd.
+func List(ctx context.Context, client *containerd.Client, filters, nameAndRefFilter []string) ([]images.Image, error) {
+	var imageStore = client.ImageService()
+	imageList, err := imageStore.List(ctx, nameAndRefFilter...)
+	if err != nil {
+		return nil, err
+	}
+	if len(filters) > 0 {
+		f, err := imgutil.ParseFilters(filters)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if f.Dangling != nil {
@@ -58,32 +80,32 @@ func List(ctx context.Context, client *containerd.Client, options types.ImageLis
 
 		imageList, err = imgutil.FilterByLabel(ctx, client, imageList, f.Labels)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		imageList, err = imgutil.FilterByReference(imageList, f.Reference)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		var beforeImages []images.Image
 		if len(f.Before) > 0 {
 			beforeImages, err = imageStore.List(ctx, f.Before...)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 		var sinceImages []images.Image
 		if len(f.Since) > 0 {
 			sinceImages, err = imageStore.List(ctx, f.Since...)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 
 		imageList = imgutil.FilterImages(imageList, beforeImages, sinceImages)
 	}
-	return printImages(ctx, client, imageList, options)
+	return imageList, nil
 }
 
 type imagePrintable struct {
