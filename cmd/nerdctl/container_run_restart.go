@@ -45,7 +45,7 @@ func checkRestartCapabilities(ctx context.Context, client *containerd.Client, re
 		capabilities = []string{"always"}
 	}
 	if !strutil.InStringSlice(capabilities, policySlice[0]) {
-		return false, fmt.Errorf("unsupported restart policy %q, supported policies are: %q", policySlice[0], restartPlugin.Capabilities)
+		return false, fmt.Errorf("unsupported restart policy %q, supported policies are: %q", policySlice[0], capabilities)
 	}
 	return true, nil
 }
