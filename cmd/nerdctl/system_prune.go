@@ -60,12 +60,6 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !all {
-		logrus.Warn("Currently, `nerdctl system prune` requires --all to be specified. Skip pruning.")
-		// NOP
-		return nil
-	}
-
 	vFlag, err := cmd.Flags().GetBool("volumes")
 	if err != nil {
 		return err
@@ -128,7 +122,7 @@ func systemPruneAction(cmd *cobra.Command, args []string) error {
 	if err := image.Prune(ctx, client, types.ImagePruneOptions{
 		Stdout:   cmd.OutOrStdout(),
 		GOptions: globalOptions,
-		All:      true,
+		All:      all,
 	}); err != nil {
 		return nil
 	}
