@@ -162,10 +162,12 @@ type ImagePushOptions struct {
 	IpfsEnsureImage bool
 	// IpfsAddress multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)
 	IpfsAddress string
-	// Sign the image (none|cosign)
+	// Sign the image (none|cosign|notation)
 	Sign string
 	// CosignKey Path to the private key file, KMS URI or Kubernetes Secret for --sign=cosign
 	CosignKey string
+	// NotationKeyName Signing key name for a key previously added to notation's key list for --sign=notation
+	NotationKeyName string
 	// AllowNondistributableArtifacts allow pushing non-distributable artifacts
 	AllowNondistributableArtifacts bool
 }
@@ -181,7 +183,7 @@ type ImagePullOptions struct {
 	Platform []string
 	// Pull content for all platforms
 	AllPlatforms bool
-	// Verify the image (none|cosign)
+	// Verify the image (none|cosign|notation)
 	Verify string
 	// Path to the public key file, KMS, URI or Kubernetes Secret for --verify=cosign
 	CosignKey string

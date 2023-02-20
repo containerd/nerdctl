@@ -31,11 +31,11 @@ import (
 	"github.com/containerd/nerdctl/pkg/cmd/volume"
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
-	"github.com/containerd/nerdctl/pkg/cosignutil"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
+	"github.com/containerd/nerdctl/pkg/signutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
@@ -143,7 +143,7 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 				if keyVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]; ok {
 					keyRef = keyVal.(string)
 				}
-				ref, err = cosignutil.VerifyCosign(ctx, ref, keyRef, globalOptions.HostsDir)
+				ref, err = signutil.VerifyCosign(ctx, ref, keyRef, globalOptions.HostsDir)
 				if err != nil {
 					return err
 				}

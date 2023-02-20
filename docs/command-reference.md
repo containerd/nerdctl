@@ -358,7 +358,7 @@ Ulimit flags:
 
 Verify flags:
 
-- :nerd_face: `--verify`: Verify the image (none|cosign). See [`docs/cosign.md`](./cosign.md) for details.
+- :nerd_face: `--verify`: Verify the image (none|cosign|notation). See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md) for details.
 - :nerd_face: `--cosign-key`: Path to the public key file, KMS, URI or Kubernetes Secret for `--verify=cosign`
 
 IPFS flags:
@@ -708,7 +708,7 @@ Flags:
 - :nerd_face: `--all-platforms`: Pull content for all platforms
 - :nerd_face: `--unpack`: Unpack the image for the current single platform (auto/true/false)
 - :whale: `-q, --quiet`: Suppress verbose output
-- :nerd_face: `--verify`: Verify the image (none|cosign). See [`docs/cosign.md`](./cosign.md) for details.
+- :nerd_face: `--verify`: Verify the image (none|cosign|notation). See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md) for details.
 - :nerd_face: `--cosign-key`: Path to the public key file, KMS, URI or Kubernetes Secret for `--verify=cosign`
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
@@ -726,8 +726,9 @@ Flags:
 
 - :nerd_face: `--platform=(amd64|arm64|...)`: Push content for a specific platform
 - :nerd_face: `--all-platforms`: Push content for all platforms
-- :nerd_face: `--sign`: Sign the image (none|cosign). See [`docs/cosign.md`](./cosign.md) for details.
+- :nerd_face: `--sign`: Sign the image (none|cosign|notation). See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md) for details.
 - :nerd_face: `--cosign-key`: Path to the private key file, KMS, URI or Kubernetes Secret for `--sign=cosign`
+- :nerd_face: `--notation-key-name`: Signing key name for a key previously added to notation's key list for `--sign=notation`
 - :nerd_face: `--allow-nondistributable-artifacts`: Allow pushing images with non-distributable blobs
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
@@ -1614,7 +1615,7 @@ Container management:
 Image:
 
 - `docker export` and `docker import`
-- `docker trust *` (Instead, nerdctl supports `nerdctl pull --verify=cosign` and `nerdctl push --sign=cosign`. See [`./cosign.md`](./cosign.md).)
+- `docker trust *` (Instead, nerdctl supports `nerdctl pull --verify=cosign|notation` and `nerdctl push --sign=cosign|notation`. See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md).)
 - `docker manifest *`
 
 Network management:

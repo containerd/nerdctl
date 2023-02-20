@@ -49,11 +49,12 @@ func newPushCommand() *cobra.Command {
 	pushCommand.Flags().String("ipfs-address", "", "multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)")
 
 	// #region sign flags
-	pushCommand.Flags().String("sign", "none", "Sign the image (none|cosign")
+	pushCommand.Flags().String("sign", "none", "Sign the image (none|cosign|notation")
 	pushCommand.RegisterFlagCompletionFunc("sign", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"none", "cosign"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"none", "cosign", "notation"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	pushCommand.Flags().String("cosign-key", "", "Path to the private key file, KMS URI or Kubernetes Secret for --sign=cosign")
+	pushCommand.Flags().String("notation-key-name", "", "Signing key name for a key previously added to notation's key list for --sign=notation")
 	// #endregion
 
 	pushCommand.Flags().Bool(allowNonDistFlag, false, "Allow pushing images with non-distributable blobs")
@@ -94,6 +95,10 @@ func processImagePushOptions(cmd *cobra.Command) (types.ImagePushOptions, error)
 	if err != nil {
 		return types.ImagePushOptions{}, err
 	}
+	notationKeyName, err := cmd.Flags().GetString("notation-key-name")
+	if err != nil {
+		return types.ImagePushOptions{}, err
+	}
 	allowNonDist, err := cmd.Flags().GetBool(allowNonDistFlag)
 	if err != nil {
 		return types.ImagePushOptions{}, err
@@ -107,6 +112,7 @@ func processImagePushOptions(cmd *cobra.Command) (types.ImagePushOptions, error)
 		IpfsAddress:                    ipfsAddress,
 		Sign:                           sign,
 		CosignKey:                      cosignKey,
+		NotationKeyName:                notationKeyName,
 		AllowNondistributableArtifacts: allowNonDist,
 		Stdout:                         cmd.OutOrStdout(),
 	}, nil
