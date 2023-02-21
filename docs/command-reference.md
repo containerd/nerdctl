@@ -809,8 +809,6 @@ Flags:
 
 Remove unused images.
 
-:warning: Currently, `nerdctl image prune` requires --all to be specified.
-
 Usage: `nerdctl image prune [OPTIONS]`
 
 Flags:
@@ -1229,8 +1227,6 @@ Flags:
 ### :whale: nerdctl system prune
 
 Remove unused data
-
-:warning: Currently, `nerdctl system prune` requires --all to be specified.
 
 Usage: `nerdctl system prune [OPTIONS]`
 
