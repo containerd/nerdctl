@@ -40,29 +40,54 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// List prints containers according to `options`.
-func List(ctx context.Context, client *containerd.Client, options types.ContainerListOptions) error {
+// ListCommandHandler prints containers according to `options`.
+func ListCommandHandler(ctx context.Context, client *containerd.Client, options types.ContainerListOptions) error {
+	containers, err := List(ctx, client, options.Filters, options.LastN, options.All)
+	if err != nil {
+		return err
+	}
+	return printContainers(ctx, client, containers, options)
+}
+
+// List returns containers matching the filters.
+//
+//   - Supported filters: https://github.com/containerd/nerdctl/blob/main/docs/command-reference.md#whale-blue_square-nerdctl-ps
+//   - all means showing all containers (default shows just running).
+//   - lastN means only showing n last created containers (includes all states). Non-positive values are ignored.
+//     In other words, if lastN is positive, all will be set to true.
+func List(ctx context.Context, client *containerd.Client, filters []string, lastN int, all bool) ([]containerd.Container, error) {
 	containers, err := client.Containers(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	filterCtx, err := foldContainerFilters(ctx, containers, options.Filters)
+	filterCtx, err := foldContainerFilters(ctx, containers, filters)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	containers = filterCtx.MatchesFilters(ctx)
-	if options.LastN > 0 {
-		options.All = true
+	if lastN > 0 {
+		all = true
 		sort.Slice(containers, func(i, j int) bool {
 			infoI, _ := containers[i].Info(ctx, containerd.WithoutRefreshedMetadata)
 			infoJ, _ := containers[j].Info(ctx, containerd.WithoutRefreshedMetadata)
 			return infoI.CreatedAt.After(infoJ.CreatedAt)
 		})
-		if options.LastN < len(containers) {
-			containers = containers[:options.LastN]
+		if lastN < len(containers) {
+			containers = containers[:lastN]
 		}
 	}
-	return printContainers(ctx, client, containers, options)
+
+	if all {
+		return containers, nil
+	}
+	var upContainers []containerd.Container
+	for _, c := range containers {
+		cStatus := formatter.ContainerStatus(ctx, c)
+		if strings.HasPrefix(cStatus, "Up") {
+			upContainers = append(upContainers, c)
+		}
+	}
+	return upContainers, nil
 }
 
 type containerPrintable struct {
@@ -140,11 +165,6 @@ func printContainers(ctx context.Context, client *containerd.Client, containers 
 			id = id[:12]
 		}
 
-		cStatus := formatter.ContainerStatus(ctx, c)
-		if !strings.HasPrefix(cStatus, "Up") && !options.All {
-			continue
-		}
-
 		p := containerPrintable{
 			Command:   formatter.InspectContainerCommand(spec, options.Truncate, true),
 			CreatedAt: info.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
@@ -153,7 +173,7 @@ func printContainers(ctx context.Context, client *containerd.Client, containers 
 			Platform:  info.Labels[labels.Platform],
 			Names:     getPrintableContainerName(info.Labels),
 			Ports:     formatter.FormatPorts(info.Labels),
-			Status:    cStatus,
+			Status:    formatter.ContainerStatus(ctx, c),
 			Runtime:   info.Runtime.Name,
 			Labels:    formatter.FormatLabels(info.Labels),
 		}
