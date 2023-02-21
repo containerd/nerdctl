@@ -229,8 +229,6 @@ type ImageSaveOptions struct {
 	GOptions GlobalCommandOptions
 	// Export content for all platforms
 	AllPlatforms bool
-	// Write to a file, instead of STDOUT
-	Output string
 	// Export content for a specific platform
 	Platform []string
 }
