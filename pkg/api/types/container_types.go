@@ -195,3 +195,16 @@ type ContainerListOptions struct {
 	// Filters matches containers based on given conditions.
 	Filters []string
 }
+
+// ContainerCpOptions specifies options for `nerdctl (container) cp`
+type ContainerCpOptions struct {
+	Container2Host bool
+	// Process id
+	Pid int
+	// Destination path to copy file to.
+	DestPath string
+	// Source path to copy file from.
+	SrcPath string
+	// Follow symbolic links in SRC_PATH
+	FollowSymLink bool
+}
