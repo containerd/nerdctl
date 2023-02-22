@@ -114,6 +114,7 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 	if err != nil {
 		return err
 	}
+	options.Services = services
 	c, err := compose.New(client, globalOptions, options, cmd.OutOrStdout(), cmd.ErrOrStderr())
 	if err != nil {
 		return err
