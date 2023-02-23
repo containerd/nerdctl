@@ -23,7 +23,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/system"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -80,12 +79,6 @@ func grantSystemPrunePermission(cmd *cobra.Command, options types.SystemPruneOpt
 		return false, err
 	}
 
-	if !options.All {
-		logrus.Warn("Currently, `nerdctl system prune` requires --all to be specified. Skip pruning.")
-		// NOP
-		return false, nil
-	}
-
 	if !force {
 		var confirm string
 		msg := `This will remove:
@@ -95,10 +88,16 @@ func grantSystemPrunePermission(cmd *cobra.Command, options types.SystemPruneOpt
 			msg += `
   - all volumes not used by at least one container`
 		}
-		msg += `
+		if options.All {
+			msg += `
   - all images without at least one container associated to them
-  - all build cache
-`
+  - all build cache`
+		} else {
+			msg += `
+  - all dangling images
+  - all dangling build cache`
+		}
+
 		msg += "\nAre you sure you want to continue? [y/N] "
 		fmt.Fprintf(options.Stdout, "WARNING! %s", msg)
 		fmt.Fscanf(cmd.InOrStdin(), "%s", &confirm)
