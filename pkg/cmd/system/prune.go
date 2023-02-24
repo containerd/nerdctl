@@ -57,7 +57,7 @@ func Prune(ctx context.Context, client *containerd.Client, options types.SystemP
 	if err := image.Prune(ctx, client, types.ImagePruneOptions{
 		Stdout:   options.Stdout,
 		GOptions: options.GOptions,
-		All:      true,
+		All:      options.All,
 	}); err != nil {
 		return nil
 	}
