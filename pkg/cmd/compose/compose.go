@@ -36,6 +36,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
+	"github.com/containerd/nerdctl/pkg/strutil"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 )
@@ -52,6 +53,19 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 	options.NetworkExists = func(netName string) (bool, error) {
 		for _, f := range networkConfigs {
 			if f.Name == netName {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
+	options.NetworkInUse = func(ctx context.Context, netName string) (bool, error) {
+		networkUsedByNsMap, err := netutil.UsedNetworks(ctx, client)
+		if err != nil {
+			return false, err
+		}
+		for _, v := range networkUsedByNsMap {
+			if strutil.InStringSlice(v, netName) {
 				return true, nil
 			}
 		}

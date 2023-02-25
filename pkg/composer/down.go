@@ -97,6 +97,14 @@ func (c *Composer) downNetwork(ctx context.Context, shortName string) error {
 	if err != nil {
 		return err
 	} else if netExists {
+		netUsed, err := c.NetworkInUse(ctx, fullName)
+		if err != nil {
+			return err
+		}
+		if netUsed {
+			return fmt.Errorf("network %s is in use", fullName)
+		}
+
 		logrus.Infof("Removing network %s", fullName)
 		if err := c.runNerdctlCmd(ctx, "network", "rm", fullName); err != nil {
 			logrus.Warn(err)
