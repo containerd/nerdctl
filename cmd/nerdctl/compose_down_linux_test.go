@@ -24,6 +24,45 @@ import (
 	"github.com/containerd/nerdctl/pkg/testutil"
 )
 
+func TestComposeDownRemoveUsedNetwork(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	// The error output is different with docker
+	testutil.DockerIncompatible(t)
+
+	var (
+		dockerComposeYAMLOrphan = fmt.Sprintf(`
+version: '3.1'
+
+services:
+  test:
+    image: %s
+    command: "sleep infinity"
+`, testutil.AlpineImage)
+
+		dockerComposeYAMLFull = fmt.Sprintf(`
+%s
+  orphan:
+    image: %s
+    command: "sleep infinity"
+`, dockerComposeYAMLOrphan, testutil.AlpineImage)
+	)
+
+	compOrphan := testutil.NewComposeDir(t, dockerComposeYAMLOrphan)
+	defer compOrphan.CleanUp()
+	compFull := testutil.NewComposeDir(t, dockerComposeYAMLFull)
+	defer compFull.CleanUp()
+
+	projectName := fmt.Sprintf("nerdctl-compose-test-%d", time.Now().Unix())
+	t.Logf("projectName=%q", projectName)
+
+	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "down", "--remove-orphans").AssertOK()
+
+	base.ComposeCmd("-p", projectName, "-f", compOrphan.YAMLFullPath(), "down", "-v").AssertCombinedOutContains("is in use")
+
+}
+
 func TestComposeDownRemoveOrphans(t *testing.T) {
 	base := testutil.NewBase(t)
 
@@ -50,7 +89,7 @@ services:
 	compFull := testutil.NewComposeDir(t, dockerComposeYAMLFull)
 	defer compFull.CleanUp()
 
-	projectName := fmt.Sprintf("nerdctl-compose-test-%d", time.Now().Unix())
+	projectName := compFull.ProjectName()
 	t.Logf("projectName=%q", projectName)
 
 	orphanContainer := fmt.Sprintf("%s_orphan_1", projectName)

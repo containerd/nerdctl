@@ -40,6 +40,7 @@ type Options struct {
 	EnvFile          string
 	NerdctlCmd       string
 	NerdctlArgs      []string
+	NetworkInUse     func(ctx context.Context, netName string) (bool, error)
 	NetworkExists    func(string) (bool, error)
 	VolumeExists     func(string) (bool, error)
 	ImageExists      func(ctx context.Context, imageName string) (bool, error)
