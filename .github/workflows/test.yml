@@ -76,11 +76,11 @@ jobs:
         # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
         include:
           - ubuntu: 20.04
-            containerd: v1.5.17
+            containerd: v1.5.18
           - ubuntu: 20.04
-            containerd: v1.6.16
+            containerd: v1.6.19
           - ubuntu: 22.04
-            containerd: v1.6.16
+            containerd: v1.6.19
           - ubuntu: 22.04
             containerd: main
     env:
@@ -112,25 +112,25 @@ jobs:
         # ubuntu-22.04: cgroup v1, ubuntu-22.04: cgroup v2
         include:
           - ubuntu: 20.04
-            containerd: v1.5.17
+            containerd: v1.5.18
             target: test-integration-rootless
           - ubuntu: 20.04
-            containerd: v1.6.16
+            containerd: v1.6.19
             target: test-integration-rootless
           - ubuntu: 22.04
-            containerd: v1.6.16
+            containerd: v1.6.19
             target: test-integration-rootless
           - ubuntu: 22.04
             containerd: main
             target: test-integration-rootless
           - ubuntu: 20.04
-            containerd: v1.5.17
+            containerd: v1.5.18
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 20.04
-            containerd: v1.6.16
+            containerd: v1.6.19
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 22.04
-            containerd: v1.6.16
+            containerd: v1.6.19
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 22.04
             containerd: main
