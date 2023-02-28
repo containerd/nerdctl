@@ -38,6 +38,7 @@ type Config struct {
 	InsecureRegistry bool     `toml:"insecure_registry"`
 	HostsDir         []string `toml:"hosts_dir"`
 	Experimental     bool     `toml:"experimental"`
+	HostGatewayIP    string   `toml:"host_gateway_ip"`
 }
 
 // New creates a default Config object statically,
@@ -56,5 +57,6 @@ func New() *Config {
 		InsecureRegistry: false,
 		HostsDir:         ncdefaults.HostsDirs(),
 		Experimental:     true,
+		HostGatewayIP:    ncdefaults.HostGatewayIP(),
 	}
 }

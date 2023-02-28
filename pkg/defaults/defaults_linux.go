@@ -18,6 +18,7 @@ package defaults
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 
@@ -129,4 +130,20 @@ func HostsDirs() []string {
 		filepath.Join(xch, "containerd/certs.d"),
 		filepath.Join(xch, "docker/certs.d"),
 	}
+}
+
+// HostGatewayIP returns the non-loop-back host ip if available and returns empty string if running into error.
+func HostGatewayIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
 }

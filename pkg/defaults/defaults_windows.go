@@ -75,3 +75,7 @@ func HostsDirs() []string {
 		filepath.Join(programData, "docker\\certs.d"),
 	}
 }
+
+func HostGatewayIP() string {
+	return ""
+}

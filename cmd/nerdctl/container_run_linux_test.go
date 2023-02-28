@@ -19,8 +19,11 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -32,7 +35,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
-
 	"gotest.tools/v3/assert"
 )
 
@@ -150,6 +152,38 @@ func TestRunAddHost(t *testing.T) {
 		return nil
 	})
 	base.Cmd("run", "--rm", "--add-host", "10.0.0.1:testing.example.com", testutil.AlpineImage, "cat", "/etc/hosts").AssertFail()
+
+	response := "This is the expected response for --add-host special IP test."
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, response)
+	})
+	const hostPort = 8081
+	s := http.Server{Addr: fmt.Sprintf(":%d", hostPort), Handler: nil, ReadTimeout: 30 * time.Second}
+	go s.ListenAndServe()
+	defer s.Shutdown(context.Background())
+	base.Cmd("run", "--rm", "--add-host", "test:host-gateway", testutil.NginxAlpineImage, "curl", fmt.Sprintf("test:%d", hostPort)).AssertOutExactly(response)
+}
+
+func TestRunAddHostWithCustomHostGatewayIP(t *testing.T) {
+	// Not parallelizable (https://github.com/containerd/nerdctl/issues/1127)
+	base := testutil.NewBase(t)
+	testutil.DockerIncompatible(t)
+	base.Cmd("run", "--rm", "--host-gateway-ip", "192.168.5.2", "--add-host", "test:host-gateway", testutil.AlpineImage, "cat", "/etc/hosts").AssertOutWithFunc(func(stdout string) error {
+		var found bool
+		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
+		for sc.Scan() {
+			//removing spaces and tabs separating items
+			line := strings.ReplaceAll(sc.Text(), " ", "")
+			line = strings.ReplaceAll(line, "\t", "")
+			if strings.Contains(line, "192.168.5.2test") {
+				found = true
+			}
+		}
+		if !found {
+			return errors.New("host was not added")
+		}
+		return nil
+	})
 }
 
 func TestRunUlimit(t *testing.T) {

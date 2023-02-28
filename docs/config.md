@@ -30,20 +30,21 @@ experimental   = true
 
 ## Properties
 
-| TOML property     | CLI flag                 | Env var                   | Description                 | Availability \*1 |
-|-------------------|--------------------------|---------------------------|-----------------------------|---------------|
-| `debug`           | `--debug`                |                           | Debug mode                  | Since 0.16.0  |
-| `debug_full`      | `--debug-full`           |                           | Debug mode (with full output) | Since 0.16.0  |
-| `address`         | `--address`,`--host`,`-a`,`-H` | `$CONTAINERD_ADDRESS`     | containerd address          | Since 0.16.0  |
-| `namespace`       | `--namespace`,`-n`       | `$CONTAINERD_NAMESPACE`   | containerd namespace        | Since 0.16.0  |
-| `snapshotter`     | `--snapshotter`,`--storage-driver` | `$CONTAINERD_SNAPSHOTTER` | containerd snapshotter      | Since 0.16.0  |
-| `cni_path`        | `--cni-path`             | `$CNI_PATH`               | CNI binary directory        | Since 0.16.0  |
-| `cni_netconfpath` | `--cni-netconfpath`      | `$NETCONFPATH`            | CNI config directory        | Since 0.16.0  |
-| `data_root`       | `--data-root`            |                           | Persistent state directory  | Since 0.16.0  |
-| `cgroup_manager`  | `--cgroup-manager`       |                           | cgroup manager              | Since 0.16.0  |
-| `insecure_registry` | `--insecure-registry`    |                           | Allow insecure registry     | Since 0.16.0  |
-| `hosts_dir`       | `--hosts-dir`            |                           | `certs.d` directory         | Since 0.16.0  |
-| `experimental`    | `--experimental`         | `NERDCTL_EXPERIMENTAL`    | Enable  [experimental features](experimental.md) | Since 0.22.3  |
+| TOML property       | CLI flag                           | Env var                   | Description                                                                                                                                                      | Availability \*1 |
+|---------------------|------------------------------------|---------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|
+| `debug`             | `--debug`                          |                           | Debug mode                                                                                                                                                       | Since 0.16.0     |
+| `debug_full`        | `--debug-full`                     |                           | Debug mode (with full output)                                                                                                                                    | Since 0.16.0     |
+| `address`           | `--address`,`--host`,`-a`,`-H`     | `$CONTAINERD_ADDRESS`     | containerd address                                                                                                                                               | Since 0.16.0     |
+| `namespace`         | `--namespace`,`-n`                 | `$CONTAINERD_NAMESPACE`   | containerd namespace                                                                                                                                             | Since 0.16.0     |
+| `snapshotter`       | `--snapshotter`,`--storage-driver` | `$CONTAINERD_SNAPSHOTTER` | containerd snapshotter                                                                                                                                           | Since 0.16.0     |
+| `cni_path`          | `--cni-path`                       | `$CNI_PATH`               | CNI binary directory                                                                                                                                             | Since 0.16.0     |
+| `cni_netconfpath`   | `--cni-netconfpath`                | `$NETCONFPATH`            | CNI config directory                                                                                                                                             | Since 0.16.0     |
+| `data_root`         | `--data-root`                      |                           | Persistent state directory                                                                                                                                       | Since 0.16.0     |
+| `cgroup_manager`    | `--cgroup-manager`                 |                           | cgroup manager                                                                                                                                                   | Since 0.16.0     |
+| `insecure_registry` | `--insecure-registry`              |                           | Allow insecure registry                                                                                                                                          | Since 0.16.0     |
+| `hosts_dir`         | `--hosts-dir`                      |                           | `certs.d` directory                                                                                                                                              | Since 0.16.0     |
+| `experimental`      | `--experimental`                   | `NERDCTL_EXPERIMENTAL`    | Enable  [experimental features](experimental.md)                                                                                                                 | Since 0.22.3     |
+| `host_gateway_ip`   | `--host-gateway-ip`                | `NERDCTL_HOST_GATEWAY_IP` | IP address that the special 'host-gateway' string in --add-host resolves to. Defaults to the IP address of the host. It has no effect without setting --add-host | Since 1.3.0      |
 
 The properties are parsed in the following precedence:
 1. CLI flag
