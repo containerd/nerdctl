@@ -13,7 +13,7 @@ require (
 	github.com/containerd/continuity v0.3.0
 	github.com/containerd/go-cni v1.1.9
 	github.com/containerd/imgcrypt v1.1.7
-	github.com/containerd/nydus-snapshotter v0.6.0
+	github.com/containerd/nydus-snapshotter v0.6.1
 	github.com/containerd/stargz-snapshotter v0.14.1
 	github.com/containerd/stargz-snapshotter/estargz v0.14.1
 	github.com/containerd/stargz-snapshotter/ipfs v0.14.1
@@ -121,7 +121,7 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel v1.12.0 // indirect
 	go.opentelemetry.io/otel/trace v1.12.0 // indirect
-	golang.org/x/mod v0.7.0 // indirect
+	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/tools v0.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20230131230820-1c016267d619 // indirect
 	google.golang.org/grpc v1.52.3 // indirect
