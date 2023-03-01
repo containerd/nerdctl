@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"golang.org/x/sys/windows/svc/mgr"
 )
 
 func TestRenameProcessContainer(t *testing.T) {
@@ -41,21 +40,9 @@ func TestRenameHyperVContainer(t *testing.T) {
 	testContainerName := testutil.Identifier(t)
 	base := testutil.NewBase(t)
 
-	// Hyper-V Virtual Machine Management service
-	hypervServiceName := "vmms"
-
-	m, err := mgr.Connect()
-	if err != nil {
-		t.Fatalf("unable to access Windows service control manager: %s", err)
-	}
-	defer m.Disconnect()
-
-	s, err := m.OpenService(hypervServiceName)
-	// hyperv service is not present, hyperv is not enabled
-	if err != nil {
+	if !testutil.HyperVSupported() {
 		t.Skip("HyperV is not enabled, skipping test")
 	}
-	defer s.Close()
 
 	defer base.Cmd("rm", "-f", testContainerName).Run()
 	base.Cmd("run", "--isolation", "hyperv", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", "infinity").AssertOK()

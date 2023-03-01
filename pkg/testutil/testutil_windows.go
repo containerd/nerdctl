@@ -16,6 +16,12 @@
 
 package testutil
 
+import (
+	"sync"
+
+	"golang.org/x/sys/windows/svc/mgr"
+)
+
 const (
 	WindowsNano = "gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2"
 
@@ -39,3 +45,31 @@ const (
 	// https://www.rfc-editor.org/rfc/rfc793
 	ExpectedConnectionRefusedError = "No connection could be made because the target machine actively refused it."
 )
+
+var (
+	hypervSupported     bool
+	hypervSupportedOnce sync.Once
+)
+
+// HyperVSupported is a test helper to check if hyperv is enabled on
+// the host. This can be used to skip tests that require virtualization.
+func HyperVSupported() bool {
+	hypervSupportedOnce.Do(func() {
+		// Hyper-V Virtual Machine Management service name
+		const hypervServiceName = "vmms"
+
+		m, err := mgr.Connect()
+		if err != nil {
+			return
+		}
+		defer m.Disconnect()
+
+		s, err := m.OpenService(hypervServiceName)
+		// hyperv service was present
+		if err == nil {
+			hypervSupported = true
+			s.Close()
+		}
+	})
+	return hypervSupported
+}
