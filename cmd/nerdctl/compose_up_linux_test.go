@@ -542,3 +542,45 @@ volumes:
   db:
 `, testutil.WordpressImage, testutil.MariaDBImage))
 }
+
+func TestComposeUpProfile(t *testing.T) {
+	base := testutil.NewBase(t)
+	serviceRegular := testutil.Identifier(t) + "-regular"
+	serviceProfiled := testutil.Identifier(t) + "-profiled"
+
+	dockerComposeYAML := fmt.Sprintf(`
+services:
+  %s:
+    image: %[3]s
+
+  %[2]s:
+    image: %[3]s
+    profiles:
+      - test-profile
+`, serviceRegular, serviceProfiled, testutil.NginxAlpineImage)
+
+	// * Test with profile
+	//   Should run both the services:
+	//     - matching active profile
+	//     - one without profile
+	comp1 := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp1.CleanUp()
+	base.ComposeCmd("-f", comp1.YAMLFullPath(), "--profile", "test-profile", "up", "-d").AssertOK()
+
+	psCmd := base.Cmd("ps", "-a", "--format={{.Names}}")
+	psCmd.AssertOutContains(serviceRegular)
+	psCmd.AssertOutContains(serviceProfiled)
+	base.ComposeCmd("-f", comp1.YAMLFullPath(), "--profile", "test-profile", "down", "-v").AssertOK()
+
+	// * Test without profile
+	//   Should run:
+	//     - service without profile
+	comp2 := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp2.CleanUp()
+	base.ComposeCmd("-f", comp2.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp2.YAMLFullPath(), "down", "-v").AssertOK()
+
+	psCmd = base.Cmd("ps", "-a", "--format={{.Names}}")
+	psCmd.AssertOutContains(serviceRegular)
+	psCmd.AssertOutNotContains(serviceProfiled)
+}

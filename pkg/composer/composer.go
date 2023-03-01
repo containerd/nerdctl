@@ -37,6 +37,8 @@ type Options struct {
 	Project          string // empty for default
 	ProjectDirectory string
 	ConfigPaths      []string
+	Profiles         []string
+	Services         []string
 	EnvFile          string
 	NerdctlCmd       string
 	NerdctlArgs      []string
@@ -83,6 +85,15 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if len(o.Services) > 0 {
+		s, err := project.GetServices(o.Services...)
+		if err != nil {
+			return nil, err
+		}
+		o.Profiles = append(o.Profiles, s.GetProfiles()...)
+	}
+	project.ApplyProfiles(o.Profiles)
 
 	if o.DebugPrintFull {
 		projectJSON, _ := json.MarshalIndent(project, "", "    ")
