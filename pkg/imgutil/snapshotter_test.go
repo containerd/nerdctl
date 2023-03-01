@@ -18,15 +18,13 @@ package imgutil
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/snapshots"
+	ctdsnapshotters "github.com/containerd/containerd/pkg/snapshotters"
 	"github.com/containerd/nerdctl/pkg/imgutil/pull"
-	nyduslabel "github.com/containerd/nydus-snapshotter/pkg/label"
-	"github.com/containerd/stargz-snapshotter/fs/config"
+	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"gotest.tools/v3/assert"
 )
@@ -38,37 +36,52 @@ const (
 
 func TestGetSnapshotterOpts(t *testing.T) {
 	type testCase struct {
-		sns  []string
-		want snapshotterOpts
+		sns   []string
+		check func(t *testing.T, o snapshotterOpts)
 	}
 	testCases := []testCase{
 		{
-			sns:  []string{"overlayfs"},
-			want: &defaultSnapshotterOpts{snapshotter: "overlayfs"},
+			sns:   []string{"overlayfs"},
+			check: sameOpts(&defaultSnapshotterOpts{snapshotter: "overlayfs"}),
 		},
 		{
-			sns:  []string{"overlayfs2"},
-			want: &defaultSnapshotterOpts{snapshotter: "overlayfs2"},
+			sns:   []string{"overlayfs2"},
+			check: sameOpts(&defaultSnapshotterOpts{snapshotter: "overlayfs2"}),
 		},
 		{
-			sns:  []string{"stargz", "stargz-v1"},
-			want: &stargzSnapshotterOpts{},
+			sns:   []string{"stargz", "stargz-v1"},
+			check: remoteSnOpts("stargz", true),
 		},
 		{
-			sns:  []string{"overlaybd", "overlaybd-v2"},
-			want: &overlaybdSnapshotterOpts{},
+			sns:   []string{"overlaybd", "overlaybd-v2"},
+			check: sameOpts(&remoteSnapshotterOpts{snapshotter: "overlaybd"}),
 		},
 		{
-			sns:  []string{"nydus", "nydus-v3"},
-			want: &nydusSnapshotterOpts{},
+			sns:   []string{"nydus", "nydus-v3"},
+			check: sameOpts(&remoteSnapshotterOpts{snapshotter: "nydus"}),
 		},
 	}
 	for _, tc := range testCases {
 		for i := range tc.sns {
 			got := getSnapshotterOpts(tc.sns[i])
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("getSnapshotterOpts() got = %v, want %v", got, tc.want)
-			}
+			tc.check(t, got)
+		}
+	}
+}
+
+func remoteSnOpts(name string, withExtra bool) func(*testing.T, snapshotterOpts) {
+	return func(t *testing.T, got snapshotterOpts) {
+		opts, ok := got.(*remoteSnapshotterOpts)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, opts.snapshotter, name)
+		assert.Equal(t, opts.extraLabels != nil, withExtra)
+	}
+}
+
+func sameOpts(want snapshotterOpts) func(*testing.T, snapshotterOpts) {
+	return func(t *testing.T, got snapshotterOpts) {
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("getSnapshotterOpts() got = %v, want %v", got, want)
 		}
 	}
 }
@@ -103,60 +116,62 @@ func (dih *dummyImageHandler) Handle(_ctx context.Context, _desc ocispec.Descrip
 	return []ocispec.Descriptor{
 		{
 			MediaType: "application/vnd.oci.image.layer.dummy",
+			Digest:    digest.FromString("dummy"),
 		},
 	}, nil
 }
 
-func TestNydusSnapshotterOpts(t *testing.T) {
-	rc := getAndApplyRemoteOpts(t, "nydus")
-	assert.Equal(t, rc.Snapshotter, snapshotterNameNydus)
-
-	desc := ocispec.Descriptor{
-		MediaType: ocispec.MediaTypeImageManifest,
+func TestRemoteSnapshotterOpts(t *testing.T) {
+	tests := []struct {
+		name  string
+		check []func(t *testing.T, a map[string]string)
+	}{
+		{
+			name: "stargz",
+			check: []func(t *testing.T, a map[string]string){
+				checkRemoteSnapshotterAnnotataions, checkStargzSnapshotterAnnotataions,
+			},
+		},
+		{
+			name:  "nydus",
+			check: []func(t *testing.T, a map[string]string){checkRemoteSnapshotterAnnotataions},
+		},
+		{
+			name:  "overlaybd",
+			check: []func(t *testing.T, a map[string]string){checkRemoteSnapshotterAnnotataions},
+		},
 	}
 
-	h := &dummyImageHandler{}
-	got, err := rc.HandlerWrapper(h).Handle(context.Background(), desc)
+	for _, tt := range tests {
+		tt := tt
+		sn := tt.name
+		t.Run(sn, func(t *testing.T) {
+			rc := getAndApplyRemoteOpts(t, sn)
+			assert.Equal(t, rc.Snapshotter, sn)
 
-	assert.NilError(t, err)
-	assert.Check(t, len(got) == 1)
-	assert.Check(t, got[0].Annotations != nil)
-	assert.Equal(t, got[0].Annotations[nyduslabel.CRIImageRef], testRef)
+			desc := ocispec.Descriptor{
+				MediaType: ocispec.MediaTypeImageManifest,
+			}
+
+			h := &dummyImageHandler{}
+			got, err := rc.HandlerWrapper(h).Handle(context.Background(), desc)
+
+			assert.NilError(t, err)
+			assert.Check(t, len(got) == 1)
+			for _, f := range tt.check {
+				f(t, got[0].Annotations)
+			}
+		})
+	}
 }
 
-func TestOverlaybdSnapshotterOpts(t *testing.T) {
-	rc := getAndApplyRemoteOpts(t, "overlaybd")
-	assert.Equal(t, rc.Snapshotter, snapshotterNameOverlaybd)
-
-	info := &snapshots.Info{}
-	assert.Check(t, rc.SnapshotterOpts != nil)
-
-	for _, o := range rc.SnapshotterOpts {
-		err := o(info)
-		assert.NilError(t, err)
-	}
-
-	assert.Check(t, info != nil)
-	assert.Check(t, info.Labels != nil)
-	assert.Check(t, len(info.Labels) == 1)
-
-	assert.Equal(t, info.Labels[overlaybdLabelImageRef], testRef)
+func checkRemoteSnapshotterAnnotataions(t *testing.T, a map[string]string) {
+	assert.Check(t, a != nil)
+	assert.Equal(t, a[ctdsnapshotters.TargetRefLabel], testRef)
 }
 
-func TestStargzSnapshotterOpts(t *testing.T) {
-	rc := getAndApplyRemoteOpts(t, "stargz")
-	assert.Equal(t, rc.Snapshotter, snapshotterNameStargz)
-
-	desc := ocispec.Descriptor{
-		MediaType: ocispec.MediaTypeImageManifest,
-	}
-
-	h := &dummyImageHandler{}
-	got, err := rc.HandlerWrapper(h).Handle(context.Background(), desc)
-
-	assert.NilError(t, err)
-	assert.Check(t, len(got) == 1)
-	assert.Check(t, got[0].Annotations != nil)
-	assert.Equal(t, got[0].Annotations[config.TargetPrefetchSizeLabel], fmt.Sprintf("%d", prefetchSize))
-	assert.Equal(t, got[0].Annotations[targetRefLabel], testRef)
+func checkStargzSnapshotterAnnotataions(t *testing.T, a map[string]string) {
+	assert.Check(t, a != nil)
+	_, ok := a["containerd.io/snapshot/remote/urls"]
+	assert.Equal(t, ok, true)
 }

@@ -20,9 +20,9 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/snapshots"
+	"github.com/containerd/containerd/images"
+	ctdsnapshotters "github.com/containerd/containerd/pkg/snapshotters"
 	"github.com/containerd/nerdctl/pkg/imgutil/pull"
-	nyduslabel "github.com/containerd/nydus-snapshotter/pkg/label"
 	"github.com/containerd/stargz-snapshotter/fs/source"
 	"github.com/sirupsen/logrus"
 )
@@ -34,15 +34,13 @@ const (
 
 	// prefetch size for stargz
 	prefetchSize = 10 * 1024 * 1024
-
-	overlaybdLabelImageRef = "containerd.io/snapshot/image-ref"
 )
 
 // remote snapshotters explicitly handled by nerdctl
 var builtinRemoteSnapshotterOpts = map[string]snapshotterOpts{
-	snapshotterNameOverlaybd: &overlaybdSnapshotterOpts{},
-	snapshotterNameStargz:    &stargzSnapshotterOpts{},
-	snapshotterNameNydus:     &nydusSnapshotterOpts{},
+	snapshotterNameOverlaybd: &remoteSnapshotterOpts{snapshotter: "overlaybd"},
+	snapshotterNameStargz:    &remoteSnapshotterOpts{snapshotter: "stargz", extraLabels: stargzExtraLabels},
+	snapshotterNameNydus:     &remoteSnapshotterOpts{snapshotter: "nydus"},
 }
 
 // snapshotterOpts is used to update pull config
@@ -66,12 +64,27 @@ func getSnapshotterOpts(snapshotter string) snapshotterOpts {
 	return &defaultSnapshotterOpts{snapshotter: snapshotter}
 }
 
-// remoteSnapshotter is used as a default implementation for
+// remoteSnapshotterOpts is used as a remote snapshotter implementation for
 // interface `snapshotterOpts.isRemote()` function
-type remoteSnapshotter struct{}
+type remoteSnapshotterOpts struct {
+	snapshotter string
+	extraLabels func(func(images.Handler) images.Handler) func(images.Handler) images.Handler
+}
 
-func (rs *remoteSnapshotter) isRemote() bool {
+func (rs *remoteSnapshotterOpts) isRemote() bool {
 	return true
+}
+
+func (rs *remoteSnapshotterOpts) apply(config *pull.Config, ref string) {
+	h := ctdsnapshotters.AppendInfoHandlerWrapper(ref)
+	if rs.extraLabels != nil {
+		h = rs.extraLabels(h)
+	}
+	config.RemoteOpts = append(
+		config.RemoteOpts,
+		containerd.WithImageHandlerWrapper(h),
+		containerd.WithPullSnapshotter(rs.snapshotter),
+	)
 }
 
 // defaultSnapshotterOpts is for snapshotters that
@@ -91,44 +104,6 @@ func (dsn *defaultSnapshotterOpts) isRemote() bool {
 	return false
 }
 
-// stargzSnapshotterOpts for stargz snapshotter
-type stargzSnapshotterOpts struct {
-	remoteSnapshotter
-}
-
-func (ssn *stargzSnapshotterOpts) apply(config *pull.Config, ref string) {
-	// TODO: support "skip-content-verify"
-	config.RemoteOpts = append(
-		config.RemoteOpts,
-		containerd.WithImageHandlerWrapper(source.AppendDefaultLabelsHandlerWrapper(ref, prefetchSize)),
-		containerd.WithPullSnapshotter(snapshotterNameStargz),
-	)
-}
-
-// overlaybdSnapshotterOpts for overlaybd snapshotter
-type overlaybdSnapshotterOpts struct {
-	remoteSnapshotter
-}
-
-func (osn *overlaybdSnapshotterOpts) apply(config *pull.Config, ref string) {
-	snlabel := map[string]string{overlaybdLabelImageRef: ref}
-	logrus.Debugf("append remote opts: %s", snlabel)
-
-	config.RemoteOpts = append(
-		config.RemoteOpts,
-		containerd.WithPullSnapshotter(snapshotterNameOverlaybd, snapshots.WithLabels(snlabel)),
-	)
-}
-
-// nydusSnapshotterOpts for nydus snapshotter
-type nydusSnapshotterOpts struct {
-	remoteSnapshotter
-}
-
-func (nsn *nydusSnapshotterOpts) apply(config *pull.Config, ref string) {
-	config.RemoteOpts = append(
-		config.RemoteOpts,
-		containerd.WithImageHandlerWrapper(nyduslabel.AppendLabelsHandlerWrapper(ref)),
-		containerd.WithPullSnapshotter(snapshotterNameNydus),
-	)
+func stargzExtraLabels(f func(images.Handler) images.Handler) func(images.Handler) images.Handler {
+	return source.AppendExtraLabelsHandler(prefetchSize, f)
 }
