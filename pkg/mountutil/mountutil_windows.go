@@ -26,7 +26,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func getUnprivilegedMountFlags(path string) ([]string, error) {
+func UnprivilegedMountFlags(path string) ([]string, error) {
 	m := []string{}
 	return m, nil
 }

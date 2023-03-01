@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/continuity/fs"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/idgen"
@@ -187,6 +188,25 @@ func generateMountOpts(ctx context.Context, cmd *cobra.Command, client *containe
 						return nil, nil, nil, err
 					}
 					return nil, nil, nil, err
+				}
+			}
+		} else if runtime.GOOS == "linux" {
+			defer unmounter(tempDir)
+			for _, m := range mounts {
+				m := m
+				if m.Type == "bind" && userns.RunningInUserNS() {
+					// For https://github.com/containerd/nerdctl/issues/2056
+					unpriv, err := mountutil.UnprivilegedMountFlags(m.Source)
+					if err != nil {
+						return nil, nil, nil, err
+					}
+					m.Options = strutil.DedupeStrSlice(append(m.Options, unpriv...))
+				}
+				if err := m.Mount(tempDir); err != nil {
+					if rmErr := s.Remove(ctx, tempDir); rmErr != nil && !errdefs.IsNotFound(rmErr) {
+						return nil, nil, nil, rmErr
+					}
+					return nil, nil, nil, fmt.Errorf("failed to mount %+v on %q: %w", m, tempDir, err)
 				}
 			}
 		} else {

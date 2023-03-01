@@ -43,14 +43,14 @@ import (
    NOTICE: https://github.com/moby/moby/blob/v20.10.5/NOTICE
 */
 
-// getUnprivilegedMountFlags is from https://github.com/moby/moby/blob/v20.10.5/daemon/oci_linux.go#L420-L450
+// UnprivilegedMountFlags is from https://github.com/moby/moby/blob/v20.10.5/daemon/oci_linux.go#L420-L450
 //
 // Get the set of mount flags that are set on the mount that contains the given
 // path and are locked by CL_UNPRIVILEGED. This is necessary to ensure that
 // bind-mounting "with options" will not fail with user namespaces, due to
 // kernel restrictions that require user namespace mounts to preserve
 // CL_UNPRIVILEGED locked flags.
-func getUnprivilegedMountFlags(path string) ([]string, error) {
+func UnprivilegedMountFlags(path string) ([]string, error) {
 	var statfs unix.Statfs_t
 	if err := unix.Statfs(path, &statfs); err != nil {
 		return nil, err

@@ -144,7 +144,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 		Options:     options,
 	}
 	if userns.RunningInUserNS() {
-		unpriv, err := getUnprivilegedMountFlags(src)
+		unpriv, err := UnprivilegedMountFlags(src)
 		if err != nil {
 			return nil, err
 		}
