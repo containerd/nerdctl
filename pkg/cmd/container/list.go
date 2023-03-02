@@ -40,22 +40,22 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ListCommandHandler prints containers according to `options`.
-func ListCommandHandler(ctx context.Context, client *containerd.Client, options types.ContainerListOptions) error {
-	containers, err := List(ctx, client, options.Filters, options.LastN, options.All)
+// List prints containers according to `options`.
+func List(ctx context.Context, client *containerd.Client, options types.ContainerListOptions) error {
+	containers, err := filterContainers(ctx, client, options.Filters, options.LastN, options.All)
 	if err != nil {
 		return err
 	}
 	return printContainers(ctx, client, containers, options)
 }
 
-// List returns containers matching the filters.
+// filterContainers returns containers matching the filters.
 //
 //   - Supported filters: https://github.com/containerd/nerdctl/blob/main/docs/command-reference.md#whale-blue_square-nerdctl-ps
 //   - all means showing all containers (default shows just running).
 //   - lastN means only showing n last created containers (includes all states). Non-positive values are ignored.
 //     In other words, if lastN is positive, all will be set to true.
-func List(ctx context.Context, client *containerd.Client, filters []string, lastN int, all bool) ([]containerd.Container, error) {
+func filterContainers(ctx context.Context, client *containerd.Client, filters []string, lastN int, all bool) ([]containerd.Container, error) {
 	containers, err := client.Containers(ctx)
 	if err != nil {
 		return nil, err
