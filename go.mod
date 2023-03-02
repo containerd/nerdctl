@@ -9,7 +9,7 @@ require (
 	github.com/containerd/accelerated-container-image v0.6.0
 	github.com/containerd/cgroups v1.1.0
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.7.0-rc.0
+	github.com/containerd/containerd v1.7.0-rc.1
 	github.com/containerd/continuity v0.3.0
 	github.com/containerd/go-cni v1.1.9
 	github.com/containerd/imgcrypt v1.1.7
