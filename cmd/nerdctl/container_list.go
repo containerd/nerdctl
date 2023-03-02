@@ -124,5 +124,5 @@ func psAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	return container.List(ctx, client, options)
+	return container.ListCommandHandler(ctx, client, options)
 }
