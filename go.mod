@@ -15,7 +15,7 @@ require (
 	github.com/containerd/imgcrypt v1.1.7
 	github.com/containerd/nydus-snapshotter v0.6.1
 	github.com/containerd/stargz-snapshotter v0.14.1
-	github.com/containerd/stargz-snapshotter/estargz v0.14.1
+	github.com/containerd/stargz-snapshotter/estargz v0.14.2
 	github.com/containerd/stargz-snapshotter/ipfs v0.14.1
 	github.com/containerd/typeurl/v2 v2.1.0
 	github.com/containernetworking/cni v1.1.2
