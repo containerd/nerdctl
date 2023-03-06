@@ -49,11 +49,11 @@ require (
 	github.com/vishvananda/netns v0.0.4
 	github.com/yuchanns/srslog v1.1.0
 	golang.org/x/crypto v0.6.0
-	golang.org/x/net v0.7.0
+	golang.org/x/net v0.8.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.5.0
-	golang.org/x/term v0.5.0
-	golang.org/x/text v0.7.0
+	golang.org/x/sys v0.6.0
+	golang.org/x/term v0.6.0
+	golang.org/x/text v0.8.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.4.0
 )
@@ -122,7 +122,7 @@ require (
 	go.opentelemetry.io/otel v1.12.0 // indirect
 	go.opentelemetry.io/otel/trace v1.12.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/tools v0.5.0 // indirect
+	golang.org/x/tools v0.6.0 // indirect
 	google.golang.org/genproto v0.0.0-20230131230820-1c016267d619 // indirect
 	google.golang.org/grpc v1.52.3 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
