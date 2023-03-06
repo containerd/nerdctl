@@ -90,6 +90,12 @@ func Remove(ctx context.Context, client *containerd.Client, containers []string,
 
 // RemoveContainer removes a container from containerd store.
 func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions types.GlobalCommandOptions, force bool, removeAnonVolumes bool) (retErr error) {
+	// defer the storage of remove error in the dedicated label
+	defer func() {
+		if retErr != nil {
+			containerutil.UpdateErrorLabel(ctx, c, retErr)
+		}
+	}()
 	ns, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
 		return err

@@ -58,7 +58,6 @@ const (
 	Ports = Prefix + "ports"
 
 	// IPAddress is the static IP address of the container assigned by the user
-
 	IPAddress = Prefix + "ip"
 
 	// LogURI is the log URI
@@ -89,6 +88,10 @@ const (
 
 	// PIDContainer is the `nerdctl run --pid` for restarting
 	PIDContainer = Prefix + "pid-container"
+
+	// Error encapsulates a container human-readable string
+	// that describes container error.
+	Error = Prefix + "error"
 
 	// NerdctlDefaultNetwork indicates whether a network is the default network
 	// created and owned by Nerdctl.
