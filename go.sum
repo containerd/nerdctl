@@ -262,11 +262,11 @@ github.com/containerd/nri v0.0.0-20210316161719-dbaa18c31c14/go.mod h1:lmxnXF6oM
 github.com/containerd/nri v0.1.0/go.mod h1:lmxnXF6oMkbqs39FiCt1s0R2HSMhcLel9vNL3m4AaeY=
 github.com/containerd/nydus-snapshotter v0.6.1 h1:G7k7EwnjFa1fUC3ywkldDt2BC3mtBPrt+omFke/Vdhk=
 github.com/containerd/nydus-snapshotter v0.6.1/go.mod h1:U9m10GYZKisnSKOdgIjfkU8Ad0UTSYJ6CpP3I0SJBD0=
-github.com/containerd/stargz-snapshotter v0.14.1 h1:M58AiJ+Kj50cabqYP1TpBPgUczKgn8zipmteC5FyjVs=
-github.com/containerd/stargz-snapshotter v0.14.1/go.mod h1:q6qOL2lf+1DuwyxqI5L0SkvO18AgTece31zftvL/xT0=
+github.com/containerd/stargz-snapshotter v0.14.2 h1:xEBHkd8Q6l/fuBRYinPSe+KQ/UjWQw83KyXXlL43nLc=
+github.com/containerd/stargz-snapshotter v0.14.2/go.mod h1:3mirLRiFYyLuWRgreICKSq3KAv0RiMgYjy6G3Xmfva0=
 github.com/containerd/stargz-snapshotter/estargz v0.4.1/go.mod h1:x7Q9dg9QYb4+ELgxmo4gBUeJB0tl5dqH1Sdz0nJU1QM=
-github.com/containerd/stargz-snapshotter/estargz v0.14.1 h1:n9M2GDSWM96pyipFTA0DaU+zdtzi3Iwsnj/rIHr1yFM=
-github.com/containerd/stargz-snapshotter/estargz v0.14.1/go.mod h1:uPtMw6ucGJYwImjhxk/oghZmfElF/841u86wReNggNk=
+github.com/containerd/stargz-snapshotter/estargz v0.14.2 h1:Zxgfb4mpH2l5nWsIF5fdlIUCVfnz660QfP9A2VnNZW0=
+github.com/containerd/stargz-snapshotter/estargz v0.14.2/go.mod h1:KY//uOCIkSuNAHhJogcZtrNHdKrA99/FCCRjE3HD36o=
 github.com/containerd/stargz-snapshotter/ipfs v0.14.1 h1:QmtNhL3ktTWIlSbgBnvf9fYbo22D+Ls4DlGyFBB/vRQ=
 github.com/containerd/stargz-snapshotter/ipfs v0.14.1/go.mod h1:5lXE0gIOhbyqWeBQpM+7fIqMsL63UChpD0eZJNXDiQk=
 github.com/containerd/ttrpc v0.0.0-20190828154514-0e0f228740de/go.mod h1:PvCDdDGpgqzQIzDW1TphrGLssLDZp2GuS+X5DkEJB8o=
@@ -1520,8 +1520,8 @@ google.golang.org/grpc v1.38.0/go.mod h1:NREThFqKR1f3iQ6oBuvc5LadQuXVGo9rkm5ZGrQ
 google.golang.org/grpc v1.40.0/go.mod h1:ogyxbiOoUXAkP+4+xa6PZSE9DZgIHtSpzjDTB9KAK34=
 google.golang.org/grpc v1.42.0/go.mod h1:k+4IHHFw41K8+bbowsex27ge2rCb65oeWqe4jJ590SU=
 google.golang.org/grpc v1.43.0/go.mod h1:k+4IHHFw41K8+bbowsex27ge2rCb65oeWqe4jJ590SU=
-google.golang.org/grpc v1.52.3 h1:pf7sOysg4LdgBqduXveGKrcEwbStiK2rtfghdzlUYDQ=
-google.golang.org/grpc v1.52.3/go.mod h1:pu6fVzoFb+NBYNAvQL08ic+lvB2IojljRYuun5vorUY=
+google.golang.org/grpc v1.53.0 h1:LAv2ds7cmFV/XTS3XG1NneeENYrXGmorPxsBbptIjNc=
+google.golang.org/grpc v1.53.0/go.mod h1:OnIrk0ipVdj4N5d9IUoFUx72/VlD7+jUsHwZgwSMQpw=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=
 google.golang.org/protobuf v0.0.0-20200221191635-4d8936d0db64/go.mod h1:kwYJMbMJ01Woi6D6+Kah6886xMZcty6N08ah7+eCXa0=
 google.golang.org/protobuf v0.0.0-20200228230310-ab0ca4ff8a60/go.mod h1:cfTl7dwQJ+fmap5saPgwCLgHXTUD7jkjRqWcaiX5VyM=
