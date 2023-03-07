@@ -9,7 +9,7 @@ require (
 	github.com/containerd/accelerated-container-image v0.6.0
 	github.com/containerd/cgroups v1.1.0
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.7.0-rc.1
+	github.com/containerd/containerd v1.7.0-rc.2
 	github.com/containerd/continuity v0.3.0
 	github.com/containerd/go-cni v1.1.9
 	github.com/containerd/imgcrypt v1.1.7
@@ -61,11 +61,11 @@ require (
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20221215162035-5330a85ea652 // indirect
-	github.com/Microsoft/hcsshim v0.10.0-rc.5 // indirect
+	github.com/Microsoft/hcsshim v0.10.0-rc.7 // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
-	github.com/containerd/cgroups/v3 v3.0.0 // indirect
-	github.com/containerd/fifo v1.0.0 // indirect
-	github.com/containerd/ttrpc v1.1.1-0.20230127163717-32fab2374638 // indirect
+	github.com/containerd/cgroups/v3 v3.0.1 // indirect
+	github.com/containerd/fifo v1.1.0 // indirect
+	github.com/containerd/ttrpc v1.2.0 // indirect
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67 // indirect
 	github.com/containers/ocicrypt v1.1.6 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
@@ -103,7 +103,7 @@ require (
 	github.com/multiformats/go-multihash v0.2.1 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/opencontainers/runc v1.1.4 // indirect
-	github.com/opencontainers/selinux v1.10.2 // indirect
+	github.com/opencontainers/selinux v1.11.0 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -123,8 +123,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.12.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
-	google.golang.org/genproto v0.0.0-20230131230820-1c016267d619 // indirect
-	google.golang.org/grpc v1.52.3 // indirect
+	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect
+	google.golang.org/grpc v1.53.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
