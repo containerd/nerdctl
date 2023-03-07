@@ -359,7 +359,6 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	logURI := lab[labels.LogURI]
-
 	task, err := taskutil.NewTask(ctx, client, c, false, flagI, flagT, flagD, con, logURI)
 	if err != nil {
 		return err

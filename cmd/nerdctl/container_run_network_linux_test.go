@@ -404,6 +404,7 @@ func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", containerName).Run()
 	base.Cmd("run", "--rm", "--name", containerName, "-p", "22200-22299:22200-22299", testutil.CommonImage).AssertFail()
 	base.Cmd("run", "--rm", "--name", containerName, "-p", "22200-22299:22200-22299", testutil.CommonImage).AssertCombinedOutContains(errdefs.ErrInvalidArgument.Error())
 	base.Cmd("run", "--rm", "--name", containerName, testutil.CommonImage).AssertOK()
