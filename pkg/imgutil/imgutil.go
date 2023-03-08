@@ -29,7 +29,6 @@ import (
 	"github.com/containerd/containerd/platforms"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
-	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/imgcrypt"
 	"github.com/containerd/imgcrypt/images/encryption"
 	"github.com/containerd/nerdctl/pkg/errutil"
@@ -37,7 +36,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/pkg/imgutil/pull"
 	"github.com/docker/docker/errdefs"
-	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 )
@@ -376,55 +374,8 @@ func ParseRepoTag(imgName string) (string, string) {
 	return repository, tag
 }
 
-type snapshotKey string
-
-// recursive function to calculate total usage of key's parent
-func (key snapshotKey) add(ctx context.Context, s snapshots.Snapshotter, usage *snapshots.Usage) error {
-	if key == "" {
-		return nil
-	}
-	u, err := s.Usage(ctx, string(key))
-	if err != nil {
-		return err
-	}
-
-	usage.Add(u)
-
-	info, err := s.Stat(ctx, string(key))
-	if err != nil {
-		return err
-	}
-
-	key = snapshotKey(info.Parent)
-	return key.add(ctx, s, usage)
-}
-
 // UnpackedImageSize is the size of the unpacked snapshots.
 // Does not contain the size of the blobs in the content store. (Corresponds to Docker).
-func UnpackedImageSize(ctx context.Context, s snapshots.Snapshotter, img containerd.Image) (int64, error) {
-	diffIDs, err := img.RootFS(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	chainID := identity.ChainID(diffIDs).String()
-	usage, err := s.Usage(ctx, chainID)
-	if err != nil {
-		if errdefs.IsNotFound(err) {
-			logrus.WithError(err).Debugf("image %q seems not unpacked", img.Name())
-			return 0, nil
-		}
-		return 0, err
-	}
-
-	info, err := s.Stat(ctx, chainID)
-	if err != nil {
-		return 0, err
-	}
-
-	//add ChainID's parent usage to the total usage
-	if err := snapshotKey(info.Parent).add(ctx, s, &usage); err != nil {
-		return 0, err
-	}
-	return usage.Size, nil
+func UnpackedImageSize(ctx context.Context, img containerd.Image) (int64, error) {
+	return img.Usage(ctx, containerd.WithSnapshotUsage())
 }

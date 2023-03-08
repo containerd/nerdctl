@@ -119,6 +119,7 @@ type imagePrintable struct {
 	Name         string // image name
 	Size         string // the size of the unpacked snapshots.
 	BlobSize     string // the size of the blobs in the content store (nerdctl extension)
+	VirtualSize  string
 	// TODO: "SharedSize", "UniqueSize", "VirtualSize"
 	Platform string // nerdctl extension
 }
@@ -231,7 +232,7 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 		logrus.WithError(err).Warnf("failed to get blob size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 	}
 
-	size, err := imgutil.UnpackedImageSize(ctx, x.snapshotter, image)
+	size, err := imgutil.UnpackedImageSize(ctx, image)
 	if err != nil {
 		logrus.WithError(err).Warnf("failed to get unpacked size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 	}
@@ -245,6 +246,7 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 		Tag:          tag,
 		Name:         img.Name,
 		Size:         progress.Bytes(size).String(),
+		VirtualSize:  progress.Bytes(size).String(),
 		BlobSize:     progress.Bytes(blobSize).String(),
 		Platform:     platforms.Format(ociPlatform),
 	}

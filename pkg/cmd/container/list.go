@@ -318,9 +318,7 @@ func getContainerSize(ctx context.Context, client *containerd.Client, c containe
 		return "", err
 	}
 
-	sn := client.SnapshotService(info.Snapshotter)
-
-	imageSize, err := imgutil.UnpackedImageSize(ctx, sn, image)
+	imageSize, err := imgutil.UnpackedImageSize(ctx, image)
 	if err != nil {
 		return "", err
 	}
