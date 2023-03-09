@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cmd/ctr/commands/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/pkg/progress"
@@ -34,6 +33,7 @@ import (
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
+	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"golang.org/x/sync/errgroup"
@@ -94,7 +94,7 @@ func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resol
 
 				tw := tabwriter.NewWriter(fw, 1, 8, 1, ' ', 0)
 
-				content.Display(tw, ongoing.status(), start)
+				jobs.Display(tw, ongoing.status(), start)
 				tw.Flush()
 
 				if done {
@@ -136,13 +136,13 @@ func (j *pushjobs) add(ref string) {
 	j.jobs[ref] = struct{}{}
 }
 
-func (j *pushjobs) status() []content.StatusInfo {
+func (j *pushjobs) status() []jobs.StatusInfo {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 
-	statuses := make([]content.StatusInfo, 0, len(j.jobs))
+	statuses := make([]jobs.StatusInfo, 0, len(j.jobs))
 	for _, name := range j.ordered {
-		si := content.StatusInfo{
+		si := jobs.StatusInfo{
 			Ref: name,
 		}
 
