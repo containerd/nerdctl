@@ -22,10 +22,10 @@ import (
 	"io"
 
 	"github.com/containerd/containerd"
-	ctrcontent "github.com/containerd/containerd/cmd/ctr/commands/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/remotes"
+	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -48,7 +48,7 @@ type Config struct {
 
 // Pull loads all resources into the content store and returns the image
 func Pull(ctx context.Context, client *containerd.Client, ref string, config *Config) (containerd.Image, error) {
-	ongoing := ctrcontent.NewJobs(ref)
+	ongoing := jobs.New(ref)
 
 	pctx, stopProgress := context.WithCancel(ctx)
 	progress := make(chan struct{})
@@ -56,7 +56,7 @@ func Pull(ctx context.Context, client *containerd.Client, ref string, config *Co
 	go func() {
 		if config.ProgressOutput != nil {
 			// no progress bar, because it hides some debug logs
-			ctrcontent.ShowProgress(pctx, ongoing, client.ContentStore(), config.ProgressOutput)
+			jobs.ShowProgress(pctx, ongoing, client.ContentStore(), config.ProgressOutput)
 		}
 		close(progress)
 	}()

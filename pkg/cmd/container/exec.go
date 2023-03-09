@@ -25,12 +25,12 @@ import (
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/cmd/ctr/commands"
-	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/flagutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/pkg/signalutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
@@ -112,12 +112,12 @@ func execActionWithContainer(ctx context.Context, client *containerd.Client, con
 	}
 	if !options.Detach {
 		if options.TTY {
-			if err := tasks.HandleConsoleResize(ctx, process, con); err != nil {
+			if err := consoleutil.HandleConsoleResize(ctx, process, con); err != nil {
 				logrus.WithError(err).Error("console resize")
 			}
 		} else {
-			sigc := commands.ForwardAllSignals(ctx, process)
-			defer commands.StopCatch(sigc)
+			sigc := signalutil.ForwardAllSignals(ctx, process)
+			defer signalutil.StopCatch(sigc)
 		}
 	}
 

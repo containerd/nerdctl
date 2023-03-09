@@ -33,8 +33,6 @@ import (
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/cmd/ctr/commands"
-	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
@@ -42,6 +40,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
+	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/flagutil"
@@ -55,6 +54,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
+	"github.com/containerd/nerdctl/pkg/signalutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	dockercliopts "github.com/docker/cli/opts"
@@ -387,12 +387,12 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if flagT {
-		if err := tasks.HandleConsoleResize(ctx, task, con); err != nil {
+		if err := consoleutil.HandleConsoleResize(ctx, task, con); err != nil {
 			logrus.WithError(err).Error("console resize")
 		}
 	} else {
-		sigc := commands.ForwardAllSignals(ctx, task)
-		defer commands.StopCatch(sigc)
+		sigc := signalutil.ForwardAllSignals(ctx, task)
+		defer signalutil.StopCatch(sigc)
 	}
 	status := <-statusC
 	code, _, err := status.Result()

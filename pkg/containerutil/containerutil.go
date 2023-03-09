@@ -28,16 +28,16 @@ import (
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/cmd/ctr/commands"
-	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/runtime/restart"
+	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/portutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/pkg/signalutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/moby/sys/signal"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -250,13 +250,13 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 		return nil
 	}
 	if flagA && flagT {
-		if err := tasks.HandleConsoleResize(ctx, task, con); err != nil {
+		if err := consoleutil.HandleConsoleResize(ctx, task, con); err != nil {
 			logrus.WithError(err).Error("console resize")
 		}
 	}
 
-	sigc := commands.ForwardAllSignals(ctx, task)
-	defer commands.StopCatch(sigc)
+	sigc := signalutil.ForwardAllSignals(ctx, task)
+	defer signalutil.StopCatch(sigc)
 	status := <-statusC
 	code, _, err := status.Result()
 	if err != nil {
