@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,28 +16,11 @@
    limitations under the License.
 */
 
-package namespace
+package signalutil
 
-import "strings"
+import "os"
 
-func objectWithLabelArgs(args []string) map[string]string {
-	if len(args) >= 1 {
-		return labelArgs(args)
-	}
-	return nil
-}
-
-// labelArgs returns a map of label key,value pairs.
-// From https://github.com/containerd/containerd/blob/v1.7.0-rc.2/cmd/ctr/commands/commands.go#L229-L241
-func labelArgs(labelStrings []string) map[string]string {
-	labels := make(map[string]string, len(labelStrings))
-	for _, label := range labelStrings {
-		key, value, ok := strings.Cut(label, "=")
-		if !ok {
-			value = "true"
-		}
-		labels[key] = value
-	}
-
-	return labels
+// canIgnoreSignal is from https://github.com/containerd/containerd/blob/v1.7.0-rc.2/cmd/ctr/commands/signals_notlinux.go#L23-L25
+func canIgnoreSignal(_ os.Signal) bool {
+	return false
 }

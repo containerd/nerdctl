@@ -33,7 +33,6 @@ import (
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/cmd/ctr/commands"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
@@ -55,6 +54,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
+	"github.com/containerd/nerdctl/pkg/signalutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	dockercliopts "github.com/docker/cli/opts"
@@ -392,8 +392,8 @@ func runAction(cmd *cobra.Command, args []string) error {
 			logrus.WithError(err).Error("console resize")
 		}
 	} else {
-		sigc := commands.ForwardAllSignals(ctx, task)
-		defer commands.StopCatch(sigc)
+		sigc := signalutil.ForwardAllSignals(ctx, task)
+		defer signalutil.StopCatch(sigc)
 	}
 	status := <-statusC
 	code, _, err := status.Result()
