@@ -29,10 +29,10 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
-	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/runtime/restart"
+	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -250,7 +250,7 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 		return nil
 	}
 	if flagA && flagT {
-		if err := tasks.HandleConsoleResize(ctx, task, con); err != nil {
+		if err := consoleutil.HandleConsoleResize(ctx, task, con); err != nil {
 			logrus.WithError(err).Error("console resize")
 		}
 	}

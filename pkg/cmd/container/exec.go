@@ -26,8 +26,8 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/cmd/ctr/commands"
-	"github.com/containerd/containerd/cmd/ctr/commands/tasks"
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/flagutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
@@ -112,7 +112,7 @@ func execActionWithContainer(ctx context.Context, client *containerd.Client, con
 	}
 	if !options.Detach {
 		if options.TTY {
-			if err := tasks.HandleConsoleResize(ctx, process, con); err != nil {
+			if err := consoleutil.HandleConsoleResize(ctx, process, con); err != nil {
 				logrus.WithError(err).Error("console resize")
 			}
 		} else {
