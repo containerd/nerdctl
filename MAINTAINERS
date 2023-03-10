@@ -3,16 +3,23 @@
 # As a containerd sub-project, containerd maintainers are also included from https://github.com/containerd/project/blob/main/MAINTAINERS.
 # See https://github.com/containerd/project/blob/main/GOVERNANCE.md for description of maintainer role
 #
+# See also MAINTAINERS_GUIDE.md
+
+# CORE COMMITTERS who regularly contribute to nerdctl
+# (Extracted from https://github.com/containerd/project/blob/main/MAINTAINERS for ease of reference)
+# GitHub ID, Name, Email address, GPG fingerprint
+"AkihiroSuda","Akihiro Suda","akihiro.suda.cz@hco.ntt.co.jp","C020 EA87 6CE4 E06C 7AB9 5AEF 4952 4C6F 9F63 8F1A"
+
 # COMMITTERS
-# GitHub ID, Name, Email address
-"ktock","Kohei Tokunaga","ktokunaga.mail@gmail.com"
-"fahedouch","Fahed Dorgaa","fahed.dorgaa@gmail.com"
-"Zheaoli", "Zheao Li", "me@manjusaka.me"
-"junnplus","Ye Sijun","junnplus@gmail.com"
+# GitHub ID, Name, Email address, GPG fingerprint
+"ktock","Kohei Tokunaga","ktokunaga.mail@gmail.com",""
+"fahedouch","Fahed Dorgaa","fahed.dorgaa@gmail.com","EE7A 5503 CE0D 38AC 5B95  A500 F35F F497 60A8 65FA"
+"Zheaoli", "Zheao Li", "me@manjusaka.me","6E0D D9FA BAD5 AF61 D884 01EE 878F 445D 9C6C E65E"
+"junnplus","Ye Sijun","junnplus@gmail.com",""
 
 # REVIEWERS
-# GitHub ID, Name, Email address
-"jsturtevant","James Sturtevant","jstur@microsoft.com"
-"yuchanns", "Hanchin Hsieh", "me@yuchanns.xyz"
-"manugupt1", "Manu Gupta", "manugupt1@gmail.com"
-"djdongjin", "Jin Dong", "jindon@amazon.com"
+# GitHub ID, Name, Email address, GPG fingerprint
+"jsturtevant","James Sturtevant","jstur@microsoft.com",""
+"yuchanns", "Hanchin Hsieh", "me@yuchanns.xyz",""
+"manugupt1", "Manu Gupta", "manugupt1@gmail.com",""
+"djdongjin", "Jin Dong", "jindon@amazon.com",""
