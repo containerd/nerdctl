@@ -28,9 +28,9 @@ windows_task:
     cpu: 2
     memory: 4G
   matrix:
-    - name: "Windows/containerd-1.6"
+    - name: "Windows/containerd-1.7"
       env:
-        ctrdVersion: 1.6.19
+        ctrdVersion: 1.7.0
   env:
     CGO_ENABLED: 0
   build_script:
