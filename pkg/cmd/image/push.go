@@ -30,13 +30,13 @@ import (
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/cosignutil"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/pkg/imgutil/push"
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
+	"github.com/containerd/nerdctl/pkg/signutil"
 	"github.com/containerd/stargz-snapshotter/estargz"
 	"github.com/containerd/stargz-snapshotter/estargz/zstdchunked"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
@@ -155,7 +155,17 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 			return fmt.Errorf("cosign only work with enable experimental feature")
 		}
 
-		err = cosignutil.SignCosign(rawRef, options.CosignKey)
+		err = signutil.SignCosign(rawRef, options.CosignKey)
+		if err != nil {
+			return err
+		}
+	case "notation":
+
+		if !options.GOptions.Experimental {
+			return fmt.Errorf("notation only work with enable experimental feature")
+		}
+
+		err = signutil.SignNotation(rawRef, options.NotationKeyName)
 		if err != nil {
 			return err
 		}

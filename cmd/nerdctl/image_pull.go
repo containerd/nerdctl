@@ -45,9 +45,9 @@ func newPullCommand() *cobra.Command {
 	// #endregion
 
 	// #region verify flags
-	pullCommand.Flags().String("verify", "none", "Verify the image (none|cosign)")
+	pullCommand.Flags().String("verify", "none", "Verify the image (none|cosign|notation)")
 	pullCommand.RegisterFlagCompletionFunc("verify", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"none", "cosign"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"none", "cosign", "notation"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	pullCommand.Flags().String("cosign-key", "", "Path to the public key file, KMS, URI or Kubernetes Secret for --verify=cosign")
 	// #endregion

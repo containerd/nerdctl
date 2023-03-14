@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package cosignutil
+package signutil
 
 import (
 	"bufio"

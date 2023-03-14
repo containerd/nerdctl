@@ -25,11 +25,11 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/cosignutil"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
+	"github.com/containerd/nerdctl/pkg/signutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
@@ -89,13 +89,22 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 	var err error
 	switch options.Verify {
 	case "cosign":
-		experimental := options.GOptions.Experimental
 
-		if !experimental {
+		if !options.GOptions.Experimental {
 			return nil, fmt.Errorf("cosign only work with enable experimental feature")
 		}
 
-		ref, err = cosignutil.VerifyCosign(ctx, rawRef, options.CosignKey, options.GOptions.HostsDir)
+		ref, err = signutil.VerifyCosign(ctx, rawRef, options.CosignKey, options.GOptions.HostsDir)
+		if err != nil {
+			return nil, err
+		}
+	case "notation":
+
+		if !options.GOptions.Experimental {
+			return nil, fmt.Errorf("notation only work with enable experimental feature")
+		}
+
+		ref, err = signutil.VerifyNotation(ctx, rawRef, options.GOptions.HostsDir)
 		if err != nil {
 			return nil, err
 		}

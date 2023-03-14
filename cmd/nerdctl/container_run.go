@@ -271,9 +271,9 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("pidfile", "", "file path to write the task's pid")
 
 	// #region verify flags
-	cmd.Flags().String("verify", "none", "Verify the image (none|cosign)")
+	cmd.Flags().String("verify", "none", "Verify the image (none|cosign|notation)")
 	cmd.RegisterFlagCompletionFunc("verify", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"none", "cosign"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"none", "cosign", "notation"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	cmd.Flags().String("cosign-key", "", "Path to the public key file, KMS, URI or Kubernetes Secret for --verify=cosign")
 	// #endregion
