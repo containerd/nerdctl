@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/Masterminds/semver/v3 v3.2.0
 	github.com/Microsoft/go-winio v0.6.0
-	github.com/compose-spec/compose-go v1.12.0
+	github.com/compose-spec/compose-go v1.13.0
 	github.com/containerd/accelerated-container-image v0.6.0
 	github.com/containerd/cgroups v1.1.0
 	github.com/containerd/console v1.0.3
@@ -124,6 +124,5 @@ require (
 	google.golang.org/grpc v1.53.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
