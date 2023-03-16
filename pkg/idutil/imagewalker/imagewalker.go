@@ -51,10 +51,16 @@ func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 	if canonicalRef, err := referenceutil.ParseAny(req); err == nil {
 		filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
 	}
+
+	// parse req for sha if it is in form <ref>@sha256:12345
+	shaSplit := strings.Split(req, ":")
+
 	filters = append(filters,
 		fmt.Sprintf("name==%s", req),
 		fmt.Sprintf("target.digest~=^sha256:%s.*$", regexp.QuoteMeta(req)),
 		fmt.Sprintf("target.digest~=^%s.*$", regexp.QuoteMeta(req)),
+		fmt.Sprintf("target.digest~=^sha256:%s.*$", regexp.QuoteMeta(shaSplit[len(shaSplit)-1])),
+		fmt.Sprintf("target.digest~=^%s.*$", regexp.QuoteMeta(shaSplit[len(shaSplit)-1])),
 	)
 
 	images, err := w.Client.ImageService().List(ctx, filters...)
