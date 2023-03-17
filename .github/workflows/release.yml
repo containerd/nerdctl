@@ -1,3 +1,4 @@
+# See https://github.com/containerd/nerdctl/blob/main/MAINTAINERS_GUIDE.md for how to make a release.
 name: Release
 on:
   push:
@@ -36,6 +37,8 @@ jobs:
         The build log is available for 90 days: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
         The sha256sum of the SHA256SUMS file itself is \`${shasha}\` .
+        - - -
+        Release manager: [ADD YOUR NAME HERE] (@[ADD YOUR GITHUB ID HERE])
         EOF
     - name: "Create release"
       env:
