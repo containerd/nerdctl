@@ -46,6 +46,7 @@ func SignCosign(rawRef string, keyRef string) error {
 		cosignCmd.Env = append(cosignCmd.Env, "COSIGN_EXPERIMENTAL=true")
 	}
 
+	cosignCmd.Args = append(cosignCmd.Args, "--yes")
 	cosignCmd.Args = append(cosignCmd.Args, rawRef)
 
 	logrus.Debugf("running %s %v", cosignExecutable, cosignCmd.Args)

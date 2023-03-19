@@ -12,6 +12,18 @@ the [fulcio](https://github.com/sigstore/fulcio) root CA. Signatures are stored 
 the [rekor](https://github.com/sigstore/rekor) transparency log, which automatically provides an attestation as to when
 the signature was created.
 
+Cosign would use prompt to confirm the statement below during `sign`. Nerdctl added `--yes` to Cosign command, which says yes and prevents this prompt.
+Using Nerdctl push with signing by Cosign means that users agree the statement.
+
+
+```
+Note that there may be personally identifiable information associated with this signed artifact.
+This may include the email address associated with the account with which you authenticate.
+This information will be used for signing this artifact and will be stored in public transparency logs and cannot be removed later.
+
+By typing 'y', you attest that you grant (or have permission to grant) and agree to have this information stored permanently in transparency logs.
+```
+
 You can enable container signing and verifying features with `push` and `pull` commands of `nerdctl` by using `cosign`
 under the hood with make use of flags `--sign` while pushing the container image, and `--verify` while pulling the
 container image.
