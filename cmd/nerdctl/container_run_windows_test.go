@@ -108,3 +108,20 @@ func TestRunProcessContainer(t *testing.T) {
 
 	assert.Assert(t, !strings.Contains(inspectOutput, "hyperv"))
 }
+
+// Note that the current implementation of this test is not ideal, since it relies on internal HCS details that
+// Microsoft could decide to change in the future (breaking both this unit test and the one in containerd itself):
+// https://github.com/containerd/containerd/pull/6618#discussion_r823302852
+func TestRunProcessContainerWithDevice(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+
+	base.Cmd(
+		"run",
+		"--rm",
+		"--isolation=process",
+		"--device", "class://5B45201D-F2F2-4F3B-85BB-30FF1F953599",
+		testutil.WindowsNano,
+		"cmd", "/S", "/C", "dir C:\\Windows\\System32\\HostDriverStore",
+	).AssertOutContains("FileRepository")
+}

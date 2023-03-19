@@ -18,7 +18,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
@@ -131,6 +133,22 @@ func setPlatformOptions(
 	opts = append(opts,
 		oci.WithWindowNetworksAllowUnqualifiedDNSQuery(),
 		oci.WithWindowsIgnoreFlushesDuringBoot())
+
+	device, err := cmd.Flags().GetStringSlice("device")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, dev := range device {
+		idType, devID, ok := strings.Cut(dev, "://")
+		if !ok {
+			return nil, errors.New("devices must be in the format IDType://ID")
+		}
+		if idType == "" {
+			return nil, errors.New("devices must have a non-empty IDType")
+		}
+		opts = append(opts, oci.WithWindowsDevice(idType, devID))
+	}
 
 	return opts, nil
 }

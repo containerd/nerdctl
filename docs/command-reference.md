@@ -205,7 +205,7 @@ Resource flags:
 - :whale: `--cgroupns=(host|private)`: Cgroup namespace to use
   - Default: "private" on cgroup v2 hosts, "host" on cgroup v1 hosts
 - :whale: `--cgroup-parent`: Optional parent cgroup for the container
-- :whale: `--device`: Add a host device to the container
+- :whale: :blue_square: `--device`: Add a host device to the container
 
 Intel RDT flags:
 
