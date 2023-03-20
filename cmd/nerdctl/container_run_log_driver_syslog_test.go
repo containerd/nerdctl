@@ -32,6 +32,10 @@ import (
 )
 
 func runSyslogTest(t *testing.T, networks []string, syslogFacilities map[string]syslog.Priority, fmtValidFuncs map[string]func(string, string, string, string, syslog.Priority, bool) error) {
+	if runtime.GOOS == "windows" {
+		t.Skip("syslog container logging is not officially supported on Windows")
+	}
+
 	base := testutil.NewBase(t)
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	hostname, err := os.Hostname()
