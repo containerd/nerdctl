@@ -65,7 +65,7 @@ type Image struct {
 	// TODO: Variant       string `json:",omitempty"`
 	Os string
 	// TODO: OsVersion     string `json:",omitempty"`
-	// TODO: Size          int64
+	Size int64 // Size is the unpacked size of the image
 	// TODO: VirtualSize   int64
 	// TODO: GraphDriver     GraphDriverData
 	RootFS   RootFS
@@ -322,7 +322,7 @@ func ImageFromNative(n *native.Image) (*Image, error) {
 
 	i.RepoTags = []string{fmt.Sprintf("%s:%s", repository, tag)}
 	i.RepoDigests = []string{fmt.Sprintf("%s@%s", repository, n.Image.Target.Digest.String())}
-
+	i.Size = n.Size
 	return i, nil
 }
 func statusFromNative(x containerd.Status, labels map[string]string) string {

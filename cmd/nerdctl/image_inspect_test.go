@@ -32,6 +32,7 @@ func TestImageInspectContainsSomeStuff(t *testing.T) {
 	assert.Assert(base.T, len(inspect.RootFS.Layers) > 0)
 	assert.Assert(base.T, inspect.RootFS.Type != "")
 	assert.Assert(base.T, inspect.Architecture != "")
+	assert.Assert(base.T, inspect.Size > 0)
 }
 
 func TestImageInspectWithFormat(t *testing.T) {
