@@ -134,15 +134,19 @@ In addition to containerd, the following components should be installed:
 
 These dependencies are included in `nerdctl-full-<VERSION>-<OS>-<ARCH>.tar.gz`, but not included in `nerdctl-<VERSION>-<OS>-<ARCH>.tar.gz`.
 
-### Brew
+### Linux
 
-On Linux systems you can install nerdctl via [brew](https://brew.sh):
+Download the `nerdctl-<VERSION>-<OS>-<ARCH>.tar.gz` archive from https://github.com/containerd/nerdctl/releases,verify its sha256sum, and extract it under `/usr/local/bin`:
 
 ```bash
-brew install nerdctl
+$ version="1.2.1" # update to your version of choice
+$ curl -L https://github.com/containerd/nerdctl/releases/download/v$version/nerdctl-$version-linux-amd64.tar.gz
+$ sudo tar Cxzvf /usr/local/bin nerdctl-$version-linux-amd64.tar.gz
+nerdctl
+containerd-rootless-setuptool.sh
+containerd-rootless.sh
+$ nerdctl --version
 ```
-
-This is currently not supported for macOS. The section below shows how to install on macOS using brew.
 
 ### macOS
 
@@ -154,14 +158,28 @@ $ limactl start
 $ lima nerdctl run -d --name nginx -p 127.0.0.1:8080:80 nginx:alpine
 ```
 
+### Windows
+
+Currently, there is experimental support for Windows (see below for features that are currently known to work).
+
+To set up on Windows, first make sure you have [installed `containerd`](https://github.com/containerd/containerd/blob/main/docs/getting-started.md#installing-containerd-on-windows) then run the following in PowerShell:
+
+```powershell
+$Version="1.2.1" # update to your version of choice
+# the following is based on amd64, for other architectures, see release page
+curl.exe -L https://github.com/containerd/nerdctl/releases/download/v$Version/nerdctl-$Version-windows-amd64.tar.gz -o nerdctl-$Version-windows-amd64.tar.gz
+tar.exe xvf nerdctl-$Version-windows-amd64.tar.gz
+Copy-Item .\nerdctl.exe $Env:ProgramFiles\containerd -Force
+```
+If you already added `$Env:ProgramFiles\containerd` in the `PATH`, you should have `nerdctl` accessible from anywhere now:
+
+```powershell
+nerdctl --version
+```
+
 ### FreeBSD
 
 See [`./docs/freebsd.md`](docs/freebsd.md).
-
-### Windows
-
-- Linux containers: Known to work on WSL2
-- Windows containers: experimental support for Windows (see below for features that are currently known to work)
 
 ### Docker
 
