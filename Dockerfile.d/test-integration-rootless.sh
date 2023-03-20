@@ -41,6 +41,9 @@ else
 		CONTAINERD_NAMESPACE="nerdctl-test" containerd-rootless-setuptool.sh install-buildkit-containerd
 	fi
 	containerd-rootless-setuptool.sh install-stargz
+	if [ ! -f "/home/rootless/.config/containerd/config.toml" ] ; then
+		echo "version = 2" > /home/rootless/.config/containerd/config.toml
+	fi
 	cat <<EOF >>/home/rootless/.config/containerd/config.toml
 [proxy_plugins]
   [proxy_plugins."stargz"]
