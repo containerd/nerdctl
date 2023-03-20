@@ -50,6 +50,9 @@ const (
 	// spec.State.Pid.
 	// This is mostly used for VM based runtime, where the spec.State PID does not
 	// necessarily lives in the created container networking namespace.
+	//
+	// On Windows, this label will contain the UUID of a namespace managed by
+	// the Host Compute Network Service (HCN) API.
 	NetworkNamespace = labels.Prefix + "network-namespace"
 )
 
@@ -160,6 +163,9 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 		o.cni, err = gocni.New(cniOpts...)
 		if err != nil {
 			return nil, err
+		}
+		if o.cni == nil {
+			logrus.Warnf("no CNI network could be loaded from the provided network names: %v", networks)
 		}
 	default:
 		return nil, fmt.Errorf("unexpected network type %v", netType)
