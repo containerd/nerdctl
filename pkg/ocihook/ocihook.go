@@ -428,14 +428,8 @@ func onCreateRuntime(opts *handlerOpts) error {
 					return fmt.Errorf("bypass4netnsd not running? (Hint: run `containerd-rootless-setuptool.sh install-bypass4netnsd`): %w", err)
 				}
 			} else if len(opts.ports) > 0 {
-				pm, err := rootlessutil.NewRootlessCNIPortManager(opts.rootlessKitClient)
-				if err != nil {
-					return err
-				}
-				for _, p := range opts.ports {
-					if err := pm.ExposePort(ctx, p); err != nil {
-						return err
-					}
+				if err := exposePortsRootless(ctx, opts.rootlessKitClient, opts.ports); err != nil {
+					return fmt.Errorf("failed to expose ports in rootless mode: %s", err)
 				}
 			}
 		}
@@ -463,14 +457,8 @@ func onPostStop(opts *handlerOpts) error {
 					return err
 				}
 			} else if len(opts.ports) > 0 {
-				pm, err := rootlessutil.NewRootlessCNIPortManager(opts.rootlessKitClient)
-				if err != nil {
-					return err
-				}
-				for _, p := range opts.ports {
-					if err := pm.UnexposePort(ctx, p); err != nil {
-						return err
-					}
+				if err := unexposePortsRootless(ctx, opts.rootlessKitClient, opts.ports); err != nil {
+					return fmt.Errorf("failed to unexpose ports in rootless mode: %s", err)
 				}
 			}
 		}
