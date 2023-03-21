@@ -59,6 +59,7 @@ func Exec(ctx context.Context, client *containerd.Client, args []string, options
 
 func execActionWithContainer(ctx context.Context, client *containerd.Client, container containerd.Container, args []string, options types.ContainerExecOptions) error {
 	pspec, err := generateExecProcessSpec(ctx, client, container, args, options)
+
 	if err != nil {
 		return err
 	}
