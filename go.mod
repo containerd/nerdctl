@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/Masterminds/semver/v3 v3.2.0
 	github.com/Microsoft/go-winio v0.6.0
+	github.com/Microsoft/hcsshim v0.10.0-rc.7
 	github.com/compose-spec/compose-go v1.13.0
 	github.com/containerd/accelerated-container-image v0.6.0
 	github.com/containerd/cgroups v1.1.0
@@ -61,7 +62,6 @@ require (
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20221215162035-5330a85ea652 // indirect
-	github.com/Microsoft/hcsshim v0.10.0-rc.7 // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
 	github.com/containerd/cgroups/v3 v3.0.1 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
