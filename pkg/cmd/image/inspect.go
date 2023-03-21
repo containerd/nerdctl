@@ -41,7 +41,7 @@ func Inspect(ctx context.Context, client *containerd.Client, images []string, op
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 
-			n, err := imageinspector.Inspect(ctx, client, found.Image)
+			n, err := imageinspector.Inspect(ctx, client, found.Image, options.GOptions.Snapshotter)
 			if err != nil {
 				return err
 			}

@@ -27,7 +27,7 @@ import (
 )
 
 // Inspect inspects the image, for the platform specified in image.platform.
-func Inspect(ctx context.Context, client *containerd.Client, image images.Image) (*native.Image, error) {
+func Inspect(ctx context.Context, client *containerd.Client, image images.Image, snapshotter string) (*native.Image, error) {
 
 	n := &native.Image{}
 
@@ -54,6 +54,11 @@ func Inspect(ctx context.Context, client *containerd.Client, image images.Image)
 	} else {
 		n.ImageConfigDesc = imageConfigDesc
 		n.ImageConfig = imageConfig
+	}
+	snapSvc := client.SnapshotService(snapshotter)
+	n.Size, err = imgutil.UnpackedImageSize(ctx, snapSvc, img)
+	if err != nil {
+		logrus.WithError(err).WithField("id", image.Name).Warnf("failed to inspect calculate size")
 	}
 	n.Image = image
 
