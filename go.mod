@@ -30,7 +30,7 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/fluent/fluent-logger-golang v1.9.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/ipfs/go-cid v0.3.2
+	github.com/ipfs/go-cid v0.4.0
 	github.com/mattn/go-isatty v0.0.17
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/moby/sys/mount v0.3.3
