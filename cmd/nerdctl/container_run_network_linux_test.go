@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"net"
 	"regexp"
 	"runtime"
 	"strings"
@@ -103,13 +102,15 @@ func TestRunHostLookup(t *testing.T) {
 
 	// Create nginx containers
 	for name, netName := range m {
-		base.Cmd("run",
+		cmd := base.Cmd("run",
 			"-d",
 			"--name", name,
 			"--hostname", name+"-foobar",
 			"--net", netName,
 			testutil.NginxAlpineImage,
-		).AssertOK()
+		)
+		t.Logf("creating host lookup testing container with command: %q", strings.Join(cmd.Command, " "))
+		cmd.AssertOK()
 	}
 
 	testWget := func(srcContainer, targetHostname string, expected bool) {
@@ -136,18 +137,11 @@ func TestRunHostLookup(t *testing.T) {
 	testWget("c1-in-n0", "c0-in-n0-foobar.n0", true)
 }
 
-func valuesOfMapStringString(m map[string]string) map[string]struct{} {
-	res := make(map[string]struct{})
-	for _, v := range m {
-		res[v] = struct{}{}
-	}
-	return res
-}
-
 func TestRunPortWithNoHostPort(t *testing.T) {
 	if rootlessutil.IsRootless() {
 		t.Skip("Auto port assign is not supported rootless mode yet")
 	}
+
 	type testCase struct {
 		containerPort    string
 		runShouldSuccess bool
@@ -217,185 +211,7 @@ func TestRunPortWithNoHostPort(t *testing.T) {
 }
 
 func TestRunPort(t *testing.T) {
-	hostIP, err := nettestutil.NonLoopbackIPv4()
-	assert.NilError(t, err)
-	type testCase struct {
-		listenIP         net.IP
-		connectIP        net.IP
-		hostPort         string
-		containerPort    string
-		connectURLPort   int
-		runShouldSuccess bool
-		err              string
-	}
-	lo := net.ParseIP("127.0.0.1")
-	zeroIP := net.ParseIP("0.0.0.0")
-	testCases := []testCase{
-		{
-			listenIP:         lo,
-			connectIP:        lo,
-			hostPort:         "8080",
-			containerPort:    "80",
-			connectURLPort:   8080,
-			runShouldSuccess: true,
-		},
-		{
-			// for https://github.com/containerd/nerdctl/issues/88
-			listenIP:         hostIP,
-			connectIP:        hostIP,
-			hostPort:         "8080",
-			containerPort:    "80",
-			connectURLPort:   8080,
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         hostIP,
-			connectIP:        lo,
-			hostPort:         "8080",
-			containerPort:    "80",
-			connectURLPort:   8080,
-			err:              "connection refused",
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         lo,
-			connectIP:        hostIP,
-			hostPort:         "8080",
-			containerPort:    "80",
-			connectURLPort:   8080,
-			err:              "connection refused",
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         zeroIP,
-			connectIP:        lo,
-			hostPort:         "8080",
-			containerPort:    "80",
-			connectURLPort:   8080,
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         zeroIP,
-			connectIP:        hostIP,
-			hostPort:         "8080",
-			containerPort:    "80",
-			connectURLPort:   8080,
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         lo,
-			connectIP:        lo,
-			hostPort:         "7000-7005",
-			containerPort:    "79-84",
-			connectURLPort:   7001,
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         hostIP,
-			connectIP:        hostIP,
-			hostPort:         "7000-7005",
-			containerPort:    "79-84",
-			connectURLPort:   7001,
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         hostIP,
-			connectIP:        lo,
-			hostPort:         "7000-7005",
-			containerPort:    "79-84",
-			connectURLPort:   7001,
-			err:              "connection refused",
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         lo,
-			connectIP:        hostIP,
-			hostPort:         "7000-7005",
-			containerPort:    "79-84",
-			connectURLPort:   7001,
-			err:              "connection refused",
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         zeroIP,
-			connectIP:        hostIP,
-			hostPort:         "7000-7005",
-			containerPort:    "79-84",
-			connectURLPort:   7001,
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         zeroIP,
-			connectIP:        lo,
-			hostPort:         "7000-7005",
-			containerPort:    "80-85",
-			connectURLPort:   7001,
-			err:              "error after 30 attempts",
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         zeroIP,
-			connectIP:        lo,
-			hostPort:         "7000-7005",
-			containerPort:    "80",
-			connectURLPort:   7000,
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         zeroIP,
-			connectIP:        lo,
-			hostPort:         "7000-7005",
-			containerPort:    "80",
-			connectURLPort:   7005,
-			err:              "connection refused",
-			runShouldSuccess: true,
-		},
-		{
-			listenIP:         zeroIP,
-			connectIP:        lo,
-			hostPort:         "7000-7005",
-			containerPort:    "79-85",
-			connectURLPort:   7005,
-			err:              "invalid ranges specified for container and host Ports",
-			runShouldSuccess: false,
-		},
-	}
-
-	tID := testutil.Identifier(t)
-	for i, tc := range testCases {
-		i := i
-		tc := tc
-		tcName := fmt.Sprintf("%+v", tc)
-		t.Run(tcName, func(t *testing.T) {
-			testContainerName := fmt.Sprintf("%s-%d", tID, i)
-			base := testutil.NewBase(t)
-			defer base.Cmd("rm", "-f", testContainerName).Run()
-			pFlag := fmt.Sprintf("%s:%s:%s", tc.listenIP.String(), tc.hostPort, tc.containerPort)
-			connectURL := fmt.Sprintf("http://%s:%d", tc.connectIP.String(), tc.connectURLPort)
-			t.Logf("pFlag=%q, connectURL=%q", pFlag, connectURL)
-			cmd := base.Cmd("run", "-d",
-				"--name", testContainerName,
-				"-p", pFlag,
-				testutil.NginxAlpineImage)
-			if tc.runShouldSuccess {
-				cmd.AssertOK()
-			} else {
-				cmd.AssertFail()
-				return
-			}
-
-			resp, err := nettestutil.HTTPGet(connectURL, 30, false)
-			if tc.err != "" {
-				assert.ErrorContains(t, err, tc.err)
-				return
-			}
-			assert.NilError(t, err)
-			respBody, err := io.ReadAll(resp.Body)
-			assert.NilError(t, err)
-			assert.Assert(t, strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet))
-		})
-	}
-
+	baseTestRunPort(t, testutil.NginxAlpineImage, testutil.NginxAlpineIndexHTMLSnippet, true)
 }
 
 func TestRunWithInvalidPortThenCleanUp(t *testing.T) {

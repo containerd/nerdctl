@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"syscall"
 
 	"github.com/containerd/containerd"
@@ -31,6 +32,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/volume"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -162,6 +164,30 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			return nil
 		}
 		return err
+	}
+
+	// NOTE: on non-Windows platforms, network cleanup is performed by OCI hooks.
+	// Seeing as though Windows does not currently support OCI hooks, we must explicitly
+	// perform the network cleanup from the main nerdctl executable.
+	if runtime.GOOS == "windows" {
+		spec, err := c.Spec(ctx)
+		if err != nil {
+			return err
+		}
+
+		netOpts, err := containerutil.NetworkOptionsFromSpec(spec)
+		if err != nil {
+			return fmt.Errorf("failed to load container networking options from specs: %s", err)
+		}
+
+		networkManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netOpts)
+		if err != nil {
+			return fmt.Errorf("failed to instantiate network options manager: %s", err)
+		}
+
+		if err := networkManager.CleanupNetworking(ctx, c); err != nil {
+			logrus.WithError(retErr).Warnf("failed to clean up container networking: %s", err)
+		}
 	}
 
 	switch status.Status {

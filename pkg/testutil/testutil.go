@@ -382,7 +382,7 @@ func (c *Cmd) AssertOutContains(s string) {
 func (c *Cmd) AssertCombinedOutContains(s string) {
 	c.Base.T.Helper()
 	res := c.Run()
-	assert.Assert(c.Base.T, strings.Contains(res.Combined(), s))
+	assert.Assert(c.Base.T, strings.Contains(res.Combined(), s), fmt.Sprintf("expected output to contain %q: %q", s, res.Combined()))
 }
 
 // AssertOutContainsAll checks if command output contains All strings in `strs`.

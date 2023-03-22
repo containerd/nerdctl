@@ -21,6 +21,7 @@ import (
 	"runtime"
 
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/spf13/cobra"
 )
 
@@ -73,7 +74,17 @@ func createAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	container, gc, err := createContainer(ctx, cmd, client, globalOptions, args, platform, false, flagT, true)
+	netFlags, err := loadNetworkFlags(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to load networking flags: %s", err)
+	}
+
+	netManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netFlags)
+	if err != nil {
+		return err
+	}
+
+	container, gc, err := createContainer(ctx, cmd, client, netManager, globalOptions, args, platform, false, flagT, true)
 	if err != nil {
 		if gc != nil {
 			gc()

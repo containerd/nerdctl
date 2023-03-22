@@ -26,4 +26,16 @@ const (
 	// use gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2-windows-amd64-ltsc2022 locally on windows 11
 	// https://github.com/microsoft/Windows-Containers/issues/179
 	CommonImage = WindowsNano
+
+	// NOTE(aznashwan): the upstream e2e Nginx test image is actually based on BusyBox.
+	NginxAlpineImage            = "registry.k8s.io/e2e-test-images/nginx:1.14-2"
+	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
+
+	// This error string is expected when attempting to connect to a TCP socket
+	// for a service which actively refuses the connection.
+	// (e.g. attempting to connect using http to an https endpoint).
+	// It should be "connection refused" as per the TCP RFC, but it is the
+	// below string constant on Windows.
+	// https://www.rfc-editor.org/rfc/rfc793
+	ExpectedConnectionRefusedError = "No connection could be made because the target machine actively refused it."
 )

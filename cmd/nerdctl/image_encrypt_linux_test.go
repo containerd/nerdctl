@@ -101,6 +101,7 @@ func rmiAll(base *testutil.Base) {
 
 		base.T.Logf("Pruning all images (again?)")
 		imageIDs = base.Cmd("images", "--no-trunc", "-a", "-q").OutLines()
+		base.T.Logf("pruning following images: %+v", imageIDs)
 		base.Cmd(append([]string{"rmi", "-f"}, imageIDs...)...).Run()
 	}
 }
