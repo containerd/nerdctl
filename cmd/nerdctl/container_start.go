@@ -21,6 +21,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
+	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/spf13/cobra"
 )
 
@@ -37,6 +38,7 @@ func newStartCommand() *cobra.Command {
 
 	startCommand.Flags().SetInterspersed(false)
 	startCommand.Flags().BoolP("attach", "a", false, "Attach STDOUT/STDERR and forward signals")
+	startCommand.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
 
 	return startCommand
 }
@@ -50,10 +52,15 @@ func processContainerStartOptions(cmd *cobra.Command) (types.ContainerStartOptio
 	if err != nil {
 		return types.ContainerStartOptions{}, err
 	}
+	detachKeys, err := cmd.Flags().GetString("detach-keys")
+	if err != nil {
+		return types.ContainerStartOptions{}, err
+	}
 	return types.ContainerStartOptions{
-		Stdout:   cmd.OutOrStdout(),
-		GOptions: globalOptions,
-		Attach:   attach,
+		Stdout:     cmd.OutOrStdout(),
+		GOptions:   globalOptions,
+		Attach:     attach,
+		DetachKeys: detachKeys,
 	}, nil
 }
 

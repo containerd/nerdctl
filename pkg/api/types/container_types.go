@@ -28,6 +28,8 @@ type ContainerStartOptions struct {
 	GOptions GlobalCommandOptions
 	// Attach specifies whether to attach to the container's stdio.
 	Attach bool
+	// The key sequence for detaching a container.
+	DetachKeys string
 }
 
 // ContainerKillOptions specifies options for `nerdctl (container) kill`.
@@ -59,6 +61,8 @@ type ContainerCreateOptions struct {
 	TTY bool
 	// Detach runs container in background and print container ID
 	Detach bool
+	// The key sequence for detaching a container.
+	DetachKeys string
 	// Restart specifies the policy to apply when a container exits
 	Restart string
 	// Rm specifies whether to remove the container automatically when it exits

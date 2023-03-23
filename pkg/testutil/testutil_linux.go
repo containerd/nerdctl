@@ -16,7 +16,12 @@
 
 package testutil
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+	"sync"
+	"time"
+)
 
 func mirrorOf(s string) string {
 	// plain mirror, NOT stargz-converted images
@@ -54,3 +59,32 @@ var (
 const (
 	FedoraESGZImage = "ghcr.io/stargz-containers/fedora:30-esgz" // eStargz
 )
+
+type delayOnceReader struct {
+	once    sync.Once
+	wrapped io.Reader
+}
+
+// NewDelayOnceReader returns a wrapper around io.Reader that delays the first Read() by one second.
+// It is used to test detaching from a container, and the reason why we need this is described below:
+//
+// Since detachableStdin.closer cancels the corresponding container's IO,
+// it has to be invoked after the corresponding task is started,
+// or the container could be resulted in an invalid state.
+//
+// However, in taskutil.go, the goroutines that copy the container's IO start
+// right after container.NewTask(ctx, ioCreator) is invoked and before the function returns,
+// which means that detachableStdin.closer could be invoked before the task is started,
+// and that's indeed the case for e2e test as the detach keys are "entered immediately".
+//
+// Since detaching from a container is only applicable when there is a TTY,
+// which usually means that there's a human in front of the computer waiting for a prompt to start typing,
+// it's reasonable to assume that the user will not type the detach keys before the task is started.
+func NewDelayOnceReader(wrapped io.Reader) io.Reader {
+	return &delayOnceReader{wrapped: wrapped}
+}
+
+func (r *delayOnceReader) Read(p []byte) (int, error) {
+	r.once.Do(func() { time.Sleep(time.Second) })
+	return r.wrapped.Read(p)
+}

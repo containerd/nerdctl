@@ -327,3 +327,34 @@ func TestRunWithOOMScoreAdj(t *testing.T) {
 
 	base.Cmd("run", "--rm", "--oom-score-adj", score, testutil.AlpineImage, "cat", "/proc/self/oom_score_adj").AssertOutContains(score)
 }
+
+func TestRunWithDetachKeys(t *testing.T) {
+	t.Parallel()
+
+	if testutil.GetTarget() == testutil.Docker {
+		t.Skip("When detaching from a container, for a session started with 'docker attach'" +
+			", it prints 'read escape sequence', but for one started with 'docker (run|start)', it prints nothing." +
+			" However, the flag is called '--detach-keys' in all cases" +
+			", so nerdctl prints 'read detach keys' for all cases" +
+			", and that's why this test is skipped for Docker.")
+	}
+
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	opts := []func(*testutil.Cmd){
+		testutil.WithStdin(testutil.NewDelayOnceReader(bytes.NewReader([]byte{1, 2}))), // https://www.physics.udel.edu/~watson/scen103/ascii.html
+	}
+	defer base.Cmd("container", "rm", "-f", containerName).AssertOK()
+	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
+	// unbuffer(1) can be installed with `apt-get install expect`.
+	//
+	// "-p" is needed because we need unbuffer to read from stdin, and from [1]:
+	// "Normally, unbuffer does not read from stdin. This simplifies use of unbuffer in some situations.
+	//  To use unbuffer in a pipeline, use the -p flag."
+	//
+	// [1] https://linux.die.net/man/1/unbuffer
+	base.CmdWithHelper([]string{"unbuffer", "-p"}, "run", "-it", "--detach-keys=ctrl-a,ctrl-b", "--name", containerName, testutil.CommonImage).
+		CmdOption(opts...).AssertOutContains("read detach keys")
+	container := base.InspectContainer(containerName)
+	assert.Equal(base.T, container.State.Running, true)
+}
