@@ -25,7 +25,6 @@ type ExitCoder interface {
 
 // ExitCodeError is to allow the program to exit with status code without outputting an error message.
 type ExitCodeError struct {
-	error
 	exitCode int
 }
 
@@ -37,6 +36,10 @@ func NewExitCoderErr(exitCode int) ExitCodeError {
 
 func (e ExitCodeError) ExitCode() int {
 	return e.exitCode
+}
+
+func (e ExitCodeError) Error() string {
+	return ""
 }
 
 func HandleExitCoder(err error) {

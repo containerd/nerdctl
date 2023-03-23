@@ -51,7 +51,7 @@ func newCreateCommand() *cobra.Command {
 	return createCommand
 }
 
-func createAction(cmd *cobra.Command, args []string) error {
+func createAction(cmd *cobra.Command, args []string) (err error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
 		return err
@@ -91,6 +91,13 @@ func createAction(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
+	// defer setting `nerdctl/error` label in case of error
+	defer func() {
+		if err != nil {
+			containerutil.UpdateErrorLabel(ctx, container, err)
+		}
+	}()
+
 	fmt.Fprintln(cmd.OutOrStdout(), container.ID())
 	return nil
 }

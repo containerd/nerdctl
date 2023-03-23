@@ -114,6 +114,15 @@ func UpdateExplicitlyStoppedLabel(ctx context.Context, container containerd.Cont
 	return container.Update(ctx, containerd.UpdateContainerOpts(opt))
 }
 
+// UpdateErrorLabel updates the "nerdctl/error"
+// label of the container according to the container error.
+func UpdateErrorLabel(ctx context.Context, container containerd.Container, err error) error {
+	opt := containerd.WithAdditionalContainerLabels(map[string]string{
+		labels.Error: err.Error(),
+	})
+	return container.Update(ctx, containerd.UpdateContainerOpts(opt))
+}
+
 // WithBindMountHostProcfs replaces procfs mount with rbind.
 // Required for --pid=host on rootless.
 //
@@ -189,7 +198,13 @@ func GenerateSharingPIDOpts(ctx context.Context, targetCon containerd.Container)
 }
 
 // Start starts `container` with `attach` flag. If `attach` is true, it will attach to the container's stdio.
-func Start(ctx context.Context, container containerd.Container, flagA bool, client *containerd.Client) error {
+func Start(ctx context.Context, container containerd.Container, flagA bool, client *containerd.Client) (err error) {
+	// defer the storage of start error in the dedicated label
+	defer func() {
+		if err != nil {
+			UpdateErrorLabel(ctx, container, err)
+		}
+	}()
 	lab, err := container.Labels(ctx)
 	if err != nil {
 		return err
@@ -272,7 +287,13 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 }
 
 // Stop stops `container` by sending SIGTERM. If the container is not stopped after `timeout`, it sends a SIGKILL.
-func Stop(ctx context.Context, container containerd.Container, timeout *time.Duration) error {
+func Stop(ctx context.Context, container containerd.Container, timeout *time.Duration) (err error) {
+	// defer the storage of stop error in the dedicated label
+	defer func() {
+		if err != nil {
+			UpdateErrorLabel(ctx, container, err)
+		}
+	}()
 	if err := UpdateExplicitlyStoppedLabel(ctx, container, true); err != nil {
 		return err
 	}

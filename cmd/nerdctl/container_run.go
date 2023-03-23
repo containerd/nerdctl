@@ -293,7 +293,7 @@ func setCreateFlags(cmd *cobra.Command) {
 
 // runAction is heavily based on ctr implementation:
 // https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/run/run.go
-func runAction(cmd *cobra.Command, args []string) error {
+func runAction(cmd *cobra.Command, args []string) (err error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
 		return err
@@ -346,6 +346,12 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
+	// defer setting `nerdctl/error` label in case of error
+	defer func() {
+		if err != nil {
+			containerutil.UpdateErrorLabel(ctx, c, err)
+		}
+	}()
 
 	id := c.ID()
 	if rm && !flagD {

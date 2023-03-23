@@ -167,7 +167,7 @@ type ContainerState struct {
 	// TODO:	Dead       bool
 	Pid      int
 	ExitCode int
-	// TODO: Error      string
+	Error    string
 	// TODO: StartedAt  string
 	FinishedAt string
 	// TODO: Health     *Health `json:",omitempty"`
@@ -257,23 +257,23 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		c.Mounts = mounts
 	}
 
+	cs := new(ContainerState)
+	cs.Restarting = n.Labels[restart.StatusLabel] == string(containerd.Running)
+	cs.Error = n.Labels[labels.Error]
 	if n.Process != nil {
-		c.State = &ContainerState{
-			Status:     statusFromNative(n.Process.Status, n.Labels),
-			Running:    n.Process.Status.Status == containerd.Running,
-			Paused:     n.Process.Status.Status == containerd.Paused,
-			Restarting: n.Labels[restart.StatusLabel] == string(containerd.Running),
-			Pid:        n.Process.Pid,
-			ExitCode:   int(n.Process.Status.ExitStatus),
-			FinishedAt: n.Process.Status.ExitTime.Format(time.RFC3339Nano),
-		}
+		cs.Status = statusFromNative(n.Process.Status, n.Labels)
+		cs.Running = n.Process.Status.Status == containerd.Running
+		cs.Paused = n.Process.Status.Status == containerd.Paused
+		cs.Pid = n.Process.Pid
+		cs.ExitCode = int(n.Process.Status.ExitStatus)
+		cs.FinishedAt = n.Process.Status.ExitTime.Format(time.RFC3339Nano)
 		nSettings, err := networkSettingsFromNative(n.Process.NetNS, n.Spec.(*specs.Spec))
 		if err != nil {
 			return nil, err
 		}
 		c.NetworkSettings = nSettings
 	}
-
+	c.State = cs
 	c.Config = &Config{
 		Hostname: n.Labels[labels.Hostname],
 		Labels:   n.Labels,
