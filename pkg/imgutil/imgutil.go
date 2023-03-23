@@ -20,9 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"reflect"
-
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
@@ -36,11 +33,20 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/pkg/imgutil/pull"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/docker/errdefs"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
+	"io"
+	"net"
+	"net/url"
+	//"path"
+	"reflect"
 )
+
+// Loopback address
+const loopbackAddr = "127.0.0.1"
 
 // EnsuredImage contains the image existed in containerd and its metadata.
 type EnsuredImage struct {
@@ -235,6 +241,42 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 		logrus.Debugf("The image will not be unpacked. Platforms=%v.", ocispecPlatforms)
 	}
 
+	// provide workaround for nerdctl pull 127.0.0.1:5000/foo
+	if rootlessutil.IsRootless() {
+		//check for loopback adresse
+		refURL, err := url.Parse("//" + ref)
+		if err != nil {
+			return nil, err
+		}
+		host, port, err := net.SplitHostPort(refURL.Host)
+		if err != nil {
+			// If the error is due to the reference not having a port number, just use the default port
+			host = refURL.Host
+			port = "80"
+		}
+		if host == loopbackAddr {
+			// Listen to the loopback address in rootlesskit namespace
+			listener, err := net.Listen("tcp", loopbackAddr+":"+port)
+			if err != nil {
+				return nil, err
+			}
+			defer listener.Close()
+
+			fmt.Println("Listening on", loopbackAddr+":"+port)
+
+			// Accept incoming connections and forward packets to container network namespace's loopback address
+			go func() error {
+				for {
+					conn, err := listener.Accept()
+					if err != nil {
+						return nil, err
+					}
+					go handleConnection(conn, port)
+				}
+			}()
+		}
+	}
+
 	containerdImage, err = pull.Pull(ctx, client, ref, config)
 	if err != nil {
 		return nil, err
@@ -427,4 +469,25 @@ func UnpackedImageSize(ctx context.Context, s snapshots.Snapshotter, img contain
 		return 0, err
 	}
 	return usage.Size, nil
+}
+
+func handleConnection(conn net.Conn, port string) {
+	defer conn.Close()
+
+	// Connect to the host network namespace's loopback address
+	hostConn, err := net.Dial("tcp", loopbackAddr+":"+port)
+	if err != nil {
+		fmt.Println("Failed to connect to host network namespace: %v")
+	}
+	defer hostConn.Close()
+
+	// Forward packets between the two connections
+	go func() {
+		if _, err := io.Copy(hostConn, conn); err != nil {
+			fmt.Println("Failed to forward packet")
+		}
+	}()
+	if _, err := io.Copy(conn, hostConn); err != nil {
+		fmt.Println("Failed to forward packet")
+	}
 }
