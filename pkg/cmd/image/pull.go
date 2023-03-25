@@ -19,7 +19,6 @@ package image
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -32,7 +31,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/signutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 )
 
 // Pull pulls an image specified by `rawRef`.
@@ -60,7 +58,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 	var ensured *imgutil.EnsuredImage
 
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
-		if options.Verify != "none" {
+		if options.VerifyOptions.Provider != "none" {
 			return nil, errors.New("--verify flag is not supported on IPFS as of now")
 		}
 
@@ -85,33 +83,9 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 		return ensured, nil
 	}
 
-	ref := rawRef
-	var err error
-	switch options.Verify {
-	case "cosign":
-
-		if !options.GOptions.Experimental {
-			return nil, fmt.Errorf("cosign only work with enable experimental feature")
-		}
-
-		ref, err = signutil.VerifyCosign(ctx, rawRef, options.CosignKey, options.GOptions.HostsDir)
-		if err != nil {
-			return nil, err
-		}
-	case "notation":
-
-		if !options.GOptions.Experimental {
-			return nil, fmt.Errorf("notation only work with enable experimental feature")
-		}
-
-		ref, err = signutil.VerifyNotation(ctx, rawRef, options.GOptions.HostsDir)
-		if err != nil {
-			return nil, err
-		}
-	case "none":
-		logrus.Debugf("verification process skipped")
-	default:
-		return nil, fmt.Errorf("no verifier found: %s", options.Verify)
+	ref, err := signutil.Verify(ctx, rawRef, options.GOptions.HostsDir, options.GOptions.Experimental, options.VerifyOptions)
+	if err != nil {
+		return nil, err
 	}
 
 	ensured, err = imgutil.EnsureImage(ctx, client, options.Stdout, options.Stderr, options.GOptions.Snapshotter, ref,

@@ -87,32 +87,22 @@ func processImagePushOptions(cmd *cobra.Command) (types.ImagePushOptions, error)
 	if err != nil {
 		return types.ImagePushOptions{}, err
 	}
-	sign, err := cmd.Flags().GetString("sign")
-	if err != nil {
-		return types.ImagePushOptions{}, err
-	}
-	cosignKey, err := cmd.Flags().GetString("cosign-key")
-	if err != nil {
-		return types.ImagePushOptions{}, err
-	}
-	notationKeyName, err := cmd.Flags().GetString("notation-key-name")
-	if err != nil {
-		return types.ImagePushOptions{}, err
-	}
 	allowNonDist, err := cmd.Flags().GetBool(allowNonDistFlag)
+	if err != nil {
+		return types.ImagePushOptions{}, err
+	}
+	signOptions, err := processImageSignOptions(cmd)
 	if err != nil {
 		return types.ImagePushOptions{}, err
 	}
 	return types.ImagePushOptions{
 		GOptions:                       globalOptions,
+		SignOptions:                    signOptions,
 		Platforms:                      platform,
 		AllPlatforms:                   allPlatforms,
 		Estargz:                        estargz,
 		IpfsEnsureImage:                ipfsEnsureImage,
 		IpfsAddress:                    ipfsAddress,
-		Sign:                           sign,
-		CosignKey:                      cosignKey,
-		NotationKeyName:                notationKeyName,
 		AllowNondistributableArtifacts: allowNonDist,
 		Stdout:                         cmd.OutOrStdout(),
 	}, nil

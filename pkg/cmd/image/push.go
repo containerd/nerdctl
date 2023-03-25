@@ -148,34 +148,9 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		return err
 	}
 
-	switch options.Sign {
-	case "cosign":
-
-		if !options.GOptions.Experimental {
-			return fmt.Errorf("cosign only work with enable experimental feature")
-		}
-
-		err = signutil.SignCosign(rawRef, options.CosignKey)
-		if err != nil {
-			return err
-		}
-	case "notation":
-
-		if !options.GOptions.Experimental {
-			return fmt.Errorf("notation only work with enable experimental feature")
-		}
-
-		err = signutil.SignNotation(rawRef, options.NotationKeyName)
-		if err != nil {
-			return err
-		}
-	case "none":
-		logrus.Debugf("signing process skipped")
-	default:
-		return fmt.Errorf("no signers found: %s", options.Sign)
-
+	if err = signutil.Sign(rawRef, options.GOptions.Experimental, options.SignOptions); err != nil {
+		return err
 	}
-
 	return nil
 }
 

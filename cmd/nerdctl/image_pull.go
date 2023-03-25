@@ -81,29 +81,24 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 	if err != nil {
 		return types.ImagePullOptions{}, err
 	}
-	verifier, err := cmd.Flags().GetString("verify")
-	if err != nil {
-		return types.ImagePullOptions{}, err
-	}
-	cosignKey, err := cmd.Flags().GetString("cosign-key")
-	if err != nil {
-		return types.ImagePullOptions{}, err
-	}
 	ipfsAddressStr, err := cmd.Flags().GetString("ipfs-address")
 	if err != nil {
 		return types.ImagePullOptions{}, err
 	}
+	verifyOptions, err := processImageVerifyOptions(cmd)
+	if err != nil {
+		return types.ImagePullOptions{}, err
+	}
 	return types.ImagePullOptions{
-		GOptions:     globalOptions,
-		AllPlatforms: allPlatforms,
-		Platform:     platform,
-		Unpack:       unpackStr,
-		Quiet:        quiet,
-		Verify:       verifier,
-		CosignKey:    cosignKey,
-		IPFSAddress:  ipfsAddressStr,
-		Stdout:       cmd.OutOrStdout(),
-		Stderr:       cmd.OutOrStderr(),
+		GOptions:      globalOptions,
+		VerifyOptions: verifyOptions,
+		AllPlatforms:  allPlatforms,
+		Platform:      platform,
+		Unpack:        unpackStr,
+		Quiet:         quiet,
+		IPFSAddress:   ipfsAddressStr,
+		Stdout:        cmd.OutOrStdout(),
+		Stderr:        cmd.OutOrStderr(),
 	}, nil
 }
 

@@ -797,11 +797,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 // When refactor `nerdctl run`, this func should be removed and replaced by
 // creating a `PullCommandOptions` directly from `RunCommandOptions`.
 func processPullCommandFlagsInRun(cmd *cobra.Command) (types.ImagePullOptions, error) {
-	verifier, err := cmd.Flags().GetString("verify")
-	if err != nil {
-		return types.ImagePullOptions{}, err
-	}
-	cosignKey, err := cmd.Flags().GetString("cosign-key")
+	imageVerifyOptions, err := processImageVerifyOptions(cmd)
 	if err != nil {
 		return types.ImagePullOptions{}, err
 	}
@@ -810,11 +806,10 @@ func processPullCommandFlagsInRun(cmd *cobra.Command) (types.ImagePullOptions, e
 		return types.ImagePullOptions{}, err
 	}
 	return types.ImagePullOptions{
-		Verify:      verifier,
-		CosignKey:   cosignKey,
-		IPFSAddress: ipfsAddressStr,
-		Stdout:      cmd.OutOrStdout(),
-		Stderr:      cmd.ErrOrStderr(),
+		VerifyOptions: imageVerifyOptions,
+		IPFSAddress:   ipfsAddressStr,
+		Stdout:        cmd.OutOrStdout(),
+		Stderr:        cmd.ErrOrStderr(),
 	}, nil
 }
 
