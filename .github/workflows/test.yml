@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v3.4.0
+      - uses: actions/checkout@v3.5.0
         with:
           path: src/github.com/containerd/nerdctl
           fetch-depth: 100
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v3.4.0
+      - uses: actions/checkout@v3.5.0
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v4
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v3.4.0
+      - uses: actions/checkout@v3.5.0
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v4
@@ -87,7 +87,7 @@ jobs:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
-      - uses: actions/checkout@v3.4.0
+      - uses: actions/checkout@v3.5.0
         with:
           fetch-depth: 1
       - name: "Prepare integration test environment"
@@ -140,7 +140,7 @@ jobs:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
       TEST_TARGET: "${{ matrix.target }}"
     steps:
-      - uses: actions/checkout@v3.4.0
+      - uses: actions/checkout@v3.5.0
         with:
           fetch-depth: 1
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -157,7 +157,7 @@ jobs:
       matrix:
         go-version: ["1.19.x", "1.20.x"]
     steps:
-      - uses: actions/checkout@v3.4.0
+      - uses: actions/checkout@v3.5.0
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v4
@@ -172,7 +172,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v3.4.0
+      - uses: actions/checkout@v3.5.0
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v4
