@@ -163,6 +163,8 @@ type ImagePushOptions struct {
 	IpfsEnsureImage bool
 	// IpfsAddress multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)
 	IpfsAddress string
+	// Suppress verbose output
+	Quiet bool
 	// AllowNondistributableArtifacts allow pushing non-distributable artifacts
 	AllowNondistributableArtifacts bool
 }

@@ -57,6 +57,8 @@ func newPushCommand() *cobra.Command {
 	pushCommand.Flags().String("notation-key-name", "", "Signing key name for a key previously added to notation's key list for --sign=notation")
 	// #endregion
 
+	pushCommand.Flags().BoolP("quiet", "q", false, "Suppress verbose output")
+
 	pushCommand.Flags().Bool(allowNonDistFlag, false, "Allow pushing images with non-distributable blobs")
 
 	return pushCommand
@@ -87,6 +89,10 @@ func processImagePushOptions(cmd *cobra.Command) (types.ImagePushOptions, error)
 	if err != nil {
 		return types.ImagePushOptions{}, err
 	}
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return types.ImagePushOptions{}, err
+	}
 	allowNonDist, err := cmd.Flags().GetBool(allowNonDistFlag)
 	if err != nil {
 		return types.ImagePushOptions{}, err
@@ -103,6 +109,7 @@ func processImagePushOptions(cmd *cobra.Command) (types.ImagePushOptions, error)
 		Estargz:                        estargz,
 		IpfsEnsureImage:                ipfsEnsureImage,
 		IpfsAddress:                    ipfsAddress,
+		Quiet:                          quiet,
 		AllowNondistributableArtifacts: allowNonDist,
 		Stdout:                         cmd.OutOrStdout(),
 	}, nil

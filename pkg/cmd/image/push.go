@@ -45,6 +45,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Push pushes an image specified by `rawRef`.
 func Push(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePushOptions) error {
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
 		if scheme != "ipfs" {
@@ -116,7 +117,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 	}
 
 	pushFunc := func(r remotes.Resolver) error {
-		return push.Push(ctx, client, r, options.Stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts)
+		return push.Push(ctx, client, r, options.Stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts, options.Quiet)
 	}
 
 	var dOpts []dockerconfigresolver.Opt
@@ -150,6 +151,10 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 
 	if err = signutil.Sign(rawRef, options.GOptions.Experimental, options.SignOptions); err != nil {
 		return err
+	}
+
+	if options.Quiet {
+		fmt.Fprintln(options.Stdout, ref)
 	}
 	return nil
 }
