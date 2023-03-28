@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
+	"github.com/containerd/containerd/reference"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/nerdctl/pkg/api/types"
@@ -149,10 +150,20 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		return err
 	}
 
-	if err = signutil.Sign(rawRef, options.GOptions.Experimental, options.SignOptions); err != nil {
+	img, err := client.ImageService().Get(ctx, ref)
+	if err != nil {
 		return err
 	}
-
+	refSpec, err := reference.Parse(ref)
+	if err != nil {
+		return err
+	}
+	signRef := fmt.Sprintf("%s@%s", refSpec.String(), img.Target.Digest.String())
+	if err = signutil.Sign(signRef,
+		options.GOptions.Experimental,
+		options.SignOptions); err != nil {
+		return err
+	}
 	if options.Quiet {
 		fmt.Fprintln(options.Stdout, ref)
 	}
