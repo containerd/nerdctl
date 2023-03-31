@@ -19,7 +19,12 @@ package testutil
 import (
 	"sync"
 
+	"strings"
+
 	"golang.org/x/sys/windows/svc/mgr"
+
+	"github.com/Microsoft/hcsshim"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 )
 
 const (
@@ -47,6 +52,7 @@ const (
 )
 
 var (
+	hypervContainer     bool
 	hypervSupported     bool
 	hypervSupportedOnce sync.Once
 )
@@ -72,4 +78,26 @@ func HyperVSupported() bool {
 		}
 	})
 	return hypervSupported
+}
+
+// HyperVContainer is a test helper to check if the container is a
+// hyperv type container, lists only running containers
+func HyperVContainer(inspect dockercompat.Container) (bool, error) {
+	query := hcsshim.ComputeSystemQuery{}
+	containersList, err := hcsshim.GetContainers(query)
+	if err != nil {
+		hypervContainer = false
+		return hypervContainer, err
+	}
+
+	for _, container := range containersList {
+		// have to use IDs, not all containers have name set
+		if strings.Contains(container.ID, inspect.ID) {
+			if container.SystemType == "VirtualMachine" {
+				hypervContainer = true
+			}
+		}
+	}
+
+	return hypervContainer, nil
 }
