@@ -83,7 +83,7 @@ func runIPFSDaemonContainer(t *testing.T, base *testutil.Base) (ipfsAddress stri
 	ipfsaddr := fmt.Sprintf("/ip4/%s/tcp/5001", matches[1])
 	return ipfsaddr, func() {
 		base.Cmd("kill", "test-ipfs-address").AssertOK()
-		base.Cmd("rm", "test-ipfs-address").AssertOK()
+		base.Cmd("rm", "-f", "test-ipfs-address").AssertOK()
 	}
 }
 
@@ -146,13 +146,13 @@ func TestIPFSWithLazyPullingCommit(t *testing.T) {
 
 	base.Cmd("pull", ipfsCID2).AssertOK()
 	base.Cmd("run", "--rm", ipfsCID2, "/bin/sh", "-c", "ls /.stargz-snapshotter && cat /hello").AssertOK()
-	base.Cmd("image", "rm", ipfsCID2).AssertOK()
+	base.Cmd("image", "rm", "-f", ipfsCID2).AssertOK()
 }
 
 func pushImageToIPFS(t *testing.T, base *testutil.Base, name string, opts ...string) string {
 	base.Cmd("pull", name).AssertOK()
 	ipfsCID := cidOf(t, base.Cmd(append([]string{"push"}, append(opts, "ipfs://"+name)...)...).OutLines())
-	base.Cmd("rmi", name).AssertOK()
+	base.Cmd("rmi", "-f", name).AssertOK()
 	return ipfsCID
 }
 

@@ -38,7 +38,7 @@ func TestIPFSBuild(t *testing.T) {
 	ipfsCIDBase := strings.TrimPrefix(ipfsCID, "ipfs://")
 
 	imageName := testutil.Identifier(t)
-	defer base.Cmd("rmi", imageName).Run()
+	defer base.Cmd("rmi", "-f", imageName).AssertOK()
 
 	dockerfile := fmt.Sprintf(`FROM localhost:5050/ipfs/%s
 CMD ["echo", "nerdctl-build-test-string"]
