@@ -87,7 +87,7 @@ func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*m
 	for _, v := range strutil.DedupeStrSlice(flagVSlice) {
 		x, err := mountutil.ProcessFlagV(v, volStore)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error while parsing %q: %w", v, err)
 		}
 		parsed = append(parsed, x)
 	}

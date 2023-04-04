@@ -19,6 +19,7 @@ package mountutil
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -53,7 +54,7 @@ import (
 func UnprivilegedMountFlags(path string) ([]string, error) {
 	var statfs unix.Statfs_t
 	if err := unix.Statfs(path, &statfs); err != nil {
-		return nil, err
+		return nil, &fs.PathError{Op: "stat", Path: path, Err: err}
 	}
 
 	// The set of keys come from https://github.com/torvalds/linux/blob/v4.13/fs/namespace.c#L1034-L1048.

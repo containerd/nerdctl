@@ -65,7 +65,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 		logrus.Debugf("creating anonymous volume %q, for %q", res.AnonymousVolume, s)
 		anonVol, err := volStore.Create(res.AnonymousVolume, []string{})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create an anonymous volume %q: %w", res.AnonymousVolume, err)
 		}
 		src = anonVol.Mountpoint
 		res.Type = Volume
@@ -80,10 +80,10 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 				if errors.Is(err, errdefs.ErrNotFound) {
 					vol, err = volStore.Create(src, nil)
 					if err != nil {
-						return nil, err
+						return nil, fmt.Errorf("failed to create volume %q: %w", src, err)
 					}
 				} else {
-					return nil, err
+					return nil, fmt.Errorf("failed to get volume %q: %w", src, err)
 				}
 			}
 			// src is now full path
@@ -95,7 +95,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 			var err error
 			src, err = filepath.Abs(src)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to get the absolute path of %q: %w", src, err)
 			}
 		}
 		if !filepath.IsAbs(dst) {
@@ -112,7 +112,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 		var specOpts []oci.SpecOpts
 		options, specOpts, err = parseVolumeOptions(res.Type, src, rawOpts)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse volume options (%q, %q, %q): %w", res.Type, src, rawOpts, err)
 		}
 		res.Opts = append(res.Opts, specOpts...)
 	default:
@@ -146,7 +146,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 	if userns.RunningInUserNS() {
 		unpriv, err := UnprivilegedMountFlags(src)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get unprivileged mount flags for %q: %w", src, err)
 		}
 		res.Mount.Options = strutil.DedupeStrSlice(append(res.Mount.Options, unpriv...))
 	}
