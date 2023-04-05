@@ -21,6 +21,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -178,6 +179,7 @@ func warnUnknownFields(svc types.ServiceConfig) {
 type Container struct {
 	Name    string   // e.g., "compose-wordpress_wordpress_1"
 	RunArgs []string // {"--pull=never", ...}
+	Mkdir   []string // For Bind.CreateHostPath
 }
 
 type Build struct {
@@ -659,11 +661,12 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 	}
 
 	for _, v := range svc.Volumes {
-		vStr, err := serviceVolumeConfigToFlagV(v, project)
+		vStr, mkdir, err := serviceVolumeConfigToFlagV(v, project)
 		if err != nil {
 			return nil, err
 		}
 		c.RunArgs = append(c.RunArgs, "-v="+vStr)
+		c.Mkdir = mkdir
 	}
 
 	for _, config := range svc.Configs {
@@ -733,7 +736,7 @@ func servicePortConfigToFlagP(c types.ServicePortConfig) (string, error) {
 	return s, nil
 }
 
-func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Project) (string, error) {
+func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Project) (flagV string, mkdir []string, err error) {
 	if unknown := reflectutil.UnknownNonEmptyFields(&c,
 		"Type",
 		"Source",
@@ -746,7 +749,7 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 	}
 	if c.Bind != nil {
 		// c.Bind is expected to be a non-nil reference to an empty Bind struct
-		if unknown := reflectutil.UnknownNonEmptyFields(c.Bind); len(unknown) > 0 {
+		if unknown := reflectutil.UnknownNonEmptyFields(c.Bind, "CreateHostPath"); len(unknown) > 0 {
 			logrus.Warnf("Ignoring: volume: Bind: %+v", unknown)
 		}
 	}
@@ -758,10 +761,10 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 	}
 
 	if c.Target == "" {
-		return "", errors.New("volume target is missing")
+		return "", nil, errors.New("volume target is missing")
 	}
 	if !filepath.IsAbs(c.Target) {
-		return "", fmt.Errorf("volume target must be an absolute path, got %q", c.Target)
+		return "", nil, fmt.Errorf("volume target must be an absolute path, got %q", c.Target)
 	}
 
 	if c.Source == "" {
@@ -770,7 +773,7 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 		if c.ReadOnly {
 			s += ":ro"
 		}
-		return s, nil
+		return s, mkdir, nil
 	}
 
 	var src string
@@ -778,7 +781,7 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 	case "volume":
 		vol, ok := project.Volumes[c.Source]
 		if !ok {
-			return "", fmt.Errorf("invalid volume %q", c.Source)
+			return "", nil, fmt.Errorf("invalid volume %q", c.Source)
 		}
 		// c.Source is like "db_data", vol.Name is like "compose-wordpress_db_data"
 		src = vol.Name
@@ -787,16 +790,21 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 		var err error
 		src, err = filepath.Abs(src)
 		if err != nil {
-			return "", fmt.Errorf("invalid relative path %q: %w", c.Source, err)
+			return "", nil, fmt.Errorf("invalid relative path %q: %w", c.Source, err)
+		}
+		if c.Bind != nil && c.Bind.CreateHostPath {
+			if _, stErr := os.Stat(src); errors.Is(stErr, os.ErrNotExist) {
+				mkdir = append(mkdir, src)
+			}
 		}
 	default:
-		return "", fmt.Errorf("unsupported volume type: %q", c.Type)
+		return "", nil, fmt.Errorf("unsupported volume type: %q", c.Type)
 	}
 	s := fmt.Sprintf("%s:%s", src, c.Target)
 	if c.ReadOnly {
 		s += ":ro"
 	}
-	return s, nil
+	return s, mkdir, nil
 }
 
 func fileReferenceConfigToFlagV(c types.FileReferenceConfig, project *types.Project, secret bool) (string, error) {

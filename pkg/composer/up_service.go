@@ -133,6 +133,13 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 		logrus.Infof("Creating container %s", container.Name)
 	}
 
+	for _, f := range container.Mkdir {
+		logrus.Debugf("Creating a directory %q", f)
+		if err = os.MkdirAll(f, 0o755); err != nil {
+			return "", fmt.Errorf("failed to create a directory %q: %w", f, err)
+		}
+	}
+
 	tempDir, err := os.MkdirTemp(os.TempDir(), "compose-")
 	if err != nil {
 		return "", fmt.Errorf("error while creating/re-creating container %s: %w", container.Name, err)
