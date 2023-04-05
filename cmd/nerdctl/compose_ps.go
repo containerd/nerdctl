@@ -49,6 +49,7 @@ func newComposePsCommand() *cobra.Command {
 type composeContainerPrintable struct {
 	ID       string
 	Name     string
+	Image    string
 	Command  string
 	Project  string
 	Service  string
@@ -130,10 +131,11 @@ func composePsAction(cmd *cobra.Command, args []string) error {
 	}
 
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 4, 8, 4, ' ', 0)
-	fmt.Fprintln(w, "NAME\tCOMMAND\tSERVICE\tSTATUS\tPORTS")
+	fmt.Fprintln(w, "NAME\tIMAGE\tCOMMAND\tSERVICE\tSTATUS\tPORTS")
 	for _, p := range containersPrintable {
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			p.Name,
+			p.Image,
 			p.Command,
 			p.Service,
 			p.State,
@@ -161,9 +163,14 @@ func composeContainerPrintableTab(ctx context.Context, container containerd.Cont
 	if status == "Up" {
 		status = "running" // corresponds to Docker Compose v2.0.1
 	}
+	image, err := container.Image(ctx)
+	if err != nil {
+		return composeContainerPrintable{}, err
+	}
 
 	return composeContainerPrintable{
 		Name:    info.Labels[labels.Name],
+		Image:   image.Metadata().Name,
 		Command: formatter.InspectContainerCommandTrunc(spec),
 		Service: info.Labels[labels.ComposeService],
 		State:   status,
@@ -197,10 +204,15 @@ func composeContainerPrintableJSON(ctx context.Context, container containerd.Con
 	} else {
 		state = string(containerd.Unknown)
 	}
+	image, err := container.Image(ctx)
+	if err != nil {
+		return composeContainerPrintable{}, err
+	}
 
 	return composeContainerPrintable{
 		ID:         container.ID(),
 		Name:       info.Labels[labels.Name],
+		Image:      image.Metadata().Name,
 		Command:    formatter.InspectContainerCommand(spec, false, false),
 		Project:    info.Labels[labels.ComposeProject],
 		Service:    info.Labels[labels.ComposeService],
