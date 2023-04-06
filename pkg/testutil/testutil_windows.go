@@ -38,4 +38,8 @@ const (
 	// below string constant on Windows.
 	// https://www.rfc-editor.org/rfc/rfc793
 	ExpectedConnectionRefusedError = "No connection could be made because the target machine actively refused it."
+
+	// Image which includes a 'VOLUME "C:/test_dir"' stanza to be used for Windows testing.
+	// https://github.com/containerd/containerd/blob/main/integration/images/volume-copy-up/Dockerfile_windows
+	WindowsVolumeMountImage = "ghcr.io/containerd/volume-copy-up:2.1"
 )

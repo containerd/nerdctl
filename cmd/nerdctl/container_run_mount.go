@@ -37,7 +37,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
@@ -228,7 +227,8 @@ func generateMountOpts(ctx context.Context, cmd *cobra.Command, client *containe
 			ociMounts[i] = x.Mount
 			mounted[filepath.Clean(x.Mount.Destination)] = struct{}{}
 
-			target, err := securejoin.SecureJoin(tempDir, x.Mount.Destination)
+			logrus.Debugf("Attempting to join host path %q with container mount flag %q", tempDir, x.Mount.Destination)
+			target, err := joinHostPath(tempDir, x.Mount.Destination)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -269,7 +269,8 @@ func generateMountOpts(ctx context.Context, cmd *cobra.Command, client *containe
 			return nil, nil, nil, err
 		}
 
-		target, err := securejoin.SecureJoin(tempDir, imgVol)
+		logrus.Debugf("Attempting to join host path %q with image VOLUME path %q", tempDir, imgVol)
+		target, err := joinHostPath(tempDir, imgVol)
 		if err != nil {
 			return nil, nil, nil, err
 		}
