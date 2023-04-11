@@ -81,7 +81,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			}
 			in = con
 		}
-		ioCreator = cio.NewCreator(cio.WithStreams(in, con, nil), cio.WithTerminal)
+		ioCreator = cio.NewCreator(cio.WithStreams(in, os.Stdout, nil), cio.WithTerminal)
 	} else if flagD && logURI != "" {
 		// TODO: support logURI for `nerdctl run -it`
 		u, err := url.Parse(logURI)
