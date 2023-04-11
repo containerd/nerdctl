@@ -7,7 +7,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.0
 	github.com/Microsoft/hcsshim v0.10.0-rc.7
 	github.com/compose-spec/compose-go v1.13.2
-	github.com/containerd/accelerated-container-image v0.6.0
+	github.com/containerd/accelerated-container-image v0.6.1
 	github.com/containerd/cgroups v1.1.0
 	github.com/containerd/console v1.0.3
 	github.com/containerd/containerd v1.7.0
