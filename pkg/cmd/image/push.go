@@ -150,11 +150,11 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		return err
 	}
 
-	img, err := client.ImageService().Get(ctx, ref)
+	img, err := client.ImageService().Get(ctx, pushRef)
 	if err != nil {
 		return err
 	}
-	refSpec, err := reference.Parse(ref)
+	refSpec, err := reference.Parse(pushRef)
 	if err != nil {
 		return err
 	}
