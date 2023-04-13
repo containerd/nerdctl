@@ -210,6 +210,98 @@ func TestRunPortWithNoHostPort(t *testing.T) {
 
 }
 
+func TestUniqueHostPortAssignement(t *testing.T) {
+	if rootlessutil.IsRootless() {
+		t.Skip("Auto port assign is not supported rootless mode yet")
+	}
+
+	type testCase struct {
+		containerPort    string
+		runShouldSuccess bool
+	}
+
+	testCases := []testCase{
+		{
+			containerPort:    "80",
+			runShouldSuccess: true,
+		},
+		{
+			containerPort:    "80-81",
+			runShouldSuccess: true,
+		},
+		{
+			containerPort:    "80-81/tcp",
+			runShouldSuccess: true,
+		},
+	}
+
+	tID := testutil.Identifier(t)
+
+	for i, tc := range testCases {
+		i := i
+		tc := tc
+		tcName := fmt.Sprintf("%+v", tc)
+		t.Run(tcName, func(t *testing.T) {
+			testContainerName1 := fmt.Sprintf("%s-%d-1", tID, i)
+			testContainerName2 := fmt.Sprintf("%s-%d-2", tID, i)
+			base := testutil.NewBase(t)
+			defer base.Cmd("rm", "-f", testContainerName1, testContainerName2).Run()
+
+			pFlag := tc.containerPort
+			cmd1 := base.Cmd("run", "-d",
+				"--name", testContainerName1, "-p",
+				pFlag,
+				testutil.NginxAlpineImage)
+
+			cmd2 := base.Cmd("run", "-d",
+				"--name", testContainerName2, "-p",
+				pFlag,
+				testutil.NginxAlpineImage)
+			var result *icmd.Result
+			stdoutContent := ""
+			if tc.runShouldSuccess {
+				cmd1.AssertOK()
+				cmd2.AssertOK()
+			} else {
+				cmd1.AssertFail()
+				cmd2.AssertFail()
+				return
+			}
+			portCmd1 := base.Cmd("port", testContainerName1)
+			portCmd2 := base.Cmd("port", testContainerName2)
+			portCmd1.Base.T.Helper()
+			portCmd2.Base.T.Helper()
+			result = portCmd1.Run()
+			stdoutContent = result.Stdout() + result.Stderr()
+			assert.Assert(t, result.ExitCode == 0, stdoutContent)
+			port1, err := extractHostPort(stdoutContent)
+			assert.NilError(t, err)
+			result = portCmd2.Run()
+			stdoutContent = result.Stdout() + result.Stderr()
+			assert.Assert(t, result.ExitCode == 0, stdoutContent)
+			port2, err := extractHostPort(stdoutContent)
+			assert.NilError(t, err)
+			assert.Assert(t, port1 != port2, "Host ports are not unique")
+
+			// Make HTTP GET request to container 1
+			connectURL1 := fmt.Sprintf("http://%s:%s", "127.0.0.1", port1)
+			resp1, err := nettestutil.HTTPGet(connectURL1, 30, false)
+			assert.NilError(t, err)
+			respBody1, err := io.ReadAll(resp1.Body)
+			assert.NilError(t, err)
+			assert.Assert(t, strings.Contains(string(respBody1), testutil.NginxAlpineIndexHTMLSnippet))
+
+			// Make HTTP GET request to container 2
+			connectURL2 := fmt.Sprintf("http://%s:%s", "127.0.0.1", port2)
+			resp2, err := nettestutil.HTTPGet(connectURL2, 30, false)
+			assert.NilError(t, err)
+			respBody2, err := io.ReadAll(resp2.Body)
+			assert.NilError(t, err)
+			assert.Assert(t, strings.Contains(string(respBody2), testutil.NginxAlpineIndexHTMLSnippet))
+		})
+	}
+}
+
 func TestRunPort(t *testing.T) {
 	baseTestRunPort(t, testutil.NginxAlpineImage, testutil.NginxAlpineIndexHTMLSnippet, true)
 }

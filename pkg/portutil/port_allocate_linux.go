@@ -19,6 +19,7 @@ package portutil
 import (
 	"fmt"
 
+	"github.com/containerd/nerdctl/pkg/portutil/iptable"
 	"github.com/containerd/nerdctl/pkg/portutil/procnet"
 )
 
@@ -71,6 +72,17 @@ func portAllocate(protocol string, ip string, count uint64) (uint64, uint64, err
 	for _, value := range netprocItems {
 		usedPort[value.LocalPort] = true
 	}
+
+	ipTableItems, err := iptable.ReadIPTables("nat")
+	if err != nil {
+		return 0, 0, err
+	}
+	destinationPorts := iptable.ParseIPTableRules(ipTableItems)
+
+	for _, port := range destinationPorts {
+		usedPort[port] = true
+	}
+
 	start := uint64(allocateStart)
 	if count > uint64(allocateEnd-allocateStart+1) {
 		return 0, 0, fmt.Errorf("can not allocate %d ports", count)
