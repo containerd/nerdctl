@@ -36,6 +36,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
 )
 
 func TestRunCustomRootfs(t *testing.T) {
@@ -246,6 +247,10 @@ func TestRunTTY(t *testing.T) {
 	base.CmdWithHelper(unbuffer, "run", "--rm", "-t", testutil.CommonImage, "stty").AssertOutContains(sttyPartialOutput)
 	base.Cmd("run", "--rm", "-i", testutil.CommonImage, "stty").AssertFail()
 	base.Cmd("run", "--rm", testutil.CommonImage, "stty").AssertFail()
+
+	// tests pipe works
+	res := icmd.RunCmd(icmd.Command("unbuffer", "/bin/sh", "-c", fmt.Sprintf("%q run --rm -it %q echo hi | grep hi", base.Binary, testutil.CommonImage)))
+	assert.Equal(t, 0, res.ExitCode, res.Combined())
 }
 
 func TestRunWithFluentdLogDriver(t *testing.T) {
