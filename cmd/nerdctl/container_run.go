@@ -41,6 +41,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
 	"github.com/containerd/nerdctl/pkg/consoleutil"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/flagutil"
@@ -292,7 +293,7 @@ func setCreateFlags(cmd *cobra.Command) {
 
 // runAction is heavily based on ctr implementation:
 // https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/run/run.go
-func runAction(cmd *cobra.Command, args []string) error {
+func runAction(cmd *cobra.Command, args []string) (err error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
 		return err
@@ -328,17 +329,41 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return errors.New("flags -d and --rm cannot be specified together")
 	}
 
-	c, gc, err := createContainer(ctx, cmd, client, globalOptions, args, platform, flagI, flagT, flagD)
+	netFlags, err := loadNetworkFlags(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to load networking flags: %s", err)
+	}
+
+	netManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netFlags)
+	if err != nil {
+		return err
+	}
+
+	c, gc, err := createContainer(ctx, cmd, client, netManager, globalOptions, args, platform, flagI, flagT, flagD)
 	if err != nil {
 		if gc != nil {
 			defer gc()
 		}
 		return err
 	}
+	// defer setting `nerdctl/error` label in case of error
+	defer func() {
+		if err != nil {
+			containerutil.UpdateErrorLabel(ctx, c, err)
+		}
+	}()
 
 	id := c.ID()
 	if rm && !flagD {
 		defer func() {
+			// NOTE: OCI hooks (which are used for CNI network setup/teardown on Linux)
+			// are not currently supported on Windows, so we must explicitly call
+			// network setup/cleanup from the main nerdctl executable.
+			if runtime.GOOS == "windows" {
+				if err := netManager.CleanupNetworking(ctx, c); err != nil {
+					logrus.Warnf("failed to clean up container networking: %s", err)
+				}
+			}
 			if err := container.RemoveContainer(ctx, c, globalOptions, true, true); err != nil {
 				logrus.WithError(err).Warnf("failed to remove container %s", id)
 			}
@@ -406,7 +431,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 }
 
 // FIXME: split to smaller functions
-func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions types.GlobalCommandOptions, args []string, platform string, flagI, flagT, flagD bool) (containerd.Container, func(), error) {
+func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd.Client, netManager containerutil.NetworkOptionsManager, globalOptions types.GlobalCommandOptions, args []string, platform string, flagI, flagT, flagD bool) (containerd.Container, func(), error) {
 	// simulate the behavior of double dash
 	newArg := []string{}
 	if len(args) >= 2 && args[1] == "--" {
@@ -439,7 +464,7 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 		return nil, nil, err
 	}
 
-	stateDir, err := getContainerStateDirPath(cmd, globalOptions, dataStore, id)
+	stateDir, err := containerutil.ContainerStateDirPath(globalOptions, dataStore, id)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -577,52 +602,40 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 	}
 	cOpts = append(cOpts, withStop(stopSignal, stopTimeout, ensuredImage))
 
-	hostname := id[0:12]
-	customHostname, err := cmd.Flags().GetString("hostname")
+	err = netManager.VerifyNetworkOptions(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to verify networking settings: %s", err)
 	}
 
-	uts, err := cmd.Flags().GetString("uts")
+	netOpts, netNewContainerOpts, err := netManager.ContainerNetworkingOpts(ctx, id)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to generate networking spec options: %s", err)
 	}
-
-	if customHostname != "" {
-		// Docker considers this a validation error so keep compat.
-		if uts != "" {
-			return nil, nil, errors.New("conflicting options: hostname and UTS mode")
-		}
-		hostname = customHostname
-	}
-	if uts == "" {
-		opts = append(opts, oci.WithHostname(hostname))
-		internalLabels.hostname = hostname
-		// `/etc/hostname` does not exist on FreeBSD
-		if runtime.GOOS == "linux" {
-			hostnamePath := filepath.Join(stateDir, "hostname")
-			if err := os.WriteFile(hostnamePath, []byte(hostname+"\n"), 0644); err != nil {
-				return nil, nil, err
-			}
-			opts = append(opts, withCustomEtcHostname(hostnamePath))
-		}
-	}
-
-	netOpts, netSlice, ipAddress, ports, macAddress, err := generateNetOpts(cmd, globalOptions, dataStore, stateDir, globalOptions.Namespace, id)
-	if err != nil {
-		return nil, nil, err
-	}
-	internalLabels.networks = netSlice
-	internalLabels.ipAddress = ipAddress
-	internalLabels.ports = ports
-	internalLabels.macAddress = macAddress
 	opts = append(opts, netOpts...)
+	cOpts = append(cOpts, netNewContainerOpts...)
 
-	hookOpt, err := withNerdctlOCIHook(cmd, id)
+	netLabelOpts, err := netManager.InternalNetworkingOptionLabels(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to generate internal networking labels: %s", err)
 	}
-	opts = append(opts, hookOpt)
+	// TODO(aznashwan): more formal way to load net opts into internalLabels:
+	internalLabels.hostname = netLabelOpts.Hostname
+	internalLabels.ports = netLabelOpts.PortMappings
+	internalLabels.ipAddress = netLabelOpts.IPAddress
+	internalLabels.networks = netLabelOpts.NetworkSlice
+	internalLabels.macAddress = netLabelOpts.MACAddress
+
+	// NOTE: OCI hooks are currently not supported on Windows so we skip setting them altogether.
+	// The OCI hooks we define (whose logic can be found in pkg/ocihook) primarily
+	// perform network setup and teardown when using CNI networking.
+	// On Windows, we are forced to set up and tear down the networking from within nerdctl.
+	if runtime.GOOS != "windows" {
+		hookOpt, err := withNerdctlOCIHook(cmd, id)
+		if err != nil {
+			return nil, nil, err
+		}
+		opts = append(opts, hookOpt)
+	}
 
 	user, err := cmd.Flags().GetString("user")
 	if err != nil {
@@ -734,42 +747,57 @@ func createContainer(ctx context.Context, cmd *cobra.Command, client *containerd
 
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)
+
 	cOpts = append(cOpts, spec)
 
-	container, err := client.NewContainer(ctx, id, cOpts...)
-	if err != nil {
+	container, containerErr := client.NewContainer(ctx, id, cOpts...)
+	var netSetupErr error
+	// NOTE: on non-Windows platforms, network setup is performed by OCI hooks.
+	// Seeing as though Windows does not currently support OCI hooks, we must explicitly
+	// perform network setup/teardown in the main nerdctl executable.
+	if containerErr == nil && runtime.GOOS == "windows" {
+		netSetupErr = netManager.SetupNetworking(ctx, id)
+		logrus.WithError(netSetupErr).Warnf("networking setup error has occurred")
+	}
+
+	if containerErr != nil || netSetupErr != nil {
 		gcContainer := func() {
-			var isErr bool
-			if errE := os.RemoveAll(stateDir); errE != nil {
-				isErr = true
+			if containerErr == nil {
+				netGcErr := netManager.CleanupNetworking(ctx, container)
+				if netGcErr != nil {
+					logrus.WithError(netGcErr).Warnf("failed to revert container %q networking settings", id)
+				}
 			}
+
+			if rmErr := os.RemoveAll(stateDir); rmErr != nil {
+				logrus.WithError(rmErr).Warnf("failed to remove container %q state dir %q", id, stateDir)
+			}
+
 			if name != "" {
 				var errE error
 				if containerNameStore, errE = namestore.New(dataStore, globalOptions.Namespace); errE != nil {
-					isErr = true
+					logrus.WithError(errE).Warnf("failed to instantiate container name store during cleanup for container %q", id)
 				}
 				if errE = containerNameStore.Release(name, id); errE != nil {
-					isErr = true
+					logrus.WithError(errE).Warnf("failed to release container name store for container %q (%s)", name, id)
 				}
-
-			}
-			if isErr {
-				logrus.Warnf("failed to remove container %q", id)
 			}
 		}
-		return nil, gcContainer, err
+
+		returnedError := containerErr
+		if netSetupErr != nil {
+			returnedError = netSetupErr // mutually exclusive
+		}
+		return nil, gcContainer, returnedError
 	}
+
 	return container, nil, nil
 }
 
 // When refactor `nerdctl run`, this func should be removed and replaced by
 // creating a `PullCommandOptions` directly from `RunCommandOptions`.
 func processPullCommandFlagsInRun(cmd *cobra.Command) (types.ImagePullOptions, error) {
-	verifier, err := cmd.Flags().GetString("verify")
-	if err != nil {
-		return types.ImagePullOptions{}, err
-	}
-	cosignKey, err := cmd.Flags().GetString("cosign-key")
+	imageVerifyOptions, err := processImageVerifyOptions(cmd)
 	if err != nil {
 		return types.ImagePullOptions{}, err
 	}
@@ -778,11 +806,10 @@ func processPullCommandFlagsInRun(cmd *cobra.Command) (types.ImagePullOptions, e
 		return types.ImagePullOptions{}, err
 	}
 	return types.ImagePullOptions{
-		Verify:      verifier,
-		CosignKey:   cosignKey,
-		IPFSAddress: ipfsAddressStr,
-		Stdout:      cmd.OutOrStdout(),
-		Stderr:      cmd.ErrOrStderr(),
+		VerifyOptions: imageVerifyOptions,
+		IPFSAddress:   ipfsAddressStr,
+		Stdout:        cmd.OutOrStdout(),
+		Stderr:        cmd.ErrOrStderr(),
 	}, nil
 }
 
@@ -972,17 +999,6 @@ func withNerdctlOCIHook(cmd *cobra.Command, id string) (oci.SpecOpts, error) {
 		})
 		return nil
 	}, nil
-}
-
-func getContainerStateDirPath(cmd *cobra.Command, globalOptions types.GlobalCommandOptions, dataStore, id string) (string, error) {
-
-	if globalOptions.Namespace == "" {
-		return "", errors.New("namespace is required")
-	}
-	if strings.Contains(globalOptions.Namespace, "/") {
-		return "", errors.New("namespace with '/' is unsupported")
-	}
-	return filepath.Join(dataStore, "containers", globalOptions.Namespace, id), nil
 }
 
 func withContainerLabels(cmd *cobra.Command) ([]containerd.NewContainerOpts, error) {

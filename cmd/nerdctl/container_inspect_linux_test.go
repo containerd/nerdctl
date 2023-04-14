@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
@@ -153,4 +154,57 @@ func TestContainerInspectContainsLabel(t *testing.T) {
 
 	assert.Equal(base.T, "foo", lbs["foo"])
 	assert.Equal(base.T, "bar", lbs["bar"])
+}
+
+func TestContainerInspectState(t *testing.T) {
+	t.Parallel()
+	testContainer := testutil.Identifier(t)
+	base := testutil.NewBase(t)
+
+	type testCase struct {
+		name, containerName, cmd string
+		want                     dockercompat.ContainerState
+	}
+	// nerdctl: run error produces a nil Task, so the Status is empty because Status comes from Task.
+	// docker : run error gives => `Status=created` as  in docker there is no a separation between container and Task.
+	errStatus := ""
+	if base.Target == testutil.Docker {
+		errStatus = "created"
+	}
+	testCases := []testCase{
+		{
+			name:          "inspect State with error",
+			containerName: fmt.Sprintf("%s-fail", testContainer),
+			cmd:           "aa",
+			want: dockercompat.ContainerState{
+				Error:  "executable file not found in $PATH",
+				Status: errStatus,
+			},
+		},
+		{
+			name:          "inspect State without error",
+			containerName: fmt.Sprintf("%s-success", testContainer),
+			cmd:           "ls",
+			want: dockercompat.ContainerState{
+				Error:  "",
+				Status: "exited",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			defer base.Cmd("rm", "-f", tc.containerName).Run()
+			if tc.want.Error != "" {
+				base.Cmd("run", "--name", tc.containerName, testutil.AlpineImage, tc.cmd).AssertFail()
+			} else {
+				base.Cmd("run", "--name", tc.containerName, testutil.AlpineImage, tc.cmd).AssertOK()
+			}
+			inspect := base.InspectContainer(tc.containerName)
+			assert.Assert(t, strings.Contains(inspect.State.Error, tc.want.Error), fmt.Sprintf("expected: %s, actual: %s", tc.want.Error, inspect.State.Error))
+			assert.Equal(base.T, inspect.State.Status, tc.want.Status)
+		})
+	}
+
 }

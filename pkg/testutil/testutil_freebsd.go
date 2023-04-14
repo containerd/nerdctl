@@ -16,4 +16,13 @@
 
 package testutil
 
-const CommonImage = "docker.io/knast/freebsd:13-STABLE"
+const (
+	CommonImage = "docker.io/knast/freebsd:13-STABLE"
+
+	// This error string is expected when attempting to connect to a TCP socket
+	// for a service which actively refuses the connection.
+	// (e.g. attempting to connect using http to an https endpoint).
+	// It should be "connection refused" as per the TCP RFC.
+	// https://www.rfc-editor.org/rfc/rfc793
+	ExpectedConnectionRefusedError = "connection refused"
+)

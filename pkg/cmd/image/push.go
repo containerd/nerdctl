@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
+	"github.com/containerd/containerd/reference"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/nerdctl/pkg/api/types"
@@ -45,6 +46,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Push pushes an image specified by `rawRef`.
 func Push(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePushOptions) error {
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
 		if scheme != "ipfs" {
@@ -116,7 +118,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 	}
 
 	pushFunc := func(r remotes.Resolver) error {
-		return push.Push(ctx, client, r, options.Stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts)
+		return push.Push(ctx, client, r, options.Stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts, options.Quiet)
 	}
 
 	var dOpts []dockerconfigresolver.Opt
@@ -148,34 +150,23 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		return err
 	}
 
-	switch options.Sign {
-	case "cosign":
-
-		if !options.GOptions.Experimental {
-			return fmt.Errorf("cosign only work with enable experimental feature")
-		}
-
-		err = signutil.SignCosign(rawRef, options.CosignKey)
-		if err != nil {
-			return err
-		}
-	case "notation":
-
-		if !options.GOptions.Experimental {
-			return fmt.Errorf("notation only work with enable experimental feature")
-		}
-
-		err = signutil.SignNotation(rawRef, options.NotationKeyName)
-		if err != nil {
-			return err
-		}
-	case "none":
-		logrus.Debugf("signing process skipped")
-	default:
-		return fmt.Errorf("no signers found: %s", options.Sign)
-
+	img, err := client.ImageService().Get(ctx, pushRef)
+	if err != nil {
+		return err
 	}
-
+	refSpec, err := reference.Parse(pushRef)
+	if err != nil {
+		return err
+	}
+	signRef := fmt.Sprintf("%s@%s", refSpec.String(), img.Target.Digest.String())
+	if err = signutil.Sign(signRef,
+		options.GOptions.Experimental,
+		options.SignOptions); err != nil {
+		return err
+	}
+	if options.Quiet {
+		fmt.Fprintln(options.Stdout, ref)
+	}
 	return nil
 }
 

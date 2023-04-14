@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -31,10 +32,12 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/runtime/restart"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/nsutil"
 	"github.com/containerd/nerdctl/pkg/portutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/signalutil"
@@ -107,6 +110,15 @@ func ContainerNetNSPath(ctx context.Context, c containerd.Container) (string, er
 func UpdateExplicitlyStoppedLabel(ctx context.Context, container containerd.Container, explicitlyStopped bool) error {
 	opt := containerd.WithAdditionalContainerLabels(map[string]string{
 		restart.ExplicitlyStoppedLabel: strconv.FormatBool(explicitlyStopped),
+	})
+	return container.Update(ctx, containerd.UpdateContainerOpts(opt))
+}
+
+// UpdateErrorLabel updates the "nerdctl/error"
+// label of the container according to the container error.
+func UpdateErrorLabel(ctx context.Context, container containerd.Container, err error) error {
+	opt := containerd.WithAdditionalContainerLabels(map[string]string{
+		labels.Error: err.Error(),
 	})
 	return container.Update(ctx, containerd.UpdateContainerOpts(opt))
 }
@@ -186,7 +198,13 @@ func GenerateSharingPIDOpts(ctx context.Context, targetCon containerd.Container)
 }
 
 // Start starts `container` with `attach` flag. If `attach` is true, it will attach to the container's stdio.
-func Start(ctx context.Context, container containerd.Container, flagA bool, client *containerd.Client) error {
+func Start(ctx context.Context, container containerd.Container, flagA bool, client *containerd.Client) (err error) {
+	// defer the storage of start error in the dedicated label
+	defer func() {
+		if err != nil {
+			UpdateErrorLabel(ctx, container, err)
+		}
+	}()
 	lab, err := container.Labels(ctx)
 	if err != nil {
 		return err
@@ -269,7 +287,13 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 }
 
 // Stop stops `container` by sending SIGTERM. If the container is not stopped after `timeout`, it sends a SIGKILL.
-func Stop(ctx context.Context, container containerd.Container, timeout *time.Duration) error {
+func Stop(ctx context.Context, container containerd.Container, timeout *time.Duration) (err error) {
+	// defer the storage of stop error in the dedicated label
+	defer func() {
+		if err != nil {
+			UpdateErrorLabel(ctx, container, err)
+		}
+	}()
 	if err := UpdateExplicitlyStoppedLabel(ctx, container, true); err != nil {
 		return err
 	}
@@ -437,4 +461,12 @@ func Unpause(ctx context.Context, client *containerd.Client, id string) error {
 	default:
 		return fmt.Errorf("container %s is not paused", id)
 	}
+}
+
+// Returns the path to the Nerdctl-managed state directory for the container with the given ID.
+func ContainerStateDirPath(globalOptions types.GlobalCommandOptions, dataStore, id string) (string, error) {
+	if err := nsutil.ValidateNamespaceName(globalOptions.Namespace); err != nil {
+		return "", fmt.Errorf("invalid namespace name %q for determining state dir of container %q: %s", globalOptions.Namespace, id, err)
+	}
+	return filepath.Join(dataStore, "containers", globalOptions.Namespace, id), nil
 }

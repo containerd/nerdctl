@@ -67,45 +67,48 @@ func TestCreateWithMACAddress(t *testing.T) {
 	}
 	for i, test := range tests {
 		containerName := fmt.Sprintf("%s_%d", tID, i)
-		macAddress, err := nettestutil.GenerateMACAddress()
-		if err != nil {
-			t.Errorf("failed to generate MAC address: %s", err)
-		}
-		if test.Expect == "" && !test.WantErr {
-			test.Expect = macAddress
-		}
-		t.Cleanup(func() {
-			base.Cmd("rm", "-f", containerName).Run()
-		})
-		cmd := base.Cmd("create", "--network", test.Network, "--mac-address", macAddress, "--name", containerName, testutil.CommonImage, "cat", "/sys/class/net/eth0/address")
-		if !test.WantErr {
-			cmd.AssertOK()
-			base.Cmd("start", containerName).AssertOK()
-			cmd = base.Cmd("logs", containerName)
-			cmd.AssertOK()
-			cmd.AssertOutContains(test.Expect)
-		} else {
-			if (testutil.GetTarget() == testutil.Docker && test.Network == networkIPvlan) || test.Network == "none" {
-				// 1. unlike nerdctl
-				// when using network ipvlan in Docker
-				// it delays fail on executing start command
-				// 2. start on network none will success in both
-				// nerdctl and Docker
+		testName := fmt.Sprintf("%s_container:%s_network:%s_expect:%s", tID, containerName, test.Network, test.Expect)
+		t.Run(testName, func(tt *testing.T) {
+			macAddress, err := nettestutil.GenerateMACAddress()
+			if err != nil {
+				tt.Errorf("failed to generate MAC address: %s", err)
+			}
+			if test.Expect == "" && !test.WantErr {
+				test.Expect = macAddress
+			}
+			tt.Cleanup(func() {
+				base.Cmd("rm", "-f", containerName).Run()
+			})
+			cmd := base.Cmd("create", "--network", test.Network, "--mac-address", macAddress, "--name", containerName, testutil.CommonImage, "cat", "/sys/class/net/eth0/address")
+			if !test.WantErr {
 				cmd.AssertOK()
-				cmd = base.Cmd("start", containerName)
-				if test.Network == "none" {
-					// we check the result on logs command
+				base.Cmd("start", containerName).AssertOK()
+				cmd = base.Cmd("logs", containerName)
+				cmd.AssertOK()
+				cmd.AssertOutContains(test.Expect)
+			} else {
+				if (testutil.GetTarget() == testutil.Docker && test.Network == networkIPvlan) || test.Network == "none" {
+					// 1. unlike nerdctl
+					// when using network ipvlan in Docker
+					// it delays fail on executing start command
+					// 2. start on network none will success in both
+					// nerdctl and Docker
 					cmd.AssertOK()
-					cmd = base.Cmd("logs", containerName)
+					cmd = base.Cmd("start", containerName)
+					if test.Network == "none" {
+						// we check the result on logs command
+						cmd.AssertOK()
+						cmd = base.Cmd("logs", containerName)
+					}
+				}
+				cmd.AssertCombinedOutContains(test.Expect)
+				if test.Network == "none" {
+					cmd.AssertOK()
+				} else {
+					cmd.AssertFail()
 				}
 			}
-			cmd.AssertCombinedOutContains(test.Expect)
-			if test.Network == "none" {
-				cmd.AssertOK()
-			} else {
-				cmd.AssertFail()
-			}
-		}
+		})
 	}
 }
 

@@ -162,7 +162,7 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 	printer := &imagePrinter{
 		w:            w,
 		quiet:        options.Quiet,
-		noTrunc:      options.Quiet,
+		noTrunc:      options.NoTrunc,
 		digestsFlag:  digestsFlag,
 		namesFlag:    options.Names,
 		tmpl:         tmpl,

@@ -18,10 +18,13 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 )
 
@@ -49,4 +52,33 @@ services:
 		expected.Err = `Unknown runtime specified invalid`
 	}
 	c.Assert(expected)
+}
+
+// https://github.com/containerd/nerdctl/issues/1652
+func TestComposeUpBindCreateHostPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip(`FIXME: no support for Windows path: (error: "volume target must be an absolute path, got \"/mnt\")`)
+	}
+
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = fmt.Sprintf(`
+services:
+  test:
+    image: %s
+    command: sh -euxc "echo hi >/mnt/test"
+    volumes:
+      # ./foo should be automatically created
+      - ./foo:/mnt
+`, testutil.CommonImage)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down").AssertOK()
+	testFile := filepath.Join(comp.Dir(), "foo", "test")
+	testB, err := os.ReadFile(testFile)
+	assert.NilError(t, err)
+	assert.Equal(t, "hi\n", string(testB))
 }

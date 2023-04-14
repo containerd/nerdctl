@@ -149,8 +149,9 @@ type ImageInspectOptions struct {
 
 // ImagePushOptions specifies options for `nerdctl (image) push`.
 type ImagePushOptions struct {
-	Stdout   io.Writer
-	GOptions GlobalCommandOptions
+	Stdout      io.Writer
+	GOptions    GlobalCommandOptions
+	SignOptions ImageSignOptions
 	// Platforms convert content for a specific platform
 	Platforms []string
 	// AllPlatforms convert content for all platforms
@@ -162,31 +163,24 @@ type ImagePushOptions struct {
 	IpfsEnsureImage bool
 	// IpfsAddress multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)
 	IpfsAddress string
-	// Sign the image (none|cosign|notation)
-	Sign string
-	// CosignKey Path to the private key file, KMS URI or Kubernetes Secret for --sign=cosign
-	CosignKey string
-	// NotationKeyName Signing key name for a key previously added to notation's key list for --sign=notation
-	NotationKeyName string
+	// Suppress verbose output
+	Quiet bool
 	// AllowNondistributableArtifacts allow pushing non-distributable artifacts
 	AllowNondistributableArtifacts bool
 }
 
 // ImagePullOptions specifies options for `nerdctl (image) pull`.
 type ImagePullOptions struct {
-	Stdout   io.Writer
-	Stderr   io.Writer
-	GOptions GlobalCommandOptions
+	Stdout        io.Writer
+	Stderr        io.Writer
+	GOptions      GlobalCommandOptions
+	VerifyOptions ImageVerifyOptions
 	// Unpack the image for the current single platform (auto/true/false)
 	Unpack string
 	// Pull content for a specific platform
 	Platform []string
 	// Pull content for all platforms
 	AllPlatforms bool
-	// Verify the image (none|cosign|notation)
-	Verify string
-	// Path to the public key file, KMS, URI or Kubernetes Secret for --verify=cosign
-	CosignKey string
 	// Suppress verbose output
 	Quiet bool
 	// multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)
@@ -233,4 +227,24 @@ type ImageSaveOptions struct {
 	AllPlatforms bool
 	// Export content for a specific platform
 	Platform []string
+}
+
+// ImageSignOptions contains options for signing an image. It contains options from
+// all providers. The `provider“ field determines which provider is used.
+type ImageSignOptions struct {
+	// Provider used to sign the image (none|cosign|notation)
+	Provider string
+	// CosignKey Path to the private key file, KMS URI or Kubernetes Secret for --sign=cosign
+	CosignKey string
+	// NotationKeyName Signing key name for a key previously added to notation's key list for --sign=notation
+	NotationKeyName string
+}
+
+// ImageVerifyOptions contains options for verifying an image. It contains options from
+// all providers. The `provider“ field determines which provider is used.
+type ImageVerifyOptions struct {
+	// Provider used to verify the image (none|cosign|notation)
+	Provider string
+	// CosignKey Path to the public key file, KMS URI or Kubernetes Secret for --verify=cosign
+	CosignKey string
 }

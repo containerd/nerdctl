@@ -19,7 +19,6 @@ package compose
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -38,9 +37,9 @@ import (
 	"github.com/containerd/nerdctl/pkg/signutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 )
 
+// New returns a new *composer.Composer.
 func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, options composer.Options, stdout, stderr io.Writer) (*composer.Composer, error) {
 	cniEnv, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath, netutil.WithDefaultNetwork())
 	if err != nil {
@@ -130,33 +129,31 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 			return err
 		}
 
-		ref := imageName
-		if verifier, ok := ps.Unparsed.Extensions[serviceparser.ComposeVerify]; ok {
-			switch verifier {
-			case "cosign":
-				if !options.Experimental {
-					return fmt.Errorf("cosign only work with enable experimental feature")
-				}
-
-				// if key is given, use key mode, otherwise use keyless mode.
-				keyRef := ""
-				if keyVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]; ok {
-					keyRef = keyVal.(string)
-				}
-				ref, err = signutil.VerifyCosign(ctx, ref, keyRef, globalOptions.HostsDir)
-				if err != nil {
-					return err
-				}
-			case "none":
-				logrus.Debugf("verification process skipped")
-			default:
-				return fmt.Errorf("no verifier found: %s", verifier)
-			}
+		imageVerifyOptions := imageVerifyOptionsFromCompose(ps)
+		ref, err := signutil.Verify(ctx, imageName, globalOptions.HostsDir, globalOptions.Experimental, imageVerifyOptions)
+		if err != nil {
+			return err
 		}
-		_, err := imgutil.EnsureImage(ctx, client, stdout, stderr, globalOptions.Snapshotter, ref,
+
+		_, err = imgutil.EnsureImage(ctx, client, stdout, stderr, globalOptions.Snapshotter, ref,
 			pullMode, globalOptions.InsecureRegistry, globalOptions.HostsDir, ocispecPlatforms, nil, quiet)
 		return err
 	}
 
 	return composer.New(options, client)
+}
+
+func imageVerifyOptionsFromCompose(ps *serviceparser.Service) types.ImageVerifyOptions {
+	var opt types.ImageVerifyOptions
+	if verifier, ok := ps.Unparsed.Extensions[serviceparser.ComposeVerify]; ok {
+		opt.Provider = verifier.(string)
+	} else {
+		opt.Provider = "none"
+	}
+
+	// for cosign, if key is given, use key mode, otherwise use keyless mode.
+	if keyVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]; ok {
+		opt.CosignKey = keyVal.(string)
+	}
+	return opt
 }

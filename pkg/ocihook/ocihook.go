@@ -50,6 +50,9 @@ const (
 	// spec.State.Pid.
 	// This is mostly used for VM based runtime, where the spec.State PID does not
 	// necessarily lives in the created container networking namespace.
+	//
+	// On Windows, this label will contain the UUID of a namespace managed by
+	// the Host Compute Network Service (HCN) API.
 	NetworkNamespace = labels.Prefix + "network-namespace"
 )
 
@@ -160,6 +163,9 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 		o.cni, err = gocni.New(cniOpts...)
 		if err != nil {
 			return nil, err
+		}
+		if o.cni == nil {
+			logrus.Warnf("no CNI network could be loaded from the provided network names: %v", networks)
 		}
 	default:
 		return nil, fmt.Errorf("unexpected network type %v", netType)
@@ -428,14 +434,8 @@ func onCreateRuntime(opts *handlerOpts) error {
 					return fmt.Errorf("bypass4netnsd not running? (Hint: run `containerd-rootless-setuptool.sh install-bypass4netnsd`): %w", err)
 				}
 			} else if len(opts.ports) > 0 {
-				pm, err := rootlessutil.NewRootlessCNIPortManager(opts.rootlessKitClient)
-				if err != nil {
-					return err
-				}
-				for _, p := range opts.ports {
-					if err := pm.ExposePort(ctx, p); err != nil {
-						return err
-					}
+				if err := exposePortsRootless(ctx, opts.rootlessKitClient, opts.ports); err != nil {
+					return fmt.Errorf("failed to expose ports in rootless mode: %s", err)
 				}
 			}
 		}
@@ -463,14 +463,8 @@ func onPostStop(opts *handlerOpts) error {
 					return err
 				}
 			} else if len(opts.ports) > 0 {
-				pm, err := rootlessutil.NewRootlessCNIPortManager(opts.rootlessKitClient)
-				if err != nil {
-					return err
-				}
-				for _, p := range opts.ports {
-					if err := pm.UnexposePort(ctx, p); err != nil {
-						return err
-					}
+				if err := unexposePortsRootless(ctx, opts.rootlessKitClient, opts.ports); err != nil {
+					return fmt.Errorf("failed to unexpose ports in rootless mode: %s", err)
 				}
 			}
 		}
