@@ -41,6 +41,18 @@ func processImageVerifyOptions(cmd *cobra.Command) (opt types.ImageVerifyOptions
 	if opt.CosignKey, err = cmd.Flags().GetString("cosign-key"); err != nil {
 		return
 	}
+	if opt.CosignCertificateIdentity, err = cmd.Flags().GetString("cosign-certificate-identity"); err != nil {
+		return
+	}
+	if opt.CosignCertificateIdentityRegexp, err = cmd.Flags().GetString("cosign-certificate-identity-regexp"); err != nil {
+		return
+	}
+	if opt.CosignCertificateOidcIssuer, err = cmd.Flags().GetString("cosign-certificate-oidc-issuer"); err != nil {
+		return
+	}
+	if opt.CosignCertificateOidcIssuerRegexp, err = cmd.Flags().GetString("cosign-certificate-oidc-issuer-regexp"); err != nil {
+		return
+	}
 	return
 }
 

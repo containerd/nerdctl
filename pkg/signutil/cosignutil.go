@@ -19,6 +19,7 @@ package signutil
 import (
 	"bufio"
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"strings"
@@ -65,7 +66,9 @@ func SignCosign(rawRef string, keyRef string) error {
 
 // VerifyCosign verifies an image(`rawRef`) with a cosign public key(`keyRef`)
 // `hostsDirs` are used to resolve image `rawRef`
-func VerifyCosign(ctx context.Context, rawRef string, keyRef string, hostsDirs []string) (string, error) {
+// Either --cosign-certificate-identity or --cosign-certificate-identity-regexp and either --cosign-certificate-oidc-issuer or --cosign-certificate-oidc-issuer-regexp must be set for keyless flows.
+func VerifyCosign(ctx context.Context, rawRef string, keyRef string, hostsDirs []string,
+	certIdentity string, certIdentityRegexp string, certOidcIssuer string, certOidcIssuerRegexp string) (string, error) {
 	digest, err := imgutil.ResolveDigest(ctx, rawRef, false, hostsDirs)
 	if err != nil {
 		logrus.WithError(err).Errorf("unable to resolve digest for an image %s: %v", rawRef, err)
@@ -92,6 +95,24 @@ func VerifyCosign(ctx context.Context, rawRef string, keyRef string, hostsDirs [
 	if keyRef != "" {
 		cosignCmd.Args = append(cosignCmd.Args, "--key", keyRef)
 	} else {
+		if certIdentity == "" && certIdentityRegexp == "" {
+			return ref, errors.New("--cosign-certificate-identity or --cosign-certificate-identity-regexp is required for Cosign verification in keyless mode")
+		}
+		if certIdentity != "" {
+			cosignCmd.Args = append(cosignCmd.Args, "--certificate-identity", certIdentity)
+		}
+		if certIdentityRegexp != "" {
+			cosignCmd.Args = append(cosignCmd.Args, "--certificate-identity-regexp", certIdentityRegexp)
+		}
+		if certOidcIssuer == "" && certOidcIssuerRegexp == "" {
+			return ref, errors.New("--cosign-certificate-oidc-issuer or --cosign-certificate-oidc-issuer-regexp is required for Cosign verification in keyless mode")
+		}
+		if certOidcIssuer != "" {
+			cosignCmd.Args = append(cosignCmd.Args, "--certificate-oidc-issuer", certOidcIssuer)
+		}
+		if certOidcIssuerRegexp != "" {
+			cosignCmd.Args = append(cosignCmd.Args, "--certificate-oidc-issuer-regexp", certOidcIssuerRegexp)
+		}
 		cosignCmd.Env = append(cosignCmd.Env, "COSIGN_EXPERIMENTAL=true")
 	}
 

@@ -59,7 +59,7 @@ func Verify(ctx context.Context, rawRef string, hostsDirs []string, experimental
 			return "", fmt.Errorf("cosign only work with enable experimental feature")
 		}
 
-		if ref, err = VerifyCosign(ctx, rawRef, options.CosignKey, hostsDirs); err != nil {
+		if ref, err = VerifyCosign(ctx, rawRef, options.CosignKey, hostsDirs, options.CosignCertificateIdentity, options.CosignCertificateIdentityRegexp, options.CosignCertificateOidcIssuer, options.CosignCertificateOidcIssuerRegexp); err != nil {
 			return "", err
 		}
 	case "notation":
