@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Microsoft/go-winio v0.6.1
 	github.com/Microsoft/hcsshim v0.10.0-rc.7
-	github.com/compose-spec/compose-go v1.13.2
+	github.com/compose-spec/compose-go v1.13.3
 	github.com/containerd/accelerated-container-image v0.6.1
 	github.com/containerd/cgroups v1.1.0
 	github.com/containerd/console v1.0.3
@@ -83,7 +83,7 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/imdario/mergo v0.3.14 // indirect
+	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.16.4
 	github.com/klauspost/cpuid/v2 v2.1.1 // indirect
