@@ -134,6 +134,7 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 					FsVersion:        nydusOpts.FsVersion,
 					ChunkDictPath:    nydusOpts.ChunkDictPath,
 					PrefetchPatterns: nydusOpts.PrefetchPatterns,
+					OCI:              true,
 				}),
 			}
 			convertOpts = append(convertOpts, converter.WithIndexConvertFunc(
