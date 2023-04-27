@@ -37,10 +37,14 @@ import (
 
 // ComposeExtensionKey defines fields used to implement extension features.
 const (
-	ComposeVerify           = "x-nerdctl-verify"
-	ComposeCosignPublicKey  = "x-nerdctl-cosign-public-key"
-	ComposeSign             = "x-nerdctl-sign"
-	ComposeCosignPrivateKey = "x-nerdctl-cosign-private-key"
+	ComposeVerify                            = "x-nerdctl-verify"
+	ComposeCosignPublicKey                   = "x-nerdctl-cosign-public-key"
+	ComposeSign                              = "x-nerdctl-sign"
+	ComposeCosignPrivateKey                  = "x-nerdctl-cosign-private-key"
+	ComposeCosignCertificateIdentity         = "x-nerdctl-cosign-certificate-identity"
+	ComposeCosignCertificateIdentityRegexp   = "x-nerdctl-cosign-certificate-identity-regexp"
+	ComposeCosignCertificateOidcIssuer       = "x-nerdctl-cosign-certificate-oidc-issuer"
+	ComposeCosignCertificateOidcIssuerRegexp = "x-nerdctl-cosign-certificate-oidc-issuer-regexp"
 )
 
 func warnUnknownFields(svc types.ServiceConfig) {
