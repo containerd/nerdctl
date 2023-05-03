@@ -329,7 +329,7 @@ func statsAction(cmd *cobra.Command, args []string) error {
 					if err := tmpl.Execute(&b, rc); err != nil {
 						break
 					}
-					if _, err = fmt.Fprintf(cmd.OutOrStdout(), b.String()+"\n"); err != nil {
+					if _, err = fmt.Fprintln(cmd.OutOrStdout(), b.String()); err != nil {
 						break
 					}
 				} else {
