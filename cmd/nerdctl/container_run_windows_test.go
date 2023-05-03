@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"golang.org/x/sys/windows/svc/mgr"
 	"gotest.tools/v3/assert"
 )
 
@@ -72,21 +71,10 @@ func TestRunProcessIsolated(t *testing.T) {
 func TestRunHyperVContainer(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	// Hyper-V Virtual Machine Management service
-	hypervServiceName := "vmms"
 
-	m, err := mgr.Connect()
-	if err != nil {
-		t.Fatalf("unable to access Windows service control manager: %s", err)
-	}
-	defer m.Disconnect()
-
-	s, err := m.OpenService(hypervServiceName)
-	// hyperv service is not present, hyperv is not enabled
-	if err != nil {
+	if !testutil.HyperVSupported() {
 		t.Skip("HyperV is not enabled, skipping test")
 	}
-	defer s.Close()
 
 	// hyperv must not be in the name for this test, the output is parsed for it
 	containerName := "nerdctl-testwcowcontainer"
@@ -105,6 +93,7 @@ func TestRunProcessContainer(t *testing.T) {
 	base.Cmd("run", "--isolation", "process", "--name", containerName, testutil.WindowsNano).Out()
 	defer base.Cmd("rm", "-f", containerName).AssertOK()
 	inspectOutput := base.Cmd("container", "inspect", "--mode", "native", containerName).Out()
+	t.Log(inspectOutput)
 
 	assert.Assert(t, !strings.Contains(inspectOutput, "hyperv"))
 }
