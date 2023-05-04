@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
 	"errors"
@@ -49,7 +49,7 @@ func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([
 		switch k {
 		case "seccomp", "apparmor", "no-new-privileges", "privileged-without-host-devices":
 		default:
-			logrus.Warnf("Unknown security-opt: %q", k)
+			logrus.Warnf("unknown security-opt: %q", k)
 		}
 	}
 	var opts []oci.SpecOpts
@@ -73,7 +73,7 @@ func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([
 		}
 		if aaProfile != "unconfined" {
 			if !canApplyExistingProfile {
-				logrus.Warnf("The host does not support AppArmor. Ignoring profile %q", aaProfile)
+				logrus.Warnf("the host does not support AppArmor. Ignoring profile %q", aaProfile)
 			} else {
 				opts = append(opts, apparmor.WithProfile(aaProfile))
 			}
@@ -127,7 +127,7 @@ func canonicalizeCapName(s string) string {
 		s = "CAP_" + s
 	}
 	if !isKnownCapName(s) {
-		logrus.Warnf("Unknown capability name %q", s)
+		logrus.Warnf("unknown capability name %q", s)
 		// Not a fatal error, because runtime might be aware of this cap
 	}
 	return s

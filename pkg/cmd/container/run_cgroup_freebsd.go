@@ -14,13 +14,13 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
 	"github.com/containerd/containerd/oci"
-	"github.com/spf13/cobra"
+	"github.com/containerd/nerdctl/pkg/api/types"
 )
 
-func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
+func generateCgroupOpts(id string, options types.ContainerCreateOptions) ([]oci.SpecOpts, error) {
 	return []oci.SpecOpts{}, nil
 }

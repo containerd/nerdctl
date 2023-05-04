@@ -103,7 +103,7 @@ func init() {
 //
 // Should be called only if argv1 == MagicArgv1.
 func Main(argv2 string) error {
-	fn, err := getLoggerFunc(argv2)
+	fn, err := loggerFunc(argv2)
 	if err != nil {
 		return err
 	}
@@ -115,6 +115,7 @@ func Main(argv2 string) error {
 type LogConfig struct {
 	Driver string            `json:"driver"`
 	Opts   map[string]string `json:"opts,omitempty"`
+	LogURI string            `json:"-"`
 }
 
 // LogConfigFilePath returns the path of log-config.json
@@ -170,7 +171,7 @@ func loggingProcessAdapter(driver Driver, dataStore string, config *logging.Conf
 	return driver.PostProcess()
 }
 
-func getLoggerFunc(dataStore string) (logging.LoggerFunc, error) {
+func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 	if dataStore == "" {
 		return nil, errors.New("got empty data store")
 	}

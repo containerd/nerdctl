@@ -84,7 +84,7 @@ func (m *cniNetworkManager) ContainerNetworkingOpts(_ context.Context, container
 		return nil, nil, err
 	}
 
-	stateDir, err := ContainerStateDirPath(m.globalOptions, dataStore, containerID)
+	stateDir, err := ContainerStateDirPath(m.globalOptions.Namespace, dataStore, containerID)
 	if err != nil {
 		return nil, nil, err
 	}

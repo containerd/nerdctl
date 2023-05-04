@@ -14,13 +14,28 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
+	"context"
+
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/spf13/cobra"
+	"github.com/containerd/nerdctl/pkg/api/types"
 )
 
-func generateCgroupOpts(cmd *cobra.Command, id string) ([]oci.SpecOpts, error) {
+func WithoutRunMount() func(ctx context.Context, client oci.Client, c *containers.Container, s *oci.Spec) error {
+	// not valid on freebsd
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error { return nil }
+}
+
+func setPlatformOptions(
+	ctx context.Context,
+	client *containerd.Client,
+	id, uts string,
+	internalLabels *internalLabels,
+	options types.ContainerCreateOptions,
+) ([]oci.SpecOpts, error) {
 	return []oci.SpecOpts{}, nil
 }

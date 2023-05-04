@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
 	"context"
@@ -32,6 +32,7 @@ import (
 	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/continuity/fs"
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/cmd/volume"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/mountutil"
@@ -40,9 +41,7 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/opencontainers/runtime-spec/specs-go"
-
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 )
 
 // copy from https://github.com/containerd/containerd/blob/v1.6.0-rc.1/pkg/cri/opts/spec_linux.go#L129-L151
@@ -78,26 +77,17 @@ func withMounts(mounts []specs.Mount) oci.SpecOpts {
 }
 
 // parseMountFlags parses --volume, --mount and --tmpfs.
-func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*mountutil.Processed, error) {
+func parseMountFlags(volStore volumestore.VolumeStore, options types.ContainerCreateOptions) ([]*mountutil.Processed, error) {
 	var parsed []*mountutil.Processed //nolint:prealloc
-	flagVSlice, err := cmd.Flags().GetStringArray("volume")
-	if err != nil {
-		return nil, err
-	}
-	for _, v := range strutil.DedupeStrSlice(flagVSlice) {
+	for _, v := range strutil.DedupeStrSlice(options.Volume) {
 		x, err := mountutil.ProcessFlagV(v, volStore)
 		if err != nil {
-			return nil, fmt.Errorf("error while parsing %q: %w", v, err)
+			return nil, err
 		}
 		parsed = append(parsed, x)
 	}
 
-	// tmpfs needs to be StringArray, not StringSlice, to prevent "/foo:size=64m,exec" from being split to {"/foo:size=64m", "exec"}
-	tmpfsSlice, err := cmd.Flags().GetStringArray("tmpfs")
-	if err != nil {
-		return nil, err
-	}
-	for _, v := range strutil.DedupeStrSlice(tmpfsSlice) {
+	for _, v := range strutil.DedupeStrSlice(options.Tmpfs) {
 		x, err := mountutil.ProcessFlagTmpfs(v)
 		if err != nil {
 			return nil, err
@@ -105,11 +95,7 @@ func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*m
 		parsed = append(parsed, x)
 	}
 
-	mountsSlice, err := cmd.Flags().GetStringArray("mount")
-	if err != nil {
-		return nil, err
-	}
-	for _, v := range strutil.DedupeStrSlice(mountsSlice) {
+	for _, v := range strutil.DedupeStrSlice(options.Mount) {
 		x, err := mountutil.ProcessFlagMount(v, volStore)
 		if err != nil {
 			return nil, err
@@ -122,8 +108,9 @@ func parseMountFlags(cmd *cobra.Command, volStore volumestore.VolumeStore) ([]*m
 
 // generateMountOpts generates volume-related mount opts.
 // Other mounts such as procfs mount are not handled here.
-func generateMountOpts(ctx context.Context, cmd *cobra.Command, client *containerd.Client, globalOptions types.GlobalCommandOptions, ensuredImage *imgutil.EnsuredImage) ([]oci.SpecOpts, []string, []*mountutil.Processed, error) {
-	volStore, err := getVolumeStore(globalOptions)
+func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredImage *imgutil.EnsuredImage, options types.ContainerCreateOptions) ([]oci.SpecOpts, []string, []*mountutil.Processed, error) {
+	// volume store is corresponds to a directory like `/var/lib/nerdctl/1935db59/volumes/default`
+	volStore, err := volume.Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -141,7 +128,7 @@ func generateMountOpts(ctx context.Context, cmd *cobra.Command, client *containe
 	if ensuredImage != nil {
 		imageVolumes = ensuredImage.ImageConfig.Volumes
 
-		if err := ensuredImage.Image.Unpack(ctx, globalOptions.Snapshotter); err != nil {
+		if err := ensuredImage.Image.Unpack(ctx, options.GOptions.Snapshotter); err != nil {
 			return nil, nil, nil, fmt.Errorf("error unpacking image: %w", err)
 		}
 
@@ -151,7 +138,7 @@ func generateMountOpts(ctx context.Context, cmd *cobra.Command, client *containe
 		}
 		chainID := identity.ChainID(diffIDs).String()
 
-		s := client.SnapshotService(globalOptions.Snapshotter)
+		s := client.SnapshotService(options.GOptions.Snapshotter)
 		tempDir, err = os.MkdirTemp("", "initialC")
 		if err != nil {
 			return nil, nil, nil, err
@@ -220,7 +207,7 @@ func generateMountOpts(ctx context.Context, cmd *cobra.Command, client *containe
 		}
 	}
 
-	if parsed, err := parseMountFlags(cmd, volStore); err != nil {
+	if parsed, err := parseMountFlags(volStore, options); err != nil {
 		return nil, nil, nil, err
 	} else if len(parsed) > 0 {
 		ociMounts := make([]specs.Mount, len(parsed))

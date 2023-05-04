@@ -26,6 +26,7 @@ import (
 	"github.com/containerd/cgroups"
 	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/continuity/testutil/loopback"
+	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
@@ -253,7 +254,7 @@ func TestParseDevice(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.s)
-		devPath, mode, err := parseDevice(tc.s)
+		devPath, mode, err := container.ParseDevice(tc.s)
 		if tc.err == "" {
 			assert.NilError(t, err)
 			assert.Equal(t, tc.expectedDevPath, devPath)

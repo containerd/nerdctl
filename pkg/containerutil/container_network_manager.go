@@ -221,7 +221,7 @@ func (m *containerNetworkManager) getContainerNetworkFilePaths(containerID strin
 	if err != nil {
 		return "", "", "", err
 	}
-	conStateDir, err := ContainerStateDirPath(m.globalOptions, dataStore, containerID)
+	conStateDir, err := ContainerStateDirPath(m.globalOptions.Namespace, dataStore, containerID)
 	if err != nil {
 		return "", "", "", err
 	}
@@ -466,7 +466,7 @@ func writeEtcHostnameForContainer(globalOptions types.GlobalCommandOptions, host
 		return nil, err
 	}
 
-	stateDir, err := ContainerStateDirPath(globalOptions, dataStore, containerID)
+	stateDir, err := ContainerStateDirPath(globalOptions.Namespace, dataStore, containerID)
 	if err != nil {
 		return nil, err
 	}
