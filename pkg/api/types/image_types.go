@@ -230,7 +230,7 @@ type ImageSaveOptions struct {
 }
 
 // ImageSignOptions contains options for signing an image. It contains options from
-// all providers. The `provider“ field determines which provider is used.
+// all providers. The `provider` field determines which provider is used.
 type ImageSignOptions struct {
 	// Provider used to sign the image (none|cosign|notation)
 	Provider string
@@ -241,7 +241,7 @@ type ImageSignOptions struct {
 }
 
 // ImageVerifyOptions contains options for verifying an image. It contains options from
-// all providers. The `provider“ field determines which provider is used.
+// all providers. The `provider` field determines which provider is used.
 type ImageVerifyOptions struct {
 	// Provider used to verify the image (none|cosign|notation)
 	Provider string

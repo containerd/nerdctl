@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
 	"encoding/csv"
@@ -28,10 +28,11 @@ import (
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 )
 
-type gpuReq struct {
-	count        int
-	deviceIDs    []string
-	capabilities []string
+// GPUReq is a request for GPUs.
+type GPUReq struct {
+	Count        int
+	DeviceIDs    []string
+	Capabilities []string
 }
 
 func parseGPUOpts(value []string) (res []oci.SpecOpts, _ error) {
@@ -46,22 +47,22 @@ func parseGPUOpts(value []string) (res []oci.SpecOpts, _ error) {
 }
 
 func parseGPUOpt(value string) (oci.SpecOpts, error) {
-	req, err := parseGPUOptCSV(value)
+	req, err := ParseGPUOptCSV(value)
 	if err != nil {
 		return nil, err
 	}
 
 	var gpuOpts []nvidia.Opts
 
-	if len(req.deviceIDs) > 0 {
-		gpuOpts = append(gpuOpts, nvidia.WithDeviceUUIDs(req.deviceIDs...))
-	} else if req.count > 0 {
+	if len(req.DeviceIDs) > 0 {
+		gpuOpts = append(gpuOpts, nvidia.WithDeviceUUIDs(req.DeviceIDs...))
+	} else if req.Count > 0 {
 		var devices []int
-		for i := 0; i < req.count; i++ {
+		for i := 0; i < req.Count; i++ {
 			devices = append(devices, i)
 		}
 		gpuOpts = append(gpuOpts, nvidia.WithDevices(devices...))
-	} else if req.count < 0 {
+	} else if req.Count < 0 {
 		gpuOpts = append(gpuOpts, nvidia.WithAllDevices)
 	}
 
@@ -70,7 +71,7 @@ func parseGPUOpt(value string) (oci.SpecOpts, error) {
 		str2cap[string(c)] = c
 	}
 	var nvidiaCaps []nvidia.Capability
-	for _, c := range req.capabilities {
+	for _, c := range req.Capabilities {
 		if cap, isNvidiaCap := str2cap[c]; isNvidiaCap {
 			nvidiaCaps = append(nvidiaCaps, cap)
 		}
@@ -92,7 +93,8 @@ func parseGPUOpt(value string) (oci.SpecOpts, error) {
 	return nvidia.WithGPUs(gpuOpts...), nil
 }
 
-func parseGPUOptCSV(value string) (*gpuReq, error) {
+// ParseGPUOptCSV parses a GPU option from CSV.
+func ParseGPUOptCSV(value string) (*GPUReq, error) {
 	csvReader := csv.NewReader(strings.NewReader(value))
 	fields, err := csvReader.Read()
 	if err != nil {
@@ -100,7 +102,7 @@ func parseGPUOptCSV(value string) (*gpuReq, error) {
 	}
 
 	var (
-		req  gpuReq
+		req  GPUReq
 		seen = map[string]struct{}{}
 	)
 	for _, field := range fields {
@@ -113,7 +115,7 @@ func parseGPUOptCSV(value string) (*gpuReq, error) {
 
 		if len(parts) == 1 {
 			seen["count"] = struct{}{}
-			req.count, err = parseCount(key)
+			req.Count, err = parseCount(key)
 			if err != nil {
 				return nil, err
 			}
@@ -127,14 +129,14 @@ func parseGPUOptCSV(value string) (*gpuReq, error) {
 				return nil, fmt.Errorf("invalid driver %q: \"nvidia\" is only supported", value)
 			}
 		case "count":
-			req.count, err = parseCount(value)
+			req.Count, err = parseCount(value)
 			if err != nil {
 				return nil, err
 			}
 		case "device":
-			req.deviceIDs = strings.Split(value, ",")
+			req.DeviceIDs = strings.Split(value, ",")
 		case "capabilities":
-			req.capabilities = strings.Split(value, ",")
+			req.Capabilities = strings.Split(value, ",")
 		case "options":
 			// This option is allowed but not used for gpus.
 			// Please see also: https://github.com/moby/moby/pull/38828
@@ -143,11 +145,11 @@ func parseGPUOptCSV(value string) (*gpuReq, error) {
 		}
 	}
 
-	if req.count != 0 && len(req.deviceIDs) > 0 {
+	if req.Count != 0 && len(req.DeviceIDs) > 0 {
 		return nil, errors.New("cannot set both Count and DeviceIDs on device request")
 	}
-	if _, ok := seen["count"]; !ok && len(req.deviceIDs) == 0 {
-		req.count = 1
+	if _, ok := seen["count"]; !ok && len(req.DeviceIDs) == 0 {
+		req.Count = 1
 	}
 
 	return &req, nil

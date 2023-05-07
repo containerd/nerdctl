@@ -20,35 +20,26 @@ import (
 	gocni "github.com/containerd/go-cni"
 )
 
-// Struct defining networking-related options.
+// NetworkOptions struct defining networking-related options.
 type NetworkOptions struct {
-	// --net/--network=<net name> ...
+	// NetworkSlice specifies the networking mode for the container, default is "bridge"
 	NetworkSlice []string
-
-	// --mac-address=<MAC>
+	// MACAddress set container MAC address (e.g., 92:d0:c6:0a:29:33)
 	MACAddress string
-
-	// --ip=<container static IP>
+	// IPAddress set specific static IP address(es) to use
 	IPAddress string
-
-	// -h/--hostname=<container Hostname>
+	// Hostname set container host name
 	Hostname string
-
-	// --dns=<DNS host> ...
+	// DNSServers set custom DNS servers
 	DNSServers []string
-
-	// --dns-opt/--dns-option=<resolv.conf line> ...
+	// DNSResolvConfOptions set DNS options
 	DNSResolvConfOptions []string
-
-	// --dns-search=<domain name> ...
+	// DNSSearchDomains set custom DNS search domains
 	DNSSearchDomains []string
-
-	// --add-host=<host:IP> ...
+	// AddHost add a custom host-to-IP mapping (host:ip)
 	AddHost []string
-
-	// --uts=<Unix Time Sharing namespace>
+	// UTS namespace to use
 	UTSNamespace string
-
-	// -p/--publish=127.0.0.1:80:8080/tcp ...
+	// PortMappings specifies a list of ports to publish from the container to the host
 	PortMappings []gocni.PortMapping
 }

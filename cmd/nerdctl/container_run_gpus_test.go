@@ -19,6 +19,7 @@ package main
 import (
 	"testing"
 
+	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"gotest.tools/v3/assert"
 	is "gotest.tools/v3/assert/cmp"
 )
@@ -31,11 +32,11 @@ func TestParseGpusOptAll(t *testing.T) {
 		"count=all",
 		"count=-1",
 	} {
-		req, err := parseGPUOptCSV(testcase)
+		req, err := container.ParseGPUOptCSV(testcase)
 		assert.NilError(t, err)
-		assert.Equal(t, req.count, -1)
-		assert.Equal(t, len(req.deviceIDs), 0)
-		assert.Equal(t, len(req.capabilities), 0)
+		assert.Equal(t, req.Count, -1)
+		assert.Equal(t, len(req.DeviceIDs), 0)
+		assert.Equal(t, len(req.Capabilities), 0)
 	}
 }
 
@@ -48,10 +49,10 @@ func TestParseGpusOpts(t *testing.T) {
 		"driver=nvidia,\"capabilities=compute,utility\",count=1",
 		"\"capabilities=compute,utility\",count=1",
 	} {
-		req, err := parseGPUOptCSV(testcase)
+		req, err := container.ParseGPUOptCSV(testcase)
 		assert.NilError(t, err)
-		assert.Equal(t, req.count, 1)
-		assert.Equal(t, len(req.deviceIDs), 0)
-		assert.Check(t, is.DeepEqual(req.capabilities, []string{"compute", "utility"}))
+		assert.Equal(t, req.Count, 1)
+		assert.Equal(t, len(req.DeviceIDs), 0)
+		assert.Check(t, is.DeepEqual(req.Capabilities, []string{"compute", "utility"}))
 	}
 }

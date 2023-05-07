@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
 	"context"
@@ -25,15 +25,10 @@ import (
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/spf13/cobra"
 )
 
-func generateUlimitsOpts(cmd *cobra.Command) ([]oci.SpecOpts, error) {
+func generateUlimitsOpts(ulimits []string) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
-	ulimits, err := cmd.Flags().GetStringSlice("ulimit")
-	if err != nil {
-		return nil, err
-	}
 	ulimits = strutil.DedupeStrSlice(ulimits)
 	if len(ulimits) > 0 {
 		var rlimits []specs.POSIXRlimit

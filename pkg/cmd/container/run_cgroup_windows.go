@@ -14,27 +14,13 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
-	"github.com/spf13/cobra"
+	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/pkg/api/types"
 )
 
-func newVolumeCommand() *cobra.Command {
-	volumeCommand := &cobra.Command{
-		Annotations:   map[string]string{Category: Management},
-		Use:           "volume",
-		Short:         "Manage volumes",
-		RunE:          unknownSubcommandAction,
-		SilenceUsage:  true,
-		SilenceErrors: true,
-	}
-	volumeCommand.AddCommand(
-		newVolumeLsCommand(),
-		newVolumeInspectCommand(),
-		newVolumeCreateCommand(),
-		newVolumeRmCommand(),
-		newVolumePruneCommand(),
-	)
-	return volumeCommand
+func generateCgroupOpts(id string, options types.ContainerCreateOptions) ([]oci.SpecOpts, error) {
+	return []oci.SpecOpts{}, nil
 }

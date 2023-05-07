@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
 	"context"
@@ -69,7 +69,8 @@ func generateRestartOpts(ctx context.Context, client *containerd.Client, restart
 	return opts, nil
 }
 
-func updateContainerRestartPolicyLabel(ctx context.Context, client *containerd.Client, container containerd.Container, restartFlag string) error {
+// UpdateContainerRestartPolicyLabel updates the restart policy label of the container.
+func UpdateContainerRestartPolicyLabel(ctx context.Context, client *containerd.Client, container containerd.Container, restartFlag string) error {
 	if _, err := checkRestartCapabilities(ctx, client, restartFlag); err != nil {
 		return err
 	}

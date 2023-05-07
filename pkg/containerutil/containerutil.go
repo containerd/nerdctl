@@ -32,7 +32,6 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/runtime/restart"
-	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
@@ -463,10 +462,10 @@ func Unpause(ctx context.Context, client *containerd.Client, id string) error {
 	}
 }
 
-// Returns the path to the Nerdctl-managed state directory for the container with the given ID.
-func ContainerStateDirPath(globalOptions types.GlobalCommandOptions, dataStore, id string) (string, error) {
-	if err := nsutil.ValidateNamespaceName(globalOptions.Namespace); err != nil {
-		return "", fmt.Errorf("invalid namespace name %q for determining state dir of container %q: %s", globalOptions.Namespace, id, err)
+// ContainerStateDirPath returns the path to the Nerdctl-managed state directory for the container with the given ID.
+func ContainerStateDirPath(ns, dataStore, id string) (string, error) {
+	if err := nsutil.ValidateNamespaceName(ns); err != nil {
+		return "", fmt.Errorf("invalid namespace name %q for determining state dir of container %q: %s", ns, id, err)
 	}
-	return filepath.Join(dataStore, "containers", globalOptions.Namespace, id), nil
+	return filepath.Join(dataStore, "containers", ns, id), nil
 }

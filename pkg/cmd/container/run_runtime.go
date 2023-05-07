@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
 	"context"
@@ -25,31 +25,25 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/plugin"
 	runcoptions "github.com/containerd/containerd/runtime/v2/runc/options"
-	"github.com/containerd/nerdctl/pkg/api/types"
-	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 )
 
-func generateRuntimeCOpts(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) ([]containerd.NewContainerOpts, error) {
+func generateRuntimeCOpts(cgroupManager, runtimeStr string) ([]containerd.NewContainerOpts, error) {
 	runtime := plugin.RuntimeRuncV2
 	var (
 		runcOpts    runcoptions.Options
 		runtimeOpts interface{} = &runcOpts
 	)
-	if globalOptions.CgroupManager == "systemd" {
+	if cgroupManager == "systemd" {
 		runcOpts.SystemdCgroup = true
-	}
-	runtimeStr, err := cmd.Flags().GetString("runtime")
-	if err != nil {
-		return nil, err
 	}
 	if runtimeStr != "" {
 		if strings.HasPrefix(runtimeStr, "io.containerd.") || runtimeStr == "wtf.sbk.runj.v1" {
 			runtime = runtimeStr
 			if !strings.HasPrefix(runtimeStr, "io.containerd.runc.") {
-				if globalOptions.CgroupManager == "systemd" {
-					logrus.Warnf("cannot set cgroup manager to %q for runtime %q", globalOptions.CgroupManager, runtimeStr)
+				if cgroupManager == "systemd" {
+					logrus.Warnf("cannot set cgroup manager to %q for runtime %q", cgroupManager, runtimeStr)
 				}
 				runtimeOpts = nil
 			}
@@ -64,9 +58,9 @@ func generateRuntimeCOpts(cmd *cobra.Command, globalOptions types.GlobalCommandO
 
 // WithSysctls sets the provided sysctls onto the spec
 func WithSysctls(sysctls map[string]string) oci.SpecOpts {
-	return func(ctx context.Context, client oci.Client, c *containers.Container, s *runtimespec.Spec) error {
+	return func(ctx context.Context, client oci.Client, c *containers.Container, s *specs.Spec) error {
 		if s.Linux == nil {
-			s.Linux = &runtimespec.Linux{}
+			s.Linux = &specs.Linux{}
 		}
 		if s.Linux.Sysctl == nil {
 			s.Linux.Sysctl = make(map[string]string)

@@ -17,19 +17,8 @@
 package main
 
 import (
-	"context"
-
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/containers"
-	"github.com/containerd/containerd/oci"
-	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/spf13/cobra"
 )
-
-func WithoutRunMount() func(ctx context.Context, client oci.Client, c *containers.Container, s *oci.Spec) error {
-	// not valid on freebsd
-	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error { return nil }
-}
 
 func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	candidates := []string{}
@@ -38,15 +27,4 @@ func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 
 func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return nil, cobra.ShellCompDirectiveNoFileComp
-}
-
-func setPlatformOptions(
-	ctx context.Context,
-	cmd *cobra.Command,
-	client *containerd.Client,
-	_ types.GlobalCommandOptions,
-	id string,
-	internalLabels *internalLabels,
-) ([]oci.SpecOpts, error) {
-	return []oci.SpecOpts{}, nil
 }

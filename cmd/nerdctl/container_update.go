@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/containerd/pkg/cri/util"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
+	nerdctlContainer "github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/infoutil"
@@ -343,7 +344,7 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 		return err
 	}
 	if cmd.Flags().Changed("restart") && restart != "" {
-		if err := updateContainerRestartPolicyLabel(ctx, client, container, restart); err != nil {
+		if err := nerdctlContainer.UpdateContainerRestartPolicyLabel(ctx, client, container, restart); err != nil {
 			return err
 		}
 	}
