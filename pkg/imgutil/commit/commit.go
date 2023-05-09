@@ -214,8 +214,10 @@ func generateCommitImageConfig(ctx context.Context, container containerd.Contain
 	}
 	logrus.Debugf("generateCommitImageConfig(): arch=%q, os=%q", arch, os)
 	return ocispec.Image{
-		Architecture: arch,
-		OS:           os,
+		Platform: ocispec.Platform{
+			Architecture: arch,
+			OS:           os,
+		},
 
 		Created: &createdTime,
 		Author:  opts.Author,
