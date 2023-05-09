@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Microsoft/go-winio v0.6.1
-	github.com/Microsoft/hcsshim v0.10.0-rc.8
+	github.com/Microsoft/hcsshim v0.10.0-rc.7
 	github.com/compose-spec/compose-go v1.13.4
 	github.com/containerd/accelerated-container-image v0.6.2
 	github.com/containerd/cgroups v1.1.0
@@ -14,8 +14,8 @@ require (
 	github.com/containerd/continuity v0.3.0
 	github.com/containerd/go-cni v1.1.9
 	github.com/containerd/imgcrypt v1.1.7
-	github.com/containerd/nydus-snapshotter v0.8.0
-	github.com/containerd/stargz-snapshotter v0.14.3
+	github.com/containerd/nydus-snapshotter v0.6.1
+	github.com/containerd/stargz-snapshotter v0.13.0
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3
 	github.com/containerd/stargz-snapshotter/ipfs v0.14.3
 	github.com/containerd/typeurl/v2 v2.1.0
