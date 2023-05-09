@@ -155,5 +155,17 @@ func imageVerifyOptionsFromCompose(ps *serviceparser.Service) types.ImageVerifyO
 	if keyVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]; ok {
 		opt.CosignKey = keyVal.(string)
 	}
+	if ciVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateIdentity]; ok {
+		opt.CosignCertificateIdentity = ciVal.(string)
+	}
+	if cirVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateIdentityRegexp]; ok {
+		opt.CosignCertificateIdentityRegexp = cirVal.(string)
+	}
+	if coiVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateOidcIssuer]; ok {
+		opt.CosignCertificateOidcIssuer = coiVal.(string)
+	}
+	if coirVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateOidcIssuerRegexp]; ok {
+		opt.CosignCertificateOidcIssuerRegexp = coirVal.(string)
+	}
 	return opt
 }

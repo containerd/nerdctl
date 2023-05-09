@@ -154,6 +154,26 @@ services:
     - 8081:80
 ```
 
+For keyless mode, the `docker-compose.yaml` will be:
+```
+$ cat docker-compose.yml
+services:
+  svc0:
+    build: .
+    image: ${REGISTRY}/svc1_image # replace with your registry
+    x-nerdctl-verify: cosign
+    x-nerdctl-sign: cosign
+    x-nerdctl-cosign-certificate-identity: name@example.com # or x-nerdctl-cosign-certificate-identity-regexp
+    x-nerdctl-cosign-certificate-oidc-issuer: https://accounts.example.com # or x-nerdctl-cosign-certificate-oidc-issuer-regexp
+    ports:
+    - 8080:80
+  svc1:
+    build: .
+    image: ${REGISTRY}/svc1_image # replace with your registry
+    ports:
+    - 8081:80
+```
+
 > The `env "COSIGN_PASSWORD="$COSIGN_PASSWORD""` part in the below commands is a walkaround to use rootful nerdctl and make the env variable visible to root (in sudo). You don't need this part if (1) you're using rootless, or (2) your `COSIGN_PASSWORD` is visible in root.
 
 First let's `build` and `push` the two services:

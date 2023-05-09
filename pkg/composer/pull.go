@@ -57,6 +57,19 @@ func (c *Composer) pullServiceImage(ctx context.Context, image string, platform 
 	if publicKey, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]; ok {
 		args = append(args, "--cosign-key="+publicKey.(string))
 	}
+	if certificateIdentity, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateIdentity]; ok {
+		args = append(args, "--cosign-certificate-identity="+certificateIdentity.(string))
+	}
+	if certificateIdentityRegexp, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateIdentityRegexp]; ok {
+		args = append(args, "--cosign-certificate-identity-regexp="+certificateIdentityRegexp.(string))
+	}
+	if certificateOidcIssuer, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateOidcIssuer]; ok {
+		args = append(args, "--cosign-certificate-oidc-issuer="+certificateOidcIssuer.(string))
+	}
+	if certificateOidcIssuerRegexp, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateOidcIssuerRegexp]; ok {
+		args = append(args, "--cosign-certificate-oidc-issuer-regexp="+certificateOidcIssuerRegexp.(string))
+	}
+
 	if c.Options.Experimental {
 		args = append(args, "--experimental")
 	}
