@@ -24,6 +24,7 @@ import (
 	"syscall"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/api/types/cri"
 	"github.com/containerd/nerdctl/pkg/clientutil"
@@ -65,30 +66,35 @@ func Logs(ctx context.Context, client *containerd.Client, container string, opti
 				return err
 			}
 
-			task, err := found.Container.Task(ctx, nil)
-			if err != nil {
-				return err
-			}
-			status, err := task.Status(ctx)
-			if err != nil {
-				return err
-			}
-			if status.Status != containerd.Running {
-				options.Follow = false
-			}
-
-			if options.Follow {
-				waitCh, err := task.Wait(ctx)
+			follow := options.Follow
+			if follow {
+				task, err := found.Container.Task(ctx, nil)
 				if err != nil {
-					return fmt.Errorf("failed to get wait channel for task %#v: %s", task, err)
-				}
+					if !errdefs.IsNotFound(err) {
+						return err
+					}
+					follow = false
+				} else {
+					status, err := task.Status(ctx)
+					if err != nil {
+						return err
+					}
+					if status.Status != containerd.Running {
+						follow = false
+					} else {
+						waitCh, err := task.Wait(ctx)
+						if err != nil {
+							return fmt.Errorf("failed to get wait channel for task %#v: %s", task, err)
+						}
 
-				// Setup goroutine to send stop event if container task finishes:
-				go func() {
-					<-waitCh
-					logrus.Debugf("container task has finished, sending kill signal to log viewer")
-					stopChannel <- os.Interrupt
-				}()
+						// Setup goroutine to send stop event if container task finishes:
+						go func() {
+							<-waitCh
+							logrus.Debugf("container task has finished, sending kill signal to log viewer")
+							stopChannel <- os.Interrupt
+						}()
+					}
+				}
 			}
 
 			logViewOpts := logging.LogViewOptions{
@@ -96,7 +102,7 @@ func Logs(ctx context.Context, client *containerd.Client, container string, opti
 				Namespace:         l[labels.Namespace],
 				DatastoreRootPath: dataStore,
 				LogPath:           logPath,
-				Follow:            options.Follow,
+				Follow:            follow,
 				Timestamps:        options.Timestamps,
 				Tail:              options.Tail,
 				Since:             options.Since,
