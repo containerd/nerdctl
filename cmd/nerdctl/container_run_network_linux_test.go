@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
@@ -245,7 +246,11 @@ func TestUniqueHostPortAssignement(t *testing.T) {
 			testContainerName1 := fmt.Sprintf("%s-%d-1", tID, i)
 			testContainerName2 := fmt.Sprintf("%s-%d-2", tID, i)
 			base := testutil.NewBase(t)
-			defer base.Cmd("rm", "-f", testContainerName1, testContainerName2).Run()
+			defer func() {
+				base.Cmd("rm", "-f", testContainerName1, testContainerName2).AssertOK()
+				// sleep is expected to deflake test-integration-docker-compatibility https://github.com/containerd/nerdctl/issues/2206
+				time.Sleep(3 * time.Second)
+			}()
 
 			pFlag := tc.containerPort
 			cmd1 := base.Cmd("run", "-d",
