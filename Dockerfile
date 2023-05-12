@@ -18,16 +18,14 @@
 # TODO: verify commit hash
 
 # Basic deps
-ARG CONTAINERD_VERSION=v1.7.0
+ARG CONTAINERD_VERSION=v1.7.1
 ARG RUNC_VERSION=v1.1.5
-ARG CNI_PLUGINS_VERSION=v1.2.0
+ARG CNI_PLUGINS_VERSION=v1.3.0
 
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.11.5
+ARG BUILDKIT_VERSION=v0.11.6
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.14.3
-# Extra deps: Nydus Lazy-pulling
-ARG NYDUS_VERSION=v2.2.0
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=v1.1.7
 # Extra deps: Rootless
@@ -36,10 +34,10 @@ ARG SLIRP4NETNS_VERSION=v1.2.0
 # Extra deps: bypass4netns
 ARG BYPASS4NETNS_VERSION=v0.3.0
 # Extra deps: FUSE-OverlayFS
-ARG FUSE_OVERLAYFS_VERSION=v1.11
-ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.5
+ARG FUSE_OVERLAYFS_VERSION=v1.12
+ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.6
 # Extra deps: IPFS
-ARG KUBO_VERSION=v0.19.1
+ARG KUBO_VERSION=v0.20.0
 # Extra deps: Init
 ARG TINI_VERSION=v0.19.0
 # Extra deps: Debug
@@ -49,7 +47,8 @@ ARG BUILDG_VERSION=v0.4.1
 ARG GO_VERSION=1.20
 ARG UBUNTU_VERSION=22.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
-ARG GOTESTSUM_VERSION=v1.9.0
+ARG GOTESTSUM_VERSION=v1.10.0
+ARG NYDUS_VERSION=v2.2.1
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.2.1 AS xx
 
@@ -221,7 +220,7 @@ RUN fname="buildg-${BUILDG_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/slirp4netns:    [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/rootless-containers/slirp4netns/blob/${SLIRP4NETNS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
-  echo "- bin/fuse-overlayfs: [GNU GENERAL PUBLIC LICENSE, Version 3](https://github.com/containers/fuse-overlayfs/blob/${FUSE_OVERLAYFS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
+  echo "- bin/fuse-overlayfs: [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/containers/fuse-overlayfs/blob/${FUSE_OVERLAYFS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/ipfs: [Combination of MIT-only license and dual MIT/Apache-2.0 license](https://github.com/ipfs/kubo/blob/${KUBO_VERSION}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/{runc,bypass4netns,bypass4netnsd}: Apache License 2.0, statically linked with libseccomp ([LGPL 2.1](https://github.com/seccomp/libseccomp/blob/main/LICENSE), source code available at https://github.com/seccomp/libseccomp/)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/tini: [MIT License](https://github.com/krallin/tini/blob/${TINI_VERSION}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
