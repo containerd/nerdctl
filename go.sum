@@ -171,8 +171,8 @@ github.com/cockroachdb/errors v1.2.4/go.mod h1:rQD95gz6FARkaKkQXUksEje/d9a6wBJoC
 github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f/go.mod h1:i/u985jwjWRlyHXQbwatDASoW0RMlZ/3i9yJHE2xLkI=
 github.com/compose-spec/compose-go v1.13.4 h1:O6xAsPqaY1s9KXteiO7wRCDTJLahv1XP/z/eUO9EfbI=
 github.com/compose-spec/compose-go v1.13.4/go.mod h1:rsiZ8uaOHJYJemDBzTe9UBpaq5ZFVEOO4TxM2G3SJxk=
-github.com/containerd/accelerated-container-image v0.6.3 h1:w1PWllApSdqjxoq4pb67QnoyxBFH2UKBu37y4kJOVww=
-github.com/containerd/accelerated-container-image v0.6.3/go.mod h1:RZB4r386ZnUEuYdwJplVoI4avEE+oxWB75uOB3quctA=
+github.com/containerd/accelerated-container-image v0.6.4 h1:aDe5sMIVtXsQPcQItWvf+aQJiOqRKWczHj19d1RTqB8=
+github.com/containerd/accelerated-container-image v0.6.4/go.mod h1:RZB4r386ZnUEuYdwJplVoI4avEE+oxWB75uOB3quctA=
 github.com/containerd/aufs v0.0.0-20200908144142-dab0cbea06f4/go.mod h1:nukgQABAEopAHvB6j7cnP5zJ+/3aVcE7hCYqvIwAHyE=
 github.com/containerd/aufs v0.0.0-20201003224125-76a6863f2989/go.mod h1:AkGGQs9NM2vtYHaUen+NljV0/baGCAPELGm2q9ZXpWU=
 github.com/containerd/aufs v0.0.0-20210316121734-20793ff83c97/go.mod h1:kL5kd6KM5TzQjR79jljyi4olc1Vrx6XBlcyj3gNv2PU=
