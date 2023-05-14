@@ -251,6 +251,7 @@ Config file ($NERDCTL_TOML): %s
 		newPortCommand(),
 		newStopCommand(),
 		newStartCommand(),
+		newDiffCommand(),
 		newRestartCommand(),
 		newKillCommand(),
 		newRmCommand(),
