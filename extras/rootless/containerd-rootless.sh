@@ -141,6 +141,10 @@ else
 	mkdir /etc/ssl
 	mount --rbind "${realpath_etc_ssl}" /etc/ssl
 
+	# Bind-mount /run/containerd
+	mkdir -p "${XDG_RUNTIME_DIR}/containerd" "/run/containerd"
+	mount --bind "${XDG_RUNTIME_DIR}/containerd" "/run/containerd"
+
 	# Bind-mount /var/lib/containerd
 	mkdir -p "${XDG_DATA_HOME}/containerd" "/var/lib/containerd"
 	mount --bind "${XDG_DATA_HOME}/containerd" "/var/lib/containerd"
