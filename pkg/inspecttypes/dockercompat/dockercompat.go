@@ -66,7 +66,6 @@ type Image struct {
 	Os string
 	// TODO: OsVersion     string `json:",omitempty"`
 	Size int64 // Size is the unpacked size of the image
-	// TODO: VirtualSize   int64
 	// TODO: GraphDriver     GraphDriverData
 	RootFS   RootFS
 	Metadata ImageMetadata
