@@ -119,7 +119,7 @@ type imagePrintable struct {
 	Name         string // image name
 	Size         string // the size of the unpacked snapshots.
 	BlobSize     string // the size of the blobs in the content store (nerdctl extension)
-	// TODO: "SharedSize", "UniqueSize", "VirtualSize"
+	// TODO: "SharedSize", "UniqueSize"
 	Platform string // nerdctl extension
 }
 
