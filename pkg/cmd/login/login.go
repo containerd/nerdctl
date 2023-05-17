@@ -34,7 +34,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
-	dockerapitypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/errdefs"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context/ctxhttp"
@@ -64,7 +64,7 @@ func Login(ctx context.Context, options types.LoginCommandOptions, stdout io.Wri
 
 	authConfig, err := GetDefaultAuthConfig(options.Username == "" && options.Password == "", serverAddress, isDefaultRegistry)
 	if authConfig == nil {
-		authConfig = &dockerapitypes.AuthConfig{ServerAddress: serverAddress}
+		authConfig = &registry.AuthConfig{ServerAddress: serverAddress}
 	}
 	if err == nil && authConfig.Username != "" && authConfig.Password != "" {
 		//login With StoreCreds
@@ -116,7 +116,7 @@ func Login(ctx context.Context, options types.LoginCommandOptions, stdout io.Wri
 // Code from github.com/docker/cli/cli/command (v20.10.3)
 // GetDefaultAuthConfig gets the default auth config given a serverAddress
 // If credentials for given serverAddress exists in the credential store, the configuration will be populated with values in it
-func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRegistry bool) (*dockerapitypes.AuthConfig, error) {
+func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRegistry bool) (*registry.AuthConfig, error) {
 	if !isDefaultRegistry {
 		var err error
 		serverAddress, err = convertToHostname(serverAddress)
@@ -137,11 +137,11 @@ func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRe
 	}
 	authconfig.ServerAddress = serverAddress
 	authconfig.IdentityToken = ""
-	res := dockerapitypes.AuthConfig(authconfig)
+	res := registry.AuthConfig(authconfig)
 	return &res, nil
 }
 
-func loginClientSide(ctx context.Context, globalOptions types.GlobalCommandOptions, auth dockerapitypes.AuthConfig) (string, error) {
+func loginClientSide(ctx context.Context, globalOptions types.GlobalCommandOptions, auth registry.AuthConfig) (string, error) {
 	host, err := convertToHostname(auth.ServerAddress)
 	if err != nil {
 		return "", err
@@ -249,7 +249,7 @@ func tryLoginWithRegHost(ctx context.Context, rh docker.RegistryHost) error {
 	return errors.New("too many 401 (probably)")
 }
 
-func ConfigureAuthentication(authConfig *dockerapitypes.AuthConfig, username, password string) error {
+func ConfigureAuthentication(authConfig *registry.AuthConfig, username, password string) error {
 	authConfig.Username = strings.TrimSpace(authConfig.Username)
 	if username = strings.TrimSpace(username); username == "" {
 		username = authConfig.Username

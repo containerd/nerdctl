@@ -8,7 +8,7 @@ require (
 	github.com/Microsoft/hcsshim v0.10.0-rc.8
 	github.com/compose-spec/compose-go v1.13.4
 	github.com/containerd/accelerated-container-image v0.6.4
-	github.com/containerd/cgroups v1.1.0
+	github.com/containerd/cgroups/v3 v3.0.1
 	github.com/containerd/console v1.0.3
 	github.com/containerd/containerd v1.7.1
 	github.com/containerd/continuity v0.3.0
@@ -24,8 +24,8 @@ require (
 	github.com/coreos/go-iptables v0.6.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.2.3
-	github.com/docker/cli v23.0.6+incompatible
-	github.com/docker/docker v23.0.6+incompatible
+	github.com/docker/cli v24.0.0+incompatible
+	github.com/docker/docker v24.0.0+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.1.3
@@ -64,7 +64,7 @@ require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20221215162035-5330a85ea652 // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
-	github.com/containerd/cgroups/v3 v3.0.1 // indirect
+	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
 	github.com/containerd/ttrpc v1.2.2 // indirect
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67 // indirect
