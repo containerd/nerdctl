@@ -233,7 +233,8 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 
 	size, err := imgutil.UnpackedImageSize(ctx, x.snapshotter, image)
 	if err != nil {
-		logrus.WithError(err).Warnf("failed to get unpacked size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
+		// Warnf is too verbose: https://github.com/containerd/nerdctl/issues/2058
+		logrus.WithError(err).Debugf("failed to get unpacked size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 	}
 
 	p := imagePrintable{
