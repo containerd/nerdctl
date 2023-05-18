@@ -61,20 +61,23 @@ func Prune(ctx context.Context, client *containerd.Client, options types.SystemP
 	}); err != nil {
 		return nil
 	}
-	prunedObjects, err := builder.Prune(ctx, types.BuilderPruneOptions{
-		Stderr:       options.Stderr,
-		GOptions:     options.GOptions,
-		All:          options.All,
-		BuildKitHost: options.BuildKitHost,
-	})
-	if err != nil {
-		return err
-	}
 
-	if len(prunedObjects) > 0 {
-		fmt.Fprintln(options.Stdout, "Deleted build cache objects:")
-		for _, item := range prunedObjects {
-			fmt.Fprintln(options.Stdout, item.ID)
+	if options.BuildKitHost != "" {
+		prunedObjects, err := builder.Prune(ctx, types.BuilderPruneOptions{
+			Stderr:       options.Stderr,
+			GOptions:     options.GOptions,
+			All:          options.All,
+			BuildKitHost: options.BuildKitHost,
+		})
+		if err != nil {
+			return err
+		}
+
+		if len(prunedObjects) > 0 {
+			fmt.Fprintln(options.Stdout, "Deleted build cache objects:")
+			for _, item := range prunedObjects {
+				fmt.Fprintln(options.Stdout, item.ID)
+			}
 		}
 	}
 

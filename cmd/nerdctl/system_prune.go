@@ -23,6 +23,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/system"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -59,7 +60,8 @@ func processSystemPruneOptions(cmd *cobra.Command) (types.SystemPruneOptions, er
 
 	buildkitHost, err := getBuildkitHost(cmd, globalOptions.Namespace)
 	if err != nil {
-		return types.SystemPruneOptions{}, err
+		logrus.WithError(err).Warn("BuildKit is not running. Build caches will not be pruned.")
+		buildkitHost = ""
 	}
 
 	return types.SystemPruneOptions{
