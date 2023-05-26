@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/containerd/containerd"
@@ -72,6 +73,13 @@ func withMounts(mounts []specs.Mount) oci.SpecOpts {
 		}
 
 		s.Mounts = append(s.Mounts, mounts...)
+
+		sort.Slice(s.Mounts, func(i, j int) bool {
+			// Consistent with the less function in Docker.
+			// https://github.com/moby/moby/blob/0db417451313474133c5ed62bbf95e2d3c92444d/daemon/volumes.go#L34
+			return strings.Count(filepath.Clean(s.Mounts[i].Destination), string(os.PathSeparator)) < strings.Count(filepath.Clean(s.Mounts[j].Destination), string(os.PathSeparator))
+		})
+
 		return nil
 	}
 }

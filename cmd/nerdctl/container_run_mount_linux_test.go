@@ -73,6 +73,13 @@ func TestRunVolume(t *testing.T) {
 		testutil.AlpineImage,
 		"cat", "/mnt1/file1", "/mnt3/file3",
 	).AssertOutExactly("str1str3")
+	base.Cmd("run",
+		"--rm",
+		"-v", fmt.Sprintf("%s:/mnt3/mnt1", rwDir),
+		"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
+		testutil.AlpineImage,
+		"cat", "/mnt3/mnt1/file1", "/mnt3/file3",
+	).AssertOutExactly("str1str3")
 }
 
 func TestRunAnonymousVolume(t *testing.T) {
