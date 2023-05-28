@@ -23,6 +23,7 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/composer/pipetagger"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -39,7 +40,11 @@ type LogsOptions struct {
 }
 
 func (c *Composer) Logs(ctx context.Context, lo LogsOptions, services []string) error {
-	serviceNames, err := c.ServiceNames(services...)
+	var serviceNames []string
+	err := c.project.WithServices(services, func(svc types.ServiceConfig) error {
+		serviceNames = append(serviceNames, svc.Name)
+		return nil
+	}, types.IgnoreDependencies)
 	if err != nil {
 		return err
 	}

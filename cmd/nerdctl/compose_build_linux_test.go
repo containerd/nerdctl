@@ -34,6 +34,8 @@ services:
     image: %s
     ports:
     - 8080:80
+    depends_on:
+    - svc1
   svc1:
     build: .
     image: %s
@@ -56,7 +58,7 @@ services:
 	defer base.Cmd("rmi", imageSvc0).Run()
 	defer base.Cmd("rmi", imageSvc1).Run()
 
-	// 1. build only 1 service
+	// 1. build only 1 service without triggering the dependency service build
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "build", "svc0").AssertOK()
 	base.Cmd("images").AssertOutContains(imageSvc0)
 	base.Cmd("images").AssertOutNotContains(imageSvc1)
