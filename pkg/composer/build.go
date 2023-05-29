@@ -43,7 +43,7 @@ func (c *Composer) Build(ctx context.Context, bo BuildOptions, services []string
 			return c.buildServiceImage(ctx, ps.Image, ps.Build, ps.Unparsed.Platform, bo)
 		}
 		return nil
-	})
+	}, types.IgnoreDependencies)
 }
 
 func (c *Composer) buildServiceImage(ctx context.Context, image string, b *serviceparser.Build, platform string, bo BuildOptions) error {
