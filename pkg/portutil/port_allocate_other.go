@@ -23,3 +23,7 @@ import "fmt"
 func portAllocate(protocol string, ip string, count uint64) (uint64, uint64, error) {
 	return 0, 0, fmt.Errorf("auto port allocate are not support Non-Linux platform yet")
 }
+
+func getUsedPorts(ip string, protocol string) (map[uint64]bool, error) {
+	return nil, nil
+}

@@ -27,6 +27,7 @@ import (
 type NetworkDetail struct {
 	LocalIP   net.IP
 	LocalPort uint64
+	State     int
 }
 
 func Parse(data []string) (results []NetworkDetail) {
@@ -37,9 +38,19 @@ func Parse(data []string) (results []NetworkDetail) {
 		if err != nil {
 			continue
 		}
+
+		state := 0
+		if len(lineData) > 2 {
+			stateHex, err := strconv.ParseInt(lineData[3], 16, 32)
+			if err == nil {
+				state = int(stateHex)
+			}
+		}
+
 		results = append(results, NetworkDetail{
 			LocalIP:   ip,
 			LocalPort: uint64(port),
+			State:     state,
 		})
 	}
 	return results
