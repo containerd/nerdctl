@@ -39,48 +39,9 @@ func filter(ss []procnet.NetworkDetail, filterFunc func(detail procnet.NetworkDe
 }
 
 func portAllocate(protocol string, ip string, count uint64) (uint64, uint64, error) {
-	netprocData, err := procnet.ReadStatsFileData(protocol)
+	usedPort, err := getUsedPorts(ip, protocol)
 	if err != nil {
 		return 0, 0, err
-	}
-	netprocItems := procnet.Parse(netprocData)
-	// In some circumstances, when we bind address like "0.0.0.0:80", we will get the formation of ":::80" in /proc/net/tcp6.
-	// So we need some trick to process this situation.
-	if protocol == "tcp" {
-		tempTCPV6Data, err := procnet.ReadStatsFileData("tcp6")
-		if err != nil {
-			return 0, 0, err
-		}
-		netprocItems = append(netprocItems, procnet.Parse(tempTCPV6Data)...)
-	}
-	if protocol == "udp" {
-		tempUDPV6Data, err := procnet.ReadStatsFileData("udp6")
-		if err != nil {
-			return 0, 0, err
-		}
-		netprocItems = append(netprocItems, procnet.Parse(tempUDPV6Data)...)
-	}
-	if ip != "" {
-		netprocItems = filter(netprocItems, func(s procnet.NetworkDetail) bool {
-			// In some circumstances, when we bind address like "0.0.0.0:80", we will get the formation of ":::80" in /proc/net/tcp6.
-			// So we need some trick to process this situation.
-			return s.LocalIP.String() == "::" || s.LocalIP.String() == ip
-		})
-	}
-
-	usedPort := make(map[uint64]bool)
-	for _, value := range netprocItems {
-		usedPort[value.LocalPort] = true
-	}
-
-	ipTableItems, err := iptable.ReadIPTables("nat")
-	if err != nil {
-		return 0, 0, err
-	}
-	destinationPorts := iptable.ParseIPTableRules(ipTableItems)
-
-	for _, port := range destinationPorts {
-		usedPort[port] = true
 	}
 
 	start := uint64(allocateStart)
@@ -101,4 +62,57 @@ func portAllocate(protocol string, ip string, count uint64) (uint64, uint64, err
 		start += count
 	}
 	return 0, 0, fmt.Errorf("there is not enough %d free ports", count)
+}
+
+func getUsedPorts(ip string, protocol string) (map[uint64]bool, error) {
+	netprocItems := []procnet.NetworkDetail{}
+
+	if protocol == "tcp" || protocol == "udp" {
+		netprocData, err := procnet.ReadStatsFileData(protocol)
+		if err != nil {
+			return nil, err
+		}
+		netprocItems = append(netprocItems, procnet.Parse(netprocData)...)
+	}
+
+	// In some circumstances, when we bind address like "0.0.0.0:80", we will get the formation of ":::80" in /proc/net/tcp6.
+	// So we need some trick to process this situation.
+	if protocol == "tcp" {
+		tempTCPV6Data, err := procnet.ReadStatsFileData("tcp6")
+		if err != nil {
+			return nil, err
+		}
+		netprocItems = append(netprocItems, procnet.Parse(tempTCPV6Data)...)
+	}
+	if protocol == "udp" {
+		tempUDPV6Data, err := procnet.ReadStatsFileData("udp6")
+		if err != nil {
+			return nil, err
+		}
+		netprocItems = append(netprocItems, procnet.Parse(tempUDPV6Data)...)
+	}
+	if ip != "" {
+		netprocItems = filter(netprocItems, func(s procnet.NetworkDetail) bool {
+			// In some circumstances, when we bind address like "0.0.0.0:80", we will get the formation of ":::80" in /proc/net/tcp6.
+			// So we need some trick to process this situation.
+			return s.LocalIP.String() == "::" || s.LocalIP.String() == ip
+		})
+	}
+
+	usedPort := make(map[uint64]bool)
+	for _, value := range netprocItems {
+		usedPort[value.LocalPort] = true
+	}
+
+	ipTableItems, err := iptable.ReadIPTables("nat")
+	if err != nil {
+		return nil, err
+	}
+	destinationPorts := iptable.ParseIPTableRules(ipTableItems)
+
+	for _, port := range destinationPorts {
+		usedPort[port] = true
+	}
+
+	return usedPort, nil
 }

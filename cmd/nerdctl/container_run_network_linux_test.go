@@ -302,6 +302,62 @@ func TestUniqueHostPortAssignement(t *testing.T) {
 	}
 }
 
+func TestHostPortAlreadyInUse(t *testing.T) {
+	testCases := []struct {
+		hostPort      string
+		containerPort string
+	}{
+		{
+			hostPort:      "5000",
+			containerPort: "80/tcp",
+		},
+		{
+			hostPort:      "5000",
+			containerPort: "80/tcp",
+		},
+		{
+			hostPort:      "5000",
+			containerPort: "80/udp",
+		},
+		{
+			hostPort:      "5000",
+			containerPort: "80/sctp",
+		},
+	}
+
+	tID := testutil.Identifier(t)
+
+	for i, tc := range testCases {
+
+		i := i
+		tc := tc
+		tcName := fmt.Sprintf("%+v", tc)
+		t.Run(tcName, func(t *testing.T) {
+			if strings.Contains(tc.containerPort, "sctp") && rootlessutil.IsRootless() {
+				t.Skip("sctp is not supported in rootless mode")
+			}
+			testContainerName1 := fmt.Sprintf("%s-%d-1", tID, i)
+			testContainerName2 := fmt.Sprintf("%s-%d-2", tID, i)
+			base := testutil.NewBase(t)
+			defer base.Cmd("rm", "-f", testContainerName1, testContainerName2).Run()
+
+			pFlag := fmt.Sprintf("%s:%s", tc.hostPort, tc.containerPort)
+			cmd1 := base.Cmd("run", "-d",
+				"--name", testContainerName1, "-p",
+				pFlag,
+				testutil.NginxAlpineImage)
+
+			cmd2 := base.Cmd("run", "-d",
+				"--name", testContainerName2, "-p",
+				pFlag,
+				testutil.NginxAlpineImage)
+
+			cmd1.AssertOK()
+			cmd2.AssertFail()
+		})
+	}
+}
+
 func TestRunPort(t *testing.T) {
 	baseTestRunPort(t, testutil.NginxAlpineImage, testutil.NginxAlpineIndexHTMLSnippet, true)
 }

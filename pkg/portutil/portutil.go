@@ -58,6 +58,7 @@ func ParseFlagP(s string) ([]gocni.PortMapping, error) {
 	case 2:
 		proto = strings.ToLower(splitBySlash[1])
 		switch proto {
+		// sctp is not a supported protocol
 		case "tcp", "udp", "sctp":
 		default:
 			return nil, fmt.Errorf("invalid protocol %q", splitBySlash[1])
@@ -99,6 +100,15 @@ func ParseFlagP(s string) ([]gocni.PortMapping, error) {
 		startHostPort, endHostPort, err = nat.ParsePortRange(hostPort)
 		if err != nil {
 			return nil, fmt.Errorf("invalid hostPort: %s", hostPort)
+		}
+		usedPorts, err := getUsedPorts(ip, proto)
+		if err != nil {
+			return nil, err
+		}
+		for i := startHostPort; i <= endHostPort; i++ {
+			if usedPorts[i] {
+				return nil, fmt.Errorf("bind for %s:%d failed: port is already allocated", ip, i)
+			}
 		}
 	}
 	if hostPort != "" && (endPort-startPort) != (endHostPort-startHostPort) {
