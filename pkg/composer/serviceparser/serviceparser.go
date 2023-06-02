@@ -92,6 +92,7 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		"Secrets",
 		"Scale",
 		"SecurityOpt",
+		"ShmSize",
 		"StopGracePeriod",
 		"StopSignal",
 		"Sysctls",
@@ -646,6 +647,10 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 
 	if svc.Runtime != "" {
 		c.RunArgs = append(c.RunArgs, "--runtime="+svc.Runtime)
+	}
+
+	if svc.ShmSize > 0 {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--shm-size=%d", svc.ShmSize))
 	}
 
 	for _, v := range svc.SecurityOpt {

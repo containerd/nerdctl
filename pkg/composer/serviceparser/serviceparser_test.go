@@ -104,6 +104,7 @@ services:
     volumes:
       - wordpress:/var/www/html
     pids_limit: 100
+    shm_size: 1G
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -171,6 +172,7 @@ volumes:
 	assert.Assert(t, in(wp1.RunArgs, "--log-opt=max-file=2"))
 	assert.Assert(t, in(wp1.RunArgs, "--add-host=test.com:172.19.1.1"))
 	assert.Assert(t, in(wp1.RunArgs, "--add-host=test2.com:172.19.1.2"))
+	assert.Assert(t, in(wp1.RunArgs, "--shm-size=1073741824"))
 
 	dbSvc, err := project.GetService("db")
 	assert.NilError(t, err)
