@@ -43,6 +43,18 @@ services:
       target: bartgt
       labels:
         bar: baz
+      secrets:
+        - source: src_secret
+          target: tgt_secret
+        - simple_secret
+        - absolute_secret
+secrets:
+  src_secret:
+    file: test_secret1
+  simple_secret:
+    file: test_secret2
+  absolute_secret:
+    file: /tmp/absolute_secret
 `
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -67,10 +79,14 @@ services:
 	bar, err := Parse(project, barSvc)
 	assert.NilError(t, err)
 
-	t.Logf("bar: %+v", foo)
+	t.Logf("bar: %+v", bar)
 	assert.Equal(t, "barimg", bar.Image)
 	assert.Equal(t, true, bar.Build.Force)
 	assert.Equal(t, project.RelativePath("barctx"), lastOf(bar.Build.BuildArgs))
 	assert.Assert(t, in(bar.Build.BuildArgs, "--target=bartgt"))
 	assert.Assert(t, in(bar.Build.BuildArgs, "--label=bar=baz"))
+	secretPath := project.RelativePath("barctx")
+	assert.Assert(t, in(bar.Build.BuildArgs, "--secret=id=tgt_secret,src="+secretPath+"/test_secret1"))
+	assert.Assert(t, in(bar.Build.BuildArgs, "--secret=id=simple_secret,src="+secretPath+"/test_secret2"))
+	assert.Assert(t, in(bar.Build.BuildArgs, "--secret=id=absolute_secret,src=/tmp/absolute_secret"))
 }
