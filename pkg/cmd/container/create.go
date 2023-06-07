@@ -105,6 +105,8 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	opts = append(opts, platformOpts...)
 
+	opts = append(opts, withCDIDevices(options.CDIDevices...))
+
 	var ensuredImage *imgutil.EnsuredImage
 	if !options.Rootfs {
 		var platformSS []string // len: 0 or 1
