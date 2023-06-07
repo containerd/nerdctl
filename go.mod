@@ -10,10 +10,11 @@ require (
 	github.com/containerd/accelerated-container-image v1.3.0
 	github.com/containerd/cgroups/v3 v3.0.5
 	github.com/containerd/console v1.0.4
-	github.com/containerd/containerd/api v1.8.0
-	github.com/containerd/containerd/v2 v2.0.2
-	github.com/containerd/continuity v0.4.5
-	github.com/containerd/errdefs v1.0.0
+	github.com/containerd/containerd v1.7.21
+	github.com/containerd/containerd/api v1.8.0-rc.3
+	github.com/containerd/containerd/v2 v2.0.0-rc.5
+	github.com/containerd/continuity v0.4.3
+	github.com/containerd/errdefs v0.1.0
 	github.com/containerd/fifo v1.1.0
 	github.com/containerd/go-cni v1.1.12
 	github.com/containerd/imgcrypt/v2 v2.0.0
@@ -140,7 +141,6 @@ require (
 	google.golang.org/protobuf v1.36.2 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
-	tags.cncf.io/container-device-interface v0.8.0 // indirect
 	tags.cncf.io/container-device-interface/specs-go v0.8.0 // indirect
 )
 

@@ -124,6 +124,8 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	opts = append(opts, platformOpts...)
 
+	opts = append(opts, withCDIDevices(options.GOptions.CDISpecDirs, options.CDIDevices...))
+
 	if _, err := referenceutil.Parse(args[0]); errors.Is(err, referenceutil.ErrLoadOCIArchiveRequired) {
 		imageRef := args[0]
 

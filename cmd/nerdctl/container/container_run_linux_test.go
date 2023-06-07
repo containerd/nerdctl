@@ -646,3 +646,20 @@ func TestPortBindingWithCustomHost(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestRunDeviceCDI(t *testing.T) {
+	// Although CDI injection is supported by Docker, specifying the --cdi-spec-dirs on the command line is not.
+	testutil.DockerIncompatible(t)
+	cwd, err := os.Getwd()
+	assert.NilError(t, err)
+	cdiSpecDir := filepath.Join(cwd, "testdata", "cdi")
+
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	base.Cmd("--cdi-spec-dirs", cdiSpecDir, "run",
+		"--rm",
+		"--device", "vendor1.com/device=foo",
+		testutil.AlpineImage, "env",
+	).AssertOutContains("FOO=injected")
+}

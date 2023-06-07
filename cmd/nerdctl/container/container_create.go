@@ -21,6 +21,7 @@ import (
 	"runtime"
 
 	"github.com/spf13/cobra"
+	cdi "tags.cncf.io/container-device-interface/pkg/parser"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -211,9 +212,17 @@ func processContainerCreateOptions(cmd *cobra.Command) (types.ContainerCreateOpt
 	if err != nil {
 		return opt, err
 	}
-	opt.Device, err = cmd.Flags().GetStringSlice("device")
+
+	allDevices, err := cmd.Flags().GetStringSlice("device")
 	if err != nil {
 		return opt, err
+	}
+	for _, device := range allDevices {
+		if cdi.IsQualifiedName(device) {
+			opt.CDIDevices = append(opt.CDIDevices, device)
+			continue
+		}
+		opt.Device = append(opt.Device, device)
 	}
 	// #endregion
 
@@ -430,6 +439,9 @@ func createAction(cmd *cobra.Command, args []string) error {
 	createOpt, err := processContainerCreateOptions(cmd)
 	if err != nil {
 		return err
+	}
+	if len(createOpt.CDIDevices) > 0 && !createOpt.GOptions.Experimental {
+		return fmt.Errorf("specifying CDI devices in the device flag requires experimental mode to be enabled")
 	}
 
 	if (createOpt.Platform == "windows" || createOpt.Platform == "freebsd") && !createOpt.GOptions.Experimental {
