@@ -77,3 +77,7 @@ func HostsDirs() []string {
 func HostGatewayIP() string {
 	return ""
 }
+
+func CDISpecDirs() []string {
+	return []string{}
+}

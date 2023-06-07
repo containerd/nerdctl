@@ -142,3 +142,24 @@ func HostGatewayIP() string {
 	}
 	return ""
 }
+
+func CDISpecDirs() []string {
+	if !rootlessutil.IsRootless() {
+		return []string{"/etc/cdi", "/var/run/cdi"}
+	}
+	xch, err := rootlessutil.XDGConfigHome()
+	if err != nil {
+		panic(err)
+	}
+	xdr, err := rootlessutil.XDGRuntimeDir()
+	if err != nil {
+		if rootlessutil.IsRootlessChild() {
+			panic(err)
+		}
+		xdr = fmt.Sprintf("/run/user/%d", os.Geteuid())
+	}
+	return []string{
+		filepath.Join(xch, "cdi"),
+		filepath.Join(xdr, "cdi"),
+	}
+}

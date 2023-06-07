@@ -661,3 +661,58 @@ func TestPortBindingWithCustomHost(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestRunDeviceCDI(t *testing.T) {
+	t.Parallel()
+	// Although CDI injection is supported by Docker, specifying the --cdi-spec-dirs on the command line is not.
+	testutil.DockerIncompatible(t)
+	cdiSpecDir := filepath.Join(t.TempDir(), "cdi")
+	writeTestCDISpec(t, cdiSpecDir)
+
+	base := testutil.NewBase(t)
+	base.Cmd("--cdi-spec-dirs", cdiSpecDir, "run",
+		"--rm",
+		"--device", "vendor1.com/device=foo",
+		testutil.AlpineImage, "env",
+	).AssertOutContains("FOO=injected")
+}
+
+func TestRunDeviceCDIWithNerdctlConfig(t *testing.T) {
+	t.Parallel()
+	// Although CDI injection is supported by Docker, specifying the --cdi-spec-dirs on the command line is not.
+	testutil.DockerIncompatible(t)
+	cdiSpecDir := filepath.Join(t.TempDir(), "cdi")
+	writeTestCDISpec(t, cdiSpecDir)
+
+	tomlPath := filepath.Join(t.TempDir(), "nerdctl.toml")
+	err := os.WriteFile(tomlPath, []byte(fmt.Sprintf(`
+cdi_spec_dirs = ["%s"]
+`, cdiSpecDir)), 0400)
+	assert.NilError(t, err)
+
+	base := testutil.NewBase(t)
+	base.Env = append(base.Env, "NERDCTL_TOML="+tomlPath)
+	base.Cmd("run",
+		"--rm",
+		"--device", "vendor1.com/device=foo",
+		testutil.AlpineImage, "env",
+	).AssertOutContains("FOO=injected")
+}
+
+func writeTestCDISpec(t *testing.T, cdiSpecDir string) {
+	const testCDIVendor1 = `
+cdiVersion: "0.3.0"
+kind: "vendor1.com/device"
+devices:
+- name: foo
+  containerEdits:
+    env:
+    - FOO=injected
+`
+
+	err := os.MkdirAll(cdiSpecDir, 0700)
+	assert.NilError(t, err)
+	cdiSpecPath := filepath.Join(cdiSpecDir, "vendor1.yaml")
+	err = os.WriteFile(cdiSpecPath, []byte(testCDIVendor1), 0400)
+	assert.NilError(t, err)
+}

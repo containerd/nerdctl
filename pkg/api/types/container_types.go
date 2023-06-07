@@ -150,6 +150,8 @@ type ContainerCreateOptions struct {
 	CgroupParent string
 	// Device specifies add a host device to the container
 	Device []string
+	// CDIDevices specifies the CDI devices to add to the container
+	CDIDevices []string
 	// #endregion
 
 	// #region for blkio related flags
