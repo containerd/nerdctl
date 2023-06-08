@@ -48,7 +48,6 @@ type Base struct {
 	Target           Target
 	DaemonIsKillable bool
 	Binary           string
-	ComposeBinary    string // "docker-compose"
 	Args             []string
 	Env              []string
 }
@@ -72,17 +71,8 @@ func (b *Base) Cmd(args ...string) *Cmd {
 
 // ComposeCmd executes `nerdctl -n nerdctl-test compose` or `docker-compose`
 func (b *Base) ComposeCmd(args ...string) *Cmd {
-	var (
-		binary     string
-		binaryArgs []string
-	)
-	if b.ComposeBinary != "" {
-		binary = b.ComposeBinary
-		binaryArgs = append(b.Args, args...)
-	} else {
-		binary = b.Binary
-		binaryArgs = append(b.Args, append([]string{"compose"}, args...)...)
-	}
+	binary := b.Binary
+	binaryArgs := append(b.Args, append([]string{"compose"}, args...)...)
 	icmdCmd := icmd.Command(binary, binaryArgs...)
 	icmdCmd.Env = b.Env
 	cmd := &Cmd{
@@ -97,18 +87,10 @@ func (b *Base) ComposeCmdWithHelper(helper []string, args ...string) *Cmd {
 	if err != nil {
 		b.T.Skipf("helper binary %q not found", helper[0])
 	}
+	binary := b.Binary
+	binaryArgs := append(b.Args, append([]string{"compose"}, args...)...)
+
 	helperArgs := helper[1:]
-	var (
-		binary     string
-		binaryArgs []string
-	)
-	if b.ComposeBinary != "" {
-		binary = b.ComposeBinary
-		binaryArgs = append(b.Args, args...)
-	} else {
-		binary = b.Binary
-		binaryArgs = append(b.Args, append([]string{"compose"}, args...)...)
-	}
 	helperArgs = append(helperArgs, binary)
 	helperArgs = append(helperArgs, binaryArgs...)
 	icmdCmd := icmd.Command(helperBin, helperArgs...)
@@ -657,14 +639,12 @@ func newBase(t *testing.T, ns string) *Base {
 			t.Fatal(err)
 		}
 		base.Args = []string{"--namespace=" + ns}
-		base.ComposeBinary = ""
 	case Docker:
 		base.Binary, err = exec.LookPath("docker")
 		if err != nil {
 			t.Fatal(err)
 		}
-		base.ComposeBinary, err = exec.LookPath("docker-compose")
-		if err != nil {
+		if err := exec.Command("docker", "compose", "version").Run(); err != nil {
 			t.Fatal(err)
 		}
 	default:

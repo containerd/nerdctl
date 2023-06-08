@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-connections/nat"
 	"github.com/sirupsen/logrus"
@@ -187,7 +188,7 @@ networks:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
-	svc0 := fmt.Sprintf("%s_svc0_1", projectName)
+	svc0 := serviceparser.DefaultContainerName(projectName, "svc0", "1")
 	inspectCmd := base.Cmd("inspect", svc0, "--format", "\"{{range .NetworkSettings.Networks}} {{.IPAddress}}{{end}}\"")
 	result := inspectCmd.Run()
 	stdoutContent := result.Stdout() + result.Stderr()
@@ -236,9 +237,9 @@ networks:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
-	svc0 := fmt.Sprintf("%s_svc0_1", projectName)
-	svc1 := fmt.Sprintf("%s_svc1_1", projectName)
-	svc2 := fmt.Sprintf("%s_svc2_1", projectName)
+	svc0 := serviceparser.DefaultContainerName(projectName, "svc0", "1")
+	svc1 := serviceparser.DefaultContainerName(projectName, "svc1", "1")
+	svc2 := serviceparser.DefaultContainerName(projectName, "svc2", "1")
 
 	base.Cmd("exec", svc0, "ping", "-c", "1", "svc0").AssertOK()
 	base.Cmd("exec", svc0, "ping", "-c", "1", "svc1").AssertOK()
@@ -348,7 +349,7 @@ services:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--scale", "test=2").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps").AssertOutContains(fmt.Sprintf("%s_test_2", projectName))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps").AssertOutContains(serviceparser.DefaultContainerName(projectName, "test", "2"))
 }
 
 func TestComposeIPAMConfig(t *testing.T) {
@@ -377,7 +378,7 @@ networks:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
-	base.Cmd("inspect", "-f", `{{json .NetworkSettings.Networks }}`, projectName+"_foo_1").AssertOutContains("10.1.100.")
+	base.Cmd("inspect", "-f", `{{json .NetworkSettings.Networks }}`, serviceparser.DefaultContainerName(projectName, "foo", "1")).AssertOutContains("10.1.100.")
 }
 
 func TestComposeUpRemoveOrphans(t *testing.T) {
@@ -409,7 +410,7 @@ services:
 	projectName := fmt.Sprintf("nerdctl-compose-test-%d", time.Now().Unix())
 	t.Logf("projectName=%q", projectName)
 
-	orphanContainer := fmt.Sprintf("%s_orphan_1", projectName)
+	orphanContainer := serviceparser.DefaultContainerName(projectName, "orphan", "1")
 
 	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "down", "-v").Run()

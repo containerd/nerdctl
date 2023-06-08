@@ -69,7 +69,7 @@ secrets:
 	assert.NilError(t, err)
 
 	t.Logf("foo: %+v", foo)
-	assert.Equal(t, project.Name+"_foo", foo.Image)
+	assert.Equal(t, DefaultImageName(project.Name, "foo"), foo.Image)
 	assert.Equal(t, false, foo.Build.Force)
 	assert.Equal(t, project.RelativePath("fooctx"), lastOf(foo.Build.BuildArgs))
 

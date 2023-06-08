@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,6 +47,10 @@ const (
 	ComposeCosignCertificateOidcIssuer       = "x-nerdctl-cosign-certificate-oidc-issuer"
 	ComposeCosignCertificateOidcIssuerRegexp = "x-nerdctl-cosign-certificate-oidc-issuer-regexp"
 )
+
+// Separator is used for naming components (e.g., service image or container)
+// https://github.com/docker/compose/blob/8c39b5b7fd4210a69d07885835f7ff826aaa1cd8/pkg/api/api.go#L483
+const Separator = "-"
 
 func warnUnknownFields(svc types.ServiceConfig) {
 	if unknown := reflectutil.UnknownNonEmptyFields(&svc,
@@ -423,7 +428,7 @@ func Parse(project *types.Project, svc types.ServiceConfig) (*Service, error) {
 		}
 	} else {
 		if parsed.Image == "" {
-			parsed.Image = fmt.Sprintf("%s_%s", project.Name, svc.Name)
+			parsed.Image = DefaultImageName(project.Name, svc.Name)
 		}
 		parsed.Build, err = parseBuildConfig(svc.Build, project, parsed.Image)
 		if err != nil {
@@ -460,7 +465,7 @@ func Parse(project *types.Project, svc types.ServiceConfig) (*Service, error) {
 func newContainer(project *types.Project, parsed *Service, i int) (*Container, error) {
 	svc := *parsed.Unparsed
 	var c Container
-	c.Name = fmt.Sprintf("%s_%s_%d", project.Name, svc.Name, i+1)
+	c.Name = DefaultContainerName(project.Name, svc.Name, strconv.Itoa(i+1))
 	if svc.ContainerName != "" {
 		if i != 0 {
 			return nil, errors.New("container_name must not be specified when replicas != 1")
@@ -883,4 +888,14 @@ func fileReferenceConfigToFlagV(c types.FileReferenceConfig, project *types.Proj
 
 	s := fmt.Sprintf("%s:%s:ro", src, target)
 	return s, nil
+}
+
+// DefaultImageName returns the image name following compose naming logic.
+func DefaultImageName(projectName string, serviceName string) string {
+	return projectName + Separator + serviceName
+}
+
+// DefaultContainerName returns the service container name following compose naming logic.
+func DefaultContainerName(projectName, serviceName, suffix string) string {
+	return DefaultImageName(projectName, serviceName) + Separator + suffix
 }

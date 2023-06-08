@@ -24,7 +24,6 @@ import (
 
 func TestComposeVersion(t *testing.T) {
 	base := testutil.NewBase(t)
-	base.ComposeBinary = "" // test with docker compose version, not docker-compose version
 	base.ComposeCmd("version").AssertOutContains("Compose version ")
 }
 
@@ -35,6 +34,5 @@ func TestComposeVersionShort(t *testing.T) {
 
 func TestComposeVersionJson(t *testing.T) {
 	base := testutil.NewBase(t)
-	base.ComposeBinary = "" // test with docker compose version, not docker-compose version
 	base.ComposeCmd("version", "--format", "json").AssertOutContains("{\"version\":\"")
 }
