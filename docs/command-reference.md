@@ -491,7 +491,7 @@ Usage: `nerdctl logs [OPTIONS] CONTAINER`
 
 Flags:
 
-- :whale: `--f, --follow`: Follow log output
+- :whale: `-f, --follow`: Follow log output
 - :whale: `--since`: Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)
 - :whale: `--until`: Show logs before a timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)
 - :whale: `-t, --timestamps`: Show timestamps
