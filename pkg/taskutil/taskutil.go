@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/term"
@@ -37,12 +38,34 @@ import (
 
 // NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108
 func NewTask(ctx context.Context, client *containerd.Client, container containerd.Container,
-	flagA, flagI, flagT, flagD bool, con console.Console, logURI string) (containerd.Task, error) {
+	flagA, flagI, flagT, flagD bool, con console.Console, logURI, detachKeys string, detachC chan<- struct{}) (containerd.Task, error) {
+	var t containerd.Task
+	closer := func() {
+		if detachC != nil {
+			detachC <- struct{}{}
+		}
+		// t will be set by container.NewTask at the end of this function.
+		//
+		// We cannot use container.Task(ctx, cio.Load) to get the IO here
+		// because the `cancel` field of the returned `*cio` is nil. [1]
+		//
+		// [1] https://github.com/containerd/containerd/blob/8f756bc8c26465bd93e78d9cd42082b66f276e10/cio/io.go#L358-L359
+		io := t.IO()
+		if io == nil {
+			logrus.Errorf("got a nil io")
+			return
+		}
+		io.Cancel()
+	}
 	var ioCreator cio.Creator
 	if flagA {
 		logrus.Debug("attaching output instead of using the log-uri")
 		if flagT {
-			ioCreator = cio.NewCreator(cio.WithStreams(con, con, nil), cio.WithTerminal)
+			in, err := consoleutil.NewDetachableStdin(con, detachKeys, closer)
+			if err != nil {
+				return nil, err
+			}
+			ioCreator = cio.NewCreator(cio.WithStreams(in, con, nil), cio.WithTerminal)
 		} else {
 			ioCreator = cio.NewCreator(cio.WithStdio)
 		}
@@ -79,7 +102,11 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			if runtime.GOOS != "windows" && !term.IsTerminal(0) {
 				return nil, errors.New("the input device is not a TTY")
 			}
-			in = con
+			var err error
+			in, err = consoleutil.NewDetachableStdin(con, detachKeys, closer)
+			if err != nil {
+				return nil, err
+			}
 		}
 		ioCreator = cio.NewCreator(cio.WithStreams(in, os.Stdout, nil), cio.WithTerminal)
 	} else if flagD && logURI != "" {

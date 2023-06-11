@@ -150,6 +150,7 @@ Basic flags:
 - :whale: `--uts=(host)` : UTS namespace to use
 - :whale: `--stop-signal`: Signal to stop a container (default "SIGTERM")
 - :whale: `--stop-timeout`: Timeout (in seconds) to stop a container
+- :whale: `--detach-keys`: Override the default detach keys
 
 Platform flags:
 
@@ -370,7 +371,7 @@ IPFS flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker run` flags:
-    `--attach`, `--blkio-weight-device`, `--cpu-rt-*`, `--detach-keys`, `--device-*`,
+    `--attach`, `--blkio-weight-device`, `--cpu-rt-*`, `--device-*`,
     `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--ip6`, `--isolation`, `--no-healthcheck`,
     `--link*`, `--mac-address`, `--publish-all`, `--sig-proxy`, `--storage-opt`,
     `--userns`, `--volume-driver`, `--volumes-from`
@@ -538,8 +539,9 @@ Usage: `nerdctl start [OPTIONS] CONTAINER [CONTAINER...]`
 Flags:
 
 - :whale: `-a, --attach`: Attach STDOUT/STDERR and forward signals
+- :whale: `--detach-keys`: Override the default detach keys
 
-Unimplemented `docker start` flags: `--checkpoint`, `--checkpoint-dir`, `--detach-keys`, `--interactive`
+Unimplemented `docker start` flags: `--checkpoint`, `--checkpoint-dir`, `--interactive`
 
 ### :whale: nerdctl restart
 
