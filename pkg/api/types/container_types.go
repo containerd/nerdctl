@@ -370,6 +370,18 @@ type ContainerWaitOptions struct {
 	GOptions GlobalCommandOptions
 }
 
+// ContainerAttachOptions specifies options for `nerdctl (container) attach`.
+type ContainerAttachOptions struct {
+	Stdin  io.Reader
+	Stdout io.Writer
+	Stderr io.Writer
+
+	// GOptions is the global options.
+	GOptions GlobalCommandOptions
+	// DetachKeys is the key sequences to detach from the container.
+	DetachKeys string
+}
+
 // ContainerExecOptions specifies options for `nerdctl (container) exec`
 type ContainerExecOptions struct {
 	GOptions GlobalCommandOptions

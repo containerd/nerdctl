@@ -31,6 +31,7 @@ It does not necessarily mean that the corresponding features are missing in cont
   - [:whale: nerdctl pause](#whale-nerdctl-pause)
   - [:whale: nerdctl unpause](#whale-nerdctl-unpause)
   - [:whale: nerdctl rename](#whale-nerdctl-rename)
+  - [:whale: nerdctl attach](#whale-nerdctl-attach)
   - [:whale: nerdctl container prune](#whale-nerdctl-container-prune)
 - [Build](#build)
   - [:whale: nerdctl build](#whale-nerdctl-build)
@@ -608,6 +609,30 @@ Usage: `nerdctl unpause CONTAINER [CONTAINER...]`
 Rename a container.
 
 Usage: `nerdctl rename CONTAINER NEW_NAME`
+
+### :whale: nerdctl attach
+
+Attach stdin, stdout, and stderr to a running container. For example:
+
+1. `nerdctl run -it --name test busybox` to start a container with a pty
+2. `ctrl-p ctrl-q` to detach from the container
+3. `nerdctl attach test` to attach to the container
+
+Caveats:
+
+- Currently only one attach session is allowed. When the second session tries to attach, currently no error will be returned from nerdctl.
+  However, since behind the scenes, there's only one FIFO for stdin, stdout, and stderr respectively,
+  if there are multiple sessions, all the sessions will be reading from and writing to the same 3 FIFOs, which will result in mixed input and partial output.
+- Until dual logging (issue #1946) is implemented,
+  a container that is spun up by either `nerdctl run -d` or `nerdctl start` (without `--attach`) cannot be attached to.
+
+Usage: `nerdctl attach CONTAINER`
+
+Flags:
+
+- :whale: `--detach-keys`: Override the default detach keys
+
+Unimplemented `docker attach` flags: `--no-stdin`, `--sig-proxy`
 
 ### :whale: nerdctl container prune
 
@@ -1620,7 +1645,6 @@ See [`./config.md`](./config.md).
 
 Container management:
 
-- `docker attach`
 - `docker diff`
 - `docker checkpoint *`
 
