@@ -100,6 +100,7 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 		return emptyDigest, err
 	}
 
+	var paused bool
 	if opts.Pause {
 		status, err := task.Status(ctx)
 		if err != nil {
@@ -112,10 +113,12 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 			if err := task.Pause(ctx); err != nil {
 				return emptyDigest, fmt.Errorf("failed to pause container: %w", err)
 			}
-
+			paused = true
 			defer func() {
-				if err := task.Resume(ctx); err != nil {
-					logrus.Warnf("failed to unpause container %v: %v", id, err)
+				if paused {
+					if err := task.Resume(ctx); err != nil {
+						logrus.Warnf("failed to unpause container %v: %v", id, err)
+					}
 				}
 			}()
 		}
@@ -139,6 +142,12 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 		return emptyDigest, fmt.Errorf("failed to export layer: %w", err)
 	}
 
+	if paused {
+		if err := task.Resume(ctx); err != nil {
+			logrus.Warnf("failed to unpause container %v: %v", id, err)
+		}
+		paused = false
+	}
 	imageConfig, err := generateCommitImageConfig(ctx, container, baseImg, diffID, opts)
 	if err != nil {
 		return emptyDigest, fmt.Errorf("failed to generate commit image config: %w", err)
