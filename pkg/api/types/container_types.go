@@ -420,3 +420,19 @@ type ContainerCpOptions struct {
 	// Follow symbolic links in SRC_PATH
 	FollowSymLink bool
 }
+
+// ContainerStatsOptions specifies options for `nerdctl stats`.
+type ContainerStatsOptions struct {
+	Stdout io.Writer
+	Stderr io.Writer
+	// GOptions is the global options.
+	GOptions GlobalCommandOptions
+	// Show all containers (default shows just running).
+	All bool
+	// Pretty-print images using a Go template, e.g., {{json .}}.
+	Format string
+	// Disable streaming stats and only pull the first result.
+	NoStream bool
+	// Do not truncate output.
+	NoTrunc bool
+}
