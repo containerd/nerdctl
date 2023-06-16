@@ -167,7 +167,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	internalLabels.logURI = logConfig.LogURI
 
-	restartOpts, err := generateRestartOpts(ctx, client, options.Restart, logConfig.LogURI)
+	restartOpts, err := generateRestartOpts(ctx, client, options.Restart, logConfig.LogURI, options.InRun)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -274,6 +274,9 @@ func processCreateCommandFlagsInRun(cmd *cobra.Command) (opt types.ContainerCrea
 	if err != nil {
 		return
 	}
+
+	opt.InRun = true
+
 	opt.Interactive, err = cmd.Flags().GetBool("interactive")
 	if err != nil {
 		return
