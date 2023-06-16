@@ -54,6 +54,9 @@ type ContainerCreateOptions struct {
 	// NerdctlArgs is the arguments of nerdctl
 	NerdctlArgs []string
 
+	// InRun is true when it's generated in the `run` command
+	InRun bool
+
 	// #region for basic flags
 	// Interactive keep STDIN open even if not attached
 	Interactive bool

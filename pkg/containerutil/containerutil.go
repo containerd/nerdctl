@@ -105,6 +105,15 @@ func ContainerNetNSPath(ctx context.Context, c containerd.Container) (string, er
 	return fmt.Sprintf("/proc/%d/ns/net", task.Pid()), nil
 }
 
+// UpdateStatusLabel updates the "containerd.io/restart.status"
+// label of the container according to the value of restart desired status.
+func UpdateStatusLabel(ctx context.Context, container containerd.Container, status containerd.ProcessStatus) error {
+	opt := containerd.WithAdditionalContainerLabels(map[string]string{
+		restart.StatusLabel: string(status),
+	})
+	return container.Update(ctx, containerd.UpdateContainerOpts(opt))
+}
+
 // UpdateExplicitlyStoppedLabel updates the "containerd.io/restart.explicitly-stopped"
 // label of the container according to the value of explicitlyStopped.
 func UpdateExplicitlyStoppedLabel(ctx context.Context, container containerd.Container, explicitlyStopped bool) error {
@@ -239,6 +248,14 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 		logrus.Warnf("container %s is already running", container.ID())
 		return nil
 	}
+
+	_, restartPolicyExist := lab[restart.PolicyLabel]
+	if restartPolicyExist {
+		if err := UpdateStatusLabel(ctx, container, containerd.Running); err != nil {
+			return err
+		}
+	}
+
 	if err := UpdateExplicitlyStoppedLabel(ctx, container, false); err != nil {
 		return err
 	}
