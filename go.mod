@@ -14,7 +14,7 @@ require (
 	github.com/containerd/continuity v0.4.1
 	github.com/containerd/go-cni v1.1.9
 	github.com/containerd/imgcrypt v1.1.7
-	github.com/containerd/nydus-snapshotter v0.8.2
+	github.com/containerd/nydus-snapshotter v0.9.0
 	github.com/containerd/stargz-snapshotter v0.14.3
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3
 	github.com/containerd/stargz-snapshotter/ipfs v0.14.3
@@ -70,7 +70,7 @@ require (
 	github.com/containerd/fifo v1.1.0 // indirect
 	github.com/containerd/ttrpc v1.2.2 // indirect
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67 // indirect
-	github.com/containers/ocicrypt v1.1.6 // indirect
+	github.com/containers/ocicrypt v1.1.7 // indirect
 	github.com/distribution/distribution/v3 v3.0.0-20230214150026-36d8c594d7aa // indirect
 	github.com/djherbis/times v1.5.0 // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
