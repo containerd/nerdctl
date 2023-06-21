@@ -82,5 +82,31 @@ func UpdateContainerRestartPolicyLabel(ctx context.Context, client *containerd.C
 	if err != nil {
 		return err
 	}
-	return container.Update(ctx, restart.WithPolicy(policy))
+
+	updateOpts := []containerd.UpdateContainerOpts{restart.WithPolicy(policy)}
+
+	lables, err := container.Labels(ctx)
+	if err != nil {
+		return err
+	}
+	_, statusLabelExist := lables[restart.StatusLabel]
+	if !statusLabelExist {
+		task, err := container.Task(ctx, nil)
+		if err != nil {
+			return fmt.Errorf("failed to get task:%w", err)
+		}
+		desireStatus := containerd.Running
+		status, err := task.Status(ctx)
+		if err == nil {
+			switch status.Status {
+			case containerd.Stopped:
+				desireStatus = containerd.Stopped
+			case containerd.Created:
+				desireStatus = containerd.Created
+			}
+		}
+		updateOpts = append(updateOpts, restart.WithStatus(desireStatus))
+	}
+
+	return container.Update(ctx, updateOpts...)
 }
