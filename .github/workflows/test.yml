@@ -149,7 +149,7 @@ jobs:
       - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
         run: DOCKER_BUILDKIT=1 docker build -t ${TEST_TARGET} --target ${TEST_TARGET} --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
       - name: "Test (network driver=slirp4netns, port driver=builtin)"
-        run: docker run -t --rm --privileged ${TEST_TARGET}
+        run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=1 ${TEST_TARGET}
 
   cross:
     runs-on: ubuntu-22.04
