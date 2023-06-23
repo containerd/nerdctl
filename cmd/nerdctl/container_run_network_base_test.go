@@ -231,20 +231,19 @@ func valuesOfMapStringString(m map[string]string) map[string]struct{} {
 	return res
 }
 
-func extractHostPort(portMapping string) (string, error) {
+func extractHostPort(portMapping string, port string) (string, error) {
 	// Regular expression to extract host port from port mapping information
-	re := regexp.MustCompile(`\d+/tcp ->.*?0.0.0.0:(?P<portNumber>\d{1,5}).*?`)
-
-	// Find the matches
-	matches := re.FindStringSubmatch(portMapping)
-
-	// Check if there is a match
-	if len(matches) < 2 {
-		return "", fmt.Errorf("could not extract host port from port mapping: %s", portMapping)
+	re := regexp.MustCompile(`(?P<containerPort>\d{1,5})/tcp ->.*?0.0.0.0:(?P<hostPort>\d{1,5}).*?`)
+	portMappingLines := strings.Split(portMapping, "\n")
+	for _, portMappingLine := range portMappingLines {
+		// Find the matches
+		matches := re.FindStringSubmatch(portMappingLine)
+		// Check if there is a match
+		if len(matches) >= 3 && matches[1] == port {
+			// Extract the host port number
+			hostPort := matches[2]
+			return hostPort, nil
+		}
 	}
-
-	// Extract the host port number
-	hostPort := matches[1]
-
-	return hostPort, nil
+	return "", fmt.Errorf("could not extract host port from port mapping: %s", portMapping)
 }
