@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -153,4 +154,31 @@ func TestUpdateRestartPolicy(t *testing.T) {
 	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(60*time.Second))
 	inspect := base.InspectContainer(tID)
 	assert.Equal(t, inspect.RestartCount, 2)
+}
+
+// The test is to add a restart policy to a container which has not restart policy before,
+// and check it can work correctly.
+func TestAddRestartPolicy(t *testing.T) {
+	base := testutil.NewBase(t)
+	if testutil.GetTarget() == testutil.Nerdctl {
+		testutil.RequireContainerdPlugin(base, "io.containerd.internal.v1", "restart", []string{"on-failure"})
+	}
+	tID := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", tID).Run()
+	base.Cmd("run", "-d", "--name", tID, testutil.NginxAlpineImage).AssertOK()
+	base.Cmd("update", "--restart=on-failure", tID).AssertOK()
+	inspect := base.InspectContainer(tID)
+	orgialPid := inspect.State.Pid
+	exec.Command("kill", "-9", fmt.Sprintf("%v", orgialPid)).Run()
+
+	check := func(log poll.LogT) poll.Result {
+		inspect := base.InspectContainer(tID)
+		if inspect.State != nil && inspect.State.Status == "running" && inspect.State.Pid != orgialPid {
+			return poll.Success()
+		}
+		return poll.Continue("container is not yet running")
+	}
+	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(60*time.Second))
+	inspect = base.InspectContainer(tID)
+	assert.Equal(t, inspect.RestartCount, 1)
 }
