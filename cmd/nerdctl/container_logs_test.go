@@ -36,9 +36,15 @@ bar`
 	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
 		"sh", "-euxc", "echo foo; echo bar").AssertOK()
 
+	//test since / until flag
 	time.Sleep(3 * time.Second)
+	base.Cmd("logs", "--since", "1s", containerName).AssertNoOut(expected)
+	base.Cmd("logs", "--since", "10s", containerName).AssertOutContains(expected)
+	base.Cmd("logs", "--until", "10s", containerName).AssertNoOut(expected)
+	base.Cmd("logs", "--until", "1s", containerName).AssertOutContains(expected)
+
+	// Ensure follow flag works as expected:
 	base.Cmd("logs", "-f", containerName).AssertOutContains("bar")
-	// Run logs twice, make sure that the logs are not removed
 	base.Cmd("logs", "-f", containerName).AssertOutContains("foo")
 
 	//test timestamps flag
@@ -53,12 +59,6 @@ bar`
 		}
 		return nil
 	})
-
-	//test since / until flag
-	base.Cmd("logs", "--since", "1s", containerName).AssertNoOut(expected)
-	base.Cmd("logs", "--since", "5s", containerName).AssertOutContains(expected)
-	base.Cmd("logs", "--until", "5s", containerName).AssertNoOut(expected)
-	base.Cmd("logs", "--until", "1s", containerName).AssertOutContains(expected)
 
 	base.Cmd("rm", "-f", containerName).AssertOK()
 }
