@@ -357,6 +357,7 @@ func TestRunWithJournaldLogDriverAndLogOpt(t *testing.T) {
 }
 
 func TestRunWithLogBinary(t *testing.T) {
+	testutil.RequiresBuild(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("buildkit is not enabled on windows, this feature may work on windows.")
 	}

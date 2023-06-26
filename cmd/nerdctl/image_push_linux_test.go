@@ -28,6 +28,7 @@ import (
 )
 
 func TestPushPlainHTTPFails(t *testing.T) {
+	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
@@ -46,6 +47,7 @@ func TestPushPlainHTTPFails(t *testing.T) {
 }
 
 func TestPushPlainHTTPLocalhost(t *testing.T) {
+	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	reg := testregistry.NewPlainHTTP(base, 5000)
 	defer reg.Cleanup()
@@ -62,6 +64,7 @@ func TestPushPlainHTTPLocalhost(t *testing.T) {
 }
 
 func TestPushPlainHTTPInsecure(t *testing.T) {
+	testutil.RequiresBuild(t)
 	// Skip docker, because "dockerd --insecure-registries" requires restarting the daemon
 	testutil.DockerIncompatible(t)
 
@@ -79,6 +82,7 @@ func TestPushPlainHTTPInsecure(t *testing.T) {
 }
 
 func TestPushPlainHttpInsecureWithDefaultPort(t *testing.T) {
+	testutil.RequiresBuild(t)
 	// Skip docker, because "dockerd --insecure-registries" requires restarting the daemon
 	testutil.DockerIncompatible(t)
 
@@ -96,6 +100,7 @@ func TestPushPlainHttpInsecureWithDefaultPort(t *testing.T) {
 }
 
 func TestPushInsecureWithLogin(t *testing.T) {
+	testutil.RequiresBuild(t)
 	// Skip docker, because "dockerd --insecure-registries" requires restarting the daemon
 	testutil.DockerIncompatible(t)
 
@@ -116,6 +121,7 @@ func TestPushInsecureWithLogin(t *testing.T) {
 }
 
 func TestPushWithHostsDir(t *testing.T) {
+	testutil.RequiresBuild(t)
 	// Skip docker, because Docker doesn't have `--hosts-dir` option, and we don't want to contaminate the global /etc/docker/certs.d during this test
 	testutil.DockerIncompatible(t)
 
@@ -135,6 +141,7 @@ func TestPushWithHostsDir(t *testing.T) {
 }
 
 func TestPushNonDistributableArtifacts(t *testing.T) {
+	testutil.RequiresBuild(t)
 	// Skip docker, because "dockerd --insecure-registries" requires restarting the daemon
 	// Skip docker, because "--allow-nondistributable-artifacts" is a daemon-only option and requires restarting the daemon
 	testutil.DockerIncompatible(t)

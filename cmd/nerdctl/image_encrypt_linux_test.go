@@ -107,6 +107,7 @@ func rmiAll(base *testutil.Base) {
 }
 
 func TestImageEncryptJWE(t *testing.T) {
+	testutil.RequiresBuild(t)
 	testutil.DockerIncompatible(t)
 	keyPair := newJWEKeyPair(t)
 	defer keyPair.cleanup()
