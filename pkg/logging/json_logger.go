@@ -204,7 +204,7 @@ func viewLogsJSONFileThroughTailExec(lvopts LogViewOptions, jsonLogFilePath stri
 	if lvopts.Tail == 0 {
 		args = append(args, "+0")
 	} else {
-		args = append(args, fmt.Sprintf("%d", lvopts.Tail))
+		args = append(args, strconv.FormatUint(uint64(lvopts.Tail), 10))
 	}
 
 	if lvopts.Follow {

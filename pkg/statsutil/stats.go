@@ -18,6 +18,7 @@ package statsutil
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -205,5 +206,5 @@ func (s *StatsEntry) PIDs() string {
 	if s.IsInvalid {
 		return "--"
 	}
-	return fmt.Sprintf("%d", s.PidsCurrent)
+	return strconv.FormatUint(s.PidsCurrent, 10)
 }
