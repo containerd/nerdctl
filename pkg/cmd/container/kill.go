@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/moby/sys/signal"
 	"github.com/sirupsen/logrus"
@@ -64,7 +65,15 @@ func Kill(ctx context.Context, client *containerd.Client, reqs []string, options
 	return walker.WalkAll(ctx, reqs, true)
 }
 
-func killContainer(ctx context.Context, container containerd.Container, signal syscall.Signal) error {
+func killContainer(ctx context.Context, container containerd.Container, signal syscall.Signal) (err error) {
+	defer func() {
+		if err != nil {
+			containerutil.UpdateErrorLabel(ctx, container, err)
+		}
+	}()
+	if err := containerutil.UpdateExplicitlyStoppedLabel(ctx, container, true); err != nil {
+		return err
+	}
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
 		return err
