@@ -17,15 +17,11 @@
 package container
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
-	"text/tabwriter"
-	"text/template"
 	"time"
 
 	"github.com/containerd/containerd"
@@ -41,12 +37,12 @@ import (
 )
 
 // List prints containers according to `options`.
-func List(ctx context.Context, client *containerd.Client, options types.ContainerListOptions) error {
+func List(ctx context.Context, client *containerd.Client, options types.ContainerListOptions) ([]ListItem, error) {
 	containers, err := filterContainers(ctx, client, options.Filters, options.LastN, options.All)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return printContainers(ctx, client, containers, options)
+	return prepareContainers(ctx, client, containers, options)
 }
 
 // filterContainers returns containers matching the filters.
@@ -90,147 +86,69 @@ func filterContainers(ctx context.Context, client *containerd.Client, filters []
 	return upContainers, nil
 }
 
-type containerPrintable struct {
+type ListItem struct {
 	Command   string
-	CreatedAt string
+	CreatedAt time.Time
 	ID        string
 	Image     string
 	Platform  string // nerdctl extension
-	Names     string
+	Names     []string
 	Ports     string
 	Status    string
 	Runtime   string // nerdctl extension
 	Size      string
-	Labels    string
+	Labels    map[string]string
 	// TODO: "LocalVolumes", "Mounts", "Networks", "RunningFor", "State"
 }
 
-func printContainers(ctx context.Context, client *containerd.Client, containers []containerd.Container, options types.ContainerListOptions) error {
-	w := options.Stdout
-	var (
-		wide bool
-		tmpl *template.Template
-	)
-	switch options.Format {
-	case "", "table":
-		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
-		if !options.Quiet {
-			printHeader := "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES"
-			if options.Size {
-				printHeader += "\tSIZE"
-			}
-			fmt.Fprintln(w, printHeader)
-		}
-	case "raw":
-		return errors.New("unsupported format: \"raw\"")
-	case "wide":
-		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
-		if !options.Quiet {
-			fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\tRUNTIME\tPLATFORM\tSIZE")
-			wide = true
-		}
-	default:
-		if options.Quiet {
-			return errors.New("format and quiet must not be specified together")
-		}
-		var err error
-		tmpl, err = formatter.ParseTemplate(options.Format)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, c := range containers {
+func prepareContainers(ctx context.Context, client *containerd.Client, containers []containerd.Container, options types.ContainerListOptions) ([]ListItem, error) {
+	listItems := make([]ListItem, len(containers))
+	for i, c := range containers {
 		info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
 		if err != nil {
 			if errdefs.IsNotFound(err) {
 				logrus.Warn(err)
 				continue
 			}
-			return err
+			return nil, err
 		}
-
 		spec, err := c.Spec(ctx)
 		if err != nil {
 			if errdefs.IsNotFound(err) {
 				logrus.Warn(err)
 				continue
 			}
-			return err
+			return nil, err
 		}
-
-		imageName := info.Image
 		id := c.ID()
 		if options.Truncate && len(id) > 12 {
 			id = id[:12]
 		}
-
-		p := containerPrintable{
+		li := ListItem{
 			Command:   formatter.InspectContainerCommand(spec, options.Truncate, true),
-			CreatedAt: info.CreatedAt.Round(time.Second).Local().String(), // format like "2021-08-07 02:19:45 +0900 JST"
+			CreatedAt: info.CreatedAt,
 			ID:        id,
-			Image:     imageName,
+			Image:     info.Image,
 			Platform:  info.Labels[labels.Platform],
-			Names:     getPrintableContainerName(info.Labels),
+			Names:     []string{getContainerName(info.Labels)},
 			Ports:     formatter.FormatPorts(info.Labels),
 			Status:    formatter.ContainerStatus(ctx, c),
 			Runtime:   info.Runtime.Name,
-			Labels:    formatter.FormatLabels(info.Labels),
+			Labels:    info.Labels,
 		}
-
-		if options.Size || wide {
+		if options.Size {
 			containerSize, err := getContainerSize(ctx, client, c, info)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			p.Size = containerSize
+			li.Size = containerSize
 		}
-
-		if tmpl != nil {
-			var b bytes.Buffer
-			if err := tmpl.Execute(&b, p); err != nil {
-				return err
-			}
-			if _, err = fmt.Fprintf(w, b.String()+"\n"); err != nil {
-				return err
-			}
-		} else if options.Quiet {
-			if _, err := fmt.Fprintf(w, "%s\n", id); err != nil {
-				return err
-			}
-		} else {
-			format := "%s\t%s\t%s\t%s\t%s\t%s\t%s"
-			args := []interface{}{
-				p.ID,
-				p.Image,
-				p.Command,
-				formatter.TimeSinceInHuman(info.CreatedAt),
-				p.Status,
-				p.Ports,
-				p.Names,
-			}
-			if wide {
-				format += "\t%s\t%s\t%s\n"
-				args = append(args, p.Runtime, p.Platform, p.Size)
-			} else if options.Size {
-				format += "\t%s\n"
-				args = append(args, p.Size)
-			} else {
-				format += "\n"
-			}
-			if _, err := fmt.Fprintf(w, format, args...); err != nil {
-				return err
-			}
-		}
-
+		listItems[i] = li
 	}
-	if f, ok := w.(formatter.Flusher); ok {
-		return f.Flush()
-	}
-	return nil
+	return listItems, nil
 }
 
-func getPrintableContainerName(containerLabels map[string]string) string {
+func getContainerName(containerLabels map[string]string) string {
 	if name, ok := containerLabels[labels.Name]; ok {
 		return name
 	}

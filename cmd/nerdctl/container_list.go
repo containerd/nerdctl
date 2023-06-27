@@ -17,9 +17,17 @@
 package main
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
+	"io"
+	"text/tabwriter"
+	"text/template"
+
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
+	"github.com/containerd/nerdctl/pkg/formatter"
 
 	"github.com/spf13/cobra"
 )
@@ -49,23 +57,23 @@ func newPsCommand() *cobra.Command {
 	return psCommand
 }
 
-func processContainerListOptions(cmd *cobra.Command) (types.ContainerListOptions, error) {
+func processOptions(cmd *cobra.Command) (types.ContainerListOptions, FormattingAndPrintingOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return types.ContainerListOptions{}, err
+		return types.ContainerListOptions{}, FormattingAndPrintingOptions{}, err
 	}
 	all, err := cmd.Flags().GetBool("all")
 	if err != nil {
-		return types.ContainerListOptions{}, err
+		return types.ContainerListOptions{}, FormattingAndPrintingOptions{}, err
 	}
 	latest, err := cmd.Flags().GetBool("latest")
 	if err != nil {
-		return types.ContainerListOptions{}, err
+		return types.ContainerListOptions{}, FormattingAndPrintingOptions{}, err
 	}
 
 	lastN, err := cmd.Flags().GetInt("last")
 	if err != nil {
-		return types.ContainerListOptions{}, err
+		return types.ContainerListOptions{}, FormattingAndPrintingOptions{}, err
 	}
 	if lastN == -1 && latest {
 		lastN = 1
@@ -73,56 +81,154 @@ func processContainerListOptions(cmd *cobra.Command) (types.ContainerListOptions
 
 	filters, err := cmd.Flags().GetStringSlice("filter")
 	if err != nil {
-		return types.ContainerListOptions{}, err
+		return types.ContainerListOptions{}, FormattingAndPrintingOptions{}, err
 	}
 
 	noTrunc, err := cmd.Flags().GetBool("no-trunc")
 	if err != nil {
-		return types.ContainerListOptions{}, err
+		return types.ContainerListOptions{}, FormattingAndPrintingOptions{}, err
 	}
 	trunc := !noTrunc
 
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
-		return types.ContainerListOptions{}, err
+		return types.ContainerListOptions{}, FormattingAndPrintingOptions{}, err
 	}
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
-		return types.ContainerListOptions{}, err
+		return types.ContainerListOptions{}, FormattingAndPrintingOptions{}, err
 	}
 
 	size := false
 	if !quiet {
 		size, err = cmd.Flags().GetBool("size")
 		if err != nil {
-			return types.ContainerListOptions{}, err
+			return types.ContainerListOptions{}, FormattingAndPrintingOptions{}, err
 		}
 	}
 
 	return types.ContainerListOptions{
-		Stdout:   cmd.OutOrStdout(),
-		GOptions: globalOptions,
-		All:      all,
-		LastN:    lastN,
-		Truncate: trunc,
-		Quiet:    quiet,
-		Size:     size,
-		Format:   format,
-		Filters:  filters,
-	}, nil
+			GOptions: globalOptions,
+			All:      all,
+			LastN:    lastN,
+			Truncate: trunc,
+			Size:     size || (format == "wide" && !quiet),
+			Filters:  filters,
+		}, FormattingAndPrintingOptions{
+			Stdout: cmd.OutOrStdout(),
+			Quiet:  quiet,
+			Format: format,
+			Size:   size,
+		}, nil
 }
 
 func psAction(cmd *cobra.Command, args []string) error {
-	options, err := processContainerListOptions(cmd)
+	clOpts, fpOpts, err := processOptions(cmd)
 	if err != nil {
 		return err
 	}
 
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), clOpts.GOptions.Namespace, clOpts.GOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	return container.List(ctx, client, options)
+	containers, err := container.List(ctx, client, clOpts)
+	if err != nil {
+		return err
+	}
+
+	return formatAndPrintContainerInfo(containers, fpOpts)
+}
+
+// FormattingAndPrintingOptions specifies options for formatting and printing of `nerdctl (container) list`.
+type FormattingAndPrintingOptions struct {
+	Stdout io.Writer
+	// Only display container IDs.
+	Quiet bool
+	// Format the output using the given Go template (e.g., '{{json .}}', 'table', 'wide').
+	Format string
+	// Display total file sizes.
+	Size bool
+}
+
+func formatAndPrintContainerInfo(containers []container.ListItem, options FormattingAndPrintingOptions) error {
+	w := options.Stdout
+	var (
+		wide bool
+		tmpl *template.Template
+	)
+	switch options.Format {
+	case "", "table":
+		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
+		if !options.Quiet {
+			printHeader := "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES"
+			if options.Size {
+				printHeader += "\tSIZE"
+			}
+			fmt.Fprintln(w, printHeader)
+		}
+	case "raw":
+		return errors.New("unsupported format: \"raw\"")
+	case "wide":
+		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
+		if !options.Quiet {
+			fmt.Fprintln(w, "CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\tRUNTIME\tPLATFORM\tSIZE")
+			wide = true
+		}
+	default:
+		if options.Quiet {
+			return errors.New("format and quiet must not be specified together")
+		}
+		var err error
+		tmpl, err = formatter.ParseTemplate(options.Format)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, c := range containers {
+		if tmpl != nil {
+			var b bytes.Buffer
+			if err := tmpl.Execute(&b, c); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(w, b.String()+"\n"); err != nil {
+				return err
+			}
+		} else if options.Quiet {
+			if _, err := fmt.Fprintf(w, "%s\n", c.ID); err != nil {
+				return err
+			}
+		} else {
+			format := "%s\t%s\t%s\t%s\t%s\t%s\t%s"
+			args := []interface{}{
+				c.ID,
+				c.Image,
+				c.Command,
+				formatter.TimeSinceInHuman(c.CreatedAt),
+				c.Status,
+				c.Ports,
+				c.Names[0],
+			}
+			if wide {
+				format += "\t%s\t%s\t%s\n"
+				args = append(args, c.Runtime, c.Platform, c.Size)
+			} else if options.Size {
+				format += "\t%s\n"
+				args = append(args, c.Size)
+			} else {
+				format += "\n"
+			}
+			if _, err := fmt.Fprintf(w, format, args...); err != nil {
+				return err
+			}
+		}
+
+	}
+	if f, ok := w.(formatter.Flusher); ok {
+		return f.Flush()
+	}
+	return nil
 }
