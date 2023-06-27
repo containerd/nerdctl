@@ -175,9 +175,9 @@ You can use zstd compression with lazy pulling support (a.k.a zstd:chunked) inst
   - [Faster](https://github.com/facebook/zstd/tree/v1.5.2#benchmarks) compression/decompression.
 - Cons
   - Old tools might not support. And unsupported by some tools yet.
-    - zstd support by OCI Image Specification is still under rc (2022/11). will be added to [v1.1.0](https://github.com/opencontainers/image-spec/commit/1a29e8675a64a5cdd2d93b6fa879a82d9a4d926a).
-    - zstd support unreleased [by Docker](https://github.com/moby/moby/pull/41759/commits/e187eb2bb5f0c3f899fe643e95d1af8c57e89a73) (will be added to v22.06).
-    - [containerd >= v1.5](https://github.com/containerd/containerd/releases/tag/v1.5.0) supports zstd.
+    - zstd supported by OCI Image Specification is still under rc (2022/11). will be added to [v1.1.0](https://github.com/opencontainers/image-spec/commit/1a29e8675a64a5cdd2d93b6fa879a82d9a4d926a).
+    - zstd supported by [docker >=v23.0.0](https://github.com/moby/moby/releases/tag/v23.0.0).
+    - zstd supported by [containerd >= v1.5](https://github.com/containerd/containerd/releases/tag/v1.5.0).
   - `min-chunk-size`, `external-toc` (described in Tips 1) are unsupported yet.
 
 ```console
