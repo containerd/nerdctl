@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -53,7 +54,7 @@ func runSyslogTest(t *testing.T, networks []string, syslogFacilities map[string]
 		for rFK, rFV := range syslogFacilities {
 			fPriV := rFV
 			// test both string and number facility
-			for _, fPriK := range []string{rFK, fmt.Sprintf("%d", int(fPriV)>>3)} {
+			for _, fPriK := range []string{rFK, strconv.Itoa(int(fPriV) >> 3)} {
 				for fmtK, fmtValidFunc := range fmtValidFuncs {
 					fmtKT := "empty"
 					if fmtK != "" {

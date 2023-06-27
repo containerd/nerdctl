@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -84,7 +85,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", mediaType)
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", size))
+	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 	if r.Method == "GET" {
 		http.ServeContent(w, r, "", time.Now(), content)
 		logrus.WithField("CID", cid).Debugf("served file")
