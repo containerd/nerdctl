@@ -25,6 +25,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/containerd/containerd"
+	snapshotsapi "github.com/containerd/containerd/api/services/snapshots/v1"
+	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/mount"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/tarutil"
 	securejoin "github.com/cyphar/filepath-securejoin"
@@ -34,14 +38,59 @@ import (
 // CopyFiles implements `nerdctl cp`.
 //
 // See https://docs.docker.com/engine/reference/commandline/cp/ for the specification.
-func CopyFiles(ctx context.Context, container2host bool, pid int, dst, src string, followSymlink bool) error {
+func CopyFiles(ctx context.Context, container2host bool, client *containerd.Client, container containerd.Container, snapshotter string, dst, src string, followSymlink bool) error {
+	// If there is no running process, then we use the snapshotter.
+	// Otherwise, use the pid mount namespace, otherwise that gets out of sync
+	// with the snapshotter (leading to errors trying to delete the copied-in
+	// file).
+
+	var root string
+	task, err := container.Task(ctx, nil)
+
+	if errdefs.IsNotFound(err) {
+		task = nil
+
+		snapshotClient := snapshotsapi.NewSnapshotsClient(client.Conn())
+		req := &snapshotsapi.MountsRequest{
+			Snapshotter: snapshotter,
+			Key:         container.ID(),
+		}
+
+		resp, err := snapshotClient.Mounts(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		root, err = os.MkdirTemp("", "nerdctl-cp-")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(root)
+
+		mounts := make([]mount.Mount, len(resp.GetMounts()))
+		for i, m := range resp.GetMounts() {
+			mounts[i] = mount.Mount{
+				Type:    m.GetType(),
+				Source:  m.GetSource(),
+				Target:  m.GetTarget(),
+				Options: m.GetOptions(),
+			}
+		}
+
+		if err := mount.All(mounts, root); err != nil {
+			return err
+		}
+		defer mount.Unmount(root, 0)
+	} else {
+		root = fmt.Sprintf("/proc/%d/root", task.Pid())
+	}
+
 	tarBinary, isGNUTar, err := tarutil.FindTarBinary()
 	if err != nil {
 		return err
 	}
 	logrus.Debugf("Detected tar binary %q (GNU=%v)", tarBinary, isGNUTar)
 	var srcFull, dstFull string
-	root := fmt.Sprintf("/proc/%d/root", pid)
 	if container2host {
 		srcFull, err = securejoin.SecureJoin(root, src)
 		dstFull = dst
@@ -139,11 +188,13 @@ func CopyFiles(ctx context.Context, container2host bool, pid int, dst, src strin
 	}
 	tarX = append(tarX, "-f", "-")
 	if rootlessutil.IsRootless() {
-		nsenter := []string{"nsenter", "-t", strconv.Itoa(pid), "-U", "--preserve-credentials", "--"}
-		if container2host {
-			tarC = append(nsenter, tarC...)
-		} else {
-			tarX = append(nsenter, tarX...)
+		if task != nil {
+			nsenter := []string{"nsenter", "-t", strconv.Itoa(int(task.Pid())), "-U", "--preserve-credentials", "--"}
+			if container2host {
+				tarC = append(nsenter, tarC...)
+			} else {
+				tarX = append(nsenter, tarX...)
+			}
 		}
 	}
 
