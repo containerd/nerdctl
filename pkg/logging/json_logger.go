@@ -157,37 +157,46 @@ func viewLogsJSONFileDirect(lvopts LogViewOptions, jsonLogFilePath string, stdou
 			return fmt.Errorf("error occurred while trying to seek JSON logfile %q at position %d: %s", jsonLogFilePath, lastPos, err)
 		}
 		fin.Close()
+
+		readFromLastPos := func() error {
+			// Re-open the file and seek to the last-consumed offset.
+			fin, err = os.OpenFile(jsonLogFilePath, os.O_RDONLY, 0400)
+			if err != nil {
+				fin.Close()
+				return fmt.Errorf("error occurred while trying to re-open JSON logfile %q: %s", jsonLogFilePath, err)
+			}
+			_, err = fin.Seek(lastPos, 0)
+			if err != nil {
+				fin.Close()
+				return fmt.Errorf("error occurred while trying to seek JSON logfile %q at position %d: %s", jsonLogFilePath, lastPos, err)
+			}
+
+			err = jsonfile.Decode(stdout, stderr, fin, lvopts.Timestamps, lvopts.Since, lvopts.Until, 0)
+			if err != nil {
+				fin.Close()
+				return fmt.Errorf("error occurred while doing follow-up decoding of JSON logfile %q at starting position %d: %s", jsonLogFilePath, lastPos, err)
+			}
+
+			// Record current file seek position before looping again.
+			lastPos, err = fin.Seek(0, io.SeekCurrent)
+			if err != nil {
+				fin.Close()
+				return fmt.Errorf("error occurred while trying to seek JSON logfile %q at current position: %s", jsonLogFilePath, err)
+			}
+			fin.Close()
+			return nil
+		}
+
 		for {
 			select {
 			case <-stopChannel:
-				logrus.Debugf("received stop signal while re-reading JSON logfile, returning")
-				return nil
+				logrus.Debugf("received stop signal, re-reading JSON logfile and returning")
+				// read final logs before returning
+				return readFromLastPos()
 			default:
-				// Re-open the file and seek to the last-consumed offset.
-				fin, err = os.OpenFile(jsonLogFilePath, os.O_RDONLY, 0400)
-				if err != nil {
-					fin.Close()
-					return fmt.Errorf("error occurred while trying to re-open JSON logfile %q: %s", jsonLogFilePath, err)
+				if err = readFromLastPos(); err != nil {
+					return err
 				}
-				_, err = fin.Seek(lastPos, 0)
-				if err != nil {
-					fin.Close()
-					return fmt.Errorf("error occurred while trying to seek JSON logfile %q at position %d: %s", jsonLogFilePath, lastPos, err)
-				}
-
-				err = jsonfile.Decode(stdout, stderr, fin, lvopts.Timestamps, lvopts.Since, lvopts.Until, 0)
-				if err != nil {
-					fin.Close()
-					return fmt.Errorf("error occurred while doing follow-up decoding of JSON logfile %q at starting position %d: %s", jsonLogFilePath, lastPos, err)
-				}
-
-				// Record current file seek position before looping again.
-				lastPos, err = fin.Seek(0, io.SeekCurrent)
-				if err != nil {
-					fin.Close()
-					return fmt.Errorf("error occurred while trying to seek JSON logfile %q at current position: %s", jsonLogFilePath, err)
-				}
-				fin.Close()
 			}
 			// Give the OS a second to breathe before re-opening the file:
 			time.Sleep(time.Second)
@@ -224,6 +233,8 @@ func viewLogsJSONFileThroughTailExec(lvopts LogViewOptions, jsonLogFilePath stri
 	// Setup killing goroutine:
 	go func() {
 		<-stopChannel
+		// sleep 100ms to get logs post container exit
+		time.Sleep(100 * time.Millisecond)
 		logrus.Debugf("killing tail logs process with PID: %d", cmd.Process.Pid)
 		cmd.Process.Kill()
 	}()
