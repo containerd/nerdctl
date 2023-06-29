@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
@@ -90,6 +91,8 @@ func Logs(ctx context.Context, client *containerd.Client, container string, opti
 						// Setup goroutine to send stop event if container task finishes:
 						go func() {
 							<-waitCh
+							// wait 100ms to let logViewer process data sent after container exit, if any
+							time.Sleep(100 * time.Millisecond)
 							logrus.Debugf("container task has finished, sending kill signal to log viewer")
 							stopChannel <- os.Interrupt
 						}()
