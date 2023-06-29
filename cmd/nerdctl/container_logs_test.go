@@ -143,3 +143,49 @@ func TestLogsWithFailingContainer(t *testing.T) {
 	base.Cmd("logs", "-f", containerName).AssertNoOut("baz")
 	base.Cmd("rm", "-f", containerName).AssertOK()
 }
+
+func TestLogsWithRunningContainer(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", containerName).Run()
+	expected := []string{}
+	for i := 1; i <= 10; i++ {
+		expected = append(expected, fmt.Sprint(i))
+	}
+
+	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
+		"sh", "-euc", "for i in `seq 1 10`; do echo $i; sleep 1; done").AssertOK()
+	base.Cmd("logs", "-f", containerName).AssertOutContainsAll(expected...)
+	base.Cmd("rm", "-f", containerName).AssertOK()
+}
+
+func TestLogsWithoutNewline(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", containerName).Run()
+	expected := []string{"Hello World!", "There is no newline"}
+	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
+		"printf", "'Hello World!\nThere is no newline'").AssertOK()
+	time.Sleep(3 * time.Second)
+	base.Cmd("logs", "-f", containerName).AssertOutContainsAll(expected...)
+	base.Cmd("rm", "-f", containerName).AssertOK()
+}
+
+func TestLogsAfterRestartingContainer(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", containerName).Run()
+	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
+		"printf", "'Hello World!\nThere is no newline'").AssertOK()
+	expected := []string{"Hello World!", "There is no newline"}
+	time.Sleep(3 * time.Second)
+	base.Cmd("logs", "-f", containerName).AssertOutContainsAll(expected...)
+	// restart and check logs again
+	base.Cmd("start", containerName)
+	time.Sleep(3 * time.Second)
+	base.Cmd("logs", "-f", containerName).AssertOutContainsAll(expected...)
+	base.Cmd("rm", "-f", containerName).AssertOK()
+}
