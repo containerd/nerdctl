@@ -391,7 +391,6 @@ type ContainerExecOptions struct {
 
 // ContainerListOptions specifies options for `nerdctl (container) list`.
 type ContainerListOptions struct {
-	Stdout io.Writer
 	// GOptions is the global options.
 	GOptions GlobalCommandOptions
 	// Show all containers (default shows just running).
@@ -401,12 +400,8 @@ type ContainerListOptions struct {
 	LastN int
 	// Truncate output (e.g., container ID, command of the container main process, etc.) or not.
 	Truncate bool
-	// Only display container IDs.
-	Quiet bool
 	// Display total file sizes.
 	Size bool
-	// Format the output using the given Go template (e.g., '{{json .}}', 'table', 'wide').
-	Format string
 	// Filters matches containers based on given conditions.
 	Filters []string
 }
