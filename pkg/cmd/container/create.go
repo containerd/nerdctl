@@ -161,7 +161,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	// 1, nerdctl run --name demo -it imagename
 	// 2, ctrl + c to stop demo container
 	// 3, nerdctl start/restart demo
-	logConfig, err := generateLogConfig(dataStore, id, options.LogDriver, options.LogOpt, options.GOptions.Namespace)
+	logConfig, err := generateLogConfig(dataStore, id, options.LogDriver, options.LogOpt, &options.GOptions)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -661,8 +661,9 @@ func writeCIDFile(path, id string) error {
 }
 
 // generateLogConfig creates a LogConfig for the current container store
-func generateLogConfig(dataStore string, id string, logDriver string, logOpt []string, ns string) (logConfig logging.LogConfig, err error) {
+func generateLogConfig(dataStore string, id string, logDriver string, logOpt []string, gOpt *types.GlobalCommandOptions) (logConfig logging.LogConfig, err error) {
 	var u *url.URL
+	logConfig.HostAddress = gOpt.Address
 	if u, err = url.Parse(logDriver); err == nil && u.Scheme != "" {
 		logConfig.LogURI = logDriver
 	} else {
@@ -680,7 +681,7 @@ func generateLogConfig(dataStore string, id string, logDriver string, logOpt []s
 		if err != nil {
 			return
 		}
-		if err = logDriverInst.Init(dataStore, ns, id); err != nil {
+		if err = logDriverInst.Init(dataStore, gOpt.Namespace, id); err != nil {
 			return
 		}
 
@@ -689,7 +690,7 @@ func generateLogConfig(dataStore string, id string, logDriver string, logOpt []s
 			return
 		}
 
-		logConfigFilePath := logging.LogConfigFilePath(dataStore, ns, id)
+		logConfigFilePath := logging.LogConfigFilePath(dataStore, gOpt.Namespace, id)
 		if err = os.WriteFile(logConfigFilePath, logConfigB, 0600); err != nil {
 			return
 		}
