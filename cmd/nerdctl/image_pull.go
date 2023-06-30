@@ -101,7 +101,7 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 		Unpack:        unpackStr,
 		Quiet:         quiet,
 		IPFSAddress:   ipfsAddressStr,
-		Stdout:        cmd.OutOrStdout(),
+		Stdout:        cmd.OutOrStderr(),
 	}, nil
 }
 

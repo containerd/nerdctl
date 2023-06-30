@@ -124,7 +124,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 			HostsDir:        options.GOptions.HostsDir,
 			Mode:            options.Pull,
 			Quiet:           false,
-			ProgressHandler: jobs.DefaultStatusHandler(options.ImagePullOpt.Stdout),
+			ProgressHandler: jobs.DefaultStatusHandler(options.Stderr),
 		}
 		ensuredImage, err = image.EnsureImage(ctx, client, rawRef, pullCfg, options.ImagePullOpt)
 		if err != nil {

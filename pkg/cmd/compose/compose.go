@@ -120,7 +120,7 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 			Mode:            pullMode,
 			Unpack:          nil,
 			Quiet:           quiet,
-			ProgressHandler: jobs.DefaultStatusHandler(stdout),
+			ProgressHandler: jobs.DefaultStatusHandler(stderr),
 		}
 
 		// IPFS reference
