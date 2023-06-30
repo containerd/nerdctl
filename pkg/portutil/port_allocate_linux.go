@@ -25,8 +25,11 @@ import (
 
 const (
 	// This port range is compatible with Docker, FYI https://github.com/moby/moby/blob/eb9e42a09ee123af1d95bf7d46dd738258fa2109/libnetwork/portallocator/portallocator_unix.go#L7-L12
+	allocateEnd = 60999
+)
+
+var (
 	allocateStart = 49153
-	allocateEnd   = 60999
 )
 
 func filter(ss []procnet.NetworkDetail, filterFunc func(detail procnet.NetworkDetail) bool) (ret []procnet.NetworkDetail) {
@@ -96,6 +99,7 @@ func portAllocate(protocol string, ip string, count uint64) (uint64, uint64, err
 			}
 		}
 		if needReturn {
+			allocateStart = int(start + count)
 			return start, start + count - 1, nil
 		}
 		start += count
