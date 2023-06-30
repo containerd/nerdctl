@@ -33,6 +33,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
+	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
 	"github.com/containerd/nerdctl/pkg/imgutil/push"
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/platformutil"
@@ -117,8 +118,15 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		logrus.Infof("pushing as an eStargz image (%s, %s)", esgzImg.Target.MediaType, esgzImg.Target.Digest)
 	}
 
+	var progressHandler jobs.StatusHandler
+	if options.ProgressHandler != nil {
+		progressHandler = options.ProgressHandler
+	} else {
+		progressHandler = jobs.DefaultStatusHandler(options.Stdout)
+	}
+
 	pushFunc := func(r remotes.Resolver) error {
-		return push.Push(ctx, client, r, options.Stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts, options.Quiet)
+		return push.Push(ctx, client, r, progressHandler, pushRef, ref, platMC, options.AllowNondistributableArtifacts, options.Quiet)
 	}
 
 	var dOpts []dockerconfigresolver.Opt

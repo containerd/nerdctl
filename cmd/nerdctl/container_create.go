@@ -400,7 +400,6 @@ func processContainerCreateOptions(cmd *cobra.Command) (opt types.ContainerCreat
 		VerifyOptions: imageVerifyOpt,
 		IPFSAddress:   opt.IPFSAddress,
 		Stdout:        opt.Stdout,
-		Stderr:        opt.Stderr,
 	}
 	// #endregion
 

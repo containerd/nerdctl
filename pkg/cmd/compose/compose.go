@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/composer"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
@@ -110,6 +111,18 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 			ocispecPlatforms = []ocispec.Platform{parsed} // no append
 		}
 
+		pullCfg := imgutil.PullConfig{
+			Ref:             imageName,
+			Platforms:       ocispecPlatforms,
+			Snapshotter:     globalOptions.Snapshotter,
+			Insecure:        globalOptions.InsecureRegistry,
+			HostsDir:        globalOptions.HostsDir,
+			Mode:            pullMode,
+			Unpack:          nil,
+			Quiet:           quiet,
+			ProgressHandler: jobs.DefaultStatusHandler(stdout),
+		}
+
 		// IPFS reference
 		if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(imageName); err == nil {
 			var ipfsPath string
@@ -124,8 +137,7 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 				}
 				ipfsPath = dir
 			}
-			_, err = ipfs.EnsureImage(ctx, client, stdout, stderr, globalOptions.Snapshotter, scheme, ref,
-				pullMode, ocispecPlatforms, nil, quiet, ipfsPath)
+			_, err = ipfs.EnsureImage(ctx, client, scheme, ref, ipfsPath, pullCfg)
 			return err
 		}
 
@@ -135,8 +147,7 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 			return err
 		}
 
-		_, err = imgutil.EnsureImage(ctx, client, stdout, stderr, globalOptions.Snapshotter, ref,
-			pullMode, globalOptions.InsecureRegistry, globalOptions.HostsDir, ocispecPlatforms, nil, quiet)
+		_, err = imgutil.EnsureImage(ctx, client, ref, pullCfg)
 		return err
 	}
 

@@ -16,7 +16,11 @@
 
 package types
 
-import "io"
+import (
+	"io"
+
+	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
+)
 
 // ImageListOptions specifies options for `nerdctl image list`.
 type ImageListOptions struct {
@@ -165,6 +169,8 @@ type ImagePushOptions struct {
 	IpfsAddress string
 	// Suppress verbose output
 	Quiet bool
+	// If non-nil, the Push job will send upload statuses to the handler instead of Stdout
+	ProgressHandler jobs.StatusHandler
 	// AllowNondistributableArtifacts allow pushing non-distributable artifacts
 	AllowNondistributableArtifacts bool
 }
@@ -172,7 +178,6 @@ type ImagePushOptions struct {
 // ImagePullOptions specifies options for `nerdctl (image) pull`.
 type ImagePullOptions struct {
 	Stdout        io.Writer
-	Stderr        io.Writer
 	GOptions      GlobalCommandOptions
 	VerifyOptions ImageVerifyOptions
 	// Unpack the image for the current single platform (auto/true/false)
@@ -183,6 +188,8 @@ type ImagePullOptions struct {
 	AllPlatforms bool
 	// Suppress verbose output
 	Quiet bool
+	// If non-nil, the Pull job will send download statuses to the handler instead of Stdout
+	ProgressHandler jobs.StatusHandler
 	// multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)
 	IPFSAddress string
 }

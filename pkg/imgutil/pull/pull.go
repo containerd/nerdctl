@@ -19,7 +19,6 @@ package pull
 
 import (
 	"context"
-	"io"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
@@ -34,8 +33,8 @@ import (
 type Config struct {
 	// Resolver
 	Resolver remotes.Resolver
-	// ProgressOutput to display progress
-	ProgressOutput io.Writer
+	// ProgressHandler to handler progress statuses
+	ProgressHandler jobs.StatusHandler
 	// RemoteOpts, e.g. containerd.WithPullUnpack.
 	//
 	// Regardless to RemoteOpts, the following opts are always set:
@@ -54,9 +53,9 @@ func Pull(ctx context.Context, client *containerd.Client, ref string, config *Co
 	progress := make(chan struct{})
 
 	go func() {
-		if config.ProgressOutput != nil {
+		if config.ProgressHandler != nil {
 			// no progress bar, because it hides some debug logs
-			jobs.ShowProgress(pctx, ongoing, client.ContentStore(), config.ProgressOutput)
+			jobs.ShowProgress(pctx, ongoing, client.ContentStore(), config.ProgressHandler)
 		}
 		close(progress)
 	}()
