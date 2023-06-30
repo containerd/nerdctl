@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/typeurl/v2"
 	"github.com/sirupsen/logrus"
@@ -42,7 +43,19 @@ func Inspect(ctx context.Context, container containerd.Container) (*native.Conta
 	}
 	task, err := container.Task(ctx, nil)
 	if err != nil {
-		logrus.WithError(err).WithField("id", id).Warnf("failed to inspect Task")
+		// NOTE: NotFound doesn't mean that container hasn't started.
+		// In docker/CRI-containerd plugin, the task will be deleted
+		// when it exits. So, the status will be "created" for this
+		// case.
+		if errdefs.IsNotFound(err) {
+			n.Process = &native.Process{
+				Status: containerd.Status{
+					Status: containerd.Created,
+				},
+			}
+		} else {
+			logrus.WithError(err).WithField("id", id).Warnf("failed to inspect Task")
+		}
 		return n, nil
 	}
 	n.Process = &native.Process{
