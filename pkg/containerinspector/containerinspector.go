@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/typeurl/v2"
 	"github.com/sirupsen/logrus"
@@ -42,7 +43,9 @@ func Inspect(ctx context.Context, container containerd.Container) (*native.Conta
 	}
 	task, err := container.Task(ctx, nil)
 	if err != nil {
-		logrus.WithError(err).WithField("id", id).Warnf("failed to inspect Task")
+		if !errdefs.IsNotFound(err) {
+			logrus.WithError(err).WithField("id", id).Warnf("failed to inspect Task")
+		}
 		return n, nil
 	}
 	n.Process = &native.Process{
