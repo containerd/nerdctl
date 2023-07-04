@@ -85,7 +85,7 @@ secrets:
 	assert.Equal(t, project.RelativePath("barctx"), lastOf(bar.Build.BuildArgs))
 	assert.Assert(t, in(bar.Build.BuildArgs, "--target=bartgt"))
 	assert.Assert(t, in(bar.Build.BuildArgs, "--label=bar=baz"))
-	secretPath := project.RelativePath("barctx")
+	secretPath := project.WorkingDir
 	assert.Assert(t, in(bar.Build.BuildArgs, "--secret=id=tgt_secret,src="+secretPath+"/test_secret1"))
 	assert.Assert(t, in(bar.Build.BuildArgs, "--secret=id=simple_secret,src="+secretPath+"/test_secret2"))
 	assert.Assert(t, in(bar.Build.BuildArgs, "--secret=id=absolute_secret,src=/tmp/absolute_secret"))
