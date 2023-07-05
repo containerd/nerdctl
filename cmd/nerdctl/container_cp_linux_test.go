@@ -32,9 +32,14 @@ func TestCopyToContainer(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	testContainer := testutil.Identifier(t)
+	fmt.Printf("test container name: %s", testContainer)
+	testStoppedContainer := testutil.Identifier(t)
+	fmt.Printf("test stopped container name: %s", testStoppedContainer)
 
-	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	base.Cmd("run", "-d", "--name", testStoppedContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
+	defer base.Cmd("rm", "-f", testStoppedContainer).Run()
+
+	base.Cmd("run", "--name", testContainer, testutil.CommonImage).AssertOK()
 
 	srcUID := os.Geteuid()
 	srcDir := t.TempDir()
@@ -43,7 +48,10 @@ func TestCopyToContainer(t *testing.T) {
 	err := os.WriteFile(srcFile, srcFileContent, 0644)
 	assert.NilError(t, err)
 
-	assertCat := func(catPath string) {
+	assertCat := func(catPath string, testContainer string, stopped bool) {
+		if stopped {
+			base.Cmd("start", testStoppedContainer)
+		}
 		t.Logf("catPath=%q", catPath)
 		base.Cmd("exec", testContainer, "cat", catPath).AssertOutExactly(string(srcFileContent))
 		base.Cmd("exec", testContainer, "stat", "-c", "%u", catPath).AssertOutExactly(fmt.Sprintf("%d\n", srcUID))
@@ -56,25 +64,35 @@ func TestCopyToContainer(t *testing.T) {
 			destPath := "/dest-no-exist-no-slash"
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
 			catPath := destPath
-			assertCat(catPath)
+			assertCat(catPath, testContainer, false)
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
+			assertCat(catPath, testStoppedContainer, true)
 		})
 		t.Run("DEST_PATH does not exist and ends with /", func(t *testing.T) {
 			destPath := "/dest-no-exist-with-slash/"
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertFail()
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertFail()
 		})
 		t.Run("DEST_PATH exists and is a file", func(t *testing.T) {
 			destPath := "/dest-file-exists"
 			base.Cmd("exec", testContainer, "touch", destPath).AssertOK()
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
 			catPath := destPath
-			assertCat(catPath)
+			assertCat(catPath, testContainer, false)
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
+			assertCat(catPath, testStoppedContainer, true)
 		})
 		t.Run("DEST_PATH exists and is a directory", func(t *testing.T) {
 			destPath := "/dest-dir-exists"
 			base.Cmd("exec", testContainer, "mkdir", "-p", destPath).AssertOK()
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
 			catPath := filepath.Join(destPath, filepath.Base(srcFile))
-			assertCat(catPath)
+			assertCat(catPath, testStoppedContainer, false)
+			base.Cmd("start", testStoppedContainer).AssertOK()
+			base.Cmd("exec", testStoppedContainer, "mkdir", "-p", destPath).AssertOK()
+			base.Cmd("stop", testStoppedContainer).AssertOK()
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
+			assertCat(catPath, testStoppedContainer, true)
 		})
 	})
 	t.Run("SRC_PATH specifies a directory", func(t *testing.T) {
@@ -83,12 +101,18 @@ func TestCopyToContainer(t *testing.T) {
 			destPath := "/dest2-no-exist"
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
 			catPath := filepath.Join(destPath, filepath.Base(srcFile))
-			assertCat(catPath)
+			assertCat(catPath, testContainer, false)
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
+			assertCat(catPath, testStoppedContainer, true)
 		})
 		t.Run("DEST_PATH exists and is a file", func(t *testing.T) {
 			destPath := "/dest2-file-exists"
 			base.Cmd("exec", testContainer, "touch", destPath).AssertOK()
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertFail()
+			base.Cmd("start", testStoppedContainer).AssertOK()
+			base.Cmd("exec", testStoppedContainer, "touch", destPath).AssertOK()
+			base.Cmd("stop", testStoppedContainer).AssertOK()
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertFail()
 		})
 		t.Run("DEST_PATH exists and is a directory", func(t *testing.T) {
 			t.Run("SRC_PATH does not end with `/.`", func(t *testing.T) {
@@ -96,7 +120,11 @@ func TestCopyToContainer(t *testing.T) {
 				base.Cmd("exec", testContainer, "mkdir", "-p", destPath).AssertOK()
 				base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
 				catPath := filepath.Join(destPath, strings.TrimPrefix(srcFile, filepath.Dir(srcDir)+"/"))
-				assertCat(catPath)
+				assertCat(catPath, testContainer, false)
+				base.Cmd("start", testStoppedContainer).AssertOK()
+				base.Cmd("exec", testStoppedContainer, "mkdir", "-p", destPath).AssertOK()
+				base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
+				assertCat(catPath, testStoppedContainer, true)
 			})
 			t.Run("SRC_PATH does end with `/.`", func(t *testing.T) {
 				srcPath += "/."
@@ -105,7 +133,12 @@ func TestCopyToContainer(t *testing.T) {
 				base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
 				catPath := filepath.Join(destPath, filepath.Base(srcFile))
 				t.Logf("catPath=%q", catPath)
-				assertCat(catPath)
+				assertCat(catPath, testContainer, false)
+				base.Cmd("start", testStoppedContainer).AssertOK()
+				base.Cmd("exec", testStoppedContainer, "mkdir", "-p", destPath).AssertOK()
+				base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
+				assertCat(catPath, testStoppedContainer, true)
+
 			})
 		})
 	})
