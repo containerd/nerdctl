@@ -17,15 +17,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
 
-	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/spf13/cobra"
 )
 
@@ -65,11 +61,20 @@ func cpAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
 
-	return container.Cp(cmd.Context(), options)
+	return container.Cp(ctx, client, options)
 }
 
 func processCpOptions(cmd *cobra.Command, args []string) (types.ContainerCpOptions, error) {
+	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return types.ContainerCpOptions{}, err
+	}
 	flagL, err := cmd.Flags().GetBool("follow-link")
 	if err != nil {
 		return types.ContainerCpOptions{}, err
@@ -105,32 +110,10 @@ func processCpOptions(cmd *cobra.Command, args []string) (types.ContainerCpOptio
 	} else {
 		container = *destSpec.Container
 	}
-	ctx := cmd.Context()
-
-	// cp works in the host namespace (for inspecting file permissions), so we can't directly use the Go client.
-
-	selfExe, inspectArgs := globalFlags(cmd)
-	inspectArgs = append(inspectArgs, "container", "inspect", "--mode=native", "--format={{json .Process}}", container)
-	inspectCmd := exec.CommandContext(ctx, selfExe, inspectArgs...)
-	inspectCmd.Stderr = os.Stderr
-	inspectOut, err := inspectCmd.Output()
-	if err != nil {
-		return types.ContainerCpOptions{}, fmt.Errorf("failed to execute %v: %w", inspectCmd.Args, err)
-	}
-	var proc native.Process
-	if err := json.Unmarshal(inspectOut, &proc); err != nil {
-		return types.ContainerCpOptions{}, err
-	}
-	if proc.Status.Status != containerd.Running {
-		return types.ContainerCpOptions{}, fmt.Errorf("expected container status %v, got %v", containerd.Running, proc.Status.Status)
-	}
-	if proc.Pid <= 0 {
-		return types.ContainerCpOptions{}, fmt.Errorf("got non-positive PID %v", proc.Pid)
-	}
-
 	return types.ContainerCpOptions{
+		GOptions:       globalOptions,
 		Container2Host: container2host,
-		Pid:            proc.Pid,
+		ContainerReq:   container,
 		DestPath:       destSpec.Path,
 		SrcPath:        srcSpec.Path,
 		FollowSymLink:  flagL,

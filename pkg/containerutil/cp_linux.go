@@ -19,12 +19,15 @@ package containerutil
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/mount"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/tarutil"
 	securejoin "github.com/cyphar/filepath-securejoin"
@@ -34,14 +37,39 @@ import (
 // CopyFiles implements `nerdctl cp`.
 //
 // See https://docs.docker.com/engine/reference/commandline/cp/ for the specification.
-func CopyFiles(ctx context.Context, container2host bool, pid int, dst, src string, followSymlink bool) error {
+func CopyFiles(ctx context.Context, client *containerd.Client, container containerd.Container, container2host bool, dst, src string, snapshotter string, followSymlink bool) error {
 	tarBinary, isGNUTar, err := tarutil.FindTarBinary()
 	if err != nil {
 		return err
 	}
 	logrus.Debugf("Detected tar binary %q (GNU=%v)", tarBinary, isGNUTar)
 	var srcFull, dstFull string
-	root := fmt.Sprintf("/proc/%d/root", pid)
+	task, err := container.Task(ctx, nil)
+	if err != nil {
+		return err
+	}
+	status, err := task.Status(ctx)
+	if err != nil {
+		return err
+	}
+	var root string
+	if status.Status == containerd.Running {
+		root = fmt.Sprintf("/proc/%d/root", task.Pid())
+	} else {
+		cinfo, err := container.Info(ctx)
+		if err != nil {
+			return err
+		}
+		snapKey := cinfo.SnapshotKey
+		resp, err := client.SnapshotService(snapshotter).Mounts(ctx, snapKey)
+		root, err = os.MkdirTemp("", "nerdctl-cp-")
+		defer os.RemoveAll(root)
+		err = mount.All(resp, root)
+		if err != nil {
+			return err
+		}
+		defer mount.Unmount(root, 0)
+	}
 	if container2host {
 		srcFull, err = securejoin.SecureJoin(root, src)
 		dstFull = dst
@@ -56,8 +84,9 @@ func CopyFiles(ctx context.Context, container2host bool, pid int, dst, src strin
 		srcIsDir       bool
 		dstExists      bool
 		dstExistsAsDir bool
+		st             fs.FileInfo
 	)
-	st, err := os.Stat(srcFull)
+	st, err = os.Stat(srcFull)
 	if err != nil {
 		return err
 	}
@@ -139,7 +168,7 @@ func CopyFiles(ctx context.Context, container2host bool, pid int, dst, src strin
 	}
 	tarX = append(tarX, "-f", "-")
 	if rootlessutil.IsRootless() {
-		nsenter := []string{"nsenter", "-t", strconv.Itoa(pid), "-U", "--preserve-credentials", "--"}
+		nsenter := []string{"nsenter", "-t", strconv.Itoa(int(task.Pid())), "-U", "--preserve-credentials", "--"}
 		if container2host {
 			tarC = append(nsenter, tarC...)
 		} else {
