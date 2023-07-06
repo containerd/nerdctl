@@ -260,6 +260,10 @@ services:
           devices:
           - capabilities: ["utility"]
             count: all
+  qux: # replicas=0
+    image: nginx:alpine
+    deploy:
+      replicas: 0
 `
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -310,6 +314,16 @@ services:
 		assert.Assert(t, in(c.RunArgs, "--restart=no"))
 		assert.Assert(t, in(c.RunArgs, `--gpus=capabilities=utility,count=-1`))
 	}
+
+	quxSvc, err := project.GetService("qux")
+	assert.NilError(t, err)
+
+	qux, err := Parse(project, quxSvc)
+	assert.NilError(t, err)
+
+	t.Logf("qux: %+v", qux)
+	assert.Assert(t, len(qux.Containers) == 0)
+
 }
 
 func TestParseRelative(t *testing.T) {
