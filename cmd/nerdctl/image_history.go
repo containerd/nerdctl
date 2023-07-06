@@ -219,7 +219,7 @@ func (x *historyPrinter) printHistory(p historyPrintable) error {
 		if err := x.tmpl.Execute(&b, p); err != nil {
 			return err
 		}
-		if _, err := fmt.Fprintf(x.w, b.String()+"\n"); err != nil {
+		if _, err := fmt.Fprintln(x.w, b.String()); err != nil {
 			return err
 		}
 	} else if x.quiet {
