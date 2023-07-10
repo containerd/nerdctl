@@ -46,7 +46,7 @@ func Pull(ctx context.Context, client *containerd.Client, rawRef string, options
 		return err
 	}
 
-	EnsureImage(ctx, client, rawRef, ocispecPlatforms, "always", unpack, options.Quiet, options)
+	_, err = EnsureImage(ctx, client, rawRef, ocispecPlatforms, "always", unpack, options.Quiet, options)
 	if err != nil {
 		return err
 	}

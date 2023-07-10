@@ -33,7 +33,7 @@ import (
 type Config struct {
 	// Resolver
 	Resolver remotes.Resolver
-	// ProgressHandler to handler progress statuses
+	// ProgressHandler to handle progress statuses
 	ProgressHandler jobs.StatusHandler
 	// RemoteOpts, e.g. containerd.WithPullUnpack.
 	//
