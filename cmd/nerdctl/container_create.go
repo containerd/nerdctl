@@ -399,7 +399,7 @@ func processContainerCreateOptions(cmd *cobra.Command) (opt types.ContainerCreat
 		GOptions:      opt.GOptions,
 		VerifyOptions: imageVerifyOpt,
 		IPFSAddress:   opt.IPFSAddress,
-		Stdout:        opt.Stdout,
+		Stdout:        opt.Stderr,
 	}
 	// #endregion
 
