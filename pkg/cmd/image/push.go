@@ -122,7 +122,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 	if options.ProgressHandler != nil {
 		progressHandler = options.ProgressHandler
 	} else {
-		progressHandler = jobs.DefaultStatusHandler(options.Stdout)
+		progressHandler = jobs.PrintProgress(options.Stdout)
 	}
 
 	pushFunc := func(r remotes.Resolver) error {

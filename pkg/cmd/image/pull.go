@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/signutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // Pull pulls an image specified by `rawRef`.
@@ -45,24 +46,7 @@ func Pull(ctx context.Context, client *containerd.Client, rawRef string, options
 		return err
 	}
 
-	var progressHandler jobs.StatusHandler
-	if options.ProgressHandler != nil {
-		progressHandler = options.ProgressHandler
-	} else {
-		progressHandler = jobs.DefaultStatusHandler(options.Stdout)
-	}
-	pullCfg := imgutil.PullConfig{
-		Ref:             rawRef,
-		Platforms:       ocispecPlatforms,
-		Snapshotter:     options.GOptions.Snapshotter,
-		Insecure:        options.GOptions.InsecureRegistry,
-		HostsDir:        options.GOptions.HostsDir,
-		Mode:            "always",
-		Unpack:          unpack,
-		Quiet:           options.Quiet,
-		ProgressHandler: progressHandler,
-	}
-	_, err = EnsureImage(ctx, client, rawRef, pullCfg, options)
+	EnsureImage(ctx, client, rawRef, ocispecPlatforms, "always", unpack, options.Quiet, options)
 	if err != nil {
 		return err
 	}
@@ -71,8 +55,26 @@ func Pull(ctx context.Context, client *containerd.Client, rawRef string, options
 }
 
 // EnsureImage pulls an image either from ipfs or from registry.
-func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, pullCfg imgutil.PullConfig, options types.ImagePullOptions) (*imgutil.EnsuredImage, error) {
+func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, ocispecPlatforms []v1.Platform, pull string, unpack *bool, quiet bool, options types.ImagePullOptions) (*imgutil.EnsuredImage, error) {
 	var ensured *imgutil.EnsuredImage
+
+	var progressHandler jobs.StatusHandler
+	if options.ProgressHandler != nil {
+		progressHandler = options.ProgressHandler
+	} else {
+		progressHandler = jobs.PrintProgress(options.Stdout)
+	}
+	pullCfg := imgutil.PullConfig{
+		Ref:             rawRef,
+		Platforms:       ocispecPlatforms,
+		Snapshotter:     options.GOptions.Snapshotter,
+		Insecure:        options.GOptions.InsecureRegistry,
+		HostsDir:        options.GOptions.HostsDir,
+		Mode:            pull,
+		Unpack:          unpack,
+		Quiet:           quiet,
+		ProgressHandler: progressHandler,
+	}
 
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
 		if options.VerifyOptions.Provider != "none" {

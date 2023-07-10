@@ -42,7 +42,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/flagutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
-	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
@@ -116,17 +115,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		}
 		rawRef := args[0]
 
-		pullCfg := imgutil.PullConfig{
-			Ref:             rawRef,
-			Platforms:       ocispecPlatforms,
-			Snapshotter:     options.GOptions.Snapshotter,
-			Insecure:        options.GOptions.InsecureRegistry,
-			HostsDir:        options.GOptions.HostsDir,
-			Mode:            options.Pull,
-			Quiet:           false,
-			ProgressHandler: jobs.DefaultStatusHandler(options.Stderr),
-		}
-		ensuredImage, err = image.EnsureImage(ctx, client, rawRef, pullCfg, options.ImagePullOpt)
+		ensuredImage, err = image.EnsureImage(ctx, client, rawRef, ocispecPlatforms, options.Pull, nil, false, options.ImagePullOpt)
 		if err != nil {
 			return nil, nil, err
 		}

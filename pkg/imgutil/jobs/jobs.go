@@ -236,9 +236,10 @@ type StatusInfo struct {
 // StatusHandler defines a func signature for handling StatusInfo objects per tick
 type StatusHandler func(statuses []StatusInfo, start time.Time, done bool)
 
-// DefaultStatusHandler returns the default StatusHandler to display progress on the provided writer
-// Returns nil if the writer is nil
-func DefaultStatusHandler(w io.Writer) StatusHandler {
+// PrintProgress returns the default StatusHandler to display progress on the provided writer.
+//
+// Returns nil if the writer is nil.
+func PrintProgress(w io.Writer) StatusHandler {
 	if w == nil {
 		return nil
 	}
