@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -50,6 +51,8 @@ func TestRunCustomRootfs(t *testing.T) {
 
 func prepareCustomRootfs(base *testutil.Base, imageName string) string {
 	base.Cmd("pull", imageName).AssertOK()
+	// workaround for https://github.com/containerd/nerdctl/issues/2327
+	exec.Command("ctr", "-n", "nerdctl-test", "i", "pull", imageName).Run()
 	tmpDir, err := os.MkdirTemp(base.T.TempDir(), "test-save")
 	assert.NilError(base.T, err)
 	defer os.RemoveAll(tmpDir)
