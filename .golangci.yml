@@ -139,19 +139,4 @@ issues:
   exclude-rules:
     - linters:
         - revive
-      text: "if-return"
-    - linters:
-        - revive
-      text: "empty-block"
-    - linters:
-        - revive
-      text: "superfluous-else"
-    - linters:
-        - revive
       text: "unused-parameter"
-    - linters:
-        - revive
-      text: "unreachable-code"
-    - linters:
-        - revive
-      text: "redefines-builtin-id"
