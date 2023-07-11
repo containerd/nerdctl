@@ -127,10 +127,7 @@ func namespaceUsedNetworks(ctx context.Context, containers []containerd.Containe
 
 func WithDefaultNetwork() CNIEnvOpt {
 	return func(e *CNIEnv) error {
-		if err := e.ensureDefaultNetworkConfig(); err != nil {
-			return err
-		}
-		return nil
+		return e.ensureDefaultNetworkConfig()
 	}
 }
 
@@ -256,10 +253,7 @@ func (e *CNIEnv) CreateNetwork(opts CreateOptions) (*NetworkConfig, error) { //n
 		if err != nil {
 			return err
 		}
-		if err := e.writeNetworkConfig(net); err != nil {
-			return err
-		}
-		return nil
+		return e.writeNetworkConfig(net)
 	}
 	err = lockutil.WithDirLock(e.NetconfPath, fn)
 	if err != nil {
@@ -273,10 +267,7 @@ func (e *CNIEnv) RemoveNetwork(net *NetworkConfig) error {
 		if err := os.RemoveAll(net.File); err != nil {
 			return err
 		}
-		if err := net.clean(); err != nil {
-			return err
-		}
-		return nil
+		return net.clean()
 	}
 	return lockutil.WithDirLock(e.NetconfPath, fn)
 }
@@ -410,10 +401,7 @@ func (e *CNIEnv) writeNetworkConfig(net *NetworkConfig) error {
 	if _, err := os.Stat(filename); err == nil {
 		return errdefs.ErrAlreadyExists
 	}
-	if err := os.WriteFile(filename, net.Bytes, 0644); err != nil {
-		return err
-	}
-	return nil
+	return os.WriteFile(filename, net.Bytes, 0644)
 }
 
 // networkConfigList loads config from dir if dir exists.

@@ -60,10 +60,7 @@ func (u *updater) update() error {
 		return err
 	}
 	// phase2: write hosts
-	if err := u.phase2(); err != nil {
-		return err
-	}
-	return nil
+	return u.phase2()
 }
 
 // phase1: read meta.json
@@ -98,10 +95,7 @@ func (u *updater) phase1() error {
 		}
 		return nil
 	}
-	if err := filepath.Walk(u.hostsD, readMetaWF); err != nil {
-		return err
-	}
-	return nil
+	return filepath.Walk(u.hostsD, readMetaWF)
 }
 
 // phase2: write hosts
@@ -162,10 +156,7 @@ func (u *updater) phase2() error {
 		}
 		return nil
 	}
-	if err := filepath.Walk(u.hostsD, writeHostsWF); err != nil {
-		return err
-	}
-	return nil
+	return filepath.Walk(u.hostsD, writeHostsWF)
 }
 
 // createLine returns a line string slice.

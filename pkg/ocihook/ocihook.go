@@ -315,9 +315,7 @@ func getPortMapOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 			if hostIP := net.ParseIP(p.HostIP); hostIP != nil && !hostIP.IsUnspecified() {
 				// loopback address is always bindable in the child namespace, but other addresses are unlikely.
 				if !hostIP.IsLoopback() {
-					if childIP != nil && childIP.Equal(hostIP) {
-						// this is fine
-					} else {
+					if !(childIP != nil && childIP.Equal(hostIP)) {
 						if portDriverDisallowsLoopbackChildIP {
 							p.HostIP = childIP.String()
 						} else {

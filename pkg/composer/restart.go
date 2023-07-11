@@ -43,10 +43,7 @@ func (c *Composer) Restart(ctx context.Context, opt RestartOptions, services []s
 			return err
 		}
 
-		if err := c.restartContainers(ctx, containers, opt); err != nil {
-			return err
-		}
-		return nil
+		return c.restartContainers(ctx, containers, opt)
 	})
 }
 

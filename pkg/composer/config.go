@@ -59,17 +59,14 @@ func (c *Composer) Config(ctx context.Context, w io.Writer, co ConfigOptions) er
 		if co.Hash != "*" {
 			services = strings.Split(co.Hash, ",")
 		}
-		if err := c.project.WithServices(services, func(svc types.ServiceConfig) error {
+		return c.project.WithServices(services, func(svc types.ServiceConfig) error {
 			hash, err := ServiceHash(svc)
 			if err != nil {
 				return err
 			}
 			fmt.Fprintf(w, "%s %s\n", svc.Name, hash)
 			return nil
-		}); err != nil {
-			return err
-		}
-		return nil
+		})
 	}
 	projectYAML, err := yaml.Marshal(c.project)
 	if err != nil {

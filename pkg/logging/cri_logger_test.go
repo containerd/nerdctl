@@ -157,9 +157,8 @@ func TestParseLog(t *testing.T) {
 		if err != nil {
 			if test.err {
 				continue
-			} else {
-				t.Errorf("ParseCRILog err %s ", err.Error())
 			}
+			t.Errorf("ParseCRILog err %s ", err.Error())
 		}
 
 		if !reflect.DeepEqual(test.msg, logmsg) {

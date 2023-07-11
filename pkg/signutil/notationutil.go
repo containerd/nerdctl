@@ -53,11 +53,7 @@ func SignNotation(rawRef string, keyNameRef string) error {
 		return err
 	}
 
-	if err := notationCmd.Wait(); err != nil {
-		return err
-	}
-
-	return nil
+	return notationCmd.Wait()
 }
 
 // VerifyNotation verifies an image(`rawRef`) with the pre-configured notation trust policy

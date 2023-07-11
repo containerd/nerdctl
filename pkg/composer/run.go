@@ -202,11 +202,7 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 		}
 	}
 
-	if err := c.runServices(ctx, parsedServices, ro); err != nil {
-		return err
-	}
-
-	return nil
+	return c.runServices(ctx, parsedServices, ro)
 }
 
 func (c *Composer) runServices(ctx context.Context, parsedServices []*serviceparser.Service, ro RunOptions) error {

@@ -107,10 +107,7 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 		}
 
 		volFilePath := filepath.Join(volPath, volumeJSONFileName)
-		if err := os.WriteFile(volFilePath, labelsJSON, 0644); err != nil {
-			return err
-		}
-		return nil
+		return os.WriteFile(volFilePath, labelsJSON, 0644)
 	}
 
 	if err := lockutil.WithDirLock(vs.dir, fn); err != nil {
@@ -139,11 +136,9 @@ func (vs *volumeStore) Get(name string, size bool) (*native.Volume, error) {
 	volFilePath := filepath.Join(vs.dir, name, volumeJSONFileName)
 	volumeDataBytes, err := os.ReadFile(volFilePath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			//volume.json does not exists should not be blocking for inspect operation
-		} else {
+		if !os.IsNotExist(err) {
 			return nil, err
-		}
+		} // on else, volume.json does not exists should not be blocking for inspect operation
 	}
 
 	entry := native.Volume{

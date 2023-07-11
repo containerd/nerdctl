@@ -57,11 +57,7 @@ func SignCosign(rawRef string, keyRef string) error {
 		return err
 	}
 
-	if err := cosignCmd.Wait(); err != nil {
-		return err
-	}
-
-	return nil
+	return cosignCmd.Wait()
 }
 
 // VerifyCosign verifies an image(`rawRef`) with a cosign public key(`keyRef`)
