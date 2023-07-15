@@ -251,12 +251,12 @@ Volume flags:
   consisting of a `<key>=<value>` tuple.
   e.g., `-- mount type=bind,source=/src,target=/app,bind-propagation=shared`.
   - :whale: `type`: Current supported mount types are `bind`, `volume`, `tmpfs`.
-    The defaul type will be set to `volume` if not specified.
-    i.e., `--mount src=vol-1,dst=/app,readonly` equals `--mount type=volum,src=vol-1,dst=/app,readonly`
+    The default type will be set to `volume` if not specified.
+    i.e., `--mount src=vol-1,dst=/app,readonly` equals `--mount type=volume,src=vol-1,dst=/app,readonly`
   - Common Options:
     - :whale: `src`, `source`: Mount source spec for bind and volume. Mandatory for bind.
     - :whale: `dst`, `destination`, `target`: Mount destination spec.
-    - :whale: `readonly`, `ro`, `rw`, `rro`: Filesystem permissinos.
+    - :whale: `readonly`, `ro`, `rw`, `rro`: Filesystem permissions.
   - Options specific to `bind`:
     - :whale: `bind-propagation`: `shared`, `slave`, `private`, `rshared`, `rslave`, or `rprivate`(default).
     - :whale: `bind-nonrecursive`: `true` or `false`(default). If set to true, submounts are not recursively bind-mounted. This option is useful for readonly bind mount.
