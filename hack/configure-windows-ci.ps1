@@ -3,13 +3,18 @@ $ErrorActionPreference = "Stop"
 #install build dependencies
 choco install --limitoutput --no-progress -y git golang
 
+#cleanup containerd
+echo "Stopping containerd"
+Stop-Service containerd
+sc.exe delete containerd
+
 #install containerd
 $version=$env:ctrdVersion
 echo "Installing containerd $version"
 curl.exe -L https://github.com/containerd/containerd/releases/download/v$version/containerd-$version-windows-amd64.tar.gz -o containerd-windows-amd64.tar.gz
 tar.exe xvf containerd-windows-amd64.tar.gz
 mkdir -force "$Env:ProgramFiles\containerd"
-mv ./bin/* "$Env:ProgramFiles\containerd"
+cp ./bin/* "$Env:ProgramFiles\containerd"
 
 & $Env:ProgramFiles\containerd\containerd.exe config default | Out-File "$Env:ProgramFiles\containerd\config.toml" -Encoding ascii
 & $Env:ProgramFiles\containerd\containerd.exe --register-service
