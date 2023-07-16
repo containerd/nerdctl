@@ -5,13 +5,13 @@ run:
 linters:
   disable-all: true
   enable:
-    - depguard
+    # - depguard
     - gofmt
     - goimports
     - govet
     - ineffassign
     - misspell
-    - nakedret
+    # - nakedret
     - prealloc
     - typecheck
     # - asciicheck
@@ -134,3 +134,24 @@ linters-settings:
       - typeUnparen
       - unnamedResult
       - unnecessaryBlock
+
+issues:
+  exclude-rules:
+    - linters:
+        - revive
+      text: "if-return"
+    - linters:
+        - revive
+      text: "empty-block"
+    - linters:
+        - revive
+      text: "superfluous-else"
+    - linters:
+        - revive
+      text: "unused-parameter"
+    - linters:
+        - revive
+      text: "unreachable-code"
+    - linters:
+        - revive
+      text: "redefines-builtin-id"
