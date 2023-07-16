@@ -65,7 +65,7 @@ func FormatSlice(format string, writer io.Writer, x []interface{}) error {
 					}
 				}
 			}
-			if _, err = fmt.Fprintf(writer, b.String()+"\n"); err != nil {
+			if _, err = fmt.Fprintln(writer, b.String()); err != nil {
 				return err
 			}
 		}

@@ -72,7 +72,7 @@ func versionAction(cmd *cobra.Command, args []string) error {
 		if err := tmpl.Execute(&b, v); err != nil {
 			return err
 		}
-		if _, err := fmt.Fprintf(w, b.String()+"\n"); err != nil {
+		if _, err := fmt.Fprintln(w, b.String()); err != nil {
 			return err
 		}
 	} else {

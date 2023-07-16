@@ -63,7 +63,7 @@ func List(options types.ApparmorListOptions) error {
 			if err := tmpl.Execute(&b, f); err != nil {
 				return err
 			}
-			if _, err = fmt.Fprintf(w, b.String()+"\n"); err != nil {
+			if _, err = fmt.Fprintln(w, b.String()); err != nil {
 				return err
 			}
 		} else if quiet {

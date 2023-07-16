@@ -134,7 +134,7 @@ func lsPrintOutput(vols map[string]native.Volume, options types.VolumeListOption
 			if err := tmpl.Execute(&b, p); err != nil {
 				return err
 			}
-			if _, err := fmt.Fprintf(w, b.String()+"\n"); err != nil {
+			if _, err := fmt.Fprintln(w, b.String()); err != nil {
 				return err
 			}
 		} else if options.Quiet {
