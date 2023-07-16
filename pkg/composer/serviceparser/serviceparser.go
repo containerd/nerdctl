@@ -216,7 +216,7 @@ func getReplicas(svc types.ServiceConfig) (int, error) {
 		replicas = int(*svc.Deploy.Replicas)
 	}
 
-	if replicas < 1 {
+	if replicas < 0 {
 		return 0, fmt.Errorf("invalid replicas: %d", replicas)
 	}
 	return replicas, nil
