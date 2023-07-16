@@ -18,6 +18,7 @@ package container
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,6 +37,8 @@ import (
 	"github.com/containerd/nerdctl/pkg/cmd/volume"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/mountutil"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/containerd/nerdctl/pkg/strutil"
@@ -292,6 +295,52 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 	}
 
 	opts = append(opts, withMounts(userMounts))
+
+	containers, err := client.Containers(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	vfSet := strutil.SliceToSet(options.VolumesFrom)
+	var vfMountPoints []dockercompat.MountPoint
+	var vfAnonVolumes []string
+
+	for _, c := range containers {
+		ls, err := c.Labels(ctx)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		_, idMatch := vfSet[c.ID()]
+		nameMatch := false
+		if name, found := ls[labels.Name]; found {
+			_, nameMatch = vfSet[name]
+		}
+
+		if idMatch || nameMatch {
+			if av, found := ls[labels.AnonymousVolumes]; found {
+				err = json.Unmarshal([]byte(av), &vfAnonVolumes)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+			}
+			if m, found := ls[labels.Mounts]; found {
+				err = json.Unmarshal([]byte(m), &vfMountPoints)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+			}
+
+			ps := processeds(vfMountPoints)
+			s, err := c.Spec(ctx)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			opts = append(opts, withMounts(s.Mounts))
+			anonVolumes = append(anonVolumes, vfAnonVolumes...)
+			mountPoints = append(mountPoints, ps...)
+		}
+	}
+
 	return opts, anonVolumes, mountPoints, nil
 }
 

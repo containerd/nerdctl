@@ -166,47 +166,6 @@ func getContainerName(containerLabels map[string]string) string {
 	return ""
 }
 
-type containerVolume struct {
-	Type        string
-	Name        string
-	Source      string
-	Destination string
-	Mode        string
-	RW          bool
-	Propagation string
-}
-
-func getContainerVolumes(containerLabels map[string]string) []*containerVolume {
-	var vols []*containerVolume
-	volLabels := []string{labels.AnonymousVolumes, labels.Mounts}
-	for _, volLabel := range volLabels {
-		names, ok := containerLabels[volLabel]
-		if !ok {
-			continue
-		}
-		var (
-			volumes []*containerVolume
-			err     error
-		)
-		if volLabel == labels.Mounts {
-			err = json.Unmarshal([]byte(names), &volumes)
-		}
-		if volLabel == labels.AnonymousVolumes {
-			var anonymous []string
-			err = json.Unmarshal([]byte(names), &anonymous)
-			for _, anony := range anonymous {
-				volumes = append(volumes, &containerVolume{Name: anony})
-			}
-
-		}
-		if err != nil {
-			logrus.Warn(err)
-		}
-		vols = append(vols, volumes...)
-	}
-	return vols
-}
-
 func getContainerNetworks(containerLables map[string]string) []string {
 	var networks []string
 	if names, ok := containerLables[labels.Networks]; ok {

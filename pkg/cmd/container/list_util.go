@@ -25,6 +25,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
+	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/sirupsen/logrus"
 )
 
@@ -44,7 +45,7 @@ type containerFilterContext struct {
 	sinceFilterFuncs   []func(t time.Time) bool
 	statusFilterFuncs  []func(containerd.ProcessStatus) bool
 	labelFilterFuncs   []func(map[string]string) bool
-	volumeFilterFuncs  []func([]*containerVolume) bool
+	volumeFilterFuncs  []func([]*containerutil.ContainerVolume) bool
 	networkFilterFuncs []func([]string) bool
 }
 
@@ -187,7 +188,7 @@ func (cl *containerFilterContext) foldLabelFilter(_ context.Context, filter, val
 }
 
 func (cl *containerFilterContext) foldVolumeFilter(_ context.Context, filter, value string) error {
-	cl.volumeFilterFuncs = append(cl.volumeFilterFuncs, func(vols []*containerVolume) bool {
+	cl.volumeFilterFuncs = append(cl.volumeFilterFuncs, func(vols []*containerutil.ContainerVolume) bool {
 		for _, vol := range vols {
 			if (vol.Source != "" && vol.Source == value) ||
 				(vol.Destination != "" && vol.Destination == value) ||
@@ -337,7 +338,7 @@ func (cl *containerFilterContext) matchesVolumeFilter(info containers.Container)
 	if len(cl.volumeFilterFuncs) == 0 {
 		return true
 	}
-	vols := getContainerVolumes(info.Labels)
+	vols := containerutil.GetContainerVolumes(info.Labels)
 	for _, volumeFilterFunc := range cl.volumeFilterFuncs {
 		if !volumeFilterFunc(vols) {
 			continue

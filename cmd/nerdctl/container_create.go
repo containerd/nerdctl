@@ -282,6 +282,10 @@ func processContainerCreateOptions(cmd *cobra.Command) (opt types.ContainerCreat
 	if err != nil {
 		return
 	}
+	opt.VolumesFrom, err = cmd.Flags().GetStringArray("volumes-from")
+	if err != nil {
+		return
+	}
 	// #endregion
 
 	// #region for rootfs flags

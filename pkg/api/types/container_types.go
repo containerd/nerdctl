@@ -185,6 +185,8 @@ type ContainerCreateOptions struct {
 	Tmpfs []string
 	// Mount specifies a list of mounts to mount
 	Mount []string
+	// VolumesFrom specifies a list of specified containers to mount from
+	VolumesFrom []string
 	// #endregion
 
 	// #region for rootfs flags
