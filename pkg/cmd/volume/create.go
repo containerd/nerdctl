@@ -21,21 +21,23 @@ import (
 
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/strutil"
 )
 
-func Create(name string, options types.VolumeCreateOptions) error {
+func Create(name string, options types.VolumeCreateOptions) (*native.Volume, error) {
 	if err := identifiers.Validate(name); err != nil {
-		return fmt.Errorf("malformed name %s: %w", name, err)
+		return nil, fmt.Errorf("malformed name %s: %w", name, err)
 	}
 	volStore, err := Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	labels := strutil.DedupeStrSlice(options.Labels)
-	if _, err := volStore.Create(name, labels); err != nil {
-		return err
+	vol, err := volStore.Create(name, labels)
+	if err != nil {
+		return nil, err
 	}
 	fmt.Fprintf(options.Stdout, "%s\n", name)
-	return nil
+	return vol, nil
 }

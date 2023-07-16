@@ -57,5 +57,7 @@ func volumeCreateAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return nil
 	}
-	return volume.Create(args[0], options)
+	_, err = volume.Create(args[0], options)
+
+	return err
 }
