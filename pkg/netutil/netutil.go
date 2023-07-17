@@ -475,7 +475,7 @@ func (e *CNIEnv) parseSubnet(subnetStr string) (*net.IPNet, error) {
 		return nil, err
 	}
 	if subnetStr == "" {
-		_, defaultSubnet, _ := net.ParseCIDR(DefaultCIDR)
+		_, defaultSubnet, _ := net.ParseCIDR(StartingCIDR)
 		subnet, err := subnetutil.GetFreeSubnet(defaultSubnet, usedSubnets)
 		if err != nil {
 			return nil, err
