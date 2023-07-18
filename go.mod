@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Microsoft/go-winio v0.6.1
 	github.com/Microsoft/hcsshim v0.10.0-rc.9
-	github.com/compose-spec/compose-go v1.16.0
+	github.com/compose-spec/compose-go v1.17.0
 	github.com/containerd/accelerated-container-image v0.6.7
 	github.com/containerd/cgroups/v3 v3.0.2
 	github.com/containerd/console v1.0.3
@@ -61,7 +61,10 @@ require (
 	gotest.tools/v3 v3.5.0
 )
 
-require github.com/golang/mock v1.6.0 // indirect
+require (
+	github.com/golang/mock v1.6.0 // indirect
+	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1 // indirect
+)
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1 // indirect
@@ -124,7 +127,7 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
-	golang.org/x/mod v0.10.0 // indirect
+	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/tools v0.8.0 // indirect
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect
 	google.golang.org/grpc v1.54.0 // indirect
