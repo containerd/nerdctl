@@ -163,7 +163,7 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, hostAd
 	if err := driver.PreProcess(dataStore, config); err != nil {
 		return err
 	}
-	exit, err := getContainerWait(ctx, hostAddress, config)
+	exitCh, err := getContainerWait(ctx, hostAddress, config)
 	if err != nil {
 		return err
 	}
@@ -172,8 +172,8 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, hostAd
 	stdoutR, stdoutW := io.Pipe()
 	stderrR, stderrW := io.Pipe()
 	copyStream := func(reader io.Reader, writer *io.PipeWriter) {
-		// copy using a buffer of size 16K
-		buf := make([]byte, 16*1024)
+		// copy using a buffer of size 32K
+		buf := make([]byte, 32<<10)
 		_, err := io.CopyBuffer(writer, reader, buf)
 		if err != nil {
 			logrus.Errorf("failed to copy stream: %s", err)
@@ -208,7 +208,7 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, hostAd
 	}()
 	go func() {
 		// close stdout and stderr upon container exit
-		<-exit
+		<-exitCh
 		stdoutW.Close()
 		stderrW.Close()
 	}()
