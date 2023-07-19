@@ -168,8 +168,8 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, hostAd
 	stdoutR, stdoutW := io.Pipe()
 	stderrR, stderrW := io.Pipe()
 	copyStream := func(reader io.Reader, writer *io.PipeWriter) {
-		// copy using a buffer of size 16K
-		buf := make([]byte, 16*1024)
+		// copy using a buffer of size 32K
+		buf := make([]byte, 32<<10)
 		_, err := io.CopyBuffer(writer, reader, buf)
 		if err != nil {
 			log.L.Errorf("failed to copy stream: %s", err)
