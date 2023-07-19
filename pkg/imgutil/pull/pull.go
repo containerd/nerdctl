@@ -92,10 +92,10 @@ func Pull(ctx context.Context, client *containerd.Client, ref string, config *Co
 		img = containerd.NewImageWithPlatform(client, imagesImg, platformMC)
 	}
 	stopProgress()
+	<-progress
 	if err != nil {
 		return nil, err
 	}
 
-	<-progress
 	return img, nil
 }

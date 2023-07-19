@@ -33,7 +33,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
-	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
 	"github.com/containerd/nerdctl/pkg/imgutil/push"
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/platformutil"
@@ -48,10 +47,10 @@ import (
 )
 
 // Push pushes an image specified by `rawRef`.
-func Push(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePushOptions) error {
+func Push(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePushOptions) (imageRef string, err error) {
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
 		if scheme != "ipfs" {
-			return fmt.Errorf("ipfs scheme is only supported but got %q", scheme)
+			return "", fmt.Errorf("ipfs scheme is only supported but got %q", scheme)
 		}
 		logrus.Infof("pushing image %q to IPFS", ref)
 
@@ -59,11 +58,11 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		if options.IpfsAddress != "" {
 			dir, err := os.MkdirTemp("", "apidirtmp")
 			if err != nil {
-				return err
+				return "", err
 			}
 			defer os.RemoveAll(dir)
 			if err := os.WriteFile(filepath.Join(dir, "api"), []byte(options.IpfsAddress), 0600); err != nil {
-				return err
+				return "", err
 			}
 			ipfsPath = dir
 		}
@@ -75,22 +74,21 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		c, err := ipfs.Push(ctx, client, ref, layerConvert, options.AllPlatforms, options.Platforms, options.IpfsEnsureImage, ipfsPath)
 		if err != nil {
 			logrus.WithError(err).Warnf("ipfs push failed")
-			return err
+			return "", err
 		}
-		fmt.Fprintln(options.Stdout, c)
-		return nil
+		return c, nil
 	}
 
 	named, err := refdocker.ParseDockerRef(rawRef)
 	if err != nil {
-		return err
+		return "", err
 	}
 	ref := named.String()
 	refDomain := refdocker.Domain(named)
 
 	platMC, err := platformutil.NewMatchComparer(options.AllPlatforms, options.Platforms)
 	if err != nil {
-		return err
+		return "", err
 	}
 	pushRef := ref
 	if !options.AllPlatforms {
@@ -100,9 +98,9 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		platImg, err := converter.Convert(ctx, client, pushRef, ref, converter.WithPlatform(platMC))
 		if err != nil {
 			if len(options.Platforms) == 0 {
-				return fmt.Errorf("failed to create a tmp single-platform image %q: %w", pushRef, err)
+				return "", fmt.Errorf("failed to create a tmp single-platform image %q: %w", pushRef, err)
 			}
-			return fmt.Errorf("failed to create a tmp reduced-platform image %q (platform=%v): %w", pushRef, options.Platforms, err)
+			return "", fmt.Errorf("failed to create a tmp reduced-platform image %q (platform=%v): %w", pushRef, options.Platforms, err)
 		}
 		defer client.ImageService().Delete(ctx, platImg.Name, images.SynchronousDelete())
 		logrus.Infof("pushing as a reduced-platform image (%s, %s)", platImg.Target.MediaType, platImg.Target.Digest)
@@ -112,21 +110,14 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		pushRef = ref + "-tmp-esgz"
 		esgzImg, err := converter.Convert(ctx, client, pushRef, ref, converter.WithPlatform(platMC), converter.WithLayerConvertFunc(eStargzConvertFunc()))
 		if err != nil {
-			return fmt.Errorf("failed to convert to eStargz: %v", err)
+			return "", fmt.Errorf("failed to convert to eStargz: %v", err)
 		}
 		defer client.ImageService().Delete(ctx, esgzImg.Name, images.SynchronousDelete())
 		logrus.Infof("pushing as an eStargz image (%s, %s)", esgzImg.Target.MediaType, esgzImg.Target.Digest)
 	}
 
-	var progressHandler jobs.StatusHandler
-	if options.ProgressHandler != nil {
-		progressHandler = options.ProgressHandler
-	} else {
-		progressHandler = jobs.PrintProgress(options.Stdout)
-	}
-
 	pushFunc := func(r remotes.Resolver) error {
-		return push.Push(ctx, client, r, progressHandler, pushRef, ref, platMC, options.AllowNondistributableArtifacts, options.Quiet)
+		return push.Push(ctx, client, r, options.ProgressHandler, pushRef, ref, platMC, options.AllowNondistributableArtifacts, options.Quiet)
 	}
 
 	var dOpts []dockerconfigresolver.Opt
@@ -137,45 +128,46 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.GOptions.HostsDir))
 	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err = pushFunc(resolver); err != nil {
 		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused"
 		if !errutil.IsErrHTTPResponseToHTTPSClient(err) && !errutil.IsErrConnectionRefused(err) {
-			return err
+			return "", err
 		}
 		if options.GOptions.InsecureRegistry {
 			logrus.WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
 			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
 			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
 			if err != nil {
-				return err
+				return "", err
 			}
-			return pushFunc(resolver)
+			err = pushFunc(resolver)
+			if err != nil {
+				return "", err
+			}
+			return ref, err
 		}
 		logrus.WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
 		logrus.Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
-		return err
+		return "", err
 	}
 
 	img, err := client.ImageService().Get(ctx, pushRef)
 	if err != nil {
-		return err
+		return "", err
 	}
 	refSpec, err := reference.Parse(pushRef)
 	if err != nil {
-		return err
+		return "", err
 	}
 	signRef := fmt.Sprintf("%s@%s", refSpec.String(), img.Target.Digest.String())
 	if err = signutil.Sign(signRef,
 		options.GOptions.Experimental,
 		options.SignOptions); err != nil {
-		return err
+		return "", err
 	}
-	if options.Quiet {
-		fmt.Fprintln(options.Stdout, ref)
-	}
-	return nil
+	return ref, nil
 }
 
 func eStargzConvertFunc() converter.ConvertFunc {

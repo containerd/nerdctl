@@ -25,7 +25,6 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/imgutil"
-	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
 	"github.com/containerd/nerdctl/pkg/ipfs"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
@@ -35,35 +34,29 @@ import (
 )
 
 // Pull pulls an image specified by `rawRef`.
-func Pull(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePullOptions) error {
+func Pull(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePullOptions) (imageRef string, err error) {
 	ocispecPlatforms, err := platformutil.NewOCISpecPlatformSlice(options.AllPlatforms, options.Platform)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	unpack, err := strutil.ParseBoolOrAuto(options.Unpack)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = EnsureImage(ctx, client, rawRef, ocispecPlatforms, "always", unpack, options.Quiet, options)
+	img, err := EnsureImage(ctx, client, rawRef, ocispecPlatforms, "always", unpack, options.Quiet, options)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return img.Ref, nil
 }
 
 // EnsureImage pulls an image either from ipfs or from registry.
 func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, ocispecPlatforms []v1.Platform, pull string, unpack *bool, quiet bool, options types.ImagePullOptions) (*imgutil.EnsuredImage, error) {
 	var ensured *imgutil.EnsuredImage
 
-	var progressHandler jobs.StatusHandler
-	if options.ProgressHandler != nil {
-		progressHandler = options.ProgressHandler
-	} else {
-		progressHandler = jobs.PrintProgress(options.Stdout)
-	}
 	pullCfg := imgutil.PullConfig{
 		Ref:             rawRef,
 		Platforms:       ocispecPlatforms,
@@ -73,7 +66,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 		Mode:            pull,
 		Unpack:          unpack,
 		Quiet:           quiet,
-		ProgressHandler: progressHandler,
+		ProgressHandler: options.ProgressHandler,
 	}
 
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
