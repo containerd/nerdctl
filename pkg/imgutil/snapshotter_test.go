@@ -53,6 +53,10 @@ func TestGetSnapshotterOpts(t *testing.T) {
 			check: remoteSnOpts("stargz", true),
 		},
 		{
+			sns:   []string{"soci"},
+			check: remoteSnOpts("soci", true),
+		},
+		{
 			sns:   []string{"overlaybd", "overlaybd-v2"},
 			check: sameOpts(&remoteSnapshotterOpts{snapshotter: "overlaybd"}),
 		},
@@ -133,6 +137,12 @@ func TestRemoteSnapshotterOpts(t *testing.T) {
 			},
 		},
 		{
+			name: "soci",
+			check: []func(t *testing.T, a map[string]string){
+				checkRemoteSnapshotterAnnotataions, checkSociSnapshotterAnnotataions,
+			},
+		},
+		{
 			name:  "nydus",
 			check: []func(t *testing.T, a map[string]string){checkRemoteSnapshotterAnnotataions},
 		},
@@ -174,4 +184,17 @@ func checkStargzSnapshotterAnnotataions(t *testing.T, a map[string]string) {
 	assert.Check(t, a != nil)
 	_, ok := a["containerd.io/snapshot/remote/urls"]
 	assert.Equal(t, ok, true)
+}
+
+// using values from soci source to check for annotations (
+// see https://github.com/awslabs/soci-snapshotter/blob/b05ba712d246ecc5146469f87e5e9305702fd72b/fs/source/source.go#L80C1-L80C6
+func checkSociSnapshotterAnnotataions(t *testing.T, a map[string]string) {
+	assert.Check(t, a != nil)
+	_, ok := a["containerd.io/snapshot/remote/soci.size"]
+	assert.Equal(t, ok, true)
+	_, ok = a["containerd.io/snapshot/remote/image.layers.size"]
+	assert.Equal(t, ok, true)
+	_, ok = a["containerd.io/snapshot/remote/soci.index.digest"]
+	assert.Equal(t, ok, true)
+
 }

@@ -1,0 +1,12 @@
+version = 2
+
+# Enable stargz snapshotter
+[proxy_plugins]
+  [proxy_plugins.stargz]
+    type = "snapshot"
+    address = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+
+# Enable soci snapshotter
+  [proxy_plugins.soci]
+    type = "snapshot"
+    address = "/run/soci-snapshotter-grpc/soci-snapshotter-grpc.sock"
