@@ -67,3 +67,16 @@ func NewRootlessKitClient() (client.Client, error) {
 	apiSock := filepath.Join(stateDir, "api.sock")
 	return client.New(apiSock)
 }
+
+// RootlessContainredSockAddress returns sock address of rootless containerd based on https://github.com/containerd/nerdctl/blob/main/docs/faq.md#containerd-socket-address
+func RootlessContainredSockAddress() (string, error) {
+	stateDir, err := RootlessKitStateDir()
+	if err != nil {
+		return "", err
+	}
+	childPid, err := RootlessKitChildPid(stateDir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(fmt.Sprintf("/proc/%d/root/run/containerd/containerd.sock", childPid)), nil
+}

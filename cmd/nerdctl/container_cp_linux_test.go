@@ -24,6 +24,7 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
@@ -32,18 +33,27 @@ func TestCopyToContainer(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	testContainer := testutil.Identifier(t)
+	testStoppedContainer := "stopped-container-" + testutil.Identifier(t)
 
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
 	defer base.Cmd("rm", "-f", testContainer).Run()
 
+	base.Cmd("run", "-d", "--name", testStoppedContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
+	defer base.Cmd("rm", "-f", testStoppedContainer).Run()
+	// Stop container immediately after starting for testing copying into stopped container
+	base.Cmd("stop", testStoppedContainer).AssertOK()
 	srcUID := os.Geteuid()
 	srcDir := t.TempDir()
 	srcFile := filepath.Join(srcDir, "test-file")
 	srcFileContent := []byte("test-file-content")
-	err := os.WriteFile(srcFile, srcFileContent, 0644)
+	err := os.WriteFile(srcFile, srcFileContent, 0o644)
 	assert.NilError(t, err)
 
-	assertCat := func(catPath string) {
+	assertCat := func(catPath string, testContainer string, stopped bool) {
+		if stopped {
+			base.Cmd("start", testStoppedContainer).AssertOK()
+			defer base.Cmd("stop", testStoppedContainer).AssertOK()
+		}
 		t.Logf("catPath=%q", catPath)
 		base.Cmd("exec", testContainer, "cat", catPath).AssertOutExactly(string(srcFileContent))
 		base.Cmd("exec", testContainer, "stat", "-c", "%u", catPath).AssertOutExactly(fmt.Sprintf("%d\n", srcUID))
@@ -56,25 +66,47 @@ func TestCopyToContainer(t *testing.T) {
 			destPath := "/dest-no-exist-no-slash"
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
 			catPath := destPath
-			assertCat(catPath)
+			assertCat(catPath, testContainer, false)
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
+			assertCat(catPath, testStoppedContainer, true)
 		})
 		t.Run("DEST_PATH does not exist and ends with /", func(t *testing.T) {
 			destPath := "/dest-no-exist-with-slash/"
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertFail()
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertFail()
 		})
 		t.Run("DEST_PATH exists and is a file", func(t *testing.T) {
 			destPath := "/dest-file-exists"
 			base.Cmd("exec", testContainer, "touch", destPath).AssertOK()
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
 			catPath := destPath
-			assertCat(catPath)
+			assertCat(catPath, testContainer, false)
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
+			assertCat(catPath, testStoppedContainer, true)
 		})
 		t.Run("DEST_PATH exists and is a directory", func(t *testing.T) {
 			destPath := "/dest-dir-exists"
 			base.Cmd("exec", testContainer, "mkdir", "-p", destPath).AssertOK()
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
 			catPath := filepath.Join(destPath, filepath.Base(srcFile))
-			assertCat(catPath)
+			assertCat(catPath, testContainer, false)
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			base.Cmd("start", testStoppedContainer).AssertOK()
+			base.Cmd("exec", testStoppedContainer, "mkdir", "-p", destPath).AssertOK()
+			base.Cmd("stop", testStoppedContainer).AssertOK()
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
+			assertCat(catPath, testStoppedContainer, true)
 		})
 	})
 	t.Run("SRC_PATH specifies a directory", func(t *testing.T) {
@@ -83,12 +115,24 @@ func TestCopyToContainer(t *testing.T) {
 			destPath := "/dest2-no-exist"
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
 			catPath := filepath.Join(destPath, filepath.Base(srcFile))
-			assertCat(catPath)
+			assertCat(catPath, testContainer, false)
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
+			assertCat(catPath, testStoppedContainer, true)
 		})
 		t.Run("DEST_PATH exists and is a file", func(t *testing.T) {
 			destPath := "/dest2-file-exists"
 			base.Cmd("exec", testContainer, "touch", destPath).AssertOK()
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertFail()
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			base.Cmd("start", testStoppedContainer).AssertOK()
+			base.Cmd("exec", testStoppedContainer, "touch", destPath).AssertOK()
+			base.Cmd("stop", testStoppedContainer).AssertOK()
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertFail()
 		})
 		t.Run("DEST_PATH exists and is a directory", func(t *testing.T) {
 			t.Run("SRC_PATH does not end with `/.`", func(t *testing.T) {
@@ -96,7 +140,15 @@ func TestCopyToContainer(t *testing.T) {
 				base.Cmd("exec", testContainer, "mkdir", "-p", destPath).AssertOK()
 				base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
 				catPath := filepath.Join(destPath, strings.TrimPrefix(srcFile, filepath.Dir(srcDir)+"/"))
-				assertCat(catPath)
+				assertCat(catPath, testContainer, false)
+				if rootlessutil.IsRootless() {
+					t.Skip("Test skipped in rootless mode for testStoppedContainer")
+				}
+				base.Cmd("start", testStoppedContainer).AssertOK()
+				base.Cmd("exec", testStoppedContainer, "mkdir", "-p", destPath).AssertOK()
+				base.Cmd("stop", testStoppedContainer).AssertOK()
+				base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
+				assertCat(catPath, testStoppedContainer, true)
 			})
 			t.Run("SRC_PATH does end with `/.`", func(t *testing.T) {
 				srcPath += "/."
@@ -105,7 +157,15 @@ func TestCopyToContainer(t *testing.T) {
 				base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
 				catPath := filepath.Join(destPath, filepath.Base(srcFile))
 				t.Logf("catPath=%q", catPath)
-				assertCat(catPath)
+				assertCat(catPath, testContainer, false)
+				if rootlessutil.IsRootless() {
+					t.Skip("Test skipped in rootless mode for testStoppedContainer")
+				}
+				base.Cmd("start", testStoppedContainer).AssertOK()
+				base.Cmd("exec", testStoppedContainer, "mkdir", "-p", destPath).AssertOK()
+				base.Cmd("stop", testStoppedContainer).AssertOK()
+				base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
+				assertCat(catPath, testStoppedContainer, true)
 			})
 		})
 	})
@@ -115,9 +175,13 @@ func TestCopyFromContainer(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	testContainer := testutil.Identifier(t)
+	testStoppedContainer := "stopped-container-" + testutil.Identifier(t)
 
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
 	defer base.Cmd("rm", "-f", testContainer).Run()
+
+	base.Cmd("run", "-d", "--name", testStoppedContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
+	defer base.Cmd("rm", "-f", testStoppedContainer).Run()
 
 	euid := os.Geteuid()
 	srcUID := 42
@@ -126,6 +190,9 @@ func TestCopyFromContainer(t *testing.T) {
 	srcFileContent := []byte("test-file-content")
 	mkSrcScript := fmt.Sprintf("mkdir -p %q && echo -n %q >%q && chown %d %q", srcDir, srcFileContent, srcFile, srcUID, srcFile)
 	base.Cmd("exec", testContainer, "sh", "-euc", mkSrcScript).AssertOK()
+	base.Cmd("exec", testStoppedContainer, "sh", "-euc", mkSrcScript).AssertOK()
+	// Stop container for testing copying out of stopped container
+	base.Cmd("stop", testStoppedContainer)
 
 	assertCat := func(catPath string) {
 		t.Logf("catPath=%q", catPath)
@@ -148,25 +215,44 @@ func TestCopyFromContainer(t *testing.T) {
 			base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertOK()
 			catPath := destPath
 			assertCat(catPath)
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
+			assertCat(catPath)
 		})
 		t.Run("DEST_PATH does not exist and ends with /", func(t *testing.T) {
 			destPath := td + "/dest-no-exist-with-slash/" // Avoid filepath.Join, to forcibly append "/"
 			base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertFail()
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertFail()
 		})
 		t.Run("DEST_PATH exists and is a file", func(t *testing.T) {
 			destPath := filepath.Join(td, "dest-file-exists")
-			err := os.WriteFile(destPath, []byte(""), 0644)
+			err := os.WriteFile(destPath, []byte(""), 0o644)
 			assert.NilError(t, err)
 			base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertOK()
 			catPath := destPath
 			assertCat(catPath)
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
+			assertCat(catPath)
 		})
 		t.Run("DEST_PATH exists and is a directory", func(t *testing.T) {
 			destPath := filepath.Join(td, "dest-dir-exists")
-			err := os.Mkdir(destPath, 0755)
+			err := os.Mkdir(destPath, 0o755)
 			assert.NilError(t, err)
 			base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertOK()
 			catPath := filepath.Join(destPath, filepath.Base(srcFile))
+			assertCat(catPath)
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
 			assertCat(catPath)
 		})
 	})
@@ -177,29 +263,48 @@ func TestCopyFromContainer(t *testing.T) {
 			base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertOK()
 			catPath := filepath.Join(destPath, filepath.Base(srcFile))
 			assertCat(catPath)
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
+			assertCat(catPath)
 		})
 		t.Run("DEST_PATH exists and is a file", func(t *testing.T) {
 			destPath := filepath.Join(td, "dest2-file-exists")
-			err := os.WriteFile(destPath, []byte(""), 0644)
+			err := os.WriteFile(destPath, []byte(""), 0o644)
 			assert.NilError(t, err)
 			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertFail()
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertFail()
 		})
 		t.Run("DEST_PATH exists and is a directory", func(t *testing.T) {
 			t.Run("SRC_PATH does not end with `/.`", func(t *testing.T) {
 				destPath := filepath.Join(td, "dest2-dir-exists")
-				err := os.Mkdir(destPath, 0755)
+				err := os.Mkdir(destPath, 0o755)
 				assert.NilError(t, err)
 				base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertOK()
 				catPath := filepath.Join(destPath, strings.TrimPrefix(srcFile, filepath.Dir(srcDir)+"/"))
+				assertCat(catPath)
+				if rootlessutil.IsRootless() {
+					t.Skip("Test skipped in rootless mode for testStoppedContainer")
+				}
+				base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
 				assertCat(catPath)
 			})
 			t.Run("SRC_PATH does end with `/.`", func(t *testing.T) {
 				srcPath += "/."
 				destPath := filepath.Join(td, "dest2-dir2-exists")
-				err := os.Mkdir(destPath, 0755)
+				err := os.Mkdir(destPath, 0o755)
 				assert.NilError(t, err)
 				base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertOK()
 				catPath := filepath.Join(destPath, filepath.Base(srcFile))
+				assertCat(catPath)
+				if rootlessutil.IsRootless() {
+					t.Skip("Test skipped in rootless mode for testStoppedContainer")
+				}
+				base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
 				assertCat(catPath)
 			})
 		})
