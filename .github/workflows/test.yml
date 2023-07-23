@@ -181,6 +181,16 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
           check-latest: true
+      - name: "Enable BuildKit"
+        run: |
+          set -eux -o pipefail
+          sudo apt-get install -y moreutils
+          cat /etc/docker/daemon.json
+          jq '.features.buildkit = true' </etc/docker/daemon.json  | sudo sponge /etc/docker/daemon.json
+          cat /etc/docker/daemon.json
+          sudo systemctl restart docker
+          docker info
+          docker version
       - name: "Register QEMU (tonistiigi/binfmt)"
         run: docker run --privileged --rm tonistiigi/binfmt --install all
       - name: "Prepare integration test environment"
