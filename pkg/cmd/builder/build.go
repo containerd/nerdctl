@@ -358,6 +358,18 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		buildctlArgs = append(buildctlArgs, "--metadata-file="+metaFile)
 	}
 
+	if options.NetworkMode != "" {
+		switch options.NetworkMode {
+		case "none":
+			buildctlArgs = append(buildctlArgs, "--opt=force-network-mode="+options.NetworkMode)
+		case "host":
+			buildctlArgs = append(buildctlArgs, "--opt=force-network-mode="+options.NetworkMode, "--allow=network.host", "--allow=security.insecure")
+		case "", "default":
+		default:
+			logrus.Debugf("ignoring network build arg %s", options.NetworkMode)
+		}
+	}
+
 	return buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, nil
 }
 

@@ -47,7 +47,7 @@ func TestCompletion(t *testing.T) {
 	base.Cmd(gsc, "run", "-it", "").AssertOutContains(testutil.AlpineImage)
 	base.Cmd(gsc, "run", "-it", "--rm", "").AssertOutContains(testutil.AlpineImage)
 
-	// Tests with an network
+	// Tests with a network
 	testNetworkName := "nerdctl-test-completion"
 	defer base.Cmd("network", "rm", testNetworkName).Run()
 	base.Cmd("network", "create", testNetworkName).AssertOK()
