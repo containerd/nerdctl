@@ -144,10 +144,7 @@ func (c *Composer) createService(ctx context.Context, ps *serviceparser.Service,
 			return nil
 		})
 	}
-	if err := runEG.Wait(); err != nil {
-		return err
-	}
-	return nil
+	return runEG.Wait()
 }
 
 // createServiceContainer must be called after ensureServiceImage

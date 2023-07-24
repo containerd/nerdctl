@@ -106,10 +106,7 @@ func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Ser
 	}
 
 	logrus.Infof("Ensuring image %s", ps.Image)
-	if err := c.EnsureImage(ctx, ps.Image, ps.PullMode, ps.Unparsed.Platform, ps, quiet); err != nil {
-		return err
-	}
-	return nil
+	return c.EnsureImage(ctx, ps.Image, ps.PullMode, ps.Unparsed.Platform, ps, quiet)
 }
 
 // upServiceContainer must be called after ensureServiceImage

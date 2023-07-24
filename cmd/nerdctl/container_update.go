@@ -362,19 +362,16 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 		}
 		return fmt.Errorf("failed to get task:%w", err)
 	}
-	if err := task.Update(ctx, containerd.WithResources(spec.Linux.Resources)); err != nil {
-		return err
-	}
-	return nil
+	return task.Update(ctx, containerd.WithResources(spec.Linux.Resources))
 }
 
 func updateContainerSpec(ctx context.Context, container containerd.Container, spec *runtimespec.Spec) error {
 	if err := container.Update(ctx, func(ctx context.Context, client *containerd.Client, c *containers.Container) error {
-		any, err := typeurl.MarshalAny(spec)
+		a, err := typeurl.MarshalAny(spec)
 		if err != nil {
 			return fmt.Errorf("failed to marshal spec %+v:%w", spec, err)
 		}
-		c.Spec = any
+		c.Spec = a
 		return nil
 	}); err != nil {
 		return fmt.Errorf("failed to update container spec:%w", err)

@@ -102,11 +102,7 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 		}
 	}
 
-	if err := c.upServices(ctx, parsedServices, uo); err != nil {
-		return err
-	}
-
-	return nil
+	return c.upServices(ctx, parsedServices, uo)
 }
 
 func validateFileObjectConfig(obj types.FileObjectConfig, shortName, objType string, project *types.Project) error {

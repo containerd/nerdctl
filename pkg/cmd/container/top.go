@@ -61,10 +61,7 @@ func Top(ctx context.Context, client *containerd.Client, containers []string, op
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := containerTop(ctx, opt.Stdout, client, found.Container.ID(), strings.Join(containers[1:], " ")); err != nil {
-				return err
-			}
-			return nil
+			return containerTop(ctx, opt.Stdout, client, found.Container.ID(), strings.Join(containers[1:], " "))
 		},
 	}
 

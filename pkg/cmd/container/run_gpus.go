@@ -72,8 +72,8 @@ func parseGPUOpt(value string) (oci.SpecOpts, error) {
 	}
 	var nvidiaCaps []nvidia.Capability
 	for _, c := range req.Capabilities {
-		if cap, isNvidiaCap := str2cap[c]; isNvidiaCap {
-			nvidiaCaps = append(nvidiaCaps, cap)
+		if cp, isNvidiaCap := str2cap[c]; isNvidiaCap {
+			nvidiaCaps = append(nvidiaCaps, cp)
 		}
 	}
 	if len(nvidiaCaps) != 0 {

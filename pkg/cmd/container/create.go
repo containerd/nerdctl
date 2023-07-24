@@ -323,10 +323,9 @@ func generateRootfsOpts(args []string, id string, ensured *imgutil.EnsuredImage,
 		for ind, env := range ensured.ImageConfig.Env {
 			if strings.HasPrefix(env, "PATH=") {
 				break
-			} else {
-				if ind == len(ensured.ImageConfig.Env)-1 {
-					opts = append(opts, oci.WithDefaultPathEnv)
-				}
+			}
+			if ind == len(ensured.ImageConfig.Env)-1 {
+				opts = append(opts, oci.WithDefaultPathEnv)
 			}
 		}
 	} else {

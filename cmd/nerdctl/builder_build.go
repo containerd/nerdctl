@@ -206,8 +206,5 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	if err := builder.Build(ctx, client, options); err != nil {
-		return err
-	}
-	return nil
+	return builder.Build(ctx, client, options)
 }
