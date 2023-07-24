@@ -410,9 +410,11 @@ type ContainerListOptions struct {
 
 // ContainerCpOptions specifies options for `nerdctl (container) cp`
 type ContainerCpOptions struct {
+	// GOptions is the global options.
+	GOptions GlobalCommandOptions
+	// ContainerReq is name, short ID, or long ID of container to copy to/from.
+	ContainerReq   string
 	Container2Host bool
-	// Process id
-	Pid int
 	// Destination path to copy file to.
 	DestPath string
 	// Source path to copy file from.
