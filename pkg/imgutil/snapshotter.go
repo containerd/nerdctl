@@ -19,6 +19,7 @@ package imgutil
 import (
 	"strings"
 
+	socisource "github.com/awslabs/soci-snapshotter/fs/source"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
 	ctdsnapshotters "github.com/containerd/containerd/pkg/snapshotters"
@@ -31,6 +32,7 @@ const (
 	snapshotterNameOverlaybd = "overlaybd"
 	snapshotterNameStargz    = "stargz"
 	snapshotterNameNydus     = "nydus"
+	snapshotterNameSoci      = "soci"
 
 	// prefetch size for stargz
 	prefetchSize = 10 * 1024 * 1024
@@ -41,6 +43,7 @@ var builtinRemoteSnapshotterOpts = map[string]snapshotterOpts{
 	snapshotterNameOverlaybd: &remoteSnapshotterOpts{snapshotter: "overlaybd"},
 	snapshotterNameStargz:    &remoteSnapshotterOpts{snapshotter: "stargz", extraLabels: stargzExtraLabels},
 	snapshotterNameNydus:     &remoteSnapshotterOpts{snapshotter: "nydus"},
+	snapshotterNameSoci:      &remoteSnapshotterOpts{snapshotter: "soci", extraLabels: sociExtraLabels},
 }
 
 // snapshotterOpts is used to update pull config
@@ -106,4 +109,8 @@ func (dsn *defaultSnapshotterOpts) isRemote() bool {
 
 func stargzExtraLabels(f func(images.Handler) images.Handler) func(images.Handler) images.Handler {
 	return source.AppendExtraLabelsHandler(prefetchSize, f)
+}
+
+func sociExtraLabels(f func(images.Handler) images.Handler) func(images.Handler) images.Handler {
+	return socisource.AppendDefaultLabelsHandlerWrapper("", f)
 }

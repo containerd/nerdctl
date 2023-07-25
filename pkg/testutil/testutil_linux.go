@@ -57,7 +57,8 @@ var (
 )
 
 const (
-	FedoraESGZImage = "ghcr.io/stargz-containers/fedora:30-esgz" // eStargz
+	FedoraESGZImage = "ghcr.io/stargz-containers/fedora:30-esgz"            // eStargz
+	FfmpegSociImage = "public.ecr.aws/soci-workshop-examples/ffmpeg:latest" // SOCI
 )
 
 type delayOnceReader struct {
