@@ -259,6 +259,7 @@ Config file ($NERDCTL_TOML): %s
 		newCommitCommand(),
 		newWaitCommand(),
 		newRenameCommand(),
+		newExportCommand(),
 		// #endregion
 
 		// Build
