@@ -49,6 +49,7 @@ See https://github.com/containerd/nerdctl/issues/86 for the discussion about wor
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [Amazon Elastic Container Registry (ECR)](#amazon-elastic-container-registry-ecr)
   - [Logging in](#logging-in)
   - [Creating a repo](#creating-a-repo)
@@ -74,7 +75,7 @@ See https://github.com/containerd/nerdctl/issues/86 for the discussion about wor
   - [Logging in](#logging-in-5)
   - [Creating a repo](#creating-a-repo-5)
   - [Pushing an image](#pushing-an-image-5)
-- [Google Container Registry (GCR)](#google-container-registry-gcr)
+- [Google Container Registry (GCR) [DEPRECATED]](#google-container-registry-gcr-deprecated)
   - [Logging in](#logging-in-6)
   - [Creating a repo](#creating-a-repo-6)
   - [Pushing an image](#pushing-an-image-6)
@@ -280,7 +281,7 @@ Create a [GCP Service Account](https://cloud.google.com/iam/docs/creating-managi
 Then run the following command:
 
 ```console
-$ cat <GCP_SERVICE_ACCOUNT_KEY_JSON> | docker login -u _json_key --password-stdin https://<REGION>-docker.pkg.dev
+$ cat <GCP_SERVICE_ACCOUNT_KEY_JSON> | nerdctl login -u _json_key --password-stdin https://<REGION>-docker.pkg.dev
 WARNING! Your password will be stored unencrypted in /home/<USERNAME>/.docker/config.json.
 Configure a credential helper to remove this warning. See
 https://docs.docker.com/engine/reference/commandline/login/#credentials-store
@@ -288,7 +289,7 @@ https://docs.docker.com/engine/reference/commandline/login/#credentials-store
 Login Succeeded
 ```
 
-See also https://cloud.google.com/artifact-registry/docs/docker/authentication#json-key
+See also https://cloud.google.com/artifact-registry/docs/docker/authentication
 
 
 <details>
@@ -336,7 +337,7 @@ $ nerdctl push <REGION>-docker.pkg.dev/<GCP_PROJECT_ID>/<REPO>/hello-world
 
 The pushed image appears in the repository you manually created in the previous step.
 
-## Google Container Registry (GCR)
+## Google Container Registry (GCR) [DEPRECATED]
 See also https://cloud.google.com/container-registry/docs/advanced-authentication
 
 ### Logging in
@@ -347,7 +348,7 @@ Create a [GCP Service Account](https://cloud.google.com/iam/docs/creating-managi
 Then run the following command:
 
 ```console
-$ cat <GCP_SERVICE_ACCOUNT_KEY_JSON> | docker login -u _json_key --password-stdin https://asia.gcr.io
+$ cat <GCP_SERVICE_ACCOUNT_KEY_JSON> | nerdctl login -u _json_key --password-stdin https://asia.gcr.io
 WARNING! Your password will be stored unencrypted in /home/<USERNAME>/.docker/config.json.
 Configure a credential helper to remove this warning. See
 https://docs.docker.com/engine/reference/commandline/login/#credentials-store
