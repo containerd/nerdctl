@@ -61,6 +61,8 @@ type BuilderBuildOptions struct {
 	Label []string
 	// BuildContext is the build context
 	BuildContext string
+	// NetworkMode mode for the build context
+	NetworkMode string
 }
 
 // BuilderPruneOptions specifies options for `nerdctl builder prune`.

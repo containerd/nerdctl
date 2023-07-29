@@ -655,8 +655,9 @@ Flags:
 - :whale: `--iidfile=FILE`: Write the image ID to the file
 - :nerd_face: `--ipfs`: Build image with pulling base images from IPFS. See [`ipfs.md`](./ipfs.md) for details.
 - :whale: `--label`: Set metadata for an image
+- :whale: `--network=(default|host|none)`: Set the networking mode for the RUN instructions during build.(compatible with `buildctl build`)
 
-Unimplemented `docker build` flags: `--add-host`, `--network`, `--squash`
+Unimplemented `docker build` flags: `--add-host`, `--squash`
 
 ### :whale: nerdctl commit
 

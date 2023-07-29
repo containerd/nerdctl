@@ -454,3 +454,49 @@ CMD ["cat", "/source-date-epoch"]
 	base.Cmd("build", "-t", imageName, "--build-arg", "SOURCE_DATE_EPOCH="+sourceDateEpochArgStr, buildCtx).AssertOK()
 	base.Cmd("run", "--rm", imageName).AssertOutExactly(sourceDateEpochArgStr + "\n")
 }
+
+func TestBuildNetwork(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").AssertOK()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+RUN apk add --no-cache curl
+RUN curl -I http://google.com
+	`, testutil.CommonImage)
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	validCases := []struct {
+		name     string
+		network  string
+		exitCode int
+	}{
+		// When network=none, can't connect to internet, therefore cannot download packages in the dockerfile
+		// Order is important here, test fails for `-test.target=docker` in CI
+		{"test_with_no_network", "none", 1},
+		{"test_with_empty_network", "", 0},
+		{"test_with_default_network", "default", 0},
+	}
+
+	for _, tc := range validCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			// --no-cache is intentional here for `-test.target=docker`
+			base.Cmd("build", buildCtx, "-t", tc.name, "--no-cache", "--network", tc.network).AssertExitCode(tc.exitCode)
+			if tc.exitCode != 1 {
+				defer base.Cmd("rmi", tc.name).AssertOK()
+			}
+		})
+	}
+}
+
+func TestBuildNetworkShellCompletion(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	const gsc = "__complete"
+	// Tests with build network
+	networkName := "default"
+	base.Cmd(gsc, "build", "--network", "").AssertOutContains(networkName)
+}

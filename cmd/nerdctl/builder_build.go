@@ -56,7 +56,10 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 	buildCommand.Flags().StringArray("cache-from", nil, "External cache sources (eg. user/app:cache, type=local,src=path/to/dir)")
 	buildCommand.Flags().StringArray("cache-to", nil, "Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir)")
 	buildCommand.Flags().Bool("rm", true, "Remove intermediate containers after a successful build")
-
+	buildCommand.Flags().String("network", "default", "Set type of network for build (format:network=default|none|host)")
+	buildCommand.RegisterFlagCompletionFunc("network", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"default", "host", "none"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	buildCommand.Flags().StringSlice("platform", []string{}, "Set target platform for build (e.g., \"amd64\", \"arm64\")")
@@ -153,6 +156,10 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
 	}
+	network, err := cmd.Flags().GetString("network")
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
 	return types.BuilderBuildOptions{
 		GOptions:     globalOptions,
 		BuildKitHost: buildKitHost,
@@ -176,6 +183,7 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 		Stdout:       cmd.OutOrStdout(),
 		Stderr:       cmd.OutOrStderr(),
 		Stdin:        cmd.InOrStdin(),
+		NetworkMode:  network,
 	}, nil
 }
 
