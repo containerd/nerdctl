@@ -39,7 +39,9 @@ func TestStats(t *testing.T) {
 	defer base.Cmd("rm", "-f", exitedTestContainerName).Run()
 	base.Cmd("run", "--name", exitedTestContainerName, testutil.AlpineImage, "echo", "'exited'").AssertOK()
 
-	base.Cmd("run", "-d", "--name", testContainerName, testutil.AlpineImage, "sleep", "5").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainerName, testutil.AlpineImage, "sleep", "10").AssertOK()
 	base.Cmd("stats", "--no-stream").AssertOutContains(testContainerName)
 	base.Cmd("stats", "--no-stream", testContainerName).AssertOK()
+	base.Cmd("container", "stats", "--no-stream").AssertOutContains(testContainerName)
+	base.Cmd("container", "stats", "--no-stream", testContainerName).AssertOK()
 }
