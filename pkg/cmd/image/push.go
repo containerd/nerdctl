@@ -30,6 +30,8 @@ import (
 	"github.com/containerd/containerd/reference"
 	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
+	"github.com/containerd/containerd/remotes/docker"
+	dockerconfig "github.com/containerd/containerd/remotes/docker/config"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
@@ -117,8 +119,15 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		logrus.Infof("pushing as an eStargz image (%s, %s)", esgzImg.Target.MediaType, esgzImg.Target.Digest)
 	}
 
+	// In order to push images where most layers are the same but the
+	// repository name is different, it is necessary to refresh the
+	// PushTracker. Otherwise, the MANIFEST_BLOB_UNKNOWN error will occur due
+	// to the registry not creating the corresponding layer link file,
+	// resulting in the failure of the entire image push.
+	pushTracker := docker.NewInMemoryTracker()
+
 	pushFunc := func(r remotes.Resolver) error {
-		return push.Push(ctx, client, r, options.Stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts, options.Quiet)
+		return push.Push(ctx, client, r, pushTracker, options.Stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts, options.Quiet)
 	}
 
 	var dOpts []dockerconfigresolver.Opt
@@ -127,10 +136,18 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
 	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.GOptions.HostsDir))
-	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
+
+	ho, err := dockerconfigresolver.NewHostOptions(ctx, refDomain, dOpts...)
 	if err != nil {
 		return err
 	}
+
+	resolverOpts := docker.ResolverOptions{
+		Tracker: pushTracker,
+		Hosts:   dockerconfig.ConfigureHosts(ctx, *ho),
+	}
+
+	resolver := docker.NewResolver(resolverOpts)
 	if err = pushFunc(resolver); err != nil {
 		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused"
 		if !errutil.IsErrHTTPResponseToHTTPSClient(err) && !errutil.IsErrConnectionRefused(err) {
