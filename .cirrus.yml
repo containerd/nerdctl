@@ -30,6 +30,9 @@ windows_task:
   matrix:
     - name: "Windows/containerd-1.7"
       env:
+        # containerd >= 1.7.2 can't pass nerdctl CI:
+        # `hcsshim::PrepareLayer failed in Win32: The parameter is incorrect. (0x57)`
+        # https://github.com/containerd/containerd/issues/8891
         ctrdVersion: 1.7.1
   env:
     CGO_ENABLED: 0
