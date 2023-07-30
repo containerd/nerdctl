@@ -30,7 +30,7 @@ windows_task:
   matrix:
     - name: "Windows/containerd-1.7"
       env:
-        ctrdVersion: 1.7.1
+        ctrdVersion: 1.7.2
   env:
     CGO_ENABLED: 0
   build_script:
