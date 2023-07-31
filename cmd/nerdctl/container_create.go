@@ -24,6 +24,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/containerd/nerdctl/pkg/containerutil"
+	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
 	"github.com/spf13/cobra"
 )
 
@@ -396,11 +397,10 @@ func processContainerCreateOptions(cmd *cobra.Command) (opt types.ContainerCreat
 		return
 	}
 	opt.ImagePullOpt = types.ImagePullOptions{
-		GOptions:      opt.GOptions,
-		VerifyOptions: imageVerifyOpt,
-		IPFSAddress:   opt.IPFSAddress,
-		Stdout:        opt.Stdout,
-		Stderr:        opt.Stderr,
+		GOptions:        opt.GOptions,
+		VerifyOptions:   imageVerifyOpt,
+		IPFSAddress:     opt.IPFSAddress,
+		ProgressHandler: jobs.PrintProgress(opt.Stderr),
 	}
 	// #endregion
 

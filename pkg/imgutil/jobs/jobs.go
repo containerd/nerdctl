@@ -37,10 +37,13 @@ import (
 // by checking status in the content store.
 //
 // From https://github.com/containerd/containerd/blob/v1.7.0-rc.2/cmd/ctr/commands/content/fetch.go#L219-L336
-func ShowProgress(ctx context.Context, ongoing *Jobs, cs content.Store, out io.Writer) {
+func ShowProgress(ctx context.Context, ongoing *Jobs, cs content.Store, handler StatusHandler) {
+	if handler == nil {
+		return
+	}
+
 	var (
 		ticker   = time.NewTicker(100 * time.Millisecond)
-		fw       = progress.NewWriter(out)
 		start    = time.Now()
 		statuses = map[string]StatusInfo{}
 		done     bool
@@ -51,10 +54,6 @@ outer:
 	for {
 		select {
 		case <-ticker.C:
-			fw.Flush()
-
-			tw := tabwriter.NewWriter(fw, 1, 8, 1, ' ', 0)
-
 			resolved := StatusResolved
 			if !ongoing.IsResolved() {
 				resolved = StatusResolving
@@ -140,11 +139,9 @@ outer:
 				ordered = append(ordered, statuses[key])
 			}
 
-			Display(tw, ordered, start)
-			tw.Flush()
+			handler(ordered, start, done)
 
 			if done {
-				fw.Flush()
 				return
 			}
 		case <-ctx.Done():
@@ -233,6 +230,32 @@ type StatusInfo struct {
 	Total     int64
 	StartedAt time.Time
 	UpdatedAt time.Time
+}
+
+// StatusHandler defines a func signature for handling StatusInfo objects per tick
+type StatusHandler func(statuses []StatusInfo, start time.Time, done bool)
+
+// PrintProgress returns the default StatusHandler to display progress on the provided writer.
+//
+// Returns nil if the writer is nil.
+func PrintProgress(w io.Writer) StatusHandler {
+	if w == nil {
+		return nil
+	}
+
+	fw := progress.NewWriter(w)
+	return func(statuses []StatusInfo, start time.Time, done bool) {
+		fw.Flush()
+
+		tw := tabwriter.NewWriter(fw, 1, 8, 1, ' ', 0)
+
+		Display(tw, statuses, start)
+		tw.Flush()
+
+		if done {
+			fw.Flush()
+		}
+	}
 }
 
 // Display pretty prints out the download or upload progress.

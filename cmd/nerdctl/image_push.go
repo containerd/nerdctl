@@ -17,9 +17,12 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
+	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
 	"github.com/spf13/cobra"
 )
 
@@ -111,7 +114,7 @@ func processImagePushOptions(cmd *cobra.Command) (types.ImagePushOptions, error)
 		IpfsAddress:                    ipfsAddress,
 		Quiet:                          quiet,
 		AllowNondistributableArtifacts: allowNonDist,
-		Stdout:                         cmd.OutOrStdout(),
+		ProgressHandler:                jobs.PrintProgress(cmd.OutOrStdout()),
 	}, nil
 }
 
@@ -128,7 +131,11 @@ func pushAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	return image.Push(ctx, client, rawRef, options)
+	ref, err := image.Push(ctx, client, rawRef, options)
+	if options.Quiet {
+		fmt.Fprintln(cmd.OutOrStdout(), ref)
+	}
+	return err
 }
 
 func pushShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

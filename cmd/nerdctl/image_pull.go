@@ -17,9 +17,12 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
+	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
 	"github.com/spf13/cobra"
 )
 
@@ -94,15 +97,14 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 		return types.ImagePullOptions{}, err
 	}
 	return types.ImagePullOptions{
-		GOptions:      globalOptions,
-		VerifyOptions: verifyOptions,
-		AllPlatforms:  allPlatforms,
-		Platform:      platform,
-		Unpack:        unpackStr,
-		Quiet:         quiet,
-		IPFSAddress:   ipfsAddressStr,
-		Stdout:        cmd.OutOrStdout(),
-		Stderr:        cmd.OutOrStderr(),
+		GOptions:        globalOptions,
+		VerifyOptions:   verifyOptions,
+		AllPlatforms:    allPlatforms,
+		Platform:        platform,
+		Unpack:          unpackStr,
+		Quiet:           quiet,
+		IPFSAddress:     ipfsAddressStr,
+		ProgressHandler: jobs.PrintProgress(cmd.OutOrStderr()),
 	}, nil
 }
 
@@ -118,5 +120,9 @@ func pullAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	return image.Pull(ctx, client, args[0], options)
+	ref, err := image.Pull(ctx, client, args[0], options)
+	if options.Quiet {
+		fmt.Fprintln(cmd.OutOrStderr(), ref)
+	}
+	return err
 }

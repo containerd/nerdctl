@@ -20,15 +20,12 @@ package push
 import (
 	"context"
 	"fmt"
-	"io"
 	"sync"
-	"text/tabwriter"
 	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
-	"github.com/containerd/containerd/pkg/progress"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
@@ -40,7 +37,7 @@ import (
 )
 
 // Push pushes an image to a remote registry.
-func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resolver, stdout io.Writer,
+func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resolver, progressHandler jobs.StatusHandler,
 	localRef, remoteRef string, platform platforms.MatchComparer, allowNonDist, quiet bool) error {
 	img, err := client.ImageService().Get(ctx, localRef)
 	if err != nil {
@@ -78,11 +75,10 @@ func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resol
 		)
 	})
 
-	if !quiet {
+	if !quiet && progressHandler != nil {
 		eg.Go(func() error {
 			var (
 				ticker = time.NewTicker(100 * time.Millisecond)
-				fw     = progress.NewWriter(stdout)
 				start  = time.Now()
 				done   bool
 			)
@@ -92,15 +88,8 @@ func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resol
 			for {
 				select {
 				case <-ticker.C:
-					fw.Flush()
-
-					tw := tabwriter.NewWriter(fw, 1, 8, 1, ' ', 0)
-
-					jobs.Display(tw, ongoing.status(), start)
-					tw.Flush()
-
+					progressHandler(ongoing.status(), start, done)
 					if done {
-						fw.Flush()
 						return nil
 					}
 				case <-doneCh:
