@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/runtime/v2/logging"
+	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/sirupsen/logrus"
 )
 
@@ -142,6 +143,17 @@ func LoadLogConfig(dataStore, ns, id string) (LogConfig, error) {
 	return logConfig, nil
 }
 
+func getLockPath(dataStore, ns, id string) string {
+	return filepath.Join(dataStore, "containers", ns, id, "logger-lock")
+}
+
+// WaitForLogger waits until the logger has finished executing and processing container logs
+func WaitForLogger(dataStore, ns, id string) error {
+	return lockutil.WithDirLock(getLockPath(dataStore, ns, id), func() error {
+		return nil
+	})
+}
+
 // getContainerWait loads the container from ID and returns its wait channel
 func getContainerWait(ctx context.Context, hostAddress string, config *logging.Config) (<-chan containerd.ExitStatus, error) {
 	client, err := containerd.New(hostAddress, containerd.WithDefaultNamespace(config.Namespace))
@@ -234,11 +246,24 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 			if err != nil {
 				return err
 			}
-			if err := ready(); err != nil {
+
+			lockFile := getLockPath(dataStore, config.Namespace, config.ID)
+			f, err := os.Create(lockFile)
+			if err != nil {
 				return err
 			}
+			defer f.Close()
 
-			return loggingProcessAdapter(ctx, driver, dataStore, logConfig.HostAddress, config)
+			// the logger will obtain an exclusive lock on a file until the container is
+			// stopped and the driver has finished processing all output,
+			// so that waiting log viewers can be signalled when the process is complete.
+			return lockutil.WithDirLock(lockFile, func() error {
+				if err := ready(); err != nil {
+					return err
+				}
+
+				return loggingProcessAdapter(ctx, driver, dataStore, logConfig.HostAddress, config)
+			})
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// the file does not exist if the container was created with nerdctl < 0.20
 			return err
