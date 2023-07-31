@@ -26,18 +26,18 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func WithDirLock(dir string, fn func() error) error {
-	dirFile, err := os.Open(dir)
+func WithLock(name string, fn func() error) error {
+	dirFile, err := os.Open(name)
 	if err != nil {
 		return err
 	}
 	defer dirFile.Close()
 	if err := Flock(dirFile, unix.LOCK_EX); err != nil {
-		return fmt.Errorf("failed to lock %q: %w", dir, err)
+		return fmt.Errorf("failed to lock %q: %w", name, err)
 	}
 	defer func() {
 		if err := Flock(dirFile, unix.LOCK_UN); err != nil {
-			log.L.WithError(err).Errorf("failed to unlock %q", dir)
+			log.L.WithError(err).Errorf("failed to unlock %q", name)
 		}
 	}()
 	return fn()

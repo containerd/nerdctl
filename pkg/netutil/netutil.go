@@ -264,7 +264,7 @@ func (e *CNIEnv) CreateNetwork(opts CreateOptions) (*NetworkConfig, error) { //n
 		}
 		return e.writeNetworkConfig(net)
 	}
-	err = lockutil.WithDirLock(e.NetconfPath, fn)
+	err = lockutil.WithLock(e.NetconfPath, fn)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +278,7 @@ func (e *CNIEnv) RemoveNetwork(net *NetworkConfig) error {
 		}
 		return net.clean()
 	}
-	return lockutil.WithDirLock(e.NetconfPath, fn)
+	return lockutil.WithLock(e.NetconfPath, fn)
 }
 
 // GetDefaultNetworkConfig checks whether the default network exists

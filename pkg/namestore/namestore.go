@@ -61,7 +61,7 @@ func (x *nameStore) Acquire(name, id string) error {
 		}
 		return os.WriteFile(fileName, []byte(id), 0600)
 	}
-	return lockutil.WithDirLock(x.dir, fn)
+	return lockutil.WithLock(x.dir, fn)
 }
 
 func (x *nameStore) Release(name, id string) error {
@@ -88,7 +88,7 @@ func (x *nameStore) Release(name, id string) error {
 		}
 		return os.RemoveAll(fileName)
 	}
-	return lockutil.WithDirLock(x.dir, fn)
+	return lockutil.WithLock(x.dir, fn)
 }
 
 func (x *nameStore) Rename(oldName, id, newName string) error {
@@ -113,5 +113,5 @@ func (x *nameStore) Rename(oldName, id, newName string) error {
 		}
 		return os.Rename(oldFileName, newFileName)
 	}
-	return lockutil.WithDirLock(x.dir, fn)
+	return lockutil.WithLock(x.dir, fn)
 }

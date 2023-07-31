@@ -73,7 +73,7 @@ func AllocHostsFile(dataStore, ns, id string) (string, error) {
 	fn := func() error {
 		return ensureFile(path)
 	}
-	err := lockutil.WithDirLock(lockDir, fn)
+	err := lockutil.WithLock(lockDir, fn)
 	return path, err
 }
 
@@ -86,7 +86,7 @@ func DeallocHostsFile(dataStore, ns, id string) error {
 	fn := func() error {
 		return os.RemoveAll(dirToBeRemoved)
 	}
-	return lockutil.WithDirLock(lockDir, fn)
+	return lockutil.WithLock(lockDir, fn)
 }
 
 func NewStore(dataStore string) (Store, error) {
@@ -135,7 +135,7 @@ func (x *store) Acquire(meta Meta) error {
 		}
 		return newUpdater(meta.ID, x.hostsD).update()
 	}
-	return lockutil.WithDirLock(x.hostsD, fn)
+	return lockutil.WithLock(x.hostsD, fn)
 }
 
 // Release is triggered by Poststop hooks.
@@ -155,7 +155,7 @@ func (x *store) Release(ns, id string) error {
 		}
 		return newUpdater(id, x.hostsD).update()
 	}
-	return lockutil.WithDirLock(x.hostsD, fn)
+	return lockutil.WithLock(x.hostsD, fn)
 }
 
 func (x *store) Update(ns, id, newName string) error {
@@ -179,5 +179,5 @@ func (x *store) Update(ns, id, newName string) error {
 		}
 		return newUpdater(meta.ID, x.hostsD).update()
 	}
-	return lockutil.WithDirLock(x.hostsD, fn)
+	return lockutil.WithLock(x.hostsD, fn)
 }

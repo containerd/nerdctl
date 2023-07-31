@@ -22,11 +22,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
+
+	"github.com/containerd/log"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/api/types/cri"
 	"github.com/containerd/nerdctl/pkg/clientutil"
@@ -91,7 +91,11 @@ func Logs(ctx context.Context, client *containerd.Client, container string, opti
 						// Setup goroutine to send stop event if container task finishes:
 						go func() {
 							<-waitCh
-							log.G(ctx).Debugf("container task has finished, sending kill signal to log viewer")
+							// Wait for logger to process remaining logs after container exit
+							if err = logging.WaitForLogger(dataStore, l[labels.Namespace], found.Container.ID()); err != nil {
+								log.L.WithError(err).Error("failed to wait for logger shutdown")
+							}
+							log.L.Debugf("container task has finished, sending kill signal to log viewer")
 							stopChannel <- os.Interrupt
 						}()
 					}

@@ -24,8 +24,8 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func WithDirLock(dir string, fn func() error) error {
-	dirFile, err := os.OpenFile(dir+".lock", os.O_CREATE, 0644)
+func WithLock(name string, fn func() error) error {
+	dirFile, err := os.OpenFile(name+".lock", os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
@@ -33,12 +33,12 @@ func WithDirLock(dir string, fn func() error) error {
 	// see https://msdn.microsoft.com/en-us/library/windows/desktop/aa365203(v=vs.85).aspx
 	// 1 lock immediately
 	if err = windows.LockFileEx(windows.Handle(dirFile.Fd()), 1, 0, 1, 0, &windows.Overlapped{}); err != nil {
-		return fmt.Errorf("failed to lock %q: %w", dir, err)
+		return fmt.Errorf("failed to lock %q: %w", name, err)
 	}
 
 	defer func() {
 		if err := windows.UnlockFileEx(windows.Handle(dirFile.Fd()), 0, 1, 0, &windows.Overlapped{}); err != nil {
-			log.L.WithError(err).Errorf("failed to unlock %q", dir)
+			log.L.WithError(err).Errorf("failed to unlock %q", name)
 		}
 	}()
 	return fn()

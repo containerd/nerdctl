@@ -110,7 +110,7 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 		return os.WriteFile(volFilePath, labelsJSON, 0644)
 	}
 
-	if err := lockutil.WithDirLock(vs.dir, fn); err != nil {
+	if err := lockutil.WithLock(vs.dir, fn); err != nil {
 		return nil, err
 	}
 
@@ -188,7 +188,7 @@ func (vs *volumeStore) Remove(names []string) ([]string, error) {
 		}
 		return nil
 	}
-	err := lockutil.WithDirLock(vs.dir, fn)
+	err := lockutil.WithLock(vs.dir, fn)
 	return removed, err
 }
 
