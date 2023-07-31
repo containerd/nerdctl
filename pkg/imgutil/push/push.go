@@ -32,7 +32,6 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
-	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
@@ -40,7 +39,7 @@ import (
 )
 
 // Push pushes an image to a remote registry.
-func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resolver, stdout io.Writer,
+func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resolver, pushTracker docker.StatusTracker, stdout io.Writer,
 	localRef, remoteRef string, platform platforms.MatchComparer, allowNonDist, quiet bool) error {
 	img, err := client.ImageService().Get(ctx, localRef)
 	if err != nil {
@@ -48,7 +47,7 @@ func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resol
 	}
 	desc := img.Target
 
-	ongoing := newPushJobs(dockerconfigresolver.PushTracker)
+	ongoing := newPushJobs(pushTracker)
 
 	eg, ctx := errgroup.WithContext(ctx)
 
