@@ -25,10 +25,12 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/leases"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/pkg/userns"
@@ -158,6 +160,14 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 		// The RemoveAll will delete the temp dir and all children it contains.
 		// When the Unmount fails, RemoveAll will incorrectly delete data from the mounted dir
 		defer os.Remove(tempDir)
+
+		// Add a lease of 1 hour to the view so that it is not garbage collected
+		// Note(gsamfira): should we make this shorter?
+		ctx, done, err := client.WithLease(ctx, leases.WithRandomID(), leases.WithExpiration(1*time.Hour))
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to create lease: %w", err)
+		}
+		defer done(ctx)
 
 		var mounts []mount.Mount
 		mounts, err = s.View(ctx, tempDir, chainID)
