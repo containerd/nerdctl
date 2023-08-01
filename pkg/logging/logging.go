@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
@@ -164,19 +165,37 @@ func getContainerWait(ctx context.Context, hostAddress string, config *logging.C
 	if err != nil {
 		return nil, err
 	}
+
 	task, err := con.Task(ctx, nil)
-	if err != nil {
+	if err == nil {
+		return task.Wait(ctx)
+	}
+	if !errdefs.IsNotFound(err) {
 		return nil, err
 	}
-	return task.Wait(ctx)
+
+	// If task was not found, it's possible that the container runtime is still being created.
+	// Retry every 100ms.
+	ticker := time.NewTicker(100 * time.Millisecond)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("timed out waiting for container task to start")
+		case <-ticker.C:
+			task, err = con.Task(ctx, nil)
+			if err != nil {
+				if errdefs.IsNotFound(err) {
+					continue
+				}
+				return nil, err
+			}
+			return task.Wait(ctx)
+		}
+	}
 }
 
 func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, hostAddress string, config *logging.Config) error {
 	if err := driver.PreProcess(dataStore, config); err != nil {
-		return err
-	}
-	exitCh, err := getContainerWait(ctx, hostAddress, config)
-	if err != nil {
 		return err
 	}
 
@@ -220,9 +239,15 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, hostAd
 	}()
 	go func() {
 		// close stdout and stderr upon container exit
+		defer stdoutW.Close()
+		defer stderrW.Close()
+
+		exitCh, err := getContainerWait(ctx, hostAddress, config)
+		if err != nil {
+			logrus.Errorf("failed to get container task wait channel: %v", err)
+			return
+		}
 		<-exitCh
-		stdoutW.Close()
-		stderrW.Close()
 	}()
 	wg.Wait()
 	return driver.PostProcess()
@@ -247,8 +272,8 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 				return err
 			}
 
-			lockFile := getLockPath(dataStore, config.Namespace, config.ID)
-			f, err := os.Create(lockFile)
+			loggerLock := getLockPath(dataStore, config.Namespace, config.ID)
+			f, err := os.Create(loggerLock)
 			if err != nil {
 				return err
 			}
@@ -257,7 +282,7 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 			// the logger will obtain an exclusive lock on a file until the container is
 			// stopped and the driver has finished processing all output,
 			// so that waiting log viewers can be signalled when the process is complete.
-			return lockutil.WithDirLock(lockFile, func() error {
+			return lockutil.WithDirLock(loggerLock, func() error {
 				if err := ready(); err != nil {
 					return err
 				}

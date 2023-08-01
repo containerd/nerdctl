@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -160,6 +161,9 @@ func TestLogsWithRunningContainer(t *testing.T) {
 }
 
 func TestLogsWithoutNewlineOrEOF(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("FIXME: test does not work on Windows yet because containerd doesn't send an exit event appropriately after task exit on Windows")
+	}
 	t.Parallel()
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
@@ -172,6 +176,9 @@ func TestLogsWithoutNewlineOrEOF(t *testing.T) {
 }
 
 func TestLogsAfterRestartingContainer(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("FIXME: test does not work on Windows yet. Restarting a container fails with: failed to create shim task: hcs::CreateComputeSystem <id>: The requested operation for attach namespace failed.: unknown")
+	}
 	t.Parallel()
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
