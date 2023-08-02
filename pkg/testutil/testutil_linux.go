@@ -17,6 +17,7 @@
 package testutil
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -81,11 +82,31 @@ type delayOnceReader struct {
 // Since detaching from a container is only applicable when there is a TTY,
 // which usually means that there's a human in front of the computer waiting for a prompt to start typing,
 // it's reasonable to assume that the user will not type the detach keys before the task is started.
+//
+// Besides delaying the first Read() by one second,
+// the returned reader also sleeps for one second if EOF is reached for the wrapped reader.
+// The reason follows:
+//
+// NewDelayOnceReader is usually used with `unbuffer -p`, which has a caveat:
+// "unbuffer simply exits when it encounters an EOF from either its input or process2." [1]
+// The implication is if we use `unbuffer -p` to feed a command to container shell,
+// `unbuffer -p` will exit right after it finishes reading the command (i.e., encounter an EOF from its input),
+// and by that time, the container may have not executed the command and printed the wanted results to stdout,
+// which would fail the test if it asserts stdout to contain certain strings.
+//
+// As a result, to avoid flaky tests,
+// we give the container shell one second to process the command before `unbuffer -p` exits.
+//
+// [1] https://linux.die.net/man/1/unbuffer
 func NewDelayOnceReader(wrapped io.Reader) io.Reader {
 	return &delayOnceReader{wrapped: wrapped}
 }
 
 func (r *delayOnceReader) Read(p []byte) (int, error) {
 	r.once.Do(func() { time.Sleep(time.Second) })
-	return r.wrapped.Read(p)
+	n, err := r.wrapped.Read(p)
+	if errors.Is(err, io.EOF) {
+		time.Sleep(time.Second)
+	}
+	return n, err
 }

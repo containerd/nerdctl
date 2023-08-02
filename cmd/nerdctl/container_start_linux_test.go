@@ -28,13 +28,7 @@ import (
 func TestStartDetachKeys(t *testing.T) {
 	t.Parallel()
 
-	if testutil.GetTarget() == testutil.Docker {
-		t.Skip("When detaching from a container, for a session started with 'docker attach'" +
-			", it prints 'read escape sequence', but for one started with 'docker (run|start)', it prints nothing." +
-			" However, the flag is called '--detach-keys' in all cases" +
-			", so nerdctl prints 'read detach keys' for all cases" +
-			", and that's why this test is skipped for Docker.")
-	}
+	skipAttachForDocker(t)
 
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
