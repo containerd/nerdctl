@@ -8,7 +8,7 @@ freebsd_task:
     cpu: 2
     memory: 4G
   env:
-    NERDCTL_RUN_ARGS: --net none dougrabson/freebsd-minimal:13.1 echo "Nerdctl is up and running."
+    NERDCTL_RUN_ARGS: --net none dougrabson/freebsd-minimal:13 echo "Nerdctl is up and running."
   install_script:
     - pkg install -y go containerd runj
   test_script:
