@@ -22,7 +22,7 @@ require (
 	github.com/containerd/typeurl/v2 v2.1.1
 	github.com/containernetworking/cni v1.1.2
 	github.com/containernetworking/plugins v1.3.0
-	github.com/coreos/go-iptables v0.6.0
+	github.com/coreos/go-iptables v0.7.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/docker/cli v24.0.5+incompatible
