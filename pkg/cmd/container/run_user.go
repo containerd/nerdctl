@@ -19,10 +19,14 @@ package container
 import (
 	"context"
 	"fmt"
+	"os/user"
 	"strconv"
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/rootless-containers/rootlesskit/pkg/parent/idtools"
 )
 
 func generateUserOpts(user string) ([]oci.SpecOpts, error) {
@@ -65,6 +69,83 @@ func withResetAdditionalGIDs() oci.SpecOpts {
 func withAdditionalUmask(umask uint32) oci.SpecOpts {
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
 		s.Process.User.Umask = &umask
+		return nil
+	}
+}
+
+func generateUserNSOpts(userns string) ([]oci.SpecOpts, error) {
+	switch userns {
+	case "host":
+		return []oci.SpecOpts{withResetUserNamespace()}, nil
+	case "keep-id":
+		min := func(a, b int) int {
+			if a < b {
+				return a
+			}
+			return b
+		}
+
+		uid := rootlessutil.ParentEUID()
+		gid := rootlessutil.ParentEGID()
+
+		u, err := user.LookupId(fmt.Sprintf("%d", uid))
+		if err != nil {
+			return nil, err
+		}
+		uids, gids, err := idtools.GetSubIDRanges(uid, u.Username)
+		if err != nil {
+			return nil, err
+		}
+
+		maxUID, maxGID := 0, 0
+		for _, u := range uids {
+			maxUID += u.Length
+		}
+		for _, g := range gids {
+			maxGID += g.Length
+		}
+
+		uidmap := []specs.LinuxIDMapping{{
+			ContainerID: uint32(uid),
+			HostID:      0,
+			Size:        1,
+		}}
+		if len(uids) > 0 {
+			uidmap = append(uidmap, specs.LinuxIDMapping{
+				ContainerID: 0,
+				HostID:      1,
+				Size:        uint32(min(uid, maxUID)),
+			})
+		}
+
+		gidmap := []specs.LinuxIDMapping{{
+			ContainerID: uint32(gid),
+			HostID:      0,
+			Size:        1,
+		}}
+		if len(gids) > 0 {
+			gidmap = append(gidmap, specs.LinuxIDMapping{
+				ContainerID: 0,
+				HostID:      1,
+				Size:        uint32(min(gid, maxGID)),
+			})
+		}
+		return []oci.SpecOpts{
+			oci.WithUserNamespace(uidmap, gidmap),
+			oci.WithUIDGID(uint32(uid), uint32(gid)),
+		}, nil
+	default:
+		return nil, fmt.Errorf("invalid UserNS Value:%s", userns)
+	}
+}
+
+func withResetUserNamespace() oci.SpecOpts {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		for i, ns := range s.Linux.Namespaces {
+			if ns.Type == specs.UserNamespace {
+				s.Linux.Namespaces = append(s.Linux.Namespaces[:i], s.Linux.Namespaces[i+1:]...)
+			}
+		}
 		return nil
 	}
 }

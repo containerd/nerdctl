@@ -225,6 +225,12 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	opts = append(opts, umaskOpts...)
 
+	unsOpts, err := generateUserNSOpts(options.UserNS)
+	if err != nil {
+		return nil, nil, err
+	}
+	opts = append(opts, unsOpts...)
+
 	rtCOpts, err := generateRuntimeCOpts(options.GOptions.CgroupManager, options.Runtime)
 	if err != nil {
 		return nil, nil, err

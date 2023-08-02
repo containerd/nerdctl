@@ -168,6 +168,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
 	cmd.Flags().String("umask", "", "Set the umask inside the container. Defaults to 0022")
 	cmd.Flags().StringSlice("group-add", []string{}, "Add additional groups to join")
+	cmd.Flags().String("userns", "host", `Set the user namespace mode for the container (auto|host|keep-id|nomap). Defaults to "host"`)
 
 	// #region security flags
 	cmd.Flags().StringArray("security-opt", []string{}, "Security options")
