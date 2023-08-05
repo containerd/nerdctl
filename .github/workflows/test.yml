@@ -198,3 +198,31 @@ jobs:
           sudo apt-get install -y expect
       - name: "Ensure that the integration test suite is compatible with Docker"
         run: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon
+
+
+  test-integration-freebsd:
+    name: FreeBSD
+    # "Larger" runner is needed for nested virtualization
+    # https://github.com/organizations/containerd/settings/actions/runners
+    runs-on: ubuntu-latest-4-cores
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v3.5.3
+      - uses: actions/cache@v3
+        with:
+          path: /root/.vagrant.d
+          key: vagrant-${{ matrix.box }}
+      - name: Set up vagrant
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvirt-daemon libvirt-daemon-system vagrant vagrant-libvirt
+          sudo systemctl enable --now libvirtd
+      - name: Boot VM
+        run: |
+          ln -sf Vagrantfile.freebsd Vagrantfile
+          sudo vagrant up --no-tty
+      - name: test-unit
+        run: sudo vagrant up --provision-with=test-unit
+      - name: test-integration
+        run: sudo vagrant up --provision-with=test-integration

@@ -1,0 +1,64 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+#   Copyright The containerd Authors.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+
+#       http://www.apache.org/licenses/LICENSE-2.0
+
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+# Vagrantfile for FreeBSD
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/freebsd13"
+
+  memory = 2048
+  cpus = 1
+  config.vm.provider :virtualbox do |v, o|
+    v.memory = memory
+    v.cpus = cpus
+  end
+  config.vm.provider :libvirt do |v|
+    v.memory = memory
+    v.cpus = cpus
+  end
+
+  config.vm.synced_folder ".", "/vagrant", type: "rsync"
+
+  config.vm.provision "install", type: "shell", run: "once" do |sh|
+    sh.inline = <<~SHELL
+        #!/usr/bin/env bash
+        set -eux -o pipefail
+        pkg install -y go containerd runj
+        cd /vagrant
+        go install ./cmd/nerdctl
+    SHELL
+  end
+
+ config.vm.provision "test-unit", type: "shell", run: "never" do |sh|
+    sh.inline = <<~SHELL
+        #!/usr/bin/env bash
+        set -eux -o pipefail
+        cd /vagrant
+        go test -v ./pkg/...
+    SHELL
+  end
+
+  config.vm.provision "test-integration", type: "shell", run: "never" do |sh|
+    sh.inline = <<~SHELL
+        #!/usr/bin/env bash
+        set -eux -o pipefail
+        daemon -o containerd.out containerd
+        sleep 3
+        /root/go/bin/nerdctl run --rm --net=none dougrabson/freebsd-minimal:13 echo "Nerdctl is up and running."
+    SHELL
+  end
+
+end
