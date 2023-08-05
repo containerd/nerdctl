@@ -212,6 +212,43 @@ jobs:
       - name: "Ensure that the integration test suite is compatible with Docker"
         run: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon
 
+  test-integration-windows:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v3.5.3
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          check-latest: true
+      - run: go install ./cmd/nerdctl
+      - uses: actions/checkout@v3.5.3
+        with:
+          repository: containerd/containerd
+          ref: v1.7.3
+          path: containerd
+          fetch-depth: 1
+      - name: "Set up CNI"
+        working-directory: containerd
+        run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
+      - name: "Set up containerd"
+        env:
+          ctrdVersion: 1.7.3
+        run: powershell hack/configure-windows-ci.ps1
+      # TODO: Run unit tests
+      - name: "Run integration tests"
+        env:
+          # Hyper-V tests fail on GHA:
+          # > failed to get host processor information: failed to retrieve processor and processor topology information:
+          # > hcs::GetServiceProperties: Catastrophic failure: unknown
+          NO_HYPERV: 1
+        run: go test -v ./cmd/...
 
   test-integration-freebsd:
     name: FreeBSD

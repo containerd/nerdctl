@@ -17,14 +17,14 @@
 package testutil
 
 import (
-	"sync"
-
+	"os"
+	"strconv"
 	"strings"
-
-	"golang.org/x/sys/windows/svc/mgr"
+	"sync"
 
 	"github.com/Microsoft/hcsshim"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"golang.org/x/sys/windows/svc/mgr"
 )
 
 const (
@@ -60,6 +60,11 @@ var (
 // HyperVSupported is a test helper to check if hyperv is enabled on
 // the host. This can be used to skip tests that require virtualization.
 func HyperVSupported() bool {
+	if s := os.Getenv("NO_HYPERV"); s != "" {
+		if b, err := strconv.ParseBool(s); err == nil && b {
+			return false
+		}
+	}
 	hypervSupportedOnce.Do(func() {
 		// Hyper-V Virtual Machine Management service name
 		const hypervServiceName = "vmms"
