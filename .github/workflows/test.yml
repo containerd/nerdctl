@@ -181,14 +181,27 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
           check-latest: true
-      - name: "Enable BuildKit"
+      # Docker >= 23 is still unsupported: https://github.com/containerd/nerdctl/issues/2421
+      - name: "Install Docker 20.10"
         run: |
           set -eux -o pipefail
+          # Uninstall the preinstalled Docker (Moby)
+          sudo apt-get remove moby-*
+          # Enable BuildKit explicitly
           sudo apt-get install -y moreutils
           cat /etc/docker/daemon.json
           jq '.features.buildkit = true' </etc/docker/daemon.json  | sudo sponge /etc/docker/daemon.json
           cat /etc/docker/daemon.json
-          sudo systemctl restart docker
+          # Download Docker packages
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/containerd.io_1.6.22-1_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce_20.10.24~3-0~ubuntu-jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce-cli_20.10.24~3-0~ubuntu-jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-buildx-plugin_0.11.2-1~ubuntu.22.04~jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-compose-plugin_2.20.2-1~ubuntu.22.04~jammy_amd64.deb
+          # Install Docker
+          sudo apt-get install -y ./*.deb
+          rm -f ./*.deb
+          # Print docker info
           docker info
           docker version
       - name: "Register QEMU (tonistiigi/binfmt)"
