@@ -1,12 +1,6 @@
+# To install CNI, see https://github.com/containerd/containerd/blob/release/1.7/script/setup/install-cni-windows
+
 $ErrorActionPreference = "Stop"
-
-#install build dependencies
-choco install --limitoutput --no-progress -y git golang
-
-#cleanup containerd
-echo "Stopping containerd"
-Stop-Service containerd
-sc.exe delete containerd
 
 #install containerd
 $version=$env:ctrdVersion
@@ -19,40 +13,6 @@ cp ./bin/* "$Env:ProgramFiles\containerd"
 & $Env:ProgramFiles\containerd\containerd.exe config default | Out-File "$Env:ProgramFiles\containerd\config.toml" -Encoding ascii
 & $Env:ProgramFiles\containerd\containerd.exe --register-service
 Start-Service containerd
-
-#configure cni
-mkdir -force "$Env:ProgramFiles\containerd\cni\bin"
-mkdir -force "$Env:ProgramFiles\containerd\cni\conf"
-curl.exe -LO https://github.com/microsoft/windows-container-networking/releases/download/v0.2.0/windows-container-networking-cni-amd64-v0.2.0.zip
-Expand-Archive windows-container-networking-cni-amd64-v0.2.0.zip -DestinationPath "$Env:ProgramFiles\containerd\cni\bin" -Force
-
-curl.exe -LO https://raw.githubusercontent.com/microsoft/SDN/master/Kubernetes/windows/hns.psm1
-ipmo ./hns.psm1
-
-# cirrus already has nat net work configured for docker.  We can re-use that for testing
-$sn=(get-hnsnetwork | ? Name -Like "nat" | select -ExpandProperty subnets)
-$subnet=$sn.AddressPrefix
-$gateway=$sn.GatewayAddress
-@"
-{
-    "cniVersion": "0.2.0",
-    "name": "nat",
-    "type": "nat",
-    "master": "Ethernet",
-    "ipam": {
-        "subnet": "$subnet",
-        "routes": [
-            {
-                "gateway": "$gateway"
-            }
-        ]
-    },
-    "capabilities": {
-        "portMappings": true,
-        "dns": true
-    }
-}
-"@ | Set-Content "$Env:ProgramFiles\containerd\cni\conf\0-containerd-nat.conf" -Force
 
 echo "configuration complete! Printing configuration..."
 echo "Service:"

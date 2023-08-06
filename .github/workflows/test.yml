@@ -181,14 +181,27 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
           check-latest: true
-      - name: "Enable BuildKit"
+      # Docker >= 23 is still unsupported: https://github.com/containerd/nerdctl/issues/2421
+      - name: "Install Docker 20.10"
         run: |
           set -eux -o pipefail
+          # Uninstall the preinstalled Docker (Moby)
+          sudo apt-get remove moby-*
+          # Enable BuildKit explicitly
           sudo apt-get install -y moreutils
           cat /etc/docker/daemon.json
           jq '.features.buildkit = true' </etc/docker/daemon.json  | sudo sponge /etc/docker/daemon.json
           cat /etc/docker/daemon.json
-          sudo systemctl restart docker
+          # Download Docker packages
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/containerd.io_1.6.22-1_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce_20.10.24~3-0~ubuntu-jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce-cli_20.10.24~3-0~ubuntu-jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-buildx-plugin_0.11.2-1~ubuntu.22.04~jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-compose-plugin_2.20.2-1~ubuntu.22.04~jammy_amd64.deb
+          # Install Docker
+          sudo apt-get install -y ./*.deb
+          rm -f ./*.deb
+          # Print docker info
           docker info
           docker version
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -198,3 +211,68 @@ jobs:
           sudo apt-get install -y expect
       - name: "Ensure that the integration test suite is compatible with Docker"
         run: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon
+
+  test-integration-windows:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v3.5.3
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          check-latest: true
+      - run: go install ./cmd/nerdctl
+      - uses: actions/checkout@v3.5.3
+        with:
+          repository: containerd/containerd
+          ref: v1.7.3
+          path: containerd
+          fetch-depth: 1
+      - name: "Set up CNI"
+        working-directory: containerd
+        run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
+      - name: "Set up containerd"
+        env:
+          ctrdVersion: 1.7.3
+        run: powershell hack/configure-windows-ci.ps1
+      # TODO: Run unit tests
+      - name: "Run integration tests"
+        env:
+          # Hyper-V tests fail on GHA:
+          # > failed to get host processor information: failed to retrieve processor and processor topology information:
+          # > hcs::GetServiceProperties: Catastrophic failure: unknown
+          NO_HYPERV: 1
+        run: go test -v ./cmd/...
+
+  test-integration-freebsd:
+    name: FreeBSD
+    # "Larger" runner is needed for nested virtualization
+    # https://github.com/organizations/containerd/settings/actions/runners
+    runs-on: ubuntu-latest-4-cores
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v3.5.3
+      - uses: actions/cache@v3
+        with:
+          path: /root/.vagrant.d
+          key: vagrant-${{ matrix.box }}
+      - name: Set up vagrant
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvirt-daemon libvirt-daemon-system vagrant vagrant-libvirt
+          sudo systemctl enable --now libvirtd
+      - name: Boot VM
+        run: |
+          ln -sf Vagrantfile.freebsd Vagrantfile
+          sudo vagrant up --no-tty
+      - name: test-unit
+        run: sudo vagrant up --provision-with=test-unit
+      - name: test-integration
+        run: sudo vagrant up --provision-with=test-integration

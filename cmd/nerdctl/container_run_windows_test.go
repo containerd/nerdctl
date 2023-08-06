@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"os/exec"
 	"strings"
 	"testing"
@@ -32,6 +33,7 @@ func TestRunHostProcessContainer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to get hostname: %s", err)
 	}
+	hostname = bytes.TrimSpace(hostname)
 
 	base.Cmd("run", "--rm", "--isolation=host", testutil.WindowsNano, "hostname").AssertOutContains(string(hostname))
 	output := base.Cmd("run", "--rm", "--isolation=host", testutil.WindowsNano, "whoami").Out()
