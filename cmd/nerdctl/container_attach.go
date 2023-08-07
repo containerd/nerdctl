@@ -26,10 +26,8 @@ import (
 )
 
 func newAttachCommand() *cobra.Command {
-	var attachCommand = &cobra.Command{
-		Use:  "attach [flags] CONTAINER",
-		Args: cobra.ExactArgs(1),
-		Short: `Attach stdin, stdout, and stderr to a running container. For example:
+	const shortHelp = "Attach stdin, stdout, and stderr to a running container."
+	const longHelp = `Attach stdin, stdout, and stderr to a running container. For example:
 
 1. 'nerdctl run -it --name test busybox' to start a container with a pty
 2. 'ctrl-p ctrl-q' to detach from the container
@@ -41,7 +39,13 @@ Caveats:
   However, since behind the scenes, there's only one FIFO for stdin, stdout, and stderr respectively,
   if there are multiple sessions, all the sessions will be reading from and writing to the same 3 FIFOs, which will result in mixed input and partial output.
 - Until dual logging (issue #1946) is implemented,
-  a container that is spun up by either 'nerdctl run -d' or 'nerdctl start' (without '--attach') cannot be attached to.`,
+  a container that is spun up by either 'nerdctl run -d' or 'nerdctl start' (without '--attach') cannot be attached to.`
+
+	var attachCommand = &cobra.Command{
+		Use:               "attach [flags] CONTAINER",
+		Args:              cobra.ExactArgs(1),
+		Short:             shortHelp,
+		Long:              longHelp,
 		RunE:              containerAttachAction,
 		ValidArgsFunction: attachShellComplete,
 		SilenceUsage:      true,
