@@ -213,7 +213,8 @@ jobs:
         run: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon
 
   test-integration-windows:
-    runs-on: windows-2022
+    # A "larger" runner is used for enabling Hyper-V containers
+    runs-on: windows-2022-8-cores
     timeout-minutes: 30
     defaults:
       run:
@@ -243,11 +244,6 @@ jobs:
         run: powershell hack/configure-windows-ci.ps1
       # TODO: Run unit tests
       - name: "Run integration tests"
-        env:
-          # Hyper-V tests fail on GHA:
-          # > failed to get host processor information: failed to retrieve processor and processor topology information:
-          # > hcs::GetServiceProperties: Catastrophic failure: unknown
-          NO_HYPERV: 1
         run: go test -v ./cmd/...
 
   test-integration-freebsd:
