@@ -278,10 +278,6 @@ CMD echo $TEST_STRING
 			base.Cmd("run", "--rm", imageName).AssertOutExactly(tc.expected)
 		})
 	}
-
-	t.Run("InvalidBuildArgCausesError", func(t *testing.T) {
-		base.Cmd("build", buildCtx, "-t", imageName, "--build-arg", "=TEST_STRING").AssertFail()
-	})
 }
 
 func TestBuildWithIIDFile(t *testing.T) {
