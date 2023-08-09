@@ -14,10 +14,16 @@ instructions in the respective repositories.
 
 ## Usage
 
-You can use the `knast/freebsd` image to run a standard FreeBSD 13 jail:
+You can use the `dougrabson/freebsd13.2-small` image to run a FreeBSD 13 jail:
 
 ```sh
-nerdctl run --net none -it knast/freebsd:13-STABLE
+nerdctl run --net none -it dougrabson/freebsd13.2-small
+```
+
+Alternatively use `--platform` parameter to run linux containers
+
+```sh
+nerdctl run --platform linux --net none -it amazonlinux:2
 ```
 
 
@@ -25,10 +31,3 @@ nerdctl run --net none -it knast/freebsd:13-STABLE
 
 - :warning: CNI & CNI plugins are not yet ported to FreeBSD. The only supported
   network type is `none`
-- :warning: buildkit is not yet ported to FreeBSD.
-  - [ ] https://github.com/tonistiigi/fsutil/pull/109 - buildkit dependency
-  - [ ] https://github.com/moby/moby/pull/42866 - buildkit dependency
-- :warning: Linuxulator containers support is
-  WIP. https://github.com/containerd/nerdctl/issues/280 https://github.com/containerd/containerd/pull/5480
-
-- :bug: `nerdctl compose` commands currently don't work. https://github.com/containerd/containerd/pull/5991

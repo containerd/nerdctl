@@ -144,8 +144,8 @@ func PingBKDaemon(buildkitHost string) error {
 }
 
 func pingBKDaemon(buildkitHost string) (output string, _ error) {
-	if runtime.GOOS != "linux" {
-		return "", errors.New("only linux is supported")
+	if runtime.GOOS != "linux" && runtime.GOOS != "freebsd" {
+		return "", errors.New("only linux and freebsd are supported")
 	}
 	buildctlBinary, err := BuildctlBinary()
 	if err != nil {
