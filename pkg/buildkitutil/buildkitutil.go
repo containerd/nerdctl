@@ -36,7 +36,6 @@ import (
 	"runtime"
 
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/hashicorp/go-multierror"
 	"github.com/sirupsen/logrus"
 )
 
@@ -84,7 +83,7 @@ func GetBuildkitHost(namespace string) (string, error) {
 			logrus.Debugf("Chosen buildkit host %q", buildkitHost)
 			return buildkitHost, nil
 		}
-		allErr = multierror.Append(allErr, fmt.Errorf("failed to ping to host %s: %w", buildkitHost, err))
+		allErr = errors.Join(allErr, fmt.Errorf("failed to ping to host %s: %w", buildkitHost, err))
 	}
 	logrus.WithError(allErr).Error(getHint())
 	return "", fmt.Errorf("no buildkit host is available, tried %d candidates: %w", len(hostRel), allErr)

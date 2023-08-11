@@ -32,7 +32,6 @@ import (
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	ipfsclient "github.com/containerd/stargz-snapshotter/ipfs/client"
-	"github.com/hashicorp/go-multierror"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
@@ -238,7 +237,7 @@ func (s *server) resolveCIDOfDigest(ctx context.Context, dgst digest.Digest, des
 	for _, desc := range descs {
 		gotCID, gotDesc, err := s.resolveCIDOfDigest(ctx, dgst, desc)
 		if err != nil {
-			allErr = multierror.Append(allErr, err)
+			allErr = errors.Join(allErr, err)
 			continue
 		}
 		return gotCID, gotDesc, nil

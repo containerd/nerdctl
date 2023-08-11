@@ -32,7 +32,6 @@ require (
 	github.com/fahedouch/go-logrotate v0.2.0
 	github.com/fatih/color v1.15.0
 	github.com/fluent/fluent-logger-golang v1.9.0
-	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ipfs/go-cid v0.4.1
 	github.com/mattn/go-isatty v0.0.19
 	github.com/mitchellh/mapstructure v1.5.0
@@ -86,7 +85,6 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.16.7
