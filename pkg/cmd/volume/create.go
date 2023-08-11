@@ -22,10 +22,16 @@ import (
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/docker/docker/pkg/stringid"
 )
 
 func Create(name string, options types.VolumeCreateOptions) (*native.Volume, error) {
+	if name == "" {
+		name = stringid.GenerateRandomID()
+		options.Labels = append(options.Labels, labels.AnonymousVolumes+"=")
+	}
 	if err := identifiers.Validate(name); err != nil {
 		return nil, fmt.Errorf("malformed name %s: %w", name, err)
 	}
