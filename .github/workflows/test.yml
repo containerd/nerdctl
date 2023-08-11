@@ -8,7 +8,7 @@ on:
   pull_request:
 
 env:
-  GO_VERSION: 1.20.x
+  GO_VERSION: 1.21.x
 
 jobs:
   project:
@@ -48,7 +48,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3.6.0
         with:
-          version: v1.53.3
+          version: v1.54.0
           args: --verbose
       - name: yamllint-lint
         run: yamllint .
@@ -156,7 +156,7 @@ jobs:
     timeout-minutes: 40
     strategy:
       matrix:
-        go-version: ["1.19.x", "1.20.x"]
+        go-version: ["1.20.x", "1.21.x"]
     steps:
       - uses: actions/checkout@v3.5.3
         with:
