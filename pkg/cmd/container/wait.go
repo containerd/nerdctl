@@ -19,7 +19,6 @@ package container
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
@@ -49,29 +48,27 @@ func Wait(ctx context.Context, client *containerd.Client, reqs []string, options
 	var allErr error
 	w := options.Stdout
 	for _, container := range containers {
-		if waitErr := waitContainer(ctx, w, container); waitErr != nil {
+		code, waitErr := WaitContainer(ctx, container)
+		fmt.Fprintln(w, code)
+		if waitErr != nil {
 			allErr = multierror.Append(allErr, waitErr)
 		}
 	}
 	return allErr
 }
 
-func waitContainer(ctx context.Context, w io.Writer, container containerd.Container) error {
+func WaitContainer(ctx context.Context, container containerd.Container) (code int64, err error) {
 	task, err := container.Task(ctx, nil)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	statusC, err := task.Wait(ctx)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	status := <-statusC
-	code, _, err := status.Result()
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(w, code)
-	return nil
+	rawcode, _, err := status.Result()
+	return int64(rawcode), err
 }
