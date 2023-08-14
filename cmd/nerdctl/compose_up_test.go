@@ -49,7 +49,7 @@ services:
 		Err:      `exec: \"invalid\": executable file not found in $PATH`,
 	}
 	if base.Target == testutil.Docker {
-		expected.Err = `Unknown runtime specified invalid`
+		expected.Err = `unknown or invalid runtime name: invalid`
 	}
 	c.Assert(expected)
 }

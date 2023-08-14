@@ -35,12 +35,18 @@ func newVolumePruneCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	volumePruneCommand.Flags().BoolP("all", "a", false, "Remove all unused volumes, not just anonymous ones")
 	volumePruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
 	return volumePruneCommand
 }
 
 func processVolumePruneOptions(cmd *cobra.Command) (types.VolumePruneOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
+	if err != nil {
+		return types.VolumePruneOptions{}, err
+	}
+
+	all, err := cmd.Flags().GetBool("all")
 	if err != nil {
 		return types.VolumePruneOptions{}, err
 	}
@@ -52,6 +58,7 @@ func processVolumePruneOptions(cmd *cobra.Command) (types.VolumePruneOptions, er
 
 	options := types.VolumePruneOptions{
 		GOptions: globalOptions,
+		All:      all,
 		Force:    force,
 		Stdout:   cmd.OutOrStdout(),
 	}
