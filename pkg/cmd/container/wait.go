@@ -46,14 +46,14 @@ func Wait(ctx context.Context, client *containerd.Client, reqs []string, options
 		return err
 	}
 
-	var allErr error
+	var errs []error
 	w := options.Stdout
 	for _, container := range containers {
 		if waitErr := waitContainer(ctx, w, container); waitErr != nil {
-			allErr = errors.Join(allErr, waitErr)
+			errs = append(errs, waitErr)
 		}
 	}
-	return allErr
+	return errors.Join(errs...)
 }
 
 func waitContainer(ctx context.Context, w io.Writer, container containerd.Container) error {

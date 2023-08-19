@@ -233,15 +233,16 @@ func (s *server) resolveCIDOfDigest(ctx context.Context, dgst digest.Digest, des
 	if err != nil {
 		return "", ocispec.Descriptor{}, err
 	}
-	var allErr error
+	var errs []error
 	for _, desc := range descs {
 		gotCID, gotDesc, err := s.resolveCIDOfDigest(ctx, dgst, desc)
 		if err != nil {
-			allErr = errors.Join(allErr, err)
+			errs = append(errs, err)
 			continue
 		}
 		return gotCID, gotDesc, nil
 	}
+	allErr := errors.Join(errs...)
 	if allErr == nil {
 		return "", ocispec.Descriptor{}, fmt.Errorf("not found")
 	}
