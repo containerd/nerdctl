@@ -74,7 +74,7 @@ func GetBuildkitHost(namespace string) (string, error) {
 		hostRel = append(hostRel, fmt.Sprintf("buildkit-%s/buildkitd.sock", namespace))
 	}
 	hostRel = append(hostRel, "buildkit-default/buildkitd.sock", "buildkit/buildkitd.sock")
-	var allErr error
+	var errs []error //nolint:prealloc
 	for _, p := range hostRel {
 		logrus.Debugf("Choosing the buildkit host %q, candidates=%v (in %q)", p, hostRel, run)
 		buildkitHost := "unix://" + filepath.Join(run, p)
@@ -83,8 +83,9 @@ func GetBuildkitHost(namespace string) (string, error) {
 			logrus.Debugf("Chosen buildkit host %q", buildkitHost)
 			return buildkitHost, nil
 		}
-		allErr = errors.Join(allErr, fmt.Errorf("failed to ping to host %s: %w", buildkitHost, err))
+		errs = append(errs, fmt.Errorf("failed to ping to host %s: %w", buildkitHost, err))
 	}
+	allErr := errors.Join(errs...)
 	logrus.WithError(allErr).Error(getHint())
 	return "", fmt.Errorf("no buildkit host is available, tried %d candidates: %w", len(hostRel), allErr)
 }
