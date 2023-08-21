@@ -19,7 +19,7 @@
 # -----------------------------------------------------------------------------
 
 GO ?= go
-GOOS ?= $(shell go env GOOS)
+GOOS ?= $(shell $(GO) env GOOS)
 ifeq ($(GOOS),windows)
 	BIN_EXT := .exe
 endif
