@@ -115,8 +115,8 @@ func GetSnapshotterNames(ctx context.Context, introService introspection.Service
 
 func ClientVersion() dockercompat.ClientVersion {
 	return dockercompat.ClientVersion{
-		Version:   version.Version,
-		GitCommit: version.Revision,
+		Version:   version.GetVersion(),
+		GitCommit: version.GetRevision(),
 		GoVersion: runtime.Version(),
 		Os:        runtime.GOOS,
 		Arch:      runtime.GOARCH,
