@@ -194,7 +194,7 @@ Config file ($NERDCTL_TOML): %s
 		Use:              "nerdctl",
 		Short:            short,
 		Long:             long,
-		Version:          strings.TrimPrefix(version.Version, "v"),
+		Version:          strings.TrimPrefix(version.GetVersion(), "v"),
 		SilenceUsage:     true,
 		SilenceErrors:    true,
 		TraverseChildren: true, // required for global short hands like -a, -H, -n
