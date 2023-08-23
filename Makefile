@@ -25,7 +25,10 @@ ifeq ($(GOOS),windows)
 endif
 
 PACKAGE := github.com/containerd/nerdctl
-BINDIR ?= /usr/local/bin
+
+# distro builders might wanna override these
+PREFIX  ?= /usr/local
+BINDIR  ?= $(PREFIX)/bin
 
 VERSION ?= $(shell git describe --match 'v[0-9]*' --dirty='.m' --always --tags)
 VERSION_TRIMMED := $(VERSION:v%=%)
