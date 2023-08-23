@@ -29,6 +29,8 @@ PACKAGE := github.com/containerd/nerdctl
 # distro builders might wanna override these
 PREFIX  ?= /usr/local
 BINDIR  ?= $(PREFIX)/bin
+DATADIR ?= $(PREFIX)/share
+DOCDIR  ?= $(DATADIR)/doc
 
 VERSION ?= $(shell git describe --match 'v[0-9]*' --dirty='.m' --always --tags)
 VERSION_TRIMMED := $(VERSION:v%=%)
@@ -65,6 +67,7 @@ install:
 	install -D -m 755 $(CURDIR)/_output/nerdctl $(DESTDIR)$(BINDIR)/nerdctl
 	install -D -m 755 $(CURDIR)/extras/rootless/containerd-rootless.sh $(DESTDIR)$(BINDIR)/containerd-rootless.sh
 	install -D -m 755 $(CURDIR)/extras/rootless/containerd-rootless-setuptool.sh $(DESTDIR)$(BINDIR)/containerd-rootless-setuptool.sh
+	install -D -m 644 -t $(DESTDIR)$(DOCDIR)/nerdctl docs/*.md
 
 define make_artifact_full_linux
 	DOCKER_BUILDKIT=1 docker build --output type=tar,dest=$(CURDIR)/_output/nerdctl-full-$(VERSION_TRIMMED)-linux-$(1).tar --target out-full --platform $(1) --build-arg GO_VERSION $(CURDIR)
