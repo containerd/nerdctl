@@ -11,8 +11,8 @@ require (
 	github.com/containerd/accelerated-container-image v0.6.7
 	github.com/containerd/cgroups/v3 v3.0.2
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.7.3
-	github.com/containerd/continuity v0.4.1
+	github.com/containerd/containerd v1.7.4
+	github.com/containerd/continuity v0.4.2-0.20230616210509-1e0d26eb2381
 	github.com/containerd/go-cni v1.1.9
 	github.com/containerd/imgcrypt v1.1.8
 	github.com/containerd/nydus-snapshotter v0.10.0
@@ -62,7 +62,7 @@ require (
 )
 
 require (
-	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1 // indirect
+	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20230306123547-8075edf89bb0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
