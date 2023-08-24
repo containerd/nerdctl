@@ -51,8 +51,8 @@ func TestCopyToContainer(t *testing.T) {
 
 	assertCat := func(catPath string, testContainer string, stopped bool) {
 		if stopped {
-			base.Cmd("start", testStoppedContainer).AssertOK()
-			defer base.Cmd("stop", testStoppedContainer).AssertOK()
+			base.Cmd("start", testContainer).AssertOK()
+			defer base.Cmd("stop", testContainer).AssertOK()
 		}
 		t.Logf("catPath=%q", catPath)
 		base.Cmd("exec", testContainer, "cat", catPath).AssertOutExactly(string(srcFileContent))
@@ -107,6 +107,75 @@ func TestCopyToContainer(t *testing.T) {
 			base.Cmd("stop", testStoppedContainer).AssertOK()
 			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
 			assertCat(catPath, testStoppedContainer, true)
+		})
+		t.Run("DEST_PATH is in a volume", func(t *testing.T) {
+			// Create a volume
+			vol := "somevol"
+			base.Cmd("volume", "create", vol).AssertOK()
+			defer base.Cmd("volume", "rm", vol).Run()
+			con := fmt.Sprintf("%s-with-volume", testContainer)
+			mountDir := "/some_dir"
+			base.Cmd("run", "-d", "--name", con, "-v", fmt.Sprintf("%s:%s", vol, mountDir), testutil.CommonImage, "sleep", "1h").AssertOK()
+			defer base.Cmd("rm", "-f", con).Run()
+			catPath := filepath.Join(mountDir, filepath.Base(srcFile))
+			// Running container test
+			base.Cmd("cp", srcPath, con+":"+mountDir).AssertOK()
+			assertCat(catPath, con, false)
+
+			// Skip for rootless
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			// Stopped container test
+			// Delete previously copied file
+			base.Cmd("exec", con, "rm", catPath).AssertOK()
+			base.Cmd("stop", con).AssertOK()
+			base.Cmd("cp", srcPath, con+":"+mountDir).AssertOK()
+			assertCat(catPath, con, true)
+		})
+		t.Run("Destination path is a read-only", func(t *testing.T) {
+			vol := "somevol"
+			base.Cmd("volume", "create", vol).AssertOK()
+			defer base.Cmd("volume", "rm", vol).Run()
+			con := fmt.Sprintf("%s-with-read-only-volume", testContainer)
+			mountDir := "/some_dir"
+			// Create container with read-only volume mounted
+			base.Cmd("run", "-d", "--name", con, "-v", fmt.Sprintf("%s:%s:ro", vol, mountDir), testutil.CommonImage, "sleep", "1h").AssertOK()
+			defer base.Cmd("rm", "-f", con).Run()
+			base.Cmd("cp", srcPath, con+":"+mountDir).AssertFail()
+
+			// Skip for rootless
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+
+			// Stopped container test
+			// Delete previously copied file
+			base.Cmd("stop", con).AssertOK()
+			base.Cmd("cp", srcPath, con+":"+mountDir).AssertFail()
+		})
+		t.Run("Destination path is a read-only and default tmpfs mount point", func(t *testing.T) {
+			vol := "somevol"
+			base.Cmd("volume", "create", vol).AssertOK()
+			defer base.Cmd("volume", "rm", vol).Run()
+			con := fmt.Sprintf("%s-with-read-only-volume", testContainer)
+
+			// /tmp is from rootfs of alpine
+			mountDir := "/tmp"
+			// Create container with read-only mounted volume mounted at /tmp
+			base.Cmd("run", "-d", "--name", con, "-v", fmt.Sprintf("%s:%s:ro", vol, mountDir), testutil.CommonImage, "sleep", "1h").AssertOK()
+			defer base.Cmd("rm", "-f", con).Run()
+			base.Cmd("cp", srcPath, con+":"+mountDir).AssertFail()
+
+			// Skip for rootless
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+
+			// Stopped container test
+			// Delete previously copied file
+			base.Cmd("stop", con).AssertOK()
+			base.Cmd("cp", srcPath, con+":"+mountDir).AssertFail()
 		})
 	})
 	t.Run("SRC_PATH specifies a directory", func(t *testing.T) {
@@ -176,7 +245,6 @@ func TestCopyFromContainer(t *testing.T) {
 	base := testutil.NewBase(t)
 	testContainer := testutil.Identifier(t)
 	testStoppedContainer := "stopped-container-" + testutil.Identifier(t)
-
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
 	defer base.Cmd("rm", "-f", testContainer).Run()
 
@@ -253,6 +321,45 @@ func TestCopyFromContainer(t *testing.T) {
 				t.Skip("Test skipped in rootless mode for testStoppedContainer")
 			}
 			base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
+			assertCat(catPath)
+		})
+		t.Run("SRC_PATH is in a volume", func(t *testing.T) {
+			// Setup
+			// Create a volume
+			vol := "somevol"
+			base.Cmd("volume", "create", vol).AssertOK()
+			defer base.Cmd("volume", "rm", "-f", vol).Run()
+
+			// Create container for test
+			con := fmt.Sprintf("%s-with-volume", testContainer)
+
+			mountDir := "/some_dir"
+			base.Cmd("run", "-d", "--name", con, "-v", fmt.Sprintf("%s:%s", vol, mountDir), testutil.CommonImage, "sleep", "1h").AssertOK()
+			defer base.Cmd("rm", "-f", con).Run()
+
+			// Create a file to mounted volume
+			mountedVolFile := filepath.Join(mountDir, "test-file")
+			mkSrcScript = fmt.Sprintf("echo -n %q >%q && chown %d %q", srcFileContent, mountedVolFile, srcUID, mountedVolFile)
+			base.Cmd("exec", con, "sh", "-euc", mkSrcScript).AssertOK()
+
+			// Create destination directory on host for copy
+			destPath := filepath.Join(td, "dest-dir")
+			err := os.Mkdir(destPath, 0o700)
+			assert.NilError(t, err)
+
+			catPath := filepath.Join(destPath, filepath.Base(mountedVolFile))
+
+			// Running container test
+			base.Cmd("cp", con+":"+mountedVolFile, destPath).AssertOK()
+			assertCat(catPath)
+
+			// Skip for rootless
+			if rootlessutil.IsRootless() {
+				t.Skip("Test skipped in rootless mode for testStoppedContainer")
+			}
+			// Stopped container test
+			base.Cmd("stop", con).AssertOK()
+			base.Cmd("cp", con+":"+mountedVolFile, destPath).AssertOK()
 			assertCat(catPath)
 		})
 	})
