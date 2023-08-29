@@ -19,6 +19,7 @@ package mountutil
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -49,7 +50,7 @@ type Processed struct {
 	Opts            []oci.SpecOpts
 }
 
-func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error) {
+func ProcessFlagV(s string, volStore volumestore.VolumeStore, createDir bool) (*Processed, error) {
 	var (
 		res      Processed
 		src, dst string
@@ -98,6 +99,17 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore) (*Processed, error
 				return nil, fmt.Errorf("failed to get the absolute path of %q: %w", src, err)
 			}
 		}
+		if createDir {
+			if _, err := os.Stat(src); err != nil {
+				if !os.IsNotExist(err) {
+					return nil, fmt.Errorf("failed to stat %q: %w", src, err)
+				}
+				if err := os.MkdirAll(src, 0o755); err != nil {
+					return nil, fmt.Errorf("failed to mkdir %q: %w", src, err)
+				}
+			}
+		}
+
 		if !filepath.IsAbs(dst) {
 			return nil, fmt.Errorf("expected an absolute path, got %q", dst)
 		}
