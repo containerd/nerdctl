@@ -19,19 +19,25 @@
 # -----------------------------------------------------------------------------
 
 GO ?= go
-GOOS ?= $(shell go env GOOS)
+GOOS ?= $(shell $(GO) env GOOS)
 ifeq ($(GOOS),windows)
 	BIN_EXT := .exe
 endif
 
 PACKAGE := github.com/containerd/nerdctl
-BINDIR ?= /usr/local/bin
+
+# distro builders might wanna override these
+PREFIX  ?= /usr/local
+BINDIR  ?= $(PREFIX)/bin
+DATADIR ?= $(PREFIX)/share
+DOCDIR  ?= $(DATADIR)/doc
 
 VERSION ?= $(shell git describe --match 'v[0-9]*' --dirty='.m' --always --tags)
 VERSION_TRIMMED := $(VERSION:v%=%)
 REVISION ?= $(shell git rev-parse HEAD)$(shell if ! git diff --no-ext-diff --quiet --exit-code; then echo .m; fi)
 
 GO_BUILD_LDFLAGS ?= -s -w
+GO_BUILD_FLAGS ?=
 export GO_BUILD=GO111MODULE=on CGO_ENABLED=0 GOOS=$(GOOS) $(GO) build -ldflags "$(GO_BUILD_LDFLAGS) -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
 
 ifdef VERBOSE
@@ -48,7 +54,7 @@ help:
 	@echo " * 'clean' - Clean artifacts."
 
 nerdctl:
-	$(GO_BUILD) $(VERBOSE_FLAG) -o $(CURDIR)/_output/nerdctl$(BIN_EXT) $(PACKAGE)/cmd/nerdctl
+	$(GO_BUILD) $(GO_BUILD_FLAGS) $(VERBOSE_FLAG) -o $(CURDIR)/_output/nerdctl$(BIN_EXT) $(PACKAGE)/cmd/nerdctl
 
 clean:
 	find . -name \*~ -delete
@@ -61,6 +67,7 @@ install:
 	install -D -m 755 $(CURDIR)/_output/nerdctl $(DESTDIR)$(BINDIR)/nerdctl
 	install -D -m 755 $(CURDIR)/extras/rootless/containerd-rootless.sh $(DESTDIR)$(BINDIR)/containerd-rootless.sh
 	install -D -m 755 $(CURDIR)/extras/rootless/containerd-rootless-setuptool.sh $(DESTDIR)$(BINDIR)/containerd-rootless-setuptool.sh
+	install -D -m 644 -t $(DESTDIR)$(DOCDIR)/nerdctl docs/*.md
 
 define make_artifact_full_linux
 	DOCKER_BUILDKIT=1 docker build --output type=tar,dest=$(CURDIR)/_output/nerdctl-full-$(VERSION_TRIMMED)-linux-$(1).tar --target out-full --platform $(1) --build-arg GO_VERSION $(CURDIR)
