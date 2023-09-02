@@ -57,6 +57,11 @@ func newPushCommand() *cobra.Command {
 	pushCommand.Flags().String("notation-key-name", "", "Signing key name for a key previously added to notation's key list for --sign=notation")
 	// #endregion
 
+	// #region soci flags
+	pushCommand.Flags().Int64("soci-span-size", -1, "Span size that soci index uses to segment layer data. Default is 4 MiB.")
+	pushCommand.Flags().Int64("soci-min-layer-size", -1, "Minimum layer size to build zTOC for. Smaller layers won't have zTOC and not lazy pulled. Default is 10 MiB.")
+	// #endregion
+
 	pushCommand.Flags().BoolP("quiet", "q", false, "Suppress verbose output")
 
 	pushCommand.Flags().Bool(allowNonDistFlag, false, "Allow pushing images with non-distributable blobs")
@@ -101,9 +106,14 @@ func processImagePushOptions(cmd *cobra.Command) (types.ImagePushOptions, error)
 	if err != nil {
 		return types.ImagePushOptions{}, err
 	}
+	sociOptions, err := processSociOptions(cmd)
+	if err != nil {
+		return types.ImagePushOptions{}, err
+	}
 	return types.ImagePushOptions{
 		GOptions:                       globalOptions,
 		SignOptions:                    signOptions,
+		SociOptions:                    sociOptions,
 		Platforms:                      platform,
 		AllPlatforms:                   allPlatforms,
 		Estargz:                        estargz,

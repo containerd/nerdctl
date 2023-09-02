@@ -152,6 +152,7 @@ type ImagePushOptions struct {
 	Stdout      io.Writer
 	GOptions    GlobalCommandOptions
 	SignOptions ImageSignOptions
+	SociOptions SociOptions
 	// Platforms convert content for a specific platform
 	Platforms []string
 	// AllPlatforms convert content for all platforms
@@ -255,4 +256,12 @@ type ImageVerifyOptions struct {
 	CosignCertificateOidcIssuer string
 	// CosignCertificateOidcIssuerRegexp A regular expression alternative to --certificate-oidc-issuer for --verify=cosign. Accepts the Go regular expression syntax described at https://golang.org/s/re2syntax. Either --cosign-certificate-oidc-issuer or --cosign-certificate-oidc-issuer-regexp must be set for keyless flows
 	CosignCertificateOidcIssuerRegexp string
+}
+
+// SociOptions contains options for SOCI.
+type SociOptions struct {
+	// Span size that soci index uses to segment layer data. Default is 4 MiB.
+	SpanSize int64
+	// Minimum layer size to build zTOC for. Smaller layers won't have zTOC and not lazy pulled. Default is 10 MiB.
+	MinLayerSize int64
 }
