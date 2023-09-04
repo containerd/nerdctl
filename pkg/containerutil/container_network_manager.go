@@ -49,36 +49,21 @@ const (
 
 func withCustomResolvConf(src string) func(context.Context, oci.Client, *containers.Container, *oci.Spec) error {
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
-		s.Mounts = append(s.Mounts, specs.Mount{
-			Destination: "/etc/resolv.conf",
-			Type:        "bind",
-			Source:      src,
-			Options:     []string{"bind", mountutil.DefaultPropagationMode}, // writable
-		})
+		s.Mounts = append(s.Mounts, bindMount(src, "/etc/resolv.conf"))
 		return nil
 	}
 }
 
 func withCustomEtcHostname(src string) func(context.Context, oci.Client, *containers.Container, *oci.Spec) error {
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
-		s.Mounts = append(s.Mounts, specs.Mount{
-			Destination: "/etc/hostname",
-			Type:        "bind",
-			Source:      src,
-			Options:     []string{"bind", mountutil.DefaultPropagationMode}, // writable
-		})
+		s.Mounts = append(s.Mounts, bindMount(src, "/etc/hostname"))
 		return nil
 	}
 }
 
 func withCustomHosts(src string) func(context.Context, oci.Client, *containers.Container, *oci.Spec) error {
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
-		s.Mounts = append(s.Mounts, specs.Mount{
-			Destination: "/etc/hosts",
-			Type:        "bind",
-			Source:      src,
-			Options:     []string{"bind", mountutil.DefaultPropagationMode}, // writable
-		})
+		s.Mounts = append(s.Mounts, bindMount(src, "/etc/hosts"))
 		return nil
 	}
 }
@@ -555,4 +540,21 @@ func nonZeroMapValues(values map[string]interface{}) []string {
 	}
 
 	return nonZero
+}
+
+func bindMount(source, destination string) specs.Mount {
+	fstype := "bind"
+	options := []string{"bind", mountutil.DefaultPropagationMode}
+
+	if runtime.GOOS == "freebsd" {
+		fstype = "nullfs"
+		options = []string{"rw"}
+	}
+
+	return specs.Mount{
+		Destination: destination,
+		Type:        fstype,
+		Source:      source,
+		Options:     options, // writable
+	}
 }

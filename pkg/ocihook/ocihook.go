@@ -266,29 +266,6 @@ func getExtraHosts(state *specs.State) (map[string]string, error) {
 	return hosts, nil
 }
 
-func getNetNSPath(state *specs.State) (string, error) {
-	// If we have a network-namespace annotation we use it over the passed Pid.
-	netNsPath, netNsFound := state.Annotations[NetworkNamespace]
-	if netNsFound {
-		if _, err := os.Stat(netNsPath); err != nil {
-			return "", err
-		}
-
-		return netNsPath, nil
-	}
-
-	if state.Pid == 0 && !netNsFound {
-		return "", errors.New("both state.Pid and the netNs annotation are unset")
-	}
-
-	// We dont't have a networking namespace annotation, but we have a PID.
-	s := fmt.Sprintf("/proc/%d/ns/net", state.Pid)
-	if _, err := os.Stat(s); err != nil {
-		return "", err
-	}
-	return s, nil
-}
-
 func getPortMapOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 	if len(opts.ports) > 0 {
 		if !rootlessutil.IsRootlessChild() {

@@ -1,3 +1,5 @@
+//go:build !freebsd
+
 /*
    Copyright The containerd Authors.
 
@@ -17,14 +19,32 @@
 package ocihook
 
 import (
+	"errors"
+	"fmt"
+	"os"
+
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func loadAppArmor() {
-	//noop
-	return
-}
-
 func getNetNSPath(state *specs.State) (string, error) {
-	return state.ID, nil
+	// If we have a network-namespace annotation we use it over the passed Pid.
+	netNsPath, netNsFound := state.Annotations[NetworkNamespace]
+	if netNsFound {
+		if _, err := os.Stat(netNsPath); err != nil {
+			return "", err
+		}
+
+		return netNsPath, nil
+	}
+
+	if state.Pid == 0 && !netNsFound {
+		return "", errors.New("both state.Pid and the netNs annotation are unset")
+	}
+
+	// We dont't have a networking namespace annotation, but we have a PID.
+	s := fmt.Sprintf("/proc/%d/ns/net", state.Pid)
+	if _, err := os.Stat(s); err != nil {
+		return "", err
+	}
+	return s, nil
 }

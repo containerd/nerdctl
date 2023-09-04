@@ -23,37 +23,53 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
+	runtimeoptions "github.com/containerd/containerd/pkg/runtimeoptions/v1"
 	"github.com/containerd/containerd/plugin"
 	runcoptions "github.com/containerd/containerd/runtime/v2/runc/options"
+	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 )
 
-func generateRuntimeCOpts(cgroupManager, runtimeStr string) ([]containerd.NewContainerOpts, error) {
+func generateRuntimeOpts(options types.ContainerCreateOptions) containerd.NewContainerOpts {
+	runtimeOpts := generateRuntimeCOpts(options.GOptions.CgroupManager, options.Runtime)
+
+	if options.Runtime == "wtf.sbk.runj.v1" {
+		runtimeOpts = generateRunjOpts()
+	}
+
+	return runtimeOpts
+}
+
+func generateRunjOpts() containerd.NewContainerOpts {
+	return containerd.WithRuntime("wtf.sbk.runj.v1", &runtimeoptions.Options{
+		ConfigPath: "/etc/nerdctl/runj.ext.json",
+	})
+}
+
+func generateRuntimeCOpts(cgroupManager, runtimeStr string) containerd.NewContainerOpts {
 	runtime := plugin.RuntimeRuncV2
-	var (
-		runcOpts    runcoptions.Options
-		runtimeOpts interface{} = &runcOpts
-	)
+	var runcOpts runcoptions.Options
+
 	if cgroupManager == "systemd" {
 		runcOpts.SystemdCgroup = true
 	}
 	if runtimeStr != "" {
-		if strings.HasPrefix(runtimeStr, "io.containerd.") || runtimeStr == "wtf.sbk.runj.v1" {
+		if strings.HasPrefix(runtimeStr, "io.containerd.") {
 			runtime = runtimeStr
 			if !strings.HasPrefix(runtimeStr, "io.containerd.runc.") {
 				if cgroupManager == "systemd" {
 					logrus.Warnf("cannot set cgroup manager to %q for runtime %q", cgroupManager, runtimeStr)
 				}
-				runtimeOpts = nil
+				return nil
 			}
 		} else {
 			// runtimeStr is a runc binary
 			runcOpts.BinaryName = runtimeStr
 		}
 	}
-	o := containerd.WithRuntime(runtime, runtimeOpts)
-	return []containerd.NewContainerOpts{o}, nil
+
+	return containerd.WithRuntime(runtime, &runcOpts)
 }
 
 // WithSysctls sets the provided sysctls onto the spec
