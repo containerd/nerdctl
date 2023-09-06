@@ -43,7 +43,7 @@ func Start(ctx context.Context, client *containerd.Client, reqs []string, option
 				return err
 			}
 			if !options.Attach {
-				_, err := fmt.Fprintf(options.Stdout, "%s\n", found.Req)
+				_, err := fmt.Fprintln(options.Stdout, found.Req)
 				if err != nil {
 					return err
 				}

@@ -198,7 +198,7 @@ func formatAndPrintContainerInfo(containers []container.ListItem, options Format
 				return err
 			}
 		} else if options.Quiet {
-			if _, err := fmt.Fprintf(w, "%s\n", c.ID); err != nil {
+			if _, err := fmt.Fprintln(w, c.ID); err != nil {
 				return err
 			}
 		} else {

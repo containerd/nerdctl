@@ -38,7 +38,7 @@ func Pause(ctx context.Context, client *containerd.Client, reqs []string, option
 				return err
 			}
 
-			_, err := fmt.Fprintf(options.Stdout, "%s\n", found.Req)
+			_, err := fmt.Fprintln(options.Stdout, found.Req)
 			return err
 		},
 	}
