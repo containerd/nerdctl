@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Microsoft/go-winio v0.6.1
-	github.com/Microsoft/hcsshim v0.10.0
+	github.com/Microsoft/hcsshim v0.11.0
 	github.com/awslabs/soci-snapshotter v0.4.0
 	github.com/compose-spec/compose-go v1.18.2
 	github.com/containerd/accelerated-container-image v0.6.7
@@ -62,6 +62,7 @@ require (
 )
 
 require (
+	github.com/containerd/cgroups v1.1.0 // indirect
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230717213848-3f92550aa753 // indirect
 )
