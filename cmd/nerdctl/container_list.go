@@ -202,6 +202,10 @@ func formatAndPrintContainerInfo(containers []container.ListItem, options Format
 				return err
 			}
 		} else {
+			var name string
+			if len(c.Names) > 0 {
+				name = c.Names[0]
+			}
 			format := "%s\t%s\t%s\t%s\t%s\t%s\t%s"
 			args := []interface{}{
 				c.ID,
@@ -210,7 +214,7 @@ func formatAndPrintContainerInfo(containers []container.ListItem, options Format
 				formatter.TimeSinceInHuman(c.CreatedAt),
 				c.Status,
 				c.Ports,
-				c.Names[0],
+				name,
 			}
 			if wide {
 				format += "\t%s\t%s\t%s\n"
