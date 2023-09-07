@@ -87,7 +87,8 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 func getVolumes(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (map[string]native.Volume, error) {
 	volumeSize, err := cmd.Flags().GetBool("size")
 	if err != nil {
-		return nil, err
+		// The `nerdctl volume rm` does not have the flag `size`, so set it to false as the default value.
+		volumeSize = false
 	}
 	return volume.Volumes(globalOptions.Namespace, globalOptions.DataRoot, globalOptions.Address, volumeSize, nil)
 }

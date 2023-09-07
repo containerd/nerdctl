@@ -54,6 +54,13 @@ func TestCompletion(t *testing.T) {
 	base.Cmd(gsc, "network", "rm", "").AssertOutContains(testNetworkName)
 	base.Cmd(gsc, "run", "--net", "").AssertOutContains(testNetworkName)
 
+	// Tests with a volume
+	testVolumekName := "nerdctl-test-completion"
+	defer base.Cmd("volume", "rm", testVolumekName).Run()
+	base.Cmd("volume", "create", testVolumekName).AssertOK()
+	base.Cmd(gsc, "volume", "inspect", "").AssertOutContains(testVolumekName)
+	base.Cmd(gsc, "volume", "rm", "").AssertOutContains(testVolumekName)
+
 	// Tests with raw base (without Args={"--namespace=nerdctl-test"})
 	rawBase := testutil.NewBase(t)
 	rawBase.Args = nil // unset "--namespace=nerdctl-test"
