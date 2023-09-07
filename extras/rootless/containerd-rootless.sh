@@ -107,6 +107,17 @@ if [ -z $_CONTAINERD_ROOTLESS_CHILD ]; then
 			export _CONTAINERD_ROOTLESS_SELINUX
 		fi
 	fi
+
+  detachNetns=
+	if command -v rootlesskit >/dev/null 2>&1; then
+    # If --detach-netns is present in --help, rootlesskit is >= v2.0.0.
+    if rootlesskit --help | grep -qw -- --detach-netns; then
+      detachNetns="--detach-netns"
+    else
+      echo "rootlesskit found but seems older than v2.0.0. Network namespace will kept attached."
+    fi
+  fi
+
 	# Re-exec the script via RootlessKit, so as to create unprivileged {user,mount,network} namespaces.
 	#
 	# --copy-up allows removing/creating files in the directories by creating tmpfs and symlinks
@@ -116,6 +127,7 @@ if [ -z $_CONTAINERD_ROOTLESS_CHILD ]; then
 	# * /run:     copy-up is required so that we can create /run/containerd (hardcoded) in our namespace
 	# * /var/lib: copy-up is required so that we can create /var/lib/containerd in our namespace
 	exec rootlesskit \
+	  $detachNetns \
 		--state-dir=$CONTAINERD_ROOTLESS_ROOTLESSKIT_STATE_DIR \
 		--net=$net --mtu=$mtu \
 		--slirp4netns-sandbox=$CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX \

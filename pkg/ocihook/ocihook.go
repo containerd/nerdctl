@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
+	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/netutil"
@@ -38,9 +39,9 @@ import (
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	types100 "github.com/containernetworking/cni/pkg/types/100"
 	"github.com/opencontainers/runtime-spec/specs-go"
-
 	b4nndclient "github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
 	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
+	"github.com/vishvananda/netns"
 )
 
 const (
@@ -84,6 +85,24 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	opts, err := newHandlerOpts(&state, dataStore, cniPath, cniNetconfPath)
 	if err != nil {
 		return err
+	}
+
+	detachNetNs, err := infoutil.DetectBinaryFeature("rootlesskit", "--detach-netns")
+	if err != nil {
+		return err
+	}
+	if rootlessutil.IsRootlessChild() && detachNetNs {
+		stateDir, err := rootlessutil.RootlessKitStateDir()
+		if err != nil {
+			return err
+		}
+		ns, err := netns.GetFromPath(filepath.Join(stateDir, "netns"))
+		if err != nil {
+			return err
+		}
+		if err = netns.Set(ns); err != nil {
+			return fmt.Errorf("switch to detached netns: %w", err)
+		}
 	}
 
 	switch event {
@@ -268,8 +287,7 @@ func getExtraHosts(state *specs.State) (map[string]string, error) {
 
 func getNetNSPath(state *specs.State) (string, error) {
 	// If we have a network-namespace annotation we use it over the passed Pid.
-	netNsPath, netNsFound := state.Annotations[NetworkNamespace]
-	if netNsFound {
+	if netNsPath, netNsFound := state.Annotations[NetworkNamespace]; netNsFound {
 		if _, err := os.Stat(netNsPath); err != nil {
 			return "", err
 		}
@@ -277,7 +295,7 @@ func getNetNSPath(state *specs.State) (string, error) {
 		return netNsPath, nil
 	}
 
-	if state.Pid == 0 && !netNsFound {
+	if state.Pid == 0 {
 		return "", errors.New("both state.Pid and the netNs annotation are unset")
 	}
 

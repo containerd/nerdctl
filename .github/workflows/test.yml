@@ -122,6 +122,10 @@ jobs:
             containerd: v1.7.7
             target: test-integration-rootless
           - ubuntu: 22.04
+            containerd: v1.7.3
+            target: test-integration-rootless
+            rootlesskit: v2.0.0-alpha.0
+          - ubuntu: 22.04
             containerd: main
             target: test-integration-rootless
           - ubuntu: 20.04
@@ -139,6 +143,7 @@ jobs:
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
+      ROOTLESSKIT_VERSION: "${{ matrix.rootlesskit }}"
       TEST_TARGET: "${{ matrix.target }}"
     steps:
       - uses: actions/checkout@v4.1.1
@@ -147,7 +152,7 @@ jobs:
       - name: "Register QEMU (tonistiigi/binfmt)"
         run: docker run --privileged --rm tonistiigi/binfmt --install all
       - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
-        run: DOCKER_BUILDKIT=1 docker build -t ${TEST_TARGET} --target ${TEST_TARGET} --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+        run: DOCKER_BUILDKIT=1 docker build -t ${TEST_TARGET} --target ${TEST_TARGET} --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} --build-arg ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION} .
       - name: "Test (network driver=slirp4netns, port driver=builtin)"
         run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=1 ${TEST_TARGET}
 
