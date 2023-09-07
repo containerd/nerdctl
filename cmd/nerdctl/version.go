@@ -76,7 +76,7 @@ func versionAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		fmt.Fprintf(w, "Client:\n")
+		fmt.Fprintln(w, "Client:")
 		fmt.Fprintf(w, " Version:\t%s\n", v.Client.Version)
 		fmt.Fprintf(w, " OS/Arch:\t%s/%s\n", v.Client.Os, v.Client.Arch)
 		fmt.Fprintf(w, " Git commit:\t%s\n", v.Client.GitCommit)
@@ -88,8 +88,8 @@ func versionAction(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if v.Server != nil {
-			fmt.Fprintf(w, "\n")
-			fmt.Fprintf(w, "Server:\n")
+			fmt.Fprintln(w)
+			fmt.Fprintln(w, "Server:")
 			for _, compo := range v.Server.Components {
 				fmt.Fprintf(w, " %s:\n", compo.Name)
 				fmt.Fprintf(w, "  Version:\t%s\n", compo.Version)

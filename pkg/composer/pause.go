@@ -55,7 +55,7 @@ func (c *Composer) Pause(ctx context.Context, services []string, writer io.Write
 
 			mu.Lock()
 			defer mu.Unlock()
-			_, err = fmt.Fprintf(writer, "%s\n", info.Labels[labels.Name])
+			_, err = fmt.Fprintln(writer, info.Labels[labels.Name])
 
 			return err
 		})
@@ -91,7 +91,7 @@ func (c *Composer) Unpause(ctx context.Context, services []string, writer io.Wri
 
 			mu.Lock()
 			defer mu.Unlock()
-			_, err = fmt.Fprintf(writer, "%s\n", info.Labels[labels.Name])
+			_, err = fmt.Fprintln(writer, info.Labels[labels.Name])
 
 			return err
 		})

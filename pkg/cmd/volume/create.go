@@ -44,6 +44,6 @@ func Create(name string, options types.VolumeCreateOptions) (*native.Volume, err
 	if err != nil {
 		return nil, err
 	}
-	fmt.Fprintf(options.Stdout, "%s\n", name)
+	fmt.Fprintln(options.Stdout, name)
 	return vol, nil
 }

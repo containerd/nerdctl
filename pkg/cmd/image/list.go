@@ -268,7 +268,7 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 			return err
 		}
 	} else if x.quiet {
-		if _, err := fmt.Fprintf(x.w, "%s\n", p.ID); err != nil {
+		if _, err := fmt.Fprintln(x.w, p.ID); err != nil {
 			return err
 		}
 	} else {

@@ -378,7 +378,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 
 	if createOpt.Detach {
-		fmt.Fprintf(createOpt.Stdout, "%s\n", id)
+		fmt.Fprintln(createOpt.Stdout, id)
 		return nil
 	}
 	if createOpt.TTY {

@@ -75,7 +75,7 @@ func Remove(ctx context.Context, client *containerd.Client, containers []string,
 				}
 				return err
 			}
-			_, err := fmt.Fprintf(options.Stdout, "%s\n", found.Req)
+			_, err := fmt.Fprintln(options.Stdout, found.Req)
 			return err
 		},
 	}
