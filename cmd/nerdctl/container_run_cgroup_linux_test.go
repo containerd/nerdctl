@@ -221,8 +221,6 @@ func TestRunDeviceCDI(t *testing.T) {
 		specFile.Close()
 		os.Remove(cdiSpecFilename)
 	}()
-	err := exec.Command("cp).Run()
-
 
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
