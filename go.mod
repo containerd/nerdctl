@@ -7,7 +7,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.1
 	github.com/Microsoft/hcsshim v0.10.0
 	github.com/awslabs/soci-snapshotter v0.4.0
-	github.com/compose-spec/compose-go v1.18.2
+	github.com/compose-spec/compose-go v1.18.4
 	github.com/containerd/accelerated-container-image v0.6.7
 	github.com/containerd/cgroups/v3 v3.0.2
 	github.com/containerd/console v1.0.3
@@ -62,8 +62,10 @@ require (
 )
 
 require (
+	github.com/distribution/reference v0.5.0 // indirect
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230717213848-3f92550aa753 // indirect
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )
 
 require (
@@ -76,7 +78,6 @@ require (
 	github.com/containerd/ttrpc v1.2.2 // indirect
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67 // indirect
 	github.com/containers/ocicrypt v1.1.8 // indirect
-	github.com/distribution/distribution/v3 v3.0.0-20230214150026-36d8c594d7aa // indirect
 	github.com/djherbis/times v1.5.0 // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
