@@ -21,20 +21,15 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/containerd/console"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/containerd/nerdctl/pkg/signalutil"
-	"github.com/containerd/nerdctl/pkg/taskutil"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -340,91 +335,5 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	id := c.ID()
-	if createOpt.Rm && !createOpt.Detach {
-		defer func() {
-			// NOTE: OCI hooks (which are used for CNI network setup/teardown on Linux)
-			// are not currently supported on Windows, so we must explicitly call
-			// network setup/cleanup from the main nerdctl executable.
-			if runtime.GOOS == "windows" {
-				if err := netManager.CleanupNetworking(ctx, c); err != nil {
-					logrus.Warnf("failed to clean up container networking: %s", err)
-				}
-			}
-			if err := container.RemoveContainer(ctx, c, createOpt.GOptions, true, true); err != nil {
-				logrus.WithError(err).Warnf("failed to remove container %s", id)
-			}
-		}()
-	}
-
-	var con console.Console
-	if createOpt.TTY && !createOpt.Detach {
-		con = console.Current()
-		defer con.Reset()
-		if err := con.SetRaw(); err != nil {
-			return err
-		}
-	}
-
-	lab, err := c.Labels(ctx)
-	if err != nil {
-		return err
-	}
-	logURI := lab[labels.LogURI]
-	detachC := make(chan struct{})
-	task, err := taskutil.NewTask(ctx, client, c, false, createOpt.Interactive, createOpt.TTY, createOpt.Detach,
-		con, logURI, createOpt.DetachKeys, detachC)
-	if err != nil {
-		return err
-	}
-	if err := task.Start(ctx); err != nil {
-		return err
-	}
-
-	if createOpt.Detach {
-		fmt.Fprintln(createOpt.Stdout, id)
-		return nil
-	}
-	if createOpt.TTY {
-		if err := consoleutil.HandleConsoleResize(ctx, task, con); err != nil {
-			logrus.WithError(err).Error("console resize")
-		}
-	} else {
-		sigC := signalutil.ForwardAllSignals(ctx, task)
-		defer signalutil.StopCatch(sigC)
-	}
-
-	statusC, err := task.Wait(ctx)
-	if err != nil {
-		return err
-	}
-	select {
-	// io.Wait() would return when either 1) the user detaches from the container OR 2) the container is about to exit.
-	//
-	// If we replace the `select` block with io.Wait() and
-	// directly use task.Status() to check the status of the container after io.Wait() returns,
-	// it can still be running even though the container is about to exit (somehow especially for Windows).
-	//
-	// As a result, we need a separate detachC to distinguish from the 2 cases mentioned above.
-	case <-detachC:
-		io := task.IO()
-		if io == nil {
-			return errors.New("got a nil IO from the task")
-		}
-		io.Wait()
-	case status := <-statusC:
-		if createOpt.Rm {
-			if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
-				logrus.Error(taskDeleteErr)
-			}
-		}
-		code, _, err := status.Result()
-		if err != nil {
-			return err
-		}
-		if code != 0 {
-			return errutil.NewExitCoderErr(int(code))
-		}
-	}
-	return nil
+	return container.Run(ctx, client, c, createOpt, netManager)
 }
