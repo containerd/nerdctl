@@ -110,6 +110,7 @@ It does not necessarily mean that the corresponding features are missing in cont
   - [:whale: nerdctl compose pause](#whale-nerdctl-compose-pause)
   - [:whale: nerdctl compose unpause](#whale-nerdctl-compose-unpause)
   - [:whale: nerdctl compose config](#whale-nerdctl-compose-config)
+  - [:whale: nerdctl compose cp](#whale-nerdctl-compose-cp)
   - [:whale: nerdctl compose kill](#whale-nerdctl-compose-kill)
   - [:whale: nerdctl compose restart](#whale-nerdctl-compose-restart)
   - [:whale: nerdctl compose rm](#whale-nerdctl-compose-rm)
@@ -1539,6 +1540,25 @@ Flags:
 Unimplemented `docker-compose config` (V1) flags: `--resolve-image-digests`, `--no-interpolate`
 
 Unimplemented `docker compose config` (V2) flags: `--resolve-image-digests`, `--no-interpolate`, `--format`, `--output`, `--profiles`
+
+### :whale: nerdctl compose cp
+
+Copy files/folders between a service container and the local filesystem
+
+Usage:
+```
+nerdctl compose cp [OPTIONS] SERVICE:SRC_PATH DEST_PATH|-
+nerdctl compose cp [OPTIONS] SRC_PATH|- SERVICE:DEST_PATH [flags]
+```
+
+Flags:
+- :whale: `--dry-run`: Execute command in dry run mode
+- :whale: `-L, --follow-link`: Always follow symbol link in SRC_PATH
+- :whale: `--index int`: index of the container if service has multiple replicas
+
+Unimplemented `docker compose cp` flags: `--archive`
+
+Unimplemented rootless mode
 
 ### :whale: nerdctl compose kill
 
