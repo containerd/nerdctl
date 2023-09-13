@@ -53,7 +53,7 @@ func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([
 		}
 	}
 	var opts []oci.SpecOpts
-	if seccompProfile, ok := securityOptsMap["seccomp"]; ok {
+	if seccompProfile, ok := securityOptsMap["seccomp"]; ok && seccompProfile != defaults.SeccompProfileName {
 		if seccompProfile == "" {
 			return nil, errors.New("invalid security-opt \"seccomp\"")
 		}

@@ -49,7 +49,7 @@ WARNING: AppArmor profile %q is not loaded.
          This warning is negligible if you do not intend to use AppArmor.`), defaults.AppArmorProfileName))
 		}
 	}
-	info.SecurityOptions = append(info.SecurityOptions, "name=seccomp,profile=default")
+	info.SecurityOptions = append(info.SecurityOptions, "name=seccomp,profile="+defaults.SeccompProfileName)
 	if defaults.CgroupnsMode() == "private" {
 		info.SecurityOptions = append(info.SecurityOptions, "name=cgroupns")
 	}

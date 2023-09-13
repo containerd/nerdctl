@@ -28,8 +28,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const AppArmorProfileName = "nerdctl-default"
-const Runtime = plugin.RuntimeRuncV2
+const (
+	AppArmorProfileName = "nerdctl-default"
+	SeccompProfileName  = "builtin"
+	Runtime             = plugin.RuntimeRuncV2
+)
 
 func DataRoot() string {
 	if !rootlessutil.IsRootless() {
