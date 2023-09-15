@@ -768,8 +768,9 @@ Flags:
 - :nerd_face: `--notation-key-name`: Signing key name for a key previously added to notation's key list for `--sign=notation`
 - :nerd_face: `--allow-nondistributable-artifacts`: Allow pushing images with non-distributable blobs
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
+- :whale: `-q, --quiet`: Suppress verbose output
 
-Unimplemented `docker push` flags: `--all-tags`, `--disable-content-trust` (default true), `--quiet`
+Unimplemented `docker push` flags: `--all-tags`, `--disable-content-trust` (default true)
 
 ### :whale: nerdctl load
 
