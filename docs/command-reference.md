@@ -1427,10 +1427,9 @@ Flags:
 - :whale: `-i, --interactive`: Keep STDIN open even if not attached (default true)
 - :whale: `--privileged`: Give extended privileges to the command
 - :whale: `-t, --tty`: Allocate a pseudo-TTY
+- :whale: `-T, --no-TTY`: Disable pseudo-TTY allocation. By default nerdctl compose exec allocates a TTY.
 - :whale: `-u, --user`: Username or UID (format: `<name|uid>[:<group|gid>]`)
 - :whale: `-w, --workdir`: Working directory inside the container
-
-Unimplemented `docker-compose exec` (V2) flags:  `-T, --no-TTY`
 
 ### :whale: nerdctl compose down
 
