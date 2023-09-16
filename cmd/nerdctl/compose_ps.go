@@ -19,9 +19,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/compose"
@@ -42,7 +46,12 @@ func newComposePsCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composePsCommand.Flags().String("format", "", "Format the output. Supported values: [json]")
+	composePsCommand.Flags().String("format", "table", "Format the output. Supported values: [table|json]")
+	composePsCommand.Flags().String("filter", "", "Filter matches containers based on given conditions")
+	composePsCommand.Flags().StringArray("status", []string{}, "Filter services by status. Values: [paused | restarting | removing | running | dead | created | exited]")
+	composePsCommand.Flags().BoolP("quiet", "q", false, "Only display container IDs")
+	composePsCommand.Flags().Bool("services", false, "Display services")
+	composePsCommand.Flags().BoolP("all", "a", false, "Show all containers (default shows just running)")
 	return composePsCommand
 }
 
@@ -71,8 +80,40 @@ func composePsAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if format != "json" && format != "" {
-		return fmt.Errorf("unsupported format %s, supported formats are: [json]", format)
+	if format != "json" && format != "table" {
+		return fmt.Errorf("unsupported format %s, supported formats are: [table|json]", format)
+	}
+	status, err := cmd.Flags().GetStringArray("status")
+	if err != nil {
+		return err
+	}
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return err
+	}
+	displayServices, err := cmd.Flags().GetBool("services")
+	if err != nil {
+		return err
+	}
+	filter, err := cmd.Flags().GetString("filter")
+	if err != nil {
+		return err
+	}
+	if filter != "" {
+		splited := strings.SplitN(filter, "=", 2)
+		if len(splited) != 2 {
+			return fmt.Errorf("invalid argument \"%s\" for \"-f, --filter\": bad format of filter (expected name=value)", filter)
+		}
+		// currently only the 'status' filter is supported
+		if splited[0] != "status" {
+			return fmt.Errorf("invalid filter '%s'", splited[0])
+		}
+		status = append(status, splited[1])
+	}
+
+	all, err := cmd.Flags().GetBool("all")
+	if err != nil {
+		return err
 	}
 
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
@@ -95,6 +136,41 @@ func composePsAction(cmd *cobra.Command, args []string) error {
 	containers, err := c.Containers(ctx, serviceNames...)
 	if err != nil {
 		return err
+	}
+
+	if !all {
+		var upContainers []containerd.Container
+		for _, container := range containers {
+			// cStatus := formatter.ContainerStatus(ctx, c)
+			cStatus, err := containerutil.ContainerStatus(ctx, container)
+			if err != nil {
+				continue
+			}
+			if cStatus.Status == containerd.Running {
+				upContainers = append(upContainers, container)
+			}
+		}
+		containers = upContainers
+	}
+
+	if len(status) != 0 {
+		var filterdContainers []containerd.Container
+		for _, container := range containers {
+			cStatus := statusForFilter(ctx, container)
+			for _, s := range status {
+				if cStatus == s {
+					filterdContainers = append(filterdContainers, container)
+				}
+			}
+		}
+		containers = filterdContainers
+	}
+
+	if quiet {
+		for _, c := range containers {
+			fmt.Fprintln(cmd.OutOrStdout(), c.ID())
+		}
+		return nil
 	}
 
 	containersPrintable := make([]composeContainerPrintable, len(containers))
@@ -121,6 +197,12 @@ func composePsAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if displayServices {
+		for _, p := range containersPrintable {
+			fmt.Fprintln(cmd.OutOrStdout(), p.Service)
+		}
+		return nil
+	}
 	if format == "json" {
 		outJSON, err := formatter.ToJSON(containersPrintable, "", "")
 		if err != nil {
@@ -198,9 +280,11 @@ func composeContainerPrintableJSON(ctx context.Context, container containerd.Con
 	if err == nil {
 		// show exitCode only when container is exited/stopped
 		if status.Status == containerd.Stopped {
+			state = "exited"
 			exitCode = status.ExitStatus
+		} else {
+			state = string(status.Status)
 		}
-		state = string(status.Status)
 	} else {
 		state = string(containerd.Unknown)
 	}
@@ -254,4 +338,42 @@ func formatPublishers(labelMap map[string]string) []PortPublisher {
 		logrus.Error(err.Error())
 	}
 	return dockerPorts
+}
+
+// statusForFilter returns the status value to be matched with the 'status' filter
+func statusForFilter(ctx context.Context, c containerd.Container) string {
+	// Just in case, there is something wrong in server.
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	task, err := c.Task(ctx, nil)
+	if err != nil {
+		// NOTE: NotFound doesn't mean that container hasn't started.
+		// In docker/CRI-containerd plugin, the task will be deleted
+		// when it exits. So, the status will be "created" for this
+		// case.
+		if errdefs.IsNotFound(err) {
+			return string(containerd.Created)
+		}
+		return string(containerd.Unknown)
+	}
+
+	status, err := task.Status(ctx)
+	if err != nil {
+		return string(containerd.Unknown)
+	}
+	labels, err := c.Labels(ctx)
+	if err != nil {
+		return string(containerd.Unknown)
+	}
+
+	switch s := status.Status; s {
+	case containerd.Stopped:
+		if labels[restart.StatusLabel] == string(containerd.Running) && restart.Reconcile(status, labels) {
+			return "restarting"
+		}
+		return "exited"
+	default:
+		return string(s)
+	}
 }
