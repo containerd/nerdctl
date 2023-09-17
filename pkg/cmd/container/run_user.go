@@ -17,19 +17,12 @@
 package container
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"io"
-	"os"
-	"os/user"
 	"strconv"
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/rootless-containers/rootlesskit/pkg/parent/idtools"
 )
 
 func generateUserOpts(user string) ([]oci.SpecOpts, error) {
@@ -72,135 +65,6 @@ func withResetAdditionalGIDs() oci.SpecOpts {
 func withAdditionalUmask(umask uint32) oci.SpecOpts {
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
 		s.Process.User.Umask = &umask
-		return nil
-	}
-}
-
-func parseMappingsProc() (uidmap, gidmap []specs.LinuxIDMapping, err error) {
-	parseMappingProc := func(fn string) ([]specs.LinuxIDMapping, error) {
-		f, err := os.Open(fn)
-		if err != nil {
-			return nil, err
-		}
-		defer f.Close()
-		mappings := []specs.LinuxIDMapping{}
-		for buf := bufio.NewReader(f); ; {
-			line, _, err := buf.ReadLine()
-			if err != nil {
-				if err == io.EOF {
-					return mappings, nil
-				}
-				return nil, fmt.Errorf("failed to read line from %s: %w", fn, err)
-			}
-			if line == nil {
-				return mappings, nil
-			}
-			var cID, hID, size uint32 = 0, 0, 0
-			if _, err := fmt.Sscanf(string(line), "%d %d %d", &cID, &hID, &size); err != nil {
-				return nil, fmt.Errorf("failed to parse %s: %w", line, err)
-			}
-			mappings = append(mappings, specs.LinuxIDMapping{
-				ContainerID: cID,
-				HostID:      hID,
-				Size:        size,
-			})
-		}
-	}
-	uidmap, err = parseMappingProc("/proc/self/uid_map")
-	if err != nil {
-		return nil, nil, err
-	}
-	gidmap, err = parseMappingProc("/proc/self/gid_map")
-	if err != nil {
-		return nil, nil, err
-	}
-	return uidmap, gidmap, nil
-}
-
-func generateUserNSOpts(userns string) ([]oci.SpecOpts, error) {
-	switch userns {
-	case "host":
-		return []oci.SpecOpts{withResetUserNamespace()}, nil
-	case "keep-id":
-		min := func(a, b int) int {
-			if a < b {
-				return a
-			}
-			return b
-		}
-
-		if !rootlessutil.IsRootless() {
-			uidmap, gidmap, err := parseMappingsProc()
-			if err != nil {
-				return nil, err
-			}
-			return []oci.SpecOpts{
-				oci.WithUserNamespace(uidmap, gidmap),
-				oci.WithUIDGID(0, 0),
-			}, nil
-		}
-
-		uid := rootlessutil.ParentEUID()
-		gid := rootlessutil.ParentEGID()
-
-		u, err := user.LookupId(fmt.Sprintf("%d", uid))
-		if err != nil {
-			return nil, err
-		}
-		uids, gids, err := idtools.GetSubIDRanges(uid, u.Username)
-		if err != nil {
-			return nil, err
-		}
-
-		maxUID, maxGID := 0, 0
-		for _, u := range uids {
-			maxUID += u.Length
-		}
-		for _, g := range gids {
-			maxGID += g.Length
-		}
-
-		uidmap := []specs.LinuxIDMapping{{
-			ContainerID: uint32(uid),
-			HostID:      0,
-			Size:        1,
-		}}
-		if len(uids) > 0 {
-			uidmap = append(uidmap, specs.LinuxIDMapping{
-				ContainerID: 0,
-				HostID:      1,
-				Size:        uint32(min(uid, maxUID)),
-			})
-		}
-
-		gidmap := []specs.LinuxIDMapping{{
-			ContainerID: uint32(gid),
-			HostID:      0,
-			Size:        1,
-		}}
-		if len(gids) > 0 {
-			gidmap = append(gidmap, specs.LinuxIDMapping{
-				ContainerID: 0,
-				HostID:      1,
-				Size:        uint32(min(gid, maxGID)),
-			})
-		}
-		return []oci.SpecOpts{
-			oci.WithUserNamespace(uidmap, gidmap),
-			oci.WithUIDGID(uint32(uid), uint32(gid)),
-		}, nil
-	default:
-		return nil, fmt.Errorf("invalid UserNS Value:%s", userns)
-	}
-}
-
-func withResetUserNamespace() oci.SpecOpts {
-	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
-		for i, ns := range s.Linux.Namespaces {
-			if ns.Type == specs.UserNamespace {
-				s.Linux.Namespaces = append(s.Linux.Namespaces[:i], s.Linux.Namespaces[i+1:]...)
-			}
-		}
 		return nil
 	}
 }

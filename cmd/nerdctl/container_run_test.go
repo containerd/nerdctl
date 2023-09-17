@@ -468,21 +468,3 @@ func TestRunWithTtyAndDetached(t *testing.T) {
 	withTtyContainer := base.InspectContainer(withTtyContainerName)
 	assert.Equal(base.T, 0, withTtyContainer.State.ExitCode)
 }
-
-func TestRunUserNSHost(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-
-	// container uid should be 0
-	uid := fmt.Sprintf("%d\n", 0)
-	base.Cmd("run", "--rm", "--userns=host", testutil.CommonImage, "id", "-u").AssertOutExactly(uid)
-}
-
-func TestRunUserNSKeepID(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-
-	// container uid should match host uid
-	uid := fmt.Sprintf("%d\n", os.Getuid())
-	base.Cmd("run", "--rm", "--userns=keep-id", testutil.CommonImage, "id", "-u").AssertOutExactly(uid)
-}
