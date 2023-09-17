@@ -17,8 +17,11 @@
 package container
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"os/user"
 	"strconv"
 
@@ -73,6 +76,47 @@ func withAdditionalUmask(umask uint32) oci.SpecOpts {
 	}
 }
 
+func parseMappingsProc() (uidmap, gidmap []specs.LinuxIDMapping, err error) {
+	parseMappingProc := func(fn string) ([]specs.LinuxIDMapping, error) {
+		f, err := os.Open(fn)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		mappings := []specs.LinuxIDMapping{}
+		for buf := bufio.NewReader(f); ; {
+			line, _, err := buf.ReadLine()
+			if err != nil {
+				if err == io.EOF {
+					return mappings, nil
+				}
+				return nil, fmt.Errorf("failed to read line from %s: %w", fn, err)
+			}
+			if line == nil {
+				return mappings, nil
+			}
+			var cID, hID, size uint32 = 0, 0, 0
+			if _, err := fmt.Sscanf(string(line), "%d %d %d", &cID, &hID, &size); err != nil {
+				return nil, fmt.Errorf("failed to parse %s: %w", line, err)
+			}
+			mappings = append(mappings, specs.LinuxIDMapping{
+				ContainerID: cID,
+				HostID:      hID,
+				Size:        size,
+			})
+		}
+	}
+	uidmap, err = parseMappingProc("/proc/self/uid_map")
+	if err != nil {
+		return nil, nil, err
+	}
+	gidmap, err = parseMappingProc("/proc/self/gid_map")
+	if err != nil {
+		return nil, nil, err
+	}
+	return uidmap, gidmap, nil
+}
+
 func generateUserNSOpts(userns string) ([]oci.SpecOpts, error) {
 	switch userns {
 	case "host":
@@ -83,6 +127,17 @@ func generateUserNSOpts(userns string) ([]oci.SpecOpts, error) {
 				return a
 			}
 			return b
+		}
+
+		if !rootlessutil.IsRootless() {
+			uidmap, gidmap, err := parseMappingsProc()
+			if err != nil {
+				return nil, err
+			}
+			return []oci.SpecOpts{
+				oci.WithUserNamespace(uidmap, gidmap),
+				oci.WithUIDGID(0, 0),
+			}, nil
 		}
 
 		uid := rootlessutil.ParentEUID()
