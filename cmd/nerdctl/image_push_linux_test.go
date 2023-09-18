@@ -174,3 +174,19 @@ func TestPushNonDistributableArtifacts(t *testing.T) {
 	}
 	assert.Equal(t, resp.StatusCode, http.StatusOK, "non-distributable blob should be available")
 }
+
+func TestPushSoci(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	requiresSoci(base)
+	reg := testregistry.NewPlainHTTP(base, 5000)
+	defer reg.Cleanup()
+
+	base.Cmd("pull", testutil.UbuntuImage).AssertOK()
+	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
+		reg.IP.String(), reg.ListenPort, testutil.Identifier(t), strings.Split(testutil.UbuntuImage, ":")[1])
+	t.Logf("testImageRef=%q", testImageRef)
+	base.Cmd("tag", testutil.UbuntuImage, testImageRef).AssertOK()
+
+	base.Cmd("--snapshotter=soci", "--insecure-registry", "push", "--soci-span-size=2097152", "--soci-min-layer-size=20971520", testImageRef).AssertOK()
+}
