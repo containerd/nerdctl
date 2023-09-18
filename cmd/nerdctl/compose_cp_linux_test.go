@@ -22,15 +22,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
 
 func TestComposeCopy(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("Test skipped in rootless mode for compose copy")
-	}
 	base := testutil.NewBase(t)
 
 	var dockerComposeYAML = fmt.Sprintf(`
