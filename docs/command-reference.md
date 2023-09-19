@@ -1560,8 +1560,6 @@ Flags:
 
 Unimplemented `docker compose cp` flags: `--archive`
 
-Unimplemented rootless mode
-
 ### :whale: nerdctl compose kill
 
 Force stop service containers

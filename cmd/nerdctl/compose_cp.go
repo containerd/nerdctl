@@ -22,6 +22,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/pkg/composer"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +48,6 @@ func composeCopyAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// TODO: unimplemented rootless mode
 	source := args[0]
 	if source == "" {
 		return errors.New("source can not be empty")
@@ -69,7 +69,15 @@ func composeCopyAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+	address := globalOptions.Address
+	// rootless cp runs in the host namespaces, so the address is different
+	if rootlessutil.IsRootless() {
+		address, err = rootlessutil.RootlessContainredSockAddress()
+		if err != nil {
+			return err
+		}
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, address)
 	if err != nil {
 		return err
 	}

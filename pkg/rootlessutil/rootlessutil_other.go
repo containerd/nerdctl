@@ -62,3 +62,7 @@ func NewRootlessKitClient() (client.Client, error) {
 func ParentMain(hostGatewayIP string) error {
 	return fmt.Errorf("cannot use RootlessKit on main entry point on non-Linux hosts")
 }
+
+func RootlessContainredSockAddress() (string, error) {
+	return "", fmt.Errorf("cannot inspect RootlessKit state on non-Linux hosts")
+}
