@@ -23,11 +23,12 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -66,7 +67,17 @@ func versionAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	v, vErr := versionInfo(cmd, globalOptions)
+	address := globalOptions.Address
+	// rootless `nerdctl version` runs in the host namespaces, so the address is different
+	if rootlessutil.IsRootless() {
+		address, err = rootlessutil.RootlessContainredSockAddress()
+		if err != nil {
+			logrus.WithError(err).Warning("failed to inspect the rootless containerd socket address")
+			address = ""
+		}
+	}
+
+	v, vErr := versionInfo(cmd, globalOptions.Namespace, address)
 	if tmpl != nil {
 		var b bytes.Buffer
 		if err := tmpl.Execute(&b, v); err != nil {
@@ -102,13 +113,16 @@ func versionAction(cmd *cobra.Command, args []string) error {
 	return vErr
 }
 
-// versionInfo may return partial VersionInfo on error
-func versionInfo(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (dockercompat.VersionInfo, error) {
-
+// versionInfo may return partial VersionInfo on error.
+// Address can be empty to skip inspecting the server.
+func versionInfo(cmd *cobra.Command, ns, address string) (dockercompat.VersionInfo, error) {
 	v := dockercompat.VersionInfo{
 		Client: infoutil.ClientVersion(),
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
+	if address == "" {
+		return v, nil
+	}
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), ns, address)
 	if err != nil {
 		return v, err
 	}
