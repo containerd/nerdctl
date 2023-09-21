@@ -1490,9 +1490,17 @@ List containers of services
 
 Usage: `nerdctl compose ps [OPTIONS] [SERVICE...]`
 
-Unimplemented `docker-compose ps` (V1) flags: `--quiet`, `--services`, `--filter`, `--all`
-
-Unimplemented `docker compose ps` (V2) flags: `--status`
+- :whale: `-a, --all`: Show all containers (default shows just running)
+- :whale: `-q, --quiet`: Only display container IDs
+- :whale: `--format`: Format the output
+  - :whale: `--format=table` (default): Table
+  - :whale: `--format=json'`: JSON
+- :whale: `-f, --filter`: Filter containers based on given conditions
+  - :whale: `--filter status=<value>`: One of `created, running, paused,
+    restarting, exited, pausing, unknown`. Note that `removing, dead` are
+    not supported and will be ignored
+- :whale: `--services`: Print the service names, one per line
+- :whale: `--status`: Filter containers by status. Values: [paused | restarting | running | created | exited | pausing | unknown]
 
 ### :whale: nerdctl compose pull
 
