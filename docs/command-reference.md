@@ -1008,7 +1008,7 @@ Flags:
   - :nerd_face: `--format=wide`: Alias of `--format=table`
   - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
 
-Unimplemented `docker network ls` flags: `--filter`, `--no-trunc`
+Unimplemented `docker network ls` flags: `--no-trunc`
 
 ### :whale: nerdctl network inspect
 
