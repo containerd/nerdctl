@@ -80,6 +80,13 @@ type ImageConvertOptions struct {
 	EstargzKeepDiffID bool
 	// #endregion
 
+	// #region zstd flags
+	// Zstd convert legacy tar(.gz) layers to zstd. Should be used in conjunction with '--oci'
+	Zstd bool
+	// ZstdCompressionLevel zstd compression level
+	ZstdCompressionLevel int
+	// #endregion
+
 	// #region zstd:chunked flags
 	// ZstdChunked convert legacy tar(.gz) layers to zstd:chunked for lazy pulling. Should be used in conjunction with '--oci'
 	ZstdChunked bool
