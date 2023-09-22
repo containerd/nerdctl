@@ -83,23 +83,23 @@ func withCustomHosts(src string) func(context.Context, oci.Client, *containers.C
 	}
 }
 
-// types.NetworkOptionsManager is an interface for reading/setting networking
+// NetworkOptionsManager types.NetworkOptionsManager is an interface for reading/setting networking
 // options for containers based on the provided command flags.
 type NetworkOptionsManager interface {
-	// Returns a copy of the internal types.NetworkOptions.
+	// NetworkOptions Returns a copy of the internal types.NetworkOptions.
 	NetworkOptions() types.NetworkOptions
 
-	// Verifies that the internal network settings are correct.
+	// VerifyNetworkOptions Verifies that the internal network settings are correct.
 	VerifyNetworkOptions(context.Context) error
 
-	// Performs setup actions required for the container with the given ID.
+	// SetupNetworking Performs setup actions required for the container with the given ID.
 	SetupNetworking(context.Context, string) error
 
-	// Performs any required cleanup actions for the given container.
+	// CleanupNetworking Performs any required cleanup actions for the given container.
 	// Should only be called to revert any setup steps performed in SetupNetworking.
 	CleanupNetworking(context.Context, containerd.Container) error
 
-	// Returns the set of NetworkingOptions which should be set as labels on the container.
+	// InternalNetworkingOptionLabels Returns the set of NetworkingOptions which should be set as labels on the container.
 	//
 	// These options can potentially differ from the actual networking options
 	// that the NetworkOptionsManager was initially instantiated with.
@@ -107,12 +107,12 @@ type NetworkOptionsManager interface {
 	// `--net=container:myContainer` => `--net=container:<ID of myContainer>`.
 	InternalNetworkingOptionLabels(context.Context) (types.NetworkOptions, error)
 
-	// Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
+	// ContainerNetworkingOpts Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
 	// the network specs which need to be applied to the container with the given ID.
 	ContainerNetworkingOpts(context.Context, string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error)
 }
 
-// Returns a types.NetworkOptionsManager based on the provided command's flags.
+// NewNetworkingOptionsManager Returns a types.NetworkOptionsManager based on the provided command's flags.
 func NewNetworkingOptionsManager(globalOptions types.GlobalCommandOptions, netOpts types.NetworkOptions) (NetworkOptionsManager, error) {
 	netType, err := nettype.Detect(netOpts.NetworkSlice)
 	if err != nil {
@@ -142,34 +142,34 @@ type noneNetworkManager struct {
 	netOpts       types.NetworkOptions
 }
 
-// Returns a copy of the internal types.NetworkOptions.
+// NetworkOptions Returns a copy of the internal types.NetworkOptions.
 func (m *noneNetworkManager) NetworkOptions() types.NetworkOptions {
 	return m.netOpts
 }
 
-// Verifies that the internal network settings are correct.
+// VerifyNetworkOptions Verifies that the internal network settings are correct.
 func (m *noneNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 	// No options to verify if no network settings are provided.
 	return nil
 }
 
-// Performs setup actions required for the container with the given ID.
+// SetupNetworking Performs setup actions required for the container with the given ID.
 func (m *noneNetworkManager) SetupNetworking(_ context.Context, _ string) error {
 	return nil
 }
 
-// Performs any required cleanup actions for the given container.
+// CleanupNetworking Performs any required cleanup actions for the given container.
 // Should only be called to revert any setup steps performed in SetupNetworking.
 func (m *noneNetworkManager) CleanupNetworking(_ context.Context, _ containerd.Container) error {
 	return nil
 }
 
-// Returns the set of NetworkingOptions which should be set as labels on the container.
+// InternalNetworkingOptionLabels Returns the set of NetworkingOptions which should be set as labels on the container.
 func (m *noneNetworkManager) InternalNetworkingOptionLabels(_ context.Context) (types.NetworkOptions, error) {
 	return m.netOpts, nil
 }
 
-// Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
+// ContainerNetworkingOpts Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
 // the network specs which need to be applied to the container with the given ID.
 func (m *noneNetworkManager) ContainerNetworkingOpts(_ context.Context, _ string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
 	// No options to return if no network settings are provided.
@@ -182,12 +182,12 @@ type containerNetworkManager struct {
 	netOpts       types.NetworkOptions
 }
 
-// Returns a copy of the internal types.NetworkOptions.
+// NetworkOptions Returns a copy of the internal types.NetworkOptions.
 func (m *containerNetworkManager) NetworkOptions() types.NetworkOptions {
 	return m.netOpts
 }
 
-// Verifies that the internal network settings are correct.
+// VerifyNetworkOptions Verifies that the internal network settings are correct.
 func (m *containerNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 	// TODO: check host OS, not client-side OS.
 	if runtime.GOOS != "linux" {
@@ -233,14 +233,14 @@ func (m *containerNetworkManager) getContainerNetworkFilePaths(containerID strin
 	return hostnamePath, resolvConfPath, etcHostsPath, nil
 }
 
-// Performs setup actions required for the container with the given ID.
+// SetupNetworking Performs setup actions required for the container with the given ID.
 func (m *containerNetworkManager) SetupNetworking(_ context.Context, _ string) error {
 	// NOTE: container networking simply reuses network config files from the
 	// bridged container so there are no setup/teardown steps required.
 	return nil
 }
 
-// Performs any required cleanup actions for the given container.
+// CleanupNetworking Performs any required cleanup actions for the given container.
 // Should only be called to revert any setup steps performed in SetupNetworking.
 func (m *containerNetworkManager) CleanupNetworking(_ context.Context, _ containerd.Container) error {
 	// NOTE: container networking simply reuses network config files from the
@@ -284,7 +284,7 @@ func (m *containerNetworkManager) getNetworkingContainerForArgument(ctx context.
 	return foundContainer, nil
 }
 
-// Returns the set of NetworkingOptions which should be set as labels on the container.
+// InternalNetworkingOptionLabels Returns the set of NetworkingOptions which should be set as labels on the container.
 func (m *containerNetworkManager) InternalNetworkingOptionLabels(ctx context.Context) (types.NetworkOptions, error) {
 	opts := m.netOpts
 	if m.netOpts.NetworkSlice == nil || len(m.netOpts.NetworkSlice) != 1 {
@@ -300,7 +300,7 @@ func (m *containerNetworkManager) InternalNetworkingOptionLabels(ctx context.Con
 	return opts, nil
 }
 
-// Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
+// ContainerNetworkingOpts Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
 // the network specs which need to be applied to the container with the given ID.
 func (m *containerNetworkManager) ContainerNetworkingOpts(ctx context.Context, _ string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
 	opts := []oci.SpecOpts{}
@@ -348,12 +348,12 @@ type hostNetworkManager struct {
 	netOpts       types.NetworkOptions
 }
 
-// Returns a copy of the internal types.NetworkOptions.
+// NetworkOptions Returns a copy of the internal types.NetworkOptions.
 func (m *hostNetworkManager) NetworkOptions() types.NetworkOptions {
 	return m.netOpts
 }
 
-// Verifies that the internal network settings are correct.
+// VerifyNetworkOptions Verifies that the internal network settings are correct.
 func (m *hostNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 	// TODO: check host OS, not client-side OS.
 	if runtime.GOOS == "windows" {
@@ -367,20 +367,20 @@ func (m *hostNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 	return validateUtsSettings(m.netOpts)
 }
 
-// Performs setup actions required for the container with the given ID.
+// SetupNetworking Performs setup actions required for the container with the given ID.
 func (m *hostNetworkManager) SetupNetworking(_ context.Context, _ string) error {
 	// NOTE: there are no setup steps required for host networking.
 	return nil
 }
 
-// Performs any required cleanup actions for the given container.
+// CleanupNetworking Performs any required cleanup actions for the given container.
 // Should only be called to revert any setup steps performed in SetupNetworking.
 func (m *hostNetworkManager) CleanupNetworking(_ context.Context, _ containerd.Container) error {
 	// NOTE: there are no setup steps required for host networking.
 	return nil
 }
 
-// Returns the set of NetworkingOptions which should be set as labels on the container.
+// InternalNetworkingOptionLabels Returns the set of NetworkingOptions which should be set as labels on the container.
 func (m *hostNetworkManager) InternalNetworkingOptionLabels(_ context.Context) (types.NetworkOptions, error) {
 	opts := m.netOpts
 	// Cannot have a MAC address in host networking mode.
@@ -388,7 +388,7 @@ func (m *hostNetworkManager) InternalNetworkingOptionLabels(_ context.Context) (
 	return opts, nil
 }
 
-// Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
+// ContainerNetworkingOpts Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
 // the network specs which need to be applied to the container with the given ID.
 func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containerID string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
 
@@ -432,7 +432,7 @@ type cniNetworkManager struct {
 	netNs         *netns.NetNS
 }
 
-// Returns a copy of the internal types.NetworkOptions.
+// NetworkOptions Returns a copy of the internal types.NetworkOptions.
 func (m *cniNetworkManager) NetworkOptions() types.NetworkOptions {
 	return m.netOpts
 }
@@ -504,7 +504,7 @@ func verifyNetworkTypes(env *netutil.CNIEnv, networkSlice []string, supportedTyp
 	return res, nil
 }
 
-// Returns the NetworkOptions used in a container's creation from its spec.Annotations.
+// NetworkOptionsFromSpec Returns the NetworkOptions used in a container's creation from its spec.Annotations.
 func NetworkOptionsFromSpec(spec *specs.Spec) (types.NetworkOptions, error) {
 	opts := types.NetworkOptions{}
 
