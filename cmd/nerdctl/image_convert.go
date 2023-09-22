@@ -60,6 +60,11 @@ func newImageConvertCommand() *cobra.Command {
 	imageConvertCommand.Flags().Bool("estargz-keep-diff-id", false, "Convert to esgz without changing diffID (cannot be used in conjunction with '--estargz-record-in'. must be specified with '--estargz-external-toc')")
 	// #endregion
 
+	// #region zstd flags
+	imageConvertCommand.Flags().Bool("zstd", false, "Convert legacy tar(.gz) layers to zstd. Should be used in conjunction with '--oci'")
+	imageConvertCommand.Flags().Int("zstd-compression-level", 3, "zstd compression level")
+	// #endregion
+
 	// #region zstd:chunked flags
 	imageConvertCommand.Flags().Bool("zstdchunked", false, "Convert legacy tar(.gz) layers to zstd:chunked for lazy pulling. Should be used in conjunction with '--oci'")
 	imageConvertCommand.Flags().String("zstdchunked-record-in", "", "Read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)")
@@ -132,6 +137,17 @@ func processImageConvertOptions(cmd *cobra.Command) (types.ImageConvertOptions, 
 		return types.ImageConvertOptions{}, err
 	}
 	estargzKeepDiffID, err := cmd.Flags().GetBool("estargz-keep-diff-id")
+	if err != nil {
+		return types.ImageConvertOptions{}, err
+	}
+	// #endregion
+
+	// #region zstd flags
+	zstd, err := cmd.Flags().GetBool("zstd")
+	if err != nil {
+		return types.ImageConvertOptions{}, err
+	}
+	zstdCompressionLevel, err := cmd.Flags().GetInt("zstd-compression-level")
 	if err != nil {
 		return types.ImageConvertOptions{}, err
 	}
@@ -226,6 +242,10 @@ func processImageConvertOptions(cmd *cobra.Command) (types.ImageConvertOptions, 
 		EstargzMinChunkSize:     estargzMinChunkSize,
 		EstargzExternalToc:      estargzExternalTOC,
 		EstargzKeepDiffID:       estargzKeepDiffID,
+		// #endregion
+		// #region zstd flags
+		Zstd:                 zstd,
+		ZstdCompressionLevel: zstdCompressionLevel,
 		// #endregion
 		// #region zstd:chunked flags
 		ZstdChunked:                 zstdchunked,

@@ -38,6 +38,20 @@ func TestImageConvertEStargz(t *testing.T) {
 		testutil.CommonImage, convertedImage).AssertOK()
 }
 
+func TestImageConvertZstd(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no windows support yet")
+	}
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+	convertedImage := testutil.Identifier(t) + ":zstd"
+	base.Cmd("rmi", convertedImage).Run()
+	defer base.Cmd("rmi", convertedImage).Run()
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
+	base.Cmd("image", "convert", "--zstd", "--oci", "--zstd-compression-level", "3",
+		testutil.CommonImage, convertedImage).AssertOK()
+}
+
 func TestImageConvertZstdChunked(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("no windows support yet")
