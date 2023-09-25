@@ -32,7 +32,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/version"
 	"github.com/fatih/color"
-	"github.com/pelletier/go-toml"
+	"github.com/pelletier/go-toml/v2"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -141,7 +141,7 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, 
 	if r, err := os.Open(tomlPath); err == nil {
 		logrus.Debugf("Loading config from %q", tomlPath)
 		defer r.Close()
-		dec := toml.NewDecoder(r).Strict(true) // set Strict to detect typo
+		dec := toml.NewDecoder(r).DisallowUnknownFields() // set Strict to detect typo
 		if err := dec.Decode(cfg); err != nil {
 			return nil, fmt.Errorf("failed to load nerdctl config (not daemon config) from %q (Hint: don't mix up daemon's `config.toml` with `nerdctl.toml`): %w", tomlPath, err)
 		}
