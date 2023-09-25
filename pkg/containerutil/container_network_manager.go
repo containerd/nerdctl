@@ -113,7 +113,7 @@ type NetworkOptionsManager interface {
 }
 
 // NewNetworkingOptionsManager Returns a types.NetworkOptionsManager based on the provided command's flags.
-func NewNetworkingOptionsManager(globalOptions types.GlobalCommandOptions, netOpts types.NetworkOptions) (NetworkOptionsManager, error) {
+func NewNetworkingOptionsManager(globalOptions types.GlobalCommandOptions, netOpts types.NetworkOptions, client *containerd.Client) (NetworkOptionsManager, error) {
 	netType, err := nettype.Detect(netOpts.NetworkSlice)
 	if err != nil {
 		return nil, err
@@ -122,13 +122,13 @@ func NewNetworkingOptionsManager(globalOptions types.GlobalCommandOptions, netOp
 	var manager NetworkOptionsManager
 	switch netType {
 	case nettype.None:
-		manager = &noneNetworkManager{globalOptions, netOpts}
+		manager = &noneNetworkManager{globalOptions, netOpts, client}
 	case nettype.Host:
-		manager = &hostNetworkManager{globalOptions, netOpts}
+		manager = &hostNetworkManager{globalOptions, netOpts, client}
 	case nettype.Container:
-		manager = &containerNetworkManager{globalOptions, netOpts}
+		manager = &containerNetworkManager{globalOptions, netOpts, client}
 	case nettype.CNI:
-		manager = &cniNetworkManager{globalOptions, netOpts, nil}
+		manager = &cniNetworkManager{globalOptions, netOpts, nil, client}
 	default:
 		return nil, fmt.Errorf("unexpected container networking type: %q", netType)
 	}
@@ -140,6 +140,7 @@ func NewNetworkingOptionsManager(globalOptions types.GlobalCommandOptions, netOp
 type noneNetworkManager struct {
 	globalOptions types.GlobalCommandOptions
 	netOpts       types.NetworkOptions
+	client        *containerd.Client
 }
 
 // NetworkOptions Returns a copy of the internal types.NetworkOptions.
@@ -180,6 +181,7 @@ func (m *noneNetworkManager) ContainerNetworkingOpts(_ context.Context, _ string
 type containerNetworkManager struct {
 	globalOptions types.GlobalCommandOptions
 	netOpts       types.NetworkOptions
+	client        *containerd.Client
 }
 
 // NetworkOptions Returns a copy of the internal types.NetworkOptions.
@@ -249,18 +251,12 @@ func (m *containerNetworkManager) CleanupNetworking(_ context.Context, _ contain
 }
 
 // Searches for and returns the networking container for the given network argument.
-func (m *containerNetworkManager) getNetworkingContainerForArgument(ctx context.Context, containerNetArg string) (containerd.Container, error) {
+func (m *containerNetworkManager) getNetworkingContainerForArgument(ctx context.Context, containerNetArg string, client *containerd.Client) (containerd.Container, error) {
 	netItems := strings.Split(containerNetArg, ":")
 	if len(netItems) < 2 {
 		return nil, fmt.Errorf("container networking argument format must be 'container:<id|name>', got: %q", containerNetArg)
 	}
 	containerName := netItems[1]
-
-	client, ctxt, cancel, err := clientutil.NewClient(ctx, m.globalOptions.Namespace, m.globalOptions.Address)
-	if err != nil {
-		return nil, err
-	}
-	defer cancel()
 
 	var foundContainer containerd.Container
 	walker := &containerwalker.ContainerWalker{
@@ -273,7 +269,7 @@ func (m *containerNetworkManager) getNetworkingContainerForArgument(ctx context.
 			return nil
 		},
 	}
-	n, err := walker.Walk(ctxt, containerName)
+	n, err := walker.Walk(ctx, containerName)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +287,7 @@ func (m *containerNetworkManager) InternalNetworkingOptionLabels(ctx context.Con
 		return opts, fmt.Errorf("conflicting options: exactly one network specification is allowed when using '--network=container:<container>'")
 	}
 
-	container, err := m.getNetworkingContainerForArgument(ctx, m.netOpts.NetworkSlice[0])
+	container, err := m.getNetworkingContainerForArgument(ctx, m.netOpts.NetworkSlice[0], m.client)
 	if err != nil {
 		return opts, err
 	}
@@ -306,7 +302,7 @@ func (m *containerNetworkManager) ContainerNetworkingOpts(ctx context.Context, _
 	opts := []oci.SpecOpts{}
 	cOpts := []containerd.NewContainerOpts{}
 
-	container, err := m.getNetworkingContainerForArgument(ctx, m.netOpts.NetworkSlice[0])
+	container, err := m.getNetworkingContainerForArgument(ctx, m.netOpts.NetworkSlice[0], m.client)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -346,6 +342,7 @@ func (m *containerNetworkManager) ContainerNetworkingOpts(ctx context.Context, _
 type hostNetworkManager struct {
 	globalOptions types.GlobalCommandOptions
 	netOpts       types.NetworkOptions
+	client        *containerd.Client
 }
 
 // NetworkOptions Returns a copy of the internal types.NetworkOptions.
@@ -430,6 +427,7 @@ type cniNetworkManager struct {
 	globalOptions types.GlobalCommandOptions
 	netOpts       types.NetworkOptions
 	netNs         *netns.NetNS
+	client        *containerd.Client
 }
 
 // NetworkOptions Returns a copy of the internal types.NetworkOptions.
