@@ -36,7 +36,7 @@ func Prune(ctx context.Context, client *containerd.Client, options types.Contain
 
 	var deleted []string
 	for _, c := range containers {
-		if err = RemoveContainer(ctx, c, options.GOptions, false, true); err == nil {
+		if err = RemoveContainer(ctx, c, options.GOptions, false, true, client); err == nil {
 			deleted = append(deleted, c.ID())
 			continue
 		}

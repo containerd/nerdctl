@@ -321,7 +321,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load networking flags: %s", err)
 	}
 
-	netManager, err := containerutil.NewNetworkingOptionsManager(createOpt.GOptions, netFlags)
+	netManager, err := containerutil.NewNetworkingOptionsManager(createOpt.GOptions, netFlags, client)
 	if err != nil {
 		return err
 	}
@@ -351,7 +351,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 					logrus.Warnf("failed to clean up container networking: %s", err)
 				}
 			}
-			if err := container.RemoveContainer(ctx, c, createOpt.GOptions, true, true); err != nil {
+			if err := container.RemoveContainer(ctx, c, createOpt.GOptions, true, true, client); err != nil {
 				logrus.WithError(err).Warnf("failed to remove container %s", id)
 			}
 		}()
