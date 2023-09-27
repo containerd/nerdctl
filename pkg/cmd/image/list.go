@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path"
 	"strings"
 	"text/tabwriter"
 	"text/template"
@@ -197,12 +198,26 @@ func (x *imagePrinter) printImage(ctx context.Context, img images.Image) error {
 		logrus.WithError(err).Warnf("failed to get the platform list of image %q", img.Name)
 		return x.printImageSinglePlatform(ctx, img, platforms.DefaultSpec())
 	}
+	psm := map[string]struct{}{}
 	for _, ociPlatform := range ociPlatforms {
+		platformKey := makePlatformKey(ociPlatform)
+		if _, done := psm[platformKey]; done {
+			continue
+		}
+		psm[platformKey] = struct{}{}
 		if err := x.printImageSinglePlatform(ctx, img, ociPlatform); err != nil {
 			logrus.WithError(err).Warnf("failed to get platform %q of image %q", platforms.Format(ociPlatform), img.Name)
 		}
 	}
 	return nil
+}
+
+func makePlatformKey(platform v1.Platform) string {
+	if platform.OS == "" {
+		return "unknown"
+	}
+
+	return path.Join(platform.OS, platform.Architecture, platform.OSVersion, platform.Variant)
 }
 
 func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.Image, ociPlatform v1.Platform) error {
