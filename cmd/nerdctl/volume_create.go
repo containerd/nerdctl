@@ -25,9 +25,9 @@ import (
 
 func newVolumeCreateCommand() *cobra.Command {
 	volumeCreateCommand := &cobra.Command{
-		Use:           "create [flags] VOLUME",
+		Use:           "create [flags] [VOLUME]",
 		Short:         "Create a volume",
-		Args:          IsExactArgs(1),
+		Args:          cobra.MaximumNArgs(1),
 		RunE:          volumeCreateAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -57,7 +57,11 @@ func volumeCreateAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return nil
 	}
-	_, err = volume.Create(args[0], options)
+	volumeName := ""
+	if len(args) > 0 {
+		volumeName = args[0]
+	}
+	_, err = volume.Create(volumeName, options)
 
 	return err
 }

@@ -56,6 +56,16 @@ func processImageVerifyOptions(cmd *cobra.Command) (opt types.ImageVerifyOptions
 	return
 }
 
+func processSociOptions(cmd *cobra.Command) (opt types.SociOptions, err error) {
+	if opt.SpanSize, err = cmd.Flags().GetInt64("soci-span-size"); err != nil {
+		return
+	}
+	if opt.MinLayerSize, err = cmd.Flags().GetInt64("soci-min-layer-size"); err != nil {
+		return
+	}
+	return
+}
+
 func processRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error) {
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {

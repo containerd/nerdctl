@@ -6,9 +6,9 @@ This directory contains examples of node-to-node image sharing on Kubernetes wit
 - [`./ipfs-cluster`](./ipfs-cluster): node-to-node image sharing with content replication using ipfs-cluster
 - [`./ipfs-stargz-snapshotter`](./ipfs-stargz-snapshotter): node-to-node image sharing with lazy pulling using eStargz and Stargz Snapshotter
 
-## Example Dockerfile of `nerdctl ipfs regisry`
+## Example Dockerfile of `nerdctl ipfs registry`
 
-The above examples use `nerdctl ipfs regisry` running in a Pod.
+The above examples use `nerdctl ipfs registry` running in a Pod.
 The image is available at [`ghcr.io/stargz-containers/nerdctl-ipfs-registry`](https://github.com/orgs/stargz-containers/packages/container/package/nerdctl-ipfs-registry).
 
 The following Dockerfile can be used to build it by yourself.

@@ -223,7 +223,7 @@ func (x *historyPrinter) printHistory(p historyPrintable) error {
 			return err
 		}
 	} else if x.quiet {
-		if _, err := fmt.Fprintf(x.w, "%s\n", p.Snapshot); err != nil {
+		if _, err := fmt.Fprintln(x.w, p.Snapshot); err != nil {
 			return err
 		}
 	} else {

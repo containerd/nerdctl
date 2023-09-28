@@ -48,6 +48,7 @@ func Prune(ctx context.Context, client *containerd.Client, options types.SystemP
 	if options.Volumes {
 		if err := volume.Prune(ctx, client, types.VolumePruneOptions{
 			GOptions: options.GOptions,
+			All:      false,
 			Force:    true,
 			Stdout:   options.Stdout,
 		}); err != nil {

@@ -26,19 +26,21 @@ import (
 func TestVolumePrune(t *testing.T) {
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	base.Cmd("volume", "prune", "-f").Run()
+	base.Cmd("volume", "prune", "-a", "-f").Run()
 
+	vID := base.Cmd("volume", "create").Out()
 	base.Cmd("volume", "create", tID+"-1").AssertOK()
 	base.Cmd("volume", "create", tID+"-2").AssertOK()
 
 	base.Cmd("run", "-v", fmt.Sprintf("%s:/volume", tID+"-1"), "--name", tID, testutil.CommonImage).AssertOK()
 	defer base.Cmd("rm", "-f", tID).Run()
 
-	base.Cmd("volume", "prune", "-f").AssertOutContains(tID + "-2")
+	base.Cmd("volume", "prune", "-f").AssertOutContains(vID)
+	base.Cmd("volume", "prune", "-a", "-f").AssertOutContains(tID + "-2")
 	base.Cmd("volume", "ls").AssertOutContains(tID + "-1")
 	base.Cmd("volume", "ls").AssertNoOut(tID + "-2")
 
 	base.Cmd("rm", "-f", tID).AssertOK()
-	base.Cmd("volume", "prune", "-f").AssertOK()
+	base.Cmd("volume", "prune", "-a", "-f").AssertOK()
 	base.Cmd("volume", "ls").AssertNoOut(tID + "-1")
 }

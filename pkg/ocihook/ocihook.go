@@ -517,7 +517,7 @@ func writePidFile(path string, pid int) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(f, "%d", pid)
+	_, err = fmt.Fprint(f, pid)
 	f.Close()
 	if err != nil {
 		return err

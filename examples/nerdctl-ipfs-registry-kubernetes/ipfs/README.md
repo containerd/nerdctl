@@ -51,7 +51,7 @@ $ docker exec -it kind-worker /bin/bash
 
 The image added to `kind-worker` is shared to `kind-worker2` via IPFS.
 You can run this image on all worker nodes using the following manifest.
-CID of the pushed image is printed when `nerdctl push` is succeded (we assume that the image is added to IPFS as CID `bafkreictyyoysj56v772xbfhyfrcvmgmfpa4vodmqaroz53ytvai7nof6u`).
+CID of the pushed image is printed when `nerdctl push` succeeded (we assume that the image is added to IPFS as CID `bafkreictyyoysj56v772xbfhyfrcvmgmfpa4vodmqaroz53ytvai7nof6u`).
 
 ```console
 $ cat <<EOF | kubectl apply -f -

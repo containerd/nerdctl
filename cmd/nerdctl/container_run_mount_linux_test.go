@@ -684,3 +684,29 @@ func TestRunVolumesFrom(t *testing.T) {
 		"cat", "/mnt1/file1", "/mnt3/file3",
 	).AssertOutExactly("str1str3")
 }
+
+func TestBindMountWhenHostFolderDoesNotExist(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t) + "-host-dir-not-found"
+	hostDir, err := os.MkdirTemp(t.TempDir(), "rw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(hostDir)
+	hp := filepath.Join(hostDir, "does-not-exist")
+	base.Cmd("run", "--name", containerName, "-d", "-v", fmt.Sprintf("%s:/tmp",
+		hp), testutil.AlpineImage).AssertOK()
+	base.Cmd("rm", "-f", containerName).AssertOK()
+
+	// Host directory should get created
+	_, err = os.Stat(hp)
+	assert.NilError(t, err)
+
+	// Test for --mount
+	os.RemoveAll(hp)
+	base.Cmd("run", "--name", containerName, "-d", "--mount", fmt.Sprintf("type=bind, source=%s, target=/tmp",
+		hp), testutil.AlpineImage).AssertFail()
+	_, err = os.Stat(hp)
+	assert.ErrorIs(t, err, os.ErrNotExist)
+}

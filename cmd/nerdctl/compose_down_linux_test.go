@@ -99,5 +99,5 @@ services:
 	defer base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "down", "-v").Run()
 
 	base.ComposeCmd("-p", projectName, "-f", compOrphan.YAMLFullPath(), "down", "--remove-orphans").AssertOK()
-	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "ps").AssertOutNotContains(orphanContainer)
+	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "ps", "-a").AssertOutNotContains(orphanContainer)
 }

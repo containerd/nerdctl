@@ -70,12 +70,16 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 	optionsFn = append(optionsFn,
 		composecli.WithOsEnv,
 		composecli.WithWorkingDirectory(o.ProjectDirectory),
-		composecli.WithEnvFile(o.EnvFile),
 		composecli.WithConfigFileEnv,
 		composecli.WithDefaultConfigPath,
 		composecli.WithDotEnv,
 		composecli.WithName(o.Project),
 	)
+	if o.EnvFile != "" {
+		optionsFn = append(optionsFn,
+			composecli.WithEnvFiles(o.EnvFile),
+		)
+	}
 
 	projectOptions, err := composecli.NewProjectOptions(o.ConfigPaths, optionsFn...)
 	if err != nil {

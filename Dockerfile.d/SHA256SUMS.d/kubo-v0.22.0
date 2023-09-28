@@ -1,0 +1,3 @@
+# From https://github.com/ipfs/kubo/releases
+d708b484d93e95832105968cfe5b2dff592706d18dbfe41d87df8fcb20512baf  kubo_v0.22.0_linux-amd64.tar.gz
+505fd3dff8419b81e9e755297a2c614169d86d25b7bd8e3b0af49d1fd771b0c3  kubo_v0.22.0_linux-arm64.tar.gz

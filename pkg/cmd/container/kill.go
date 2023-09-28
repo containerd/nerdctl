@@ -57,7 +57,7 @@ func Kill(ctx context.Context, client *containerd.Client, reqs []string, options
 				}
 				return err
 			}
-			_, err := fmt.Fprintf(options.Stdout, "%s\n", found.Container.ID())
+			_, err := fmt.Fprintln(options.Stdout, found.Container.ID())
 			return err
 		},
 	}

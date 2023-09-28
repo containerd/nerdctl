@@ -42,7 +42,7 @@ func Stop(ctx context.Context, client *containerd.Client, reqs []string, opt typ
 				}
 				return err
 			}
-			_, err := fmt.Fprintf(opt.Stdout, "%s\n", found.Req)
+			_, err := fmt.Fprintln(opt.Stdout, found.Req)
 			return err
 		},
 	}

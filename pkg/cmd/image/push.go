@@ -40,6 +40,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/signutil"
+	"github.com/containerd/nerdctl/pkg/snapshotterutil"
 	"github.com/containerd/stargz-snapshotter/estargz"
 	"github.com/containerd/stargz-snapshotter/estargz/zstdchunked"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
@@ -180,6 +181,14 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		options.GOptions.Experimental,
 		options.SignOptions); err != nil {
 		return err
+	}
+	if options.GOptions.Snapshotter == "soci" {
+		if err = snapshotterutil.CreateSoci(ref, options.GOptions, options.AllPlatforms, options.Platforms, options.SociOptions); err != nil {
+			return err
+		}
+		if err = snapshotterutil.PushSoci(ref, options.GOptions, options.AllPlatforms, options.Platforms); err != nil {
+			return err
+		}
 	}
 	if options.Quiet {
 		fmt.Fprintln(options.Stdout, ref)

@@ -69,13 +69,13 @@ func Remove(ctx context.Context, client *containerd.Client, containers []string,
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := RemoveContainer(ctx, found.Container, options.GOptions, options.Force, options.Volumes); err != nil {
+			if err := RemoveContainer(ctx, found.Container, options.GOptions, options.Force, options.Volumes, client); err != nil {
 				if errors.As(err, &ErrContainerStatus{}) {
 					err = fmt.Errorf("%s. unpause/stop container first or force removal", err)
 				}
 				return err
 			}
-			_, err := fmt.Fprintf(options.Stdout, "%s\n", found.Req)
+			_, err := fmt.Fprintln(options.Stdout, found.Req)
 			return err
 		},
 	}
@@ -89,7 +89,7 @@ func Remove(ctx context.Context, client *containerd.Client, containers []string,
 }
 
 // RemoveContainer removes a container from containerd store.
-func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions types.GlobalCommandOptions, force bool, removeAnonVolumes bool) (retErr error) {
+func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions types.GlobalCommandOptions, force bool, removeAnonVolumes bool, client *containerd.Client) (retErr error) {
 	// defer the storage of remove error in the dedicated label
 	defer func() {
 		if retErr != nil {
@@ -186,7 +186,7 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			return fmt.Errorf("failed to load container networking options from specs: %s", err)
 		}
 
-		networkManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netOpts)
+		networkManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netOpts, client)
 		if err != nil {
 			return fmt.Errorf("failed to instantiate network options manager: %s", err)
 		}
