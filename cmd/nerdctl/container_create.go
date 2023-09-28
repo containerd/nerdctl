@@ -427,7 +427,7 @@ func createAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load networking flags: %s", err)
 	}
 
-	netManager, err := containerutil.NewNetworkingOptionsManager(createOpt.GOptions, netFlags)
+	netManager, err := containerutil.NewNetworkingOptionsManager(createOpt.GOptions, netFlags, client)
 	if err != nil {
 		return err
 	}

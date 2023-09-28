@@ -110,6 +110,7 @@ It does not necessarily mean that the corresponding features are missing in cont
   - [:whale: nerdctl compose pause](#whale-nerdctl-compose-pause)
   - [:whale: nerdctl compose unpause](#whale-nerdctl-compose-unpause)
   - [:whale: nerdctl compose config](#whale-nerdctl-compose-config)
+  - [:whale: nerdctl compose cp](#whale-nerdctl-compose-cp)
   - [:whale: nerdctl compose kill](#whale-nerdctl-compose-kill)
   - [:whale: nerdctl compose restart](#whale-nerdctl-compose-restart)
   - [:whale: nerdctl compose rm](#whale-nerdctl-compose-rm)
@@ -768,8 +769,11 @@ Flags:
 - :nerd_face: `--notation-key-name`: Signing key name for a key previously added to notation's key list for `--sign=notation`
 - :nerd_face: `--allow-nondistributable-artifacts`: Allow pushing images with non-distributable blobs
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
+- :whale: `-q, --quiet`: Suppress verbose output
+- :nerd_face: `--soci-span-size`: Span size in bytes that soci index uses to segment layer data. Default is 4 MiB.
+- :nerd_face: `--soci-min-layer-size`: Minimum layer size in bytes to build zTOC for. Smaller layers won't have zTOC and not lazy pulled. Default is 10 MiB.
 
-Unimplemented `docker push` flags: `--all-tags`, `--disable-content-trust` (default true), `--quiet`
+Unimplemented `docker push` flags: `--all-tags`, `--disable-content-trust` (default true)
 
 ### :whale: nerdctl load
 
@@ -1004,7 +1008,7 @@ Flags:
   - :nerd_face: `--format=wide`: Alias of `--format=table`
   - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
 
-Unimplemented `docker network ls` flags: `--filter`, `--no-trunc`
+Unimplemented `docker network ls` flags: `--no-trunc`
 
 ### :whale: nerdctl network inspect
 
@@ -1426,10 +1430,9 @@ Flags:
 - :whale: `-i, --interactive`: Keep STDIN open even if not attached (default true)
 - :whale: `--privileged`: Give extended privileges to the command
 - :whale: `-t, --tty`: Allocate a pseudo-TTY
+- :whale: `-T, --no-TTY`: Disable pseudo-TTY allocation. By default nerdctl compose exec allocates a TTY.
 - :whale: `-u, --user`: Username or UID (format: `<name|uid>[:<group|gid>]`)
 - :whale: `-w, --workdir`: Working directory inside the container
-
-Unimplemented `docker-compose exec` (V2) flags:  `-T, --no-TTY`
 
 ### :whale: nerdctl compose down
 
@@ -1487,9 +1490,17 @@ List containers of services
 
 Usage: `nerdctl compose ps [OPTIONS] [SERVICE...]`
 
-Unimplemented `docker-compose ps` (V1) flags: `--quiet`, `--services`, `--filter`, `--all`
-
-Unimplemented `docker compose ps` (V2) flags: `--status`
+- :whale: `-a, --all`: Show all containers (default shows just running)
+- :whale: `-q, --quiet`: Only display container IDs
+- :whale: `--format`: Format the output
+  - :whale: `--format=table` (default): Table
+  - :whale: `--format=json'`: JSON
+- :whale: `-f, --filter`: Filter containers based on given conditions
+  - :whale: `--filter status=<value>`: One of `created, running, paused,
+    restarting, exited, pausing, unknown`. Note that `removing, dead` are
+    not supported and will be ignored
+- :whale: `--services`: Print the service names, one per line
+- :whale: `--status`: Filter containers by status. Values: [paused | restarting | running | created | exited | pausing | unknown]
 
 ### :whale: nerdctl compose pull
 
@@ -1539,6 +1550,23 @@ Flags:
 Unimplemented `docker-compose config` (V1) flags: `--resolve-image-digests`, `--no-interpolate`
 
 Unimplemented `docker compose config` (V2) flags: `--resolve-image-digests`, `--no-interpolate`, `--format`, `--output`, `--profiles`
+
+### :whale: nerdctl compose cp
+
+Copy files/folders between a service container and the local filesystem
+
+Usage:
+```
+nerdctl compose cp [OPTIONS] SERVICE:SRC_PATH DEST_PATH|-
+nerdctl compose cp [OPTIONS] SRC_PATH|- SERVICE:DEST_PATH [flags]
+```
+
+Flags:
+- :whale: `--dry-run`: Execute command in dry run mode
+- :whale: `-L, --follow-link`: Always follow symbol link in SRC_PATH
+- :whale: `--index int`: index of the container if service has multiple replicas
+
+Unimplemented `docker compose cp` flags: `--archive`
 
 ### :whale: nerdctl compose kill
 

@@ -60,6 +60,7 @@ var (
 const (
 	FedoraESGZImage = "ghcr.io/stargz-containers/fedora:30-esgz"            // eStargz
 	FfmpegSociImage = "public.ecr.aws/soci-workshop-examples/ffmpeg:latest" // SOCI
+	UbuntuImage     = "public.ecr.aws/docker/library/ubuntu:23.10"          // Large enough for testing soci index creation
 )
 
 type delayOnceReader struct {

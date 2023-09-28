@@ -172,7 +172,11 @@ func setCreateFlags(cmd *cobra.Command) {
 	// #region security flags
 	cmd.Flags().StringArray("security-opt", []string{}, "Security options")
 	cmd.RegisterFlagCompletionFunc("security-opt", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"seccomp=", "seccomp=unconfined", "apparmor=", "apparmor=" + defaults.AppArmorProfileName, "apparmor=unconfined", "no-new-privileges", "privileged-without-host-devices"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{
+			"seccomp=", "seccomp=" + defaults.SeccompProfileName, "seccomp=unconfined",
+			"apparmor=", "apparmor=" + defaults.AppArmorProfileName, "apparmor=unconfined",
+			"no-new-privileges",
+			"privileged-without-host-devices"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	// cap-add and cap-drop are defined as StringSlice, not StringArray, to allow specifying "--cap-add=CAP_SYS_ADMIN,CAP_NET_ADMIN" (compatible with Podman)
 	cmd.Flags().StringSlice("cap-add", []string{}, "Add Linux capabilities")
@@ -317,7 +321,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load networking flags: %s", err)
 	}
 
-	netManager, err := containerutil.NewNetworkingOptionsManager(createOpt.GOptions, netFlags)
+	netManager, err := containerutil.NewNetworkingOptionsManager(createOpt.GOptions, netFlags, client)
 	if err != nil {
 		return err
 	}
@@ -347,7 +351,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 					logrus.Warnf("failed to clean up container networking: %s", err)
 				}
 			}
-			if err := container.RemoveContainer(ctx, c, createOpt.GOptions, true, true); err != nil {
+			if err := container.RemoveContainer(ctx, c, createOpt.GOptions, true, true, client); err != nil {
 				logrus.WithError(err).Warnf("failed to remove container %s", id)
 			}
 		}()
@@ -378,7 +382,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 
 	if createOpt.Detach {
-		fmt.Fprintf(createOpt.Stdout, "%s\n", id)
+		fmt.Fprintln(createOpt.Stdout, id)
 		return nil
 	}
 	if createOpt.TTY {

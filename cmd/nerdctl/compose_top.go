@@ -82,7 +82,7 @@ func composeTopAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(stdout, "%s\n", info.Labels[labels.Name])
+		fmt.Fprintln(stdout, info.Labels[labels.Name])
 		// `compose ps` uses empty ps args
 		err = container.Top(ctx, client, []string{c.ID()}, types.ContainerTopOptions{
 			Stdout:   cmd.OutOrStdout(),

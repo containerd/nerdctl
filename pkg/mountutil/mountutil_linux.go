@@ -424,7 +424,8 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 	case Tmpfs:
 		return ProcessFlagTmpfs(fieldsStr)
 	case Volume, Bind:
-		return ProcessFlagV(fieldsStr, volStore)
+		// createDir=false for --mount option to disallow creating directories on host if not found
+		return ProcessFlagV(fieldsStr, volStore, false)
 	}
 	return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", mountType)
 }

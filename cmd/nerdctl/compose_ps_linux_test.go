@@ -21,13 +21,92 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/containerd/nerdctl/pkg/tabutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"gotest.tools/v3/assert"
 )
 
+func TestComposePs(t *testing.T) {
+	base := testutil.NewBase(t)
+	var dockerComposeYAML = fmt.Sprintf(`
+version: '3.1'
+
+services:
+  wordpress:
+    image: %s
+    container_name: wordpress_container
+    ports:
+      - 8080:80
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: exampleuser
+      WORDPRESS_DB_PASSWORD: examplepass
+      WORDPRESS_DB_NAME: exampledb
+    volumes:
+      - wordpress:/var/www/html
+  db:
+    image: %s
+    container_name: db_container
+    environment:
+      MYSQL_DATABASE: exampledb
+      MYSQL_USER: exampleuser
+      MYSQL_PASSWORD: examplepass
+      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+    volumes:
+      - db:/var/lib/mysql
+  alpine:
+    image: %s
+    container_name: alpine_container
+
+volumes:
+  wordpress:
+  db:
+`, testutil.WordpressImage, testutil.MariaDBImage, testutil.AlpineImage)
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	assertHandler := func(expectedName, expectedImage string) func(stdout string) error {
+		return func(stdout string) error {
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			if len(lines) < 2 {
+				return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+			}
+
+			tab := tabutil.NewReader("NAME\tIMAGE\tCOMMAND\tSERVICE\tSTATUS\tPORTS")
+			err := tab.ParseHeader(lines[0])
+			if err != nil {
+				return fmt.Errorf("failed to parse header: %v", err)
+			}
+
+			container, _ := tab.ReadRow(lines[1], "NAME")
+			assert.Equal(t, container, expectedName)
+
+			image, _ := tab.ReadRow(lines[1], "IMAGE")
+			assert.Equal(t, image, expectedImage)
+
+			return nil
+		}
+
+	}
+
+	time.Sleep(3 * time.Second)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutWithFunc(assertHandler("wordpress_container", testutil.WordpressImage))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(assertHandler("db_container", testutil.MariaDBImage))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps").AssertOutNotContains(testutil.AlpineImage)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "alpine", "-a").AssertOutWithFunc(assertHandler("alpine_container", testutil.AlpineImage))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "-a", "--filter", "status=exited").AssertOutWithFunc(assertHandler("alpine_container", testutil.AlpineImage))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "--services", "-a").AssertOutContainsAll("wordpress\n", "db\n", "alpine\n")
+}
+
 func TestComposePsJSON(t *testing.T) {
-	// `--format` is only supported in docker compose v2.
-	// Currently, CI is using docker compose v1.
+	// docker parses unknown 'format' as a Go template and won't output an error
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
@@ -101,8 +180,8 @@ volumes:
 		AssertOutWithFunc(assertHandler("wordpress", 1, `"Service":"wordpress"`, `"State":"running"`, `"TargetPort":80`, `"PublishedPort":8080`))
 	// check wordpress is stopped
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "wordpress").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "--format", "json", "wordpress").
-		AssertOutWithFunc(assertHandler("wordpress", 1, `"Service":"wordpress"`, `"State":"stopped"`))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "--format", "json", "wordpress", "-a").
+		AssertOutWithFunc(assertHandler("wordpress", 1, `"Service":"wordpress"`, `"State":"exited"`))
 	// check wordpress is removed
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "rm", "-f", "wordpress").AssertOK()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "--format", "json", "wordpress").

@@ -37,12 +37,20 @@ func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
 		return true
 	}
 	switch commands[1] {
-	// completion, login, logout: false, because it shouldn't require the daemon to be running
+	// completion, login, logout, version: false, because it shouldn't require the daemon to be running
 	// apparmor: false, because it requires the initial mount namespace to access /sys/kernel/security
-	// cp: false, because it requires the initial mount namespace to inspect file owners
-	case "", "completion", "login", "logout", "apparmor", "cp":
+	// cp, compose cp: false, because it requires the initial mount namespace to inspect file owners
+	case "", "completion", "login", "logout", "apparmor", "cp", "version":
 		return false
 	case "container":
+		if len(commands) < 3 {
+			return true
+		}
+		switch commands[2] {
+		case "cp":
+			return false
+		}
+	case "compose":
 		if len(commands) < 3 {
 			return true
 		}

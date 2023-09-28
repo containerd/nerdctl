@@ -52,7 +52,7 @@ services:
 
 	// pause a service should (only) pause its own container
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "pause", "svc0").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0").AssertOutContainsAny("Paused", "paused")
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0", "-a").AssertOutContainsAny("Paused", "paused")
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc1").AssertOutContainsAny("Up", "running")
 
 	// unpause should be able to recover the paused service container

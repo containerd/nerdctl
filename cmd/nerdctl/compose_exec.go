@@ -36,16 +36,26 @@ func newComposeExecCommand() *cobra.Command {
 	}
 	composeExecCommand.Flags().SetInterspersed(false)
 
-	composeExecCommand.Flags().BoolP("tty", "t", true, "Allocate a pseudo-TTY")
+	composeExecCommand.Flags().BoolP("tty", "t", true, "Allocate a pseudo-TTY") // missing in Docker Compose v2?
+	composeExecCommand.Flags().BoolP("no-TTY", "T", false, "Disable pseudo-TTY allocation. By default nerdctl compose exec allocates a TTY.")
 	composeExecCommand.Flags().BoolP("interactive", "i", true, "Keep STDIN open even if not attached")
 	composeExecCommand.Flags().BoolP("detach", "d", false, "Detached mode: Run containers in the background")
 	composeExecCommand.Flags().StringP("workdir", "w", "", "Working directory inside the container")
 	// env needs to be StringArray, not StringSlice, to prevent "FOO=foo1,foo2" from being split to {"FOO=foo1", "foo2"}
 	composeExecCommand.Flags().StringArrayP("env", "e", nil, "Set environment variables")
-	// TODO: no-TTY flag
 	composeExecCommand.Flags().Bool("privileged", false, "Give extended privileges to the command")
 	composeExecCommand.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
 	composeExecCommand.Flags().Int("index", 1, "index of the container if the service has multiple instances.")
+
+	composeExecCommand.PreRunE = func(cmd *cobra.Command, args []string) error {
+		flags := cmd.Flags()
+		if noTTY, _ := flags.GetBool("no-TTY"); noTTY {
+			if err := flags.Set("tty", "false"); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 
 	return composeExecCommand
 }

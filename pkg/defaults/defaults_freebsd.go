@@ -20,8 +20,11 @@ import (
 	gocni "github.com/containerd/go-cni"
 )
 
-const AppArmorProfileName = ""
-const Runtime = "wtf.sbk.runj.v1"
+const (
+	AppArmorProfileName = ""
+	SeccompProfileName  = ""
+	Runtime             = "wtf.sbk.runj.v1"
+)
 
 func DataRoot() string {
 	return "/var/lib/nerdctl"

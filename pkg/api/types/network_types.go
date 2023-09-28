@@ -52,6 +52,8 @@ type NetworkListOptions struct {
 	Quiet bool
 	// Format the output using the given Go template, e.g, '{{json .}}', 'wide'
 	Format string
+	// Filter matches network based on given conditions
+	Filters []string
 }
 
 // NetworkPruneOptions specifies options for `nerdctl network prune`.

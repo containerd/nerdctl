@@ -60,7 +60,7 @@ func Commit(ctx context.Context, client *containerd.Client, rawRef string, req s
 			if err != nil {
 				return err
 			}
-			_, err = fmt.Fprintf(options.Stdout, "%s\n", imageID)
+			_, err = fmt.Fprintln(options.Stdout, imageID)
 			return err
 		},
 	}

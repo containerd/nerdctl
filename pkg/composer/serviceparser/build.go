@@ -44,9 +44,6 @@ func parseBuildConfig(c *types.BuildConfig, project *types.Project, imageName st
 	if strings.Contains(c.Context, "://") {
 		return nil, fmt.Errorf("build: URL-style context (%q) is not supported yet: %w", c.Context, errdefs.ErrNotImplemented)
 	}
-	if filepath.IsAbs(c.Context) {
-		logrus.Warnf("build.config should be relative path, got %q", c.Context)
-	}
 	ctxDir := project.RelativePath(c.Context)
 
 	var b Build

@@ -93,7 +93,8 @@ func withMounts(mounts []specs.Mount) oci.SpecOpts {
 func parseMountFlags(volStore volumestore.VolumeStore, options types.ContainerCreateOptions) ([]*mountutil.Processed, error) {
 	var parsed []*mountutil.Processed //nolint:prealloc
 	for _, v := range strutil.DedupeStrSlice(options.Volume) {
-		x, err := mountutil.ProcessFlagV(v, volStore)
+		// createDir=true for -v option to allow creation of directory on host if not found.
+		x, err := mountutil.ProcessFlagV(v, volStore, true)
 		if err != nil {
 			return nil, err
 		}

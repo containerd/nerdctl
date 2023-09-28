@@ -150,7 +150,7 @@ show_systemd_error() {
 	unit="$1"
 	n="20"
 	ERROR "Failed to start ${unit}. Run \`journalctl -n ${n} --no-pager --user --unit ${unit}\` to show the error log."
-	ERROR "Before retrying installation, you might need to uninstall the current setup: \`$0 uninstall -f ; ${BIN}/rootlesskit rm -rf ${HOME}/.local/share/containerd\`"
+	ERROR "Before retrying installation, you might need to uninstall the current setup: \`$0 uninstall; ${BIN}/rootlesskit rm -rf ${HOME}/.local/share/containerd\`"
 }
 
 install_systemd_unit() {

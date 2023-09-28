@@ -24,7 +24,6 @@ import (
 )
 
 func TestCreateProcessContainer(t *testing.T) {
-	t.Parallel()
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
 
@@ -36,7 +35,6 @@ func TestCreateProcessContainer(t *testing.T) {
 }
 
 func TestCreateHyperVContainer(t *testing.T) {
-	//t.Parallel()
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
 

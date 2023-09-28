@@ -73,6 +73,6 @@ volumes:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "kill", "db").AssertOK()
 	time.Sleep(3 * time.Second)
 	// Docker Compose v1: "Exit 137", v2: "exited (137)"
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutContainsAny(" 137", "(137)")
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db", "-a").AssertOutContainsAny(" 137", "(137)")
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutContainsAny("Up", "running")
 }

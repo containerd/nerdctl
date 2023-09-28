@@ -22,8 +22,11 @@ import (
 	"path/filepath"
 )
 
-const AppArmorProfileName = ""
-const Runtime = "io.containerd.runhcs.v1"
+const (
+	AppArmorProfileName = ""
+	SeccompProfileName  = ""
+	Runtime             = "io.containerd.runhcs.v1"
+)
 
 func DataRoot() string {
 	return filepath.Join(os.Getenv("ProgramData"), "nerdctl")

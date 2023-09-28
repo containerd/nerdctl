@@ -22,6 +22,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/pkg/labels"
 )
 
 func Prune(ctx context.Context, client *containerd.Client, options types.VolumePruneOptions) error {
@@ -46,6 +47,13 @@ func Prune(ctx context.Context, client *containerd.Client, options types.VolumeP
 	for _, volume := range volumes {
 		if _, ok := usedVolumes[volume.Name]; ok {
 			continue
+		}
+		if !options.All {
+			val, ok := (*volume.Labels)[labels.AnonymousVolumes]
+			//skip the named volume and only remove the anonymous volume
+			if !ok || val != "" {
+				continue
+			}
 		}
 		removeNames = append(removeNames, volume.Name)
 	}
