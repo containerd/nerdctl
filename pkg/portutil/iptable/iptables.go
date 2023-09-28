@@ -19,6 +19,7 @@ package iptable
 import (
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // ParseIPTableRules takes a slice of iptables rules as input and returns a slice of
@@ -27,16 +28,18 @@ func ParseIPTableRules(rules []string) []uint64 {
 	ports := []uint64{}
 
 	// Regex to match the '--dports' option followed by the port number
-	dportRegex := regexp.MustCompile(`--dports (\d+)`)
+	dportRegex := regexp.MustCompile(`--dports ((,?\d+)+)`)
 
 	for _, rule := range rules {
 		matches := dportRegex.FindStringSubmatch(rule)
 		if len(matches) > 1 {
-			port64, err := strconv.ParseUint(matches[1], 10, 16)
-			if err != nil {
-				continue
+			for _, _match := range strings.Split(matches[1], ",") {
+				port64, err := strconv.ParseUint(_match, 10, 16)
+				if err != nil {
+					continue
+				}
+				ports = append(ports, port64)
 			}
-			ports = append(ports, port64)
 		}
 	}
 
