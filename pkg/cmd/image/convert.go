@@ -74,13 +74,17 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 	convertOpts = append(convertOpts, converter.WithPlatform(platMC))
 
 	estargz := options.Estargz
+	zstd := options.Zstd
 	zstdchunked := options.ZstdChunked
 	overlaybd := options.Overlaybd
 	nydus := options.Nydus
 	var finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error)
-	if estargz || zstdchunked || overlaybd || nydus {
+	if estargz || zstd || zstdchunked || overlaybd || nydus {
 		convertCount := 0
 		if estargz {
+			convertCount++
+		}
+		if zstd {
 			convertCount++
 		}
 		if zstdchunked {
@@ -106,6 +110,12 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 				return err
 			}
 			convertType = "estargz"
+		case zstd:
+			convertFunc, err = getZstdConverter(options)
+			if err != nil {
+				return err
+			}
+			convertType = "zstd"
 		case zstdchunked:
 			convertFunc, err = getZstdchunkedConverter(options)
 			if err != nil {
@@ -254,6 +264,10 @@ func getESGZConvertOpts(options types.ImageConvertOptions) ([]estargz.Option, er
 		esgzOpts = append(esgzOpts, estargz.WithAllowPrioritizeNotFound(&ignored))
 	}
 	return esgzOpts, nil
+}
+
+func getZstdConverter(options types.ImageConvertOptions) (converter.ConvertFunc, error) {
+	return converterutil.ZstdLayerConvertFunc(options)
 }
 
 func getZstdchunkedConverter(options types.ImageConvertOptions) (converter.ConvertFunc, error) {
