@@ -15,7 +15,7 @@ require (
 	github.com/containerd/continuity v0.4.2
 	github.com/containerd/go-cni v1.1.9
 	github.com/containerd/imgcrypt v1.1.8
-	github.com/containerd/nydus-snapshotter v0.13.0
+	github.com/containerd/nydus-snapshotter v0.13.1
 	github.com/containerd/stargz-snapshotter v0.14.3
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3
 	github.com/containerd/stargz-snapshotter/ipfs v0.14.3
