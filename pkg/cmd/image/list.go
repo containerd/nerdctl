@@ -34,11 +34,11 @@ import (
 	"github.com/containerd/containerd/pkg/progress"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/snapshots"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 )
 
 // ListCommandHandler `List` and print images matching filters in `options`.
@@ -174,7 +174,7 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 
 	for _, img := range imageList {
 		if err := printer.printImage(ctx, img); err != nil {
-			logrus.Warn(err)
+			log.G(ctx).Warn(err)
 		}
 	}
 	if f, ok := w.(formatter.Flusher); ok {
@@ -195,7 +195,7 @@ type imagePrinter struct {
 func (x *imagePrinter) printImage(ctx context.Context, img images.Image) error {
 	ociPlatforms, err := images.Platforms(ctx, x.contentStore, img.Target)
 	if err != nil {
-		logrus.WithError(err).Warnf("failed to get the platform list of image %q", img.Name)
+		log.G(ctx).WithError(err).Warnf("failed to get the platform list of image %q", img.Name)
 		return x.printImageSinglePlatform(ctx, img, platforms.DefaultSpec())
 	}
 	psm := map[string]struct{}{}
@@ -206,7 +206,7 @@ func (x *imagePrinter) printImage(ctx context.Context, img images.Image) error {
 		}
 		psm[platformKey] = struct{}{}
 		if err := x.printImageSinglePlatform(ctx, img, ociPlatform); err != nil {
-			logrus.WithError(err).Warnf("failed to get platform %q of image %q", platforms.Format(ociPlatform), img.Name)
+			log.G(ctx).WithError(err).Warnf("failed to get platform %q of image %q", platforms.Format(ociPlatform), img.Name)
 		}
 	}
 	return nil
@@ -223,14 +223,14 @@ func makePlatformKey(platform v1.Platform) string {
 func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.Image, ociPlatform v1.Platform) error {
 	platMC := platforms.OnlyStrict(ociPlatform)
 	if avail, _, _, _, availErr := images.Check(ctx, x.contentStore, img.Target, platMC); !avail {
-		logrus.WithError(availErr).Debugf("skipping printing image %q for platform %q", img.Name, platforms.Format(ociPlatform))
+		log.G(ctx).WithError(availErr).Debugf("skipping printing image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 		return nil
 	}
 
 	image := containerd.NewImageWithPlatform(x.client, img, platMC)
 	desc, err := image.Config(ctx)
 	if err != nil {
-		logrus.WithError(err).Warnf("failed to get config of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
+		log.G(ctx).WithError(err).Warnf("failed to get config of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 	}
 	var (
 		repository string
@@ -243,13 +243,13 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 
 	blobSize, err := image.Size(ctx)
 	if err != nil {
-		logrus.WithError(err).Warnf("failed to get blob size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
+		log.G(ctx).WithError(err).Warnf("failed to get blob size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 	}
 
 	size, err := imgutil.UnpackedImageSize(ctx, x.snapshotter, image)
 	if err != nil {
 		// Warnf is too verbose: https://github.com/containerd/nerdctl/issues/2058
-		logrus.WithError(err).Debugf("failed to get unpacked size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
+		log.G(ctx).WithError(err).Debugf("failed to get unpacked size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 	}
 
 	p := imagePrintable{

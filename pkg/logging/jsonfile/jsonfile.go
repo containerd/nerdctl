@@ -27,9 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/containerd/log"
 	timetypes "github.com/docker/docker/api/types/time"
-
-	"github.com/sirupsen/logrus"
 )
 
 // Entry is compatible with Docker "json-file" logs
@@ -54,14 +53,14 @@ func Encode(stdout <-chan string, stderr <-chan string, writer io.Writer) error 
 		e := &Entry{
 			Stream: name,
 		}
-		for log := range dataChan {
-			e.Log = log + "\n"
+		for logEntry := range dataChan {
+			e.Log = logEntry + "\n"
 			e.Time = time.Now().UTC()
 			encMu.Lock()
 			encErr := enc.Encode(e)
 			encMu.Unlock()
 			if encErr != nil {
-				logrus.WithError(encErr).Errorf("failed to encode JSON")
+				log.L.WithError(encErr).Errorf("failed to encode JSON")
 				return
 			}
 		}
@@ -119,7 +118,7 @@ func writeEntry(e *Entry, stdout, stderr io.Writer, refTime time.Time, timestamp
 	case "stderr":
 		writeTo = stderr
 	default:
-		logrus.Errorf("unknown stream name %q, entry=%+v", e.Stream, e)
+		log.L.Errorf("unknown stream name %q, entry=%+v", e.Stream, e)
 	}
 
 	if writeTo != nil {
@@ -149,7 +148,7 @@ func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string
 			// Write out the entry directly
 			err := writeEntry(&e, stdout, stderr, now, timestamps, since, until)
 			if err != nil {
-				logrus.Errorf("error while writing log entry to output stream: %s", err)
+				log.L.Errorf("error while writing log entry to output stream: %s", err)
 			}
 		} else {
 			// Else place the entry in a ring buffer
@@ -168,13 +167,13 @@ func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string
 			}
 			cast, ok := e.(*Entry)
 			if !ok {
-				logrus.Errorf("failed to cast Entry struct: %#v", e)
+				log.L.Errorf("failed to cast Entry struct: %#v", e)
 				return
 			}
 
 			err := writeEntry(cast, stdout, stderr, now, timestamps, since, until)
 			if err != nil {
-				logrus.Errorf("error while writing log entry to output stream: %s", err)
+				log.L.Errorf("error while writing log entry to output stream: %s", err)
 			}
 		})
 	}

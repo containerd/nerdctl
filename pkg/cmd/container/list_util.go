@@ -25,8 +25,8 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/containerutil"
-	"github.com/sirupsen/logrus"
 )
 
 func foldContainerFilters(ctx context.Context, containers []containerd.Container, filters []string) (*containerFilterContext, error) {
@@ -121,7 +121,7 @@ func (cl *containerFilterContext) foldStatusFilter(_ context.Context, filter, va
 			return containerd.Stopped == stats
 		})
 	case containerd.ProcessStatus("restarting"), containerd.ProcessStatus("removing"), containerd.ProcessStatus("dead"):
-		logrus.Warnf("%s is not supported and is ignored", filter)
+		log.L.Warnf("%s is not supported and is ignored", filter)
 	default:
 		return fmt.Errorf("invalid filter '%s'", filter)
 	}
@@ -232,12 +232,12 @@ func (cl *containerFilterContext) matchesTaskFilters(ctx context.Context, contai
 	defer cancel()
 	task, err := container.Task(ctx, nil)
 	if err != nil {
-		logrus.Warn(err)
+		log.G(ctx).Warn(err)
 		return false
 	}
 	status, err := task.Status(ctx)
 	if err != nil {
-		logrus.Warn(err)
+		log.G(ctx).Warn(err)
 		return false
 	}
 	return cl.matchesExitedFilter(status) && cl.matchesStatusFilter(status)

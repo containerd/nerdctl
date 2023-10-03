@@ -24,12 +24,12 @@ import (
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/signalutil"
-	"github.com/sirupsen/logrus"
 )
 
 // Attach attaches stdin, stdout, and stderr to a running container.
@@ -80,7 +80,7 @@ func Attach(ctx context.Context, client *containerd.Client, req string, options 
 			// [1] https://github.com/containerd/containerd/blob/8f756bc8c26465bd93e78d9cd42082b66f276e10/cio/io.go#L358-L359
 			io := task.IO()
 			if io == nil {
-				logrus.Errorf("got a nil io")
+				log.G(ctx).Errorf("got a nil io")
 				return
 			}
 			io.Cancel()
@@ -99,7 +99,7 @@ func Attach(ctx context.Context, client *containerd.Client, req string, options 
 	}
 	if spec.Process.Terminal {
 		if err := consoleutil.HandleConsoleResize(ctx, task, con); err != nil {
-			logrus.WithError(err).Error("console resize")
+			log.G(ctx).WithError(err).Error("console resize")
 		}
 	}
 	sigC := signalutil.ForwardAllSignals(ctx, task)

@@ -23,9 +23,9 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
 	ctdsnapshotters "github.com/containerd/containerd/pkg/snapshotters"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/imgutil/pull"
 	"github.com/containerd/stargz-snapshotter/fs/source"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -58,7 +58,7 @@ func getSnapshotterOpts(snapshotter string) snapshotterOpts {
 	for sn, sno := range builtinRemoteSnapshotterOpts {
 		if strings.Contains(snapshotter, sn) {
 			if snapshotter != sn {
-				logrus.Debugf("assuming %s to be a %s-compatible snapshotter", snapshotter, sn)
+				log.L.Debugf("assuming %s to be a %s-compatible snapshotter", snapshotter, sn)
 			}
 			return sno
 		}

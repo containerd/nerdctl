@@ -27,12 +27,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/containerd/log"
 	"github.com/docker/go-connections/tlsconfig"
 	syslog "github.com/yuchanns/srslog"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -91,7 +91,7 @@ const (
 func SyslogOptsValidate(logOptMap map[string]string) error {
 	for key := range logOptMap {
 		if !strutil.InStringSlice(syslogOpts, key) {
-			logrus.Warnf("log-opt %s is ignored for syslog log driver", key)
+			log.L.Warnf("log-opt %s is ignored for syslog log driver", key)
 		}
 	}
 	proto, _, err := parseSyslogAddress(logOptMap[syslogAddress])

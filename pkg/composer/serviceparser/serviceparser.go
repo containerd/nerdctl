@@ -31,9 +31,8 @@ import (
 	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd/contrib/nvidia"
 	"github.com/containerd/containerd/identifiers"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
-
-	"github.com/sirupsen/logrus"
 )
 
 // ComposeExtensionKey defines fields used to implement extension features.
@@ -109,14 +108,14 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		"Volumes",
 		"Ulimits",
 	); len(unknown) > 0 {
-		logrus.Warnf("Ignoring: service %s: %+v", svc.Name, unknown)
+		log.L.Warnf("Ignoring: service %s: %+v", svc.Name, unknown)
 	}
 
 	if svc.BlkioConfig != nil {
 		if unknown := reflectutil.UnknownNonEmptyFields(svc.BlkioConfig,
 			"Weight",
 		); len(unknown) > 0 {
-			logrus.Warnf("Ignoring: service %s: blkio_config: %+v", svc.Name, unknown)
+			log.L.Warnf("Ignoring: service %s: blkio_config: %+v", svc.Name, unknown)
 		}
 	}
 
@@ -124,13 +123,13 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		if unknown := reflectutil.UnknownNonEmptyFields(&dep,
 			"Condition",
 		); len(unknown) > 0 {
-			logrus.Warnf("Ignoring: service %s: depends_on: %s: %+v", svc.Name, depName, unknown)
+			log.L.Warnf("Ignoring: service %s: depends_on: %s: %+v", svc.Name, depName, unknown)
 		}
 		switch dep.Condition {
 		case "", types.ServiceConditionStarted:
 			// NOP
 		default:
-			logrus.Warnf("Ignoring: service %s: depends_on: %s: condition %s", svc.Name, depName, dep.Condition)
+			log.L.Warnf("Ignoring: service %s: depends_on: %s: condition %s", svc.Name, depName, dep.Condition)
 		}
 	}
 
@@ -140,34 +139,34 @@ func warnUnknownFields(svc types.ServiceConfig) {
 			"RestartPolicy",
 			"Resources",
 		); len(unknown) > 0 {
-			logrus.Warnf("Ignoring: service %s: deploy: %+v", svc.Name, unknown)
+			log.L.Warnf("Ignoring: service %s: deploy: %+v", svc.Name, unknown)
 		}
 		if svc.Deploy.RestartPolicy != nil {
 			if unknown := reflectutil.UnknownNonEmptyFields(svc.Deploy.RestartPolicy,
 				"Condition",
 			); len(unknown) > 0 {
-				logrus.Warnf("Ignoring: service %s: deploy.restart_policy: %+v", svc.Name, unknown)
+				log.L.Warnf("Ignoring: service %s: deploy.restart_policy: %+v", svc.Name, unknown)
 			}
 		}
 		if unknown := reflectutil.UnknownNonEmptyFields(svc.Deploy.Resources,
 			"Limits",
 			"Reservations",
 		); len(unknown) > 0 {
-			logrus.Warnf("Ignoring: service %s: deploy.resources: %+v", svc.Name, unknown)
+			log.L.Warnf("Ignoring: service %s: deploy.resources: %+v", svc.Name, unknown)
 		}
 		if svc.Deploy.Resources.Limits != nil {
 			if unknown := reflectutil.UnknownNonEmptyFields(svc.Deploy.Resources.Limits,
 				"NanoCPUs",
 				"MemoryBytes",
 			); len(unknown) > 0 {
-				logrus.Warnf("Ignoring: service %s: deploy.resources.resources: %+v", svc.Name, unknown)
+				log.L.Warnf("Ignoring: service %s: deploy.resources.resources: %+v", svc.Name, unknown)
 			}
 		}
 		if svc.Deploy.Resources.Reservations != nil {
 			if unknown := reflectutil.UnknownNonEmptyFields(svc.Deploy.Resources.Reservations,
 				"Devices",
 			); len(unknown) > 0 {
-				logrus.Warnf("Ignoring: service %s: deploy.resources.resources.reservations: %+v", svc.Name, unknown)
+				log.L.Warnf("Ignoring: service %s: deploy.resources.resources.reservations: %+v", svc.Name, unknown)
 			}
 			for i, dev := range svc.Deploy.Resources.Reservations.Devices {
 				if unknown := reflectutil.UnknownNonEmptyFields(dev,
@@ -176,7 +175,7 @@ func warnUnknownFields(svc types.ServiceConfig) {
 					"Count",
 					"IDs",
 				); len(unknown) > 0 {
-					logrus.Warnf("Ignoring: service %s: deploy.resources.resources.reservations.devices[%d]: %+v",
+					log.L.Warnf("Ignoring: service %s: deploy.resources.resources.reservations.devices[%d]: %+v",
 						svc.Name, i, unknown)
 				}
 			}
@@ -225,13 +224,13 @@ func getReplicas(svc types.ServiceConfig) (int, error) {
 func getCPULimit(svc types.ServiceConfig) (string, error) {
 	var limit string
 	if svc.CPUS > 0 {
-		logrus.Warn("cpus is deprecated, use deploy.resources.limits.cpus")
+		log.L.Warn("cpus is deprecated, use deploy.resources.limits.cpus")
 		limit = fmt.Sprintf("%f", svc.CPUS)
 	}
 	if svc.Deploy != nil && svc.Deploy.Resources.Limits != nil {
 		if nanoCPUs := svc.Deploy.Resources.Limits.NanoCPUs; nanoCPUs != "" {
 			if svc.CPUS > 0 {
-				logrus.Warnf("deploy.resources.limits.cpus and cpus (deprecated) must not be set together, ignoring cpus=%f", svc.CPUS)
+				log.L.Warnf("deploy.resources.limits.cpus and cpus (deprecated) must not be set together, ignoring cpus=%f", svc.CPUS)
 			}
 			limit = nanoCPUs
 		}
@@ -242,13 +241,13 @@ func getCPULimit(svc types.ServiceConfig) (string, error) {
 func getMemLimit(svc types.ServiceConfig) (types.UnitBytes, error) {
 	var limit types.UnitBytes
 	if svc.MemLimit > 0 {
-		logrus.Warn("mem_limit is deprecated, use deploy.resources.limits.memory")
+		log.L.Warn("mem_limit is deprecated, use deploy.resources.limits.memory")
 		limit = svc.MemLimit
 	}
 	if svc.Deploy != nil && svc.Deploy.Resources.Limits != nil {
 		if memoryBytes := svc.Deploy.Resources.Limits.MemoryBytes; memoryBytes > 0 {
 			if svc.MemLimit > 0 && memoryBytes != svc.MemLimit {
-				logrus.Warnf("deploy.resources.limits.memory and mem_limit (deprecated) must not be set together, ignoring mem_limit=%d", svc.MemLimit)
+				log.L.Warnf("deploy.resources.limits.memory and mem_limit (deprecated) must not be set together, ignoring mem_limit=%d", svc.MemLimit)
 			}
 			limit = memoryBytes
 		}
@@ -327,13 +326,13 @@ func getRestart(svc types.ServiceConfig) (string, error) {
 		if restartFailurePat.MatchString(svc.Restart) {
 			restartFlag = svc.Restart
 		} else {
-			logrus.Warnf("Ignoring: service %s: restart=%q (unknown)", svc.Name, svc.Restart)
+			log.L.Warnf("Ignoring: service %s: restart=%q (unknown)", svc.Name, svc.Restart)
 		}
 	}
 
 	if svc.Deploy != nil && svc.Deploy.RestartPolicy != nil {
 		if svc.Restart != "" {
-			logrus.Warnf("deploy.restart_policy and restart must not be set together, ignoring restart=%s", svc.Restart)
+			log.L.Warnf("deploy.restart_policy and restart must not be set together, ignoring restart=%s", svc.Restart)
 		}
 		switch cond := svc.Deploy.RestartPolicy.Condition; cond {
 		case "", "any":
@@ -345,9 +344,9 @@ func getRestart(svc types.ServiceConfig) (string, error) {
 		case "no":
 			return "", fmt.Errorf("deploy.restart_policy.condition: \"no\" is invalid, did you mean \"none\"?")
 		case "on-failure":
-			logrus.Warnf("Ignoring: service %s: deploy.restart_policy.condition=%q (unimplemented)", svc.Name, cond)
+			log.L.Warnf("Ignoring: service %s: deploy.restart_policy.condition=%q (unimplemented)", svc.Name, cond)
 		default:
-			logrus.Warnf("Ignoring: service %s: deploy.restart_policy.condition=%q (unknown)", svc.Name, cond)
+			log.L.Warnf("Ignoring: service %s: deploy.restart_policy.condition=%q (unknown)", svc.Name, cond)
 		}
 	}
 
@@ -364,7 +363,7 @@ func getNetworks(project *types.Project, svc types.ServiceConfig) ([]networkName
 	var fullNames []networkNamePair // nolint: prealloc
 
 	if svc.Net != "" {
-		logrus.Warn("net is deprecated, use network_mode or networks")
+		log.L.Warn("net is deprecated, use network_mode or networks")
 		if len(svc.Networks) > 0 {
 			return nil, errors.New("networks and net must not be set together")
 		}
@@ -448,7 +447,7 @@ func Parse(project *types.Project, svc types.ServiceConfig) (*Service, error) {
 		parsed.Build.Force = true
 		parsed.PullMode = "never"
 	default:
-		logrus.Warnf("Ignoring: service %s: pull_policy: %q", svc.Name, svc.PullPolicy)
+		log.L.Warnf("Ignoring: service %s: pull_policy: %q", svc.Name, svc.PullPolicy)
 	}
 
 	for i := 0; i < replicas; i++ {
@@ -726,7 +725,7 @@ func servicePortConfigToFlagP(c types.ServicePortConfig) (string, error) {
 		"Published",
 		"Protocol",
 	); len(unknown) > 0 {
-		logrus.Warnf("Ignoring: port: %+v", unknown)
+		log.L.Warnf("Ignoring: port: %+v", unknown)
 	}
 	switch c.Mode {
 	case "", "ingress":
@@ -759,18 +758,18 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 		"Bind",
 		"Volume",
 	); len(unknown) > 0 {
-		logrus.Warnf("Ignoring: volume: %+v", unknown)
+		log.L.Warnf("Ignoring: volume: %+v", unknown)
 	}
 	if c.Bind != nil {
 		// c.Bind is expected to be a non-nil reference to an empty Bind struct
 		if unknown := reflectutil.UnknownNonEmptyFields(c.Bind, "CreateHostPath"); len(unknown) > 0 {
-			logrus.Warnf("Ignoring: volume: Bind: %+v", unknown)
+			log.L.Warnf("Ignoring: volume: Bind: %+v", unknown)
 		}
 	}
 	if c.Volume != nil {
 		// c.Volume is expected to be a non-nil reference to an empty Volume struct
 		if unknown := reflectutil.UnknownNonEmptyFields(c.Volume); len(unknown) > 0 {
-			logrus.Warnf("Ignoring: volume: Volume: %+v", unknown)
+			log.L.Warnf("Ignoring: volume: Volume: %+v", unknown)
 		}
 	}
 
@@ -829,7 +828,7 @@ func fileReferenceConfigToFlagV(c types.FileReferenceConfig, project *types.Proj
 	if unknown := reflectutil.UnknownNonEmptyFields(&c,
 		"Source", "Target", "UID", "GID", "Mode",
 	); len(unknown) > 0 {
-		logrus.Warnf("Ignoring: %s: %+v", objType, unknown)
+		log.L.Warnf("Ignoring: %s: %+v", objType, unknown)
 	}
 
 	if err := identifiers.Validate(c.Source); err != nil {

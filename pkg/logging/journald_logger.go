@@ -29,11 +29,11 @@ import (
 	"time"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/coreos/go-systemd/v22/journal"
 	"github.com/docker/cli/templates"
 	timetypes "github.com/docker/docker/api/types/time"
-	"github.com/sirupsen/logrus"
 )
 
 var JournalDriverLogOpts = []string{
@@ -43,7 +43,7 @@ var JournalDriverLogOpts = []string{
 func JournalLogOptsValidate(logOptMap map[string]string) error {
 	for key := range logOptMap {
 		if !strutil.InStringSlice(JournalDriverLogOpts, key) {
-			logrus.Warnf("log-opt %s is ignored for journald log driver", key)
+			log.L.Warnf("log-opt %s is ignored for journald log driver", key)
 		}
 	}
 	return nil
@@ -141,7 +141,7 @@ func FetchLogs(stdout, stderr io.Writer, journalctlArgs []string, stopChannel ch
 	// Setup killing goroutine:
 	go func() {
 		<-stopChannel
-		logrus.Debugf("killing journalctl logs process with PID: %#v", cmd.Process.Pid)
+		log.L.Debugf("killing journalctl logs process with PID: %#v", cmd.Process.Pid)
 		cmd.Process.Kill()
 	}()
 
@@ -172,7 +172,7 @@ func viewLogsJournald(lvopts LogViewOptions, stdout, stderr io.Writer, stopChann
 		journalctlArgs = append(journalctlArgs, "--since", date)
 	}
 	if lvopts.Timestamps {
-		logrus.Warnf("unsupported Timestamps option for journald driver")
+		log.L.Warnf("unsupported Timestamps option for journald driver")
 	}
 	if lvopts.Until != "" {
 		// using GetTimestamp from moby to keep time format consistency

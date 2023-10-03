@@ -25,7 +25,7 @@ import (
 
 	"github.com/containerd/containerd/pkg/apparmor"
 	"github.com/containerd/containerd/pkg/userns"
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/log"
 )
 
 // CanLoadNewProfile returns whether the current process can load a new AppArmor profile.
@@ -73,7 +73,7 @@ func CanApplySpecificExistingProfile(profileName string) bool {
 	cmd := exec.Command("aa-exec", "-p", profileName, "--", "true")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		logrus.WithError(err).Debugf("failed to run %v: %q", cmd.Args, string(out))
+		log.L.WithError(err).Debugf("failed to run %v: %q", cmd.Args, string(out))
 		return false
 	}
 	return true
@@ -101,7 +101,7 @@ func Profiles() ([]Profile, error) {
 		namePath := filepath.Join(profilesPath, ent.Name(), "name")
 		b, err := os.ReadFile(namePath)
 		if err != nil {
-			logrus.WithError(err).Warnf("failed to read %q", namePath)
+			log.L.WithError(err).Warnf("failed to read %q", namePath)
 			continue
 		}
 		profile := Profile{
@@ -110,7 +110,7 @@ func Profiles() ([]Profile, error) {
 		modePath := filepath.Join(profilesPath, ent.Name(), "mode")
 		b, err = os.ReadFile(modePath)
 		if err != nil {
-			logrus.WithError(err).Warnf("failed to read %q", namePath)
+			log.L.WithError(err).Warnf("failed to read %q", namePath)
 		} else {
 			profile.Mode = strings.TrimSpace(string(b))
 		}

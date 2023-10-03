@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/pkg/labels"
@@ -165,7 +166,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 			return nil, err
 		}
 		if o.cni == nil {
-			logrus.Warnf("no CNI network could be loaded from the provided network names: %v", networks)
+			log.L.Warnf("no CNI network could be loaded from the provided network names: %v", networks)
 		}
 	default:
 		return nil, fmt.Errorf("unexpected network type %v", netType)
@@ -300,7 +301,7 @@ func getPortMapOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 		)
 		info, err := opts.rootlessKitClient.Info(context.TODO())
 		if err != nil {
-			logrus.WithError(err).Warn("cannot call RootlessKit Info API, make sure you have RootlessKit v0.14.1 or later")
+			log.L.WithError(err).Warn("cannot call RootlessKit Info API, make sure you have RootlessKit v0.14.1 or later")
 		} else {
 			childIP = info.NetworkDriver.ChildIP
 			portDriverDisallowsLoopbackChildIP = info.PortDriver.DisallowLoopbackChildIP // true for slirp4netns port driver
@@ -336,7 +337,7 @@ func getPortMapOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 func getIPAddressOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 	if opts.containerIP != "" {
 		if rootlessutil.IsRootlessChild() {
-			logrus.Debug("container IP assignment is not fully supported in rootless mode. The IP is not accessible from the host (but still accessible from other containers).")
+			log.L.Debug("container IP assignment is not fully supported in rootless mode. The IP is not accessible from the host (but still accessible from other containers).")
 		}
 
 		return []gocni.NamespaceOpts{
@@ -483,7 +484,7 @@ func onPostStop(opts *handlerOpts) error {
 		namespaceOpts = append(namespaceOpts, ipAddressOpts...)
 		namespaceOpts = append(namespaceOpts, macAddressOpts...)
 		if err := opts.cni.Remove(ctx, opts.fullID, "", namespaceOpts...); err != nil {
-			logrus.WithError(err).Errorf("failed to call cni.Remove")
+			log.L.WithError(err).Errorf("failed to call cni.Remove")
 			return err
 		}
 		hs, err := hostsstore.NewStore(opts.dataStore)

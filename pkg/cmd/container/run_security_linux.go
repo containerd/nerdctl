@@ -25,11 +25,11 @@ import (
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/pkg/cap"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/apparmorutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/maputil"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/sirupsen/logrus"
 )
 
 var privilegedOpts = []oci.SpecOpts{
@@ -49,7 +49,7 @@ func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([
 		switch k {
 		case "seccomp", "apparmor", "no-new-privileges", "privileged-without-host-devices":
 		default:
-			logrus.Warnf("unknown security-opt: %q", k)
+			log.L.Warnf("unknown security-opt: %q", k)
 		}
 	}
 	var opts []oci.SpecOpts
@@ -73,7 +73,7 @@ func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([
 		}
 		if aaProfile != "unconfined" {
 			if !canApplyExistingProfile {
-				logrus.Warnf("the host does not support AppArmor. Ignoring profile %q", aaProfile)
+				log.L.Warnf("the host does not support AppArmor. Ignoring profile %q", aaProfile)
 			} else {
 				opts = append(opts, apparmor.WithProfile(aaProfile))
 			}
@@ -127,7 +127,7 @@ func canonicalizeCapName(s string) string {
 		s = "CAP_" + s
 	}
 	if !isKnownCapName(s) {
-		logrus.Warnf("unknown capability name %q", s)
+		log.L.Warnf("unknown capability name %q", s)
 		// Not a fatal error, because runtime might be aware of this cap
 	}
 	return s

@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/containerd/log"
 	"github.com/moby/term"
-	"github.com/sirupsen/logrus"
 )
 
 const DefaultDetachKeys = "ctrl-p,ctrl-q"
@@ -53,7 +53,7 @@ func (ds *detachableStdin) Read(p []byte) (int, error) {
 	n, err := ds.stdin.Read(p)
 	var eerr term.EscapeError
 	if errors.As(err, &eerr) {
-		logrus.Info("read detach keys")
+		log.L.Info("read detach keys")
 		if ds.closer != nil {
 			ds.closer()
 		}

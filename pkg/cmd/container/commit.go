@@ -23,11 +23,11 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/imgutil/commit"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
-	"github.com/sirupsen/logrus"
 )
 
 // Commit will commit a container’s file changes or settings into a new image.
@@ -96,7 +96,7 @@ func parseChanges(userChanges []string) (commit.Changes, error) {
 				return commit.Changes{}, fmt.Errorf("malformed json in change flag value %q", change)
 			}
 			if changes.CMD != nil {
-				logrus.Warn("multiple change flags supplied for the CMD directive, overriding with last supplied")
+				log.L.Warn("multiple change flags supplied for the CMD directive, overriding with last supplied")
 			}
 			changes.CMD = overrideCMD
 		case entrypointDirective:
@@ -105,7 +105,7 @@ func parseChanges(userChanges []string) (commit.Changes, error) {
 				return commit.Changes{}, fmt.Errorf("malformed json in change flag value %q", change)
 			}
 			if changes.Entrypoint != nil {
-				logrus.Warnf("multiple change flags supplied for the Entrypoint directive, overriding with last supplied")
+				log.L.Warnf("multiple change flags supplied for the Entrypoint directive, overriding with last supplied")
 			}
 			changes.Entrypoint = overrideEntrypoint
 		default: // TODO: Support the rest of the change directives

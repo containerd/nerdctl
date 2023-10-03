@@ -33,13 +33,13 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/lockutil"
 	"github.com/containerd/nerdctl/pkg/netutil/nettype"
 	subnetutil "github.com/containerd/nerdctl/pkg/netutil/subnet"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containernetworking/cni/libcni"
-	"github.com/sirupsen/logrus"
 )
 
 type CNIEnv struct {
@@ -162,7 +162,7 @@ func (e *CNIEnv) NetworkMap() (map[string]*NetworkConfig, error) { //nolint:revi
 	m := make(map[string]*NetworkConfig, len(networks))
 	for _, n := range networks {
 		if original, exists := m[n.Name]; exists {
-			logrus.Warnf("duplicate network name %q, %#v will get superseded by %#v", n.Name, original, n)
+			log.L.Warnf("duplicate network name %q, %#v will get superseded by %#v", n.Name, original, n)
 		}
 		m[n.Name] = n
 	}
@@ -292,7 +292,7 @@ func (e *CNIEnv) GetDefaultNetworkConfig() (*NetworkConfig, error) {
 	}
 	if len(labelMatches) >= 1 {
 		if len(labelMatches) > 1 {
-			logrus.Warnf("returning the first network bearing the %q label out of the multiple found: %#v", labels.NerdctlDefaultNetwork, labelMatches)
+			log.L.Warnf("returning the first network bearing the %q label out of the multiple found: %#v", labels.NerdctlDefaultNetwork, labelMatches)
 		}
 		return labelMatches[0], nil
 	}
@@ -307,14 +307,14 @@ func (e *CNIEnv) GetDefaultNetworkConfig() (*NetworkConfig, error) {
 	}
 	if len(nameMatches) >= 1 {
 		if len(nameMatches) > 1 {
-			logrus.Warnf("returning the first network bearing the %q default network name out of the multiple found: %#v", DefaultNetworkName, nameMatches)
+			log.L.Warnf("returning the first network bearing the %q default network name out of the multiple found: %#v", DefaultNetworkName, nameMatches)
 		}
 
 		// Warn the user if the default network was not created by nerdctl.
 		match := nameMatches[0]
 		_, statErr := os.Stat(e.getConfigPathForNetworkName(DefaultNetworkName))
 		if match.NerdctlID == nil || statErr != nil {
-			logrus.Warnf("default network named %q does not have an internal nerdctl ID or nerdctl-managed config file, it was most likely NOT created by nerdctl", DefaultNetworkName)
+			log.L.Warnf("default network named %q does not have an internal nerdctl ID or nerdctl-managed config file, it was most likely NOT created by nerdctl", DefaultNetworkName)
 		}
 
 		return nameMatches[0], nil

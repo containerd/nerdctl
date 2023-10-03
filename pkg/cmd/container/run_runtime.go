@@ -25,8 +25,8 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/plugin"
 	runcoptions "github.com/containerd/containerd/runtime/v2/runc/options"
+	"github.com/containerd/log"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/sirupsen/logrus"
 )
 
 func generateRuntimeCOpts(cgroupManager, runtimeStr string) ([]containerd.NewContainerOpts, error) {
@@ -43,7 +43,7 @@ func generateRuntimeCOpts(cgroupManager, runtimeStr string) ([]containerd.NewCon
 			runtime = runtimeStr
 			if !strings.HasPrefix(runtimeStr, "io.containerd.runc.") {
 				if cgroupManager == "systemd" {
-					logrus.Warnf("cannot set cgroup manager to %q for runtime %q", cgroupManager, runtimeStr)
+					log.L.Warnf("cannot set cgroup manager to %q for runtime %q", cgroupManager, runtimeStr)
 				}
 				runtimeOpts = nil
 			}

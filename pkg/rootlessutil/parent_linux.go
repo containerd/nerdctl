@@ -26,7 +26,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/log"
 )
 
 func IsRootlessParent() bool {
@@ -68,7 +68,7 @@ func ParentMain(hostGatewayIP string) error {
 		return errors.New("should not be called when !IsRootlessParent()")
 	}
 	stateDir, err := RootlessKitStateDir()
-	logrus.Debugf("stateDir: %s", stateDir)
+	log.L.Debugf("stateDir: %s", stateDir)
 	if err != nil {
 		return fmt.Errorf("rootless containerd not running? (hint: use `containerd-rootless-setuptool.sh install` to start rootless containerd): %w", err)
 	}
@@ -97,7 +97,7 @@ func ParentMain(hostGatewayIP string) error {
 		"-F", // no fork
 	}
 	args = append(args, os.Args...)
-	logrus.Debugf("rootless parent main: executing %q with %v", arg0, args)
+	log.L.Debugf("rootless parent main: executing %q with %v", arg0, args)
 
 	// Env vars corresponds to RootlessKit spec:
 	// https://github.com/rootless-containers/rootlesskit/tree/v0.13.1#environment-variables

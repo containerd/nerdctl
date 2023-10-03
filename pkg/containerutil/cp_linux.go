@@ -31,10 +31,10 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/mount"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/tarutil"
 	securejoin "github.com/cyphar/filepath-securejoin"
-	"github.com/sirupsen/logrus"
 )
 
 // CopyFiles implements `nerdctl cp`.
@@ -44,7 +44,7 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 	if err != nil {
 		return err
 	}
-	logrus.Debugf("Detected tar binary %q (GNU=%v)", tarBinary, isGNUTar)
+	log.G(ctx).Debugf("Detected tar binary %q (GNU=%v)", tarBinary, isGNUTar)
 	var srcFull, dstFull, root, mountDestination, containerPath string
 	var cleanup func()
 	task, err := container.Task(ctx, nil)
@@ -193,7 +193,7 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 		}
 		cp = append(cp, srcFull, filepath.Join(td, tarCArg))
 		cpCmd := exec.CommandContext(ctx, cp[0], cp[1:]...)
-		logrus.Debugf("executing %v", cpCmd.Args)
+		log.G(ctx).Debugf("executing %v", cpCmd.Args)
 		if out, err := cpCmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to execute %v: %w (out=%q)", cpCmd.Args, err, string(out))
 		}
@@ -237,11 +237,11 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 	tarXCmd.Stdout = os.Stderr
 	tarXCmd.Stderr = os.Stderr
 
-	logrus.Debugf("executing %v in %q", tarCCmd.Args, tarCCmd.Dir)
+	log.G(ctx).Debugf("executing %v in %q", tarCCmd.Args, tarCCmd.Dir)
 	if err := tarCCmd.Start(); err != nil {
 		return fmt.Errorf("failed to execute %v: %w", tarCCmd.Args, err)
 	}
-	logrus.Debugf("executing %v in %q", tarXCmd.Args, tarXCmd.Dir)
+	log.G(ctx).Debugf("executing %v in %q", tarXCmd.Args, tarXCmd.Dir)
 	if err := tarXCmd.Start(); err != nil {
 		return fmt.Errorf("failed to execute %v: %w", tarXCmd.Args, err)
 	}
@@ -275,7 +275,7 @@ func mountSnapshotForContainer(ctx context.Context, client *containerd.Client, c
 	cleanup := func() {
 		err = mount.Unmount(tempDir, 0)
 		if err != nil {
-			logrus.Warnf("failed to unmount %s with error %s", tempDir, err.Error())
+			log.G(ctx).Warnf("failed to unmount %s with error %s", tempDir, err.Error())
 			return
 		}
 		os.RemoveAll(tempDir)

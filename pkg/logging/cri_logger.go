@@ -35,7 +35,6 @@ import (
 
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/logging/tail"
-	"github.com/sirupsen/logrus"
 )
 
 // LogStreamType is the type of the stream in CRI container log.
@@ -114,11 +113,11 @@ func ReadLogs(opts *LogViewOptions, stdout, stderr io.Writer, stopChannel chan o
 	for {
 		select {
 		case <-stopChannel:
-			logrus.Debugf("received stop signal while reading cri logfile, returning")
+			log.L.Debugf("received stop signal while reading cri logfile, returning")
 			return nil
 		default:
 			if stop || (limitedMode && limitedNum == 0) {
-				logrus.Debugf("finished parsing log file, path: %s", logPath)
+				log.L.Debugf("finished parsing log file, path: %s", logPath)
 				return nil
 			}
 			l, err := r.ReadBytes(eol[0])
@@ -142,22 +141,22 @@ func ReadLogs(opts *LogViewOptions, stdout, stderr io.Writer, stopChannel chan o
 				if len(l) == 0 {
 					continue
 				}
-				logrus.Debugf("incomplete line in log file, path: %s, line: %s", logPath, l)
+				log.L.Debugf("incomplete line in log file, path: %s, line: %s", logPath, l)
 			}
 
 			// Parse the log line.
 			msg.reset()
 			if err := ParseCRILog(l, msg); err != nil {
-				logrus.WithError(err).Errorf("failed when parsing line in log file, path: %s, line: %s", logPath, l)
+				log.L.WithError(err).Errorf("failed when parsing line in log file, path: %s, line: %s", logPath, l)
 				continue
 			}
 			// Write the log line into the stream.
 			if err := writer.write(msg, isNewLine); err != nil {
 				if err == errMaximumWrite {
-					logrus.Debugf("finished parsing log file, hit bytes limit path: %s", logPath)
+					log.L.Debugf("finished parsing log file, hit bytes limit path: %s", logPath)
 					return nil
 				}
-				logrus.WithError(err).Errorf("failed when writing line to log file, path: %s, line: %s", logPath, l)
+				log.L.WithError(err).Errorf("failed when writing line to log file, path: %s, line: %s", logPath, l)
 				return err
 			}
 			if limitedMode {

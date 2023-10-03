@@ -26,10 +26,10 @@ import (
 	"text/template"
 
 	"github.com/containerd/containerd/pkg/progress"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
-	"github.com/sirupsen/logrus"
 )
 
 type volumePrintable struct {
@@ -44,16 +44,16 @@ type volumePrintable struct {
 
 func List(options types.VolumeListOptions) error {
 	if options.Quiet && options.Size {
-		logrus.Warn("cannot use --size and --quiet together, ignoring --size")
+		log.L.Warn("cannot use --size and --quiet together, ignoring --size")
 		options.Size = false
 	}
 	sizeFilter := hasSizeFilter(options.Filters)
 	if sizeFilter && options.Quiet {
-		logrus.Warn("cannot use --filter=size and --quiet together, ignoring --filter=size")
+		log.L.Warn("cannot use --filter=size and --quiet together, ignoring --filter=size")
 		options.Filters = removeSizeFilters(options.Filters)
 	}
 	if sizeFilter && !options.Size {
-		logrus.Warn("should use --filter=size and --size together")
+		log.L.Warn("should use --filter=size and --size together")
 		options.Size = true
 	}
 

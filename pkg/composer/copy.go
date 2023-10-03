@@ -23,9 +23,9 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/docker/docker/pkg/system"
-	"github.com/sirupsen/logrus"
 )
 
 type CopyOptions struct {
@@ -110,7 +110,7 @@ func (c *Composer) logCopyMsg(ctx context.Context, container containerd.Containe
 	if direction == toService {
 		msg = msg + fmt.Sprintf("copy %s to %s:%s", srcPath, containerName, dstPath)
 	}
-	logrus.Info(msg)
+	log.G(ctx).Info(msg)
 	return nil
 }
 

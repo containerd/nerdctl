@@ -22,8 +22,8 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
-	"github.com/sirupsen/logrus"
 )
 
 func UnprivilegedMountFlags(path string) ([]string, error) {
@@ -49,7 +49,7 @@ func parseVolumeOptions(vType, src, optsRaw string) ([]string, []oci.SpecOpts, e
 		case "":
 			// NOP
 		default:
-			logrus.Warnf("unsupported volume option %q", opt)
+			log.L.Warnf("unsupported volume option %q", opt)
 		}
 	}
 	var opts []string

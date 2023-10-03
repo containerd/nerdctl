@@ -22,9 +22,8 @@ import (
 	"os"
 
 	"github.com/compose-spec/compose-go/types"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
-
-	"github.com/sirupsen/logrus"
 )
 
 type PullOptions struct {
@@ -42,7 +41,7 @@ func (c *Composer) Pull(ctx context.Context, po PullOptions, services []string) 
 }
 
 func (c *Composer) pullServiceImage(ctx context.Context, image string, platform string, ps *serviceparser.Service, po PullOptions) error {
-	logrus.Infof("Pulling image %s", image)
+	log.G(ctx).Infof("Pulling image %s", image)
 
 	var args []string // nolint: prealloc
 	if platform != "" {
@@ -78,7 +77,7 @@ func (c *Composer) pullServiceImage(ctx context.Context, image string, platform 
 
 	cmd := c.createNerdctlCmd(ctx, append([]string{"pull"}, args...)...)
 	if c.DebugPrintFull {
-		logrus.Debugf("Running %v", cmd.Args)
+		log.G(ctx).Debugf("Running %v", cmd.Args)
 	}
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

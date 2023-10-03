@@ -25,12 +25,12 @@ import (
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/sirupsen/logrus"
 )
 
 type customMemoryOptions struct {
@@ -41,11 +41,11 @@ type customMemoryOptions struct {
 
 func generateCgroupOpts(id string, options types.ContainerCreateOptions) ([]oci.SpecOpts, error) {
 	if options.KernelMemory != "" {
-		logrus.Warnf("The --kernel-memory flag is no longer supported. This flag is a noop.")
+		log.L.Warnf("The --kernel-memory flag is no longer supported. This flag is a noop.")
 	}
 
 	if options.Memory == "" && options.OomKillDisable {
-		logrus.Warn("Disabling the OOM killer on containers without setting a '-m/--memory' limit may be dangerous.")
+		log.L.Warn("Disabling the OOM killer on containers without setting a '-m/--memory' limit may be dangerous.")
 	}
 
 	if options.GOptions.CgroupManager == "none" {
@@ -54,11 +54,11 @@ func generateCgroupOpts(id string, options types.ContainerCreateOptions) ([]oci.
 		}
 
 		if options.CPUs > 0.0 || options.Memory != "" || options.MemorySwap != "" || options.PidsLimit > 0 {
-			logrus.Warn(`cgroup manager is set to "none", discarding resource limit requests. ` +
+			log.L.Warn(`cgroup manager is set to "none", discarding resource limit requests. ` +
 				"(Hint: enable cgroup v2 with systemd: https://rootlesscontaine.rs/getting-started/common/cgroup2/)")
 		}
 		if options.CgroupParent != "" {
-			logrus.Warnf(`cgroup manager is set to "none", ignoring cgroup parent %q`+
+			log.L.Warnf(`cgroup manager is set to "none", ignoring cgroup parent %q`+
 				"(Hint: enable cgroup v2 with systemd: https://rootlesscontaine.rs/getting-started/common/cgroup2/)", options.CgroupParent)
 		}
 		return []oci.SpecOpts{oci.WithCgroup("")}, nil
@@ -178,7 +178,7 @@ func generateCgroupOpts(id string, options types.ContainerCreateOptions) ([]oci.
 	opts = append(opts, withUnified(unifieds))
 
 	if options.BlkioWeight != 0 && !infoutil.BlockIOWeight(options.GOptions.CgroupManager) {
-		logrus.Warn("kernel support for cgroup blkio weight missing, weight discarded")
+		log.L.Warn("kernel support for cgroup blkio weight missing, weight discarded")
 		options.BlkioWeight = 0
 	}
 	if options.BlkioWeight > 0 && options.BlkioWeight < 10 || options.BlkioWeight > 1000 {

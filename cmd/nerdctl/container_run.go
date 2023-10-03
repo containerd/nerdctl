@@ -22,6 +22,7 @@ import (
 	"runtime"
 
 	"github.com/containerd/console"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
@@ -34,7 +35,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/signalutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -348,11 +348,11 @@ func runAction(cmd *cobra.Command, args []string) error {
 			// network setup/cleanup from the main nerdctl executable.
 			if runtime.GOOS == "windows" {
 				if err := netManager.CleanupNetworking(ctx, c); err != nil {
-					logrus.Warnf("failed to clean up container networking: %s", err)
+					log.L.Warnf("failed to clean up container networking: %s", err)
 				}
 			}
 			if err := container.RemoveContainer(ctx, c, createOpt.GOptions, true, true, client); err != nil {
-				logrus.WithError(err).Warnf("failed to remove container %s", id)
+				log.L.WithError(err).Warnf("failed to remove container %s", id)
 			}
 		}()
 	}
@@ -387,7 +387,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 	if createOpt.TTY {
 		if err := consoleutil.HandleConsoleResize(ctx, task, con); err != nil {
-			logrus.WithError(err).Error("console resize")
+			log.L.WithError(err).Error("console resize")
 		}
 	} else {
 		sigC := signalutil.ForwardAllSignals(ctx, task)
@@ -415,7 +415,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	case status := <-statusC:
 		if createOpt.Rm {
 			if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
-				logrus.Error(taskDeleteErr)
+				log.L.Error(taskDeleteErr)
 			}
 		}
 		code, _, err := status.Result()

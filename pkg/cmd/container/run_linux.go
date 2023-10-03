@@ -25,6 +25,7 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/pkg/userns"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/pkg/containerutil"
@@ -33,7 +34,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/sirupsen/logrus"
 )
 
 // WithoutRunMount returns a SpecOpts that unmounts the default tmpfs on "/run"
@@ -229,7 +229,7 @@ func setOOMScoreAdj(opts []oci.SpecOpts, oomScoreAdjChanged bool, oomScoreAdj in
 		// (FIXME: find a more robust way to get the current minimum value)
 		const minimum = 100
 		if oomScoreAdj < minimum {
-			logrus.Warnf("Limiting oom_score_adj (%d -> %d)", oomScoreAdj, minimum)
+			log.L.Warnf("Limiting oom_score_adj (%d -> %d)", oomScoreAdj, minimum)
 			oomScoreAdj = minimum
 		}
 	}

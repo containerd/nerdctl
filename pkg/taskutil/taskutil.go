@@ -30,9 +30,9 @@ import (
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/infoutil"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/term"
 )
 
@@ -52,14 +52,14 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 		// [1] https://github.com/containerd/containerd/blob/8f756bc8c26465bd93e78d9cd42082b66f276e10/cio/io.go#L358-L359
 		io := t.IO()
 		if io == nil {
-			logrus.Errorf("got a nil io")
+			log.G(ctx).Errorf("got a nil io")
 			return
 		}
 		io.Cancel()
 	}
 	var ioCreator cio.Creator
 	if flagA {
-		logrus.Debug("attaching output instead of using the log-uri")
+		log.G(ctx).Debug("attaching output instead of using the log-uri")
 		if flagT {
 			in, err := consoleutil.NewDetachableStdin(con, detachKeys, closer)
 			if err != nil {
@@ -120,15 +120,15 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 		var in io.Reader
 		if flagI {
 			if sv, err := infoutil.ServerSemVer(ctx, client); err != nil {
-				logrus.Warn(err)
+				log.G(ctx).Warn(err)
 			} else if sv.LessThan(semver.MustParse("1.6.0-0")) {
-				logrus.Warnf("`nerdctl (run|exec) -i` without `-t` expects containerd 1.6 or later, got containerd %v", sv)
+				log.G(ctx).Warnf("`nerdctl (run|exec) -i` without `-t` expects containerd 1.6 or later, got containerd %v", sv)
 			}
 			var stdinC io.ReadCloser = &StdinCloser{
 				Stdin: os.Stdin,
 				Closer: func() {
 					if t, err := container.Task(ctx, nil); err != nil {
-						logrus.WithError(err).Debugf("failed to get task for StdinCloser")
+						log.G(ctx).WithError(err).Debugf("failed to get task for StdinCloser")
 					} else {
 						t.CloseIO(ctx, containerd.WithStdinCloser)
 					}

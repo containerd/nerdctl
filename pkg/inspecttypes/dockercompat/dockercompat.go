@@ -38,12 +38,12 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/docker/go-connections/nat"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 )
 
@@ -357,7 +357,7 @@ func networkSettingsFromNative(n *native.NetNS, sp *specs.Spec) (*NetworkSetting
 		for _, a := range x.Addrs {
 			ip, ipnet, err := net.ParseCIDR(a)
 			if err != nil {
-				logrus.WithError(err).WithField("name", x.Name).Warnf("failed to parse %q", a)
+				log.L.WithError(err).WithField("name", x.Name).Warnf("failed to parse %q", a)
 				continue
 			}
 			if ip.IsLoopback() || ip.IsLinkLocalUnicast() {

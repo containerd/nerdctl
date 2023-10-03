@@ -26,10 +26,10 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/images/converter/uncompress"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/klauspost/compress/zstd"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 )
 
 // ZstdLayerConvertFunc converts legacy tar.gz layers into zstd layers with
@@ -52,10 +52,10 @@ func ZstdLayerConvertFunc(options types.ImageConvertOptions) (converter.ConvertF
 			}
 			defer func() {
 				if err := cs.Delete(ctx, uncompressedDesc.Digest); err != nil {
-					logrus.WithError(err).WithField("uncompressedDesc", uncompressedDesc).Warn("failed to remove tmp uncompressed layer")
+					log.L.WithError(err).WithField("uncompressedDesc", uncompressedDesc).Warn("failed to remove tmp uncompressed layer")
 				}
 			}()
-			logrus.Debugf("zstd: uncompressed %s into %s", desc.Digest, uncompressedDesc.Digest)
+			log.L.Debugf("zstd: uncompressed %s into %s", desc.Digest, uncompressedDesc.Digest)
 		}
 
 		info, err := cs.Info(ctx, desc.Digest)

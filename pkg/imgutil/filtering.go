@@ -26,8 +26,8 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
 	dockerreference "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
-	"github.com/sirupsen/logrus"
 )
 
 // Filter types supported to filter images.
@@ -136,9 +136,9 @@ func FilterImages(labelImages []images.Image, beforeImages []images.Image, since
 // FilterByReference filters images using references given in `filters`.
 func FilterByReference(imageList []images.Image, filters []string) ([]images.Image, error) {
 	var filteredImageList []images.Image
-	logrus.Debug(filters)
+	log.L.Debug(filters)
 	for _, image := range imageList {
-		logrus.Debug(image.Name)
+		log.L.Debug(image.Name)
 		var matches int
 		for _, f := range filters {
 			var ref dockerreference.Reference
