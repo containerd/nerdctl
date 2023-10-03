@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/continuity/fs"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/cmd/volume"
 	"github.com/containerd/nerdctl/pkg/idgen"
@@ -47,7 +48,6 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/sirupsen/logrus"
 )
 
 // copy from https://github.com/containerd/containerd/blob/v1.6.0-rc.1/pkg/cri/opts/spec_linux.go#L129-L151
@@ -180,7 +180,7 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 		// https://github.com/containerd/containerd/commit/791e175c79930a34cfbb2048fbcaa8493fd2c86b
 		unmounter := func(mountPath string) {
 			if uerr := mount.Unmount(mountPath, 0); uerr != nil {
-				logrus.Debugf("Failed to unmount snapshot %q", tempDir)
+				log.G(ctx).Debugf("Failed to unmount snapshot %q", tempDir)
 				if err == nil {
 					err = uerr
 				}
@@ -259,7 +259,7 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 		}
 		anonVolName := idgen.GenerateID()
 
-		logrus.Debugf("creating anonymous volume %q, for \"VOLUME %s\"",
+		log.G(ctx).Debugf("creating anonymous volume %q, for \"VOLUME %s\"",
 			anonVolName, imgVolRaw)
 		anonVol, err := volStore.Create(anonVolName, []string{})
 		if err != nil {
@@ -354,7 +354,7 @@ func copyExistingContents(source, destination string) error {
 		return err
 	}
 	if len(dstList) != 0 {
-		logrus.Debugf("volume at %q is not initially empty, skipping copying", destination)
+		log.L.Debugf("volume at %q is not initially empty, skipping copying", destination)
 		return nil
 	}
 	return fs.CopyDir(destination, source)

@@ -31,10 +31,10 @@ import (
 
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/log"
 	ipfsclient "github.com/containerd/stargz-snapshotter/ipfs/client"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 )
 
 // RegistryOptions represents options to configure the registry.
@@ -72,14 +72,14 @@ var blobsRegexp = regexp.MustCompile(`/v2/ipfs/([a-z0-9]+)/blobs/(.*)`)
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cid, content, mediaType, size, err := s.serve(r)
 	if err != nil {
-		logrus.WithError(err).Warnf("failed to serve %q %q", r.Method, r.URL.Path)
+		log.L.WithError(err).Warnf("failed to serve %q %q", r.Method, r.URL.Path)
 		// TODO: support response body following OCI Distribution Spec's error response format spec:
 		// https://github.com/opencontainers/distribution-spec/blob/v1.0/spec.md#error-codes
 		http.Error(w, "", http.StatusNotFound)
 		return
 	}
 	if content == nil {
-		logrus.Debugf("returning without contents")
+		log.L.Debugf("returning without contents")
 		w.WriteHeader(200)
 		return
 	}
@@ -87,7 +87,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 	if r.Method == "GET" {
 		http.ServeContent(w, r, "", time.Now(), content)
-		logrus.WithField("CID", cid).Debugf("served file")
+		log.L.WithField("CID", cid).Debugf("served file")
 	}
 }
 
@@ -97,7 +97,7 @@ func (s *server) serve(r *http.Request) (string, io.ReadSeeker, string, int64, e
 	}
 
 	if r.URL.Path == "/v2/" {
-		logrus.Debugf("requested /v2/")
+		log.L.Debugf("requested /v2/")
 		return "", nil, "", 0, nil
 	}
 
@@ -108,7 +108,7 @@ func (s *server) serve(r *http.Request) (string, io.ReadSeeker, string, int64, e
 			if !images.IsManifestType(mediaType) && !images.IsIndexType(mediaType) {
 				return "", nil, "", 0, fmt.Errorf("cannot serve non-manifest from manifest API: %q", mediaType)
 			}
-			logrus.WithField("root CID", cidStr).WithField("digest", ref).WithField("resolved CID", resolvedCID).Debugf("resolved manifest by digest")
+			log.L.WithField("root CID", cidStr).WithField("digest", ref).WithField("resolved CID", resolvedCID).Debugf("resolved manifest by digest")
 			return resolvedCID, content, mediaType, size, err
 		}
 		if ref != "latest" {
@@ -118,7 +118,7 @@ func (s *server) serve(r *http.Request) (string, io.ReadSeeker, string, int64, e
 		if err != nil {
 			return "", nil, "", 0, err
 		}
-		logrus.WithField("root CID", cidStr).WithField("resolved CID", resolvedCID).Debugf("resolved manifest by cid")
+		log.L.WithField("root CID", cidStr).WithField("resolved CID", resolvedCID).Debugf("resolved manifest by cid")
 		return resolvedCID, content, mediaType, size, nil
 	}
 
@@ -128,7 +128,7 @@ func (s *server) serve(r *http.Request) (string, io.ReadSeeker, string, int64, e
 		if err != nil {
 			return "", nil, "", 0, err
 		}
-		logrus.WithField("root CID", rootCIDStr).WithField("digest", dgstStr).WithField("resolved CID", resolvedCID).Debugf("resolved blob by digest")
+		log.L.WithField("root CID", rootCIDStr).WithField("digest", dgstStr).WithField("resolved CID", resolvedCID).Debugf("resolved blob by digest")
 		return resolvedCID, content, mediaType, size, nil
 	}
 

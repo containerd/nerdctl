@@ -19,10 +19,10 @@
 package main
 
 import (
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +46,7 @@ func shellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete s
 	nsService := client.NamespaceService()
 	nsList, err := nsService.List(ctx)
 	if err != nil {
-		logrus.Warn(err)
+		log.L.Warn(err)
 		return nil, cobra.ShellCompDirectiveError
 	}
 	var candidates []string

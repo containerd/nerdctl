@@ -20,9 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/strutil"
-
-	"github.com/sirupsen/logrus"
 )
 
 type DownOptions struct {
@@ -61,7 +60,7 @@ func (c *Composer) Down(ctx context.Context, downOptions DownOptions) error {
 				return fmt.Errorf("error removeing orphaned containers: %s", err)
 			}
 		} else {
-			logrus.Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), orphans)
+			log.G(ctx).Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), orphans)
 		}
 	}
 
@@ -105,9 +104,9 @@ func (c *Composer) downNetwork(ctx context.Context, shortName string) error {
 			return fmt.Errorf("network %s is in use", fullName)
 		}
 
-		logrus.Infof("Removing network %s", fullName)
+		log.G(ctx).Infof("Removing network %s", fullName)
 		if err := c.runNerdctlCmd(ctx, "network", "rm", fullName); err != nil {
-			logrus.Warn(err)
+			log.G(ctx).Warn(err)
 		}
 	}
 	return nil
@@ -128,9 +127,9 @@ func (c *Composer) downVolume(ctx context.Context, shortName string) error {
 	if err != nil {
 		return err
 	} else if volExists {
-		logrus.Infof("Removing volume %s", fullName)
+		log.G(ctx).Infof("Removing volume %s", fullName)
 		if err := c.runNerdctlCmd(ctx, "volume", "rm", "-f", fullName); err != nil {
-			logrus.Warn(err)
+			log.G(ctx).Warn(err)
 		}
 	}
 	return nil

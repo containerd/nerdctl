@@ -24,6 +24,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil"
@@ -31,7 +32,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/resolvconf"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/sirupsen/logrus"
 )
 
 // Verifies that the internal network settings are correct.
@@ -149,7 +149,7 @@ func (m *cniNetworkManager) buildResolvConf(resolvConfPath string) error {
 			}
 			// if resolvConf file does't exist, using default resolvers
 			conf = &resolvconf.File{}
-			logrus.WithError(err).Debugf("resolvConf file doesn't exist on host")
+			log.L.WithError(err).Debugf("resolvConf file doesn't exist on host")
 		}
 		conf, err = resolvconf.FilterResolvDNS(conf.Content, true)
 		if err != nil {

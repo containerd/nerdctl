@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-connections/nat"
-	"github.com/sirupsen/logrus"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
@@ -194,7 +194,7 @@ networks:
 	stdoutContent := result.Stdout() + result.Stderr()
 	assert.Assert(inspectCmd.Base.T, result.ExitCode == 0, stdoutContent)
 	if !strings.Contains(stdoutContent, staticIP) {
-		logrus.Errorf("test failed, the actual container ip is %s", stdoutContent)
+		log.L.Errorf("test failed, the actual container ip is %s", stdoutContent)
 		t.Fail()
 		return
 	}

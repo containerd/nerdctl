@@ -24,8 +24,8 @@ import (
 
 	"github.com/containerd/containerd/plugin"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -93,7 +93,7 @@ func CNIRuntimeDir() string {
 	}
 	xdr, err := rootlessutil.XDGRuntimeDir()
 	if err != nil {
-		logrus.Warn(err)
+		log.L.Warn(err)
 		xdr = fmt.Sprintf("/run/user/%d", rootlessutil.ParentEUID())
 	}
 	return fmt.Sprintf("%s/cni", xdr)
@@ -105,7 +105,7 @@ func BuildKitHost() string {
 	}
 	xdr, err := rootlessutil.XDGRuntimeDir()
 	if err != nil {
-		logrus.Warn(err)
+		log.L.Warn(err)
 		xdr = fmt.Sprintf("/run/user/%d", rootlessutil.ParentEUID())
 	}
 	return fmt.Sprintf("unix://%s/buildkit/buildkitd.sock", xdr)

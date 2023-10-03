@@ -22,9 +22,9 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -75,7 +75,7 @@ func builderPruneAction(cmd *cobra.Command, _ []string) error {
 	}
 	buildctlArgs := buildkitutil.BuildctlBaseArgs(buildkitHost)
 	buildctlArgs = append(buildctlArgs, "prune")
-	logrus.Debugf("running %s %v", buildctlBinary, buildctlArgs)
+	log.L.Debugf("running %s %v", buildctlBinary, buildctlArgs)
 	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
 	buildctlCmd.Env = os.Environ()
 	buildctlCmd.Stdout = cmd.OutOrStdout()

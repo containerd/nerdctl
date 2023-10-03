@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/config"
 	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/errutil"
@@ -34,7 +35,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/pelletier/go-toml/v2"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -118,7 +118,7 @@ func usage(c *cobra.Command) error {
 func main() {
 	if err := xmain(); err != nil {
 		errutil.HandleExitCoder(err)
-		logrus.Fatal(err)
+		log.L.Fatal(err)
 	}
 }
 
@@ -139,15 +139,15 @@ func xmain() error {
 func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, error) {
 	cfg := config.New()
 	if r, err := os.Open(tomlPath); err == nil {
-		logrus.Debugf("Loading config from %q", tomlPath)
+		log.L.Debugf("Loading config from %q", tomlPath)
 		defer r.Close()
 		dec := toml.NewDecoder(r).DisallowUnknownFields() // set Strict to detect typo
 		if err := dec.Decode(cfg); err != nil {
 			return nil, fmt.Errorf("failed to load nerdctl config (not daemon config) from %q (Hint: don't mix up daemon's `config.toml` with `nerdctl.toml`): %w", tomlPath, err)
 		}
-		logrus.Debugf("Loaded config %+v", cfg)
+		log.L.Debugf("Loaded config %+v", cfg)
 	} else {
-		logrus.WithError(err).Debugf("Not loading config from %q", tomlPath)
+		log.L.WithError(err).Debugf("Not loading config from %q", tomlPath)
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
@@ -216,7 +216,7 @@ Config file ($NERDCTL_TOML): %s
 			debug = globalOptions.Debug
 		}
 		if debug {
-			logrus.SetLevel(logrus.DebugLevel)
+			log.SetLevel(log.DebugLevel.String())
 		}
 		address := globalOptions.Address
 		if strings.Contains(address, "://") && !strings.HasPrefix(address, "unix://") {
@@ -327,7 +327,7 @@ Config file ($NERDCTL_TOML): %s
 func globalFlags(cmd *cobra.Command) (string, []string) {
 	args0, err := os.Executable()
 	if err != nil {
-		logrus.WithError(err).Warnf("cannot call os.Executable(), assuming the executable to be %q", os.Args[0])
+		log.L.WithError(err).Warnf("cannot call os.Executable(), assuming the executable to be %q", os.Args[0])
 		args0 = os.Args[0]
 	}
 	if len(os.Args) < 2 {
@@ -396,7 +396,7 @@ func AddIntFlag(cmd *cobra.Command, name string, aliases []string, value int, en
 	if envV, ok := os.LookupEnv(env); ok {
 		v, err := strconv.ParseInt(envV, 10, 64)
 		if err != nil {
-			logrus.WithError(err).Warnf("Invalid int value for `%s`", env)
+			log.L.WithError(err).Warnf("Invalid int value for `%s`", env)
 		}
 		value = int(v)
 	}
@@ -423,7 +423,7 @@ func AddDurationFlag(cmd *cobra.Command, name string, aliases []string, value ti
 		var err error
 		value, err = time.ParseDuration(envV)
 		if err != nil {
-			logrus.WithError(err).Warnf("Invalid duration value for `%s`", env)
+			log.L.WithError(err).Warnf("Invalid duration value for `%s`", env)
 		}
 	}
 	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
@@ -501,7 +501,7 @@ func AddPersistentBoolFlag(cmd *cobra.Command, name string, aliases, nonPersiste
 		var err error
 		value, err = strconv.ParseBool(envV)
 		if err != nil {
-			logrus.WithError(err).Warnf("Invalid boolean value for `%s`", env)
+			log.L.WithError(err).Warnf("Invalid boolean value for `%s`", env)
 		}
 	}
 	aliasesUsage := fmt.Sprintf("Alias of --%s", name)

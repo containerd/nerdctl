@@ -30,7 +30,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/runtime/v2/logging"
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/log"
 )
 
 const (
@@ -154,7 +154,7 @@ func loggingProcessAdapter(driver Driver, dataStore string, config *logging.Conf
 		scanner := bufio.NewScanner(reader)
 		for scanner.Scan() {
 			if scanner.Err() != nil {
-				logrus.Errorf("failed to read log: %v", scanner.Err())
+				log.L.Errorf("failed to read log: %v", scanner.Err())
 				return
 			}
 			dataChan <- scanner.Text()

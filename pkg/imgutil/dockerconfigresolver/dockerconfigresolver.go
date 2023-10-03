@@ -26,11 +26,11 @@ import (
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	dockerconfig "github.com/containerd/containerd/remotes/docker/config"
+	"github.com/containerd/log"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/credentials"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker/errdefs"
-	"github.com/sirupsen/logrus"
 )
 
 var PushTracker = docker.NewInMemoryTracker()
@@ -63,17 +63,17 @@ func WithSkipVerifyCerts(b bool) Opt {
 func WithHostsDirs(orig []string) Opt {
 	var ss []string
 	if len(orig) == 0 {
-		logrus.Debug("no hosts dir was specified")
+		log.L.Debug("no hosts dir was specified")
 	}
 	for _, v := range orig {
 		if _, err := os.Stat(v); err == nil {
-			logrus.Debugf("Found hosts dir %q", v)
+			log.L.Debugf("Found hosts dir %q", v)
 			ss = append(ss, v)
 		} else {
 			if errors.Is(err, os.ErrNotExist) {
-				logrus.WithError(err).Debugf("Ignoring hosts dir %q", v)
+				log.L.WithError(err).Debugf("Ignoring hosts dir %q", v)
 			} else {
-				logrus.WithError(err).Warnf("Ignoring hosts dir %q", v)
+				log.L.WithError(err).Warnf("Ignoring hosts dir %q", v)
 			}
 		}
 	}
@@ -195,7 +195,7 @@ func NewAuthCreds(refHostname string) (AuthCreds, error) {
 		// GetAuthConfig does not raise an error on ENOENT
 		ac, err := dockerConfigFile.GetAuthConfig(authConfigHostname)
 		if err != nil {
-			logrus.WithError(err).Warnf("cannot get auth config for authConfigHostname=%q (refHostname=%q)",
+			log.L.WithError(err).Warnf("cannot get auth config for authConfigHostname=%q (refHostname=%q)",
 				authConfigHostname, refHostname)
 		} else {
 			// When refHostname is "docker.io":
@@ -206,7 +206,7 @@ func NewAuthCreds(refHostname string) (AuthCreds, error) {
 			if !isAuthConfigEmpty(ac) {
 				if ac.ServerAddress == "" {
 					// This can happen with Amazon ECR: https://github.com/containerd/nerdctl/issues/733
-					logrus.Debugf("failed to get ac.ServerAddress for authConfigHostname=%q (refHostname=%q)",
+					log.L.Debugf("failed to get ac.ServerAddress for authConfigHostname=%q (refHostname=%q)",
 						authConfigHostname, refHostname)
 				} else if authConfigHostname == IndexServer {
 					if ac.ServerAddress != IndexServer {
@@ -223,7 +223,7 @@ func NewAuthCreds(refHostname string) (AuthCreds, error) {
 				if ac.RegistryToken != "" {
 					// Even containerd/CRI does not support RegistryToken as of v1.4.3,
 					// so, nobody is actually using RegistryToken?
-					logrus.Warnf("ac.RegistryToken (for %q) is not supported yet (FIXME)", authConfigHostname)
+					log.L.Warnf("ac.RegistryToken (for %q) is not supported yet (FIXME)", authConfigHostname)
 				}
 
 				credFunc = func(credFuncArg string) (string, string, error) {

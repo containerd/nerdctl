@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
@@ -53,7 +54,6 @@ import (
 	dockercliopts "github.com/docker/cli/opts"
 	dockeropts "github.com/docker/docker/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/sirupsen/logrus"
 )
 
 // Create will create a container.
@@ -294,7 +294,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	// perform network setup/teardown in the main nerdctl executable.
 	if containerErr == nil && runtime.GOOS == "windows" {
 		netSetupErr = netManager.SetupNetworking(ctx, id)
-		logrus.WithError(netSetupErr).Warnf("networking setup error has occurred")
+		log.G(ctx).WithError(netSetupErr).Warnf("networking setup error has occurred")
 	}
 
 	if containerErr != nil || netSetupErr != nil {
@@ -693,7 +693,7 @@ func generateLogConfig(dataStore string, id string, logDriver string, logOpt []s
 			return
 		}
 		if lu != nil {
-			logrus.Debugf("generated log driver: %s", lu.String())
+			log.L.Debugf("generated log driver: %s", lu.String())
 			logConfig.LogURI = lu.String()
 		}
 	}
@@ -705,21 +705,21 @@ func generateGcFunc(ctx context.Context, container containerd.Container, ns, id,
 		if containerErr == nil {
 			netGcErr := netManager.CleanupNetworking(ctx, container)
 			if netGcErr != nil {
-				logrus.WithError(netGcErr).Warnf("failed to revert container %q networking settings", id)
+				log.G(ctx).WithError(netGcErr).Warnf("failed to revert container %q networking settings", id)
 			}
 		}
 
 		if rmErr := os.RemoveAll(internalLabels.stateDir); rmErr != nil {
-			logrus.WithError(rmErr).Warnf("failed to remove container %q state dir %q", id, internalLabels.stateDir)
+			log.G(ctx).WithError(rmErr).Warnf("failed to remove container %q state dir %q", id, internalLabels.stateDir)
 		}
 
 		if name != "" {
 			var errE error
 			if containerNameStore, errE = namestore.New(dataStore, ns); errE != nil {
-				logrus.WithError(errE).Warnf("failed to instantiate container name store during cleanup for container %q", id)
+				log.G(ctx).WithError(errE).Warnf("failed to instantiate container name store during cleanup for container %q", id)
 			}
 			if errE = containerNameStore.Release(name, id); errE != nil {
-				logrus.WithError(errE).Warnf("failed to release container name store for container %q (%s)", name, id)
+				log.G(ctx).WithError(errE).Warnf("failed to release container name store for container %q (%s)", name, id)
 			}
 		}
 	}

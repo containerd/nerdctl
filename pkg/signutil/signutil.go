@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/sirupsen/logrus"
 )
 
 // Sign signs an image using a signer and options provided in options.
@@ -44,7 +44,7 @@ func Sign(rawRef string, experimental bool, options types.ImageSignOptions) erro
 			return err
 		}
 	case "", "none":
-		logrus.Debugf("signing process skipped")
+		log.L.Debugf("signing process skipped")
 	default:
 		return fmt.Errorf("no signers found: %s", options.Provider)
 	}
@@ -72,7 +72,7 @@ func Verify(ctx context.Context, rawRef string, hostsDirs []string, experimental
 		}
 	case "", "none":
 		ref = rawRef
-		logrus.Debugf("verifying process skipped")
+		log.G(ctx).Debugf("verifying process skipped")
 	default:
 		return "", fmt.Errorf("no verifiers found: %s", options.Provider)
 	}

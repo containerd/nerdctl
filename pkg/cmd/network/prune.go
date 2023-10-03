@@ -21,10 +21,10 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/netutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/sirupsen/logrus"
 )
 
 func Prune(ctx context.Context, client *containerd.Client, options types.NetworkPruneOptions) error {
@@ -55,7 +55,7 @@ func Prune(ctx context.Context, client *containerd.Client, options types.Network
 			continue
 		}
 		if err := e.RemoveNetwork(net); err != nil {
-			logrus.WithError(err).Errorf("failed to remove network %s", net.Name)
+			log.G(ctx).WithError(err).Errorf("failed to remove network %s", net.Name)
 			continue
 		}
 		removedNetworks = append(removedNetworks, net.Name)

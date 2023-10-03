@@ -21,10 +21,10 @@ import (
 	"io"
 	"strings"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/cmd/login"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -76,7 +76,7 @@ func loginAction(cmd *cobra.Command, args []string) error {
 // copied from github.com/docker/cli/cli/command/registry/login.go (v20.10.3)
 func verifyLoginOptions(cmd *cobra.Command, options *loginOptions) error {
 	if options.password != "" {
-		logrus.Warn("WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
+		log.L.Warn("WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
 		if options.passwordStdin {
 			return errors.New("--password and --password-stdin are mutually exclusive")
 		}

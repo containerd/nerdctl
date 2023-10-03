@@ -18,11 +18,11 @@ package apparmor
 
 import (
 	"github.com/containerd/containerd/contrib/apparmor"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/sirupsen/logrus"
 )
 
 func Load() error {
-	logrus.Infof("Loading profile %q", defaults.AppArmorProfileName)
+	log.L.Infof("Loading profile %q", defaults.AppArmorProfileName)
 	return apparmor.LoadDefaultProfile(defaults.AppArmorProfileName)
 }

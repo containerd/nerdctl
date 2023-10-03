@@ -25,10 +25,10 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
-	"github.com/sirupsen/logrus"
 )
 
 // Remove removes a list of `images`.
@@ -78,7 +78,7 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 			// digests is used only for emulating human-readable output of `docker rmi`
 			digests, err := found.Image.RootFS(ctx, cs, platforms.DefaultStrict())
 			if err != nil {
-				logrus.WithError(err).Warning("failed to enumerate rootfs")
+				log.G(ctx).WithError(err).Warning("failed to enumerate rootfs")
 			}
 
 			if err := is.Delete(ctx, found.Image.Name, delOpts...); err != nil {
@@ -112,7 +112,7 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 		if !options.Force || fatalErr {
 			return errors.New(msg)
 		}
-		logrus.Error(msg)
+		log.G(ctx).Error(msg)
 	}
 	return nil
 }

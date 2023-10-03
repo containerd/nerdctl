@@ -36,7 +36,6 @@ import (
 	"github.com/containerd/typeurl/v2"
 	"github.com/docker/go-units"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -196,7 +195,7 @@ func getUpdateOption(cmd *cobra.Command, globalOptions types.GlobalCommandOption
 		return options, err
 	}
 	if kernelMemStr != "" && cmd.Flag("kernel-memory").Changed {
-		logrus.Warnf("The --kernel-memory flag is no longer supported. This flag is a noop.")
+		log.L.Warnf("The --kernel-memory flag is no longer supported. This flag is a noop.")
 	}
 	cpuset, err := cmd.Flags().GetString("cpuset-cpus")
 	if err != nil {

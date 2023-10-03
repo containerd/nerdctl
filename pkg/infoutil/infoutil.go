@@ -29,12 +29,12 @@ import (
 	"github.com/containerd/containerd"
 	ptypes "github.com/containerd/containerd/protobuf/types"
 	"github.com/containerd/containerd/services/introspection"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/version"
-	"github.com/sirupsen/logrus"
 )
 
 func NativeDaemonInfo(ctx context.Context, client *containerd.Client) (*native.DaemonInfo, error) {
@@ -160,19 +160,19 @@ func ServerSemVer(ctx context.Context, client *containerd.Client) (*semver.Versi
 func buildctlVersion() dockercompat.ComponentVersion {
 	buildctlBinary, err := buildkitutil.BuildctlBinary()
 	if err != nil {
-		logrus.Warnf("unable to determine buildctl version: %s", err.Error())
+		log.L.Warnf("unable to determine buildctl version: %s", err.Error())
 		return dockercompat.ComponentVersion{Name: "buildctl"}
 	}
 
 	stdout, err := exec.Command(buildctlBinary, "--version").Output()
 	if err != nil {
-		logrus.Warnf("unable to determine buildctl version: %s", err.Error())
+		log.L.Warnf("unable to determine buildctl version: %s", err.Error())
 		return dockercompat.ComponentVersion{Name: "buildctl"}
 	}
 
 	v, err := parseBuildctlVersion(stdout)
 	if err != nil {
-		logrus.Warn(err)
+		log.L.Warn(err)
 		return dockercompat.ComponentVersion{Name: "buildctl"}
 	}
 	return *v
@@ -205,12 +205,12 @@ func parseBuildctlVersion(buildctlVersionStdout []byte) (*dockercompat.Component
 func runcVersion() dockercompat.ComponentVersion {
 	stdout, err := exec.Command("runc", "--version").Output()
 	if err != nil {
-		logrus.Warnf("unable to determine runc version: %s", err.Error())
+		log.L.Warnf("unable to determine runc version: %s", err.Error())
 		return dockercompat.ComponentVersion{Name: "runc"}
 	}
 	v, err := parseRuncVersion(stdout)
 	if err != nil {
-		logrus.Warn(err)
+		log.L.Warn(err)
 		return dockercompat.ComponentVersion{Name: "runc"}
 	}
 	return *v
@@ -228,7 +228,7 @@ func parseRuncVersion(runcVersionStdout []byte) (*dockercompat.ComponentVersion,
 	for _, detailsLine := range versionList[1:] {
 		detail := strings.SplitN(detailsLine, ":", 2)
 		if len(detail) != 2 {
-			logrus.Warnf("unable to determine one of runc details, got: %s, %d", detail, len(detail))
+			log.L.Warnf("unable to determine one of runc details, got: %s, %d", detail, len(detail))
 			continue
 		}
 		switch strings.TrimSpace(detail[0]) {

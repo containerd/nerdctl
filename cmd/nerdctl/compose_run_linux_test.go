@@ -23,10 +23,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/testutil"
 	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/pkg/testutil/testregistry"
-	"github.com/sirupsen/logrus"
 	"gotest.tools/v3/assert"
 )
 
@@ -94,7 +94,7 @@ services:
 	stdoutContent := result.Stdout() + result.Stderr()
 	assert.Assert(psCmd.Base.T, result.ExitCode == 0, stdoutContent)
 	if strings.Contains(stdoutContent, containerName) {
-		logrus.Errorf("test failed, the container %s is not removed", stdoutContent)
+		log.L.Errorf("test failed, the container %s is not removed", stdoutContent)
 		t.Fail()
 		return
 	}
@@ -316,7 +316,7 @@ services:
 
 	container := base.InspectContainer(containerName)
 	if container.Config == nil {
-		logrus.Errorf("test failed, cannot fetch container config")
+		log.L.Errorf("test failed, cannot fetch container config")
 		t.Fail()
 	}
 	assert.Equal(t, container.Config.Labels["foo"], "rab")

@@ -37,14 +37,13 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/rootfs"
 	"github.com/containerd/containerd/snapshots"
+	"github.com/containerd/log"
 	imgutil "github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-
-	"github.com/sirupsen/logrus"
 )
 
 type Changes struct {
@@ -80,13 +79,13 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 	platformLabel := info.Labels[labels.Platform]
 	if platformLabel == "" {
 		platformLabel = platforms.DefaultString()
-		logrus.Warnf("Image lacks label %q, assuming the platform to be %q", labels.Platform, platformLabel)
+		log.G(ctx).Warnf("Image lacks label %q, assuming the platform to be %q", labels.Platform, platformLabel)
 	}
 	ocispecPlatform, err := platforms.Parse(platformLabel)
 	if err != nil {
 		return emptyDigest, err
 	}
-	logrus.Debugf("ocispecPlatform=%q", platforms.Format(ocispecPlatform))
+	log.G(ctx).Debugf("ocispecPlatform=%q", platforms.Format(ocispecPlatform))
 	platformMC := platforms.Only(ocispecPlatform)
 	baseImg := containerd.NewImageWithPlatform(client, baseImgWithoutPlatform, platformMC)
 
@@ -115,7 +114,7 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 
 			defer func() {
 				if err := task.Resume(ctx); err != nil {
-					logrus.Warnf("failed to unpause container %v: %v", id, err)
+					log.G(ctx).Warnf("failed to unpause container %v: %v", id, err)
 				}
 			}()
 		}
@@ -205,14 +204,14 @@ func generateCommitImageConfig(ctx context.Context, container containerd.Contain
 	arch := baseConfig.Architecture
 	if arch == "" {
 		arch = runtime.GOARCH
-		logrus.Warnf("assuming arch=%q", arch)
+		log.G(ctx).Warnf("assuming arch=%q", arch)
 	}
 	os := baseConfig.OS
 	if os == "" {
 		os = runtime.GOOS
-		logrus.Warnf("assuming os=%q", os)
+		log.G(ctx).Warnf("assuming os=%q", os)
 	}
-	logrus.Debugf("generateCommitImageConfig(): arch=%q, os=%q", arch, os)
+	log.G(ctx).Debugf("generateCommitImageConfig(): arch=%q, os=%q", arch, os)
 	return ocispec.Image{
 		Platform: ocispec.Platform{
 			Architecture: arch,
@@ -352,7 +351,7 @@ func applyDiffLayer(ctx context.Context, name string, baseImg ocispec.Image, sn 
 			// NOTE: the snapshotter should be hold by lease. Even
 			// if the cleanup fails, the containerd gc can delete it.
 			if err := sn.Remove(ctx, key); err != nil {
-				logrus.Warnf("failed to cleanup aborted apply %s: %s", key, err)
+				log.G(ctx).Warnf("failed to cleanup aborted apply %s: %s", key, err)
 			}
 		}
 	}()

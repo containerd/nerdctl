@@ -22,7 +22,7 @@ import (
 	"os"
 
 	"github.com/containerd/containerd"
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/log"
 )
 
 // ExecOptions stores options passed from users as flags and args.
@@ -90,7 +90,7 @@ func (c *Composer) exec(ctx context.Context, container containerd.Container, eo 
 	}
 
 	if c.DebugPrintFull {
-		logrus.Debugf("Executing %v", cmd.Args)
+		log.G(ctx).Debugf("Executing %v", cmd.Args)
 	}
 	return cmd.Run()
 }

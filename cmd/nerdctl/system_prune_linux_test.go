@@ -25,9 +25,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/sirupsen/logrus"
 )
 
 func TestSystemPrune(t *testing.T) {
@@ -79,7 +79,7 @@ func TestSystemPrune(t *testing.T) {
 
 	buildctlArgs := buildkitutil.BuildctlBaseArgs(host)
 	buildctlArgs = append(buildctlArgs, "du")
-	logrus.Debugf("running %s %v", buildctlBinary, buildctlArgs)
+	log.L.Debugf("running %s %v", buildctlBinary, buildctlArgs)
 	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
 	buildctlCmd.Env = os.Environ()
 	stdout := bytes.NewBuffer(nil)

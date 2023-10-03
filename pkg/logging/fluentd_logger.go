@@ -27,9 +27,9 @@ import (
 	"time"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/fluent/fluent-logger-golang/fluent"
-	"github.com/sirupsen/logrus"
 )
 
 type FluentdLogger struct {
@@ -77,11 +77,11 @@ const (
 func FluentdLogOptsValidate(logOptMap map[string]string) error {
 	for key := range logOptMap {
 		if !strutil.InStringSlice(FluentdLogOpts, key) {
-			logrus.Warnf("log-opt %s is ignored for fluentd log driver", key)
+			log.L.Warnf("log-opt %s is ignored for fluentd log driver", key)
 		}
 	}
 	if _, ok := logOptMap[fluentAddress]; !ok {
-		logrus.Warnf("%s is missing for fluentd log driver, the default value %s:%d will be used", fluentAddress, defaultHost, defaultPort)
+		log.L.Warnf("%s is missing for fluentd log driver, the default value %s:%d will be used", fluentAddress, defaultHost, defaultPort)
 	}
 	return nil
 }

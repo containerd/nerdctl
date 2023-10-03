@@ -21,9 +21,9 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/log"
 	imgutil "github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
-	"github.com/sirupsen/logrus"
 )
 
 // Inspect inspects the image, for the platform specified in image.platform.
@@ -34,7 +34,7 @@ func Inspect(ctx context.Context, client *containerd.Client, image images.Image,
 	img := containerd.NewImage(client, image)
 	idx, idxDesc, err := imgutil.ReadIndex(ctx, img)
 	if err != nil {
-		logrus.WithError(err).WithField("id", image.Name).Warnf("failed to inspect index")
+		log.G(ctx).WithError(err).WithField("id", image.Name).Warnf("failed to inspect index")
 	} else {
 		n.IndexDesc = idxDesc
 		n.Index = idx
@@ -42,7 +42,7 @@ func Inspect(ctx context.Context, client *containerd.Client, image images.Image,
 
 	mani, maniDesc, err := imgutil.ReadManifest(ctx, img)
 	if err != nil {
-		logrus.WithError(err).WithField("id", image.Name).Warnf("failed to inspect manifest")
+		log.G(ctx).WithError(err).WithField("id", image.Name).Warnf("failed to inspect manifest")
 	} else {
 		n.ManifestDesc = maniDesc
 		n.Manifest = mani
@@ -50,7 +50,7 @@ func Inspect(ctx context.Context, client *containerd.Client, image images.Image,
 
 	imageConfig, imageConfigDesc, err := imgutil.ReadImageConfig(ctx, img)
 	if err != nil {
-		logrus.WithError(err).WithField("id", image.Name).Warnf("failed to inspect image config")
+		log.G(ctx).WithError(err).WithField("id", image.Name).Warnf("failed to inspect image config")
 	} else {
 		n.ImageConfigDesc = imageConfigDesc
 		n.ImageConfig = imageConfig
@@ -58,7 +58,7 @@ func Inspect(ctx context.Context, client *containerd.Client, image images.Image,
 	snapSvc := client.SnapshotService(snapshotter)
 	n.Size, err = imgutil.UnpackedImageSize(ctx, snapSvc, img)
 	if err != nil {
-		logrus.WithError(err).WithField("id", image.Name).Warnf("failed to inspect calculate size")
+		log.G(ctx).WithError(err).WithField("id", image.Name).Warnf("failed to inspect calculate size")
 	}
 	n.Image = image
 

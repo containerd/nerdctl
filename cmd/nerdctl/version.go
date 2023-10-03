@@ -23,12 +23,12 @@ import (
 	"os"
 	"text/template"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -72,7 +72,7 @@ func versionAction(cmd *cobra.Command, args []string) error {
 	if rootlessutil.IsRootless() {
 		address, err = rootlessutil.RootlessContainredSockAddress()
 		if err != nil {
-			logrus.WithError(err).Warning("failed to inspect the rootless containerd socket address")
+			log.L.WithError(err).Warning("failed to inspect the rootless containerd socket address")
 			address = ""
 		}
 	}

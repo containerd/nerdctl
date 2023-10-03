@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/images/converter/uncompress"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	converterutil "github.com/containerd/nerdctl/pkg/imgutil/converter"
@@ -44,7 +45,6 @@ import (
 	"github.com/containerd/stargz-snapshotter/recorder"
 	"github.com/klauspost/compress/zstd"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 )
 
 func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRawRef string, options types.ImageConvertOptions) error {
@@ -163,9 +163,9 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 		}
 		if !options.Oci {
 			if nydus || overlaybd {
-				logrus.Warnf("option --%s should be used in conjunction with --oci, forcibly enabling on oci mediatype for %s conversion", convertType, convertType)
+				log.G(ctx).Warnf("option --%s should be used in conjunction with --oci, forcibly enabling on oci mediatype for %s conversion", convertType, convertType)
 			} else {
-				logrus.Warnf("option --%s should be used in conjunction with --oci", convertType)
+				log.G(ctx).Warnf("option --%s should be used in conjunction with --oci", convertType)
 			}
 		}
 		if options.Uncompress {
@@ -254,7 +254,7 @@ func getESGZConvertOpts(options types.ImageConvertOptions) ([]estargz.Option, er
 			return nil, fmt.Errorf("estargz-record-in requires experimental mode to be enabled")
 		}
 
-		logrus.Warn("--estargz-record-in flag is experimental and subject to change")
+		log.L.Warn("--estargz-record-in flag is experimental and subject to change")
 		paths, err := readPathsFromRecordFile(options.EstargzRecordIn)
 		if err != nil {
 			return nil, err
@@ -281,7 +281,7 @@ func getZstdchunkedConverter(options types.ImageConvertOptions) (converter.Conve
 			return nil, fmt.Errorf("zstdchunked-record-in requires experimental mode to be enabled")
 		}
 
-		logrus.Warn("--zstdchunked-record-in flag is experimental and subject to change")
+		log.L.Warn("--zstdchunked-record-in flag is experimental and subject to change")
 		paths, err := readPathsFromRecordFile(options.ZstdChunkedRecordIn)
 		if err != nil {
 			return nil, err
@@ -356,14 +356,14 @@ func printConvertedImage(stdout io.Writer, options types.ImageConvertOptions, im
 		for i, e := range img.ExtraImages {
 			elems := strings.SplitN(e, "@", 2)
 			if len(elems) < 2 {
-				logrus.Errorf("extra reference %q doesn't contain digest", e)
+				log.L.Errorf("extra reference %q doesn't contain digest", e)
 			} else {
-				logrus.Infof("Extra image(%d) %s", i, elems[0])
+				log.L.Infof("Extra image(%d) %s", i, elems[0])
 			}
 		}
 		elems := strings.SplitN(img.Image, "@", 2)
 		if len(elems) < 2 {
-			logrus.Errorf("reference %q doesn't contain digest", img.Image)
+			log.L.Errorf("reference %q doesn't contain digest", img.Image)
 		} else {
 			fmt.Fprintln(stdout, elems[1])
 		}

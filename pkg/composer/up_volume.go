@@ -20,10 +20,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
-
-	"github.com/sirupsen/logrus"
 )
 
 func (c *Composer) upVolume(ctx context.Context, shortName string) error {
@@ -37,7 +36,7 @@ func (c *Composer) upVolume(ctx context.Context, shortName string) error {
 	}
 
 	if unknown := reflectutil.UnknownNonEmptyFields(&vol, "Name"); len(unknown) > 0 {
-		logrus.Warnf("Ignoring: volume %s: %+v", shortName, unknown)
+		log.G(ctx).Warnf("Ignoring: volume %s: %+v", shortName, unknown)
 	}
 
 	// shortName is like "db_data", fullName is like "compose-wordpress_db_data"
@@ -46,7 +45,7 @@ func (c *Composer) upVolume(ctx context.Context, shortName string) error {
 	if err != nil {
 		return err
 	} else if !volExists {
-		logrus.Infof("Creating volume %s", fullName)
+		log.G(ctx).Infof("Creating volume %s", fullName)
 		//add metadata labels to volume https://github.com/compose-spec/compose-spec/blob/master/spec.md#labels-2
 		createArgs := []string{
 			fmt.Sprintf("--label=%s=%s", labels.ComposeProject, c.project.Name),

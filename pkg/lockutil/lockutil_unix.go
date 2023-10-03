@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/log"
 	"golang.org/x/sys/unix"
 )
 
@@ -37,7 +37,7 @@ func WithDirLock(dir string, fn func() error) error {
 	}
 	defer func() {
 		if err := Flock(dirFile, unix.LOCK_UN); err != nil {
-			logrus.WithError(err).Errorf("failed to unlock %q", dir)
+			log.L.WithError(err).Errorf("failed to unlock %q", dir)
 		}
 	}()
 	return fn()

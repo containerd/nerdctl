@@ -21,9 +21,9 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/typeurl/v2"
-	"github.com/sirupsen/logrus"
 )
 
 func Inspect(ctx context.Context, container containerd.Container) (*native.Container, error) {
@@ -38,13 +38,13 @@ func Inspect(ctx context.Context, container containerd.Container) (*native.Conta
 
 	n.Spec, err = typeurl.UnmarshalAny(info.Spec)
 	if err != nil {
-		logrus.WithError(err).WithField("id", id).Warnf("failed to inspect Spec")
+		log.G(ctx).WithError(err).WithField("id", id).Warnf("failed to inspect Spec")
 		return n, nil
 	}
 	task, err := container.Task(ctx, nil)
 	if err != nil {
 		if !errdefs.IsNotFound(err) {
-			logrus.WithError(err).WithField("id", id).Warnf("failed to inspect Task")
+			log.G(ctx).WithError(err).WithField("id", id).Warnf("failed to inspect Task")
 		}
 		return n, nil
 	}
@@ -53,13 +53,13 @@ func Inspect(ctx context.Context, container containerd.Container) (*native.Conta
 	}
 	st, err := task.Status(ctx)
 	if err != nil {
-		logrus.WithError(err).WithField("id", id).Warnf("failed to inspect Status")
+		log.G(ctx).WithError(err).WithField("id", id).Warnf("failed to inspect Status")
 		return n, nil
 	}
 	n.Process.Status = st
 	netNS, err := InspectNetNS(ctx, n.Process.Pid)
 	if err != nil {
-		logrus.WithError(err).WithField("id", id).Warnf("failed to inspect NetNS")
+		log.G(ctx).WithError(err).WithField("id", id).Warnf("failed to inspect NetNS")
 		return n, nil
 	}
 	n.Process.NetNS = netNS

@@ -25,10 +25,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/labels"
 
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -75,7 +75,7 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 		return nil
 	}
 
-	logrus.Info("Attaching to logs")
+	log.G(ctx).Info("Attaching to logs")
 	lo := LogsOptions{
 		Follow:      true,
 		NoColor:     uo.NoColor,
@@ -85,7 +85,7 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 		return err
 	}
 
-	logrus.Infof("Stopping containers (forcibly)") // TODO: support gracefully stopping
+	log.G(ctx).Infof("Stopping containers (forcibly)") // TODO: support gracefully stopping
 	c.stopContainersFromParsedServices(ctx, containers)
 	return nil
 }
@@ -102,10 +102,10 @@ func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Ser
 		}
 		// even when c.ImageExists returns true, we need to call c.EnsureImage
 		// because ps.PullMode can be "always". So no return here.
-		logrus.Debugf("Image %s already exists, not building", ps.Image)
+		log.G(ctx).Debugf("Image %s already exists, not building", ps.Image)
 	}
 
-	logrus.Infof("Ensuring image %s", ps.Image)
+	log.G(ctx).Infof("Ensuring image %s", ps.Image)
 	return c.EnsureImage(ctx, ps.Image, ps.PullMode, ps.Unparsed.Platform, ps, quiet)
 }
 
@@ -120,18 +120,18 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 
 	// delete container if it already exists
 	if exists {
-		logrus.Debugf("Container %q already exists, deleting", container.Name)
+		log.G(ctx).Debugf("Container %q already exists, deleting", container.Name)
 		delCmd := c.createNerdctlCmd(ctx, "rm", "-f", container.Name)
 		if err = delCmd.Run(); err != nil {
 			return "", fmt.Errorf("could not delete container %q: %s", container.Name, err)
 		}
-		logrus.Infof("Re-creating container %s", container.Name)
+		log.G(ctx).Infof("Re-creating container %s", container.Name)
 	} else {
-		logrus.Infof("Creating container %s", container.Name)
+		log.G(ctx).Infof("Creating container %s", container.Name)
 	}
 
 	for _, f := range container.Mkdir {
-		logrus.Debugf("Creating a directory %q", f)
+		log.G(ctx).Debugf("Creating a directory %q", f)
 		if err = os.MkdirAll(f, 0o755); err != nil {
 			return "", fmt.Errorf("failed to create a directory %q: %w", f, err)
 		}
@@ -159,7 +159,7 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 
 	cmd := c.createNerdctlCmd(ctx, append([]string{"run"}, container.RunArgs...)...)
 	if c.DebugPrintFull {
-		logrus.Debugf("Running %v", cmd.Args)
+		log.G(ctx).Debugf("Running %v", cmd.Args)
 	}
 
 	// FIXME

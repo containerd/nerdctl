@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/log"
 	"golang.org/x/sys/windows"
 )
 
@@ -38,7 +38,7 @@ func WithDirLock(dir string, fn func() error) error {
 
 	defer func() {
 		if err := windows.UnlockFileEx(windows.Handle(dirFile.Fd()), 0, 1, 0, &windows.Overlapped{}); err != nil {
-			logrus.WithError(err).Errorf("failed to unlock %q", dir)
+			log.L.WithError(err).Errorf("failed to unlock %q", dir)
 		}
 	}()
 	return fn()

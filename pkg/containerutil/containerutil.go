@@ -34,6 +34,7 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/runtime/restart"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
@@ -45,7 +46,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/moby/sys/signal"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/sirupsen/logrus"
 )
 
 // PrintHostPort writes to `writer` the public (HostIP:HostPort) of a given `containerPort/protocol` in a container.
@@ -246,7 +246,7 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 
 	cStatus := formatter.ContainerStatus(ctx, container)
 	if cStatus == "Up" {
-		logrus.Warnf("container %s is already running", container.ID())
+		log.G(ctx).Warnf("container %s is already running", container.ID())
 		return nil
 	}
 
@@ -262,7 +262,7 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 	}
 	if oldTask, err := container.Task(ctx, nil); err == nil {
 		if _, err := oldTask.Delete(ctx); err != nil {
-			logrus.WithError(err).Debug("failed to delete old task")
+			log.G(ctx).WithError(err).Debug("failed to delete old task")
 		}
 	}
 	detachC := make(chan struct{})
@@ -279,7 +279,7 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 	}
 	if flagA && flagT {
 		if err := consoleutil.HandleConsoleResize(ctx, task, con); err != nil {
-			logrus.WithError(err).Error("console resize")
+			log.G(ctx).WithError(err).Error("console resize")
 		}
 	}
 	sigc := signalutil.ForwardAllSignals(ctx, task)
@@ -390,7 +390,7 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 		// signal will be sent once resume is finished
 		if paused {
 			if err := task.Resume(ctx); err != nil {
-				logrus.Warnf("Cannot unpause container %s: %s", container.ID(), err)
+				log.G(ctx).Warnf("Cannot unpause container %s: %s", container.ID(), err)
 			} else {
 				// no need to do it again when send sigkill signal
 				paused = false
@@ -422,7 +422,7 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 	// signal will be sent once resume is finished
 	if paused {
 		if err := task.Resume(ctx); err != nil {
-			logrus.Warnf("Cannot unpause container %s: %s", container.ID(), err)
+			log.G(ctx).Warnf("Cannot unpause container %s: %s", container.ID(), err)
 		}
 	}
 	return waitContainerStop(ctx, exitCh, container.ID())
@@ -541,7 +541,7 @@ func GetContainerVolumes(containerLabels map[string]string) []*ContainerVolume {
 
 		}
 		if err != nil {
-			logrus.Warn(err)
+			log.L.Warn(err)
 		}
 		vols = append(vols, volumes...)
 	}

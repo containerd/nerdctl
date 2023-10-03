@@ -27,12 +27,11 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/pkg/userns"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
-
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -63,7 +62,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore, createDir bool) (*
 	case 1:
 		dst = s
 		res.AnonymousVolume = idgen.GenerateID()
-		logrus.Debugf("creating anonymous volume %q, for %q", res.AnonymousVolume, s)
+		log.L.Debugf("creating anonymous volume %q, for %q", res.AnonymousVolume, s)
 		anonVol, err := volStore.Create(res.AnonymousVolume, []string{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create an anonymous volume %q: %w", res.AnonymousVolume, err)
@@ -92,7 +91,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore, createDir bool) (*
 			res.Type = Volume
 		}
 		if !filepath.IsAbs(src) {
-			logrus.Warnf("expected an absolute path, got a relative path %q (allowed for nerdctl, but disallowed for Docker, so unrecommended)", src)
+			log.L.Warnf("expected an absolute path, got a relative path %q (allowed for nerdctl, but disallowed for Docker, so unrecommended)", src)
 			var err error
 			src, err = filepath.Abs(src)
 			if err != nil {

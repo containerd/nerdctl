@@ -23,16 +23,16 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/imgutil"
-	"github.com/sirupsen/logrus"
 )
 
 // SignNotation signs an image(`rawRef`) using a notation key name (`keyNameRef`)
 func SignNotation(rawRef string, keyNameRef string) error {
 	notationExecutable, err := exec.LookPath("notation")
 	if err != nil {
-		logrus.WithError(err).Error("notation executable not found in path $PATH")
-		logrus.Info("you might consider installing notation from: https://notaryproject.dev/docs/installation/cli/")
+		log.L.WithError(err).Error("notation executable not found in path $PATH")
+		log.L.Info("you might consider installing notation from: https://notaryproject.dev/docs/installation/cli/")
 		return err
 	}
 
@@ -46,7 +46,7 @@ func SignNotation(rawRef string, keyNameRef string) error {
 
 	notationCmd.Args = append(notationCmd.Args, rawRef)
 
-	logrus.Debugf("running %s %v", notationExecutable, notationCmd.Args)
+	log.L.Debugf("running %s %v", notationExecutable, notationCmd.Args)
 
 	err = processNotationIO(notationCmd)
 	if err != nil {
@@ -61,7 +61,7 @@ func SignNotation(rawRef string, keyNameRef string) error {
 func VerifyNotation(ctx context.Context, rawRef string, hostsDirs []string) (string, error) {
 	digest, err := imgutil.ResolveDigest(ctx, rawRef, false, hostsDirs)
 	if err != nil {
-		logrus.WithError(err).Errorf("unable to resolve digest for an image %s: %v", rawRef, err)
+		log.G(ctx).WithError(err).Errorf("unable to resolve digest for an image %s: %v", rawRef, err)
 		return rawRef, err
 	}
 	ref := rawRef
@@ -69,12 +69,12 @@ func VerifyNotation(ctx context.Context, rawRef string, hostsDirs []string) (str
 		ref += "@" + digest
 	}
 
-	logrus.Debugf("verifying image: %s", ref)
+	log.G(ctx).Debugf("verifying image: %s", ref)
 
 	notationExecutable, err := exec.LookPath("notation")
 	if err != nil {
-		logrus.WithError(err).Error("notation executable not found in path $PATH")
-		logrus.Info("you might consider installing notation from: https://notaryproject.dev/docs/installation/cli/")
+		log.G(ctx).WithError(err).Error("notation executable not found in path $PATH")
+		log.G(ctx).Info("you might consider installing notation from: https://notaryproject.dev/docs/installation/cli/")
 		return ref, err
 	}
 
@@ -83,7 +83,7 @@ func VerifyNotation(ctx context.Context, rawRef string, hostsDirs []string) (str
 
 	notationCmd.Args = append(notationCmd.Args, ref)
 
-	logrus.Debugf("running %s %v", notationExecutable, notationCmd.Args)
+	log.G(ctx).Debugf("running %s %v", notationExecutable, notationCmd.Args)
 
 	err = processNotationIO(notationCmd)
 	if err != nil {
@@ -99,11 +99,11 @@ func VerifyNotation(ctx context.Context, rawRef string, hostsDirs []string) (str
 func processNotationIO(notationCmd *exec.Cmd) error {
 	stdout, err := notationCmd.StdoutPipe()
 	if err != nil {
-		logrus.Warn("notation: " + err.Error())
+		log.L.Warn("notation: " + err.Error())
 	}
 	stderr, err := notationCmd.StderrPipe()
 	if err != nil {
-		logrus.Warn("notation: " + err.Error())
+		log.L.Warn("notation: " + err.Error())
 	}
 	if err := notationCmd.Start(); err != nil {
 		// only return err if it's critical (notation start failed.)
@@ -112,18 +112,18 @@ func processNotationIO(notationCmd *exec.Cmd) error {
 
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
-		logrus.Info("notation: " + scanner.Text())
+		log.L.Info("notation: " + scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
-		logrus.Warn("notation: " + err.Error())
+		log.L.Warn("notation: " + err.Error())
 	}
 
 	errScanner := bufio.NewScanner(stderr)
 	for errScanner.Scan() {
-		logrus.Info("notation: " + errScanner.Text())
+		log.L.Info("notation: " + errScanner.Text())
 	}
 	if err := errScanner.Err(); err != nil {
-		logrus.Warn("notation: " + err.Error())
+		log.L.Warn("notation: " + err.Error())
 	}
 
 	return nil

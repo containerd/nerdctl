@@ -32,6 +32,7 @@ import (
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/imgcrypt"
 	"github.com/containerd/imgcrypt/images/encryption"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
@@ -39,7 +40,6 @@ import (
 	"github.com/docker/docker/errdefs"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 )
 
 // EnsuredImage contains the image existed in containerd and its metadata.
@@ -133,7 +133,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 
 	var dOpts []dockerconfigresolver.Opt
 	if insecure {
-		logrus.Warnf("skipping verifying HTTPS certs for %q", refDomain)
+		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", refDomain)
 		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
 	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(hostsDirs))
@@ -149,7 +149,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 			return nil, err
 		}
 		if insecure {
-			logrus.WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
+			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
 			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
 			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
 			if err != nil {
@@ -157,8 +157,8 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 			}
 			return PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack, quiet)
 		}
-		logrus.WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
-		logrus.Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
+		log.G(ctx).WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
+		log.G(ctx).Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
 		return nil, err
 
 	}
@@ -176,7 +176,7 @@ func ResolveDigest(ctx context.Context, rawRef string, insecure bool, hostsDirs 
 
 	var dOpts []dockerconfigresolver.Opt
 	if insecure {
-		logrus.Warnf("skipping verifying HTTPS certs for %q", refDomain)
+		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", refDomain)
 		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
 	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(hostsDirs))
@@ -222,7 +222,7 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 
 	snOpt := getSnapshotterOpts(snapshotter)
 	if unpackB {
-		logrus.Debugf("The image will be unpacked for platform %q, snapshotter %q.", ocispecPlatforms[0], snapshotter)
+		log.G(ctx).Debugf("The image will be unpacked for platform %q, snapshotter %q.", ocispecPlatforms[0], snapshotter)
 		imgcryptPayload := imgcrypt.Payload{}
 		imgcryptUnpackOpt := encryption.WithUnpackConfigApplyOpts(encryption.WithDecryptedUnpack(&imgcryptPayload))
 		config.RemoteOpts = append(config.RemoteOpts,
@@ -232,7 +232,7 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 		// different remote snapshotters will update pull.Config separately
 		snOpt.apply(config, ref)
 	} else {
-		logrus.Debugf("The image will not be unpacked. Platforms=%v.", ocispecPlatforms)
+		log.G(ctx).Debugf("The image will not be unpacked. Platforms=%v.", ocispecPlatforms)
 	}
 
 	containerdImage, err = pull.Pull(ctx, client, ref, config)
@@ -358,11 +358,11 @@ func ReadImageConfig(ctx context.Context, img containerd.Image) (ocispec.Image, 
 
 // ParseRepoTag parses raw `imgName` to repository and tag.
 func ParseRepoTag(imgName string) (string, string) {
-	logrus.Debugf("raw image name=%q", imgName)
+	log.L.Debugf("raw image name=%q", imgName)
 
 	ref, err := refdocker.ParseDockerRef(imgName)
 	if err != nil {
-		logrus.WithError(err).Debugf("unparsable image name %q", imgName)
+		log.L.WithError(err).Debugf("unparsable image name %q", imgName)
 		return "", ""
 	}
 
@@ -411,7 +411,7 @@ func UnpackedImageSize(ctx context.Context, s snapshots.Snapshotter, img contain
 	usage, err := s.Usage(ctx, chainID)
 	if err != nil {
 		if errdefs.IsNotFound(err) {
-			logrus.WithError(err).Debugf("image %q seems not unpacked", img.Name())
+			log.G(ctx).WithError(err).Debugf("image %q seems not unpacked", img.Name())
 			return 0, nil
 		}
 		return 0, err

@@ -29,6 +29,7 @@ import (
 
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/containerd/containerd/remotes/docker/config"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
@@ -36,7 +37,6 @@ import (
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/errdefs"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context/ctxhttp"
 	"golang.org/x/term"
 )
@@ -148,7 +148,7 @@ func loginClientSide(ctx context.Context, globalOptions types.GlobalCommandOptio
 	}
 	var dOpts []dockerconfigresolver.Opt
 	if globalOptions.InsecureRegistry {
-		logrus.Warnf("skipping verifying HTTPS certs for %q", host)
+		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", host)
 		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
 	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(globalOptions.HostsDir))
@@ -158,7 +158,7 @@ func loginClientSide(ctx context.Context, globalOptions types.GlobalCommandOptio
 			if auth.RegistryToken != "" {
 				// Even containerd/CRI does not support RegistryToken as of v1.4.3,
 				// so, nobody is actually using RegistryToken?
-				logrus.Warnf("RegistryToken (for %q) is not supported yet (FIXME)", host)
+				log.G(ctx).Warnf("RegistryToken (for %q) is not supported yet (FIXME)", host)
 			}
 			return auth.Username, auth.Password, nil
 		}
@@ -180,7 +180,7 @@ func loginClientSide(ctx context.Context, globalOptions types.GlobalCommandOptio
 	if err != nil {
 		return "", err
 	}
-	logrus.Debugf("len(regHosts)=%d", len(regHosts))
+	log.G(ctx).Debugf("len(regHosts)=%d", len(regHosts))
 	if len(regHosts) == 0 {
 		return "", fmt.Errorf("got empty []docker.RegistryHost for %q", host)
 	}
@@ -194,7 +194,7 @@ func loginClientSide(ctx context.Context, globalOptions types.GlobalCommandOptio
 		if err == nil {
 			return identityToken, nil
 		}
-		logrus.WithError(err).WithField("i", i).Error("failed to call tryLoginWithRegHost")
+		log.G(ctx).WithError(err).WithField("i", i).Error("failed to call tryLoginWithRegHost")
 	}
 	return "", err
 }

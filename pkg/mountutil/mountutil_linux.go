@@ -28,11 +28,11 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 	"github.com/docker/go-units"
 	mobymount "github.com/moby/sys/mount"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
@@ -118,7 +118,7 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 		case "":
 			// NOP
 		default:
-			logrus.Warnf("unsupported volume option %q", opt)
+			log.L.Warnf("unsupported volume option %q", opt)
 		}
 	}
 
@@ -144,7 +144,7 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 			// Older version of runc just ignores "rro", so we have to add "ro" too, to our best effort.
 			opts = append(opts, "ro", "rro")
 			if len(propagationRawOpts) != 1 || propagationRawOpts[0] != "rprivate" {
-				logrus.Warn("Mount option \"rro\" should be used in conjunction with \"rprivate\"")
+				log.L.Warn("Mount option \"rro\" should be used in conjunction with \"rprivate\"")
 			}
 		case "rw":
 			// NOP
@@ -418,7 +418,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 	}
 	fieldsStr := strings.Join(fields, ":")
 
-	logrus.Debugf("Call legacy %s process, spec: %s ", mountType, fieldsStr)
+	log.L.Debugf("Call legacy %s process, spec: %s ", mountType, fieldsStr)
 
 	switch mountType {
 	case Tmpfs:

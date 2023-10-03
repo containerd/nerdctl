@@ -23,9 +23,8 @@ import (
 
 	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/labels"
-
-	"github.com/sirupsen/logrus"
 )
 
 // RestartOptions stores all option input from `nerdctl compose restart`
@@ -61,14 +60,14 @@ func (c *Composer) restartContainers(ctx context.Context, containers []container
 		go func() {
 			defer rsWG.Done()
 			info, _ := container.Info(ctx, containerd.WithoutRefreshedMetadata)
-			logrus.Infof("Restarting container %s", info.Labels[labels.Name])
+			log.G(ctx).Infof("Restarting container %s", info.Labels[labels.Name])
 			args := []string{"restart"}
 			if opt.Timeout != nil {
 				args = append(args, timeoutArg)
 			}
 			args = append(args, container.ID())
 			if err := c.runNerdctlCmd(ctx, args...); err != nil {
-				logrus.Warn(err)
+				log.G(ctx).Warn(err)
 			}
 		}()
 	}
