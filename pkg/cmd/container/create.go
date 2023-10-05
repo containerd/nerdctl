@@ -21,15 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
-	"os"
-	"os/exec"
-	"path"
-	"path/filepath"
-	"runtime"
-	"strconv"
-	"strings"
-
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/containers"
@@ -43,6 +34,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/flagutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
@@ -50,10 +42,22 @@ import (
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/referenceutil"
+	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containernetworking/plugins/pkg/ns"
 	dockercliopts "github.com/docker/cli/opts"
 	dockeropts "github.com/docker/docker/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/rootless-containers/rootlesskit/v2/pkg/child"
+	"github.com/sirupsen/logrus"
+	"net/url"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
 )
 
 // Create will create a container.
@@ -282,6 +286,32 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 
 	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
 
+	detachNetNs, err := infoutil.DetectBinaryFeature("rootlesskit", "--detach-netns")
+	if err != nil {
+		return nil, nil, err
+	}
+	if rootlessutil.IsRootlessChild() && detachNetNs {
+		stateDir, err := rootlessutil.RootlessKitStateDir()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if err := ns.WithNetNSPath(filepath.Join(stateDir, "netns"), func(_ ns.NetNS) error {
+			// verified that I entered detach ns
+			containerDetachNetNs := filepath.Join(stateDir, fmt.Sprintf("netns-%s", id))
+			if err := child.NewNetNsWithPathWithoutEnter(containerDetachNetNs); err != nil {
+				return err
+			}
+			opts = append(opts, oci.WithLinuxNamespace(specs.LinuxNamespace{
+				Type: specs.NetworkNamespace,
+				Path: containerDetachNetNs,
+			}))
+			return nil
+		}); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)
 
@@ -418,7 +448,7 @@ func withNerdctlOCIHook(cmd string, args []string) (oci.SpecOpts, error) {
 	args = append([]string{cmd}, append(args, "internal", "oci-hook")...)
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
 		if s.Hooks == nil {
-			s.Hooks = &specs.Hooks{}
+			s.Hooks = new(specs.Hooks)
 		}
 		crArgs := append(args, "createRuntime")
 		s.Hooks.CreateRuntime = append(s.Hooks.CreateRuntime, specs.Hook{

@@ -93,7 +93,7 @@ func ParentMain(hostGatewayIP string) error {
 		"-r/",     // root dir (busybox nsenter wants this to be explicitly specified),
 		"-w" + wd, // work dir
 		"--preserve-credentials",
-		"-m", "-n", "-U",
+		"-m", "-U",
 		"-t", strconv.Itoa(childPid),
 		"-F", // no fork
 	}

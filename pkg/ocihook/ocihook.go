@@ -42,6 +42,7 @@ import (
 	b4nndclient "github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
 	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
 	"github.com/vishvananda/netns"
+	"runtime"
 )
 
 const (
@@ -421,10 +422,15 @@ func onCreateRuntime(opts *handlerOpts) error {
 			ExtraHosts: opts.extraHosts,
 			Name:       opts.state.Annotations[labels.Name],
 		}
+		runtime.LockOSThread()
+		// nsents verified here we are in detached netwoprk ns
+		// nsPath verified is pointing to the nested detached ns
+		// user ns is the detch user ns
 		cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, namespaceOpts...)
 		if err != nil {
 			return fmt.Errorf("failed to call cni.Setup: %w", err)
 		}
+		runtime.UnlockOSThread()
 		cniResRaw := cniRes.Raw()
 		for i, cniName := range opts.cniNames {
 			hsMeta.Networks[cniName] = cniResRaw[i]
