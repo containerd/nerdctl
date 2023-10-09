@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/containerd"
 	_ "github.com/containerd/containerd/api/events" // Register grpc event types
 	"github.com/containerd/containerd/events"
-	"github.com/containerd/containerd/log"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/typeurl/v2"

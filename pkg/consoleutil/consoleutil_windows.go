@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/containerd/console"
-	"github.com/containerd/containerd/log"
+	"github.com/containerd/log"
 )
 
 // HandleConsoleResize resizes the console.
