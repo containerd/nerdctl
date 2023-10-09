@@ -21,11 +21,14 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	dockerconfig "github.com/containerd/containerd/remotes/docker/config"
+	containerdversion "github.com/containerd/containerd/version"
+	nerdctlversion "github.com/containerd/nerdctl/pkg/version"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/credentials"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
@@ -34,6 +37,8 @@ import (
 )
 
 var PushTracker = docker.NewInMemoryTracker()
+
+var userAgentValue = fmt.Sprintf("nerdctl/%s containerd/%s", nerdctlversion.Version, containerdversion.Version)
 
 type opts struct {
 	plainHTTP       bool
@@ -136,6 +141,8 @@ func NewHostOptions(ctx context.Context, refHostname string, optFuncs ...Opt) (*
 			ho.DefaultScheme = "http"
 		}
 	}
+
+	ho.AuthorizerOpts = append(ho.AuthorizerOpts, docker.WithAuthHeader(http.Header{"User-Agent": []string{userAgentValue}}))
 	return &ho, nil
 }
 
@@ -153,6 +160,7 @@ func New(ctx context.Context, refHostname string, optFuncs ...Opt) (remotes.Reso
 	resolverOpts := docker.ResolverOptions{
 		Tracker: PushTracker,
 		Hosts:   dockerconfig.ConfigureHosts(ctx, *ho),
+		Headers: http.Header{"User-Agent": []string{userAgentValue}},
 	}
 
 	resolver := docker.NewResolver(resolverOpts)
