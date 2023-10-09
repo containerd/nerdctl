@@ -185,7 +185,7 @@ func WriteTempDockerfile(rc io.Reader) (dockerfileDir string, err error) {
 	return dockerfileDir, nil
 }
 
-// Buildkit file returns the values for the following buildctl args
+// BuildKitFile returns the values for the following buildctl args
 // --localfilename=dockerfile={absDir}
 // --opt=filename={file}
 func BuildKitFile(dir, inputfile string) (absDir string, file string, err error) {
