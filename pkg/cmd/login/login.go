@@ -113,9 +113,9 @@ func Login(ctx context.Context, options types.LoginCommandOptions, stdout io.Wri
 	return nil
 }
 
-// Code from github.com/docker/cli/cli/command (v20.10.3)
-// GetDefaultAuthConfig gets the default auth config given a serverAddress
-// If credentials for given serverAddress exists in the credential store, the configuration will be populated with values in it
+// GetDefaultAuthConfig gets the default auth config given a serverAddress.
+// If credentials for given serverAddress exists in the credential store, the configuration will be populated with values in it.
+// Code from github.com/docker/cli/cli/command (v20.10.3).
 func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRegistry bool) (*registry.AuthConfig, error) {
 	if !isDefaultRegistry {
 		var err error
