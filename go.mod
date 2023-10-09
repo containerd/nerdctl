@@ -11,7 +11,7 @@ require (
 	github.com/containerd/accelerated-container-image v0.6.7
 	github.com/containerd/cgroups/v3 v3.0.2
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.7.6
+	github.com/containerd/containerd v1.7.7
 	github.com/containerd/continuity v0.4.2
 	github.com/containerd/go-cni v1.1.9
 	github.com/containerd/imgcrypt v1.1.8
@@ -60,6 +60,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.1
 )
+
+require github.com/containerd/log v0.1.0 // indirect
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
