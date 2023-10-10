@@ -33,7 +33,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/containerd/containerd/log"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/logging/tail"
 	"github.com/sirupsen/logrus"
 )
