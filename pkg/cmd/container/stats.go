@@ -343,7 +343,10 @@ func collect(ctx context.Context, globalOptions types.GlobalCommandOptions, s *s
 		s.SetError(err)
 		return
 	}
-	defer cancel()
+	defer func() {
+		cancel()
+		client.Close()
+	}()
 	container, err := client.LoadContainer(ctx, id)
 	if err != nil {
 		s.SetError(err)
