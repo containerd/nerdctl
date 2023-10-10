@@ -131,8 +131,10 @@ func loadImage(ctx context.Context, in io.Reader, namespace, address, snapshotte
 	if err != nil {
 		return err
 	}
-	defer cancel()
-
+	defer func() {
+		cancel()
+		client.Close()
+	}()
 	r := &readCounter{Reader: in}
 	imgs, err := client.Import(ctx, r, containerd.WithDigestRef(archive.DigestTranslator(snapshotter)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithImportPlatform(platMC))
 	if err != nil {
