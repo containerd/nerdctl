@@ -136,6 +136,10 @@ func NewHostOptions(ctx context.Context, refHostname string, optFuncs ...Opt) (*
 			ho.DefaultScheme = "http"
 		}
 	}
+	if ho.DefaultScheme == "http" {
+		// https://github.com/containerd/containerd/issues/9208
+		ho.DefaultTLS = nil
+	}
 	return &ho, nil
 }
 
