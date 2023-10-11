@@ -115,9 +115,7 @@ func builderDebugAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	buildgArgs := []string{"debug"}
-	if err != nil {
-		return err
-	} else if globalOptions.Debug {
+	if globalOptions.Debug {
 		buildgArgs = append([]string{"--debug"}, buildgArgs...)
 	}
 
