@@ -93,9 +93,6 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 	if buildContext == "-" || strings.Contains(buildContext, "://") {
 		return types.BuilderBuildOptions{}, fmt.Errorf("unsupported build context: %q", buildContext)
 	}
-	if err != nil {
-		return types.BuilderBuildOptions{}, err
-	}
 	output, err := cmd.Flags().GetString("output")
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
