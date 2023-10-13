@@ -68,7 +68,7 @@ $ docker exec -it kind-worker /bin/bash
 
 The eStargz image added to `kind-worker` is shared to `kind-worker2` via IPFS.
 You can perform lazy pulling of this eStargz image among nodes using the following manifest.
-CID of the pushed image is printed when `nerdctl push` is succeded (we assume that the image is added to IPFS as CID `bafkreidqrxutnnuc3oilje27px5o3gggzrfyomumrprcavr7nquoy3cdje`).
+CID of the pushed image is printed when `nerdctl push` is succeeded (we assume that the image is added to IPFS as CID `bafkreidqrxutnnuc3oilje27px5o3gggzrfyomumrprcavr7nquoy3cdje`).
 
 
 ```console
