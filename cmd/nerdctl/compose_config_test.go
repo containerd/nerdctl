@@ -130,3 +130,24 @@ services:
 	base.ComposeCmd("--project-directory", comp.Dir(), "config", "--services").AssertOutContainsAll("hello1\n", "hello2\n")
 	base.ComposeCmd("--project-directory", comp.Dir(), "config").AssertOutContains("alpine:3.14")
 }
+
+func TestComposeConfigWithEnvFile(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	const dockerComposeYAML = `
+services:
+  hello:
+    image: ${image}
+`
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	envFile := filepath.Join(comp.Dir(), "env")
+	const envFileContent = `
+image: hello-world
+`
+	assert.NilError(t, os.WriteFile(envFile, []byte(envFileContent), 0644))
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "--env-file", envFile, "config").AssertOutContains("image: hello-world")
+}
