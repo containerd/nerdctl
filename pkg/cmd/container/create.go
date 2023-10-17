@@ -225,11 +225,8 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	opts = append(opts, umaskOpts...)
 
-	rtCOpts, err := generateRuntimeCOpts(options.GOptions.CgroupManager, options.Runtime)
-	if err != nil {
-		return nil, nil, err
-	}
-	cOpts = append(cOpts, rtCOpts...)
+	rtOpts := generateRuntimeOpts(options)
+	cOpts = append(cOpts, rtOpts)
 
 	lCOpts, err := withContainerLabels(options.Label, options.LabelFile)
 	if err != nil {

@@ -31,8 +31,7 @@ func DataRoot() string {
 }
 
 func CNIPath() string {
-	// default: /opt/cni/bin
-	return gocni.DefaultCNIDir
+	return "/usr/local/libexec/cni"
 }
 
 func CNINetConfPath() string {

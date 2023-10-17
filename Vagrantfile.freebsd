@@ -21,10 +21,6 @@ Vagrant.configure("2") do |config|
 
   memory = 2048
   cpus = 1
-  config.vm.provider :virtualbox do |v, o|
-    v.memory = memory
-    v.cpus = cpus
-  end
   config.vm.provider :libvirt do |v|
     v.memory = memory
     v.cpus = cpus
@@ -36,9 +32,20 @@ Vagrant.configure("2") do |config|
     sh.inline = <<~SHELL
         #!/usr/bin/env bash
         set -eux -o pipefail
-        pkg install -y go containerd runj
+        pkg install -y go containerd runj containernetworking-plugins
         cd /vagrant
         go install ./cmd/nerdctl
+
+        mkdir -p /etc/nerdctl
+        cat << EOF > /etc/nerdctl/runj.ext.json
+        {
+          "network": {
+            "vnet": {
+              "mode": "new"
+            }
+          }
+        }
+        EOF
     SHELL
   end
 
@@ -55,9 +62,20 @@ Vagrant.configure("2") do |config|
     sh.inline = <<~SHELL
         #!/usr/bin/env bash
         set -eux -o pipefail
+
+        # Firewall config, needed for CNI plugins.
+        cat << EOF > /etc/pf.conf
+        nat on em0 inet from <cni-nat> to any -> (em0)
+        rdr-anchor "cni-rdr/*"
+        table <cni-nat>
+        EOF
+
+        service pf onestart
+
         daemon -o containerd.out containerd
         sleep 3
-        /root/go/bin/nerdctl run --rm --net=none dougrabson/freebsd-minimal:13 echo "Nerdctl is up and running."
+        /root/go/bin/nerdctl run --rm --net=none dougrabson/freebsd-small:13 echo "Nerdctl is up and running."
+        /root/go/bin/nerdctl run --rm dougrabson/freebsd-small:13 nc -zw1 1.1.1.1 443
     SHELL
   end
 
