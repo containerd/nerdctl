@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Microsoft/go-winio v0.6.1
-	github.com/Microsoft/hcsshim v0.11.1
+	github.com/Microsoft/hcsshim v0.11.2
 	github.com/awslabs/soci-snapshotter v0.4.0
 	github.com/compose-spec/compose-go v1.19.0
 	github.com/containerd/accelerated-container-image v1.0.0
