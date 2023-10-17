@@ -94,12 +94,17 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 	if err != nil {
 		return emptyDigest, err
 	}
+	baseManifest, _, err := imgutil.ReadManifest(ctx, baseImg)
+	if err != nil {
+		return emptyDigest, err
+	}
 
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
 		return emptyDigest, err
 	}
 
+	var paused bool
 	if opts.Pause {
 		status, err := task.Status(ctx)
 		if err != nil {
@@ -112,10 +117,12 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 			if err := task.Pause(ctx); err != nil {
 				return emptyDigest, fmt.Errorf("failed to pause container: %w", err)
 			}
-
+			paused = true
 			defer func() {
-				if err := task.Resume(ctx); err != nil {
-					logrus.Warnf("failed to unpause container %v: %v", id, err)
+				if paused {
+					if err := task.Resume(ctx); err != nil {
+						logrus.Warnf("failed to unpause container %v: %v", id, err)
+					}
 				}
 			}()
 		}
@@ -125,6 +132,7 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 		differ = client.DiffService()
 		snName = info.Snapshotter
 		sn     = client.SnapshotService(snName)
+		cs     = baseImg.ContentStore()
 	)
 
 	// Don't gc me and clean the dirty data after 1 hour!
@@ -139,9 +147,19 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 		return emptyDigest, fmt.Errorf("failed to export layer: %w", err)
 	}
 
+	if paused {
+		if err := task.Resume(ctx); err != nil {
+			logrus.Warnf("failed to unpause container %v: %v", id, err)
+		}
+		paused = false
+	}
 	imageConfig, err := generateCommitImageConfig(ctx, container, baseImg, diffID, opts)
 	if err != nil {
 		return emptyDigest, fmt.Errorf("failed to generate commit image config: %w", err)
+	}
+
+	if err := ensureManifestLayers(ctx, baseManifest, cs, &imageConfig, sn, differ); err != nil {
+		return emptyDigest, fmt.Errorf("failed to ensure manifest specified contents: %w", err)
 	}
 
 	rootfsID := identity.ChainID(imageConfig.RootFS.DiffIDs).String()
@@ -149,7 +167,7 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 		return emptyDigest, fmt.Errorf("failed to apply diff: %w", err)
 	}
 
-	commitManifestDesc, configDigest, err := writeContentsForImage(ctx, snName, baseImg, imageConfig, diffLayerDesc)
+	commitManifestDesc, configDigest, err := writeContentsForImage(ctx, snName, baseManifest, cs, imageConfig, diffLayerDesc)
 	if err != nil {
 		return emptyDigest, err
 	}
@@ -171,6 +189,34 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 		}
 	}
 	return configDigest, nil
+}
+
+// ensureManifestLayers checks layers specified in manifest, reconstruct contents if it is missing and change manifest
+func ensureManifestLayers(ctx context.Context, manifest *ocispec.Manifest, cs content.Store, config *ocispec.Image, sn snapshots.Snapshotter, comparer diff.Comparer) error {
+	if len(manifest.Layers)+1 != len(config.RootFS.DiffIDs) {
+		return fmt.Errorf("layer size in manifest(%v)+1 does not match with config(%v)", len(manifest.Layers), len(config.RootFS.DiffIDs))
+	}
+	for i, layer := range manifest.Layers {
+		_, err := cs.Info(ctx, layer.Digest)
+		if err == nil {
+			continue
+		}
+		if !errdefs.IsNotFound(err) {
+			return fmt.Errorf("get layer %v failed: %w", layer.Digest.String(), err)
+		}
+		snapshotID := identity.ChainID(config.RootFS.DiffIDs[:i+1]).String()
+		logrus.Infof("creating layer chainid:%v config diffid:%v\n", snapshotID, config.RootFS.DiffIDs[i+1])
+		diffLayerDesc, diffID, err := createDiff(ctx, snapshotID, sn, cs, comparer)
+		if err != nil {
+			return fmt.Errorf("failed to compress layer for %v: %w", layer.Digest.String(), err)
+		}
+		if diffID != config.RootFS.DiffIDs[i] {
+			logrus.Infof("newly created Diff id %v does not match with diff id in config %v: %v", diffID, config.RootFS.DiffIDs[i], err)
+			config.RootFS.DiffIDs[i] = diffID
+		}
+		manifest.Layers[i] = diffLayerDesc
+	}
+	return nil
 }
 
 // generateCommitImageConfig returns commit oci image config based on the container's image.
@@ -237,7 +283,7 @@ func generateCommitImageConfig(ctx context.Context, container containerd.Contain
 }
 
 // writeContentsForImage will commit oci image config and manifest into containerd's content store.
-func writeContentsForImage(ctx context.Context, snName string, baseImg containerd.Image, newConfig ocispec.Image, diffLayerDesc ocispec.Descriptor) (ocispec.Descriptor, digest.Digest, error) {
+func writeContentsForImage(ctx context.Context, snName string, baseManifest *ocispec.Manifest, cs content.Store, newConfig ocispec.Image, diffLayerDesc ocispec.Descriptor) (ocispec.Descriptor, digest.Digest, error) {
 	newConfigJSON, err := json.Marshal(newConfig)
 	if err != nil {
 		return ocispec.Descriptor{}, emptyDigest, err
@@ -249,12 +295,7 @@ func writeContentsForImage(ctx context.Context, snName string, baseImg container
 		Size:      int64(len(newConfigJSON)),
 	}
 
-	cs := baseImg.ContentStore()
-	baseMfst, _, err := imgutil.ReadManifest(ctx, baseImg)
-	if err != nil {
-		return ocispec.Descriptor{}, emptyDigest, err
-	}
-	layers := append(baseMfst.Layers, diffLayerDesc)
+	layers := append(baseManifest.Layers, diffLayerDesc)
 
 	newMfst := struct {
 		MediaType string `json:"mediaType,omitempty"`
