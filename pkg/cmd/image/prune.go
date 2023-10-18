@@ -23,10 +23,10 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/opencontainers/go-digest"
-	"github.com/sirupsen/logrus"
 )
 
 // Prune will remove all dangling images. If all is specified, will also remove all images not referenced by any container.
@@ -70,10 +70,10 @@ func Prune(ctx context.Context, client *containerd.Client, options types.ImagePr
 	for _, image := range filteredImages {
 		digests, err := image.RootFS(ctx, contentStore, platforms.DefaultStrict())
 		if err != nil {
-			logrus.WithError(err).Warnf("failed to enumerate rootfs")
+			log.G(ctx).WithError(err).Warnf("failed to enumerate rootfs")
 		}
 		if err := imageStore.Delete(ctx, image.Name, delOpts...); err != nil {
-			logrus.WithError(err).Warnf("failed to delete image %s", image.Name)
+			log.G(ctx).WithError(err).Warnf("failed to delete image %s", image.Name)
 			continue
 		}
 		removedImages[image.Name] = digests

@@ -28,11 +28,11 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/defaults"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/containerd/nerdctl/pkg/systemutil"
 	"github.com/mitchellh/mapstructure"
-	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 )
 
@@ -184,7 +184,7 @@ func (e *CNIEnv) generateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr s
 		ipamConf.DaemonSocketPath = filepath.Join(defaults.CNIRuntimeDir(), "dhcp.sock")
 		// TODO: support IPAM options for dhcp
 		if err := systemutil.IsSocketAccessible(ipamConf.DaemonSocketPath); err != nil {
-			logrus.Warnf("cannot access dhcp socket %q (hint: try running with `dhcp daemon --socketpath=%s &` in CNI_PATH to launch the dhcp daemon)", ipamConf.DaemonSocketPath, ipamConf.DaemonSocketPath)
+			log.L.Warnf("cannot access dhcp socket %q (hint: try running with `dhcp daemon --socketpath=%s &` in CNI_PATH to launch the dhcp daemon)", ipamConf.DaemonSocketPath, ipamConf.DaemonSocketPath)
 		}
 		ipamConfig = ipamConf
 	default:
@@ -203,7 +203,7 @@ func fixUpIsolation(e *CNIEnv, name string, plugins []CNIPlugin) []CNIPlugin {
 	if _, err := exec.LookPath(isolationPath); err == nil {
 		// the warning is suppressed for DefaultNetworkName (because multi-bridge networking is not involved)
 		if name != DefaultNetworkName {
-			logrus.Warnf(`network %q: Using the deprecated CNI "isolation" plugin instead of CNI "firewall" plugin (>= 1.1.0) ingressPolicy.
+			log.L.Warnf(`network %q: Using the deprecated CNI "isolation" plugin instead of CNI "firewall" plugin (>= 1.1.0) ingressPolicy.
 To dismiss this warning, uninstall %q and install CNI "firewall" plugin (>= 1.1.0) from https://github.com/containernetworking/plugins`,
 				name, isolationPath)
 		}
@@ -211,7 +211,7 @@ To dismiss this warning, uninstall %q and install CNI "firewall" plugin (>= 1.1.
 		for _, f := range plugins {
 			if x, ok := f.(*firewallConfig); ok {
 				if name != DefaultNetworkName {
-					logrus.Warnf("network %q: Unsetting firewall ingressPolicy %q (because using the deprecated \"isolation\" plugin)", name, x.IngressPolicy)
+					log.L.Warnf("network %q: Unsetting firewall ingressPolicy %q (because using the deprecated \"isolation\" plugin)", name, x.IngressPolicy)
 				}
 				x.IngressPolicy = ""
 			}
@@ -220,10 +220,10 @@ To dismiss this warning, uninstall %q and install CNI "firewall" plugin (>= 1.1.
 		firewallPath := filepath.Join(e.Path, "firewall")
 		ok, err := firewallPluginGEQ110(firewallPath)
 		if err != nil {
-			logrus.WithError(err).Warnf("Failed to detect whether %q is newer than v1.1.0", firewallPath)
+			log.L.WithError(err).Warnf("Failed to detect whether %q is newer than v1.1.0", firewallPath)
 		}
 		if !ok {
-			logrus.Warnf("To isolate bridge networks, CNI plugin \"firewall\" (>= 1.1.0) needs to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins",
+			log.L.Warnf("To isolate bridge networks, CNI plugin \"firewall\" (>= 1.1.0) needs to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins",
 				e.Path)
 		}
 	}

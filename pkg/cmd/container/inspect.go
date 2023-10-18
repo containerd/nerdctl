@@ -22,12 +22,12 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/containerinspector"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
-	"github.com/sirupsen/logrus"
 )
 
 // Inspect prints detailed information for each container in `containers`.
@@ -44,7 +44,7 @@ func Inspect(ctx context.Context, client *containerd.Client, containers []string
 	err := walker.WalkAll(ctx, containers, true)
 	if len(f.entries) > 0 {
 		if formatErr := formatter.FormatSlice(options.Format, options.Stdout, f.entries); formatErr != nil {
-			logrus.Error(formatErr)
+			log.L.Error(formatErr)
 		}
 	}
 	return err

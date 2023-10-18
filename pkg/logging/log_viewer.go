@@ -23,8 +23,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/labels/k8slabels"
-	"github.com/sirupsen/logrus"
 )
 
 // Type alias for functions which write out logs to the provided stdout/stderr Writers.
@@ -37,7 +37,7 @@ var logViewers = make(map[string]LogViewerFunc)
 // Registers a LogViewerFunc for the
 func RegisterLogViewer(driverName string, lvfn LogViewerFunc) {
 	if v, ok := logViewers[driverName]; ok {
-		logrus.Warnf("A LogViewerFunc with name %q has already been registered: %#v, overriding with %#v either way", driverName, v, lvfn)
+		log.L.Warnf("A LogViewerFunc with name %q has already been registered: %#v, overriding with %#v either way", driverName, v, lvfn)
 	}
 	logViewers[driverName] = lvfn
 }
@@ -93,7 +93,7 @@ func (lvo *LogViewOptions) Validate() error {
 		if err != nil {
 			return err
 		}
-		logrus.Warnf("given relative datastore path %q, transformed it to absolute path: %q", lvo.DatastoreRootPath, abs)
+		log.L.Warnf("given relative datastore path %q, transformed it to absolute path: %q", lvo.DatastoreRootPath, abs)
 		lvo.DatastoreRootPath = abs
 	}
 

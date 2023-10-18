@@ -34,12 +34,12 @@ import (
 	"github.com/containerd/containerd/images/archive"
 	"github.com/containerd/containerd/platforms"
 	dockerreference "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/sirupsen/logrus"
 )
 
 func Build(ctx context.Context, client *containerd.Client, options types.BuilderBuildOptions) error {
@@ -51,7 +51,7 @@ func Build(ctx context.Context, client *containerd.Client, options types.Builder
 		defer cleanup()
 	}
 
-	logrus.Debugf("running %s %v", buildctlBinary, buildctlArgs)
+	log.L.Debugf("running %s %v", buildctlBinary, buildctlArgs)
 	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
 	buildctlCmd.Env = os.Environ()
 
@@ -97,7 +97,7 @@ func Build(ctx context.Context, client *containerd.Client, options types.Builder
 	}
 
 	if len(tags) > 1 {
-		logrus.Debug("Found more than 1 tag")
+		log.L.Debug("Found more than 1 tag")
 		imageService := client.ImageService()
 		image, err := imageService.Get(ctx, tags[0])
 		if err != nil {
@@ -285,7 +285,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 			if ok {
 				buildctlArgs = append(buildctlArgs, fmt.Sprintf("--opt=build-arg:%s=%s", ba, val))
 			} else {
-				logrus.Debugf("ignoring unset build arg %q", ba)
+				log.L.Debugf("ignoring unset build arg %q", ba)
 			}
 		} else if len(arr) > 1 && len(arr[0]) > 0 {
 			buildctlArgs = append(buildctlArgs, "--opt=build-arg:"+ba)
@@ -300,7 +300,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 						buildctlArgs = append(buildctlArgs, "--export-cache=type=inline")
 					}
 				} else {
-					logrus.WithError(err).Warnf("invalid BUILDKIT_INLINE_CACHE: %q", bic)
+					log.L.WithError(err).Warnf("invalid BUILDKIT_INLINE_CACHE: %q", bic)
 				}
 			}
 		} else {
@@ -347,7 +347,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 	}
 
 	if !options.Rm {
-		logrus.Warn("ignoring deprecated flag: '--rm=false'")
+		log.L.Warn("ignoring deprecated flag: '--rm=false'")
 	}
 
 	if options.IidFile != "" {
@@ -368,7 +368,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 			buildctlArgs = append(buildctlArgs, "--opt=force-network-mode="+options.NetworkMode, "--allow=network.host", "--allow=security.insecure")
 		case "", "default":
 		default:
-			logrus.Debugf("ignoring network build arg %s", options.NetworkMode)
+			log.L.Debugf("ignoring network build arg %s", options.NetworkMode)
 		}
 	}
 
@@ -384,7 +384,7 @@ func getDigestFromMetaFile(path string) (string, error) {
 
 	metadata := map[string]json.RawMessage{}
 	if err := json.Unmarshal(data, &metadata); err != nil {
-		logrus.WithError(err).Errorf("failed to unmarshal metadata file %s", path)
+		log.L.WithError(err).Errorf("failed to unmarshal metadata file %s", path)
 		return "", err
 	}
 	digestRaw, ok := metadata["containerimage.digest"]
@@ -393,7 +393,7 @@ func getDigestFromMetaFile(path string) (string, error) {
 	}
 	var digest string
 	if err := json.Unmarshal(digestRaw, &digest); err != nil {
-		logrus.WithError(err).Errorf("failed to unmarshal digset")
+		log.L.WithError(err).Errorf("failed to unmarshal digset")
 		return "", err
 	}
 	return digest, nil
@@ -404,7 +404,7 @@ func isImageSharable(buildkitHost, namespace, uuid, snapshotter string, platform
 	if err != nil {
 		return false, err
 	}
-	logrus.Debugf("worker labels: %+v", labels)
+	log.L.Debugf("worker labels: %+v", labels)
 	executor, ok := labels["org.mobyproject.buildkit.worker.executor"]
 	if !ok {
 		return false, nil

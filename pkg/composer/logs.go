@@ -25,11 +25,10 @@ import (
 
 	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/composer/pipetagger"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/labels"
-
-	"github.com/sirupsen/logrus"
 )
 
 type LogsOptions struct {
@@ -117,7 +116,7 @@ func (c *Composer) logs(ctx context.Context, containers []containerd.Container, 
 		}
 		stderrTagger := pipetagger.New(os.Stderr, stderr, state.logTag, logWidth, lo.NoColor)
 		if c.DebugPrintFull {
-			logrus.Debugf("Running %v", state.logCmd.Args)
+			log.G(ctx).Debugf("Running %v", state.logCmd.Args)
 		}
 		if err := state.logCmd.Start(); err != nil {
 			return err
@@ -139,21 +138,21 @@ selectLoop:
 		// Wait for Ctrl-C, or `nerdctl compose down` in another terminal
 		select {
 		case sig := <-interruptChan:
-			logrus.Debugf("Received signal: %s", sig)
+			log.G(ctx).Debugf("Received signal: %s", sig)
 			break selectLoop
 		case containerName := <-logsEOFChan:
 			if lo.Follow {
 				// When `nerdctl logs -f` has exited, we can assume that the container has exited
-				logrus.Infof("Container %q exited", containerName)
+				log.G(ctx).Infof("Container %q exited", containerName)
 			} else {
-				logrus.Debugf("Logs for container %q reached EOF", containerName)
+				log.G(ctx).Debugf("Logs for container %q reached EOF", containerName)
 			}
 			logsEOFMap[containerName] = struct{}{}
 			if len(logsEOFMap) == len(containerStates) {
 				if lo.Follow {
-					logrus.Info("All the containers have exited")
+					log.G(ctx).Info("All the containers have exited")
 				} else {
-					logrus.Debug("All the logs reached EOF")
+					log.G(ctx).Debug("All the logs reached EOF")
 				}
 				break selectLoop
 			}
@@ -163,7 +162,7 @@ selectLoop:
 	for _, state := range containerStates {
 		if state.logCmd != nil && state.logCmd.Process != nil {
 			if err := state.logCmd.Process.Kill(); err != nil {
-				logrus.Warn(err)
+				log.G(ctx).Warn(err)
 			}
 		}
 	}

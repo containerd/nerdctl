@@ -24,9 +24,9 @@ import (
 	"text/tabwriter"
 
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -103,24 +103,24 @@ func namespaceLsAction(cmd *cobra.Command, args []string) error {
 
 		containers, err := client.Containers(ctx)
 		if err != nil {
-			logrus.Warn(err)
+			log.L.Warn(err)
 		}
 		numContainers = len(containers)
 
 		images, err := client.ImageService().List(ctx)
 		if err != nil {
-			logrus.Warn(err)
+			log.L.Warn(err)
 		}
 		numImages = len(images)
 
 		volStore, err := volumestore.Path(dataStore, ns)
 		if err != nil {
-			logrus.Warn(err)
+			log.L.Warn(err)
 		} else {
 			volEnts, err := os.ReadDir(volStore)
 			if err != nil {
 				if !os.IsNotExist(err) {
-					logrus.Warn(err)
+					log.L.Warn(err)
 				}
 			}
 			numVolumes = len(volEnts)

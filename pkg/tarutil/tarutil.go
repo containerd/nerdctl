@@ -22,7 +22,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/sirupsen/logrus"
+	"github.com/containerd/log"
 )
 
 // FindTarBinary returns a path to the tar binary and whether it is GNU tar.
@@ -30,11 +30,11 @@ func FindTarBinary() (string, bool, error) {
 	isGNU := func(exe string) bool {
 		v, err := exec.Command(exe, "--version").Output()
 		if err != nil {
-			logrus.Warnf("Failed to detect whether %q is GNU tar or not", exe)
+			log.L.Warnf("Failed to detect whether %q is GNU tar or not", exe)
 			return false
 		}
 		if !strings.Contains(string(v), "GNU tar") {
-			logrus.Warnf("%q does not seem GNU tar", exe)
+			log.L.Warnf("%q does not seem GNU tar", exe)
 			return false
 		}
 		return true

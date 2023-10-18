@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/sirupsen/logrus"
 )
 
 func (c *Composer) Containers(ctx context.Context, services ...string) ([]containerd.Container, error) {
@@ -34,7 +34,7 @@ func (c *Composer) Containers(ctx context.Context, services ...string) ([]contai
 	if len(services) == 0 {
 		filters = append(filters, projectLabel)
 	}
-	logrus.Debugf("filters: %v", filters)
+	log.G(ctx).Debugf("filters: %v", filters)
 	containers, err := c.client.Containers(ctx, filters...)
 	if err != nil {
 		return nil, err

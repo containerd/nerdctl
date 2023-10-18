@@ -22,12 +22,12 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/imageinspector"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
-	"github.com/sirupsen/logrus"
 )
 
 // Inspect prints detailed information of each image in `images`.
@@ -64,7 +64,7 @@ func Inspect(ctx context.Context, client *containerd.Client, images []string, op
 	err := walker.WalkAll(ctx, images, true)
 	if len(f.entries) > 0 {
 		if formatErr := formatter.FormatSlice(options.Format, options.Stdout, f.entries); formatErr != nil {
-			logrus.Error(formatErr)
+			log.G(ctx).Error(formatErr)
 		}
 	}
 	return err

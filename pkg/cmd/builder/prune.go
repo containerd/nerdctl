@@ -23,9 +23,9 @@ import (
 	"io"
 	"os/exec"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
-	"github.com/sirupsen/logrus"
 )
 
 // Prune will prune all build cache.
@@ -40,7 +40,7 @@ func Prune(ctx context.Context, options types.BuilderPruneOptions) ([]buildkitut
 		buildctlArgs = append(buildctlArgs, "--all")
 	}
 	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
-	logrus.Debugf("running %v", buildctlCmd.Args)
+	log.G(ctx).Debugf("running %v", buildctlCmd.Args)
 	buildctlCmd.Stderr = options.Stderr
 	stdout, err := buildctlCmd.StdoutPipe()
 	if err != nil {

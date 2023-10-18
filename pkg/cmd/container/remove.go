@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/volume"
@@ -37,7 +38,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/namestore"
-	"github.com/sirupsen/logrus"
 )
 
 var _ error = ErrContainerStatus{}
@@ -82,7 +82,7 @@ func Remove(ctx context.Context, client *containerd.Client, containers []string,
 
 	err := walker.WalkAll(ctx, containers, true)
 	if err != nil && options.Force {
-		logrus.Error(err)
+		log.G(ctx).Error(err)
 		return nil
 	}
 	return err
@@ -124,16 +124,16 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			return
 		}
 		if err := os.RemoveAll(stateDir); err != nil {
-			logrus.WithError(retErr).Warnf("failed to remove container state dir %s", stateDir)
+			log.G(ctx).WithError(retErr).Warnf("failed to remove container state dir %s", stateDir)
 		}
 		// enforce release name here in case the poststop hook name release fails
 		if name != "" {
 			if err := namst.Release(name, id); err != nil {
-				logrus.WithError(retErr).Warnf("failed to release container name %s", name)
+				log.G(ctx).WithError(retErr).Warnf("failed to release container name %s", name)
 			}
 		}
 		if err := hostsstore.DeallocHostsFile(dataStore, ns, id); err != nil {
-			logrus.WithError(retErr).Warnf("failed to remove hosts file for container %q", id)
+			log.G(ctx).WithError(retErr).Warnf("failed to remove hosts file for container %q", id)
 		}
 	}()
 
@@ -149,7 +149,7 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		}
 		defer func() {
 			if _, err := volStore.Remove(anonVolumes); err != nil {
-				logrus.WithError(err).Warnf("failed to remove anonymous volumes %v", anonVolumes)
+				log.G(ctx).WithError(err).Warnf("failed to remove anonymous volumes %v", anonVolumes)
 			}
 		}()
 	}
@@ -192,7 +192,7 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		}
 
 		if err := networkManager.CleanupNetworking(ctx, c); err != nil {
-			logrus.WithError(retErr).Warnf("failed to clean up container networking: %s", err)
+			log.G(ctx).WithError(retErr).Warnf("failed to clean up container networking: %s", err)
 		}
 	}
 
@@ -215,7 +215,7 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			return NewStatusError(id, status.Status)
 		}
 		if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
-			logrus.WithError(err).Warnf("failed to send SIGKILL")
+			log.G(ctx).WithError(err).Warnf("failed to send SIGKILL")
 		}
 		es, err := task.Wait(ctx)
 		if err == nil {
@@ -223,7 +223,7 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		}
 		_, err = task.Delete(ctx, containerd.WithProcessKill)
 		if err != nil && !errdefs.IsNotFound(err) {
-			logrus.WithError(err).Warnf("failed to delete task %v", id)
+			log.G(ctx).WithError(err).Warnf("failed to delete task %v", id)
 		}
 	}
 	var delOpts []containerd.DeleteOpts

@@ -22,10 +22,9 @@ import (
 	"os"
 
 	"github.com/compose-spec/compose-go/types"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
-
-	"github.com/sirupsen/logrus"
 )
 
 type UpOptions struct {
@@ -98,7 +97,7 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 				return fmt.Errorf("error removing orphaned containers: %s", err)
 			}
 		} else {
-			logrus.Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), orphans)
+			log.G(ctx).Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), orphans)
 		}
 	}
 
@@ -107,7 +106,7 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 
 func validateFileObjectConfig(obj types.FileObjectConfig, shortName, objType string, project *types.Project) error {
 	if unknown := reflectutil.UnknownNonEmptyFields(&obj, "Name", "External", "File"); len(unknown) > 0 {
-		logrus.Warnf("Ignoring: %s %s: %+v", objType, shortName, unknown)
+		log.L.Warnf("Ignoring: %s %s: %+v", objType, shortName, unknown)
 	}
 	if obj.External.External || obj.External.Name != "" {
 		return fmt.Errorf("%s %q: external object is not supported", objType, shortName)

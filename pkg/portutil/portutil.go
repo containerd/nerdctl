@@ -23,10 +23,10 @@ import (
 	"strings"
 
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/docker/go-connections/nat"
-	"github.com/sirupsen/logrus"
 )
 
 // return respectively ip, hostPort, containerPort
@@ -94,7 +94,7 @@ func ParseFlagP(s string) ([]gocni.PortMapping, error) {
 		if err != nil {
 			return nil, err
 		}
-		logrus.Debugf("There is no hostPort has been spec in command, the auto allocate port is from %d:%d to %d:%d", startHostPort, startPort, endHostPort, endPort)
+		log.L.Debugf("There is no hostPort has been spec in command, the auto allocate port is from %d:%d to %d:%d", startHostPort, startPort, endHostPort, endPort)
 	} else {
 		startHostPort, endHostPort, err = nat.ParsePortRange(hostPort)
 		if err != nil {

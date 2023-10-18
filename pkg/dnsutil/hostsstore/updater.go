@@ -25,8 +25,8 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/sirupsen/logrus"
 )
 
 // newUpdater creates an updater for hostsD (/var/lib/nerdctl/<ADDRHASH>/etchosts)
@@ -110,7 +110,7 @@ func (u *updater) phase2() error {
 		dir := filepath.Dir(path)
 		myMeta, ok := u.metaByDir[dir]
 		if !ok {
-			logrus.WithError(errdefs.ErrNotFound).Debugf("hostsstore metadata %q not found in %q?", metaJSON, dir)
+			log.L.WithError(errdefs.ErrNotFound).Debugf("hostsstore metadata %q not found in %q?", metaJSON, dir)
 			return nil
 		}
 		myNetworks := make(map[string]struct{})
@@ -127,7 +127,7 @@ func (u *updater) phase2() error {
 		var buf bytes.Buffer
 		if r != nil {
 			if err := parseHostsButSkipMarkedRegion(&buf, r); err != nil {
-				logrus.WithError(err).Warn("failed to read hosts file")
+				log.L.WithError(err).Warn("failed to read hosts file")
 			}
 		}
 

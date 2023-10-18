@@ -31,6 +31,7 @@ import (
 	eventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/containerinspector"
@@ -42,7 +43,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/statsutil"
 	"github.com/containerd/typeurl/v2"
-	"github.com/sirupsen/logrus"
 )
 
 type stats struct {
@@ -325,7 +325,7 @@ func Stats(ctx context.Context, client *containerd.Client, containerIds []string
 }
 
 func collect(ctx context.Context, globalOptions types.GlobalCommandOptions, s *statsutil.Stats, waitFirst *sync.WaitGroup, id string, noStream bool) {
-	logrus.Debugf("collecting stats for %s", s.Container)
+	log.G(ctx).Debugf("collecting stats for %s", s.Container)
 	var (
 		getFirst = true
 		u        = make(chan error, 1)

@@ -25,6 +25,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/api/types/cri"
 	"github.com/containerd/nerdctl/pkg/clientutil"
@@ -32,7 +33,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/labels/k8slabels"
 	"github.com/containerd/nerdctl/pkg/logging"
-	"github.com/sirupsen/logrus"
 )
 
 func Logs(ctx context.Context, client *containerd.Client, container string, options types.ContainerLogsOptions) error {
@@ -43,7 +43,7 @@ func Logs(ctx context.Context, client *containerd.Client, container string, opti
 
 	switch options.GOptions.Namespace {
 	case "moby":
-		logrus.Warn("Currently, `nerdctl logs` only supports containers created with `nerdctl run -d` or CRI")
+		log.G(ctx).Warn("Currently, `nerdctl logs` only supports containers created with `nerdctl run -d` or CRI")
 	}
 
 	stopChannel := make(chan os.Signal, 1)
@@ -90,7 +90,7 @@ func Logs(ctx context.Context, client *containerd.Client, container string, opti
 						// Setup goroutine to send stop event if container task finishes:
 						go func() {
 							<-waitCh
-							logrus.Debugf("container task has finished, sending kill signal to log viewer")
+							log.G(ctx).Debugf("container task has finished, sending kill signal to log viewer")
 							stopChannel <- os.Interrupt
 						}()
 					}

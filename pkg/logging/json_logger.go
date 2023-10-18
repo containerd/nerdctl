@@ -27,11 +27,11 @@ import (
 	"time"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
 	"github.com/fahedouch/go-logrotate"
-	"github.com/sirupsen/logrus"
 )
 
 var JSONDriverLogOpts = []string{
@@ -48,7 +48,7 @@ type JSONLogger struct {
 func JSONFileLogOptsValidate(logOptMap map[string]string) error {
 	for key := range logOptMap {
 		if !strutil.InStringSlice(JSONDriverLogOpts, key) {
-			logrus.Warnf("log-opt %s is ignored for json-file log driver", key)
+			log.L.Warnf("log-opt %s is ignored for json-file log driver", key)
 		}
 	}
 	return nil
@@ -160,7 +160,7 @@ func viewLogsJSONFileDirect(lvopts LogViewOptions, jsonLogFilePath string, stdou
 		for {
 			select {
 			case <-stopChannel:
-				logrus.Debugf("received stop signal while re-reading JSON logfile, returning")
+				log.L.Debugf("received stop signal while re-reading JSON logfile, returning")
 				return nil
 			default:
 				// Re-open the file and seek to the last-consumed offset.
@@ -224,7 +224,7 @@ func viewLogsJSONFileThroughTailExec(lvopts LogViewOptions, jsonLogFilePath stri
 	// Setup killing goroutine:
 	go func() {
 		<-stopChannel
-		logrus.Debugf("killing tail logs process with PID: %d", cmd.Process.Pid)
+		log.L.Debugf("killing tail logs process with PID: %d", cmd.Process.Pid)
 		cmd.Process.Kill()
 	}()
 

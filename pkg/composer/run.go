@@ -24,9 +24,9 @@ import (
 
 	"github.com/compose-spec/compose-go/loader"
 	"github.com/compose-spec/compose-go/types"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/idgen"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -198,7 +198,7 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 				return fmt.Errorf("error removing orphaned containers: %s", err)
 			}
 		} else {
-			logrus.Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), orphans)
+			log.G(ctx).Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), orphans)
 		}
 	}
 
@@ -230,7 +230,7 @@ func (c *Composer) runServices(ctx context.Context, parsedServices []*servicepar
 		services = append(services, ps.Unparsed.Name)
 
 		if len(ps.Containers) != 1 {
-			logrus.Warnf("compose run does not support scale but %s is currently %v, automatically it will configure 1", ps.Unparsed.Name, len(ps.Containers))
+			log.G(ctx).Warnf("compose run does not support scale but %s is currently %v, automatically it will configure 1", ps.Unparsed.Name, len(ps.Containers))
 		}
 
 		if len(ps.Containers) == 0 {
@@ -257,14 +257,14 @@ func (c *Composer) runServices(ctx context.Context, parsedServices []*servicepar
 	}
 
 	if ro.Detach {
-		logrus.Printf("%s\n", cid)
+		log.G(ctx).Printf("%s\n", cid)
 		return nil
 	}
 
 	// TODO: fix it when `nerdctl logs` supports `nerdctl run` without detach
 	// https://github.com/containerd/nerdctl/blob/v0.22.2/pkg/taskutil/taskutil.go#L55
 	if !ro.Interactive && !ro.Tty {
-		logrus.Info("Attaching to logs")
+		log.G(ctx).Info("Attaching to logs")
 		lo := LogsOptions{
 			Follow:      true,
 			NoColor:     ro.NoColor,
@@ -276,7 +276,7 @@ func (c *Composer) runServices(ctx context.Context, parsedServices []*servicepar
 		}
 	}
 
-	logrus.Infof("Stopping containers (forcibly)") // TODO: support gracefully stopping
+	log.G(ctx).Infof("Stopping containers (forcibly)") // TODO: support gracefully stopping
 	c.stopContainersFromParsedServices(ctx, containers)
 
 	if ro.Rm {

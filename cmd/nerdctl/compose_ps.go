@@ -27,13 +27,13 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/runtime/restart"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/pkg/containerutil"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/portutil"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
@@ -335,7 +335,7 @@ func formatPublishers(labelMap map[string]string) []PortPublisher {
 			dockerPorts = append(dockerPorts, mapper(p))
 		}
 	} else {
-		logrus.Error(err.Error())
+		log.L.Error(err.Error())
 	}
 	return dockerPorts
 }

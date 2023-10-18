@@ -25,6 +25,7 @@ import (
 	"text/template"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -37,7 +38,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
 	"github.com/docker/go-units"
-	"github.com/sirupsen/logrus"
 )
 
 func Info(ctx context.Context, client *containerd.Client, options types.SystemInfoOptions) error {
@@ -162,12 +162,12 @@ func prettyPrintInfoDockerCompat(stdout io.Writer, stderr io.Writer, info *docke
 	for _, s := range info.SecurityOptions {
 		m, err := strutil.ParseCSVMap(s)
 		if err != nil {
-			logrus.WithError(err).Warnf("unparsable security option %q", s)
+			log.L.WithError(err).Warnf("unparsable security option %q", s)
 			continue
 		}
 		name := m["name"]
 		if name == "" {
-			logrus.Warnf("unparsable security option %q", s)
+			log.L.Warnf("unparsable security option %q", s)
 			continue
 		}
 		fmt.Fprintf(w, "  %s\n", name)

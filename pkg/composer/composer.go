@@ -27,9 +27,9 @@ import (
 	compose "github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/identifiers"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/reflectutil"
-	"github.com/sirupsen/logrus"
 )
 
 // Options groups the command line options recommended for a Compose implementation (ProjectOptions) and extra options for nerdctl
@@ -103,8 +103,8 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 
 	if o.DebugPrintFull {
 		projectJSON, _ := json.MarshalIndent(project, "", "    ")
-		logrus.Debug("printing project JSON")
-		logrus.Debugf("%s", projectJSON)
+		log.L.Debug("printing project JSON")
+		log.L.Debugf("%s", projectJSON)
 	}
 
 	if unknown := reflectutil.UnknownNonEmptyFields(project,
@@ -117,7 +117,7 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 		"Secrets",
 		"Configs",
 		"ComposeFiles"); len(unknown) > 0 {
-		logrus.Warnf("Ignoring: %+v", unknown)
+		log.L.Warnf("Ignoring: %+v", unknown)
 	}
 
 	c := &Composer{
@@ -142,7 +142,7 @@ func (c *Composer) createNerdctlCmd(ctx context.Context, args ...string) *exec.C
 func (c *Composer) runNerdctlCmd(ctx context.Context, args ...string) error {
 	cmd := c.createNerdctlCmd(ctx, args...)
 	if c.DebugPrintFull {
-		logrus.Debugf("Running %v", cmd.Args)
+		log.G(ctx).Debugf("Running %v", cmd.Args)
 	}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("error while executing %v: %q: %w", cmd.Args, string(out), err)

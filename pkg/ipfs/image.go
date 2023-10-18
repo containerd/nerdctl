@@ -26,6 +26,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/remotes"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
@@ -34,7 +35,6 @@ import (
 	ipfsclient "github.com/containerd/stargz-snapshotter/ipfs/client"
 	"github.com/docker/docker/errdefs"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/sirupsen/logrus"
 )
 
 const ipfsPathEnv = "IPFS_PATH"
@@ -85,9 +85,9 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, layerCo
 	ipath := lookupIPFSPath(ipfsPath)
 	if ensureImage {
 		// Ensure image contents are fully downloaded
-		logrus.Infof("ensuring image contents")
+		log.G(ctx).Infof("ensuring image contents")
 		if err := ensureContentsOfIPFSImage(ctx, client, rawRef, allPlatforms, platform, ipath); err != nil {
-			logrus.WithError(err).Warnf("failed to ensure the existence of image %q", rawRef)
+			log.G(ctx).WithError(err).Warnf("failed to ensure the existence of image %q", rawRef)
 		}
 	}
 	ref, err := referenceutil.ParseAny(rawRef)

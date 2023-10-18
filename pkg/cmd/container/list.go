@@ -28,12 +28,12 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/pkg/progress"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/labels/k8slabels"
-	"github.com/sirupsen/logrus"
 )
 
 // List prints containers according to `options`.
@@ -107,7 +107,7 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 		info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
 		if err != nil {
 			if errdefs.IsNotFound(err) {
-				logrus.Warn(err)
+				log.G(ctx).Warn(err)
 				continue
 			}
 			return nil, err
@@ -115,7 +115,7 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 		spec, err := c.Spec(ctx)
 		if err != nil {
 			if errdefs.IsNotFound(err) {
-				logrus.Warn(err)
+				log.G(ctx).Warn(err)
 				continue
 			}
 			return nil, err
@@ -170,7 +170,7 @@ func getContainerNetworks(containerLables map[string]string) []string {
 	var networks []string
 	if names, ok := containerLables[labels.Networks]; ok {
 		if err := json.Unmarshal([]byte(names), &networks); err != nil {
-			logrus.Warn(err)
+			log.L.Warn(err)
 		}
 	}
 	return networks

@@ -25,6 +25,7 @@ import (
 	"github.com/containerd/console"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/flagutil"
@@ -33,7 +34,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/signalutil"
 	"github.com/containerd/nerdctl/pkg/taskutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/sirupsen/logrus"
 )
 
 // Exec will find the right running container to run a new command.
@@ -113,7 +113,7 @@ func execActionWithContainer(ctx context.Context, client *containerd.Client, con
 	if !options.Detach {
 		if options.TTY {
 			if err := consoleutil.HandleConsoleResize(ctx, process, con); err != nil {
-				logrus.WithError(err).Error("console resize")
+				log.G(ctx).WithError(err).Error("console resize")
 			}
 		} else {
 			sigc := signalutil.ForwardAllSignals(ctx, process)

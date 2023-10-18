@@ -24,9 +24,9 @@ import (
 	"strings"
 
 	"github.com/compose-spec/compose-go/types"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -163,18 +163,18 @@ func (c *Composer) createServiceContainer(ctx context.Context, service *servicep
 	// delete container if it already exists and force-recreate is enabled
 	if exists {
 		if recreate != RecreateForce {
-			logrus.Infof("Container %s exists, skipping", container.Name)
+			log.G(ctx).Infof("Container %s exists, skipping", container.Name)
 			return "", nil
 		}
 
-		logrus.Debugf("Container %q already exists and force-created is enabled, deleting", container.Name)
+		log.G(ctx).Debugf("Container %q already exists and force-created is enabled, deleting", container.Name)
 		delCmd := c.createNerdctlCmd(ctx, "rm", "-f", container.Name)
 		if err = delCmd.Run(); err != nil {
 			return "", fmt.Errorf("could not delete container %q: %s", container.Name, err)
 		}
-		logrus.Infof("Re-creating container %s", container.Name)
+		log.G(ctx).Infof("Re-creating container %s", container.Name)
 	} else {
-		logrus.Infof("Creating container %s", container.Name)
+		log.G(ctx).Infof("Creating container %s", container.Name)
 	}
 
 	tempDir, err := os.MkdirTemp(os.TempDir(), "compose-")
@@ -193,7 +193,7 @@ func (c *Composer) createServiceContainer(ctx context.Context, service *servicep
 
 	cmd := c.createNerdctlCmd(ctx, append([]string{"create"}, container.RunArgs...)...)
 	if c.DebugPrintFull {
-		logrus.Debugf("Running %v", cmd.Args)
+		log.G(ctx).Debugf("Running %v", cmd.Args)
 	}
 
 	// FIXME

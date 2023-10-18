@@ -21,13 +21,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/formatter"
 	"github.com/containerd/nerdctl/pkg/idutil/netwalker"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/sirupsen/logrus"
 )
 
 func Inspect(ctx context.Context, options types.NetworkInspectOptions) error {
@@ -72,7 +72,7 @@ func Inspect(ctx context.Context, options types.NetworkInspectOptions) error {
 	err = walker.WalkAll(ctx, options.Networks, true, false)
 	if len(result) > 0 {
 		if formatErr := formatter.FormatSlice(options.Format, options.Stdout, result); formatErr != nil {
-			logrus.Error(formatErr)
+			log.G(ctx).Error(formatErr)
 		}
 	}
 	return err

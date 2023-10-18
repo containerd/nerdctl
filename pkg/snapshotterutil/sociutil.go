@@ -23,16 +23,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/sirupsen/logrus"
 )
 
 // CreateSoci creates a SOCI index(`rawRef`)
 func CreateSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform bool, platforms []string, sOpts types.SociOptions) error {
 	sociExecutable, err := exec.LookPath("soci")
 	if err != nil {
-		logrus.WithError(err).Error("soci executable not found in path $PATH")
-		logrus.Info("you might consider installing soci from: https://github.com/awslabs/soci-snapshotter/blob/main/docs/install.md")
+		log.L.WithError(err).Error("soci executable not found in path $PATH")
+		log.L.Info("you might consider installing soci from: https://github.com/awslabs/soci-snapshotter/blob/main/docs/install.md")
 		return err
 	}
 
@@ -68,7 +68,7 @@ func CreateSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform boo
 	// --timeout, --debug, --content-store
 	sociCmd.Args = append(sociCmd.Args, rawRef)
 
-	logrus.Debugf("running %s %v", sociExecutable, sociCmd.Args)
+	log.L.Debugf("running %s %v", sociExecutable, sociCmd.Args)
 
 	err = processSociIO(sociCmd)
 	if err != nil {
@@ -81,12 +81,12 @@ func CreateSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform boo
 // PushSoci pushes a SOCI index(`rawRef`)
 // `hostsDirs` are used to resolve image `rawRef`
 func PushSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform bool, platforms []string) error {
-	logrus.Debugf("pushing SOCI index: %s", rawRef)
+	log.L.Debugf("pushing SOCI index: %s", rawRef)
 
 	sociExecutable, err := exec.LookPath("soci")
 	if err != nil {
-		logrus.WithError(err).Error("soci executable not found in path $PATH")
-		logrus.Info("you might consider installing soci from: https://github.com/awslabs/soci-snapshotter/blob/main/docs/install.md")
+		log.L.WithError(err).Error("soci executable not found in path $PATH")
+		log.L.Info("you might consider installing soci from: https://github.com/awslabs/soci-snapshotter/blob/main/docs/install.md")
 		return err
 	}
 
@@ -123,7 +123,7 @@ func PushSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform bool,
 	}
 	sociCmd.Args = append(sociCmd.Args, rawRef)
 
-	logrus.Debugf("running %s %v", sociExecutable, sociCmd.Args)
+	log.L.Debugf("running %s %v", sociExecutable, sociCmd.Args)
 
 	err = processSociIO(sociCmd)
 	if err != nil {
@@ -135,11 +135,11 @@ func PushSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform bool,
 func processSociIO(sociCmd *exec.Cmd) error {
 	stdout, err := sociCmd.StdoutPipe()
 	if err != nil {
-		logrus.Warn("soci: " + err.Error())
+		log.L.Warn("soci: " + err.Error())
 	}
 	stderr, err := sociCmd.StderrPipe()
 	if err != nil {
-		logrus.Warn("soci: " + err.Error())
+		log.L.Warn("soci: " + err.Error())
 	}
 	if err := sociCmd.Start(); err != nil {
 		// only return err if it's critical (soci command failed to start.)
@@ -148,18 +148,18 @@ func processSociIO(sociCmd *exec.Cmd) error {
 
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
-		logrus.Info("soci: " + scanner.Text())
+		log.L.Info("soci: " + scanner.Text())
 	}
 	if err := scanner.Err(); err != nil {
-		logrus.Warn("soci: " + err.Error())
+		log.L.Warn("soci: " + err.Error())
 	}
 
 	errScanner := bufio.NewScanner(stderr)
 	for errScanner.Scan() {
-		logrus.Info("soci: " + errScanner.Text())
+		log.L.Info("soci: " + errScanner.Text())
 	}
 	if err := errScanner.Err(); err != nil {
-		logrus.Warn("soci: " + err.Error())
+		log.L.Warn("soci: " + err.Error())
 	}
 
 	return nil
