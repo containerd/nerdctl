@@ -41,7 +41,6 @@ import (
 
 	b4nndclient "github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
 	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -80,7 +79,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 		return err
 	}
 	defer logFile.Close()
-	logrus.SetOutput(io.MultiWriter(stderr, logFile))
+	log.L.Logger.SetOutput(io.MultiWriter(stderr, logFile))
 
 	opts, err := newHandlerOpts(&state, dataStore, cniPath, cniNetconfPath)
 	if err != nil {
