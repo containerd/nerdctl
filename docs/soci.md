@@ -21,7 +21,7 @@ See https://github.com/awslabs/soci-snapshotter to learn further information.
 ## Enable SOCI for `nerdctl run` and `nerdctl pull`
 
 | :zap: Requirement | nerdctl >= 1.5.0 |
-| ----------------- |------------------|
+| ----------------- | ---------------- |
 
 - Run `nerdctl` with `--snapshotter=soci`
 ```console
@@ -38,10 +38,10 @@ For images that already have SOCI indices, see https://gallery.ecr.aws/soci-work
 ## Enable SOCI for `nerdctl push`
 
 | :zap: Requirement | nerdctl >= 1.6.0 |
-| ----------------- |------------------|
+| ----------------- | ---------------- |
 
 - Push the image with SOCI index. Adding `--snapshotter=soci` arg to `nerdctl pull`, `nerdctl` will create the SOCI index and push the index to same destination as the image.
 ```console
-nerdctl push --snapshotter=soci push --soci-span-size=2097152 --soci-min-layer-size=20971520 public.ecr.aws/my-registry/my-repo:latest
+nerdctl push --snapshotter=soci --soci-span-size=2097152 --soci-min-layer-size=20971520 public.ecr.aws/my-registry/my-repo:latest
 ```
 --soci-span-size and --soci-min-layer-size are two properties to customize the SOCI index. See [Command Reference](https://github.com/containerd/nerdctl/blob/377b2077bb616194a8ef1e19ccde32aa1ffd6c84/docs/command-reference.md?plain=1#L773) for further details.
