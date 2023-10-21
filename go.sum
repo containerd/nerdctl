@@ -156,8 +156,8 @@ github.com/google/go-cmp v0.5.9/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeN
 github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38/go.mod h1:kpwsk12EmLew5upagYY7GY0pfYCcupk39gWOCRROcvE=
 github.com/google/pprof v0.0.0-20230323073829-e72429f035bd h1:r8yyd+DJDmsUhGrRBxH5Pj7KeFK5l+Y3FsgT8keqKtk=
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
-github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/google/uuid v1.3.1 h1:KjJaJ9iWZ3jOFZIf1Lqf4laDRCasjl0BCmnEGxkdLb4=
+github.com/google/uuid v1.3.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/ianlancetaylor/demangle v0.0.0-20200824232613-28f6c0f3b639/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/imdario/mergo v0.3.16 h1:wwQJbIsHYGMUyLSPrEq1CT16AhnhNJQ51+4fdHUnCl4=
@@ -263,6 +263,8 @@ github.com/rootless-containers/bypass4netns v0.3.0 h1:UwI55zWDZz7OGyN4YWgfCKdsI5
 github.com/rootless-containers/bypass4netns v0.3.0/go.mod h1:IXHPjkQlJRygNBCN0hSSR3ITX6kDKr3aAaGHx6APd+g=
 github.com/rootless-containers/rootlesskit v1.1.1 h1:F5psKWoWY9/VjZ3ifVcaosjvFZJOagX85U22M0/EQZE=
 github.com/rootless-containers/rootlesskit v1.1.1/go.mod h1:UD5GoA3dqKCJrnvnhVgQQnweMF2qZnf9KLw8EewcMZI=
+github.com/rootless-containers/rootlesskit/v2 v2.0.0-alpha.1 h1:EUh0kAOAmbKw2wlrYDvMgqrOix+XmPP6S8ouAxBb1fM=
+github.com/rootless-containers/rootlesskit/v2 v2.0.0-alpha.1/go.mod h1:TOmphx2+hH4/98eGg0/ZXVcU8KWcvfymtQnt7Y2XSp0=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/sirupsen/logrus v1.9.0/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=

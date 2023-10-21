@@ -18,6 +18,8 @@ package infoutil
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/containerd/cgroups/v3"
@@ -136,4 +138,22 @@ func mobySysInfo(info *dockercompat.Info) *sysinfo.SysInfo {
 	}
 	mobySysInfo := sysinfo.New(mobySysInfoOpts...)
 	return mobySysInfo
+}
+
+func DetectRootlesskitFeature(feature string) (bool, error) {
+	rootlesskit := "rootlesskit"
+	rootlesskitBinary, err := exec.LookPath(rootlesskit)
+	if err != nil {
+		return false, fmt.Errorf("%s binary is not installed: %w", rootlesskit, err)
+	}
+	cmd := exec.Command(rootlesskitBinary, "--help")
+	cmd.Env = os.Environ()
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("command \"%s --help\" failed, --help is not supported: %w", rootlesskitBinary, err)
+	}
+	if !strings.Contains(string(b), feature) {
+		return false, nil
+	}
+	return true, nil
 }

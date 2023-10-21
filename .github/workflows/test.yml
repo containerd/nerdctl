@@ -115,31 +115,47 @@ jobs:
           - ubuntu: 20.04
             containerd: v1.6.24
             target: test-integration-rootless
+            rootlesskit: v1.1.1
           - ubuntu: 20.04
             containerd: v1.7.7
             target: test-integration-rootless
+            rootlesskit: v1.1.1
           - ubuntu: 22.04
             containerd: v1.7.7
             target: test-integration-rootless
+            rootlesskit: v1.1.1
           - ubuntu: 22.04
-            containerd: v1.7.3
+            containerd: main
+            target: test-integration-rootless
+            rootlesskit: v1.1.1
+          - ubuntu: 20.04
+            containerd: v1.7.7
+            target: test-integration-rootless
+            rootlesskit: v2.0.0-alpha.0
+          - ubuntu: 22.04
+            containerd: v1.7.7
             target: test-integration-rootless
             rootlesskit: v2.0.0-alpha.0
           - ubuntu: 22.04
             containerd: main
             target: test-integration-rootless
+            rootlesskit: v2.0.0-alpha.0
           - ubuntu: 20.04
             containerd: v1.6.24
             target: test-integration-rootless-port-slirp4netns
+            rootlesskit: v1.1.1
           - ubuntu: 20.04
             containerd: v1.7.7
             target: test-integration-rootless-port-slirp4netns
+            rootlesskit: v1.1.1
           - ubuntu: 22.04
             containerd: v1.7.7
             target: test-integration-rootless-port-slirp4netns
+            rootlesskit: v1.1.1
           - ubuntu: 22.04
             containerd: main
             target: test-integration-rootless-port-slirp4netns
+            rootlesskit: v1.1.1
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"

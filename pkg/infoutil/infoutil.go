@@ -244,26 +244,6 @@ func parseRuncVersion(runcVersionStdout []byte) (*dockercompat.ComponentVersion,
 	}, nil
 }
 
-func DetectBinaryFeature(binary, feature string) (bool, error) {
-	if binary == "" {
-		return false, fmt.Errorf("got empty %s binary", binary)
-	}
-	realBinary, err := exec.LookPath(binary)
-	if err != nil {
-		return false, fmt.Errorf("binary %q is not installed: %w", binary, err)
-	}
-	cmd := exec.Command(realBinary, "--help")
-	cmd.Env = os.Environ()
-	b, err := cmd.CombinedOutput()
-	if err != nil {
-		return false, fmt.Errorf("command \"%s --help\" failed, --help is not supported: %w", realBinary, err)
-	}
-	if !strings.Contains(string(b), feature) {
-		return false, nil
-	}
-	return true, nil
-}
-
 // BlockIOWeight return whether Block IO weight is supported or not
 func BlockIOWeight(cgroupManager string) bool {
 	var info dockercompat.Info

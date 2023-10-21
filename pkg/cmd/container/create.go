@@ -21,6 +21,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/containers"
@@ -44,20 +53,9 @@ import (
 	"github.com/containerd/nerdctl/pkg/referenceutil"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/containernetworking/plugins/pkg/ns"
 	dockercliopts "github.com/docker/cli/opts"
 	dockeropts "github.com/docker/docker/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/rootless-containers/rootlesskit/v2/pkg/child"
-	"github.com/sirupsen/logrus"
-	"net/url"
-	"os"
-	"os/exec"
-	"path"
-	"path/filepath"
-	"runtime"
-	"strconv"
-	"strings"
 )
 
 // Create will create a container.
@@ -286,7 +284,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 
 	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
 
-	detachNetNs, err := infoutil.DetectBinaryFeature("rootlesskit", "--detach-netns")
+	detachNetNs, err := infoutil.DetectRootlesskitFeature("--detach-netns")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -295,19 +293,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		if err != nil {
 			return nil, nil, err
 		}
-
-		if err := ns.WithNetNSPath(filepath.Join(stateDir, "netns"), func(_ ns.NetNS) error {
-			// verified that I entered detach ns
-			containerDetachNetNs := filepath.Join(stateDir, fmt.Sprintf("netns-%s", id))
-			if err := child.NewNetNsWithPathWithoutEnter(containerDetachNetNs); err != nil {
-				return err
-			}
-			opts = append(opts, oci.WithLinuxNamespace(specs.LinuxNamespace{
-				Type: specs.NetworkNamespace,
-				Path: containerDetachNetNs,
-			}))
-			return nil
-		}); err != nil {
+		if err := newContainerDetachNetNs(stateDir, id, &opts); err != nil {
 			return nil, nil, err
 		}
 	}

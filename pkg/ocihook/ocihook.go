@@ -27,6 +27,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"runtime"
+
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
@@ -42,7 +44,6 @@ import (
 	b4nndclient "github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
 	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
 	"github.com/vishvananda/netns"
-	"runtime"
 )
 
 const (
@@ -88,7 +89,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 		return err
 	}
 
-	detachNetNs, err := infoutil.DetectBinaryFeature("rootlesskit", "--detach-netns")
+	detachNetNs, err := infoutil.DetectRootlesskitFeature("--detach-netns")
 	if err != nil {
 		return err
 	}
