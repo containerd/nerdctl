@@ -43,10 +43,6 @@ func CNIRuntimeDir() string {
 	return "/run/cni"
 }
 
-func BuildKitHost() string {
-	return "unix:///run/buildkit/buildkitd.sock"
-}
-
 func CgroupManager() string {
 	return ""
 }
