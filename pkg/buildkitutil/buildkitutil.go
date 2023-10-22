@@ -34,6 +34,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -143,9 +144,21 @@ func PingBKDaemon(buildkitHost string) error {
 	return nil
 }
 
+// contains open-codes slices.Contains (without generics) from Go 1.21.
+// TODO: Replace once Go 1.21 is the minimum supported compiler.
+func contains(haystack []string, needle string) bool {
+	for i := range haystack {
+		if needle == haystack[i] {
+			return true
+		}
+	}
+	return false
+}
+
 func pingBKDaemon(buildkitHost string) (output string, _ error) {
-	if runtime.GOOS != "linux" && runtime.GOOS != "freebsd" {
-		return "", errors.New("only linux and freebsd are supported")
+	supportedOses := []string{"linux", "freebsd", "windows"}
+	if !contains(supportedOses, runtime.GOOS) {
+		return "", fmt.Errorf("only %s are supported", strings.Join(supportedOses, ", "))
 	}
 	buildctlBinary, err := BuildctlBinary()
 	if err != nil {
