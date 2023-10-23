@@ -42,12 +42,19 @@ func TestRunInternetConnectivity(t *testing.T) {
 	type testCase struct {
 		args []string
 	}
+	customNetID := base.InspectNetwork(customNet).ID
 	testCases := []testCase{
 		{
 			args: []string{"--net", "bridge"},
 		},
 		{
 			args: []string{"--net", customNet},
+		},
+		{
+			args: []string{"--net", customNetID},
+		},
+		{
+			args: []string{"--net", customNetID[:12]},
 		},
 		{
 			args: []string{"--net", "host"},
