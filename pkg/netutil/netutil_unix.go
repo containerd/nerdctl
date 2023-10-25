@@ -25,6 +25,7 @@ import (
 	"net"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -94,10 +95,16 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 	switch driver {
 	case "bridge":
 		mtu := 0
+		iPMasq := true
 		for opt, v := range opts {
 			switch opt {
 			case "mtu", "com.docker.network.driver.mtu":
 				mtu, err = ParseMTU(v)
+				if err != nil {
+					return nil, err
+				}
+			case "ip-masq", "com.docker.network.bridge.enable_ip_masquerade":
+				iPMasq, err = strconv.ParseBool(v)
 				if err != nil {
 					return nil, err
 				}
@@ -114,7 +121,7 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 		bridge.MTU = mtu
 		bridge.IPAM = ipam
 		bridge.IsGW = true
-		bridge.IPMasq = true
+		bridge.IPMasq = iPMasq
 		bridge.HairpinMode = true
 		plugins = []CNIPlugin{bridge, newPortMapPlugin(), newFirewallPlugin(), newTuningPlugin()}
 		plugins = fixUpIsolation(e, name, plugins)
