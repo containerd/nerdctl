@@ -92,7 +92,7 @@ type ListItem struct {
 	ID        string
 	Image     string
 	Platform  string // nerdctl extension
-	Names     []string
+	Names     string
 	Ports     string
 	Status    string
 	Runtime   string // nerdctl extension
@@ -130,7 +130,7 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 			ID:        id,
 			Image:     info.Image,
 			Platform:  info.Labels[labels.Platform],
-			Names:     []string{getContainerName(info.Labels)},
+			Names:     getContainerName(info.Labels),
 			Ports:     formatter.FormatPorts(info.Labels),
 			Status:    formatter.ContainerStatus(ctx, c),
 			Runtime:   info.Runtime.Name,
