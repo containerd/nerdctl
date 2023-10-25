@@ -223,6 +223,24 @@ func TestContainerListWithLabels(t *testing.T) {
 	})
 }
 
+func TestContainerListWithNames(t *testing.T) {
+	base, testContainer := preparePsTestContainer(t, "listWithNames", true)
+
+	// hope there are no tests running parallel
+	base.Cmd("ps", "-n", "1", "--format", "{{.Names}}").AssertOutWithFunc(func(stdout string) error {
+
+		// An example of nerdctl ps --format "{{.Names}}"
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) != 1 {
+			return fmt.Errorf("expected 1 line, got %d", len(lines))
+		}
+
+		assert.Equal(t, lines[0], testContainer.name)
+
+		return nil
+	})
+}
+
 func TestContainerListWithFilter(t *testing.T) {
 	base, testContainerA := preparePsTestContainer(t, "listWithFilterA", true)
 	_, testContainerB := preparePsTestContainer(t, "listWithFilterB", true)
