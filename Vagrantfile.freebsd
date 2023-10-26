@@ -18,7 +18,9 @@
 # Vagrantfile for FreeBSD
 Vagrant.configure("2") do |config|
   config.vm.box = "generic/freebsd13"
-
+  # workaround for https://github.com/containerd/nerdctl/issues/2596
+  config.vm.box_version = "4.3.2"
+  
   memory = 2048
   cpus = 1
   config.vm.provider :virtualbox do |v, o|
