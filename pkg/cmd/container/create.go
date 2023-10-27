@@ -193,6 +193,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	internalLabels.hostname = netLabelOpts.Hostname
 	internalLabels.ports = netLabelOpts.PortMappings
 	internalLabels.ipAddress = netLabelOpts.IPAddress
+	internalLabels.ip6Address = netLabelOpts.IP6Address
 	internalLabels.networks = netLabelOpts.NetworkSlice
 	internalLabels.macAddress = netLabelOpts.MACAddress
 
@@ -505,6 +506,7 @@ type internalLabels struct {
 	// network
 	networks   []string
 	ipAddress  string
+	ip6Address string
 	ports      []gocni.PortMapping
 	macAddress string
 	// volume
@@ -559,6 +561,10 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 
 	if internalLabels.ipAddress != "" {
 		m[labels.IPAddress] = internalLabels.ipAddress
+	}
+
+	if internalLabels.ip6Address != "" {
+		m[labels.IP6Address] = internalLabels.ip6Address
 	}
 
 	m[labels.Platform], err = platformutil.NormalizeString(internalLabels.platform)

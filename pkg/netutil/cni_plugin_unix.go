@@ -31,12 +31,14 @@ type bridgeConfig struct {
 	PromiscMode  bool                   `json:"promiscMode,omitempty"`
 	Vlan         int                    `json:"vlan,omitempty"`
 	IPAM         map[string]interface{} `json:"ipam"`
+	Capabilities map[string]bool        `json:"capabilities,omitempty"`
 }
 
 func newBridgePlugin(bridgeName string) *bridgeConfig {
 	return &bridgeConfig{
-		PluginType: "bridge",
-		BrName:     bridgeName,
+		PluginType:   "bridge",
+		BrName:       bridgeName,
+		Capabilities: map[string]bool{},
 	}
 }
 
@@ -46,16 +48,18 @@ func (*bridgeConfig) GetPluginType() string {
 
 // vlanConfig describes the macvlan/ipvlan config
 type vlanConfig struct {
-	PluginType string                 `json:"type"`
-	Master     string                 `json:"master"`
-	Mode       string                 `json:"mode,omitempty"`
-	MTU        int                    `json:"mtu,omitempty"`
-	IPAM       map[string]interface{} `json:"ipam"`
+	PluginType   string                 `json:"type"`
+	Master       string                 `json:"master"`
+	Mode         string                 `json:"mode,omitempty"`
+	MTU          int                    `json:"mtu,omitempty"`
+	IPAM         map[string]interface{} `json:"ipam"`
+	Capabilities map[string]bool        `json:"capabilities,omitempty"`
 }
 
 func newVLANPlugin(pluginType string) *vlanConfig {
 	return &vlanConfig{
-		PluginType: pluginType,
+		PluginType:   pluginType,
+		Capabilities: map[string]bool{},
 	}
 }
 

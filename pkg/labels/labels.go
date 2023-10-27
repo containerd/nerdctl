@@ -60,6 +60,9 @@ const (
 	// IPAddress is the static IP address of the container assigned by the user
 	IPAddress = Prefix + "ip"
 
+	// IP6Address is the static IP6 address of the container assigned by the user
+	IP6Address = Prefix + "ip6"
+
 	// LogURI is the log URI
 	LogURI = Prefix + "log-uri"
 

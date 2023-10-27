@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"net"
 	"regexp"
 	"runtime"
 	"strings"
@@ -489,5 +490,75 @@ func TestRunContainerWithMACAddress(t *testing.T) {
 			cmd.AssertOK()
 			cmd.AssertOutContains(test.Expect)
 		}
+	}
+}
+
+func TestRunContainerWithStaticIP6(t *testing.T) {
+	if rootlessutil.IsRootless() {
+		t.Skip("Static IP6 assignment is not supported rootless mode yet.")
+	}
+	networkName := "test-network"
+	networkSubnet := "2001:db8:5::/64"
+	_, subnet, err := net.ParseCIDR(networkSubnet)
+	assert.Assert(t, err == nil)
+	base := testutil.NewBaseWithIPv6Compatible(t)
+	base.Cmd("network", "create", networkName, "--subnet", networkSubnet, "--ipv6").AssertOK()
+	t.Cleanup(func() {
+		base.Cmd("network", "rm", networkName).Run()
+	})
+	testCases := []struct {
+		ip                string
+		shouldSuccess     bool
+		checkTheIPAddress bool
+	}{
+		{
+			ip:                "",
+			shouldSuccess:     true,
+			checkTheIPAddress: false,
+		},
+		{
+			ip:                "2001:db8:5::6",
+			shouldSuccess:     true,
+			checkTheIPAddress: true,
+		},
+		{
+			ip:                "2001:db8:4::6",
+			shouldSuccess:     false,
+			checkTheIPAddress: false,
+		},
+	}
+	tID := testutil.Identifier(t)
+	for i, tc := range testCases {
+		i := i
+		tc := tc
+		tcName := fmt.Sprintf("%+v", tc)
+		t.Run(tcName, func(t *testing.T) {
+			testContainerName := fmt.Sprintf("%s-%d", tID, i)
+			base := testutil.NewBaseWithIPv6Compatible(t)
+			args := []string{
+				"run", "--rm", "--name", testContainerName, "--network", networkName,
+			}
+			if tc.ip != "" {
+				args = append(args, "--ip6", tc.ip)
+			}
+			args = append(args, []string{testutil.NginxAlpineImage, "ip", "addr", "show", "dev", "eth0"}...)
+			cmd := base.Cmd(args...)
+			if !tc.shouldSuccess {
+				cmd.AssertFail()
+				return
+			}
+			cmd.AssertOutWithFunc(func(stdout string) error {
+				ip := findIPv6(stdout)
+				if !subnet.Contains(ip) {
+					return fmt.Errorf("expected subnet %s include ip %s", subnet, ip)
+				}
+				if tc.checkTheIPAddress {
+					if ip.String() != tc.ip {
+						return fmt.Errorf("expected ip %s, got %s", tc.ip, ip)
+					}
+				}
+				return nil
+			})
+		})
 	}
 }

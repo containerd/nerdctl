@@ -44,10 +44,11 @@ func newNetworkCreateCommand() *cobra.Command {
 	networkCreateCommand.Flags().String("ipam-driver", "default", "IP Address Management Driver")
 	networkCreateCommand.RegisterFlagCompletionFunc("ipam-driver", shellCompleteIPAMDrivers)
 	networkCreateCommand.Flags().StringArray("ipam-opt", nil, "Set IPAM driver specific options")
-	networkCreateCommand.Flags().String("subnet", "", `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
+	networkCreateCommand.Flags().StringArray("subnet", nil, `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
 	networkCreateCommand.Flags().String("gateway", "", `Gateway for the master subnet`)
 	networkCreateCommand.Flags().String("ip-range", "", `Allocate container ip from a sub-range`)
 	networkCreateCommand.Flags().StringArray("label", nil, "Set metadata for a network")
+	networkCreateCommand.Flags().Bool("ipv6", false, "Enable IPv6 networking")
 	return networkCreateCommand
 }
 
@@ -79,7 +80,7 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subnetStr, err := cmd.Flags().GetString("subnet")
+	subnets, err := cmd.Flags().GetStringArray("subnet")
 	if err != nil {
 		return err
 	}
@@ -96,6 +97,10 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	labels = strutil.DedupeStrSlice(labels)
+	ipv6, err := cmd.Flags().GetBool("ipv6")
+	if err != nil {
+		return err
+	}
 
 	return network.Create(types.NetworkCreateOptions{
 		GOptions: globalOptions,
@@ -105,10 +110,11 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 			Options:     strutil.ConvertKVStringsToMap(opts),
 			IPAMDriver:  ipamDriver,
 			IPAMOptions: strutil.ConvertKVStringsToMap(ipamOpts),
-			Subnet:      subnetStr,
+			Subnets:     subnets,
 			Gateway:     gatewayStr,
 			IPRange:     ipRangeStr,
 			Labels:      labels,
+			IPv6:        ipv6,
 		},
 	}, cmd.OutOrStdout())
 }
