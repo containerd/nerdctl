@@ -58,7 +58,7 @@ func (n *NetworkConfig) clean() error {
 	return nil
 }
 
-func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]interface{}, opts map[string]string) ([]CNIPlugin, error) {
+func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]interface{}, opts map[string]string, ipv6 bool) ([]CNIPlugin, error) {
 	var plugins []CNIPlugin
 	switch driver {
 	case "nat":
@@ -71,8 +71,15 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 	return plugins, nil
 }
 
-func (e *CNIEnv) generateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr string, opts map[string]string) (map[string]interface{}, error) {
-	subnet, err := e.parseSubnet(subnetStr)
+func (e *CNIEnv) generateIPAM(driver string, subnets []string, gatewayStr, ipRangeStr string, opts map[string]string, ipv6 bool) (map[string]interface{}, error) {
+	switch driver {
+	case "default":
+	default:
+		return nil, fmt.Errorf("unsupported ipam driver %q", driver)
+	}
+
+	ipamConfig := newWindowsIPAMConfig()
+	subnet, err := e.parseSubnet(subnets[0])
 	if err != nil {
 		return nil, err
 	}
@@ -80,18 +87,8 @@ func (e *CNIEnv) generateIPAM(driver string, subnetStr, gatewayStr, ipRangeStr s
 	if err != nil {
 		return nil, err
 	}
-
-	var ipamConfig interface{}
-	switch driver {
-	case "default":
-		ipamConf := newWindowsIPAMConfig()
-		ipamConf.Subnet = ipamRange.Subnet
-		ipamConf.Routes = append(ipamConf.Routes, IPAMRoute{Gateway: ipamRange.Gateway})
-		ipamConfig = ipamConf
-	default:
-		return nil, fmt.Errorf("unsupported ipam driver %q", driver)
-	}
-
+	ipamConfig.Subnet = ipamRange.Subnet
+	ipamConfig.Routes = append(ipamConfig.Routes, IPAMRoute{Gateway: ipamRange.Gateway})
 	ipam, err := structToMap(ipamConfig)
 	if err != nil {
 		return nil, err

@@ -28,6 +28,8 @@ type NetworkOptions struct {
 	MACAddress string
 	// IPAddress set specific static IP address(es) to use
 	IPAddress string
+	// IP6Address set specific static IP6 address(es) to use
+	IP6Address string
 	// Hostname set container host name
 	Hostname string
 	// DNSServers set custom DNS servers

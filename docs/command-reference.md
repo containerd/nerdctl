@@ -183,6 +183,7 @@ Network flags:
 - :whale: `--add-host`: Add a custom host-to-IP mapping (host:ip). `ip` could be a special string `host-gateway`,
 - which will be resolved to the `host-gateway-ip` in nerdctl.toml or global flag.
 - :whale: `--ip`: Specific static IP address(es) to use
+- :whale: `--ip6`: Specific static IP6 address(es) to use. Should be used with user networks
 - :whale: `--mac-address`: Specific MAC address to use. Be aware that it does not
   check if manually specified MAC addresses are unique. Supports network
   type `bridge` and `macvlan`
@@ -375,7 +376,7 @@ IPFS flags:
 
 Unimplemented `docker run` flags:
     `--attach`, `--blkio-weight-device`, `--cpu-rt-*`, `--device-*`,
-    `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--ip6`, `--isolation`, `--no-healthcheck`,
+    `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
     `--link*`, `--mac-address`, `--publish-all`, `--sig-proxy`, `--storage-opt`,
     `--userns`, `--volume-driver`
 
@@ -992,8 +993,9 @@ Flags:
 - :whale: `--gateway`: Gateway for the master subnet
 - :whale: `--ip-range`: Allocate container ip from a sub-range
 - :whale: `--label`: Set metadata on a network
+- :whale: `--ipv6`: Enable IPv6. Should be used with a valid subnet.
 
-Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--ingress`, `--internal`, `--ipv6`, `--scope`
+Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--ingress`, `--internal`, `--scope`
 
 ### :whale: nerdctl network ls
 

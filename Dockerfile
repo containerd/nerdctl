@@ -341,4 +341,8 @@ FROM test-integration-rootless AS test-integration-rootless-port-slirp4netns
 COPY ./Dockerfile.d/home_rootless_.config_systemd_user_containerd.service.d_port-slirp4netns.conf /home/rootless/.config/systemd/user/containerd.service.d/port-slirp4netns.conf
 RUN chown -R rootless:rootless /home/rootless/.config
 
+FROM test-integration AS test-integration-ipv6
+CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=github.com/containerd/nerdctl/cmd/nerdctl/...", \
+  "--", "-timeout=30m", "-args", "-test.kill-daemon", "-test.ipv6"]
+
 FROM base AS demo

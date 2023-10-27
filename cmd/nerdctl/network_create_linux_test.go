@@ -17,6 +17,9 @@
 package main
 
 import (
+	"fmt"
+	"net"
+	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -53,4 +56,41 @@ func TestNetworkCreate(t *testing.T) {
 	defer base.Cmd("network", "rm", testNetwork+"-1").AssertOK()
 
 	base.Cmd("run", "--rm", "--net", testNetwork+"-1", testutil.CommonImage, "ip", "route").AssertNoOut(net.IPAM.Config[0].Subnet)
+}
+
+func TestNetworkCreateIPv6(t *testing.T) {
+	base := testutil.NewBaseWithIPv6Compatible(t)
+	testNetwork := testutil.Identifier(t)
+
+	subnetStr := "2001:db8:8::/64"
+	_, subnet, err := net.ParseCIDR(subnetStr)
+	assert.Assert(t, err == nil)
+
+	base.Cmd("network", "create", "--ipv6", "--subnet", subnetStr, testNetwork).AssertOK()
+	t.Cleanup(func() {
+		base.Cmd("network", "rm", testNetwork).Run()
+	})
+
+	base.Cmd("run", "--rm", "--net", testNetwork, testutil.CommonImage, "ip", "addr", "show", "dev", "eth0").AssertOutWithFunc(func(stdout string) error {
+		ip := findIPv6(stdout)
+		if subnet.Contains(ip) {
+			return nil
+		}
+		return fmt.Errorf("expected subnet %s include ip %s", subnet, ip)
+	})
+}
+
+func findIPv6(output string) net.IP {
+	var ipv6 string
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "inet6") {
+			fields := strings.Fields(line)
+			if len(fields) > 1 {
+				ipv6 = strings.Split(fields[1], "/")[0]
+				break
+			}
+		}
+	}
+	return net.ParseIP(ipv6)
 }

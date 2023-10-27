@@ -120,8 +120,8 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSlice("dns-option", nil, "Set DNS options")
 	// publish is defined as StringSlice, not StringArray, to allow specifying "--publish=80:80,443:443" (compatible with Podman)
 	cmd.Flags().StringSliceP("publish", "p", nil, "Publish a container's port(s) to the host")
-	// FIXME: not support IPV6 yet
 	cmd.Flags().String("ip", "", "IPv4 address to assign to the container")
+	cmd.Flags().String("ip6", "", "IPv6 address to assign to the container")
 	cmd.Flags().StringP("hostname", "h", "", "Container host name")
 	cmd.Flags().String("mac-address", "", "MAC address to assign to the container")
 	// #endregion

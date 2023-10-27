@@ -104,6 +104,50 @@ jobs:
       - name: "Run integration tests"
         run: docker run -t --rm --privileged test-integration
 
+  test-integration-ipv6:
+    runs-on: "ubuntu-${{ matrix.ubuntu }}"
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
+        include:
+          - ubuntu: 22.04
+            containerd: v1.7.7
+    env:
+      UBUNTU_VERSION: "${{ matrix.ubuntu }}"
+      CONTAINERD_VERSION: "${{ matrix.containerd }}"
+    steps:
+      - uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 1
+      - name: Enable ipv4 and ipv6 forwarding
+        run: |
+          sudo sysctl -w net.ipv6.conf.all.forwarding=1
+          sudo sysctl -w net.ipv4.ip_forward=1
+      - name: Enable IPv6 for Docker
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64", "experimental": true, "ip6tables": true}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+      - name: "Prepare integration test environment"
+        run: DOCKER_BUILDKIT=1 docker build -t test-integration-ipv6 --target test-integration-ipv6 --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+      - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
+        run: |
+          sudo systemctl disable --now snapd.service snapd.socket
+          sudo apt-get purge -y snapd
+          sudo losetup -Dv
+          sudo losetup -lv
+      - name: "Register QEMU (tonistiigi/binfmt)"
+        run: docker run --privileged --rm tonistiigi/binfmt --install all
+      - name: "Run integration tests"
+        # The nested IPv6 network inside docker and qemu is complex and needs a bunch of sysctl config.
+        # Therefore it's hard to debug why the IPv6 tests fail in such an isolation layer.
+        # On the other side, using the host network is easier at configuration.
+        # Besides, each job is running on a different instance, which means using host network here
+        # is safe and has no side effects on others.
+        run: docker run --network host -t --rm --privileged test-integration-ipv6
+
   test-integration-rootless:
     runs-on: "ubuntu-${{ matrix.ubuntu }}"
     timeout-minutes: 60
@@ -200,6 +244,8 @@ jobs:
           sudo apt-get install -y expect
       - name: "Ensure that the integration test suite is compatible with Docker"
         run: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon
+      - name: "Ensure that the IPv6 integration test suite is compatible with Docker"
+        run: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon -test.ipv6
 
   test-integration-windows:
     # A "larger" runner is used for enabling Hyper-V containers

@@ -77,6 +77,13 @@ func loadNetworkFlags(cmd *cobra.Command) (types.NetworkOptions, error) {
 	}
 	netOpts.IPAddress = ipAddress
 
+	// --ip6=<container static IP6>
+	ip6Address, err := cmd.Flags().GetString("ip6")
+	if err != nil {
+		return netOpts, err
+	}
+	netOpts.IP6Address = ip6Address
+
 	// -h/--hostname=<container hostname>
 	hostName, err := cmd.Flags().GetString("hostname")
 	if err != nil {
