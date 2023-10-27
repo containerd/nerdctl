@@ -11,7 +11,7 @@ require (
 	github.com/containerd/accelerated-container-image v1.0.0
 	github.com/containerd/cgroups/v3 v3.0.2
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.7.7
+	github.com/containerd/containerd v1.7.8
 	github.com/containerd/continuity v0.4.3
 	github.com/containerd/go-cni v1.1.9
 	github.com/containerd/imgcrypt v1.1.8
@@ -131,7 +131,7 @@ require (
 	golang.org/x/tools v0.11.0 // indirect
 	google.golang.org/genproto v0.0.0-20230717213848-3f92550aa753 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230717213848-3f92550aa753 // indirect
-	google.golang.org/grpc v1.56.3 // indirect
+	google.golang.org/grpc v1.58.3 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
