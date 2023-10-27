@@ -68,7 +68,11 @@ services:
 	comp := testutil.NewComposeDir(t, fmt.Sprintf(dockerComposeYAML, "3.13"))
 	defer comp.CleanUp()
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "config", "--hash=*").AssertOutContains("hello1")
+	// `--hash=*` is broken in Docker Compose v2.23.0: https://github.com/docker/compose/issues/11145
+	if base.Target == testutil.Nerdctl {
+		base.ComposeCmd("-f", comp.YAMLFullPath(), "config", "--hash=*").AssertOutContains("hello1")
+	}
+
 	hash := base.ComposeCmd("-f", comp.YAMLFullPath(), "config", "--hash=hello1").Out()
 
 	newComp := testutil.NewComposeDir(t, fmt.Sprintf(dockerComposeYAML, "3.14"))
