@@ -33,6 +33,7 @@ const (
 	snapshotterNameStargz    = "stargz"
 	snapshotterNameNydus     = "nydus"
 	snapshotterNameSoci      = "soci"
+	snapshotterNameCvmfs     = "cvmfs-snapshotter"
 
 	// prefetch size for stargz
 	prefetchSize = 10 * 1024 * 1024
@@ -44,6 +45,7 @@ var builtinRemoteSnapshotterOpts = map[string]snapshotterOpts{
 	snapshotterNameStargz:    &remoteSnapshotterOpts{snapshotter: "stargz", extraLabels: stargzExtraLabels},
 	snapshotterNameNydus:     &remoteSnapshotterOpts{snapshotter: "nydus"},
 	snapshotterNameSoci:      &remoteSnapshotterOpts{snapshotter: "soci", extraLabels: sociExtraLabels},
+	snapshotterNameCvmfs:     &remoteSnapshotterOpts{snapshotter: "cvmfs-snapshotter"},
 }
 
 // snapshotterOpts is used to update pull config
