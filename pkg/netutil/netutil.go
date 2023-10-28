@@ -165,6 +165,14 @@ func (e *CNIEnv) NetworkMap() (map[string]*NetworkConfig, error) { //nolint:revi
 			log.L.Warnf("duplicate network name %q, %#v will get superseded by %#v", n.Name, original, n)
 		}
 		m[n.Name] = n
+		if n.NerdctlID != nil {
+			id := *n.NerdctlID
+			m[id] = n
+			if len(id) > 12 {
+				id = id[:12]
+				m[id] = n
+			}
+		}
 	}
 	return m, nil
 }
