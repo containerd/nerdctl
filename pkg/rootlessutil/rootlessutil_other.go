@@ -58,6 +58,11 @@ func NewRootlessKitClient() (client.Client, error) {
 	return nil, fmt.Errorf("cannot instantiate RootlessKit client on non-Linux hosts")
 }
 
+// Always returns false on non-Linux platforms.
+func DetectRootlesskitFeature(feature string) (bool, error) {
+	return false, nil
+}
+
 // Always errors out on non-Linux platforms.
 func ParentMain(hostGatewayIP string) error {
 	return fmt.Errorf("cannot use RootlessKit on main entry point on non-Linux hosts")

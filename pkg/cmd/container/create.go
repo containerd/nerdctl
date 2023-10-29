@@ -43,7 +43,6 @@ import (
 	"github.com/containerd/nerdctl/pkg/flagutil"
 	"github.com/containerd/nerdctl/pkg/idgen"
 	"github.com/containerd/nerdctl/pkg/imgutil"
-	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/logging"
@@ -284,7 +283,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 
 	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
 
-	detachNetNs, err := infoutil.DetectRootlesskitFeature("--detach-netns")
+	detachNetNs, err := rootlessutil.DetectRootlesskitFeature("--detach-netns")
 	if err != nil {
 		return nil, nil, err
 	}

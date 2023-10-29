@@ -33,7 +33,6 @@ import (
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
-	"github.com/containerd/nerdctl/pkg/infoutil"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/namestore"
 	"github.com/containerd/nerdctl/pkg/netutil"
@@ -89,7 +88,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 		return err
 	}
 
-	detachNetNs, err := infoutil.DetectRootlesskitFeature("--detach-netns")
+	detachNetNs, err := rootlessutil.DetectRootlesskitFeature("--detach-netns")
 	if err != nil {
 		return err
 	}

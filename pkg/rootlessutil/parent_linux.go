@@ -97,6 +97,15 @@ func ParentMain(hostGatewayIP string) error {
 		"-t", strconv.Itoa(childPid),
 		"-F", // no fork
 	}
+
+	detachNetNs, err := DetectRootlesskitFeature("--detach-netns")
+	if err != nil {
+		return err
+	}
+	if !detachNetNs {
+		args = append(args, "-n")
+	}
+
 	args = append(args, os.Args...)
 	log.L.Debugf("rootless parent main: executing %q with %v", arg0, args)
 

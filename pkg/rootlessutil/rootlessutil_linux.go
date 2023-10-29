@@ -19,8 +19,10 @@ package rootlessutil
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/rootless-containers/rootlesskit/pkg/api/client"
 )
@@ -66,6 +68,24 @@ func NewRootlessKitClient() (client.Client, error) {
 	}
 	apiSock := filepath.Join(stateDir, "api.sock")
 	return client.New(apiSock)
+}
+
+func DetectRootlesskitFeature(feature string) (bool, error) {
+	rootlesskit := "rootlesskit"
+	rootlesskitBinary, err := exec.LookPath(rootlesskit)
+	if err != nil {
+		return false, fmt.Errorf("%s binary is not installed: %w", rootlesskit, err)
+	}
+	cmd := exec.Command(rootlesskitBinary, "--help")
+	cmd.Env = os.Environ()
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("command \"%s --help\" failed, --help is not supported: %w", rootlesskitBinary, err)
+	}
+	if !strings.Contains(string(b), feature) {
+		return false, nil
+	}
+	return true, nil
 }
 
 // RootlessContainredSockAddress returns sock address of rootless containerd based on https://github.com/containerd/nerdctl/blob/main/docs/faq.md#containerd-socket-address
