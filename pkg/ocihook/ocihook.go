@@ -188,7 +188,11 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 	}
 
 	if macAddress, ok := o.state.Annotations[labels.MACAddress]; ok {
-		o.contianerMAC = macAddress
+		o.containerMAC = macAddress
+	}
+
+	if ip6Address, ok := o.state.Annotations[labels.IP6Address]; ok {
+		o.containerIP6 = ip6Address
 	}
 
 	if rootlessutil.IsRootlessChild() {
@@ -226,7 +230,8 @@ type handlerOpts struct {
 	bypassClient      b4nndclient.Client
 	extraHosts        map[string]string // host:ip
 	containerIP       string
-	contianerMAC      string
+	containerMAC      string
+	containerIP6      string
 }
 
 // hookSpec is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/containerd/command/oci-hook.go#L59-L64
@@ -353,14 +358,31 @@ func getIPAddressOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 }
 
 func getMACAddressOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
-	if opts.contianerMAC != "" {
+	if opts.containerMAC != "" {
 		return []gocni.NamespaceOpts{
 			gocni.WithLabels(map[string]string{
 				// allow loose CNI argument verification
 				// FYI: https://github.com/containernetworking/cni/issues/560
 				"IgnoreUnknown": "1",
 			}),
-			gocni.WithArgs("MAC", opts.contianerMAC),
+			gocni.WithArgs("MAC", opts.containerMAC),
+		}, nil
+	}
+	return nil, nil
+}
+
+func getIP6AddressOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
+	if opts.containerIP6 != "" {
+		if rootlessutil.IsRootlessChild() {
+			log.L.Debug("container IP6 assignment is not fully supported in rootless mode. The IP6 is not accessible from the host (but still accessible from other containers).")
+		}
+		return []gocni.NamespaceOpts{
+			gocni.WithLabels(map[string]string{
+				// allow loose CNI argument verification
+				// FYI: https://github.com/containernetworking/cni/issues/560
+				"IgnoreUnknown": "1",
+			}),
+			gocni.WithCapability("ips", []string{opts.containerIP6}),
 		}, nil
 	}
 	return nil, nil
@@ -391,10 +413,15 @@ func onCreateRuntime(opts *handlerOpts) error {
 		if err != nil {
 			return err
 		}
+		ip6AddressOpts, err := getIP6AddressOpts(opts)
+		if err != nil {
+			return err
+		}
 		var namespaceOpts []gocni.NamespaceOpts
 		namespaceOpts = append(namespaceOpts, portMapOpts...)
 		namespaceOpts = append(namespaceOpts, ipAddressOpts...)
 		namespaceOpts = append(namespaceOpts, macAddressOpts...)
+		namespaceOpts = append(namespaceOpts, ip6AddressOpts...)
 		hsMeta := hostsstore.Meta{
 			Namespace:  opts.state.Annotations[labels.Namespace],
 			ID:         opts.state.ID,
@@ -478,10 +505,15 @@ func onPostStop(opts *handlerOpts) error {
 		if err != nil {
 			return err
 		}
+		ip6AddressOpts, err := getIP6AddressOpts(opts)
+		if err != nil {
+			return err
+		}
 		var namespaceOpts []gocni.NamespaceOpts
 		namespaceOpts = append(namespaceOpts, portMapOpts...)
 		namespaceOpts = append(namespaceOpts, ipAddressOpts...)
 		namespaceOpts = append(namespaceOpts, macAddressOpts...)
+		namespaceOpts = append(namespaceOpts, ip6AddressOpts...)
 		if err := opts.cni.Remove(ctx, opts.fullID, "", namespaceOpts...); err != nil {
 			log.L.WithError(err).Errorf("failed to call cni.Remove")
 			return err

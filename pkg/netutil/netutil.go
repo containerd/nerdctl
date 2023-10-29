@@ -231,10 +231,11 @@ type CreateOptions struct {
 	Options     map[string]string
 	IPAMDriver  string
 	IPAMOptions map[string]string
-	Subnet      string
+	Subnets     []string
 	Gateway     string
 	IPRange     string
 	Labels      []string
+	IPv6        bool
 }
 
 func (e *CNIEnv) CreateNetwork(opts CreateOptions) (*NetworkConfig, error) { //nolint:revive
@@ -249,11 +250,11 @@ func (e *CNIEnv) CreateNetwork(opts CreateOptions) (*NetworkConfig, error) { //n
 	}
 
 	fn := func() error {
-		ipam, err := e.generateIPAM(opts.IPAMDriver, opts.Subnet, opts.Gateway, opts.IPRange, opts.IPAMOptions)
+		ipam, err := e.generateIPAM(opts.IPAMDriver, opts.Subnets, opts.Gateway, opts.IPRange, opts.IPAMOptions, opts.IPv6)
 		if err != nil {
 			return err
 		}
-		plugins, err := e.generateCNIPlugins(opts.Driver, opts.Name, ipam, opts.Options)
+		plugins, err := e.generateCNIPlugins(opts.Driver, opts.Name, ipam, opts.Options, opts.IPv6)
 		if err != nil {
 			return err
 		}
@@ -352,7 +353,7 @@ func (e *CNIEnv) createDefaultNetworkConfig() error {
 	opts := CreateOptions{
 		Name:       DefaultNetworkName,
 		Driver:     DefaultNetworkName,
-		Subnet:     DefaultCIDR,
+		Subnets:    []string{DefaultCIDR},
 		IPAMDriver: "default",
 		Labels:     []string{fmt.Sprintf("%s=true", labels.NerdctlDefaultNetwork)},
 	}

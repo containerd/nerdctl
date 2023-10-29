@@ -47,6 +47,8 @@ type Base struct {
 	T                testing.TB
 	Target           Target
 	DaemonIsKillable bool
+	EnableIPv6       bool
+	IPv6Compatible   bool
 	Binary           string
 	Args             []string
 	Env              []string
@@ -482,11 +484,13 @@ const (
 var (
 	flagTestTarget     Target
 	flagTestKillDaemon bool
+	flagTestIPv6       bool
 )
 
 func M(m *testing.M) {
 	flag.StringVar(&flagTestTarget, "test.target", Nerdctl, "target to test")
 	flag.BoolVar(&flagTestKillDaemon, "test.kill-daemon", false, "enable tests that kill the daemon")
+	flag.BoolVar(&flagTestIPv6, "test.ipv6", false, "enable tests on IPv6")
 	flag.Parse()
 	fmt.Fprintf(os.Stderr, "test target: %q\n", flagTestTarget)
 	os.Exit(m.Run())
@@ -497,6 +501,10 @@ func GetTarget() string {
 		panic("GetTarget() was called without calling M()")
 	}
 	return flagTestTarget
+}
+
+func GetEnableIPv6() bool {
+	return flagTestIPv6
 }
 
 func GetDaemonIsKillable() bool {
@@ -618,18 +626,29 @@ func NewBaseWithNamespace(t *testing.T, ns string) *Base {
 	if ns == "" || ns == "default" || ns == Namespace {
 		t.Fatalf(`the other base namespace cannot be "%s"`, ns)
 	}
-	return newBase(t, ns)
+	return newBase(t, ns, false)
+}
+
+func NewBaseWithIPv6Compatible(t *testing.T) *Base {
+	return newBase(t, Namespace, true)
 }
 
 func NewBase(t *testing.T) *Base {
-	return newBase(t, Namespace)
+	return newBase(t, Namespace, false)
 }
 
-func newBase(t *testing.T, ns string) *Base {
+func newBase(t *testing.T, ns string, ipv6Compatible bool) *Base {
 	base := &Base{
 		T:                t,
 		Target:           GetTarget(),
 		DaemonIsKillable: GetDaemonIsKillable(),
+		EnableIPv6:       GetEnableIPv6(),
+		IPv6Compatible:   ipv6Compatible,
+	}
+	if base.EnableIPv6 && !base.IPv6Compatible {
+		t.Skip("runner skips non-IPv6 complatible tests in the IPv6 environment")
+	} else if !base.EnableIPv6 && base.IPv6Compatible {
+		t.Skip("runner skips IPv6 compatible tests in the non-IPv6 environment")
 	}
 	var err error
 	switch base.Target {
