@@ -73,10 +73,7 @@ WORKDIR /go/src/github.com/containerd/containerd
 RUN git checkout ${CONTAINERD_VERSION} && \
   mkdir -p /out /out/$TARGETARCH && \
   cp -a containerd.service /out
-ENV CGO_ENABLED=1
-ENV GO111MODULE=off
-# TODO: how to build containerd as static binaries? https://github.com/containerd/containerd/issues/6158
-RUN GO=xx-go make && \
+RUN GO=xx-go make STATIC=1 && \
   cp -a bin/containerd bin/containerd-shim-runc-v2 bin/ctr /out/$TARGETARCH
 
 FROM build-base-debian AS build-runc
