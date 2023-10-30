@@ -17,11 +17,14 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -467,4 +470,43 @@ func TestRunWithTtyAndDetached(t *testing.T) {
 	base.Cmd("logs", withTtyContainerName).AssertCombinedOutContains("speed 38400 baud; line = 0;")
 	withTtyContainer := base.InspectContainer(withTtyContainerName)
 	assert.Equal(base.T, 0, withTtyContainer.State.ExitCode)
+}
+
+// history: There was a bug that the --add-host items disappear when the another container created.
+// This case ensures that it's doesn't happen.
+// (https://github.com/containerd/nerdctl/issues/2560)
+func TestRunAddHostRemainsWhenAnotherContainerCreated(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("ocihook is not yet supported on Windows")
+	}
+	base := testutil.NewBase(t)
+
+	containerName := testutil.Identifier(t)
+	hostMapping := "test-add-host:10.0.0.1"
+	base.Cmd("run", "-d", "--add-host", hostMapping, "--name", containerName, testutil.CommonImage, "sleep", "infinity").AssertOK()
+	defer base.Cmd("container", "rm", "-f", containerName).Run()
+
+	checkEtcHosts := func(stdout string) error {
+		matcher, err := regexp.Compile(`^10.0.0.1\s+test-add-host$`)
+		if err != nil {
+			return err
+		}
+		var found bool
+		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
+		for sc.Scan() {
+			if matcher.Match(sc.Bytes()) {
+				found = true
+			}
+		}
+		if !found {
+			return fmt.Errorf("host not found")
+		}
+		return nil
+	}
+	base.Cmd("exec", containerName, "cat", "/etc/hosts").AssertOutWithFunc(checkEtcHosts)
+
+	// run another container
+	base.Cmd("run", "--rm", testutil.CommonImage).AssertOK()
+
+	base.Cmd("exec", containerName, "cat", "/etc/hosts").AssertOutWithFunc(checkEtcHosts)
 }

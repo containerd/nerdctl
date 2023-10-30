@@ -133,7 +133,7 @@ func (x *store) Acquire(meta Meta) error {
 		if err := os.WriteFile(metaPath, metaB, 0644); err != nil {
 			return err
 		}
-		return newUpdater(meta.ID, x.hostsD, meta.ExtraHosts).update()
+		return newUpdater(meta.ID, x.hostsD).update()
 	}
 	return lockutil.WithDirLock(x.hostsD, fn)
 }
@@ -153,7 +153,7 @@ func (x *store) Release(ns, id string) error {
 		if err := os.RemoveAll(metaPath); err != nil {
 			return err
 		}
-		return newUpdater(id, x.hostsD, nil).update()
+		return newUpdater(id, x.hostsD).update()
 	}
 	return lockutil.WithDirLock(x.hostsD, fn)
 }
@@ -177,7 +177,7 @@ func (x *store) Update(ns, id, newName string) error {
 		if err := os.WriteFile(metaPath, metaB, 0644); err != nil {
 			return err
 		}
-		return newUpdater(meta.ID, x.hostsD, meta.ExtraHosts).update()
+		return newUpdater(meta.ID, x.hostsD).update()
 	}
 	return lockutil.WithDirLock(x.hostsD, fn)
 }
