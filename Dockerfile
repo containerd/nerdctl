@@ -98,6 +98,18 @@ ENV CGO_ENABLED=1
 RUN GO=xx-go make static && \
   xx-verify --static bypass4netns && cp -a bypass4netns bypass4netnsd /out/${TARGETARCH}
 
+FROM build-base-debian AS build-kubo
+ARG KUBO_VERSION
+ARG TARGETARCH
+RUN git clone https://github.com/ipfs/kubo.git /go/src/github.com/ipfs/kubo
+WORKDIR /go/src/github.com/ipfs/kubo
+RUN git checkout ${KUBO_VERSION} && \
+  mkdir -p /out/${TARGETARCH}
+ENV CGO_ENABLED=0
+RUN xx-go --wrap && \
+  make build && \
+  xx-verify --static cmd/ipfs/ipfs && cp -a cmd/ipfs/ipfs /out/${TARGETARCH}
+
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS build-base
 RUN apk add --no-cache make git curl
 COPY . /go/src/github.com/containerd/nerdctl
@@ -194,13 +206,8 @@ RUN fname="containerd-fuse-overlayfs-${CONTAINERD_FUSE_OVERLAYFS_VERSION/v}-${TA
   rm -f "${fname}" && \
   echo "- containerd-fuse-overlayfs: ${CONTAINERD_FUSE_OVERLAYFS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG KUBO_VERSION
-RUN fname="kubo_${KUBO_VERSION}_${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
-  curl -o "${fname}" -fSL "https://github.com/ipfs/kubo/releases/download/${KUBO_VERSION}/${fname}" && \
-  grep "${fname}" "/SHA256SUMS.d/kubo-${KUBO_VERSION}" | sha256sum -c && \
-  tmpout=$(mktemp -d) && \
-  tar -C ${tmpout} -xzf "${fname}" kubo/ipfs && \
-  mv ${tmpout}/kubo/ipfs /out/bin/ && \
-  echo "- Kubo (IPFS): ${KUBO_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+COPY --from=build-kubo /out/${TARGETARCH:-amd64}/* /out/bin/
+RUN echo "- Kubo (IPFS): ${KUBO_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG TINI_VERSION
 RUN fname="tini-static-${TARGETARCH:-amd64}" && \
   curl -o "${fname}" -fSL "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/${fname}" && \
