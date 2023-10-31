@@ -18,7 +18,7 @@ require (
 	github.com/containerd/log v0.1.0
 	github.com/containerd/nydus-snapshotter v0.13.3
 	github.com/containerd/stargz-snapshotter v0.14.3
-	github.com/containerd/stargz-snapshotter/estargz v0.14.3
+	github.com/containerd/stargz-snapshotter/estargz v0.15.1
 	github.com/containerd/stargz-snapshotter/ipfs v0.14.3
 	github.com/containerd/typeurl/v2 v2.1.1
 	github.com/containernetworking/cni v1.1.2
@@ -117,7 +117,7 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tinylib/msgp v1.1.6 // indirect
-	github.com/vbatts/tar-split v0.11.3 // indirect
+	github.com/vbatts/tar-split v0.11.5 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
