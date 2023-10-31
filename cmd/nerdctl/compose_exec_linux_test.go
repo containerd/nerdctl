@@ -19,12 +19,14 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"gotest.tools/v3/assert"
 )
 
 func TestComposeExec(t *testing.T) {
@@ -206,4 +208,94 @@ services:
 	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "-i=false", "svc0", "stty").AssertOutContains(sttyPartialOutput) // `-t`
 	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "-t=false", "svc0", "stty").AssertFail()                         // `-i`
 	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "-i=false", "-t=false", "svc0", "stty").AssertFail()
+}
+
+func TestComposeExecWithIndex(t *testing.T) {
+	base := testutil.NewBase(t)
+	var dockerComposeYAML = fmt.Sprintf(`
+version: '3.1'
+
+services:
+  svc0:
+    image: %s
+    command: "sleep infinity"
+    deploy:
+      replicas: 3
+`, testutil.CommonImage)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	t.Cleanup(func() {
+		comp.CleanUp()
+	})
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "svc0").AssertOK()
+	t.Cleanup(func() {
+		base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+	})
+
+	// try 5 times to ensure that results are stable
+	for i := 0; i < 5; i++ {
+		for _, j := range []string{"1", "2", "3"} {
+			name := fmt.Sprintf("%s-svc0-%s", projectName, j)
+			host := fmt.Sprintf("%s.%s_default", name, projectName)
+			var (
+				expectIP string
+				realIP   string
+			)
+			//  docker and nerdctl have different DNS resolution behaviors.
+			// it uses the ID in the /etc/hosts file, so we need to fetch the ID first.
+			if testutil.GetTarget() == testutil.Docker {
+				base.Cmd("ps", "--filter", fmt.Sprintf("name=%s", name), "--format", "{{.ID}}").AssertOutWithFunc(func(stdout string) error {
+					host = strings.TrimSpace(stdout)
+					return nil
+				})
+			}
+			cmds := []string{"-f", comp.YAMLFullPath(), "exec", "-i=false", "-t=false", "--index", j, "svc0"}
+			base.ComposeCmd(append(cmds, "cat", "/etc/hosts")...).
+				AssertOutWithFunc(func(stdout string) error {
+					lines := strings.Split(stdout, "\n")
+					for _, line := range lines {
+						if !strings.Contains(line, host) {
+							continue
+						}
+						fields := strings.Fields(line)
+						if len(fields) == 0 {
+							continue
+						}
+						expectIP = fields[0]
+						return nil
+					}
+					return errors.New("fail to get the expected ip address")
+				})
+			base.ComposeCmd(append(cmds, "ip", "addr", "show", "dev", "eth0")...).
+				AssertOutWithFunc(func(stdout string) error {
+					ip := findIP(stdout)
+					if ip == nil {
+						return errors.New("fail to get the real ip address")
+					}
+					realIP = ip.String()
+					return nil
+				})
+			assert.Equal(t, realIP, expectIP)
+		}
+	}
+}
+
+func findIP(output string) net.IP {
+	var ip string
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if !strings.Contains(line, "inet ") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) <= 1 {
+			continue
+		}
+		ip = strings.Split(fields[1], "/")[0]
+		break
+	}
+	return net.ParseIP(ip)
 }
