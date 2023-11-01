@@ -30,14 +30,13 @@ import (
 )
 
 // newUpdater creates an updater for hostsD (/var/lib/nerdctl/<ADDRHASH>/etchosts)
-func newUpdater(id, hostsD string, extraHosts map[string]string) *updater {
+func newUpdater(id, hostsD string) *updater {
 	u := &updater{
 		id:            id,
 		hostsD:        hostsD,
 		metaByIPStr:   make(map[string]*Meta),
 		nwNameByIPStr: make(map[string]string),
 		metaByDir:     make(map[string]*Meta),
-		extraHosts:    extraHosts,
 	}
 	return u
 }
@@ -49,7 +48,6 @@ type updater struct {
 	metaByIPStr   map[string]*Meta  // key: IP string
 	nwNameByIPStr map[string]string // key: IP string, value: key of Meta.Networks
 	metaByDir     map[string]*Meta  // key: "/var/lib/nerdctl/<ADDRHASH>/etchosts/<NS>/<ID>"
-	extraHosts    map[string]string // key: host value: IP string
 }
 
 // update updates the hostsD tree.
@@ -136,10 +134,8 @@ func (u *updater) phase2() error {
 		buf.WriteString("::1		localhost localhost.localdomain\n")
 
 		// keep extra hosts first
-		if u.id == myMeta.ID {
-			for host, ip := range u.extraHosts {
-				buf.WriteString(fmt.Sprintf("%-15s %s\n", ip, host))
-			}
+		for host, ip := range myMeta.ExtraHosts {
+			buf.WriteString(fmt.Sprintf("%-15s %s\n", ip, host))
 		}
 
 		for ip, nwName := range u.nwNameByIPStr {
