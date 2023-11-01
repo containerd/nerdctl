@@ -27,7 +27,7 @@ ARG BUILDKIT_VERSION=v0.12.3
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.15.1
 # Extra deps: Encryption
-ARG IMGCRYPT_VERSION=v1.1.8
+ARG IMGCRYPT_VERSION=v1.1.9
 # Extra deps: Rootless
 ARG ROOTLESSKIT_VERSION=v1.1.1
 ARG SLIRP4NETNS_VERSION=v1.2.2
@@ -172,6 +172,7 @@ RUN fname="stargz-snapshotter-${STARGZ_SNAPSHOTTER_VERSION}-${TARGETOS:-linux}-$
 ARG IMGCRYPT_VERSION
 RUN git clone https://github.com/containerd/imgcrypt.git /go/src/github.com/containerd/imgcrypt && \
   cd /go/src/github.com/containerd/imgcrypt && \
+  git checkout "${IMGCRYPT_VERSION}" && \
   CGO_ENABLED=0 make && DESTDIR=/out make install && \
   echo "- imgcrypt: ${IMGCRYPT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG ROOTLESSKIT_VERSION
