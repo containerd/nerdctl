@@ -101,6 +101,10 @@ type ListItem struct {
 	// TODO: "LocalVolumes", "Mounts", "Networks", "RunningFor", "State"
 }
 
+func (x *ListItem) Label(s string) string {
+	return x.Labels[s]
+}
+
 func prepareContainers(ctx context.Context, client *containerd.Client, containers []containerd.Container, options types.ContainerListOptions) ([]ListItem, error) {
 	listItems := make([]ListItem, len(containers))
 	for i, c := range containers {
