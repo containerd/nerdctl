@@ -191,7 +191,7 @@ func formatAndPrintContainerInfo(containers []container.ListItem, options Format
 	for _, c := range containers {
 		if tmpl != nil {
 			var b bytes.Buffer
-			if err := tmpl.Execute(&b, c); err != nil {
+			if err := tmpl.Execute(&b, &c); err != nil {
 				return err
 			}
 			if _, err := fmt.Fprintln(w, b.String()); err != nil {
