@@ -20,9 +20,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/log"
+	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/pkg/labels"
 )
 
 // ExecOptions stores options passed from users as flags and args.
@@ -54,9 +59,21 @@ func (c *Composer) Exec(ctx context.Context, eo ExecOptions) error {
 		return fmt.Errorf("index (%d) out of range: only %d running instances from service %s",
 			eo.Index, len(containers), eo.ServiceName)
 	}
-	container := containers[eo.Index-1]
-
-	return c.exec(ctx, container, eo)
+	if len(containers) == 1 {
+		return c.exec(ctx, containers[0], eo)
+	}
+	// The order of the containers is not consistently ascending
+	// we need to re-sort them.
+	sort.SliceStable(containers, func(i, j int) bool {
+		infoI, _ := containers[i].Info(ctx, containerd.WithoutRefreshedMetadata)
+		infoJ, _ := containers[j].Info(ctx, containerd.WithoutRefreshedMetadata)
+		segsI := strings.Split(infoI.Labels[labels.Name], serviceparser.Separator)
+		segsJ := strings.Split(infoJ.Labels[labels.Name], serviceparser.Separator)
+		indexI, _ := strconv.Atoi(segsI[len(segsI)-1])
+		indexJ, _ := strconv.Atoi(segsJ[len(segsJ)-1])
+		return indexI < indexJ
+	})
+	return c.exec(ctx, containers[eo.Index-1], eo)
 }
 
 // exec constructs/executes the `nerdctl exec` command to be executed on the given container.
