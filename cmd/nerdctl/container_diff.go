@@ -90,11 +90,11 @@ func diffAction(cmd *cobra.Command, args []string) error {
 			for _, change := range changes {
 				switch change.Kind {
 				case fs.ChangeKindAdd:
-					fmt.Fprintln(cmd.OutOrStdout(), "A", change.Path)
+					fmt.Fprintln(options.Stdout, "A", change.Path)
 				case fs.ChangeKindModify:
-					fmt.Fprintln(cmd.OutOrStdout(), "C", change.Path)
+					fmt.Fprintln(options.Stdout, "C", change.Path)
 				case fs.ChangeKindDelete:
-					fmt.Fprintln(cmd.OutOrStdout(), "D", change.Path)
+					fmt.Fprintln(options.Stdout, "D", change.Path)
 				default:
 				}
 			}
