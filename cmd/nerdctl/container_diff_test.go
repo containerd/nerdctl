@@ -30,10 +30,12 @@ func TestDiff(t *testing.T) {
 
 	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
 		"sh", "-euxc", "touch /a; touch /bin/b; rm /bin/base64").AssertOK()
-	base.Cmd("diff", containerName).AssertOutContains(`A /a
-C /bin
-A /bin/b
-D /bin/base64
-`)
+	// nerdctl contains more output "C /etc", "A /etc/resolv.conf" unlike docker
+	base.Cmd("diff", containerName).AssertOutContainsAll(
+		"A /a",
+		"C /bin",
+		"A /bin/b",
+		"D /bin/base64",
+	)
 	base.Cmd("rm", "-f", containerName).AssertOK()
 }
