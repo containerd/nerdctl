@@ -41,12 +41,13 @@ import (
 
 func newDiffCommand() *cobra.Command {
 	var diffCommand = &cobra.Command{
-		Use:           "diff [flags] [CONTAINER]",
-		Short:         "Inspect changes to files or directories on a container's filesystem",
-		Args:          cobra.MinimumNArgs(1),
-		RunE:          diffAction,
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		Use:               "diff [flags] [CONTAINER]",
+		Short:             "Inspect changes to files or directories on a container's filesystem",
+		Args:              cobra.MinimumNArgs(1),
+		RunE:              diffAction,
+		ValidArgsFunction: diffShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
 	}
 	return diffCommand
 }
@@ -216,4 +217,9 @@ func appendChanges(changes []fs.Change, new fs.Change) []fs.Change {
 		})
 	}
 	return append(changes, new)
+}
+
+func diffShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	// show container names (TODO: only show containers with logs)
+	return shellCompleteContainerNames(cmd, nil)
 }
