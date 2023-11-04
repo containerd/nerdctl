@@ -222,6 +222,6 @@ func appendChanges(changes []fs.Change, new fs.Change) []fs.Change {
 }
 
 func diffShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	// show container names (TODO: only show containers with logs)
+	// show container names
 	return shellCompleteContainerNames(cmd, nil)
 }
