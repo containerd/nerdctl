@@ -48,10 +48,6 @@ services:
 }
 
 func TestComposeCreateDependency(t *testing.T) {
-	// docker-compose v1 depecreated this command
-	// docker-compose v2 reimplemented this command
-	testutil.DockerIncompatible(t)
-
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
 version: '3.1'
@@ -79,9 +75,6 @@ services:
 }
 
 func TestComposeCreatePull(t *testing.T) {
-	// docker-compose v1 depecreated this command
-	// docker-compose v2 reimplemented this command
-	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
@@ -111,10 +104,6 @@ services:
 }
 
 func TestComposeCreateBuild(t *testing.T) {
-	// docker-compose v1 depecreated this command
-	// docker-compose v2 reimplemented this command
-	testutil.DockerIncompatible(t)
-
 	const imageSvc0 = "composebuild_svc0"
 
 	dockerComposeYAML := fmt.Sprintf(`

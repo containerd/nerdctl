@@ -28,9 +28,6 @@ import (
 func TestComposeDownRemoveUsedNetwork(t *testing.T) {
 	base := testutil.NewBase(t)
 
-	// The error output is different with docker
-	testutil.DockerIncompatible(t)
-
 	var (
 		dockerComposeYAMLOrphan = fmt.Sprintf(`
 version: '3.1'
@@ -60,7 +57,7 @@ services:
 	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "down", "--remove-orphans").AssertOK()
 
-	base.ComposeCmd("-p", projectName, "-f", compOrphan.YAMLFullPath(), "down", "-v").AssertCombinedOutContains("is in use")
+	base.ComposeCmd("-p", projectName, "-f", compOrphan.YAMLFullPath(), "down", "-v").AssertCombinedOutContains("in use")
 
 }
 

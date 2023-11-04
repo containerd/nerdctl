@@ -52,10 +52,6 @@ services:
 }
 
 func TestComposePortFailure(t *testing.T) {
-	// when no port mapping is found, docker compose v1 prints `\n` while v2 prints `:0\n`
-	// both v1 and v2 have exit code 0 (succeess)
-	// nerdctl compose will fail with error (no public port found).
-	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 
 	var dockerComposeYAML = fmt.Sprintf(`

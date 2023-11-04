@@ -25,10 +25,6 @@ import (
 )
 
 func TestComposeKill(t *testing.T) {
-	// docker-compose v2 hides exited/killed containers in `compose ps`, and shows
-	// them if `-a` is passed, which is not supported yet by `nerdctl compose`.
-	testutil.DockerIncompatible(t)
-
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
 version: '3.1'

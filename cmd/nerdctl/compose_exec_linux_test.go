@@ -30,9 +30,6 @@ import (
 )
 
 func TestComposeExec(t *testing.T) {
-	// disabling `-it` in `compose exec` is only supported in compose v2.
-	// Currently CI is using compose v1.
-	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
 version: '3.1'
@@ -62,9 +59,6 @@ services:
 }
 
 func TestComposeExecWithEnv(t *testing.T) {
-	// disabling `-it` in `compose exec` is only supported in compose v2.
-	// Currently CI is using compose v1.
-	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
 version: '3.1'
@@ -131,9 +125,6 @@ services:
 }
 
 func TestComposeExecWithUser(t *testing.T) {
-	// disabling `-it` in `compose exec` is only supported in compose v2.
-	// Currently CI is using compose v1.
-	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
 version: '3.1'
