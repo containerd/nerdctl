@@ -174,7 +174,7 @@ func getChanges(ctx context.Context, client *containerd.Client, container contai
 	var changes []fs.Change
 	err = mount.WithReadonlyTempMount(ctx, parent, func(lower string) error {
 		return mount.WithReadonlyTempMount(ctx, mounts, func(upper string) error {
-			fs.Changes(ctx, lower, upper, func(ck fs.ChangeKind, s string, fi os.FileInfo, err error) error {
+			return fs.Changes(ctx, lower, upper, func(ck fs.ChangeKind, s string, fi os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
@@ -184,9 +184,11 @@ func getChanges(ctx context.Context, client *containerd.Client, container contai
 				})
 				return nil
 			})
-			return err
 		})
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return changes, err
 }
