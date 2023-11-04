@@ -41,7 +41,7 @@ import (
 
 func newDiffCommand() *cobra.Command {
 	var diffCommand = &cobra.Command{
-		Use:               "diff [flags] [CONTAINER]",
+		Use:               "diff [CONTAINER]",
 		Short:             "Inspect changes to files or directories on a container's filesystem",
 		Args:              cobra.MinimumNArgs(1),
 		RunE:              diffAction,
