@@ -351,7 +351,7 @@ Logging flags:
 
 Shared memory flags:
 
-- :whale: `--ipc`: IPC namespace to use
+- :whale: `--ipc=(host|private|shareable|container:<container>)`: IPC namespace to use and mount `/dev/shm`. Default: "private". Only implemented on Linux.
 - :whale: `--shm-size`: Size of `/dev/shm`
 
 GPU flags:

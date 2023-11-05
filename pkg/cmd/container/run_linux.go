@@ -30,9 +30,9 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
-	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
@@ -83,13 +83,6 @@ func setPlatformOptions(ctx context.Context, client *containerd.Client, id, uts 
 		return nil, err
 	}
 	opts = append(opts, b4nnOpts...)
-	if len(options.ShmSize) > 0 {
-		shmBytes, err := units.RAMInBytes(options.ShmSize)
-		if err != nil {
-			return nil, err
-		}
-		opts = append(opts, oci.WithDevShmSize(shmBytes/1024))
-	}
 
 	ulimitOpts, err := generateUlimitsOpts(options.Ulimit)
 	if err != nil {
@@ -149,15 +142,13 @@ func generateNamespaceOpts(
 		return nil, fmt.Errorf("unknown uts value. valid value(s) are 'host', got: %q", uts)
 	}
 
-	switch options.IPC {
-	case "host":
-		opts = append(opts, oci.WithHostNamespace(specs.IPCNamespace))
-		opts = append(opts, withBindMountHostIPC)
-	case "private", "":
-		// If nothing is specified, or if private, default to normal behavior
-	default:
-		return nil, fmt.Errorf("unknown ipc value. valid values are 'private' or 'host', got: %q", options.IPC)
+	stateDir := internalLabels.stateDir
+	ipcOpts, ipcLabel, err := generateIPCOpts(ctx, client, options.IPC, options.ShmSize, stateDir)
+	if err != nil {
+		return nil, err
 	}
+	internalLabels.ipc = ipcLabel
+	opts = append(opts, ipcOpts...)
 
 	pidOpts, pidLabel, err := generatePIDOpts(ctx, client, options.Pid)
 	if err != nil {
@@ -167,6 +158,25 @@ func generateNamespaceOpts(
 	opts = append(opts, pidOpts...)
 
 	return opts, nil
+}
+
+func generateIPCOpts(ctx context.Context, client *containerd.Client, ipcFlag string, shmSize string, stateDir string) ([]oci.SpecOpts, string, error) {
+	ipcFlag = strings.ToLower(ipcFlag)
+
+	ipc, err := ipcutil.DetectFlags(ctx, client, stateDir, ipcFlag, shmSize)
+	if err != nil {
+		return nil, "", err
+	}
+	ipcLabel, err := ipcutil.EncodeIPCLabel(ipc)
+	if err != nil {
+		return nil, "", err
+	}
+	opts, err := ipcutil.GenerateIPCOpts(ctx, ipc, client)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return opts, ipcLabel, nil
 }
 
 func generatePIDOpts(ctx context.Context, client *containerd.Client, pid string) ([]oci.SpecOpts, string, error) {

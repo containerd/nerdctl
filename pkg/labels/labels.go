@@ -92,6 +92,10 @@ const (
 	// PIDContainer is the `nerdctl run --pid` for restarting
 	PIDContainer = Prefix + "pid-container"
 
+	// IPC is the `nerectl run --ipc` for restrating
+	// IPC indicates ipc victim container.
+	IPC = Prefix + "ipc"
+
 	// Error encapsulates a container human-readable string
 	// that describes container error.
 	Error = Prefix + "error"

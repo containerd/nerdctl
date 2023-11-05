@@ -70,6 +70,64 @@ func TestRunShmSize(t *testing.T) {
 	base.Cmd("run", "--rm", "--shm-size", shmSize, testutil.AlpineImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
 }
 
+func TestRunShmSizeIPCShareable(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	const shmSize = "32m"
+
+	container := testutil.Identifier(t)
+	base.Cmd("run", "--rm", "--name", container, "--ipc", "shareable", "--shm-size", shmSize, testutil.AlpineImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
+	defer base.Cmd("rm", "-f", container)
+}
+
+func TestRunIPCShareableRemoveMount(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	container := testutil.Identifier(t)
+
+	base.Cmd("run", "--name", container, "--ipc", "shareable", testutil.AlpineImage, "sleep", "0").AssertOK()
+	base.Cmd("rm", container).AssertOK()
+}
+
+func TestRunIPCContainerNotExists(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	container := testutil.Identifier(t)
+	result := base.Cmd("run", "--name", container, "--ipc", "container:abcd1234", testutil.AlpineImage, "sleep", "infinity").Run()
+	defer base.Cmd("rm", "-f", container)
+	combined := result.Combined()
+	if !strings.Contains(strings.ToLower(combined), "no such container: abcd1234") {
+		t.Fatalf("unexpected output: %s", combined)
+	}
+}
+
+func TestRunShmSizeIPCContainer(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	const shmSize = "32m"
+	sharedContainerResult := base.Cmd("run", "-d", "--ipc", "shareable", "--shm-size", shmSize, testutil.AlpineImage, "sleep", "infinity").Run()
+	baseContainerID := strings.TrimSpace(sharedContainerResult.Stdout())
+	defer base.Cmd("rm", "-f", baseContainerID).Run()
+
+	base.Cmd("run", "--rm", fmt.Sprintf("--ipc=container:%s", baseContainerID),
+		testutil.AlpineImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
+}
+
+func TestRunIPCContainer(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	const shmSize = "32m"
+	victimContainerResult := base.Cmd("run", "-d", "--ipc", "shareable", "--shm-size", shmSize, testutil.AlpineImage, "sleep", "infinity").Run()
+	victimContainerID := strings.TrimSpace(victimContainerResult.Stdout())
+	defer base.Cmd("rm", "-f", victimContainerID).Run()
+
+	base.Cmd("run", "--rm", fmt.Sprintf("--ipc=container:%s", victimContainerID),
+		testutil.AlpineImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
+}
+
 func TestRunPidHost(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
