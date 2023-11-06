@@ -344,6 +344,13 @@ type ContainerCommitOptions struct {
 	Pause bool
 }
 
+// ContainerDiffOptions specifies options for `nerdctl (container) diff`.
+type ContainerDiffOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+}
+
 // ContainerLogsOptions specifies options for `nerdctl (container) logs`.
 type ContainerLogsOptions struct {
 	Stdout io.Writer

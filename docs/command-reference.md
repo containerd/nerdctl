@@ -33,6 +33,7 @@ It does not necessarily mean that the corresponding features are missing in cont
   - [:whale: nerdctl rename](#whale-nerdctl-rename)
   - [:whale: nerdctl attach](#whale-nerdctl-attach)
   - [:whale: nerdctl container prune](#whale-nerdctl-container-prune)
+  - [:whale: nerdctl diff](#whale-nerdctl-diff)
 - [Build](#build)
   - [:whale: nerdctl build](#whale-nerdctl-build)
   - [:whale: nerdctl commit](#whale-nerdctl-commit)
@@ -647,6 +648,12 @@ Flags:
 - :whale: `-f, --force`: Do not prompt for confirmation.
 
 Unimplemented `docker container prune` flags: `--filter`
+
+### :whale: nerdctl diff
+
+Inspect changes to files or directories on a container's filesystem
+
+Usage: `nerdctl diff CONTAINER`
 
 ## Build
 
