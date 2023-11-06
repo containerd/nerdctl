@@ -295,7 +295,9 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	// perform network setup/teardown in the main nerdctl executable.
 	if containerErr == nil && runtime.GOOS == "windows" {
 		netSetupErr = netManager.SetupNetworking(ctx, id)
-		log.G(ctx).WithError(netSetupErr).Warnf("networking setup error has occurred")
+		if netSetupErr != nil {
+			log.G(ctx).WithError(netSetupErr).Warnf("networking setup error has occurred")
+		}
 	}
 
 	if containerErr != nil || netSetupErr != nil {
