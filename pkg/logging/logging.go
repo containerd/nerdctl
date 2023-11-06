@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
@@ -168,7 +169,26 @@ func getContainerWait(ctx context.Context, hostAddress string, config *logging.C
 	if err != nil {
 		return nil, err
 	}
-	return task.Wait(ctx)
+
+	// If task was not found, it's possible that the container runtime is still being created.
+	// Retry every 100ms.
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, errors.New("timed out waiting for container task to start")
+		case <-ticker.C:
+			task, err = con.Task(ctx, nil)
+			if err != nil {
+				if errdefs.IsNotFound(err) {
+					continue
+				}
+				return nil, err
+			}
+			return task.Wait(ctx)
+		}
+	}
 }
 
 func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, hostAddress string, config *logging.Config) error {
@@ -259,7 +279,7 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 			// the logger will obtain an exclusive lock on a file until the container is
 			// stopped and the driver has finished processing all output,
 			// so that waiting log viewers can be signalled when the process is complete.
-			return lockutil.WithLock(loggerLock, func() error {
+			return lockutil.WithLock(lockFile, func() error {
 				if err := ready(); err != nil {
 					return err
 				}
