@@ -31,7 +31,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.2.0
-	github.com/fatih/color v1.15.0
+	github.com/fatih/color v1.16.0
 	github.com/fluent/fluent-logger-golang v1.9.0
 	github.com/ipfs/go-cid v0.4.1
 	github.com/mattn/go-isatty v0.0.20
