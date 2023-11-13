@@ -20,6 +20,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/cmd/image"
+	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/spf13/cobra"
 )
 
@@ -56,6 +57,10 @@ func newPullCommand() *cobra.Command {
 	pullCommand.Flags().String("cosign-certificate-oidc-issuer-regexp", "", "A regular expression alternative to --certificate-oidc-issuer for --verify=cosign,. Accepts the Go regular expression syntax described at https://golang.org/s/re2syntax. Either --cosign-certificate-oidc-issuer or --cosign-certificate-oidc-issuer-regexp must be set for keyless flows")
 	// #endregion
 
+	// #region socipull flags
+	pullCommand.Flags().String("soci-index-digest", "", "Specify a particular index digest for SOCI. If left empty, SOCI will automatically use the index determined by the selection policy.")
+	// #endregion
+
 	pullCommand.Flags().BoolP("quiet", "q", false, "Suppress verbose output")
 
 	pullCommand.Flags().String("ipfs-address", "", "multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)")
@@ -81,6 +86,7 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 	if err != nil {
 		return types.ImagePullOptions{}, err
 	}
+
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return types.ImagePullOptions{}, err
@@ -89,6 +95,12 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 	if err != nil {
 		return types.ImagePullOptions{}, err
 	}
+
+	sociIndexDigest, err := cmd.Flags().GetString("soci-index-digest")
+	if err != nil {
+		return types.ImagePullOptions{}, err
+	}
+
 	verifyOptions, err := processImageVerifyOptions(cmd)
 	if err != nil {
 		return types.ImagePullOptions{}, err
@@ -101,8 +113,11 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 		Unpack:        unpackStr,
 		Quiet:         quiet,
 		IPFSAddress:   ipfsAddressStr,
-		Stdout:        cmd.OutOrStdout(),
-		Stderr:        cmd.OutOrStderr(),
+		RFlags: imgutil.RemoteSnapshotterFlags{
+			SociIndexDigest: sociIndexDigest,
+		},
+		Stdout: cmd.OutOrStdout(),
+		Stderr: cmd.OutOrStderr(),
 	}, nil
 }
 

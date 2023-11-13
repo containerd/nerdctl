@@ -16,7 +16,11 @@
 
 package types
 
-import "io"
+import (
+	"io"
+
+	"github.com/containerd/nerdctl/pkg/imgutil"
+)
 
 // ImageListOptions specifies options for `nerdctl image list`.
 type ImageListOptions struct {
@@ -193,6 +197,8 @@ type ImagePullOptions struct {
 	Quiet bool
 	// multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)
 	IPFSAddress string
+	// Flags to pass into remote snapshotters
+	RFlags imgutil.RemoteSnapshotterFlags
 }
 
 // ImageTagOptions specifies options for `nerdctl (image) tag`.

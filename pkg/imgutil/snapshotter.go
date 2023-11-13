@@ -48,10 +48,14 @@ var builtinRemoteSnapshotterOpts = map[string]snapshotterOpts{
 	snapshotterNameCvmfs:     &remoteSnapshotterOpts{snapshotter: "cvmfs-snapshotter"},
 }
 
+type RemoteSnapshotterFlags struct {
+	SociIndexDigest string
+}
+
 // snapshotterOpts is used to update pull config
 // for different snapshotters
 type snapshotterOpts interface {
-	apply(config *pull.Config, ref string)
+	apply(config *pull.Config, ref string, rFlags RemoteSnapshotterFlags)
 	isRemote() bool
 }
 
@@ -73,17 +77,17 @@ func getSnapshotterOpts(snapshotter string) snapshotterOpts {
 // interface `snapshotterOpts.isRemote()` function
 type remoteSnapshotterOpts struct {
 	snapshotter string
-	extraLabels func(func(images.Handler) images.Handler) func(images.Handler) images.Handler
+	extraLabels func(func(images.Handler) images.Handler, RemoteSnapshotterFlags) func(images.Handler) images.Handler
 }
 
 func (rs *remoteSnapshotterOpts) isRemote() bool {
 	return true
 }
 
-func (rs *remoteSnapshotterOpts) apply(config *pull.Config, ref string) {
+func (rs *remoteSnapshotterOpts) apply(config *pull.Config, ref string, rFlags RemoteSnapshotterFlags) {
 	h := ctdsnapshotters.AppendInfoHandlerWrapper(ref)
 	if rs.extraLabels != nil {
-		h = rs.extraLabels(h)
+		h = rs.extraLabels(h, rFlags)
 	}
 	config.RemoteOpts = append(
 		config.RemoteOpts,
@@ -98,7 +102,7 @@ type defaultSnapshotterOpts struct {
 	snapshotter string
 }
 
-func (dsn *defaultSnapshotterOpts) apply(config *pull.Config, _ref string) {
+func (dsn *defaultSnapshotterOpts) apply(config *pull.Config, _ref string, rFlags RemoteSnapshotterFlags) {
 	config.RemoteOpts = append(
 		config.RemoteOpts,
 		containerd.WithPullSnapshotter(dsn.snapshotter))
@@ -109,10 +113,10 @@ func (dsn *defaultSnapshotterOpts) isRemote() bool {
 	return false
 }
 
-func stargzExtraLabels(f func(images.Handler) images.Handler) func(images.Handler) images.Handler {
+func stargzExtraLabels(f func(images.Handler) images.Handler, rFlags RemoteSnapshotterFlags) func(images.Handler) images.Handler {
 	return source.AppendExtraLabelsHandler(prefetchSize, f)
 }
 
-func sociExtraLabels(f func(images.Handler) images.Handler) func(images.Handler) images.Handler {
-	return socisource.AppendDefaultLabelsHandlerWrapper("", f)
+func sociExtraLabels(f func(images.Handler) images.Handler, rFlags RemoteSnapshotterFlags) func(images.Handler) images.Handler {
+	return socisource.AppendDefaultLabelsHandlerWrapper(rFlags.SociIndexDigest, f)
 }

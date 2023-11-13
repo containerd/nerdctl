@@ -76,7 +76,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 		}
 
 		ensured, err = ipfs.EnsureImage(ctx, client, options.Stdout, options.Stderr, options.GOptions.Snapshotter, scheme, ref,
-			pull, ocispecPlatforms, unpack, quiet, ipfsPath)
+			pull, ocispecPlatforms, unpack, quiet, ipfsPath, options.RFlags)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 	}
 
 	ensured, err = imgutil.EnsureImage(ctx, client, options.Stdout, options.Stderr, options.GOptions.Snapshotter, ref,
-		pull, options.GOptions.InsecureRegistry, options.GOptions.HostsDir, ocispecPlatforms, unpack, quiet)
+		pull, options.GOptions.InsecureRegistry, options.GOptions.HostsDir, ocispecPlatforms, unpack, quiet, options.RFlags)
 	if err != nil {
 		return nil, err
 	}
