@@ -78,10 +78,6 @@ volumes:
 }
 
 func TestComposeImagesJson(t *testing.T) {
-	// `--format` is only supported in docker compose v2.
-	// Currently, CI is using docker compose v1.
-	testutil.DockerIncompatible(t)
-
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
 version: '3.1'

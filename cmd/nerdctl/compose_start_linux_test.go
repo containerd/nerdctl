@@ -57,10 +57,6 @@ services:
 }
 
 func TestComposeStartFailWhenServicePause(t *testing.T) {
-	// Incompatible with docker compose v1. Currently CI is using compose v1.
-	// Starting a paused container triggers an error in v2 but is ignored in v1.
-	testutil.DockerIncompatible(t)
-
 	base := testutil.NewBase(t)
 	switch base.Info().CgroupDriver {
 	case "none", "":
