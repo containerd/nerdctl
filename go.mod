@@ -45,7 +45,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.1.0
 	github.com/rootless-containers/bypass4netns v0.3.0
 	github.com/rootless-containers/rootlesskit v1.1.1
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/tidwall/gjson v1.17.0
 	github.com/vishvananda/netlink v1.2.1-beta.2
