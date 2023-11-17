@@ -85,7 +85,7 @@ const (
 	Bypass4netns = Prefix + "bypass4netns"
 
 	// StopTimeout is seconds to wait for stop a container.
-	StopTimout = Prefix + "stop-timeout"
+	StopTimeout = Prefix + "stop-timeout"
 
 	MACAddress = Prefix + "mac-address"
 
