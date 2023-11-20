@@ -37,7 +37,8 @@ type psTestContainer struct {
 	network string
 }
 
-func preparePsTestContainer(t *testing.T, identity string, restart bool) (*testutil.Base, psTestContainer) {
+// When keepAlive is false, the container will exit immediately with status 1.
+func preparePsTestContainer(t *testing.T, identity string, keepAlive bool) (*testutil.Base, psTestContainer) {
 	base := testutil.NewBase(t)
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
@@ -82,21 +83,23 @@ func preparePsTestContainer(t *testing.T, identity string, restart bool) (*testu
 		"-v", mnt1,
 		"-v", mnt2,
 		"--net", testContainerName,
-		testutil.CommonImage,
-		"top",
 	}
-	if !restart {
-		args = append(args, "--restart=no")
+	if keepAlive {
+		args = append(args, testutil.CommonImage, "top")
+	} else {
+		args = append(args, "--restart=no", testutil.CommonImage, "false")
 	}
 
 	base.Cmd(args...).AssertOK()
-	if restart {
+	if keepAlive {
 		base.EnsureContainerStarted(testContainerName)
+	} else {
+		base.EnsureContainerExited(testContainerName, 1)
 	}
 
 	// dd if=/dev/zero of=test_file bs=1M count=25
 	// let the container occupy 25MiB space.
-	if restart {
+	if keepAlive {
 		base.Cmd("exec", testContainerName, "dd", "if=/dev/zero", "of=/test_file", "bs=1M", "count=25").AssertOK()
 	}
 	volumes := []string{}
