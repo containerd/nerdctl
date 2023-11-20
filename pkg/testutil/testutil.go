@@ -316,6 +316,30 @@ func (b *Base) EnsureContainerStarted(con string) {
 	b.T.Fatalf("conainer %s not running", con)
 }
 
+func (b *Base) EnsureContainerExited(con string, expectedExitCode int) {
+	b.T.Helper()
+
+	const (
+		maxRetry = 5
+		sleep    = time.Second
+	)
+	var c dockercompat.Container
+	for i := 0; i < maxRetry; i++ {
+		c = b.InspectContainer(con)
+		if c.State.Status == "exited" {
+			b.T.Logf("container %s have exited with status %d", con, c.State.ExitCode)
+			if c.State.ExitCode == expectedExitCode {
+				return
+			}
+			break
+		}
+		b.T.Logf("(retry=%d)", i+1)
+		time.Sleep(sleep)
+	}
+	b.T.Fatalf("expected conainer %s to have exited with code %d, got status %+v",
+		con, expectedExitCode, c.State)
+}
+
 type Cmd struct {
 	icmd.Cmd
 	*Base
