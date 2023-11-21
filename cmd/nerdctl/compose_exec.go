@@ -36,9 +36,7 @@ func newComposeExecCommand() *cobra.Command {
 	}
 	composeExecCommand.Flags().SetInterspersed(false)
 
-	composeExecCommand.Flags().BoolP("tty", "t", true, "Allocate a pseudo-TTY") // missing in Docker Compose v2?
 	composeExecCommand.Flags().BoolP("no-TTY", "T", false, "Disable pseudo-TTY allocation. By default nerdctl compose exec allocates a TTY.")
-	composeExecCommand.Flags().BoolP("interactive", "i", true, "Keep STDIN open even if not attached")
 	composeExecCommand.Flags().BoolP("detach", "d", false, "Detached mode: Run containers in the background")
 	composeExecCommand.Flags().StringP("workdir", "w", "", "Working directory inside the container")
 	// env needs to be StringArray, not StringSlice, to prevent "FOO=foo1,foo2" from being split to {"FOO=foo1", "foo2"}
@@ -47,15 +45,13 @@ func newComposeExecCommand() *cobra.Command {
 	composeExecCommand.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
 	composeExecCommand.Flags().Int("index", 1, "index of the container if the service has multiple instances.")
 
-	composeExecCommand.PreRunE = func(cmd *cobra.Command, args []string) error {
-		flags := cmd.Flags()
-		if noTTY, _ := flags.GetBool("no-TTY"); noTTY {
-			if err := flags.Set("tty", "false"); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
+	composeExecCommand.Flags().BoolP("interactive", "i", true, "Keep STDIN open even if not attached")
+	composeExecCommand.Flags().MarkHidden("interactive")
+	// The -t does not has effect to keep the compatibility with docker.
+	// The proposal of -t is to keep "muscle memory" with compose v1: https://github.com/docker/compose/issues/9207
+	// FYI: https://github.com/docker/compose/blob/v2.23.1/cmd/compose/exec.go#L77
+	composeExecCommand.Flags().BoolP("tty", "t", true, "Allocate a pseudo-TTY")
+	composeExecCommand.Flags().MarkHidden("tty")
 
 	return composeExecCommand
 }
@@ -69,7 +65,7 @@ func composeExecAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	tty, err := cmd.Flags().GetBool("tty")
+	noTty, err := cmd.Flags().GetBool("no-TTY")
 	if err != nil {
 		return err
 	}
@@ -106,8 +102,8 @@ func composeExecAction(cmd *cobra.Command, args []string) error {
 		return errors.New("currently flag -i and -d cannot be specified together (FIXME)")
 	}
 	// https://github.com/containerd/nerdctl/blob/v1.0.0/cmd/nerdctl/exec.go#L122
-	if tty && detach {
-		return errors.New("currently flag -t and -d cannot be specified together (FIXME)")
+	if !noTty && detach {
+		return errors.New("currently flag -d should be specified with --no-TTY (FIXME)")
 	}
 
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
@@ -129,7 +125,7 @@ func composeExecAction(cmd *cobra.Command, args []string) error {
 		Index:       index,
 
 		Interactive: interactive,
-		Tty:         tty,
+		Tty:         !noTty,
 		Detach:      detach,
 		WorkDir:     workdir,
 		Env:         env,
