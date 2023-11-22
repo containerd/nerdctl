@@ -52,8 +52,8 @@ services:
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
 
 	// test basic functionality and `--workdir` flag
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "-t=false", "svc0", "echo", "success").AssertOutExactly("success\n")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "-t=false", "--workdir", "/tmp", "svc0", "pwd").AssertOutExactly("/tmp\n")
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY", "svc0", "echo", "success").AssertOutExactly("success\n")
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY", "--workdir", "/tmp", "svc0", "pwd").AssertOutExactly("/tmp\n")
 	// cannot `exec` on non-running service
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "svc1", "echo", "success").AssertFail()
 }
@@ -79,7 +79,7 @@ services:
 
 	// FYI: https://github.com/containerd/nerdctl/blob/e4b2b6da56555dc29ed66d0fd8e7094ff2bc002d/cmd/nerdctl/run_test.go#L177
 	base.Env = append(os.Environ(), "CORGE=corge-value-in-host", "GARPLY=garply-value-in-host")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "-t=false",
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY",
 		"--env", "FOO=foo1,foo2",
 		"--env", "BAR=bar1 bar2",
 		"--env", "BAZ=",
@@ -153,7 +153,7 @@ services:
 	}
 
 	for userStr, expected := range testCases {
-		args := []string{"-f", comp.YAMLFullPath(), "exec", "-i=false", "-t=false"}
+		args := []string{"-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY"}
 		if userStr != "" {
 			args = append(args, "--user", userStr)
 		}
@@ -164,8 +164,6 @@ services:
 
 func TestComposeExecTTY(t *testing.T) {
 	// `-i` in `compose run & exec` is only supported in compose v2.
-	// Currently CI is using compose v1.
-	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	if testutil.GetTarget() == testutil.Nerdctl {
 		testutil.RequireDaemonVersion(base, ">= 1.6.0-0")
@@ -197,8 +195,8 @@ services:
 	unbuffer := []string{"unbuffer"}
 	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "svc0", "stty").AssertOutContains(sttyPartialOutput)             // `-it`
 	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "-i=false", "svc0", "stty").AssertOutContains(sttyPartialOutput) // `-t`
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "-t=false", "svc0", "stty").AssertFail()                         // `-i`
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "-i=false", "-t=false", "svc0", "stty").AssertFail()
+	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "--no-TTY", "svc0", "stty").AssertFail()                         // `-i`
+	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY", "svc0", "stty").AssertFail()
 }
 
 func TestComposeExecWithIndex(t *testing.T) {
@@ -243,7 +241,7 @@ services:
 					return nil
 				})
 			}
-			cmds := []string{"-f", comp.YAMLFullPath(), "exec", "-i=false", "-t=false", "--index", j, "svc0"}
+			cmds := []string{"-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY", "--index", j, "svc0"}
 			base.ComposeCmd(append(cmds, "cat", "/etc/hosts")...).
 				AssertOutWithFunc(func(stdout string) error {
 					lines := strings.Split(stdout, "\n")
