@@ -486,7 +486,7 @@ func withStop(stopSignal string, stopTimeout int, ensuredImage *imgutil.EnsuredI
 		}
 		c.Labels[containerd.StopSignalLabel] = stopSignal
 		if stopTimeout != 0 {
-			c.Labels[labels.StopTimout] = strconv.Itoa(stopTimeout)
+			c.Labels[labels.StopTimeout] = strconv.Itoa(stopTimeout)
 		}
 		return nil
 	}

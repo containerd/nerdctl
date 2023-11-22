@@ -333,7 +333,7 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 	}
 
 	if timeout == nil {
-		t, ok := l[labels.StopTimout]
+		t, ok := l[labels.StopTimeout]
 		if !ok {
 			// Default is 10 seconds.
 			t = "10"
