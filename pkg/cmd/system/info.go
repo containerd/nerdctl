@@ -125,7 +125,7 @@ func prettyPrintInfoNative(w io.Writer, info *native.Info) error {
 	}
 	sorter := func(x []*introspection.Plugin) func(int, int) bool {
 		return func(i, j int) bool {
-			return x[i].Type+"."+x[j].ID < x[j].Type+"."+x[j].ID
+			return x[i].Type+"."+x[i].ID < x[j].Type+"."+x[j].ID
 		}
 	}
 	sort.Slice(enabledPlugins, sorter(enabledPlugins))
