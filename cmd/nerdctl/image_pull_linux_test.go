@@ -148,55 +148,74 @@ CMD ["echo", "nerdctl-build-test-string"]
 
 func TestPullSoci(t *testing.T) {
 	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	requiresSoci(base)
-
-	//counting initial snapshot mounts
-	initialMounts, err := exec.Command("mount").Output()
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name            string
+		sociIndexDigest string
+	}{
+		{
+			name:            "Run without specifying SOCI index",
+			sociIndexDigest: "",
+		},
+		{
+			name:            "Run with bad SOCI index",
+			sociIndexDigest: "sha256:thisisabadindex0000000000000000000000000000000000000000000000000",
+		},
 	}
 
-	remoteSnapshotsInitialCount := strings.Count(string(initialMounts), "fuse.rawBridge")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := testutil.NewBase(t)
+			requiresSoci(base)
 
-	//validating `nerdctl --snapshotter=soci pull` and `soci rpull` behave the same using mounts
-	pullOutput := base.Cmd("--snapshotter=soci", "pull", testutil.FfmpegSociImage).Out()
-	base.T.Logf("pull output: %s", pullOutput)
+			//counting initial snapshot mounts
+			initialMounts, err := exec.Command("mount").Output()
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	actualMounts, err := exec.Command("mount").Output()
-	if err != nil {
-		t.Fatal(err)
+			remoteSnapshotsInitialCount := strings.Count(string(initialMounts), "fuse.rawBridge")
+
+			//validating `nerdctl --snapshotter=soci pull` and `soci rpull` behave the same using mounts
+			pullOutput := base.Cmd("--snapshotter=soci", "pull", testutil.FfmpegSociImage).Out()
+			base.T.Logf("pull output: %s", pullOutput)
+
+			actualMounts, err := exec.Command("mount").Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+			remoteSnapshotsActualCount := strings.Count(string(actualMounts), "fuse.rawBridge")
+			base.T.Logf("number of actual mounts: %v", remoteSnapshotsActualCount)
+
+			rmiOutput := base.Cmd("rmi", testutil.FfmpegSociImage).Out()
+			base.T.Logf("rmi output: %s", rmiOutput)
+
+			sociExecutable, err := exec.LookPath("soci")
+			if err != nil {
+				t.Fatalf("SOCI is not installed.")
+			}
+
+			rpullCmd := exec.Command(sociExecutable, []string{"image", "rpull", testutil.FfmpegSociImage}...)
+
+			rpullCmd.Env = os.Environ()
+
+			err = rpullCmd.Run()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			expectedMounts, err := exec.Command("mount").Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			remoteSnapshotsExpectedCount := strings.Count(string(expectedMounts), "fuse.rawBridge")
+			base.T.Logf("number of expected mounts: %v", remoteSnapshotsExpectedCount)
+
+			if remoteSnapshotsExpectedCount != (remoteSnapshotsActualCount - remoteSnapshotsInitialCount) {
+				t.Fatalf("incorrect number of remote snapshots; expected=%d, actual=%d",
+					remoteSnapshotsExpectedCount, remoteSnapshotsActualCount)
+			}
+		})
 	}
-	remoteSnapshotsActualCount := strings.Count(string(actualMounts), "fuse.rawBridge")
-	base.T.Logf("number of actual mounts: %v", remoteSnapshotsActualCount)
 
-	rmiOutput := base.Cmd("rmi", testutil.FfmpegSociImage).Out()
-	base.T.Logf("rmi output: %s", rmiOutput)
-
-	sociExecutable, err := exec.LookPath("soci")
-	if err != nil {
-		t.Fatalf("SOCI is not installed.")
-	}
-
-	rpullCmd := exec.Command(sociExecutable, []string{"image", "rpull", testutil.FfmpegSociImage}...)
-
-	rpullCmd.Env = os.Environ()
-
-	err = rpullCmd.Run()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expectedMounts, err := exec.Command("mount").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	remoteSnapshotsExpectedCount := strings.Count(string(expectedMounts), "fuse.rawBridge")
-	base.T.Logf("number of expected mounts: %v", remoteSnapshotsExpectedCount)
-
-	if remoteSnapshotsExpectedCount != (remoteSnapshotsActualCount - remoteSnapshotsInitialCount) {
-		t.Fatalf("incorrect number of remote snapshots; expected=%d, actual=%d",
-			remoteSnapshotsExpectedCount, remoteSnapshotsActualCount)
-	}
 }

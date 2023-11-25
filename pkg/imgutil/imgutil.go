@@ -103,7 +103,7 @@ func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 // # When insecure is set, skips verifying certs, and also falls back to HTTP when the registry does not speak HTTPS
 //
 // FIXME: this func has too many args
-func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool, hostsDirs []string, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool) (*EnsuredImage, error) {
+func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool, hostsDirs []string, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool, rFlags RemoteSnapshotterFlags) (*EnsuredImage, error) {
 	switch mode {
 	case "always", "missing", "never":
 		// NOP
@@ -142,7 +142,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 		return nil, err
 	}
 
-	img, err := PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack, quiet)
+	img, err := PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack, quiet, rFlags)
 	if err != nil {
 		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused".
 		if !errutil.IsErrHTTPResponseToHTTPSClient(err) && !errutil.IsErrConnectionRefused(err) {
@@ -155,7 +155,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 			if err != nil {
 				return nil, err
 			}
-			return PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack, quiet)
+			return PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack, quiet, rFlags)
 		}
 		log.G(ctx).WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
 		log.G(ctx).Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
@@ -194,7 +194,7 @@ func ResolveDigest(ctx context.Context, rawRef string, insecure bool, hostsDirs 
 }
 
 // PullImage pulls an image using the specified resolver.
-func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter string, resolver remotes.Resolver, ref string, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool) (*EnsuredImage, error) {
+func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter string, resolver remotes.Resolver, ref string, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool, rFlags RemoteSnapshotterFlags) (*EnsuredImage, error) {
 	ctx, done, err := client.WithLease(ctx)
 	if err != nil {
 		return nil, err
@@ -230,7 +230,7 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 			containerd.WithUnpackOpts([]containerd.UnpackOpt{imgcryptUnpackOpt}))
 
 		// different remote snapshotters will update pull.Config separately
-		snOpt.apply(config, ref)
+		snOpt.apply(config, ref, rFlags)
 	} else {
 		log.G(ctx).Debugf("The image will not be unpacked. Platforms=%v.", ocispecPlatforms)
 	}

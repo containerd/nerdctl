@@ -757,6 +757,7 @@ Flags:
 - :nerd_face: `--cosign-certificate-oidc-issuer`: The OIDC issuer expected in a valid Fulcio certificate for --verify=cosign,, e.g. https://token.actions.githubusercontent.com or https://oauth2.sigstore.dev/auth. Either --cosign-certificate-oidc-issuer or --cosign-certificate-oidc-issuer-regexp must be set for keyless flows
 - :nerd_face: `--cosign-certificate-oidc-issuer-regexp`: A regular expression alternative to --certificate-oidc-issuer for --verify=cosign,. Accepts the Go regular expression syntax described at https://golang.org/s/re2syntax. Either --cosign-certificate-oidc-issuer or --cosign-certificate-oidc-issuer-regexp must be set for keyless flows
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
+- :nerd_face: `--soci-index-digest`: Specify a particular index digest for SOCI. If left empty, SOCI will automatically use the index determined by the selection policy.
 
 Unimplemented `docker pull` flags: `--all-tags`, `--disable-content-trust` (default true)
 
