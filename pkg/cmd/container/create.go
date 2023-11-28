@@ -642,7 +642,8 @@ func propagateContainerdLabelsToOCIAnnotations() oci.SpecOpts {
 }
 
 func writeCIDFile(path, id string) error {
-	if _, err := os.Stat(path); err == nil {
+	_, err := os.Stat(path)
+	if err == nil {
 		return fmt.Errorf("container ID file found, make sure the other container isn't running or delete %s", path)
 	} else if errors.Is(err, os.ErrNotExist) {
 		f, err := os.Create(path)
@@ -655,9 +656,8 @@ func writeCIDFile(path, id string) error {
 			return err
 		}
 		return nil
-	} else {
-		return err
 	}
+	return err
 }
 
 // generateLogConfig creates a LogConfig for the current container store

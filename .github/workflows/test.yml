@@ -48,7 +48,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3.7.0
         with:
-          version: v1.54.2
+          version: v1.55.2
           args: --verbose
       - name: yamllint-lint
         run: yamllint .
