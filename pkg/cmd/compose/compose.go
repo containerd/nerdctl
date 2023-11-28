@@ -76,13 +76,13 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 		return nil, err
 	}
 	options.VolumeExists = func(volName string) (bool, error) {
-		if _, volGetErr := volStore.Get(volName, false); volGetErr == nil {
+		_, volGetErr := volStore.Get(volName, false)
+		if volGetErr == nil {
 			return true, nil
 		} else if errors.Is(volGetErr, errdefs.ErrNotFound) {
 			return false, nil
-		} else {
-			return false, volGetErr
 		}
+		return false, volGetErr
 	}
 
 	options.ImageExists = func(ctx context.Context, rawRef string) (bool, error) {
