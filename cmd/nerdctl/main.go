@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/errutil"
 	"github.com/containerd/nerdctl/pkg/logging"
 	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/pkg/systemutil"
 	"github.com/containerd/nerdctl/pkg/version"
 	"github.com/fatih/color"
 	"github.com/pelletier/go-toml/v2"
@@ -230,7 +231,7 @@ Config file ($NERDCTL_TOML): %s
 				return fmt.Errorf("invalid cgroup-manager %q (supported values: \"systemd\", \"cgroupfs\", \"none\")", cgroupManager)
 			}
 		}
-		if appNeedsRootlessParentMain(cmd, args) {
+		if systemutil.IsSocketAccessible(address) != nil && appNeedsRootlessParentMain(cmd, args) {
 			// reexec /proc/self/exe with `nsenter` into RootlessKit namespaces
 			return rootlessutil.ParentMain(globalOptions.HostGatewayIP)
 		}
