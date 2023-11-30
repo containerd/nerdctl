@@ -50,10 +50,10 @@ type Driver interface {
 }
 
 type DriverFactory func(map[string]string) (Driver, error)
-type LogOpsValidateFunc func(logOptMap map[string]string) error
+type LogOptsValidateFunc func(logOptMap map[string]string) error
 
 var drivers = make(map[string]DriverFactory)
-var driversLogOptsValidateFunctions = make(map[string]LogOpsValidateFunc)
+var driversLogOptsValidateFunctions = make(map[string]LogOptsValidateFunc)
 
 func ValidateLogOpts(logDriver string, logOpts map[string]string) error {
 	if value, ok := driversLogOptsValidateFunctions[logDriver]; ok && value != nil {
@@ -62,7 +62,7 @@ func ValidateLogOpts(logDriver string, logOpts map[string]string) error {
 	return nil
 }
 
-func RegisterDriver(name string, f DriverFactory, validateFunc LogOpsValidateFunc) {
+func RegisterDriver(name string, f DriverFactory, validateFunc LogOptsValidateFunc) {
 	drivers[name] = f
 	driversLogOptsValidateFunctions[name] = validateFunc
 }
