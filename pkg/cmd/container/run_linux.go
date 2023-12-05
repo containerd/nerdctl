@@ -95,6 +95,13 @@ func setPlatformOptions(ctx context.Context, client *containerd.Client, id, uts 
 	if err != nil {
 		return nil, err
 	}
+
+	// If without any ulimitOpts, we need to reset the default value from spec
+	// which has 1024 as file limit. Make this behavior same as containerd/cri.
+	if len(ulimitOpts) == 0 {
+		ulimitOpts = append(ulimitOpts, withRlimits(nil))
+	}
+
 	opts = append(opts, ulimitOpts...)
 	if options.Sysctl != nil {
 		opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(options.Sysctl)))
