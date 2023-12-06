@@ -385,6 +385,19 @@ func (m *hostNetworkManager) InternalNetworkingOptionLabels(_ context.Context) (
 	return opts, nil
 }
 
+// withDedupMounts Returns the specOpts if the mountPath is not in existing mounts.
+// for https://github.com/containerd/nerdctl/issues/2685
+func withDedupMounts(mountPath string, defaultSpec oci.SpecOpts) oci.SpecOpts {
+	return func(ctx context.Context, client oci.Client, c *containers.Container, s *oci.Spec) error {
+		for _, m := range s.Mounts {
+			if m.Destination == mountPath {
+				return nil
+			}
+		}
+		return defaultSpec(ctx, client, c, s)
+	}
+}
+
 // ContainerNetworkingOpts Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
 // the network specs which need to be applied to the container with the given ID.
 func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containerID string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
@@ -392,8 +405,8 @@ func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 	cOpts := []containerd.NewContainerOpts{}
 	specs := []oci.SpecOpts{
 		oci.WithHostNamespace(specs.NetworkNamespace),
-		oci.WithHostHostsFile,
-		oci.WithHostResolvconf,
+		withDedupMounts("/etc/hosts", oci.WithHostHostsFile),
+		withDedupMounts("/etc/resolv.conf", oci.WithHostResolvconf),
 	}
 
 	// `/etc/hostname` does not exist on FreeBSD
