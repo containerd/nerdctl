@@ -77,11 +77,11 @@ jobs:
         # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
         include:
           - ubuntu: 20.04
-            containerd: v1.6.25
+            containerd: v1.6.26
           - ubuntu: 20.04
-            containerd: v1.7.10
+            containerd: v1.7.11
           - ubuntu: 22.04
-            containerd: v1.7.10
+            containerd: v1.7.11
           - ubuntu: 22.04
             containerd: main
     env:
@@ -113,7 +113,7 @@ jobs:
         # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
         include:
           - ubuntu: 22.04
-            containerd: v1.7.10
+            containerd: v1.7.11
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -157,25 +157,25 @@ jobs:
         # ubuntu-22.04: cgroup v1, ubuntu-22.04: cgroup v2
         include:
           - ubuntu: 20.04
-            containerd: v1.6.25
+            containerd: v1.6.26
             target: test-integration-rootless
           - ubuntu: 20.04
-            containerd: v1.7.10
+            containerd: v1.7.11
             target: test-integration-rootless
           - ubuntu: 22.04
-            containerd: v1.7.10
+            containerd: v1.7.11
             target: test-integration-rootless
           - ubuntu: 22.04
             containerd: main
             target: test-integration-rootless
           - ubuntu: 20.04
-            containerd: v1.6.25
+            containerd: v1.6.26
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 20.04
-            containerd: v1.7.10
+            containerd: v1.7.11
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 22.04
-            containerd: v1.7.10
+            containerd: v1.7.11
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 22.04
             containerd: main
@@ -267,7 +267,7 @@ jobs:
       - uses: actions/checkout@v4.1.1
         with:
           repository: containerd/containerd
-          ref: v1.7.10
+          ref: v1.7.11
           path: containerd
           fetch-depth: 1
       - name: "Set up CNI"
@@ -275,7 +275,7 @@ jobs:
         run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
       - name: "Set up containerd"
         env:
-          ctrdVersion: 1.7.10
+          ctrdVersion: 1.7.11
         run: powershell hack/configure-windows-ci.ps1
       # TODO: Run unit tests
       - name: "Run integration tests"
