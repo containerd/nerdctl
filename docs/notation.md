@@ -10,7 +10,7 @@ under the hood with make use of flags `--sign` while pushing the container image
 container image.
 
 * Ensure notation executable in your `$PATH`.
-* You can install notation by following this page: https://notaryproject.dev/docs/installation/cli/
+* You can install notation by following this page: https://notaryproject.dev/docs/user-guides/installation/cli/
 * Notation follows the RC of OCI spec v1.1.0. Follow the [instruction](https://notaryproject.dev/docs/quickstart/#create-an-oci-compatible-registry) to set up the local registry with the compliance for testing purpose.
 
 Prepare your environment:
@@ -50,7 +50,7 @@ $ nerdctl push --sign=notation --notation-key-name test localhost:5000/my-test
 
 Verify the container image while pulling:
 
-> REMINDER: Image won't be pulled if there are no matching signatures with the cert in the [trust policy](https://notaryproject.dev/docs/concepts/trust-store-trust-policy-specification/#trust-policy) in case you passed `--verify` flag.
+> REMINDER: Image won't be pulled if there are no matching signatures with the cert in the [trust policy](https://github.com/notaryproject/specifications/blob/main/specs/trust-store-trust-policy.md#trust-policy) in case you passed `--verify` flag.
 
 ```shell
 # Create `trustpolicy.json` under $XDG_CONFIG_HOME/notation (XDG_CONFIG_HOME is ~/.config below)
