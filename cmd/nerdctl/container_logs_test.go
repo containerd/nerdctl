@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -142,4 +143,66 @@ func TestLogsWithFailingContainer(t *testing.T) {
 	base.Cmd("logs", "-f", containerName).AssertOutContains("bar")
 	base.Cmd("logs", "-f", containerName).AssertNoOut("baz")
 	base.Cmd("rm", "-f", containerName).AssertOK()
+}
+
+func TestLogsWithForegroundContainers(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("dual logging is not supported on Windows")
+	}
+	base := testutil.NewBase(t)
+	tid := testutil.Identifier(t)
+
+	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
+	// unbuffer(1) can be installed with `apt-get install expect`.
+	unbuffer := []string{"unbuffer"}
+
+	testCases := []struct {
+		name  string
+		flags []string
+		tty   bool
+	}{
+		{
+			name:  "foreground",
+			flags: nil,
+			tty:   false,
+		},
+		{
+			name:  "interactive",
+			flags: []string{"-i"},
+			tty:   false,
+		},
+		{
+			name:  "PTY",
+			flags: []string{"-t"},
+			tty:   true,
+		},
+		{
+			name:  "interactivePTY",
+			flags: []string{"-i", "-t"},
+			tty:   true,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		func(t *testing.T) {
+			containerName := tid + "-" + tc.name
+			var cmdArgs []string
+			defer base.Cmd("rm", "-f", containerName).Run()
+			cmdArgs = append(cmdArgs, "run", "--name", containerName)
+			cmdArgs = append(cmdArgs, tc.flags...)
+			cmdArgs = append(cmdArgs, testutil.CommonImage, "sh", "-euxc", "echo foo; echo bar")
+
+			if tc.tty {
+				base.CmdWithHelper(unbuffer, cmdArgs...).AssertOK()
+			} else {
+				base.Cmd(cmdArgs...).AssertOK()
+			}
+
+			base.Cmd("logs", containerName).AssertOutContains("foo")
+			base.Cmd("logs", containerName).AssertOutContains("bar")
+			base.Cmd("logs", containerName).AssertNoOut("baz")
+		}(t)
+	}
 }
