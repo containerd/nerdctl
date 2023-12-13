@@ -493,6 +493,21 @@ func TestRunContainerWithMACAddress(t *testing.T) {
 	}
 }
 
+func TestHostsFilePermissions(t *testing.T) {
+	base := testutil.NewBase(t)
+	base.Cmd("run", "--rm", testutil.CommonImage,
+		"sh", "-c", "echo > /etc/hosts").AssertOK()
+	base.Cmd("run", "--rm", "-v", "/etc/hosts:/etc/hosts", "--network", "host", testutil.CommonImage,
+		"sh", "-c", "echo > /etc/hosts").AssertOK()
+	base.Cmd("run", "--rm", "-v", "/etc/hosts:/etc/hosts:ro", "--network", "host", testutil.CommonImage,
+		"sh", "-c", "echo > /etc/hosts").AssertFail()
+
+	// The mount of /etc/hosts is incompatible with docker
+	testutil.DockerIncompatible(t)
+	base.Cmd("run", "--rm", "--network", "host", testutil.CommonImage,
+		"sh", "-c", "echo > /etc/hosts").AssertFail()
+}
+
 func TestRunContainerWithStaticIP6(t *testing.T) {
 	if rootlessutil.IsRootless() {
 		t.Skip("Static IP6 assignment is not supported rootless mode yet.")
