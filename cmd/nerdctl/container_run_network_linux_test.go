@@ -493,6 +493,34 @@ func TestRunContainerWithMACAddress(t *testing.T) {
 	}
 }
 
+func TestHostsFileMounts(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	base.Cmd("run", "--rm", testutil.CommonImage,
+		"sh", "-euxc", "echo >> /etc/hosts").AssertOK()
+	base.Cmd("run", "--rm", "--network", "host", testutil.CommonImage,
+		"sh", "-euxc", "echo >> /etc/hosts").AssertOK()
+	base.Cmd("run", "--rm", "-v", "/etc/hosts:/etc/hosts:ro", "--network", "host", testutil.CommonImage,
+		"sh", "-euxc", "echo >> /etc/hosts").AssertFail()
+	// add a line into /etc/hosts and remove it.
+	base.Cmd("run", "--rm", "-v", "/etc/hosts:/etc/hosts", "--network", "host", testutil.CommonImage,
+		"sh", "-euxc", "echo >> /etc/hosts").AssertOK()
+	base.Cmd("run", "--rm", "-v", "/etc/hosts:/etc/hosts", "--network", "host", testutil.CommonImage,
+		"sh", "-euxc", "head -n -1 /etc/hosts > temp && cat temp > /etc/hosts").AssertOK()
+
+	base.Cmd("run", "--rm", testutil.CommonImage,
+		"sh", "-euxc", "echo >> /etc/resolv.conf").AssertOK()
+	base.Cmd("run", "--rm", "--network", "host", testutil.CommonImage,
+		"sh", "-euxc", "echo >> /etc/resolv.conf").AssertOK()
+	base.Cmd("run", "--rm", "-v", "/etc/resolv.conf:/etc/resolv.conf:ro", "--network", "host", testutil.CommonImage,
+		"sh", "-euxc", "echo >> /etc/resolv.conf").AssertFail()
+	// add a line into /etc/resolv.conf and remove it.
+	base.Cmd("run", "--rm", "-v", "/etc/resolv.conf:/etc/resolv.conf", "--network", "host", testutil.CommonImage,
+		"sh", "-euxc", "echo >> /etc/resolv.conf").AssertOK()
+	base.Cmd("run", "--rm", "-v", "/etc/resolv.conf:/etc/resolv.conf", "--network", "host", testutil.CommonImage,
+		"sh", "-euxc", "head -n -1 /etc/resolv.conf > temp && cat temp > /etc/resolv.conf").AssertOK()
+}
+
 func TestRunContainerWithStaticIP6(t *testing.T) {
 	if rootlessutil.IsRootless() {
 		t.Skip("Static IP6 assignment is not supported rootless mode yet.")
