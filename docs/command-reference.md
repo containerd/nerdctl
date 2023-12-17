@@ -1170,7 +1170,7 @@ Flags:
 
 ### :nerd_face: :blue_square: nerdctl namespace update
 
-Udapte labels for a namespace.
+Update labels for a namespace.
 
 Usage: `nerdctl namespace update NAMESPACE`
 
