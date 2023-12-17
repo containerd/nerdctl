@@ -398,15 +398,47 @@ func withDedupMounts(mountPath string, defaultSpec oci.SpecOpts) oci.SpecOpts {
 	}
 }
 
+func copyFileContent(src string, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(dst, data, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // ContainerNetworkingOpts Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
 // the network specs which need to be applied to the container with the given ID.
 func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containerID string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
 
 	cOpts := []containerd.NewContainerOpts{}
+
+	dataStore, err := clientutil.DataStore(m.globalOptions.DataRoot, m.globalOptions.Address)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stateDir, err := ContainerStateDirPath(m.globalOptions.Namespace, dataStore, containerID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resolvConfPath := filepath.Join(stateDir, "resolv.conf")
+	copyFileContent("/etc/resolv.conf", resolvConfPath)
+
+	etcHostsPath, err := hostsstore.AllocHostsFile(dataStore, m.globalOptions.Namespace, containerID)
+	if err != nil {
+		return nil, nil, err
+	}
+	copyFileContent("/etc/hosts", etcHostsPath)
+
 	specs := []oci.SpecOpts{
 		oci.WithHostNamespace(specs.NetworkNamespace),
-		withDedupMounts("/etc/hosts", oci.WithHostHostsFile),
-		withDedupMounts("/etc/resolv.conf", oci.WithHostResolvconf),
+		withDedupMounts("/etc/hosts", withCustomHosts(etcHostsPath)),
+		withDedupMounts("/etc/resolv.conf", withCustomResolvConf(resolvConfPath)),
 	}
 
 	// `/etc/hostname` does not exist on FreeBSD
