@@ -117,6 +117,9 @@ services:
       options:
         max-size: "5K"
         max-file: "2"
+    user: 1001:1001
+    group_add:
+      - "1001"
 
   db:
     image: mariadb:10.5
@@ -174,6 +177,8 @@ volumes:
 	assert.Assert(t, in(wp1.RunArgs, "--add-host=test.com:172.19.1.1"))
 	assert.Assert(t, in(wp1.RunArgs, "--add-host=test2.com:172.19.1.2"))
 	assert.Assert(t, in(wp1.RunArgs, "--shm-size=1073741824"))
+	assert.Assert(t, in(wp1.RunArgs, "--user=1001:1001"))
+	assert.Assert(t, in(wp1.RunArgs, "--group-add=1001"))
 
 	dbSvc, err := project.GetService("db")
 	assert.NilError(t, err)
