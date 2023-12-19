@@ -673,6 +673,10 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		c.RunArgs = append(c.RunArgs, "--user="+svc.User)
 	}
 
+	for _, v := range svc.GroupAdd {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--group-add=%s", v))
+	}
+
 	for _, v := range svc.Volumes {
 		vStr, mkdir, err := serviceVolumeConfigToFlagV(v, project)
 		if err != nil {
