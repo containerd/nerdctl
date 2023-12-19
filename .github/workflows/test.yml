@@ -70,7 +70,7 @@ jobs:
 
   test-integration:
     runs-on: "ubuntu-${{ matrix.ubuntu }}"
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:

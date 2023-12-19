@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/log"
+	"github.com/containerd/nerdctl/pkg/cioutil"
 	"github.com/containerd/nerdctl/pkg/consoleutil"
 	"github.com/containerd/nerdctl/pkg/infoutil"
 	"golang.org/x/term"
@@ -38,7 +39,7 @@ import (
 
 // NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108
 func NewTask(ctx context.Context, client *containerd.Client, container containerd.Container,
-	flagA, flagI, flagT, flagD bool, con console.Console, logURI, detachKeys string, detachC chan<- struct{}) (containerd.Task, error) {
+	flagA, flagI, flagT, flagD bool, con console.Console, logURI, detachKeys, namespace string, detachC chan<- struct{}) (containerd.Task, error) {
 	var t containerd.Task
 	closer := func() {
 		if detachC != nil {
@@ -93,6 +94,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			args[0]: args[1],
 		})
 	} else if flagT && !flagD {
+
 		if con == nil {
 			return nil, errors.New("got nil con with flagT=true")
 		}
@@ -108,9 +110,8 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 				return nil, err
 			}
 		}
-		ioCreator = cio.NewCreator(cio.WithStreams(in, os.Stdout, nil), cio.WithTerminal)
+		ioCreator = cioutil.NewContainerIO(namespace, logURI, true, in, os.Stdout, os.Stderr)
 	} else if flagD && logURI != "" {
-		// TODO: support logURI for `nerdctl run -it`
 		u, err := url.Parse(logURI)
 		if err != nil {
 			return nil, err
@@ -136,7 +137,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			}
 			in = stdinC
 		}
-		ioCreator = cio.NewCreator(cio.WithStreams(in, os.Stdout, os.Stderr))
+		ioCreator = cioutil.NewContainerIO(namespace, logURI, false, in, os.Stdout, os.Stderr)
 	}
 	t, err := container.NewTask(ctx, ioCreator)
 	if err != nil {

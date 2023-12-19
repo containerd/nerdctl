@@ -243,7 +243,7 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 	}
 
 	logURI := lab[labels.LogURI]
-
+	namespace := lab[labels.Namespace]
 	cStatus := formatter.ContainerStatus(ctx, container)
 	if cStatus == "Up" {
 		log.G(ctx).Warnf("container %s is already running", container.ID())
@@ -266,7 +266,7 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 		}
 	}
 	detachC := make(chan struct{})
-	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, con, logURI, detachKeys, detachC)
+	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, con, logURI, detachKeys, namespace, detachC)
 	if err != nil {
 		return err
 	}
