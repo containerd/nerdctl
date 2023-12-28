@@ -44,6 +44,15 @@ import (
    NOTICE: https://github.com/moby/moby/blob/v20.10.5/NOTICE
 */
 
+const (
+	DefaultMountType = "none"
+
+	// DefaultPropagationMode is the default propagation of mounts
+	// where user doesn't specify mount propagation explicitly.
+	// See also: https://github.com/moby/moby/blob/v20.10.7/volume/mounts/linux_parser.go#L145
+	DefaultPropagationMode = "rprivate"
+)
+
 // UnprivilegedMountFlags is from https://github.com/moby/moby/blob/v20.10.5/daemon/oci_linux.go#L420-L450
 //
 // Get the set of mount flags that are set on the mount that contains the given
@@ -77,11 +86,6 @@ func UnprivilegedMountFlags(path string) ([]string, error) {
 
 	return flags, nil
 }
-
-// DefaultPropagationMode is the default propagation of mounts
-// where user doesn't specify mount propagation explicitly.
-// See also: https://github.com/moby/moby/blob/v20.10.7/volume/mounts/linux_parser.go#L145
-const DefaultPropagationMode = "rprivate"
 
 // parseVolumeOptions parses specified optsRaw with using information of
 // the volume type and the src directory when necessary.

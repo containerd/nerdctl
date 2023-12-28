@@ -23,7 +23,10 @@ import (
 
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	mocks "github.com/containerd/nerdctl/pkg/mountutil/mountutilmock"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/v3/assert"
 	is "gotest.tools/v3/assert/cmp"
 )
@@ -204,5 +207,173 @@ func TestProcessTmpfs(t *testing.T) {
 		x, err := ProcessFlagTmpfs(k)
 		assert.NilError(t, err)
 		assert.DeepEqual(t, expected, x.Mount.Options)
+	}
+}
+
+func TestProcessFlagV(t *testing.T) {
+	tests := []struct {
+		rawSpec string
+		wants   *Processed
+		err     string
+	}{
+		// Bind volumes: absolute path
+		{
+			rawSpec: "/mnt/foo:/mnt/foo:ro",
+			wants: &Processed{
+				Type: "bind",
+				Mount: specs.Mount{
+					Type:        "none",
+					Destination: `/mnt/foo`,
+					Source:      `/mnt/foo`,
+					Options:     []string{"ro", "rprivate", "rbind"},
+				}},
+		},
+		// Bind volumes: relative path
+		{
+			rawSpec: `./TestVolume/Path:/mnt/foo`,
+			wants: &Processed{
+				Type: "bind",
+				Mount: specs.Mount{
+					Type:        "none",
+					Source:      "", // will not check source of relative paths
+					Destination: `/mnt/foo`,
+					Options:     []string{"rbind"},
+				}},
+		},
+		// Named volumes
+		{
+			rawSpec: `TestVolume:/mnt/foo`,
+			wants: &Processed{
+				Type: "volume",
+				Name: "TestVolume",
+				Mount: specs.Mount{
+					Type:        "none",
+					Source:      "", // source of anonymous volume is a generated path, so here will not check it.
+					Destination: `/mnt/foo`,
+					Options:     []string{"rbind"},
+				}},
+		},
+		{
+			rawSpec: `/mnt/foo:TestVolume`,
+			err:     "expected an absolute path, got \"TestVolume\"",
+		},
+		{
+			rawSpec: `/mnt/foo:./foo`,
+			err:     "expected an absolute path, got \"./foo\"",
+		},
+	}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockVolumeStore := mocks.NewMockVolumeStore(ctrl)
+	mockVolumeStore.
+		EXPECT().
+		Get(gomock.Any(), false).
+		Return(&native.Volume{Name: "test_volume", Mountpoint: "/test/volume", Size: 1024}, nil).
+		AnyTimes()
+	mockVolumeStore.
+		EXPECT().
+		Create(gomock.Any(), nil).
+		Return(&native.Volume{Name: "test_volume", Mountpoint: "/test/volume"}, nil).AnyTimes()
+
+	mockOs := mocks.NewMockOs(ctrl)
+	mockOs.EXPECT().Stat(gomock.Any()).Return(nil, nil).AnyTimes()
+
+	for _, tt := range tests {
+		t.Run(tt.rawSpec, func(t *testing.T) {
+			processedVolSpec, err := ProcessFlagV(tt.rawSpec, mockVolumeStore, false)
+			if err != nil {
+				assert.Error(t, err, tt.err)
+				return
+			}
+
+			assert.Equal(t, processedVolSpec.Type, tt.wants.Type)
+			assert.Equal(t, processedVolSpec.Mount.Type, tt.wants.Mount.Type)
+			assert.Equal(t, processedVolSpec.Mount.Destination, tt.wants.Mount.Destination)
+			assert.DeepEqual(t, processedVolSpec.Mount.Options, tt.wants.Mount.Options)
+
+			if tt.wants.Name != "" {
+				assert.Equal(t, processedVolSpec.Name, tt.wants.Name)
+			}
+			if tt.wants.Mount.Source != "" {
+				assert.Equal(t, processedVolSpec.Mount.Source, tt.wants.Mount.Source)
+			}
+		})
+	}
+}
+
+func TestProcessFlagVAnonymousVolumes(t *testing.T) {
+	tests := []struct {
+		rawSpec string
+		wants   *Processed
+		err     string
+	}{
+		{
+			rawSpec: `/mnt/foo`,
+			wants: &Processed{
+				Type: "volume",
+				Mount: specs.Mount{
+					Type:        "none",
+					Source:      "", // source of anonymous volume is a generated path, so here will not check it.
+					Destination: `/mnt/foo`,
+				}},
+		},
+		{
+			rawSpec: `./TestVolume/Path`,
+			wants: &Processed{
+				Type: "volume",
+				Mount: specs.Mount{
+					Type:        "none",
+					Source:      "",                // source of anonymous volume is a generated path, so here will not check it.
+					Destination: `TestVolume/Path`, // cleanpath() removes the leading "./". Since we are mocking the os.Stat() call, this is fine.
+				}},
+		},
+		{
+			rawSpec: "TestVolume",
+			wants: &Processed{
+				Type: "volume",
+				Mount: specs.Mount{
+					Type:        "none",
+					Source:      "", // source of anonymous volume is a generated path, so here will not check it.
+					Destination: "TestVolume",
+				}},
+		},
+		{
+			rawSpec: `/mnt/foo::ro`,
+			err:     "expected an absolute path, got \"\"",
+		},
+	}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockVolumeStore := mocks.NewMockVolumeStore(ctrl)
+	mockVolumeStore.
+		EXPECT().
+		Create(gomock.Any(), []string{}).
+		Return(&native.Volume{Name: "test_volume", Mountpoint: "/test/volume"}, nil).
+		AnyTimes()
+
+	for _, tt := range tests {
+		t.Run(tt.rawSpec, func(t *testing.T) {
+			processedVolSpec, err := ProcessFlagV(tt.rawSpec, mockVolumeStore, true)
+			if err != nil {
+				assert.ErrorContains(t, err, tt.err)
+				return
+			}
+
+			assert.Equal(t, processedVolSpec.Type, tt.wants.Type)
+			assert.Assert(t, processedVolSpec.AnonymousVolume != "")
+			assert.Equal(t, processedVolSpec.Mount.Type, tt.wants.Mount.Type)
+			assert.Equal(t, processedVolSpec.Mount.Destination, tt.wants.Mount.Destination)
+
+			if tt.wants.Mount.Source != "" {
+				assert.Equal(t, processedVolSpec.Mount.Source, tt.wants.Mount.Source)
+			}
+
+			// for anonymous volumes, we want to make sure that the source is not the same as the destination
+			assert.Assert(t, processedVolSpec.Mount.Source != processedVolSpec.Mount.Destination)
+		})
 	}
 }

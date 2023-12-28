@@ -26,13 +26,17 @@ import (
 	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
 )
 
+const (
+	DefaultMountType = "nullfs"
+
+	// FreeBSD doesn't support bind mounts.
+	DefaultPropagationMode = ""
+)
+
 func UnprivilegedMountFlags(path string) ([]string, error) {
 	m := []string{}
 	return m, nil
 }
-
-// FreeBSD doesn't support bind mounts.
-const DefaultPropagationMode = ""
 
 // parseVolumeOptions parses specified optsRaw with using information of
 // the volume type and the src directory when necessary.

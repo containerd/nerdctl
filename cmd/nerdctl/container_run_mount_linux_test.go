@@ -85,8 +85,22 @@ func TestRunVolume(t *testing.T) {
 func TestRunAnonymousVolume(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "-v", "/foo", testutil.AlpineImage,
-		"mountpoint", "-q", "/foo").AssertOK()
+	base.Cmd("run", "--rm", "-v", "/foo", testutil.AlpineImage).AssertOK()
+	base.Cmd("run", "--rm", "-v", "TestVolume2:/foo", testutil.AlpineImage).AssertOK()
+	base.Cmd("run", "--rm", "-v", "TestVolume", testutil.AlpineImage).AssertOK()
+
+	// Destination must be an absolute path not named volume
+	base.Cmd("run", "--rm", "-v", "TestVolume2:TestVolumes", testutil.AlpineImage).AssertFail()
+}
+
+func TestRunVolumeRelativePath(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	base.Cmd("run", "--rm", "-v", "./foo:/mnt/foo", testutil.AlpineImage).AssertOK()
+	base.Cmd("run", "--rm", "-v", "./foo", testutil.AlpineImage).AssertOK()
+
+	// Destination must be an absolute path not a relative path
+	base.Cmd("run", "--rm", "-v", "./foo:./foo", testutil.AlpineImage).AssertFail()
 }
 
 func TestRunAnonymousVolumeWithTypeMountFlag(t *testing.T) {
