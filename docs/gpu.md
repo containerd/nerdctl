@@ -62,3 +62,24 @@ services:
           - capabilities: ["utility"]
             count: all
 ```
+
+## Trouble Shooting
+
+### `nerdctl run --gpus` fails when using the Nvidia gpu-operator
+
+If the Nvidia driver is installed by the [gpu-operator](https://github.com/NVIDIA/gpu-operator).The `nerdctl run` will fail with the error message `(FATA[0000] exec: "nvidia-container-cli": executable file not found in $PATH)`.
+
+So, the `nvidia-container-cli` needs to be added to the PATH environment variable.
+
+You can do this by adding the following line to your $HOME/.profile or /etc/profile (for a system-wide installation):
+```
+export PATH=$PATH:/usr/local/nvidia/toolkit
+```
+
+The shared libraries also need to be added to the system.
+```
+echo "/run/nvidia/driver/usr/lib/x86_64-linux-gnu" > /etc/ld.so.conf.d/nvidia.conf
+ldconfig
+```
+
+And then, the `nerdctl run --gpus` can run successfully.
