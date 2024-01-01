@@ -30,7 +30,6 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/pkg/netns"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/dnsutil/hostsstore"
@@ -128,7 +127,7 @@ func NewNetworkingOptionsManager(globalOptions types.GlobalCommandOptions, netOp
 	case nettype.Container:
 		manager = &containerNetworkManager{globalOptions, netOpts, client}
 	case nettype.CNI:
-		manager = &cniNetworkManager{globalOptions, netOpts, nil, client}
+		manager = &cniNetworkManager{globalOptions, netOpts, client, cniNetworkManagerPlatform{}}
 	default:
 		return nil, fmt.Errorf("unexpected container networking type: %q", netType)
 	}
@@ -471,8 +470,8 @@ func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 type cniNetworkManager struct {
 	globalOptions types.GlobalCommandOptions
 	netOpts       types.NetworkOptions
-	netNs         *netns.NetNS
 	client        *containerd.Client
+	cniNetworkManagerPlatform
 }
 
 // NetworkOptions Returns a copy of the internal types.NetworkOptions.
