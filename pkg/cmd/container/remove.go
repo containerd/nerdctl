@@ -124,16 +124,16 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			return
 		}
 		if err := os.RemoveAll(stateDir); err != nil {
-			log.G(ctx).WithError(retErr).Warnf("failed to remove container state dir %s", stateDir)
+			log.G(ctx).WithError(err).Warnf("failed to remove container state dir %s", stateDir)
 		}
 		// enforce release name here in case the poststop hook name release fails
 		if name != "" {
 			if err := namst.Release(name, id); err != nil {
-				log.G(ctx).WithError(retErr).Warnf("failed to release container name %s", name)
+				log.G(ctx).WithError(err).Warnf("failed to release container name %s", name)
 			}
 		}
 		if err := hostsstore.DeallocHostsFile(dataStore, ns, id); err != nil {
-			log.G(ctx).WithError(retErr).Warnf("failed to remove hosts file for container %q", id)
+			log.G(ctx).WithError(err).Warnf("failed to remove hosts file for container %q", id)
 		}
 	}()
 
@@ -192,7 +192,7 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		}
 
 		if err := networkManager.CleanupNetworking(ctx, c); err != nil {
-			log.G(ctx).WithError(retErr).Warnf("failed to clean up container networking: %s", err)
+			log.G(ctx).WithError(err).Warnf("failed to clean up container networking: %s", err)
 		}
 	}
 
