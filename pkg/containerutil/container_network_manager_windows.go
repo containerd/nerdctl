@@ -30,6 +30,10 @@ import (
 	"github.com/containerd/nerdctl/pkg/ocihook"
 )
 
+type cniNetworkManagerPlatform struct {
+	netNs *netns.NetNS
+}
+
 // Verifies that the internal network settings are correct.
 func (m *cniNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 	e, err := netutil.NewCNIEnv(m.globalOptions.CNIPath, m.globalOptions.CNINetConfPath, netutil.WithDefaultNetwork())

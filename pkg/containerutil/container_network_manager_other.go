@@ -28,6 +28,9 @@ import (
 	"github.com/containerd/nerdctl/pkg/api/types"
 )
 
+type cniNetworkManagerPlatform struct {
+}
+
 // Verifies that the internal network settings are correct.
 func (m *cniNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 	return fmt.Errorf("CNI networking currently unsupported on %s", runtime.GOOS)
