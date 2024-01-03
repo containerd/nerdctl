@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/containerd/log"
+	"github.com/muesli/cancelreader"
 )
 
 const (
@@ -140,10 +141,25 @@ func LoadLogConfig(dataStore, ns, id string) (LogConfig, error) {
 	return logConfig, nil
 }
 
-func loggingProcessAdapter(driver Driver, dataStore string, config *logging.Config) error {
+func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore string, config *logging.Config) error {
 	if err := driver.PreProcess(dataStore, config); err != nil {
 		return err
 	}
+
+	stdoutR, err := cancelreader.NewReader(config.Stdout)
+	if err != nil {
+		return err
+	}
+	stderrR, err := cancelreader.NewReader(config.Stderr)
+	if err != nil {
+		return err
+	}
+	go func() {
+		<-ctx.Done() // delivered on SIGTERM
+		stdoutR.Cancel()
+		stderrR.Cancel()
+	}()
+
 	var wg sync.WaitGroup
 	wg.Add(3)
 	stdout := make(chan string, 10000)
@@ -161,8 +177,8 @@ func loggingProcessAdapter(driver Driver, dataStore string, config *logging.Conf
 		}
 	}
 
-	go processLogFunc(config.Stdout, stdout)
-	go processLogFunc(config.Stderr, stderr)
+	go processLogFunc(stdoutR, stdout)
+	go processLogFunc(stderrR, stderr)
 	go func() {
 		defer wg.Done()
 		driver.Process(stdout, stderr)
@@ -175,7 +191,7 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 	if dataStore == "" {
 		return nil, errors.New("got empty data store")
 	}
-	return func(_ context.Context, config *logging.Config, ready func() error) error {
+	return func(ctx context.Context, config *logging.Config, ready func() error) error {
 		if config.Namespace == "" || config.ID == "" {
 			return errors.New("got invalid config")
 		}
@@ -193,7 +209,7 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 				return err
 			}
 
-			return loggingProcessAdapter(driver, dataStore, config)
+			return loggingProcessAdapter(ctx, driver, dataStore, config)
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// the file does not exist if the container was created with nerdctl < 0.20
 			return err
