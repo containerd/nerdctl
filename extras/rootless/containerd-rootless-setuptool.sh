@@ -283,7 +283,7 @@ cmd_entrypoint_install_buildkit_containerd() {
 	fi
 	if [ ! -f "${XDG_CONFIG_HOME}/buildkit/buildkitd.toml" ]; then
 		mkdir -p "${XDG_CONFIG_HOME}/buildkit"
-		cat <<-EOF > "${XDG_CONFIG_HOME}/buildkit/buildkitd.toml"
+		cat <<-EOF >"${XDG_CONFIG_HOME}/buildkit/buildkitd.toml"
 			[worker.oci]
 			enabled = false
 
@@ -298,13 +298,13 @@ cmd_entrypoint_install_buildkit_containerd() {
 	fi
 	UNIT_NAME=${SYSTEMD_BUILDKIT_UNIT}
 	BUILDKITD_FLAG=
-	if [ -n "${CONTAINERD_NAMESPACE:-}" ] ; then
+	if [ -n "${CONTAINERD_NAMESPACE:-}" ]; then
 		UNIT_NAME="${CONTAINERD_NAMESPACE}-${SYSTEMD_BUILDKIT_UNIT}"
 		BUILDKITD_FLAG="${BUILDKITD_FLAG} --addr=unix://${XDG_RUNTIME_DIR}/buildkit-${CONTAINERD_NAMESPACE}/buildkitd.sock --root=${XDG_DATA_HOME}/buildkit-${CONTAINERD_NAMESPACE} --containerd-worker-namespace=${CONTAINERD_NAMESPACE}"
 	else
 		WARNING "buildkitd has access to images in \"buildkit\" namespace by default. If you want to give buildkitd access to the images in \"default\" namespace, run this command with CONTAINERD_NAMESPACE=default"
 	fi
-	if [ -n "${CONTAINERD_SNAPSHOTTER:-}" ] ; then
+	if [ -n "${CONTAINERD_SNAPSHOTTER:-}" ]; then
 		BUILDKITD_FLAG="${BUILDKITD_FLAG} --containerd-worker-snapshotter=${CONTAINERD_SNAPSHOTTER}"
 	fi
 	cat <<-EOT | install_systemd_unit "${UNIT_NAME}"
@@ -519,7 +519,7 @@ cmd_entrypoint_uninstall_buildkit_containerd() {
 	init
 	UNIT_NAME=${SYSTEMD_BUILDKIT_UNIT}
 	BUILDKIT_ROOT="${XDG_DATA_HOME}/buildkit"
-	if [ -n "${CONTAINERD_NAMESPACE:-}" ] ; then
+	if [ -n "${CONTAINERD_NAMESPACE:-}" ]; then
 		UNIT_NAME="${CONTAINERD_NAMESPACE}-${SYSTEMD_BUILDKIT_UNIT}"
 		BUILDKIT_ROOT="${XDG_DATA_HOME}/buildkit-${CONTAINERD_NAMESPACE}"
 	fi
