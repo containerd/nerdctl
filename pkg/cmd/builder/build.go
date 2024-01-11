@@ -328,6 +328,10 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		buildctlArgs = append(buildctlArgs, "--secret="+s)
 	}
 
+	for _, s := range strutil.DedupeStrSlice(options.Allow) {
+		buildctlArgs = append(buildctlArgs, "--allow="+s)
+	}
+
 	for _, s := range strutil.DedupeStrSlice(options.SSH) {
 		buildctlArgs = append(buildctlArgs, "--ssh="+s)
 	}
