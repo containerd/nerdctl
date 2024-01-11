@@ -55,7 +55,7 @@ func processVolumeCreateOptions(cmd *cobra.Command) (types.VolumeCreateOptions, 
 func volumeCreateAction(cmd *cobra.Command, args []string) error {
 	options, err := processVolumeCreateOptions(cmd)
 	if err != nil {
-		return nil
+		return err
 	}
 	volumeName := ""
 	if len(args) > 0 {
