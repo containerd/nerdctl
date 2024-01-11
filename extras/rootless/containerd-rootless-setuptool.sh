@@ -139,10 +139,20 @@ cmd_entrypoint_check() {
 	INFO "Requirements are satisfied"
 }
 
+propagate_env_from() {
+	pid="$1"
+	env="$(sed -e "s/\x0/'\n/g" <"/proc/${pid}/environ" | sed -Ee "s/^[^=]*=/export \0'/g")"
+	shift
+	for key in $@; do
+		eval $(echo "$env" | grep "^export ${key=}")
+	done
+}
+
 # CLI subcommand: "nsenter"
 cmd_entrypoint_nsenter() {
 	# No need to call init()
 	pid=$(cat "$XDG_RUNTIME_DIR/containerd-rootless/child_pid")
+	propagate_env_from "$pid" ROOTLESSKIT_STATE_DIR ROOTLESSKIT_PARENT_EUID ROOTLESSKIT_PARENT_EGID
 	exec nsenter --no-fork --wd="$(pwd)" --preserve-credentials -m -n -U -t "$pid" -- "$@"
 }
 
