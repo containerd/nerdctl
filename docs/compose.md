@@ -29,7 +29,6 @@ which was derived from [Docker Compose file version 3 specification](https://doc
 - `services.<SERVICE>.deploy.placement`
 - `services.<SERVICE>.deploy.endpoint_mode`
 - `services.<SERVICE>.healthcheck`
-- `services.<SERVICE>.profiles`
 - `services.<SERVICE>.stop_grace_period`
 - `services.<SERVICE>.stop_signal`
 - `configs.<CONFIG>.external`
