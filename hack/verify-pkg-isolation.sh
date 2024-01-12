@@ -17,7 +17,7 @@
 echo "Verifying that ./pkg/... is decoupled from the CLI packages"
 set -eux -o pipefail
 
-if go list -f '{{join .Deps "\n"}}' ./pkg/... | grep -E '^(github.com/spf13/cobra|github.com/spf13/pflag|github.com/containerd/nerdctl/cmd)'; then
+if go list -f '{{join .Deps "\n"}}' ./pkg/... | grep -E '^(github.com/spf13/cobra|github.com/spf13/pflag|github.com/containerd/nerdctl/v2/cmd)'; then
 	echo >&2 "ERROR: ./pkg/... is not decoupled from the CLI packages"
 	exit 1
 fi

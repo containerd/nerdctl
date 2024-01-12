@@ -24,7 +24,7 @@ import (
 	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/containerd"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
 
 // RestartOptions stores all option input from `nerdctl compose restart`

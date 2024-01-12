@@ -34,11 +34,11 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/containerd/nerdctl/pkg/lockutil"
-	"github.com/containerd/nerdctl/pkg/netutil/nettype"
-	subnetutil "github.com/containerd/nerdctl/pkg/netutil/subnet"
-	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/lockutil"
+	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
+	subnetutil "github.com/containerd/nerdctl/v2/pkg/netutil/subnet"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containernetworking/cni/libcni"
 )
 

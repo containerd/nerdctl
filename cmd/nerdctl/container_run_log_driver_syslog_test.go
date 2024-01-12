@@ -25,10 +25,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/containerd/nerdctl/pkg/testutil/testca"
-	"github.com/containerd/nerdctl/pkg/testutil/testsyslog"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/testca"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/testsyslog"
 	syslog "github.com/yuchanns/srslog"
 )
 

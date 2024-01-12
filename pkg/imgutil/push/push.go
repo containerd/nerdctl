@@ -32,7 +32,7 @@ import (
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil/jobs"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"golang.org/x/sync/errgroup"

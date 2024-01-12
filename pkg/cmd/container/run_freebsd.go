@@ -22,7 +22,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
 func WithoutRunMount() func(ctx context.Context, client oci.Client, c *containers.Container, s *oci.Spec) error {

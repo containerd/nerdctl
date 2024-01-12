@@ -17,8 +17,8 @@
 package volume
 
 import (
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
+	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 )
 
 // Store returns a volume store

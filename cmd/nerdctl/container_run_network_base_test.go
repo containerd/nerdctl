@@ -26,8 +26,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"gotest.tools/v3/assert"
 )
 

@@ -26,8 +26,8 @@ import (
 	"testing"
 
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/buildkitutil"
-	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func TestSystemPrune(t *testing.T) {

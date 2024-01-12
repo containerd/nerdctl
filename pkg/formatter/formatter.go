@@ -33,7 +33,7 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/runtime/restart"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/portutil"
+	"github.com/containerd/nerdctl/v2/pkg/portutil"
 	"github.com/docker/go-units"
 )
 

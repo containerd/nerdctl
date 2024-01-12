@@ -25,8 +25,8 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/imgutil/jobs"
-	"github.com/containerd/nerdctl/pkg/platformutil"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil/jobs"
+	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 

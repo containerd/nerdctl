@@ -31,9 +31,9 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/cioutil"
-	"github.com/containerd/nerdctl/pkg/consoleutil"
-	"github.com/containerd/nerdctl/pkg/infoutil"
+	"github.com/containerd/nerdctl/v2/pkg/cioutil"
+	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
+	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"golang.org/x/term"
 )
 

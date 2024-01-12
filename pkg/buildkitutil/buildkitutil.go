@@ -36,7 +36,7 @@ import (
 	"runtime"
 
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
 const (

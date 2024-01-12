@@ -23,7 +23,7 @@ import (
 
 	"github.com/containerd/containerd"
 	ctdsnapshotters "github.com/containerd/containerd/pkg/snapshotters"
-	"github.com/containerd/nerdctl/pkg/imgutil/pull"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"gotest.tools/v3/assert"

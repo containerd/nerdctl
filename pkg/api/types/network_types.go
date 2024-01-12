@@ -19,7 +19,7 @@ package types
 import (
 	"io"
 
-	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/v2/pkg/netutil"
 )
 
 // NetworkCreateOptions specifies options for `nerdctl network create`.

@@ -19,7 +19,7 @@ package types
 import (
 	"io"
 
-	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 )
 
 // ImageListOptions specifies options for `nerdctl image list`.

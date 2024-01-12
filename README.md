@@ -246,7 +246,7 @@ Run `make && sudo make install`.
 
 See the header of [`go.mod`](./go.mod) for the minimum supported version of Go.
 
-Using `go install github.com/containerd/nerdctl/cmd/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
+Using `go install github.com/containerd/nerdctl/v2/cmd/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
 
 ### Test suite
 

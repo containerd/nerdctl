@@ -32,7 +32,7 @@ import (
 	"github.com/containerd/containerd/contrib/nvidia"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/reflectutil"
+	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
 )
 
 // ComposeExtensionKey defines fields used to implement extension features.

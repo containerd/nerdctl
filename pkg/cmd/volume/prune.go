@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
 
 func Prune(ctx context.Context, client *containerd.Client, options types.VolumePruneOptions) error {

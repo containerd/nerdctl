@@ -23,7 +23,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/runtime/restart"
-	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
 func checkRestartCapabilities(ctx context.Context, client *containerd.Client, restartFlag string) (bool, error) {

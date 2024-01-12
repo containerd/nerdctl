@@ -25,7 +25,7 @@ import (
 	"path/filepath"
 
 	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/nerdctl/pkg/lockutil"
+	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 	types100 "github.com/containernetworking/cni/pkg/types/100"
 )
 

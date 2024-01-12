@@ -21,7 +21,7 @@ package netutil
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
 // Tests whether nerdctl properly creates the default network when required.

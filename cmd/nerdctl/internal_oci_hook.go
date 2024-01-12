@@ -20,8 +20,8 @@ import (
 	"errors"
 	"os"
 
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/ocihook"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
+	"github.com/containerd/nerdctl/v2/pkg/ocihook"
 
 	"github.com/spf13/cobra"
 )

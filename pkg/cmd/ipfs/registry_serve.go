@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/ipfs"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/ipfs"
 )
 
 func RegistryServe(options types.IPFSRegistryServeOptions) error {

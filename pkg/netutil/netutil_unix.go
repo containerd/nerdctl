@@ -30,9 +30,9 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/containerd/nerdctl/pkg/systemutil"
+	"github.com/containerd/nerdctl/v2/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/systemutil"
 	"github.com/mitchellh/mapstructure"
 	"github.com/vishvananda/netlink"
 )

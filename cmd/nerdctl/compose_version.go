@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/containerd/nerdctl/pkg/version"
+	"github.com/containerd/nerdctl/v2/pkg/version"
 	"github.com/spf13/cobra"
 )
 

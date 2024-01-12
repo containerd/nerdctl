@@ -25,12 +25,12 @@ import (
 	"time"
 
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/docker/go-connections/nat"
 
-	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 
 	"gotest.tools/v3/assert"
 )

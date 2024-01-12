@@ -20,9 +20,9 @@ import (
 	"net"
 
 	gocni "github.com/containerd/go-cni"
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/portutil"
-	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/portutil"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/spf13/cobra"
 )
 

@@ -23,7 +23,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
 func Remove(ctx context.Context, client *containerd.Client, deletedNamespaces []string, options types.NamespaceRemoveOptions) error {

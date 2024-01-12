@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
-	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/docker/go-connections/nat"
 	"gotest.tools/v3/assert"
 )

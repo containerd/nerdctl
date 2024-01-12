@@ -17,8 +17,8 @@
 package volume
 
 import (
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/formatter"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/formatter"
 )
 
 func Inspect(volumes []string, options types.VolumeInspectOptions) error {

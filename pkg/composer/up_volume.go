@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/containerd/nerdctl/pkg/reflectutil"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
 )
 
 func (c *Composer) upVolume(ctx context.Context, shortName string) error {

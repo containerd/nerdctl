@@ -26,9 +26,9 @@ import (
 	"testing"
 	"text/template"
 
-	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/containerd/nerdctl/pkg/testutil"
+	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 
 	"gotest.tools/v3/assert"
 )

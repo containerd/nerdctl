@@ -28,7 +28,7 @@ import (
 
 	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/fluent/fluent-logger-golang/fluent"
 )
 

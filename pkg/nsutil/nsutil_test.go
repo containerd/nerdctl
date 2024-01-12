@@ -19,7 +19,7 @@ package nsutil_test
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/pkg/nsutil"
+	"github.com/containerd/nerdctl/v2/pkg/nsutil"
 	"gotest.tools/v3/assert"
 )
 

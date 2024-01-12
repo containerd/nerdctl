@@ -28,8 +28,8 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
-	"github.com/containerd/nerdctl/pkg/reflectutil"
+	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
 )
 
 // Options groups the command line options recommended for a Compose implementation (ProjectOptions) and extra options for nerdctl

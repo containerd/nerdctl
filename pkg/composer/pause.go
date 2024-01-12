@@ -23,8 +23,8 @@ import (
 	"sync"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/nerdctl/pkg/containerutil"
-	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/containerutil"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"golang.org/x/sync/errgroup"
 )
 

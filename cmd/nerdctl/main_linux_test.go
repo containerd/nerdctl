@@ -19,7 +19,7 @@ package main
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 // TestIssue108 tests https://github.com/containerd/nerdctl/issues/108

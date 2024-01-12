@@ -27,7 +27,7 @@ import (
 	"github.com/containerd/containerd/images"
 	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/referenceutil"
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
 // Filter types supported to filter images.

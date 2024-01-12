@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
+	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 )
 
 func splitVolumeSpec(s string) ([]string, error) {
