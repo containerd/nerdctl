@@ -51,6 +51,10 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 	buildCommand.Flags().StringP("output", "o", "", "Output destination (format: type=local,dest=path)")
 	buildCommand.Flags().String("progress", "auto", "Set type of progress output (auto, plain, tty). Use plain to show container output")
 	buildCommand.Flags().StringArray("secret", nil, "Secret file to expose to the build: id=mysecret,src=/local/secret")
+	buildCommand.Flags().StringArray("allow", nil, "Allow extra privileged entitlement, e.g. network.host, security.insecure")
+	buildCommand.RegisterFlagCompletionFunc("allow", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"network.host", "security.insecure"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	buildCommand.Flags().StringArray("ssh", nil, "SSH agent socket or keys to expose to the build (format: default|<id>[=<socket>|<key>[,<key>]])")
 	buildCommand.Flags().BoolP("quiet", "q", false, "Suppress the build output and print image ID on success")
 	buildCommand.Flags().StringArray("cache-from", nil, "External cache sources (eg. user/app:cache, type=local,src=path/to/dir)")
@@ -129,6 +133,10 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
 	}
+	allow, err := cmd.Flags().GetStringArray("allow")
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
 	ssh, err := cmd.Flags().GetStringArray("ssh")
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
@@ -170,6 +178,7 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 		Label:        label,
 		NoCache:      noCache,
 		Secret:       secret,
+		Allow:        allow,
 		SSH:          ssh,
 		CacheFrom:    cacheFrom,
 		CacheTo:      cacheTo,
