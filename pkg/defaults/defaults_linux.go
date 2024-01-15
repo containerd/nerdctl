@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/containerd/plugin"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
 const (

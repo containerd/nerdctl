@@ -30,7 +30,7 @@ import (
 
 	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/coreos/go-systemd/v22/journal"
 	"github.com/docker/cli/templates"
 	timetypes "github.com/docker/docker/api/types/time"

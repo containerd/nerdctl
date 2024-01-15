@@ -22,8 +22,8 @@ import (
 	"strings"
 
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/cmd/login"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/login"
 
 	"github.com/spf13/cobra"
 )

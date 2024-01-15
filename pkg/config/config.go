@@ -20,7 +20,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/namespaces"
-	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
+	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
 )
 
 // Config corresponds to nerdctl.toml .

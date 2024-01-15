@@ -20,7 +20,7 @@ import (
 	"context"
 
 	gocni "github.com/containerd/go-cni"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
 )
 

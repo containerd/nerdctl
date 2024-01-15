@@ -20,9 +20,9 @@ package main
 
 import (
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/infoutil"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
+	"github.com/containerd/nerdctl/v2/pkg/infoutil"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/spf13/cobra"
 )
 

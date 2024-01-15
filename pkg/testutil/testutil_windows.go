@@ -23,7 +23,7 @@ import (
 	"sync"
 
 	"github.com/Microsoft/hcsshim"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"golang.org/x/sys/windows/svc/mgr"
 )
 

@@ -23,9 +23,9 @@ import (
 	"text/tabwriter"
 	"text/template"
 
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/apparmorutil"
-	"github.com/containerd/nerdctl/pkg/formatter"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/apparmorutil"
+	"github.com/containerd/nerdctl/v2/pkg/formatter"
 )
 
 func List(options types.ApparmorListOptions) error {

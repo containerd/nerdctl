@@ -29,9 +29,9 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/idgen"
-	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
-	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/idgen"
+	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 

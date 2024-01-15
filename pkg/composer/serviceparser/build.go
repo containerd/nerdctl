@@ -26,7 +26,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/reflectutil"
+	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 )

@@ -17,9 +17,9 @@
 package main
 
 import (
-	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/containerd/nerdctl/pkg/strutil"
+	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/spf13/cobra"
 )
 

@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func TestLogs(t *testing.T) {

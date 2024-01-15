@@ -17,7 +17,7 @@
 package main
 
 import (
-	"github.com/containerd/nerdctl/pkg/apparmorutil"
+	"github.com/containerd/nerdctl/v2/pkg/apparmorutil"
 	"github.com/spf13/cobra"
 )
 

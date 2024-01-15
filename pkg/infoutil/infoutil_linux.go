@@ -21,10 +21,10 @@ import (
 	"strings"
 
 	"github.com/containerd/cgroups/v3"
-	"github.com/containerd/nerdctl/pkg/apparmorutil"
-	"github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/apparmorutil"
+	"github.com/containerd/nerdctl/v2/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/docker/docker/pkg/meminfo"
 	"github.com/docker/docker/pkg/sysinfo"
 )

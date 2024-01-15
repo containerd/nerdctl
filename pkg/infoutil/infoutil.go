@@ -30,11 +30,11 @@ import (
 	ptypes "github.com/containerd/containerd/protobuf/types"
 	"github.com/containerd/containerd/services/introspection"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/buildkitutil"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
-	"github.com/containerd/nerdctl/pkg/logging"
-	"github.com/containerd/nerdctl/pkg/version"
+	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/logging"
+	"github.com/containerd/nerdctl/v2/pkg/version"
 )
 
 func NativeDaemonInfo(ctx context.Context, client *containerd.Client) (*native.DaemonInfo, error) {

@@ -21,12 +21,12 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/cmd/builder"
-	"github.com/containerd/nerdctl/pkg/cmd/container"
-	"github.com/containerd/nerdctl/pkg/cmd/image"
-	"github.com/containerd/nerdctl/pkg/cmd/network"
-	"github.com/containerd/nerdctl/pkg/cmd/volume"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/builder"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/network"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 )
 
 // Prune will remove all unused containers, networks,

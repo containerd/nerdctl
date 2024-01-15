@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
 // Sign signs an image using a signer and options provided in options.

@@ -17,9 +17,9 @@
 package main
 
 import (
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/cmd/volume"
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 
 	"github.com/spf13/cobra"
 )

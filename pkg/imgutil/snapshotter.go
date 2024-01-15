@@ -24,7 +24,7 @@ import (
 	"github.com/containerd/containerd/images"
 	ctdsnapshotters "github.com/containerd/containerd/pkg/snapshotters"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/imgutil/pull"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
 	"github.com/containerd/stargz-snapshotter/fs/source"
 )
 

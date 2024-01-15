@@ -28,8 +28,8 @@ import (
 
 	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/logging/jsonfile"
-	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/logging/jsonfile"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/docker/go-units"
 	"github.com/fahedouch/go-logrotate"
 )

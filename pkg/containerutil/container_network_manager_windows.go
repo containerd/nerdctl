@@ -25,9 +25,9 @@ import (
 	"github.com/containerd/containerd/pkg/netns"
 	gocni "github.com/containerd/go-cni"
 
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/containerd/nerdctl/pkg/ocihook"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/netutil"
+	"github.com/containerd/nerdctl/v2/pkg/ocihook"
 )
 
 type cniNetworkManagerPlatform struct {

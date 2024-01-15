@@ -25,7 +25,7 @@ import (
 
 	"github.com/containerd/containerd/contrib/nvidia"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
 // GPUReq is a request for GPUs.

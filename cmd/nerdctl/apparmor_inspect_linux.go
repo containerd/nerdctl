@@ -19,10 +19,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 
-	"github.com/containerd/nerdctl/pkg/cmd/apparmor"
-	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/apparmor"
+	"github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/spf13/cobra"
 )
 

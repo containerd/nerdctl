@@ -32,9 +32,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 )

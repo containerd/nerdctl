@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
 // CreateSoci creates a SOCI index(`rawRef`)

@@ -25,7 +25,7 @@ import (
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	b4nnoci "github.com/rootless-containers/bypass4netns/pkg/oci"
 )

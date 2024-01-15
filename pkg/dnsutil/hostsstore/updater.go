@@ -26,7 +26,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/v2/pkg/netutil"
 )
 
 // newUpdater creates an updater for hostsD (/var/lib/nerdctl/<ADDRHASH>/etchosts)

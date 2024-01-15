@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func TestComposeRemove(t *testing.T) {

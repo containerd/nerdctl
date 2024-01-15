@@ -23,9 +23,9 @@ import (
 	"testing"
 
 	"github.com/Microsoft/hcsshim"
-	"github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/containerd/nerdctl/pkg/netutil"
-	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/netutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
 

@@ -19,7 +19,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	"github.com/spf13/cobra"
 )

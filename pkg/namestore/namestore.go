@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd/identifiers"
-	"github.com/containerd/nerdctl/pkg/lockutil"
+	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 )
 
 func New(dataStore, ns string) (NameStore, error) {

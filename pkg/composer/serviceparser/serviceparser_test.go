@@ -24,9 +24,9 @@ import (
 	"testing"
 
 	"github.com/compose-spec/compose-go/types"
-	"github.com/containerd/nerdctl/pkg/composer/projectloader"
-	"github.com/containerd/nerdctl/pkg/strutil"
-	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/composer/projectloader"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
 

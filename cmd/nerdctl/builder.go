@@ -23,8 +23,8 @@ import (
 	"strings"
 
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/buildkitutil"
-	"github.com/containerd/nerdctl/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/spf13/cobra"
 )
 

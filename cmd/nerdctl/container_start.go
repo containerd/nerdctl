@@ -18,10 +18,10 @@ package main
 
 import (
 	"github.com/containerd/containerd"
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/cmd/container"
-	"github.com/containerd/nerdctl/pkg/consoleutil"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
+	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
 	"github.com/spf13/cobra"
 )
 

@@ -29,7 +29,7 @@ import (
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/mountutil/volumestore"
+	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 	"github.com/docker/go-units"
 	mobymount "github.com/moby/sys/mount"
 	"github.com/opencontainers/runtime-spec/specs-go"

@@ -22,7 +22,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/v2/pkg/netutil"
 )
 
 type Found struct {

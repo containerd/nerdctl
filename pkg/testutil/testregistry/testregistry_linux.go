@@ -23,9 +23,9 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/containerd/nerdctl/pkg/testutil"
-	"github.com/containerd/nerdctl/pkg/testutil/nettestutil"
-	"github.com/containerd/nerdctl/pkg/testutil/testca"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/testca"
 
 	"golang.org/x/crypto/bcrypt"
 	"gotest.tools/v3/assert"

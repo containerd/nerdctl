@@ -22,7 +22,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/containerd/nerdctl/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 
 	"github.com/containernetworking/plugins/pkg/ns"
 )

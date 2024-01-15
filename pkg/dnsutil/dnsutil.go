@@ -19,7 +19,7 @@ package dnsutil
 import (
 	"context"
 
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
 func GetSlirp4netnsDNS() ([]string, error) {

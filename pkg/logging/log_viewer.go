@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/labels/k8slabels"
+	"github.com/containerd/nerdctl/v2/pkg/labels/k8slabels"
 )
 
 // Type alias for functions which write out logs to the provided stdout/stderr Writers.

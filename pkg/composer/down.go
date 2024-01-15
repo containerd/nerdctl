@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
 type DownOptions struct {

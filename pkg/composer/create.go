@@ -25,8 +25,8 @@ import (
 
 	"github.com/compose-spec/compose-go/types"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
-	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"golang.org/x/sync/errgroup"
 )
 

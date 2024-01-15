@@ -24,7 +24,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
-	"github.com/containerd/nerdctl/pkg/referenceutil"
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/opencontainers/go-digest"
 )
 

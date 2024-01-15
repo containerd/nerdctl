@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
-	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func TestComposeDownRemoveUsedNetwork(t *testing.T) {

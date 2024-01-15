@@ -17,10 +17,10 @@
 package main
 
 import (
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/clientutil"
-	"github.com/containerd/nerdctl/pkg/cmd/image"
-	"github.com/containerd/nerdctl/pkg/imgutil"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/spf13/cobra"
 )
 

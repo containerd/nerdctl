@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func TestComposeBuild(t *testing.T) {

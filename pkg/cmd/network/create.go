@@ -21,8 +21,8 @@ import (
 	"io"
 
 	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/netutil"
 )
 
 func Create(options types.NetworkCreateOptions, stdout io.Writer) error {

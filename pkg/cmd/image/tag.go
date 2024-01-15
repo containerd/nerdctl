@@ -22,9 +22,9 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/idutil/imagewalker"
-	"github.com/containerd/nerdctl/pkg/referenceutil"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
 func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagOptions) error {

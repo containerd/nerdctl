@@ -26,7 +26,7 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/containerutil"
+	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 )
 
 func foldContainerFilters(ctx context.Context, containers []containerd.Container, filters []string) (*containerFilterContext, error) {

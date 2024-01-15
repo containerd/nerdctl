@@ -23,9 +23,9 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/composer/serviceparser"
-	"github.com/containerd/nerdctl/pkg/labels"
-	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
 // StopOptions stores all option input from `nerdctl compose stop`

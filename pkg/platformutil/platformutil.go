@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd/platforms"
-	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 

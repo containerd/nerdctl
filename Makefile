@@ -24,7 +24,7 @@ ifeq ($(GOOS),windows)
 	BIN_EXT := .exe
 endif
 
-PACKAGE := github.com/containerd/nerdctl
+PACKAGE := github.com/containerd/nerdctl/v2
 
 # distro builders might wanna override these
 PREFIX  ?= /usr/local

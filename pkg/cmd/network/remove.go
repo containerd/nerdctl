@@ -21,9 +21,9 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/nerdctl/pkg/api/types"
-	"github.com/containerd/nerdctl/pkg/idutil/netwalker"
-	"github.com/containerd/nerdctl/pkg/netutil"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/idutil/netwalker"
+	"github.com/containerd/nerdctl/v2/pkg/netutil"
 )
 
 func Remove(ctx context.Context, client *containerd.Client, options types.NetworkRemoveOptions) error {

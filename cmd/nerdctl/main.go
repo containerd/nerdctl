@@ -26,12 +26,12 @@ import (
 	"time"
 
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/pkg/config"
-	ncdefaults "github.com/containerd/nerdctl/pkg/defaults"
-	"github.com/containerd/nerdctl/pkg/errutil"
-	"github.com/containerd/nerdctl/pkg/logging"
-	"github.com/containerd/nerdctl/pkg/rootlessutil"
-	"github.com/containerd/nerdctl/pkg/version"
+	"github.com/containerd/nerdctl/v2/pkg/config"
+	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/errutil"
+	"github.com/containerd/nerdctl/v2/pkg/logging"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/version"
 	"github.com/fatih/color"
 	"github.com/pelletier/go-toml/v2"
 
