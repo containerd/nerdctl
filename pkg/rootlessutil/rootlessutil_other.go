@@ -25,7 +25,7 @@ package rootlessutil
 import (
 	"fmt"
 
-	"github.com/rootless-containers/rootlesskit/pkg/api/client"
+	"github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
 )
 
 // Always returns false on non-Linux platforms.

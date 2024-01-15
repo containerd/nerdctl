@@ -22,8 +22,8 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	gocni "github.com/containerd/go-cni"
-	"github.com/rootless-containers/rootlesskit/pkg/api/client"
-	"github.com/rootless-containers/rootlesskit/pkg/port"
+	"github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
+	"github.com/rootless-containers/rootlesskit/v2/pkg/port"
 )
 
 func NewRootlessCNIPortManager(client client.Client) (*RootlessCNIPortManager, error) {

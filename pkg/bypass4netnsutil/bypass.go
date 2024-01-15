@@ -26,7 +26,7 @@ import (
 	gocni "github.com/containerd/go-cni"
 	b4nnapi "github.com/rootless-containers/bypass4netns/pkg/api"
 	"github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
-	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
+	rlkclient "github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
 )
 
 func NewBypass4netnsCNIBypassManager(client client.Client, rlkClient rlkclient.Client) (*Bypass4netnsCNIBypassManager, error) {
