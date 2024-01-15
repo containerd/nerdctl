@@ -40,7 +40,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 
 	b4nndclient "github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
-	rlkclient "github.com/rootless-containers/rootlesskit/pkg/api/client"
+	rlkclient "github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
 )
 
 const (
