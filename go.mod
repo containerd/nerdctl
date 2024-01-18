@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Microsoft/go-winio v0.6.1
 	github.com/Microsoft/hcsshim v0.11.4
-	github.com/awslabs/soci-snapshotter v0.4.1
+	github.com/awslabs/soci-snapshotter v0.5.0
 	github.com/compose-spec/compose-go v1.20.2
 	github.com/containerd/accelerated-container-image v1.0.2
 	github.com/containerd/cgroups/v3 v3.0.3
@@ -64,7 +64,12 @@ require (
 	gotest.tools/v3 v3.5.1
 )
 
-require github.com/moby/sys/user v0.1.0 // indirect
+require (
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.5 // indirect
+	github.com/moby/sys/user v0.1.0 // indirect
+	k8s.io/cri-api v0.29.0-alpha.2 // indirect
+)
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
