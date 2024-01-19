@@ -248,8 +248,7 @@ jobs:
         run: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon -test.ipv6
 
   test-integration-windows:
-    # A "larger" runner is used for enabling Hyper-V containers
-    runs-on: windows-2022-8-cores
+    runs-on: windows-2022
     timeout-minutes: 30
     defaults:
       run:
