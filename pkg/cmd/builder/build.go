@@ -108,6 +108,12 @@ func Build(ctx context.Context, client *containerd.Client, options types.Builder
 			if _, err := imageService.Create(ctx, image); err != nil {
 				// if already exists; skip.
 				if errors.Is(err, errdefs.ErrAlreadyExists) {
+					if err = imageService.Delete(ctx, targetRef); err != nil {
+						return err
+					}
+					if _, err = imageService.Create(ctx, image); err != nil {
+						return err
+					}
 					continue
 				}
 				return fmt.Errorf("unable to tag image: %s", err)
