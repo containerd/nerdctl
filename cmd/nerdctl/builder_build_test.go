@@ -334,23 +334,25 @@ func TestBuildMultipleTags(t *testing.T) {
 	defer base.Cmd("builder", "prune").Run()
 	img := testutil.Identifier(t)
 	imgWithNoTag, imgWithCustomTag := fmt.Sprintf("%s%d", img, 2), fmt.Sprintf("%s%d:hello", img, 3)
-	defer base.Cmd("rmi", img).Run()
-	defer base.Cmd("rmi", imgWithNoTag).Run()
-	defer base.Cmd("rmi", imgWithCustomTag).Run()
+	defer base.Cmd("rmi", img).AssertOK()
+	defer base.Cmd("rmi", imgWithNoTag).AssertOK()
+	defer base.Cmd("rmi", imgWithCustomTag).AssertOK()
 
-	dockerfile := fmt.Sprintf(`FROM %s
-CMD ["echo", "nerdctl-build-test-string"]
-	`, testutil.CommonImage)
+	buildOutputs := []string{"nerdctl-build-test-string", "nerdctl-build-test-string-rebuild"}
+	for _, output := range buildOutputs {
+		dockerfile := fmt.Sprintf(`FROM %s
+		CMD ["echo", "%s"]
+			`, testutil.CommonImage, output)
+		buildCtx, err := createBuildContext(dockerfile)
+		assert.NilError(t, err)
+		defer os.RemoveAll(buildCtx)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
-
-	base.Cmd("build", "-t", img, buildCtx).AssertOK()
-	base.Cmd("build", buildCtx, "-t", img, "-t", imgWithNoTag, "-t", imgWithCustomTag).AssertOK()
-	base.Cmd("run", "--rm", img).AssertOutExactly("nerdctl-build-test-string\n")
-	base.Cmd("run", "--rm", imgWithNoTag).AssertOutExactly("nerdctl-build-test-string\n")
-	base.Cmd("run", "--rm", imgWithCustomTag).AssertOutExactly("nerdctl-build-test-string\n")
+		base.Cmd("build", "-t", img, buildCtx).AssertOK()
+		base.Cmd("build", buildCtx, "-t", img, "-t", imgWithNoTag, "-t", imgWithCustomTag).AssertOK()
+		base.Cmd("run", "--rm", img).AssertOutExactly(output + "\n")
+		base.Cmd("run", "--rm", imgWithNoTag).AssertOutExactly(output + "\n")
+		base.Cmd("run", "--rm", imgWithCustomTag).AssertOutExactly(output + "\n")
+	}
 }
 
 func TestBuildWithContainerfile(t *testing.T) {
