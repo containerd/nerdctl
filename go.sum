@@ -13,8 +13,8 @@ github.com/Microsoft/go-winio v0.6.1 h1:9/kr64B9VUZrLm5YYwbGtUJnMgqWVOdUAXu6Migc
 github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5+sAH+4kjUM=
 github.com/Microsoft/hcsshim v0.11.4 h1:68vKo2VN8DE9AdN4tnkWnmdhqdbpUFM8OF3Airm7fz8=
 github.com/Microsoft/hcsshim v0.11.4/go.mod h1:smjE4dvqPX9Zldna+t5FG3rnoHhaB7QYxPRqGcpAD9w=
-github.com/awslabs/soci-snapshotter v0.4.1 h1:f1TdTG5QZ1B6umgSPQfM1pSXDlMZu+raCKWP4QkRYL8=
-github.com/awslabs/soci-snapshotter v0.4.1/go.mod h1:faOXa3a6SsMRln4misZi82nAa4ez8Nu9i5N39kQyukY=
+github.com/awslabs/soci-snapshotter v0.0.0-20240123154419-8d2b306690f9 h1:vs0FZN3wPuaCyQOiPVlJLGmdPB6xxz6WaTWEyT3ufrM=
+github.com/awslabs/soci-snapshotter v0.0.0-20240123154419-8d2b306690f9/go.mod h1:x3yL5YDlNdBfSZnGTccnV5eVITaHaQLkg9QVnql1HQQ=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 h1:DDGfHa7BWjL4YnC6+E63dPcxHo2sUxDIu8g3QgEJdRY=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869/go.mod h1:Ekp36dRnpXw/yCqJaO+ZrUyxD+3VXMFFr56k5XYrpB4=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
@@ -264,7 +264,7 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
 github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
-github.com/prometheus/procfs v0.11.1 h1:xRC8Iq1yyca5ypa9n1EZnWZkt7dwcoRPQwX/5gwaUuI=
+github.com/prometheus/procfs v0.12.0 h1:jluTpSng7V9hY0O2R9DzzJHYb2xULk9VTR1V1R/k6Bo=
 github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjRBZyWFQ=
 github.com/rootless-containers/bypass4netns v0.4.0 h1:7pcI4XWnOMQkgCsPKMXxMzQKhZUjaQ8J1n+eIYiHS0Y=
 github.com/rootless-containers/bypass4netns v0.4.0/go.mod h1:RPNWMSRT951DMtq9Xv72IZoJPWFeJL6Wg5pF79Lkano=
