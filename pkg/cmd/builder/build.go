@@ -32,7 +32,6 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/archive"
-	"github.com/containerd/containerd/platforms"
 	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -40,6 +39,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
+	"github.com/containerd/platforms"
 )
 
 func Build(ctx context.Context, client *containerd.Client, options types.BuilderBuildOptions) error {
