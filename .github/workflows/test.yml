@@ -77,11 +77,11 @@ jobs:
         # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
         include:
           - ubuntu: 20.04
-            containerd: v1.6.26
+            containerd: v1.6.28
           - ubuntu: 20.04
-            containerd: v1.7.11
+            containerd: v1.7.13
           - ubuntu: 22.04
-            containerd: v1.7.11
+            containerd: v1.7.13
           - ubuntu: 22.04
             containerd: main
     env:
@@ -113,7 +113,7 @@ jobs:
         # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
         include:
           - ubuntu: 22.04
-            containerd: v1.7.11
+            containerd: v1.7.13
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -157,32 +157,41 @@ jobs:
         # ubuntu-22.04: cgroup v1, ubuntu-22.04: cgroup v2
         include:
           - ubuntu: 20.04
-            containerd: v1.6.26
+            containerd: v1.6.28
+            rootlesskit: v1.1.1
             target: test-integration-rootless
           - ubuntu: 20.04
-            containerd: v1.7.11
+            containerd: v1.7.13
+            rootlesskit: v2.0.0
             target: test-integration-rootless
           - ubuntu: 22.04
-            containerd: v1.7.11
+            containerd: v1.7.13
+            rootlesskit: v1.1.1
             target: test-integration-rootless
           - ubuntu: 22.04
             containerd: main
+            rootlesskit: v2.0.0
             target: test-integration-rootless
           - ubuntu: 20.04
-            containerd: v1.6.26
+            containerd: v1.6.28
+            rootlesskit: v1.1.1
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 20.04
-            containerd: v1.7.11
+            containerd: v1.7.13
+            rootlesskit: v2.0.0
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 22.04
-            containerd: v1.7.11
+            containerd: v1.7.13
+            rootlesskit: v1.1.1
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 22.04
             containerd: main
+            rootlesskit: v2.0.0
             target: test-integration-rootless-port-slirp4netns
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
+      ROOTLESSKIT_VERSION: "${{ matrix.rootlesskit }}"
       TEST_TARGET: "${{ matrix.target }}"
     steps:
       - uses: actions/checkout@v4.1.1
@@ -191,7 +200,7 @@ jobs:
       - name: "Register QEMU (tonistiigi/binfmt)"
         run: docker run --privileged --rm tonistiigi/binfmt --install all
       - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
-        run: DOCKER_BUILDKIT=1 docker build -t ${TEST_TARGET} --target ${TEST_TARGET} --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+        run: DOCKER_BUILDKIT=1 docker build -t ${TEST_TARGET} --target ${TEST_TARGET} --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} --build-arg ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION} .
       - name: "Test (network driver=slirp4netns, port driver=builtin)"
         run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=1 ${TEST_TARGET}
 
@@ -267,7 +276,7 @@ jobs:
       - uses: actions/checkout@v4.1.1
         with:
           repository: containerd/containerd
-          ref: v1.7.11
+          ref: v1.7.13
           path: containerd
           fetch-depth: 1
       - name: "Set up CNI"
@@ -275,7 +284,7 @@ jobs:
         run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
       - name: "Set up containerd"
         env:
-          ctrdVersion: 1.7.11
+          ctrdVersion: 1.7.13
         run: powershell hack/configure-windows-ci.ps1
       # TODO: Run unit tests
       - name: "Run integration tests"
