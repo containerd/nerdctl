@@ -152,8 +152,13 @@ propagate_env_from() {
 cmd_entrypoint_nsenter() {
 	# No need to call init()
 	pid=$(cat "$XDG_RUNTIME_DIR/containerd-rootless/child_pid")
+	n=""
+	# If RootlessKit is running with `--detach-netns` mode, we do NOT enter the detached netns here
+	if [ ! -e "$XDG_RUNTIME_DIR/containerd-rootless/netns" ]; then
+		n="-n"
+	fi
 	propagate_env_from "$pid" ROOTLESSKIT_STATE_DIR ROOTLESSKIT_PARENT_EUID ROOTLESSKIT_PARENT_EGID
-	exec nsenter --no-fork --wd="$(pwd)" --preserve-credentials -m -n -U -t "$pid" -- "$@"
+	exec nsenter --no-fork --wd="$(pwd)" --preserve-credentials -m $n -U -t "$pid" -- "$@"
 }
 
 show_systemd_error() {
@@ -266,6 +271,10 @@ cmd_entrypoint_install_buildkit() {
 		exit 1
 	fi
 	BUILDKITD_FLAG="--oci-worker=true --oci-worker-rootless=true --containerd-worker=false"
+	if buildkitd --help | grep -q bridge; then
+		# Available since BuildKit v0.13
+		BUILDKITD_FLAG="${BUILDKITD_FLAG} --oci-worker-net=bridge"
+	fi
 	cat <<-EOT | install_systemd_unit "${SYSTEMD_BUILDKIT_UNIT}"
 		[Unit]
 		Description=BuildKit (Rootless)
@@ -306,6 +315,10 @@ cmd_entrypoint_install_buildkit_containerd() {
 	fi
 	if [ -n "${CONTAINERD_SNAPSHOTTER:-}" ]; then
 		BUILDKITD_FLAG="${BUILDKITD_FLAG} --containerd-worker-snapshotter=${CONTAINERD_SNAPSHOTTER}"
+	fi
+	if buildkitd --help | grep -q bridge; then
+		# Available since BuildKit v0.13
+		BUILDKITD_FLAG="${BUILDKITD_FLAG} --containerd-worker-net=bridge"
 	fi
 	cat <<-EOT | install_systemd_unit "${UNIT_NAME}"
 		[Unit]

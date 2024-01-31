@@ -38,6 +38,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/mountutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
@@ -461,7 +462,47 @@ func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 		}
 	}
 
+	if rootlessutil.IsRootless() {
+		detachedNetNS, err := rootlessutil.DetachedNetNS()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to check whether RootlessKit is running with --detach-netns: %w", err)
+		}
+		if detachedNetNS != "" {
+			// For rootless + host netns, we can't mount sysfs.
+			// We can't (non-recursively) bind mount /sys, either.
+			//
+			// TODO: consider to just rbind /sys from the host with rro,
+			// when rro is available (kernel >= 5.12, runc >= 1.1).
+			//
+			// Relevant: https://github.com/moby/buildkit/blob/v0.12.4/util/rootless/specconv/specconv_linux.go#L15-L34
+			specs = append(specs, withRemoveSysfs)
+		}
+	}
+
 	return specs, cOpts, nil
+}
+
+func withRemoveSysfs(_ context.Context, _ oci.Client, c *containers.Container, s *oci.Spec) error {
+	var hasSysfs bool
+	for _, mount := range s.Mounts {
+		if mount.Type == "sysfs" {
+			hasSysfs = true
+			break
+		}
+	}
+	if !hasSysfs {
+		// NOP, as the user has specified a custom /sys mount
+		return nil
+	}
+	var mounts []specs.Mount // nolint: prealloc
+	for _, mount := range s.Mounts {
+		if strings.HasPrefix(mount.Destination, "/sys") {
+			continue
+		}
+		mounts = append(mounts, mount)
+	}
+	s.Mounts = mounts
+	return nil
 }
 
 // types.NetworkOptionsManager implementation for CNI networking settings.

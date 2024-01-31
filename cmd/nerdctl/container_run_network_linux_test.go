@@ -494,6 +494,11 @@ func TestRunContainerWithMACAddress(t *testing.T) {
 }
 
 func TestHostsFileMounts(t *testing.T) {
+	if rootlessutil.IsRootless() {
+		if detachedNetNS, _ := rootlessutil.DetachedNetNS(); detachedNetNS != "" {
+			t.Skip("/etc/hosts is not writable")
+		}
+	}
 	base := testutil.NewBase(t)
 
 	base.Cmd("run", "--rm", testutil.CommonImage,

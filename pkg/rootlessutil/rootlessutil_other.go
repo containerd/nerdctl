@@ -66,3 +66,11 @@ func ParentMain(hostGatewayIP string) error {
 func RootlessContainredSockAddress() (string, error) {
 	return "", fmt.Errorf("cannot inspect RootlessKit state on non-Linux hosts")
 }
+
+func DetachedNetNS() (string, error) {
+	return "", nil
+}
+
+func WithDetachedNetNSIfAny(fn func() error) error {
+	return fn()
+}

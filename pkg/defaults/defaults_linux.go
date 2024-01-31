@@ -138,6 +138,7 @@ func HostsDirs() []string {
 
 // HostGatewayIP returns the non-loop-back host ip if available and returns empty string if running into error.
 func HostGatewayIP() string {
+	// no need to use [rootlessutil.WithDetachedNetNSIfAny] here
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return ""

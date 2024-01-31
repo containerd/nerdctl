@@ -17,11 +17,13 @@
 package rootlessutil
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 
+	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
 )
 
@@ -79,4 +81,41 @@ func RootlessContainredSockAddress() (string, error) {
 		return "", err
 	}
 	return filepath.Join(fmt.Sprintf("/proc/%d/root/run/containerd/containerd.sock", childPid)), nil
+}
+
+// DetachedNetNS returns non-empty netns path if RootlessKit is running with --detach-netns mode.
+// Otherwise returns "" without an error.
+func DetachedNetNS() (string, error) {
+	if !IsRootless() {
+		return "", nil
+	}
+	stateDir, err := RootlessKitStateDir()
+	if err != nil {
+		return "", err
+	}
+	return detachedNetNS(stateDir)
+}
+
+func detachedNetNS(stateDir string) (string, error) {
+	p := filepath.Join(stateDir, "netns")
+	if _, err := os.Stat(p); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", nil
+		}
+		return "", err
+	}
+	return p, nil
+}
+
+// WithDetachedNetNSIfAny executes fn in [DetachedNetNS] if RootlessKit is running with --detach-netns mode.
+// Otherwise it just executes fn in the current netns.
+func WithDetachedNetNSIfAny(fn func() error) error {
+	netns, err := DetachedNetNS()
+	if err != nil {
+		return err
+	}
+	if netns == "" {
+		return fn()
+	}
+	return ns.WithNetNSPath(netns, func(_ ns.NetNS) error { return fn() })
 }
