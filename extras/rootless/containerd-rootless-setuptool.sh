@@ -152,8 +152,13 @@ propagate_env_from() {
 cmd_entrypoint_nsenter() {
 	# No need to call init()
 	pid=$(cat "$XDG_RUNTIME_DIR/containerd-rootless/child_pid")
+	n=""
+	# If RootlessKit is running with `--detach-netns` mode, we do NOT enter the detached netns here
+	if [ ! -e "$XDG_RUNTIME_DIR/containerd-rootless/netns" ]; then
+		n="-n"
+	fi
 	propagate_env_from "$pid" ROOTLESSKIT_STATE_DIR ROOTLESSKIT_PARENT_EUID ROOTLESSKIT_PARENT_EGID
-	exec nsenter --no-fork --wd="$(pwd)" --preserve-credentials -m -n -U -t "$pid" -- "$@"
+	exec nsenter --no-fork --wd="$(pwd)" --preserve-credentials -m $n -U -t "$pid" -- "$@"
 }
 
 show_systemd_error() {
@@ -265,6 +270,11 @@ cmd_entrypoint_install_buildkit() {
 		ERROR "Install containerd first (\`$ARG0 install\`)"
 		exit 1
 	fi
+	BUILDKITD_FLAG="--oci-worker=true --oci-worker-rootless=true --containerd-worker=false"
+	if buildkitd --help | grep -q bridge; then
+		# Available since BuildKit v0.13
+		BUILDKITD_FLAG="${BUILDKITD_FLAG} --oci-worker-net=bridge"
+	fi
 	cat <<-EOT | install_systemd_unit "${SYSTEMD_BUILDKIT_UNIT}"
 		[Unit]
 		Description=BuildKit (Rootless)
@@ -272,7 +282,7 @@ cmd_entrypoint_install_buildkit() {
 
 		[Service]
 		Environment=PATH=$BIN:/sbin:/usr/sbin:$PATH
-		ExecStart="$REALPATH0" nsenter buildkitd
+		ExecStart="$REALPATH0" nsenter -- buildkitd ${BUILDKITD_FLAG}
 		ExecReload=/bin/kill -s HUP \$MAINPID
 		RestartSec=2
 		Restart=always
@@ -291,23 +301,12 @@ cmd_entrypoint_install_buildkit_containerd() {
 		ERROR "buildkitd (https://github.com/moby/buildkit) needs to be present under \$PATH"
 		exit 1
 	fi
-	if [ ! -f "${XDG_CONFIG_HOME}/buildkit/buildkitd.toml" ]; then
-		mkdir -p "${XDG_CONFIG_HOME}/buildkit"
-		cat <<-EOF >"${XDG_CONFIG_HOME}/buildkit/buildkitd.toml"
-			[worker.oci]
-			enabled = false
-
-			[worker.containerd]
-			enabled = true
-			rootless = true
-		EOF
-	fi
 	if ! systemctl --user --no-pager status "${SYSTEMD_CONTAINERD_UNIT}" >/dev/null 2>&1; then
 		ERROR "Install containerd first (\`$ARG0 install\`)"
 		exit 1
 	fi
 	UNIT_NAME=${SYSTEMD_BUILDKIT_UNIT}
-	BUILDKITD_FLAG=
+	BUILDKITD_FLAG="--oci-worker=false --containerd-worker=true --containerd-worker-rootless=true"
 	if [ -n "${CONTAINERD_NAMESPACE:-}" ]; then
 		UNIT_NAME="${CONTAINERD_NAMESPACE}-${SYSTEMD_BUILDKIT_UNIT}"
 		BUILDKITD_FLAG="${BUILDKITD_FLAG} --addr=unix://${XDG_RUNTIME_DIR}/buildkit-${CONTAINERD_NAMESPACE}/buildkitd.sock --root=${XDG_DATA_HOME}/buildkit-${CONTAINERD_NAMESPACE} --containerd-worker-namespace=${CONTAINERD_NAMESPACE}"
@@ -316,6 +315,10 @@ cmd_entrypoint_install_buildkit_containerd() {
 	fi
 	if [ -n "${CONTAINERD_SNAPSHOTTER:-}" ]; then
 		BUILDKITD_FLAG="${BUILDKITD_FLAG} --containerd-worker-snapshotter=${CONTAINERD_SNAPSHOTTER}"
+	fi
+	if buildkitd --help | grep -q bridge; then
+		# Available since BuildKit v0.13
+		BUILDKITD_FLAG="${BUILDKITD_FLAG} --containerd-worker-net=bridge"
 	fi
 	cat <<-EOT | install_systemd_unit "${UNIT_NAME}"
 		[Unit]
@@ -521,7 +524,10 @@ cmd_entrypoint_uninstall_buildkit() {
 	init
 	uninstall_systemd_unit "${SYSTEMD_BUILDKIT_UNIT}"
 	INFO "This uninstallation tool does NOT remove data."
-	INFO "To remove data, run: \`$BIN/rootlesskit rm -rf ${XDG_DATA_HOME}/buildkit"
+	INFO "To remove data, run: \`$BIN/rootlesskit rm -rf ${XDG_DATA_HOME}/buildkit\`"
+	if [ -e "${XDG_CONFIG_HOME}/buildkit/buildkitd.toml" ]; then
+		INFO "You may also want to remove the daemon config: \`rm -f ${XDG_CONFIG_HOME}/buildkit/buildkitd.toml\`"
+	fi
 }
 
 # CLI subcommand: "uninstall-buildkit-containerd"

@@ -77,6 +77,16 @@ func ParentMain(hostGatewayIP string) error {
 		return err
 	}
 
+	detachedNetNSPath, err := detachedNetNS(stateDir)
+	if err != nil {
+		return err
+	}
+	detachNetNSMode := detachedNetNSPath != ""
+	log.L.Debugf("RootlessKit detach-netns mode: %v", detachNetNSMode)
+	if err != nil {
+		return err
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -92,9 +102,12 @@ func ParentMain(hostGatewayIP string) error {
 		"-r/",     // root dir (busybox nsenter wants this to be explicitly specified),
 		"-w" + wd, // work dir
 		"--preserve-credentials",
-		"-m", "-n", "-U",
+		"-m", "-U",
 		"-t", strconv.Itoa(childPid),
 		"-F", // no fork
+	}
+	if !detachNetNSMode {
+		args = append(args, "-n")
 	}
 	args = append(args, os.Args...)
 	log.L.Debugf("rootless parent main: executing %q with %v", arg0, args)

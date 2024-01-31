@@ -130,6 +130,36 @@ $ nerdctl run -it --rm -p 8080:80 --label nerdctl/bypass4netns=true alpine
 
 More detail is available at [https://github.com/rootless-containers/bypass4netns/blob/master/README.md](https://github.com/rootless-containers/bypass4netns/blob/master/README.md)
 
+## Configuring RootlessKit
+
+Rootless containerd recognizes the following environment variables to configure the behavior of [RootlessKit](https://github.com/rootless-containers/rootlesskit):
+
+* `CONTAINERD_ROOTLESS_ROOTLESSKIT_STATE_DIR=DIR`: the rootlesskit state dir. Defaults to `$XDG_RUNTIME_DIR/containerd-rootless`.
+* `CONTAINERD_ROOTLESS_ROOTLESSKIT_NET=(slirp4netns|vpnkit|lxc-user-nic)`: the rootlesskit network driver. Defaults to "slirp4netns" if slirp4netns (>= v0.4.0) is installed. Otherwise defaults to "vpnkit".
+* `CONTAINERD_ROOTLESS_ROOTLESSKIT_MTU=NUM`: the MTU value for the rootlesskit network driver. Defaults to 65520 for slirp4netns, 1500 for other drivers.
+* `CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=(builtin|slirp4netns)`: the rootlesskit port driver. Defaults to "builtin".
+* `CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX=(auto|true|false)`: whether to protect slirp4netns with a dedicated mount namespace. Defaults to "auto".
+* `CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP=(auto|true|false)`: whether to protect slirp4netns with seccomp. Defaults to "auto".
+* `CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS=(auto|true|false)`: whether to launch rootlesskit with the "detach-netns" mode.
+  Defaults to "auto", which is resolved to "true" if RootlessKit >= 2.0 is installed.
+  The "detached-netns" mode accelerates `nerdctl (pull|push|build)` and enables `nerdctl run --net=host`,
+  however, there is a relatively minor drawback with BuildKit prior to v0.13:
+  the host loopback IP address (127.0.0.1) and abstract sockets are exposed to Dockerfile's "RUN" instructions during `nerdctl build` (not `nerdctl run`).
+  The drawback is fixed in BuildKit v0.13. Upgrading from a prior version of BuildKit needs removing the old systemd unit:
+  `containerd-rootless-setuptool.sh uninstall-buildkit && rm -f ~/.config/buildkit/buildkitd.toml`
+
+To set these variables, create `~/.config/systemd/user/containerd.service.d/override.conf` as follows:
+```ini
+[Service]
+Environment=CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS="false"
+```
+
+And then run the following commands:
+```bash
+systemctl --user daemon-reload
+systemctl --user restart containerd
+```
+
 ## Troubleshooting
 
 ### Hint to Fedora users

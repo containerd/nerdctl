@@ -50,6 +50,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/namestore"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	dockercliopts "github.com/docker/cli/opts"
 	dockeropts "github.com/docker/docker/opts"
@@ -418,6 +419,29 @@ func GenerateLogURI(dataStore string) (*url.URL, error) {
 }
 
 func withNerdctlOCIHook(cmd string, args []string) (oci.SpecOpts, error) {
+	if rootlessutil.IsRootless() {
+		detachedNetNS, err := rootlessutil.DetachedNetNS()
+		if err != nil {
+			return nil, fmt.Errorf("failed to check whether RootlessKit is running with --detach-netns: %w", err)
+		}
+		if detachedNetNS != "" {
+			// Rewrite {cmd, args} if RootlessKit is running with --detach-netns, so that the hook can gain
+			// CAP_NET_ADMIN in the namespaces.
+			//   - Old:
+			//     - cmd:  "/usr/local/bin/nerdctl"
+			//     - args: {"--data-root=/foo", "internal", "oci-hook"}
+			//   - New:
+			//     - cmd:  "/usr/bin/nsenter"
+			//     - args: {"-n/run/user/1000/containerd-rootless/netns", "-F", "--", "/usr/local/bin/nerdctl", "--data-root=/foo", "internal", "oci-hook"}
+			oldCmd, oldArgs := cmd, args
+			cmd, err = exec.LookPath("nsenter")
+			if err != nil {
+				return nil, err
+			}
+			args = append([]string{"-n" + detachedNetNS, "-F", "--", oldCmd}, oldArgs...)
+		}
+	}
+
 	args = append([]string{cmd}, append(args, "internal", "oci-hook")...)
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
 		if s.Hooks == nil {

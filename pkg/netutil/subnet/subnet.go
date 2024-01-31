@@ -19,11 +19,17 @@ package subnet
 import (
 	"fmt"
 	"net"
+
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
 func GetLiveNetworkSubnets() ([]*net.IPNet, error) {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
+	var addrs []net.Addr
+	if err := rootlessutil.WithDetachedNetNSIfAny(func() error {
+		var err2 error
+		addrs, err2 = net.InterfaceAddrs()
+		return err2
+	}); err != nil {
 		return nil, err
 	}
 	nets := make([]*net.IPNet, 0, len(addrs))

@@ -73,14 +73,21 @@ func TestIPFSAddress(t *testing.T) {
 
 func runIPFSDaemonContainer(t *testing.T, base *testutil.Base) (ipfsAddress string, done func()) {
 	name := "test-ipfs-address"
-	base.Cmd("run", "-d", "--name", name, "--entrypoint=/bin/sh", testutil.KuboImage, "-c", "ipfs init && ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001 && ipfs daemon --offline").AssertOK()
-	iplines := base.Cmd("inspect", name, "-f", "'{{json .NetworkSettings.IPAddress}}'").OutLines()
-	t.Logf("IPAddress=%v", iplines)
-	assert.Equal(t, len(iplines), 2)
-	matches := iplineRegexp.FindStringSubmatch(iplines[0])
-	t.Logf("ip address matches=%v", matches)
-	assert.Equal(t, len(matches), 2)
-	ipfsaddr := fmt.Sprintf("/ip4/%s/tcp/5001", matches[1])
+	var ipfsaddr string
+	if detachedNetNS, _ := rootlessutil.DetachedNetNS(); detachedNetNS != "" {
+		// detached-netns mode can't use .NetworkSettings.IPAddress, because the daemon and CNI has different network namespaces
+		base.Cmd("run", "-d", "-p", "127.0.0.1:5999:5999", "--name", name, "--entrypoint=/bin/sh", testutil.KuboImage, "-c", "ipfs init && ipfs config Addresses.API /ip4/0.0.0.0/tcp/5999 && ipfs daemon --offline").AssertOK()
+		ipfsaddr = "/ip4/127.0.0.1/tcp/5999"
+	} else {
+		base.Cmd("run", "-d", "--name", name, "--entrypoint=/bin/sh", testutil.KuboImage, "-c", "ipfs init && ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001 && ipfs daemon --offline").AssertOK()
+		iplines := base.Cmd("inspect", name, "-f", "'{{json .NetworkSettings.IPAddress}}'").OutLines()
+		t.Logf("IPAddress=%v", iplines)
+		assert.Equal(t, len(iplines), 2)
+		matches := iplineRegexp.FindStringSubmatch(iplines[0])
+		t.Logf("ip address matches=%v", matches)
+		assert.Equal(t, len(matches), 2)
+		ipfsaddr = fmt.Sprintf("/ip4/%s/tcp/5001", matches[1])
+	}
 	return ipfsaddr, func() {
 		base.Cmd("kill", "test-ipfs-address").AssertOK()
 		base.Cmd("rm", "test-ipfs-address").AssertOK()

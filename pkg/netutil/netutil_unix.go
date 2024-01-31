@@ -31,6 +31,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/systemutil"
 	"github.com/mitchellh/mapstructure"
@@ -322,11 +323,13 @@ func guessFirewallPluginVersion(stderr string) (*semver.Version, error) {
 }
 
 func removeBridgeNetworkInterface(netIf string) error {
-	link, err := netlink.LinkByName(netIf)
-	if err == nil {
-		if err := netlink.LinkDel(link); err != nil {
-			return fmt.Errorf("failed to remove network interface %s: %v", netIf, err)
+	return rootlessutil.WithDetachedNetNSIfAny(func() error {
+		link, err := netlink.LinkByName(netIf)
+		if err == nil {
+			if err := netlink.LinkDel(link); err != nil {
+				return fmt.Errorf("failed to remove network interface %s: %v", netIf, err)
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }

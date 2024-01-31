@@ -28,7 +28,7 @@
 # External dependencies:
 # * newuidmap and newgidmap needs to be installed.
 # * /etc/subuid and /etc/subgid needs to be configured for the current user.
-# * RootlessKit (>= v0.10.0) needs to be installed. RootlessKit >= v0.14.1 is recommended.
+# * RootlessKit (>= v0.10.0) needs to be installed. RootlessKit >= v2.0.0 is recommended.
 # * Either one of slirp4netns (>= v0.4.0), VPNKit, lxc-user-nic needs to be installed. slirp4netns >= v1.1.7 is recommended.
 #
 # Recognized environment variables:
@@ -38,6 +38,15 @@
 # * CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=(builtin|slirp4netns): the rootlesskit port driver. Defaults to "builtin".
 # * CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX=(auto|true|false): whether to protect slirp4netns with a dedicated mount namespace. Defaults to "auto".
 # * CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP=(auto|true|false): whether to protect slirp4netns with seccomp. Defaults to "auto".
+# * CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS=(auto|true|false): whether to launch rootlesskit with the "detach-netns" mode.
+#   Defaults to "auto", which is resolved to "true" if RootlessKit >= 2.0 is installed.
+#   The "detached-netns" mode accelerates `nerdctl (pull|push|build)` and enables `nerdctl run --net=host`,
+#   however, there is a relatively minor drawback with BuildKit prior to v0.13:
+#   the host loopback IP address (127.0.0.1) and abstract sockets are exposed to Dockerfile's "RUN" instructions during `nerdctl build` (not `nerdctl run`).
+#   The drawback is fixed in BuildKit v0.13. Upgrading from a prior version of BuildKit needs removing the old systemd unit:
+#   `containerd-rootless-setuptool.sh uninstall-buildkit && rm -f ~/.config/buildkit/buildkitd.toml`
+
+# See also: https://github.com/containerd/nerdctl/blob/main/docs/rootless.md#configuring-rootlesskit
 
 set -e
 if ! [ -w $XDG_RUNTIME_DIR ]; then
@@ -69,6 +78,7 @@ if [ -z $_CONTAINERD_ROOTLESS_CHILD ]; then
 	: "${CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER:=builtin}"
 	: "${CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX:=auto}"
 	: "${CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP:=auto}"
+	: "${CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS:=auto}"
 	net=$CONTAINERD_ROOTLESS_ROOTLESSKIT_NET
 	mtu=$CONTAINERD_ROOTLESS_ROOTLESSKIT_MTU
 	if [ -z $net ]; then
@@ -107,6 +117,25 @@ if [ -z $_CONTAINERD_ROOTLESS_CHILD ]; then
 			export _CONTAINERD_ROOTLESS_SELINUX
 		fi
 	fi
+
+	case "$CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS" in
+	auto)
+		if rootlesskit --help | grep -qw -- "--detach-netns"; then
+			CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS=--detach-netns $CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS
+		fi
+		;;
+	1 | true)
+		CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS=--detach-netns $CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS
+		;;
+	0 | false)
+		# NOP
+		;;
+	*)
+		echo "Unknown CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS value: $CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS"
+		exit 1
+		;;
+	esac
+
 	# Re-exec the script via RootlessKit, so as to create unprivileged {user,mount,network} namespaces.
 	#
 	# --copy-up allows removing/creating files in the directories by creating tmpfs and symlinks

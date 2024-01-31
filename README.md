@@ -129,7 +129,7 @@ In addition to containerd, the following components should be installed:
 - [BuildKit](https://github.com/moby/buildkit) (OPTIONAL): for using `nerdctl build`. BuildKit daemon (`buildkitd`) needs to be running. See also [the document about setting up BuildKit](./docs/build.md).
   - v0.11.0 or later is highly recommended. Some features, such as pruning caches with `nerdctl system prune`, do not work with older versions.
 - [RootlessKit](https://github.com/rootless-containers/rootlesskit) and [slirp4netns](https://github.com/rootless-containers/slirp4netns) (OPTIONAL): for [Rootless mode](./docs/rootless.md)
-  - RootlessKit needs to be v0.10.0 or later. v0.14.1 or later is recommended.
+  - RootlessKit needs to be v0.10.0 or later. v2.0.0 or later is recommended.
   - slirp4netns needs to be v0.4.0 or later. v1.1.7 or later is recommended.
 
 These dependencies are included in `nerdctl-full-<VERSION>-<OS>-<ARCH>.tar.gz`, but not included in `nerdctl-<VERSION>-<OS>-<ARCH>.tar.gz`.
