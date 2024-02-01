@@ -45,6 +45,8 @@ type BuilderBuildOptions struct {
 	Secret []string
 	// Allow extra privileged entitlement, e.g. network.host, security.insecure
 	Allow []string
+	// Attestation parameters (format: "type=sbom,generator=image")"
+	Attest []string
 	// SSH agent socket or keys to expose to the build (format: default|<id>[=<socket>|<key>[,<key>]])
 	SSH []string
 	// Quiet suppress the build output and print image ID on success

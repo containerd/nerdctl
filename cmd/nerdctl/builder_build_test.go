@@ -498,3 +498,50 @@ func TestBuildNetworkShellCompletion(t *testing.T) {
 	networkName := "default"
 	base.Cmd(gsc, "build", "--network", "").AssertOutContains(networkName)
 }
+
+func TestBuildAttestation(t *testing.T) {
+	testutil.DockerIncompatible(t) // ref:https://github.com/docker/buildx/issues/1655
+
+	t.Parallel()
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	if testutil.GetTarget() == testutil.Docker {
+		base.Env = append(base.Env, "DOCKER_BUILDKIT=1")
+	}
+	defer base.Cmd("builder", "prune").Run()
+
+	dockerfile := "FROM " + testutil.NginxAlpineImage
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	// Test sbom
+	outputSBOMDir := t.TempDir()
+	base.Cmd("build", "--sbom=true", "-o", fmt.Sprintf("type=local,dest=%s", outputSBOMDir), buildCtx).AssertOK()
+	const testSBOMFileName = "sbom.spdx.json"
+	testSBOMFilePath := filepath.Join(outputSBOMDir, testSBOMFileName)
+	if _, err := os.Stat(testSBOMFilePath); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test provenance
+	outputProvenanceDir := t.TempDir()
+	base.Cmd("build", "--provenance=mode=min", "-o", fmt.Sprintf("type=local,dest=%s", outputProvenanceDir), buildCtx).AssertOK()
+	const testProvenanceFileName = "provenance.json"
+	testProvenanceFilePath := filepath.Join(outputProvenanceDir, testProvenanceFileName)
+	if _, err := os.Stat(testProvenanceFilePath); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test attestation
+	outputAttestationDir := t.TempDir()
+	base.Cmd("build", "--attest=type=provenance,mode=min", "--attest=type=sbom", "-o", fmt.Sprintf("type=local,dest=%s", outputAttestationDir), buildCtx).AssertOK()
+	testSBOMFilePath = filepath.Join(outputAttestationDir, testSBOMFileName)
+	testProvenanceFilePath = filepath.Join(outputAttestationDir, testProvenanceFileName)
+	if _, err := os.Stat(testSBOMFilePath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(testProvenanceFilePath); err != nil {
+		t.Fatal(err)
+	}
+}
