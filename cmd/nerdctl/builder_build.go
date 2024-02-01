@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -50,13 +51,16 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 	buildCommand.Flags().Bool("no-cache", false, "Do not use cache when building the image")
 	buildCommand.Flags().StringP("output", "o", "", "Output destination (format: type=local,dest=path)")
 	buildCommand.Flags().String("progress", "auto", "Set type of progress output (auto, plain, tty). Use plain to show container output")
+	buildCommand.Flags().String("provenance", "", "Shorthand for \"--attest=type=provenance\"")
 	buildCommand.Flags().StringArray("secret", nil, "Secret file to expose to the build: id=mysecret,src=/local/secret")
 	buildCommand.Flags().StringArray("allow", nil, "Allow extra privileged entitlement, e.g. network.host, security.insecure")
 	buildCommand.RegisterFlagCompletionFunc("allow", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"network.host", "security.insecure"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	buildCommand.Flags().StringArray("attest", nil, "Attestation parameters (format: \"type=sbom,generator=image\")")
 	buildCommand.Flags().StringArray("ssh", nil, "SSH agent socket or keys to expose to the build (format: default|<id>[=<socket>|<key>[,<key>]])")
 	buildCommand.Flags().BoolP("quiet", "q", false, "Suppress the build output and print image ID on success")
+	buildCommand.Flags().String("sbom", "", "Shorthand for \"--attest=type=sbom\"")
 	buildCommand.Flags().StringArray("cache-from", nil, "External cache sources (eg. user/app:cache, type=local,src=path/to/dir)")
 	buildCommand.Flags().StringArray("cache-to", nil, "Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir)")
 	buildCommand.Flags().Bool("rm", true, "Remove intermediate containers after a successful build")
@@ -165,6 +169,26 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
 	}
+
+	attest, err := cmd.Flags().GetStringArray("attest")
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
+	sbom, err := cmd.Flags().GetString("sbom")
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
+	if sbom != "" {
+		attest = append(attest, canonicalizeAttest("sbom", sbom))
+	}
+	provenance, err := cmd.Flags().GetString("provenance")
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
+	if provenance != "" {
+		attest = append(attest, canonicalizeAttest("provenance", provenance))
+	}
+
 	return types.BuilderBuildOptions{
 		GOptions:     globalOptions,
 		BuildKitHost: buildKitHost,
@@ -179,6 +203,7 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 		NoCache:      noCache,
 		Secret:       secret,
 		Allow:        allow,
+		Attest:       attest,
 		SSH:          ssh,
 		CacheFrom:    cacheFrom,
 		CacheTo:      cacheTo,
@@ -221,4 +246,15 @@ func buildAction(cmd *cobra.Command, args []string) error {
 	defer cancel()
 
 	return builder.Build(ctx, client, options)
+}
+
+// canonicalizeAttest is from https://github.com/docker/buildx/blob/v0.12/util/buildflags/attests.go##L13-L21
+func canonicalizeAttest(attestType string, in string) string {
+	if in == "" {
+		return ""
+	}
+	if b, err := strconv.ParseBool(in); err == nil {
+		return fmt.Sprintf("type=%s,disabled=%t", attestType, !b)
+	}
+	return fmt.Sprintf("type=%s,%s", attestType, in)
 }

@@ -498,3 +498,60 @@ func TestBuildNetworkShellCompletion(t *testing.T) {
 	networkName := "default"
 	base.Cmd(gsc, "build", "--network", "").AssertOutContains(networkName)
 }
+
+func buildWithNamedBuilder(base *testutil.Base, builderName string, args ...string) *testutil.Cmd {
+	buildArgs := []string{"build"}
+	if testutil.GetTarget() == testutil.Docker {
+		buildArgs = append(buildArgs, "--builder", builderName)
+	}
+	buildArgs = append(buildArgs, args...)
+	return base.Cmd(buildArgs...)
+}
+
+func TestBuildAttestation(t *testing.T) {
+	t.Parallel()
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	builderName := testutil.Identifier(t)
+	if testutil.GetTarget() == testutil.Docker {
+		// create named builder for docker
+		defer base.Cmd("buildx", "rm", builderName).AssertOK()
+		base.Cmd("buildx", "create", "--name", builderName, "--bootstrap", "--use").AssertOK()
+	}
+	defer base.Cmd("builder", "prune").Run()
+
+	dockerfile := "FROM " + testutil.NginxAlpineImage
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	// Test sbom
+	outputSBOMDir := t.TempDir()
+	buildWithNamedBuilder(base, builderName, "--sbom=true", "-o", fmt.Sprintf("type=local,dest=%s", outputSBOMDir), buildCtx).AssertOK()
+	const testSBOMFileName = "sbom.spdx.json"
+	testSBOMFilePath := filepath.Join(outputSBOMDir, testSBOMFileName)
+	if _, err := os.Stat(testSBOMFilePath); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test provenance
+	outputProvenanceDir := t.TempDir()
+	buildWithNamedBuilder(base, builderName, "--provenance=mode=min", "-o", fmt.Sprintf("type=local,dest=%s", outputProvenanceDir), buildCtx).AssertOK()
+	const testProvenanceFileName = "provenance.json"
+	testProvenanceFilePath := filepath.Join(outputProvenanceDir, testProvenanceFileName)
+	if _, err := os.Stat(testProvenanceFilePath); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test attestation
+	outputAttestationDir := t.TempDir()
+	buildWithNamedBuilder(base, builderName, "--attest=type=provenance,mode=min", "--attest=type=sbom", "-o", fmt.Sprintf("type=local,dest=%s", outputAttestationDir), buildCtx).AssertOK()
+	testSBOMFilePath = filepath.Join(outputAttestationDir, testSBOMFileName)
+	testProvenanceFilePath = filepath.Join(outputAttestationDir, testProvenanceFileName)
+	if _, err := os.Stat(testSBOMFilePath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(testProvenanceFilePath); err != nil {
+		t.Fatal(err)
+	}
+}

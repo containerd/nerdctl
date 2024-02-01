@@ -338,6 +338,16 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		buildctlArgs = append(buildctlArgs, "--allow="+s)
 	}
 
+	for _, s := range strutil.DedupeStrSlice(options.Attest) {
+		optAttestType, optAttestAttrs, _ := strings.Cut(s, ",")
+		if strings.HasPrefix(optAttestType, "type=") {
+			optAttestType := strings.TrimPrefix(optAttestType, "type=")
+			buildctlArgs = append(buildctlArgs, fmt.Sprintf("--opt=attest:%s=%s", optAttestType, optAttestAttrs))
+		} else {
+			return "", nil, false, "", nil, nil, fmt.Errorf("attestation type not specified")
+		}
+	}
+
 	for _, s := range strutil.DedupeStrSlice(options.SSH) {
 		buildctlArgs = append(buildctlArgs, "--ssh="+s)
 	}
