@@ -50,8 +50,8 @@ github.com/containerd/imgcrypt v1.1.9 h1:AnXt0sMq1Z2uIdaLt/fIHcMgtfVlFx6XpuaZzoC
 github.com/containerd/imgcrypt v1.1.9/go.mod h1:zEN6Nz5d5XIKgq06Tzk82YRlPZULKGSJ8fxhXhMwrYY=
 github.com/containerd/log v0.1.0 h1:TCJt7ioM2cr/tfR8GPbGf9/VRAX8D2B4PjzCpfX540I=
 github.com/containerd/log v0.1.0/go.mod h1:VRRf09a7mHDIRezVKTRCrOq78v577GXq3bSa3EhrzVo=
-github.com/containerd/nydus-snapshotter v0.13.6 h1:T4tDGA3oEEHiTBP8FnHqnbMX5IZtxkQKeCP1V6+1QMY=
-github.com/containerd/nydus-snapshotter v0.13.6/go.mod h1:VPVKQ3jmHFIcUIV2yiQ1kImZuBFS3GXDohKs9mRABVE=
+github.com/containerd/nydus-snapshotter v0.13.7 h1:x7DHvGnzJOu1ZPwPYkeOPk5MjZZYbdddygEjaSDoFTk=
+github.com/containerd/nydus-snapshotter v0.13.7/go.mod h1:VPVKQ3jmHFIcUIV2yiQ1kImZuBFS3GXDohKs9mRABVE=
 github.com/containerd/platforms v0.1.1 h1:gp0xXBoY+1CjH54gJDon0kBjIbK2C4XSX1BGwP5ptG0=
 github.com/containerd/platforms v0.1.1/go.mod h1:XOM2BS6kN6gXafPLg80V6y/QUib+xoLyC3qVmHzibko=
 github.com/containerd/stargz-snapshotter v0.15.1 h1:fpsP4kf/Z4n2EYnU0WT8ZCE3eiKDwikDhL6VwxIlgeA=
