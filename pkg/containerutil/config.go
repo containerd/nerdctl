@@ -26,6 +26,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -89,6 +90,29 @@ func ReconfigPIDContainer(ctx context.Context, c containerd.Container, client *c
 		return err
 	}
 	opts, err := GenerateSharingPIDOpts(ctx, targetCon)
+	if err != nil {
+		return err
+	}
+	spec, err := c.Spec(ctx)
+	if err != nil {
+		return err
+	}
+	err = c.Update(ctx, containerd.UpdateContainerOpts(
+		containerd.WithSpec(spec, oci.Compose(opts...)),
+	))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// ReconfigIPCContainer reconfigures the container's spec options for sharing IPC namespace and volumns.
+func ReconfigIPCContainer(ctx context.Context, c containerd.Container, client *containerd.Client, lab map[string]string) error {
+	ipc, err := ipcutil.DecodeIPCLabel(lab[labels.IPC])
+	if err != nil {
+		return err
+	}
+	opts, err := ipcutil.GenerateIPCOpts(ctx, ipc, client)
 	if err != nil {
 		return err
 	}

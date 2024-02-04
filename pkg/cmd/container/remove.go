@@ -36,6 +36,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/namestore"
 )
@@ -102,6 +103,14 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 	}
 	id := c.ID()
 	l, err := c.Labels(ctx)
+	if err != nil {
+		return err
+	}
+	ipc, err := ipcutil.DecodeIPCLabel(l[labels.IPC])
+	if err != nil {
+		return err
+	}
+	err = ipcutil.CleanUp(ipc)
 	if err != nil {
 		return err
 	}

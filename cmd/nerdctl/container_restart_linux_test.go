@@ -71,6 +71,33 @@ func TestRestartPIDContainer(t *testing.T) {
 	assert.Equal(t, baseOutput, sharedOutput)
 }
 
+func TestRestartIPCContainer(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	const shmSize = "32m"
+	baseContainerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", baseContainerName).Run()
+	base.Cmd("run", "-d", "--shm-size", shmSize, "--ipc", "shareable", "--name", baseContainerName, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+
+	sharedContainerName := fmt.Sprintf("%s-shared", baseContainerName)
+	defer base.Cmd("rm", "-f", sharedContainerName).Run()
+	base.Cmd("run", "-d", "--name", sharedContainerName, fmt.Sprintf("--ipc=container:%s", baseContainerName), testutil.AlpineImage, "sleep", "infinity").AssertOK()
+
+	base.Cmd("stop", baseContainerName).Run()
+	base.Cmd("stop", sharedContainerName).Run()
+
+	base.Cmd("restart", baseContainerName).AssertOK()
+	base.Cmd("restart", sharedContainerName).AssertOK()
+
+	baseShmSizeResult := base.Cmd("exec", baseContainerName, "/bin/grep", "shm", "/proc/self/mounts").Run()
+	baseOutput := strings.TrimSpace(baseShmSizeResult.Stdout())
+	sharedShmSizeResult := base.Cmd("exec", sharedContainerName, "/bin/grep", "shm", "/proc/self/mounts").Run()
+	sharedOutput := strings.TrimSpace(sharedShmSizeResult.Stdout())
+
+	assert.Equal(t, baseOutput, sharedOutput)
+}
+
 func TestRestartWithTime(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)

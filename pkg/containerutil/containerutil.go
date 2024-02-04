@@ -38,6 +38,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
+	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/nsutil"
 	"github.com/containerd/nerdctl/v2/pkg/portutil"
@@ -228,6 +229,10 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 		return err
 	}
 
+	if err := ReconfigIPCContainer(ctx, container, client, lab); err != nil {
+		return err
+	}
+
 	process, err := container.Spec(ctx)
 	if err != nil {
 		return err
@@ -331,6 +336,16 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 	if err != nil {
 		return err
 	}
+	ipc, err := ipcutil.DecodeIPCLabel(l[labels.IPC])
+	if err != nil {
+		return err
+	}
+	// defer umount
+	defer func() {
+		if err := ipcutil.CleanUp(ipc); err != nil {
+			log.G(ctx).Warnf("failed to clean up IPC container %s: %s", container.ID(), err)
+		}
+	}()
 
 	if timeout == nil {
 		t, ok := l[labels.StopTimeout]

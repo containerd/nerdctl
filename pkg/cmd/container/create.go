@@ -24,7 +24,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -44,6 +43,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idgen"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/logging"
 	"github.com/containerd/nerdctl/v2/pkg/mountutil"
@@ -388,23 +388,6 @@ func generateRootfsOpts(args []string, id string, ensured *imgutil.EnsuredImage,
 	return opts, cOpts, nil
 }
 
-// withBindMountHostIPC replaces /dev/shm and /dev/mqueue  mount with rbind.
-// Required for --ipc=host on rootless.
-func withBindMountHostIPC(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
-	for i, m := range s.Mounts {
-		switch p := path.Clean(m.Destination); p {
-		case "/dev/shm", "/dev/mqueue":
-			s.Mounts[i] = specs.Mount{
-				Destination: p,
-				Type:        "bind",
-				Source:      p,
-				Options:     []string{"rbind", "nosuid", "noexec", "nodev"},
-			}
-		}
-	}
-	return nil
-}
-
 // GenerateLogURI generates a log URI for the current container store
 func GenerateLogURI(dataStore string) (*url.URL, error) {
 	selfExe, err := os.Executable()
@@ -540,6 +523,8 @@ type internalLabels struct {
 	anonVolumes []string
 	// pid namespace
 	pidContainer string
+	// ipc namespace & dev/shm
+	ipc string
 	// log
 	logURI string
 }
@@ -613,6 +598,10 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 
 	if internalLabels.pidContainer != "" {
 		m[labels.PIDContainer] = internalLabels.pidContainer
+	}
+
+	if internalLabels.ipc != "" {
+		m[labels.IPC] = internalLabels.ipc
 	}
 
 	return containerd.WithAdditionalContainerLabels(m), nil
@@ -741,6 +730,13 @@ func generateGcFunc(ctx context.Context, container containerd.Container, ns, id,
 			}
 		}
 
+		ipc, ipcErr := ipcutil.DecodeIPCLabel(internalLabels.ipc)
+		if ipcErr != nil {
+			log.G(ctx).WithError(ipcErr).Warnf("failed to decode ipc label for container %q", id)
+		}
+		if ipcErr := ipcutil.CleanUp(ipc); ipcErr != nil {
+			log.G(ctx).WithError(ipcErr).Warnf("failed to clean up ipc for container %q", id)
+		}
 		if rmErr := os.RemoveAll(internalLabels.stateDir); rmErr != nil {
 			log.G(ctx).WithError(rmErr).Warnf("failed to remove container %q state dir %q", id, internalLabels.stateDir)
 		}
