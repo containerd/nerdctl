@@ -500,14 +500,14 @@ func TestBuildNetworkShellCompletion(t *testing.T) {
 }
 
 func TestBuildAttestation(t *testing.T) {
-	testutil.DockerIncompatible(t) // ref:https://github.com/docker/buildx/issues/1655
+	// testutil.DockerIncompatible(t) // ref:https://github.com/docker/buildx/issues/1655
 
 	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	if testutil.GetTarget() == testutil.Docker {
-		base.Env = append(base.Env, "DOCKER_BUILDKIT=1")
-	}
+	// if testutil.GetTarget() == testutil.Docker {
+	// 	base.Env = append(base.Env, "DOCKER_BUILDKIT=1")
+	// }
 	defer base.Cmd("builder", "prune").Run()
 
 	dockerfile := "FROM " + testutil.NginxAlpineImage
