@@ -169,6 +169,8 @@ type ContainerCreateOptions struct {
 	CapDrop []string
 	// Privileged gives extended privileges to this container
 	Privileged bool
+	// Systemd
+	Systemd string
 	// #endregion
 
 	// #region for runtime flags

@@ -46,6 +46,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/logging"
+	"github.com/containerd/nerdctl/v2/pkg/maputil"
 	"github.com/containerd/nerdctl/v2/pkg/mountutil"
 	"github.com/containerd/nerdctl/v2/pkg/namestore"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
@@ -173,7 +174,6 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		return nil, nil, err
 	}
 	cOpts = append(cOpts, restartOpts...)
-	cOpts = append(cOpts, withStop(options.StopSignal, options.StopTimeout, ensuredImage))
 
 	if err = netManager.VerifyNetworkOptions(ctx); err != nil {
 		return nil, nil, fmt.Errorf("failed to verify networking settings: %s", err)
@@ -340,6 +340,15 @@ func generateRootfsOpts(args []string, id string, ensured *imgutil.EnsuredImage,
 		opts = append(opts, oci.WithRootFSPath(absRootfs), oci.WithDefaultPathEnv)
 	}
 
+	entrypointPath := ""
+	if ensured != nil {
+		if len(ensured.ImageConfig.Entrypoint) > 0 {
+			entrypointPath = ensured.ImageConfig.Entrypoint[0]
+		} else if len(ensured.ImageConfig.Cmd) > 0 {
+			entrypointPath = ensured.ImageConfig.Cmd[0]
+		}
+	}
+
 	if !options.Rootfs && !options.EntrypointChanged {
 		opts = append(opts, oci.WithImageConfigArgs(ensured.Image, args[1:]))
 	} else {
@@ -357,8 +366,47 @@ func generateRootfsOpts(args []string, id string, ensured *imgutil.EnsuredImage,
 			// error message is from Podman
 			return nil, nil, errors.New("no command or entrypoint provided, and no CMD or ENTRYPOINT from image")
 		}
+
+		entrypointPath = processArgs[0]
+
 		opts = append(opts, oci.WithProcessArgs(processArgs...))
 	}
+
+	isEntryPointSystemd := (entrypointPath == "/sbin/init" ||
+		entrypointPath == "/usr/sbin/init" ||
+		entrypointPath == "/usr/local/sbin/init")
+
+	stopSignal := options.StopSignal
+
+	if options.Systemd == "always" || (options.Systemd == "true" && isEntryPointSystemd) {
+		if options.Privileged {
+			securityOptsMap := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(options.SecurityOpt))
+			privilegedWithoutHostDevices, err := maputil.MapBoolValueAsOpt(securityOptsMap, "privileged-without-host-devices")
+			if err != nil {
+				return nil, nil, err
+			}
+
+			// See: https://github.com/containers/podman/issues/15878
+			if !privilegedWithoutHostDevices {
+				return nil, nil, errors.New("if --privileged is used with systemd `--security-opt privileged-without-host-devices` must also be used")
+			}
+		}
+
+		opts = append(opts,
+			oci.WithoutMounts("/sys/fs/cgroup"),
+			oci.WithMounts([]specs.Mount{
+				{Type: "cgroup", Source: "cgroup", Destination: "/sys/fs/cgroup", Options: []string{"rw"}},
+				{Type: "tmpfs", Source: "tmpfs", Destination: "/run"},
+				{Type: "tmpfs", Source: "tmpfs", Destination: "/run/lock"},
+				{Type: "tmpfs", Source: "tmpfs", Destination: "/tmp"},
+				{Type: "tmpfs", Source: "tmpfs", Destination: "/var/lib/journal"},
+			}),
+		)
+		stopSignal = "SIGRTMIN+3"
+	}
+
+	cOpts = append(cOpts, withStop(stopSignal, options.StopTimeout, ensured))
+
 	if options.InitBinary != nil {
 		options.InitProcessFlag = true
 	}

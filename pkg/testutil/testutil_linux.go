@@ -41,6 +41,7 @@ var (
 	DockerAuthImage             = mirrorOf("cesanta/docker_auth:1.7")
 	FluentdImage                = mirrorOf("fluent/fluentd:v1.14-1")
 	KuboImage                   = mirrorOf("ipfs/kubo:v0.16.0")
+	SystemdImage                = "ghcr.io/containerd/stargz-snapshotter:0.15.1-kind"
 
 	// Source: https://gist.github.com/cpuguy83/fcf3041e5d8fb1bb5c340915aabeebe0
 	NonDistBlobImage = "ghcr.io/cpuguy83/non-dist-blob:latest"

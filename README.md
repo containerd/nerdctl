@@ -203,6 +203,7 @@ Minor:
 - Better multi-platform support, e.g., `nerdctl pull --all-platforms IMAGE`
 - Applying an (existing) AppArmor profile to rootless containers: `nerdctl run --security-opt apparmor=<PROFILE>`.
   Use `sudo nerdctl apparmor load` to load the `nerdctl-default` profile.
+- Systemd compatibility support: `nerdctl run --systemd=always`
 
 Trivial:
 
