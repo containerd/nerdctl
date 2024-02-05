@@ -184,6 +184,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSlice("cap-drop", []string{}, "Drop Linux capabilities")
 	cmd.RegisterFlagCompletionFunc("cap-drop", capShellComplete)
 	cmd.Flags().Bool("privileged", false, "Give extended privileges to this container")
+	cmd.Flags().String("systemd", "false", "Allow running systemd in this container (default: false)")
 	// #endregion
 
 	// #region runtime flags

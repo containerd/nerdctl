@@ -232,6 +232,15 @@ Security flags:
 - :whale: `--cap-add=<CAP>`: Add Linux capabilities
 - :whale: `--cap-drop=<CAP>`: Drop Linux capabilities
 - :whale: `--privileged`: Give extended privileges to this container
+- :nerd_face: `--systemd=(true|false|always)`: Enable systemd compatibility (default: false).
+  - Default: "false"
+  - true: Enable systemd compatibility is enabled if the entrypoint executable matches one of the following paths:
+    - `/sbin/init`
+    - `/usr/sbin/init`
+    - `/usr/local/sbin/init`
+  - always: Always enable systemd compatibility
+
+Corresponds to Podman CLI.
 
 Runtime flags:
 

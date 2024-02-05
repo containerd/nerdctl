@@ -255,6 +255,10 @@ func processContainerCreateOptions(cmd *cobra.Command) (opt types.ContainerCreat
 	if err != nil {
 		return
 	}
+	opt.Systemd, err = cmd.Flags().GetString("systemd")
+	if err != nil {
+		return
+	}
 	// #endregion
 
 	// #region for runtime flags
