@@ -512,8 +512,14 @@ cmd_entrypoint_install_ipfs() {
 cmd_entrypoint_uninstall() {
 	init
 	uninstall_systemd_unit "${SYSTEMD_BUILDKIT_UNIT}"
+	if [ -n "${CONTAINERD_NAMESPACE:-}" ]; then
+		uninstall_systemd_unit "${CONTAINERD_NAMESPACE}-${SYSTEMD_BUILDKIT_UNIT}"
+	fi
 	uninstall_systemd_unit "${SYSTEMD_FUSE_OVERLAYFS_UNIT}"
 	uninstall_systemd_unit "${SYSTEMD_CONTAINERD_UNIT}"
+	uninstall_systemd_unit "${SYSTEMD_STARGZ_UNIT}"
+	uninstall_systemd_unit "${SYSTEMD_IPFS_UNIT}"
+	uninstall_systemd_unit "${SYSTEMD_BYPASS4NETNSD_UNIT}"
 
 	INFO "This uninstallation tool does NOT remove containerd binaries and data."
 	INFO "To remove data, run: \`$BIN/rootlesskit rm -rf ${XDG_DATA_HOME}/containerd\`"
