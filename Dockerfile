@@ -51,7 +51,7 @@ ARG GOTESTSUM_VERSION=v1.11.0
 ARG NYDUS_VERSION=v2.2.4
 ARG SOCI_SNAPSHOTTER_VERSION=0.4.0
 
-FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.3.0 AS xx
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.4.0 AS xx
 
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS build-base-debian
