@@ -47,7 +47,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.1.0
 	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/rootless-containers/bypass4netns v0.4.0
-	github.com/rootless-containers/rootlesskit/v2 v2.0.0
+	github.com/rootless-containers/rootlesskit/v2 v2.0.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/tidwall/gjson v1.17.0
@@ -91,7 +91,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
-	github.com/google/uuid v1.5.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
