@@ -53,12 +53,16 @@ func CreateSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform boo
 	sociCmd.Args = append(sociCmd.Args, "create")
 
 	if allPlatform {
-		sociCmd.Args = append(sociCmd.Args, "--all-platforms", strconv.FormatBool(allPlatform))
+		sociCmd.Args = append(sociCmd.Args, "--all-platforms")
 	}
 	if len(platforms) > 0 {
-		sociCmd.Args = append(sociCmd.Args, "--platform")
-		sociCmd.Args = append(sociCmd.Args, strings.Join(platforms, ","))
+		// multiple values need to be passed as separate, repeating flags in soci as it uses urfave
+		// https://github.com/urfave/cli/blob/main/docs/v2/examples/flags.md#multiple-values-per-single-flag
+		for _, p := range platforms {
+			sociCmd.Args = append(sociCmd.Args, "--platform", p)
+		}
 	}
+
 	if sOpts.SpanSize != -1 {
 		sociCmd.Args = append(sociCmd.Args, "--span-size", strconv.FormatInt(sOpts.SpanSize, 10))
 	}
@@ -107,11 +111,14 @@ func PushSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform bool,
 	sociCmd.Args = append(sociCmd.Args, "push")
 
 	if allPlatform {
-		sociCmd.Args = append(sociCmd.Args, "--all-platforms", strconv.FormatBool(allPlatform))
+		sociCmd.Args = append(sociCmd.Args, "--all-platforms")
 	}
 	if len(platforms) > 0 {
-		sociCmd.Args = append(sociCmd.Args, "--platform")
-		sociCmd.Args = append(sociCmd.Args, strings.Join(platforms, ","))
+		// multiple values need to be passed as separate, repeating flags in soci as it uses urfave
+		// https://github.com/urfave/cli/blob/main/docs/v2/examples/flags.md#multiple-values-per-single-flag
+		for _, p := range platforms {
+			sociCmd.Args = append(sociCmd.Args, "--platform", p)
+		}
 	}
 	if gOpts.InsecureRegistry {
 		sociCmd.Args = append(sociCmd.Args, "--skip-verify")
