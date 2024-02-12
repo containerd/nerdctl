@@ -63,9 +63,18 @@ require (
 	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.1
+	tags.cncf.io/container-device-interface v0.6.2
 )
 
-require github.com/moby/sys/user v0.1.0 // indirect
+require (
+	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/moby/sys/user v0.1.0 // indirect
+	github.com/opencontainers/runtime-tools v0.9.1-0.20221107090550-2e043c6bd626 // indirect
+	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+	sigs.k8s.io/yaml v1.3.0 // indirect
+	tags.cncf.io/container-device-interface/specs-go v0.6.0 // indirect
+)
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect

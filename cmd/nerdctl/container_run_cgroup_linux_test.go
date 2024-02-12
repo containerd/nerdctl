@@ -209,6 +209,34 @@ func TestRunDevice(t *testing.T) {
 	assert.Equal(t, string(bytes.Trim(lo1Read, "\x00")), "overwritten-lo1-content")
 }
 
+func TestRunDeviceCDI(t *testing.T) {
+
+	err := os.MkdirAll("/var/run/cdi", 0755)
+	assert.NilError(t, err)
+
+	cdiSpecFilename := filepath.Join("/var/run/cdi", "nerdctl-test-spec.json")
+	specFile, err := os.Create(cdiSpecFilename)
+	assert.NilError(t, err)
+	defer func() {
+		specFile.Close()
+		os.Remove(cdiSpecFilename)
+	}()
+
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	// lo0 is readable but not writable.
+	// lo1 is readable and writable
+	// lo2 is not accessible.
+	base.Cmd("run",
+		"-d",
+		"--name", containerName,
+		"--device", "vendor1.com/device=foo",
+		testutil.AlpineImage, "sleep", "infinity",
+	).Run()
+
+}
+
 func TestParseDevice(t *testing.T) {
 	t.Parallel()
 	type testCase struct {
