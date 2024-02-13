@@ -402,7 +402,14 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		if tmpfsSize > 0 {
 			options = append(options, getTmpfsSize(tmpfsSize))
 		}
+		if len(options) > 0 {
+			optionsStr := strings.Join(options, ",")
+			fields = append(fields, optionsStr)
+		}
+		fieldsStr := strings.Join(fields, ":")
+		return ProcessFlagTmpfs(fieldsStr)
 	case Volume, Bind:
+		// Refactor this portion to not use the ProcessFlagV
 		fields = []string{src, dst}
 		if bindPropagation != "" {
 			options = append(options, bindPropagation)
@@ -414,21 +421,14 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 				options = append(options, "rbind")
 			}
 		}
-	}
 
-	if len(options) > 0 {
-		optionsStr := strings.Join(options, ",")
-		fields = append(fields, optionsStr)
-	}
-	fieldsStr := strings.Join(fields, ":")
+		if len(options) > 0 {
+			optionsStr := strings.Join(options, ",")
+			fields = append(fields, optionsStr)
+		}
+		fieldsStr := strings.Join(fields, ":")
 
-	log.L.Debugf("Call legacy %s process, spec: %s ", mountType, fieldsStr)
-
-	switch mountType {
-	case Tmpfs:
-		return ProcessFlagTmpfs(fieldsStr)
-	case Volume, Bind:
-		// createDir=false for --mount option to disallow creating directories on host if not found
+		log.L.Debugf("Call legacy %s process, spec: %s ", mountType, fieldsStr)
 		return ProcessFlagV(fieldsStr, volStore, false)
 	}
 	return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", mountType)
