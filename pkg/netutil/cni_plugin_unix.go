@@ -18,6 +18,8 @@
 
 package netutil
 
+import "github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+
 // bridgeConfig describes the bridge plugin
 type bridgeConfig struct {
 	PluginType   string                 `json:"type"`
@@ -97,10 +99,15 @@ type firewallConfig struct {
 }
 
 func newFirewallPlugin() *firewallConfig {
-	return &firewallConfig{
+	c := &firewallConfig{
 		PluginType:    "firewall",
 		IngressPolicy: "same-bridge",
 	}
+	if rootlessutil.IsRootless() {
+		// https://github.com/containerd/nerdctl/issues/2818
+		c.Backend = "iptables"
+	}
+	return c
 }
 
 func (*firewallConfig) GetPluginType() string {
