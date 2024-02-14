@@ -33,17 +33,3 @@ type IPAMRoute struct {
 	GW      string `json:"gw,omitempty"`
 	Gateway string `json:"gateway,omitempty"`
 }
-
-type isolationConfig struct {
-	PluginType string `json:"type"`
-}
-
-func newIsolationPlugin() *isolationConfig {
-	return &isolationConfig{
-		PluginType: "isolation",
-	}
-}
-
-func (*isolationConfig) GetPluginType() string {
-	return "isolation"
-}

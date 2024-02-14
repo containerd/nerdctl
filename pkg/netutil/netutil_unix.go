@@ -128,7 +128,17 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 			bridge.Capabilities["ips"] = true
 		}
 		plugins = []CNIPlugin{bridge, newPortMapPlugin(), newFirewallPlugin(), newTuningPlugin()}
-		plugins = fixUpIsolation(e, name, plugins)
+		if name != DefaultNetworkName {
+			firewallPath := filepath.Join(e.Path, "firewall")
+			ok, err := firewallPluginGEQ110(firewallPath)
+			if err != nil {
+				log.L.WithError(err).Warnf("Failed to detect whether %q is newer than v1.1.0", firewallPath)
+			}
+			if !ok {
+				log.L.Warnf("To isolate bridge networks, CNI plugin \"firewall\" (>= 1.1.0) needs to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins",
+					e.Path)
+			}
+		}
 	case "macvlan", "ipvlan":
 		mtu := 0
 		mode := ""
@@ -233,39 +243,6 @@ func (e *CNIEnv) parseIPAMRanges(subnets []string, gateway, ipRange string, ipv6
 		ranges = append(ranges, []IPAMRange{*ipamRange})
 	}
 	return ranges, findIPv4, nil
-}
-
-func fixUpIsolation(e *CNIEnv, name string, plugins []CNIPlugin) []CNIPlugin {
-	isolationPath := filepath.Join(e.Path, "isolation")
-	if _, err := exec.LookPath(isolationPath); err == nil {
-		// the warning is suppressed for DefaultNetworkName (because multi-bridge networking is not involved)
-		if name != DefaultNetworkName {
-			log.L.Warnf(`network %q: Using the deprecated CNI "isolation" plugin instead of CNI "firewall" plugin (>= 1.1.0) ingressPolicy.
-To dismiss this warning, uninstall %q and install CNI "firewall" plugin (>= 1.1.0) from https://github.com/containernetworking/plugins`,
-				name, isolationPath)
-		}
-		plugins = append(plugins, newIsolationPlugin())
-		for _, f := range plugins {
-			if x, ok := f.(*firewallConfig); ok {
-				if name != DefaultNetworkName {
-					log.L.Warnf("network %q: Unsetting firewall ingressPolicy %q (because using the deprecated \"isolation\" plugin)", name, x.IngressPolicy)
-				}
-				x.IngressPolicy = ""
-			}
-		}
-	} else if name != DefaultNetworkName {
-		firewallPath := filepath.Join(e.Path, "firewall")
-		ok, err := firewallPluginGEQ110(firewallPath)
-		if err != nil {
-			log.L.WithError(err).Warnf("Failed to detect whether %q is newer than v1.1.0", firewallPath)
-		}
-		if !ok {
-			log.L.Warnf("To isolate bridge networks, CNI plugin \"firewall\" (>= 1.1.0) needs to be installed in CNI_PATH (%q), see https://github.com/containernetworking/plugins",
-				e.Path)
-		}
-	}
-
-	return plugins
 }
 
 func firewallPluginGEQ110(firewallPath string) (bool, error) {

@@ -61,10 +61,7 @@ Configuration of the default network `bridge` of Linux:
 nerdctl >= 0.18 sets the `ingressPolicy` to `same-bridge` when `firewall` plugin >= 1.1.0 is installed.
 This `ingressPolicy` replaces the CNI `isolation` plugin used in nerdctl <= 0.17.
 
-When the `isolation` plugin is found, nerdctl uses the `isolation` plugin instead of `ingressPolicy`.
-The `isolation` plugin has been deprecated, and a future version of `nerdctl` will solely support `ingressPolicy`.
-
-When neither of `firewall` plugin >= 1.1.0 or `isolation` plugin is found, nerdctl does not enable the bridge isolation.
+When `firewall` plugin >= 1.1.0 is not found, nerdctl does not enable the bridge isolation.
 This means a container in `--net=foo` can connect to a container in `--net=bar`.
 
 ## macvlan/IPvlan networks
