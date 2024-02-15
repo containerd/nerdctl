@@ -11,7 +11,7 @@ e.g., ARM on Intel, and vice versa.
 ```console
 $ sudo systemctl start containerd
 
-$ sudo nerdctl run --privileged --rm tonistiigi/binfmt --install all
+$ sudo nerdctl run --privileged --rm tonistiigi/binfmt:master --install all
 
 $ ls -1 /proc/sys/fs/binfmt_misc/qemu*
 /proc/sys/fs/binfmt_misc/qemu-aarch64
