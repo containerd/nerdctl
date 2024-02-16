@@ -23,7 +23,7 @@ ARG RUNC_VERSION=v1.1.12
 ARG CNI_PLUGINS_VERSION=v1.4.0
 
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.13.0-beta3
+ARG BUILDKIT_VERSION=v0.13.0-rc1
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.15.1
 # Extra deps: Encryption
