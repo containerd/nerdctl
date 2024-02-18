@@ -164,3 +164,22 @@ systemctl --user restart containerd
 
 ### Hint to Fedora users
 - If SELinux is enabled on your host and your kernel is older than 5.13, you need to use [`fuse-overlayfs` instead of `overlayfs`](#fuse-overlayfs).
+
+## Rootlesskit Network Design
+
+In `detach-netns` mode:
+
+- Network namespace is detached and stored in `$ROOTLESSKIT_STATE_DIR/netns`.
+- The child command executes within the host's network namespace, allowing actions like `pull` and `push` to happen in the host network namespace.
+- For creating and configuring the container's network namespace, the child command switches temporarily to the relevant namespace located in `$ROOTLESSKIT_STATE_DIR/netns`. This ensures necessary network setup while maintaining isolation in the host namespace.
+
+![rootlessKit-network-design.png](images/rootlessKit-network-design.png)
+
+- Rootlesskit Parent NetNS and Child NetNS are already configured by the startup script [containerd-rootless.sh](https://github.com/containerd/nerdctl/blob/main/extras/rootless/containerd-rootless.sh)
+- Rootlesskit Parent NetNS is the host network namespace
+- step1: `nerdctl` calls `containerd` in the host network namespace.
+- step2: `containerd` calls `runc` in the host network namespace.
+- step3: `runc` creates container with dedicated namespaces (e.g network ns) in the Parent netns.
+- step4: `runc` nsenter Rootlesskit Child NetNS before triggering nerdctl ocihook.
+- step5: `nerdctl` ocihook module leverages CNI.
+- step6: CNI configures container network namespace: create network interfaces `eth0` -> `veth0` -> `nerdctl0`.
