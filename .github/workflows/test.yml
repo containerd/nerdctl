@@ -209,7 +209,7 @@ jobs:
     timeout-minutes: 40
     strategy:
       matrix:
-        go-version: ["1.20.x", "1.21.x"]
+        go-version: ["1.21.x", "1.22.x"]
     steps:
       - uses: actions/checkout@v4.1.1
         with:
