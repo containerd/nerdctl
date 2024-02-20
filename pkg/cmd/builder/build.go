@@ -42,6 +42,21 @@ import (
 	"github.com/containerd/platforms"
 )
 
+type PlatformParser interface {
+	Parse(platform string) (platforms.Platform, error)
+	DefaultSpec() platforms.Platform
+}
+
+type platformParser struct{}
+
+func (p platformParser) Parse(platform string) (platforms.Platform, error) {
+	return platforms.Parse(platform)
+}
+
+func (p platformParser) DefaultSpec() platforms.Platform {
+	return platforms.DefaultSpec()
+}
+
 func Build(ctx context.Context, client *containerd.Client, options types.BuilderBuildOptions) error {
 	buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, err := generateBuildctlArgs(ctx, client, options)
 	if err != nil {
@@ -419,6 +434,29 @@ func getDigestFromMetaFile(path string) (string, error) {
 	return digest, nil
 }
 
+func isMatchingRuntimePlatform(platform string, parser PlatformParser) bool {
+	p, err := parser.Parse(platform)
+	if err != nil {
+		return false
+	}
+	d := parser.DefaultSpec()
+
+	if p.OS == d.OS && p.Architecture == d.Architecture && (p.Variant == "" || p.Variant == d.Variant) {
+		return true
+	}
+
+	return false
+}
+
+func isBuildPlatformDefault(platform []string, parser PlatformParser) bool {
+	if len(platform) == 0 {
+		return true
+	} else if len(platform) == 1 {
+		return isMatchingRuntimePlatform(platform[0], parser)
+	}
+	return false
+}
+
 func isImageSharable(buildkitHost, namespace, uuid, snapshotter string, platform []string) (bool, error) {
 	labels, err := buildkitutil.GetWorkerLabels(buildkitHost)
 	if err != nil {
@@ -445,5 +483,6 @@ func isImageSharable(buildkitHost, namespace, uuid, snapshotter string, platform
 	//       Dockerfile doesn't contain instructions require base images like RUN) even if `--output type=image,unpack=true`
 	//       is passed to BuildKit. Thus, we need to use `type=docker` or `type=oci` when nerdctl builds non-default platform
 	//       image using `platform` option.
-	return executor == "containerd" && containerdUUID == uuid && containerdNamespace == namespace && workerSnapshotter == snapshotter && len(platform) == 0, nil
+	parser := new(platformParser)
+	return executor == "containerd" && containerdUUID == uuid && containerdNamespace == namespace && workerSnapshotter == snapshotter && isBuildPlatformDefault(platform, parser), nil
 }

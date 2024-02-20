@@ -387,6 +387,14 @@ func (c *Cmd) AssertOutContains(s string) {
 	c.Assert(expected)
 }
 
+func (c *Cmd) AssertErrContains(s string) {
+	c.Base.T.Helper()
+	expected := icmd.Expected{
+		Err: s,
+	}
+	c.Assert(expected)
+}
+
 func (c *Cmd) AssertCombinedOutContains(s string) {
 	c.Base.T.Helper()
 	res := c.Run()
@@ -424,6 +432,15 @@ func (c *Cmd) AssertOutContainsAny(strs ...string) {
 func (c *Cmd) AssertOutNotContains(s string) {
 	c.AssertOutWithFunc(func(stdout string) error {
 		if strings.Contains(stdout, s) {
+			return fmt.Errorf("expected stdout to not contain %q", s)
+		}
+		return nil
+	})
+}
+
+func (c *Cmd) AssertErrNotContains(s string) {
+	c.AssertOutWithFunc(func(stderr string) error {
+		if strings.Contains(stderr, s) {
 			return fmt.Errorf("expected stdout to not contain %q", s)
 		}
 		return nil
