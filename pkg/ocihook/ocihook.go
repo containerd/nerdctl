@@ -89,6 +89,8 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	switch event {
 	case "createRuntime":
 		return onCreateRuntime(opts)
+	case "startContainer":
+		return onStartContainer(opts)
 	case "postStop":
 		return onPostStop(opts)
 	default:
@@ -464,6 +466,31 @@ func onCreateRuntime(opts *handlerOpts) error {
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func onStartContainer(opts *handlerOpts) error {
+	// restore portmapping in case it was removed by kill/stop command
+	if opts.cni != nil {
+		portMapOpts, err := getPortMapOpts(opts)
+		if err != nil {
+			return err
+		}
+		nsPath, err := getNetNSPath(opts.state)
+		if err != nil {
+			return err
+		}
+		ctx := context.Background()
+		fmt.Println(portMapOpts)
+
+		var namespaceOpts []gocni.NamespaceOpts
+		namespaceOpts = append(namespaceOpts, portMapOpts...)
+		cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, namespaceOpts...)
+		if err != nil {
+			return fmt.Errorf("failed to call cni.Setup: %w", err)
+		}
+		fmt.Println(cniRes)
 	}
 	return nil
 }
