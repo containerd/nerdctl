@@ -1,4 +1,4 @@
-//go:build freebsd || linux
+//go:build unix
 
 /*
    Copyright The containerd Authors.
