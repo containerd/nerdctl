@@ -1,4 +1,4 @@
-//go:build linux || darwin || freebsd || netbsd || openbsd
+//go:build unix
 
 /*
    Copyright The containerd Authors.

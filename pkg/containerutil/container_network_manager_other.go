@@ -1,4 +1,4 @@
-//go:build darwin || freebsd || netbsd || openbsd
+//go:build !(linux || windows)
 
 /*
    Copyright The containerd Authors.

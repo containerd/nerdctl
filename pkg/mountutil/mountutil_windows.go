@@ -1,5 +1,3 @@
-//go:build windows
-
 /*
    Copyright The containerd Authors.
 
