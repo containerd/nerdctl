@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"runtime"
@@ -25,7 +26,6 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/containerd/pkg/cri/util"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -380,8 +380,16 @@ func updateContainerSpec(ctx context.Context, container containerd.Container, sp
 
 func copySpec(spec *runtimespec.Spec) (*runtimespec.Spec, error) {
 	var copySpec runtimespec.Spec
-	if err := util.DeepCopy(&copySpec, spec); err != nil {
-		return nil, fmt.Errorf("failed to deep copy:%w", err)
+	if spec == nil {
+		return nil, errors.New("spec cannot be nil")
+	}
+	bytes, err := json.Marshal(spec)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal spec: %w", err)
+	}
+	err = json.Unmarshal(bytes, &copySpec)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal into spec copy: %w", err)
 	}
 	return &copySpec, nil
 }
