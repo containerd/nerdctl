@@ -121,7 +121,7 @@ localhost:5050/ipfs/<CID>
 
 Here, `CID` is the IPFS CID of the image.
 
-:information_source: In the futural version of nerdctl and BuildKit, `ipfs://` prefix should be supported in Dockerfile.
+:information_source: In the future version of nerdctl and BuildKit, `ipfs://` prefix should be supported in Dockerfile.
 
 Using this image reference, you can build an image on IPFS.
 
@@ -179,7 +179,7 @@ By default, nerdctl exposes the registry at `localhost:5050` (configurable via f
 
 Optionally you can create systemd unit file of `nerdctl ipfs registry serve`.
 An example systemd unit file for `nerdctl ipfs registry serve` can be the following.
-`nerdctl ipfs registry serve` is aware of environemnt variables for configuring the behaviour (e.g. listening port) so you can use `EnvironmentFile` for configuring it.
+`nerdctl ipfs registry serve` is aware of environment variables for configuring the behaviour (e.g. listening port) so you can use `EnvironmentFile` for configuring it.
 
 ```
 [Unit]
