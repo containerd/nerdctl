@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/platforms"
 	"gotest.tools/v3/assert"
 )
 
@@ -55,6 +56,37 @@ CMD ["echo", "nerdctl-build-test-string"]
 		base.Cmd("run", "--rm", imageName).AssertOutExactly("nerdctl-build-test-string\n")
 		base.Cmd("run", "--rm", ignoredImageNamed).AssertFail()
 	}
+}
+
+func TestBuildIsShareableForCompatiblePlatform(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").Run()
+	imageName := testutil.Identifier(t)
+	defer base.Cmd("rmi", imageName).Run()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-string"]
+	`, testutil.CommonImage)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", buildCtx, "-t", imageName).AssertErrNotContains("tarball")
+
+	d := platforms.DefaultSpec()
+	platformConfig := fmt.Sprintf("%s/%s", d.OS, d.Architecture)
+	base.Cmd("build", buildCtx, "-t", imageName, "--platform", platformConfig).AssertOK()
+	base.Cmd("build", buildCtx, "-t", imageName, "--platform", platformConfig, "--progress", "plain").AssertErrNotContains("tarball")
+
+	n := platforms.Platform{OS: "linux", Architecture: "arm", Variant: ""}
+	if n.OS != d.OS && n.Architecture != d.Architecture {
+		notCompatiblePlatformConfig := fmt.Sprintf("%s/%s", n.OS, n.Architecture)
+		base.Cmd("build", buildCtx, "-t", imageName, "--platform", notCompatiblePlatformConfig).AssertOK()
+		base.Cmd("build", buildCtx, "-t", imageName, "--platform", notCompatiblePlatformConfig, "--progress", "plain").AssertErrContains("tarball")
+	}
+
 }
 
 // TestBuildBaseImage tests if an image can be built on the previously built image.
