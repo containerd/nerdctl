@@ -35,9 +35,7 @@ func shellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete s
 		_ = rootlessutil.ParentMain(globalOptions.HostGatewayIP)
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
+
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
