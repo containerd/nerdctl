@@ -61,9 +61,6 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 	if err := identifiers.Validate(name); err != nil {
 		return fmt.Errorf("malformed name %s: %w", name, err)
 	}
-	if err != nil {
-		return err
-	}
 	driver, err := cmd.Flags().GetString("driver")
 	if err != nil {
 		return err
