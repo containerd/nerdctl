@@ -703,6 +703,7 @@ Flags:
 - :nerd_face: `--ipfs`: Build image with pulling base images from IPFS. See [`ipfs.md`](./ipfs.md) for details.
 - :whale: `--label`: Set metadata for an image
 - :whale: `--network=(default|host|none)`: Set the networking mode for the RUN instructions during build.(compatible with `buildctl build`)
+- :whale: --build-context: Set additional contexts for build (e.g. dir2=/path/to/dir2, myorg/myapp=docker-image://path/to/myorg/myapp)
 
 Unimplemented `docker build` flags: `--add-host`, `--squash`
 

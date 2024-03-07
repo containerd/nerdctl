@@ -456,6 +456,50 @@ CMD ["echo", "nerdctl-build-notag-string"]
 	base.Cmd("image", "prune", "--force", "--all").AssertOK()
 }
 
+func TestBuildContextDockerImageAlias(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").AssertOK()
+	base.Cmd("image", "prune", "--force", "--all").AssertOK()
+
+	dockerfile := `FROM myorg/myapp
+CMD ["echo", "nerdctl-build-myorg/myapp"]`
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", buildCtx, fmt.Sprintf("--build-context=myorg/myapp=docker-image://%s", testutil.CommonImage)).AssertOK()
+	base.Cmd("images").AssertOutContains("<none>")
+	base.Cmd("image", "prune", "--force", "--all").AssertOK()
+}
+
+func TestBuildContextWithCopyFromDir(t *testing.T) {
+	testutil.RequiresBuild(t)
+	base := testutil.NewBase(t)
+	defer base.Cmd("builder", "prune").AssertOK()
+	base.Cmd("image", "prune", "--force", "--all").AssertOK()
+
+	content := "hello_from_dir_2"
+	filename := "hello.txt"
+
+	dir2 := t.TempDir()
+	filePath := filepath.Join(dir2, filename)
+	err := os.WriteFile(filePath, []byte(content), 0644)
+	assert.NilError(t, err)
+
+	dockerfile := fmt.Sprintf(`FROM %s
+COPY --from=dir2 /%s /hello_from_dir2.txt
+RUN ["cat", "/hello_from_dir2.txt"]`, testutil.CommonImage, filename)
+
+	buildCtx, err := createBuildContext(dockerfile)
+	assert.NilError(t, err)
+	defer os.RemoveAll(buildCtx)
+
+	base.Cmd("build", buildCtx, fmt.Sprintf("--build-context=dir2=%s", dir2)).AssertOK()
+	base.Cmd("images").AssertOutContains("<none>")
+	base.Cmd("image", "prune", "--force", "--all").AssertOK()
+}
+
 // TestBuildSourceDateEpoch tests that $SOURCE_DATE_EPOCH is propagated from the client env
 // https://github.com/docker/buildx/pull/1482
 func TestBuildSourceDateEpoch(t *testing.T) {

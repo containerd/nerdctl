@@ -65,6 +65,8 @@ type BuilderBuildOptions struct {
 	Label []string
 	// BuildContext is the build context
 	BuildContext string
+	// ExtendedBuildContext is a pair of key=value (e.g. myorg/myapp=docker-image://path/to/image, dir2=/path/to/dir2)
+	ExtendedBuildContext []string
 	// NetworkMode mode for the build context
 	NetworkMode string
 }

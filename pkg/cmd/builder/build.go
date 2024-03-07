@@ -284,6 +284,28 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		return "", nil, false, "", nil, nil, err
 	}
 
+	buildCtx, err := parseContextNames(options.ExtendedBuildContext)
+	if err != nil {
+		return "", nil, false, "", nil, nil, err
+	}
+
+	for k, v := range buildCtx {
+		isURL := strings.HasPrefix(v, "https://") || strings.HasPrefix(v, "http://")
+		isDockerImage := strings.HasPrefix(v, "docker-image://") || strings.HasPrefix(v, "target:")
+
+		if isURL || isDockerImage {
+			buildctlArgs = append(buildctlArgs, fmt.Sprintf("--opt=context:%s=%s", k, v))
+			continue
+		}
+
+		path, err := filepath.Abs(v)
+		if err != nil {
+			return "", nil, false, "", nil, nil, err
+		}
+		buildctlArgs = append(buildctlArgs, fmt.Sprintf("--local=%s=%s", k, path))
+		buildctlArgs = append(buildctlArgs, fmt.Sprintf("--opt=context:%s=local:%s", k, k))
+	}
+
 	buildctlArgs = append(buildctlArgs, "--local=dockerfile="+dir)
 	buildctlArgs = append(buildctlArgs, "--opt=filename="+file)
 
@@ -485,4 +507,19 @@ func isImageSharable(buildkitHost, namespace, uuid, snapshotter string, platform
 	//       image using `platform` option.
 	parser := new(platformParser)
 	return executor == "containerd" && containerdUUID == uuid && containerdNamespace == namespace && workerSnapshotter == snapshotter && isBuildPlatformDefault(platform, parser), nil
+}
+
+func parseContextNames(values []string) (map[string]string, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	result := make(map[string]string, len(values))
+	for _, value := range values {
+		kv := strings.SplitN(value, "=", 2)
+		if len(kv) != 2 {
+			return nil, fmt.Errorf("invalid context value: %s, expected key=value", value)
+		}
+		result[kv[0]] = kv[1]
+	}
+	return result, nil
 }
