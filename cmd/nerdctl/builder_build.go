@@ -72,6 +72,7 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	buildCommand.Flags().StringSlice("platform", []string{}, "Set target platform for build (e.g., \"amd64\", \"arm64\")")
 	buildCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	buildCommand.Flags().StringArray("build-context", []string{}, "Additional build contexts (e.g., name=path)")
 	// #endregion
 
 	buildCommand.Flags().String("iidfile", "", "Write the image ID to the file")
@@ -188,33 +189,38 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 	if provenance != "" {
 		attest = append(attest, canonicalizeAttest("provenance", provenance))
 	}
+	extendedBuildCtx, err := cmd.Flags().GetStringArray("build-context")
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
 
 	return types.BuilderBuildOptions{
-		GOptions:     globalOptions,
-		BuildKitHost: buildKitHost,
-		BuildContext: buildContext,
-		Output:       output,
-		Tag:          tagValue,
-		Progress:     progress,
-		File:         filename,
-		Target:       target,
-		BuildArgs:    buildArgs,
-		Label:        label,
-		NoCache:      noCache,
-		Secret:       secret,
-		Allow:        allow,
-		Attest:       attest,
-		SSH:          ssh,
-		CacheFrom:    cacheFrom,
-		CacheTo:      cacheTo,
-		Rm:           rm,
-		IidFile:      iidfile,
-		Quiet:        quiet,
-		Platform:     platform,
-		Stdout:       cmd.OutOrStdout(),
-		Stderr:       cmd.OutOrStderr(),
-		Stdin:        cmd.InOrStdin(),
-		NetworkMode:  network,
+		GOptions:             globalOptions,
+		BuildKitHost:         buildKitHost,
+		BuildContext:         buildContext,
+		Output:               output,
+		Tag:                  tagValue,
+		Progress:             progress,
+		File:                 filename,
+		Target:               target,
+		BuildArgs:            buildArgs,
+		Label:                label,
+		NoCache:              noCache,
+		Secret:               secret,
+		Allow:                allow,
+		Attest:               attest,
+		SSH:                  ssh,
+		CacheFrom:            cacheFrom,
+		CacheTo:              cacheTo,
+		Rm:                   rm,
+		IidFile:              iidfile,
+		Quiet:                quiet,
+		Platform:             platform,
+		Stdout:               cmd.OutOrStdout(),
+		Stderr:               cmd.OutOrStderr(),
+		Stdin:                cmd.InOrStdin(),
+		NetworkMode:          network,
+		ExtendedBuildContext: extendedBuildCtx,
 	}, nil
 }
 
