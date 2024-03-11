@@ -39,9 +39,7 @@ func TestBuild(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
@@ -69,9 +67,7 @@ func TestBuildIsShareableForCompatiblePlatform(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", buildCtx, "-t", imageName).AssertErrNotContains("tarball")
 
@@ -86,7 +82,6 @@ CMD ["echo", "nerdctl-build-test-string"]
 		base.Cmd("build", buildCtx, "-t", imageName, "--platform", notCompatiblePlatformConfig).AssertOK()
 		base.Cmd("build", buildCtx, "-t", imageName, "--platform", notCompatiblePlatformConfig, "--progress", "plain").AssertErrContains("tarball")
 	}
-
 }
 
 // TestBuildBaseImage tests if an image can be built on the previously built image.
@@ -105,9 +100,7 @@ RUN echo hello > /hello
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
@@ -117,9 +110,7 @@ RUN echo hello2 > /hello2
 CMD ["cat", "/hello2"]
 	`, imageName)
 
-	buildCtx2, err := createBuildContext(dockerfile2)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx2)
+	buildCtx2 := createBuildContext(t, dockerfile2)
 
 	base.Cmd("build", "-t", imageName2, buildCtx2).AssertOK()
 	base.Cmd("build", buildCtx2, "-t", imageName2).AssertOK()
@@ -152,9 +143,7 @@ RUN echo hello2 > /hello2
 CMD ["cat", "/hello2"]
 	`, imageName)
 
-	buildCtx2, err := createBuildContext(dockerfile2)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx2)
+	buildCtx2 := createBuildContext(t, dockerfile2)
 
 	base.Cmd("build", "-t", imageName2, buildCtx2).AssertOK()
 	base.Cmd("build", buildCtx2, "-t", imageName2).AssertOK()
@@ -225,9 +214,7 @@ func TestBuildLocal(t *testing.T) {
 COPY %s /`,
 		testFileName)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	if err := os.WriteFile(filepath.Join(buildCtx, testFileName), []byte(testContent), 0644); err != nil {
 		t.Fatal(err)
@@ -253,15 +240,11 @@ COPY %s /`,
 	assert.Equal(t, string(data), testContent)
 }
 
-func createBuildContext(dockerfile string) (string, error) {
-	tmpDir, err := os.MkdirTemp("", "nerdctl-build-test")
-	if err != nil {
-		return "", err
-	}
-	if err = os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644); err != nil {
-		return "", err
-	}
-	return tmpDir, nil
+func createBuildContext(t *testing.T, dockerfile string) string {
+	tmpDir := t.TempDir()
+	err := os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644)
+	assert.NilError(t, err)
+	return tmpDir
 }
 
 func TestBuildWithBuildArg(t *testing.T) {
@@ -277,9 +260,7 @@ ENV TEST_STRING=$TEST_STRING
 CMD echo $TEST_STRING
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
 	base.Cmd("run", "--rm", imageName).AssertOutExactly("1\n")
@@ -324,9 +305,7 @@ func TestBuildWithIIDFile(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 	fileName := filepath.Join(t.TempDir(), "id.txt")
 
 	base.Cmd("build", "-t", imageName, buildCtx, "--iidfile", fileName).AssertOK()
@@ -350,9 +329,7 @@ func TestBuildWithLabels(t *testing.T) {
 LABEL name=nerdctl-build-test-label
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx, "--label", "label=test").AssertOK()
 	defer base.Cmd("rmi", imageName).Run()
@@ -375,9 +352,7 @@ func TestBuildMultipleTags(t *testing.T) {
 		dockerfile := fmt.Sprintf(`FROM %s
 		CMD ["echo", "%s"]
 			`, testutil.CommonImage, output)
-		buildCtx, err := createBuildContext(dockerfile)
-		assert.NilError(t, err)
-		defer os.RemoveAll(buildCtx)
+		buildCtx := createBuildContext(t, dockerfile)
 
 		base.Cmd("build", "-t", img, buildCtx).AssertOK()
 		base.Cmd("build", buildCtx, "-t", img, "-t", imgWithNoTag, "-t", imgWithCustomTag).AssertOK()
@@ -430,9 +405,7 @@ CMD ["echo", "dockerfile"]
 	err = os.WriteFile(filepath.Join(tmpDir, "Containerfile"), []byte(containerfile), 0644)
 	assert.NilError(t, err)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("run", "--rm", imageName).AssertOutExactly("dockerfile\n")
@@ -447,9 +420,7 @@ func TestBuildNoTag(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-notag-string"]
 	`, testutil.CommonImage)
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", buildCtx).AssertOK()
 	base.Cmd("images").AssertOutContains("<none>")
@@ -464,9 +435,7 @@ func TestBuildContextDockerImageAlias(t *testing.T) {
 
 	dockerfile := `FROM myorg/myapp
 CMD ["echo", "nerdctl-build-myorg/myapp"]`
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", buildCtx, fmt.Sprintf("--build-context=myorg/myapp=docker-image://%s", testutil.CommonImage)).AssertOK()
 	base.Cmd("images").AssertOutContains("<none>")
@@ -491,9 +460,7 @@ func TestBuildContextWithCopyFromDir(t *testing.T) {
 COPY --from=dir2 /%s /hello_from_dir2.txt
 RUN ["cat", "/hello_from_dir2.txt"]`, testutil.CommonImage, filename)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", buildCtx, fmt.Sprintf("--build-context=dir2=%s", dir2)).AssertOK()
 	base.Cmd("images").AssertOutContains("<none>")
@@ -515,9 +482,7 @@ RUN echo $SOURCE_DATE_EPOCH >/source-date-epoch
 CMD ["cat", "/source-date-epoch"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	const sourceDateEpochEnvStr = "1111111111"
 	t.Setenv("SOURCE_DATE_EPOCH", sourceDateEpochEnvStr)
@@ -538,9 +503,7 @@ func TestBuildNetwork(t *testing.T) {
 RUN apk add --no-cache curl
 RUN curl -I http://google.com
 	`, testutil.CommonImage)
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	validCases := []struct {
 		name     string
@@ -597,9 +560,7 @@ func TestBuildAttestation(t *testing.T) {
 	defer base.Cmd("builder", "prune").Run()
 
 	dockerfile := "FROM " + testutil.NginxAlpineImage
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	// Test sbom
 	outputSBOMDir := t.TempDir()

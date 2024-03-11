@@ -19,11 +19,9 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"gotest.tools/v3/assert"
 )
 
 func TestBuilderDebug(t *testing.T) {
@@ -34,9 +32,7 @@ func TestBuilderDebug(t *testing.T) {
 CMD ["echo", "nerdctl-builder-debug-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("builder", "debug", buildCtx).CmdOption(testutil.WithStdin(bytes.NewReader([]byte("c\n")))).AssertOK()
 }

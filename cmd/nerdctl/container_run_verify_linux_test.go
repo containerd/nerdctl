@@ -18,12 +18,10 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
-	"gotest.tools/v3/assert"
 )
 
 func TestRunVerifyCosign(t *testing.T) {
@@ -48,9 +46,7 @@ func TestRunVerifyCosign(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", testImageRef, buildCtx).AssertOK()
 	base.Cmd("push", testImageRef, "--sign=cosign", "--cosign-key="+keyPair.privateKey).AssertOK()

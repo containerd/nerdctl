@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -88,9 +87,7 @@ CMD ["echo", "nerdctl-build-test-string"] \n
 LABEL foo=bar
 LABEL version=0.1`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 	base.Cmd("build", "-t", tempName, "-f", buildCtx+"/Dockerfile", buildCtx).AssertOK()
 	defer base.Cmd("rmi", tempName).AssertOK()
 
@@ -128,10 +125,8 @@ func TestImagesFilterDangling(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-notag-string"]
 	`, testutil.CommonImage)
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
+	buildCtx := createBuildContext(t, dockerfile)
 
-	defer os.RemoveAll(buildCtx)
 	base.Cmd("build", "-f", buildCtx+"/Dockerfile", buildCtx).AssertOK()
 
 	// dangling image test

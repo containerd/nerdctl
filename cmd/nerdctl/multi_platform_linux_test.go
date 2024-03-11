@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"testing"
 
@@ -68,9 +67,7 @@ func TestMultiPlatformBuildPush(t *testing.T) {
 RUN echo dummy
 	`, testutil.AlpineImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, "--platform=amd64,arm64,linux/arm/v7", buildCtx).AssertOK()
 	testMultiPlatformRun(base, imageName)
@@ -97,9 +94,7 @@ func TestMultiPlatformBuildPushNoRun(t *testing.T) {
 CMD echo dummy
 	`, testutil.AlpineImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, "--platform=amd64,arm64,linux/arm/v7", buildCtx).AssertOK()
 	testMultiPlatformRun(base, imageName)

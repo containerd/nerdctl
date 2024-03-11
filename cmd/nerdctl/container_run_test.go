@@ -49,9 +49,7 @@ ENTRYPOINT ["echo", "foo"]
 CMD ["echo", "bar"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("run", "--rm", imageName).AssertOutExactly("foo echo bar\n")
@@ -428,9 +426,7 @@ FROM scratch
 COPY --from=builder /go/src/logger/logger /
 	`
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 	tmpDir := t.TempDir()
 	base.Cmd("build", buildCtx, "--output", fmt.Sprintf("type=local,src=/go/src/logger/logger,dest=%s", tmpDir)).AssertOK()
 	defer base.Cmd("image", "rm", "-f", imageName).AssertOK()

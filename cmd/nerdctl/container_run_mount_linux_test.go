@@ -122,9 +122,7 @@ func TestRunAnonymousVolumeWithBuild(t *testing.T) {
 VOLUME /foo
         `, testutil.AlpineImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("run", "--rm", "-v", "/foo", testutil.AlpineImage,
@@ -146,9 +144,7 @@ RUN mkdir -p /mnt && echo hi > /mnt/initial_file
 CMD ["cat", "/mnt/initial_file"]
         `, testutil.AlpineImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 
@@ -176,9 +172,7 @@ VOLUME /mnt
 CMD ["cat", "/mnt/initial_file"]
         `, testutil.AlpineImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	//AnonymousVolume
@@ -211,9 +205,7 @@ CMD ["readlink", "/mnt/passwd"]
         `, testutil.AlpineImage)
 	const expected = "../../../../../../../../../../../../../../../../../../etc/passwd\n"
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 
@@ -240,9 +232,7 @@ func TestRunCopyingUpInitialContentsShouldNotResetTheCopiedContents(t *testing.T
 RUN echo -n "rev0" > /mnt/file
 `, testutil.AlpineImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 
