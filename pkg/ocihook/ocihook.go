@@ -89,6 +89,8 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	switch event {
 	case "createRuntime":
 		return onCreateRuntime(opts)
+	case "startContainer":
+		return onStartContainer(opts)
 	case "postStop":
 		return onPostStop(opts)
 	default:
@@ -388,82 +390,94 @@ func getIP6AddressOpts(opts *handlerOpts) ([]gocni.NamespaceOpts, error) {
 	return nil, nil
 }
 
+func applyNetworkSettings(opts *handlerOpts) error {
+	portMapOpts, err := getPortMapOpts(opts)
+	if err != nil {
+		return err
+	}
+	nsPath, err := getNetNSPath(opts.state)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	hs, err := hostsstore.NewStore(opts.dataStore)
+	if err != nil {
+		return err
+	}
+	ipAddressOpts, err := getIPAddressOpts(opts)
+	if err != nil {
+		return err
+	}
+	macAddressOpts, err := getMACAddressOpts(opts)
+	if err != nil {
+		return err
+	}
+	ip6AddressOpts, err := getIP6AddressOpts(opts)
+	if err != nil {
+		return err
+	}
+	var namespaceOpts []gocni.NamespaceOpts
+	namespaceOpts = append(namespaceOpts, portMapOpts...)
+	namespaceOpts = append(namespaceOpts, ipAddressOpts...)
+	namespaceOpts = append(namespaceOpts, macAddressOpts...)
+	namespaceOpts = append(namespaceOpts, ip6AddressOpts...)
+	hsMeta := hostsstore.Meta{
+		Namespace:  opts.state.Annotations[labels.Namespace],
+		ID:         opts.state.ID,
+		Networks:   make(map[string]*types100.Result, len(opts.cniNames)),
+		Hostname:   opts.state.Annotations[labels.Hostname],
+		ExtraHosts: opts.extraHosts,
+		Name:       opts.state.Annotations[labels.Name],
+	}
+	cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, namespaceOpts...)
+	if err != nil {
+		return fmt.Errorf("failed to call cni.Setup: %w", err)
+	}
+	cniResRaw := cniRes.Raw()
+	for i, cniName := range opts.cniNames {
+		hsMeta.Networks[cniName] = cniResRaw[i]
+	}
+
+	b4nnEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(opts.state.Annotations)
+	if err != nil {
+		return err
+	}
+
+	if err := hs.Acquire(hsMeta); err != nil {
+		return err
+	}
+
+	if rootlessutil.IsRootlessChild() {
+		if b4nnEnabled {
+			bm, err := bypass4netnsutil.NewBypass4netnsCNIBypassManager(opts.bypassClient, opts.rootlessKitClient)
+			if err != nil {
+				return err
+			}
+			err = bm.StartBypass(ctx, opts.ports, opts.state.ID, opts.state.Annotations[labels.StateDir])
+			if err != nil {
+				return fmt.Errorf("bypass4netnsd not running? (Hint: run `containerd-rootless-setuptool.sh install-bypass4netnsd`): %w", err)
+			}
+		} else if len(opts.ports) > 0 {
+			if err := exposePortsRootless(ctx, opts.rootlessKitClient, opts.ports); err != nil {
+				return fmt.Errorf("failed to expose ports in rootless mode: %s", err)
+			}
+		}
+	}
+	return nil
+}
+
 func onCreateRuntime(opts *handlerOpts) error {
 	loadAppArmor()
 
 	if opts.cni != nil {
-		portMapOpts, err := getPortMapOpts(opts)
-		if err != nil {
-			return err
-		}
-		nsPath, err := getNetNSPath(opts.state)
-		if err != nil {
-			return err
-		}
-		ctx := context.Background()
-		hs, err := hostsstore.NewStore(opts.dataStore)
-		if err != nil {
-			return err
-		}
-		ipAddressOpts, err := getIPAddressOpts(opts)
-		if err != nil {
-			return err
-		}
-		macAddressOpts, err := getMACAddressOpts(opts)
-		if err != nil {
-			return err
-		}
-		ip6AddressOpts, err := getIP6AddressOpts(opts)
-		if err != nil {
-			return err
-		}
-		var namespaceOpts []gocni.NamespaceOpts
-		namespaceOpts = append(namespaceOpts, portMapOpts...)
-		namespaceOpts = append(namespaceOpts, ipAddressOpts...)
-		namespaceOpts = append(namespaceOpts, macAddressOpts...)
-		namespaceOpts = append(namespaceOpts, ip6AddressOpts...)
-		hsMeta := hostsstore.Meta{
-			Namespace:  opts.state.Annotations[labels.Namespace],
-			ID:         opts.state.ID,
-			Networks:   make(map[string]*types100.Result, len(opts.cniNames)),
-			Hostname:   opts.state.Annotations[labels.Hostname],
-			ExtraHosts: opts.extraHosts,
-			Name:       opts.state.Annotations[labels.Name],
-		}
-		cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, namespaceOpts...)
-		if err != nil {
-			return fmt.Errorf("failed to call cni.Setup: %w", err)
-		}
-		cniResRaw := cniRes.Raw()
-		for i, cniName := range opts.cniNames {
-			hsMeta.Networks[cniName] = cniResRaw[i]
-		}
+		return applyNetworkSettings(opts)
+	}
+	return nil
+}
 
-		b4nnEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(opts.state.Annotations)
-		if err != nil {
-			return err
-		}
-
-		if err := hs.Acquire(hsMeta); err != nil {
-			return err
-		}
-
-		if rootlessutil.IsRootlessChild() {
-			if b4nnEnabled {
-				bm, err := bypass4netnsutil.NewBypass4netnsCNIBypassManager(opts.bypassClient, opts.rootlessKitClient)
-				if err != nil {
-					return err
-				}
-				err = bm.StartBypass(ctx, opts.ports, opts.state.ID, opts.state.Annotations[labels.StateDir])
-				if err != nil {
-					return fmt.Errorf("bypass4netnsd not running? (Hint: run `containerd-rootless-setuptool.sh install-bypass4netnsd`): %w", err)
-				}
-			} else if len(opts.ports) > 0 {
-				if err := exposePortsRootless(ctx, opts.rootlessKitClient, opts.ports); err != nil {
-					return fmt.Errorf("failed to expose ports in rootless mode: %s", err)
-				}
-			}
-		}
+func onStartContainer(opts *handlerOpts) error {
+	if opts.cni != nil {
+		return applyNetworkSettings(opts)
 	}
 	return nil
 }
