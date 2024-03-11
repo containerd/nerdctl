@@ -1,6 +1,6 @@
 module github.com/containerd/nerdctl
 
-go 1.20
+go 1.21
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
@@ -10,8 +10,8 @@ require (
 	github.com/compose-spec/compose-go v1.20.2
 	github.com/containerd/accelerated-container-image v1.0.2
 	github.com/containerd/cgroups/v3 v3.0.3
-	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.7.13
+	github.com/containerd/console v1.0.4
+	github.com/containerd/containerd v1.7.14
 	github.com/containerd/continuity v0.4.3
 	github.com/containerd/fifo v1.1.0
 	github.com/containerd/go-cni v1.1.9
@@ -74,7 +74,7 @@ require (
 	github.com/cilium/ebpf v0.11.0 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/go-runc v1.0.0 // indirect
-	github.com/containerd/ttrpc v1.2.2 // indirect
+	github.com/containerd/ttrpc v1.2.3 // indirect
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67 // indirect
 	github.com/containers/ocicrypt v1.1.9 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
