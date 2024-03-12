@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -44,9 +43,7 @@ func TestIPFSBuild(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, ipfsCIDBase)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	done := ipfsRegistryUp(t, base)
 	defer done()

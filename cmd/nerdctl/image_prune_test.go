@@ -18,11 +18,9 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"gotest.tools/v3/assert"
 )
 
 func TestImagePrune(t *testing.T) {
@@ -36,9 +34,7 @@ func TestImagePrune(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 	CMD ["echo", "nerdctl-test-image-prune"]`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", buildCtx).AssertOK()
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
@@ -59,9 +55,7 @@ func TestImagePruneAll(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 	CMD ["echo", "nerdctl-test-image-prune"]`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	// The following commands will clean up all images, so it should fail at this point.

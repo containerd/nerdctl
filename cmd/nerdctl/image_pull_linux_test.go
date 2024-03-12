@@ -79,9 +79,7 @@ func TestImageVerifyWithCosign(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", testImageRef, buildCtx).AssertOK()
 	base.Cmd("push", testImageRef, "--sign=cosign", "--cosign-key="+keyPair.privateKey).AssertOK()
@@ -103,9 +101,7 @@ func TestImagePullPlainHttpWithDefaultPort(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 	base.Cmd("build", "-t", testImageRef, buildCtx).AssertOK()
 	base.Cmd("--insecure-registry", "push", testImageRef).AssertOK()
 	base.Cmd("--insecure-registry", "pull", testImageRef).AssertOK()
@@ -133,9 +129,7 @@ func TestImageVerifyWithCosignShouldFailWhenKeyIsNotCorrect(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx, err := createBuildContext(dockerfile)
-	assert.NilError(t, err)
-	defer os.RemoveAll(buildCtx)
+	buildCtx := createBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", testImageRef, buildCtx).AssertOK()
 	base.Cmd("push", testImageRef, "--sign=cosign", "--cosign-key="+keyPair.privateKey).AssertOK()
@@ -202,5 +196,4 @@ func TestPullSoci(t *testing.T) {
 			}
 		})
 	}
-
 }
