@@ -36,7 +36,8 @@ func newComposeUpCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeUpCommand.Flags().BoolP("detach", "d", false, "Detached mode: Run containers in the background")
+	composeUpCommand.Flags().Bool("abort-on-container-exit", false, "Stops all containers if any container was stopped. Incompatible with -d.")
+	composeUpCommand.Flags().BoolP("detach", "d", false, "Detached mode: Run containers in the background. Incompatible with --abort-on-container-exit.")
 	composeUpCommand.Flags().Bool("no-build", false, "Don't build an image, even if it's missing.")
 	composeUpCommand.Flags().Bool("no-color", false, "Produce monochrome output")
 	composeUpCommand.Flags().Bool("no-log-prefix", false, "Don't print prefix in logs")
@@ -54,6 +55,13 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		return err
 	}
 	detach, err := cmd.Flags().GetBool("detach")
+	if err != nil {
+		return err
+	}
+	abortOnContainerExit, err := cmd.Flags().GetBool("abort-on-container-exit")
+	if detach && abortOnContainerExit {
+		return fmt.Errorf("--abort-on-container-exit flag is incompatible with flag --detach")
+	}
 	if err != nil {
 		return err
 	}
@@ -121,15 +129,16 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 	}
 
 	uo := composer.UpOptions{
-		Detach:        detach,
-		NoBuild:       noBuild,
-		NoColor:       noColor,
-		NoLogPrefix:   noLogPrefix,
-		ForceBuild:    build,
-		IPFS:          enableIPFS,
-		QuietPull:     quietPull,
-		RemoveOrphans: removeOrphans,
-		Scale:         scale,
+		AbortOnContainerExit: abortOnContainerExit,
+		Detach:               detach,
+		NoBuild:              noBuild,
+		NoColor:              noColor,
+		NoLogPrefix:          noLogPrefix,
+		ForceBuild:           build,
+		IPFS:                 enableIPFS,
+		QuietPull:            quietPull,
+		RemoveOrphans:        removeOrphans,
+		Scale:                scale,
 	}
 	return c.Up(ctx, uo, services)
 }

@@ -33,6 +33,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 
 	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
 )
 
 func TestComposeUp(t *testing.T) {
@@ -584,4 +585,48 @@ services:
 	psCmd = base.Cmd("ps", "-a", "--format={{.Names}}")
 	psCmd.AssertOutContains(serviceRegular)
 	psCmd.AssertOutNotContains(serviceProfiled)
+}
+
+func TestComposeUpAbortOnContainerExit(t *testing.T) {
+	base := testutil.NewBase(t)
+	serviceRegular := "regular"
+	serviceProfiled := "exited"
+	dockerComposeYAML := fmt.Sprintf(`
+services:
+  %s:
+    image: %s
+    ports:
+      - 8080:80
+  %s:
+    image: %s
+    entrypoint: /bin/sh -c "exit 1"
+`, serviceRegular, testutil.NginxAlpineImage, serviceProfiled, testutil.BusyboxImage)
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	// here we run 'compose up --abort-on-container-exit' command
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "--abort-on-container-exit").AssertExitCode(1)
+	time.Sleep(3 * time.Second)
+	psCmd := base.Cmd("ps", "-a", "--format={{.Names}}", "--filter", "status=exited")
+
+	psCmd.AssertOutContains(serviceRegular)
+	psCmd.AssertOutContains(serviceProfiled)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+
+	// this time we run 'compose up' command without --abort-on-container-exit flag
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	time.Sleep(3 * time.Second)
+	psCmd = base.Cmd("ps", "-a", "--format={{.Names}}", "--filter", "status=exited")
+
+	// this time the regular service should not be listed in the output
+	psCmd.AssertOutNotContains(serviceRegular)
+	psCmd.AssertOutContains(serviceProfiled)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+
+	// in this sub-test we are ensuring that flags '-d' and '--abort-on-container-exit' cannot be ran together
+	c := base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--abort-on-container-exit")
+	expected := icmd.Expected{
+		ExitCode: 1,
+	}
+	c.Assert(expected)
 }

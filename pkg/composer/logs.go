@@ -18,6 +18,7 @@ package composer
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -32,11 +33,12 @@ import (
 )
 
 type LogsOptions struct {
-	Follow      bool
-	Timestamps  bool
-	Tail        string
-	NoColor     bool
-	NoLogPrefix bool
+	AbortOnContainerExit bool
+	Follow               bool
+	Timestamps           bool
+	Tail                 string
+	NoColor              bool
+	NoLogPrefix          bool
 }
 
 func (c *Composer) Logs(ctx context.Context, lo LogsOptions, services []string) error {
@@ -133,6 +135,7 @@ func (c *Composer) logs(ctx context.Context, containers []containerd.Container, 
 	signal.Notify(interruptChan, os.Interrupt)
 
 	logsEOFMap := make(map[string]struct{}) // key: container name
+	var containerError error
 selectLoop:
 	for {
 		// Wait for Ctrl-C, or `nerdctl compose down` in another terminal
@@ -144,6 +147,12 @@ selectLoop:
 			if lo.Follow {
 				// When `nerdctl logs -f` has exited, we can assume that the container has exited
 				log.G(ctx).Infof("Container %q exited", containerName)
+				// In case a container has exited and the parameter --abort-on-container-exit,
+				// we break the loop and set an error, so we can exit the program with 1
+				if lo.AbortOnContainerExit {
+					containerError = fmt.Errorf("container %q exited", containerName)
+					break selectLoop
+				}
 			} else {
 				log.G(ctx).Debugf("Logs for container %q reached EOF", containerName)
 			}
@@ -167,5 +176,5 @@ selectLoop:
 		}
 	}
 
-	return nil
+	return containerError
 }
