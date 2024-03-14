@@ -1383,7 +1383,8 @@ Usage: `nerdctl compose up [OPTIONS] [SERVICE...]`
 
 Flags:
 
-- :whale: `-d, --detach`: Detached mode: Run containers in the background
+- :whale: `--abort-on-container-exit`: Stops all containers if any container was stopped. Incompatible with `-d`.
+- :whale: `-d, --detach`: Detached mode: Run containers in the background. Incompatible with `--abort-on-container-exit`.
 - :whale: `--no-build`: Don't build an image, even if it's missing.
 - :whale: `--no-color`: Produce monochrome output
 - :whale: `--no-log-prefix`: Don't print prefix in logs

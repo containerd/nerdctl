@@ -28,15 +28,16 @@ import (
 )
 
 type UpOptions struct {
-	Detach        bool
-	NoBuild       bool
-	NoColor       bool
-	NoLogPrefix   bool
-	ForceBuild    bool
-	IPFS          bool
-	QuietPull     bool
-	RemoveOrphans bool
-	Scale         map[string]uint64 // map of service name to replicas
+	AbortOnContainerExit bool
+	Detach               bool
+	NoBuild              bool
+	NoColor              bool
+	NoLogPrefix          bool
+	ForceBuild           bool
+	IPFS                 bool
+	QuietPull            bool
+	RemoveOrphans        bool
+	Scale                map[string]uint64 // map of service name to replicas
 }
 
 func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) error {

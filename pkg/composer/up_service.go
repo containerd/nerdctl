@@ -75,11 +75,17 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 		return nil
 	}
 
+	// this is used to stop containers in case --abort-on-container-exit flag is set.
+	// c.Logs returns an error, so we don't need Ctrl-c to reach the "Stopping containers (forcibly)"
+	if uo.AbortOnContainerExit {
+		defer c.stopContainersFromParsedServices(ctx, containers)
+	}
 	log.G(ctx).Info("Attaching to logs")
 	lo := LogsOptions{
-		Follow:      true,
-		NoColor:     uo.NoColor,
-		NoLogPrefix: uo.NoLogPrefix,
+		AbortOnContainerExit: uo.AbortOnContainerExit,
+		Follow:               true,
+		NoColor:              uo.NoColor,
+		NoLogPrefix:          uo.NoLogPrefix,
 	}
 	if err := c.Logs(ctx, lo, services); err != nil {
 		return err
