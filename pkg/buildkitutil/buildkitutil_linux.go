@@ -1,5 +1,3 @@
-//go:build freebsd
-
 /*
    Copyright The containerd Authors.
 
@@ -16,19 +14,26 @@
    limitations under the License.
 */
 
-package ipcutil
+package buildkitutil
 
-import "fmt"
+import (
+	"fmt"
 
-// makeShareableDevshm returns devshm directory path on host when there is no error.
-func makeShareableDevshm(shmPath, shmSize string) error {
-	return fmt.Errorf("unix does not support shareable devshm")
-}
+	"github.com/containerd/log"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+)
 
-// cleanUpPlatformSpecificIPC cleans up platform specific IPC.
-func cleanUpPlatformSpecificIPC(ipc IPC) error {
-	if ipc.Mode == Shareable {
-		return fmt.Errorf("unix does not support shareable devshm")
+func getRuntimeVariableDataDir() string {
+	// Per Linux Foundation "Filesystem Hierarchy Standard" version 3.0 section 3.15.
+	// Under version 2.3, this was "/var/run".
+	run := "/run"
+	if rootlessutil.IsRootless() {
+		var err error
+		run, err = rootlessutil.XDGRuntimeDir()
+		if err != nil {
+			log.L.Warn(err)
+			run = fmt.Sprintf("/run/user/%d", rootlessutil.ParentEUID())
+		}
 	}
-	return nil
+	return run
 }

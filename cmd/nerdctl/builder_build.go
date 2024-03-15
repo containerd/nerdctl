@@ -27,7 +27,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/builder"
-	"github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 
 	"github.com/spf13/cobra"
@@ -43,7 +42,7 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	AddStringFlag(buildCommand, "buildkit-host", nil, defaults.BuildKitHost(), "BUILDKIT_HOST", "BuildKit address")
+	AddStringFlag(buildCommand, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
 	buildCommand.Flags().StringArrayP("tag", "t", nil, "Name and optionally a tag in the 'name:tag' format")
 	buildCommand.Flags().StringP("file", "f", "", "Name of the Dockerfile")
 	buildCommand.Flags().String("target", "", "Set the target build stage to build")
