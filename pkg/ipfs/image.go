@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/log"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
@@ -40,7 +41,7 @@ import (
 const ipfsPathEnv = "IPFS_PATH"
 
 // EnsureImage pull the specified image from IPFS.
-func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter string, scheme string, ref string, mode imgutil.PullMode, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool, ipfsPath string, rFlags imgutil.RemoteSnapshotterFlags) (*imgutil.EnsuredImage, error) {
+func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter string, scheme string, ref string, mode imgutil.PullMode, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool, ipfsPath string, rFlags types.RemoteSnapshotterFlags) (*imgutil.EnsuredImage, error) {
 	switch mode {
 	case "always", "missing", "never":
 		// NOP

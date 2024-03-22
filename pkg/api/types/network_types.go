@@ -18,16 +18,23 @@ package types
 
 import (
 	"io"
-
-	"github.com/containerd/nerdctl/v2/pkg/netutil"
 )
 
 // NetworkCreateOptions specifies options for `nerdctl network create`.
 type NetworkCreateOptions struct {
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
-	// CreateOptions is the option for creating network
-	CreateOptions netutil.CreateOptions
+
+	Name        string
+	Driver      string
+	Options     map[string]string
+	IPAMDriver  string
+	IPAMOptions map[string]string
+	Subnets     []string
+	Gateway     string
+	IPRange     string
+	Labels      []string
+	IPv6        bool
 }
 
 // NetworkInspectOptions specifies options for `nerdctl network inspect`.

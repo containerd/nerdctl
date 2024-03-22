@@ -22,7 +22,6 @@ import (
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/network"
-	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 
 	"github.com/spf13/cobra"
@@ -100,18 +99,16 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 	}
 
 	return network.Create(types.NetworkCreateOptions{
-		GOptions: globalOptions,
-		CreateOptions: netutil.CreateOptions{
-			Name:        name,
-			Driver:      driver,
-			Options:     strutil.ConvertKVStringsToMap(opts),
-			IPAMDriver:  ipamDriver,
-			IPAMOptions: strutil.ConvertKVStringsToMap(ipamOpts),
-			Subnets:     subnets,
-			Gateway:     gatewayStr,
-			IPRange:     ipRangeStr,
-			Labels:      labels,
-			IPv6:        ipv6,
-		},
+		GOptions:    globalOptions,
+		Name:        name,
+		Driver:      driver,
+		Options:     strutil.ConvertKVStringsToMap(opts),
+		IPAMDriver:  ipamDriver,
+		IPAMOptions: strutil.ConvertKVStringsToMap(ipamOpts),
+		Subnets:     subnets,
+		Gateway:     gatewayStr,
+		IPRange:     ipRangeStr,
+		Labels:      labels,
+		IPv6:        ipv6,
 	}, cmd.OutOrStdout())
 }

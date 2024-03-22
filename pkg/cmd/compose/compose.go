@@ -125,7 +125,7 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 				ipfsPath = dir
 			}
 			_, err = ipfs.EnsureImage(ctx, client, stdout, stderr, globalOptions.Snapshotter, scheme, ref,
-				pullMode, ocispecPlatforms, nil, quiet, ipfsPath, imgutil.RemoteSnapshotterFlags{})
+				pullMode, ocispecPlatforms, nil, quiet, ipfsPath, types.RemoteSnapshotterFlags{})
 			return err
 		}
 
@@ -136,7 +136,7 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 		}
 
 		_, err = imgutil.EnsureImage(ctx, client, stdout, stderr, globalOptions.Snapshotter, ref,
-			pullMode, globalOptions.InsecureRegistry, globalOptions.HostsDir, ocispecPlatforms, nil, quiet, imgutil.RemoteSnapshotterFlags{})
+			pullMode, globalOptions.InsecureRegistry, globalOptions.HostsDir, ocispecPlatforms, nil, quiet, types.RemoteSnapshotterFlags{})
 		return err
 	}
 
