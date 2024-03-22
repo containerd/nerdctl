@@ -110,6 +110,16 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 			ocispecPlatforms = []ocispec.Platform{parsed} // no append
 		}
 
+		imageConfig := &imgutil.Config{
+			Stdout:           stdout,
+			Stderr:           stderr,
+			Snapshotter:      globalOptions.Snapshotter,
+			OcispecPlatforms: ocispecPlatforms,
+			Unpack:           nil,
+			Quiet:            quiet,
+			RFlags:           imgutil.RemoteSnapshotterFlags{},
+		}
+
 		// IPFS reference
 		if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(imageName); err == nil {
 			var ipfsPath string
@@ -124,8 +134,7 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 				}
 				ipfsPath = dir
 			}
-			_, err = ipfs.EnsureImage(ctx, client, stdout, stderr, globalOptions.Snapshotter, scheme, ref,
-				pullMode, ocispecPlatforms, nil, quiet, ipfsPath, imgutil.RemoteSnapshotterFlags{})
+			_, err = ipfs.EnsureImage(ctx, client, scheme, ref, pullMode, ipfsPath, imageConfig)
 			return err
 		}
 
@@ -135,8 +144,7 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 			return err
 		}
 
-		_, err = imgutil.EnsureImage(ctx, client, stdout, stderr, globalOptions.Snapshotter, ref,
-			pullMode, globalOptions.InsecureRegistry, globalOptions.HostsDir, ocispecPlatforms, nil, quiet, imgutil.RemoteSnapshotterFlags{})
+		_, err = imgutil.EnsureImage(ctx, client, ref, pullMode, globalOptions.InsecureRegistry, globalOptions.HostsDir, imageConfig)
 		return err
 	}
 

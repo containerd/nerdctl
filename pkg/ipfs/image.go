@@ -40,7 +40,7 @@ import (
 const ipfsPathEnv = "IPFS_PATH"
 
 // EnsureImage pull the specified image from IPFS.
-func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter string, scheme string, ref string, mode imgutil.PullMode, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool, ipfsPath string, rFlags imgutil.RemoteSnapshotterFlags) (*imgutil.EnsuredImage, error) {
+func EnsureImage(ctx context.Context, client *containerd.Client, scheme string, ref string, mode imgutil.PullMode, ipfsPath string, imageConfig *imgutil.Config) (*imgutil.EnsuredImage, error) {
 	switch mode {
 	case "always", "missing", "never":
 		// NOP
@@ -55,8 +55,8 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 	}
 
 	// if not `always` pull and given one platform and image found locally, return existing image directly.
-	if mode != "always" && len(ocispecPlatforms) == 1 {
-		if res, err := imgutil.GetExistingImage(ctx, client, snapshotter, ref, ocispecPlatforms[0]); err == nil {
+	if mode != "always" && len(imageConfig.OcispecPlatforms) == 1 {
+		if res, err := imgutil.GetExistingImage(ctx, client, imageConfig.Snapshotter, ref, imageConfig.OcispecPlatforms[0]); err == nil {
 			return res, nil
 		} else if !errdefs.IsNotFound(err) {
 			return nil, err
@@ -73,7 +73,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 	if err != nil {
 		return nil, err
 	}
-	return imgutil.PullImage(ctx, client, stdout, stderr, snapshotter, r, ref, ocispecPlatforms, unpack, quiet, rFlags)
+	return imgutil.PullImage(ctx, client, r, ref, imageConfig)
 }
 
 // Push pushes the specified image to IPFS.
