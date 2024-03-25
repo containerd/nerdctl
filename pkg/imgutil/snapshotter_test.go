@@ -23,6 +23,7 @@ import (
 
 	"github.com/containerd/containerd"
 	ctdsnapshotters "github.com/containerd/containerd/pkg/snapshotters"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -93,7 +94,7 @@ func sameOpts(want snapshotterOpts) func(*testing.T, snapshotterOpts) {
 func getAndApplyRemoteOpts(t *testing.T, sn string) *containerd.RemoteContext {
 	config := &pull.Config{}
 	snOpts := getSnapshotterOpts(sn)
-	rFlags := RemoteSnapshotterFlags{}
+	rFlags := types.RemoteSnapshotterFlags{}
 	snOpts.apply(config, testRef, rFlags)
 
 	rc := &containerd.RemoteContext{}

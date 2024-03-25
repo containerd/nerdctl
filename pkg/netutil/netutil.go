@@ -34,6 +34,7 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/log"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
@@ -225,20 +226,7 @@ type cniNetworkConfig struct {
 	Plugins    []CNIPlugin       `json:"plugins"`
 }
 
-type CreateOptions struct {
-	Name        string
-	Driver      string
-	Options     map[string]string
-	IPAMDriver  string
-	IPAMOptions map[string]string
-	Subnets     []string
-	Gateway     string
-	IPRange     string
-	Labels      []string
-	IPv6        bool
-}
-
-func (e *CNIEnv) CreateNetwork(opts CreateOptions) (*NetworkConfig, error) { //nolint:revive
+func (e *CNIEnv) CreateNetwork(opts types.NetworkCreateOptions) (*NetworkConfig, error) { //nolint:revive
 	var net *NetworkConfig
 	netMap, err := e.NetworkMap()
 	if err != nil {
@@ -350,7 +338,7 @@ func (e *CNIEnv) createDefaultNetworkConfig() error {
 	if _, err := os.Stat(filename); err == nil {
 		return fmt.Errorf("already found existing network config at %q, cannot create new network named %q", filename, DefaultNetworkName)
 	}
-	opts := CreateOptions{
+	opts := types.NetworkCreateOptions{
 		Name:       DefaultNetworkName,
 		Driver:     DefaultNetworkName,
 		Subnets:    []string{DefaultCIDR},

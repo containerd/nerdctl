@@ -26,21 +26,21 @@ import (
 )
 
 func Create(options types.NetworkCreateOptions, stdout io.Writer) error {
-	if len(options.CreateOptions.Subnets) == 0 {
-		if options.CreateOptions.Gateway != "" || options.CreateOptions.IPRange != "" {
+	if len(options.Subnets) == 0 {
+		if options.Gateway != "" || options.IPRange != "" {
 			return fmt.Errorf("cannot set gateway or ip-range without subnet, specify --subnet manually")
 		}
-		options.CreateOptions.Subnets = []string{""}
+		options.Subnets = []string{""}
 	}
 
 	e, err := netutil.NewCNIEnv(options.GOptions.CNIPath, options.GOptions.CNINetConfPath)
 	if err != nil {
 		return err
 	}
-	net, err := e.CreateNetwork(options.CreateOptions)
+	net, err := e.CreateNetwork(options)
 	if err != nil {
 		if errdefs.IsAlreadyExists(err) {
-			return fmt.Errorf("network with name %s already exists", options.CreateOptions.Name)
+			return fmt.Errorf("network with name %s already exists", options.Name)
 		}
 		return err
 	}
