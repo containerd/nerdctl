@@ -57,6 +57,16 @@ func Pull(ctx context.Context, client *containerd.Client, rawRef string, options
 func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, ocispecPlatforms []v1.Platform, pull string, unpack *bool, quiet bool, options types.ImagePullOptions) (*imgutil.EnsuredImage, error) {
 	var ensured *imgutil.EnsuredImage
 
+	imageConfig := &imgutil.Config{
+		Stdout:           options.Stdout,
+		Stderr:           options.Stdout,
+		Snapshotter:      options.GOptions.Snapshotter,
+		OcispecPlatforms: ocispecPlatforms,
+		Unpack:           unpack,
+		Quiet:            quiet,
+		RFlags:           options.RFlags,
+	}
+
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
 		if options.VerifyOptions.Provider != "none" {
 			return nil, errors.New("--verify flag is not supported on IPFS as of now")
@@ -75,8 +85,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 			ipfsPath = dir
 		}
 
-		ensured, err = ipfs.EnsureImage(ctx, client, options.Stdout, options.Stderr, options.GOptions.Snapshotter, scheme, ref,
-			pull, ocispecPlatforms, unpack, quiet, ipfsPath, options.RFlags)
+		ensured, err = ipfs.EnsureImage(ctx, client, scheme, ref, pull, ipfsPath, imageConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -88,8 +97,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 		return nil, err
 	}
 
-	ensured, err = imgutil.EnsureImage(ctx, client, options.Stdout, options.Stderr, options.GOptions.Snapshotter, ref,
-		pull, options.GOptions.InsecureRegistry, options.GOptions.HostsDir, ocispecPlatforms, unpack, quiet, options.RFlags)
+	ensured, err = imgutil.EnsureImage(ctx, client, ref, pull, options.GOptions.InsecureRegistry, options.GOptions.HostsDir, imageConfig)
 	if err != nil {
 		return nil, err
 	}
