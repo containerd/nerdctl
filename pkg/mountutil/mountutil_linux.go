@@ -408,9 +408,48 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		}
 		fieldsStr := strings.Join(fields, ":")
 		return ProcessFlagTmpfs(fieldsStr)
-	case Volume, Bind:
+	case Bind, Volume:
 		// Refactor this portion to not use the ProcessFlagV
-		fields = []string{src, dst}
+
+		// These are the variables that are used to build the processed volume results
+		var (
+			res     *Processed
+			volSpec volumeSpec
+		)
+
+		// dst is always specified, so we validate the path of destination volume
+		dst = strings.TrimSpace(dst)
+		if _, err := isValidPath(dst); err != nil {
+			return nil, err
+		}
+
+		// First handle anonymous volume.
+		// Anonymous volumes are volumes for which src are not specified.
+		if src == "" {
+			if mountType == Bind {
+				return nil, fmt.Errorf("anonymous volumes are not supported for bind mounts")
+			}
+			if volSpec, err = handleAnonymousVolumes(dst, volStore); err != nil {
+				return nil, err
+			}
+			src = volSpec.Source
+			res = &Processed{
+				Type:            volSpec.Type,
+				AnonymousVolume: volSpec.AnonymousVolume,
+			}
+		} else { // handle non-anonymous volumes
+			volSpec, err = handleVolumeToMount(src, dst, volStore, false)
+			if err != nil {
+				return nil, err
+			}
+
+			src = volSpec.Source
+			res = &Processed{
+				Type:            volSpec.Type,
+				Name:            volSpec.Name,
+				AnonymousVolume: volSpec.AnonymousVolume,
+			}
+		}
 		if bindPropagation != "" {
 			options = append(options, bindPropagation)
 		}
@@ -422,14 +461,15 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			}
 		}
 
-		if len(options) > 0 {
-			optionsStr := strings.Join(options, ",")
-			fields = append(fields, optionsStr)
+		res.Mount = specs.Mount{
+			Type:        mountType, // FIXME: this is not the same as the mountType
+			Source:      cleanMount(src),
+			Destination: cleanMount(dst),
+			Options:     options,
 		}
-		fieldsStr := strings.Join(fields, ":")
 
-		log.L.Debugf("Call legacy %s process, spec: %s ", mountType, fieldsStr)
-		return ProcessFlagV(fieldsStr, volStore, false)
+		log.L.Debugf("mount: %+v", res)
+		return res, nil
 	}
 	return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", mountType)
 }
