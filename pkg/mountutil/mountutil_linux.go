@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -402,8 +403,54 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		if tmpfsSize > 0 {
 			options = append(options, getTmpfsSize(tmpfsSize))
 		}
-	case Volume, Bind:
-		fields = []string{src, dst}
+		if len(options) > 0 {
+			optionsStr := strings.Join(options, ",")
+			fields = append(fields, optionsStr)
+		}
+		fieldsStr := strings.Join(fields, ":")
+		return ProcessFlagTmpfs(fieldsStr)
+	case Bind, Volume:
+		// Refactor this portion to not use the ProcessFlagV
+
+		// These are the variables that are used to build the processed volume results
+		var (
+			res     *Processed
+			volSpec volumeSpec
+		)
+
+		// dst is always specified, so we validate the path of destination volume
+		dst = strings.TrimSpace(dst)
+		if _, err := isValidPath(dst); err != nil {
+			return nil, err
+		}
+
+		// First handle anonymous volume.
+		// Anonymous volumes are volumes for which src are not specified.
+		if src == "" {
+			if mountType == Bind {
+				return nil, fmt.Errorf("anonymous volumes are not supported for bind mounts")
+			}
+			if volSpec, err = handleAnonymousVolumes(dst, volStore); err != nil {
+				return nil, err
+			}
+			src = volSpec.Source
+			res = &Processed{
+				Type:            volSpec.Type,
+				AnonymousVolume: volSpec.AnonymousVolume,
+			}
+		} else { // handle non-anonymous volumes
+			volSpec, err = handleVolumeToMount(src, dst, volStore, false)
+			if err != nil {
+				return nil, err
+			}
+
+			src = volSpec.Source
+			res = &Processed{
+				Type:            volSpec.Type,
+				Name:            volSpec.Name,
+				AnonymousVolume: volSpec.AnonymousVolume,
+			}
+		}
 		if bindPropagation != "" {
 			options = append(options, bindPropagation)
 		}
@@ -414,22 +461,33 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 				options = append(options, "rbind")
 			}
 		}
-	}
 
-	if len(options) > 0 {
-		optionsStr := strings.Join(options, ",")
-		fields = append(fields, optionsStr)
-	}
-	fieldsStr := strings.Join(fields, ":")
+		fstype := DefaultMountType
+		if runtime.GOOS != "freebsd" {
+			found := false
+			for _, opt := range options {
+				switch opt {
+				case "rbind", "bind":
+					fstype = "bind"
+					found = true
+				}
+				if found {
+					break
+				}
+			}
+			if !found {
+				options = append(options, "rbind")
+			}
+		}
+		res.Mount = specs.Mount{
+			Type:        fstype,
+			Source:      cleanMount(src),
+			Destination: cleanMount(dst),
+			Options:     options,
+		}
 
-	log.L.Debugf("Call legacy %s process, spec: %s ", mountType, fieldsStr)
-
-	switch mountType {
-	case Tmpfs:
-		return ProcessFlagTmpfs(fieldsStr)
-	case Volume, Bind:
-		// createDir=false for --mount option to disallow creating directories on host if not found
-		return ProcessFlagV(fieldsStr, volStore, false)
+		log.L.Debugf("mount: %+v", res)
+		return res, nil
 	}
 	return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", mountType)
 }
