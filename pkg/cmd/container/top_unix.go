@@ -37,7 +37,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/containerd/containerd"
+	containerd "github.com/containerd/containerd/v2/client"
 )
 
 // containerTop was inspired from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L133-L189

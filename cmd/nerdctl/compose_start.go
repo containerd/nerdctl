@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/errdefs"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"

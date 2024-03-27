@@ -21,16 +21,16 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/containers"
-	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/plugin"
-	runcoptions "github.com/containerd/containerd/runtime/v2/runc/options"
+	"github.com/containerd/containerd/v2/core/containers"
+	runcoptions "github.com/containerd/containerd/v2/core/runtime/v2/runc/options"
+	"github.com/containerd/containerd/v2/pkg/oci"
+	"github.com/containerd/containerd/v2/plugins"
 	"github.com/containerd/log"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 func generateRuntimeCOpts(cgroupManager, runtimeStr string) ([]containerd.NewContainerOpts, error) {
-	runtime := plugin.RuntimeRuncV2
+	runtime := plugins.RuntimeRuncV2
 	var (
 		runcOpts    runcoptions.Options
 		runtimeOpts interface{} = &runcOpts

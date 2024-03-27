@@ -28,11 +28,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/images/archive"
-	dockerreference "github.com/containerd/containerd/reference/docker"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/containerd/v2/core/images/archive"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
@@ -40,6 +39,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/platforms"
+	dockerreference "github.com/distribution/reference"
 )
 
 type PlatformParser interface {

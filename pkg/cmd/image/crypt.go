@@ -21,9 +21,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/images/converter"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/content"
+	"github.com/containerd/containerd/v2/core/images/converter"
 	"github.com/containerd/imgcrypt/images/encryption"
 	"github.com/containerd/imgcrypt/images/encryption/parsehelpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"

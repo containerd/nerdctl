@@ -19,8 +19,8 @@ package containerinspector
 import (
 	"context"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/errdefs"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/typeurl/v2"

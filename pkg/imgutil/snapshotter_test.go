@@ -21,8 +21,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/containerd/containerd"
-	ctdsnapshotters "github.com/containerd/containerd/pkg/snapshotters"
+	containerd "github.com/containerd/containerd/v2/client"
+	ctdsnapshotters "github.com/containerd/containerd/v2/pkg/snapshotters"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
 	digest "github.com/opencontainers/go-digest"

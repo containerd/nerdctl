@@ -29,9 +29,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/defaults"
-	"github.com/containerd/containerd/pkg/process"
+	"github.com/containerd/containerd/v2/cmd/containerd-shim-runc-v2/process"
+	"github.com/containerd/containerd/v2/defaults"
+	"github.com/containerd/containerd/v2/pkg/cio"
 )
 
 const binaryIOProcTermTimeout = 12 * time.Second // Give logger process 10 seconds for cleanup

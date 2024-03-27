@@ -23,11 +23,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/images"
-	dockerreference "github.com/containerd/containerd/reference/docker"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
+	dockerreference "github.com/distribution/reference"
 )
 
 // Filter types supported to filter images.

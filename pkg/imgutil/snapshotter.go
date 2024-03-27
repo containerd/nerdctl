@@ -20,9 +20,9 @@ import (
 	"strings"
 
 	socisource "github.com/awslabs/soci-snapshotter/fs/source"
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/images"
-	ctdsnapshotters "github.com/containerd/containerd/pkg/snapshotters"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/images"
+	ctdsnapshotters "github.com/containerd/containerd/v2/pkg/snapshotters"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"

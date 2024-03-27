@@ -25,7 +25,7 @@ import (
 	"text/tabwriter"
 	"text/template"
 
-	"github.com/containerd/containerd/pkg/progress"
+	"github.com/containerd/containerd/v2/pkg/progress"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"

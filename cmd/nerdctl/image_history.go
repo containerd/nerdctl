@@ -27,8 +27,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/pkg/progress"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/progress"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"

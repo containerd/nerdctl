@@ -385,7 +385,7 @@ RUN echo '\
 	"path/filepath" \n\
 	"sync" \n\
 	\n\
-	"github.com/containerd/containerd/runtime/v2/logging"\n\
+	"github.com/containerd/containerd/v2/core/runtime/v2/logging"\n\
 	)\n\
 
 	func main() {\n\

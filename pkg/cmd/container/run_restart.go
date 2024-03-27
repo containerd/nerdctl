@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/runtime/restart"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/runtime/restart"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 

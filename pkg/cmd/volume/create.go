@@ -19,7 +19,7 @@ package volume
 import (
 	"fmt"
 
-	"github.com/containerd/containerd/identifiers"
+	"github.com/containerd/containerd/v2/pkg/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/labels"

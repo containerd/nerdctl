@@ -21,7 +21,7 @@ import (
 	"path"
 	"strings"
 
-	refdocker "github.com/containerd/containerd/reference/docker"
+	refdocker "github.com/distribution/reference"
 	"github.com/ipfs/go-cid"
 )
 
