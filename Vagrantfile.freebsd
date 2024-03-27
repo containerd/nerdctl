@@ -36,7 +36,9 @@ Vagrant.configure("2") do |config|
     sh.inline = <<~SHELL
         #!/usr/bin/env bash
         set -eux -o pipefail
-        pkg install -y go containerd runj
+        # `pkg install go` still installs Go 1.20 (March 2024)
+        pkg install -y go122 containerd runj
+        ln -s go122 /usr/local/bin/go
         cd /vagrant
         go install ./cmd/nerdctl
     SHELL
