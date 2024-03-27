@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/containerd/containerd/identifiers"
+	"github.com/containerd/containerd/v2/pkg/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 )
 

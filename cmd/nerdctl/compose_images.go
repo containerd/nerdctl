@@ -22,9 +22,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/pkg/progress"
-	"github.com/containerd/containerd/snapshots"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/snapshots"
+	"github.com/containerd/containerd/v2/pkg/progress"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"

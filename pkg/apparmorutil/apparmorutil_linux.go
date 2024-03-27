@@ -23,8 +23,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/containerd/containerd/pkg/apparmor"
-	"github.com/containerd/containerd/pkg/userns"
+	"github.com/containerd/containerd/v2/pkg/apparmor"
+	"github.com/containerd/containerd/v2/pkg/userns"
 	"github.com/containerd/log"
 )
 

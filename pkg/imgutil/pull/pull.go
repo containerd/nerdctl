@@ -21,9 +21,9 @@ import (
 	"context"
 	"io"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/remotes"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/jobs"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"

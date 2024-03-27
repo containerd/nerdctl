@@ -17,9 +17,8 @@
 package config
 
 import (
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/defaults"
-	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/v2/defaults"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
 )
 
@@ -49,7 +48,7 @@ func New() *Config {
 		DebugFull:        false,
 		Address:          defaults.DefaultAddress,
 		Namespace:        namespaces.Default,
-		Snapshotter:      containerd.DefaultSnapshotter,
+		Snapshotter:      defaults.DefaultSnapshotter,
 		CNIPath:          ncdefaults.CNIPath(),
 		CNINetConfPath:   ncdefaults.CNINetConfPath(),
 		DataRoot:         ncdefaults.DataRoot(),
