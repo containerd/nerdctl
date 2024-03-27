@@ -28,8 +28,8 @@ require (
 	github.com/coreos/go-iptables v0.7.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.2.4
-	github.com/docker/cli v24.0.7+incompatible
-	github.com/docker/docker v24.0.7+incompatible
+	github.com/docker/cli v26.0.0+incompatible
+	github.com/docker/docker v26.0.0+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.2.0
@@ -101,6 +101,7 @@ require (
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/sys/mountinfo v0.7.1 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
