@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"reflect"
 
 	"github.com/containerd/containerd"
@@ -102,26 +101,24 @@ func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 // EnsureImage ensures the image.
 //
 // # When insecure is set, skips verifying certs, and also falls back to HTTP when the registry does not speak HTTPS
-//
-// FIXME: this func has too many args
-func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter, rawRef string, mode PullMode, insecure bool, hostsDirs []string, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool, rFlags types.RemoteSnapshotterFlags) (*EnsuredImage, error) {
-	switch mode {
+func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePullOptions) (*EnsuredImage, error) {
+	switch options.Mode {
 	case "always", "missing", "never":
 		// NOP
 	default:
-		return nil, fmt.Errorf("unexpected pull mode: %q", mode)
+		return nil, fmt.Errorf("unexpected pull mode: %q", options.Mode)
 	}
 
 	// if not `always` pull and given one platform and image found locally, return existing image directly.
-	if mode != "always" && len(ocispecPlatforms) == 1 {
-		if res, err := GetExistingImage(ctx, client, snapshotter, rawRef, ocispecPlatforms[0]); err == nil {
+	if options.Mode != "always" && len(options.OCISpecPlatform) == 1 {
+		if res, err := GetExistingImage(ctx, client, options.GOptions.Snapshotter, rawRef, options.OCISpecPlatform[0]); err == nil {
 			return res, nil
 		} else if !errdefs.IsNotFound(err) {
 			return nil, err
 		}
 	}
 
-	if mode == "never" {
+	if options.Mode == "never" {
 		return nil, fmt.Errorf("image not available: %q", rawRef)
 	}
 
@@ -133,30 +130,30 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 	refDomain := distributionref.Domain(named)
 
 	var dOpts []dockerconfigresolver.Opt
-	if insecure {
+	if options.GOptions.InsecureRegistry {
 		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", refDomain)
 		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
-	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(hostsDirs))
+	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.GOptions.HostsDir))
 	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
 	if err != nil {
 		return nil, err
 	}
 
-	img, err := PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack, quiet, rFlags)
+	img, err := PullImage(ctx, client, resolver, ref, options)
 	if err != nil {
 		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused".
 		if !errutil.IsErrHTTPResponseToHTTPSClient(err) && !errutil.IsErrConnectionRefused(err) {
 			return nil, err
 		}
-		if insecure {
+		if options.GOptions.InsecureRegistry {
 			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
 			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
 			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
 			if err != nil {
 				return nil, err
 			}
-			return PullImage(ctx, client, stdout, stderr, snapshotter, resolver, ref, ocispecPlatforms, unpack, quiet, rFlags)
+			return PullImage(ctx, client, resolver, ref, options)
 		}
 		log.G(ctx).WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
 		log.G(ctx).Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
@@ -195,7 +192,7 @@ func ResolveDigest(ctx context.Context, rawRef string, insecure bool, hostsDirs 
 }
 
 // PullImage pulls an image using the specified resolver.
-func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io.Writer, snapshotter string, resolver remotes.Resolver, ref string, ocispecPlatforms []ocispec.Platform, unpack *bool, quiet bool, rFlags types.RemoteSnapshotterFlags) (*EnsuredImage, error) {
+func PullImage(ctx context.Context, client *containerd.Client, resolver remotes.Resolver, ref string, options types.ImagePullOptions) (*EnsuredImage, error) {
 	ctx, done, err := client.WithLease(ctx)
 	if err != nil {
 		return nil, err
@@ -206,24 +203,24 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 	config := &pull.Config{
 		Resolver:   resolver,
 		RemoteOpts: []containerd.RemoteOpt{},
-		Platforms:  ocispecPlatforms, // empty for all-platforms
+		Platforms:  options.OCISpecPlatform, // empty for all-platforms
 	}
-	if !quiet {
-		config.ProgressOutput = stderr
+	if !options.Quiet {
+		config.ProgressOutput = options.Stderr
 	}
 
 	// unpack(B) if given 1 platform unless specified by `unpack`
-	unpackB := len(ocispecPlatforms) == 1
-	if unpack != nil {
-		unpackB = *unpack
-		if unpackB && len(ocispecPlatforms) != 1 {
+	unpackB := len(options.OCISpecPlatform) == 1
+	if options.Unpack != nil {
+		unpackB = *options.Unpack
+		if unpackB && len(options.OCISpecPlatform) != 1 {
 			return nil, fmt.Errorf("unpacking requires a single platform to be specified (e.g., --platform=amd64)")
 		}
 	}
 
-	snOpt := getSnapshotterOpts(snapshotter)
+	snOpt := getSnapshotterOpts(options.GOptions.Snapshotter)
 	if unpackB {
-		log.G(ctx).Debugf("The image will be unpacked for platform %q, snapshotter %q.", ocispecPlatforms[0], snapshotter)
+		log.G(ctx).Debugf("The image will be unpacked for platform %q, snapshotter %q.", options.OCISpecPlatform[0], options.GOptions.Snapshotter)
 		imgcryptPayload := imgcrypt.Payload{}
 		imgcryptUnpackOpt := encryption.WithUnpackConfigApplyOpts(encryption.WithDecryptedUnpack(&imgcryptPayload))
 		config.RemoteOpts = append(config.RemoteOpts,
@@ -231,9 +228,9 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 			containerd.WithUnpackOpts([]containerd.UnpackOpt{imgcryptUnpackOpt}))
 
 		// different remote snapshotters will update pull.Config separately
-		snOpt.apply(config, ref, rFlags)
+		snOpt.apply(config, ref, options.RFlags)
 	} else {
-		log.G(ctx).Debugf("The image will not be unpacked. Platforms=%v.", ocispecPlatforms)
+		log.G(ctx).Debugf("The image will not be unpacked. Platforms=%v.", options.OCISpecPlatform)
 	}
 
 	containerdImage, err = pull.Pull(ctx, client, ref, config)
@@ -248,7 +245,7 @@ func PullImage(ctx context.Context, client *containerd.Client, stdout, stderr io
 		Ref:         ref,
 		Image:       containerdImage,
 		ImageConfig: *imgConfig,
-		Snapshotter: snapshotter,
+		Snapshotter: options.GOptions.Snapshotter,
 		Remote:      snOpt.isRemote(),
 	}
 	return res, nil
