@@ -159,8 +159,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore, createDir bool) (*
 		res.Mount.Options = strutil.DedupeStrSlice(append(res.Mount.Options, unpriv...))
 	}
 
-	log.L.Debugf("processed volume mount: %+v", res)
-
+	log.L.Debugf("processed mount: %+v\n", res)
 	return res, nil
 }
 

@@ -292,6 +292,7 @@ func ProcessFlagTmpfs(s string) (*Processed, error) {
 
 func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, error) {
 	fields := strings.Split(s, ",")
+	log.L.Debugf("fields are %s", fields)
 	var (
 		mountType        string
 		src              string
@@ -383,9 +384,8 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		}
 	}
 
-	// compose new fileds and join into a string
+	// compose new fields and join into a string
 	// to call legacy ProcessFlagTmpfs or ProcessFlagV function
-	fields = []string{}
 	options := []string{}
 	if rwOption != "" {
 		if rwOption == "readonly" {
@@ -451,6 +451,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 				AnonymousVolume: volSpec.AnonymousVolume,
 			}
 		}
+
 		if bindPropagation != "" {
 			options = append(options, bindPropagation)
 		}
@@ -462,6 +463,23 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			}
 		}
 
+		if rwOption == "" {
+			log.L.Debug("overriding options")
+			options = append(options, "rw")
+		}
+		log.L.Debugf("Original options are before parsing and rwOption is: %s, %s", options, rwOption)
+
+		options, res.Opts, err = parseVolumeOptions(res.Type, src, strings.Join(options, ","))
+		if err != nil {
+			return nil, err
+		}
+		if rwOption == "" {
+			log.L.Debug("overriding options")
+			options = append(options, "rw")
+		}
+		log.L.Debugf("Later parsed options are : %s", options)
+
+		//
 		fstype := DefaultMountType
 		if runtime.GOOS != "freebsd" {
 			found := false
