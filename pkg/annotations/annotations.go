@@ -25,10 +25,14 @@ const (
 	// Boolean value which can be parsed with strconv.ParseBool() is required.
 	// (like "nerdctl/bypass4netns=true" or "nerdctl/bypass4netns=false")
 	Bypass4netns = Prefix + "bypass4netns"
+
+	// Bypass4netnsIgnoreSubnets is a JSON of []string that is appended to
+	// the `bypass4netns --ignore` list.
+	Bypass4netnsIgnoreSubnets = Bypass4netns + "-ignore-subnets"
 )
 
 var ShellCompletions = []string{
 	Bypass4netns + "=true",
 	Bypass4netns + "=false",
-	// Other annotations should not be set via CLI
+	Bypass4netnsIgnoreSubnets + "=",
 }
