@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/log"
+	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
@@ -276,13 +277,15 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		}
 	}
 
+	// TODO: abolish internal labels and only use annotations
 	ilOpt, err := withInternalLabels(internalLabels)
 	if err != nil {
 		return nil, nil, err
 	}
 	cOpts = append(cOpts, ilOpt)
 
-	opts = append(opts, propagateContainerdLabelsToOCIAnnotations())
+	opts = append(opts, propagateInternalContainerdLabelsToOCIAnnotations(),
+		oci.WithAnnotations(strutil.ConvertKVStringsToMap(options.Annotations)))
 
 	var s specs.Spec
 	spec := containerd.WithSpec(&s, opts...)
@@ -506,6 +509,13 @@ func withContainerLabels(label, labelFile []string) ([]containerd.NewContainerOp
 	if err != nil {
 		return nil, err
 	}
+	for k := range labelMap {
+		if strings.HasPrefix(k, annotations.Bypass4netns) {
+			log.L.Warnf("Label %q is deprecated, use an annotation instead", k)
+		} else if strings.HasPrefix(k, labels.Prefix) {
+			return nil, fmt.Errorf("internal label %q must not be specified manually", k)
+		}
+	}
 	o := containerd.WithAdditionalContainerLabels(labelMap)
 	return []containerd.NewContainerOpts{o}, nil
 }
@@ -704,9 +714,15 @@ func processeds(mountPoints []dockercompat.MountPoint) []*mountutil.Processed {
 	return result
 }
 
-func propagateContainerdLabelsToOCIAnnotations() oci.SpecOpts {
+func propagateInternalContainerdLabelsToOCIAnnotations() oci.SpecOpts {
 	return func(ctx context.Context, oc oci.Client, c *containers.Container, s *oci.Spec) error {
-		return oci.WithAnnotations(c.Labels)(ctx, oc, c, s)
+		allowed := make(map[string]string)
+		for k, v := range c.Labels {
+			if strings.Contains(k, labels.Prefix) {
+				allowed[k] = v
+			}
+		}
+		return oci.WithAnnotations(allowed)(ctx, oc, c, s)
 	}
 }
 

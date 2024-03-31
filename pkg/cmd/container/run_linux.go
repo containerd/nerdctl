@@ -59,10 +59,7 @@ func setPlatformOptions(ctx context.Context, client *containerd.Client, id, uts 
 	}
 	opts = append(opts, cgOpts...)
 
-	labelsMap, err := readKVStringsMapfFromLabel(options.Label, options.LabelFile)
-	if err != nil {
-		return nil, err
-	}
+	annotations := strutil.ConvertKVStringsToMap(options.Annotations)
 
 	capOpts, err := generateCapOpts(
 		strutil.DedupeStrSlice(options.CapAdd),
@@ -78,7 +75,7 @@ func setPlatformOptions(ctx context.Context, client *containerd.Client, id, uts 
 	}
 	opts = append(opts, secOpts...)
 
-	b4nnOpts, err := bypass4netnsutil.GenerateBypass4netnsOpts(securityOptsMaps, labelsMap, id)
+	b4nnOpts, err := bypass4netnsutil.GenerateBypass4netnsOpts(securityOptsMaps, annotations, id)
 	if err != nil {
 		return nil, err
 	}

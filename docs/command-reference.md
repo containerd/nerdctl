@@ -298,8 +298,9 @@ Env flags:
 Metadata flags:
 
 - :whale: :blue_square: `--name`: Assign a name to the container
-- :whale: :blue_square: `-l, --label`: Set meta data on a container
+- :whale: :blue_square: `-l, --label`: Set meta data on a container (Not passed through the OCI runtime since nerdctl v2.0, with an exception for `nerdctl/bypass4netns`)
 - :whale: :blue_square: `--label-file`: Read in a line delimited file of labels
+- :whale: :blue_square: `--annotation`: Add an annotation to the container (passed through to the OCI runtime)
 - :whale: :blue_square: `--cidfile`: Write the container ID to the file
 - :nerd_face: `--pidfile`: file path to write the task's pid. The CLI syntax conforms to Podman convention.
 
