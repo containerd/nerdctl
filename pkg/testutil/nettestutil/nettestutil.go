@@ -24,7 +24,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/errdefs"
 )
 
 func HTTPGet(urlStr string, attempts int, insecure bool) (*http.Response, error) {

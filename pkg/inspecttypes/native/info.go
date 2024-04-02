@@ -17,8 +17,8 @@
 package native
 
 import (
-	introspection "github.com/containerd/containerd/api/services/introspection/v1"
-	version "github.com/containerd/containerd/api/services/version/v1"
+	introspection "github.com/containerd/containerd/v2/api/services/introspection/v1"
+	version "github.com/containerd/containerd/v2/api/services/version/v1"
 )
 
 type Info struct {

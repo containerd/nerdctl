@@ -22,7 +22,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/containerd/containerd/plugin"
+	"github.com/containerd/containerd/v2/plugins"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -31,7 +31,7 @@ import (
 const (
 	AppArmorProfileName = "nerdctl-default"
 	SeccompProfileName  = "builtin"
-	Runtime             = plugin.RuntimeRuncV2
+	Runtime             = plugins.RuntimeRuncV2
 )
 
 func DataRoot() string {

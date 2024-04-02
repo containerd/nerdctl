@@ -22,8 +22,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/images"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/opencontainers/go-digest"
 )

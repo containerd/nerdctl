@@ -22,7 +22,7 @@ import (
 	"net"
 	"path/filepath"
 
-	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/errdefs"
 	gocni "github.com/containerd/go-cni"
 	b4nnapi "github.com/rootless-containers/bypass4netns/pkg/api"
 	"github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"

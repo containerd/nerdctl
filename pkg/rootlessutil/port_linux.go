@@ -20,7 +20,7 @@ import (
 	"context"
 	"net"
 
-	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/errdefs"
 	gocni "github.com/containerd/go-cni"
 	"github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
 	"github.com/rootless-containers/rootlesskit/v2/pkg/port"

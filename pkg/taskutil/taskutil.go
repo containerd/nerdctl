@@ -28,8 +28,8 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/console"
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/cio"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/cioutil"
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"

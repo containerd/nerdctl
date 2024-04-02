@@ -24,8 +24,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/namespaces"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/systemutil"
@@ -33,7 +33,7 @@ import (
 	"github.com/opencontainers/go-digest"
 )
 
-func NewClient(ctx context.Context, namespace, address string, opts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
+func NewClient(ctx context.Context, namespace, address string, opts ...containerd.Opt) (*containerd.Client, context.Context, context.CancelFunc, error) {
 
 	ctx = namespaces.WithNamespace(ctx, namespace)
 
@@ -56,7 +56,7 @@ func NewClient(ctx context.Context, namespace, address string, opts ...container
 	return client, ctx, cancel, nil
 }
 
-func NewClientWithPlatform(ctx context.Context, namespace, address, platform string, clientOpts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
+func NewClientWithPlatform(ctx context.Context, namespace, address, platform string, clientOpts ...containerd.Opt) (*containerd.Client, context.Context, context.CancelFunc, error) {
 	if platform != "" {
 		if canExec, canExecErr := platformutil.CanExecProbably(platform); !canExec {
 			warn := fmt.Sprintf("Platform %q seems incompatible with the host platform %q. If you see \"exec format error\", see https://github.com/containerd/nerdctl/blob/main/docs/multi-platform.md",

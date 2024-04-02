@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/containerd/cgroups/v3"
-	"github.com/containerd/containerd/pkg/userns"
+	"github.com/containerd/containerd/v2/pkg/userns"
 	"github.com/containerd/continuity/testutil/loopback"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"

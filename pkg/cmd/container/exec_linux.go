@@ -17,7 +17,7 @@
 package container
 
 import (
-	"github.com/containerd/containerd/pkg/cap"
+	"github.com/containerd/containerd/v2/pkg/cap"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
