@@ -365,7 +365,7 @@ cmd_entrypoint_install_bypass4netnsd() {
 		[Install]
 		WantedBy=default.target
 	EOT
-	INFO "To use bypass4netnsd, set the \"nerdctl/bypass4netns=true\" label on containers, e.g., \`nerdctl run --label nerdctl/bypass4netns=true\`"
+	INFO "To use bypass4netnsd, set the \"nerdctl/bypass4netns=true\" annotation on containers, e.g., \`nerdctl run --annotation nerdctl/bypass4netns=true\`"
 }
 
 # CLI subcommand: "install-fuse-overlayfs"

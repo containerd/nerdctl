@@ -189,7 +189,7 @@ Major:
 - [P2P image distribution using IPFS](./docs/ipfs.md): `nerdctl run ipfs://CID` .
   P2P image distribution (IPFS) is completely optional. Your host is NOT connected to any P2P network, unless you opt in to [install and run IPFS daemon](https://docs.ipfs.io/install/).
 - [Cosign integration](./docs/cosign.md): `nerdctl pull --verify=cosign` and `nerdctl push --sign=cosign`, and [in Compose](./docs/cosign.md#cosign-in-compose)
-- [Accelerated rootless containers using bypass4netns](./docs/rootless.md): `nerdctl run --label nerdctl/bypass4netns=true`
+- [Accelerated rootless containers using bypass4netns](./docs/rootless.md): `nerdctl run --annotation nerdctl/bypass4netns=true`
 
 Minor:
 

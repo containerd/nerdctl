@@ -25,7 +25,7 @@ import (
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
-	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	b4nnoci "github.com/rootless-containers/bypass4netns/pkg/oci"
 )
@@ -46,8 +46,8 @@ func generateSecurityOpt(listenerPath string) (oci.SpecOpts, error) {
 	return opt, nil
 }
 
-func GenerateBypass4netnsOpts(securityOptsMaps map[string]string, labelMaps map[string]string, id string) ([]oci.SpecOpts, error) {
-	b4nn, ok := labelMaps[labels.Bypass4netns]
+func GenerateBypass4netnsOpts(securityOptsMaps map[string]string, annotationsMap map[string]string, id string) ([]oci.SpecOpts, error) {
+	b4nn, ok := annotationsMap[annotations.Bypass4netns]
 	if !ok {
 		return nil, nil
 	}
@@ -133,8 +133,8 @@ func GetPidFilePathByID(id string) (string, error) {
 	return socketPath, nil
 }
 
-func IsBypass4netnsEnabled(annotations map[string]string) (bool, error) {
-	if b4nn, ok := annotations[labels.Bypass4netns]; ok {
+func IsBypass4netnsEnabled(annotationsMap map[string]string) (bool, error) {
+	if b4nn, ok := annotationsMap[annotations.Bypass4netns]; ok {
 		b4nnEnable, err := strconv.ParseBool(b4nn)
 		if err != nil {
 			return false, err

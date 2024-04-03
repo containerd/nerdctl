@@ -23,6 +23,7 @@ import (
 
 	"github.com/containerd/console"
 	"github.com/containerd/log"
+	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -230,8 +231,10 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("name", "", "Assign a name to the container")
 	// label needs to be StringArray, not StringSlice, to prevent "foo=foo1,foo2" from being split to {"foo=foo1", "foo2"}
 	cmd.Flags().StringArrayP("label", "l", nil, "Set metadata on container")
-	cmd.RegisterFlagCompletionFunc("label", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return labels.ShellCompletions, cobra.ShellCompDirectiveNoFileComp
+	// annotation needs to be StringArray, not StringSlice, to prevent "foo=foo1,foo2" from being split to {"foo=foo1", "foo2"}
+	cmd.Flags().StringArray("annotation", nil, "Add an annotation to the container (passed through to the OCI runtime)")
+	cmd.RegisterFlagCompletionFunc("annotation", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return annotations.ShellCompletions, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	// label-file is defined as StringSlice, not StringArray, to allow specifying "--env-file=FILE1,FILE2" (compatible with Podman)

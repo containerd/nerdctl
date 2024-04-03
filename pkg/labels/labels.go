@@ -15,7 +15,7 @@
 */
 
 // Package labels defines labels that are set to containerd containers as labels.
-// The labels are also passed to OCI containers as annotations.
+// The labels defined in this package are also passed to OCI containers as annotations.
 package labels
 
 const (
@@ -79,11 +79,6 @@ const (
 	// Mounts is the mount points for the container.
 	Mounts = Prefix + "mounts"
 
-	// Bypass4netns is the flag for acceleration with bypass4netns
-	// Boolean value which can be parsed with strconv.ParseBool() is required.
-	// (like "nerdctl/bypass4netns=true" or "nerdctl/bypass4netns=false")
-	Bypass4netns = Prefix + "bypass4netns"
-
 	// StopTimeout is seconds to wait for stop a container.
 	StopTimeout = Prefix + "stop-timeout"
 
@@ -106,9 +101,3 @@ const (
 	// (like "nerdctl/default-network=true" or "nerdctl/default-network=false")
 	NerdctlDefaultNetwork = Prefix + "default-network"
 )
-
-var ShellCompletions = []string{
-	Bypass4netns + "=true",
-	Bypass4netns + "=false",
-	// Other labels should not be set via CLI
-}

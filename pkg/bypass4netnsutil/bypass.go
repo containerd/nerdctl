@@ -18,31 +18,41 @@ package bypass4netnsutil
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"path/filepath"
 
 	"github.com/containerd/containerd/errdefs"
 	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	b4nnapi "github.com/rootless-containers/bypass4netns/pkg/api"
 	"github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
 	rlkclient "github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
 )
 
-func NewBypass4netnsCNIBypassManager(client client.Client, rlkClient rlkclient.Client) (*Bypass4netnsCNIBypassManager, error) {
+func NewBypass4netnsCNIBypassManager(client client.Client, rlkClient rlkclient.Client, annotationsMap map[string]string) (*Bypass4netnsCNIBypassManager, error) {
 	if client == nil || rlkClient == nil {
 		return nil, errdefs.ErrInvalidArgument
 	}
+	var ignoreSubnets []string
+	if v := annotationsMap[annotations.Bypass4netnsIgnoreSubnets]; v != "" {
+		if err := json.Unmarshal([]byte(v), &ignoreSubnets); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal annotation %q: %q: %w", annotations.Bypass4netnsIgnoreSubnets, v, err)
+		}
+	}
 	pm := &Bypass4netnsCNIBypassManager{
-		Client:    client,
-		rlkClient: rlkClient,
+		Client:        client,
+		rlkClient:     rlkClient,
+		ignoreSubnets: ignoreSubnets,
 	}
 	return pm, nil
 }
 
 type Bypass4netnsCNIBypassManager struct {
 	client.Client
-	rlkClient rlkclient.Client
+	rlkClient     rlkclient.Client
+	ignoreSubnets []string
 }
 
 func (b4nnm *Bypass4netnsCNIBypassManager) StartBypass(ctx context.Context, ports []gocni.PortMapping, id, stateDir string) error {
@@ -73,7 +83,7 @@ func (b4nnm *Bypass4netnsCNIBypassManager) StartBypass(ctx context.Context, port
 		PidFilePath: pidFilePath,
 		LogFilePath: logFilePath,
 		// "auto" can detect CNI CIDRs automatically
-		IgnoreSubnets: []string{"127.0.0.0/8", rlkCIDR, "auto"},
+		IgnoreSubnets: append([]string{"127.0.0.0/8", rlkCIDR, "auto"}, b4nnm.ignoreSubnets...),
 	}
 	portMap := []b4nnapi.PortSpec{}
 	for _, p := range ports {

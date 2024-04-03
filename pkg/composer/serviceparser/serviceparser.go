@@ -54,6 +54,7 @@ const Separator = "-"
 func warnUnknownFields(svc types.ServiceConfig) {
 	if unknown := reflectutil.UnknownNonEmptyFields(&svc,
 		"Name",
+		"Annotations",
 		"Build",
 		"BlkioConfig",
 		"CapAdd",
@@ -475,6 +476,14 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 	c.RunArgs = []string{
 		"--name=" + c.Name,
 		"--pull=never", // because image will be ensured before running replicas with `nerdctl run`.
+	}
+
+	for k, v := range svc.Annotations {
+		if v == "" {
+			c.RunArgs = append(c.RunArgs, fmt.Sprintf("--annotation=%s", k))
+		} else {
+			c.RunArgs = append(c.RunArgs, fmt.Sprintf("--annotation=%s=%s", k, v))
+		}
 	}
 
 	if svc.BlkioConfig != nil && svc.BlkioConfig.Weight != 0 {

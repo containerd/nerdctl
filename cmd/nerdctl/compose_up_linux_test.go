@@ -523,7 +523,7 @@ services:
       WORDPRESS_DB_NAME: exampledb
     volumes:
       - wordpress:/var/www/html
-    labels:
+    annotations:
       - nerdctl/bypass4netns=1
 
   db:
@@ -536,7 +536,7 @@ services:
       MYSQL_RANDOM_ROOT_PASSWORD: '1'
     volumes:
       - db:/var/lib/mysql
-    labels:
+    annotations:
       - nerdctl/bypass4netns=1
 
 volumes:

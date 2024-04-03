@@ -217,9 +217,12 @@ type ContainerCreateOptions struct {
 	// Name assign a name to the container
 	Name string
 	// Label set meta data on a container
+	// (not passed through to the OCI runtime since nerdctl v2.0, with an exception for "nerdctl/bypass4netns")
 	Label []string
 	// LabelFile read in a line delimited file of labels
 	LabelFile []string
+	// Annotations set meta data on a container (passed through to the OCI runtime)
+	Annotations []string
 	// CidFile write the container ID to the file
 	CidFile string
 	// PidFile specifies the file path to write the task's pid. The CLI syntax conforms to Podman convention.

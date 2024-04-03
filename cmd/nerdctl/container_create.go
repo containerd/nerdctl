@@ -337,6 +337,10 @@ func processContainerCreateOptions(cmd *cobra.Command) (opt types.ContainerCreat
 	if err != nil {
 		return
 	}
+	opt.Annotations, err = cmd.Flags().GetStringArray("annotation")
+	if err != nil {
+		return
+	}
 	opt.CidFile, err = cmd.Flags().GetString("cidfile")
 	if err != nil {
 		return

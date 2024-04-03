@@ -121,11 +121,15 @@ The performance benchmark with iperf3 on Ubuntu 21.10 on Hyper-V VM is shown bel
 
 This benchmark can be reproduced with [https://github.com/rootless-containers/bypass4netns/blob/f009d96139e9e38ce69a2ea8a9a746349bad273c/Vagrantfile](https://github.com/rootless-containers/bypass4netns/blob/f009d96139e9e38ce69a2ea8a9a746349bad273c/Vagrantfile)
 
-Acceleration with bypass4netns is available with `--label nerdctl/bypass4netns=true`. You also need to have `bypass4netnsd` (bypass4netns daemon) to be running.
+Acceleration with bypass4netns is available with:
+- `--annotation nerdctl/bypass4netns=true` (for nerdctl v2.0 and later)
+- `--label nerdctl/bypass4netns=true` (deprecated form, used in nerdctl prior to v2.0).
+
+You also need to have `bypass4netnsd` (bypass4netns daemon) to be running.
 Example
 ```console
 $ containerd-rootless-setuptool.sh install-bypass4netnsd
-$ nerdctl run -it --rm -p 8080:80 --label nerdctl/bypass4netns=true alpine
+$ nerdctl run -it --rm -p 8080:80 --annotation nerdctl/bypass4netns=true alpine
 ```
 
 More detail is available at [https://github.com/rootless-containers/bypass4netns/blob/master/README.md](https://github.com/rootless-containers/bypass4netns/blob/master/README.md)
