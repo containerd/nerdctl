@@ -29,10 +29,16 @@ const (
 	// Bypass4netnsIgnoreSubnets is a JSON of []string that is appended to
 	// the `bypass4netns --ignore` list.
 	Bypass4netnsIgnoreSubnets = Bypass4netns + "-ignore-subnets"
+
+	// Bypass4netnsIgnoreBind disables acceleration for bind.
+	// Boolean value which can be parsed with strconv.ParseBool() is required.
+	Bypass4netnsIgnoreBind = Bypass4netns + "-ignore-bind"
 )
 
 var ShellCompletions = []string{
 	Bypass4netns + "=true",
 	Bypass4netns + "=false",
 	Bypass4netnsIgnoreSubnets + "=",
+	Bypass4netnsIgnoreBind + "=true",
+	Bypass4netnsIgnoreBind + "=false",
 }
