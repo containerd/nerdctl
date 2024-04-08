@@ -279,8 +279,8 @@ github.com/prometheus/procfs v0.11.1 h1:xRC8Iq1yyca5ypa9n1EZnWZkt7dwcoRPQwX/5gwa
 github.com/prometheus/procfs v0.11.1/go.mod h1:eesXgaPo1q7lBpVMoMy0ZOFTth9hBn4W/y0/p/ScXhY=
 github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjRBZyWFQ=
 github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncjaFoBhdsK/akog=
-github.com/rootless-containers/bypass4netns v0.4.0 h1:7pcI4XWnOMQkgCsPKMXxMzQKhZUjaQ8J1n+eIYiHS0Y=
-github.com/rootless-containers/bypass4netns v0.4.0/go.mod h1:RPNWMSRT951DMtq9Xv72IZoJPWFeJL6Wg5pF79Lkano=
+github.com/rootless-containers/bypass4netns v0.4.1 h1:zyYM1uSG7/prAphD2vlJvx/MEKK91EjD2XaefGx5PKA=
+github.com/rootless-containers/bypass4netns v0.4.1/go.mod h1:slu3ygwy1x6ey78oBTNs7lpymyEimLBYoXOG76b+Q+Y=
 github.com/rootless-containers/rootlesskit/v2 v2.0.2 h1:wztWcDYFlk+EVAUuPJwlNMFXZIk1G14T45lv47WWGuA=
 github.com/rootless-containers/rootlesskit/v2 v2.0.2/go.mod h1:hE+ztevrQxNi+tdZyPKumzDk7VKDAf0E4seOzlOyBsY=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
