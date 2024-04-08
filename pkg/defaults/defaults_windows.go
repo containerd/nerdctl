@@ -17,7 +17,6 @@
 package defaults
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -42,10 +41,6 @@ func CNINetConfPath() string {
 
 func CNIRuntimeDir() string {
 	return ""
-}
-
-func BuildKitHost() string {
-	return fmt.Sprint("\\\\.\\pipe\\buildkit")
 }
 
 func IsSystemdAvailable() bool {

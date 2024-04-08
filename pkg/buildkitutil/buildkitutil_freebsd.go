@@ -14,20 +14,9 @@
    limitations under the License.
 */
 
-package netutil
+package buildkitutil
 
-import (
-	"testing"
-
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
-)
-
-// Tests whether nerdctl properly creates the default network when required.
-// On Linux, the default driver used will be "bridge". (netutil.DefaultNetworkName)
-func TestDefaultNetworkCreation(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("must be superuser to create default network for this test")
-	}
-
-	testDefaultNetworkCreation(t)
+func getRuntimeVariableDataDir() string {
+	// Per hier(7) dated July 6, 2023.
+	return "/var/run"
 }

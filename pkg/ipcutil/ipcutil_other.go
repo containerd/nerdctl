@@ -1,3 +1,5 @@
+//go:build !(linux || windows)
+
 /*
    Copyright The containerd Authors.
 
@@ -16,47 +18,17 @@
 
 package ipcutil
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/docker/go-units"
-	"golang.org/x/sys/unix"
-)
+import "fmt"
 
 // makeShareableDevshm returns devshm directory path on host when there is no error.
 func makeShareableDevshm(shmPath, shmSize string) error {
-	shmproperty := "mode=1777"
-	if len(shmSize) > 0 {
-		shmBytes, err := units.RAMInBytes(shmSize)
-		if err != nil {
-			return err
-		}
-		shmproperty = fmt.Sprintf("%s,size=%d", shmproperty, shmBytes)
-	}
-	err := os.MkdirAll(shmPath, 0700)
-	if err != nil {
-		return err
-	}
-	err = unix.Mount("/dev/shm", shmPath, "tmpfs", uintptr(unix.MS_NOEXEC|unix.MS_NOSUID|unix.MS_NODEV), shmproperty)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return fmt.Errorf("unix does not support shareable devshm")
 }
 
 // cleanUpPlatformSpecificIPC cleans up platform specific IPC.
 func cleanUpPlatformSpecificIPC(ipc IPC) error {
-	if ipc.Mode == Shareable && ipc.HostShmPath != nil {
-		err := unix.Unmount(*ipc.HostShmPath, 0)
-		if err != nil {
-			return err
-		}
-		err = os.RemoveAll(*ipc.HostShmPath)
-		if err != nil {
-			return err
-		}
+	if ipc.Mode == Shareable {
+		return fmt.Errorf("unix does not support shareable devshm")
 	}
 	return nil
 }

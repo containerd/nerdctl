@@ -34,6 +34,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -56,28 +57,14 @@ func BuildctlBaseArgs(buildkitHost string) []string {
 }
 
 func GetBuildkitHost(namespace string) (string, error) {
-	if namespace == "" {
-		return "", fmt.Errorf("namespace must be specified")
+	paths, err := getBuildkitHostCandidates(namespace)
+	if err != nil {
+		return "", err
 	}
-	// Try candidate locations of the current containerd namespace.
-	run := "/run/"
-	if rootlessutil.IsRootless() {
-		var err error
-		run, err = rootlessutil.XDGRuntimeDir()
-		if err != nil {
-			log.L.Warn(err)
-			run = fmt.Sprintf("/run/user/%d", rootlessutil.ParentEUID())
-		}
-	}
-	var hostRel []string
-	if namespace != "default" {
-		hostRel = append(hostRel, fmt.Sprintf("buildkit-%s/buildkitd.sock", namespace))
-	}
-	hostRel = append(hostRel, "buildkit-default/buildkitd.sock", "buildkit/buildkitd.sock")
+
 	var errs []error //nolint:prealloc
-	for _, p := range hostRel {
-		log.L.Debugf("Choosing the buildkit host %q, candidates=%v (in %q)", p, hostRel, run)
-		buildkitHost := "unix://" + filepath.Join(run, p)
+	for _, buildkitHost := range paths {
+		log.L.Debugf("Choosing the buildkit host %q, candidates=%v", buildkitHost, paths)
 		_, err := pingBKDaemon(buildkitHost)
 		if err == nil {
 			log.L.Debugf("Chosen buildkit host %q", buildkitHost)
@@ -87,7 +74,7 @@ func GetBuildkitHost(namespace string) (string, error) {
 	}
 	allErr := errors.Join(errs...)
 	log.L.WithError(allErr).Error(getHint())
-	return "", fmt.Errorf("no buildkit host is available, tried %d candidates: %w", len(hostRel), allErr)
+	return "", fmt.Errorf("no buildkit host is available, tried %d candidates: %w", len(paths), allErr)
 }
 
 func GetWorkerLabels(buildkitHost string) (labels map[string]string, _ error) {
@@ -143,9 +130,21 @@ func PingBKDaemon(buildkitHost string) error {
 	return nil
 }
 
+// contains open-codes slices.Contains (without generics) from Go 1.21.
+// TODO: Replace once Go 1.21 is the minimum supported compiler.
+func contains(haystack []string, needle string) bool {
+	for i := range haystack {
+		if needle == haystack[i] {
+			return true
+		}
+	}
+	return false
+}
+
 func pingBKDaemon(buildkitHost string) (output string, _ error) {
-	if runtime.GOOS != "linux" && runtime.GOOS != "freebsd" {
-		return "", errors.New("only linux and freebsd are supported")
+	supportedOses := []string{"linux", "freebsd", "windows"}
+	if !contains(supportedOses, runtime.GOOS) {
+		return "", fmt.Errorf("only %s are supported", strings.Join(supportedOses, ", "))
 	}
 	buildctlBinary, err := BuildctlBinary()
 	if err != nil {

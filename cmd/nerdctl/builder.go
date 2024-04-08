@@ -24,7 +24,6 @@ import (
 
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
-	"github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/spf13/cobra"
 )
 
@@ -56,7 +55,7 @@ func newBuilderPruneCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	AddStringFlag(buildPruneCommand, "buildkit-host", nil, defaults.BuildKitHost(), "BUILDKIT_HOST", "BuildKit address")
+	AddStringFlag(buildPruneCommand, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
 	return buildPruneCommand
 }
 

@@ -16,19 +16,24 @@
    limitations under the License.
 */
 
-package systemutil
+package buildkitutil
 
 import (
+	"fmt"
 	"path/filepath"
-
-	"golang.org/x/sys/unix"
 )
 
-func IsSocketAccessible(s string) error {
-	abs, err := filepath.Abs(s)
-	if err != nil {
-		return err
+func getBuildkitHostCandidates(namespace string) ([]string, error) {
+	if namespace == "" {
+		return []string{}, fmt.Errorf("namespace must be specified")
 	}
-	// set AT_EACCESS to allow running nerdctl as a setuid binary
-	return unix.Faccessat(-1, abs, unix.R_OK|unix.W_OK, unix.AT_EACCESS)
+	// Try candidate locations of the current containerd namespace.
+	run := getRuntimeVariableDataDir()
+	var candidates []string
+	if namespace != "default" {
+		candidates = append(candidates, "unix://"+filepath.Join(run, fmt.Sprintf("buildkit-%s/buildkitd.sock", namespace)))
+	}
+	candidates = append(candidates, "unix://"+filepath.Join(run, "buildkit-default/buildkitd.sock"), "unix://"+filepath.Join(run, "buildkit/buildkitd.sock"))
+
+	return candidates, nil
 }

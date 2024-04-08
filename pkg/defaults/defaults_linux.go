@@ -99,18 +99,6 @@ func CNIRuntimeDir() string {
 	return fmt.Sprintf("%s/cni", xdr)
 }
 
-func BuildKitHost() string {
-	if !rootlessutil.IsRootless() {
-		return "unix:///run/buildkit/buildkitd.sock"
-	}
-	xdr, err := rootlessutil.XDGRuntimeDir()
-	if err != nil {
-		log.L.Warn(err)
-		xdr = fmt.Sprintf("/run/user/%d", rootlessutil.ParentEUID())
-	}
-	return fmt.Sprintf("unix://%s/buildkit/buildkitd.sock", xdr)
-}
-
 func NerdctlTOML() string {
 	if !rootlessutil.IsRootless() {
 		return "/etc/nerdctl/nerdctl.toml"
