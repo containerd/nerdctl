@@ -202,7 +202,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 		if err != nil {
 			return nil, err
 		}
-		b4nnEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(o.state.Annotations)
+		b4nnEnabled, _, err := bypass4netnsutil.IsBypass4netnsEnabled(o.state.Annotations)
 		if err != nil {
 			return nil, err
 		}
@@ -438,7 +438,7 @@ func applyNetworkSettings(opts *handlerOpts) error {
 		hsMeta.Networks[cniName] = cniResRaw[i]
 	}
 
-	b4nnEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(opts.state.Annotations)
+	b4nnEnabled, b4nnBindEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(opts.state.Annotations)
 	if err != nil {
 		return err
 	}
@@ -457,7 +457,8 @@ func applyNetworkSettings(opts *handlerOpts) error {
 			if err != nil {
 				return fmt.Errorf("bypass4netnsd not running? (Hint: run `containerd-rootless-setuptool.sh install-bypass4netnsd`): %w", err)
 			}
-		} else if len(opts.ports) > 0 {
+		}
+		if !b4nnBindEnabled && len(opts.ports) > 0 {
 			if err := exposePortsRootless(ctx, opts.rootlessKitClient, opts.ports); err != nil {
 				return fmt.Errorf("failed to expose ports in rootless mode: %s", err)
 			}
@@ -487,7 +488,7 @@ func onPostStop(opts *handlerOpts) error {
 	ns := opts.state.Annotations[labels.Namespace]
 	if opts.cni != nil {
 		var err error
-		b4nnEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(opts.state.Annotations)
+		b4nnEnabled, b4nnBindEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(opts.state.Annotations)
 		if err != nil {
 			return err
 		}
@@ -501,7 +502,8 @@ func onPostStop(opts *handlerOpts) error {
 				if err != nil {
 					return err
 				}
-			} else if len(opts.ports) > 0 {
+			}
+			if !b4nnBindEnabled && len(opts.ports) > 0 {
 				if err := unexposePortsRootless(ctx, opts.rootlessKitClient, opts.ports); err != nil {
 					return fmt.Errorf("failed to unexpose ports in rootless mode: %s", err)
 				}
