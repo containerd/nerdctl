@@ -94,7 +94,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/klauspost/compress v1.17.7
+	github.com/klauspost/compress v1.17.8
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-shellwords v1.0.12 // indirect
