@@ -24,6 +24,7 @@ import (
 
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/identifiers"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
@@ -83,13 +84,24 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 	}
 	volPath := filepath.Join(vs.dir, name)
 	volDataPath := filepath.Join(volPath, DataDirName)
-	fn := func() error {
+	volFilePath := filepath.Join(volPath, volumeJSONFileName)
+	fn := func() (err error) {
 		if err := os.Mkdir(volPath, 0700); err != nil {
 			return err
 		}
+		defer func() {
+			if err != nil {
+				os.Remove(volPath)
+			}
+		}()
 		if err := os.Mkdir(volDataPath, 0755); err != nil {
 			return err
 		}
+		defer func() {
+			if err != nil {
+				os.Remove(volDataPath)
+			}
+		}()
 
 		type volumeOpts struct {
 			Labels map[string]string `json:"labels"`
@@ -106,13 +118,24 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 			return err
 		}
 
-		volFilePath := filepath.Join(volPath, volumeJSONFileName)
+		defer func() {
+			if err != nil {
+				if _, statErr := os.Stat(volFilePath); statErr != nil && !os.IsNotExist(statErr) {
+					log.L.Warnf("failed to stat volume file: %v", statErr)
+					return
+				} else if statErr == nil {
+					os.Remove(volFilePath)
+				}
+			}
+		}()
 		return os.WriteFile(volFilePath, labelsJSON, 0644)
 	}
 
 	if err := lockutil.WithDirLock(vs.dir, fn); err != nil {
 		return nil, err
 	}
+
+	// If other new actions that might fail are added below, we should move the cleanup function out of fn.
 
 	vol := &native.Volume{
 		Name:       name,
