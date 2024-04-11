@@ -8,7 +8,7 @@ require (
 	github.com/Microsoft/hcsshim v0.11.4
 	github.com/awslabs/soci-snapshotter v0.4.1
 	github.com/compose-spec/compose-go v1.20.2
-	github.com/containerd/accelerated-container-image v1.1.2
+	github.com/containerd/accelerated-container-image v1.1.3
 	github.com/containerd/cgroups/v3 v3.0.3
 	github.com/containerd/console v1.0.4
 	github.com/containerd/containerd v1.7.16
