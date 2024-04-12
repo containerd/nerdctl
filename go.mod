@@ -42,10 +42,10 @@ require (
 	github.com/moby/term v0.5.0
 	github.com/muesli/cancelreader v0.2.2
 	github.com/opencontainers/go-digest v1.0.0
-	github.com/opencontainers/image-spec v1.1.0-rc5
-	github.com/opencontainers/runtime-spec v1.1.0
-	github.com/pelletier/go-toml/v2 v2.1.1
-	github.com/rootless-containers/bypass4netns v0.4.0
+	github.com/opencontainers/image-spec v1.1.0
+	github.com/opencontainers/runtime-spec v1.2.0
+	github.com/pelletier/go-toml/v2 v2.2.1
+	github.com/rootless-containers/bypass4netns v0.4.1
 	github.com/rootless-containers/rootlesskit v1.1.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
