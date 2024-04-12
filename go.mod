@@ -32,7 +32,7 @@ require (
 	github.com/docker/docker v26.0.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0
-	github.com/fahedouch/go-logrotate v0.2.0
+	github.com/fahedouch/go-logrotate v0.2.1
 	github.com/fatih/color v1.16.0
 	github.com/fluent/fluent-logger-golang v1.9.0
 	github.com/ipfs/go-cid v0.4.1
@@ -77,7 +77,7 @@ require (
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67 // indirect
 	github.com/containers/ocicrypt v1.1.10 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
-	github.com/djherbis/times v1.5.0 // indirect
+	github.com/djherbis/times v1.6.0 // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
