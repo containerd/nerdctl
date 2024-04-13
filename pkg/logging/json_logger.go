@@ -17,6 +17,7 @@
 package logging
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -24,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
@@ -208,18 +210,28 @@ func viewLogsJSONFileThroughTailExec(lvopts LogViewOptions, jsonLogFilePath stri
 	}
 
 	if lvopts.Follow {
-		args = append(args, "-f")
+		// using the `-F` to follow the file name instead of descriptor and retry if inaccessible
+		args = append(args, "-F")
 	}
 	args = append(args, jsonLogFilePath)
 	cmd := exec.Command("tail", args...)
-	cmd.Stderr = os.Stderr
-	r, err := cmd.StdoutPipe()
+
+	cmdStdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
+
+	cmdStderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+
+	// filter the unwanted error message of the tail
+	go filterTailStderr(cmdStderr)
 
 	// Setup killing goroutine:
 	go func() {
@@ -228,5 +240,24 @@ func viewLogsJSONFileThroughTailExec(lvopts LogViewOptions, jsonLogFilePath stri
 		cmd.Process.Kill()
 	}()
 
-	return jsonfile.Decode(stdout, stderr, r, lvopts.Timestamps, lvopts.Since, lvopts.Until, 0)
+	return jsonfile.Decode(stdout, stderr, cmdStdout, lvopts.Timestamps, lvopts.Since, lvopts.Until, 0)
+}
+
+func filterTailStderr(reader io.Reader) error {
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasSuffix(line, "has appeared;  following new file") ||
+			strings.HasSuffix(line, "has become inaccessible: No such file or directory") ||
+			strings.HasSuffix(line, "has been replaced;  following new file") ||
+			strings.HasSuffix(line, ": No such file or directory") {
+			continue
+		}
+		fmt.Fprintln(os.Stderr, line)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	return nil
 }
