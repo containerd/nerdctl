@@ -56,16 +56,16 @@ func TestContainerInspectContainsMounts(t *testing.T) {
 	// namedVolumeSource := inspectVolume.Mountpoint
 
 	defer base.Cmd("--debug", "rm", "-f", testContainer).Run()
-	cmd := base.Cmd("--debug", "run", "-d", "--privileged",
+	base.Cmd("--debug", "run", "-d", "--privileged",
 		"--name", testContainer,
 		"--network", "none",
-		// "-v", "/anony-vol",
-		// "--tmpfs", "/app1:size=64m",
+		"-v", "/anony-vol",
+		"--tmpfs", "/app1:size=64m",
 		"--mount", "type=bind,src=/tmp,dst=/app2,ro",
 		// "--mount", fmt.Sprintf("type=volume,src=%s,dst=/app3,readonly=false", testVolume),
-		testutil.NginxAlpineImage)
-	res := cmd.Run()
-	t.Logf("%s\n", res.Combined())
+		testutil.NginxAlpineImage).AssertOK()
+	// res := cmd.Run()
+	// t.Logf("%s\n", res.Combined())
 	// res.AssertOK()
 
 	inspect := base.InspectContainer(testContainer)
@@ -83,19 +83,19 @@ func TestContainerInspectContainsMounts(t *testing.T) {
 		dest       string
 		mountPoint dockercompat.MountPoint
 	}{
-		// // anonymous volume
-		// {
-		// 	name: "anon volume test",
-		// 	dest: "/anony-vol",
-		// 	mountPoint: dockercompat.MountPoint{
-		// 		Type:        "volume",
-		// 		Name:        "",
-		// 		Source:      "", // source of anonymous volume is a generated path, so here will not check it.
-		// 		Destination: "/anony-vol",
-		// 		Driver:      localDriver,
-		// 		RW:          true,
-		// 	},
-		// },
+		// anonymous volume
+		{
+			name: "anon volume test",
+			dest: "/anony-vol",
+			mountPoint: dockercompat.MountPoint{
+				Type:        "volume",
+				Name:        "",
+				Source:      "", // source of anonymous volume is a generated path, so here will not check it.
+				Destination: "/anony-vol",
+				Driver:      localDriver,
+				RW:          true,
+			},
+		},
 
 		// bind
 		{

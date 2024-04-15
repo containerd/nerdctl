@@ -22,7 +22,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 
@@ -482,28 +481,13 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 
 		//
 		fstype := DefaultMountType
-		if runtime.GOOS != "freebsd" {
-			found := false
-			for _, opt := range options {
-				switch opt {
-				case "rbind", "bind":
-					fstype = "bind"
-					found = true
-				}
-				if found {
-					break
-				}
-			}
-			if !found {
-				options = append(options, "rbind")
-			}
-		}
 		res.Mount = specs.Mount{
 			Type:        fstype,
 			Source:      cleanMount(src),
 			Destination: cleanMount(dst),
 			Options:     options,
 		}
+		res.Mode = strings.Join(options, ",")
 
 		log.L.Debugf("mount: %+v", res)
 		return res, nil
