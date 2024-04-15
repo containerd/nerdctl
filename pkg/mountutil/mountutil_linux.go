@@ -320,6 +320,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		parts := strings.SplitN(field, "=", 2)
 		key := strings.ToLower(parts[0])
 
+		log.L.Debugf("parts are %s", parts)
 		if len(parts) == 1 {
 			switch key {
 			case "readonly", "ro", "rw", "rro":
