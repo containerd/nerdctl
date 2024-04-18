@@ -27,7 +27,7 @@ require (
 	github.com/coreos/go-iptables v0.7.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.2.4
-	github.com/docker/cli v26.0.1+incompatible
+	github.com/docker/cli v26.0.2+incompatible
 	github.com/docker/docker v26.0.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0
