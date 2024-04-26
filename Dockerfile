@@ -37,6 +37,8 @@ ARG BYPASS4NETNS_VERSION=v0.4.1
 ARG FUSE_OVERLAYFS_VERSION=v1.13
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.8
 # Extra deps: IPFS
+# Kubo >= 0.28 needs Go 1.22, but runc is still incompatible with Go 1.22
+# https://github.com/opencontainers/runc/issues/4233
 ARG KUBO_VERSION=v0.27.0
 # Extra deps: Init
 ARG TINI_VERSION=v0.19.0
