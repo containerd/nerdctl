@@ -683,6 +683,7 @@ func dockercompatMounts(mountPoints []*mountutil.Processed) []dockercompat.Mount
 			Driver:      "",
 			Mode:        mp.Mode,
 		}
+		result[i].RW, result[i].Propagation = dockercompat.ParseMountProperties(strings.Split(mp.Mode, ","))
 
 		// it's an anonymous volume
 		if mp.AnonymousVolume != "" {

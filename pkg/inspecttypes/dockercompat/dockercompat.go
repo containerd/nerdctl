@@ -32,7 +32,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/containerd/containerd"
@@ -485,18 +484,12 @@ func parseMounts(nerdctlMounts string) ([]MountPoint, error) {
 		return nil, err
 	}
 
-	for i := range mounts {
-		rw, propagation := parseMountProperties(mounts[i].Mode)
-		mounts[i].RW = rw
-		mounts[i].Propagation = propagation
-	}
-
 	return mounts, nil
 }
 
-func parseMountProperties(option string) (rw bool, propagation string) {
+func ParseMountProperties(option []string) (rw bool, propagation string) {
 	rw = true
-	for _, opt := range strings.Split(option, ",") {
+	for _, opt := range option {
 		switch opt {
 		case "ro", "rro":
 			rw = false
