@@ -18,25 +18,27 @@
 # TODO: verify commit hash
 
 # Basic deps
-ARG CONTAINERD_VERSION=v1.7.15
+ARG CONTAINERD_VERSION=v1.7.16
 ARG RUNC_VERSION=v1.1.12
 ARG CNI_PLUGINS_VERSION=v1.4.1
 
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.13.1
+ARG BUILDKIT_VERSION=v0.13.2
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.15.1
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=v1.1.10
 # Extra deps: Rootless
-ARG ROOTLESSKIT_VERSION=v2.0.2
-ARG SLIRP4NETNS_VERSION=v1.2.3
+ARG ROOTLESSKIT_VERSION=v2.1.0
+ARG SLIRP4NETNS_VERSION=v1.3.0
 # Extra deps: bypass4netns
 ARG BYPASS4NETNS_VERSION=v0.4.1
 # Extra deps: FUSE-OverlayFS
 ARG FUSE_OVERLAYFS_VERSION=v1.13
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.8
 # Extra deps: IPFS
+# Kubo >= 0.28 needs Go 1.22, but runc is still incompatible with Go 1.22
+# https://github.com/opencontainers/runc/issues/4233
 ARG KUBO_VERSION=v0.27.0
 # Extra deps: Init
 ARG TINI_VERSION=v0.19.0
