@@ -55,11 +55,7 @@ func ensureFile(path string) error {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
-	f, err := os.OpenFile(path, os.O_CREATE, 0644)
-	if err != nil {
-		f.Close()
-	}
-	return err
+	return os.WriteFile(path, []byte{}, 0644)
 }
 
 // AllocHostsFile is used for creating mount-bindable /etc/hosts file.
