@@ -260,8 +260,8 @@ github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjR
 github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncjaFoBhdsK/akog=
 github.com/rootless-containers/bypass4netns v0.4.1 h1:zyYM1uSG7/prAphD2vlJvx/MEKK91EjD2XaefGx5PKA=
 github.com/rootless-containers/bypass4netns v0.4.1/go.mod h1:slu3ygwy1x6ey78oBTNs7lpymyEimLBYoXOG76b+Q+Y=
-github.com/rootless-containers/rootlesskit/v2 v2.0.2 h1:wztWcDYFlk+EVAUuPJwlNMFXZIk1G14T45lv47WWGuA=
-github.com/rootless-containers/rootlesskit/v2 v2.0.2/go.mod h1:hE+ztevrQxNi+tdZyPKumzDk7VKDAf0E4seOzlOyBsY=
+github.com/rootless-containers/rootlesskit/v2 v2.1.0 h1:dKqduSlzo5TlTv7tTIoTct2cRUNQf+soqcs+6b1ynvE=
+github.com/rootless-containers/rootlesskit/v2 v2.1.0/go.mod h1:W+5NaXv3l2sD4LiPxRWLOlY+p9H0+Ev71zel/zFRnLo=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sirupsen/logrus v1.7.0/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
