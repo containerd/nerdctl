@@ -67,7 +67,7 @@ RUN xx-apt-get update && \
 
 # runc still requires Go 1.21
 # https://github.com/opencontainers/runc/issues/4233
-FROM --platform=$BUILDPLATFORM golang:1.21-bullseye AS build-base-debian-go121
+FROM --platform=$BUILDPLATFORM golang:1.22-bullseye AS build-base-debian-go121
 COPY --from=xx / /
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
