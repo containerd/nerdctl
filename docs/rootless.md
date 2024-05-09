@@ -109,7 +109,7 @@ See https://github.com/containerd/stargz-snapshotter/blob/main/docs/pre-converte
 |-------------------|-----------------|
 
 
-[bypass4netns(https://github.com/rootless-containers/bypass4netns)](https://github.com/rootless-containers/bypass4netns) is an accelerator for rootless networking.
+[bypass4netns](https://github.com/rootless-containers/bypass4netns) is an accelerator for rootless networking.
 
 This improves **outgoing or incoming (with --publish option) networking performance.**
 
