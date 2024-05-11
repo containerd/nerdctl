@@ -33,6 +33,7 @@ func newRmCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
+	rmCommand.Aliases = []string{"remove"}
 	rmCommand.Flags().BoolP("force", "f", false, "Force the removal of a running|paused|unknown container (uses SIGKILL)")
 	rmCommand.Flags().BoolP("volumes", "v", false, "Remove volumes associated with the container")
 	return rmCommand
