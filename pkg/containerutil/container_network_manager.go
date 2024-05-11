@@ -398,12 +398,18 @@ func withDedupMounts(mountPath string, defaultSpec oci.SpecOpts) oci.SpecOpts {
 	}
 }
 
+// copyFileContent copies a file and sets world readable permissions on it, regardless of umask.
+// This is used solely for /etc/resolv.conf and /etc/hosts
 func copyFileContent(src string, dst string) error {
 	data, err := os.ReadFile(src)
 	if err != nil {
 		return err
 	}
 	err = os.WriteFile(dst, data, 0644)
+	if err != nil {
+		return err
+	}
+	err = os.Chmod(dst, 0644)
 	if err != nil {
 		return err
 	}
@@ -539,6 +545,7 @@ func validateUtsSettings(netOpts types.NetworkOptions) error {
 // Nerdctl-managed datastore and returns the oci.SpecOpts required in the container
 // spec for the file to be mounted under /etc/hostname in the new container.
 // If the hostname is empty, the leading 12 characters of the containerID
+// This sets world readable permissions on /etc/hostname, ignoring umask
 func writeEtcHostnameForContainer(globalOptions types.GlobalCommandOptions, hostname string, containerID string) ([]oci.SpecOpts, error) {
 	if containerID == "" {
 		return nil, fmt.Errorf("container ID is required for setting up hostname file")
@@ -556,6 +563,11 @@ func writeEtcHostnameForContainer(globalOptions types.GlobalCommandOptions, host
 
 	hostnamePath := filepath.Join(stateDir, "hostname")
 	if err := os.WriteFile(hostnamePath, []byte(hostname+"\n"), 0644); err != nil {
+		return nil, err
+	}
+
+	err = os.Chmod(hostnamePath, 0644)
+	if err != nil {
 		return nil, err
 	}
 
