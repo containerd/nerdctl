@@ -212,39 +212,46 @@ func TestRunDevice(t *testing.T) {
 func TestParseDevice(t *testing.T) {
 	t.Parallel()
 	type testCase struct {
-		s               string
-		expectedDevPath string
-		expectedMode    string
-		err             string
+		s                     string
+		expectedDevPath       string
+		expectedContainerPath string
+		expectedMode          string
+		err                   string
 	}
 	testCases := []testCase{
 		{
-			s:               "/dev/sda1",
-			expectedDevPath: "/dev/sda1",
-			expectedMode:    "rwm",
+			s:                     "/dev/sda1",
+			expectedDevPath:       "/dev/sda1",
+			expectedContainerPath: "/dev/sda1",
+			expectedMode:          "rwm",
 		},
 		{
-			s:               "/dev/sda2:r",
-			expectedDevPath: "/dev/sda2",
-			expectedMode:    "r",
+			s:                     "/dev/sda2:r",
+			expectedDevPath:       "/dev/sda2",
+			expectedContainerPath: "/dev/sda2",
+			expectedMode:          "r",
 		},
 		{
-			s:               "/dev/sda3:rw",
-			expectedDevPath: "/dev/sda3",
-			expectedMode:    "rw",
+			s:                     "/dev/sda3:rw",
+			expectedDevPath:       "/dev/sda3",
+			expectedContainerPath: "/dev/sda3",
+			expectedMode:          "rw",
 		},
 		{
 			s:   "sda4",
 			err: "not an absolute path",
 		},
 		{
-			s:               "/dev/sda5:/dev/sda5",
-			expectedDevPath: "/dev/sda5",
-			expectedMode:    "rwm",
+			s:                     "/dev/sda5:/dev/sda5",
+			expectedDevPath:       "/dev/sda5",
+			expectedContainerPath: "/dev/sda5",
+			expectedMode:          "rwm",
 		},
 		{
-			s:   "/dev/sda6:/dev/foo6",
-			err: "not supported yet",
+			s:                     "/dev/sda6:/dev/foo6",
+			expectedDevPath:       "/dev/sda6",
+			expectedContainerPath: "/dev/foo6",
+			expectedMode:          "rwm",
 		},
 		{
 			s:   "/dev/sda7:/dev/sda7:rwmx",
@@ -254,10 +261,11 @@ func TestParseDevice(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.s)
-		devPath, mode, err := container.ParseDevice(tc.s)
+		devPath, containerPath, mode, err := container.ParseDevice(tc.s)
 		if tc.err == "" {
 			assert.NilError(t, err)
 			assert.Equal(t, tc.expectedDevPath, devPath)
+			assert.Equal(t, tc.expectedContainerPath, containerPath)
 			assert.Equal(t, tc.expectedMode, mode)
 		} else {
 			assert.ErrorContains(t, err, tc.err)

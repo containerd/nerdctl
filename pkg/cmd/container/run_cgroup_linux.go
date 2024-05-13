@@ -199,12 +199,13 @@ func generateCgroupOpts(id string, options types.ContainerCreateOptions) ([]oci.
 	}
 
 	for _, f := range options.Device {
-		devPath, mode, err := ParseDevice(f)
+		devPath, conPath, mode, err := ParseDevice(f)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse device %q: %w", f, err)
 		}
-		opts = append(opts, oci.WithLinuxDevice(devPath, mode))
+		opts = append(opts, oci.WithDevices(devPath, conPath, mode))
 	}
+
 	return opts, nil
 }
 
@@ -246,8 +247,8 @@ func generateCgroupPath(id, cgroupManager, cgroupParent string) (string, error) 
 	return path, nil
 }
 
-// ParseDevice parses the give device string into hostDevPath and mode(defaults: "rwm").
-func ParseDevice(s string) (hostDevPath string, mode string, err error) {
+// ParseDevice parses the give device string into hostDevPath, containerPath and mode(defaults: "rwm").
+func ParseDevice(s string) (hostDevPath string, containerPath string, mode string, err error) {
 	mode = "rwm"
 	split := strings.Split(s, ":")
 	var containerDevPath string
@@ -268,21 +269,17 @@ func ParseDevice(s string) (hostDevPath string, mode string, err error) {
 		containerDevPath = split[1]
 		mode = split[2]
 	default:
-		return "", "", errors.New("too many `:` symbols")
-	}
-
-	if containerDevPath != hostDevPath {
-		return "", "", errors.New("changing the path inside the container is not supported yet")
+		return "", "", "", errors.New("too many `:` symbols")
 	}
 
 	if !filepath.IsAbs(hostDevPath) {
-		return "", "", fmt.Errorf("%q is not an absolute path", hostDevPath)
+		return "", "", "", fmt.Errorf("%q is not an absolute path", hostDevPath)
 	}
 
 	if err := validateDeviceMode(mode); err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	return hostDevPath, mode, nil
+	return hostDevPath, containerDevPath, mode, nil
 }
 
 func validateDeviceMode(mode string) error {
