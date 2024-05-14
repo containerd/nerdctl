@@ -477,6 +477,15 @@ func onCreateRuntime(opts *handlerOpts) error {
 }
 
 func onStartContainer(opts *handlerOpts) error {
+	name := opts.state.Annotations[labels.Name]
+	ns := opts.state.Annotations[labels.Namespace]
+	namst, err := namestore.New(opts.dataStore, ns)
+	if err != nil {
+		log.L.WithError(err).Error("failed opening the namestore in onStartContainer")
+	} else if err := namst.Acquire(name, opts.state.ID); err != nil {
+		log.L.WithError(err).Error("failed re-acquiring name - see https://github.com/containerd/nerdctl/issues/2992")
+	}
+
 	if opts.cni != nil {
 		return applyNetworkSettings(opts)
 	}
