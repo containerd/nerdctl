@@ -211,6 +211,7 @@ type NetworkEndpointSettings struct {
 
 // ContainerFromNative instantiates a Docker-compatible Container from containerd-native Container.
 func ContainerFromNative(n *native.Container) (*Container, error) {
+	var hostname string
 	c := &Container{
 		ID:       n.ID,
 		Created:  n.CreatedAt.Format(time.RFC3339Nano),
@@ -232,15 +233,24 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 			}
 			c.AppArmorProfile = p.ApparmorProfile
 		}
+		c.Mounts = mountsFromNative(sp.Mounts)
+		for _, mount := range c.Mounts {
+			if mount.Destination == "/etc/resolv.conf" {
+				c.ResolvConfPath = mount.Source
+			} else if mount.Destination == "/etc/hostname" {
+				c.HostnamePath = mount.Source
+			}
+		}
+		hostname = sp.Hostname
 	}
 	if nerdctlStateDir := n.Labels[labels.StateDir]; nerdctlStateDir != "" {
-		c.ResolvConfPath = filepath.Join(nerdctlStateDir, "resolv.conf")
-		if _, err := os.Stat(c.ResolvConfPath); err != nil {
-			c.ResolvConfPath = ""
+		resolvConfPath := filepath.Join(nerdctlStateDir, "resolv.conf")
+		if _, err := os.Stat(resolvConfPath); err == nil {
+			c.ResolvConfPath = resolvConfPath
 		}
-		c.HostnamePath = filepath.Join(nerdctlStateDir, "hostname")
-		if _, err := os.Stat(c.HostnamePath); err != nil {
-			c.HostnamePath = ""
+		hostnamePath := filepath.Join(nerdctlStateDir, "hostname")
+		if _, err := os.Stat(hostnamePath); err == nil {
+			c.HostnamePath = hostnamePath
 		}
 		c.LogPath = filepath.Join(nerdctlStateDir, n.ID+"-json.log")
 		if _, err := os.Stat(c.LogPath); err != nil {
@@ -274,9 +284,12 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	}
 	c.State = cs
 	c.Config = &Config{
-		Hostname: n.Labels[labels.Hostname],
-		Labels:   n.Labels,
+		Labels: n.Labels,
 	}
+	if n.Labels[labels.Hostname] != "" {
+		hostname = n.Labels[labels.Hostname]
+	}
+	c.Config.Hostname = hostname
 
 	return c, nil
 }
@@ -324,6 +337,27 @@ func ImageFromNative(n *native.Image) (*Image, error) {
 	i.Size = n.Size
 	return i, nil
 }
+
+// mountsFromNative only filters bind mount to transform from native container.
+// Because native container shows all types of mounts, such as tmpfs, proc, sysfs.
+func mountsFromNative(spMounts []specs.Mount) []MountPoint {
+	mountpoints := make([]MountPoint, 0, len(spMounts))
+	for _, m := range spMounts {
+		var mp MountPoint
+		if m.Type != "bind" {
+			continue
+		}
+		mp.Type = m.Type
+		mp.Source = m.Source
+		mp.Destination = m.Destination
+		mp.Mode = strings.Join(m.Options, ",")
+		mp.RW, mp.Propagation = ParseMountProperties(m.Options)
+		mountpoints = append(mountpoints, mp)
+	}
+
+	return mountpoints
+}
+
 func statusFromNative(x containerd.Status, labels map[string]string) string {
 	switch s := x.Status; s {
 	case containerd.Stopped:
@@ -485,18 +519,12 @@ func parseMounts(nerdctlMounts string) ([]MountPoint, error) {
 		return nil, err
 	}
 
-	for i := range mounts {
-		rw, propagation := parseMountProperties(mounts[i].Mode)
-		mounts[i].RW = rw
-		mounts[i].Propagation = propagation
-	}
-
 	return mounts, nil
 }
 
-func parseMountProperties(option string) (rw bool, propagation string) {
+func ParseMountProperties(option []string) (rw bool, propagation string) {
 	rw = true
-	for _, opt := range strings.Split(option, ",") {
+	for _, opt := range option {
 		switch opt {
 		case "ro", "rro":
 			rw = false
