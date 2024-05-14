@@ -90,6 +90,29 @@ an easier way is to use DHCP to assign the IP:
 
 Using `--driver ipvlan` can create `ipvlan` network, the default mode for IPvlan is `l2`.
 
+## DHCP host-name and other DHCP options
+
+Nerdctl automatically sets the DHCP host-name option to the hostname value of the container.
+
+Furthermore, on network creation, nerdctl supports the ability to set other DHCP options through `--ipam-options`.
+
+Currently, the following options are supported by the DHCP plugin:
+```
+dhcp-client-identifier
+subnet-mask
+routers
+user-class
+vendor-class-identifier
+```
+
+For example:
+```
+# nerdctl network create --driver macvlan \
+    --ipam-driver dhcp \
+    --ipam-opt 'vendor-class-identifier={"type": "provide", "value": "Hey! Its me!"}' \
+    my-dhcp-net
+```
+
 ## Custom networks
 
 You can also customize your CNI network by providing configuration files.

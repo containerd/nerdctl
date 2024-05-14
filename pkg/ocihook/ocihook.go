@@ -421,6 +421,12 @@ func applyNetworkSettings(opts *handlerOpts) error {
 	namespaceOpts = append(namespaceOpts, ipAddressOpts...)
 	namespaceOpts = append(namespaceOpts, macAddressOpts...)
 	namespaceOpts = append(namespaceOpts, ip6AddressOpts...)
+	namespaceOpts = append(namespaceOpts,
+		gocni.WithLabels(map[string]string{
+			"IgnoreUnknown": "1",
+		}),
+		gocni.WithArgs("NERDCTL_CNI_DHCP_HOSTNAME", opts.state.Annotations[labels.Hostname]),
+	)
 	hsMeta := hostsstore.Meta{
 		Namespace:  opts.state.Annotations[labels.Namespace],
 		ID:         opts.state.ID,
