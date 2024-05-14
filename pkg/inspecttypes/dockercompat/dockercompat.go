@@ -42,6 +42,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/ocihook/state"
 	"github.com/docker/go-connections/nat"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/tidwall/gjson"
@@ -164,10 +165,10 @@ type ContainerState struct {
 	Restarting bool
 	// TODO: OOMKilled  bool
 	// TODO:	Dead       bool
-	Pid      int
-	ExitCode int
-	Error    string
-	// TODO: StartedAt  string
+	Pid        int
+	ExitCode   int
+	Error      string
+	StartedAt  string
 	FinishedAt string
 	// TODO: Health     *Health `json:",omitempty"`
 }
@@ -213,17 +214,20 @@ type NetworkEndpointSettings struct {
 func ContainerFromNative(n *native.Container) (*Container, error) {
 	var hostname string
 	c := &Container{
-		ID:       n.ID,
-		Created:  n.CreatedAt.Format(time.RFC3339Nano),
-		Image:    n.Image,
-		Name:     n.Labels[labels.Name],
-		Driver:   n.Snapshotter,
+		ID:      n.ID,
+		Created: n.CreatedAt.Format(time.RFC3339Nano),
+		Image:   n.Image,
+		Name:    n.Labels[labels.Name],
+		Driver:  n.Snapshotter,
+		// XXX is this always right? what if the container OS is NOT the same as the host OS?
 		Platform: runtime.GOOS, // for Docker compatibility, this Platform string does NOT contain arch like "/amd64"
 	}
 	if n.Labels[restart.StatusLabel] == string(containerd.Running) {
 		c.RestartCount, _ = strconv.Atoi(n.Labels[restart.CountLabel])
 	}
+	containerAnnotations := make(map[string]string)
 	if sp, ok := n.Spec.(*specs.Spec); ok {
+		containerAnnotations = sp.Annotations
 		if p := sp.Process; p != nil {
 			if len(p.Args) > 0 {
 				c.Path = p.Args[0]
@@ -275,7 +279,15 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		cs.Paused = n.Process.Status.Status == containerd.Paused
 		cs.Pid = n.Process.Pid
 		cs.ExitCode = int(n.Process.Status.ExitStatus)
-		cs.FinishedAt = n.Process.Status.ExitTime.Format(time.RFC3339Nano)
+		if containerAnnotations[labels.StateDir] != "" {
+			lf := state.NewLifecycleState(containerAnnotations[labels.StateDir])
+			if err := lf.WithLock(lf.Load); err == nil && !time.Time.IsZero(lf.StartedAt) {
+				cs.StartedAt = lf.StartedAt.UTC().Format(time.RFC3339Nano)
+			}
+		}
+		if !n.Process.Status.ExitTime.IsZero() {
+			cs.FinishedAt = n.Process.Status.ExitTime.Format(time.RFC3339Nano)
+		}
 		nSettings, err := networkSettingsFromNative(n.Process.NetNS, n.Spec.(*specs.Spec))
 		if err != nil {
 			return nil, err
