@@ -37,7 +37,7 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/runtime/restart"
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
@@ -294,48 +294,49 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	return c, nil
 }
 
-func ImageFromNative(n *native.Image) (*Image, error) {
-	i := &Image{}
+func ImageFromNative(nativeImage *native.Image) (*Image, error) {
+	imgOCI := nativeImage.ImageConfig
+	repository, tag := imgutil.ParseRepoTag(nativeImage.Image.Name)
 
-	imgoci := n.ImageConfig
+	image := &Image{
+		// Docker ID (digest of platform-specific config), not containerd ID (digest of multi-platform index or manifest)
+		ID: nativeImage.ImageConfigDesc.Digest.String(),
+		// Parent:       nativeImage.Image.Labels["org.mobyproject.image.parent"],
+		Architecture: imgOCI.Architecture,
+		Os:           imgOCI.OS,
+		Size:         nativeImage.Size,
+		RepoTags:     []string{fmt.Sprintf("%s:%s", repository, tag)},
+		RepoDigests:  []string{fmt.Sprintf("%s@%s", repository, nativeImage.Image.Target.Digest.String())},
+	}
 
-	i.RootFS.Type = imgoci.RootFS.Type
-	diffIDs := imgoci.RootFS.DiffIDs
-	for _, d := range diffIDs {
-		i.RootFS.Layers = append(i.RootFS.Layers, d.String())
+	if len(imgOCI.History) > 0 {
+		image.Comment = imgOCI.History[len(imgOCI.History)-1].Comment
+		image.Created = imgOCI.History[len(imgOCI.History)-1].Created.Format(time.RFC3339Nano)
+		image.Author = imgOCI.History[len(imgOCI.History)-1].Author
 	}
-	if len(imgoci.History) > 0 {
-		i.Comment = imgoci.History[len(imgoci.History)-1].Comment
-		i.Created = imgoci.History[len(imgoci.History)-1].Created.Format(time.RFC3339Nano)
-		i.Author = imgoci.History[len(imgoci.History)-1].Author
+
+	image.RootFS.Type = imgOCI.RootFS.Type
+	for _, d := range imgOCI.RootFS.DiffIDs {
+		image.RootFS.Layers = append(image.RootFS.Layers, d.String())
 	}
-	i.Architecture = imgoci.Architecture
-	i.Os = imgoci.OS
 
 	portSet := make(nat.PortSet)
-	for k := range imgoci.Config.ExposedPorts {
+	for k := range imgOCI.Config.ExposedPorts {
 		portSet[nat.Port(k)] = struct{}{}
 	}
 
-	i.Config = &Config{
-		Cmd:          imgoci.Config.Cmd,
-		Volumes:      imgoci.Config.Volumes,
-		Env:          imgoci.Config.Env,
-		User:         imgoci.Config.User,
-		WorkingDir:   imgoci.Config.WorkingDir,
-		Entrypoint:   imgoci.Config.Entrypoint,
-		Labels:       imgoci.Config.Labels,
+	image.Config = &Config{
+		Cmd:          imgOCI.Config.Cmd,
+		Volumes:      imgOCI.Config.Volumes,
+		Env:          imgOCI.Config.Env,
+		User:         imgOCI.Config.User,
+		WorkingDir:   imgOCI.Config.WorkingDir,
+		Entrypoint:   imgOCI.Config.Entrypoint,
+		Labels:       imgOCI.Config.Labels,
 		ExposedPorts: portSet,
 	}
 
-	i.ID = n.ImageConfigDesc.Digest.String() // Docker ID (digest of platform-specific config), not containerd ID (digest of multi-platform index or manifest)
-
-	repository, tag := imgutil.ParseRepoTag(n.Image.Name)
-
-	i.RepoTags = []string{fmt.Sprintf("%s:%s", repository, tag)}
-	i.RepoDigests = []string{fmt.Sprintf("%s@%s", repository, n.Image.Target.Digest.String())}
-	i.Size = n.Size
-	return i, nil
+	return image, nil
 }
 
 // mountsFromNative only filters bind mount to transform from native container.
@@ -411,7 +412,7 @@ func networkSettingsFromNative(n *native.NetNS, sp *specs.Spec) (*NetworkSetting
 		res.Networks[fakeDockerNetworkName] = nes
 
 		if portsLabel, ok := sp.Annotations[labels.Ports]; ok {
-			var ports []gocni.PortMapping
+			var ports []cni.PortMapping
 			err := json.Unmarshal([]byte(portsLabel), &ports)
 			if err != nil {
 				return nil, err
@@ -437,7 +438,7 @@ func networkSettingsFromNative(n *native.NetNS, sp *specs.Spec) (*NetworkSetting
 	return res, nil
 }
 
-func convertToNatPort(portMappings []gocni.PortMapping) (*nat.PortMap, error) {
+func convertToNatPort(portMappings []cni.PortMapping) (*nat.PortMap, error) {
 	portMap := make(nat.PortMap)
 	for _, portMapping := range portMappings {
 		ports := []nat.PortBinding{}
