@@ -19,58 +19,87 @@ package image
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
-	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/imageinspector"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
 // Inspect prints detailed information of each image in `images`.
-func Inspect(ctx context.Context, client *containerd.Client, images []string, options types.ImageInspectOptions) error {
-	f := &imageInspector{
-		mode: options.Mode,
+func Inspect(ctx context.Context, client *containerd.Client, identifiers []string, options types.ImageInspectOptions) error {
+	// Verify we have a valid mode
+	// TODO: move this up to Cobra arg line validation
+	if options.Mode != "native" && options.Mode != "dockercompat" {
+		return fmt.Errorf("unknown mode %q", options.Mode)
 	}
-	walker := &imagewalker.ImageWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found imagewalker.Found) error {
-			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			defer cancel()
 
-			n, err := imageinspector.Inspect(ctx, client, found.Image, options.GOptions.Snapshotter)
-			if err != nil {
-				return err
-			}
-			switch f.mode {
-			case "native":
-				f.entries = append(f.entries, n)
-			case "dockercompat":
-				d, err := dockercompat.ImageFromNative(n)
+	objects := make(map[string]*dockercompat.Image)
+	var entries []interface{}
+
+	// Construct the filters
+	filters := []string{}
+	for _, identifier := range identifiers {
+		if canonicalRef, err := referenceutil.ParseAny(identifier); err == nil {
+			filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
+		}
+		filters = append(filters,
+			fmt.Sprintf("name==%s", identifier),
+			fmt.Sprintf("target.digest~=^sha256:%s.*$", regexp.QuoteMeta(identifier)),
+			fmt.Sprintf("target.digest~=^%s.*$", regexp.QuoteMeta(identifier)),
+		)
+	}
+
+	// Set a timeout
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// Query containerd image service to retrieve a slice of containerd images
+	images, err := client.ImageService().List(ctx, filters...)
+	if err != nil {
+		return fmt.Errorf("image inspect errored while trying to query containerd ImageService: %w", err)
+	}
+
+	// Iterate over the results
+	for _, image := range images {
+		// Query each image
+		nativeImage, err := imageinspector.Inspect(ctx, client, image, options.GOptions.Snapshotter)
+		if err != nil {
+			return fmt.Errorf("image inspect errored while trying to inspect image %s: %w", image.Name, err)
+		}
+		switch options.Mode {
+		case "native":
+			// If native, add the entry as-is
+			entries = append(entries, nativeImage)
+		case "dockercompat":
+			// If docker compat, possibly coalesce entries. First, get the image digest
+			newDigest := nativeImage.ImageConfigDesc.Digest.String()
+			// If we do not know about this yet, add it
+			if objects[newDigest] == nil {
+				dockerCompatImage, err := dockercompat.ImageFromNative(nativeImage)
 				if err != nil {
-					return err
+					return fmt.Errorf("image inspect failed to marshall native image: %w", err)
 				}
-				f.entries = append(f.entries, d)
-			default:
-				return fmt.Errorf("unknown mode %q", f.mode)
+				objects[newDigest] = dockerCompatImage
+				entries = append(entries, dockerCompatImage)
+			} else {
+				// If we do know about it, add the RepoTags to the existing entry
+				repository, tag := imgutil.ParseRepoTag(nativeImage.Image.Name)
+				objects[newDigest].RepoTags = append(objects[newDigest].RepoTags, fmt.Sprintf("%s:%s", repository, tag))
 			}
-			return nil
-		},
+		}
 	}
 
-	err := walker.WalkAll(ctx, images, true)
-	if len(f.entries) > 0 {
-		if formatErr := formatter.FormatSlice(options.Format, options.Stdout, f.entries); formatErr != nil {
+	if len(entries) > 0 {
+		if formatErr := formatter.FormatSlice(options.Format, options.Stdout, entries); formatErr != nil {
 			log.G(ctx).Error(formatErr)
 		}
 	}
-	return err
-}
-
-type imageInspector struct {
-	mode    string
-	entries []interface{}
+	return nil
 }
