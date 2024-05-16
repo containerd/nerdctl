@@ -11,7 +11,7 @@ require (
 	github.com/containerd/accelerated-container-image v1.1.3
 	github.com/containerd/cgroups/v3 v3.0.3
 	github.com/containerd/console v1.0.4
-	github.com/containerd/containerd v1.7.16
+	github.com/containerd/containerd v1.7.17
 	github.com/containerd/continuity v0.4.3
 	github.com/containerd/fifo v1.1.0
 	github.com/containerd/go-cni v1.1.9
@@ -78,7 +78,7 @@ require (
 	github.com/cilium/ebpf v0.11.0 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/go-runc v1.0.0 // indirect
-	github.com/containerd/ttrpc v1.2.3 // indirect
+	github.com/containerd/ttrpc v1.2.4 // indirect
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67 // indirect
 	github.com/containers/ocicrypt v1.1.10 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
@@ -123,7 +123,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	github.com/stefanberger/go-pkcs11uri v0.0.0-20201008174630-78d3cae3a980 // indirect
+	github.com/stefanberger/go-pkcs11uri v0.0.0-20230803200340-78284954bff6 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tinylib/msgp v1.1.6 // indirect
