@@ -23,17 +23,18 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"text/tabwriter"
 	"text/template"
 	"time"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/pkg/progress"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
+	"github.com/docker/go-units"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/spf13/cobra"
 )
@@ -58,11 +59,16 @@ func addHistoryFlags(cmd *cobra.Command) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	cmd.Flags().BoolP("quiet", "q", false, "Only show numeric IDs")
+	cmd.Flags().BoolP("human", "H", true, "Print sizes and dates in human readable format (default true)")
 	cmd.Flags().Bool("no-trunc", false, "Don't truncate output")
 }
 
 type historyPrintable struct {
+	creationTime *time.Time
+	size         int64
+
 	Snapshot     string
+	CreatedAt    string
 	CreatedSince string
 	CreatedBy    string
 	Size         string
@@ -101,7 +107,7 @@ func historyAction(cmd *cobra.Command, args []string) error {
 			}
 			var historys []historyPrintable
 			for _, h := range configHistories {
-				var size string
+				var size int64
 				var snapshotName string
 				if !h.EmptyLayer {
 					if len(diffIDs) <= layerCounter {
@@ -119,18 +125,18 @@ func historyAction(cmd *cobra.Command, args []string) error {
 					if err != nil {
 						return fmt.Errorf("failed to get usage: %w", err)
 					}
-					size = progress.Bytes(use.Size).String()
+					size = use.Size
 					snapshotName = stat.Name
 					layerCounter++
 				} else {
-					size = progress.Bytes(0).String()
+					size = 0
 					snapshotName = "<missing>"
 				}
 				history := historyPrintable{
+					creationTime: h.Created,
+					size:         size,
 					Snapshot:     snapshotName,
-					CreatedSince: formatter.TimeSinceInHuman(*h.Created),
 					CreatedBy:    h.CreatedBy,
-					Size:         size,
 					Comment:      h.Comment,
 				}
 				historys = append(historys, history)
@@ -147,9 +153,9 @@ func historyAction(cmd *cobra.Command, args []string) error {
 }
 
 type historyPrinter struct {
-	w              io.Writer
-	quiet, noTrunc bool
-	tmpl           *template.Template
+	w                     io.Writer
+	quiet, noTrunc, human bool
+	tmpl                  *template.Template
 }
 
 func printHistory(cmd *cobra.Command, historys []historyPrintable) error {
@@ -161,6 +167,11 @@ func printHistory(cmd *cobra.Command, historys []historyPrintable) error {
 	if err != nil {
 		return err
 	}
+	human, err := cmd.Flags().GetBool("human")
+	if err != nil {
+		return err
+	}
+
 	var w io.Writer
 	w = os.Stdout
 
@@ -179,9 +190,7 @@ func printHistory(cmd *cobra.Command, historys []historyPrintable) error {
 	case "raw":
 		return errors.New("unsupported format: \"raw\"")
 	default:
-		if quiet {
-			return errors.New("format and quiet must not be specified together")
-		}
+		quiet = false
 		var err error
 		tmpl, err = formatter.ParseTemplate(format)
 		if err != nil {
@@ -193,6 +202,7 @@ func printHistory(cmd *cobra.Command, historys []historyPrintable) error {
 		w:       w,
 		quiet:   quiet,
 		noTrunc: noTrunc,
+		human:   human,
 		tmpl:    tmpl,
 	}
 
@@ -208,31 +218,47 @@ func printHistory(cmd *cobra.Command, historys []historyPrintable) error {
 	return nil
 }
 
-func (x *historyPrinter) printHistory(p historyPrintable) error {
+func (x *historyPrinter) printHistory(printable historyPrintable) error {
+	// Truncate long values unless --no-trunc is passed
 	if !x.noTrunc {
-		if len(p.CreatedBy) > 45 {
-			p.CreatedBy = p.CreatedBy[0:44] + "…"
+		if len(printable.CreatedBy) > 45 {
+			printable.CreatedBy = printable.CreatedBy[0:44] + "…"
+		}
+		// Do not truncate snapshot id if quiet is being passed
+		if !x.quiet && len(printable.Snapshot) > 45 {
+			printable.Snapshot = printable.Snapshot[0:44] + "…"
 		}
 	}
+
+	// Format date and size for display based on --human preference
+	printable.CreatedAt = printable.creationTime.Local().Format(time.RFC3339)
+	if x.human {
+		printable.CreatedSince = formatter.TimeSinceInHuman(*printable.creationTime)
+		printable.Size = units.HumanSize(float64(printable.size))
+	} else {
+		printable.CreatedSince = printable.CreatedAt
+		printable.Size = strconv.FormatInt(printable.size, 10)
+	}
+
 	if x.tmpl != nil {
 		var b bytes.Buffer
-		if err := x.tmpl.Execute(&b, p); err != nil {
+		if err := x.tmpl.Execute(&b, printable); err != nil {
 			return err
 		}
 		if _, err := fmt.Fprintln(x.w, b.String()); err != nil {
 			return err
 		}
 	} else if x.quiet {
-		if _, err := fmt.Fprintln(x.w, p.Snapshot); err != nil {
+		if _, err := fmt.Fprintln(x.w, printable.Snapshot); err != nil {
 			return err
 		}
 	} else {
 		if _, err := fmt.Fprintf(x.w, "%s\t%s\t%s\t%s\t%s\n",
-			p.Snapshot,
-			p.CreatedSince,
-			p.CreatedBy,
-			p.Size,
-			p.Comment,
+			printable.Snapshot,
+			printable.CreatedSince,
+			printable.CreatedBy,
+			printable.Size,
+			printable.Comment,
 		); err != nil {
 			return err
 		}
