@@ -52,6 +52,8 @@ var validInspectType = map[string]bool{
 }
 
 func addInspectFlags(cmd *cobra.Command) {
+	cmd.Flags().BoolP("size", "s", false, "Display total file sizes (for containers)")
+
 	cmd.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
 	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp

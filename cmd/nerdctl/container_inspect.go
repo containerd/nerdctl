@@ -38,6 +38,8 @@ func newContainerInspectCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 	containerInspectCommand.Flags().String("mode", "dockercompat", `Inspect mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
+	containerInspectCommand.Flags().BoolP("size", "s", false, "Display total file sizes")
+
 	containerInspectCommand.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"dockercompat", "native"}, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -71,10 +73,16 @@ func processContainerInspectOptions(cmd *cobra.Command) (opt types.ContainerInsp
 		return
 	}
 
+	size, err := cmd.Flags().GetBool("size")
+	if err != nil {
+		return
+	}
+
 	return types.ContainerInspectOptions{
 		GOptions: globalOptions,
 		Format:   format,
 		Mode:     mode,
+		Size:     size,
 		Stdout:   cmd.OutOrStdout(),
 	}, nil
 }

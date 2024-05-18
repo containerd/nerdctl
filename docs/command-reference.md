@@ -494,6 +494,7 @@ Flags:
 - :nerd_face: `--mode=(dockercompat|native)`: Inspection mode. "native" produces more information.
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 - :whale: `--type`: Return JSON for specified type
+- :whale: `--size`: Display total file sizes if the type is container
 
 Unimplemented `docker inspect` flags:  `--size`
 

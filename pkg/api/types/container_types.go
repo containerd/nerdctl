@@ -330,6 +330,8 @@ type ContainerInspectOptions struct {
 	GOptions GlobalCommandOptions
 	// Format of the output
 	Format string
+	// Whether to report the size
+	Size bool
 	// Inspect mode, either dockercompat or native
 	Mode string
 }
