@@ -83,9 +83,6 @@ func ParentMain(hostGatewayIP string) error {
 	}
 	detachNetNSMode := detachedNetNSPath != ""
 	log.L.Debugf("RootlessKit detach-netns mode: %v", detachNetNSMode)
-	if err != nil {
-		return err
-	}
 
 	wd, err := os.Getwd()
 	if err != nil {
