@@ -144,10 +144,25 @@ func newHostLocalIPAMConfig() *hostLocalIPAMConfig {
 	}
 }
 
-// https://github.com/containernetworking/plugins/blob/v1.1.0/plugins/ipam/dhcp/main.go#L43-L54
+// https://github.com/containernetworking/plugins/blob/v1.4.1/plugins/ipam/dhcp/main.go#L43-L54
 type dhcpIPAMConfig struct {
-	Type             string `json:"type"`
-	DaemonSocketPath string `json:"daemonSocketPath,omitempty"`
+	Type             string          `json:"type"`
+	DaemonSocketPath string          `json:"daemonSocketPath"`
+	ProvideOptions   []provideOption `json:"provide,omitempty"`
+	RequestOptions   []requestOption `json:"request,omitempty"`
+}
+
+type provideOption struct {
+	Option string `json:"option"`
+
+	Value           string `json:"value"`
+	ValueFromCNIArg string `json:"fromArg"`
+}
+
+type requestOption struct {
+	SkipDefault bool `json:"skipDefault"`
+
+	Option string `json:"option"`
 }
 
 func newDHCPIPAMConfig() *dhcpIPAMConfig {

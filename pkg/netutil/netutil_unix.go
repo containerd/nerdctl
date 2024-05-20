@@ -205,10 +205,40 @@ func (e *CNIEnv) generateIPAM(driver string, subnets []string, gatewayStr, ipRan
 	case "dhcp":
 		ipamConf := newDHCPIPAMConfig()
 		ipamConf.DaemonSocketPath = filepath.Join(defaults.CNIRuntimeDir(), "dhcp.sock")
-		// TODO: support IPAM options for dhcp
 		if err := systemutil.IsSocketAccessible(ipamConf.DaemonSocketPath); err != nil {
 			log.L.Warnf("cannot access dhcp socket %q (hint: try running with `dhcp daemon --socketpath=%s &` in CNI_PATH to launch the dhcp daemon)", ipamConf.DaemonSocketPath, ipamConf.DaemonSocketPath)
 		}
+
+		// Set the host-name option to the value of passed argument NERDCTL_CNI_DHCP_HOSTNAME
+		opts["host-name"] = `{"type": "provide", "fromArg": "NERDCTL_CNI_DHCP_HOSTNAME"}`
+
+		// Convert all user-defined ipam-options into serializable options
+		for optName, optValue := range opts {
+			parsed := &struct {
+				Type            string `json:"type"`
+				Value           string `json:"value"`
+				ValueFromCNIArg string `json:"fromArg"`
+				SkipDefault     bool   `json:"skipDefault"`
+			}{}
+			if err := json.Unmarshal([]byte(optValue), parsed); err != nil {
+				return nil, fmt.Errorf("unparsable ipam option %s %q", optName, optValue)
+			}
+			if parsed.Type == "provide" {
+				ipamConf.ProvideOptions = append(ipamConf.ProvideOptions, provideOption{
+					Option:          optName,
+					Value:           parsed.Value,
+					ValueFromCNIArg: parsed.ValueFromCNIArg,
+				})
+			} else if parsed.Type == "request" {
+				ipamConf.RequestOptions = append(ipamConf.RequestOptions, requestOption{
+					Option:      optName,
+					SkipDefault: parsed.SkipDefault,
+				})
+			} else {
+				return nil, fmt.Errorf("ipam option must have a type (provide or request)")
+			}
+		}
+
 		ipamConfig = ipamConf
 	default:
 		return nil, fmt.Errorf("unsupported ipam driver %q", driver)
