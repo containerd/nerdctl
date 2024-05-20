@@ -234,7 +234,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	cOpts = append(cOpts, rtCOpts...)
 
-	lCOpts, err := withContainerLabels(options.Label, options.LabelFile)
+	lCOpts, err := withContainerLabels(options.Label, options.LabelFile, ensuredImage)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -504,7 +504,15 @@ func withNerdctlOCIHook(cmd string, args []string) (oci.SpecOpts, error) {
 	}, nil
 }
 
-func withContainerLabels(label, labelFile []string) ([]containerd.NewContainerOpts, error) {
+func withContainerLabels(label, labelFile []string, ensuredImage *imgutil.EnsuredImage) ([]containerd.NewContainerOpts, error) {
+	var opts []containerd.NewContainerOpts
+
+	// add labels defined by image
+	if ensuredImage != nil {
+		imageLabelOpts := containerd.WithAdditionalContainerLabels(ensuredImage.ImageConfig.Labels)
+		opts = append(opts, imageLabelOpts)
+	}
+
 	labelMap, err := readKVStringsMapfFromLabel(label, labelFile)
 	if err != nil {
 		return nil, err
@@ -517,7 +525,9 @@ func withContainerLabels(label, labelFile []string) ([]containerd.NewContainerOp
 		}
 	}
 	o := containerd.WithAdditionalContainerLabels(labelMap)
-	return []containerd.NewContainerOpts{o}, nil
+	opts = append(opts, o)
+
+	return opts, nil
 }
 
 func readKVStringsMapfFromLabel(label, labelFile []string) (map[string]string, error) {
