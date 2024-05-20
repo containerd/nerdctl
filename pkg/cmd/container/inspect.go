@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/containerinspector"
@@ -33,7 +34,9 @@ import (
 // Inspect prints detailed information for each container in `containers`.
 func Inspect(ctx context.Context, client *containerd.Client, containers []string, options types.ContainerInspectOptions) error {
 	f := &containerInspector{
-		mode: options.Mode,
+		mode:        options.Mode,
+		size:        options.Size,
+		snapshotter: client.SnapshotService(options.GOptions.Snapshotter),
 	}
 
 	walker := &containerwalker.ContainerWalker{
@@ -47,12 +50,48 @@ func Inspect(ctx context.Context, client *containerd.Client, containers []string
 			log.L.Error(formatErr)
 		}
 	}
+
 	return err
 }
 
 type containerInspector struct {
-	mode    string
-	entries []interface{}
+	mode        string
+	size        bool
+	snapshotter snapshots.Snapshotter
+	entries     []interface{}
+}
+
+// resourceTotal will return:
+// - the Usage value of the resource referenced by ID
+// - the cumulative Usage value of the resource, and all parents, recursively
+// Typically, for a running container, this will equal the size of the read-write layer, plus the sum of the size of all layers in the base image
+func resourceTotal(ctx context.Context, snapshotter snapshots.Snapshotter, resourceID string) (snapshots.Usage, snapshots.Usage, error) {
+	var first snapshots.Usage
+	var total snapshots.Usage
+	var info snapshots.Info
+
+	for next := resourceID; next != ""; next = info.Parent {
+		// Get the resource usage info
+		usage, err := snapshotter.Usage(ctx, next)
+		if err != nil {
+			return first, total, err
+		}
+		// In case that's the first one, store that
+		if next == resourceID {
+			first = usage
+		}
+		// And increment totals
+		total.Size += usage.Size
+		total.Inodes += usage.Inodes
+
+		// Now, get the parent, if any and iterate
+		info, err = snapshotter.Stat(ctx, next)
+		if err != nil {
+			return first, total, err
+		}
+	}
+
+	return first, total, nil
 }
 
 func (x *containerInspector) Handler(ctx context.Context, found containerwalker.Found) error {
@@ -71,7 +110,15 @@ func (x *containerInspector) Handler(ctx context.Context, found containerwalker.
 		if err != nil {
 			return err
 		}
+		if x.size {
+			resourceUsage, allResourceUsage, err := resourceTotal(ctx, x.snapshotter, d.ID)
+			if err == nil {
+				d.SizeRw = &resourceUsage.Size
+				d.SizeRootFs = &allResourceUsage.Size
+			}
+		}
 		x.entries = append(x.entries, d)
+		return err
 	default:
 		return fmt.Errorf("unknown mode %q", x.mode)
 	}

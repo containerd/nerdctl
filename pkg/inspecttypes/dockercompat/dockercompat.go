@@ -106,8 +106,8 @@ type Container struct {
 	// TODO: ExecIDs         []string
 	// TODO: HostConfig      *container.HostConfig
 	// TODO: GraphDriver     GraphDriverData
-	// TODO: SizeRw     *int64 `json:",omitempty"`
-	// TODO: SizeRootFs *int64 `json:",omitempty"`
+	SizeRw     *int64 `json:",omitempty"`
+	SizeRootFs *int64 `json:",omitempty"`
 
 	Mounts          []MountPoint
 	Config          *Config
