@@ -34,6 +34,7 @@ Files:
 - `log-config.json`: used for storing the `--log-opts` map of `nerdctl run`
 - `<CID>-json.log`: used by `nerdctl logs`
 - `oci-hook.*.log`: logs of the OCI hook
+- `lifecycle.json`: used to store stateful information about the container that can only be retrieved through OCI hooks
 
 ### `<DATAROOT>/<ADDRHASH>/names/<NAMESPACE>`
 e.g. `/var/lib/nerdctl/1935db59/names/default`

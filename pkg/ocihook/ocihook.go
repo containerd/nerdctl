@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/log"
@@ -35,6 +36,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/namestore"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
+	"github.com/containerd/nerdctl/v2/pkg/ocihook/state"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	types100 "github.com/containernetworking/cni/pkg/types/100"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -284,7 +286,7 @@ func getNetNSPath(state *specs.State) (string, error) {
 		return netNsPath, nil
 	}
 
-	if state.Pid == 0 && !netNsFound {
+	if state.Pid == 0 {
 		return "", errors.New("both state.Pid and the netNs annotation are unset")
 	}
 
@@ -493,9 +495,21 @@ func onStartContainer(opts *handlerOpts) error {
 	}
 
 	if opts.cni != nil {
-		return applyNetworkSettings(opts)
+		if err = applyNetworkSettings(opts); err != nil {
+			return err
+		}
 	}
-	return nil
+
+	// Set StartedAt
+	lf := state.NewLifecycleState(opts.state.Annotations[labels.StateDir])
+	return lf.WithLock(func() error {
+		err := lf.Load()
+		if err != nil {
+			return err
+		}
+		lf.StartedAt = time.Now()
+		return lf.Save()
+	})
 }
 
 func onPostStop(opts *handlerOpts) error {

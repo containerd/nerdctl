@@ -70,7 +70,7 @@ func TestContainerFromNative(t *testing.T) {
 					Status:     "running",
 					Running:    true,
 					Pid:        10000,
-					FinishedAt: "0001-01-01T00:00:00Z",
+					FinishedAt: "",
 				},
 				Mounts: []MountPoint{
 					{
@@ -141,7 +141,7 @@ func TestContainerFromNative(t *testing.T) {
 					Status:     "running",
 					Running:    true,
 					Pid:        10000,
-					FinishedAt: "0001-01-01T00:00:00Z",
+					FinishedAt: "",
 				},
 				Mounts: []MountPoint{
 					{
@@ -209,7 +209,7 @@ func TestContainerFromNative(t *testing.T) {
 					Status:     "running",
 					Running:    true,
 					Pid:        10000,
-					FinishedAt: "0001-01-01T00:00:00Z",
+					FinishedAt: "",
 				},
 				Mounts: []MountPoint{
 					{
