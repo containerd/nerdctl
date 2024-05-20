@@ -38,6 +38,19 @@ func TestCreate(t *testing.T) {
 	base.Cmd("logs", tID).AssertOutContains("foo")
 }
 
+func TestCreateWithLabel(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+
+	base.Cmd("create", "--name", tID, "--label", "foo=bar", testutil.NginxAlpineImage, "echo", "foo").AssertOK()
+	defer base.Cmd("rm", "-f", tID).Run()
+	inspect := base.InspectContainer(tID)
+	assert.Equal(base.T, "bar", inspect.Config.Labels["foo"])
+	// the label `maintainer`` is defined by image
+	assert.Equal(base.T, "NGINX Docker Maintainers <docker-maint@nginx.com>", inspect.Config.Labels["maintainer"])
+}
+
 func TestCreateWithMACAddress(t *testing.T) {
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
