@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/imageinspector"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 )
 
@@ -35,13 +36,14 @@ func Inspect(ctx context.Context, client *containerd.Client, images []string, op
 	f := &imageInspector{
 		mode: options.Mode,
 	}
+	snapshotter := imgutil.SnapshotServiceWithCache(client.SnapshotService(options.GOptions.Snapshotter))
 	walker := &imagewalker.ImageWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found imagewalker.Found) error {
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 
-			n, err := imageinspector.Inspect(ctx, client, found.Image, options.GOptions.Snapshotter)
+			n, err := imageinspector.Inspect(ctx, client, found.Image, snapshotter)
 			if err != nil {
 				return err
 			}

@@ -169,7 +169,7 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 		tmpl:         tmpl,
 		client:       client,
 		contentStore: client.ContentStore(),
-		snapshotter:  client.SnapshotService(options.GOptions.Snapshotter),
+		snapshotter:  imgutil.SnapshotServiceWithCache(client.SnapshotService(options.GOptions.Snapshotter)),
 	}
 
 	for _, img := range imageList {

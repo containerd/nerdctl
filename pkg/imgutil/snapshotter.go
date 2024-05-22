@@ -17,12 +17,15 @@
 package imgutil
 
 import (
+	"context"
 	"strings"
 
 	socisource "github.com/awslabs/soci-snapshotter/fs/source"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/mount"
 	ctdsnapshotters "github.com/containerd/containerd/pkg/snapshotters"
+	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
@@ -116,4 +119,72 @@ func stargzExtraLabels(f func(images.Handler) images.Handler, rFlags types.Remot
 
 func sociExtraLabels(f func(images.Handler) images.Handler, rFlags types.RemoteSnapshotterFlags) func(images.Handler) images.Handler {
 	return socisource.AppendDefaultLabelsHandlerWrapper(rFlags.SociIndexDigest, f)
+}
+
+func SnapshotServiceWithCache(nativeSnapshotter snapshots.Snapshotter) snapshots.Snapshotter {
+	return &CachingSnapshotter{
+		containerdSnapshotter: nativeSnapshotter,
+		statCache:             map[string]snapshots.Info{},
+		usageCache:            map[string]snapshots.Usage{},
+	}
+}
+
+type CachingSnapshotter struct {
+	containerdSnapshotter snapshots.Snapshotter
+	statCache             map[string]snapshots.Info
+	usageCache            map[string]snapshots.Usage
+}
+
+func (snap *CachingSnapshotter) Stat(ctx context.Context, key string) (snapshots.Info, error) {
+	if stat, ok := snap.statCache[key]; ok {
+		return stat, nil
+	}
+	stat, err := snap.containerdSnapshotter.Stat(ctx, key)
+	if err == nil {
+		snap.statCache[key] = stat
+	}
+	return stat, err
+}
+
+func (snap *CachingSnapshotter) Update(ctx context.Context, info snapshots.Info, fieldpaths ...string) (snapshots.Info, error) {
+	return snap.containerdSnapshotter.Update(ctx, info, fieldpaths...)
+}
+
+func (snap *CachingSnapshotter) Usage(ctx context.Context, key string) (snapshots.Usage, error) {
+	if usage, ok := snap.usageCache[key]; ok {
+		return usage, nil
+	}
+	usage, err := snap.containerdSnapshotter.Usage(ctx, key)
+	if err == nil {
+		snap.usageCache[key] = usage
+	}
+	return usage, err
+}
+
+func (snap *CachingSnapshotter) Mounts(ctx context.Context, key string) ([]mount.Mount, error) {
+	return snap.containerdSnapshotter.Mounts(ctx, key)
+}
+
+func (snap *CachingSnapshotter) Prepare(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
+	return snap.containerdSnapshotter.Prepare(ctx, key, parent, opts...)
+}
+
+func (snap *CachingSnapshotter) View(ctx context.Context, key, parent string, opts ...snapshots.Opt) ([]mount.Mount, error) {
+	return snap.containerdSnapshotter.View(ctx, key, parent, opts...)
+}
+
+func (snap *CachingSnapshotter) Commit(ctx context.Context, name, key string, opts ...snapshots.Opt) error {
+	return snap.containerdSnapshotter.Commit(ctx, name, key, opts...)
+}
+
+func (snap *CachingSnapshotter) Remove(ctx context.Context, key string) error {
+	return snap.containerdSnapshotter.Remove(ctx, key)
+}
+
+func (snap *CachingSnapshotter) Walk(ctx context.Context, fn snapshots.WalkFunc, filters ...string) error {
+	return snap.containerdSnapshotter.Walk(ctx, fn, filters...)
+}
+
+func (snap *CachingSnapshotter) Close() error {
+	return snap.containerdSnapshotter.Close()
 }

@@ -377,27 +377,36 @@ func ParseRepoTag(imgName string) (string, string) {
 	return repository, tag
 }
 
-type snapshotKey string
+// ResourceUsage will return:
+// - the Usage value of the resource referenced by ID
+// - the cumulative Usage value of the resource, and all parents, recursively
+// Typically, for a running container, this will equal the size of the read-write layer, plus the sum of the size of all layers in the base image
+func ResourceUsage(ctx context.Context, snapshotter snapshots.Snapshotter, resourceID string) (snapshots.Usage, snapshots.Usage, error) {
+	var first snapshots.Usage
+	var total snapshots.Usage
+	var info snapshots.Info
+	for next := resourceID; next != ""; next = info.Parent {
+		// Get the resource usage info
+		usage, err := snapshotter.Usage(ctx, next)
+		if err != nil {
+			return first, total, err
+		}
+		// In case that's the first one, store that
+		if next == resourceID {
+			first = usage
+		}
+		// And increment totals
+		total.Size += usage.Size
+		total.Inodes += usage.Inodes
 
-// recursive function to calculate total usage of key's parent
-func (key snapshotKey) add(ctx context.Context, s snapshots.Snapshotter, usage *snapshots.Usage) error {
-	if key == "" {
-		return nil
+		// Now, get the parent, if any and iterate
+		info, err = snapshotter.Stat(ctx, next)
+		if err != nil {
+			return first, total, err
+		}
 	}
-	u, err := s.Usage(ctx, string(key))
-	if err != nil {
-		return err
-	}
 
-	usage.Add(u)
-
-	info, err := s.Stat(ctx, string(key))
-	if err != nil {
-		return err
-	}
-
-	key = snapshotKey(info.Parent)
-	return key.add(ctx, s, usage)
+	return first, total, nil
 }
 
 // UnpackedImageSize is the size of the unpacked snapshots.
@@ -409,23 +418,7 @@ func UnpackedImageSize(ctx context.Context, s snapshots.Snapshotter, img contain
 	}
 
 	chainID := identity.ChainID(diffIDs).String()
-	usage, err := s.Usage(ctx, chainID)
-	if err != nil {
-		if errdefs.IsNotFound(err) {
-			log.G(ctx).WithError(err).Debugf("image %q seems not unpacked", img.Name())
-			return 0, nil
-		}
-		return 0, err
-	}
+	_, total, err := ResourceUsage(ctx, s, chainID)
 
-	info, err := s.Stat(ctx, chainID)
-	if err != nil {
-		return 0, err
-	}
-
-	//add ChainID's parent usage to the total usage
-	if err := snapshotKey(info.Parent).add(ctx, s, &usage); err != nil {
-		return 0, err
-	}
-	return usage.Size, nil
+	return total.Size, err
 }
