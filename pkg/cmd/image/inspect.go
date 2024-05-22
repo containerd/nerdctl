@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/imageinspector"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
@@ -97,7 +98,6 @@ func Inspect(ctx context.Context, client *containerd.Client, identifiers []strin
 	if options.Mode != "native" && options.Mode != "dockercompat" {
 		return fmt.Errorf("unknown mode %q", options.Mode)
 	}
-
 	// Set a timeout
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -105,6 +105,7 @@ func Inspect(ctx context.Context, client *containerd.Client, identifiers []strin
 	// Will hold the final answers
 	var entries []interface{}
 
+	snapshotter := containerdutil.SnapshotService(client, options.GOptions.Snapshotter)
 	// We have to query per provided identifier, as we need to post-process results for the case name + digest
 	for _, identifier := range identifiers {
 		candidateImageList, requestedName, requestedTag, err := inspectIdentifier(ctx, client, identifier)
@@ -120,7 +121,7 @@ func Inspect(ctx context.Context, client *containerd.Client, identifiers []strin
 		// Go through the candidates
 		for _, candidateImage := range candidateImageList {
 			// Inspect the image
-			candidateNativeImage, err := imageinspector.Inspect(ctx, client, candidateImage, options.GOptions.Snapshotter)
+			candidateNativeImage, err := imageinspector.Inspect(ctx, client, candidateImage, snapshotter)
 			if err != nil {
 				log.G(ctx).WithError(err).WithField("name", candidateImage.Name).Error("failure inspecting image")
 				continue

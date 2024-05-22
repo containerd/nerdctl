@@ -21,13 +21,14 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/log"
-	imgutil "github.com/containerd/nerdctl/v2/pkg/imgutil"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 )
 
 // Inspect inspects the image, for the platform specified in image.platform.
-func Inspect(ctx context.Context, client *containerd.Client, image images.Image, snapshotter string) (*native.Image, error) {
+func Inspect(ctx context.Context, client *containerd.Client, image images.Image, snapshotter snapshots.Snapshotter) (*native.Image, error) {
 
 	n := &native.Image{}
 
@@ -55,8 +56,7 @@ func Inspect(ctx context.Context, client *containerd.Client, image images.Image,
 		n.ImageConfigDesc = imageConfigDesc
 		n.ImageConfig = imageConfig
 	}
-	snapSvc := client.SnapshotService(snapshotter)
-	n.Size, err = imgutil.UnpackedImageSize(ctx, snapSvc, img)
+	n.Size, err = imgutil.UnpackedImageSize(ctx, snapshotter, img)
 	if err != nil {
 		log.G(ctx).WithError(err).WithField("id", image.Name).Warnf("failed to inspect calculate size")
 	}
