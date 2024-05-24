@@ -94,12 +94,12 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 		return emptyDigest, err
 	}
 
-	task, err := container.Task(ctx, cio.Load)
-	if err != nil {
-		return emptyDigest, err
-	}
-
 	if opts.Pause {
+		task, err := container.Task(ctx, cio.Load)
+		if err != nil {
+			return emptyDigest, err
+		}
+
 		status, err := task.Status(ctx)
 		if err != nil {
 			return emptyDigest, err
