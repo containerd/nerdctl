@@ -51,6 +51,8 @@ ARG GOTESTSUM_VERSION=v1.11.0
 ARG NYDUS_VERSION=v2.2.4
 ARG SOCI_SNAPSHOTTER_VERSION=0.4.0
 
+ARG PREBUILT_DEPENDENCIES=""
+
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.4.0 AS xx
 
 
@@ -126,25 +128,20 @@ RUN xx-go --wrap && \
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS build-base
 RUN apk add --no-cache make git curl
-COPY . /go/src/github.com/containerd/nerdctl
-WORKDIR /go/src/github.com/containerd/nerdctl
 
 FROM build-base AS build-minimal
+COPY . /go/src/github.com/containerd/nerdctl
+WORKDIR /go/src/github.com/containerd/nerdctl
 RUN BINDIR=/out/bin make binaries install
 # We do not set CMD to `go test` here, because it requires systemd
 
-FROM build-base AS build-full
+FROM build-base AS build-all-dependencies
 ARG TARGETARCH
 ENV GOARCH=${TARGETARCH}
-RUN BINDIR=/out/bin make binaries install
-WORKDIR /nowhere
-COPY ./Dockerfile.d/SHA256SUMS.d/ /SHA256SUMS.d
-COPY README.md /out/share/doc/nerdctl/
-COPY docs /out/share/doc/nerdctl/docs
 RUN echo "${TARGETARCH:-amd64}" | sed -e s/amd64/x86_64/ -e s/arm64/aarch64/ | tee /target_uname_m
-RUN mkdir -p /out/share/doc/nerdctl-full && \
-  echo "# nerdctl (full distribution)" > /out/share/doc/nerdctl-full/README.md && \
-  echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)" >> /out/share/doc/nerdctl-full/README.md
+COPY ./Dockerfile.d/SHA256SUMS.d/ /SHA256SUMS.d
+WORKDIR /nowhere
+RUN mkdir -p /out/share/doc/nerdctl-full/
 ARG CONTAINERD_VERSION
 COPY --from=build-containerd /out/${TARGETARCH:-amd64}/* /out/bin/
 COPY --from=build-containerd /out/containerd.service /out/lib/systemd/system/containerd.service
@@ -250,6 +247,19 @@ RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   mv /tmp/SHA256SUMS /out/share/doc/nerdctl-full/SHA256SUMS && \
   chown -R 0:0 /out
 
+# If we have a prebuilt image, use that, otherwise we will target the stage build-all-dependencies and build that
+FROM ${PREBUILT_DEPENDENCIES:-build-all-dependencies} as dependencies-full
+
+FROM dependencies-full AS build-full
+COPY . /go/src/github.com/containerd/nerdctl
+WORKDIR /go/src/github.com/containerd/nerdctl
+RUN BINDIR=/out/bin make binaries install
+WORKDIR /nowhere
+COPY README.md /out/share/doc/nerdctl/
+COPY docs /out/share/doc/nerdctl/docs
+RUN echo "# nerdctl (full distribution)" > /out/share/doc/nerdctl-full/README.md && \
+  echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)" >> /out/share/doc/nerdctl-full/README.md
+
 FROM scratch AS out-full
 COPY --from=build-full /out /
 
@@ -353,7 +363,7 @@ RUN go test -o /usr/local/bin/nerdctl.test -c ./cmd/nerdctl
 COPY ./Dockerfile.d/test-integration-rootless.sh /
 CMD ["/test-integration-rootless.sh", \
   "gotestsum", "--format=testname", "--rerun-fails=2", "--raw-command", \
-  "--", "/usr/local/go/bin/go", "tool", "test2json", "-t", "-p", "github.com/containerd/nerdctl/v2/cmd/nerdctl",  \
+  "--", "/usr/local/go/bin/go", "tool", "test2json", "-t", "-p", "github.com/containerd/nerdctl/v2/cmd/nerdctl", \
   "/usr/local/bin/nerdctl.test", "-test.v", "-test.timeout=30m", "-test.kill-daemon"]
 
 # test for CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns

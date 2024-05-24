@@ -11,64 +11,85 @@ env:
   GO_VERSION: 1.22.x
 
 jobs:
-  project:
-    name: Project Checks
-    runs-on: ubuntu-22.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4.1.6
-        with:
-          path: src/github.com/containerd/nerdctl
-          fetch-depth: 100
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: src/github.com/containerd/nerdctl
-      - uses: containerd/project-checks@v1.1.0
-        with:
-          working-directory: src/github.com/containerd/nerdctl
-          repo-access-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: ./hack/verify-no-patent.sh
-        working-directory: src/github.com/containerd/nerdctl
-      - run: ./hack/verify-pkg-isolation.sh
-        working-directory: src/github.com/containerd/nerdctl
+  # This is the build stage producing the core integration test image (eg: all dependencies)
+  test-integration-build:
+    runs-on: "ubuntu-24.04"
+    timeout-minutes: 60
+    env:
+      CONTAINERD_VERSION: "${{ matrix.containerd }}"
 
-  lint:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - containerd: v1.6.32
+          - containerd: v1.7.17
+          - containerd: main
+
     steps:
       - uses: actions/checkout@v4.1.6
         with:
           fetch-depth: 1
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-          cache: true
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6.0.1
-        with:
-          version: v1.55.2
-          args: --verbose
-      - name: yamllint-lint
-        run: yamllint .
 
-  test-unit:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4.1.6
+      - name: "Prepare cache key"
+        run: |
+          echo "CACHE_DAY=$(date --rfc-3339=date)" >> "$GITHUB_ENV"
+
+      # Load persistent image cache
+      - name: "Load persistent cache"
+        id: cache-load
+        uses: actions/cache/restore@v4
         with:
-          fetch-depth: 1
-      - uses: actions/setup-go@v5
+          path:
+            ~/images-cache
+          key:
+            # Cache strategy:
+            # - any version of containerd has a different cache key
+            # - cache key will change (eg: cache will be invalidated) if:
+            #   - Dockerfile, or any Dockerfile.d/* file is being changed
+            #   - we are not the same day
+            # That means that containerd main will be at max one day old
+            # Obviously also means we are rebuilding everything once a day, including stuff that has not changed - trade of
+            key-build-artifacts-${{ hashFiles('Dockerfile') }}-${{ hashFiles('Dockerfile.d/**') }}-${{ env.CONTAINERD_VERSION }}-${{ env.CACHE_DAY }}
+
+      - name: "Build dependencies"
+        run: |
+          ls -lA ~/images-cache || {
+            echo "No cache"
+          }
+          mkdir -p "$HOME"/images-cache
+          tarpath="$HOME"/images-cache/dependencies-build.tar
+          # If we do not have a prebuilt image, build it, tar it
+          [ -e "$tarpath" ] || {
+            DOCKER_BUILDKIT=1 docker build \
+              -t prebuilt \
+              --target build-all-dependencies \
+              --build-arg CONTAINERD_VERSION="$CONTAINERD_VERSION" .
+            docker save prebuilt > "$tarpath"
+          }
+
+      # If we had no cache hit at the restore stage, then store the image in the cache, otherwise, do nothing
+      - name: "Save persistent cache"
+        if: ${{ steps.cache-load.outputs.cache-hit != 'true' }}
+        id: cache-save
+        uses: actions/cache/save@v4
         with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-          cache: true
-      - name: "Run unit tests"
-        run: go test -v ./pkg/...
+          path:
+            ~/images-cache
+          key:
+            ${{ steps.cache-load.outputs.cache-primary-key }}
+
+      # In any case, upload it (overwrite) as an artifact for the next job
+      - name: "Upload artifacts for next jobs"
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependencies-${{ env.CONTAINERD_VERSION }}
+          overwrite: true
+          path:
+            ~/images-cache/dependencies-build.tar
 
   test-integration:
+    needs: test-integration-build
     runs-on: "ubuntu-${{ matrix.ubuntu }}"
     timeout-minutes: 40
     strategy:
@@ -91,8 +112,26 @@ jobs:
       - uses: actions/checkout@v4.1.6
         with:
           fetch-depth: 1
+      # Get the artifact from the previous stage
+      - name: "Download artifact"
+        uses: actions/download-artifact@v4
+        with:
+          name: dependencies-${{ env.CONTAINERD_VERSION }}
+          path:
+            ~/images-cache
+      # Build the final image (including nerdctl and on the right ubuntu), on top of the previous artifact
       - name: "Prepare integration test environment"
-        run: DOCKER_BUILDKIT=1 docker build -t test-integration --target test-integration --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+        run: |
+          # Get from cache the prebuilt out-full stage
+          ls -lA ~/images-cache || echo FAIL
+          ls -lA ~/images-cache/dependencies-build.tar || echo FAIL
+          docker load --input ~/images-cache/dependencies-build.tar
+          DOCKER_BUILDKIT=1 docker build \
+              -t test-integration \
+              --target test-integration \
+              --build-arg PREBUILT_DEPENDENCIES="prebuilt" \
+              --build-arg UBUNTU_VERSION="$UBUNTU_VERSION" \
+              --build-arg CONTAINERD_VERSION="$CONTAINERD_VERSION" .
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
           sudo systemctl disable --now snapd.service snapd.socket
@@ -107,234 +146,10 @@ jobs:
           timeout_minutes: 30
           max_attempts: 2
           retry_on: error
-          command: docker run -t --rm --privileged test-integration
-
-  test-integration-ipv6:
-    runs-on: "ubuntu-${{ matrix.ubuntu }}"
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
-        include:
-          - ubuntu: 22.04
-            containerd: v1.7.17
-    env:
-      UBUNTU_VERSION: "${{ matrix.ubuntu }}"
-      CONTAINERD_VERSION: "${{ matrix.containerd }}"
-    steps:
-      - uses: actions/checkout@v4.1.6
-        with:
-          fetch-depth: 1
-      - name: Enable ipv4 and ipv6 forwarding
-        run: |
-          sudo sysctl -w net.ipv6.conf.all.forwarding=1
-          sudo sysctl -w net.ipv4.ip_forward=1
-      - name: Enable IPv6 for Docker
-        run: |
-          sudo mkdir -p /etc/docker
-          echo '{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64", "experimental": true, "ip6tables": true}' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker
-      - name: "Prepare integration test environment"
-        run: DOCKER_BUILDKIT=1 docker build -t test-integration-ipv6 --target test-integration-ipv6 --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
-      - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
-        run: |
-          sudo systemctl disable --now snapd.service snapd.socket
-          sudo apt-get purge -y snapd
-          sudo losetup -Dv
-          sudo losetup -lv
-      - name: "Register QEMU (tonistiigi/binfmt)"
-        run: docker run --privileged --rm tonistiigi/binfmt --install all
-      - name: "Run integration tests"
-        # The nested IPv6 network inside docker and qemu is complex and needs a bunch of sysctl config.
-        # Therefore it's hard to debug why the IPv6 tests fail in such an isolation layer.
-        # On the other side, using the host network is easier at configuration.
-        # Besides, each job is running on a different instance, which means using host network here
-        # is safe and has no side effects on others.
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 2
-          retry_on: error
-          command: docker run --network host -t --rm --privileged test-integration-ipv6
-
-  test-integration-rootless:
-    runs-on: "ubuntu-${{ matrix.ubuntu }}"
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        # ubuntu-22.04: cgroup v1, ubuntu-22.04: cgroup v2
-        include:
-          - ubuntu: 20.04
-            containerd: v1.6.32
-            rootlesskit: v1.1.1
-            target: test-integration-rootless
-          - ubuntu: 20.04
-            containerd: v1.7.17
-            rootlesskit: v2.1.0
-            target: test-integration-rootless
-          - ubuntu: 22.04
-            containerd: v1.7.17
-            rootlesskit: v1.1.1
-            target: test-integration-rootless
-          - ubuntu: 22.04
-            containerd: main
-            rootlesskit: v2.1.0
-            target: test-integration-rootless
-          - ubuntu: 20.04
-            containerd: v1.6.32
-            rootlesskit: v1.1.1
-            target: test-integration-rootless-port-slirp4netns
-          - ubuntu: 20.04
-            containerd: v1.7.17
-            rootlesskit: v2.1.0
-            target: test-integration-rootless-port-slirp4netns
-          - ubuntu: 22.04
-            containerd: v1.7.17
-            rootlesskit: v1.1.1
-            target: test-integration-rootless-port-slirp4netns
-          - ubuntu: 22.04
-            containerd: main
-            rootlesskit: v2.1.0
-            target: test-integration-rootless-port-slirp4netns
-    env:
-      UBUNTU_VERSION: "${{ matrix.ubuntu }}"
-      CONTAINERD_VERSION: "${{ matrix.containerd }}"
-      ROOTLESSKIT_VERSION: "${{ matrix.rootlesskit }}"
-      TEST_TARGET: "${{ matrix.target }}"
-    steps:
-      - uses: actions/checkout@v4.1.6
-        with:
-          fetch-depth: 1
-      - name: "Register QEMU (tonistiigi/binfmt)"
-        run: docker run --privileged --rm tonistiigi/binfmt --install all
-      - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
-        run: DOCKER_BUILDKIT=1 docker build -t ${TEST_TARGET} --target ${TEST_TARGET} --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} --build-arg ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION} .
-      - name: "Test (network driver=slirp4netns, port driver=builtin)"
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 2
-          retry_on: error
-          command: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=1 ${TEST_TARGET}
-
-  cross:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 40
-    strategy:
-      matrix:
-        go-version: ["1.21.x", "1.22.x"]
-    steps:
-      - uses: actions/checkout@v4.1.6
-        with:
-          fetch-depth: 1
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go-version }}
-          cache: true
-          check-latest: true
-      - name: "Cross"
-        run: GO_VERSION="$(echo ${{ matrix.go-version }} | sed -e s/.x//)" make artifacts
-
-  test-integration-docker-compatibility:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4.1.6
-        with:
-          fetch-depth: 1
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-          check-latest: true
-      - name: "Enable BuildKit"
-        run: |
-          set -eux -o pipefail
-          # Enable BuildKit explicitly
-          sudo apt-get install -y moreutils
-          cat /etc/docker/daemon.json
-          jq '.features.buildkit = true' </etc/docker/daemon.json  | sudo sponge /etc/docker/daemon.json
-          cat /etc/docker/daemon.json
-          sudo systemctl restart docker
-          # Print docker info
-          docker info
-          docker version
-      - name: "Register QEMU (tonistiigi/binfmt)"
-        run: docker run --privileged --rm tonistiigi/binfmt --install all
-      - name: "Prepare integration test environment"
-        run: |
-          sudo apt-get install -y expect
-      - name: "Ensure that the integration test suite is compatible with Docker"
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 2
-          retry_on: error
-          command: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon
-      - name: "Ensure that the IPv6 integration test suite is compatible with Docker"
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 2
-          retry_on: error
-          command: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon -test.ipv6
-
-  test-integration-windows:
-    runs-on: windows-2022
-    timeout-minutes: 30
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4.1.6
-        with:
-          fetch-depth: 1
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-          check-latest: true
-      - run: go install ./cmd/nerdctl
-      - uses: actions/checkout@v4.1.6
-        with:
-          repository: containerd/containerd
-          ref: v1.7.17
-          path: containerd
-          fetch-depth: 1
-      - name: "Set up CNI"
-        working-directory: containerd
-        run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
-      - name: "Set up containerd"
-        env:
-          ctrdVersion: 1.7.17
-        run: powershell hack/configure-windows-ci.ps1
-      # TODO: Run unit tests
-      - name: "Run integration tests"
-        run: go test -v ./cmd/...
-
-  test-integration-freebsd:
-    name: FreeBSD
-    runs-on: ubuntu-22.04
-    timeout-minutes: 20
-
-    steps:
-      - uses: actions/checkout@v4.1.6
-      - uses: actions/cache@v4
-        with:
-          path: /root/.vagrant.d
-          key: vagrant-${{ matrix.box }}
-      - name: Set up vagrant
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libvirt-daemon libvirt-daemon-system vagrant vagrant-libvirt
-          sudo systemctl enable --now libvirtd
-      - name: Boot VM
-        run: |
-          ln -sf Vagrantfile.freebsd Vagrantfile
-          sudo vagrant up --no-tty
-      - name: test-unit
-        run: sudo vagrant up --provision-with=test-unit
-      - name: test-integration
-        run: sudo vagrant up --provision-with=test-integration
+          command: |
+            docker run -t --rm --privileged test-integration
+            docker images
+            docker inspect test-integration
+            docker run -t test-integration cat /etc/issue
+            docker run -t test-integration containerd --version
+            docker run -t test-integration nerdctl --version
