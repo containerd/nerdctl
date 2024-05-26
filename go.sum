@@ -14,8 +14,8 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/Microsoft/hcsshim v0.12.3 h1:LS9NXqXhMoqNCplK1ApmVSfB4UnVLRDWRapB6EIlxE0=
 github.com/Microsoft/hcsshim v0.12.3/go.mod h1:Iyl1WVpZzr+UkzjekHZbV8o5Z9ZkxNGx6CtY2Qg/JVQ=
-github.com/awslabs/soci-snapshotter v0.6.0 h1:OUu0nco912cKxvy3Qvgpv/WoUyyWuyl27wkaj8REmYA=
-github.com/awslabs/soci-snapshotter v0.6.0/go.mod h1:EOjvD4czW3repJ5+4We/+dOCknmV2Ba0ywdUzSwm/gw=
+github.com/awslabs/soci-snapshotter v0.6.1 h1:ggiuiCPReSNvfUL084Ujyp0glRNiCsZiaCh2rE580HA=
+github.com/awslabs/soci-snapshotter v0.6.1/go.mod h1:o9NuuMmvmcpc+jRSoJlQqSqrWCjMO1x67C65wmCme7E=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 h1:DDGfHa7BWjL4YnC6+E63dPcxHo2sUxDIu8g3QgEJdRY=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869/go.mod h1:Ekp36dRnpXw/yCqJaO+ZrUyxD+3VXMFFr56k5XYrpB4=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
