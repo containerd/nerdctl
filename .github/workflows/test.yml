@@ -6,6 +6,8 @@ on:
       - main
       - 'release/**'
   pull_request:
+    paths-ignore:
+      - '**.md'
 
 env:
   GO_VERSION: 1.22.x
