@@ -17,6 +17,7 @@
 package main
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -24,6 +25,10 @@ import (
 
 func TestRunStargz(t *testing.T) {
 	testutil.DockerIncompatible(t)
+	if runtime.GOARCH != "amd64" {
+		t.Skip("skipping test as FedoraESGZImage is amd64 only")
+	}
+
 	base := testutil.NewBase(t)
 	requiresStargz(base)
 	// if stargz snapshotter is functional, "/.stargz-snapshotter" appears
