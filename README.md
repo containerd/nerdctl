@@ -268,6 +268,10 @@ docker build -t test-integration --target test-integration .
 docker run -t --rm --privileged test-integration
 ```
 
+To run a single integration test (in this case, `image_inspect_test`):
+
+`go test -exec sudo -v ./cmd/nerdctl/main_test.go ./cmd/nerdctl/image_inspect_test.go `
+
 #### Running integration test suite against Docker
 
 Run `go test -exec sudo -v ./cmd/nerdctl/... -args -test.target=docker` to ensure that the test suite is compatible with Docker.
