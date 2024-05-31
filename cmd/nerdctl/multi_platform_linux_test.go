@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -37,6 +38,12 @@ func testMultiPlatformRun(base *testutil.Base, alpineImage string) {
 		"arm":          "armv7l",
 		"linux/arm":    "armv7l",
 		"linux/arm/v7": "armv7l",
+	}
+	// using aarch64 instead of armv7l because the arm64 system is compatible with armv7.
+	if runtime.GOARCH == "arm64" {
+		testCases["arm"] = "aarch64"
+		testCases["linux/arm"] = "aarch64"
+		testCases["linux/arm/v7"] = "aarch64"
 	}
 	for plat, expectedUnameM := range testCases {
 		t.Logf("Testing %q (%q)", plat, expectedUnameM)
@@ -158,6 +165,10 @@ RUN uname -m > /usr/share/nginx/html/index.html
 		"http://127.0.0.1:8080": "x86_64",
 		"http://127.0.0.1:8081": "aarch64",
 		"http://127.0.0.1:8082": "armv7l",
+	}
+	// using aarch64 instead of armv7l because the arm64 system is compatible with armv7.
+	if runtime.GOARCH == "arm64" {
+		testCases["http://127.0.0.1:8082"] = "aarch64"
 	}
 
 	for testURL, expectedIndexHTML := range testCases {
