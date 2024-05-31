@@ -55,7 +55,7 @@ jobs:
         run: go test -v ./pkg/...
 
   test-integration:
-    runs-on: "ubuntu-${{ matrix.ubuntu }}"
+    runs-on: "${{ matrix.runner }}"
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -64,10 +64,16 @@ jobs:
         include:
           - ubuntu: 20.04
             containerd: v1.6.33
+            runner: "ubuntu-20.04"
           - ubuntu: 22.04
             containerd: v1.7.19
+            runner: "ubuntu-22.04"
           - ubuntu: 24.04
             containerd: v2.0.0-rc.3
+            runner: "ubuntu-24.04"
+          - ubuntu: 24.04
+            containerd: v2.0.0-rc.3
+            runner: github-arm64-2c-8gb
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
