@@ -872,6 +872,7 @@ Flags:
 - :whale: `--no-trunc`: Don't truncate output
 - :whale: `-q, --quiet`: Only display snapshots IDs
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :whale: `-H, --human`: Print sizes and dates in human readable format (default true)
 
 ### :whale: nerdctl image prune
 
