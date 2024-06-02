@@ -348,15 +348,12 @@ func ReadImageConfig(ctx context.Context, img containerd.Image) (ocispec.Image, 
 		return config, configDesc, err
 	}
 	p, err := content.ReadBlob(ctx, img.ContentStore(), configDesc)
-	log.G(ctx).Warnf("from blob: %s", string(p))
 	if err != nil {
 		return config, configDesc, err
 	}
 	if err := json.Unmarshal(p, &config); err != nil {
 		return config, configDesc, err
 	}
-	deb, _ := json.MarshalIndent(config, "", " ")
-	log.G(ctx).Warnf("marshalled: %s", deb)
 	return config, configDesc, nil
 }
 
