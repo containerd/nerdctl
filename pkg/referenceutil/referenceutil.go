@@ -32,6 +32,19 @@ type Reference interface {
 	String() string
 }
 
+// ParseAnyReference parses the passed reference as IPFS, CID, or a classic reference.
+// Unlike ParseAny, it is not limited to the DockerRef limitations (being either tagged or digested)
+// and should be used instead.
+func ParseAnyReference(rawRef string) (Reference, error) {
+	if scheme, ref, err := ParseIPFSRefWithScheme(rawRef); err == nil {
+		return Reference(stringRef{scheme: scheme, s: ref}), nil
+	}
+	if c, err := cid.Decode(rawRef); err == nil {
+		return c, nil
+	}
+	return refdocker.ParseAnyReference(rawRef)
+}
+
 // ParseAny parses the passed reference with allowing it to be non-docker reference.
 // If the ref has IPFS scheme or can be parsed as CID, it's parsed as an IPFS reference.
 // Otherwise it's parsed as a docker reference.
