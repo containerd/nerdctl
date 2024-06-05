@@ -41,3 +41,21 @@ func TestContainerListWithFormatLabel(t *testing.T) {
 		"--filter", "label="+labelK,
 		"--format", fmt.Sprintf("{{.Label %q}}", labelK)).AssertOutExactly(labelV + "\n")
 }
+
+func TestContainerListWithJsonFormatLabel(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+	cID := tID
+	labelK := "label-key-" + tID
+	labelV := "label-value-" + tID
+
+	base.Cmd("run", "-d",
+		"--name", cID,
+		"--label", labelK+"="+labelV,
+		testutil.CommonImage, "sleep", "infinity").AssertOK()
+	defer base.Cmd("rm", "-f", cID).AssertOK()
+	base.Cmd("ps", "-a",
+		"--filter", "label="+labelK,
+		"--format", "json").AssertOutContains(fmt.Sprintf("%s=%s", labelK, labelV))
+}
