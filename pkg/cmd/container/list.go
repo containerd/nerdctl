@@ -97,12 +97,14 @@ type ListItem struct {
 	Status    string
 	Runtime   string // nerdctl extension
 	Size      string
-	Labels    map[string]string
+	Labels    string
+	LabelsMap map[string]string `json:"-"`
+
 	// TODO: "LocalVolumes", "Mounts", "Networks", "RunningFor", "State"
 }
 
 func (x *ListItem) Label(s string) string {
-	return x.Labels[s]
+	return x.LabelsMap[s]
 }
 
 func prepareContainers(ctx context.Context, client *containerd.Client, containers []containerd.Container, options types.ContainerListOptions) ([]ListItem, error) {
@@ -138,7 +140,8 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 			Ports:     formatter.FormatPorts(info.Labels),
 			Status:    formatter.ContainerStatus(ctx, c),
 			Runtime:   info.Runtime.Name,
-			Labels:    info.Labels,
+			Labels:    formatter.FormatLabels(info.Labels),
+			LabelsMap: info.Labels,
 		}
 		if options.Size {
 			containerSize, err := getContainerSize(ctx, client, c, info)
