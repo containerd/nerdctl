@@ -104,6 +104,7 @@ func processRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 		return types.GlobalCommandOptions{}, err
 	}
 	insecureRegistry, err := cmd.Flags().GetBool("insecure-registry")
+	explicitInsecureRegistry := cmd.Flags().Changed("insecure-registry")
 	if err != nil {
 		return types.GlobalCommandOptions{}, err
 	}
@@ -120,18 +121,19 @@ func processRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 		return types.GlobalCommandOptions{}, err
 	}
 	return types.GlobalCommandOptions{
-		Debug:            debug,
-		DebugFull:        debugFull,
-		Address:          address,
-		Namespace:        namespace,
-		Snapshotter:      snapshotter,
-		CNIPath:          cniPath,
-		CNINetConfPath:   cniConfigPath,
-		DataRoot:         dataRoot,
-		CgroupManager:    cgroupManager,
-		InsecureRegistry: insecureRegistry,
-		HostsDir:         hostsDir,
-		Experimental:     experimental,
-		HostGatewayIP:    hostGatewayIP,
+		Debug:                    debug,
+		DebugFull:                debugFull,
+		Address:                  address,
+		Namespace:                namespace,
+		Snapshotter:              snapshotter,
+		CNIPath:                  cniPath,
+		CNINetConfPath:           cniConfigPath,
+		DataRoot:                 dataRoot,
+		CgroupManager:            cgroupManager,
+		InsecureRegistry:         insecureRegistry,
+		ExplicitInsecureRegistry: explicitInsecureRegistry,
+		HostsDir:                 hostsDir,
+		Experimental:             experimental,
+		HostGatewayIP:            hostGatewayIP,
 	}, nil
 }

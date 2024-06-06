@@ -1,6 +1,8 @@
 module github.com/containerd/nerdctl/v2
 
-go 1.21.12
+go 1.22.0
+
+toolchain go1.22.4
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
@@ -59,7 +61,6 @@ require (
 	github.com/yuchanns/srslog v1.1.0
 	go.uber.org/mock v0.4.0
 	golang.org/x/crypto v0.26.0
-	golang.org/x/net v0.28.0
 	golang.org/x/sync v0.8.0
 	golang.org/x/sys v0.23.0
 	golang.org/x/term v0.23.0
@@ -134,6 +135,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	golang.org/x/exp v0.0.0-20240707233637-46b078467d37 // indirect
+	golang.org/x/net v0.27.0 // indirect
 	google.golang.org/genproto v0.0.0-20240711142825-46eb208f015d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240711142825-46eb208f015d // indirect
 	google.golang.org/grpc v1.65.0 // indirect
