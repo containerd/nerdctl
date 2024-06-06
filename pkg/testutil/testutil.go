@@ -687,7 +687,7 @@ func newBase(t *testing.T, ns string, ipv6Compatible bool) *Base {
 		IPv6Compatible:   ipv6Compatible,
 	}
 	if base.EnableIPv6 && !base.IPv6Compatible {
-		t.Skip("runner skips non-IPv6 complatible tests in the IPv6 environment")
+		t.Skip("runner skips non-IPv6 compatible tests in the IPv6 environment")
 	} else if !base.EnableIPv6 && base.IPv6Compatible {
 		t.Skip("runner skips IPv6 compatible tests in the non-IPv6 environment")
 	}

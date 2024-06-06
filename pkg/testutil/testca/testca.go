@@ -95,11 +95,13 @@ func (c *Cert) Close() error {
 	return c.closeF()
 }
 
-func (ca *CA) NewCert(host string) *Cert {
+func (ca *CA) NewCert(host string, additional ...string) *Cert {
 	t := ca.t
 
 	key, err := rsa.GenerateKey(rand.Reader, keyLength)
 	assert.NilError(t, err)
+
+	additional = append([]string{host}, additional...)
 
 	cert := &x509.Certificate{
 		SerialNumber: serialNumber(t),
@@ -111,10 +113,12 @@ func (ca *CA) NewCert(host string) *Cert {
 		NotAfter:    time.Now().Add(24 * time.Hour),
 		KeyUsage:    x509.KeyUsageCRLSign,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		DNSNames:    []string{host},
+		DNSNames:    additional,
 	}
-	if ip := net.ParseIP(host); ip != nil {
-		cert.IPAddresses = append(cert.IPAddresses, ip)
+	for _, h := range additional {
+		if ip := net.ParseIP(h); ip != nil {
+			cert.IPAddresses = append(cert.IPAddresses, ip)
+		}
 	}
 
 	dir, err := os.MkdirTemp(t.TempDir(), "cert")

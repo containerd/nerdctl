@@ -57,10 +57,10 @@ func TestMultiPlatformBuildPush(t *testing.T) {
 	base := testutil.NewBase(t)
 	defer base.Cmd("builder", "prune").Run()
 	tID := testutil.Identifier(t)
-	reg := testregistry.NewPlainHTTP(base, 5000)
-	defer reg.Cleanup()
+	reg := testregistry.NewWithNoAuth(base, 0, false)
+	defer reg.Cleanup(nil)
 
-	imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.ListenPort, tID)
+	imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.Port, tID)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -84,10 +84,10 @@ func TestMultiPlatformBuildPushNoRun(t *testing.T) {
 	base := testutil.NewBase(t)
 	defer base.Cmd("builder", "prune").Run()
 	tID := testutil.Identifier(t)
-	reg := testregistry.NewPlainHTTP(base, 5000)
-	defer reg.Cleanup()
+	reg := testregistry.NewWithNoAuth(base, 0, false)
+	defer reg.Cleanup(nil)
 
-	imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.ListenPort, tID)
+	imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.Port, tID)
 	defer base.Cmd("rmi", imageName).Run()
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -105,10 +105,10 @@ func TestMultiPlatformPullPushAllPlatforms(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
-	reg := testregistry.NewPlainHTTP(base, 5000)
-	defer reg.Cleanup()
+	reg := testregistry.NewWithNoAuth(base, 0, false)
+	defer reg.Cleanup(nil)
 
-	pushImageName := fmt.Sprintf("localhost:%d/%s:latest", reg.ListenPort, tID)
+	pushImageName := fmt.Sprintf("localhost:%d/%s:latest", reg.Port, tID)
 	defer base.Cmd("rmi", pushImageName).Run()
 
 	base.Cmd("pull", "--all-platforms", testutil.AlpineImage).AssertOK()
