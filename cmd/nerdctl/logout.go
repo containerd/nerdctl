@@ -17,15 +17,14 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
-	dockercliconfig "github.com/docker/cli/cli/config"
 	"github.com/spf13/cobra"
+
+	"github.com/containerd/log"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/logout"
 )
 
 func newLogoutCommand() *cobra.Command {
-	var logoutCommand = &cobra.Command{
+	return &cobra.Command{
 		Use:               "logout [flags] [SERVER]",
 		Args:              cobra.MaximumNArgs(1),
 		Short:             "Log out from a container registry",
@@ -34,62 +33,33 @@ func newLogoutCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	return logoutCommand
 }
 
-// code inspired from XXX
 func logoutAction(cmd *cobra.Command, args []string) error {
-	serverAddress := dockerconfigresolver.IndexServer
-	isDefaultRegistry := true
-	if len(args) >= 1 {
-		serverAddress = args[0]
-		isDefaultRegistry = false
+	logoutServer := ""
+	if len(args) > 0 {
+		logoutServer = args[0]
 	}
 
-	var (
-		regsToLogout    = []string{serverAddress}
-		hostnameAddress = serverAddress
-	)
-
-	if !isDefaultRegistry {
-		hostnameAddress = dockerconfigresolver.ConvertToHostname(serverAddress)
-		// the tries below are kept for backward compatibility where a user could have
-		// saved the registry in one of the following format.
-		regsToLogout = append(regsToLogout, hostnameAddress, "http://"+hostnameAddress, "https://"+hostnameAddress)
-	}
-
-	fmt.Fprintf(cmd.OutOrStdout(), "Removing login credentials for %s\n", hostnameAddress)
-
-	dockerConfigFile, err := dockercliconfig.Load("")
+	errGroup, err := logout.Logout(cmd.Context(), logoutServer)
 	if err != nil {
-		return err
+		log.L.WithError(err).Errorf("Failed to erase credentials for: %s", logoutServer)
 	}
-	errs := make(map[string]error)
-	for _, r := range regsToLogout {
-		if err := dockerConfigFile.GetCredentialsStore(r).Erase(r); err != nil {
-			errs[r] = err
+	if errGroup != nil {
+		log.L.Error("None of the following entries could be found")
+		for _, v := range errGroup {
+			log.L.Errorf("%s", v)
 		}
 	}
 
-	// if at least one removal succeeded, report success. Otherwise report errors
-	if len(errs) == len(regsToLogout) {
-		fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: could not erase credentials:")
-		for k, v := range errs {
-			fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", k, v)
-		}
-	}
-
-	return nil
+	return err
 }
 
 func logoutShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	dockerConfigFile, err := dockercliconfig.Load("")
+	candidates, err := logout.ShellCompletion()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
-	candidates := []string{}
-	for key := range dockerConfigFile.AuthConfigs {
-		candidates = append(candidates, key)
-	}
+
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }

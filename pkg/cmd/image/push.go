@@ -29,7 +29,6 @@ import (
 	"github.com/containerd/containerd/v2/core/images/converter"
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/containerd/v2/core/remotes/docker"
-	dockerconfig "github.com/containerd/containerd/v2/core/remotes/docker/config"
 	"github.com/containerd/containerd/v2/pkg/reference"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -45,7 +44,6 @@ import (
 	"github.com/containerd/stargz-snapshotter/estargz/zstdchunked"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
 	distributionref "github.com/distribution/reference"
-	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -131,24 +129,15 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		return push.Push(ctx, client, r, pushTracker, options.Stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts, options.Quiet)
 	}
 
-	var dOpts []dockerconfigresolver.Opt
-	if options.GOptions.InsecureRegistry {
-		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", refDomain)
-		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
-	}
-	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.GOptions.HostsDir))
-
-	ho, err := dockerconfigresolver.NewHostOptions(ctx, refDomain, dOpts...)
+	resolver, err := dockerconfigresolver.New(ctx, refDomain, &dockerconfigresolver.ResolverOptions{
+		HostsDirs:        options.GOptions.HostsDir,
+		Insecure:         options.GOptions.InsecureRegistry,
+		ExplicitInsecure: options.GOptions.ExplicitInsecureRegistry,
+	})
 	if err != nil {
 		return err
 	}
 
-	resolverOpts := docker.ResolverOptions{
-		Tracker: pushTracker,
-		Hosts:   dockerconfig.ConfigureHosts(ctx, *ho),
-	}
-
-	resolver := docker.NewResolver(resolverOpts)
 	if err = pushFunc(resolver); err != nil {
 		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused"
 		if !errutil.IsErrHTTPResponseToHTTPSClient(err) && !errutil.IsErrConnectionRefused(err) {
@@ -156,11 +145,16 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		}
 		if options.GOptions.InsecureRegistry {
 			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
-			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
-			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
+
+			resolver, err := dockerconfigresolver.New(ctx, refDomain, &dockerconfigresolver.ResolverOptions{
+				HostsDirs:        options.GOptions.HostsDir,
+				Insecure:         options.GOptions.InsecureRegistry,
+				ExplicitInsecure: options.GOptions.ExplicitInsecureRegistry,
+			})
 			if err != nil {
 				return err
 			}
+
 			return pushFunc(resolver)
 		}
 		log.G(ctx).WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)

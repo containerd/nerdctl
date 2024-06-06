@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/containerd/v2/core/snapshots"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/imgcrypt"
 	"github.com/containerd/imgcrypt/images/encryption"
 	"github.com/containerd/log"
@@ -37,7 +38,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
 	"github.com/containerd/platforms"
 	distributionref "github.com/distribution/reference"
-	"github.com/docker/docker/errdefs"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -129,13 +129,11 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 	ref := named.String()
 	refDomain := distributionref.Domain(named)
 
-	var dOpts []dockerconfigresolver.Opt
-	if options.GOptions.InsecureRegistry {
-		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", refDomain)
-		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
-	}
-	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.GOptions.HostsDir))
-	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
+	resolver, err := dockerconfigresolver.New(ctx, refDomain, &dockerconfigresolver.ResolverOptions{
+		HostsDirs:        options.GOptions.HostsDir,
+		Insecure:         options.GOptions.InsecureRegistry,
+		ExplicitInsecure: options.GOptions.ExplicitInsecureRegistry,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -148,8 +146,12 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 		}
 		if options.GOptions.InsecureRegistry {
 			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
-			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
-			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
+			// dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
+			resolver, err = dockerconfigresolver.New(ctx, refDomain, &dockerconfigresolver.ResolverOptions{
+				HostsDirs:        options.GOptions.HostsDir,
+				Insecure:         options.GOptions.InsecureRegistry,
+				ExplicitInsecure: options.GOptions.ExplicitInsecureRegistry,
+			})
 			if err != nil {
 				return nil, err
 			}
@@ -172,13 +174,11 @@ func ResolveDigest(ctx context.Context, rawRef string, insecure bool, hostsDirs 
 	ref := named.String()
 	refDomain := distributionref.Domain(named)
 
-	var dOpts []dockerconfigresolver.Opt
-	if insecure {
-		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", refDomain)
-		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
-	}
-	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(hostsDirs))
-	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
+	resolver, err := dockerconfigresolver.New(ctx, refDomain, &dockerconfigresolver.ResolverOptions{
+		HostsDirs: hostsDirs,
+		Insecure:  insecure,
+		// ExplicitInsecure: options.GOptions.ExplicitInsecureRegistry,
+	})
 	if err != nil {
 		return "", err
 	}

@@ -17,308 +17,451 @@
 package login
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
-	"net/url"
-	"os"
+	"runtime"
+	"strconv"
 	"strings"
 
-	dockercliconfig "github.com/docker/cli/cli/config"
-	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
-	"github.com/docker/docker/api/types/registry"
-	"github.com/docker/docker/errdefs"
-	"golang.org/x/net/context/ctxhttp"
-	"golang.org/x/term"
-
 	"github.com/containerd/containerd/v2/core/remotes/docker"
-	"github.com/containerd/containerd/v2/core/remotes/docker/config"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
-	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 )
 
-const unencryptedPasswordWarning = `WARNING: Your password will be stored unencrypted in %s.
+const (
+	redirectLimit              = 10
+	maxResponsesRetries        = 5
+	unencryptedPasswordWarning = `WARNING: Your password will be stored unencrypted in %s.
 Configure a credential helper to remove this warning. See
 https://docs.docker.com/engine/reference/commandline/login/#credentials-store
 `
+)
 
-type isFileStore interface {
-	IsFileStore() bool
-	GetFilename() string
-}
+var (
+	defaultNerdUserAgent = fmt.Sprintf("nerdctl/%s (os: %s)", version.GetVersion(), runtime.GOOS)
 
-func Login(ctx context.Context, options types.LoginCommandOptions, stdout io.Writer) error {
-	var serverAddress string
-	if options.ServerAddress == "" {
-		serverAddress = dockerconfigresolver.IndexServer
-	} else {
-		serverAddress = options.ServerAddress
+	// ErrSystemIsBroken wraps all system-level errors (credentials store inability to open or store credentials or broken hosts.toml)
+	//   ErrUnableToInstantiate
+	//   ErrUnableToStore
+
+	// ErrInvalidArgument wraps all cases related to a wrong argument
+	//   ErrUnparsableURL
+	//   ErrUnsupportedScheme
+	//   ErrNoHostsForNamespace
+	//   it is also returned when a namespace declares a server which Host differs from the namespace Host
+
+	// ErrCredentialsCannotBeRead wraps all prompting errors
+	ErrCredentialsCannotBeRead = errors.New("failed prompting for credentials")
+	//   ErrUsernameIsRequired
+	//   ErrPasswordIsRequired
+	//   ErrReadingUsername
+	//   ErrReadingPassword
+	//   ErrNotATerminal
+	//   ErrCannotAllocateTerminal
+
+	// ErrServerIsMisbehaving wraps all server errors
+	// 	 ErrServerUnspecified
+	// 	 ErrServerBlacklist
+	// 	 ErrServerUnavailable
+	// 	 ErrServerTimeout
+	// 	 ErrServerTooManyRetries
+	// 	 ErrServerTooManyRedirects
+
+	// ErrAuthenticationFailure wraps using wrong credentials, and authorizer erroring
+	ErrAuthenticationFailure = errors.New("authentication failed")
+	// ErrCredentialsRefused
+	// ErrUnsupportedAuthenticationMethod
+	// ErrAuthorizerError
+	// ErrAuthorizerRedirectError
+
+	// Finally, ErrConnectionFailed is passed through from do, and wraps all dns, tcp and cert validation errors
+	// ErrConnectionFailed
+)
+
+// Login will try to authenticate with the provided LoginCommandOptions, retrieving credentials and hosts.toml configuration
+// for the provided registry namespace, possibly prompting the user for credentials.
+// It may return the following errors:
+// - ErrSystemIsBroken: this should rarely happen, and is a symptom of a borked docker credentials store or broken hosts.toml configuration
+// - ErrInvalidArgument: provided namespace cannot be parsed, uses an invalid scheme, or is impossible to login because of hosts.toml configuration
+// - ErrCredentialsCannotBeRead: terminal error, or user did not provide credentials when prompted
+// - ErrConnectionFailed: dns, tcp or tls class of errors
+// - ErrServerIsMisbehaving: any server side error, 50x status code, redirect misconfiguration, etc
+// - ErrAuthenticationFailure: wrong credentials
+// See details about these errors for more fine-grained wrapped errors
+// Additionally, Login will return a slice of strings containing warnings that should be displayed to the user
+func Login(ctx context.Context, options *types.LoginCommandOptions, stdout io.Writer) ([]string, error) {
+	warnings := []string{}
+
+	// Get a credentialStore (does not error on ENOENT).
+	// If it errors, it is a hard filesystem error or a JSON parsing error for an existing credentials file,
+	// and login in that context does not make sense as we will not be able to save anything, so, just stop here.
+	credentialsStore, err := dockerutil.New("")
+	if err != nil {
+		return warnings, errors.Join(nerderr.ErrSystemIsBroken, err)
 	}
 
-	var responseIdentityToken string
-	isDefaultRegistry := serverAddress == dockerconfigresolver.IndexServer
+	// Get a resolver, with the requested options
+	resolver, err := dockerutil.NewResolver(options.ServerAddress, credentialsStore, &dockerutil.ResolveOptions{
+		Insecure:         options.GOptions.InsecureRegistry,
+		ExplicitInsecure: options.GOptions.ExplicitInsecureRegistry,
+		HostsDirs:        options.GOptions.HostsDir,
+		Username:         options.Username,
+		Password:         options.Password,
+	})
 
-	authConfig, err := GetDefaultAuthConfig(options.Username == "" && options.Password == "", serverAddress, isDefaultRegistry)
-	if authConfig == nil {
-		authConfig = &registry.AuthConfig{ServerAddress: serverAddress}
-	}
-	if err == nil && authConfig.Username != "" && authConfig.Password != "" {
-		//login With StoreCreds
-		responseIdentityToken, err = loginClientSide(ctx, options.GOptions, *authConfig)
+	// Handle possible errors
+	if errors.Is(err, dockerutil.ErrNoHostsForNamespace) {
+		return warnings, errors.Join(nerderr.ErrInvalidArgument, err)
+	} else if errors.Is(err, dockerutil.ErrNoSuchHostForNamespace) {
+		return warnings, errors.Join(nerderr.ErrInvalidArgument, err)
+	} else if err != nil {
+		return warnings, errors.Join(nerderr.ErrSystemIsBroken, err)
 	}
 
-	if err != nil || authConfig.Username == "" || authConfig.Password == "" {
-		err = ConfigureAuthentication(authConfig, options.Username, options.Password)
+	// Warn the user that schemes are meaningless, especially http://, if they used it
+	if strings.HasPrefix(options.ServerAddress, "http://") {
+		log.L.Warnf("Login to the server hosted at %q will ignore the provided scheme (http) and will connect using https, "+
+			"unless you explicitly request to use it in insecure mode with the --insecure-registry flag", resolver.RegistryNamespace.Host)
+	}
+
+	// Get the resolved server and hosts
+	registryHosts := resolver.GetHosts()
+	registryServer := resolver.GetServer()
+
+	// Ensure we have a port for it
+	if _, _, err = net.SplitHostPort(registryServer.Host); err != nil {
+		registryServer.Host = net.JoinHostPort(registryServer.Host, "443")
+	}
+
+	// If the passed-in ServerAddress is the namespace, and the server does not resolve to that, we are stopping now
+	// If it is not the namespace, we already know it exists and is valid, we just don't know which registryHost object it is
+	// ... if the server (which is either the explicit `server` section, or the implied host) does
+	// NOT match the namespace we are asked to log into, we are stopping here.
+	if registryServer.Host != resolver.RegistryNamespace.Host {
+		warnings = append(
+			warnings,
+			fmt.Sprintf("The registry namespace (%q) has a hosts.toml configuration that resolves to a different server host (%q).\n"+
+				"We cannot login to that registry namespace directly. If you are expecting the configured endpoints to be authenticated, please login to them individually with:",
+				resolver.RegistryNamespace.Host,
+				registryServer.Host,
+			))
+		for _, regHost := range registryHosts {
+			warnings = append(
+				warnings,
+				fmt.Sprintf("  nerdctl login %s%s?ns=%s", regHost.Host, regHost.Path, resolver.RegistryNamespace.Host),
+			)
+		}
+		warnings = append(
+			warnings,
+			fmt.Sprintf("  nerdctl login %s%s?ns=%s", registryServer.Host, registryServer.Path, resolver.RegistryNamespace.Host),
+		)
+		return warnings, nerderr.ErrInvalidArgument
+	}
+
+	// var responseIdentityHost string
+	// var responseIdentityToken string
+
+	// Query the credentialStore, but only force a lookup if both username and password have not been provided explicitly
+	// fmt.Println("DUUUF", resolver.RegistryNamespace.CanonicalIdentifier())
+	credentials, credStoreErr := credentialsStore.Retrieve(resolver.RegistryNamespace, options.Username == "" && options.Password == "")
+
+	// We should downgrade to http IF
+	// we have --insecure-registry (or --insecure-registry=true)
+	// OR
+	// we are on localhost AND we do NOT have --insecure-registry=false
+	insecureLogin := options.GOptions.InsecureRegistry || (resolver.RegistryNamespace.IsLocalhost() && !options.GOptions.ExplicitInsecureRegistry)
+
+	var queryErr error
+	// If `Retrieve` did not error and there is a username and password from the store, then try to log in with that
+	if credStoreErr == nil && credentials.Username != "" && credentials.Password != "" {
+		queryErr = login(ctx, registryServer, insecureLogin)
+		// Note: failing to authenticate here with invalid (stored) credentials will NOT delete said saved credentials
+	}
+
+	// If the above failed, or if we had an error from `Retrieve`, or we did not have a username and password,
+	// ask the user for what's missing and try (again)
+	if queryErr != nil || (credStoreErr != nil || credentials.Username == "" || credentials.Password == "") {
+		err = promptUserForAuthentication(credentials, options.Username, options.Password, stdout)
 		if err != nil {
-			return err
+			return warnings, errors.Join(ErrCredentialsCannotBeRead, err)
 		}
 
-		responseIdentityToken, err = loginClientSide(ctx, options.GOptions, *authConfig)
+		// We have credentials, let's try to login
+		err = login(ctx, registryServer, insecureLogin)
+
 		if err != nil {
-			return err
+			if errors.Is(err, ErrServerUnspecified) ||
+				errors.Is(err, ErrServerBlacklist) ||
+				errors.Is(err, ErrServerUnavailable) ||
+				errors.Is(err, ErrServerTimeout) ||
+				errors.Is(err, ErrServerTooManyRedirects) ||
+				errors.Is(err, ErrServerTooManyRetries) {
+				// Wrap all server related issues
+				err = errors.Join(nerderr.ErrServerIsMisbehaving, err)
+			} else if errors.Is(err, ErrAuthorizerError) ||
+				errors.Is(err, ErrAuthorizerRedirectError) ||
+				errors.Is(err, ErrCredentialsRefused) ||
+				errors.Is(err, ErrUnsupportedAuthenticationMethod) {
+				// Wrap all authentication-proper related issues
+				err = errors.Join(ErrAuthenticationFailure, err)
+			} else {
+				log.L.Error("non-specific error condition - please report this as a bug")
+				// } else if errors.Is(err, ErrConnectionFailed) {
+			}
+			return warnings, err
 		}
 	}
 
+	// If we got an identity token back, this is what we are going to store instead of the password
+	responseIdentityToken := resolver.IdentityTokenForHost(resolver.RegistryNamespace.Host)
 	if responseIdentityToken != "" {
-		authConfig.Password = ""
-		authConfig.IdentityToken = responseIdentityToken
+		credentials.Password = ""
+		credentials.IdentityToken = responseIdentityToken
 	}
 
-	dockerConfigFile, err := dockercliconfig.Load("")
+	// Add a warning if we're storing the users password (not a token) and credentials store type is file.
+	if filename := credentialsStore.FileStorageLocation(resolver.RegistryNamespace); credentials.Password != "" && filename != "" {
+		warnings = append(warnings, fmt.Sprintf(unencryptedPasswordWarning, filename))
+	}
+
+	// fmt.Println("AGAIN", resolver.RegistryNamespace.CanonicalIdentifier())
+	if err = credentialsStore.Store(resolver.RegistryNamespace, credentials); err != nil {
+		return warnings, errors.Join(nerderr.ErrSystemIsBroken, err)
+	}
+
+	if len(registryHosts) > 1 {
+		warnings = append(warnings, fmt.Sprintf("The registry namespace %q has a hosts.toml configuration that "+
+			"resolves to other hosts.\n"+
+			"If you are expecting these endpoints to be authenticated as well, please login to them individually with:",
+			resolver.RegistryNamespace.Host))
+		for _, regHost := range registryHosts {
+			warnings = append(
+				warnings,
+				fmt.Sprintf("  nerdctl login %s%s/?ns=%s", regHost.Host, regHost.Path, resolver.RegistryNamespace.Host),
+			)
+		}
+	}
+
+	return warnings, nil
+}
+
+// login will try a registry server and possibly downgrade to http if insecure.
+func login(ctx context.Context, registryHost docker.RegistryHost, insecure bool) error {
+	err := registryLogin(ctx, registryHost)
 	if err != nil {
-		return err
-	}
-
-	creds := dockerConfigFile.GetCredentialsStore(serverAddress)
-
-	store, isFile := creds.(isFileStore)
-	// Display a warning if we're storing the users password (not a token) and credentials store type is file.
-	if isFile && authConfig.Password != "" {
-		_, err = fmt.Fprintln(stdout, fmt.Sprintf(unencryptedPasswordWarning, store.GetFilename()))
+		// If we have been asked to do insecure, downgrade to plain http and try again
+		// if the server gave us a http answer, or refused to connect
+		// TODO: replace IsErrConnectionRefused with the actual conditions we want to consider
+		// Or just retry anyhow?
+		// XXX investigate the usefulness of IsErrConnectionRefused
+		// errs := err.(interface{ Unwrap() []error }) //.Unwrap()
+		// var t *os.PathError
+		if insecure && (errors.As(err, &http.ErrSchemeMismatch) || errutil.IsErrConnectionRefused(err)) {
+			registryHost.Scheme = "http"
+			err = registryLogin(ctx, registryHost)
+		}
 		if err != nil {
 			return err
 		}
 	}
-
-	if err := creds.Store(dockercliconfigtypes.AuthConfig(*(authConfig))); err != nil {
-		return fmt.Errorf("error saving credentials: %w", err)
-	}
-
-	fmt.Fprintln(stdout, "Login Succeeded")
 
 	return nil
 }
 
-// GetDefaultAuthConfig gets the default auth config given a serverAddress.
-// If credentials for given serverAddress exists in the credential store, the configuration will be populated with values in it.
-// Code from github.com/docker/cli/cli/command (v20.10.3).
-func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRegistry bool) (*registry.AuthConfig, error) {
-	if !isDefaultRegistry {
-		var err error
-		serverAddress, err = convertToHostname(serverAddress)
-		if err != nil {
-			return nil, err
-		}
-	}
-	var authconfig = dockercliconfigtypes.AuthConfig{}
-	if checkCredStore {
-		dockerConfigFile, err := dockercliconfig.Load("")
-		if err != nil {
-			return nil, err
-		}
-		authconfig, err = dockerConfigFile.GetAuthConfig(serverAddress)
-		if err != nil {
-			return nil, err
-		}
-	}
-	authconfig.ServerAddress = serverAddress
-	authconfig.IdentityToken = ""
-	res := registry.AuthConfig(authconfig)
-	return &res, nil
-}
+var (
+	ErrServerUnspecified    = errors.New("unspecified server error")
+	ErrServerBlacklist      = errors.New("server blacklisted us")
+	ErrServerUnavailable    = errors.New("server responded but did 500")
+	ErrServerTimeout        = errors.New("server response timeout")
+	ErrServerTooManyRetries = errors.New("too many retries")
 
-func loginClientSide(ctx context.Context, globalOptions types.GlobalCommandOptions, auth registry.AuthConfig) (string, error) {
-	host, err := convertToHostname(auth.ServerAddress)
-	if err != nil {
-		return "", err
-	}
-	var dOpts []dockerconfigresolver.Opt
-	if globalOptions.InsecureRegistry {
-		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", host)
-		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
-	}
-	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(globalOptions.HostsDir))
+	ErrCredentialsRefused              = errors.New("failed login with provided credentials")
+	ErrUnsupportedAuthenticationMethod = errors.New("unsupported authentication")
+)
 
-	authCreds := func(acArg string) (string, string, error) {
-		if acArg == host {
-			if auth.RegistryToken != "" {
-				// Even containerd/CRI does not support RegistryToken as of v1.4.3,
-				// so, nobody is actually using RegistryToken?
-				log.G(ctx).Warnf("RegistryToken (for %q) is not supported yet (FIXME)", host)
-			}
-			return auth.Username, auth.Password, nil
-		}
-		return "", "", fmt.Errorf("expected acArg to be %q, got %q", host, acArg)
-	}
-
-	dOpts = append(dOpts, dockerconfigresolver.WithAuthCreds(authCreds))
-	ho, err := dockerconfigresolver.NewHostOptions(ctx, host, dOpts...)
-	if err != nil {
-		return "", err
-	}
-	fetchedRefreshTokens := make(map[string]string) // key: req.URL.Host
-	// onFetchRefreshToken is called when tryLoginWithRegHost calls rh.Authorizer.Authorize()
-	onFetchRefreshToken := func(ctx context.Context, s string, req *http.Request) {
-		fetchedRefreshTokens[req.URL.Host] = s
-	}
-	ho.AuthorizerOpts = append(ho.AuthorizerOpts, docker.WithFetchRefreshToken(onFetchRefreshToken))
-	regHosts, err := config.ConfigureHosts(ctx, *ho)(host)
-	if err != nil {
-		return "", err
-	}
-	log.G(ctx).Debugf("len(regHosts)=%d", len(regHosts))
-	if len(regHosts) == 0 {
-		return "", fmt.Errorf("got empty []docker.RegistryHost for %q", host)
-	}
-	for i, rh := range regHosts {
-		err = tryLoginWithRegHost(ctx, rh)
-		if err != nil && globalOptions.InsecureRegistry && (errutil.IsErrHTTPResponseToHTTPSClient(err) || errutil.IsErrConnectionRefused(err)) {
-			rh.Scheme = "http"
-			err = tryLoginWithRegHost(ctx, rh)
-		}
-		identityToken := fetchedRefreshTokens[rh.Host] // can be empty
-		if err == nil {
-			return identityToken, nil
-		}
-		log.G(ctx).WithError(err).WithField("i", i).Error("failed to call tryLoginWithRegHost")
-	}
-	return "", err
-}
-
-func tryLoginWithRegHost(ctx context.Context, rh docker.RegistryHost) error {
-	if rh.Authorizer == nil {
-		return errors.New("got nil Authorizer")
-	}
-	if rh.Path == "/v2" {
-		// If the path is using /v2 endpoint but lacks trailing slash add it
-		// https://docs.docker.com/registry/spec/api/#detail. Acts as a workaround
-		// for containerd issue https://github.com/containerd/containerd/blob/2986d5b077feb8252d5d2060277a9c98ff8e009b/remotes/docker/config/hosts.go#L110
-		rh.Path = "/v2/"
-	}
-	u := url.URL{
-		Scheme: rh.Scheme,
-		Host:   rh.Host,
-		Path:   rh.Path,
-	}
-	var ress []*http.Response
-	for i := 0; i < 10; i++ {
-		req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+// registryLogin will try to log into the provided registryHost with a maximum of maxResponsesRetries
+// It does workaround some registries idiosyncrasies, and return expressive enough errors to provide meaningful
+// feedback to the user.
+// This method does not try to downgrade protocol, or bypass certificate validation, etc
+// (downstream consumer should take care of that)
+// In addition to the errors returned from "do" (which are going to be passed through as-is), it may error with:
+//   - any of the ErrServer* errors - including ErrServerTooManyRetries in case we hit maxResponsesRetries with no error except 401
+//   - ErrCredentialsRefused when authentication has been refused by the server
+//   - ErrUnsupportedAuthenticationMethod if the server is requesting an authentication method we do not know about
+//     currently supported: basic and token auth
+//     currently NOT supported: registry bearer token auth
+func registryLogin(ctx context.Context, registryHost docker.RegistryHost) error {
+	var resp *http.Response
+	var err error
+	responses := []*http.Response{}
+	for x := 0; x < maxResponsesRetries; x++ {
+		// Do the request - exit on error
+		resp, err = do(ctx, registryHost)
 		if err != nil {
 			return err
 		}
-		for k, v := range rh.Header.Clone() {
-			for _, vv := range v {
-				req.Header.Add(k, vv)
+
+		// Make sure the body gets closed when we return, but leave it open for now as the authorizer might want to inspect it
+		defer func() {
+			if resp != nil && resp.Body != nil {
+				_ = resp.Body.Close()
 			}
-		}
-		if err := rh.Authorizer.Authorize(ctx, req); err != nil {
-			return fmt.Errorf("failed to call rh.Authorizer.Authorize: %w", err)
-		}
-		res, err := ctxhttp.Do(ctx, rh.Client, req)
-		if err != nil {
-			return fmt.Errorf("failed to call rh.Client.Do: %w", err)
-		}
-		ress = append(ress, res)
-		if res.StatusCode == 401 {
-			if err := rh.Authorizer.AddResponses(ctx, ress); err != nil && !errdefs.IsNotImplemented(err) {
-				return fmt.Errorf("failed to call rh.Authorizer.AddResponses: %w", err)
+		}()
+
+		// Attach the last response for the authorizer to inspect
+		responses = append(responses, resp)
+
+		log.L.Debugf("received response with status code %d", resp.StatusCode)
+
+		// Decide if we should try again
+		switch resp.StatusCode {
+		case http.StatusUnauthorized:
+			if registryHost.Authorizer == nil {
+				panic("unable to login without an authorizer - please report this as a bug")
 			}
-			continue
-		}
-		if res.StatusCode/100 != 2 {
-			return fmt.Errorf("unexpected status code %d", res.StatusCode)
+
+			// Add the last response
+			err = registryHost.Authorizer.AddResponses(ctx, responses)
+			// Not implemented is the only AddResponses documented error condition
+			if err != nil {
+				if errdefs.IsNotImplemented(err) {
+					return ErrUnsupportedAuthenticationMethod
+				}
+				panic("unhandled condition from Authorizer.AddResponses - report this as a bug")
+			}
+
+			// Handle bugs and bizarro-registry-behaviors
+			if len(responses) >= 2 {
+				// Fix https://github.com/containerd/nerdctl/issues/3068
+				// This is really a (dirty) workaround and should probably be fixed in containerd remote/docker basic auth instead
+				// With basic authentication, do not retry the same thing over and over again...
+				last := responses[len(responses)-1]
+				prior := responses[len(responses)-2]
+				// Note: Get returns case-insensitive
+				wwwAuth := last.Header.Get("www-authenticate")
+				wwwAuthPrior := prior.Header.Get("www-authenticate")
+
+				if prior.Request.URL == last.Request.URL {
+					// If we received the same challenge twice in a "basic" context for the same URL, that's it.
+					if strings.HasPrefix(wwwAuth, "basic") && wwwAuth == wwwAuthPrior {
+						return ErrCredentialsRefused
+					}
+
+					// See https://github.com/containerd/nerdctl/issues/1675
+					// Some misbehaving registries may (buggily) switch to a different authentication type on auth failure
+					// In that case, just reset the responses and retry from scratch
+					// TODO: the ticket issue happens on push, as the scope is not enough. This logic needs to go there as well.
+					if wwwAuth[0:6] != wwwAuthPrior[0:6] {
+						log.L.Warn("Misbehaving server! We received different authentication types for the same URL. Resetting responses.")
+						responses = []*http.Response{}
+					}
+				}
+			}
+		case http.StatusRequestTimeout:
+			// It is worth assuming this is a fluke - retry if possible
+			err = ErrServerTimeout
+		case http.StatusServiceUnavailable:
+			// This is assumed to be a fluke (docker hub has a lot of these) - retry if possible
+			err = ErrServerUnavailable
+		case http.StatusTooManyRequests:
+			// We got blacklisted. Drop off.
+			return ErrServerBlacklist
+		case http.StatusOK:
+			// Authentication successful
+			return nil
+		default:
+			// Non-specific error condition. Drop off.
+			return ErrServerUnspecified
 		}
 
-		return nil
+		// Retry - make sure we close first
+		_ = resp.Body.Close()
 	}
 
-	return errors.New("too many 401 (probably)")
+	// If we are here and the error is nil, we have exhausted our attempts
+	if err == nil {
+		err = ErrServerTooManyRetries
+	}
+
+	return err
 }
 
-func ConfigureAuthentication(authConfig *registry.AuthConfig, username, password string) error {
-	authConfig.Username = strings.TrimSpace(authConfig.Username)
-	if username = strings.TrimSpace(username); username == "" {
-		username = authConfig.Username
-	}
-	if username == "" {
-		fmt.Print("Enter Username: ")
-		usr, err := readUsername()
-		if err != nil {
-			return err
-		}
-		username = usr
-	}
-	if username == "" {
-		return fmt.Errorf("error: Username is Required")
+var (
+	ErrConnectionFailed        = errors.New("http client connection error")
+	ErrServerTooManyRedirects  = errors.New("too many redirects: " + strconv.Itoa(redirectLimit))
+	ErrAuthorizerError         = errors.New("authorizer fail")
+	ErrAuthorizerRedirectError = errors.New("authorizer fail on redirect")
+)
+
+// do is a private function performing the actual http requests
+// It might error with:
+//   - ErrConnectionFailed which will wrap any http connection error, like:
+//     tcp timeouts, certificate validation errors, DNS resolution errors, etc
+//   - ErrServerTooManyRedirects in case there are too many redirects:
+//     this is indicative of a server misconfiguration (or malicious)
+//   - ErrAuthorizerError and ErrAuthorizerRedirectError errors, wrapping the underlying authorizer error
+//     TODO clarify what these are
+func do(ctx context.Context, registryHost docker.RegistryHost) (*http.Response, error) {
+	if registryHost.Path == "/v2" {
+		// Containerd usually return the path without the trailing slash
+		// https://github.com/containerd/containerd/blob/2986d5b077feb8252d5d2060277a9c98ff8e009b/remotes/docker/config/hosts.go#L110
+		// This may cause issues with certain registries, or a (useless) extra redirect for most
+		// See spec for details https://docs.docker.com/registry/spec/api/#detail
+		registryHost.Path = "/v2/"
 	}
 
-	if password == "" {
-		fmt.Print("Enter Password: ")
-		pwd, err := readPassword()
-		fmt.Println()
-		if err != nil {
-			return err
-		}
-		password = pwd
-	}
-	if password == "" {
-		return fmt.Errorf("error: Password is Required")
-	}
-
-	authConfig.Username = username
-	authConfig.Password = password
-
-	return nil
-}
-
-func readUsername() (string, error) {
-	var fd *os.File
-	if term.IsTerminal(int(os.Stdin.Fd())) {
-		fd = os.Stdin
-	} else {
-		return "", fmt.Errorf("stdin is not a terminal (Hint: use `nerdctl login --username=USERNAME --password-stdin`)")
-	}
-
-	reader := bufio.NewReader(fd)
-	username, err := reader.ReadString('\n')
+	// Prep the http request (note: the only case where this would error is if ctx is nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, registryHost.Scheme+"://"+registryHost.Host+registryHost.Path, nil)
+	// The only reason for this to fail is ctx == nil, which is not normal
 	if err != nil {
-		return "", fmt.Errorf("error reading username: %w", err)
-	}
-	username = strings.TrimSpace(username)
-
-	return username, nil
-}
-
-func convertToHostname(serverAddress string) (string, error) {
-	// Ensure that URL contains scheme for a good parsing process
-	if strings.Contains(serverAddress, "://") {
-		u, err := url.Parse(serverAddress)
-		if err != nil {
-			return "", err
-		}
-		serverAddress = u.Host
-	} else {
-		u, err := url.Parse("https://" + serverAddress)
-		if err != nil {
-			return "", err
-		}
-		serverAddress = u.Host
+		panic(fmt.Sprintf("login: http.NewRequestWithContext errored with: %v - please report this as a bug", err))
 	}
 
-	return serverAddress, nil
+	req.Header = http.Header{}
+	// Set default user-agent - this will get overridden if hosts.toml defines it too
+	req.Header.Set("user-agent", defaultNerdUserAgent)
+	// Add headers if any are specified in the regHost object (eg: in the hosts.toml file)
+	if registryHost.Header != nil {
+		req.Header = registryHost.Header.Clone()
+	}
+
+	// Attach a redirect handler, to limit the number of redirects, and to be able to reauthorize
+	if registryHost.Client.CheckRedirect == nil {
+		registryHost.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			log.L.Debugf("redirecting for the %d-th time to %q", len(via), req.URL)
+			if len(via) >= redirectLimit {
+				return ErrServerTooManyRedirects
+			}
+			if registryHost.Authorizer != nil {
+				if err = registryHost.Authorizer.Authorize(ctx, req); err != nil {
+					log.L.Debugf("authorizer errored on the redirect for url %q", req.URL)
+					return errors.Join(ErrAuthorizerRedirectError, err)
+				}
+			}
+			return nil
+		}
+	}
+
+	// Authorize if we have an authorizer
+	if registryHost.Authorizer != nil {
+		if err = registryHost.Authorizer.Authorize(ctx, req); err != nil {
+			log.L.Debugf("authorizer errored for url %q", req.URL)
+			return nil, errors.Join(ErrAuthorizerError, err)
+		}
+	}
+
+	// Do the request and return
+	resp, err := registryHost.Client.Do(req)
+	if err != nil {
+		log.L.Debugf("http client do errored on url %q", req.URL)
+		err = errors.Join(ErrConnectionFailed, err)
+	}
+
+	return resp, err
 }

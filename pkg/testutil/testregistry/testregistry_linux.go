@@ -17,6 +17,8 @@
 package testregistry
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"os"
@@ -68,6 +70,9 @@ func EnsureImages(base *testutil.Base) {
 }
 
 func NewAuthServer(base *testutil.Base, ca *testca.CA, port int, user, pass string, tls bool) *TokenAuthServer {
+	// TODO: centralize these
+	EnsureImages(base)
+
 	name := testutil.Identifier(base.T)
 	// listen on 0.0.0.0 to enable 127.0.0.1
 	listenIP := net.ParseIP("0.0.0.0")
@@ -245,6 +250,7 @@ func (ba *BasicAuth) Params(base *testutil.Base) []string {
 }
 
 func NewIPFSRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundCleanup func(error)) *RegistryServer {
+	// TODO: centralize these
 	EnsureImages(base)
 
 	name := testutil.Identifier(base.T)
@@ -314,6 +320,7 @@ func NewIPFSRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, bo
 }
 
 func NewRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundCleanup func(error)) *RegistryServer {
+	// TODO: centralize these
 	EnsureImages(base)
 
 	name := testutil.Identifier(base.T)
@@ -339,7 +346,7 @@ func NewRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundC
 	var cert *testca.Cert
 	if ca != nil {
 		scheme = "https"
-		cert = ca.NewCert(hostIP.String(), "127.0.0.1")
+		cert = ca.NewCert(hostIP.String(), "127.0.0.1", "localhost", "::1")
 		args = append(args,
 			"--env", "REGISTRY_HTTP_TLS_CERTIFICATE=/registry/domain.crt",
 			"--env", "REGISTRY_HTTP_TLS_KEY=/registry/domain.key",
@@ -394,21 +401,14 @@ func NewRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundC
 			if err != nil {
 				return "", err
 			}
-			if port == 443 {
-				err = generateCertsd(hDir, ca.CertPath, hostIP.String(), 0)
-				if err != nil {
-					return "", err
-				}
-				err = generateCertsd(hDir, ca.CertPath, "127.0.0.1", 0)
-				if err != nil {
-					return "", err
-				}
+			err = generateCertsd(hDir, ca.CertPath, "localhost", port)
+			if err != nil {
+				return "", err
 			}
 		}
 
 		cmd := base.Cmd(args...).Run()
 		if cmd.Error != nil {
-			base.T.Logf("%s:\n%s\n%s\n-------\n%s", containerName, cmd.Cmd, cmd.Stdout(), cmd.Stderr())
 			return "", cmd.Error
 		}
 
@@ -421,7 +421,7 @@ func NewRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundC
 
 	if err != nil {
 		cl := base.Cmd("logs", containerName).Run()
-		base.T.Logf("%s:\n%s\n%s\n=========================\n%s", containerName, cl.Cmd, cl.Stdout(), cl.Stderr())
+		base.T.Errorf("%s:\n%s\n%s\n=========================\n%s", containerName, cl.Cmd, cl.Stdout(), cl.Stderr())
 		cleanup(err)
 	}
 	assert.NilError(base.T, err, fmt.Errorf("failed starting registry container in a timely manner: %w", err))
@@ -467,4 +467,13 @@ func NewWithBasicAuth(base *testutil.Base, user, pass string, port int, tls bool
 		ca = testca.New(base.T)
 	}
 	return NewRegistry(base, ca, port, auth, nil)
+}
+
+func SafeRandomString(n int) string {
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	// XXX WARNING there is something in the registry (or more likely in the way we generate htpasswd files)
+	// that is broken and does not resist truly random strings
+	// return string(b)
+	return base64.URLEncoding.EncodeToString(b)
 }

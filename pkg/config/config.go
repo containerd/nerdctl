@@ -25,19 +25,20 @@ import (
 // Config corresponds to nerdctl.toml .
 // See docs/config.md .
 type Config struct {
-	Debug            bool     `toml:"debug"`
-	DebugFull        bool     `toml:"debug_full"`
-	Address          string   `toml:"address"`
-	Namespace        string   `toml:"namespace"`
-	Snapshotter      string   `toml:"snapshotter"`
-	CNIPath          string   `toml:"cni_path"`
-	CNINetConfPath   string   `toml:"cni_netconfpath"`
-	DataRoot         string   `toml:"data_root"`
-	CgroupManager    string   `toml:"cgroup_manager"`
-	InsecureRegistry bool     `toml:"insecure_registry"`
-	HostsDir         []string `toml:"hosts_dir"`
-	Experimental     bool     `toml:"experimental"`
-	HostGatewayIP    string   `toml:"host_gateway_ip"`
+	Debug                    bool     `toml:"debug"`
+	DebugFull                bool     `toml:"debug_full"`
+	Address                  string   `toml:"address"`
+	Namespace                string   `toml:"namespace"`
+	Snapshotter              string   `toml:"snapshotter"`
+	CNIPath                  string   `toml:"cni_path"`
+	CNINetConfPath           string   `toml:"cni_netconfpath"`
+	DataRoot                 string   `toml:"data_root"`
+	CgroupManager            string   `toml:"cgroup_manager"`
+	InsecureRegistry         bool     `toml:"insecure_registry"`
+	ExplicitInsecureRegistry bool     `toml:"explicit_insecure_registry"`
+	HostsDir                 []string `toml:"hosts_dir"`
+	Experimental             bool     `toml:"experimental"`
+	HostGatewayIP            string   `toml:"host_gateway_ip"`
 }
 
 // New creates a default Config object statically,

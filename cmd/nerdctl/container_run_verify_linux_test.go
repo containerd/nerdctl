@@ -42,7 +42,10 @@ func TestRunVerifyCosign(t *testing.T) {
 	})
 
 	tID := testutil.Identifier(t)
-	testImageRef := fmt.Sprintf("127.0.0.1:%d/%s", reg.Port, tID)
+	localhostIP := "127.0.0.1"
+	testImageRef := fmt.Sprintf("%s:%d/%s",
+		localhostIP, reg.Port, tID)
+
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)

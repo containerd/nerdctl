@@ -437,8 +437,9 @@ func TestComposePushAndPullWithCosignVerify(t *testing.T) {
 		reg.Cleanup(nil)
 	})
 
+	localhostIP := "127.0.0.1"
 	tID := testutil.Identifier(t)
-	testImageRefPrefix := fmt.Sprintf("127.0.0.1:%d/%s/", reg.Port, tID)
+	testImageRefPrefix := fmt.Sprintf("%s:%d/%s/", localhostIP, reg.Port, tID)
 
 	var (
 		imageSvc0 = testImageRefPrefix + "composebuild_svc0"

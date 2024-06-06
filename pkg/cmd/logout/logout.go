@@ -14,37 +14,33 @@
    limitations under the License.
 */
 
-package testregistry
+package logout
 
 import (
-	"fmt"
-	"net"
-	"os"
-	"path/filepath"
-	"strconv"
+	"context"
+
+	"github.com/containerd/nerdctl/v2/pkg/dockerutil"
 )
 
-func generateCertsd(dir string, certPath string, hostIP string, port int) error {
-	joined := hostIP
-	if port != 0 {
-		joined = net.JoinHostPort(hostIP, strconv.Itoa(port))
-	}
-
-	hostsSubDir := filepath.Join(dir, joined)
-	err := os.MkdirAll(hostsSubDir, 0700)
+func Logout(ctx context.Context, logoutServer string) (map[string]error, error) {
+	reg, err := dockerutil.Parse(logoutServer)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	hostsTOMLPath := filepath.Join(hostsSubDir, "hosts.toml")
-	hostsTOML := fmt.Sprintf(`
-server = %q
-ca = %q
-[ host.%q ]
-# %s
-		`, hostIP+":"+strconv.Itoa(port),
-		certPath,
-		hostIP+":"+strconv.Itoa(port),
-		hostsTOMLPath)
-	return os.WriteFile(hostsTOMLPath, []byte(hostsTOML), 0700)
+	credentialsStore, err := dockerutil.New("")
+	if err != nil {
+		return nil, err
+	}
+
+	return credentialsStore.Erase(reg)
+}
+
+func ShellCompletion() ([]string, error) {
+	credentialsStore, err := dockerutil.New("")
+	if err != nil {
+		return nil, err
+	}
+
+	return credentialsStore.ShellCompletion()
 }

@@ -18,19 +18,14 @@ package dockerconfigresolver
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/containerd/v2/core/remotes/docker"
-	dockerconfig "github.com/containerd/containerd/v2/core/remotes/docker/config"
-	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
-	dockercliconfig "github.com/docker/cli/cli/config"
-	"github.com/docker/cli/cli/config/credentials"
-	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
+	"github.com/containerd/nerdctl/v2/pkg/dockerutil"
+	"github.com/containerd/nerdctl/v2/pkg/nerderr"
 )
 
 var PushTracker = docker.NewInMemoryTracker()
@@ -39,7 +34,6 @@ type opts struct {
 	plainHTTP       bool
 	skipVerifyCerts bool
 	hostsDirs       []string
-	authCreds       AuthCreds
 }
 
 // Opt for New
@@ -82,172 +76,34 @@ func WithHostsDirs(orig []string) Opt {
 	}
 }
 
-func WithAuthCreds(ac AuthCreds) Opt {
-	return func(o *opts) {
-		o.authCreds = ac
-	}
+type ResolverOptions struct {
+	Insecure         bool
+	ExplicitInsecure bool
+	HostsDirs        []string
 }
 
-// NewHostOptions instantiates a HostOptions struct using $DOCKER_CONFIG/config.json .
-//
-// $DOCKER_CONFIG defaults to "~/.docker".
-//
-// refHostname is like "docker.io".
-func NewHostOptions(ctx context.Context, refHostname string, optFuncs ...Opt) (*dockerconfig.HostOptions, error) {
-	var o opts
-	for _, of := range optFuncs {
-		of(&o)
-	}
-	var ho dockerconfig.HostOptions
-
-	ho.HostDir = func(s string) (string, error) {
-		for _, hostsDir := range o.hostsDirs {
-			found, err := dockerconfig.HostDirFromRoot(hostsDir)(s)
-			if (err != nil && !errdefs.IsNotFound(err)) || (found != "") {
-				return found, err
-			}
-		}
-		return "", nil
-	}
-
-	if o.authCreds != nil {
-		ho.Credentials = o.authCreds
-	} else {
-		authCreds, err := NewAuthCreds(refHostname)
-		if err != nil {
-			return nil, err
-		}
-		ho.Credentials = authCreds
-
-	}
-
-	if o.skipVerifyCerts {
-		ho.DefaultTLS = &tls.Config{
-			InsecureSkipVerify: true,
-		}
-	}
-
-	if o.plainHTTP {
-		ho.DefaultScheme = "http"
-	} else {
-		if isLocalHost, err := docker.MatchLocalhost(refHostname); err != nil {
-			return nil, err
-		} else if isLocalHost {
-			ho.DefaultScheme = "http"
-		}
-	}
-	if ho.DefaultScheme == "http" {
-		// https://github.com/containerd/containerd/issues/9208
-		ho.DefaultTLS = nil
-	}
-	return &ho, nil
-}
-
-// New instantiates a resolver using $DOCKER_CONFIG/config.json .
-//
-// $DOCKER_CONFIG defaults to "~/.docker".
-//
-// refHostname is like "docker.io".
-func New(ctx context.Context, refHostname string, optFuncs ...Opt) (remotes.Resolver, error) {
-	ho, err := NewHostOptions(ctx, refHostname, optFuncs...)
+func New(ctx context.Context, refHostname string, options *ResolverOptions) (remotes.Resolver, error) {
+	// Get a credentialStore (does not error on ENOENT).
+	// If it errors, it is a hard filesystem error or a JSON parsing error for an existing credentials file,
+	// and login in that context does not make sense as we will not be able to save anything, so, just stop here.
+	credentialsStore, err := dockerutil.New("")
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(nerderr.ErrSystemIsBroken, err)
 	}
+
+	// Get a resolver with requested options
+	resolver, err := dockerutil.NewResolver(refHostname, credentialsStore, &dockerutil.ResolveOptions{
+		Insecure:         options.Insecure,
+		ExplicitInsecure: options.ExplicitInsecure,
+		HostsDirs:        options.HostsDirs,
+	})
 
 	resolverOpts := docker.ResolverOptions{
 		Tracker: PushTracker,
-		Hosts:   dockerconfig.ConfigureHosts(ctx, *ho),
+		Hosts: func(string) ([]docker.RegistryHost, error) {
+			return append(resolver.GetHosts(), resolver.GetServer()), nil
+		},
 	}
 
-	resolver := docker.NewResolver(resolverOpts)
-	return resolver, nil
-}
-
-// AuthCreds is for docker.WithAuthCreds
-type AuthCreds func(string) (string, string, error)
-
-// NewAuthCreds returns AuthCreds that uses $DOCKER_CONFIG/config.json .
-// AuthCreds can be nil.
-func NewAuthCreds(refHostname string) (AuthCreds, error) {
-	// Load does not raise an error on ENOENT
-	dockerConfigFile, err := dockercliconfig.Load("")
-	if err != nil {
-		return nil, err
-	}
-
-	// DefaultHost converts "docker.io" to "registry-1.docker.io",
-	// which is wanted  by credFunc .
-	credFuncExpectedHostname, err := docker.DefaultHost(refHostname)
-	if err != nil {
-		return nil, err
-	}
-
-	var credFunc AuthCreds
-
-	authConfigHostnames := []string{refHostname}
-	if refHostname == "docker.io" || refHostname == "registry-1.docker.io" {
-		// "docker.io" appears as ""https://index.docker.io/v1/" in ~/.docker/config.json .
-		// Unlike other registries, we have to pass the full URL to GetAuthConfig.
-		authConfigHostnames = append([]string{IndexServer}, refHostname)
-	}
-
-	for _, authConfigHostname := range authConfigHostnames {
-		// GetAuthConfig does not raise an error on ENOENT
-		ac, err := dockerConfigFile.GetAuthConfig(authConfigHostname)
-		if err != nil {
-			log.L.WithError(err).Warnf("cannot get auth config for authConfigHostname=%q (refHostname=%q)",
-				authConfigHostname, refHostname)
-		} else {
-			// When refHostname is "docker.io":
-			// - credFuncExpectedHostname: "registry-1.docker.io"
-			// - credFuncArg:              "registry-1.docker.io"
-			// - authConfigHostname:       "https://index.docker.io/v1/" (IndexServer)
-			// - ac.ServerAddress:         "https://index.docker.io/v1/".
-			if !isAuthConfigEmpty(ac) {
-				if ac.ServerAddress == "" {
-					// This can happen with Amazon ECR: https://github.com/containerd/nerdctl/issues/733
-					log.L.Debugf("failed to get ac.ServerAddress for authConfigHostname=%q (refHostname=%q)",
-						authConfigHostname, refHostname)
-				} else if authConfigHostname == IndexServer {
-					if ac.ServerAddress != IndexServer {
-						return nil, fmt.Errorf("expected ac.ServerAddress (%q) to be %q", ac.ServerAddress, IndexServer)
-					}
-				} else {
-					acsaHostname := credentials.ConvertToHostname(ac.ServerAddress)
-					if acsaHostname != authConfigHostname {
-						return nil, fmt.Errorf("expected the hostname part of ac.ServerAddress (%q) to be authConfigHostname=%q, got %q",
-							ac.ServerAddress, authConfigHostname, acsaHostname)
-					}
-				}
-
-				if ac.RegistryToken != "" {
-					// Even containerd/CRI does not support RegistryToken as of v1.4.3,
-					// so, nobody is actually using RegistryToken?
-					log.L.Warnf("ac.RegistryToken (for %q) is not supported yet (FIXME)", authConfigHostname)
-				}
-
-				credFunc = func(credFuncArg string) (string, string, error) {
-					// credFuncArg should be like "registry-1.docker.io"
-					if credFuncArg != credFuncExpectedHostname {
-						return "", "", fmt.Errorf("expected credFuncExpectedHostname=%q (refHostname=%q), got credFuncArg=%q",
-							credFuncExpectedHostname, refHostname, credFuncArg)
-					}
-					if ac.IdentityToken != "" {
-						return "", ac.IdentityToken, nil
-					}
-					return ac.Username, ac.Password, nil
-				}
-				break
-			}
-		}
-	}
-	// credsFunc can be nil here
-	return credFunc, nil
-}
-
-func isAuthConfigEmpty(ac dockercliconfigtypes.AuthConfig) bool {
-	if ac.IdentityToken != "" || ac.Username != "" || ac.Password != "" || ac.RegistryToken != "" {
-		return false
-	}
-	return true
+	return docker.NewResolver(resolverOpts), nil
 }
