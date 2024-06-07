@@ -50,6 +50,7 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 	buildCommand.Flags().Bool("no-cache", false, "Do not use cache when building the image")
 	buildCommand.Flags().StringP("output", "o", "", "Output destination (format: type=local,dest=path)")
 	buildCommand.Flags().String("progress", "auto", "Set type of progress output (auto, plain, tty). Use plain to show container output")
+	buildCommand.Flags().Bool("pull", false, "On true, always attempt to pull latest image version from remote. Default uses buildkit's default.")
 	buildCommand.Flags().StringArray("secret", nil, "Secret file to expose to the build: id=mysecret,src=/local/secret")
 	buildCommand.Flags().StringArray("allow", nil, "Allow extra privileged entitlement, e.g. network.host, security.insecure")
 	buildCommand.RegisterFlagCompletionFunc("allow", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -129,6 +130,14 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
 	}
+	var pull *bool
+	if cmd.Flags().Changed("pull") {
+		pullFlag, err := cmd.Flags().GetBool("pull")
+		if err != nil {
+			return types.BuilderBuildOptions{}, err
+		}
+		pull = &pullFlag
+	}
 	secret, err := cmd.Flags().GetStringArray("secret")
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
@@ -177,6 +186,7 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 		BuildArgs:    buildArgs,
 		Label:        label,
 		NoCache:      noCache,
+		Pull:         pull,
 		Secret:       secret,
 		Allow:        allow,
 		SSH:          ssh,
