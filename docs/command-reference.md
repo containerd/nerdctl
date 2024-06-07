@@ -692,6 +692,7 @@ Flags:
   - :whale: `type=image,name=example.com/image,push=true`: Push to a registry (see [`buildctl build`](https://github.com/moby/buildkit/tree/v0.9.0#imageregistry) documentation)
 - :whale: `--progress=(auto|plain|tty)`: Set type of progress output (auto, plain, tty). Use plain to show container output
 - :whale: `--provenance`: Shorthand for \"--attest=type=provenance\", see [`buildx_build.md`](https://github.com/docker/buildx/blob/v0.12.1/docs/reference/buildx_build.md#provenance) documentation
+- :whale: `--pull=(true|false)`: On true, always attempt to pull latest image version from remote. Default uses buildkit's default.
 - :whale: `--secret`: Secret file to expose to the build: id=mysecret,src=/local/secret
 - :whale: `--allow`: Allow extra privileged entitlement, e.g. network.host, security.insecure  (It’s required to configure the buildkitd to enable the feature, see [`buildkitd.toml`](https://github.com/moby/buildkit/blob/master/docs/buildkitd.toml.md) documentation)
 - :whale: `--attest`: Attestation parameters (format: "type=sbom,generator=image"), see [`buildx_build.md`](https://github.com/docker/buildx/blob/v0.12.1/docs/reference/buildx_build.md#attest) documentation
