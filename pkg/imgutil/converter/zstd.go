@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/containerd/containerd/archive/compression"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/images/converter/uncompress"
-	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/klauspost/compress/zstd"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -40,34 +40,33 @@ func ZstdLayerConvertFunc(options types.ImageConvertOptions) (converter.ConvertF
 			// No conversion. No need to return an error here.
 			return nil, nil
 		}
-		uncompressedDesc := &desc
-		if !uncompress.IsUncompressedType(desc.MediaType) {
-			var err error
-			uncompressedDesc, err = uncompress.LayerConvertFunc(ctx, cs, desc)
-			if err != nil {
-				return nil, err
-			}
-			if uncompressedDesc == nil {
-				return nil, fmt.Errorf("unexpectedly got the same blob after compression (%s, %q)", desc.Digest, desc.MediaType)
-			}
-			defer func() {
-				if err := cs.Delete(ctx, uncompressedDesc.Digest); err != nil {
-					log.L.WithError(err).WithField("uncompressedDesc", uncompressedDesc).Warn("failed to remove tmp uncompressed layer")
-				}
-			}()
-			log.L.Debugf("zstd: uncompressed %s into %s", desc.Digest, uncompressedDesc.Digest)
+		var err error
+		// Read it
+		readerAt, err := cs.ReaderAt(ctx, desc)
+		if err != nil {
+			return nil, err
 		}
+		defer readerAt.Close()
+		sectionReader := io.NewSectionReader(readerAt, 0, desc.Size)
 
 		info, err := cs.Info(ctx, desc.Digest)
 		if err != nil {
 			return nil, err
 		}
-		readerAt, err := cs.ReaderAt(ctx, *uncompressedDesc)
-		if err != nil {
-			return nil, err
+
+		var oldReader io.Reader
+		// If it is compressed, get a decompressed stream
+		if !uncompress.IsUncompressedType(desc.MediaType) {
+			decompStream, err := compression.DecompressStream(sectionReader)
+			if err != nil {
+				return nil, err
+			}
+			defer decompStream.Close()
+			oldReader = decompStream
+		} else {
+			oldReader = sectionReader
 		}
-		defer readerAt.Close()
-		sr := io.NewSectionReader(readerAt, 0, uncompressedDesc.Size)
+
 		ref := fmt.Sprintf("convert-zstd-from-%s", desc.Digest)
 		w, err := content.OpenWriter(ctx, cs, content.WithRef(ref))
 		if err != nil {
@@ -88,7 +87,7 @@ func ZstdLayerConvertFunc(options types.ImageConvertOptions) (converter.ConvertF
 			return nil, err
 		}
 		go func() {
-			if _, err := io.Copy(enc, sr); err != nil {
+			if _, err := io.Copy(enc, oldReader); err != nil {
 				pr.CloseWithError(err)
 				return
 			}
