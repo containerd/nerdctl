@@ -78,6 +78,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("help", false, "show help")
 
 	cmd.Flags().BoolP("tty", "t", false, "Allocate a pseudo-TTY")
+	cmd.Flags().Bool("sig-proxy", true, "Proxy received signals to the process (default true)")
 	cmd.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
 	cmd.Flags().String("restart", "no", `Restart policy to apply when a container exits (implemented values: "no"|"always|on-failure:n|unless-stopped")`)
 	cmd.RegisterFlagCompletionFunc("restart", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -283,6 +284,10 @@ func processCreateCommandFlagsInRun(cmd *cobra.Command) (opt types.ContainerCrea
 
 	opt.InRun = true
 
+	opt.SigProxy, err = cmd.Flags().GetBool("sig-proxy")
+	if err != nil {
+		return
+	}
 	opt.Interactive, err = cmd.Flags().GetBool("interactive")
 	if err != nil {
 		return
@@ -390,8 +395,10 @@ func runAction(cmd *cobra.Command, args []string) error {
 			log.L.WithError(err).Error("console resize")
 		}
 	} else {
-		sigC := signalutil.ForwardAllSignals(ctx, task)
-		defer signalutil.StopCatch(sigC)
+		if createOpt.SigProxy {
+			sigC := signalutil.ForwardAllSignals(ctx, task)
+			defer signalutil.StopCatch(sigC)
+		}
 	}
 
 	statusC, err := task.Wait(ctx)
