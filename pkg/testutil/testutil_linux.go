@@ -56,6 +56,25 @@ var (
 	// It should be "connection refused" as per the TCP RFC.
 	// https://www.rfc-editor.org/rfc/rfc793
 	ExpectedConnectionRefusedError = "connection refused"
+
+	SigProxyTrueOut    = "received SIGINT"
+	SigProxyTimeoutMsg = "Timed Out; No signal received"
+	SigProxyTestScript = `#!/bin/sh
+	set -eu
+
+	sig_msg () {
+		printf "` + SigProxyTrueOut + `"
+		end
+	}
+
+	trap sig_msg INT
+	timeout=0
+	while [ $timeout -ne 10 ]; do
+		timeout=$((timeout+1))
+		sleep 1
+	done
+	printf "` + SigProxyTimeoutMsg + `"
+	end`
 )
 
 const (

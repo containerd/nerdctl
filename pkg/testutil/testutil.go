@@ -366,6 +366,11 @@ func (c *Cmd) runIfNecessary() *icmd.Result {
 	return c.runResult
 }
 
+func (c *Cmd) Start() *icmd.Result {
+	c.Base.T.Helper()
+	return icmd.StartCmd(c.Cmd)
+}
+
 func (c *Cmd) CmdOption(cmdOptions ...func(*Cmd)) *Cmd {
 	for _, opt := range cmdOptions {
 		opt(c)

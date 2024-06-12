@@ -62,6 +62,8 @@ type ContainerCreateOptions struct {
 	Interactive bool
 	// TTY specifies whether to allocate a pseudo-TTY for the container
 	TTY bool
+	// SigProxy specifies whether to proxy all received signals to the process
+	SigProxy bool
 	// Detach runs container in background and print container ID
 	Detach bool
 	// The key sequence for detaching a container.
