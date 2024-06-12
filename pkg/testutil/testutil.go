@@ -350,6 +350,11 @@ func (c *Cmd) Run() *icmd.Result {
 	return icmd.RunCmd(c.Cmd)
 }
 
+func (c *Cmd) Start() *icmd.Result {
+	c.Base.T.Helper()
+	return icmd.StartCmd(c.Cmd)
+}
+
 func (c *Cmd) CmdOption(cmdOptions ...func(*Cmd)) *Cmd {
 	for _, opt := range cmdOptions {
 		opt(c)
