@@ -251,15 +251,26 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
           check-latest: true
-      - name: "Enable BuildKit"
+      # Docker >= v25 is still unsupported: https://github.com/containerd/nerdctl/issues/3088
+      - name: "Install Docker v24"
         run: |
           set -eux -o pipefail
+          # Uninstall the preinstalled Docker
+          sudo apt-get remove docker-* containerd.io
           # Enable BuildKit explicitly
           sudo apt-get install -y moreutils
           cat /etc/docker/daemon.json
           jq '.features.buildkit = true' </etc/docker/daemon.json  | sudo sponge /etc/docker/daemon.json
           cat /etc/docker/daemon.json
-          sudo systemctl restart docker
+          # Download Docker packages
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/containerd.io_1.6.33-1_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce_24.0.9-1~ubuntu.22.04~jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce-cli_24.0.9-1~ubuntu.22.04~jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-buildx-plugin_0.13.1-1~ubuntu.22.04~jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-compose-plugin_2.25.0-1~ubuntu.22.04~jammy_amd64.deb
+          # Install Docker
+          sudo apt-get install -y ./*.deb
+          rm -f ./*.deb
           # Print docker info
           docker info
           docker version
