@@ -47,8 +47,8 @@ require (
 	github.com/opencontainers/runtime-spec v1.2.0
 	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/rootless-containers/bypass4netns v0.4.1
-	github.com/rootless-containers/rootlesskit v1.1.1
-	github.com/spf13/cobra v1.8.0
+	github.com/rootless-containers/rootlesskit/v2 v2.1.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/tidwall/gjson v1.17.0
 	github.com/vishvananda/netlink v1.2.1-beta.2
