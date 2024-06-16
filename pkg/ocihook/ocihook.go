@@ -80,8 +80,15 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	if err != nil {
 		return err
 	}
-	defer logFile.Close()
+	currentOutput := log.L.Logger.Out
 	log.L.Logger.SetOutput(io.MultiWriter(stderr, logFile))
+	defer func() {
+		log.L.Logger.SetOutput(currentOutput)
+		err = logFile.Close()
+		if err != nil {
+			log.L.Logger.WithError(err).Error("failed closing oci hook log file")
+		}
+	}()
 
 	opts, err := newHandlerOpts(&state, dataStore, cniPath, cniNetconfPath)
 	if err != nil {
