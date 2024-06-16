@@ -67,12 +67,12 @@ func TestImageVerifyWithCosign(t *testing.T) {
 	base := testutil.NewBase(t)
 	defer base.Cmd("builder", "prune").Run()
 	tID := testutil.Identifier(t)
-	reg := testregistry.NewPlainHTTP(base, 5000)
-	defer reg.Cleanup()
+	reg := testregistry.NewWithNoAuth(base, 0, false)
+	defer reg.Cleanup(nil)
 	localhostIP := "127.0.0.1"
 	t.Logf("localhost IP=%q", localhostIP)
 	testImageRef := fmt.Sprintf("%s:%d/%s",
-		localhostIP, reg.ListenPort, tID)
+		localhostIP, reg.Port, tID)
 	t.Logf("testImageRef=%q", testImageRef)
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -91,8 +91,8 @@ func TestImagePullPlainHttpWithDefaultPort(t *testing.T) {
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	defer base.Cmd("builder", "prune").Run()
-	reg := testregistry.NewPlainHTTP(base, 80)
-	defer reg.Cleanup()
+	reg := testregistry.NewWithNoAuth(base, 80, false)
+	defer reg.Cleanup(nil)
 	testImageRef := fmt.Sprintf("%s/%s:%s",
 		reg.IP.String(), testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
@@ -117,12 +117,12 @@ func TestImageVerifyWithCosignShouldFailWhenKeyIsNotCorrect(t *testing.T) {
 	base := testutil.NewBase(t)
 	defer base.Cmd("builder", "prune").Run()
 	tID := testutil.Identifier(t)
-	reg := testregistry.NewPlainHTTP(base, 5000)
-	defer reg.Cleanup()
+	reg := testregistry.NewWithNoAuth(base, 0, false)
+	defer reg.Cleanup(nil)
 	localhostIP := "127.0.0.1"
 	t.Logf("localhost IP=%q", localhostIP)
 	testImageRef := fmt.Sprintf("%s:%d/%s",
-		localhostIP, reg.ListenPort, tID)
+		localhostIP, reg.Port, tID)
 	t.Logf("testImageRef=%q", testImageRef)
 
 	dockerfile := fmt.Sprintf(`FROM %s

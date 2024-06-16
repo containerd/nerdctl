@@ -30,12 +30,12 @@ import (
 func TestPushPlainHTTPFails(t *testing.T) {
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	reg := testregistry.NewPlainHTTP(base, 5000)
-	defer reg.Cleanup()
+	reg := testregistry.NewWithNoAuth(base, 0, false)
+	defer reg.Cleanup(nil)
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-		reg.IP.String(), reg.ListenPort, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
+		reg.IP.String(), reg.Port, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
 	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
@@ -49,14 +49,14 @@ func TestPushPlainHTTPFails(t *testing.T) {
 func TestPushPlainHTTPLocalhost(t *testing.T) {
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	reg := testregistry.NewPlainHTTP(base, 5000)
-	defer reg.Cleanup()
+	reg := testregistry.NewWithNoAuth(base, 0, false)
+	defer reg.Cleanup(nil)
 	localhostIP := "127.0.0.1"
 	t.Logf("localhost IP=%q", localhostIP)
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-		localhostIP, reg.ListenPort, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
+		localhostIP, reg.Port, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
 	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
@@ -69,12 +69,12 @@ func TestPushPlainHTTPInsecure(t *testing.T) {
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
-	reg := testregistry.NewPlainHTTP(base, 5000)
-	defer reg.Cleanup()
+	reg := testregistry.NewWithNoAuth(base, 0, false)
+	defer reg.Cleanup(nil)
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-		reg.IP.String(), reg.ListenPort, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
+		reg.IP.String(), reg.Port, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
 	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
@@ -87,8 +87,8 @@ func TestPushPlainHttpInsecureWithDefaultPort(t *testing.T) {
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
-	reg := testregistry.NewPlainHTTP(base, 80)
-	defer reg.Cleanup()
+	reg := testregistry.NewWithNoAuth(base, 80, false)
+	defer reg.Cleanup(nil)
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s/%s:%s",
@@ -105,14 +105,14 @@ func TestPushInsecureWithLogin(t *testing.T) {
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
-	reg := testregistry.NewHTTPS(base, "admin", "badmin")
-	defer reg.Cleanup()
+	reg := testregistry.NewWithTokenAuth(base, "admin", "badmin", 0, true)
+	defer reg.Cleanup(nil)
 
 	base.Cmd("--insecure-registry", "login", "-u", "admin", "-p", "badmin",
-		fmt.Sprintf("%s:%d", reg.IP.String(), reg.ListenPort)).AssertOK()
+		fmt.Sprintf("%s:%d", reg.IP.String(), reg.Port)).AssertOK()
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-		reg.IP.String(), reg.ListenPort, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
+		reg.IP.String(), reg.Port, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
 	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
@@ -126,14 +126,14 @@ func TestPushWithHostsDir(t *testing.T) {
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
-	reg := testregistry.NewHTTPS(base, "admin", "badmin")
-	defer reg.Cleanup()
+	reg := testregistry.NewWithTokenAuth(base, "admin", "badmin", 0, true)
+	defer reg.Cleanup(nil)
 
-	base.Cmd("--hosts-dir", reg.HostsDir, "login", "-u", "admin", "-p", "badmin", fmt.Sprintf("%s:%d", reg.IP.String(), reg.ListenPort)).AssertOK()
+	base.Cmd("--hosts-dir", reg.HostsDir, "login", "-u", "admin", "-p", "badmin", fmt.Sprintf("%s:%d", reg.IP.String(), reg.Port)).AssertOK()
 
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-		reg.IP.String(), reg.ListenPort, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
+		reg.IP.String(), reg.Port, testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
 	base.Cmd("tag", testutil.CommonImage, testImageRef).AssertOK()
 
@@ -147,18 +147,18 @@ func TestPushNonDistributableArtifacts(t *testing.T) {
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
-	reg := testregistry.NewPlainHTTP(base, 5000)
-	defer reg.Cleanup()
+	reg := testregistry.NewWithNoAuth(base, 0, false)
+	defer reg.Cleanup(nil)
 
 	base.Cmd("pull", testutil.NonDistBlobImage).AssertOK()
 
 	testImgRef := fmt.Sprintf("%s:%d/%s:%s",
-		reg.IP.String(), reg.ListenPort, testutil.Identifier(t), strings.Split(testutil.NonDistBlobImage, ":")[1])
+		reg.IP.String(), reg.Port, testutil.Identifier(t), strings.Split(testutil.NonDistBlobImage, ":")[1])
 	base.Cmd("tag", testutil.NonDistBlobImage, testImgRef).AssertOK()
 
 	base.Cmd("--debug", "--insecure-registry", "push", testImgRef).AssertOK()
 
-	blobURL := fmt.Sprintf("http://%s:%d/v2/%s/blobs/%s", reg.IP.String(), reg.ListenPort, testutil.Identifier(t), testutil.NonDistBlobDigest)
+	blobURL := fmt.Sprintf("http://%s:%d/v2/%s/blobs/%s", reg.IP.String(), reg.Port, testutil.Identifier(t), testutil.NonDistBlobDigest)
 	resp, err := http.Get(blobURL)
 	assert.Assert(t, err, "error making http request")
 	if resp.Body != nil {
@@ -179,12 +179,12 @@ func TestPushSoci(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	requiresSoci(base)
-	reg := testregistry.NewPlainHTTP(base, 5000)
-	defer reg.Cleanup()
+	reg := testregistry.NewWithNoAuth(base, 0, false)
+	defer reg.Cleanup(nil)
 
 	base.Cmd("pull", testutil.UbuntuImage).AssertOK()
 	testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-		reg.IP.String(), reg.ListenPort, testutil.Identifier(t), strings.Split(testutil.UbuntuImage, ":")[1])
+		reg.IP.String(), reg.Port, testutil.Identifier(t), strings.Split(testutil.UbuntuImage, ":")[1])
 	t.Logf("testImageRef=%q", testImageRef)
 	base.Cmd("tag", testutil.UbuntuImage, testImageRef).AssertOK()
 

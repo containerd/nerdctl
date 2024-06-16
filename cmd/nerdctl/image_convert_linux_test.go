@@ -33,7 +33,10 @@ func TestImageConvertNydus(t *testing.T) {
 	}
 	testutil.RequireExecutable(t, "nydus-image")
 	testutil.DockerIncompatible(t)
+
 	base := testutil.NewBase(t)
+	t.Parallel()
+
 	convertedImage := testutil.Identifier(t) + ":nydus"
 	base.Cmd("rmi", convertedImage).Run()
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
@@ -48,18 +51,20 @@ func TestImageConvertNydus(t *testing.T) {
 		t.Skip("Nydusify check is not supported rootless mode.")
 	}
 
-	// skip if nydusify is not installed
+	// skip if nydusify and nydusd are not installed
 	testutil.RequireExecutable(t, "nydusify")
+	testutil.RequireExecutable(t, "nydusd")
 
 	// setup local docker registry
-	registryPort := 15000
-	registry := testregistry.NewPlainHTTP(base, registryPort)
-	defer registry.Cleanup()
+	registry := testregistry.NewWithNoAuth(base, 0, false)
+	remoteImage := fmt.Sprintf("%s:%d/nydusd-image:test", "localhost", registry.Port)
+	t.Cleanup(func() {
+		base.Cmd("rmi", remoteImage).Run()
+		registry.Cleanup(nil)
+	})
 
-	remoteImage := fmt.Sprintf("%s:%d/nydusd-image:test", registry.IP.String(), registryPort)
 	base.Cmd("tag", convertedImage, remoteImage).AssertOK()
-	defer base.Cmd("rmi", remoteImage).Run()
-	base.Cmd("push", "--insecure-registry", remoteImage).AssertOK()
+	base.Cmd("push", remoteImage).AssertOK()
 	nydusifyCmd := testutil.Cmd{
 		Cmd: icmd.Command(
 			"nydusify",
@@ -73,5 +78,8 @@ func TestImageConvertNydus(t *testing.T) {
 		),
 		Base: base,
 	}
+
+	// nydus is creating temporary files - make sure we are in a proper location for that
+	nydusifyCmd.Cmd.Dir = base.T.TempDir()
 	nydusifyCmd.AssertOK()
 }
