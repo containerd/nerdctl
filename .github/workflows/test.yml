@@ -251,8 +251,7 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
           check-latest: true
-      # Docker >= v25 is still unsupported: https://github.com/containerd/nerdctl/issues/3088
-      - name: "Install Docker v24"
+      - name: "Install Docker v26"
         run: |
           set -eux -o pipefail
           # Uninstall the preinstalled Docker
@@ -264,10 +263,10 @@ jobs:
           cat /etc/docker/daemon.json
           # Download Docker packages
           curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/containerd.io_1.6.33-1_amd64.deb
-          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce_24.0.9-1~ubuntu.22.04~jammy_amd64.deb
-          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce-cli_24.0.9-1~ubuntu.22.04~jammy_amd64.deb
-          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-buildx-plugin_0.13.1-1~ubuntu.22.04~jammy_amd64.deb
-          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-compose-plugin_2.25.0-1~ubuntu.22.04~jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce_26.1.4-1~ubuntu.22.04~jammy_amd64.deb
+          curl -OSl https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce-cli_26.1.4-1~ubuntu.22.04~jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-buildx-plugin_0.14.1-1~ubuntu.22.04~jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-compose-plugin_2.27.1-1~ubuntu.22.04~jammy_amd64.deb
           # Install Docker
           sudo apt-get install -y ./*.deb
           rm -f ./*.deb

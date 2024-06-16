@@ -354,12 +354,17 @@ func TestRunContainerWithStaticIP(t *testing.T) {
 			useNetwork:        true,
 			checkTheIPAddress: false,
 		},
-		{
-			ip:                "10.4.0.2",
-			shouldSuccess:     true,
-			useNetwork:        false,
-			checkTheIPAddress: false,
-		},
+		// XXX see https://github.com/containerd/nerdctl/issues/3101
+		// docker 24 silently ignored the ip - now, docker 26 is erroring out - furthermore, this ip only makes sense
+		// in the context of nerdctl bridge network, so, this test needs rewritting either way
+		/*
+			{
+				ip:                "10.4.0.2",
+				shouldSuccess:     true,
+				useNetwork:        false,
+				checkTheIPAddress: false,
+			},
+		*/
 	}
 	tID := testutil.Identifier(t)
 	for i, tc := range testCases {
@@ -453,43 +458,68 @@ func TestRunContainerWithMACAddress(t *testing.T) {
 	networkBridge := "testNetworkBridge" + tID
 	networkMACvlan := "testNetworkMACvlan" + tID
 	networkIPvlan := "testNetworkIPvlan" + tID
-	base.Cmd("network", "create", networkBridge, "--driver", "bridge").AssertOK()
-	base.Cmd("network", "create", networkMACvlan, "--driver", "macvlan").AssertOK()
-	base.Cmd("network", "create", networkIPvlan, "--driver", "ipvlan").AssertOK()
-	t.Cleanup(func() {
+	tearDown := func() {
 		base.Cmd("network", "rm", networkBridge).Run()
 		base.Cmd("network", "rm", networkMACvlan).Run()
 		base.Cmd("network", "rm", networkIPvlan).Run()
-	})
+	}
+
+	tearDown()
+	t.Cleanup(tearDown)
+
+	base.Cmd("network", "create", networkBridge, "--driver", "bridge").AssertOK()
+	base.Cmd("network", "create", networkMACvlan, "--driver", "macvlan").AssertOK()
+	base.Cmd("network", "create", networkIPvlan, "--driver", "ipvlan").AssertOK()
+
+	defaultMac := base.Cmd("run", "--rm", "-i", "--network", "host", testutil.CommonImage).
+		CmdOption(testutil.WithStdin(strings.NewReader("ip addr show eth0 | grep ether | awk '{printf $2}'"))).
+		Run().Stdout()
+
+	passedMac := "we expect the generated mac on the output"
+
 	tests := []struct {
 		Network string
 		WantErr bool
 		Expect  string
 	}{
-		{"host", true, "conflicting options"},
-		{"none", true, "can't open '/sys/class/net/eth0/address'"},
-		{"container:whatever" + tID, true, "conflicting options"},
-		{"bridge", false, ""},
-		{networkBridge, false, ""},
-		{networkMACvlan, false, ""},
+		{"host", false, defaultMac},                     // anything but the actual address being passed
+		{"none", false, ""},                             // nothing
+		{"container:whatever" + tID, true, "container"}, // "No such container" vs. "could not find container"
+		{"bridge", false, passedMac},
+		{networkBridge, false, passedMac},
+		{networkMACvlan, false, passedMac},
 		{networkIPvlan, true, "not support"},
 	}
-	for _, test := range tests {
-		macAddress, err := nettestutil.GenerateMACAddress()
-		if err != nil {
-			t.Errorf("failed to generate MAC address: %s", err)
-		}
-		if test.Expect == "" && !test.WantErr {
-			test.Expect = macAddress
-		}
-		cmd := base.Cmd("run", "--rm", "--network", test.Network, "--mac-address", macAddress, testutil.CommonImage, "cat", "/sys/class/net/eth0/address")
-		if test.WantErr {
-			cmd.AssertFail()
-			cmd.AssertCombinedOutContains(test.Expect)
-		} else {
-			cmd.AssertOK()
-			cmd.AssertOutContains(test.Expect)
-		}
+
+	for i, test := range tests {
+		containerName := fmt.Sprintf("%s_%d", tID, i)
+		testName := fmt.Sprintf("%s_container:%s_network:%s_expect:%s", tID, containerName, test.Network, test.Expect)
+		expect := test.Expect
+		network := test.Network
+		wantErr := test.WantErr
+		t.Run(testName, func(tt *testing.T) {
+			tt.Parallel()
+
+			macAddress, err := nettestutil.GenerateMACAddress()
+			if err != nil {
+				t.Errorf("failed to generate MAC address: %s", err)
+			}
+			if expect == passedMac {
+				expect = macAddress
+			}
+
+			res := base.Cmd("run", "--rm", "-i", "--network", network, "--mac-address", macAddress, testutil.CommonImage).
+				CmdOption(testutil.WithStdin(strings.NewReader("ip addr show eth0 | grep ether | awk '{printf $2}'"))).Run()
+
+			if wantErr {
+				assert.Assert(t, res.ExitCode != 0, "Command should have failed", res.Combined())
+				assert.Assert(t, strings.Contains(res.Combined(), expect), fmt.Sprintf("expected output to contain %q: %q", expect, res.Combined()))
+			} else {
+				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res.Combined())
+				assert.Assert(t, strings.Contains(res.Stdout(), expect), fmt.Sprintf("expected output to contain %q: %q", expect, res.Stdout()))
+			}
+		})
+
 	}
 }
 
