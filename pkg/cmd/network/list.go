@@ -65,7 +65,7 @@ func List(ctx context.Context, options types.NetworkListOptions) error {
 		}
 	}
 
-	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath)
+	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath, netutil.WithNamespace(options.GOptions.Namespace))
 	if err != nil {
 		return err
 	}

@@ -46,6 +46,7 @@ import (
 type CNIEnv struct {
 	Path        string
 	NetconfPath string
+	Namespace   string
 }
 
 type CNIEnvOpt func(e *CNIEnv) error
@@ -132,6 +133,16 @@ func WithDefaultNetwork() CNIEnvOpt {
 	}
 }
 
+func WithNamespace(namespace string) CNIEnvOpt {
+	return func(e *CNIEnv) error {
+		if err := os.MkdirAll(filepath.Join(e.NetconfPath, namespace), 0755); err != nil {
+			return err
+		}
+		e.Namespace = namespace
+		return nil
+	}
+}
+
 func NewCNIEnv(cniPath, cniConfPath string, opts ...CNIEnvOpt) (*CNIEnv, error) {
 	e := CNIEnv{
 		Path:        cniPath,
@@ -193,7 +204,10 @@ func (e *CNIEnv) FilterNetworks(filterf func(*NetworkConfig) bool) ([]*NetworkCo
 }
 
 func (e *CNIEnv) getConfigPathForNetworkName(netName string) string {
-	return filepath.Join(e.NetconfPath, "nerdctl-"+netName+".conflist")
+	if netName == DefaultNetworkName || e.Namespace == "" {
+		return filepath.Join(e.NetconfPath, "nerdctl-"+netName+".conflist")
+	}
+	return filepath.Join(e.NetconfPath, e.Namespace, "nerdctl-"+netName+".conflist")
 }
 
 func (e *CNIEnv) usedSubnets() ([]*net.IPNet, error) {
@@ -404,10 +418,18 @@ func (e *CNIEnv) writeNetworkConfig(net *NetworkConfig) error {
 // networkConfigList loads config from dir if dir exists.
 func (e *CNIEnv) networkConfigList() ([]*NetworkConfig, error) {
 	l := []*NetworkConfig{}
-	fileNames, err := libcni.ConfFiles(e.NetconfPath, []string{".conf", ".conflist", ".json"})
+	common, err := libcni.ConfFiles(e.NetconfPath, []string{".conf", ".conflist", ".json"})
 	if err != nil {
 		return nil, err
 	}
+	namespaced := []string{}
+	if e.Namespace != "" {
+		namespaced, err = libcni.ConfFiles(filepath.Join(e.NetconfPath, e.Namespace), []string{".conf", ".conflist", ".json"})
+		if err != nil {
+			return nil, err
+		}
+	}
+	fileNames := append(common, namespaced...)
 	sort.Strings(fileNames)
 	for _, fileName := range fileNames {
 		var lcl *libcni.NetworkConfigList

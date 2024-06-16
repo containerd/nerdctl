@@ -27,7 +27,7 @@ import (
 )
 
 func Remove(ctx context.Context, client *containerd.Client, options types.NetworkRemoveOptions) error {
-	e, err := netutil.NewCNIEnv(options.GOptions.CNIPath, options.GOptions.CNINetConfPath)
+	e, err := netutil.NewCNIEnv(options.GOptions.CNIPath, options.GOptions.CNINetConfPath, netutil.WithNamespace(options.GOptions.Namespace))
 	if err != nil {
 		return err
 	}

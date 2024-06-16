@@ -32,7 +32,7 @@ import (
 
 func Inspect(ctx context.Context, options types.NetworkInspectOptions) error {
 	globalOptions := options.GOptions
-	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath)
+	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath, netutil.WithNamespace(options.GOptions.Namespace))
 
 	if err != nil {
 		return err

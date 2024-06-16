@@ -109,7 +109,7 @@ func shellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, 
 		excludeMap[ex] = struct{}{}
 	}
 
-	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath)
+	e, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath, netutil.WithNamespace(globalOptions.Namespace))
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
