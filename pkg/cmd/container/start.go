@@ -28,7 +28,7 @@ import (
 
 // Start starts a list of `containers`. If attach is true, it only starts a single container.
 func Start(ctx context.Context, client *containerd.Client, reqs []string, options types.ContainerStartOptions) error {
-	if options.Attach && len(reqs) > 1 {
+	if (options.Attach || options.Interactive) && len(reqs) > 1 {
 		return fmt.Errorf("you cannot start and attach multiple containers at once")
 	}
 
@@ -39,10 +39,10 @@ func Start(ctx context.Context, client *containerd.Client, reqs []string, option
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := containerutil.Start(ctx, found.Container, options.Attach, client, options.DetachKeys); err != nil {
+			if err := containerutil.Start(ctx, found.Container, options.Attach, options.Interactive, client, options.DetachKeys); err != nil {
 				return err
 			}
-			if !options.Attach {
+			if !options.Attach && !options.Interactive {
 				_, err := fmt.Fprintln(options.Stdout, found.Req)
 				if err != nil {
 					return err

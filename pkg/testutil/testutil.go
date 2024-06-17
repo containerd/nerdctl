@@ -106,16 +106,19 @@ func (b *Base) ComposeCmdWithHelper(helper []string, args ...string) *Cmd {
 }
 
 func (b *Base) CmdWithHelper(helper []string, args ...string) *Cmd {
-	helperBin, err := exec.LookPath(helper[0])
-	if err != nil {
-		b.T.Skipf("helper binary %q not found", helper[0])
+	helperArgs := []string{}
+	if len(helper) > 0 {
+		helperBin, err := exec.LookPath(helper[0])
+		if err != nil {
+			b.T.Skipf("helper binary %q not found", helper[0])
+		}
+		helperArgs = append([]string{helperBin}, helper[1:]...)
 	}
-	helperArgs := helper[1:]
 	helperArgs = append(helperArgs, b.Binary)
 	helperArgs = append(helperArgs, b.Args...)
 	helperArgs = append(helperArgs, args...)
 
-	icmdCmd := icmd.Command(helperBin, helperArgs...)
+	icmdCmd := icmd.Command(helperArgs[0], helperArgs[1:]...)
 	cmd := &Cmd{
 		Cmd:  icmdCmd,
 		Base: b,

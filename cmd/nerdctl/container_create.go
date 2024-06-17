@@ -64,8 +64,6 @@ func processContainerCreateOptions(cmd *cobra.Command) (opt types.ContainerCreat
 	opt.NerdctlCmd, opt.NerdctlArgs = globalFlags(cmd)
 
 	// #region for basic flags
-	// The command `container start` doesn't support the flag `--interactive`. Set the default value of `opt.Interactive` false.
-	opt.Interactive = false
 	opt.TTY, err = cmd.Flags().GetBool("tty")
 	if err != nil {
 		return
