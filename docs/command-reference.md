@@ -183,7 +183,7 @@ Network flags:
 - :whale: `-h, --hostname`: Container host name
 - :whale: `--add-host`: Add a custom host-to-IP mapping (host:ip). `ip` could be a special string `host-gateway`,
 - which will be resolved to the `host-gateway-ip` in nerdctl.toml or global flag.
-- :whale: `--ip`: Specific static IP address(es) to use
+- :whale: `--ip`: Specific static IP address(es) to use. Note that unlike docker, nerdctl allows specifying it with the default bridge network.
 - :whale: `--ip6`: Specific static IP6 address(es) to use. Should be used with user networks
 - :whale: `--mac-address`: Specific MAC address to use. Be aware that it does not
   check if manually specified MAC addresses are unique. Supports network
@@ -388,7 +388,7 @@ IPFS flags:
 Unimplemented `docker run` flags:
     `--attach`, `--blkio-weight-device`, `--cpu-rt-*`, `--device-*`,
     `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
-    `--link*`, `--mac-address`, `--publish-all`, `--sig-proxy`, `--storage-opt`,
+    `--link*`, `--publish-all`, `--sig-proxy`, `--storage-opt`,
     `--userns`, `--volume-driver`
 
 ### :whale: :blue_square: nerdctl exec
