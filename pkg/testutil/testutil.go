@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -343,11 +344,26 @@ func (b *Base) EnsureContainerExited(con string, expectedExitCode int) {
 type Cmd struct {
 	icmd.Cmd
 	*Base
+	runResult *icmd.Result
+	mu        sync.Mutex
 }
 
 func (c *Cmd) Run() *icmd.Result {
 	c.Base.T.Helper()
-	return icmd.RunCmd(c.Cmd)
+	c.mu.Lock()
+	c.runResult = icmd.RunCmd(c.Cmd)
+	c.mu.Unlock()
+	return c.runResult
+}
+
+func (c *Cmd) runIfNecessary() *icmd.Result {
+	c.Base.T.Helper()
+	c.mu.Lock()
+	if c.runResult == nil {
+		c.runResult = icmd.RunCmd(c.Cmd)
+	}
+	c.mu.Unlock()
+	return c.runResult
 }
 
 func (c *Cmd) CmdOption(cmdOptions ...func(*Cmd)) *Cmd {
@@ -359,7 +375,7 @@ func (c *Cmd) CmdOption(cmdOptions ...func(*Cmd)) *Cmd {
 
 func (c *Cmd) Assert(expected icmd.Expected) {
 	c.Base.T.Helper()
-	c.Run().Assert(c.Base.T, expected)
+	c.runIfNecessary().Assert(c.Base.T, expected)
 }
 
 func (c *Cmd) AssertOK() {
@@ -369,13 +385,13 @@ func (c *Cmd) AssertOK() {
 
 func (c *Cmd) AssertFail() {
 	c.Base.T.Helper()
-	res := c.Run()
+	res := c.runIfNecessary()
 	assert.Assert(c.Base.T, res.ExitCode != 0)
 }
 
 func (c *Cmd) AssertExitCode(exitCode int) {
 	c.Base.T.Helper()
-	res := c.Run()
+	res := c.runIfNecessary()
 	assert.Assert(c.Base.T, res.ExitCode == exitCode, res.Combined())
 }
 
@@ -397,7 +413,7 @@ func (c *Cmd) AssertErrContains(s string) {
 
 func (c *Cmd) AssertCombinedOutContains(s string) {
 	c.Base.T.Helper()
-	res := c.Run()
+	res := c.runIfNecessary()
 	assert.Assert(c.Base.T, strings.Contains(res.Combined(), s), fmt.Sprintf("expected output to contain %q: %q", s, res.Combined()))
 }
 
@@ -489,21 +505,21 @@ func (c *Cmd) AssertNoOut(s string) {
 
 func (c *Cmd) AssertOutWithFunc(fn func(stdout string) error) {
 	c.Base.T.Helper()
-	res := c.Run()
+	res := c.runIfNecessary()
 	assert.Equal(c.Base.T, 0, res.ExitCode, res.Combined())
 	assert.NilError(c.Base.T, fn(res.Stdout()), res.Combined())
 }
 
 func (c *Cmd) AssertOutStreamsWithFunc(fn func(stdout, stderr string) error) {
 	c.Base.T.Helper()
-	res := c.Run()
+	res := c.runIfNecessary()
 	assert.Equal(c.Base.T, 0, res.ExitCode, res.Combined())
 	assert.NilError(c.Base.T, fn(res.Stdout(), res.Stderr()), res.Combined())
 }
 
 func (c *Cmd) Out() string {
 	c.Base.T.Helper()
-	res := c.Run()
+	res := c.runIfNecessary()
 	assert.Equal(c.Base.T, 0, res.ExitCode, res.Combined())
 	return res.Stdout()
 }
