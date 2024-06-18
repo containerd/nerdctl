@@ -200,9 +200,9 @@ func (m *containerNetworkManager) VerifyNetworkOptions(_ context.Context) error 
 		return errors.New("conflicting options: only one network specification is allowed when using '--network=container:<container>'")
 	}
 
+	// Note that mac-address is accepted, though it is a no-op
 	nonZeroParams := nonZeroMapValues(map[string]interface{}{
-		"--hostname":    m.netOpts.Hostname,
-		"--mac-address": m.netOpts.MACAddress,
+		"--hostname": m.netOpts.Hostname,
 		// NOTE: an empty slice still counts as a non-zero value so we check its length:
 		"-p/--publish": len(m.netOpts.PortMappings) != 0,
 		"--dns":        len(m.netOpts.DNSServers) != 0,
@@ -286,6 +286,8 @@ func (m *containerNetworkManager) InternalNetworkingOptionLabels(ctx context.Con
 	if m.netOpts.NetworkSlice == nil || len(m.netOpts.NetworkSlice) != 1 {
 		return opts, fmt.Errorf("conflicting options: exactly one network specification is allowed when using '--network=container:<container>'")
 	}
+	// MacAddress is not allowed with container networking
+	opts.MACAddress = ""
 
 	container, err := m.getNetworkingContainerForArgument(ctx, m.netOpts.NetworkSlice[0], m.client)
 	if err != nil {
@@ -355,10 +357,6 @@ func (m *hostNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 	// TODO: check host OS, not client-side OS.
 	if runtime.GOOS == "windows" {
 		return errors.New("cannot use host networking on Windows")
-	}
-
-	if m.netOpts.MACAddress != "" {
-		return errors.New("conflicting options: mac-address and the network mode")
 	}
 
 	return validateUtsSettings(m.netOpts)

@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -57,69 +58,85 @@ func TestCreateWithMACAddress(t *testing.T) {
 	networkBridge := "testNetworkBridge" + tID
 	networkMACvlan := "testNetworkMACvlan" + tID
 	networkIPvlan := "testNetworkIPvlan" + tID
-	base.Cmd("network", "create", networkBridge, "--driver", "bridge").AssertOK()
-	base.Cmd("network", "create", networkMACvlan, "--driver", "macvlan").AssertOK()
-	base.Cmd("network", "create", networkIPvlan, "--driver", "ipvlan").AssertOK()
-	t.Cleanup(func() {
+
+	tearDown := func() {
 		base.Cmd("network", "rm", networkBridge).Run()
 		base.Cmd("network", "rm", networkMACvlan).Run()
 		base.Cmd("network", "rm", networkIPvlan).Run()
-	})
+	}
+
+	tearDown()
+	t.Cleanup(tearDown)
+
+	base.Cmd("network", "create", networkBridge, "--driver", "bridge").AssertOK()
+	base.Cmd("network", "create", networkMACvlan, "--driver", "macvlan").AssertOK()
+	base.Cmd("network", "create", networkIPvlan, "--driver", "ipvlan").AssertOK()
+
+	defaultMac := base.Cmd("run", "--rm", "-i", "--network", "host", testutil.CommonImage).
+		CmdOption(testutil.WithStdin(strings.NewReader("ip addr show eth0 | grep ether | awk '{printf $2}'"))).
+		Run().Stdout()
+
+	passedMac := "we expect the generated mac on the output"
 	tests := []struct {
 		Network string
 		WantErr bool
 		Expect  string
 	}{
-		{"host", true, "conflicting options"},
-		{"none", true, "can't open '/sys/class/net/eth0/address'"},
-		{"container:whatever" + tID, true, "conflicting options"},
-		{"bridge", false, ""},
-		{networkBridge, false, ""},
-		{networkMACvlan, false, ""},
+		{"host", false, defaultMac}, // anything but the actual address being passed
+		{"none", false, ""},
+		{"container:whatever" + tID, true, "container"}, // "No such container" vs. "could not find container"
+		{"bridge", false, passedMac},
+		{networkBridge, false, passedMac},
+		{networkMACvlan, false, passedMac},
 		{networkIPvlan, true, "not support"},
 	}
 	for i, test := range tests {
 		containerName := fmt.Sprintf("%s_%d", tID, i)
 		testName := fmt.Sprintf("%s_container:%s_network:%s_expect:%s", tID, containerName, test.Network, test.Expect)
+		expect := test.Expect
+		network := test.Network
+		wantErr := test.WantErr
 		t.Run(testName, func(tt *testing.T) {
+			tt.Parallel()
+
 			macAddress, err := nettestutil.GenerateMACAddress()
 			if err != nil {
 				tt.Errorf("failed to generate MAC address: %s", err)
 			}
-			if test.Expect == "" && !test.WantErr {
-				test.Expect = macAddress
+			if expect == passedMac {
+				expect = macAddress
 			}
 			tt.Cleanup(func() {
 				base.Cmd("rm", "-f", containerName).Run()
 			})
-			cmd := base.Cmd("create", "--network", test.Network, "--mac-address", macAddress, "--name", containerName, testutil.CommonImage, "cat", "/sys/class/net/eth0/address")
-			if !test.WantErr {
-				cmd.AssertOK()
+			// This is currently blocked by https://github.com/containerd/nerdctl/pull/3104
+			// res := base.Cmd("create", "-i", "--network", network, "--mac-address", macAddress, testutil.CommonImage).Run()
+			res := base.Cmd("create", "--network", network, "--name", containerName,
+				"--mac-address", macAddress, testutil.CommonImage,
+				"sh", "-c", "--", "ip addr show eth0 | grep ether").Run()
+
+			if !wantErr {
+				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res.Combined())
+				// This is currently blocked by: https://github.com/containerd/nerdctl/pull/3104
+				// res = base.Cmd("start", "-i", containerName).
+				//	CmdOption(testutil.WithStdin(strings.NewReader("ip addr show eth0 | grep ether | awk '{printf $2}'"))).Run()
 				base.Cmd("start", containerName).AssertOK()
-				cmd = base.Cmd("logs", containerName)
-				cmd.AssertOK()
-				cmd.AssertOutContains(test.Expect)
+				res = base.Cmd("logs", containerName).Run()
+				assert.Assert(t, strings.Contains(res.Stdout(), expect), fmt.Sprintf("expected output to contain %q: %q", expect, res.Stdout()))
+				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res.Combined())
 			} else {
-				if (testutil.GetTarget() == testutil.Docker && test.Network == networkIPvlan) || test.Network == "none" {
-					// 1. unlike nerdctl
-					// when using network ipvlan in Docker
+				if testutil.GetTarget() == testutil.Docker &&
+					(network == networkIPvlan || network == "container:whatever"+tID) {
+					// unlike nerdctl
+					// when using network ipvlan or container in Docker
 					// it delays fail on executing start command
-					// 2. start on network none will success in both
-					// nerdctl and Docker
-					cmd.AssertOK()
-					cmd = base.Cmd("start", containerName)
-					if test.Network == "none" {
-						// we check the result on logs command
-						cmd.AssertOK()
-						cmd = base.Cmd("logs", containerName)
-					}
+					assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res.Combined())
+					res = base.Cmd("start", "-i", containerName).
+						CmdOption(testutil.WithStdin(strings.NewReader("ip addr show eth0 | grep ether | awk '{printf $2}'"))).Run()
 				}
-				cmd.AssertCombinedOutContains(test.Expect)
-				if test.Network == "none" {
-					cmd.AssertOK()
-				} else {
-					cmd.AssertFail()
-				}
+
+				assert.Assert(t, strings.Contains(res.Combined(), expect), fmt.Sprintf("expected output to contain %q: %q", expect, res.Combined()))
+				assert.Assert(t, res.ExitCode != 0, "Command should have failed", res.Combined())
 			}
 		})
 	}

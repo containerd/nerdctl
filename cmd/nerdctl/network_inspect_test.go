@@ -34,7 +34,7 @@ func TestNetworkInspect(t *testing.T) {
 	const (
 		testSubnet  = "10.24.24.0/24"
 		testGateway = "10.24.24.1"
-		testIPRange = "10.24.24.1/25"
+		testIPRange = "10.24.24.0/25"
 	)
 
 	base := testutil.NewBase(t)
