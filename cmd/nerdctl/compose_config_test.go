@@ -128,7 +128,7 @@ services:
     image: alpine:3.14
 `)
 
-	base.Env = append(os.Environ(), "COMPOSE_FILE="+comp.YAMLFullPath()+","+filepath.Join(comp.Dir(), "docker-compose.test.yml"), "COMPOSE_PATH_SEPARATOR=,")
+	base.Env = append(base.Env, "COMPOSE_FILE="+comp.YAMLFullPath()+","+filepath.Join(comp.Dir(), "docker-compose.test.yml"), "COMPOSE_PATH_SEPARATOR=,")
 
 	base.ComposeCmd("config").AssertOutContains("alpine:3.14")
 	base.ComposeCmd("--project-directory", comp.Dir(), "config", "--services").AssertOutContainsAll("hello1\n", "hello2\n")

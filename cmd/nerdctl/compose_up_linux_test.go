@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -269,7 +268,7 @@ services:
 	projectName := comp.ProjectName()
 	t.Logf("projectName=%q", projectName)
 
-	base.Env = append(os.Environ(), "ADDRESS=0.0.0.0")
+	base.Env = append(base.Env, "ADDRESS=0.0.0.0")
 
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()

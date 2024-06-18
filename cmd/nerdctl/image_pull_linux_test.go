@@ -35,12 +35,13 @@ type cosignKeyPair struct {
 	cleanup    func()
 }
 
-func newCosignKeyPair(t testing.TB, path string) *cosignKeyPair {
+func newCosignKeyPair(t testing.TB, path string, password string) *cosignKeyPair {
 	td, err := os.MkdirTemp(t.TempDir(), path)
 	assert.NilError(t, err)
 
 	cmd := exec.Command("cosign", "generate-key-pair")
 	cmd.Dir = td
+	cmd.Env = append(cmd.Env, fmt.Sprintf("COSIGN_PASSWORD=%s", password))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("failed to run %v: %v (%q)", cmd.Args, err, string(out))
 	}
@@ -61,11 +62,11 @@ func TestImageVerifyWithCosign(t *testing.T) {
 	testutil.RequireExecutable(t, "cosign")
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
-	t.Setenv("COSIGN_PASSWORD", "1")
-	keyPair := newCosignKeyPair(t, "cosign-key-pair")
-	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
+	base.Env = append(base.Env, "COSIGN_PASSWORD=1")
 	defer base.Cmd("builder", "prune").Run()
+	keyPair := newCosignKeyPair(t, "cosign-key-pair", "1")
+	defer keyPair.cleanup()
 	tID := testutil.Identifier(t)
 	reg := testregistry.NewWithNoAuth(base, 0, false)
 	defer reg.Cleanup(nil)
@@ -111,10 +112,10 @@ func TestImageVerifyWithCosignShouldFailWhenKeyIsNotCorrect(t *testing.T) {
 	testutil.RequireExecutable(t, "cosign")
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
-	t.Setenv("COSIGN_PASSWORD", "1")
-	keyPair := newCosignKeyPair(t, "cosign-key-pair")
-	defer keyPair.cleanup()
 	base := testutil.NewBase(t)
+	base.Env = append(base.Env, "COSIGN_PASSWORD=1")
+	keyPair := newCosignKeyPair(t, "cosign-key-pair", "1")
+	defer keyPair.cleanup()
 	defer base.Cmd("builder", "prune").Run()
 	tID := testutil.Identifier(t)
 	reg := testregistry.NewWithNoAuth(base, 0, false)
@@ -135,8 +136,8 @@ CMD ["echo", "nerdctl-build-test-string"]
 	base.Cmd("push", testImageRef, "--sign=cosign", "--cosign-key="+keyPair.privateKey).AssertOK()
 	base.Cmd("pull", testImageRef, "--verify=cosign", "--cosign-key="+keyPair.publicKey).AssertOK()
 
-	t.Setenv("COSIGN_PASSWORD", "2")
-	newKeyPair := newCosignKeyPair(t, "cosign-key-pair-test")
+	base.Env = append(base.Env, "COSIGN_PASSWORD=2")
+	newKeyPair := newCosignKeyPair(t, "cosign-key-pair-test", "2")
 	base.Cmd("pull", testImageRef, "--verify=cosign", "--cosign-key="+newKeyPair.publicKey).AssertFail()
 }
 

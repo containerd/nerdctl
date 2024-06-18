@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -33,7 +32,7 @@ func TestIPFS(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage)
-	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=overlayfs")
+	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=overlayfs")
 	base.Cmd("pull", ipfsCID).AssertOK()
 	base.Cmd("run", "--rm", ipfsCID, "echo", "hello").AssertOK()
 
@@ -66,7 +65,7 @@ func TestIPFSAddress(t *testing.T) {
 	ipfsaddr, done := runIPFSDaemonContainer(t, base)
 	defer done()
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, fmt.Sprintf("--ipfs-address=%s", ipfsaddr))
-	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=overlayfs")
+	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=overlayfs")
 	base.Cmd("pull", "--ipfs-address", ipfsaddr, ipfsCID).AssertOK()
 	base.Cmd("run", "--ipfs-address", ipfsaddr, "--rm", ipfsCID, "echo", "hello").AssertOK()
 }
@@ -103,7 +102,7 @@ func TestIPFSCommit(t *testing.T) {
 	base := testutil.NewBase(t)
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage)
 
-	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=overlayfs")
+	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=overlayfs")
 	base.Cmd("pull", ipfsCID).AssertOK()
 	base.Cmd("run", "--rm", ipfsCID, "echo", "hello").AssertOK()
 	tID := testutil.Identifier(t)
@@ -124,7 +123,7 @@ func TestIPFSWithLazyPulling(t *testing.T) {
 	requiresStargz(base)
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, "--estargz")
 
-	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=stargz")
+	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=stargz")
 	base.Cmd("pull", ipfsCID).AssertOK()
 	base.Cmd("run", "--rm", ipfsCID, "ls", "/.stargz-snapshotter").AssertOK()
 }
@@ -139,7 +138,7 @@ func TestIPFSWithLazyPullingCommit(t *testing.T) {
 	requiresStargz(base)
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, "--estargz")
 
-	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=stargz")
+	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=stargz")
 	base.Cmd("pull", ipfsCID).AssertOK()
 	base.Cmd("run", "--rm", ipfsCID, "ls", "/.stargz-snapshotter").AssertOK()
 	tID := testutil.Identifier(t)

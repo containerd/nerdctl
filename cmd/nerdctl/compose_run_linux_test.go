@@ -424,22 +424,21 @@ func TestComposePushAndPullWithCosignVerify(t *testing.T) {
 	testutil.RequireExecutable(t, "cosign")
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
+	t.Parallel()
+
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
+	base.Env = append(base.Env, "COSIGN_PASSWORD=1")
 
-	// set up cosign and local registry
-	t.Setenv("COSIGN_PASSWORD", "1")
-	keyPair := newCosignKeyPair(t, "cosign-key-pair")
-	defer keyPair.cleanup()
-
+	keyPair := newCosignKeyPair(t, "cosign-key-pair", "1")
 	reg := testregistry.NewWithNoAuth(base, 0, false)
-	defer reg.Cleanup(nil)
+	t.Cleanup(func() {
+		keyPair.cleanup()
+		base.Cmd("builder", "prune").Run()
+		reg.Cleanup(nil)
+	})
 
-	localhostIP := "127.0.0.1"
-	t.Logf("localhost IP=%q", localhostIP)
-	testImageRefPrefix := fmt.Sprintf("%s:%d/",
-		localhostIP, reg.Port)
-	t.Logf("testImageRefPrefix=%q", testImageRefPrefix)
+	tID := testutil.Identifier(t)
+	testImageRefPrefix := fmt.Sprintf("127.0.0.1:%d/%s/", reg.Port, tID)
 
 	var (
 		imageSvc0 = testImageRefPrefix + "composebuild_svc0"
