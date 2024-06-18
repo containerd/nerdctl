@@ -28,21 +28,21 @@ func TestRunVerifyCosign(t *testing.T) {
 	testutil.RequireExecutable(t, "cosign")
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
-	t.Setenv("COSIGN_PASSWORD", "1")
-	keyPair := newCosignKeyPair(t, "cosign-key-pair")
-	defer keyPair.cleanup()
+	t.Parallel()
+
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
-	tID := testutil.Identifier(t)
+	base.Env = append(base.Env, "COSIGN_PASSWORD=1")
+
+	keyPair := newCosignKeyPair(t, "cosign-key-pair", "1")
 	reg := testregistry.NewWithNoAuth(base, 0, false)
-	defer reg.Cleanup(nil)
+	t.Cleanup(func() {
+		keyPair.cleanup()
+		base.Cmd("builder", "prune").Run()
+		reg.Cleanup(nil)
+	})
 
-	localhostIP := "127.0.0.1"
-	t.Logf("localhost IP=%q", localhostIP)
-	testImageRef := fmt.Sprintf("%s:%d/%s",
-		localhostIP, reg.Port, tID)
-	t.Logf("testImageRef=%q", testImageRef)
-
+	tID := testutil.Identifier(t)
+	testImageRef := fmt.Sprintf("127.0.0.1:%d/%s", reg.Port, tID)
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)

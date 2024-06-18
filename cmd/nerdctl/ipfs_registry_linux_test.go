@@ -17,7 +17,6 @@
 package main
 
 import (
-	"os"
 	"strings"
 	"testing"
 
@@ -28,7 +27,7 @@ func TestIPFSRegistry(t *testing.T) {
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
-	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=overlayfs")
+	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=overlayfs")
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage)
 	ipfsRegistryAddr := "localhost:5555"
 	ipfsRegistryRef := ipfsRegistryReference(ipfsRegistryAddr, ipfsCID)
@@ -44,7 +43,7 @@ func TestIPFSRegistryWithLazyPulling(t *testing.T) {
 
 	base := testutil.NewBase(t)
 	requiresStargz(base)
-	base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER=stargz")
+	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=stargz")
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, "--estargz")
 	ipfsRegistryAddr := "localhost:5555"
 	ipfsRegistryRef := ipfsRegistryReference(ipfsRegistryAddr, ipfsCID)

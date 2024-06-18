@@ -19,7 +19,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
@@ -57,6 +56,6 @@ func TestInfoWithNamespace(t *testing.T) {
 
 	base.Cmd("info").AssertOutContains("Namespace:	default")
 
-	base.Env = append(os.Environ(), "CONTAINERD_NAMESPACE=test")
+	base.Env = append(base.Env, "CONTAINERD_NAMESPACE=test")
 	base.Cmd("info").AssertOutContains("Namespace:	test")
 }

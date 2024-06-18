@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"testing"
 
@@ -67,7 +66,7 @@ func TestIPFSComposeUp(t *testing.T) {
 			for i, img := range []string{testutil.WordpressImage, testutil.MariaDBImage} {
 				ipfsImgs[i] = pushImageToIPFS(t, base, img, tt.pushOptions...)
 			}
-			base.Env = append(os.Environ(), "CONTAINERD_SNAPSHOTTER="+tt.snapshotter)
+			base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER="+tt.snapshotter)
 			testComposeUp(t, base, fmt.Sprintf(`
 version: '3.1'
 

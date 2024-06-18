@@ -145,7 +145,7 @@ func TestRunCIDFile(t *testing.T) {
 func TestRunEnvFile(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	base.Env = append(os.Environ(), "HOST_ENV=ENV-IN-HOST")
+	base.Env = append(base.Env, "HOST_ENV=ENV-IN-HOST")
 
 	tID := testutil.Identifier(t)
 	file1, err := os.CreateTemp("", tID)
@@ -172,7 +172,7 @@ func TestRunEnvFile(t *testing.T) {
 func TestRunEnv(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	base.Env = append(os.Environ(), "CORGE=corge-value-in-host", "GARPLY=garply-value-in-host")
+	base.Env = append(base.Env, "CORGE=corge-value-in-host", "GARPLY=garply-value-in-host")
 	base.Cmd("run", "--rm",
 		"--env", "FOO=foo1,foo2",
 		"--env", "BAR=bar1 bar2",

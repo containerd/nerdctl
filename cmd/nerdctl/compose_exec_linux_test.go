@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -78,7 +77,7 @@ services:
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
 
 	// FYI: https://github.com/containerd/nerdctl/blob/e4b2b6da56555dc29ed66d0fd8e7094ff2bc002d/cmd/nerdctl/run_test.go#L177
-	base.Env = append(os.Environ(), "CORGE=corge-value-in-host", "GARPLY=garply-value-in-host")
+	base.Env = append(base.Env, "CORGE=corge-value-in-host", "GARPLY=garply-value-in-host")
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY",
 		"--env", "FOO=foo1,foo2",
 		"--env", "BAR=bar1 bar2",

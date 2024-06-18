@@ -58,9 +58,6 @@ snapshotter = "dummy-snapshotter-via-toml"
 	base.Cmd("info", "-f", "{{.Driver}}").AssertOutExactly(containerd.DefaultSnapshotter + "\n")
 
 	// [TOML, Default]
-	if len(base.Env) == 0 {
-		base.Env = os.Environ()
-	}
 	base.Env = append(base.Env, "NERDCTL_TOML="+tomlPath)
 	base.Cmd("info", "-f", "{{.Driver}}").AssertOutExactly("dummy-snapshotter-via-toml\n")
 

@@ -18,7 +18,6 @@ package main
 
 import (
 	"errors"
-	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -80,7 +79,7 @@ func TestExecEnv(t *testing.T) {
 	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
 	base.EnsureContainerStarted(testContainer)
 
-	base.Env = append(os.Environ(), "CORGE=corge-value-in-host", "GARPLY=garply-value-in-host")
+	base.Env = append(base.Env, "CORGE=corge-value-in-host", "GARPLY=garply-value-in-host")
 	base.Cmd("exec",
 		"--env", "FOO=foo1,foo2",
 		"--env", "BAR=bar1 bar2",

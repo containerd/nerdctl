@@ -190,7 +190,7 @@ CMD ["echo", "nerdctl-build-test-dockerfile"]
 	defer os.Chdir(pwd)
 
 	// hack os.Getwd return "(unreachable)" on rootless
-	t.Setenv("PWD", buildCtx)
+	base.Env = append(base.Env, "PWD="+buildCtx)
 
 	base.Cmd("build", "-t", imageName, "-f", "Dockerfile", "..").AssertOK()
 	base.Cmd("build", "-t", imageName, "-f", "Dockerfile", ".").AssertOK()
@@ -281,14 +281,13 @@ CMD echo $TEST_STRING
 
 	for _, tc := range validCases {
 		t.Run(tc.name, func(t *testing.T) {
+			subBase := testutil.NewBase(t)
 			if tc.envSet {
-				err := os.Setenv("TEST_STRING", tc.envValue)
-				assert.NilError(t, err)
-				defer os.Unsetenv("TEST_STRING")
+				subBase.Env = append(base.Env, "TEST_STRING="+tc.envValue)
 			}
 
-			base.Cmd("build", buildCtx, "-t", imageName, "--build-arg", tc.arg).AssertOK()
-			base.Cmd("run", "--rm", imageName).AssertOutExactly(tc.expected)
+			subBase.Cmd("build", buildCtx, "-t", imageName, "--build-arg", tc.arg).AssertOK()
+			subBase.Cmd("run", "--rm", imageName).AssertOutExactly(tc.expected)
 		})
 	}
 }
@@ -485,7 +484,7 @@ CMD ["cat", "/source-date-epoch"]
 	buildCtx := createBuildContext(t, dockerfile)
 
 	const sourceDateEpochEnvStr = "1111111111"
-	t.Setenv("SOURCE_DATE_EPOCH", sourceDateEpochEnvStr)
+	base.Env = append(base.Env, "SOURCE_DATE_EPOCH="+sourceDateEpochEnvStr)
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("run", "--rm", imageName).AssertOutExactly(sourceDateEpochEnvStr + "\n")
 
