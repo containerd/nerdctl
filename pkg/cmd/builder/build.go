@@ -367,6 +367,15 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		buildctlArgs = append(buildctlArgs, "--no-cache")
 	}
 
+	if options.Pull != nil {
+		switch *options.Pull {
+		case true:
+			buildctlArgs = append(buildctlArgs, "--opt=image-resolve-mode=pull")
+		case false:
+			buildctlArgs = append(buildctlArgs, "--opt=image-resolve-mode=local")
+		}
+	}
+
 	for _, s := range strutil.DedupeStrSlice(options.Secret) {
 		buildctlArgs = append(buildctlArgs, "--secret="+s)
 	}

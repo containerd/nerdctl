@@ -69,6 +69,8 @@ type BuilderBuildOptions struct {
 	ExtendedBuildContext []string
 	// NetworkMode mode for the build context
 	NetworkMode string
+	// Pull determines if we should try to pull latest image from remote. Default is buildkit's default.
+	Pull *bool
 }
 
 // BuilderPruneOptions specifies options for `nerdctl builder prune`.
