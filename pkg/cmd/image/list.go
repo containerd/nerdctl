@@ -19,10 +19,10 @@ package image
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"path"
 	"strings"
 	"text/tabwriter"
 	"text/template"
@@ -31,14 +31,16 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/pkg/progress"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/platforms"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/docker/go-units"
+	"github.com/opencontainers/image-spec/identity"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ListCommandHandler `List` and print images matching filters in `options`.
@@ -161,15 +163,15 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 	}
 
 	printer := &imagePrinter{
-		w:            w,
-		quiet:        options.Quiet,
-		noTrunc:      options.NoTrunc,
-		digestsFlag:  digestsFlag,
-		namesFlag:    options.Names,
-		tmpl:         tmpl,
-		client:       client,
-		contentStore: client.ContentStore(),
-		snapshotter:  client.SnapshotService(options.GOptions.Snapshotter),
+		w:           w,
+		quiet:       options.Quiet,
+		noTrunc:     options.NoTrunc,
+		digestsFlag: digestsFlag,
+		namesFlag:   options.Names,
+		tmpl:        tmpl,
+		client:      client,
+		provider:    containerdutil.NewProvider(client),
+		snapshotter: containerdutil.SnapshotService(client, options.GOptions.Snapshotter),
 	}
 
 	for _, img := range imageList {
@@ -188,50 +190,127 @@ type imagePrinter struct {
 	quiet, noTrunc, digestsFlag, namesFlag bool
 	tmpl                                   *template.Template
 	client                                 *containerd.Client
-	contentStore                           content.Store
+	provider                               content.Provider
 	snapshotter                            snapshots.Snapshotter
 }
 
-func (x *imagePrinter) printImage(ctx context.Context, img images.Image) error {
-	ociPlatforms, err := images.Platforms(ctx, x.contentStore, img.Target)
+type image struct {
+	blobSize int64
+	size     int64
+	platform platforms.Platform
+	config   *ocispec.Descriptor
+}
+
+func readManifest(ctx context.Context, provider content.Provider, snapshotter snapshots.Snapshotter, desc ocispec.Descriptor) (*image, error) {
+	// Read the manifest blob from the descriptor
+	manifestData, err := containerdutil.ReadBlob(ctx, provider, desc)
 	if err != nil {
-		log.G(ctx).WithError(err).Warnf("failed to get the platform list of image %q", img.Name)
-		return x.printImageSinglePlatform(ctx, img, platforms.DefaultSpec())
+		return nil, err
 	}
-	psm := map[string]struct{}{}
-	for _, ociPlatform := range ociPlatforms {
-		platformKey := makePlatformKey(ociPlatform)
-		if _, done := psm[platformKey]; done {
+
+	// Unmarshal as Manifest
+	var manifest ocispec.Manifest
+	if err := json.Unmarshal(manifestData, &manifest); err != nil {
+		return nil, err
+	}
+
+	// Now, read the config
+	configData, err := containerdutil.ReadBlob(ctx, provider, manifest.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal as Image
+	var config ocispec.Image
+	if err := json.Unmarshal(configData, &config); err != nil {
+		log.G(ctx).Error("Error unmarshaling config")
+		return nil, err
+	}
+
+	// If we are here, the image exists and is valid, so, do our size lookups
+
+	// Aggregate the descriptor size, and blob size from the config and layers
+	blobSize := desc.Size + manifest.Config.Size
+	for _, layerDescriptor := range manifest.Layers {
+		blobSize += layerDescriptor.Size
+	}
+
+	// Get the platform
+	plt := platforms.Normalize(ocispec.Platform{OS: config.OS, Architecture: config.Architecture, Variant: config.Variant})
+
+	// Get the filesystem size for all layers
+	chainID := identity.ChainID(config.RootFS.DiffIDs).String()
+	size := int64(0)
+	if _, actualSize, err := imgutil.ResourceUsage(ctx, snapshotter, chainID); err == nil {
+		size = actualSize.Size
+	}
+
+	return &image{
+		blobSize: blobSize,
+		size:     size,
+		platform: plt,
+		config:   &manifest.Config,
+	}, nil
+}
+
+func readIndex(ctx context.Context, provider content.Provider, snapshotter snapshots.Snapshotter, desc ocispec.Descriptor) (map[string]*image, error) {
+	descs := map[string]*image{}
+
+	// Read the index
+	indexData, err := containerdutil.ReadBlob(ctx, provider, desc)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal as Index
+	var index ocispec.Index
+	if err := json.Unmarshal(indexData, &index); err != nil {
+		return nil, err
+	}
+
+	// Iterate over manifest descriptors and read them all
+	for _, manifestDescriptor := range index.Manifests {
+		manifest, err := readManifest(ctx, provider, snapshotter, manifestDescriptor)
+		if err != nil {
 			continue
 		}
-		psm[platformKey] = struct{}{}
-		if err := x.printImageSinglePlatform(ctx, img, ociPlatform); err != nil {
-			log.G(ctx).WithError(err).Warnf("failed to get platform %q of image %q", platforms.Format(ociPlatform), img.Name)
+		descs[platforms.FormatAll(manifest.platform)] = manifest
+	}
+	return descs, err
+}
+
+func read(ctx context.Context, provider content.Provider, snapshotter snapshots.Snapshotter, desc ocispec.Descriptor) (map[string]*image, error) {
+	if images.IsManifestType(desc.MediaType) {
+		manifest, err := readManifest(ctx, provider, snapshotter, desc)
+		if err != nil {
+			return nil, err
+		}
+		descs := map[string]*image{}
+		descs[platforms.FormatAll(manifest.platform)] = manifest
+		return descs, nil
+	}
+	if images.IsIndexType(desc.MediaType) {
+		return readIndex(ctx, provider, snapshotter, desc)
+	}
+	return nil, fmt.Errorf("unknown media type: %s", desc.MediaType)
+}
+
+func (x *imagePrinter) printImage(ctx context.Context, img images.Image) error {
+	candidateImages, err := read(ctx, x.provider, x.snapshotter, img.Target)
+	if err != nil {
+		return err
+	}
+
+	for platform, desc := range candidateImages {
+		if err := x.printImageSinglePlatform(*desc.config, img, desc.blobSize, desc.size, desc.platform); err != nil {
+			log.G(ctx).WithError(err).Debugf("failed to get platform %q of image %q", platform, img.Name)
 		}
 	}
+
 	return nil
 }
 
-func makePlatformKey(platform v1.Platform) string {
-	if platform.OS == "" {
-		return "unknown"
-	}
-
-	return path.Join(platform.OS, platform.Architecture, platform.OSVersion, platform.Variant)
-}
-
-func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.Image, ociPlatform v1.Platform) error {
-	platMC := platforms.OnlyStrict(ociPlatform)
-	if avail, _, _, _, availErr := images.Check(ctx, x.contentStore, img.Target, platMC); !avail {
-		log.G(ctx).WithError(availErr).Debugf("skipping printing image %q for platform %q", img.Name, platforms.Format(ociPlatform))
-		return nil
-	}
-
-	image := containerd.NewImageWithPlatform(x.client, img, platMC)
-	desc, err := image.Config(ctx)
-	if err != nil {
-		log.G(ctx).WithError(err).Warnf("failed to get config of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
-	}
+func (x *imagePrinter) printImageSinglePlatform(desc ocispec.Descriptor, img images.Image, blobSize int64, size int64, plt platforms.Platform) error {
 	var (
 		repository string
 		tag        string
@@ -239,17 +318,6 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 	// cri plugin will create an image named digest of image's config, skip parsing.
 	if x.namesFlag || desc.Digest.String() != img.Name {
 		repository, tag = imgutil.ParseRepoTag(img.Name)
-	}
-
-	blobSize, err := image.Size(ctx)
-	if err != nil {
-		log.G(ctx).WithError(err).Warnf("failed to get blob size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
-	}
-
-	size, err := imgutil.UnpackedImageSize(ctx, x.snapshotter, image)
-	if err != nil {
-		// Warnf is too verbose: https://github.com/containerd/nerdctl/issues/2058
-		log.G(ctx).WithError(err).Debugf("failed to get unpacked size of image %q for platform %q", img.Name, platforms.Format(ociPlatform))
 	}
 
 	p := imagePrintable{
@@ -260,9 +328,9 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 		Repository:   repository,
 		Tag:          tag,
 		Name:         img.Name,
-		Size:         progress.Bytes(size).String(),
-		BlobSize:     progress.Bytes(blobSize).String(),
-		Platform:     platforms.Format(ociPlatform),
+		Size:         units.HumanSize(float64(size)),
+		BlobSize:     units.HumanSize(float64(blobSize)),
+		Platform:     platforms.FormatAll(plt),
 	}
 	if p.Repository == "" {
 		p.Repository = "<none>"
@@ -279,7 +347,7 @@ func (x *imagePrinter) printImageSinglePlatform(ctx context.Context, img images.
 		if err := x.tmpl.Execute(&b, p); err != nil {
 			return err
 		}
-		if _, err = fmt.Fprintln(x.w, b.String()); err != nil {
+		if _, err := fmt.Fprintln(x.w, b.String()); err != nil {
 			return err
 		}
 	} else if x.quiet {

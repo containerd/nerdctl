@@ -25,11 +25,12 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/pkg/progress"
+	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
@@ -109,6 +110,7 @@ func (x *ListItem) Label(s string) string {
 
 func prepareContainers(ctx context.Context, client *containerd.Client, containers []containerd.Container, options types.ContainerListOptions) ([]ListItem, error) {
 	listItems := make([]ListItem, len(containers))
+	snapshottersCache := map[string]snapshots.Snapshotter{}
 	for i, c := range containers {
 		info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
 		if err != nil {
@@ -144,7 +146,12 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 			LabelsMap: info.Labels,
 		}
 		if options.Size {
-			containerSize, err := getContainerSize(ctx, client, c, info)
+			snapshotter, ok := snapshottersCache[info.Snapshotter]
+			if !ok {
+				snapshottersCache[info.Snapshotter] = containerdutil.SnapshotService(client, info.Snapshotter)
+				snapshotter = snapshottersCache[info.Snapshotter]
+			}
+			containerSize, err := getContainerSize(ctx, snapshotter, info.SnapshotKey)
 			if err != nil {
 				return nil, err
 			}
@@ -183,30 +190,18 @@ func getContainerNetworks(containerLables map[string]string) []string {
 	return networks
 }
 
-func getContainerSize(ctx context.Context, client *containerd.Client, c containerd.Container, info containers.Container) (string, error) {
+func getContainerSize(ctx context.Context, snapshotter snapshots.Snapshotter, snapshotKey string) (string, error) {
 	// get container snapshot size
-	snapshotKey := info.SnapshotKey
 	var containerSize int64
+	var imageSize int64
 
 	if snapshotKey != "" {
-		usage, err := client.SnapshotService(info.Snapshotter).Usage(ctx, snapshotKey)
+		rw, all, err := imgutil.ResourceUsage(ctx, snapshotter, snapshotKey)
 		if err != nil {
 			return "", err
 		}
-		containerSize = usage.Size
-	}
-
-	// get the image interface
-	image, err := c.Image(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	sn := client.SnapshotService(info.Snapshotter)
-
-	imageSize, err := imgutil.UnpackedImageSize(ctx, sn, image)
-	if err != nil {
-		return "", err
+		containerSize = rw.Size
+		imageSize = all.Size
 	}
 
 	return fmt.Sprintf("%s (virtual %s)", progress.Bytes(containerSize).String(), progress.Bytes(imageSize).String()), nil
