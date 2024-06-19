@@ -40,8 +40,8 @@ func TestImagePrune(t *testing.T) {
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("images").AssertOutContainsAll(imageName, "<none>")
 
-	base.Cmd("image", "prune", "--force").AssertNoOut(imageName)
-	base.Cmd("images").AssertNoOut("<none>")
+	base.Cmd("image", "prune", "--force").AssertOutNotContains(imageName)
+	base.Cmd("images").AssertOutNotContains("<none>")
 	base.Cmd("images").AssertOutContains(imageName)
 }
 
@@ -64,10 +64,10 @@ func TestImagePruneAll(t *testing.T) {
 
 	tID := testutil.Identifier(t)
 	base.Cmd("run", "--name", tID, imageName).AssertOK()
-	base.Cmd("image", "prune", "--force", "--all").AssertNoOut(imageName)
+	base.Cmd("image", "prune", "--force", "--all").AssertOutNotContains(imageName)
 	base.Cmd("images").AssertOutContains(imageName)
 
 	base.Cmd("rm", "-f", tID).AssertOK()
 	base.Cmd("image", "prune", "--force", "--all").AssertOutContains(imageName)
-	base.Cmd("images").AssertNoOut(imageName)
+	base.Cmd("images").AssertOutNotContains(imageName)
 }

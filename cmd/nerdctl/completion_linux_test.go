@@ -37,9 +37,9 @@ func TestCompletion(t *testing.T) {
 	base.Cmd(gsc, "run", "-it", "--net", "").AssertOutContains("host\n")
 	base.Cmd(gsc, "run", "-it", "--rm", "--net", "").AssertOutContains("host\n")
 	base.Cmd(gsc, "run", "--restart", "").AssertOutContains("always\n")
-	base.Cmd(gsc, "network", "rm", "").AssertNoOut("host\n") // host is unremovable
+	base.Cmd(gsc, "network", "rm", "").AssertOutNotContains("host\n") // host is unremovable
 	base.Cmd(gsc, "run", "--cap-add", "").AssertOutContains("sys_admin\n")
-	base.Cmd(gsc, "run", "--cap-add", "").AssertNoOut("CAP_SYS_ADMIN\n") // invalid form
+	base.Cmd(gsc, "run", "--cap-add", "").AssertOutNotContains("CAP_SYS_ADMIN\n") // invalid form
 
 	// Tests with an image
 	base.Cmd("pull", testutil.AlpineImage).AssertOK()

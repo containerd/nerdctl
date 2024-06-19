@@ -446,6 +446,7 @@ func (c *Cmd) AssertOutContainsAny(strs ...string) {
 }
 
 func (c *Cmd) AssertOutNotContains(s string) {
+	c.Base.T.Helper()
 	c.AssertOutWithFunc(func(stdout string) error {
 		if strings.Contains(stdout, s) {
 			return fmt.Errorf("expected stdout to not contain %q", s)
@@ -455,6 +456,7 @@ func (c *Cmd) AssertOutNotContains(s string) {
 }
 
 func (c *Cmd) AssertErrNotContains(s string) {
+	c.Base.T.Helper()
 	c.AssertOutWithFunc(func(stderr string) error {
 		if strings.Contains(stderr, s) {
 			return fmt.Errorf("expected stdout to not contain %q", s)
@@ -490,17 +492,6 @@ func (c *Cmd) AssertOutStreamsExactly(stdout, stderr string) {
 		return nil
 	}
 	c.AssertOutStreamsWithFunc(fn)
-}
-
-func (c *Cmd) AssertNoOut(s string) {
-	c.Base.T.Helper()
-	fn := func(stdout string) error {
-		if strings.Contains(stdout, s) {
-			return fmt.Errorf("expected not to contain %q, got %q", s, stdout)
-		}
-		return nil
-	}
-	c.AssertOutWithFunc(fn)
 }
 
 func (c *Cmd) AssertOutWithFunc(fn func(stdout string) error) {

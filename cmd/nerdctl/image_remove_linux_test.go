@@ -37,7 +37,7 @@ func TestRemoveImage(t *testing.T) {
 	defer base.Cmd("rmi", "-f", testutil.CommonImage).Run()
 	base.Cmd("rmi", "-f", testutil.CommonImage).AssertOK()
 
-	base.Cmd("images").AssertNoOut(testutil.ImageRepo(testutil.CommonImage))
+	base.Cmd("images").AssertOutNotContains(testutil.ImageRepo(testutil.CommonImage))
 }
 
 func TestRemoveRunningImage(t *testing.T) {
@@ -58,7 +58,7 @@ func TestRemoveRunningImage(t *testing.T) {
 	base.Cmd("kill", tID).AssertOK()
 	base.Cmd("rmi", testutil.CommonImage).AssertFail()
 	base.Cmd("rmi", "-f", testutil.CommonImage).AssertOK()
-	base.Cmd("images").AssertNoOut(testutil.ImageRepo(testutil.CommonImage))
+	base.Cmd("images").AssertOutNotContains(testutil.ImageRepo(testutil.CommonImage))
 }
 
 func TestRemovePausedImage(t *testing.T) {
@@ -84,7 +84,7 @@ func TestRemovePausedImage(t *testing.T) {
 	base.Cmd("kill", tID).AssertOK()
 	base.Cmd("rmi", testutil.CommonImage).AssertFail()
 	base.Cmd("rmi", "-f", testutil.CommonImage).AssertOK()
-	base.Cmd("images").AssertNoOut(testutil.ImageRepo(testutil.CommonImage))
+	base.Cmd("images").AssertOutNotContains(testutil.ImageRepo(testutil.CommonImage))
 }
 
 func TestRemoveImageWithCreatedContainer(t *testing.T) {
@@ -99,9 +99,9 @@ func TestRemoveImageWithCreatedContainer(t *testing.T) {
 
 	base.Cmd("rmi", testutil.AlpineImage).AssertFail()
 	base.Cmd("rmi", "-f", testutil.AlpineImage).AssertOK()
-	base.Cmd("images").AssertNoOut(testutil.ImageRepo(testutil.AlpineImage))
+	base.Cmd("images").AssertOutNotContains(testutil.ImageRepo(testutil.AlpineImage))
 
 	// a created container with removed image doesn't impact other `rmi` command
 	base.Cmd("rmi", "-f", testutil.NginxAlpineImage).AssertOK()
-	base.Cmd("images").AssertNoOut(testutil.ImageRepo(testutil.NginxAlpineImage))
+	base.Cmd("images").AssertOutNotContains(testutil.ImageRepo(testutil.NginxAlpineImage))
 }

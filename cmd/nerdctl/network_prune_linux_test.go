@@ -32,7 +32,7 @@ func TestNetworkPrune(t *testing.T) {
 	base.Cmd("run", "-d", "--net", testNetwork, "--name", tID, testutil.NginxAlpineImage).AssertOK()
 	defer base.Cmd("rm", "-f", tID).Run()
 
-	base.Cmd("network", "prune", "-f").AssertNoOut(testNetwork)
+	base.Cmd("network", "prune", "-f").AssertOutNotContains(testNetwork)
 	base.Cmd("stop", tID).AssertOK()
 	base.Cmd("network", "prune", "-f").AssertOutContains(testNetwork)
 }
