@@ -86,7 +86,7 @@ func (c *Composer) downNetwork(ctx context.Context, shortName string) error {
 	if !ok {
 		return fmt.Errorf("invalid network name %q", shortName)
 	}
-	if net.External.External {
+	if net.External {
 		// NOP
 		return nil
 	}
@@ -117,7 +117,7 @@ func (c *Composer) downVolume(ctx context.Context, shortName string) error {
 	if !ok {
 		return fmt.Errorf("invalid volume name %q", shortName)
 	}
-	if vol.External.External {
+	if vol.External {
 		// NOP
 		return nil
 	}

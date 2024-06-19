@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"os/exec"
 
-	composecli "github.com/compose-spec/compose-go/cli"
-	compose "github.com/compose-spec/compose-go/types"
+	composecli "github.com/compose-spec/compose-go/v2/cli"
+	compose "github.com/compose-spec/compose-go/v2/types"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/log"
@@ -79,6 +79,7 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 	optionsFn = append(optionsFn,
 		composecli.WithConfigFileEnv,
 		composecli.WithDefaultConfigPath,
+		composecli.WithEnvFiles(),
 		composecli.WithDotEnv,
 		composecli.WithName(o.Project),
 	)
@@ -87,7 +88,7 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 	if err != nil {
 		return nil, err
 	}
-	project, err := composecli.ProjectFromOptions(projectOptions)
+	project, err := projectOptions.LoadProject(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +100,11 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 		}
 		o.Profiles = append(o.Profiles, s.GetProfiles()...)
 	}
-	project.ApplyProfiles(o.Profiles)
+
+	project, err = project.WithProfiles(o.Profiles)
+	if err != nil {
+		return nil, err
+	}
 
 	if o.DebugPrintFull {
 		projectJSON, _ := json.MarshalIndent(project, "", "    ")
@@ -153,8 +158,9 @@ func (c *Composer) runNerdctlCmd(ctx context.Context, args ...string) error {
 // Services returns the parsed Service objects in dependency order.
 func (c *Composer) Services(ctx context.Context, svcs ...string) ([]*serviceparser.Service, error) {
 	var services []*serviceparser.Service
-	if err := c.project.WithServices(svcs, func(svc compose.ServiceConfig) error {
-		parsed, err := serviceparser.Parse(c.project, svc)
+
+	if err := c.project.ForEachService(svcs, func(name string, svc *compose.ServiceConfig) error {
+		parsed, err := serviceparser.Parse(c.project, *svc)
 		if err != nil {
 			return err
 		}
@@ -169,7 +175,7 @@ func (c *Composer) Services(ctx context.Context, svcs ...string) ([]*servicepars
 // ServiceNames returns service names in dependency order.
 func (c *Composer) ServiceNames(svcs ...string) ([]string, error) {
 	var names []string
-	if err := c.project.WithServices(svcs, func(svc compose.ServiceConfig) error {
+	if err := c.project.ForEachService(svcs, func(name string, svc *compose.ServiceConfig) error {
 		names = append(names, svc.Name)
 		return nil
 	}); err != nil {

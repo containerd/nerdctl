@@ -30,7 +30,7 @@ func (c *Composer) upNetwork(ctx context.Context, shortName string) error {
 	if !ok {
 		return fmt.Errorf("invalid network name %q", shortName)
 	}
-	if net.External.External {
+	if net.External {
 		// NOP
 		return nil
 	}

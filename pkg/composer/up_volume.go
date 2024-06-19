@@ -30,7 +30,7 @@ func (c *Composer) upVolume(ctx context.Context, shortName string) error {
 	if !ok {
 		return fmt.Errorf("invalid volume name %q", shortName)
 	}
-	if vol.External.External {
+	if vol.External {
 		// NOP
 		return nil
 	}

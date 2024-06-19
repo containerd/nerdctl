@@ -30,7 +30,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/opencontainers/go-digest"
 	"gopkg.in/yaml.v3"
 )
@@ -59,13 +59,13 @@ func (c *Composer) Config(ctx context.Context, w io.Writer, co ConfigOptions) er
 		if co.Hash != "*" {
 			services = strings.Split(co.Hash, ",")
 		}
-		return c.project.WithServices(services, func(svc types.ServiceConfig) error {
-			hash, err := ServiceHash(svc)
+		return c.project.ForEachService(services, func(names string, svc *types.ServiceConfig) error {
+			hash, err := ServiceHash(*svc)
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(w, "%s %s\n", svc.Name, hash)
-			return nil
+			_, err = fmt.Fprintf(w, "%s %s\n", svc.Name, hash)
+			return err
 		})
 	}
 	projectYAML, err := yaml.Marshal(c.project)
@@ -81,7 +81,8 @@ func ServiceHash(o types.ServiceConfig) (string, error) {
 	// remove the Build config when generating the service hash
 	o.Build = nil
 	o.PullPolicy = ""
-	o.Scale = 1
+	o.Scale = new(int)
+	*(o.Scale) = 1
 	bytes, err := json.Marshal(o)
 	if err != nil {
 		return "", err
