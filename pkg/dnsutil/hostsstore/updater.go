@@ -122,6 +122,7 @@ func (u *updater) phase2() error {
 		if err != nil {
 			return err
 		}
+		defer r.Close()
 		var buf bytes.Buffer
 		if r != nil {
 			if err := parseHostsButSkipMarkedRegion(&buf, r); err != nil {
