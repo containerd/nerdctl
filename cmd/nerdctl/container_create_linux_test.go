@@ -106,24 +106,25 @@ func TestCreateWithMACAddress(t *testing.T) {
 			if expect == passedMac {
 				expect = macAddress
 			}
-			tt.Cleanup(func() {
+			tearDown := func() {
 				base.Cmd("rm", "-f", containerName).Run()
-			})
+			}
+			tearDown()
+			tt.Cleanup(tearDown)
 			// This is currently blocked by https://github.com/containerd/nerdctl/pull/3104
 			// res := base.Cmd("create", "-i", "--network", network, "--mac-address", macAddress, testutil.CommonImage).Run()
 			res := base.Cmd("create", "--network", network, "--name", containerName,
 				"--mac-address", macAddress, testutil.CommonImage,
-				"sh", "-c", "--", "ip addr show eth0 | grep ether").Run()
+				"sh", "-c", "--", "ip addr show").Run()
 
 			if !wantErr {
 				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res.Combined())
 				// This is currently blocked by: https://github.com/containerd/nerdctl/pull/3104
 				// res = base.Cmd("start", "-i", containerName).
 				//	CmdOption(testutil.WithStdin(strings.NewReader("ip addr show eth0 | grep ether | awk '{printf $2}'"))).Run()
-				base.Cmd("start", containerName).AssertOK()
-				res = base.Cmd("logs", containerName).Run()
+				res = base.Cmd("start", "-a", containerName).Run()
 				assert.Assert(t, strings.Contains(res.Stdout(), expect), fmt.Sprintf("expected output to contain %q: %q", expect, res.Stdout()))
-				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res.Combined())
+				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded")
 			} else {
 				if testutil.GetTarget() == testutil.Docker &&
 					(network == networkIPvlan || network == "container:whatever"+tID) {
@@ -131,11 +132,20 @@ func TestCreateWithMACAddress(t *testing.T) {
 					// when using network ipvlan or container in Docker
 					// it delays fail on executing start command
 					assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res.Combined())
-					res = base.Cmd("start", "-i", containerName).
+					res = base.Cmd("start", "-i", "-a", containerName).
 						CmdOption(testutil.WithStdin(strings.NewReader("ip addr show eth0 | grep ether | awk '{printf $2}'"))).Run()
 				}
 
-				assert.Assert(t, strings.Contains(res.Combined(), expect), fmt.Sprintf("expected output to contain %q: %q", expect, res.Combined()))
+				// See https://github.com/containerd/nerdctl/issues/3101
+				if testutil.GetTarget() == testutil.Docker &&
+					(network == networkBridge) {
+					expect = ""
+				}
+				if expect != "" {
+					assert.Assert(t, strings.Contains(res.Combined(), expect), fmt.Sprintf("expected output to contain %q: %q", expect, res.Combined()))
+				} else {
+					assert.Assert(t, res.Combined() == "", fmt.Sprintf("expected output to be empty: %q", res.Combined()))
+				}
 				assert.Assert(t, res.ExitCode != 0, "Command should have failed", res.Combined())
 			}
 		})
