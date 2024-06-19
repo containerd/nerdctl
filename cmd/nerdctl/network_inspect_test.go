@@ -66,3 +66,28 @@ func TestNetworkInspect(t *testing.T) {
 	}
 	assert.DeepEqual(base.T, expectedIPAM, got.IPAM)
 }
+
+func TestNetworkWithNamespace(t *testing.T) {
+	testutil.DockerIncompatible(t)
+
+	t.Parallel()
+
+	tID := testutil.Identifier(t)
+	base := testutil.NewBase(t)
+	baseOther := testutil.NewBaseWithNamespace(t, tID)
+
+	tearDown := func() {
+		base.Cmd("network", "rm", tID).Run()
+		baseOther.Cmd("namespace", "remove", tID).Run()
+	}
+	tearDown()
+	t.Cleanup(tearDown)
+
+	base.Cmd("network", "create", tID).AssertOK()
+
+	// Other namespace cannot inspect, prune, see, or remove this network
+	baseOther.Cmd("network", "inspect", tID).AssertFail()
+	baseOther.Cmd("network", "prune", "-f").AssertOutNotContains(tID)
+	baseOther.Cmd("network", "ls").AssertOutNotContains(tID)
+	baseOther.Cmd("network", "remove", tID).AssertFail()
+}

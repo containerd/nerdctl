@@ -36,7 +36,7 @@ type cniNetworkManagerPlatform struct {
 
 // Verifies that the internal network settings are correct.
 func (m *cniNetworkManager) VerifyNetworkOptions(_ context.Context) error {
-	e, err := netutil.NewCNIEnv(m.globalOptions.CNIPath, m.globalOptions.CNINetConfPath, netutil.WithDefaultNetwork())
+	e, err := netutil.NewCNIEnv(m.globalOptions.CNIPath, m.globalOptions.CNINetConfPath, netutil.WithNamespace(m.globalOptions.Namespace), netutil.WithDefaultNetwork())
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (m *cniNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 }
 
 func (m *cniNetworkManager) getCNI() (gocni.CNI, error) {
-	e, err := netutil.NewCNIEnv(m.globalOptions.CNIPath, m.globalOptions.CNINetConfPath, netutil.WithDefaultNetwork())
+	e, err := netutil.NewCNIEnv(m.globalOptions.CNIPath, m.globalOptions.CNINetConfPath, netutil.WithNamespace(m.globalOptions.Namespace), netutil.WithDefaultNetwork())
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate CNI env: %s", err)
 	}

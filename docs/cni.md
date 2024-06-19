@@ -116,7 +116,16 @@ For example:
 ## Custom networks
 
 You can also customize your CNI network by providing configuration files.
-For example you have one configuration file(`/etc/cni/net.d/10-mynet.conf`)
+
+When rootful, the expected root location is `/etc/cni/net.d`.
+For rootless, the expected root location is `~/.config/cni/net.d/`
+
+Configuration files (like `10-mynet.conf`) can be placed either in the root location,
+or under a subfolder.
+If in the root location, this network will be available to all nerdctl namespaces.
+If placed in a subfolder, it will be available only to the identically named namespace.
+
+For example, you have one configuration file(`/etc/cni/net.d/10-mynet.conf`)
 for `bridge` network:
 
 ```json
@@ -138,7 +147,7 @@ for `bridge` network:
 ```
 
 This will configure a new CNI network with the name `mynet`, and you can use
-this network to create a container:
+this network to create a container in any namespace:
 
 ```console
 # nerdctl run -it --net mynet --rm alpine ip addr show

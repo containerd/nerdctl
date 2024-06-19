@@ -28,7 +28,7 @@ import (
 )
 
 func Prune(ctx context.Context, client *containerd.Client, options types.NetworkPruneOptions) error {
-	e, err := netutil.NewCNIEnv(options.GOptions.CNIPath, options.GOptions.CNINetConfPath)
+	e, err := netutil.NewCNIEnv(options.GOptions.CNIPath, options.GOptions.CNINetConfPath, netutil.WithNamespace(options.GOptions.Namespace))
 	if err != nil {
 		return err
 	}

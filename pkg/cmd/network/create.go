@@ -33,7 +33,7 @@ func Create(options types.NetworkCreateOptions, stdout io.Writer) error {
 		options.Subnets = []string{""}
 	}
 
-	e, err := netutil.NewCNIEnv(options.GOptions.CNIPath, options.GOptions.CNINetConfPath)
+	e, err := netutil.NewCNIEnv(options.GOptions.CNIPath, options.GOptions.CNINetConfPath, netutil.WithNamespace(options.GOptions.Namespace))
 	if err != nil {
 		return err
 	}
