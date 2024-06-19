@@ -139,7 +139,6 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	if err != nil {
 		return nil, nil, err
 	}
-	opts = append(opts, oci.WithEnv(envs))
 
 	if options.Interactive {
 		if options.Detach {
@@ -191,6 +190,10 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate internal networking labels: %s", err)
 	}
+
+	envs = append(envs, "HOSTNAME="+netLabelOpts.Hostname)
+	opts = append(opts, oci.WithEnv(envs))
+
 	// TODO(aznashwan): more formal way to load net opts into internalLabels:
 	internalLabels.hostname = netLabelOpts.Hostname
 	internalLabels.ports = netLabelOpts.PortMappings

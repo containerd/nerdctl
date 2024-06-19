@@ -217,6 +217,19 @@ func TestRunEnv(t *testing.T) {
 		return nil
 	})
 }
+func TestRunHostnameEnv(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	base.Cmd("run", "-i", "--rm", testutil.CommonImage).
+		CmdOption(testutil.WithStdin(strings.NewReader(`[[ "HOSTNAME=$(hostname)" == "$(env | grep HOSTNAME)" ]]`))).
+		AssertOK()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("run --hostname not implemented on Windows yet")
+	}
+	base.Cmd("run", "--rm", "--hostname", "foobar", testutil.CommonImage, "env").AssertOutContains("HOSTNAME=foobar")
+}
 
 func TestRunStdin(t *testing.T) {
 	t.Parallel()
