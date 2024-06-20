@@ -76,8 +76,8 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 	// More specifically, because we trigger https://github.com/containerd/nerdctl/issues/3016
 	// we cannot do selective rmi, so, just nuke everything
 	ids := base.Cmd("image", "list", "-q").Out()
-	allIds := strings.Split(ids, "\n")
-	for _, id := range allIds {
+	allIDs := strings.Split(ids, "\n")
+	for _, id := range allIDs {
 		id = strings.TrimSpace(id)
 		if id != "" {
 			base.Cmd("rmi", "-f", id).Run()
