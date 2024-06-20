@@ -57,7 +57,7 @@ func Prune(ctx context.Context, client *containerd.Client, options types.VolumeP
 		}
 		removeNames = append(removeNames, volume.Name)
 	}
-	removedNames, err := volStore.Remove(removeNames)
+	removedNames, _, err := volStore.Remove(removeNames)
 	if err != nil {
 		return err
 	}

@@ -18,6 +18,7 @@ package volumestore
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -65,7 +66,7 @@ type VolumeStore interface {
 	// Get may return ErrNotFound
 	Get(name string, size bool) (*native.Volume, error)
 	List(size bool) (map[string]native.Volume, error)
-	Remove(names []string) (removedNames []string, err error)
+	Remove(names []string) (removed []string, warns []error, err error)
 }
 
 type volumeStore struct {
@@ -80,7 +81,7 @@ func (vs *volumeStore) Dir() string {
 
 func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, error) {
 	if err := identifiers.Validate(name); err != nil {
-		return nil, fmt.Errorf("malformed name %s: %w", name, err)
+		return nil, fmt.Errorf("malformed volume name: %w", err)
 	}
 	volPath := filepath.Join(vs.dir, name)
 	volDataPath := filepath.Join(volPath, DataDirName)
@@ -131,12 +132,11 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 		return os.WriteFile(volFilePath, labelsJSON, 0644)
 	}
 
-	if err := lockutil.WithDirLock(vs.dir, fn); err != nil {
+	if err := lockutil.WithDirLock(vs.dir, fn); err != nil && !errors.Is(err, os.ErrExist) {
 		return nil, err
 	}
 
 	// If other new actions that might fail are added below, we should move the cleanup function out of fn.
-
 	vol := &native.Volume{
 		Name:       name,
 		Mountpoint: volDataPath,
@@ -196,14 +196,19 @@ func (vs *volumeStore) List(size bool) (map[string]native.Volume, error) {
 	return res, nil
 }
 
-func (vs *volumeStore) Remove(names []string) ([]string, error) {
-	var removed []string
+func (vs *volumeStore) Remove(names []string) (removed []string, warns []error, err error) {
 	fn := func() error {
 		for _, name := range names {
 			if err := identifiers.Validate(name); err != nil {
-				return fmt.Errorf("malformed name %s: %w", name, err)
+				warns = append(warns, fmt.Errorf("malformed volume name: %w", err))
+				continue
 			}
 			dir := filepath.Join(vs.dir, name)
+			if _, err := os.Stat(dir); os.IsNotExist(err) {
+				warns = append(warns, fmt.Errorf("no such volume: %s", name))
+				continue
+			}
+			// This is a hard filesystem error. Exit on this.
 			if err := os.RemoveAll(dir); err != nil {
 				return err
 			}
@@ -211,8 +216,11 @@ func (vs *volumeStore) Remove(names []string) ([]string, error) {
 		}
 		return nil
 	}
-	err := lockutil.WithDirLock(vs.dir, fn)
-	return removed, err
+
+	if err := lockutil.WithDirLock(vs.dir, fn); err != nil {
+		return nil, nil, err
+	}
+	return removed, warns, nil
 }
 
 func Labels(b []byte) *map[string]string {
