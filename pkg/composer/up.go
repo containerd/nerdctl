@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
@@ -37,7 +37,7 @@ type UpOptions struct {
 	IPFS                 bool
 	QuietPull            bool
 	RemoveOrphans        bool
-	Scale                map[string]uint64 // map of service name to replicas
+	Scale                map[string]int // map of service name to replicas
 }
 
 func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) error {
@@ -69,14 +69,14 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 
 	var parsedServices []*serviceparser.Service
 	// use WithServices to sort the services in dependency order
-	if err := c.project.WithServices(services, func(svc types.ServiceConfig) error {
+	if err := c.project.ForEachService(services, func(name string, svc *types.ServiceConfig) error {
 		if replicas, ok := uo.Scale[svc.Name]; ok {
 			if svc.Deploy == nil {
 				svc.Deploy = &types.DeployConfig{}
 			}
 			svc.Deploy.Replicas = &replicas
 		}
-		ps, err := serviceparser.Parse(c.project, svc)
+		ps, err := serviceparser.Parse(c.project, *svc)
 		if err != nil {
 			return err
 		}
@@ -109,9 +109,7 @@ func validateFileObjectConfig(obj types.FileObjectConfig, shortName, objType str
 	if unknown := reflectutil.UnknownNonEmptyFields(&obj, "Name", "External", "File"); len(unknown) > 0 {
 		log.L.Warnf("Ignoring: %s %s: %+v", objType, shortName, unknown)
 	}
-	if obj.External.External || obj.External.Name != "" {
-		return fmt.Errorf("%s %q: external object is not supported", objType, shortName)
-	}
+
 	if obj.File == "" {
 		return fmt.Errorf("%s %q: lacks file path", objType, shortName)
 	}

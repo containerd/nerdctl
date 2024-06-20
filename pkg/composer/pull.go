@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 )
@@ -31,8 +31,8 @@ type PullOptions struct {
 }
 
 func (c *Composer) Pull(ctx context.Context, po PullOptions, services []string) error {
-	return c.project.WithServices(services, func(svc types.ServiceConfig) error {
-		ps, err := serviceparser.Parse(c.project, svc)
+	return c.project.ForEachService(services, func(name string, svc *types.ServiceConfig) error {
+		ps, err := serviceparser.Parse(c.project, *svc)
 		if err != nil {
 			return err
 		}

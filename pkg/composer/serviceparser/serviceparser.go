@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/containerd/containerd/contrib/nvidia"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/log"
@@ -213,7 +213,7 @@ func getReplicas(svc types.ServiceConfig) (int, error) {
 	// https://github.com/compose-spec/compose-go/commit/958cb4f953330a3d1303961796d826b7f79132d7
 
 	if svc.Deploy != nil && svc.Deploy.Replicas != nil {
-		replicas = int(*svc.Deploy.Replicas)
+		replicas = int(*svc.Deploy.Replicas) // nolint:unconvert
 	}
 
 	if replicas < 0 {
@@ -229,11 +229,11 @@ func getCPULimit(svc types.ServiceConfig) (string, error) {
 		limit = fmt.Sprintf("%f", svc.CPUS)
 	}
 	if svc.Deploy != nil && svc.Deploy.Resources.Limits != nil {
-		if nanoCPUs := svc.Deploy.Resources.Limits.NanoCPUs; nanoCPUs != "" {
+		if nanoCPUs := svc.Deploy.Resources.Limits.NanoCPUs; nanoCPUs != 0 {
 			if svc.CPUS > 0 {
 				log.L.Warnf("deploy.resources.limits.cpus and cpus (deprecated) must not be set together, ignoring cpus=%f", svc.CPUS)
 			}
-			limit = nanoCPUs
+			limit = strconv.FormatFloat(float64(nanoCPUs), 'f', 2, 32)
 		}
 	}
 	return limit, nil
@@ -538,7 +538,9 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		}
 	}
 	for k, v := range svc.ExtraHosts {
-		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--add-host=%s:%s", k, v))
+		for _, h := range v {
+			c.RunArgs = append(c.RunArgs, fmt.Sprintf("--add-host=%s:%s", k, h))
+		}
 	}
 
 	if svc.Init != nil && *svc.Init {

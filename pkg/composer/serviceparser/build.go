@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/log"

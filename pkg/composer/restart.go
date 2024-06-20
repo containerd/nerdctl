@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/containerd/containerd"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
@@ -36,7 +36,7 @@ type RestartOptions struct {
 // `nerdctl restart CONTAINER_ID` to do the actual job.
 func (c *Composer) Restart(ctx context.Context, opt RestartOptions, services []string) error {
 	// in dependency order
-	return c.project.WithServices(services, func(svc types.ServiceConfig) error {
+	return c.project.ForEachService(services, func(name string, svc *types.ServiceConfig) error {
 		containers, err := c.Containers(ctx, svc.Name)
 		if err != nil {
 			return err

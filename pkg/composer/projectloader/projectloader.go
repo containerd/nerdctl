@@ -17,11 +17,12 @@
 package projectloader
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
-	"github.com/compose-spec/compose-go/loader"
-	compose "github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/loader"
+	compose "github.com/compose-spec/compose-go/v2/types"
 )
 
 // Load is used only for unit testing.
@@ -41,7 +42,7 @@ func Load(fileName, projectName string, envMap map[string]string) (*compose.Proj
 	}
 	var files []compose.ConfigFile
 	files = append(files, compose.ConfigFile{Filename: fileName, Content: b})
-	return loader.Load(compose.ConfigDetails{
+	return loader.LoadWithContext(context.TODO(), compose.ConfigDetails{
 		WorkingDir:  wd,
 		ConfigFiles: files,
 		Environment: envMap,

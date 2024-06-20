@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/compose-spec/compose-go/loader"
-	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/format"
+	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/idgen"
@@ -93,8 +93,8 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 		}
 		svcs = append(svcs, svc)
 	} else {
-		if err := c.project.WithServices([]string{ro.ServiceName}, func(svc types.ServiceConfig) error {
-			svcs = append(svcs, svc)
+		if err := c.project.ForEachService([]string{ro.ServiceName}, func(name string, svc *types.ServiceConfig) error {
+			svcs = append(svcs, *svc)
 			return nil
 		}); err != nil {
 			return err
@@ -128,7 +128,7 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 	}
 	if ro.Volume != nil && len(ro.Volume) > 0 {
 		for _, v := range ro.Volume {
-			vc, err := loader.ParseVolume(v)
+			vc, err := format.ParseVolume(v)
 			if err != nil {
 				return err
 			}

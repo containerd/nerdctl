@@ -23,7 +23,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/containerd/nerdctl/v2/pkg/composer/projectloader"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -202,7 +202,7 @@ func TestParseDeprecated(t *testing.T) {
 services:
   foo:
     image: nginx:alpine
-    # scale is deprecated in favor of deploy.replicas, but still valid
+    # scale was deprecated in favor of deploy.replicas, and is now ignored
     scale: 2
     # cpus is deprecated in favor of deploy.resources.limits.cpu, but still valid
     cpus: 0.42
@@ -222,7 +222,7 @@ services:
 	assert.NilError(t, err)
 
 	t.Logf("foo: %+v", foo)
-	assert.Assert(t, len(foo.Containers) == 2)
+	assert.Assert(t, len(foo.Containers) == 1)
 	for i, c := range foo.Containers {
 		assert.Assert(t, c.Name == DefaultContainerName(project.Name, "foo", strconv.Itoa(i+1)))
 		assert.Assert(t, in(c.RunArgs, "--name="+c.Name))

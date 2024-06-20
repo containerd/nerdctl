@@ -100,7 +100,7 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 	if err != nil {
 		return err
 	}
-	scale := make(map[string]uint64)
+	scale := make(map[string]int)
 	for _, s := range scaleSlice {
 		parts := strings.Split(s, "=")
 		if len(parts) != 2 {
@@ -110,7 +110,7 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		if err != nil {
 			return err
 		}
-		scale[parts[0]] = uint64(replicas)
+		scale[parts[0]] = replicas
 	}
 
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
