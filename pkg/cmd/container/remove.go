@@ -157,7 +157,7 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			return err
 		}
 		defer func() {
-			if _, err := volStore.Remove(anonVolumes); err != nil {
+			if _, errs, err := volStore.Remove(anonVolumes); err != nil || len(errs) > 0 {
 				log.G(ctx).WithError(err).Warnf("failed to remove anonymous volumes %v", anonVolumes)
 			}
 		}()

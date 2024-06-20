@@ -92,12 +92,12 @@ func (m *MockVolumeStoreMockRecorder) List(size any) *gomock.Call {
 }
 
 // Remove mocks the Remove method of VolumeStore
-func (m *MockVolumeStore) Remove(names []string) ([]string, error) {
+func (m *MockVolumeStore) Remove(names []string) (removed []string, warns []error, err error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Remove", names)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	return ret0, []error{}, ret1
 }
 
 // Remove indicates an expected call of Remove

@@ -19,9 +19,11 @@ package volume
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
@@ -44,23 +46,28 @@ func Remove(ctx context.Context, client *containerd.Client, volumes []string, op
 
 	var volumenames []string // nolint: prealloc
 	for _, name := range volumes {
-		volume, err := volStore.Get(name, false)
-		if err != nil {
-			return err
-		}
-		if _, ok := usedVolumes[volume.Name]; ok {
+		if _, ok := usedVolumes[name]; ok {
 			return fmt.Errorf("volume %q is in use", name)
 		}
 		volumenames = append(volumenames, name)
 	}
-	removedNames, err := volStore.Remove(volumenames)
+	// if err is set, this is a hard filesystem error
+	removedNames, warns, err := volStore.Remove(volumenames)
 	if err != nil {
 		return err
 	}
+	// Otherwise, output on stdout whatever was successful
 	for _, name := range removedNames {
 		fmt.Fprintln(options.Stdout, name)
 	}
-	return err
+	// Log the rest
+	for _, volErr := range warns {
+		log.G(ctx).Warn(volErr)
+	}
+	if len(warns) > 0 {
+		return errors.New("some volumes could not be removed")
+	}
+	return nil
 }
 
 func usedVolumes(ctx context.Context, containers []containerd.Container) (map[string]struct{}, error) {
