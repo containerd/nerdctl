@@ -13,7 +13,7 @@ env:
 jobs:
   project:
     name: Project Checks
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4.1.1
@@ -34,7 +34,7 @@ jobs:
         working-directory: src/github.com/containerd/nerdctl
 
   lint:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4.1.1
@@ -54,7 +54,7 @@ jobs:
         run: yamllint .
 
   test-unit:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4.1.1
@@ -74,7 +74,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
+        # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
           - ubuntu: 20.04
             containerd: v1.6.31
@@ -83,6 +83,10 @@ jobs:
           - ubuntu: 22.04
             containerd: v1.7.21
           - ubuntu: 22.04
+            containerd: main
+          - ubuntu: 24.04
+            containerd: v1.7.21
+          - ubuntu: 24.04
             containerd: main
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
@@ -110,9 +114,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
+        # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
-          - ubuntu: 22.04
+          - ubuntu: 24.04
             containerd: v1.7.21
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
@@ -154,7 +158,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-22.04: cgroup v1, ubuntu-22.04: cgroup v2
+        # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
           - ubuntu: 20.04
             containerd: v1.6.31
@@ -169,7 +173,15 @@ jobs:
             rootlesskit: v1.1.1
             target: test-integration-rootless
           - ubuntu: 22.04
-            containerd: main
+            containerd: main  # v2.0.0-rc.X
+            rootlesskit: v2.3.1
+            target: test-integration-rootless
+          - ubuntu: 24.04
+            containerd: v1.7.18
+            rootlesskit: v1.1.1
+            target: test-integration-rootless
+          - ubuntu: 24.04
+            containerd: main  # v2.0.0-rc.X
             rootlesskit: v2.3.1
             target: test-integration-rootless
           - ubuntu: 20.04
@@ -180,12 +192,12 @@ jobs:
             containerd: v1.7.21
             rootlesskit: v2.3.1
             target: test-integration-rootless-port-slirp4netns
-          - ubuntu: 22.04
+          - ubuntu: 24.04
             containerd: v1.7.21
             rootlesskit: v1.1.1
             target: test-integration-rootless-port-slirp4netns
-          - ubuntu: 22.04
-            containerd: main
+          - ubuntu: 24.04
+            containerd: main  # v2.0.0-rc.X
             rootlesskit: v2.3.1
             target: test-integration-rootless-port-slirp4netns
     env:
@@ -194,7 +206,22 @@ jobs:
       ROOTLESSKIT_VERSION: "${{ matrix.rootlesskit }}"
       TEST_TARGET: "${{ matrix.target }}"
     steps:
-      - uses: actions/checkout@v4.1.1
+      - name: "Set up AppArmor"
+        if: matrix.ubuntu == '24.04'
+        run: |
+          cat <<EOT | sudo tee "/etc/apparmor.d/usr.local.bin.rootlesskit"
+          abi <abi/4.0>,
+          include <tunables/global>
+
+          /usr/local/bin/rootlesskit flags=(unconfined) {
+            userns,
+
+            # Site-specific additions and overrides. See local/README for details.
+            include if exists <local/usr.local.bin.rootlesskit>
+          }
+          EOT
+          sudo systemctl restart apparmor.service
+      - uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 1
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -205,7 +232,7 @@ jobs:
         run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=1 ${TEST_TARGET}
 
   cross:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       matrix:
@@ -223,8 +250,8 @@ jobs:
         run: GO_VERSION="$(echo ${{ matrix.go-version }} | sed -e s/.x//)" make artifacts
 
   test-integration-docker-compatibility:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    runs-on: ubuntu-22.04  # TODO: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4.1.1
         with:
@@ -302,9 +329,8 @@ jobs:
 
   test-integration-freebsd:
     name: FreeBSD
-    # "Larger" runner is needed for nested virtualization
-    # https://github.com/organizations/containerd/settings/actions/runners
-    runs-on: ubuntu-latest-4-cores
+    # ubuntu-24.04 lacks the vagrant package
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
 
     steps:

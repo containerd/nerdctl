@@ -323,7 +323,7 @@ RUN apt-get update && \
   apt-get install -qq -y \
   uidmap \
   openssh-server openssh-client
-# TODO: update containerized-systemd to enable sshd by default, or allow `systemctl wants <TARGET> sshd` here
+# TODO: update containerized-systemd to enable sshd by default, or allow `systemctl wants <TARGET> ssh` here
 RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
   useradd -m -s /bin/bash rootless && \
   mkdir -p -m 0700 /home/rootless/.ssh && \
