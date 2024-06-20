@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
@@ -47,7 +48,7 @@ func Remove(ctx context.Context, client *containerd.Client, volumes []string, op
 	var volumenames []string // nolint: prealloc
 	for _, name := range volumes {
 		if _, ok := usedVolumes[name]; ok {
-			return fmt.Errorf("volume %q is in use", name)
+			return fmt.Errorf("volume %q is in use (%w)", name, errdefs.ErrFailedPrecondition)
 		}
 		volumenames = append(volumenames, name)
 	}

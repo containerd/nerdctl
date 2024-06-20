@@ -42,8 +42,8 @@ func TestVolumeLs(t *testing.T) {
 	base.Cmd("volume", "create", vol3).AssertOK()
 	defer base.Cmd("volume", "rm", "-f", vol3).Run()
 
-	createFileWithSize(t, vol1, 102400)
-	createFileWithSize(t, vol2, 204800)
+	createFileWithSize(base, vol1, 102400)
+	createFileWithSize(base, vol2, 204800)
 
 	base.Cmd("volume", "ls", "--size").AssertOutWithFunc(func(stdout string) error {
 		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
@@ -279,10 +279,10 @@ func TestVolumeLsFilterSize(t *testing.T) {
 	base.Cmd("volume", "create", vol4).AssertOK()
 	defer base.Cmd("volume", "rm", "-f", vol4).Run()
 
-	createFileWithSize(t, vol1, 409600)
-	createFileWithSize(t, vol2, 1024000)
-	createFileWithSize(t, vol3, 409600)
-	createFileWithSize(t, vol4, 1024000)
+	createFileWithSize(base, vol1, 409600)
+	createFileWithSize(base, vol2, 1024000)
+	createFileWithSize(base, vol3, 409600)
+	createFileWithSize(base, vol4, 1024000)
 
 	base.Cmd("volume", "ls", "--size", "--filter", "size=1024000").AssertOutWithFunc(func(stdout string) error {
 		var lines = strings.Split(strings.TrimSpace(stdout), "\n")

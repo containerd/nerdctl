@@ -49,10 +49,12 @@ func Prune(ctx context.Context, client *containerd.Client, options types.VolumeP
 			continue
 		}
 		if !options.All {
-			val, ok := (*volume.Labels)[labels.AnonymousVolumes]
-			//skip the named volume and only remove the anonymous volume
-			if !ok || val != "" {
-				continue
+			if volume.Labels != nil {
+				val, ok := (*volume.Labels)[labels.AnonymousVolumes]
+				//skip the named volume and only remove the anonymous volume
+				if !ok || val != "" {
+					continue
+				}
 			}
 		}
 		removeNames = append(removeNames, volume.Name)
