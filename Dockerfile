@@ -54,7 +54,7 @@ ARG SOCI_SNAPSHOTTER_VERSION=0.7.0
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.5.0 AS xx
 
 
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS build-base-debian
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS build-base-debian
 COPY --from=xx / /
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
@@ -63,7 +63,7 @@ ARG TARGETARCH
 # libbtrfs: for containerd
 # libseccomp: for runc and bypass4netns
 RUN xx-apt-get update && \
-  xx-apt-get install -y binutils gcc libc6-dev libbtrfs-dev libseccomp-dev
+  xx-apt-get install -y binutils gcc libc6-dev libbtrfs-dev libseccomp-dev pkg-config
 
 FROM build-base-debian AS build-containerd
 ARG TARGETARCH
