@@ -18,12 +18,12 @@
 # TODO: verify commit hash
 
 # Basic deps
-ARG CONTAINERD_VERSION=v1.7.18
+ARG CONTAINERD_VERSION=v2.0.0-rc.3
 ARG RUNC_VERSION=v1.1.13
-ARG CNI_PLUGINS_VERSION=v1.5.0
+ARG CNI_PLUGINS_VERSION=v1.5.1
 
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.13.2
+ARG BUILDKIT_VERSION=v0.14.1
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.15.1
 # Extra deps: Encryption
@@ -37,7 +37,7 @@ ARG BYPASS4NETNS_VERSION=v0.4.1
 ARG FUSE_OVERLAYFS_VERSION=v1.13
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.8
 # Extra deps: IPFS
-ARG KUBO_VERSION=v0.27.0
+ARG KUBO_VERSION=v0.29.0
 # Extra deps: Init
 ARG TINI_VERSION=v0.19.0
 # Extra deps: Debug
@@ -47,9 +47,9 @@ ARG BUILDG_VERSION=v0.4.1
 ARG GO_VERSION=1.22
 ARG UBUNTU_VERSION=22.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
-ARG GOTESTSUM_VERSION=v1.11.0
-ARG NYDUS_VERSION=v2.2.4
-ARG SOCI_SNAPSHOTTER_VERSION=0.4.0
+ARG GOTESTSUM_VERSION=v1.12.0
+ARG NYDUS_VERSION=v2.2.5
+ARG SOCI_SNAPSHOTTER_VERSION=0.6.1
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.4.0 AS xx
 
@@ -65,18 +65,6 @@ ARG TARGETARCH
 RUN xx-apt-get update && \
   xx-apt-get install -y binutils gcc libc6-dev libbtrfs-dev libseccomp-dev
 
-# runc still requires Go 1.21
-# https://github.com/opencontainers/runc/issues/4233
-FROM --platform=$BUILDPLATFORM golang:1.21-bullseye AS build-base-debian-go121
-COPY --from=xx / /
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && \
-  apt-get install -y git pkg-config dpkg-dev
-ARG TARGETARCH
-# libseccomp: for runc
-RUN xx-apt-get update && \
-  xx-apt-get install -y binutils gcc libc6-dev libseccomp-dev
-
 FROM build-base-debian AS build-containerd
 ARG TARGETARCH
 ARG CONTAINERD_VERSION
@@ -88,9 +76,7 @@ RUN git checkout ${CONTAINERD_VERSION} && \
 RUN GO=xx-go make STATIC=1 && \
   cp -a bin/containerd bin/containerd-shim-runc-v2 bin/ctr /out/$TARGETARCH
 
-# runc still requires Go 1.21
-# https://github.com/opencontainers/runc/issues/4233
-FROM build-base-debian-go121 AS build-runc
+FROM build-base-debian AS build-runc
 ARG RUNC_VERSION
 ARG TARGETARCH
 RUN git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc

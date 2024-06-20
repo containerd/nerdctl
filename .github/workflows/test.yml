@@ -85,7 +85,7 @@ jobs:
           - ubuntu: 22.04
             containerd: v1.7.18
           - ubuntu: 22.04
-            containerd: main
+            containerd: main # v2.0.0-rc.X
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -181,7 +181,7 @@ jobs:
             rootlesskit: v1.1.1
             target: test-integration-rootless
           - ubuntu: 22.04
-            containerd: main
+            containerd: main # v2.0.0-rc.X
             rootlesskit: v2.1.0
             target: test-integration-rootless
           - ubuntu: 20.04
@@ -197,7 +197,7 @@ jobs:
             rootlesskit: v1.1.1
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 22.04
-            containerd: main
+            containerd: main # v2.0.0-rc.X
             rootlesskit: v2.1.0
             target: test-integration-rootless-port-slirp4netns
     env:
@@ -237,7 +237,7 @@ jobs:
           cache: true
           check-latest: true
       - name: "Cross"
-        run: GO_VERSION="$(echo ${{ matrix.go-version }} | sed -e s/.x//)" make artifacts
+        run: GO_VERSION="$(echo ${{ matrix.go-version }} | sed -e s/.x//)" make binaries
 
   test-integration-docker-compatibility:
     runs-on: ubuntu-22.04
