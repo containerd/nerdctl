@@ -220,7 +220,7 @@ jobs:
           cache: true
           check-latest: true
       - name: "Cross"
-        run: GO_VERSION="$(echo ${{ matrix.go-version }} | sed -e s/.x//)" make artifacts
+        run: GO_VERSION="$(echo ${{ matrix.go-version }} | sed -e s/.x//)" make binaries
 
   test-integration-docker-compatibility:
     runs-on: ubuntu-22.04
