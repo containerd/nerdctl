@@ -55,7 +55,7 @@ func TestNetworkCreate(t *testing.T) {
 	base.Cmd("network", "create", testNetwork+"-1").AssertOK()
 	defer base.Cmd("network", "rm", testNetwork+"-1").AssertOK()
 
-	base.Cmd("run", "--rm", "--net", testNetwork+"-1", testutil.CommonImage, "ip", "route").AssertNoOut(net.IPAM.Config[0].Subnet)
+	base.Cmd("run", "--rm", "--net", testNetwork+"-1", testutil.CommonImage, "ip", "route").AssertOutNotContains(net.IPAM.Config[0].Subnet)
 }
 
 func TestNetworkCreateIPv6(t *testing.T) {

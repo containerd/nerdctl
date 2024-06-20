@@ -38,9 +38,9 @@ func TestVolumePrune(t *testing.T) {
 	base.Cmd("volume", "prune", "-f").AssertOutContains(vID)
 	base.Cmd("volume", "prune", "-a", "-f").AssertOutContains(tID + "-2")
 	base.Cmd("volume", "ls").AssertOutContains(tID + "-1")
-	base.Cmd("volume", "ls").AssertNoOut(tID + "-2")
+	base.Cmd("volume", "ls").AssertOutNotContains(tID + "-2")
 
 	base.Cmd("rm", "-f", tID).AssertOK()
 	base.Cmd("volume", "prune", "-a", "-f").AssertOK()
-	base.Cmd("volume", "ls").AssertNoOut(tID + "-1")
+	base.Cmd("volume", "ls").AssertOutNotContains(tID + "-1")
 }

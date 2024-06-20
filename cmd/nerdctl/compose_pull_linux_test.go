@@ -62,5 +62,5 @@ volumes:
 	projectName := comp.ProjectName()
 	t.Logf("projectName=%q", projectName)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "pull", "db").AssertNoOut("wordpress")
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "pull", "db").AssertOutNotContains("wordpress")
 }

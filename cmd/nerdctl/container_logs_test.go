@@ -40,9 +40,9 @@ bar`
 
 	//test since / until flag
 	time.Sleep(3 * time.Second)
-	base.Cmd("logs", "--since", "1s", containerName).AssertNoOut(expected)
+	base.Cmd("logs", "--since", "1s", containerName).AssertOutNotContains(expected)
 	base.Cmd("logs", "--since", "10s", containerName).AssertOutContains(expected)
-	base.Cmd("logs", "--until", "10s", containerName).AssertNoOut(expected)
+	base.Cmd("logs", "--until", "10s", containerName).AssertOutNotContains(expected)
 	base.Cmd("logs", "--until", "1s", containerName).AssertOutContains(expected)
 
 	// Ensure follow flag works as expected:
@@ -142,7 +142,7 @@ func TestLogsWithFailingContainer(t *testing.T) {
 	// AssertOutContains also asserts that the exit code of the logs command == 0,
 	// even when the container is failing
 	base.Cmd("logs", "-f", containerName).AssertOutContains("bar")
-	base.Cmd("logs", "-f", containerName).AssertNoOut("baz")
+	base.Cmd("logs", "-f", containerName).AssertOutNotContains("baz")
 	base.Cmd("rm", "-f", containerName).AssertOK()
 }
 
@@ -203,7 +203,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 
 			base.Cmd("logs", containerName).AssertOutContains("foo")
 			base.Cmd("logs", containerName).AssertOutContains("bar")
-			base.Cmd("logs", containerName).AssertNoOut("baz")
+			base.Cmd("logs", containerName).AssertOutNotContains("baz")
 		}(t)
 	}
 }

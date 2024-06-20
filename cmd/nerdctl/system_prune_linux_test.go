@@ -58,11 +58,11 @@ func TestSystemPrune(t *testing.T) {
 	base.Cmd("images").AssertOutContains(testutil.ImageRepo(testutil.CommonImage))
 
 	base.Cmd("system", "prune", "-f", "--volumes", "--all").AssertOK()
-	base.Cmd("volume", "ls").AssertOutContains(vID) // docker system prune --all --volume does not prune named volume
-	base.Cmd("volume", "ls").AssertNoOut(vID2)      // docker system prune --all --volume prune anonymous volume
-	base.Cmd("ps", "-a").AssertNoOut(tID)
-	base.Cmd("network", "ls").AssertNoOut(nID)
-	base.Cmd("images").AssertNoOut(testutil.ImageRepo(testutil.CommonImage))
+	base.Cmd("volume", "ls").AssertOutContains(vID)     // docker system prune --all --volume does not prune named volume
+	base.Cmd("volume", "ls").AssertOutNotContains(vID2) // docker system prune --all --volume prune anonymous volume
+	base.Cmd("ps", "-a").AssertOutNotContains(tID)
+	base.Cmd("network", "ls").AssertOutNotContains(nID)
+	base.Cmd("images").AssertOutNotContains(testutil.ImageRepo(testutil.CommonImage))
 
 	if testutil.GetTarget() != testutil.Nerdctl {
 		t.Skip("test skipped for buildkitd is not available with docker-compatible tests")
