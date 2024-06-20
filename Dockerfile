@@ -65,18 +65,6 @@ ARG TARGETARCH
 RUN xx-apt-get update && \
   xx-apt-get install -y binutils gcc libc6-dev libbtrfs-dev libseccomp-dev
 
-# runc still requires Go 1.21
-# https://github.com/opencontainers/runc/issues/4233
-FROM --platform=$BUILDPLATFORM golang:1.21-bullseye AS build-base-debian-go121
-COPY --from=xx / /
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && \
-  apt-get install -y git pkg-config dpkg-dev
-ARG TARGETARCH
-# libseccomp: for runc
-RUN xx-apt-get update && \
-  xx-apt-get install -y binutils gcc libc6-dev libseccomp-dev
-
 FROM build-base-debian AS build-containerd
 ARG TARGETARCH
 ARG CONTAINERD_VERSION
@@ -88,9 +76,7 @@ RUN git checkout ${CONTAINERD_VERSION} && \
 RUN GO=xx-go make STATIC=1 && \
   cp -a bin/containerd bin/containerd-shim-runc-v2 bin/ctr /out/$TARGETARCH
 
-# runc still requires Go 1.21
-# https://github.com/opencontainers/runc/issues/4233
-FROM build-base-debian-go121 AS build-runc
+FROM build-base-debian AS build-runc
 ARG RUNC_VERSION
 ARG TARGETARCH
 RUN git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc
