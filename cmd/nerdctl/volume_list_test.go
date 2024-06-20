@@ -33,17 +33,26 @@ func TestVolumeLs(t *testing.T) {
 	testutil.DockerIncompatible(t)
 
 	var vol1, vol2, vol3 = tID + "vol-1", tID + "vol-2", tID + "empty"
-	base.Cmd("volume", "create", vol1).AssertOK()
-	defer base.Cmd("volume", "rm", "-f", vol1).Run()
 
-	base.Cmd("volume", "create", vol2).AssertOK()
-	defer base.Cmd("volume", "rm", "-f", vol2).Run()
+	tearDown := func() {
+		base.Cmd("volume", "rm", "-f", vol1).Run()
+		base.Cmd("volume", "rm", "-f", vol2).Run()
+		base.Cmd("volume", "rm", "-f", vol3).Run()
+	}
 
-	base.Cmd("volume", "create", vol3).AssertOK()
-	defer base.Cmd("volume", "rm", "-f", vol3).Run()
+	tearUp := func() {
+		base.Cmd("volume", "create", vol1).AssertOK()
+		base.Cmd("volume", "create", vol2).AssertOK()
+		base.Cmd("volume", "create", vol3).AssertOK()
+		createFileWithSize(base, vol1, 102400)
+		createFileWithSize(base, vol2, 204800)
+	}
 
-	createFileWithSize(t, vol1, 102400)
-	createFileWithSize(t, vol2, 204800)
+	tearDown()
+	t.Cleanup(func() {
+		tearDown()
+	})
+	tearUp()
 
 	base.Cmd("volume", "ls", "--size").AssertOutWithFunc(func(stdout string) error {
 		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
@@ -89,175 +98,238 @@ func TestVolumeLsFilter(t *testing.T) {
 
 	var vol1, vol2, vol3, vol4 = tID + "vol-1", tID + "vol-2", tID + "vol-3", tID + "vol-4"
 	var label1, label2, label3, label4 = tID + "=label-1", tID + "=label-2", tID + "=label-3", tID + "-group=label-4"
-	base.Cmd("volume", "create", "--label="+label1, "--label="+label4, vol1).AssertOK()
-	defer base.Cmd("volume", "rm", "-f", vol1).Run()
 
-	base.Cmd("volume", "create", "--label="+label2, "--label="+label4, vol2).AssertOK()
-	defer base.Cmd("volume", "rm", "-f", vol2).Run()
+	tearDown := func() {
+		base.Cmd("volume", "rm", "-f", vol1).Run()
+		base.Cmd("volume", "rm", "-f", vol2).Run()
+		base.Cmd("volume", "rm", "-f", vol3).Run()
+		base.Cmd("volume", "rm", "-f", vol4).Run()
+	}
 
-	base.Cmd("volume", "create", "--label="+label3, vol3).AssertOK()
-	defer base.Cmd("volume", "rm", "-f", vol3).Run()
+	tearUp := func() {
+		base.Cmd("volume", "create", "--label="+label1, "--label="+label4, vol1).AssertOK()
+		base.Cmd("volume", "create", "--label="+label2, "--label="+label4, vol2).AssertOK()
+		base.Cmd("volume", "create", "--label="+label3, vol3).AssertOK()
+		base.Cmd("volume", "create", vol4).AssertOK()
+	}
 
-	base.Cmd("volume", "create", vol4).AssertOK()
-	defer base.Cmd("volume", "rm", "-f", vol4).Run()
-
-	base.Cmd("volume", "ls", "--quiet").AssertOutWithFunc(func(stdout string) error {
-		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 4 {
-			return errors.New("expected at least 4 lines")
-		}
-		volNames := map[string]struct{}{
-			vol1: {},
-			vol2: {},
-			vol3: {},
-			vol4: {},
-		}
-
-		var numMatches = 0
-		for _, name := range lines {
-			_, ok := volNames[name]
-			if !ok {
-				continue
-			}
-			numMatches++
-		}
-		if len(volNames) != numMatches {
-			return fmt.Errorf("expected %d volumes, got: %d", len(volNames), numMatches)
-		}
-		return nil
+	tearDown()
+	t.Cleanup(func() {
+		tearDown()
 	})
+	tearUp()
 
-	base.Cmd("volume", "ls", "--quiet", "--filter", "label="+tID).AssertOutWithFunc(func(stdout string) error {
-		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 3 {
-			return errors.New("expected at least 3 lines")
-		}
-		volNames := map[string]struct{}{
-			vol1: {},
-			vol2: {},
-			vol3: {},
-		}
+	testCases := []struct {
+		description string
+		command     func(tID string)
+	}{
+		{
+			description: "no filter",
+			command: func(tID string) {
+				base.Cmd("volume", "ls", "--quiet").AssertOutWithFunc(func(stdout string) error {
+					var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+					if len(lines) < 4 {
+						return errors.New("expected at least 4 lines")
+					}
+					volNames := map[string]struct{}{
+						vol1: {},
+						vol2: {},
+						vol3: {},
+						vol4: {},
+					}
 
-		for _, name := range lines {
-			_, ok := volNames[name]
-			if !ok {
-				return fmt.Errorf("unexpected volume %s found", name)
-			}
-		}
-		return nil
-	})
+					var numMatches = 0
+					for _, name := range lines {
+						_, ok := volNames[name]
+						if !ok {
+							continue
+						}
+						numMatches++
+					}
+					if len(volNames) != numMatches {
+						return fmt.Errorf("expected %d volumes, got: %d", len(volNames), numMatches)
+					}
+					return nil
+				})
+			},
+		},
+		{
+			description: "label=" + tID,
+			command: func(tID string) {
+				base.Cmd("volume", "ls", "--quiet", "--filter", "label="+tID).AssertOutWithFunc(func(stdout string) error {
+					var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+					if len(lines) < 3 {
+						return errors.New("expected at least 3 lines")
+					}
+					volNames := map[string]struct{}{
+						vol1: {},
+						vol2: {},
+						vol3: {},
+					}
 
-	base.Cmd("volume", "ls", "--quiet", "--filter", "label="+label2).AssertOutWithFunc(func(stdout string) error {
-		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 1 {
-			return errors.New("expected at least 1 lines")
-		}
-		volNames := map[string]struct{}{
-			vol2: {},
-		}
+					for _, name := range lines {
+						_, ok := volNames[name]
+						if !ok {
+							return fmt.Errorf("unexpected volume %s found", name)
+						}
+					}
+					return nil
+				})
+			},
+		},
+		{
+			description: "label=" + label2,
+			command: func(tID string) {
+				base.Cmd("volume", "ls", "--quiet", "--filter", "label="+label2).AssertOutWithFunc(func(stdout string) error {
+					var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+					if len(lines) < 1 {
+						return errors.New("expected at least 1 lines")
+					}
+					volNames := map[string]struct{}{
+						vol2: {},
+					}
 
-		for _, name := range lines {
-			if name == "" {
-				continue
-			}
-			_, ok := volNames[name]
-			if !ok {
-				return fmt.Errorf("unexpected volume %s found", name)
-			}
-		}
-		return nil
-	})
+					for _, name := range lines {
+						if name == "" {
+							continue
+						}
+						_, ok := volNames[name]
+						if !ok {
+							return fmt.Errorf("unexpected volume %s found", name)
+						}
+					}
+					return nil
+				})
+			},
+		},
+		{
+			description: "label=" + tID + "=",
+			command: func(tID string) {
+				base.Cmd("volume", "ls", "--quiet", "--filter", "label="+tID+"=").AssertOutWithFunc(func(stdout string) error {
+					var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+					if len(lines) > 0 {
+						for _, name := range lines {
+							if name != "" {
+								return fmt.Errorf("unexpected volumes %d found", len(lines))
+							}
+						}
+					}
+					return nil
+				})
+			},
+		},
+		{
+			description: "label=" + label1 + " label=" + label2,
+			command: func(tID string) {
+				base.Cmd("volume", "ls", "--quiet", "--filter", "label="+label1, "--filter", "label="+label2).AssertOutWithFunc(func(stdout string) error {
+					var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+					if len(lines) > 0 {
+						for _, name := range lines {
+							if name != "" {
+								return fmt.Errorf("unexpected volumes %d found", len(lines))
+							}
+						}
+					}
+					return nil
+				})
 
-	base.Cmd("volume", "ls", "--quiet", "--filter", "label="+tID+"=").AssertOutWithFunc(func(stdout string) error {
-		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) > 0 {
-			for _, name := range lines {
-				if name != "" {
-					return fmt.Errorf("unexpected volumes %d found", len(lines))
-				}
-			}
-		}
-		return nil
-	})
+			},
+		},
+		{
+			description: "label=" + tID + " label=" + label4,
+			command: func(tID string) {
+				base.Cmd("volume", "ls", "--quiet", "--filter", "label="+tID, "--filter", "label="+label4).AssertOutWithFunc(func(stdout string) error {
+					var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+					if len(lines) < 2 {
+						return errors.New("expected at least 2 lines")
+					}
+					volNames := map[string]struct{}{
+						vol1: {},
+						vol2: {},
+					}
 
-	base.Cmd("volume", "ls", "--quiet", "--filter", "label="+label1, "--filter", "label="+label2).AssertOutWithFunc(func(stdout string) error {
-		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) > 0 {
-			for _, name := range lines {
-				if name != "" {
-					return fmt.Errorf("unexpected volumes %d found", len(lines))
-				}
-			}
-		}
-		return nil
-	})
+					for _, name := range lines {
+						_, ok := volNames[name]
+						if !ok {
+							return fmt.Errorf("unexpected volume %s found", name)
+						}
+					}
+					return nil
+				})
+			},
+		},
+		{
+			description: "name=" + vol1,
+			command: func(tID string) {
+				base.Cmd("volume", "ls", "--quiet", "--filter", "name="+vol1).AssertOutWithFunc(func(stdout string) error {
+					var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+					if len(lines) < 1 {
+						return errors.New("expected at least 1 lines")
+					}
+					volNames := map[string]struct{}{
+						vol1: {},
+					}
 
-	base.Cmd("volume", "ls", "--quiet", "--filter", "label="+tID, "--filter", "label="+label4).AssertOutWithFunc(func(stdout string) error {
-		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return errors.New("expected at least 2 lines")
-		}
-		volNames := map[string]struct{}{
-			vol1: {},
-			vol2: {},
-		}
+					for _, name := range lines {
+						_, ok := volNames[name]
+						if !ok {
+							return fmt.Errorf("unexpected volume %s found", name)
+						}
+					}
+					return nil
+				})
+			},
+		},
+		{
+			description: "name=vol-3",
+			command: func(tID string) {
+				base.Cmd("volume", "ls", "--quiet", "--filter", "name=vol-3").
+					AssertOutWithFunc(func(stdout string) error {
+						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+						if len(lines) < 1 {
+							return errors.New("expected at least 1 lines")
+						}
+						volNames := map[string]struct{}{
+							vol3: {},
+						}
 
-		for _, name := range lines {
-			_, ok := volNames[name]
-			if !ok {
-				return fmt.Errorf("unexpected volume %s found", name)
-			}
-		}
-		return nil
-	})
+						for _, name := range lines {
+							_, ok := volNames[name]
+							if !ok {
+								return fmt.Errorf("unexpected volume %s found", name)
+							}
+						}
+						return nil
+					})
+			},
+		},
+		{
+			description: "name=vol2 name=vol1",
+			command: func(tID string) {
+				base.Cmd("volume", "ls", "--quiet", "--filter", "name=vol2", "--filter", "name=vol1").
+					AssertOutWithFunc(func(stdout string) error {
+						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+						if len(lines) > 0 {
+							for _, name := range lines {
+								if name != "" {
+									return fmt.Errorf("unexpected volumes %d found", len(lines))
+								}
+							}
+						}
+						return nil
+					})
+			},
+		},
+	}
 
-	base.Cmd("volume", "ls", "--quiet", "--filter", "name="+vol1).AssertOutWithFunc(func(stdout string) error {
-		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 1 {
-			return errors.New("expected at least 1 lines")
-		}
-		volNames := map[string]struct{}{
-			vol1: {},
-		}
+	for _, test := range testCases {
+		currentTest := test
+		t.Run(currentTest.description, func(tt *testing.T) {
+			tt.Parallel()
+			currentTest.command(tID)
+		})
+	}
 
-		for _, name := range lines {
-			_, ok := volNames[name]
-			if !ok {
-				return fmt.Errorf("unexpected volume %s found", name)
-			}
-		}
-		return nil
-	})
-
-	base.Cmd("volume", "ls", "--quiet", "--filter", "name=vol-3").AssertOutWithFunc(func(stdout string) error {
-		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 1 {
-			return errors.New("expected at least 1 lines")
-		}
-		volNames := map[string]struct{}{
-			vol3: {},
-		}
-
-		for _, name := range lines {
-			_, ok := volNames[name]
-			if !ok {
-				return fmt.Errorf("unexpected volume %s found", name)
-			}
-		}
-		return nil
-	})
-
-	base.Cmd("volume", "ls", "--quiet", "--filter", "name=vol2", "--filter", "name=vol1").AssertOutWithFunc(func(stdout string) error {
-		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) > 0 {
-			for _, name := range lines {
-				if name != "" {
-					return fmt.Errorf("unexpected volumes %d found", len(lines))
-				}
-			}
-		}
-		return nil
-	})
 }
 
 func TestVolumeLsFilterSize(t *testing.T) {
@@ -267,107 +339,142 @@ func TestVolumeLsFilterSize(t *testing.T) {
 
 	var vol1, vol2, vol3, vol4 = tID + "volsize-1", tID + "volsize-2", tID + "volsize-3", tID + "volsize-4"
 	var label1, label2, label3, label4 = tID + "=label-1", tID + "=label-2", tID + "=label-3", tID + "-group=label-4"
-	base.Cmd("volume", "create", "--label="+label1, "--label="+label4, vol1).AssertOK()
-	defer base.Cmd("volume", "rm", "-f", vol1).Run()
 
-	base.Cmd("volume", "create", "--label="+label2, "--label="+label4, vol2).AssertOK()
-	defer base.Cmd("volume", "rm", "-f", vol2).Run()
+	tearDown := func() {
+		base.Cmd("volume", "rm", "-f", vol1).Run()
+		base.Cmd("volume", "rm", "-f", vol2).Run()
+		base.Cmd("volume", "rm", "-f", vol3).Run()
+		base.Cmd("volume", "rm", "-f", vol4).Run()
+	}
 
-	base.Cmd("volume", "create", "--label="+label3, vol3).AssertOK()
-	defer base.Cmd("volume", "rm", "-f", vol3).Run()
+	tearUp := func() {
+		base.Cmd("volume", "create", "--label="+label1, "--label="+label4, vol1).AssertOK()
+		base.Cmd("volume", "create", "--label="+label2, "--label="+label4, vol2).AssertOK()
+		base.Cmd("volume", "create", "--label="+label3, vol3).AssertOK()
+		base.Cmd("volume", "create", vol4).AssertOK()
 
-	base.Cmd("volume", "create", vol4).AssertOK()
-	defer base.Cmd("volume", "rm", "-f", vol4).Run()
+		createFileWithSize(base, vol1, 409600)
+		createFileWithSize(base, vol2, 1024000)
+		createFileWithSize(base, vol3, 409600)
+		createFileWithSize(base, vol4, 1024000)
+	}
 
-	createFileWithSize(t, vol1, 409600)
-	createFileWithSize(t, vol2, 1024000)
-	createFileWithSize(t, vol3, 409600)
-	createFileWithSize(t, vol4, 1024000)
-
-	base.Cmd("volume", "ls", "--size", "--filter", "size=1024000").AssertOutWithFunc(func(stdout string) error {
-		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 3 {
-			return errors.New("expected at least 3 lines")
-		}
-
-		var tab = tabutil.NewReader("VOLUME NAME\tDIRECTORY\tSIZE")
-		var err = tab.ParseHeader(lines[0])
-		if err != nil {
-			return err
-		}
-		volNames := map[string]struct{}{
-			vol2: {},
-			vol4: {},
-		}
-
-		for _, line := range lines {
-			name, _ := tab.ReadRow(line, "VOLUME NAME")
-			if name == "VOLUME NAME" {
-				continue
-			}
-			_, ok := volNames[name]
-			if !ok {
-				return fmt.Errorf("unexpected volume %s found", name)
-			}
-		}
-		return nil
+	tearDown()
+	t.Cleanup(func() {
+		tearDown()
 	})
+	tearUp()
 
-	base.Cmd("volume", "ls", "--size", "--filter", "size>=1024000", "--filter", "size<=2048000").AssertOutWithFunc(func(stdout string) error {
-		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 3 {
-			return errors.New("expected at least 3 lines")
-		}
+	testCases := []struct {
+		description string
+		command     func(tID string)
+	}{
+		{
+			description: "size=1024000",
+			command: func(tID string) {
+				base.Cmd("volume", "ls", "--size", "--filter", "size=1024000").AssertOutWithFunc(func(stdout string) error {
+					var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+					if len(lines) < 3 {
+						return errors.New("expected at least 3 lines")
+					}
 
-		var tab = tabutil.NewReader("VOLUME NAME\tDIRECTORY\tSIZE")
-		var err = tab.ParseHeader(lines[0])
-		if err != nil {
-			return err
-		}
-		volNames := map[string]struct{}{
-			vol2: {},
-			vol4: {},
-		}
+					var tab = tabutil.NewReader("VOLUME NAME\tDIRECTORY\tSIZE")
+					var err = tab.ParseHeader(lines[0])
+					if err != nil {
+						return err
+					}
+					volNames := map[string]struct{}{
+						vol2: {},
+						vol4: {},
+					}
 
-		for _, line := range lines {
-			name, _ := tab.ReadRow(line, "VOLUME NAME")
-			if name == "VOLUME NAME" {
-				continue
-			}
-			_, ok := volNames[name]
-			if !ok {
-				return fmt.Errorf("unexpected volume %s found", name)
-			}
-		}
-		return nil
-	})
+					for _, line := range lines {
+						name, _ := tab.ReadRow(line, "VOLUME NAME")
+						if name == "VOLUME NAME" {
+							continue
+						}
+						_, ok := volNames[name]
+						if !ok {
+							return fmt.Errorf("unexpected volume %s found", name)
+						}
+					}
+					return nil
+				})
+			},
+		},
+		{
+			description: "size>=1024000 size<=2048000",
+			command: func(tID string) {
+				base.Cmd("volume", "ls", "--size", "--filter", "size>=1024000", "--filter", "size<=2048000").AssertOutWithFunc(func(stdout string) error {
+					var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+					if len(lines) < 3 {
+						return errors.New("expected at least 3 lines")
+					}
 
-	base.Cmd("volume", "ls", "--size", "--filter", "size>204800", "--filter", "size<1024000").AssertOutWithFunc(func(stdout string) error {
-		var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 3 {
-			return errors.New("expected at least 3 lines")
-		}
+					var tab = tabutil.NewReader("VOLUME NAME\tDIRECTORY\tSIZE")
+					var err = tab.ParseHeader(lines[0])
+					if err != nil {
+						return err
+					}
+					volNames := map[string]struct{}{
+						vol2: {},
+						vol4: {},
+					}
 
-		var tab = tabutil.NewReader("VOLUME NAME\tDIRECTORY\tSIZE")
-		var err = tab.ParseHeader(lines[0])
-		if err != nil {
-			return err
-		}
-		volNames := map[string]struct{}{
-			vol1: {},
-			vol3: {},
-		}
+					for _, line := range lines {
+						name, _ := tab.ReadRow(line, "VOLUME NAME")
+						if name == "VOLUME NAME" {
+							continue
+						}
+						_, ok := volNames[name]
+						if !ok {
+							return fmt.Errorf("unexpected volume %s found", name)
+						}
+					}
+					return nil
+				})
+			},
+		},
+		{
+			description: "size>204800 size<1024000",
+			command: func(tID string) {
+				base.Cmd("volume", "ls", "--size", "--filter", "size>204800", "--filter", "size<1024000").AssertOutWithFunc(func(stdout string) error {
+					var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+					if len(lines) < 3 {
+						return errors.New("expected at least 3 lines")
+					}
 
-		for _, line := range lines {
-			name, _ := tab.ReadRow(line, "VOLUME NAME")
-			if name == "VOLUME NAME" {
-				continue
-			}
-			_, ok := volNames[name]
-			if !ok {
-				return fmt.Errorf("unexpected volume %s found", name)
-			}
-		}
-		return nil
-	})
+					var tab = tabutil.NewReader("VOLUME NAME\tDIRECTORY\tSIZE")
+					var err = tab.ParseHeader(lines[0])
+					if err != nil {
+						return err
+					}
+					volNames := map[string]struct{}{
+						vol1: {},
+						vol3: {},
+					}
+
+					for _, line := range lines {
+						name, _ := tab.ReadRow(line, "VOLUME NAME")
+						if name == "VOLUME NAME" {
+							continue
+						}
+						_, ok := volNames[name]
+						if !ok {
+							return fmt.Errorf("unexpected volume %s found", name)
+						}
+					}
+					return nil
+				})
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		currentTest := test
+		t.Run(currentTest.description, func(tt *testing.T) {
+			tt.Parallel()
+			currentTest.command(tID)
+		})
+	}
 }

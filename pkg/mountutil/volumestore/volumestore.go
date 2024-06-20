@@ -31,21 +31,33 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
-// Path returns a string like `/var/lib/nerdctl/1935db59/volumes/default`.
-func Path(dataStore, ns string) (string, error) {
-	if dataStore == "" || ns == "" {
-		return "", errdefs.ErrInvalidArgument
-	}
-	volStore := filepath.Join(dataStore, "volumes", ns)
-	return volStore, nil
+const (
+	dataDirName        = "_data"
+	volumeJSONFileName = "volume.json"
+)
+
+// VolumeStore allows manipulating containers' volumes
+// Every method is protected by a file lock, and is safe to use concurrently.
+// If you need to use multiple methods successively (for example: List, then Remove), you should instead optin
+// for an explicit durable lock, by first calling `Lock` then `defer Unlock`.
+// This is also true (and important to do) for any operation that is going to inspect containers before going for
+// creation or removal of volumes.
+type VolumeStore interface {
+	Create(name string, labels []string) (*native.Volume, error)
+	Get(name string, size bool) (*native.Volume, error)
+	List(size bool) (map[string]native.Volume, error)
+	Remove(names []string) (removed []string, warns []error, err error)
+	Lock() error
+	Unlock() error
 }
 
 // New returns a VolumeStore
 func New(dataStore, ns string) (VolumeStore, error) {
-	volStoreDir, err := Path(dataStore, ns)
-	if err != nil {
-		return nil, err
+	if dataStore == "" || ns == "" {
+		return nil, errdefs.ErrInvalidArgument
 	}
+	volStoreDir := filepath.Join(dataStore, "volumes", ns)
+
 	if err := os.MkdirAll(volStoreDir, 0700); err != nil {
 		return nil, err
 	}
@@ -55,175 +67,246 @@ func New(dataStore, ns string) (VolumeStore, error) {
 	return vs, nil
 }
 
-// DataDirName is "_data"
-const DataDirName = "_data"
-
-const volumeJSONFileName = "volume.json"
-
-type VolumeStore interface {
-	Dir() string
-	Create(name string, labels []string) (*native.Volume, error)
-	// Get may return ErrNotFound
-	Get(name string, size bool) (*native.Volume, error)
-	List(size bool) (map[string]native.Volume, error)
-	Remove(names []string) (removed []string, warns []error, err error)
-}
-
 type volumeStore struct {
-	// dir is a string like `/var/lib/nerdctl/1935db59/volumes/default`.
-	// dir is guaranteed to exist.
-	dir string
+	dir    string
+	locked *os.File
 }
 
-func (vs *volumeStore) Dir() string {
-	return vs.dir
+// Lock should be called when you need an exclusive lock on the volume store for an extended period of time
+// spanning multiple atomic method calls.
+// Be sure to defer Unlock to release it.
+func (vs *volumeStore) Lock() error {
+	if vs.locked != nil {
+		return fmt.Errorf("cannot lock already locked volume store %q", vs.dir)
+	}
+
+	dirFile, err := lockutil.Lock(vs.dir)
+	if err != nil {
+		return err
+	}
+
+	vs.locked = dirFile
+	return nil
 }
 
+// Unlock should be called once done (see Lock) to release the persistent lock on the store
+func (vs *volumeStore) Unlock() error {
+	if vs.locked == nil {
+		return fmt.Errorf("cannot unlock already unlocked volume store %q", vs.dir)
+	}
+
+	defer func() {
+		vs.locked = nil
+	}()
+
+	if err := lockutil.Unlock(vs.locked); err != nil {
+		return fmt.Errorf("failed to unlock volume store %q: %w", vs.dir, err)
+	}
+	return nil
+}
+
+// Create will create a new volume, or return an existing one if there is one already by that name
+// Besides a possible locking error, it might return ErrInvalidArgument, hard filesystem errors, json errors
 func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, error) {
 	if err := identifiers.Validate(name); err != nil {
-		return nil, fmt.Errorf("malformed volume name: %w", err)
+		return nil, fmt.Errorf("malformed volume name: %w (%w)", err, errdefs.ErrInvalidArgument)
 	}
 	volPath := filepath.Join(vs.dir, name)
-	volDataPath := filepath.Join(volPath, DataDirName)
+	volDataPath := filepath.Join(volPath, dataDirName)
 	volFilePath := filepath.Join(volPath, volumeJSONFileName)
-	fn := func() (err error) {
-		if err := os.Mkdir(volPath, 0700); err != nil {
-			return err
-		}
-		defer func() {
-			if err != nil {
-				os.Remove(volPath)
-			}
-		}()
-		if err := os.Mkdir(volDataPath, 0755); err != nil {
-			return err
-		}
-		defer func() {
-			if err != nil {
-				os.Remove(volDataPath)
-			}
-		}()
 
-		type volumeOpts struct {
+	vol := &native.Volume{}
+
+	fn := func() error {
+		// Failures that are not os.ErrExist must exit here
+		if err := os.Mkdir(volPath, 0700); err != nil && !errors.Is(err, os.ErrExist) {
+			return err
+		}
+		if err := os.Mkdir(volDataPath, 0755); err != nil && !errors.Is(err, os.ErrExist) {
+			return err
+		}
+
+		volOpts := struct {
 			Labels map[string]string `json:"labels"`
+		}{}
+
+		if len(labels) > 0 {
+			volOpts.Labels = strutil.ConvertKVStringsToMap(labels)
 		}
 
-		labelsMap := strutil.ConvertKVStringsToMap(labels)
-
-		volOpts := volumeOpts{
-			Labels: labelsMap,
-		}
-
+		// Failure here must exit, no need to clean-up
 		labelsJSON, err := json.MarshalIndent(volOpts, "", "    ")
 		if err != nil {
 			return err
 		}
 
-		defer func() {
-			if err != nil {
-				if _, statErr := os.Stat(volFilePath); statErr != nil && !os.IsNotExist(statErr) {
-					log.L.Warnf("failed to stat volume file: %v", statErr)
-					return
-				} else if statErr == nil {
-					os.Remove(volFilePath)
-				}
+		// If it does not exist
+		if _, err = os.Stat(volFilePath); err != nil {
+			// Any other stat error than "not exists", hard exit
+			if !errors.Is(err, os.ErrNotExist) {
+				return err
 			}
-		}()
-		return os.WriteFile(volFilePath, labelsJSON, 0644)
+			// Error was does not exist, so, write it
+			if err = os.WriteFile(volFilePath, labelsJSON, 0644); err != nil {
+				return err
+			}
+		} else {
+			log.L.Warnf("volume %q already exists and will be returned as-is", name)
+		}
+
+		// At this point, we either have a volume, or created a new one successfully
+		vol.Name = name
+		vol.Mountpoint = volDataPath
+
+		return nil
 	}
 
-	if err := lockutil.WithDirLock(vs.dir, fn); err != nil && !errors.Is(err, os.ErrExist) {
+	var err error
+	if vs.locked == nil {
+		err = lockutil.WithDirLock(vs.dir, fn)
+	} else {
+		err = fn()
+	}
+	if err != nil {
 		return nil, err
 	}
 
-	// If other new actions that might fail are added below, we should move the cleanup function out of fn.
-	vol := &native.Volume{
-		Name:       name,
-		Mountpoint: volDataPath,
-	}
 	return vol, nil
 }
 
+// Get retrieves a native volume from the store
+// Besides a possible locking error, it might return ErrInvalidArgument, ErrNotFound, or a filesystem error
 func (vs *volumeStore) Get(name string, size bool) (*native.Volume, error) {
 	if err := identifiers.Validate(name); err != nil {
-		return nil, fmt.Errorf("malformed name %s: %w", name, err)
+		return nil, fmt.Errorf("malformed volume name %q: %w", name, err)
 	}
-	dataPath := filepath.Join(vs.dir, name, DataDirName)
-	if _, err := os.Stat(dataPath); err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("volume %q not found: %w", name, errdefs.ErrNotFound)
+	volPath := filepath.Join(vs.dir, name)
+	volDataPath := filepath.Join(volPath, dataDirName)
+	volFilePath := filepath.Join(volPath, volumeJSONFileName)
+
+	vol := &native.Volume{}
+
+	fn := func() error {
+		if _, err := os.Stat(volDataPath); err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("%q does not exist in the volume store: %w", name, errdefs.ErrNotFound)
+			}
+			return fmt.Errorf("filesystem error reading %q from the volume store: %w", name, err)
 		}
+
+		volumeDataBytes, err := os.ReadFile(volFilePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("%q labels file does not exist in the volume store: %w", name, errdefs.ErrNotFound)
+			}
+			return fmt.Errorf("filesystem error reading %q from the volume store: %w", name, err)
+		}
+
+		vol.Name = name
+		vol.Mountpoint = volDataPath
+		vol.Labels = labels(volumeDataBytes)
+
+		if size {
+			vol.Size, err = volumeSize(vol)
+			if err != nil {
+				return fmt.Errorf("failed reading volume size for %q from the volume store: %w", name, err)
+			}
+		}
+		return nil
+	}
+
+	var err error
+	if vs.locked == nil {
+		err = lockutil.WithDirLock(vs.dir, fn)
+	} else {
+		err = fn()
+	}
+	if err != nil {
 		return nil, err
 	}
 
-	volFilePath := filepath.Join(vs.dir, name, volumeJSONFileName)
-	volumeDataBytes, err := os.ReadFile(volFilePath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		} // on else, volume.json does not exists should not be blocking for inspect operation
-	}
-
-	entry := native.Volume{
-		Name:       name,
-		Mountpoint: dataPath,
-		Labels:     Labels(volumeDataBytes),
-	}
-	if size {
-		entry.Size, err = Size(&entry)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &entry, nil
+	return vol, nil
 }
 
+// List retrieves all known volumes from the store.
+// Besides a possible locking error, it might return ErrNotFound (indicative that the store is in a broken state), or a filesystem error
 func (vs *volumeStore) List(size bool) (map[string]native.Volume, error) {
-	dEnts, err := os.ReadDir(vs.dir)
-	if err != nil {
-		return nil, err
+	res := map[string]native.Volume{}
+
+	fn := func() error {
+		dirEntries, err := os.ReadDir(vs.dir)
+		if err != nil {
+			return fmt.Errorf("filesystem error while trying to list volumes from the volume store: %w", err)
+		}
+
+		for _, dirEntry := range dirEntries {
+			name := dirEntry.Name()
+			vol, err := vs.Get(name, size)
+			if err != nil {
+				return err
+			}
+			res[name] = *vol
+		}
+		return nil
 	}
 
-	res := make(map[string]native.Volume, len(dEnts))
-	for _, dEnt := range dEnts {
-		name := dEnt.Name()
-		vol, err := vs.Get(name, size)
+	var err error
+	// Since we are calling Get, we need to acquire a global lock
+	if vs.locked == nil {
+		err = vs.Lock()
 		if err != nil {
-			return res, err
+			return nil, err
 		}
-		res[name] = *vol
+		defer vs.Unlock()
+	}
+	err = fn()
+	if err != nil {
+		return nil, err
 	}
 	return res, nil
 }
 
+// Remove will remove one or more containers
+// Besides a possible locking error, it might return hard filesystem errors
+// Any other failure (ErrInvalidArgument, ErrNotFound) is a soft error that will be added the `warns`
 func (vs *volumeStore) Remove(names []string) (removed []string, warns []error, err error) {
 	fn := func() error {
 		for _, name := range names {
+			// Invalid name, soft error
 			if err := identifiers.Validate(name); err != nil {
-				warns = append(warns, fmt.Errorf("malformed volume name: %w", err))
+				warns = append(warns, fmt.Errorf("malformed volume name: %w (%w)", err, errdefs.ErrInvalidArgument))
 				continue
 			}
 			dir := filepath.Join(vs.dir, name)
-			if _, err := os.Stat(dir); os.IsNotExist(err) {
-				warns = append(warns, fmt.Errorf("no such volume: %s", name))
-				continue
+			// Does not exist, soft error
+			if _, err := os.Stat(dir); err != nil {
+				if os.IsNotExist(err) {
+					warns = append(warns, fmt.Errorf("no such volume: %s (%w)", name, errdefs.ErrNotFound))
+					continue
+				}
+				return fmt.Errorf("filesystem error while trying to remove volumes from the volume store: %w", err)
 			}
-			// This is a hard filesystem error. Exit on this.
+			// Hard filesystem error, hard error, and stop here
 			if err := os.RemoveAll(dir); err != nil {
-				return err
+				return fmt.Errorf("filesystem error while trying to remove volumes from the volume store: %w", err)
 			}
+			// Otherwise, add it the list of successfully removed
 			removed = append(removed, name)
 		}
 		return nil
 	}
 
-	if err := lockutil.WithDirLock(vs.dir, fn); err != nil {
-		return nil, nil, err
+	if vs.locked == nil {
+		err = lockutil.WithDirLock(vs.dir, fn)
+	} else {
+		err = fn()
 	}
-	return removed, warns, nil
+
+	return removed, warns, err
 }
 
-func Labels(b []byte) *map[string]string {
+// Private helpers
+func labels(b []byte) *map[string]string {
 	type volumeOpts struct {
 		Labels *map[string]string `json:"labels,omitempty"`
 	}
@@ -234,7 +317,7 @@ func Labels(b []byte) *map[string]string {
 	return vo.Labels
 }
 
-func Size(volume *native.Volume) (int64, error) {
+func volumeSize(volume *native.Volume) (int64, error) {
 	var size int64
 	var walkFn = func(_ string, info os.FileInfo, err error) error {
 		if err != nil {

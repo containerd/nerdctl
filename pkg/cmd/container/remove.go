@@ -132,6 +132,14 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 	if err != nil {
 		return err
 	}
+	// Note: technically, it is not strictly necessary to acquire an exclusive lock on the volume store here.
+	// Worst case scenario, we would fail removing anonymous volumes later on, which is a soft error, and which would
+	// only happen if we concurrently tried to remove the same container.
+	err = volStore.Lock()
+	if err != nil {
+		return err
+	}
+	defer volStore.Unlock()
 	// Decode IPC
 	ipc, err := ipcutil.DecodeIPCLabel(containerLabels[labels.IPC])
 	if err != nil {

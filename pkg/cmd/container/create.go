@@ -39,6 +39,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/flagutil"
 	"github.com/containerd/nerdctl/v2/pkg/idgen"
@@ -61,6 +62,17 @@ import (
 
 // Create will create a container.
 func Create(ctx context.Context, client *containerd.Client, args []string, netManager containerutil.NetworkOptionsManager, options types.ContainerCreateOptions) (containerd.Container, func(), error) {
+	// Acquire an exclusive lock on the volume store until we are done to avoid being raced by other volume operations
+	volStore, err := volume.Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = volStore.Lock()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer volStore.Unlock()
+
 	// simulate the behavior of double dash
 	newArg := []string{}
 	if len(args) >= 2 && args[1] == "--" {
@@ -151,7 +163,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 
 	var mountOpts []oci.SpecOpts
-	mountOpts, internalLabels.anonVolumes, internalLabels.mountPoints, err = generateMountOpts(ctx, client, ensuredImage, options)
+	mountOpts, internalLabels.anonVolumes, internalLabels.mountPoints, err = generateMountOpts(ctx, client, ensuredImage, volStore, options)
 	if err != nil {
 		return nil, nil, err
 	}
