@@ -26,26 +26,13 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/ipfs"
-	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/signutil"
-	"github.com/containerd/nerdctl/v2/pkg/strutil"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // Pull pulls an image specified by `rawRef`.
 func Pull(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePullOptions) error {
-	ocispecPlatforms, err := platformutil.NewOCISpecPlatformSlice(options.AllPlatforms, options.Platform)
-	if err != nil {
-		return err
-	}
-
-	unpack, err := strutil.ParseBoolOrAuto(options.Unpack)
-	if err != nil {
-		return err
-	}
-
-	_, err = EnsureImage(ctx, client, rawRef, ocispecPlatforms, "always", unpack, options.Quiet, options)
+	_, err := EnsureImage(ctx, client, rawRef, options)
 	if err != nil {
 		return err
 	}
@@ -54,7 +41,7 @@ func Pull(ctx context.Context, client *containerd.Client, rawRef string, options
 }
 
 // EnsureImage pulls an image either from ipfs or from registry.
-func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, ocispecPlatforms []v1.Platform, pull string, unpack *bool, quiet bool, options types.ImagePullOptions) (*imgutil.EnsuredImage, error) {
+func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePullOptions) (*imgutil.EnsuredImage, error) {
 	var ensured *imgutil.EnsuredImage
 
 	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
@@ -75,8 +62,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 			ipfsPath = dir
 		}
 
-		ensured, err = ipfs.EnsureImage(ctx, client, options.Stdout, options.Stderr, options.GOptions.Snapshotter, scheme, ref,
-			pull, ocispecPlatforms, unpack, quiet, ipfsPath, options.RFlags)
+		ensured, err = ipfs.EnsureImage(ctx, client, scheme, ref, ipfsPath, options)
 		if err != nil {
 			return nil, err
 		}
@@ -88,8 +74,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 		return nil, err
 	}
 
-	ensured, err = imgutil.EnsureImage(ctx, client, options.Stdout, options.Stderr, options.GOptions.Snapshotter, ref,
-		pull, options.GOptions.InsecureRegistry, options.GOptions.HostsDir, ocispecPlatforms, unpack, quiet, options.RFlags)
+	ensured, err = imgutil.EnsureImage(ctx, client, ref, options)
 	if err != nil {
 		return nil, err
 	}

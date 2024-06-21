@@ -18,6 +18,8 @@ package types
 
 import (
 	"io"
+
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ImageListOptions specifies options for `nerdctl image list`.
@@ -191,12 +193,13 @@ type ImagePullOptions struct {
 	Stderr        io.Writer
 	GOptions      GlobalCommandOptions
 	VerifyOptions ImageVerifyOptions
-	// Unpack the image for the current single platform (auto/true/false)
-	Unpack string
-	// Pull content for a specific platform
-	Platform []string
-	// Pull content for all platforms
-	AllPlatforms bool
+	// Unpack the image for the current single platform.
+	// If nil, it will unpack automatically if only 1 platform is specified.
+	Unpack *bool
+	// Content for specific platforms. Empty if `--all-platforms` is true
+	OCISpecPlatform []v1.Platform
+	// Pull mode
+	Mode string
 	// Suppress verbose output
 	Quiet bool
 	// multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)
