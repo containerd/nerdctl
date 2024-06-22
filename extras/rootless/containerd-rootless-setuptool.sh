@@ -139,7 +139,7 @@ propagate_env_from() {
 	pid="$1"
 	env="$(sed -e "s/\x0/'\n/g" <"/proc/${pid}/environ" | sed -Ee "s/^[^=]*=/export \0'/g")"
 	shift
-	for key in $@; do
+	for key in "$@"; do
 		eval $(echo "$env" | grep "^export ${key=}")
 	done
 }

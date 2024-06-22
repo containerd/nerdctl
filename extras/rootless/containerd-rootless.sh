@@ -153,7 +153,7 @@ if [ -z $_CONTAINERD_ROOTLESS_CHILD ]; then
 		--copy-up=/etc --copy-up=/run --copy-up=/var/lib \
 		--propagation=rslave \
 		$CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS \
-		$0 $@
+		$0 "$@"
 else
 	[ $_CONTAINERD_ROOTLESS_CHILD = 1 ]
 	# Remove the *symlinks* for the existing files in the parent namespace if any,
@@ -193,5 +193,5 @@ else
 		chcon system_u:object_r:iptables_var_run_t:s0 /run
 	fi
 
-	exec containerd $@
+	exec containerd "$@"
 fi
