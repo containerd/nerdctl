@@ -67,7 +67,7 @@ if [ -z $_CONTAINERD_ROOTLESS_CHILD ]; then
 	fi
 	case "$1" in
 	"check" | "install" | "uninstall")
-		echo "Did you mean 'containerd-rootless-setuptool.sh $@' ?"
+		echo "Did you mean 'containerd-rootless-setuptool.sh $*' ?"
 		exit 1
 		;;
 	esac
