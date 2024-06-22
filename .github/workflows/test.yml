@@ -55,7 +55,7 @@ jobs:
       - name: yamllint-lint
         run: yamllint .
       - name: shellcheck
-        run: shellcheck `fd -e sh`
+        run: shellcheck $(find . -name '*.sh')
 
   test-unit:
     runs-on: ubuntu-22.04
