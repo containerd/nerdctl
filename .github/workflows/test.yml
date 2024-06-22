@@ -32,6 +32,8 @@ jobs:
           args: --verbose
       - name: yamllint-lint
         run: yamllint .
+      - name: shellcheck
+        run: shellcheck $(find . -name '*.sh')
 
   test-unit:
     runs-on: ubuntu-24.04
