@@ -140,6 +140,7 @@ Basic flags:
 - :whale: :blue_square: `-i, --interactive`: Keep STDIN open even if not attached"
 - :whale: :blue_square: `-t, --tty`: Allocate a pseudo-TTY
   - :warning: WIP: currently `-t` conflicts with `-d`
+- :whale: `-sig-proxy`: Proxy received signals to the process (default true)
 - :whale: :blue_square: `-d, --detach`: Run container in background and print container ID
 - :whale: `--restart=(no|always|on-failure|unless-stopped)`: Restart policy to apply when a container exits
   - Default: "no"
@@ -388,7 +389,7 @@ IPFS flags:
 Unimplemented `docker run` flags:
     `--attach`, `--blkio-weight-device`, `--cpu-rt-*`, `--device-*`,
     `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
-    `--link*`, `--publish-all`, `--sig-proxy`, `--storage-opt`,
+    `--link*`, `--publish-all`, `--storage-opt`,
     `--userns`, `--volume-driver`
 
 ### :whale: :blue_square: nerdctl exec

@@ -45,6 +45,7 @@ type RunOptions struct {
 	Detach       bool
 	NoDeps       bool
 	Tty          bool
+	SigProxy     bool
 	Interactive  bool
 	Rm           bool
 	User         string
