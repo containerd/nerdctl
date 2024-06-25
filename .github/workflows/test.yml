@@ -15,7 +15,7 @@ env:
 jobs:
   project:
     name: Project Checks
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4.1.7
@@ -36,7 +36,7 @@ jobs:
         working-directory: src/github.com/containerd/nerdctl
 
   lint:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4.1.7
@@ -56,7 +56,7 @@ jobs:
         run: yamllint .
 
   test-unit:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4.1.7
@@ -76,7 +76,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
+        # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
           - ubuntu: 20.04
             containerd: v1.6.33
@@ -85,7 +85,11 @@ jobs:
           - ubuntu: 22.04
             containerd: v1.7.18
           - ubuntu: 22.04
-            containerd: main # v2.0.0-rc.X
+            containerd: main  # v2.0.0-rc.X
+          - ubuntu: 24.04
+            containerd: v1.7.18
+          - ubuntu: 24.04
+            containerd: main  # v2.0.0-rc.X
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -117,9 +121,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
+        # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
-          - ubuntu: 22.04
+          - ubuntu: 24.04
             containerd: v1.7.18
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
@@ -166,7 +170,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-22.04: cgroup v1, ubuntu-22.04: cgroup v2
+        # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
           - ubuntu: 20.04
             containerd: v1.6.33
@@ -181,7 +185,15 @@ jobs:
             rootlesskit: v1.1.1
             target: test-integration-rootless
           - ubuntu: 22.04
-            containerd: main # v2.0.0-rc.X
+            containerd: main  # v2.0.0-rc.X
+            rootlesskit: v2.1.0
+            target: test-integration-rootless
+          - ubuntu: 24.04
+            containerd: v1.7.18
+            rootlesskit: v1.1.1
+            target: test-integration-rootless
+          - ubuntu: 24.04
+            containerd: main  # v2.0.0-rc.X
             rootlesskit: v2.1.0
             target: test-integration-rootless
           - ubuntu: 20.04
@@ -192,12 +204,12 @@ jobs:
             containerd: v1.7.18
             rootlesskit: v2.1.0
             target: test-integration-rootless-port-slirp4netns
-          - ubuntu: 22.04
+          - ubuntu: 24.04
             containerd: v1.7.18
             rootlesskit: v1.1.1
             target: test-integration-rootless-port-slirp4netns
-          - ubuntu: 22.04
-            containerd: main # v2.0.0-rc.X
+          - ubuntu: 24.04
+            containerd: main  # v2.0.0-rc.X
             rootlesskit: v2.1.0
             target: test-integration-rootless-port-slirp4netns
     env:
@@ -206,6 +218,21 @@ jobs:
       ROOTLESSKIT_VERSION: "${{ matrix.rootlesskit }}"
       TEST_TARGET: "${{ matrix.target }}"
     steps:
+      - name: "Set up AppArmor"
+        if: matrix.ubuntu == '24.04'
+        run: |
+          cat <<EOT | sudo tee "/etc/apparmor.d/usr.local.bin.rootlesskit"
+          abi <abi/4.0>,
+          include <tunables/global>
+
+          /usr/local/bin/rootlesskit flags=(unconfined) {
+            userns,
+
+            # Site-specific additions and overrides. See local/README for details.
+            include if exists <local/usr.local.bin.rootlesskit>
+          }
+          EOT
+          sudo systemctl restart apparmor.service
       - uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 1
@@ -222,7 +249,7 @@ jobs:
           command: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=1 ${TEST_TARGET}
 
   cross:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       matrix:
@@ -240,7 +267,7 @@ jobs:
         run: GO_VERSION="$(echo ${{ matrix.go-version }} | sed -e s/.x//)" make binaries
 
   test-integration-docker-compatibility:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04  # TODO: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4.1.7
@@ -251,26 +278,9 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
           check-latest: true
-      - name: "Install Docker v26"
+      - name: "Print docker info"
         run: |
           set -eux -o pipefail
-          # Uninstall the preinstalled Docker
-          sudo apt-get remove docker-* containerd.io
-          # Enable BuildKit explicitly
-          sudo apt-get install -y moreutils
-          cat /etc/docker/daemon.json
-          jq '.features.buildkit = true' </etc/docker/daemon.json  | sudo sponge /etc/docker/daemon.json
-          cat /etc/docker/daemon.json
-          # Download Docker packages
-          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/containerd.io_1.6.33-1_amd64.deb
-          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce_26.1.4-1~ubuntu.22.04~jammy_amd64.deb
-          curl -OSl https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce-cli_26.1.4-1~ubuntu.22.04~jammy_amd64.deb
-          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-buildx-plugin_0.14.1-1~ubuntu.22.04~jammy_amd64.deb
-          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-compose-plugin_2.27.1-1~ubuntu.22.04~jammy_amd64.deb
-          # Install Docker
-          sudo apt-get install -y ./*.deb
-          rm -f ./*.deb
-          # Print docker info
           docker info
           docker version
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -328,6 +338,7 @@ jobs:
 
   test-integration-freebsd:
     name: FreeBSD
+    # ubuntu-24.04 lacks the vagrant package
     runs-on: ubuntu-22.04
     timeout-minutes: 20
 

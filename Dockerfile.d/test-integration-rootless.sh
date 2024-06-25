@@ -27,7 +27,7 @@ if [[ "$(id -u)" = "0" ]]; then
 	fi
 
 	# Switch to the rootless user via SSH
-	systemctl start sshd
+	systemctl start ssh
 	exec ssh -o StrictHostKeyChecking=no rootless@localhost "$0" "$@"
 else
 	containerd-rootless-setuptool.sh install
@@ -48,7 +48,7 @@ else
 [proxy_plugins]
   [proxy_plugins."stargz"]
     type = "snapshot"
-    address = "/run/user/1000/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+    address = "/run/user/$(id -u)/containerd-stargz-grpc/containerd-stargz-grpc.sock"
 EOF
 	systemctl --user restart containerd.service
 	containerd-rootless-setuptool.sh -- install-ipfs --init --offline # offline ipfs daemon for testing

@@ -45,7 +45,7 @@ ARG BUILDG_VERSION=v0.4.1
 
 # Test deps
 ARG GO_VERSION=1.22
-ARG UBUNTU_VERSION=22.04
+ARG UBUNTU_VERSION=24.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
 ARG GOTESTSUM_VERSION=v1.12.0
 ARG NYDUS_VERSION=v2.2.5
@@ -324,7 +324,7 @@ RUN apt-get update && \
   apt-get install -qq -y \
   uidmap \
   openssh-server openssh-client
-# TODO: update containerized-systemd to enable sshd by default, or allow `systemctl wants <TARGET> sshd` here
+# TODO: update containerized-systemd to enable sshd by default, or allow `systemctl wants <TARGET> ssh` here
 RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
   useradd -m -s /bin/bash rootless && \
   mkdir -p -m 0700 /home/rootless/.ssh && \
