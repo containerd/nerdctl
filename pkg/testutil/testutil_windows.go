@@ -23,8 +23,9 @@ import (
 	"sync"
 
 	"github.com/Microsoft/hcsshim"
-	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"golang.org/x/sys/windows/svc/mgr"
+
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 )
 
 const (

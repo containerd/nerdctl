@@ -28,15 +28,16 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/containerd/containerd"
+	"github.com/docker/go-units"
+	"github.com/opencontainers/image-spec/identity"
+	"github.com/spf13/cobra"
+
+	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
-	"github.com/docker/go-units"
-	"github.com/opencontainers/image-spec/identity"
-	"github.com/spf13/cobra"
 )
 
 func newHistoryCommand() *cobra.Command {

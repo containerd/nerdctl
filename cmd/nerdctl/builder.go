@@ -22,9 +22,10 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
-	"github.com/spf13/cobra"
 )
 
 func newBuilderCommand() *cobra.Command {

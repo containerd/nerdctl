@@ -21,11 +21,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/docker/go-connections/nat"
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"github.com/docker/go-connections/nat"
-	"gotest.tools/v3/assert"
 )
 
 func TestContainerInspectContainsPortConfig(t *testing.T) {

@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/containerd/mount"
-	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/v2/core/mount"
+	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	mocks "github.com/containerd/nerdctl/v2/pkg/mountutil/mountutilmock"
 	"github.com/opencontainers/runtime-spec/specs-go"

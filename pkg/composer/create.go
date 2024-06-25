@@ -23,11 +23,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
-	"golang.org/x/sync/errgroup"
 )
 
 // FYI: https://github.com/docker/compose/blob/v2.14.1/pkg/api/api.go#L423

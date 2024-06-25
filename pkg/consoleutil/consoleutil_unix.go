@@ -23,9 +23,10 @@ import (
 	"os"
 	"os/signal"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/containerd/console"
 	"github.com/containerd/log"
-	"golang.org/x/sys/unix"
 )
 
 // HandleConsoleResize resizes the console.

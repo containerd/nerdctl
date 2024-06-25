@@ -22,10 +22,11 @@ import (
 	"io"
 	"sync"
 
-	"github.com/containerd/containerd"
+	"golang.org/x/sync/errgroup"
+
+	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
-	"golang.org/x/sync/errgroup"
 )
 
 // Pause pauses service containers belonging to `services`.

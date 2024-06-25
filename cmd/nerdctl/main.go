@@ -25,6 +25,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
+	"github.com/pelletier/go-toml/v2"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/config"
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
@@ -32,11 +37,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/logging"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/version"
-	"github.com/fatih/color"
-	"github.com/pelletier/go-toml/v2"
-
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 const (

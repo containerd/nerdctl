@@ -17,8 +17,9 @@
 package main
 
 import (
-	"github.com/containerd/nerdctl/v2/pkg/apparmorutil"
 	"github.com/spf13/cobra"
+
+	"github.com/containerd/nerdctl/v2/pkg/apparmorutil"
 )
 
 func shellCompleteApparmorProfiles(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {

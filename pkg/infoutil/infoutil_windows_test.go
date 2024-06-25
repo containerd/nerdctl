@@ -19,11 +19,12 @@ package infoutil
 import (
 	"testing"
 
-	mocks "github.com/containerd/nerdctl/v2/pkg/infoutil/infoutilmock"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 	"gotest.tools/v3/assert"
+
+	mocks "github.com/containerd/nerdctl/v2/pkg/infoutil/infoutilmock"
 )
 
 func setUpMocks(t *testing.T) *mocks.MockWindowsInfoUtil {

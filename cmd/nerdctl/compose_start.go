@@ -21,14 +21,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/containerd/containerd"
+	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
+
+	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
-	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 )
 
 func newComposeStartCommand() *cobra.Command {

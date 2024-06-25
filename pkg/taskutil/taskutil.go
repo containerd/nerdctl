@@ -29,14 +29,15 @@ import (
 	"syscall"
 
 	"github.com/Masterminds/semver/v3"
+	"golang.org/x/term"
+
 	"github.com/containerd/console"
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/cio"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/cioutil"
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
-	"golang.org/x/term"
 )
 
 // NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108

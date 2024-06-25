@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/containerd/log"
 	"golang.org/x/sys/windows"
+
+	"github.com/containerd/log"
 )
 
 func WithDirLock(dir string, fn func() error) error {

@@ -26,9 +26,9 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/containerd/containerd"
 	_ "github.com/containerd/containerd/api/events" // Register grpc event types
-	"github.com/containerd/containerd/events"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/events"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"

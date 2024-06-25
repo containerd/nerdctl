@@ -23,7 +23,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/containerd/containerd/identifiers"
+	"github.com/containerd/containerd/v2/pkg/identifiers"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"

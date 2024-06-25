@@ -17,10 +17,11 @@
 package main
 
 import (
+	"github.com/spf13/cobra"
+
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
-	"github.com/spf13/cobra"
 )
 
 func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {

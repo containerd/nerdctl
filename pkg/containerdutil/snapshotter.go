@@ -19,8 +19,8 @@ package containerdutil
 import (
 	"context"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/snapshots"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/snapshots"
 )
 
 // SnapshotService should be called to get a new caching snapshotter

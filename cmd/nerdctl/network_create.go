@@ -19,12 +19,12 @@ package main
 import (
 	"fmt"
 
-	"github.com/containerd/containerd/identifiers"
+	"github.com/spf13/cobra"
+
+	"github.com/containerd/containerd/v2/pkg/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/network"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
-
-	"github.com/spf13/cobra"
 )
 
 func newNetworkCreateCommand() *cobra.Command {

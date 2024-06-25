@@ -40,9 +40,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/labels"
-	ctdsnapshotters "github.com/containerd/containerd/pkg/snapshotters"
+	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/containerd/v2/pkg/labels"
+	ctdsnapshotters "github.com/containerd/containerd/v2/pkg/snapshotters"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 

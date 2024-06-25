@@ -18,7 +18,7 @@ package infoutil
 
 import (
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
-	"github.com/docker/docker/pkg/sysinfo"
+	"github.com/containerd/nerdctl/v2/pkg/sysinfo"
 )
 
 const UnameO = "FreeBSD"

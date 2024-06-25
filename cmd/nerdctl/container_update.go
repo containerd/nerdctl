@@ -23,8 +23,12 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/containers"
+	"github.com/docker/go-units"
+	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/spf13/cobra"
+
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -34,9 +38,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/typeurl/v2"
-	"github.com/docker/go-units"
-	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/spf13/cobra"
 )
 
 type updateResourceOptions struct {

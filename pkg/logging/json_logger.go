@@ -26,7 +26,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/containerd/containerd/runtime/v2/logging"
+	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/logging/jsonfile"

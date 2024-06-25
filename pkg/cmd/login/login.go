@@ -27,18 +27,19 @@ import (
 	"os"
 	"strings"
 
-	"github.com/containerd/containerd/remotes/docker"
-	"github.com/containerd/containerd/remotes/docker/config"
-	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/v2/pkg/api/types"
-	"github.com/containerd/nerdctl/v2/pkg/errutil"
-	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/errdefs"
 	"golang.org/x/net/context/ctxhttp"
 	"golang.org/x/term"
+
+	"github.com/containerd/containerd/v2/core/remotes/docker"
+	"github.com/containerd/containerd/v2/core/remotes/docker/config"
+	"github.com/containerd/log"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/errutil"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 )
 
 const unencryptedPasswordWarning = `WARNING: Your password will be stored unencrypted in %s.

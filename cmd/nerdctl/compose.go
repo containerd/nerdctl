@@ -17,8 +17,9 @@
 package main
 
 import (
-	"github.com/containerd/nerdctl/v2/pkg/composer"
 	"github.com/spf13/cobra"
+
+	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
 func newComposeCommand() *cobra.Command {

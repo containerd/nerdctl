@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
@@ -55,7 +55,7 @@ snapshotter = "dummy-snapshotter-via-toml"
 	base := testutil.NewBase(t)
 
 	// [Default]
-	base.Cmd("info", "-f", "{{.Driver}}").AssertOutExactly(containerd.DefaultSnapshotter + "\n")
+	base.Cmd("info", "-f", "{{.Driver}}").AssertOutExactly(defaults.DefaultSnapshotter + "\n")
 
 	// [TOML, Default]
 	base.Env = append(base.Env, "NERDCTL_TOML="+tomlPath)

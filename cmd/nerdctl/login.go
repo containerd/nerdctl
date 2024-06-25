@@ -21,11 +21,11 @@ import (
 	"io"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/login"
-
-	"github.com/spf13/cobra"
 )
 
 func newLoginCommand() *cobra.Command {
