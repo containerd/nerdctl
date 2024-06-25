@@ -40,6 +40,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/labels/k8slabels"
 	"github.com/containerd/nerdctl/v2/pkg/nsutil"
 	"github.com/containerd/nerdctl/v2/pkg/portutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -561,4 +562,22 @@ func GetContainerVolumes(containerLabels map[string]string) []*ContainerVolume {
 		vols = append(vols, volumes...)
 	}
 	return vols
+}
+
+func GetContainerName(containerLabels map[string]string) string {
+	if name, ok := containerLabels[labels.Name]; ok {
+		return name
+	}
+
+	if ns, ok := containerLabels[k8slabels.PodNamespace]; ok {
+		if podName, ok := containerLabels[k8slabels.PodName]; ok {
+			if containerName, ok := containerLabels[k8slabels.ContainerName]; ok {
+				// Container
+				return fmt.Sprintf("k8s://%s/%s/%s", ns, podName, containerName)
+			}
+			// Pod sandbox
+			return fmt.Sprintf("k8s://%s/%s", ns, podName)
+		}
+	}
+	return ""
 }
