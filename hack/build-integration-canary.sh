@@ -28,10 +28,7 @@ readonly root
 # "Blacklisting" here means that any dependency which name is blacklisted will be left untouched, at the version
 # currently pinned in the Dockerfile.
 # This is convenient so that currently broken alpha/beta/RC can be held back temporarily to keep the build green
-
-# Currently pinned, see:
-# - https://github.com/containerd/nerdctl/pull/3153
-blacklist=(runc)
+blacklist=()
 
 # List all the repositories we depend on to build and run integration tests
 dependencies=(
@@ -219,6 +216,7 @@ canary::build::integration(){
   docker_args=(docker build -t test-integration --target test-integration)
 
   for dep in "${dependencies[@]}"; do
+    local bl=""
     shortname="${dep##*/}"
     [ "$shortname" != "plugins" ] || shortname="cni-plugins"
     [ "$shortname" != "fuse-overlayfs-snapshotter" ] || shortname="containerd-fuse-overlayfs"
