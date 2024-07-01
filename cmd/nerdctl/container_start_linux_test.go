@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -26,6 +27,8 @@ import (
 )
 
 func TestStartDetachKeys(t *testing.T) {
+	testutil.RequireExecutable(t, "unbuffer")
+
 	t.Parallel()
 
 	skipAttachForDocker(t)
@@ -60,4 +63,167 @@ func TestStartDetachKeys(t *testing.T) {
 		CmdOption(opts...).AssertOutContains("read detach keys")
 	container = base.InspectContainer(containerName)
 	assert.Equal(base.T, container.State.Running, true)
+}
+
+func TestStartInteractive(t *testing.T) {
+	testutil.RequireExecutable(t, "unbuffer")
+
+	t.Parallel()
+
+	containerName := testutil.Identifier(t)
+
+	needle := "expect to be echo-ed from stdin"
+	expectContainerName := "expect container name"
+
+	tests := []struct {
+		baseOp           string
+		baseInteractive  bool
+		baseTTY          bool
+		baseAttach       string
+		startInteractive bool
+		startAttach      bool
+		stdOutExpect     string
+	}{
+		{
+			"create",
+			false,
+			false,
+			"",
+			false,
+			false,
+			expectContainerName,
+		},
+		{
+			"create",
+			false,
+			false,
+			"",
+			true,
+			false,
+			"",
+		},
+		{
+			"create",
+			true,
+			false,
+			"",
+			false,
+			false,
+			expectContainerName,
+		},
+		{
+			"create",
+			true,
+			false,
+			"",
+			true,
+			false,
+			needle,
+		},
+		{
+			"create",
+			false,
+			true,
+			"",
+			false,
+			false,
+			expectContainerName,
+		},
+		/*
+			// Not clear what is supposed to happen in that case
+			{
+				"create",
+				false,
+				true,
+				"",
+				true,
+				false,
+				"",
+			},
+
+		*/
+		{
+			"create",
+			true,
+			true,
+			"",
+			false,
+			false,
+			expectContainerName,
+		},
+		/*
+			// Not clear what is supposed to happen in that case
+				{
+					"create",
+					true,
+					true,
+					"",
+					true,
+					false,
+					needle + "\n",
+				},
+
+		*/
+	}
+
+	for _, tt := range tests {
+		name := containerName + fmt.Sprintf("-op_%s-int_%t-tty_%t-att%s-sint_%t-satt_%t", tt.baseOp, tt.baseInteractive, tt.baseTTY, tt.baseAttach, tt.startInteractive, tt.startAttach)
+		args := []string{tt.baseOp, "--name", name}
+		stdOutExpect := tt.stdOutExpect
+		helper := []string{}
+		if stdOutExpect == expectContainerName {
+			stdOutExpect = name
+		}
+		if tt.baseInteractive {
+			args = append(args, "--interactive")
+		}
+
+		in := []byte("echo " + needle)
+
+		/*
+			if tt.baseTTY {
+				args = append(args, "--tty")
+				if tt.startInteractive {
+					helper = []string{"unbuffer", "-p"}
+					in = append(in, 1, 2)
+					if stdOutExpect != "" {
+						// stdOutExpect = stdOutExpect + string([]byte{1, 2})
+					}
+				}
+			}
+		*/
+
+		if stdOutExpect != "" {
+			stdOutExpect += "\n"
+		}
+		if tt.baseAttach != "" {
+			args = append(args, "--attach", tt.baseAttach)
+		}
+
+		startArgs := []string{"container", "start", "--detach-keys=ctrl-a,ctrl-b"}
+		if tt.startInteractive {
+			startArgs = append(startArgs, "--interactive")
+		}
+		if tt.startAttach {
+			startArgs = append(startArgs, "--attach")
+		}
+		startArgs = append(startArgs, name)
+
+		t.Run(name, func(tes *testing.T) {
+			base := testutil.NewBase(t)
+			tearDown := func() {
+				base.Cmd("container", "rm", "-f", name).Run()
+			}
+
+			tearDown()
+			tes.Cleanup(tearDown)
+
+			args = append(args, testutil.CommonImage)
+			base.Cmd(args...).AssertOK()
+
+			base.CmdWithHelper(helper, startArgs...).
+				CmdOption(testutil.WithStdin(bytes.NewReader(in))).
+				AssertOutExactly(stdOutExpect)
+		})
+	}
 }

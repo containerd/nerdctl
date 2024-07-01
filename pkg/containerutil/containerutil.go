@@ -209,7 +209,7 @@ func GenerateSharingPIDOpts(ctx context.Context, targetCon containerd.Container)
 }
 
 // Start starts `container` with `attach` flag. If `attach` is true, it will attach to the container's stdio.
-func Start(ctx context.Context, container containerd.Container, flagA bool, client *containerd.Client, detachKeys string) (err error) {
+func Start(ctx context.Context, container containerd.Container, flagA bool, flagI bool, client *containerd.Client, detachKeys string) (err error) {
 	// defer the storage of start error in the dedicated label
 	defer func() {
 		if err != nil {
@@ -271,7 +271,7 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 		}
 	}
 	detachC := make(chan struct{})
-	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, con, logURI, detachKeys, namespace, detachC)
+	task, err := taskutil.NewTask(ctx, client, container, flagA, flagI, flagT, !flagI, con, logURI, detachKeys, namespace, detachC)
 	if err != nil {
 		return err
 	}
@@ -279,7 +279,7 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
-	if !flagA {
+	if !flagA && !flagI {
 		return nil
 	}
 	if flagA && flagT {

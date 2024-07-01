@@ -30,6 +30,8 @@ type ContainerStartOptions struct {
 	Attach bool
 	// The key sequence for detaching a container.
 	DetachKeys string
+	// Interactive keep STDIN open even if not attached
+	Interactive bool
 }
 
 // ContainerKillOptions specifies options for `nerdctl (container) kill`.
