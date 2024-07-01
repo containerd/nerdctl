@@ -25,19 +25,19 @@ import (
 	"text/template"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/api/services/introspection/v1"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/docker/go-units"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/containerd/containerd/api/services/introspection/v1"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
-	"github.com/docker/go-units"
 )
 
 func Info(ctx context.Context, client *containerd.Client, options types.SystemInfoOptions) error {
@@ -153,13 +153,45 @@ func prettyPrintInfoDockerCompat(stdout io.Writer, stderr io.Writer, info *docke
 	// Storage Driver is not really Server concept for nerdctl, but mimics `docker info` output
 	fmt.Fprintf(w, " Storage Driver: %s\n", info.Driver)
 	fmt.Fprintf(w, " Logging Driver: %s\n", info.LoggingDriver)
-	fmt.Fprintf(w, " Cgroup Driver: %s\n", info.CgroupDriver)
-	fmt.Fprintf(w, " Cgroup Version: %s\n", info.CgroupVersion)
+	printF(w, " Cgroup Driver:  ", info.CgroupDriver)
+	printF(w, " Cgroup Version: ", info.CgroupVersion)
 	fmt.Fprintf(w, " Plugins:\n")
-	fmt.Fprintf(w, "  Log: %s\n", strings.Join(info.Plugins.Log, " "))
+	fmt.Fprintf(w, "  Log:     %s\n", strings.Join(info.Plugins.Log, " "))
 	fmt.Fprintf(w, "  Storage: %s\n", strings.Join(info.Plugins.Storage, " "))
+
+	// print Security options
+	printSecurityOptions(w, info.SecurityOptions)
+
+	fmt.Fprintf(w, " Kernel Version:   %s\n", info.KernelVersion)
+	fmt.Fprintf(w, " Operating System: %s\n", info.OperatingSystem)
+	fmt.Fprintf(w, " OSType:           %s\n", info.OSType)
+	fmt.Fprintf(w, " Architecture:     %s\n", info.Architecture)
+	fmt.Fprintf(w, " CPUs:             %d\n", info.NCPU)
+	fmt.Fprintf(w, " Total Memory:     %s\n", units.BytesSize(float64(info.MemTotal)))
+	fmt.Fprintf(w, " Name:             %s\n", info.Name)
+	fmt.Fprintf(w, " ID:               %s\n", info.ID)
+
+	fmt.Fprintln(w)
+	if len(info.Warnings) > 0 {
+		fmt.Fprintln(stderr, strings.Join(info.Warnings, "\n"))
+	}
+	return nil
+}
+
+func printF(w io.Writer, label string, dockerCompatInfo string) {
+	if dockerCompatInfo == "" {
+		return
+	}
+	fmt.Fprintf(w, " %s: %s\n", label, dockerCompatInfo)
+}
+
+func printSecurityOptions(w io.Writer, securityOptions []string) {
+	if len(securityOptions) == 0 {
+		return
+	}
+
 	fmt.Fprintf(w, " Security Options:\n")
-	for _, s := range info.SecurityOptions {
+	for _, s := range securityOptions {
 		m, err := strutil.ParseCSVMap(s)
 		if err != nil {
 			log.L.WithError(err).Warnf("unparsable security option %q", s)
@@ -175,21 +207,7 @@ func prettyPrintInfoDockerCompat(stdout io.Writer, stderr io.Writer, info *docke
 			if k == "name" {
 				continue
 			}
-			fmt.Fprintf(w, "   %s: %s\n", cases.Title(language.English).String(k), v)
+			fmt.Fprintf(w, "   %s:\t%s\n", cases.Title(language.English).String(k), v)
 		}
 	}
-	fmt.Fprintf(w, " Kernel Version: %s\n", info.KernelVersion)
-	fmt.Fprintf(w, " Operating System: %s\n", info.OperatingSystem)
-	fmt.Fprintf(w, " OSType: %s\n", info.OSType)
-	fmt.Fprintf(w, " Architecture: %s\n", info.Architecture)
-	fmt.Fprintf(w, " CPUs: %d\n", info.NCPU)
-	fmt.Fprintf(w, " Total Memory: %s\n", units.BytesSize(float64(info.MemTotal)))
-	fmt.Fprintf(w, " Name: %s\n", info.Name)
-	fmt.Fprintf(w, " ID: %s\n", info.ID)
-
-	fmt.Fprintln(w)
-	if len(info.Warnings) > 0 {
-		fmt.Fprintln(stderr, strings.Join(info.Warnings, "\n"))
-	}
-	return nil
 }
