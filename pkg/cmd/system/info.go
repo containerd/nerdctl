@@ -21,14 +21,10 @@ import (
 	"fmt"
 	"io"
 	"sort"
-	"strings"
 	"text/template"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/containerd/containerd/api/services/introspection/v1"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
@@ -36,8 +32,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
-	"github.com/containerd/nerdctl/v2/pkg/strutil"
-	"github.com/docker/go-units"
 )
 
 func Info(ctx context.Context, client *containerd.Client, options types.SystemInfoOptions) error {
@@ -92,7 +86,7 @@ func Info(ctx context.Context, client *containerd.Client, options types.SystemIn
 	case "native":
 		return prettyPrintInfoNative(options.Stdout, infoNative)
 	case "dockercompat":
-		return prettyPrintInfoDockerCompat(options.Stdout, options.Stderr, infoCompat, options.GOptions)
+		return infoutil.PrettyPrintInfoDockerCompat(options.Stdout, options.Stderr, infoCompat, options.GOptions)
 	}
 	return nil
 }
@@ -137,59 +131,6 @@ func prettyPrintInfoNative(w io.Writer, info *native.Info) error {
 	fmt.Fprintf(w, "containerd Plugins (disabled):\n")
 	for _, f := range disabledPlugins {
 		fmt.Fprintf(w, " - %s.%s\n", f.Type, f.ID)
-	}
-	return nil
-}
-
-func prettyPrintInfoDockerCompat(stdout io.Writer, stderr io.Writer, info *dockercompat.Info, globalOptions types.GlobalCommandOptions) error {
-	w := stdout
-	debug := globalOptions.Debug
-	fmt.Fprintf(w, "Client:\n")
-	fmt.Fprintf(w, " Namespace:\t%s\n", globalOptions.Namespace)
-	fmt.Fprintf(w, " Debug Mode:\t%v\n", debug)
-	fmt.Fprintln(w)
-	fmt.Fprintf(w, "Server:\n")
-	fmt.Fprintf(w, " Server Version: %s\n", info.ServerVersion)
-	// Storage Driver is not really Server concept for nerdctl, but mimics `docker info` output
-	fmt.Fprintf(w, " Storage Driver: %s\n", info.Driver)
-	fmt.Fprintf(w, " Logging Driver: %s\n", info.LoggingDriver)
-	fmt.Fprintf(w, " Cgroup Driver: %s\n", info.CgroupDriver)
-	fmt.Fprintf(w, " Cgroup Version: %s\n", info.CgroupVersion)
-	fmt.Fprintf(w, " Plugins:\n")
-	fmt.Fprintf(w, "  Log: %s\n", strings.Join(info.Plugins.Log, " "))
-	fmt.Fprintf(w, "  Storage: %s\n", strings.Join(info.Plugins.Storage, " "))
-	fmt.Fprintf(w, " Security Options:\n")
-	for _, s := range info.SecurityOptions {
-		m, err := strutil.ParseCSVMap(s)
-		if err != nil {
-			log.L.WithError(err).Warnf("unparsable security option %q", s)
-			continue
-		}
-		name := m["name"]
-		if name == "" {
-			log.L.Warnf("unparsable security option %q", s)
-			continue
-		}
-		fmt.Fprintf(w, "  %s\n", name)
-		for k, v := range m {
-			if k == "name" {
-				continue
-			}
-			fmt.Fprintf(w, "   %s: %s\n", cases.Title(language.English).String(k), v)
-		}
-	}
-	fmt.Fprintf(w, " Kernel Version: %s\n", info.KernelVersion)
-	fmt.Fprintf(w, " Operating System: %s\n", info.OperatingSystem)
-	fmt.Fprintf(w, " OSType: %s\n", info.OSType)
-	fmt.Fprintf(w, " Architecture: %s\n", info.Architecture)
-	fmt.Fprintf(w, " CPUs: %d\n", info.NCPU)
-	fmt.Fprintf(w, " Total Memory: %s\n", units.BytesSize(float64(info.MemTotal)))
-	fmt.Fprintf(w, " Name: %s\n", info.Name)
-	fmt.Fprintf(w, " ID: %s\n", info.ID)
-
-	fmt.Fprintln(w)
-	if len(info.Warnings) > 0 {
-		fmt.Fprintln(stderr, strings.Join(info.Warnings, "\n"))
 	}
 	return nil
 }
