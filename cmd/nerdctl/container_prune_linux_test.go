@@ -26,15 +26,28 @@ func TestPruneContainer(t *testing.T) {
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
 
-	base.Cmd("run", "-d", "--name", tID+"-1", testutil.CommonImage, "sleep", "infinity").AssertOK()
-	defer base.Cmd("rm", "-f", tID+"-1").Run()
-	base.Cmd("create", "--name", tID+"-2", testutil.CommonImage, "sleep", "infinity").AssertOK()
-	defer base.Cmd("rm", "-f", tID+"-2").Run()
+	tearDown := func() {
+		defer base.Cmd("rm", "-f", tID+"-1").Run()
+		defer base.Cmd("rm", "-f", tID+"-2").Run()
+	}
+
+	tearUp := func() {
+		base.Cmd("run", "-d", "--name", tID+"-1", "-v", "/anonymous", testutil.CommonImage, "sleep", "infinity").AssertOK()
+		base.Cmd("exec", tID+"-1", "touch", "/anonymous/foo").AssertOK()
+		base.Cmd("create", "--name", tID+"-2", testutil.CommonImage, "sleep", "infinity").AssertOK()
+	}
+
+	tearDown()
+	t.Cleanup(tearDown)
+	tearUp()
 
 	base.Cmd("container", "prune", "-f").AssertOK()
 	// tID-1 is still running, tID-2 is not
 	base.Cmd("inspect", tID+"-1").AssertOK()
 	base.Cmd("inspect", tID+"-2").AssertFail()
+
+	// https://github.com/containerd/nerdctl/issues/3134
+	base.Cmd("exec", tID+"-1", "ls", "-lA", "/anonymous/foo").AssertOK()
 
 	base.Cmd("kill", tID+"-1").AssertOK()
 	base.Cmd("container", "prune", "-f").AssertOK()

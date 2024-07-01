@@ -90,6 +90,15 @@ func Remove(ctx context.Context, client *containerd.Client, containers []string,
 }
 
 // RemoveContainer removes a container from containerd store.
+// It will first retrieve system objects (namestore, etcetera), then assess whether we should remove the container or not
+// based of "force" and the status of the task.
+// If we are to delete, it then kills and delete the task.
+// If task removal fails, we stop (except if it was just "NotFound").
+// We then enter the defer cleanup function that will:
+// - remove the network config (windows only)
+// - delete the container
+// - then and ONLY then, on a successful container remove, clean things-up on our side (volume store, etcetera)
+// If you do need to add more cleanup, please do so at the bottom of the defer function
 func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions types.GlobalCommandOptions, force bool, removeAnonVolumes bool, client *containerd.Client) (retErr error) {
 	// defer the storage of remove error in the dedicated label
 	defer func() {
@@ -97,151 +106,177 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			containerutil.UpdateErrorLabel(ctx, c, retErr)
 		}
 	}()
-	ns, err := namespaces.NamespaceRequired(ctx)
+
+	// Get namespace
+	containerNamespace, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
 		return err
 	}
-	id := c.ID()
-	l, err := c.Labels(ctx)
+	// Get labels
+	containerLabels, err := c.Labels(ctx)
 	if err != nil {
 		return err
 	}
-	ipc, err := ipcutil.DecodeIPCLabel(l[labels.IPC])
-	if err != nil {
-		return err
-	}
-	err = ipcutil.CleanUp(ipc)
-	if err != nil {
-		return err
-	}
-	stateDir := l[labels.StateDir]
-	name := l[labels.Name]
+	// Get datastore
 	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
 	if err != nil {
 		return err
 	}
-	namst, err := namestore.New(dataStore, ns)
+	// Get namestore
+	nameStore, err := namestore.New(dataStore, containerNamespace)
+	if err != nil {
+		return err
+	}
+	// Get volume store
+	volStore, err := volume.Store(globalOptions.Namespace, globalOptions.DataRoot, globalOptions.Address)
+	if err != nil {
+		return err
+	}
+	// Decode IPC
+	ipc, err := ipcutil.DecodeIPCLabel(containerLabels[labels.IPC])
 	if err != nil {
 		return err
 	}
 
+	// Get the container id, stateDir and name
+	id := c.ID()
+	stateDir := containerLabels[labels.StateDir]
+	name := containerLabels[labels.Name]
+
+	// This will evaluate retErr to decide if we proceed with removal or not
 	defer func() {
-		if errdefs.IsNotFound(retErr) {
-			retErr = nil
-		}
-		if retErr != nil {
+		// If there was an error, and it was not "NotFound", this is a hard error, we stop here and do nothing.
+		if retErr != nil && !errdefs.IsNotFound(retErr) {
 			return
 		}
-		if err := os.RemoveAll(stateDir); err != nil {
+
+		// Otherwise, nil the error so that we do not write the error label on the container
+		retErr = nil
+
+		// Now, delete the actual container
+		var delOpts []containerd.DeleteOpts
+		if _, err := c.Image(ctx); err == nil {
+			delOpts = append(delOpts, containerd.WithSnapshotCleanup)
+		}
+
+		// NOTE: on non-Windows platforms, network cleanup is performed by OCI hooks.
+		// Seeing as though Windows does not currently support OCI hooks, we must explicitly
+		// perform the network cleanup from the main nerdctl executable.
+		if runtime.GOOS == "windows" {
+			spec, err := c.Spec(ctx)
+			if err != nil {
+				retErr = err
+				return
+			}
+
+			netOpts, err := containerutil.NetworkOptionsFromSpec(spec)
+			if err != nil {
+				retErr = fmt.Errorf("failed to load container networking options from specs: %s", err)
+				return
+			}
+
+			networkManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netOpts, client)
+			if err != nil {
+				retErr = fmt.Errorf("failed to instantiate network options manager: %s", err)
+				return
+			}
+
+			if err := networkManager.CleanupNetworking(ctx, c); err != nil {
+				log.G(ctx).WithError(err).Warnf("failed to clean up container networking: %q", id)
+			}
+		}
+
+		// Delete the container now. If it fails, try again without snapshot cleanup
+		// If it still fails, time to stop.
+		if c.Delete(ctx, delOpts...) != nil {
+			retErr = c.Delete(ctx)
+			if retErr != nil {
+				return
+			}
+		}
+
+		// Container has been removed successfully. Now we just finish the cleanup on our side.
+
+		// Cleanup IPC - soft failure
+		if err = ipcutil.CleanUp(ipc); err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to cleanup IPC for container %q", id)
+		}
+
+		// Remove state dir - soft failure
+		if err = os.RemoveAll(stateDir); err != nil {
 			log.G(ctx).WithError(err).Warnf("failed to remove container state dir %s", stateDir)
 		}
-		// enforce release name here in case the poststop hook name release fails
+
+		// Enforce release name here in case the poststop hook name release fails - soft failure
 		if name != "" {
-			if err := namst.Release(name, id); err != nil {
+			if err = nameStore.Release(name, id); err != nil {
 				log.G(ctx).WithError(err).Warnf("failed to release container name %s", name)
 			}
 		}
-		if err := hostsstore.DeallocHostsFile(dataStore, ns, id); err != nil {
+
+		// De-allocate hosts file - soft failure
+		if err = hostsstore.DeallocHostsFile(dataStore, containerNamespace, id); err != nil {
 			log.G(ctx).WithError(err).Warnf("failed to remove hosts file for container %q", id)
+		}
+
+		// Volume removal is not handled by the poststop hook lifecycle because it depends on removeAnonVolumes option
+		if anonVolumesJSON, ok := containerLabels[labels.AnonymousVolumes]; ok && removeAnonVolumes {
+			var anonVolumes []string
+			if err = json.Unmarshal([]byte(anonVolumesJSON), &anonVolumes); err != nil {
+				log.G(ctx).WithError(err).Warnf("failed to unmarshall anonvolume information for container %q", id)
+			} else {
+				var errs []error
+				_, errs, err = volStore.Remove(anonVolumes)
+				if err != nil || len(errs) > 0 {
+					log.G(ctx).WithError(err).Warnf("failed to remove anonymous volumes %v", anonVolumes)
+				}
+			}
 		}
 	}()
 
-	// volume removal is not handled by the poststop hook lifecycle because it depends on removeAnonVolumes option
-	if anonVolumesJSON, ok := l[labels.AnonymousVolumes]; ok && removeAnonVolumes {
-		var anonVolumes []string
-		if err := json.Unmarshal([]byte(anonVolumesJSON), &anonVolumes); err != nil {
-			return err
-		}
-		volStore, err := volume.Store(globalOptions.Namespace, globalOptions.DataRoot, globalOptions.Address)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if _, errs, err := volStore.Remove(anonVolumes); err != nil || len(errs) > 0 {
-				log.G(ctx).WithError(err).Warnf("failed to remove anonymous volumes %v", anonVolumes)
-			}
-		}()
-	}
-
+	// Get the task.
 	task, err := c.Task(ctx, cio.Load)
 	if err != nil {
-		if errdefs.IsNotFound(err) {
-			if c.Delete(ctx, containerd.WithSnapshotCleanup) != nil {
-				return c.Delete(ctx)
-			}
-		}
 		return err
 	}
 
+	// Task was here, get the status
 	status, err := task.Status(ctx)
 	if err != nil {
-		if errdefs.IsNotFound(err) {
-			return nil
-		}
 		return err
 	}
 
-	// NOTE: on non-Windows platforms, network cleanup is performed by OCI hooks.
-	// Seeing as though Windows does not currently support OCI hooks, we must explicitly
-	// perform the network cleanup from the main nerdctl executable.
-	if runtime.GOOS == "windows" {
-		spec, err := c.Spec(ctx)
-		if err != nil {
-			return err
-		}
-
-		netOpts, err := containerutil.NetworkOptionsFromSpec(spec)
-		if err != nil {
-			return fmt.Errorf("failed to load container networking options from specs: %s", err)
-		}
-
-		networkManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netOpts, client)
-		if err != nil {
-			return fmt.Errorf("failed to instantiate network options manager: %s", err)
-		}
-
-		if err := networkManager.CleanupNetworking(ctx, c); err != nil {
-			log.G(ctx).WithError(err).Warnf("failed to clean up container networking: %s", err)
-		}
-	}
-
+	// Now, we have a live task with a status.
 	switch status.Status {
-	case containerd.Created, containerd.Stopped:
-		if _, err := task.Delete(ctx); err != nil && !errdefs.IsNotFound(err) {
-			return fmt.Errorf("failed to delete task %v: %w", id, err)
-		}
 	case containerd.Paused:
+		// Paused containers only get removed if we force
 		if !force {
 			return NewStatusError(id, status.Status)
 		}
-		_, err := task.Delete(ctx, containerd.WithProcessKill)
-		if err != nil && !errdefs.IsNotFound(err) {
-			return fmt.Errorf("failed to delete task %v: %w", id, err)
-		}
-	// default is the case, when status.Status = containerd.Running
-	default:
+	case containerd.Running:
+		// Running containers only get removed if we force
 		if !force {
 			return NewStatusError(id, status.Status)
 		}
-		if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
-			log.G(ctx).WithError(err).Warnf("failed to send SIGKILL")
+		// Kill the task. Soft error.
+		if err = task.Kill(ctx, syscall.SIGKILL); err != nil && !errdefs.IsNotFound(err) {
+			log.G(ctx).WithError(err).Warnf("failed to send SIGKILL to task %v", id)
 		}
 		es, err := task.Wait(ctx)
 		if err == nil {
 			<-es
 		}
-		_, err = task.Delete(ctx, containerd.WithProcessKill)
-		if err != nil && !errdefs.IsNotFound(err) {
-			log.G(ctx).WithError(err).Warnf("failed to delete task %v", id)
-		}
-	}
-	var delOpts []containerd.DeleteOpts
-	if _, err := c.Image(ctx); err == nil {
-		delOpts = append(delOpts, containerd.WithSnapshotCleanup)
+	case containerd.Created, containerd.Stopped:
+		// Created and stopped containers always get removed
+		// Delete the task, without forcing kill
+		_, err = task.Delete(ctx)
+		return err
+	default:
+		// Unknown status error out
+		return fmt.Errorf("unknown container status %s", status.Status)
 	}
 
-	if err := c.Delete(ctx, delOpts...); err != nil {
-		return err
-	}
+	// Delete the task
+	_, err = task.Delete(ctx, containerd.WithProcessKill)
 	return err
 }
