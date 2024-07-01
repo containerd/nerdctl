@@ -23,6 +23,8 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"slices"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -37,9 +39,9 @@ import (
 	"golang.org/x/term"
 )
 
-// NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108
 func NewTask(ctx context.Context, client *containerd.Client, container containerd.Container,
-	flagA, flagI, flagT, flagD bool, con console.Console, logURI, detachKeys, namespace string, detachC chan<- struct{}) (containerd.Task, error) {
+	flagA []string, flagI, flagT, flagD bool, con console.Console, logURI, detachKeys, namespace string, detachC chan<- struct{}) (containerd.Task, error) {
+
 	var t containerd.Task
 	closer := func() {
 		if detachC != nil {
@@ -59,7 +61,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 		io.Cancel()
 	}
 	var ioCreator cio.Creator
-	if flagA {
+	if len(flagA) != 0 {
 		log.G(ctx).Debug("attaching output instead of using the log-uri")
 		if flagT {
 			in, err := consoleutil.NewDetachableStdin(con, detachKeys, closer)
@@ -68,7 +70,8 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			}
 			ioCreator = cio.NewCreator(cio.WithStreams(in, con, nil), cio.WithTerminal)
 		} else {
-			ioCreator = cio.NewCreator(cio.WithStdio)
+			streams := flagAStreams(flagA)
+			ioCreator = cio.NewCreator(cio.WithStreams(streams.stdIn, streams.stdOut, streams.stdErr))
 		}
 
 	} else if flagT && flagD {
@@ -144,6 +147,51 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 		return nil, err
 	}
 	return t, nil
+}
+
+// struct used to store streams specified with flagA (-a, --attach)
+type streams struct {
+	stdIn  *os.File
+	stdOut *os.File
+	stdErr *os.File
+}
+
+func nullStream() *os.File {
+	devNull, err := os.Open("/dev/null")
+	if err != nil {
+		return nil
+	}
+	defer devNull.Close()
+
+	return devNull
+}
+
+func flagAStreams(streamsArr []string) streams {
+	stdIn := os.Stdin
+	stdOut := os.Stdout
+	stdErr := os.Stderr
+
+	for i, str := range streamsArr {
+		streamsArr[i] = strings.ToUpper(str)
+	}
+
+	if !slices.Contains(streamsArr, "STDIN") {
+		stdIn = nullStream()
+	}
+
+	if !slices.Contains(streamsArr, "STDOUT") {
+		stdOut = nullStream()
+	}
+
+	if !slices.Contains(streamsArr, "STDERR") {
+		stdErr = nullStream()
+	}
+
+	return streams{
+		stdIn:  stdIn,
+		stdOut: stdOut,
+		stdErr: stdErr,
+	}
 }
 
 // StdinCloser is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/exec.go#L181-L194

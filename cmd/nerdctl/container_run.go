@@ -69,6 +69,7 @@ func newRunCommand() *cobra.Command {
 	setCreateFlags(runCommand)
 
 	runCommand.Flags().BoolP("detach", "d", false, "Run container in background and print container ID")
+	runCommand.Flags().StringSliceP("attach", "a", []string{}, "Attach STDIN, STDOUT, or STDERR")
 
 	return runCommand
 }
@@ -304,6 +305,10 @@ func processCreateCommandFlagsInRun(cmd *cobra.Command) (opt types.ContainerCrea
 	if err != nil {
 		return
 	}
+	opt.Attach, err = cmd.Flags().GetStringSlice("attach")
+	if err != nil {
+		return
+	}
 	return opt, nil
 }
 
@@ -323,6 +328,10 @@ func runAction(cmd *cobra.Command, args []string) error {
 
 	if createOpt.Rm && createOpt.Detach {
 		return errors.New("flags -d and --rm cannot be specified together")
+	}
+
+	if len(createOpt.Attach) > 0 && createOpt.Detach {
+		return errors.New("flags -d and -a cannot be specified together")
 	}
 
 	netFlags, err := loadNetworkFlags(cmd)
@@ -381,7 +390,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 	logURI := lab[labels.LogURI]
 	detachC := make(chan struct{})
-	task, err := taskutil.NewTask(ctx, client, c, false, createOpt.Interactive, createOpt.TTY, createOpt.Detach,
+	task, err := taskutil.NewTask(ctx, client, c, createOpt.Attach, createOpt.Interactive, createOpt.TTY, createOpt.Detach,
 		con, logURI, createOpt.DetachKeys, createOpt.GOptions.Namespace, detachC)
 	if err != nil {
 		return err

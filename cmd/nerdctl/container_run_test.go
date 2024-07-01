@@ -533,3 +533,34 @@ func TestRunRmTime(t *testing.T) {
 		t.Fatalf("expected to have completed in %v, took %v", deadline, took)
 	}
 }
+
+func TestRunAttachStdin(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("run attach test is not yet implemented on Windows")
+	}
+
+	t.Parallel()
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+
+	const testStr = "test-run-stdio"
+	opts := []func(*testutil.Cmd){
+		testutil.WithStdin(strings.NewReader("echo " + testStr + "\nexit\n")),
+	}
+
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	base.Cmd("run", "--rm", "-a", "stdin", "-a", "stdout", "--name", containerName, testutil.CommonImage).CmdOption(opts...).AssertOutExactly(testStr + "\n")
+}
+
+func TestRunAttachStdout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("run attach test is not yet implemented on Windows")
+	}
+
+	t.Parallel()
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	base.Cmd("run", "-a", "stdout", "--name", containerName, testutil.CommonImage, "sh", "-euxc", "echo foo").AssertOutContains("foo")
+}

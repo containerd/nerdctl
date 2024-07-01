@@ -68,6 +68,8 @@ type ContainerCreateOptions struct {
 	Detach bool
 	// The key sequence for detaching a container.
 	DetachKeys string
+	// Attach STDIN, STDOUT, or STDERR
+	Attach []string
 	// Restart specifies the policy to apply when a container exits
 	Restart string
 	// Rm specifies whether to remove the container automatically when it exits

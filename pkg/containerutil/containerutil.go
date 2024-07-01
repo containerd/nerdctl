@@ -271,7 +271,11 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 		}
 	}
 	detachC := make(chan struct{})
-	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, con, logURI, detachKeys, namespace, detachC)
+	flagAStreams := []string{}
+	if flagA {
+		flagAStreams = []string{"STDOUT", "STDERR"}
+	}
+	task, err := taskutil.NewTask(ctx, client, container, flagAStreams, false, flagT, true, con, logURI, detachKeys, namespace, detachC)
 	if err != nil {
 		return err
 	}

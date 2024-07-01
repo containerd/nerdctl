@@ -137,6 +137,7 @@ Usage: `nerdctl run [OPTIONS] IMAGE [COMMAND] [ARG...]`
 
 Basic flags:
 
+- :whale: `-a, --attach`: Attach STDIN, STDOUT, or STDERR
 - :whale: :blue_square: `-i, --interactive`: Keep STDIN open even if not attached"
 - :whale: :blue_square: `-t, --tty`: Allocate a pseudo-TTY
   - :warning: WIP: currently `-t` conflicts with `-d`
@@ -387,7 +388,7 @@ IPFS flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker run` flags:
-    `--attach`, `--blkio-weight-device`, `--cpu-rt-*`, `--device-*`,
+    `--blkio-weight-device`, `--cpu-rt-*`, `--device-*`,
     `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
     `--link*`, `--publish-all`, `--storage-opt`,
     `--userns`, `--volume-driver`
