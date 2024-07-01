@@ -81,7 +81,7 @@ func (vs *volumeStore) Dir() string {
 
 func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, error) {
 	if err := identifiers.Validate(name); err != nil {
-		return nil, fmt.Errorf("malformed volume name: %w", err)
+		return nil, fmt.Errorf("malformed volume name: %w (%w)", err, errdefs.ErrInvalidArgument)
 	}
 	volPath := filepath.Join(vs.dir, name)
 	volDataPath := filepath.Join(volPath, DataDirName)
@@ -108,7 +108,10 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 			Labels map[string]string `json:"labels"`
 		}
 
-		labelsMap := strutil.ConvertKVStringsToMap(labels)
+		var labelsMap map[string]string
+		if len(labels) > 0 {
+			labelsMap = strutil.ConvertKVStringsToMap(labels)
+		}
 
 		volOpts := volumeOpts{
 			Labels: labelsMap,
@@ -145,36 +148,45 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 }
 
 func (vs *volumeStore) Get(name string, size bool) (*native.Volume, error) {
-	if err := identifiers.Validate(name); err != nil {
-		return nil, fmt.Errorf("malformed name %s: %w", name, err)
+	entry := native.Volume{
+		Name: name,
 	}
-	dataPath := filepath.Join(vs.dir, name, DataDirName)
-	if _, err := os.Stat(dataPath); err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("volume %q not found: %w", name, errdefs.ErrNotFound)
+
+	fn := func() error {
+		if err := identifiers.Validate(name); err != nil {
+			return fmt.Errorf("malformed volume name: %w (%w)", err, errdefs.ErrInvalidArgument)
 		}
+		dataPath := filepath.Join(vs.dir, name, DataDirName)
+		if _, err := os.Stat(dataPath); err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("no such volume: %s (%w)", name, errdefs.ErrNotFound)
+			}
+			return err
+		}
+		entry.Mountpoint = dataPath
+
+		volFilePath := filepath.Join(vs.dir, name, volumeJSONFileName)
+		volumeDataBytes, err := os.ReadFile(volFilePath)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return err
+			} // on else, volume.json does not exists should not be blocking for inspect operation
+		}
+		entry.Labels = Labels(volumeDataBytes)
+
+		if size {
+			entry.Size, err = Size(&entry)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := lockutil.WithDirLock(vs.dir, fn); err != nil {
 		return nil, err
 	}
 
-	volFilePath := filepath.Join(vs.dir, name, volumeJSONFileName)
-	volumeDataBytes, err := os.ReadFile(volFilePath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		} // on else, volume.json does not exists should not be blocking for inspect operation
-	}
-
-	entry := native.Volume{
-		Name:       name,
-		Mountpoint: dataPath,
-		Labels:     Labels(volumeDataBytes),
-	}
-	if size {
-		entry.Size, err = Size(&entry)
-		if err != nil {
-			return nil, err
-		}
-	}
 	return &entry, nil
 }
 
@@ -200,12 +212,12 @@ func (vs *volumeStore) Remove(names []string) (removed []string, warns []error, 
 	fn := func() error {
 		for _, name := range names {
 			if err := identifiers.Validate(name); err != nil {
-				warns = append(warns, fmt.Errorf("malformed volume name: %w", err))
+				warns = append(warns, fmt.Errorf("malformed volume name: %w (%w)", err, errdefs.ErrInvalidArgument))
 				continue
 			}
 			dir := filepath.Join(vs.dir, name)
 			if _, err := os.Stat(dir); os.IsNotExist(err) {
-				warns = append(warns, fmt.Errorf("no such volume: %s", name))
+				warns = append(warns, fmt.Errorf("no such volume: %s (%w)", name, errdefs.ErrNotFound))
 				continue
 			}
 			// This is a hard filesystem error. Exit on this.

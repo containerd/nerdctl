@@ -17,23 +17,40 @@
 package volume
 
 import (
+	"context"
+	"errors"
+
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 )
 
-func Inspect(volumes []string, options types.VolumeInspectOptions) error {
+func Inspect(ctx context.Context, volumes []string, options types.VolumeInspectOptions) error {
 	volStore, err := Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
-	result := make([]interface{}, len(volumes))
+	result := []interface{}{}
 
-	for i, name := range volumes {
+	warns := []error{}
+	for _, name := range volumes {
 		var vol, err = volStore.Get(name, options.Size)
 		if err != nil {
-			return err
+			warns = append(warns, err)
+			continue
 		}
-		result[i] = vol
+		result = append(result, vol)
 	}
-	return formatter.FormatSlice(options.Format, options.Stdout, result)
+	err = formatter.FormatSlice(options.Format, options.Stdout, result)
+	if err != nil {
+		return err
+	}
+	for _, warn := range warns {
+		log.G(ctx).Warn(warn)
+	}
+
+	if len(warns) != 0 {
+		return errors.New("some volumes could not be inspected")
+	}
+	return nil
 }

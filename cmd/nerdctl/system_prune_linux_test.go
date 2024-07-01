@@ -32,7 +32,8 @@ import (
 
 func TestSystemPrune(t *testing.T) {
 	testutil.RequiresBuild(t)
-	base := testutil.NewBase(t)
+	namespaceID := testutil.Identifier(t)
+	base := testutil.NewBaseWithNamespace(t, namespaceID)
 	base.Cmd("container", "prune", "-f").AssertOK()
 	base.Cmd("network", "prune", "-f").AssertOK()
 	base.Cmd("volume", "prune", "-f").AssertOK()

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"gotest.tools/v3/icmd"
 )
@@ -29,12 +30,14 @@ func TestVolumeRemove(t *testing.T) {
 
 	base := testutil.NewBase(t)
 
-	malformed := "malformed volume name"
-	notFound := "no such volume"
+	malformed := errdefs.ErrInvalidArgument.Error()
+	notFound := errdefs.ErrNotFound.Error()
 	requireArg := "requires at least 1 arg"
-	inUse := "is in use"
+	inUse := errdefs.ErrFailedPrecondition.Error()
 	if base.Target == testutil.Docker {
 		malformed = "no such volume"
+		notFound = "no such volume"
+		inUse = "volume is in use"
 	}
 
 	testCases := []struct {
@@ -139,17 +142,17 @@ func TestVolumeRemove(t *testing.T) {
 			},
 		},
 		{
-			"part success multi remove",
-			func(tID string) *testutil.Cmd {
+			description: "part success multi remove",
+			command: func(tID string) *testutil.Cmd {
 				return base.Cmd("volume", "rm", "invalid∞", "nonexistent", tID)
 			},
-			func(tID string) {
+			tearUp: func(tID string) {
 				base.Cmd("volume", "create", tID).AssertOK()
 			},
-			func(tID string) {
+			tearDown: func(tID string) {
 				base.Cmd("volume", "rm", "-f", tID).Run()
 			},
-			func(tID string) icmd.Expected {
+			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
 					ExitCode: 1,
 					Out:      tID,

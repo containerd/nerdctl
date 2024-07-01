@@ -19,7 +19,6 @@ package volume
 import (
 	"fmt"
 
-	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
@@ -31,9 +30,6 @@ func Create(name string, options types.VolumeCreateOptions) (*native.Volume, err
 	if name == "" {
 		name = stringid.GenerateRandomID()
 		options.Labels = append(options.Labels, labels.AnonymousVolumes+"=")
-	}
-	if err := identifiers.Validate(name); err != nil {
-		return nil, fmt.Errorf("malformed name %s: %w", name, err)
 	}
 	volStore, err := Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {

@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/containerd/containerd/errdefs"
@@ -24,17 +25,31 @@ import (
 	"gotest.tools/v3/icmd"
 )
 
-func TestVolumeCreate(t *testing.T) {
+func TestVolumeNamespace(t *testing.T) {
+	testutil.DockerIncompatible(t)
+
 	t.Parallel()
 
 	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+	otherBase := testutil.NewBaseWithNamespace(t, tID+"-1")
+	thirdBase := testutil.NewBaseWithNamespace(t, tID+"-2")
 
-	malformed := errdefs.ErrInvalidArgument.Error()
-	exitCodeVariant := 1
-	if base.Target == testutil.Docker {
-		malformed = "invalid"
-		exitCodeVariant = 125
+	tearUp := func(t *testing.T) {
+		base.Cmd("volume", "create", tID).AssertOK()
 	}
+
+	tearDown := func(t *testing.T) {
+		base.Cmd("volume", "rm", "-f", tID).Run()
+		otherBase.Cmd("namespace", "rm", "-f", tID+"-1").Run()
+		thirdBase.Cmd("namespace", "rm", "-f", tID+"-2").Run()
+	}
+
+	tearDown(t)
+	t.Cleanup(func() {
+		tearDown(t)
+	})
+	tearUp(t)
 
 	testCases := []struct {
 		description string
@@ -44,9 +59,38 @@ func TestVolumeCreate(t *testing.T) {
 		expected    func(tID string) icmd.Expected
 	}{
 		{
-			description: "arg missing",
+			description: "inspect",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create")
+				return otherBase.Cmd("volume", "inspect", tID)
+			},
+			expected: func(tID string) icmd.Expected {
+				return icmd.Expected{
+					ExitCode: 1,
+					Err:      fmt.Errorf("%s (%w)", tID, errdefs.ErrNotFound).Error(),
+				}
+			},
+		},
+		{
+			description: "remove",
+			command: func(tID string) *testutil.Cmd {
+				return otherBase.Cmd("volume", "remove", tID)
+			},
+			expected: func(tID string) icmd.Expected {
+				return icmd.Expected{
+					ExitCode: 1,
+					Err:      fmt.Errorf("%s (%w)", tID, errdefs.ErrNotFound).Error(),
+				}
+			},
+		},
+		{
+			description: "prune",
+			command: func(tID string) *testutil.Cmd {
+				return otherBase.Cmd("volume", "prune", "-a", "-f")
+			},
+			tearDown: func(tID string) {
+				// Assert that the volume is here in the base namespace
+				// both before and after the prune command
+				base.Cmd("volume", "inspect", tID).AssertOK()
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
@@ -55,72 +99,17 @@ func TestVolumeCreate(t *testing.T) {
 			},
 		},
 		{
-			description: "invalid identifier",
+			description: "create",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create", "∞")
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 1,
-					Err:      malformed,
-				}
-			},
-		},
-		{
-			description: "too many args",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create", "too", "many")
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 1,
-					Err:      "at most 1 arg",
-				}
-			},
-		},
-		{
-			description: "success",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create", tID)
+				return thirdBase.Cmd("volume", "create", tID)
 			},
 			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID).Run()
+				thirdBase.Cmd("volume", "remove", "-f", tID).Run()
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
 					ExitCode: 0,
 					Out:      tID,
-				}
-			},
-		},
-		{
-			description: "success with labels",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create", "--label", "foo1=baz1", "--label", "foo2=baz2", tID)
-			},
-			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID).Run()
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 0,
-					Out:      tID,
-				}
-			},
-		},
-		{
-			description: "invalid labels",
-			command: func(tID string) *testutil.Cmd {
-				// See https://github.com/containerd/nerdctl/issues/3126
-				return base.Cmd("volume", "create", "--label", "a", "--label", "", tID)
-			},
-			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID).Run()
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: exitCodeVariant,
-					Err:      malformed,
 				}
 			},
 		},
@@ -131,8 +120,8 @@ func TestVolumeCreate(t *testing.T) {
 		t.Run(currentTest.description, func(tt *testing.T) {
 			tt.Parallel()
 
-			tID := testutil.Identifier(tt)
-
+			// Note that here we are using the main test tID
+			// since we are testing against the volume created in it
 			if currentTest.tearDown != nil {
 				currentTest.tearDown(tID)
 				tt.Cleanup(func() {
