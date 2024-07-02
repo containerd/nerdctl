@@ -289,7 +289,7 @@ func (cl *containerFilterContext) matchesNameFilter(info containers.Container) b
 	if len(cl.nameFilterFuncs) == 0 {
 		return true
 	}
-	cName := getContainerName(info.Labels)
+	cName := containerutil.GetContainerName(info.Labels)
 	for _, nameFilterFunc := range cl.nameFilterFuncs {
 		if !nameFilterFunc(cName) {
 			continue
@@ -368,7 +368,7 @@ func idOrNameFilter(ctx context.Context, containers []containerd.Container, valu
 		if err != nil {
 			return nil, err
 		}
-		if strings.HasPrefix(info.ID, value) || strings.Contains(getContainerName(info.Labels), value) {
+		if strings.HasPrefix(info.ID, value) || strings.Contains(containerutil.GetContainerName(info.Labels), value) {
 			return &info, nil
 		}
 	}

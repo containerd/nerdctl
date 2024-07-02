@@ -35,11 +35,11 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerinspector"
+	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/eventutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
-	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/statsutil"
 	"github.com/containerd/typeurl/v2"
@@ -54,7 +54,7 @@ type stats struct {
 func (s *stats) add(cs *statsutil.Stats) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, exists := s.isKnownContainer(cs.Container); !exists {
+	if _, exists := s.isKnownContainer(cs.ID); !exists {
 		s.cs = append(s.cs, cs)
 		return true
 	}
@@ -73,7 +73,7 @@ func (s *stats) remove(id string) {
 // isKnownContainer is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/stats_helpers.go#L44-L51
 func (s *stats) isKnownContainer(cid string) (int, bool) {
 	for i, c := range s.cs {
-		if c.Container == cid {
+		if c.ID == cid {
 			return i, true
 		}
 	}
@@ -325,7 +325,7 @@ func Stats(ctx context.Context, client *containerd.Client, containerIDs []string
 }
 
 func collect(ctx context.Context, globalOptions types.GlobalCommandOptions, s *statsutil.Stats, waitFirst *sync.WaitGroup, id string, noStream bool) {
-	log.G(ctx).Debugf("collecting stats for %s", s.Container)
+	log.G(ctx).Debugf("collecting stats for %s", s.ID)
 	var (
 		getFirst = true
 		u        = make(chan error, 1)
@@ -394,7 +394,7 @@ func collect(ctx context.Context, globalOptions types.GlobalCommandOptions, s *s
 				u <- err
 				continue
 			}
-			statsEntry.Name = clabels[labels.Name]
+			statsEntry.Name = containerutil.GetContainerName(clabels)
 			statsEntry.ID = container.ID()
 
 			if firstSet {

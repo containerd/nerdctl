@@ -19,6 +19,7 @@ package statsutil
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,7 +28,6 @@ import (
 
 // StatsEntry represents the statistics data collected from a container
 type StatsEntry struct {
-	Container        string
 	Name             string
 	ID               string
 	CPUPercentage    float64
@@ -69,15 +69,14 @@ type ContainerStats struct {
 }
 
 // NewStats is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L113-L116
-func NewStats(container string) *Stats {
-	return &Stats{StatsEntry: StatsEntry{Container: container}}
+func NewStats(containerID string) *Stats {
+	return &Stats{StatsEntry: StatsEntry{ID: containerID}}
 }
 
 // SetStatistics is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L87-L93
 func (cs *Stats) SetStatistics(s StatsEntry) {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
-	s.Container = cs.Container
 	cs.StatsEntry = s
 }
 
@@ -134,7 +133,7 @@ func calculateMemPercent(limit float64, usedNo float64) float64 {
 // Rendering a FormattedStatsEntry from StatsEntry
 func RenderEntry(in *StatsEntry, noTrunc bool) FormattedStatsEntry {
 	return FormattedStatsEntry{
-		Name:     in.EntryName(),
+		Name:     in.EntryName(noTrunc),
 		ID:       in.EntryID(noTrunc),
 		CPUPerc:  in.CPUPerc(),
 		MemUsage: in.MemUsage(),
@@ -148,10 +147,18 @@ func RenderEntry(in *StatsEntry, noTrunc bool) FormattedStatsEntry {
 /*
 a set of functions to format container stats
 */
-func (s *StatsEntry) EntryName() string {
+func (s *StatsEntry) EntryName(noTrunc bool) string {
 	if len(s.Name) > 1 {
-		if len(s.Name) > 12 {
-			return s.Name[:12]
+		if !noTrunc {
+			var truncLen int
+			if strings.HasPrefix(s.Name, "k8s://") {
+				truncLen = 24
+			} else {
+				truncLen = 12
+			}
+			if len(s.Name) > truncLen {
+				return s.Name[:truncLen]
+			}
 		}
 		return s.Name
 	}

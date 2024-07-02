@@ -31,10 +31,10 @@ import (
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
+	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
-	"github.com/containerd/nerdctl/v2/pkg/labels/k8slabels"
 )
 
 // List prints containers according to `options`.
@@ -138,7 +138,7 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 			ID:        id,
 			Image:     info.Image,
 			Platform:  info.Labels[labels.Platform],
-			Names:     getContainerName(info.Labels),
+			Names:     containerutil.GetContainerName(info.Labels),
 			Ports:     formatter.FormatPorts(info.Labels),
 			Status:    formatter.ContainerStatus(ctx, c),
 			Runtime:   info.Runtime.Name,
@@ -160,24 +160,6 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 		listItems[i] = li
 	}
 	return listItems, nil
-}
-
-func getContainerName(containerLabels map[string]string) string {
-	if name, ok := containerLabels[labels.Name]; ok {
-		return name
-	}
-
-	if ns, ok := containerLabels[k8slabels.PodNamespace]; ok {
-		if podName, ok := containerLabels[k8slabels.PodName]; ok {
-			if containerName, ok := containerLabels[k8slabels.ContainerName]; ok {
-				// Container
-				return fmt.Sprintf("k8s://%s/%s/%s", ns, podName, containerName)
-			}
-			// Pod sandbox
-			return fmt.Sprintf("k8s://%s/%s", ns, podName)
-		}
-	}
-	return ""
 }
 
 func getContainerNetworks(containerLables map[string]string) []string {
