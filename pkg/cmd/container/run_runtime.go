@@ -18,6 +18,7 @@ package container
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 
 	"github.com/containerd/containerd"
@@ -47,6 +48,9 @@ func generateRuntimeCOpts(cgroupManager, runtimeStr string) ([]containerd.NewCon
 				}
 				runtimeOpts = nil
 			}
+		} else if filepath.IsAbs(runtimeStr) {
+			// runtimeStr is absolute path to runtime binary
+			runtime = runtimeStr
 		} else {
 			// runtimeStr is a runc binary
 			runcOpts.BinaryName = runtimeStr
