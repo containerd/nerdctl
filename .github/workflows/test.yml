@@ -361,3 +361,31 @@ jobs:
         run: sudo vagrant up --provision-with=test-unit
       - name: test-integration
         run: sudo vagrant up --provision-with=test-integration
+
+
+  test-integration-arm64:
+    name: ARM64
+    runs-on: actuated-arm64-4cpu-16gb
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4.1.6
+        with:
+          fetch-depth: 1
+      - name: "Prepare integration test environment"
+        run: DOCKER_BUILDKIT=1 docker build -t test-integration --target test-integration --build-arg CONTAINERD_VERSION=v1.7.16 .
+      - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
+        run: |
+          sudo systemctl disable --now snapd.service snapd.socket
+          sudo apt-get purge -y snapd
+          sudo losetup -Dv
+          sudo losetup -lv
+      - name: "Register QEMU (tonistiigi/binfmt)"
+        run: docker run --privileged --rm tonistiigi/binfmt --install all
+      - name: "Run integration tests"
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 30
+          max_attempts: 2
+          retry_on: error
+          command: docker run -t --rm --privileged test-integration
