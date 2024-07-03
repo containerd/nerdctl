@@ -28,7 +28,6 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/converter"
 	"github.com/containerd/containerd/reference"
-	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	dockerconfig "github.com/containerd/containerd/remotes/docker/config"
@@ -45,6 +44,7 @@ import (
 	"github.com/containerd/stargz-snapshotter/estargz"
 	"github.com/containerd/stargz-snapshotter/estargz/zstdchunked"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
+	distributionref "github.com/distribution/reference"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -83,12 +83,12 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		return nil
 	}
 
-	named, err := refdocker.ParseDockerRef(rawRef)
+	named, err := distributionref.ParseDockerRef(rawRef)
 	if err != nil {
 		return err
 	}
 	ref := named.String()
-	refDomain := refdocker.Domain(named)
+	refDomain := distributionref.Domain(named)
 
 	platMC, err := platformutil.NewMatchComparer(options.AllPlatforms, options.Platforms)
 	if err != nil {

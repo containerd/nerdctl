@@ -32,7 +32,6 @@ import (
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/archive"
-	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
@@ -40,6 +39,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/platforms"
+	distributionref "github.com/distribution/reference"
 )
 
 type PlatformParser interface {
@@ -230,19 +230,19 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 	}
 	if tags = strutil.DedupeStrSlice(options.Tag); len(tags) > 0 {
 		ref := tags[0]
-		named, err := dockerreference.ParseNormalizedNamed(ref)
+		named, err := distributionref.ParseNormalizedNamed(ref)
 		if err != nil {
 			return "", nil, false, "", nil, nil, err
 		}
-		output += ",name=" + dockerreference.TagNameOnly(named).String()
+		output += ",name=" + distributionref.TagNameOnly(named).String()
 
 		// pick the first tag and add it to output
 		for idx, tag := range tags {
-			named, err := dockerreference.ParseNormalizedNamed(tag)
+			named, err := distributionref.ParseNormalizedNamed(tag)
 			if err != nil {
 				return "", nil, false, "", nil, nil, err
 			}
-			tags[idx] = dockerreference.TagNameOnly(named).String()
+			tags[idx] = distributionref.TagNameOnly(named).String()
 		}
 	} else if len(tags) == 0 {
 		output = output + ",dangling-name-prefix=<none>"
