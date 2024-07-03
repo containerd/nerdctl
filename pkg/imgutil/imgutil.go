@@ -26,7 +26,6 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
-	refdocker "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/containerd/imgcrypt"
@@ -38,6 +37,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
 	"github.com/containerd/platforms"
+	distributionref "github.com/distribution/reference"
 	"github.com/docker/docker/errdefs"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -125,12 +125,12 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 		return nil, fmt.Errorf("image not available: %q", rawRef)
 	}
 
-	named, err := refdocker.ParseDockerRef(rawRef)
+	named, err := distributionref.ParseDockerRef(rawRef)
 	if err != nil {
 		return nil, err
 	}
 	ref := named.String()
-	refDomain := refdocker.Domain(named)
+	refDomain := distributionref.Domain(named)
 
 	var dOpts []dockerconfigresolver.Opt
 	if insecure {
@@ -168,12 +168,12 @@ func EnsureImage(ctx context.Context, client *containerd.Client, stdout, stderr 
 
 // ResolveDigest resolves `rawRef` and returns its descriptor digest.
 func ResolveDigest(ctx context.Context, rawRef string, insecure bool, hostsDirs []string) (string, error) {
-	named, err := refdocker.ParseDockerRef(rawRef)
+	named, err := distributionref.ParseDockerRef(rawRef)
 	if err != nil {
 		return "", err
 	}
 	ref := named.String()
-	refDomain := refdocker.Domain(named)
+	refDomain := distributionref.Domain(named)
 
 	var dOpts []dockerconfigresolver.Opt
 	if insecure {
@@ -361,7 +361,7 @@ func ReadImageConfig(ctx context.Context, img containerd.Image) (ocispec.Image, 
 func ParseRepoTag(imgName string) (string, string) {
 	log.L.Debugf("raw image name=%q", imgName)
 
-	ref, err := refdocker.ParseDockerRef(imgName)
+	ref, err := distributionref.ParseDockerRef(imgName)
 	if err != nil {
 		log.L.WithError(err).Debugf("unparsable image name %q", imgName)
 		return "", ""
@@ -369,10 +369,10 @@ func ParseRepoTag(imgName string) (string, string) {
 
 	var tag string
 
-	if tagged, ok := ref.(refdocker.Tagged); ok {
+	if tagged, ok := ref.(distributionref.Tagged); ok {
 		tag = tagged.Tag()
 	}
-	repository := refdocker.FamiliarName(ref)
+	repository := distributionref.FamiliarName(ref)
 
 	return repository, tag
 }

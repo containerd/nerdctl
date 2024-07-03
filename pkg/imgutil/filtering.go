@@ -25,9 +25,9 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
-	dockerreference "github.com/containerd/containerd/reference/docker"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
+	distributionref "github.com/distribution/reference"
 )
 
 // Filter types supported to filter images.
@@ -141,14 +141,14 @@ func FilterByReference(imageList []images.Image, filters []string) ([]images.Ima
 		log.L.Debug(image.Name)
 		var matches int
 		for _, f := range filters {
-			var ref dockerreference.Reference
+			var ref distributionref.Reference
 			var err error
-			ref, err = dockerreference.ParseAnyReference(image.Name)
+			ref, err = distributionref.ParseAnyReference(image.Name)
 			if err != nil {
 				return nil, fmt.Errorf("unable to parse image name: %s while filtering by reference because of %s", image.Name, err.Error())
 			}
 
-			familiarMatch, err := dockerreference.FamiliarMatch(f, ref)
+			familiarMatch, err := distributionref.FamiliarMatch(f, ref)
 			if err != nil {
 				return nil, err
 			}
