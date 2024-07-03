@@ -21,7 +21,7 @@ import (
 	"path"
 	"strings"
 
-	refdocker "github.com/containerd/containerd/reference/docker"
+	distributionref "github.com/distribution/reference"
 	"github.com/ipfs/go-cid"
 )
 
@@ -30,6 +30,19 @@ type Reference interface {
 
 	// String returns the full reference which can be understood by containerd.
 	String() string
+}
+
+// ParseAnyReference parses the passed reference as IPFS, CID, or a classic reference.
+// Unlike ParseAny, it is not limited to the DockerRef limitations (being either tagged or digested)
+// and should be used instead.
+func ParseAnyReference(rawRef string) (Reference, error) {
+	if scheme, ref, err := ParseIPFSRefWithScheme(rawRef); err == nil {
+		return Reference(stringRef{scheme: scheme, s: ref}), nil
+	}
+	if c, err := cid.Decode(rawRef); err == nil {
+		return c, nil
+	}
+	return distributionref.ParseAnyReference(rawRef)
 }
 
 // ParseAny parses the passed reference with allowing it to be non-docker reference.
@@ -46,8 +59,8 @@ func ParseAny(rawRef string) (Reference, error) {
 }
 
 // ParseDockerRef parses the passed reference with assuming it's a docker reference.
-func ParseDockerRef(rawRef string) (refdocker.Named, error) {
-	return refdocker.ParseDockerRef(rawRef)
+func ParseDockerRef(rawRef string) (distributionref.Named, error) {
+	return distributionref.ParseDockerRef(rawRef)
 }
 
 // ParseIPFSRefWithScheme parses the passed reference with assuming it's an IPFS reference with scheme prefix.
@@ -79,7 +92,7 @@ func SuggestContainerName(rawRef, containerID string) string {
 		r, err := ParseAny(rawRef)
 		if err == nil {
 			switch rr := r.(type) {
-			case refdocker.Named:
+			case distributionref.Named:
 				if rrName := rr.Name(); rrName != "" {
 					imageNameBased := path.Base(rrName)
 					if imageNameBased != "" {
