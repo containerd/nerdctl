@@ -1258,8 +1258,10 @@ Usage: `nerdctl events [OPTIONS]`
 Flags:
 
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :whale: `-f, --filter`: Filter containers based on given conditions
+  - :whale: `--filter event=<value>`: Event's status. Start is the only supported status.
 
-Unimplemented `docker events` flags: `--filter`, `--since`, `--until`
+Unimplemented `docker events` flags: `--since`, `--until`
 
 ### :whale: nerdctl info
 
