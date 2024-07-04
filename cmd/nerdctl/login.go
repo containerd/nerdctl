@@ -28,15 +28,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type loginOptions struct {
-	serverAddress string
-	username      string
-	password      string
-	passwordStdin bool
-}
-
-var options = new(loginOptions)
-
 func newLoginCommand() *cobra.Command {
 	var loginCommand = &cobra.Command{
 		Use:           "login [flags] [SERVER]",
@@ -46,54 +37,67 @@ func newLoginCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	loginCommand.Flags().StringVarP(&options.username, "username", "u", "", "Username")
-	loginCommand.Flags().StringVarP(&options.password, "password", "p", "", "Password")
-	loginCommand.Flags().BoolVar(&options.passwordStdin, "password-stdin", false, "Take the password from stdin")
+	loginCommand.Flags().StringP("username", "u", "", "Username")
+	loginCommand.Flags().StringP("password", "p", "", "Password")
+	loginCommand.Flags().Bool("password-stdin", false, "Take the password from stdin")
 	return loginCommand
 }
 
-func loginAction(cmd *cobra.Command, args []string) error {
-	if len(args) == 1 {
-		options.serverAddress = args[0]
-	}
-	if err := verifyLoginOptions(cmd, options); err != nil {
-		return err
-	}
-
+func processLoginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.LoginCommandOptions{}, err
 	}
 
-	return login.Login(cmd.Context(), types.LoginCommandOptions{
-		GOptions:      globalOptions,
-		ServerAddress: options.serverAddress,
-		Username:      options.username,
-		Password:      options.password,
-	}, cmd.OutOrStdout())
-}
+	username, err := cmd.Flags().GetString("username")
+	if err != nil {
+		return types.LoginCommandOptions{}, err
+	}
+	password, err := cmd.Flags().GetString("password")
+	if err != nil {
+		return types.LoginCommandOptions{}, err
+	}
+	passwordStdin, err := cmd.Flags().GetBool("password-stdin")
+	if err != nil {
+		return types.LoginCommandOptions{}, err
+	}
 
-// copied from github.com/docker/cli/cli/command/registry/login.go (v20.10.3)
-func verifyLoginOptions(cmd *cobra.Command, options *loginOptions) error {
-	if options.password != "" {
+	if password != "" {
 		log.L.Warn("WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
-		if options.passwordStdin {
-			return errors.New("--password and --password-stdin are mutually exclusive")
+		if passwordStdin {
+			return types.LoginCommandOptions{}, errors.New("--password and --password-stdin are mutually exclusive")
 		}
 	}
 
-	if options.passwordStdin {
-		if options.username == "" {
-			return errors.New("must provide --username with --password-stdin")
+	if passwordStdin {
+		if username == "" {
+			return types.LoginCommandOptions{}, errors.New("must provide --username with --password-stdin")
 		}
 
 		contents, err := io.ReadAll(cmd.InOrStdin())
 		if err != nil {
-			return err
+			return types.LoginCommandOptions{}, err
 		}
 
-		options.password = strings.TrimSuffix(string(contents), "\n")
-		options.password = strings.TrimSuffix(options.password, "\r")
+		password = strings.TrimSuffix(string(contents), "\n")
+		password = strings.TrimSuffix(password, "\r")
 	}
-	return nil
+	return types.LoginCommandOptions{
+		GOptions: globalOptions,
+		Username: username,
+		Password: password,
+	}, nil
+}
+
+func loginAction(cmd *cobra.Command, args []string) error {
+	options, err := processLoginOptions(cmd)
+	if err != nil {
+		return err
+	}
+
+	if len(args) == 1 {
+		options.ServerAddress = args[0]
+	}
+
+	return login.Login(cmd.Context(), options, cmd.OutOrStdout())
 }
