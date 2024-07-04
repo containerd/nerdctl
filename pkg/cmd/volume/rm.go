@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
@@ -75,6 +76,11 @@ func usedVolumes(ctx context.Context, containers []containerd.Container) (map[st
 	for _, c := range containers {
 		l, err := c.Labels(ctx)
 		if err != nil {
+			// Containerd note: there is no guarantee that the containers we got from the list still exist at this point
+			// If that is the case, just ignore and move on
+			if errors.Is(err, errdefs.ErrNotFound) {
+				continue
+			}
 			return nil, err
 		}
 		mountsJSON, ok := l[labels.Mounts]
