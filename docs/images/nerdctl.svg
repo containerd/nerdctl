@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="300mm" height="100mm" fill-rule="evenodd" stroke-linejoin="round" stroke-width="28.222" preserveAspectRatio="xMidYMid" version="1.2" viewBox="0 0 3e4 1e4" xml:space="preserve" xmlns="http://www.w3.org/2000/svg">
+<g class="SlideGroup" transform="translate(-618.25 -50.126)">
+<g transform="translate(-5.7246 -68.695)">
+<g transform="matrix(8.579 0 0 8.579 -10669 -820.21)">
+<g class="Slide" transform="translate(740.83)" clip-path="url(#presentation_clip_path)">
+<g class="Page">
+<path class="BoundingBox" d="m2057 129h795v1137h-795z" fill="none"/>
+<path d="m2057 129v1136h794v-1136zm662 1004h-529v-501h370v-185h159z"/>
+<path class="BoundingBox" d="m2350 764h214v239h-214z" fill="none"/>
+<path d="m2351 764h212v238h-212z"/>
+<path d="m629 658h1350v477h-1350z" fill="none"/>
+<path d="m1581 658v476h106v-370h291v-106zm-859 0h-93v476h106v-370h185v370h106v-476h-93zm357 0v476h396v-106h-291v-79h344v-291zm105 106h239v79h-239z" fill-opacity=".659"/>
+<path d="m2932 0h1325v1130h-1325z" fill="none"/>
+<path d="m2932 653v476h477v-106h-371v-264h371v-106z" fill-opacity=".659"/>
+<path d="m3461 0h796v1130h-796z" fill="none"/>
+<path d="m3646 468h-105v185h-80v106h80v370h211v-106h-106v-264h106v-106h-106z" fill-opacity=".659"/>
+<path d="m3799 0h458v1130h-458z" fill="none"/>
+<path d="m3800 468c75.174-36.658 75.174-36.658 0 0zm0.9818 0v660.99h210.99v-105.99h-105.99v-555z" fill-opacity=".659"/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</svg>

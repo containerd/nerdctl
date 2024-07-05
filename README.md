@@ -5,6 +5,8 @@
 
 # nerdctl: Docker-compatible CLI for containerd
 
+![logo](docs/images/nerdctl.svg)
+
 `nerdctl` is a Docker-compatible CLI for [contai**nerd**](https://containerd.io).
 
  ✅ Same UI/UX as `docker`
