@@ -19,6 +19,7 @@ package container
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -307,6 +308,12 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 	for _, c := range containers {
 		ls, err := c.Labels(ctx)
 		if err != nil {
+			// Containerd note: there is no guarantee that the containers we got from the list still exist at this point
+			// If that is the case, just ignore and move on
+			if errors.Is(err, errdefs.ErrNotFound) {
+				log.G(ctx).Debugf("container %q is gone - ignoring", c.ID())
+				continue
+			}
 			return nil, nil, nil, err
 		}
 		_, idMatch := vfSet[c.ID()]
