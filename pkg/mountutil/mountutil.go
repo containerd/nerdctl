@@ -169,7 +169,6 @@ func handleBindMounts(source string, createDir bool) (volumeSpec, error) {
 
 	// Handle relative paths
 	if !filepath.IsAbs(source) {
-		log.L.Warnf("expected an absolute path, got a relative path %q (allowed for nerdctl, but disallowed for Docker, so unrecommended)", source)
 		absPath, err := filepath.Abs(source)
 		if err != nil {
 			return res, fmt.Errorf("failed to get the absolute path of %q: %w", source, err)
