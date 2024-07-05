@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
@@ -43,6 +44,9 @@ CMD ["echo", "nerdctl-builder-debug-test-string"]
 
 func TestBuildWithPull(t *testing.T) {
 	testutil.DockerIncompatible(t)
+	if rootlessutil.IsRootless() {
+		t.Skipf("skipped because the test needs a custom buildkitd config")
+	}
 	testutil.RequiresBuild(t)
 
 	oldImage := testutil.BusyboxImage
