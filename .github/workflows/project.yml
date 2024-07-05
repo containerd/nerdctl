@@ -1,0 +1,31 @@
+name: project
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+
+jobs:
+  project:
+    name: Project Checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4.1.7
+        with:
+          path: src/github.com/containerd/nerdctl
+          fetch-depth: 100
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: src/github.com/containerd/nerdctl
+      - uses: containerd/project-checks@v1.1.0
+        with:
+          working-directory: src/github.com/containerd/nerdctl
+          repo-access-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: ./hack/verify-no-patent.sh
+        working-directory: src/github.com/containerd/nerdctl
+      - run: ./hack/verify-pkg-isolation.sh
+        working-directory: src/github.com/containerd/nerdctl
