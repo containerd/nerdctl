@@ -55,6 +55,7 @@ type TokenAuthServer struct {
 func EnsureImages(base *testutil.Base) {
 	base.Cmd("pull", testutil.RegistryImage).AssertOK()
 	base.Cmd("pull", testutil.DockerAuthImage).AssertOK()
+	base.Cmd("pull", testutil.KuboImage).AssertOK()
 }
 
 func NewAuthServer(base *testutil.Base, ca *testca.CA, port int, user, pass string, tls bool) *TokenAuthServer {
@@ -112,6 +113,8 @@ acl:
 	port, err = portlock.Acquire(port)
 	assert.NilError(base.T, err, fmt.Errorf("failed acquiring port: %w", err))
 	containerName := fmt.Sprintf("auth-%s-%d", name, port)
+	// Cleanup possible leftovers first
+	base.Cmd("rm", "-f", containerName).Run()
 
 	cleanup := func(err error) {
 		result := base.Cmd("rm", "-f", containerName).Run()
@@ -232,7 +235,78 @@ func (ba *BasicAuth) Params(base *testutil.Base) []string {
 	return ret
 }
 
+func NewIPFSRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundCleanup func(error)) *RegistryServer {
+	EnsureImages(base)
+
+	name := testutil.Identifier(base.T)
+	// listen on 0.0.0.0 to enable 127.0.0.1
+	listenIP := net.ParseIP("0.0.0.0")
+	hostIP, err := nettestutil.NonLoopbackIPv4()
+	assert.NilError(base.T, err, fmt.Errorf("failed finding ipv4 non loopback interface: %w", err))
+	port, err = portlock.Acquire(port)
+	assert.NilError(base.T, err, fmt.Errorf("failed acquiring port: %w", err))
+
+	containerName := fmt.Sprintf("ipfs-registry-%s-%d", name, port)
+	// Cleanup possible leftovers first
+	base.Cmd("rm", "-f", containerName).Run()
+
+	args := []string{
+		"run",
+		"--pull=never",
+		"-d",
+		"-p", fmt.Sprintf("%s:%d:%d", listenIP, port, port),
+		"--name", containerName,
+		"--entrypoint=/bin/sh",
+		testutil.KuboImage,
+		"-c", "--",
+		fmt.Sprintf("ipfs init && ipfs config Addresses.API /ip4/0.0.0.0/tcp/%d && ipfs daemon --offline", port),
+	}
+
+	cleanup := func(err error) {
+		result := base.Cmd("rm", "-f", containerName).Run()
+		errPortRelease := portlock.Release(port)
+		if boundCleanup != nil {
+			boundCleanup(err)
+		}
+		if err == nil {
+			assert.NilError(base.T, result.Error, fmt.Errorf("failed removing container: %w", err))
+			assert.NilError(base.T, errPortRelease, fmt.Errorf("failed releasing port: %w", err))
+		}
+	}
+
+	scheme := "http"
+
+	err = func() error {
+		cmd := base.Cmd(args...).Run()
+		if cmd.Error != nil {
+			base.T.Logf("%s:\n%s\n%s\n-------\n%s", containerName, cmd.Cmd, cmd.Stdout(), cmd.Stderr())
+			return cmd.Error
+		}
+
+		if _, err = nettestutil.HTTPGet(fmt.Sprintf("%s://%s:%s/api/v0", scheme, hostIP.String(), strconv.Itoa(port)), 30, true); err != nil {
+			return err
+		}
+
+		return nil
+	}()
+
+	assert.NilError(base.T, err, fmt.Errorf("failed starting IPFS registry container in a timely manner: %w", err))
+
+	return &RegistryServer{
+		IP:       hostIP,
+		Port:     port,
+		Scheme:   scheme,
+		ListenIP: listenIP,
+		Cleanup:  cleanup,
+		Logs: func() {
+			base.T.Logf("%s: %q", containerName, base.Cmd("logs", containerName).Run().String())
+		},
+	}
+}
+
 func NewRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundCleanup func(error)) *RegistryServer {
+	EnsureImages(base)
+
 	name := testutil.Identifier(base.T)
 	// listen on 0.0.0.0 to enable 127.0.0.1
 	listenIP := net.ParseIP("0.0.0.0")
@@ -242,6 +316,9 @@ func NewRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundC
 	assert.NilError(base.T, err, fmt.Errorf("failed acquiring port: %w", err))
 
 	containerName := fmt.Sprintf("registry-%s-%d", name, port)
+	// Cleanup possible leftovers first
+	base.Cmd("rm", "-f", containerName).Run()
+
 	args := []string{
 		"run",
 		"--pull=never",
@@ -325,8 +402,6 @@ func NewRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundC
 	}()
 
 	if err != nil {
-		// cs := base.Cmd("inspect", containerName).Run()
-		// base.T.Logf("%s:\n%s\n%s\n=========================\n%s", containerName, cs.Cmd, cs.Stdout(), cs.Stderr())
 		cl := base.Cmd("logs", containerName).Run()
 		base.T.Logf("%s:\n%s\n%s\n=========================\n%s", containerName, cl.Cmd, cl.Stdout(), cl.Stderr())
 		cleanup(err)
@@ -357,8 +432,6 @@ func NewWithTokenAuth(base *testutil.Base, user, pass string, port int, tls bool
 }
 
 func NewWithNoAuth(base *testutil.Base, port int, tls bool) *RegistryServer {
-	EnsureImages(base)
-
 	var ca *testca.CA
 	if tls {
 		ca = testca.New(base.T)

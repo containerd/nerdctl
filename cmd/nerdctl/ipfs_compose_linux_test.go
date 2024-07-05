@@ -24,14 +24,20 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 	"gotest.tools/v3/assert"
 )
 
 func TestIPFSComposeUp(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	ipfsaddr, done := runIPFSDaemonContainer(t, base)
-	defer done()
+
+	iReg := testregistry.NewIPFSRegistry(base, nil, 0, nil, nil)
+	t.Cleanup(func() {
+		iReg.Cleanup(nil)
+	})
+	ipfsaddr := fmt.Sprintf("/ip4/%s/tcp/%d", iReg.IP, iReg.Port)
+
 	tests := []struct {
 		name           string
 		snapshotter    string
