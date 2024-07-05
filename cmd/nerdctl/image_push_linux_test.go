@@ -41,7 +41,7 @@ func TestPushPlainHTTPFails(t *testing.T) {
 
 	res := base.Cmd("push", testImageRef).Run()
 	resCombined := res.Combined()
-	t.Logf("result: exitCode=%d, out=%q", res.ExitCode, res.Combined())
+	t.Logf("result: exitCode=%d, out=%q", res.ExitCode, res)
 	assert.Assert(t, res.ExitCode != 0)
 	assert.Assert(t, strings.Contains(resCombined, "server gave HTTP response to HTTPS client"))
 }

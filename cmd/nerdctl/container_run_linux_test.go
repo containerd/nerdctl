@@ -321,7 +321,7 @@ func TestRunTTY(t *testing.T) {
 
 	// tests pipe works
 	res := icmd.RunCmd(icmd.Command("unbuffer", "/bin/sh", "-c", fmt.Sprintf("%q run --rm -it %q echo hi | grep hi", base.Binary, testutil.CommonImage)))
-	assert.Equal(t, 0, res.ExitCode, res.Combined())
+	assert.Equal(t, 0, res.ExitCode, res)
 }
 
 func runSigProxy(t *testing.T, args ...string) (string, bool, bool) {

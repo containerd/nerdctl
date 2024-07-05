@@ -397,7 +397,7 @@ func (c *Cmd) AssertFail() {
 func (c *Cmd) AssertExitCode(exitCode int) {
 	c.Base.T.Helper()
 	res := c.runIfNecessary()
-	assert.Assert(c.Base.T, res.ExitCode == exitCode, res.Combined())
+	assert.Assert(c.Base.T, res.ExitCode == exitCode, res)
 }
 
 func (c *Cmd) AssertOutContains(s string) {
@@ -502,21 +502,21 @@ func (c *Cmd) AssertOutStreamsExactly(stdout, stderr string) {
 func (c *Cmd) AssertOutWithFunc(fn func(stdout string) error) {
 	c.Base.T.Helper()
 	res := c.runIfNecessary()
-	assert.Equal(c.Base.T, 0, res.ExitCode, res.Combined())
+	assert.Equal(c.Base.T, 0, res.ExitCode, res)
 	assert.NilError(c.Base.T, fn(res.Stdout()), res.Combined())
 }
 
 func (c *Cmd) AssertOutStreamsWithFunc(fn func(stdout, stderr string) error) {
 	c.Base.T.Helper()
 	res := c.runIfNecessary()
-	assert.Equal(c.Base.T, 0, res.ExitCode, res.Combined())
+	assert.Equal(c.Base.T, 0, res.ExitCode, res)
 	assert.NilError(c.Base.T, fn(res.Stdout(), res.Stderr()), res.Combined())
 }
 
 func (c *Cmd) Out() string {
 	c.Base.T.Helper()
 	res := c.runIfNecessary()
-	assert.Equal(c.Base.T, 0, res.ExitCode, res.Combined())
+	assert.Equal(c.Base.T, 0, res.ExitCode, res)
 	return res.Stdout()
 }
 
