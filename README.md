@@ -249,32 +249,9 @@ See the header of [`go.mod`](./go.mod) for the minimum supported version of Go.
 
 Using `go install github.com/containerd/nerdctl/v2/cmd/nerdctl` is possible, but unrecommended because it does not fill version strings printed in `nerdctl version`
 
-### Test suite
+### Testing
 
-#### Running unit tests
-
-Run `go test -v ./pkg/...`
-
-#### Running integration test suite against nerdctl
-
-Run `go test -exec sudo -v ./cmd/nerdctl/...` after `make && sudo make install`.
-
-For testing rootless mode, `-exec sudo` is not needed.
-
-To run tests in a container:
-
-```bash
-docker build -t test-integration --target test-integration .
-docker run -t --rm --privileged test-integration
-```
-
-To run a single integration test (in this case, `image_inspect_test`):
-
-`go test -exec sudo -v ./cmd/nerdctl/main_test.go ./cmd/nerdctl/image_inspect_test.go `
-
-#### Running integration test suite against Docker
-
-Run `go test -exec sudo -v ./cmd/nerdctl/... -args -test.target=docker` to ensure that the test suite is compatible with Docker.
+See [testing nerdctl](docs/testing.md).
 
 ### Contributing to nerdctl
 
