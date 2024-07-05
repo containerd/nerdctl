@@ -330,7 +330,7 @@ func TestRunWithJournaldLogDriver(t *testing.T) {
 	found := 0
 	check := func(log poll.LogT) poll.Result {
 		res := icmd.RunCmd(icmd.Command(journalctl, "--no-pager", "--since", "2 minutes ago", fmt.Sprintf("SYSLOG_IDENTIFIER=%s", inspectedContainer.ID[:12])))
-		assert.Equal(t, 0, res.ExitCode, res.Combined())
+		assert.Equal(t, 0, res.ExitCode, res)
 		if strings.Contains(res.Stdout(), "bar") && strings.Contains(res.Stdout(), "foo") {
 			found = 1
 			return poll.Success()
@@ -359,7 +359,7 @@ func TestRunWithJournaldLogDriverAndLogOpt(t *testing.T) {
 	found := 0
 	check := func(log poll.LogT) poll.Result {
 		res := icmd.RunCmd(icmd.Command(journalctl, "--no-pager", "--since", "2 minutes ago", fmt.Sprintf("SYSLOG_IDENTIFIER=%s", inspectedContainer.ID)))
-		assert.Equal(t, 0, res.ExitCode, res.Combined())
+		assert.Equal(t, 0, res.ExitCode, res)
 		if strings.Contains(res.Stdout(), "bar") && strings.Contains(res.Stdout(), "foo") {
 			found = 1
 			return poll.Success()

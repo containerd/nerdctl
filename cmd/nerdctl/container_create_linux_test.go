@@ -118,7 +118,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 				"sh", "-c", "--", "ip addr show").Run()
 
 			if !wantErr {
-				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res.Combined())
+				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res)
 				// This is currently blocked by: https://github.com/containerd/nerdctl/pull/3104
 				// res = base.Cmd("start", "-i", containerName).
 				//	CmdOption(testutil.WithStdin(strings.NewReader("ip addr show eth0 | grep ether | awk '{printf $2}'"))).Run()
@@ -131,7 +131,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 					// unlike nerdctl
 					// when using network ipvlan or container in Docker
 					// it delays fail on executing start command
-					assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res.Combined())
+					assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res)
 					res = base.Cmd("start", "-i", "-a", containerName).
 						CmdOption(testutil.WithStdin(strings.NewReader("ip addr show eth0 | grep ether | awk '{printf $2}'"))).Run()
 				}
@@ -146,7 +146,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 				} else {
 					assert.Assert(t, res.Combined() == "", fmt.Sprintf("expected output to be empty: %q", res.Combined()))
 				}
-				assert.Assert(t, res.ExitCode != 0, "Command should have failed", res.Combined())
+				assert.Assert(t, res.ExitCode != 0, "Command should have failed", res)
 			}
 		})
 	}

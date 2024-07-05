@@ -224,7 +224,7 @@ func TestRunPrivileged(t *testing.T) {
 	res := base.Cmd("run", "--rm", "--privileged", "--security-opt", "privileged-without-host-devices", testutil.AlpineImage, "ls", devPath).Run()
 
 	// normally for not a exists file, the `ls` will return `1``.
-	assert.Check(t, res.ExitCode != 0, res.Combined())
+	assert.Check(t, res.ExitCode != 0, res)
 
 	// something like `ls: /dev/dummy-zero: No such file or directory`
 	assert.Check(t, strings.Contains(res.Combined(), "No such file or directory"))

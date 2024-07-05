@@ -512,10 +512,10 @@ func TestRunContainerWithMACAddress(t *testing.T) {
 				CmdOption(testutil.WithStdin(strings.NewReader("ip addr show eth0 | grep ether | awk '{printf $2}'"))).Run()
 
 			if wantErr {
-				assert.Assert(t, res.ExitCode != 0, "Command should have failed", res.Combined())
+				assert.Assert(t, res.ExitCode != 0, "Command should have failed", res)
 				assert.Assert(t, strings.Contains(res.Combined(), expect), fmt.Sprintf("expected output to contain %q: %q", expect, res.Combined()))
 			} else {
-				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res.Combined())
+				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded", res)
 				assert.Assert(t, strings.Contains(res.Stdout(), expect), fmt.Sprintf("expected output to contain %q: %q", expect, res.Stdout()))
 			}
 		})
