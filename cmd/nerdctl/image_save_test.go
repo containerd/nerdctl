@@ -25,7 +25,11 @@ import (
 )
 
 func TestSaveById(t *testing.T) {
-	base := testutil.NewBase(t)
+	// See detailed comment in TestRunCustomRootfs for why we need a separate namespace.
+	base := testutil.NewBaseWithNamespace(t, testutil.Identifier(t))
+	t.Cleanup(func() {
+		base.Cmd("namespace", "remove", testutil.Identifier(t)).Run()
+	})
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	inspect := base.InspectImage(testutil.CommonImage)
 	var id string
@@ -42,7 +46,11 @@ func TestSaveById(t *testing.T) {
 }
 
 func TestSaveByIdWithDifferentNames(t *testing.T) {
-	base := testutil.NewBase(t)
+	// See detailed comment in TestRunCustomRootfs for why we need a separate namespace.
+	base := testutil.NewBaseWithNamespace(t, testutil.Identifier(t))
+	t.Cleanup(func() {
+		base.Cmd("namespace", "remove", testutil.Identifier(t)).Run()
+	})
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	inspect := base.InspectImage(testutil.CommonImage)
 	var id string
