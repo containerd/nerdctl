@@ -88,12 +88,17 @@ func namespaceUsedNetworks(ctx context.Context, containers []containerd.Containe
 		task, err := c.Task(ctx, nil)
 		if err != nil {
 			if errdefs.IsNotFound(err) {
+				log.G(ctx).Debugf("task not found - likely container %q was removed", c.ID())
 				continue
 			}
 			return nil, err
 		}
 		status, err := task.Status(ctx)
 		if err != nil {
+			if errdefs.IsNotFound(err) {
+				log.G(ctx).Debugf("task not found - likely container %q was removed", c.ID())
+				continue
+			}
 			return nil, err
 		}
 		switch status.Status {
@@ -103,6 +108,10 @@ func namespaceUsedNetworks(ctx context.Context, containers []containerd.Containe
 		}
 		l, err := c.Labels(ctx)
 		if err != nil {
+			if errdefs.IsNotFound(err) {
+				log.G(ctx).Debugf("container %q is gone", c.ID())
+				continue
+			}
 			return nil, err
 		}
 		networkJSON, ok := l[labels.Networks]
