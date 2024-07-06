@@ -46,7 +46,17 @@ func TestRunWithSystemdTrueEnabled(t *testing.T) {
 
 	base.Cmd("inspect", "--format", "{{json .Config.Labels}}", containerName).AssertOutContains("SIGRTMIN+3")
 
-	base.Cmd("exec", containerName, "systemctl", "list-jobs").AssertOutContains("jobs listed.")
+	base.Cmd("exec", containerName, "sh", "-c", "--", `tries=0
+until systemctl is-system-running >/dev/null 2>&1; do
+	>&2 printf "Waiting for systemd to come up...\n"
+	sleep 1s
+	tries=$(( tries + 1))
+	[ $tries -lt 10 ] || {
+		>&2 printf "systemd failed to come up in a reasonable amount of time\n"
+		exit 1
+	}
+done
+systemctl list-jobs`).AssertOutContains("jobs")
 }
 
 func TestRunWithSystemdTrueDisabled(t *testing.T) {
