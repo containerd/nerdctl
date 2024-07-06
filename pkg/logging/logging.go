@@ -27,10 +27,12 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
+	"github.com/fsnotify/fsnotify"
 	"github.com/muesli/cancelreader"
 )
 
@@ -216,4 +218,46 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 		}
 		return nil
 	}, nil
+}
+
+func NewLogFileWatcher(dir string) (*fsnotify.Watcher, error) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create fsnotify watcher: %v", err)
+	}
+	if err = watcher.Add(dir); err != nil {
+		watcher.Close()
+		return nil, fmt.Errorf("failed to watch directory %q: %w", dir, err)
+	}
+	return watcher, nil
+}
+
+// startTail wait for the next log write.
+// the boolean value indicates if the log file was recreated;
+// the error is error happens during waiting new logs.
+func startTail(ctx context.Context, logName string, w *fsnotify.Watcher) (bool, error) {
+	errRetry := 5
+	for {
+		select {
+		case <-ctx.Done():
+			return false, fmt.Errorf("context cancelled")
+		case e := <-w.Events:
+			switch {
+			case e.Has(fsnotify.Write):
+				return false, nil
+			case e.Has(fsnotify.Create):
+				return filepath.Base(e.Name) == logName, nil
+			default:
+				log.L.Debugf("Received unexpected fsnotify event: %v, retrying", e)
+			}
+		case err := <-w.Errors:
+			log.L.Debugf("Received fsnotify watch error, retrying unless no more retries left, retries: %d, error: %s", errRetry, err)
+			if errRetry == 0 {
+				return false, err
+			}
+			errRetry--
+		case <-time.After(logForceCheckPeriod):
+			return false, nil
+		}
+	}
 }

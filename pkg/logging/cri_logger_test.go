@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -228,5 +229,87 @@ func TestReadLogsLimitsWithTimestamps(t *testing.T) {
 
 	if lineCount != 2 {
 		t.Errorf("should have two lines, lineCount= %d", lineCount)
+	}
+}
+
+func TestReadRotatedLog(t *testing.T) {
+	tmpDir := t.TempDir()
+	file, err := os.CreateTemp(tmpDir, "logfile")
+	if err != nil {
+		t.Errorf("unable to create temp file, error: %s", err.Error())
+	}
+	stdoutBuf := &bytes.Buffer{}
+	stderrBuf := &bytes.Buffer{}
+	containerStoped := make(chan os.Signal)
+	// Start to follow the container's log.
+	fileName := file.Name()
+	go func() {
+		lvOpts := &LogViewOptions{
+			Follow:  true,
+			LogPath: fileName,
+		}
+		_ = ReadLogs(lvOpts, stdoutBuf, stderrBuf, containerStoped)
+	}()
+
+	// log in stdout
+	expectedStdout := "line0line2line4line6line8"
+	// log in stderr
+	expectedStderr := "line1line3line5line7line9"
+
+	dir := filepath.Dir(file.Name())
+	baseName := filepath.Base(file.Name())
+
+	// Write 10 lines to log file.
+	// Let ReadLogs start.
+	time.Sleep(50 * time.Millisecond)
+
+	for line := 0; line < 10; line++ {
+		// Write the first three lines to log file
+		now := time.Now().Format(time.RFC3339Nano)
+		if line%2 == 0 {
+			file.WriteString(fmt.Sprintf(
+				"%s stdout P line%d\n", now, line))
+		} else {
+			file.WriteString(fmt.Sprintf(
+				"%s stderr P line%d\n", now, line))
+		}
+
+		time.Sleep(1 * time.Millisecond)
+
+		if line == 5 {
+			file.Close()
+			// Pretend to rotate the log.
+			rotatedName := fmt.Sprintf("%s.%s", baseName, time.Now().Format("220060102-150405"))
+			rotatedName = filepath.Join(dir, rotatedName)
+			if err := os.Rename(filepath.Join(dir, baseName), rotatedName); err != nil {
+				t.Errorf("failed to rotate log %q to %q, error: %s", file.Name(), rotatedName, err.Error())
+				return
+			}
+
+			time.Sleep(20 * time.Millisecond)
+			newF := filepath.Join(dir, baseName)
+			if file, err = os.Create(newF); err != nil {
+				t.Errorf("unable to create new log file, error: %s", err.Error())
+				return
+			}
+		}
+	}
+
+	// Finished writing into the file, close it, so we can delete it later.
+	err = file.Close()
+	if err != nil {
+		t.Errorf("could not close file, error: %s", err.Error())
+	}
+
+	time.Sleep(2 * time.Second)
+	// Make the function ReadLogs end.
+	close(containerStoped)
+
+	if expectedStdout != stdoutBuf.String() {
+		t.Errorf("expected: %s, acoutal: %s", expectedStdout, stdoutBuf.String())
+	}
+
+	if expectedStderr != stderrBuf.String() {
+		t.Errorf("expected: %s, acoutal: %s", expectedStderr, stderrBuf.String())
 	}
 }

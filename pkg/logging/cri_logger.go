@@ -25,6 +25,7 @@ package logging
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -35,6 +36,7 @@ import (
 
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/logging/tail"
+	"github.com/fsnotify/fsnotify"
 )
 
 // LogStreamType is the type of the stream in CRI container log.
@@ -45,6 +47,9 @@ const (
 	Stdout LogStreamType = "stdout"
 	// Stderr is the stream type for stderr.
 	Stderr LogStreamType = "stderr"
+
+	// logForceCheckPeriod is the period to check for a new read
+	logForceCheckPeriod = 1 * time.Second
 )
 
 // LogTag is the tag of a log line in CRI container log.
@@ -89,7 +94,9 @@ func ReadLogs(opts *LogViewOptions, stdout, stderr io.Writer, stopChannel chan o
 	if err != nil {
 		return fmt.Errorf("failed to open log file %q: %v", logPath, err)
 	}
-	defer f.Close()
+	defer func() {
+		f.Close()
+	}()
 
 	// Search start point based on tail line.
 	start, err := tail.FindTailLineStartIndex(f, opts.Tail)
@@ -101,6 +108,8 @@ func ReadLogs(opts *LogViewOptions, stdout, stderr io.Writer, stopChannel chan o
 		return fmt.Errorf("failed to seek in log file %q: %v", logPath, err)
 	}
 
+	var watcher *fsnotify.Watcher
+
 	limitedMode := (opts.Tail > 0) && (!opts.Follow)
 	limitedNum := opts.Tail
 	// Start parsing the logs.
@@ -110,6 +119,9 @@ func ReadLogs(opts *LogViewOptions, stdout, stderr io.Writer, stopChannel chan o
 	isNewLine := true
 	writer := newLogWriter(stdout, stderr, opts)
 	msg := &logMessage{}
+	baseName := filepath.Base(logPath)
+	dir := filepath.Dir(logPath)
+
 	for {
 		select {
 		case <-stopChannel:
@@ -126,11 +138,46 @@ func ReadLogs(opts *LogViewOptions, stdout, stderr io.Writer, stopChannel chan o
 					return fmt.Errorf("failed to read log file %q: %v", logPath, err)
 				}
 				if opts.Follow {
-
 					// Reset seek so that if this is an incomplete line,
 					// it will be read again.
 					if _, err := f.Seek(-int64(len(l)), io.SeekCurrent); err != nil {
 						return fmt.Errorf("failed to reset seek in log file %q: %v", logPath, err)
+					}
+
+					if watcher == nil {
+						// Initialize the watcher if it has not been initialized yet.
+						if watcher, err = NewLogFileWatcher(dir); err != nil {
+							return err
+						}
+						defer watcher.Close()
+						// If we just created the watcher, try again to read as we might have missed
+						// the event.
+						continue
+					}
+
+					var recreated bool
+					// Wait until the next log change.
+					recreated, err = startTail(context.Background(), baseName, watcher)
+					if err != nil {
+						return err
+					}
+					if recreated {
+						newF, err := openFileShareDelete(logPath)
+						if err != nil {
+							if errors.Is(err, os.ErrNotExist) {
+								//If the user application outputs logs too quickly,
+								//There is a slight possibility that nerdctl has just rotated the log file,
+								//try opening it once more.
+								time.Sleep(10 * time.Millisecond)
+							}
+							newF, err = openFileShareDelete(logPath)
+							if err != nil {
+								return fmt.Errorf("failed to open cri logfile %q: %w", logPath, err)
+							}
+						}
+						f.Close()
+						f = newF
+						r = bufio.NewReader(f)
 					}
 
 					// If the container exited consume data until the next EOF
