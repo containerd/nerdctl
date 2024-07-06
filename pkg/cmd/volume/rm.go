@@ -79,6 +79,7 @@ func usedVolumes(ctx context.Context, containers []containerd.Container) (map[st
 			// Containerd note: there is no guarantee that the containers we got from the list still exist at this point
 			// If that is the case, just ignore and move on
 			if errors.Is(err, errdefs.ErrNotFound) {
+				log.G(ctx).Debugf("container %q is gone - ignoring", c.ID())
 				continue
 			}
 			return nil, err
