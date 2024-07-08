@@ -106,16 +106,26 @@ func (m *MockVolumeStoreMockRecorder) Remove(names any) *gomock.Call {
 	return m.mock.ctrl.RecordCallWithMethodType(m.mock, "Remove", reflect.TypeOf((*MockVolumeStore)(nil).Remove), names)
 }
 
-// Dir mocks the Dir method of VolumeStore
-func (m *MockVolumeStore) Dir() string {
+// Lock mocks the Lock method of VolumeStore
+func (m *MockVolumeStore) Lock() error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Dir")
-	ret0, _ := ret[0].(string)
-	return ret0
+	return nil
 }
 
-// Dir indicates an expected call of Dir
-func (m *MockVolumeStoreMockRecorder) Dir() *gomock.Call {
+// Lock indicates an expected call of Lock
+func (m *MockVolumeStoreMockRecorder) Lock() *gomock.Call {
 	m.mock.ctrl.T.Helper()
-	return m.mock.ctrl.RecordCallWithMethodType(m.mock, "Dir", reflect.TypeOf((*MockVolumeStore)(nil).Dir))
+	return m.mock.ctrl.RecordCallWithMethodType(m.mock, "Lock", reflect.TypeOf((*MockVolumeStore)(nil).Lock))
+}
+
+// Unlock mocks the Unlock method of VolumeStore
+func (m *MockVolumeStore) Unlock() error {
+	m.ctrl.T.Helper()
+	return nil
+}
+
+// Unlock indicates an expected call of Unlock
+func (m *MockVolumeStoreMockRecorder) Unlock() *gomock.Call {
+	m.mock.ctrl.T.Helper()
+	return m.mock.ctrl.RecordCallWithMethodType(m.mock, "Unlock", reflect.TypeOf((*MockVolumeStore)(nil).Unlock))
 }

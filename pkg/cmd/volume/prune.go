@@ -26,29 +26,46 @@ import (
 )
 
 func Prune(ctx context.Context, client *containerd.Client, options types.VolumePruneOptions) error {
+	// Get the volume store and lock it until we are done.
+	// This will prevent racing new containers from being created or removed until we are done with the cleanup of volumes
 	volStore, err := Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
+	err = volStore.Lock()
+	if err != nil {
+		return err
+	}
+	defer volStore.Unlock()
+
+	// Get containers and see which volumes are used
+	containers, err := client.Containers(ctx)
+	if err != nil {
+		return err
+	}
+
+	usedVolumesList, err := usedVolumes(ctx, containers)
+	if err != nil {
+		return err
+	}
+	var removeNames []string // nolint: prealloc
+
+	// Get the list of known volumes from the store
 	volumes, err := volStore.List(false)
 	if err != nil {
 		return err
 	}
 
-	containers, err := client.Containers(ctx)
-	if err != nil {
-		return err
-	}
-	usedVolumes, err := usedVolumes(ctx, containers)
-	if err != nil {
-		return err
-	}
-	var removeNames []string // nolint: prealloc
+	// Iterate through the known volumes, making sure we do not remove in-use volumes
+	// but capture as well anon volumes (if --all was passed)
 	for _, volume := range volumes {
-		if _, ok := usedVolumes[volume.Name]; ok {
+		if _, ok := usedVolumesList[volume.Name]; ok {
 			continue
 		}
 		if !options.All {
+			if volume.Labels == nil {
+				continue
+			}
 			val, ok := (*volume.Labels)[labels.AnonymousVolumes]
 			//skip the named volume and only remove the anonymous volume
 			if !ok || val != "" {
@@ -57,6 +74,8 @@ func Prune(ctx context.Context, client *containerd.Client, options types.VolumeP
 		}
 		removeNames = append(removeNames, volume.Name)
 	}
+
+	// Remove the volumes from that list
 	removedNames, _, err := volStore.Remove(removeNames)
 	if err != nil {
 		return err

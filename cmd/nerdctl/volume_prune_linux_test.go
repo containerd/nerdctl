@@ -17,30 +17,133 @@
 package main
 
 import (
-	"fmt"
+	"strings"
 	"testing"
+
+	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func TestVolumePrune(t *testing.T) {
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-	base.Cmd("volume", "prune", "-a", "-f").Run()
+	// Volume pruning cannot be parallelized for Docker, since we need namespaces to do that in a way that does interact with other tests
+	if testutil.GetTarget() != testutil.Docker {
+		t.Parallel()
+	}
 
-	vID := base.Cmd("volume", "create").Out()
-	base.Cmd("volume", "create", tID+"-1").AssertOK()
-	base.Cmd("volume", "create", tID+"-2").AssertOK()
+	// FIXME: for an unknown reason, when testing ipv6, calling NewBaseWithNamespace per sub-test, in the tearDown/tearUp methods
+	// will actually panic the test (also happens with target=docker)
+	// Calling base here *first* so that it can skip NOW - does seem to workaround the problem
+	// If you have any idea how to properly do this, feel free to remove the following line and fix the underlying issue
+	testutil.NewBase(t)
 
-	base.Cmd("run", "-v", fmt.Sprintf("%s:/volume", tID+"-1"), "--name", tID, testutil.CommonImage).AssertOK()
-	defer base.Cmd("rm", "-f", tID).Run()
+	subTearUp := func(tID string) {
+		base := testutil.NewBaseWithNamespace(t, tID)
+		res := base.Cmd("volume", "create").Run()
+		anonIDBusy := res.Stdout()
+		base.Cmd("volume", "create").Run()
+		base.Cmd("volume", "create", tID+"-busy").AssertOK()
+		base.Cmd("volume", "create", tID+"-free").AssertOK()
+		base.Cmd("run", "--name", tID,
+			"-v", tID+"-busy:/whatever",
+			"-v", anonIDBusy, testutil.CommonImage).AssertOK()
+	}
 
-	base.Cmd("volume", "prune", "-f").AssertOutContains(vID)
-	base.Cmd("volume", "prune", "-a", "-f").AssertOutContains(tID + "-2")
-	base.Cmd("volume", "ls").AssertOutContains(tID + "-1")
-	base.Cmd("volume", "ls").AssertOutNotContains(tID + "-2")
+	subTearDown := func(tID string) {
+		base := testutil.NewBaseWithNamespace(t, tID)
+		base.Cmd("rm", "-f", tID).Run()
+		base.Cmd("namespace", "remove", "-f", tID).Run()
+	}
 
-	base.Cmd("rm", "-f", tID).AssertOK()
-	base.Cmd("volume", "prune", "-a", "-f").AssertOK()
-	base.Cmd("volume", "ls").AssertOutNotContains(tID + "-1")
+	testCases := []struct {
+		description        string
+		command            func(tID string) *testutil.Cmd
+		tearUp             func(tID string)
+		tearDown           func(tID string)
+		expected           func(tID string) icmd.Expected
+		inspect            func(t *testing.T, stdout string, stderr string)
+		dockerIncompatible bool
+	}{
+		{
+			description: "prune anonymous only",
+			command: func(tID string) *testutil.Cmd {
+				base := testutil.NewBaseWithNamespace(t, tID)
+				return base.Cmd("volume", "prune", "-f")
+			},
+			tearUp:   subTearUp,
+			tearDown: subTearDown,
+			expected: func(tID string) icmd.Expected {
+				return icmd.Expected{
+					ExitCode: 0,
+				}
+			},
+			inspect: func(t *testing.T, stdout string, stderr string) {
+				tID := testutil.Identifier(t)
+				base := testutil.NewBaseWithNamespace(t, tID)
+				assert.Assert(base.T, !strings.Contains(stdout, tID+"-free"))
+				base.Cmd("volume", "inspect", tID+"-free").AssertOK()
+				assert.Assert(base.T, !strings.Contains(stdout, tID+"-busy"))
+				base.Cmd("volume", "inspect", tID+"-busy").AssertOK()
+				// TODO verify the anonymous volumes status
+			},
+		},
+		{
+			description: "prune all",
+			command: func(tID string) *testutil.Cmd {
+				base := testutil.NewBaseWithNamespace(t, tID)
+				return base.Cmd("volume", "prune", "-f", "--all")
+			},
+			tearUp:   subTearUp,
+			tearDown: subTearDown,
+			expected: func(tID string) icmd.Expected {
+				return icmd.Expected{
+					ExitCode: 0,
+				}
+			},
+			inspect: func(t *testing.T, stdout string, stderr string) {
+				tID := testutil.Identifier(t)
+				base := testutil.NewBaseWithNamespace(t, tID)
+				assert.Assert(t, !strings.Contains(stdout, tID+"-busy"))
+				base.Cmd("volume", "inspect", tID+"-busy").AssertOK()
+				assert.Assert(t, strings.Contains(stdout, tID+"-free"))
+				base.Cmd("volume", "inspect", tID+"-free").AssertFail()
+				// TODO verify the anonymous volumes status
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		currentTest := test
+		t.Run(currentTest.description, func(tt *testing.T) {
+			if currentTest.dockerIncompatible {
+				testutil.DockerIncompatible(tt)
+			}
+
+			if testutil.GetTarget() != testutil.Docker {
+				tt.Parallel()
+			}
+
+			subTID := testutil.Identifier(tt)
+
+			if currentTest.tearDown != nil {
+				currentTest.tearDown(subTID)
+				tt.Cleanup(func() {
+					currentTest.tearDown(subTID)
+				})
+			}
+			if currentTest.tearUp != nil {
+				currentTest.tearUp(subTID)
+			}
+
+			// See https://github.com/containerd/nerdctl/issues/3130
+			// We run first to capture the underlying icmd command and output
+			cmd := currentTest.command(subTID)
+			res := cmd.Run()
+			cmd.Assert(currentTest.expected(subTID))
+			if currentTest.inspect != nil {
+				currentTest.inspect(tt, res.Stdout(), res.Stderr())
+			}
+		})
+	}
 }

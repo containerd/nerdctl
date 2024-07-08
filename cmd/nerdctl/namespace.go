@@ -113,11 +113,11 @@ func namespaceLsAction(cmd *cobra.Command, args []string) error {
 		}
 		numImages = len(images)
 
-		volStore, err := volumestore.Path(dataStore, ns)
+		volStore, err := volumestore.New(dataStore, ns)
 		if err != nil {
 			log.L.Warn(err)
 		} else {
-			volEnts, err := os.ReadDir(volStore)
+			volEnts, err := volStore.List(false)
 			if err != nil {
 				if !os.IsNotExist(err) {
 					log.L.Warn(err)

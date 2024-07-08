@@ -32,6 +32,10 @@ import (
 
 func TestSystemPrune(t *testing.T) {
 	testutil.RequiresBuild(t)
+	// FIXME: using a dedicated namespace does not work with rootful (because of buildkit running)
+	// t.Parallel()
+	// namespaceID := testutil.Identifier(t)
+	// base := testutil.NewBaseWithNamespace(t, namespaceID)
 	base := testutil.NewBase(t)
 	base.Cmd("container", "prune", "-f").AssertOK()
 	base.Cmd("network", "prune", "-f").AssertOK()
