@@ -230,6 +230,7 @@ cmd_entrypoint_install() {
 	cat <<-EOT | install_systemd_unit "${SYSTEMD_CONTAINERD_UNIT}"
 		[Unit]
 		Description=containerd (Rootless)
+		Requires=dbus.socket
 
 		[Service]
 		Environment=PATH=$BIN:/sbin:/usr/sbin:$PATH
