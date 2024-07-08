@@ -296,14 +296,12 @@ func TestRunCgroupParent(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	info := base.Info()
-	containerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", containerName).Run()
-
 	switch info.CgroupDriver {
 	case "none", "":
 		t.Skip("test requires cgroup driver")
 	}
 
+	containerName := testutil.Identifier(t)
 	t.Logf("Using %q cgroup driver", info.CgroupDriver)
 
 	parent := "/foobarbaz"
@@ -313,6 +311,13 @@ func TestRunCgroupParent(t *testing.T) {
 		// https://github.com/opencontainers/runc/blob/016a0d29d1750180b2a619fc70d6fe0d80111be0/libcontainer/cgroups/systemd/common.go#L65-L68
 		parent = "foobarbaz.slice"
 	}
+
+	tearDown := func() {
+		base.Cmd("rm", "-f", containerName).Run()
+	}
+
+	tearDown()
+	t.Cleanup(tearDown)
 
 	// cgroup2 without host cgroup ns will just output 0::/ which doesn't help much to verify
 	// we got our expected path. This approach should work for both cgroup1 and 2, there will
@@ -333,6 +338,9 @@ func TestRunCgroupParent(t *testing.T) {
 	expected := filepath.Join(parent, id)
 	if info.CgroupDriver == "systemd" {
 		expected = filepath.Join(parent, fmt.Sprintf("nerdctl-%s", id))
+		if base.Target == testutil.Docker {
+			expected = filepath.Join(parent, fmt.Sprintf("docker-%s", id))
+		}
 	}
 	base.Cmd("exec", containerName, "cat", "/proc/self/cgroup").AssertOutContains(expected)
 }
