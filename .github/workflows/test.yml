@@ -58,13 +58,7 @@ jobs:
         include:
           - ubuntu: 20.04
             containerd: v1.6.33
-          - ubuntu: 20.04
-            containerd: v1.7.19
           - ubuntu: 22.04
-            containerd: v1.7.19
-          - ubuntu: 22.04
-            containerd: main  # v2.0.0-rc.X
-          - ubuntu: 24.04
             containerd: v1.7.19
           - ubuntu: 24.04
             containerd: main  # v2.0.0-rc.X
@@ -152,42 +146,18 @@ jobs:
         include:
           - ubuntu: 20.04
             containerd: v1.6.33
-            rootlesskit: v1.1.1
-            target: test-integration-rootless
-          - ubuntu: 20.04
-            containerd: v1.7.19
-            rootlesskit: v2.1.0
+            rootlesskit: v1.1.1  # Deprecated
             target: test-integration-rootless
           - ubuntu: 22.04
             containerd: v1.7.19
-            rootlesskit: v1.1.1
+            rootlesskit: v2.1.0
             target: test-integration-rootless
-          - ubuntu: 22.04
+          - ubuntu: 24.04
             containerd: main  # v2.0.0-rc.X
             rootlesskit: v2.1.0
             target: test-integration-rootless
           - ubuntu: 24.04
             containerd: v1.7.19
-            rootlesskit: v1.1.1
-            target: test-integration-rootless
-          - ubuntu: 24.04
-            containerd: main  # v2.0.0-rc.X
-            rootlesskit: v2.1.0
-            target: test-integration-rootless
-          - ubuntu: 20.04
-            containerd: v1.6.33
-            rootlesskit: v1.1.1
-            target: test-integration-rootless-port-slirp4netns
-          - ubuntu: 20.04
-            containerd: v1.7.19
-            rootlesskit: v2.1.0
-            target: test-integration-rootless-port-slirp4netns
-          - ubuntu: 24.04
-            containerd: v1.7.19
-            rootlesskit: v1.1.1
-            target: test-integration-rootless-port-slirp4netns
-          - ubuntu: 24.04
-            containerd: main  # v2.0.0-rc.X
             rootlesskit: v2.1.0
             target: test-integration-rootless-port-slirp4netns
     env:
