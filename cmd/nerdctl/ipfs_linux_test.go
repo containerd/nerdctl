@@ -18,12 +18,12 @@ package main
 
 import (
 	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 
 	"gotest.tools/v3/assert"
 )
@@ -57,40 +57,19 @@ func TestIPFS(t *testing.T) {
 	base.Cmd("run", "--rm", decryptImageRef, "/bin/sh", "-c", "echo hello").AssertOK()
 }
 
-var iplineRegexp = regexp.MustCompile(`"([0-9\.]*)"`)
-
 func TestIPFSAddress(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	ipfsaddr, done := runIPFSDaemonContainer(t, base)
-	defer done()
+	iReg := testregistry.NewIPFSRegistry(base, nil, 0, nil, nil)
+	t.Cleanup(func() {
+		iReg.Cleanup(nil)
+	})
+	ipfsaddr := fmt.Sprintf("/ip4/%s/tcp/%d", iReg.IP, iReg.Port)
+
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, fmt.Sprintf("--ipfs-address=%s", ipfsaddr))
 	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=overlayfs")
 	base.Cmd("pull", "--ipfs-address", ipfsaddr, ipfsCID).AssertOK()
 	base.Cmd("run", "--ipfs-address", ipfsaddr, "--rm", ipfsCID, "echo", "hello").AssertOK()
-}
-
-func runIPFSDaemonContainer(t *testing.T, base *testutil.Base) (ipfsAddress string, done func()) {
-	name := "test-ipfs-address"
-	var ipfsaddr string
-	if detachedNetNS, _ := rootlessutil.DetachedNetNS(); detachedNetNS != "" {
-		// detached-netns mode can't use .NetworkSettings.IPAddress, because the daemon and CNI has different network namespaces
-		base.Cmd("run", "-d", "-p", "127.0.0.1:5999:5999", "--name", name, "--entrypoint=/bin/sh", testutil.KuboImage, "-c", "ipfs init && ipfs config Addresses.API /ip4/0.0.0.0/tcp/5999 && ipfs daemon --offline").AssertOK()
-		ipfsaddr = "/ip4/127.0.0.1/tcp/5999"
-	} else {
-		base.Cmd("run", "-d", "--name", name, "--entrypoint=/bin/sh", testutil.KuboImage, "-c", "ipfs init && ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001 && ipfs daemon --offline").AssertOK()
-		iplines := base.Cmd("inspect", name, "-f", "'{{json .NetworkSettings.IPAddress}}'").OutLines()
-		t.Logf("IPAddress=%v", iplines)
-		assert.Equal(t, len(iplines), 2)
-		matches := iplineRegexp.FindStringSubmatch(iplines[0])
-		t.Logf("ip address matches=%v", matches)
-		assert.Equal(t, len(matches), 2)
-		ipfsaddr = fmt.Sprintf("/ip4/%s/tcp/5001", matches[1])
-	}
-	return ipfsaddr, func() {
-		base.Cmd("kill", "test-ipfs-address").AssertOK()
-		base.Cmd("rm", "test-ipfs-address").AssertOK()
-	}
 }
 
 func TestIPFSCommit(t *testing.T) {
