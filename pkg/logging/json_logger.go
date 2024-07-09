@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/runtime/v2/logging"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/logging/jsonfile"
@@ -129,7 +130,16 @@ func (jsonLogger *JSONLogger) PostProcess() error {
 func viewLogsJSONFile(lvopts LogViewOptions, stdout, stderr io.Writer, stopChannel chan os.Signal) error {
 	logFilePath := jsonfile.Path(lvopts.DatastoreRootPath, lvopts.Namespace, lvopts.ContainerID)
 	if _, err := os.Stat(logFilePath); err != nil {
-		return fmt.Errorf("failed to stat JSON log file ")
+		// FIXME: this is a workaround for the actual issue, not a real solution
+		// https://github.com/containerd/nerdctl/issues/3187
+		if errors.Is(err, errdefs.ErrNotFound) {
+			log.L.Warnf("Racing log file creation. Pausing briefly.")
+			time.Sleep(200 * time.Millisecond)
+			_, err = os.Stat(logFilePath)
+		}
+		if err != nil {
+			return fmt.Errorf("failed to stat JSON log file %w", err)
+		}
 	}
 
 	if checkExecutableAvailableInPath("tail") {
