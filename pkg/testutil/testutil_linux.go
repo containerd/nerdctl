@@ -124,7 +124,8 @@ func NewDelayOnceReader(wrapped io.Reader) io.Reader {
 }
 
 func (r *delayOnceReader) Read(p []byte) (int, error) {
-	r.once.Do(func() { time.Sleep(time.Second) })
+	// FIXME: this is obviously not exact science. At 1 second, it will fail regularly on the CI under load.
+	r.once.Do(func() { time.Sleep(2 * time.Second) })
 	n, err := r.wrapped.Read(p)
 	if errors.Is(err, io.EOF) {
 		time.Sleep(time.Second)

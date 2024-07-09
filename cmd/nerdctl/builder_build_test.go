@@ -152,7 +152,6 @@ CMD ["cat", "/hello2"]
 }
 
 func TestBuildFromStdin(t *testing.T) {
-	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	defer base.Cmd("builder", "prune").Run()
@@ -199,7 +198,6 @@ CMD ["echo", "nerdctl-build-test-dockerfile"]
 }
 
 func TestBuildLocal(t *testing.T) {
-	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	if testutil.GetTarget() == testutil.Docker {
@@ -293,7 +291,6 @@ CMD echo $TEST_STRING
 }
 
 func TestBuildWithIIDFile(t *testing.T) {
-	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	defer base.Cmd("builder", "prune").Run()
@@ -318,7 +315,6 @@ CMD ["echo", "nerdctl-build-test-string"]
 }
 
 func TestBuildWithLabels(t *testing.T) {
-	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	defer base.Cmd("builder", "prune").Run()
@@ -547,7 +543,6 @@ func buildWithNamedBuilder(base *testutil.Base, builderName string, args ...stri
 }
 
 func TestBuildAttestation(t *testing.T) {
-	t.Parallel()
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
 	builderName := testutil.Identifier(t)

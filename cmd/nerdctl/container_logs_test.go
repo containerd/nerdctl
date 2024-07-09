@@ -209,7 +209,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 }
 
 func TestTailFollowRotateLogs(t *testing.T) {
-	// FIXME this is flaky by nature... 5 lines is arbitrary, 2000 ms is arbitrary, and both are some sort of educated
+	// FIXME this is flaky by nature... 2 lines is arbitrary, 10000 ms is arbitrary, and both are some sort of educated
 	// guess that things will mostly always kinda work maybe...
 	// Furthermore, parallelizing will put pressure on the daemon which might be even slower in answering, increasing
 	// the risk of transient failure.
@@ -222,7 +222,7 @@ func TestTailFollowRotateLogs(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	const sampleJSONLog = `{"log":"A\n","stream":"stdout","time":"2024-04-11T12:01:09.800288974Z"}`
-	const linesPerFile = 5
+	const linesPerFile = 2
 
 	defer base.Cmd("rm", "-f", containerName).Run()
 	base.Cmd("run", "-d", "--log-driver", "json-file",
@@ -232,7 +232,7 @@ func TestTailFollowRotateLogs(t *testing.T) {
 		"sh", "-euc", "while true; do echo A; done").AssertOK()
 
 	tailLogCmd := base.Cmd("logs", "-f", containerName)
-	tailLogCmd.Timeout = 2000 * time.Millisecond
+	tailLogCmd.Timeout = 10000 * time.Millisecond
 	tailLogs := strings.Split(strings.TrimSpace(tailLogCmd.Run().Stdout()), "\n")
 	for _, line := range tailLogs {
 		if line != "" {
