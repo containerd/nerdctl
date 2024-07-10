@@ -23,7 +23,6 @@ import (
 	"io"
 	"os"
 	"regexp"
-
 	"strings"
 
 	"golang.org/x/sys/unix"
