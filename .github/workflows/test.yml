@@ -61,7 +61,7 @@ jobs:
           - ubuntu: 22.04
             containerd: v1.7.19
           - ubuntu: 24.04
-            containerd: main  # v2.0.0-rc.X
+            containerd: v2.0.0-rc.3
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -153,7 +153,7 @@ jobs:
             rootlesskit: v2.1.0
             target: test-integration-rootless
           - ubuntu: 24.04
-            containerd: main  # v2.0.0-rc.X
+            containerd: v2.0.0-rc.3
             rootlesskit: v2.1.0
             target: test-integration-rootless
           - ubuntu: 24.04
