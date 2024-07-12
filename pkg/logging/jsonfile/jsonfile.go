@@ -17,7 +17,6 @@
 package jsonfile
 
 import (
-	"container/ring"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -128,12 +127,7 @@ func writeEntry(e *Entry, stdout, stderr io.Writer, refTime time.Time, timestamp
 	return nil
 }
 
-func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string, until string, tail uint) error {
-	var buff *ring.Ring
-	if tail != 0 {
-		buff = ring.New(int(tail))
-	}
-
+func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string, until string) ([]byte, error) {
 	dec := json.NewDecoder(r)
 	now := time.Now()
 	for {
@@ -141,41 +135,19 @@ func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string
 		if err := dec.Decode(&e); err == io.EOF {
 			break
 		} else if err != nil {
-			return err
+			line, err := io.ReadAll(dec.Buffered())
+			if err != nil {
+				return nil, err
+			}
+			return line, err
 		}
 
-		if buff == nil {
-			// Write out the entry directly
-			err := writeEntry(&e, stdout, stderr, now, timestamps, since, until)
-			if err != nil {
-				log.L.Errorf("error while writing log entry to output stream: %s", err)
-			}
-		} else {
-			// Else place the entry in a ring buffer
-			buff.Value = &e
-			buff = buff.Next()
+		// Write out the entry directly
+		err := writeEntry(&e, stdout, stderr, now, timestamps, since, until)
+		if err != nil {
+			log.L.Errorf("error while writing log entry to output stream: %s", err)
 		}
 	}
 
-	if buff != nil {
-		// The ring should now contain up to `tail` elements and be set to
-		// internally point to the oldest element in the ring.
-		buff.Do(func(e interface{}) {
-			if e == nil {
-				// unallocated ring element
-				return
-			}
-			cast, ok := e.(*Entry)
-			if !ok {
-				log.L.Errorf("failed to cast Entry struct: %#v", e)
-				return
-			}
-
-			err := writeEntry(cast, stdout, stderr, now, timestamps, since, until)
-			if err != nil {
-				log.L.Errorf("error while writing log entry to output stream: %s", err)
-			}
-		})
-	}
-	return nil
+	return nil, nil
 }
