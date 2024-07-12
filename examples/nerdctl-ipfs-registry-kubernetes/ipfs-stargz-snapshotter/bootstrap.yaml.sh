@@ -19,12 +19,10 @@
 
 set -eu -o pipefail
 
-for d in ipfs-swarm-key-gen ; do
-    if ! command -v $d >/dev/null 2>&1 ; then
-        echo "$d not found"
-        exit 1
-    fi
-done
+if ! command -v ipfs-swarm-key-gen >/dev/null 2>&1 ; then
+    echo "ipfs-swarm-key-gen not found"
+    exit 1
+fi
 
 SWARM_KEY=$(ipfs-swarm-key-gen | base64 | tr -d '\n')
 

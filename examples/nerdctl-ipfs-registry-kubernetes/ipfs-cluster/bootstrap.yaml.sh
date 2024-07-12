@@ -28,7 +28,7 @@ done
 
 TMPIDFILE=$(mktemp)
 BOOTSTRAP_KEY=$(ipfs-key 2>"${TMPIDFILE}" | base64 -w 0)
-ID=$(cat "${TMPIDFILE}" | grep "ID " | sed -E 's/[^:]*: (.*)/\1/')
+ID=$(grep "ID " "${TMPIDFILE}" | sed -E 's/[^:]*: (.*)/\1/')
 rm "${TMPIDFILE}"
 
 BOOTSTRAP_PEER_PRIV_KEY=$(echo "${BOOTSTRAP_KEY}" | base64 -w 0)
