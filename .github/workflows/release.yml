@@ -5,8 +5,6 @@ on:
     tags:
     - 'v*'
     - 'test-action-release-*'
-env:
-  GO111MODULE: on
 jobs:
   release:
     runs-on: ubuntu-24.04
