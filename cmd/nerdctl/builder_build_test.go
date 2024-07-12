@@ -45,15 +45,12 @@ CMD ["echo", "nerdctl-build-test-string"]
 	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
 	base.Cmd("run", "--rm", imageName).AssertOutExactly("nerdctl-build-test-string\n")
 
-	// DOCKER_BUILDKIT (v20.10): `Error response from daemon: exporter "docker" could not be found`
-	if base.Target == testutil.Nerdctl {
-		ignoredImageNamed := imageName + "-" + "ignored"
-		outputOpt := fmt.Sprintf("--output=type=docker,name=%s", ignoredImageNamed)
-		base.Cmd("build", buildCtx, "-t", imageName, outputOpt).AssertOK()
+	ignoredImageNamed := imageName + "-" + "ignored"
+	outputOpt := fmt.Sprintf("--output=type=docker,name=%s", ignoredImageNamed)
+	base.Cmd("build", buildCtx, "-t", imageName, outputOpt).AssertOK()
 
-		base.Cmd("run", "--rm", imageName).AssertOutExactly("nerdctl-build-test-string\n")
-		base.Cmd("run", "--rm", ignoredImageNamed).AssertFail()
-	}
+	base.Cmd("run", "--rm", imageName).AssertOutExactly("nerdctl-build-test-string\n")
+	base.Cmd("run", "--rm", ignoredImageNamed).AssertFail()
 }
 
 func TestBuildIsShareableForCompatiblePlatform(t *testing.T) {
@@ -200,9 +197,6 @@ CMD ["echo", "nerdctl-build-test-dockerfile"]
 func TestBuildLocal(t *testing.T) {
 	testutil.RequiresBuild(t)
 	base := testutil.NewBase(t)
-	if testutil.GetTarget() == testutil.Docker {
-		base.Env = append(base.Env, "DOCKER_BUILDKIT=1")
-	}
 	defer base.Cmd("builder", "prune").Run()
 	const testFileName = "nerdctl-build-test"
 	const testContent = "nerdctl"

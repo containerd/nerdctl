@@ -70,7 +70,7 @@ jobs:
         with:
           fetch-depth: 1
       - name: "Prepare integration test environment"
-        run: DOCKER_BUILDKIT=1 docker build -t test-integration --target test-integration --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+        run: docker build -t test-integration --target test-integration --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
           sudo systemctl disable --now snapd.service snapd.socket
@@ -114,7 +114,7 @@ jobs:
           echo '{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64", "experimental": true, "ip6tables": true}' | sudo tee /etc/docker/daemon.json
           sudo systemctl restart docker
       - name: "Prepare integration test environment"
-        run: DOCKER_BUILDKIT=1 docker build -t test-integration-ipv6 --target test-integration-ipv6 --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+        run: docker build -t test-integration-ipv6 --target test-integration-ipv6 --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
           sudo systemctl disable --now snapd.service snapd.socket
@@ -187,7 +187,7 @@ jobs:
       - name: "Register QEMU (tonistiigi/binfmt)"
         run: docker run --privileged --rm tonistiigi/binfmt --install all
       - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
-        run: DOCKER_BUILDKIT=1 docker build -t ${TEST_TARGET} --target ${TEST_TARGET} --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} --build-arg ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION} .
+        run: docker build -t ${TEST_TARGET} --target ${TEST_TARGET} --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} --build-arg ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION} .
       - name: "Disable BuildKit for RootlessKit v1 (workaround for issue #622)"
         run: |
           # https://github.com/containerd/nerdctl/issues/622
