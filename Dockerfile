@@ -57,13 +57,19 @@ FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.4.0 AS xx
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS build-base-debian
 COPY --from=xx / /
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && \
-  apt-get install -y git pkg-config dpkg-dev
+RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
+    git \
+    pkg-config \
+    dpkg-dev
 ARG TARGETARCH
 # libbtrfs: for containerd
 # libseccomp: for runc and bypass4netns
-RUN xx-apt-get update && \
-  xx-apt-get install -y binutils gcc libc6-dev libbtrfs-dev libseccomp-dev
+RUN xx-apt-get update -qq && xx-apt-get install -qq --no-install-recommends \
+    binutils \
+    gcc \
+    libc6-dev \
+    libbtrfs-dev \
+    libseccomp-dev
 
 FROM build-base-debian AS build-containerd
 ARG TARGETARCH
@@ -241,14 +247,13 @@ COPY --from=build-full /out /
 
 FROM ubuntu:${UBUNTU_VERSION} AS base
 # fuse3 is required by stargz snapshotter
-RUN apt-get update && \
-  apt-get install -qq -y --no-install-recommends \
-  apparmor \
-  bash-completion \
-  ca-certificates curl \
-  iproute2 iptables \
-  dbus dbus-user-session systemd systemd-sysv \
-  fuse3
+RUN apt-get update -qq && apt-get install -qq -y --no-install-recommends \
+    apparmor \
+    bash-completion \
+    ca-certificates curl \
+    iproute2 iptables \
+    dbus dbus-user-session systemd systemd-sysv \
+    fuse3
 ARG CONTAINERIZED_SYSTEMD_VERSION
 RUN curl -L -o /docker-entrypoint.sh https://raw.githubusercontent.com/AkihiroSuda/containerized-systemd/${CONTAINERIZED_SYSTEMD_VERSION}/docker-entrypoint.sh && \
   chmod +x /docker-entrypoint.sh
@@ -274,9 +279,9 @@ RUN go env GOVERSION > /GOVERSION
 FROM base AS test-integration
 ARG DEBIAN_FRONTEND=noninteractive
 # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
-RUN apt-get update && \
-  apt-get install -qq -y \
-  expect git
+RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
+    expect \
+    git
 COPY --from=goversion /GOVERSION /GOVERSION
 ARG TARGETARCH
 RUN curl -L https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local
@@ -320,10 +325,10 @@ FROM test-integration AS test-integration-rootless
 # Install SSH for creating systemd user session.
 # (`sudo` does not work for this purpose,
 #  OTOH `machinectl shell` can create the session but does not propagate exit code)
-RUN apt-get update && \
-  apt-get install -qq -y \
-  uidmap \
-  openssh-server openssh-client
+RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
+    uidmap \
+    openssh-server \
+    openssh-client
 # TODO: update containerized-systemd to enable sshd by default, or allow `systemctl wants <TARGET> ssh` here
 RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
   useradd -m -s /bin/bash rootless && \
