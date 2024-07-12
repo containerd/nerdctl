@@ -310,7 +310,7 @@ data:
     # wait for ipfs daemon
     ok=false
     for i in $(seq 100) ; do
-        if curl localhost:9095/api/v0/id >/dev/null 2>&1 ; then
+        if curl -fsSL localhost:9095/api/v0/id >/dev/null 2>&1 ; then
             ok=true
             break
         fi

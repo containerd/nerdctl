@@ -49,7 +49,7 @@ Prepare `kind-worker` (1st node) for importing an image to IPFS
 ```console
 $ docker exec -it kind-worker /bin/bash
 (kind-worker)# NERDCTL_VERSION=0.23.0
-(kind-worker)# curl -sSL --output /tmp/nerdctl.tgz https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
+(kind-worker)# curl -o /tmp/nerdctl.tgz -fsSL --proto '=https' --tlsv1.2 https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
 (kind-worker)# tar zxvf /tmp/nerdctl.tgz -C /usr/local/bin/
 ```
 
