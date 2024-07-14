@@ -358,6 +358,21 @@ func TestParseFlagP(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "with ipv6 host ip",
+			args: args{
+				s: "[::0]:8080:80/tcp",
+			},
+			want: []gocni.PortMapping{
+				{
+					HostPort:      8080,
+					ContainerPort: 80,
+					Protocol:      "tcp",
+					HostIP:        "::0",
+				},
+			},
+			wantErr: false,
+		},
+		{
 			name: "with invalid protocol",
 			args: args{
 				s: "3000:8080/invalid",
