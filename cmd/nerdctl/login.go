@@ -62,6 +62,10 @@ func processLoginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) 
 		return types.LoginCommandOptions{}, err
 	}
 
+	if strings.Contains(username, ":") {
+		return types.LoginCommandOptions{}, errors.New("username cannot contain colons")
+	}
+
 	if password != "" {
 		log.L.Warn("WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
 		if passwordStdin {
