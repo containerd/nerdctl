@@ -62,13 +62,15 @@ func filterContainers(ctx context.Context, client *containerd.Client, filters []
 		return nil, err
 	}
 	containers = filterCtx.MatchesFilters(ctx)
+
+	sort.Slice(containers, func(i, j int) bool {
+		infoI, _ := containers[i].Info(ctx, containerd.WithoutRefreshedMetadata)
+		infoJ, _ := containers[j].Info(ctx, containerd.WithoutRefreshedMetadata)
+		return infoI.CreatedAt.After(infoJ.CreatedAt)
+	})
+
 	if lastN > 0 {
 		all = true
-		sort.Slice(containers, func(i, j int) bool {
-			infoI, _ := containers[i].Info(ctx, containerd.WithoutRefreshedMetadata)
-			infoJ, _ := containers[j].Info(ctx, containerd.WithoutRefreshedMetadata)
-			return infoI.CreatedAt.After(infoJ.CreatedAt)
-		})
 		if lastN < len(containers) {
 			containers = containers[:lastN]
 		}

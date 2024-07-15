@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"text/tabwriter"
 	"text/template"
@@ -108,6 +109,10 @@ func List(ctx context.Context, client *containerd.Client, filters, nameAndRefFil
 
 		imageList = imgutil.FilterImages(imageList, beforeImages, sinceImages)
 	}
+
+	sort.Slice(imageList, func(i, j int) bool {
+		return imageList[i].CreatedAt.After(imageList[j].CreatedAt)
+	})
 	return imageList, nil
 }
 
