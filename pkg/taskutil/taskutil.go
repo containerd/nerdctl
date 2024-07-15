@@ -117,6 +117,8 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			return nil, err
 		}
 		ioCreator = cio.LogURI(u)
+	} else if flagD && logURI == "" {
+		ioCreator = cio.NullIO
 	} else {
 		var in io.Reader
 		if flagI {
