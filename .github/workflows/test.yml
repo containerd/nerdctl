@@ -350,6 +350,11 @@ jobs:
         run: |
           sudo apt-get install -y expect
           go install -v gotest.tools/gotestsum@v1
+      - name: Enable CDI in the Docker daemon.
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{ "features": {"cdi": true} }' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
       - name: "Ensure that the integration test suite is compatible with Docker"
         run: WITH_SUDO=true ./hack/test-integration.sh -test.target=docker
       - name: "Ensure that the IPv6 integration test suite is compatible with Docker"
