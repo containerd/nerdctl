@@ -111,6 +111,7 @@ _log::log(){
 }
 
 log::init(){
+  local _ll
   # Default log to warning if unspecified
   _ll="$(printf "LOG_LEVEL_%s" "${NERDCTL_CI_LOG_LEVEL:-warning}" | tr '[:lower:]' '[:upper:]')"
   # Default to 3 (warning) if unrecognized
@@ -432,6 +433,10 @@ done
 
 GO_VERSION="$(curl -fsSL "https://go.dev/dl/?mode=json&include=all" | jq -rc .[0].version)"
 GO_VERSION="${GO_VERSION##*go}"
+# If a release candidate, docker hub may not have the corresponding image yet.
+# So, soften the version to just "rc", as they provide that as an alias to the latest available rc on their side
+# See https://github.com/containerd/nerdctl/issues/3223
+! grep -Eq "rc[0-9]+$" <<<"$GO_VERSION" || GO_VERSION="${GO_VERSION%rc[0-9]*}-rc"
 docker_args+=(--build-arg "GO_VERSION=$GO_VERSION")
 
 log::debug "${docker_args[*]} ."
