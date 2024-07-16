@@ -31,20 +31,19 @@ import (
 
 // return respectively ip, hostPort, containerPort
 func splitParts(rawport string) (string, string, string) {
-	parts := strings.Split(rawport, ":")
-	n := len(parts)
-	containerport := parts[n-1]
-
-	switch n {
-	case 1:
-		return "", "", containerport
-	case 2:
-		return "", parts[0], containerport
-	case 3:
-		return parts[0], parts[1], containerport
-	default:
-		return strings.Join(parts[:n-2], ":"), parts[n-2], containerport
+	lastIndex := strings.LastIndex(rawport, ":")
+	containerPort := rawport[lastIndex+1:]
+	if lastIndex == -1 {
+		return "", "", containerPort
 	}
+
+	hostAddrPort := rawport[:lastIndex]
+	addr, port, err := net.SplitHostPort(hostAddrPort)
+	if err != nil {
+		return "", hostAddrPort, containerPort
+	}
+
+	return addr, port, containerPort
 }
 
 // ParseFlagP parse port mapping pair, like "127.0.0.1:3000:8080/tcp",
