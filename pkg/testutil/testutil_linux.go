@@ -34,7 +34,8 @@ var (
 	AlpineImage                 = mirrorOf("alpine:3.13")
 	NginxAlpineImage            = mirrorOf("nginx:1.19-alpine")
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
-	RegistryImage               = mirrorOf("registry:2")
+	RegistryImageStable         = mirrorOf("registry:2")
+	RegistryImageNext           = "ghcr.io/distribution/distribution:"
 	WordpressImage              = mirrorOf("wordpress:5.7")
 	WordpressIndexHTMLSnippet   = "<title>WordPress &rsaquo; Installation</title>"
 	MariaDBImage                = mirrorOf("mariadb:10.5")

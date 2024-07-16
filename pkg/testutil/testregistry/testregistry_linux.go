@@ -53,7 +53,15 @@ type TokenAuthServer struct {
 }
 
 func EnsureImages(base *testutil.Base) {
-	base.Cmd("pull", testutil.RegistryImage).AssertOK()
+	registryImage := testutil.RegistryImageStable
+	up := os.Getenv("DISTRIBUTION_VERSION")
+	if up != "" {
+		if up[0:1] != "v" {
+			up = "v" + up
+		}
+		registryImage = testutil.RegistryImageNext + up
+	}
+	base.Cmd("pull", registryImage).AssertOK()
 	base.Cmd("pull", testutil.DockerAuthImage).AssertOK()
 	base.Cmd("pull", testutil.KuboImage).AssertOK()
 }
@@ -340,7 +348,16 @@ func NewRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundC
 	}
 
 	args = append(args, auth.Params(base)...)
-	args = append(args, testutil.RegistryImage)
+	registryImage := testutil.RegistryImageStable
+
+	up := os.Getenv("DISTRIBUTION_VERSION")
+	if up != "" {
+		if up[0:1] != "v" {
+			up = "v" + up
+		}
+		registryImage = testutil.RegistryImageNext + up
+	}
+	args = append(args, registryImage)
 
 	cleanup := func(err error) {
 		result := base.Cmd("rm", "-f", containerName).Run()
