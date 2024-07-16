@@ -130,7 +130,12 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		}
 		rawRef := args[0]
 
-		ensuredImage, err = image.EnsureImage(ctx, client, rawRef, ocispecPlatforms, options.Pull, nil, false, options.ImagePullOpt)
+		options.ImagePullOpt.Mode = options.Pull
+		options.ImagePullOpt.OCISpecPlatform = ocispecPlatforms
+		options.ImagePullOpt.Unpack = nil
+		options.ImagePullOpt.Quiet = false
+
+		ensuredImage, err = image.EnsureImage(ctx, client, rawRef, options.ImagePullOpt)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -20,6 +20,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
+	"github.com/containerd/nerdctl/v2/pkg/platformutil"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/spf13/cobra"
 )
 
@@ -81,7 +83,16 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 		return types.ImagePullOptions{}, err
 	}
 
+	ociSpecPlatform, err := platformutil.NewOCISpecPlatformSlice(allPlatforms, platform)
+	if err != nil {
+		return types.ImagePullOptions{}, err
+	}
+
 	unpackStr, err := cmd.Flags().GetString("unpack")
+	if err != nil {
+		return types.ImagePullOptions{}, err
+	}
+	unpack, err := strutil.ParseBoolOrAuto(unpackStr)
 	if err != nil {
 		return types.ImagePullOptions{}, err
 	}
@@ -105,13 +116,13 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 		return types.ImagePullOptions{}, err
 	}
 	return types.ImagePullOptions{
-		GOptions:      globalOptions,
-		VerifyOptions: verifyOptions,
-		AllPlatforms:  allPlatforms,
-		Platform:      platform,
-		Unpack:        unpackStr,
-		Quiet:         quiet,
-		IPFSAddress:   ipfsAddressStr,
+		GOptions:        globalOptions,
+		VerifyOptions:   verifyOptions,
+		OCISpecPlatform: ociSpecPlatform,
+		Unpack:          unpack,
+		Mode:            "always",
+		Quiet:           quiet,
+		IPFSAddress:     ipfsAddressStr,
 		RFlags: types.RemoteSnapshotterFlags{
 			SociIndexDigest: sociIndexDigest,
 		},
