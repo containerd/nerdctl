@@ -60,14 +60,14 @@ fi
 : "${XDG_DATA_HOME:=$HOME/.local/share}"
 : "${XDG_CONFIG_HOME:=$HOME/.config}"
 
-if [ -z $_CONTAINERD_ROOTLESS_CHILD ]; then
+if [ -z "$_CONTAINERD_ROOTLESS_CHILD" ]; then
 	if [ "$(id -u)" = "0" ]; then
 		echo "Must not run as root"
 		exit 1
 	fi
 	case "$1" in
 	"check" | "install" | "uninstall")
-		echo "Did you mean 'containerd-rootless-setuptool.sh $@' ?"
+		echo "Did you mean 'containerd-rootless-setuptool.sh $*' ?"
 		exit 1
 		;;
 	esac
@@ -81,19 +81,19 @@ if [ -z $_CONTAINERD_ROOTLESS_CHILD ]; then
 	: "${CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS:=auto}"
 	net=$CONTAINERD_ROOTLESS_ROOTLESSKIT_NET
 	mtu=$CONTAINERD_ROOTLESS_ROOTLESSKIT_MTU
-	if [ -z $net ]; then
+	if [ -z "$net" ]; then
 		if command -v slirp4netns >/dev/null 2>&1; then
 			# If --netns-type is present in --help, slirp4netns is >= v0.4.0.
 			if slirp4netns --help | grep -qw -- --netns-type; then
 				net=slirp4netns
-				if [ -z $mtu ]; then
+				if [ -z "$mtu" ]; then
 					mtu=65520
 				fi
 			else
 				echo "slirp4netns found but seems older than v0.4.0. Falling back to VPNKit."
 			fi
 		fi
-		if [ -z $net ]; then
+		if [ -z "$net" ]; then
 			if command -v vpnkit >/dev/null 2>&1; then
 				net=vpnkit
 			else
@@ -102,7 +102,7 @@ if [ -z $_CONTAINERD_ROOTLESS_CHILD ]; then
 			fi
 		fi
 	fi
-	if [ -z $mtu ]; then
+	if [ -z "$mtu" ]; then
 		mtu=1500
 	fi
 
@@ -120,12 +120,12 @@ if [ -z $_CONTAINERD_ROOTLESS_CHILD ]; then
 
 	case "$CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS" in
 	auto)
-		if rootlesskit --help | grep -qw -- "--detach-netns"; then
-			CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS=--detach-netns $CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS
+		if  rootlesskit --help | grep -qw -- "--detach-netns"; then
+			CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS="--detach-netns $CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS"
 		fi
 		;;
 	1 | true)
-		CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS=--detach-netns $CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS
+		CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS="--detach-netns $CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS"
 		;;
 	0 | false)
 		# NOP
@@ -144,18 +144,19 @@ if [ -z $_CONTAINERD_ROOTLESS_CHILD ]; then
 	#             (by either systemd-networkd or NetworkManager)
 	# * /run:     copy-up is required so that we can create /run/containerd (hardcoded) in our namespace
 	# * /var/lib: copy-up is required so that we can create /var/lib/containerd in our namespace
+	# shellcheck disable=SC2086
 	exec rootlesskit \
-		--state-dir=$CONTAINERD_ROOTLESS_ROOTLESSKIT_STATE_DIR \
-		--net=$net --mtu=$mtu \
-		--slirp4netns-sandbox=$CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX \
-		--slirp4netns-seccomp=$CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP \
-		--disable-host-loopback --port-driver=$CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER \
+		--state-dir="$CONTAINERD_ROOTLESS_ROOTLESSKIT_STATE_DIR" \
+		--net="$net" --mtu="$mtu" \
+		--slirp4netns-sandbox="$CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX" \
+		--slirp4netns-seccomp="$CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP" \
+		--disable-host-loopback --port-driver="$CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER" \
 		--copy-up=/etc --copy-up=/run --copy-up=/var/lib \
 		--propagation=rslave \
 		$CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS \
-		$0 $@
+		"$0" "$@"
 else
-	[ $_CONTAINERD_ROOTLESS_CHILD = 1 ]
+	[ "$_CONTAINERD_ROOTLESS_CHILD" = 1 ]
 	# Remove the *symlinks* for the existing files in the parent namespace if any,
 	# so that we can create our own files in our mount namespace.
 	# The actual files in the parent namespace are *not removed* by this rm command.
@@ -193,5 +194,5 @@ else
 		chcon system_u:object_r:iptables_var_run_t:s0 /run
 	fi
 
-	exec containerd $@
+	exec containerd "$@"
 fi

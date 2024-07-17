@@ -29,19 +29,15 @@ set -eu
 
 # utility functions
 INFO() {
-	# https://github.com/koalaman/shellcheck/issues/1593
-	# shellcheck disable=SC2039
-	/bin/echo -e "\e[104m\e[97m[INFO]\e[49m\e[39m ${*}"
+	printf "\e[104m\e[97m[INFO]\e[49m\e[39m %s\n" "$*"
 }
 
 WARNING() {
-	# shellcheck disable=SC2039
-	/bin/echo >&2 -e "\e[101m\e[97m[WARNING]\e[49m\e[39m ${*}"
+	>&2 printf "\e[101m\e[97m[WARNING]\e[49m\e[39m %s\n" "$*"
 }
 
 ERROR() {
-	# shellcheck disable=SC2039
-	/bin/echo >&2 -e "\e[101m\e[97m[ERROR]\e[49m\e[39m ${*}"
+	>&2 printf "\e[101m\e[97m[ERROR]\e[49m\e[39m %s\n" "$*"
 }
 
 # constants
@@ -143,8 +139,8 @@ propagate_env_from() {
 	pid="$1"
 	env="$(sed -e "s/\x0/'\n/g" <"/proc/${pid}/environ" | sed -Ee "s/^[^=]*=/export \0'/g")"
 	shift
-	for key in $@; do
-		eval $(echo "$env" | grep "^export ${key=}")
+	for key in "$@"; do
+		eval "$(echo "$env" | grep "^export ${key=}")"
 	done
 }
 

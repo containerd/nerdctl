@@ -17,8 +17,8 @@
 minimal_amd64tgz="$(find _output -name '*linux-amd64.tar.gz*' -and ! -name '*full*')"
 full_amd64tgz="$(find _output -name '*linux-amd64.tar.gz*' -and -name '*full*')"
 
-minimal_amd64tgz_basename="$(basename ${minimal_amd64tgz})"
-full_amd64tgz_basename="$(basename ${full_amd64tgz})"
+minimal_amd64tgz_basename="$(basename "${minimal_amd64tgz}")"
+full_amd64tgz_basename="$(basename "${full_amd64tgz}")"
 
 cat <<-EOX
 ## Changes
@@ -37,7 +37,7 @@ Extract the archive to a path like \`/usr/local/bin\` or \`~/bin\` .
 <p>
 
 \`\`\`
-$(tar tzvf ${minimal_amd64tgz})
+$(tar tzvf "${minimal_amd64tgz}")
 \`\`\`
 </p>
 </details>
@@ -49,7 +49,7 @@ Extract the archive to a path like \`/usr/local\` or \`~/.local\` .
 <p>
 
 \`\`\`
-$(tar tzvf ${full_amd64tgz})
+$(tar tzvf "${full_amd64tgz}")
 \`\`\`
 </p>
 </details>
@@ -59,7 +59,7 @@ $(tar tzvf ${full_amd64tgz})
 
 See \`share/doc/nerdctl-full/README.md\`:
 \`\`\`markdown
-$(tar xOzf ${full_amd64tgz} share/doc/nerdctl-full/README.md)
+$(tar xOzf "${full_amd64tgz}" share/doc/nerdctl-full/README.md)
 \`\`\`
 </p>
 </details>
