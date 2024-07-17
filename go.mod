@@ -42,7 +42,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/moby/sys/mount v0.3.3
-	github.com/moby/sys/signal v0.7.0
+	github.com/moby/sys/signal v0.7.1
 	github.com/moby/term v0.5.0
 	github.com/muesli/cancelreader v0.2.2
 	github.com/opencontainers/go-digest v1.0.0
