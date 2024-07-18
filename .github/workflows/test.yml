@@ -31,9 +31,9 @@ jobs:
           version: v1.59.1
           args: --verbose
       - name: yamllint-lint
-        run: yamllint .
+        run: make lint-yaml
       - name: shellcheck
-        run: shellcheck $(find . -name '*.sh')
+        run: make lint-shell
 
   test-unit:
     runs-on: ubuntu-24.04
