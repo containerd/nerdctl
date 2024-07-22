@@ -28,8 +28,14 @@ require (
 	github.com/coreos/go-iptables v0.7.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.3.0
+<<<<<<< HEAD
 	github.com/docker/cli v27.0.3+incompatible
 	github.com/docker/docker v27.0.3+incompatible
+=======
+	github.com/distribution/reference v0.6.0
+	github.com/docker/cli v27.1.0+incompatible
+	github.com/docker/docker v27.1.0+incompatible
+>>>>>>> 06f942c1 (build(deps): bump the docker group with 2 updates)
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.2.1
