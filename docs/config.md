@@ -45,6 +45,7 @@ experimental   = true
 | `hosts_dir`         | `--hosts-dir`                      |                           | `certs.d` directory                                                                                                                                              | Since 0.16.0     |
 | `experimental`      | `--experimental`                   | `NERDCTL_EXPERIMENTAL`    | Enable  [experimental features](experimental.md)                                                                                                                 | Since 0.22.3     |
 | `host_gateway_ip`   | `--host-gateway-ip`                | `NERDCTL_HOST_GATEWAY_IP` | IP address that the special 'host-gateway' string in --add-host resolves to. Defaults to the IP address of the host. It has no effect without setting --add-host | Since 1.3.0      |
+| `cdi_spec_dirs`     | `--cdi-spec-dirs`                   |                          | The folders to use when searching for CDI specifications.| experimental |
 
 The properties are parsed in the following precedence:
 1. CLI flag
