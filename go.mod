@@ -29,8 +29,8 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.3.0
 	github.com/distribution/reference v0.6.0
-	github.com/docker/cli v27.1.0+incompatible
-	github.com/docker/docker v27.1.0+incompatible
+	github.com/docker/cli v27.1.1+incompatible
+	github.com/docker/docker v27.1.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.2.1
