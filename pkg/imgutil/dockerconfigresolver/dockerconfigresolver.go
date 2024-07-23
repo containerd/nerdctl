@@ -23,10 +23,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	dockerconfig "github.com/containerd/containerd/remotes/docker/config"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/credentials"
