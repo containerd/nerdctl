@@ -6,9 +6,9 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/Microsoft/hcsshim v0.12.5
-	github.com/awslabs/soci-snapshotter v0.6.1
+	github.com/awslabs/soci-snapshotter v0.7.0
 	github.com/compose-spec/compose-go v1.20.2
-	github.com/containerd/accelerated-container-image v1.1.3
+	github.com/containerd/accelerated-container-image v1.1.4
 	github.com/containerd/cgroups/v3 v3.0.3
 	github.com/containerd/console v1.0.4
 	github.com/containerd/containerd v1.7.20
@@ -28,14 +28,9 @@ require (
 	github.com/coreos/go-iptables v0.7.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.3.0
-<<<<<<< HEAD
-	github.com/docker/cli v27.0.3+incompatible
-	github.com/docker/docker v27.0.3+incompatible
-=======
 	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v27.1.0+incompatible
 	github.com/docker/docker v27.1.0+incompatible
->>>>>>> 06f942c1 (build(deps): bump the docker group with 2 updates)
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.2.1
