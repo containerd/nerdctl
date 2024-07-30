@@ -222,22 +222,23 @@ func TestTailFollowRotateLogs(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	const sampleJSONLog = `{"log":"A\n","stream":"stdout","time":"2024-04-11T12:01:09.800288974Z"}`
-	const linesPerFile = 2
+	const linesPerFile = 200
 
 	defer base.Cmd("rm", "-f", containerName).Run()
 	base.Cmd("run", "-d", "--log-driver", "json-file",
 		"--log-opt", fmt.Sprintf("max-size=%d", len(sampleJSONLog)*linesPerFile),
 		"--log-opt", "max-file=10",
 		"--name", containerName, testutil.CommonImage,
-		"sh", "-euc", "while true; do echo A; done").AssertOK()
+		"sh", "-euc", "while true; do echo A; usleep 100; done").AssertOK()
 
 	tailLogCmd := base.Cmd("logs", "-f", containerName)
-	tailLogCmd.Timeout = 10000 * time.Millisecond
-	tailLogs := strings.Split(strings.TrimSpace(tailLogCmd.Run().Stdout()), "\n")
+	tailLogCmd.Timeout = 1000 * time.Millisecond
+	logRun := tailLogCmd.Run()
+	tailLogs := strings.Split(strings.TrimSpace(logRun.Stdout()), "\n")
 	for _, line := range tailLogs {
 		if line != "" {
 			assert.Equal(t, "A", line)
 		}
 	}
-	assert.Equal(t, true, len(tailLogs) > linesPerFile)
+	assert.Equal(t, true, len(tailLogs) > linesPerFile, logRun.Stderr())
 }
