@@ -45,7 +45,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/ocihook/state"
 	"github.com/docker/go-connections/nat"
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/tidwall/gjson"
 )
 
 // From https://github.com/moby/moby/blob/v26.1.2/api/types/types.go#L34-L140
@@ -502,29 +501,29 @@ type Network struct {
 	// Scope, Driver, etc. are omitted
 }
 
+type structuredCNI struct {
+	Name    string `json:"name"`
+	Plugins []struct {
+		Ipam struct {
+			Ranges [][]IPAMConfig `json:"ranges"`
+		} `json:"ipam"`
+	} `json:"plugins"`
+}
+
 func NetworkFromNative(n *native.Network) (*Network, error) {
 	var res Network
 
-	nameResult := gjson.GetBytes(n.CNI, "name")
-	if s, ok := nameResult.Value().(string); ok {
-		res.Name = s
+	sCNI := &structuredCNI{}
+	err := json.Unmarshal(n.CNI, sCNI)
+	if err != nil {
+		return nil, err
 	}
 
-	// flatten twice to get ipamRangesResult=[{ "subnet": "10.4.19.0/24", "gateway": "10.4.19.1" }]
-	ipamRangesResult := gjson.GetBytes(n.CNI, "plugins.#.ipam.ranges|@flatten|@flatten")
-	for _, f := range ipamRangesResult.Array() {
-		m := f.Map()
-		var cfg IPAMConfig
-		if x, ok := m["subnet"]; ok {
-			cfg.Subnet = x.String()
+	res.Name = sCNI.Name
+	for _, plugin := range sCNI.Plugins {
+		for _, ranges := range plugin.Ipam.Ranges {
+			res.IPAM.Config = append(res.IPAM.Config, ranges...)
 		}
-		if x, ok := m["gateway"]; ok {
-			cfg.Gateway = x.String()
-		}
-		if x, ok := m["ipRange"]; ok {
-			cfg.IPRange = x.String()
-		}
-		res.IPAM.Config = append(res.IPAM.Config, cfg)
 	}
 
 	if n.NerdctlID != nil {
