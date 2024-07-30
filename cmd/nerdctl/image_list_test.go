@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -132,4 +133,27 @@ CMD ["echo", "nerdctl-build-notag-string"]
 	// dangling image test
 	base.Cmd("images", "--filter", "dangling=true").AssertOutContains("<none>")
 	base.Cmd("images", "--filter", "dangling=false").AssertOutNotContains("<none>")
+}
+
+func TestImageListCheckCreatedTime(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	base.Cmd("pull", testutil.CommonImage).AssertOK()
+	base.Cmd("pull", testutil.NginxAlpineImage).AssertOK()
+
+	var createdTimes []string
+
+	base.Cmd("images", "--format", "'{{json .CreatedAt}}'").AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) < 2 {
+			return fmt.Errorf("expected at least 4 lines, got %d", len(lines))
+		}
+		createdTimes = append(createdTimes, lines...)
+		return nil
+	})
+
+	slices.Reverse(createdTimes)
+	if !slices.IsSorted(createdTimes) {
+		t.Errorf("expected images in decending order")
+	}
 }

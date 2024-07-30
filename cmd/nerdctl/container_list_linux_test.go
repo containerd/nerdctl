@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -574,4 +575,27 @@ func TestContainerListWithFilter(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+func TestContainerListCheckCreatedTime(t *testing.T) {
+	base, _ := preparePsTestContainer(t, "checkCreatedTimeA", true)
+	preparePsTestContainer(t, "checkCreatedTimeB", true)
+	preparePsTestContainer(t, "checkCreatedTimeC", false)
+	preparePsTestContainer(t, "checkCreatedTimeD", false)
+
+	var createdTimes []string
+
+	base.Cmd("ps", "--format", "'{{json .CreatedAt}}'", "-a").AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) < 4 {
+			return fmt.Errorf("expected at least 4 lines, got %d", len(lines))
+		}
+		createdTimes = append(createdTimes, lines...)
+		return nil
+	})
+
+	slices.Reverse(createdTimes)
+	if !slices.IsSorted(createdTimes) {
+		t.Errorf("expected containers in decending order")
+	}
 }
