@@ -40,6 +40,10 @@ func (c *Composer) Down(ctx context.Context, downOptions DownOptions) error {
 		if err != nil {
 			return err
 		}
+		// use default Options to stop service containers.
+		if err := c.stopContainers(ctx, containers, StopOptions{}); err != nil {
+			return err
+		}
 		if err := c.removeContainers(ctx, containers, RemoveOptions{Stop: true, Volumes: downOptions.RemoveVolumes}); err != nil {
 			return err
 		}
