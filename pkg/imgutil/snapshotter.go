@@ -19,13 +19,13 @@ package imgutil
 import (
 	"strings"
 
-	socisource "github.com/awslabs/soci-snapshotter/fs/source"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/images"
 	ctdsnapshotters "github.com/containerd/containerd/pkg/snapshotters"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
+	"github.com/containerd/nerdctl/v2/pkg/snapshotterutil"
 	"github.com/containerd/stargz-snapshotter/fs/source"
 )
 
@@ -115,5 +115,5 @@ func stargzExtraLabels(f func(images.Handler) images.Handler, rFlags types.Remot
 }
 
 func sociExtraLabels(f func(images.Handler) images.Handler, rFlags types.RemoteSnapshotterFlags) func(images.Handler) images.Handler {
-	return socisource.AppendDefaultLabelsHandlerWrapper(rFlags.SociIndexDigest, f)
+	return snapshotterutil.SociAppendDefaultLabelsHandlerWrapper(rFlags.SociIndexDigest, f)
 }
