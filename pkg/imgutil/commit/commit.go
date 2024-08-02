@@ -169,6 +169,13 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 			return emptyDigest, fmt.Errorf("failed to create new image %s: %w", opts.Ref, err)
 		}
 	}
+
+	// unpack the image to snapshotter
+	cimg := containerd.NewImage(client, img)
+	if err := cimg.Unpack(ctx, snName); err != nil {
+		return emptyDigest, err
+	}
+
 	return configDigest, nil
 }
 
