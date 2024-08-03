@@ -53,7 +53,7 @@ type isFileStore interface {
 
 func Login(ctx context.Context, options types.LoginCommandOptions, stdout io.Writer) error {
 	var serverAddress string
-	if options.ServerAddress == "" {
+	if options.ServerAddress == "" || options.ServerAddress == "docker.io" || options.ServerAddress == "index.docker.io" || options.ServerAddress == "registry-1.docker.io" {
 		serverAddress = dockerconfigresolver.IndexServer
 	} else {
 		serverAddress = options.ServerAddress
