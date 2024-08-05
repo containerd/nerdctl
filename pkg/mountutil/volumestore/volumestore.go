@@ -217,9 +217,12 @@ func (vs *volumeStore) Get(name string, size bool) (*native.Volume, error) {
 
 	var err error
 	if vs.locked == nil {
+		log.L.Error("[VOLGET] NEED TO LOCK")
 		err = lockutil.WithDirLock(vs.dir, fn)
 	} else {
+		log.L.Error("[VOLGET] RUNNING (no extra locking)")
 		err = fn()
+		log.L.Error("[VOLGET] DONE")
 	}
 	if err != nil {
 		return nil, err
@@ -234,6 +237,7 @@ func (vs *volumeStore) List(size bool) (map[string]native.Volume, error) {
 	res := map[string]native.Volume{}
 
 	fn := func() error {
+		log.L.Error("[VOLLS] running list")
 		dirEntries, err := os.ReadDir(vs.dir)
 		if err != nil {
 			return fmt.Errorf("filesystem error while trying to list volumes from the volume store: %w", err)
@@ -241,18 +245,23 @@ func (vs *volumeStore) List(size bool) (map[string]native.Volume, error) {
 
 		for _, dirEntry := range dirEntries {
 			name := dirEntry.Name()
+			log.L.Error("[VOLLS] going to get")
 			vol, err := vs.Get(name, size)
+			log.L.Error("[VOLLS] done with get")
 			if err != nil {
 				return err
 			}
 			res[name] = *vol
 		}
+		log.L.Error("[VOLLS] returning list")
 		return nil
 	}
 
 	var err error
 	// Since we are calling Get, we need to acquire a global lock
+	log.L.Error("[VOLLS] about to ls")
 	if vs.locked == nil {
+		log.L.Error("[VOLLS] locking")
 		err = vs.Lock()
 		if err != nil {
 			return nil, err
