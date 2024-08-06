@@ -28,9 +28,11 @@ import (
 
 // Cp copies files/folders between a running container and the local filesystem.
 func Cp(ctx context.Context, client *containerd.Client, options types.ContainerCpOptions) error {
+	foundMatchCount := 0
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			foundMatchCount = found.MatchCount
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
@@ -48,7 +50,11 @@ func Cp(ctx context.Context, client *containerd.Client, options types.ContainerC
 	count, err := walker.Walk(ctx, options.ContainerReq)
 
 	if count < 1 {
-		err = fmt.Errorf("could not find container: %s, with error: %w", options.ContainerReq, err)
+		if foundMatchCount == 0 {
+			err = fmt.Errorf("could not find container: %s, with error: %w", options.ContainerReq, err)
+		} else {
+			err = fmt.Errorf("could not find %s in container %s", options.SrcPath, options.ContainerReq)
+		}
 	}
 
 	return err
