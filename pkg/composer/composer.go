@@ -26,10 +26,10 @@ import (
 	composecli "github.com/compose-spec/compose-go/v2/cli"
 	compose "github.com/compose-spec/compose-go/v2/types"
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
+	"github.com/containerd/nerdctl/v2/pkg/validator"
 )
 
 // Options groups the command line options recommended for a Compose implementation (ProjectOptions) and extra options for nerdctl
@@ -61,8 +61,8 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 	}
 
 	if o.Project != "" {
-		if err := identifiers.Validate(o.Project); err != nil {
-			return nil, fmt.Errorf("got invalid project name %q: %w", o.Project, err)
+		if err := validator.Validate(o.Project); err != nil {
+			return nil, fmt.Errorf("invalid project name: %w", err)
 		}
 	}
 

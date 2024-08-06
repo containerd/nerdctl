@@ -23,12 +23,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/validator"
 )
 
 const (
@@ -108,9 +108,10 @@ func (vs *volumeStore) Unlock() error {
 // Create will create a new volume, or return an existing one if there is one already by that name
 // Besides a possible locking error, it might return ErrInvalidArgument, hard filesystem errors, json errors
 func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, error) {
-	if err := identifiers.Validate(name); err != nil {
-		return nil, fmt.Errorf("malformed volume name: %w (%w)", err, errdefs.ErrInvalidArgument)
+	if err := validator.Validate(name); err != nil {
+		return nil, fmt.Errorf("invalid volume name: %w", err)
 	}
+
 	volPath := filepath.Join(vs.dir, name)
 	volDataPath := filepath.Join(volPath, dataDirName)
 	volFilePath := filepath.Join(volPath, volumeJSONFileName)
@@ -177,8 +178,8 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 // Get retrieves a native volume from the store
 // Besides a possible locking error, it might return ErrInvalidArgument, ErrNotFound, or a filesystem error
 func (vs *volumeStore) Get(name string, size bool) (*native.Volume, error) {
-	if err := identifiers.Validate(name); err != nil {
-		return nil, fmt.Errorf("malformed volume name %q: %w", name, err)
+	if err := validator.Validate(name); err != nil {
+		return nil, fmt.Errorf("invalid volume name: %w", err)
 	}
 	volPath := filepath.Join(vs.dir, name)
 	volDataPath := filepath.Join(volPath, dataDirName)
@@ -273,8 +274,8 @@ func (vs *volumeStore) Remove(names []string) (removed []string, warns []error, 
 	fn := func() error {
 		for _, name := range names {
 			// Invalid name, soft error
-			if err := identifiers.Validate(name); err != nil {
-				warns = append(warns, fmt.Errorf("malformed volume name: %w (%w)", err, errdefs.ErrInvalidArgument))
+			if err := validator.Validate(name); err != nil {
+				warns = append(warns, fmt.Errorf("invalid volume name: %w", err))
 				continue
 			}
 			dir := filepath.Join(vs.dir, name)

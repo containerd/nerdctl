@@ -19,10 +19,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/network"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/validator"
 
 	"github.com/spf13/cobra"
 )
@@ -57,8 +57,8 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	name := args[0]
-	if err := identifiers.Validate(name); err != nil {
-		return fmt.Errorf("malformed name %s: %w", name, err)
+	if err := validator.Validate(name); err != nil {
+		return fmt.Errorf("invalid network name: %w", err)
 	}
 	driver, err := cmd.Flags().GetString("driver")
 	if err != nil {

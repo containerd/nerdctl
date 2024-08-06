@@ -30,9 +30,9 @@ import (
 
 	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/containerd/containerd/contrib/nvidia"
-	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
+	"github.com/containerd/nerdctl/v2/pkg/validator"
 )
 
 // ComposeExtensionKey defines fields used to implement extension features.
@@ -846,8 +846,8 @@ func fileReferenceConfigToFlagV(c types.FileReferenceConfig, project *types.Proj
 		log.L.Warnf("Ignoring: %s: %+v", objType, unknown)
 	}
 
-	if err := identifiers.Validate(c.Source); err != nil {
-		return "", fmt.Errorf("%s source %q is invalid: %w", objType, c.Source, err)
+	if err := validator.Validate(c.Source); err != nil {
+		return "", fmt.Errorf("invalid source name for %s: %w", objType, err)
 	}
 
 	var obj types.FileObjectConfig

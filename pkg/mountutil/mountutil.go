@@ -23,13 +23,13 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/idgen"
 	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/validator"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
@@ -258,7 +258,7 @@ func createDirOnHost(src string, createDir bool) error {
 }
 
 func isNamedVolume(s string) bool {
-	err := identifiers.Validate(s)
+	err := validator.Validate(s)
 
 	// If the volume name is invalid, we assume it is a path
 	return err == nil
