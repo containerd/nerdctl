@@ -25,10 +25,10 @@ import (
 	"github.com/compose-spec/compose-go/v2/types"
 	securejoin "github.com/cyphar/filepath-securejoin"
 
-	"github.com/containerd/containerd/v2/pkg/identifiers"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
 )
 
@@ -84,9 +84,11 @@ func parseBuildConfig(c *types.BuildConfig, project *types.Project, imageName st
 
 	for _, s := range c.Secrets {
 		fileRef := types.FileReferenceConfig(s)
-		if err := identifiers.Validate(fileRef.Source); err != nil {
-			return nil, fmt.Errorf("secret source %q is invalid: %w", fileRef.Source, err)
+
+		if err := identifiers.ValidateDockerCompat(fileRef.Source); err != nil {
+			return nil, fmt.Errorf("invalid secret source name: %w", err)
 		}
+
 		projectSecret, ok := project.Secrets[fileRef.Source]
 		if !ok {
 			return nil, fmt.Errorf("build: secret %s is undefined", fileRef.Source)

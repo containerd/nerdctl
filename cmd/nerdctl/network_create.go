@@ -21,10 +21,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/containerd/containerd/v2/pkg/identifiers"
-
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/network"
+	"github.com/containerd/nerdctl/v2/pkg/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
@@ -58,8 +57,8 @@ func networkCreateAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	name := args[0]
-	if err := identifiers.Validate(name); err != nil {
-		return fmt.Errorf("malformed name %s: %w", name, err)
+	if err := identifiers.ValidateDockerCompat(name); err != nil {
+		return fmt.Errorf("invalid network name: %w", err)
 	}
 	driver, err := cmd.Flags().GetString("driver")
 	if err != nil {
