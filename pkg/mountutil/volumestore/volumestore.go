@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/errdefs"
@@ -29,12 +31,28 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
+	"github.com/opencontainers/go-digest"
 )
 
 const (
 	dataDirName        = "_data"
 	volumeJSONFileName = "volume.json"
 )
+
+var (
+	validateRegExp = regexp.MustCompile("^[a-zA-Z0-9_+:/-]{1,256}$")
+)
+
+func validateName(name string) error {
+	if !validateRegExp.MatchString(name) {
+		return fmt.Errorf("identifier %q must match %v: %w", name, validateRegExp, errdefs.ErrInvalidArgument)
+	}
+	return nil
+}
+
+func validateLegacyName(name string) error {
+	return identifiers.Validate(name)
+}
 
 // VolumeStore allows manipulating containers' volumes
 // Every method is protected by a file lock, and is safe to use concurrently.
@@ -105,19 +123,63 @@ func (vs *volumeStore) Unlock() error {
 	return nil
 }
 
+func (vs *volumeStore) legacyEnsureLink(name string) error {
+	legacyVolPath := filepath.Join(vs.dir, name)
+	if _, err := os.Stat(legacyVolPath); err == nil {
+		volPath := filepath.Join(vs.dir, strings.Replace(digest.FromString(name).String(), ":", "_", -1))
+		if _, err = os.Stat(volPath); errors.Is(err, os.ErrNotExist) {
+			// Ensure we have a name inside the marker file
+			volFilePath := filepath.Join(legacyVolPath, volumeJSONFileName)
+			volOpts := struct {
+				Name   string            `json:"name"`
+				Labels map[string]string `json:"labels"`
+			}{}
+			volumeDataBytes, err := os.ReadFile(volFilePath)
+			if err != nil {
+				return err
+			}
+			if err = json.Unmarshal(volumeDataBytes, &volOpts); err != nil {
+				return err
+			}
+			volOpts.Name = name
+			labelsJSON, err := json.MarshalIndent(volOpts, "", "    ")
+			if err != nil {
+				return err
+			}
+			if err = os.WriteFile(volFilePath, labelsJSON, 0644); err != nil {
+				return err
+			}
+
+			// Symlink
+			err = os.Symlink(legacyVolPath, volPath)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // Create will create a new volume, or return an existing one if there is one already by that name
 // Besides a possible locking error, it might return ErrInvalidArgument, hard filesystem errors, json errors
 func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, error) {
-	if err := identifiers.Validate(name); err != nil {
+	if err := validateName(name); err != nil {
 		return nil, fmt.Errorf("malformed volume name: %w (%w)", err, errdefs.ErrInvalidArgument)
 	}
-	volPath := filepath.Join(vs.dir, name)
+	volPath := filepath.Join(vs.dir, strings.Replace(digest.FromString(name).String(), ":", "_", -1))
 	volDataPath := filepath.Join(volPath, dataDirName)
 	volFilePath := filepath.Join(volPath, volumeJSONFileName)
 
 	vol := &native.Volume{}
 
 	fn := func() error {
+		// If there is a legacy volume hanging around, link it
+		if validateLegacyName(name) == nil {
+			if err := vs.legacyEnsureLink(name); err != nil {
+				return err
+			}
+		}
+
 		// Failures that are not os.ErrExist must exit here
 		if err := os.Mkdir(volPath, 0700); err != nil && !errors.Is(err, os.ErrExist) {
 			return err
@@ -126,27 +188,30 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 			return err
 		}
 
-		volOpts := struct {
-			Labels map[string]string `json:"labels"`
-		}{}
-
-		if len(labels) > 0 {
-			volOpts.Labels = strutil.ConvertKVStringsToMap(labels)
-		}
-
-		// Failure here must exit, no need to clean-up
-		labelsJSON, err := json.MarshalIndent(volOpts, "", "    ")
-		if err != nil {
-			return err
-		}
-
 		// If it does not exist
-		if _, err = os.Stat(volFilePath); err != nil {
+		if _, err := os.Stat(volFilePath); err != nil {
 			// Any other stat error than "not exists", hard exit
 			if !errors.Is(err, os.ErrNotExist) {
 				return err
 			}
 			// Error was does not exist, so, write it
+			volOpts := struct {
+				Name   string            `json:"name"`
+				Labels map[string]string `json:"labels"`
+			}{
+				Name: name,
+			}
+
+			if len(labels) > 0 {
+				volOpts.Labels = strutil.ConvertKVStringsToMap(labels)
+			}
+
+			// Failure here must exit, no need to clean-up
+			labelsJSON, err := json.MarshalIndent(volOpts, "", "    ")
+			if err != nil {
+				return err
+			}
+
 			if err = os.WriteFile(volFilePath, labelsJSON, 0644); err != nil {
 				return err
 			}
@@ -176,40 +241,62 @@ func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, err
 
 // Get retrieves a native volume from the store
 // Besides a possible locking error, it might return ErrInvalidArgument, ErrNotFound, or a filesystem error
-func (vs *volumeStore) Get(name string, size bool) (*native.Volume, error) {
-	if err := identifiers.Validate(name); err != nil {
-		return nil, fmt.Errorf("malformed volume name %q: %w", name, err)
+func (vs *volumeStore) Get(nameOrDigest string, size bool) (*native.Volume, error) {
+	name := ""
+	var dgst string
+
+	if _, err := digest.Parse(strings.Replace(nameOrDigest, "_", ":", -1)); err != nil {
+		name = nameOrDigest
+		if err = validateName(name); err != nil {
+			return nil, fmt.Errorf("malformed volume name %q: %w", name, err)
+		}
+		dgst = strings.Replace(digest.FromString(name).String(), ":", "_", -1)
+	} else {
+		dgst = nameOrDigest
 	}
-	volPath := filepath.Join(vs.dir, name)
+
+	volPath := filepath.Join(vs.dir, dgst)
 	volDataPath := filepath.Join(volPath, dataDirName)
 	volFilePath := filepath.Join(volPath, volumeJSONFileName)
 
 	vol := &native.Volume{}
 
 	fn := func() error {
-		if _, err := os.Stat(volDataPath); err != nil {
-			if os.IsNotExist(err) {
-				return fmt.Errorf("%q does not exist in the volume store: %w", name, errdefs.ErrNotFound)
+		// Ensure to legacy link if necessary
+		if name != "" {
+			if validateLegacyName(name) == nil {
+				if err := vs.legacyEnsureLink(name); err != nil {
+					return err
+				}
 			}
-			return fmt.Errorf("filesystem error reading %q from the volume store: %w", name, err)
+		}
+
+		if _, err := os.Stat(volDataPath); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("%q does not exist in the volume store: %w", nameOrDigest, errdefs.ErrNotFound)
+			}
+			return fmt.Errorf("filesystem error reading %q from the volume store: %w", nameOrDigest, err)
 		}
 
 		volumeDataBytes, err := os.ReadFile(volFilePath)
 		if err != nil {
-			if os.IsNotExist(err) {
-				return fmt.Errorf("%q labels file does not exist in the volume store: %w", name, errdefs.ErrNotFound)
+			if errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("%q labels file does not exist in the volume store: %w", nameOrDigest, errdefs.ErrNotFound)
 			}
-			return fmt.Errorf("filesystem error reading %q from the volume store: %w", name, err)
+			return fmt.Errorf("filesystem error reading %q from the volume store: %w", nameOrDigest, err)
 		}
 
-		vol.Name = name
+		// Unmarshall labels and name
+		if err = json.Unmarshal(volumeDataBytes, &vol); err != nil {
+			return err
+		}
+
 		vol.Mountpoint = volDataPath
-		vol.Labels = labels(volumeDataBytes)
 
 		if size {
 			vol.Size, err = volumeSize(vol)
 			if err != nil {
-				return fmt.Errorf("failed reading volume size for %q from the volume store: %w", name, err)
+				return fmt.Errorf("failed reading volume size for %q from the volume store: %w", vol.Name, err)
 			}
 		}
 		return nil
@@ -245,7 +332,7 @@ func (vs *volumeStore) List(size bool) (map[string]native.Volume, error) {
 			if err != nil {
 				return err
 			}
-			res[name] = *vol
+			res[vol.Name] = *vol
 		}
 		return nil
 	}
@@ -269,18 +356,30 @@ func (vs *volumeStore) List(size bool) (map[string]native.Volume, error) {
 // Remove will remove one or more containers
 // Besides a possible locking error, it might return hard filesystem errors
 // Any other failure (ErrInvalidArgument, ErrNotFound) is a soft error that will be added the `warns`
-func (vs *volumeStore) Remove(names []string) (removed []string, warns []error, err error) {
+func (vs *volumeStore) Remove(names []string) ([]string, []error, error) {
+	var removed []string
+	var warns []error
+	var err error
+
 	fn := func() error {
 		for _, name := range names {
-			// Invalid name, soft error
-			if err := identifiers.Validate(name); err != nil {
+			if err := validateName(name); err != nil {
 				warns = append(warns, fmt.Errorf("malformed volume name: %w (%w)", err, errdefs.ErrInvalidArgument))
 				continue
 			}
-			dir := filepath.Join(vs.dir, name)
+
+			// Remove legacy but ONLY if it validates the legacy syntax
+			if validateLegacyName(name) == nil {
+				dir := filepath.Join(vs.dir, name)
+				if _, err := os.Stat(dir); err == nil {
+					_ = os.RemoveAll(dir)
+				}
+			}
+
+			dir := filepath.Join(vs.dir, strings.Replace(digest.FromString(name).String(), ":", "_", -1))
 			// Does not exist, soft error
-			if _, err := os.Stat(dir); err != nil {
-				if os.IsNotExist(err) {
+			if _, err := os.Lstat(dir); err != nil {
+				if errors.Is(err, os.ErrNotExist) {
 					warns = append(warns, fmt.Errorf("no such volume: %s (%w)", name, errdefs.ErrNotFound))
 					continue
 				}
@@ -306,17 +405,6 @@ func (vs *volumeStore) Remove(names []string) (removed []string, warns []error, 
 }
 
 // Private helpers
-func labels(b []byte) *map[string]string {
-	type volumeOpts struct {
-		Labels *map[string]string `json:"labels,omitempty"`
-	}
-	var vo volumeOpts
-	if err := json.Unmarshal(b, &vo); err != nil {
-		return nil
-	}
-	return vo.Labels
-}
-
 func volumeSize(volume *native.Volume) (int64, error) {
 	var size int64
 	var walkFn = func(_ string, info os.FileInfo, err error) error {
