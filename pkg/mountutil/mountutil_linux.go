@@ -291,6 +291,7 @@ func ProcessFlagTmpfs(s string) (*Processed, error) {
 
 func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, error) {
 	fields := strings.Split(s, ",")
+	log.L.Debugf("fields are %s", fields)
 	var (
 		mountType        string
 		src              string
@@ -318,6 +319,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		parts := strings.SplitN(field, "=", 2)
 		key := strings.ToLower(parts[0])
 
+		log.L.Debugf("parts are %s", parts)
 		if len(parts) == 1 {
 			switch key {
 			case "readonly", "ro", "rw", "rro":
@@ -382,9 +384,8 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		}
 	}
 
-	// compose new fileds and join into a string
+	// compose new fields and join into a string
 	// to call legacy ProcessFlagTmpfs or ProcessFlagV function
-	fields = []string{}
 	options := []string{}
 	if rwOption != "" {
 		if rwOption == "readonly" {
@@ -402,8 +403,55 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		if tmpfsSize > 0 {
 			options = append(options, getTmpfsSize(tmpfsSize))
 		}
-	case Volume, Bind:
-		fields = []string{src, dst}
+		if len(options) > 0 {
+			optionsStr := strings.Join(options, ",")
+			fields = append(fields, optionsStr)
+		}
+		fieldsStr := strings.Join(fields, ":")
+		return ProcessFlagTmpfs(fieldsStr)
+	case Bind, Volume:
+		// Refactor this portion to not use the ProcessFlagV
+
+		// These are the variables that are used to build the processed volume results
+		var (
+			res     *Processed
+			volSpec volumeSpec
+		)
+
+		// dst is always specified, so we validate the path of destination volume
+		dst = strings.TrimSpace(dst)
+		if _, err := isValidPath(dst); err != nil {
+			return nil, err
+		}
+
+		// First handle anonymous volume.
+		// Anonymous volumes are volumes for which src are not specified.
+		if src == "" {
+			if mountType == Bind {
+				return nil, fmt.Errorf("anonymous volumes are not supported for bind mounts")
+			}
+			if volSpec, err = handleAnonymousVolumes(dst, volStore); err != nil {
+				return nil, err
+			}
+			src = volSpec.Source
+			res = &Processed{
+				Type:            volSpec.Type,
+				AnonymousVolume: volSpec.AnonymousVolume,
+			}
+		} else { // handle non-anonymous volumes
+			volSpec, err = handleVolumeToMount(src, dst, volStore, false)
+			if err != nil {
+				return nil, err
+			}
+
+			src = volSpec.Source
+			res = &Processed{
+				Type:            volSpec.Type,
+				Name:            volSpec.Name,
+				AnonymousVolume: volSpec.AnonymousVolume,
+			}
+		}
+
 		if bindPropagation != "" {
 			options = append(options, bindPropagation)
 		}
@@ -414,22 +462,35 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 				options = append(options, "rbind")
 			}
 		}
-	}
 
-	if len(options) > 0 {
-		optionsStr := strings.Join(options, ",")
-		fields = append(fields, optionsStr)
-	}
-	fieldsStr := strings.Join(fields, ":")
+		if rwOption == "" {
+			log.L.Debug("overriding options")
+			options = append(options, "rw")
+		}
+		log.L.Debugf("Original options are before parsing and rwOption is: %s, %s", options, rwOption)
 
-	log.L.Debugf("Call legacy %s process, spec: %s ", mountType, fieldsStr)
+		options, res.Opts, err = parseVolumeOptions(res.Type, src, strings.Join(options, ","))
+		if err != nil {
+			return nil, err
+		}
+		if rwOption == "" {
+			log.L.Debug("overriding options")
+			options = append(options, "rw")
+		}
+		log.L.Debugf("Later parsed options are : %s", options)
 
-	switch mountType {
-	case Tmpfs:
-		return ProcessFlagTmpfs(fieldsStr)
-	case Volume, Bind:
-		// createDir=false for --mount option to disallow creating directories on host if not found
-		return ProcessFlagV(fieldsStr, volStore, false)
+		//
+		fstype := DefaultMountType
+		res.Mount = specs.Mount{
+			Type:        fstype,
+			Source:      cleanMount(src),
+			Destination: cleanMount(dst),
+			Options:     options,
+		}
+		res.Mode = strings.Join(options, ",")
+
+		log.L.Debugf("mount: %+v", res)
+		return res, nil
 	}
 	return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", mountType)
 }

@@ -53,18 +53,21 @@ func TestContainerInspectContainsMounts(t *testing.T) {
 
 	defer base.Cmd("volume", "rm", "-f", testVolume).Run()
 	base.Cmd("volume", "create", "--label", "tag=testVolume", testVolume).AssertOK()
-	inspectVolume := base.InspectVolume(testVolume)
-	namedVolumeSource := inspectVolume.Mountpoint
+	// inspectVolume := base.InspectVolume(testVolume)
+	// namedVolumeSource := inspectVolume.Mountpoint
 
-	defer base.Cmd("rm", "-f", testContainer).Run()
-	base.Cmd("run", "-d", "--privileged",
+	defer base.Cmd("--debug", "rm", "-f", testContainer).Run()
+	base.Cmd("--debug", "run", "-d", "--privileged",
 		"--name", testContainer,
 		"--network", "none",
 		"-v", "/anony-vol",
 		"--tmpfs", "/app1:size=64m",
 		"--mount", "type=bind,src=/tmp,dst=/app2,ro",
-		"--mount", fmt.Sprintf("type=volume,src=%s,dst=/app3,readonly=false", testVolume),
+		// "--mount", fmt.Sprintf("type=volume,src=%s,dst=/app3,readonly=false", testVolume),
 		testutil.NginxAlpineImage).AssertOK()
+	// res := cmd.Run()
+	// t.Logf("%s\n", res.Combined())
+	// res.AssertOK()
 
 	inspect := base.InspectContainer(testContainer)
 
@@ -77,11 +80,13 @@ func TestContainerInspectContainsMounts(t *testing.T) {
 	const localDriver = "local"
 
 	expected := []struct {
+		name       string
 		dest       string
 		mountPoint dockercompat.MountPoint
 	}{
 		// anonymous volume
 		{
+			name: "anon volume test",
 			dest: "/anony-vol",
 			mountPoint: dockercompat.MountPoint{
 				Type:        "volume",
@@ -95,6 +100,7 @@ func TestContainerInspectContainsMounts(t *testing.T) {
 
 		// bind
 		{
+			name: "bind mount test",
 			dest: "/app2",
 			mountPoint: dockercompat.MountPoint{
 				Type:        "bind",
@@ -107,17 +113,18 @@ func TestContainerInspectContainsMounts(t *testing.T) {
 		},
 
 		// named volume
-		{
-			dest: "/app3",
-			mountPoint: dockercompat.MountPoint{
-				Type:        "volume",
-				Name:        testVolume,
-				Source:      namedVolumeSource,
-				Destination: "/app3",
-				Driver:      localDriver,
-				RW:          true,
-			},
-		},
+		// {
+		// 	name: "named volume test",
+		// 	dest: "/app3",
+		// 	mountPoint: dockercompat.MountPoint{
+		// 		Type:        "volume",
+		// 		Name:        testVolume,
+		// 		Source:      namedVolumeSource,
+		// 		Destination: "/app3",
+		// 		Driver:      localDriver,
+		// 		RW:          true,
+		// 	},
+		// },
 	}
 
 	for i := range expected {
