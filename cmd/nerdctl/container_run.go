@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/containerd/console"
 	"github.com/containerd/log"
@@ -68,6 +69,7 @@ func newRunCommand() *cobra.Command {
 	setCreateFlags(runCommand)
 
 	runCommand.Flags().BoolP("detach", "d", false, "Run container in background and print container ID")
+	runCommand.Flags().StringSliceP("attach", "a", []string{}, "Attach STDIN, STDOUT, or STDERR")
 
 	return runCommand
 }
@@ -78,6 +80,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("help", false, "show help")
 
 	cmd.Flags().BoolP("tty", "t", false, "Allocate a pseudo-TTY")
+	cmd.Flags().Bool("sig-proxy", true, "Proxy received signals to the process (default true)")
 	cmd.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
 	cmd.Flags().String("restart", "no", `Restart policy to apply when a container exits (implemented values: "no"|"always|on-failure:n|unless-stopped")`)
 	cmd.RegisterFlagCompletionFunc("restart", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -283,6 +286,10 @@ func processCreateCommandFlagsInRun(cmd *cobra.Command) (opt types.ContainerCrea
 
 	opt.InRun = true
 
+	opt.SigProxy, err = cmd.Flags().GetBool("sig-proxy")
+	if err != nil {
+		return
+	}
 	opt.Interactive, err = cmd.Flags().GetBool("interactive")
 	if err != nil {
 		return
@@ -295,6 +302,23 @@ func processCreateCommandFlagsInRun(cmd *cobra.Command) (opt types.ContainerCrea
 	if err != nil {
 		return
 	}
+	opt.Attach, err = cmd.Flags().GetStringSlice("attach")
+	if err != nil {
+		return
+	}
+
+	validAttachFlag := true
+	for i, str := range opt.Attach {
+		opt.Attach[i] = strings.ToUpper(str)
+
+		if opt.Attach[i] != "STDIN" && opt.Attach[i] != "STDOUT" && opt.Attach[i] != "STDERR" {
+			validAttachFlag = false
+		}
+	}
+	if !validAttachFlag {
+		return opt, fmt.Errorf("invalid stream specified with -a flag. Valid streams are STDIN, STDOUT, and STDERR")
+	}
+
 	return opt, nil
 }
 
@@ -314,6 +338,10 @@ func runAction(cmd *cobra.Command, args []string) error {
 
 	if createOpt.Rm && createOpt.Detach {
 		return errors.New("flags -d and --rm cannot be specified together")
+	}
+
+	if len(createOpt.Attach) > 0 && createOpt.Detach {
+		return errors.New("flags -d and -a cannot be specified together")
 	}
 
 	netFlags, err := loadNetworkFlags(cmd)
@@ -372,7 +400,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 	logURI := lab[labels.LogURI]
 	detachC := make(chan struct{})
-	task, err := taskutil.NewTask(ctx, client, c, false, createOpt.Interactive, createOpt.TTY, createOpt.Detach,
+	task, err := taskutil.NewTask(ctx, client, c, createOpt.Attach, createOpt.Interactive, createOpt.TTY, createOpt.Detach,
 		con, logURI, createOpt.DetachKeys, createOpt.GOptions.Namespace, detachC)
 	if err != nil {
 		return err
@@ -390,8 +418,10 @@ func runAction(cmd *cobra.Command, args []string) error {
 			log.L.WithError(err).Error("console resize")
 		}
 	} else {
-		sigC := signalutil.ForwardAllSignals(ctx, task)
-		defer signalutil.StopCatch(sigC)
+		if createOpt.SigProxy {
+			sigC := signalutil.ForwardAllSignals(ctx, task)
+			defer signalutil.StopCatch(sigC)
+		}
 	}
 
 	statusC, err := task.Wait(ctx)

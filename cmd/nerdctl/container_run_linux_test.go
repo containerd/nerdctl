@@ -29,6 +29,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -251,6 +252,80 @@ func TestRunTTY(t *testing.T) {
 	// tests pipe works
 	res := icmd.RunCmd(icmd.Command("unbuffer", "/bin/sh", "-c", fmt.Sprintf("%q run --rm -it %q echo hi | grep hi", base.Binary, testutil.CommonImage)))
 	assert.Equal(t, 0, res.ExitCode, res.Combined())
+}
+
+func runSigProxy(t *testing.T, args ...string) (string, bool, bool) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	testContainerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", testContainerName).Run()
+
+	fullArgs := []string{"run"}
+	fullArgs = append(fullArgs, args...)
+	fullArgs = append(fullArgs,
+		"--name",
+		testContainerName,
+		testutil.CommonImage,
+		"sh",
+		"-c",
+		testutil.SigProxyTestScript,
+	)
+
+	result := base.Cmd(fullArgs...).Start()
+	process := result.Cmd.Process
+
+	// Waits until we reach the trap command in the shell script, then sends SIGINT.
+	time.Sleep(3 * time.Second)
+	syscall.Kill(process.Pid, syscall.SIGINT)
+
+	// Waits until SIGINT is sent and responded to, then kills process to avoid timeout
+	time.Sleep(3 * time.Second)
+	process.Kill()
+
+	sigIntRecieved := strings.Contains(result.Stdout(), testutil.SigProxyTrueOut)
+	timedOut := strings.Contains(result.Stdout(), testutil.SigProxyTimeoutMsg)
+
+	return result.Stdout(), sigIntRecieved, timedOut
+}
+
+func TestRunSigProxy(t *testing.T) {
+
+	type testCase struct {
+		name        string
+		args        []string
+		want        bool
+		expectedOut string
+	}
+	testCases := []testCase{
+		{
+			name:        "SigProxyDefault",
+			args:        []string{},
+			want:        true,
+			expectedOut: testutil.SigProxyTrueOut,
+		},
+		{
+			name:        "SigProxyTrue",
+			args:        []string{"--sig-proxy=true"},
+			want:        true,
+			expectedOut: testutil.SigProxyTrueOut,
+		},
+		{
+			name:        "SigProxyFalse",
+			args:        []string{"--sig-proxy=false"},
+			want:        false,
+			expectedOut: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			stdout, sigIntRecieved, timedOut := runSigProxy(t, tc.args...)
+			errorMsg := fmt.Sprintf("%s failed;\nExpected: '%s'\nActual: '%s'", tc.name, tc.expectedOut, stdout)
+			assert.Equal(t, false, timedOut, errorMsg)
+			assert.Equal(t, tc.want, sigIntRecieved, errorMsg)
+		})
+	}
 }
 
 func TestRunWithFluentdLogDriver(t *testing.T) {
