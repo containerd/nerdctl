@@ -32,13 +32,12 @@ func WithDirLock(dir string, fn func() error) error {
 	}
 	defer dirFile.Close()
 	// see https://msdn.microsoft.com/en-us/library/windows/desktop/aa365203(v=vs.85).aspx
-	// 1 lock immediately
-	if err = windows.LockFileEx(windows.Handle(dirFile.Fd()), 1, 0, 1, 0, &windows.Overlapped{}); err != nil {
+	if err = windows.LockFileEx(windows.Handle(dirFile.Fd()), windows.LOCKFILE_EXCLUSIVE_LOCK, 0, ^uint32(0), ^uint32(0), new(windows.Overlapped)); err != nil {
 		return fmt.Errorf("failed to lock %q: %w", dir, err)
 	}
 
 	defer func() {
-		if err := windows.UnlockFileEx(windows.Handle(dirFile.Fd()), 0, 1, 0, &windows.Overlapped{}); err != nil {
+		if err := windows.UnlockFileEx(windows.Handle(dirFile.Fd()), 0, ^uint32(0), ^uint32(0), new(windows.Overlapped)); err != nil {
 			log.L.WithError(err).Errorf("failed to unlock %q", dir)
 		}
 	}()
@@ -51,8 +50,7 @@ func Lock(dir string) (*os.File, error) {
 		return nil, err
 	}
 	// see https://msdn.microsoft.com/en-us/library/windows/desktop/aa365203(v=vs.85).aspx
-	// 1 lock immediately
-	if err = windows.LockFileEx(windows.Handle(dirFile.Fd()), 1, 0, 1, 0, &windows.Overlapped{}); err != nil {
+	if err = windows.LockFileEx(windows.Handle(dirFile.Fd()), windows.LOCKFILE_EXCLUSIVE_LOCK, 0, ^uint32(0), ^uint32(0), new(windows.Overlapped)); err != nil {
 		return nil, fmt.Errorf("failed to lock %q: %w", dir, err)
 	}
 	return dirFile, nil
@@ -63,5 +61,5 @@ func Unlock(locked *os.File) error {
 		_ = locked.Close()
 	}()
 
-	return windows.UnlockFileEx(windows.Handle(locked.Fd()), 0, 1, 0, &windows.Overlapped{})
+	return windows.UnlockFileEx(windows.Handle(locked.Fd()), 0, ^uint32(0), ^uint32(0), new(windows.Overlapped))
 }
