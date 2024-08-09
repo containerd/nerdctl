@@ -28,6 +28,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/moby/sys/signal"
+	"github.com/opencontainers/runtime-spec/specs-go"
+
 	"github.com/containerd/console"
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
@@ -46,8 +49,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/signalutil"
 	"github.com/containerd/nerdctl/v2/pkg/taskutil"
-	"github.com/moby/sys/signal"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 // PrintHostPort writes to `writer` the public (HostIP:HostPort) of a given `containerPort/protocol` in a container.

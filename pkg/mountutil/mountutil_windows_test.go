@@ -21,12 +21,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
-	mocks "github.com/containerd/nerdctl/v2/pkg/mountutil/mountutilmock"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"go.uber.org/mock/gomock"
 	"gotest.tools/v3/assert"
 	is "gotest.tools/v3/assert/cmp"
+
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	mocks "github.com/containerd/nerdctl/v2/pkg/mountutil/mountutilmock"
 )
 
 func TestParseVolumeOptions(t *testing.T) {

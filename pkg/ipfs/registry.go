@@ -29,12 +29,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"github.com/containerd/containerd/v2/core/content"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/log"
 	ipfsclient "github.com/containerd/stargz-snapshotter/ipfs/client"
-	"github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // RegistryOptions represents options to configure the registry.

@@ -20,11 +20,12 @@ import (
 	"context"
 	"strings"
 
+	"github.com/docker/go-units"
+	"github.com/opencontainers/runtime-spec/specs-go"
+
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
-	"github.com/docker/go-units"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 func generateUlimitsOpts(ulimits []string) ([]oci.SpecOpts, error) {

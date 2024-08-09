@@ -17,8 +17,9 @@
 package native
 
 import (
-	"github.com/containerd/containerd/v2/core/images"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
+	"github.com/containerd/containerd/v2/core/images"
 )
 
 // Image corresponds to a containerd-native image object.

@@ -27,6 +27,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opencontainers/go-digest"
+	"github.com/opencontainers/image-spec/identity"
+	"github.com/opencontainers/image-spec/specs-go"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/content"
 	"github.com/containerd/containerd/v2/core/diff"
@@ -40,10 +45,6 @@ import (
 	imgutil "github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/platforms"
-	"github.com/opencontainers/go-digest"
-	"github.com/opencontainers/image-spec/identity"
-	"github.com/opencontainers/image-spec/specs-go"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 type Changes struct {

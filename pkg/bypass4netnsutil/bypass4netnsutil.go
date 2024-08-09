@@ -23,11 +23,12 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/opencontainers/runtime-spec/specs-go"
+	b4nnoci "github.com/rootless-containers/bypass4netns/pkg/oci"
+
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/nerdctl/v2/pkg/annotations"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	b4nnoci "github.com/rootless-containers/bypass4netns/pkg/oci"
 )
 
 func generateSecurityOpt(listenerPath string) (oci.SpecOpts, error) {

@@ -25,6 +25,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/klauspost/compress/zstd"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	overlaybdconvert "github.com/containerd/accelerated-container-image/pkg/convertor"
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/content"
@@ -43,8 +46,6 @@ import (
 	estargzexternaltocconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz/externaltoc"
 	zstdchunkedconvert "github.com/containerd/stargz-snapshotter/nativeconverter/zstdchunked"
 	"github.com/containerd/stargz-snapshotter/recorder"
-	"github.com/klauspost/compress/zstd"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRawRef string, options types.ImageConvertOptions) error {

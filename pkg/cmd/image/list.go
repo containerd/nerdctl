@@ -29,6 +29,10 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/docker/go-units"
+	"github.com/opencontainers/image-spec/identity"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/content"
 	"github.com/containerd/containerd/v2/core/images"
@@ -39,9 +43,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/platforms"
-	"github.com/docker/go-units"
-	"github.com/opencontainers/image-spec/identity"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ListCommandHandler `List` and print images matching filters in `options`.

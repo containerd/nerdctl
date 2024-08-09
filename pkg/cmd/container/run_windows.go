@@ -22,12 +22,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/docker/go-units"
+	"github.com/opencontainers/runtime-spec/specs-go"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
-	"github.com/docker/go-units"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 const (

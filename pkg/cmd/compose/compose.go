@@ -23,6 +23,8 @@ import (
 	"os"
 	"path/filepath"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -36,7 +38,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/signutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/platforms"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // New returns a new *composer.Composer.

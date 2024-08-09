@@ -23,6 +23,10 @@ import (
 	"fmt"
 	"reflect"
 
+	distributionref "github.com/distribution/reference"
+	"github.com/opencontainers/image-spec/identity"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/content"
 	"github.com/containerd/containerd/v2/core/images"
@@ -38,9 +42,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
 	"github.com/containerd/platforms"
-	distributionref "github.com/distribution/reference"
-	"github.com/opencontainers/image-spec/identity"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // EnsuredImage contains the image existed in containerd and its metadata.

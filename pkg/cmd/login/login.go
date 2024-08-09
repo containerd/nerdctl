@@ -27,7 +27,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/containerd/errdefs"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker/api/types/registry"
@@ -36,6 +35,7 @@ import (
 
 	"github.com/containerd/containerd/v2/core/remotes/docker"
 	"github.com/containerd/containerd/v2/core/remotes/docker/config"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"

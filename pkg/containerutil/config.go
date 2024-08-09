@@ -24,12 +24,13 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/opencontainers/runtime-spec/specs-go"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 // ReconfigNetContainer reconfigures the container's network namespace path.

@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/moby/sys/userns"
+	"github.com/opencontainers/runtime-spec/specs-go"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/oci"
@@ -32,8 +35,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
-	"github.com/moby/sys/userns"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 // WithoutRunMount returns a SpecOpts that unmounts the default tmpfs on "/run"

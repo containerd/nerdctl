@@ -35,6 +35,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/go-connections/nat"
+	"github.com/opencontainers/runtime-spec/specs-go"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/runtime/restart"
 	"github.com/containerd/go-cni"
@@ -43,8 +46,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/ocihook/state"
-	"github.com/docker/go-connections/nat"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 // From https://github.com/moby/moby/blob/v26.1.2/api/types/types.go#L34-L140

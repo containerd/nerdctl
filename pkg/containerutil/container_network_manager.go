@@ -27,6 +27,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/opencontainers/runtime-spec/specs-go"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/oci"
@@ -40,7 +42,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 const (

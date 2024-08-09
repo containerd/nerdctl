@@ -28,6 +28,11 @@ import (
 	"strings"
 	"time"
 
+	securejoin "github.com/cyphar/filepath-securejoin"
+	"github.com/moby/sys/userns"
+	"github.com/opencontainers/image-spec/identity"
+	"github.com/opencontainers/runtime-spec/specs-go"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/core/leases"
@@ -44,10 +49,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/mountutil"
 	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
-	securejoin "github.com/cyphar/filepath-securejoin"
-	"github.com/moby/sys/userns"
-	"github.com/opencontainers/image-spec/identity"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 // copy from https://github.com/containerd/containerd/blob/v1.6.0-rc.1/pkg/cri/opts/spec_linux.go#L129-L151

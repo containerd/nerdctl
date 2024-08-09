@@ -24,13 +24,14 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"github.com/containerd/containerd/v2/core/content"
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/containerd/v2/pkg/progress"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
-	"github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ShowProgress continuously updates the output with job progress

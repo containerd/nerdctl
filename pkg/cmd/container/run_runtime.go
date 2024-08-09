@@ -20,13 +20,14 @@ import (
 	"context"
 	"strings"
 
+	"github.com/opencontainers/runtime-spec/specs-go"
+
 	runcoptions "github.com/containerd/containerd/api/types/runc/options"
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/containerd/v2/plugins"
 	"github.com/containerd/log"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 func generateRuntimeCOpts(cgroupManager, runtimeStr string) ([]containerd.NewContainerOpts, error) {
