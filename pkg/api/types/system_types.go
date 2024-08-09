@@ -37,6 +37,8 @@ type SystemEventsOptions struct {
 	GOptions GlobalCommandOptions
 	// Format the output using the given Go template, e.g, '{{json .}}
 	Format string
+	// Filter events based on given conditions
+	Filters []string
 }
 
 // SystemPruneOptions specifies options for `nerdctl system prune`.
