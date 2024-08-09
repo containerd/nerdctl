@@ -23,13 +23,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/builder"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
-
-	"github.com/spf13/cobra"
 )
 
 func newBuildCommand() *cobra.Command {

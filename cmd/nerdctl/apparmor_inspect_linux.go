@@ -19,11 +19,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/apparmor"
 	"github.com/containerd/nerdctl/v2/pkg/defaults"
-	"github.com/spf13/cobra"
 )
 
 func newApparmorInspectCommand() *cobra.Command {

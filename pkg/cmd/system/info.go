@@ -24,13 +24,13 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/api/services/introspection/v1"
-	"github.com/containerd/log"
 	"github.com/docker/go-units"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
+	"github.com/containerd/containerd/api/services/introspection/v1"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"

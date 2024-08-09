@@ -21,13 +21,13 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/containerd/log"
 	"github.com/docker/docker/pkg/meminfo"
-	"github.com/docker/docker/pkg/sysinfo"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/sysinfo"
 )
 
 const UnameO = "Microsoft Windows"

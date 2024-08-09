@@ -23,12 +23,13 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"golang.org/x/crypto/bcrypt"
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testca"
-	"golang.org/x/crypto/bcrypt"
-	"gotest.tools/v3/assert"
 )
 
 type RegistryServer struct {

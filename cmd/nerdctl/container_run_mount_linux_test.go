@@ -23,11 +23,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/containerd/mount"
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	mobymount "github.com/moby/sys/mount"
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/containerd/v2/core/mount"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func TestRunVolume(t *testing.T) {

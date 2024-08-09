@@ -23,9 +23,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/leases"
-	"github.com/containerd/containerd/mount"
+	"github.com/opencontainers/image-spec/identity"
+	"github.com/spf13/cobra"
+
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/leases"
+	"github.com/containerd/containerd/v2/core/mount"
 	"github.com/containerd/continuity/fs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -35,8 +38,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/platforms"
-	"github.com/opencontainers/image-spec/identity"
-	"github.com/spf13/cobra"
 )
 
 func newDiffCommand() *cobra.Command {

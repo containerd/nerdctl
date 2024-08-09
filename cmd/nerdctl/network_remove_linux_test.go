@@ -19,10 +19,11 @@ package main
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/vishvananda/netlink"
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func TestNetworkRemove(t *testing.T) {

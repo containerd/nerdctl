@@ -25,11 +25,12 @@ import (
 	"testing"
 	"time"
 
+	syslog "github.com/yuchanns/srslog"
+
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testca"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testsyslog"
-	syslog "github.com/yuchanns/srslog"
 )
 
 func runSyslogTest(t *testing.T, networks []string, syslogFacilities map[string]syslog.Priority, fmtValidFuncs map[string]func(string, string, string, string, syslog.Priority, bool) error) {

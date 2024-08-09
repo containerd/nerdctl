@@ -23,8 +23,8 @@ package containerdutil
 import (
 	"context"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/content"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/content"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 

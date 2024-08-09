@@ -22,8 +22,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/containers"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 
 	"github.com/opencontainers/runtime-spec/specs-go"

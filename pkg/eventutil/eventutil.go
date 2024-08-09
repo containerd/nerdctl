@@ -19,7 +19,7 @@ package eventutil
 import (
 	"sync"
 
-	"github.com/containerd/containerd/events"
+	"github.com/containerd/containerd/v2/core/events"
 )
 
 type eventHandler struct {

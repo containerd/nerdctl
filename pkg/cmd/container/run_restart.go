@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/runtime/restart"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/runtime/restart"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
@@ -32,7 +32,7 @@ func checkRestartCapabilities(ctx context.Context, client *containerd.Client, re
 	case "", "no":
 		return true, nil
 	}
-	res, err := client.IntrospectionService().Plugins(ctx, []string{"id==restart"})
+	res, err := client.IntrospectionService().Plugins(ctx, "id==restart")
 	if err != nil {
 		return false, err
 	}

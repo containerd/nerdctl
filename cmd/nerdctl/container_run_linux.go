@@ -19,7 +19,7 @@ package main
 import (
 	"strings"
 
-	"github.com/containerd/containerd/pkg/cap"
+	"github.com/containerd/containerd/v2/pkg/cap"
 	"github.com/spf13/cobra"
 )
 

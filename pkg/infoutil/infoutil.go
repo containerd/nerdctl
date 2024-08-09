@@ -26,9 +26,9 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/containerd/containerd"
-	ptypes "github.com/containerd/containerd/protobuf/types"
-	"github.com/containerd/containerd/services/introspection"
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/introspection"
+	ptypes "github.com/containerd/containerd/v2/pkg/protobuf/types"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
@@ -39,11 +39,11 @@ import (
 
 func NativeDaemonInfo(ctx context.Context, client *containerd.Client) (*native.DaemonInfo, error) {
 	introService := client.IntrospectionService()
-	plugins, err := introService.Plugins(ctx, nil)
+	plugins, err := introService.Plugins(ctx)
 	if err != nil {
 		return nil, err
 	}
-	server, err := introService.Server(ctx, &ptypes.Empty{})
+	server, err := introService.Server(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupMan
 		return nil, err
 	}
 	introService := client.IntrospectionService()
-	daemonIntro, err := introService.Server(ctx, &ptypes.Empty{})
+	daemonIntro, err := introService.Server(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupMan
 
 func GetSnapshotterNames(ctx context.Context, introService introspection.Service) ([]string, error) {
 	var names []string
-	plugins, err := introService.Plugins(ctx, nil)
+	plugins, err := introService.Plugins(ctx)
 	if err != nil {
 		return nil, err
 	}
