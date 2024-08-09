@@ -45,22 +45,31 @@ func WithDirLock(dir string, fn func() error) error {
 }
 
 func Lock(dir string) (*os.File, error) {
+	log.L.Error("[LOCK] About to lock", dir)
 	dirFile, err := os.OpenFile(dir+".lock", os.O_CREATE, 0644)
+	log.L.Error("[LOCK] Opened", dir)
 	if err != nil {
 		return nil, err
 	}
 	// see https://msdn.microsoft.com/en-us/library/windows/desktop/aa365203(v=vs.85).aspx
 	// 1 lock immediately
+	log.L.Error("[LOCK] Locking", dir)
 	if err = windows.LockFileEx(windows.Handle(dirFile.Fd()), 1, 0, 1, 0, &windows.Overlapped{}); err != nil {
+		log.L.Error("[LOCK] Failed", dir)
 		return nil, fmt.Errorf("failed to lock %q: %w", dir, err)
 	}
+	log.L.Error("[LOCK] Success", dir)
 	return dirFile, nil
 }
 
 func Unlock(locked *os.File) error {
+	log.L.Error("[UNLOCK] About to close", locked.Name())
 	defer func() {
 		_ = locked.Close()
 	}()
 
-	return windows.UnlockFileEx(windows.Handle(locked.Fd()), 0, 1, 0, &windows.Overlapped{})
+	log.L.Error("[UNLOCK] About to unlock", locked.Name())
+	err := windows.UnlockFileEx(windows.Handle(locked.Fd()), 0, 1, 0, &windows.Overlapped{})
+	log.L.Error("[UNLOCK] Unlocked", locked.Name())
+	return err
 }
