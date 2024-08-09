@@ -318,7 +318,7 @@ RUN curl -o nydus-static.tgz -fsSL --proto '=https' --tlsv1.2 "https://github.co
   tar xzf nydus-static.tgz && \
   mv nydus-static/nydus-image nydus-static/nydusd nydus-static/nydusify /usr/bin/ && \
   rm nydus-static.tgz
-CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=github.com/containerd/nerdctl/v2/cmd/nerdctl/...", \
+CMD ["gotestsum", "--format=testname", "--packages=github.com/containerd/nerdctl/v2/cmd/nerdctl/...", \
   "--", "-timeout=60m", "-args", "-test.kill-daemon"]
 
 FROM test-integration AS test-integration-rootless
@@ -343,7 +343,7 @@ VOLUME /home/rootless/.local/share
 RUN go test -o /usr/local/bin/nerdctl.test -c ./cmd/nerdctl
 COPY ./Dockerfile.d/test-integration-rootless.sh /
 CMD ["/test-integration-rootless.sh", \
-  "gotestsum", "--format=testname", "--rerun-fails=2", "--raw-command", \
+  "gotestsum", "--format=testname", "--raw-command", \
   "--", "/usr/local/go/bin/go", "tool", "test2json", "-t", "-p", "github.com/containerd/nerdctl/v2/cmd/nerdctl",  \
   "/usr/local/bin/nerdctl.test", "-test.v", "-test.timeout=60m", "-test.kill-daemon"]
 
@@ -353,7 +353,7 @@ COPY ./Dockerfile.d/home_rootless_.config_systemd_user_containerd.service.d_port
 RUN chown -R rootless:rootless /home/rootless/.config
 
 FROM test-integration AS test-integration-ipv6
-CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=github.com/containerd/nerdctl/v2/cmd/nerdctl/...", \
+CMD ["gotestsum", "--format=testname", "--packages=github.com/containerd/nerdctl/v2/cmd/nerdctl/...", \
   "--", "-timeout=60m", "-args", "-test.kill-daemon", "-test.ipv6"]
 
 FROM base AS demo
