@@ -19,6 +19,7 @@ package imgutil
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/containerd/v2/core/snapshots"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/imgcrypt"
 	"github.com/containerd/imgcrypt/images/encryption"
 	"github.com/containerd/log"
@@ -37,7 +39,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
 	"github.com/containerd/platforms"
 	distributionref "github.com/distribution/reference"
-	"github.com/docker/docker/errdefs"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -90,10 +91,10 @@ func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 		return nil, err
 	}
 	if count == 0 {
-		return nil, errdefs.NotFound(fmt.Errorf("got count 0 after walking"))
+		return nil, errors.Join(errdefs.ErrNotFound, errors.New("got count 0 after walking"))
 	}
 	if res == nil {
-		return nil, errdefs.NotFound(fmt.Errorf("got nil res after walking"))
+		return nil, errors.Join(errdefs.ErrNotFound, errors.New("got nil res after walking"))
 	}
 	return res, nil
 }

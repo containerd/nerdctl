@@ -27,10 +27,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/containerd/errdefs"
 	dockercliconfig "github.com/docker/cli/cli/config"
 	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker/api/types/registry"
-	"github.com/docker/docker/errdefs"
 	"golang.org/x/net/context/ctxhttp"
 	"golang.org/x/term"
 
