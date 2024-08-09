@@ -409,7 +409,8 @@ func TestRunWithFluentdLogDriver(t *testing.T) {
 
 	containerName := testutil.Identifier(t)
 	base.Cmd("run", "-d", "--name", containerName, "-p", "24224:24224",
-		"-v", fmt.Sprintf("%s:/fluentd/log", tempDirectory), testutil.FluentdImage).AssertOK()
+		"-v", fmt.Sprintf("%s:/fluentd/log", tempDirectory),
+		testutil.FluentdImage).AssertOK()
 	defer base.Cmd("rm", "-f", containerName).AssertOK()
 	time.Sleep(3 * time.Second)
 
@@ -441,7 +442,8 @@ func TestRunWithFluentdLogDriverWithLogOpt(t *testing.T) {
 
 	containerName := testutil.Identifier(t)
 	base.Cmd("run", "-d", "--name", containerName, "-p", "24225:24224",
-		"-v", fmt.Sprintf("%s:/fluentd/log", tempDirectory), testutil.FluentdImage).AssertOK()
+		"-v", fmt.Sprintf("%s:/fluentd/log", tempDirectory),
+		testutil.FluentdImage).AssertOK()
 	defer base.Cmd("rm", "-f", containerName).AssertOK()
 	time.Sleep(3 * time.Second)
 
