@@ -1,5 +1,3 @@
-//go:build unix
-
 /*
    Copyright The containerd Authors.
 
@@ -19,28 +17,21 @@
 package login
 
 import (
-	"fmt"
-	"os"
+	"errors"
 	"syscall"
 
 	"golang.org/x/term"
 )
 
 func readPassword() (string, error) {
-	var fd int
-	if term.IsTerminal(syscall.Stdin) {
-		fd = syscall.Stdin
-	} else {
-		tty, err := os.Open("/dev/tty")
-		if err != nil {
-			return "", fmt.Errorf("error allocating terminal: %w", err)
-		}
-		defer tty.Close()
-		fd = int(tty.Fd())
+	fd := int(syscall.Stdin)
+	if !term.IsTerminal(fd) {
+		return "", ErrNotATerminal
 	}
+
 	bytePassword, err := term.ReadPassword(fd)
 	if err != nil {
-		return "", fmt.Errorf("error reading password: %w", err)
+		return "", errors.Join(ErrReadingPassword, err)
 	}
 
 	return string(bytePassword), nil

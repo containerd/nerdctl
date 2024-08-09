@@ -380,18 +380,20 @@ func (c *Cmd) CmdOption(cmdOptions ...func(*Cmd)) *Cmd {
 
 func (c *Cmd) Assert(expected icmd.Expected) {
 	c.Base.T.Helper()
-	c.runIfNecessary().Assert(c.Base.T, expected)
+	res := c.runIfNecessary()
+	assert.Assert(c.Base.T, expected, res)
 }
 
 func (c *Cmd) AssertOK() {
 	c.Base.T.Helper()
-	c.AssertExitCode(0)
+	res := c.runIfNecessary()
+	assert.Assert(c.Base.T, res.ExitCode == 0, res)
 }
 
 func (c *Cmd) AssertFail() {
 	c.Base.T.Helper()
 	res := c.runIfNecessary()
-	assert.Assert(c.Base.T, res.ExitCode != 0)
+	assert.Assert(c.Base.T, res.ExitCode != 0, res)
 }
 
 func (c *Cmd) AssertExitCode(exitCode int) {
