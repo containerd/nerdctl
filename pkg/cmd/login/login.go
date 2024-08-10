@@ -67,7 +67,7 @@ func Login(ctx context.Context, options types.LoginCommandOptions, stdout io.Wri
 		authConfig = &registry.AuthConfig{ServerAddress: serverAddress}
 	}
 	if err == nil && authConfig.Username != "" && authConfig.Password != "" {
-		//login With StoreCreds
+		// login With StoreCreds
 		responseIdentityToken, err = loginClientSide(ctx, options.GOptions, *authConfig)
 	}
 
@@ -124,7 +124,7 @@ func GetDefaultAuthConfig(checkCredStore bool, serverAddress string, isDefaultRe
 			return nil, err
 		}
 	}
-	var authconfig = dockercliconfigtypes.AuthConfig{}
+	authconfig := dockercliconfigtypes.AuthConfig{}
 	if checkCredStore {
 		dockerConfigFile, err := dockercliconfig.Load("")
 		if err != nil {
