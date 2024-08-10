@@ -22,6 +22,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/opencontainers/runtime-spec/specs-go"
+
 	"github.com/containerd/console"
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/cio"
@@ -33,7 +35,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/signalutil"
 	"github.com/containerd/nerdctl/v2/pkg/taskutil"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 // Exec will find the right running container to run a new command.

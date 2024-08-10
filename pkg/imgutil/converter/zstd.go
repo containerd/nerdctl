@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/klauspost/compress/zstd"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"github.com/containerd/containerd/v2/core/content"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/images/converter"
@@ -28,8 +31,6 @@ import (
 	"github.com/containerd/containerd/v2/pkg/archive/compression"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
-	"github.com/klauspost/compress/zstd"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ZstdLayerConvertFunc converts legacy tar.gz layers into zstd layers with

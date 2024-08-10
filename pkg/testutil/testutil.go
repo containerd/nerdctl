@@ -31,6 +31,10 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/opencontainers/go-digest"
+	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
+
 	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
@@ -39,9 +43,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
-	"github.com/opencontainers/go-digest"
-	"gotest.tools/v3/assert"
-	"gotest.tools/v3/icmd"
 )
 
 type Base struct {

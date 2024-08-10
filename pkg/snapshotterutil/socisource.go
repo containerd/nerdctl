@@ -40,10 +40,11 @@ import (
 	"fmt"
 	"strings"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/pkg/labels"
 	ctdsnapshotters "github.com/containerd/containerd/v2/pkg/snapshotters"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 const (

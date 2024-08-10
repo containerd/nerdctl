@@ -23,9 +23,10 @@ package containerdutil
 import (
 	"context"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/content"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ContentStore should be called to get a Provider with caching

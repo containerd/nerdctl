@@ -29,6 +29,10 @@ import (
 	"strconv"
 	"strings"
 
+	dockercliopts "github.com/docker/cli/opts"
+	dockeropts "github.com/docker/docker/opts"
+	"github.com/opencontainers/runtime-spec/specs-go"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/cio"
@@ -55,9 +59,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
-	dockercliopts "github.com/docker/cli/opts"
-	dockeropts "github.com/docker/docker/opts"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 // Create will create a container.

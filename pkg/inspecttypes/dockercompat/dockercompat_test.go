@@ -22,12 +22,12 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/opencontainers/runtime-spec/specs-go"
+	"gotest.tools/v3/assert"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
-
-	"github.com/opencontainers/runtime-spec/specs-go"
-	"gotest.tools/v3/assert"
 )
 
 func TestContainerFromNative(t *testing.T) {

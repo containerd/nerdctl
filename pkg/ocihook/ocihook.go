@@ -28,6 +28,11 @@ import (
 	"strings"
 	"time"
 
+	types100 "github.com/containernetworking/cni/pkg/types/100"
+	"github.com/opencontainers/runtime-spec/specs-go"
+	b4nndclient "github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
+	rlkclient "github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
+
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/bypass4netnsutil"
@@ -38,11 +43,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/v2/pkg/ocihook/state"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
-	types100 "github.com/containernetworking/cni/pkg/types/100"
-	"github.com/opencontainers/runtime-spec/specs-go"
-
-	b4nndclient "github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
-	rlkclient "github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
 )
 
 const (

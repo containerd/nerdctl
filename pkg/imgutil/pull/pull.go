@@ -21,13 +21,14 @@ import (
 	"context"
 	"io"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/jobs"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // Config for content fetch

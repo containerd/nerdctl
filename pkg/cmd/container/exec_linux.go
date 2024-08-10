@@ -17,8 +17,9 @@
 package container
 
 import (
-	"github.com/containerd/containerd/v2/pkg/cap"
 	"github.com/opencontainers/runtime-spec/specs-go"
+
+	"github.com/containerd/containerd/v2/pkg/cap"
 )
 
 func setExecCapabilities(pspec *specs.Process) error {
