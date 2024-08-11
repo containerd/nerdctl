@@ -17,9 +17,13 @@
 package testutil
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/compose-spec/compose-go/v2/loader"
+	compose "github.com/compose-spec/compose-go/v2/types"
 )
 
 type ComposeDir struct {
@@ -62,4 +66,33 @@ func NewComposeDir(t testing.TB, dockerComposeYAML string) *ComposeDir {
 	}
 	cd.WriteFile(cd.yamlBasePath, dockerComposeYAML)
 	return cd
+}
+
+// Load is used only for unit testing.
+func LoadProject(fileName, projectName string, envMap map[string]string) (*compose.Project, error) {
+	if envMap == nil {
+		envMap = make(map[string]string)
+	}
+	b, err := os.ReadFile(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	wd, err := filepath.Abs(filepath.Dir(fileName))
+	if err != nil {
+		return nil, err
+	}
+	var files []compose.ConfigFile
+	files = append(files, compose.ConfigFile{Filename: fileName, Content: b})
+	return loader.LoadWithContext(context.TODO(), compose.ConfigDetails{
+		WorkingDir:  wd,
+		ConfigFiles: files,
+		Environment: envMap,
+	}, withProjectName(projectName))
+}
+
+func withProjectName(name string) func(*loader.Options) {
+	return func(lOpts *loader.Options) {
+		lOpts.SetProjectName(name, true)
+	}
 }

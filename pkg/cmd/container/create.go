@@ -786,7 +786,7 @@ func generateLogConfig(dataStore string, id string, logDriver string, logOpt []s
 		logConfig.Driver = logDriver
 		logConfig.Opts, err = parseKVStringsMapFromLogOpt(logOpt, logDriver)
 		if err != nil {
-			return
+			return logConfig, err
 		}
 		var (
 			logDriverInst logging.Driver
@@ -795,25 +795,25 @@ func generateLogConfig(dataStore string, id string, logDriver string, logOpt []s
 		)
 		logDriverInst, err = logging.GetDriver(logDriver, logConfig.Opts)
 		if err != nil {
-			return
+			return logConfig, err
 		}
 		if err = logDriverInst.Init(dataStore, ns, id); err != nil {
-			return
+			return logConfig, err
 		}
 
 		logConfigB, err = json.Marshal(logConfig)
 		if err != nil {
-			return
+			return logConfig, err
 		}
 
 		logConfigFilePath := logging.LogConfigFilePath(dataStore, ns, id)
 		if err = os.WriteFile(logConfigFilePath, logConfigB, 0600); err != nil {
-			return
+			return logConfig, err
 		}
 
 		lu, err = GenerateLogURI(dataStore)
 		if err != nil {
-			return
+			return logConfig, err
 		}
 		if lu != nil {
 			log.L.Debugf("generated log driver: %s", lu.String())

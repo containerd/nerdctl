@@ -10,7 +10,7 @@ linters:
     - govet
     - ineffassign
     - misspell
-    # - nakedret
+    - nakedret
     - prealloc
     - typecheck
     # - asciicheck

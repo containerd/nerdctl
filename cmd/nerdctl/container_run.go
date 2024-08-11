@@ -282,33 +282,33 @@ func setCreateFlags(cmd *cobra.Command) {
 
 }
 
-func processCreateCommandFlagsInRun(cmd *cobra.Command) (opt types.ContainerCreateOptions, err error) {
-	opt, err = processContainerCreateOptions(cmd)
+func processCreateCommandFlagsInRun(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
+	opt, err := processContainerCreateOptions(cmd)
 	if err != nil {
-		return
+		return opt, err
 	}
 
 	opt.InRun = true
 
 	opt.SigProxy, err = cmd.Flags().GetBool("sig-proxy")
 	if err != nil {
-		return
+		return opt, err
 	}
 	opt.Interactive, err = cmd.Flags().GetBool("interactive")
 	if err != nil {
-		return
+		return opt, err
 	}
 	opt.Detach, err = cmd.Flags().GetBool("detach")
 	if err != nil {
-		return
+		return opt, err
 	}
 	opt.DetachKeys, err = cmd.Flags().GetString("detach-keys")
 	if err != nil {
-		return
+		return opt, err
 	}
 	opt.Attach, err = cmd.Flags().GetStringSlice("attach")
 	if err != nil {
-		return
+		return opt, err
 	}
 
 	validAttachFlag := true

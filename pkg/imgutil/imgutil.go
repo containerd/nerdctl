@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 
 	distributionref "github.com/distribution/reference"
@@ -145,7 +146,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 	img, err := PullImage(ctx, client, resolver, ref, options)
 	if err != nil {
 		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused".
-		if !errutil.IsErrHTTPResponseToHTTPSClient(err) && !errutil.IsErrConnectionRefused(err) {
+		if !errors.Is(err, http.ErrSchemeMismatch) && !errutil.IsErrConnectionRefused(err) {
 			return nil, err
 		}
 		if options.GOptions.InsecureRegistry {

@@ -24,7 +24,6 @@ import (
 	"testing"
 
 	"github.com/compose-spec/compose-go/v2/types"
-	"github.com/containerd/nerdctl/v2/pkg/composer/projectloader"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"gotest.tools/v3/assert"
@@ -141,7 +140,7 @@ volumes:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	wpSvc, err := project.GetService("wordpress")
@@ -212,7 +211,7 @@ services:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	fooSvc, err := project.GetService("foo")
@@ -273,7 +272,7 @@ services:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	fooSvc, err := project.GetService("foo")
@@ -346,7 +345,7 @@ services:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	fooSvc, err := project.GetService("foo")
@@ -378,7 +377,7 @@ services:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	fooSvc, err := project.GetService("foo")
@@ -438,7 +437,7 @@ configs:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	for _, f := range []string{"secret1", "secret2", "secret3", "config1", "config2"} {
@@ -482,7 +481,7 @@ services:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	getContainersFromService := func(svcName string) []Container {
