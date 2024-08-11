@@ -40,6 +40,7 @@ func newEventsCommand() *cobra.Command {
 	eventsCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	eventsCommand.Flags().StringSliceP("filter", "f", []string{}, "Filter matches containers based on given conditions")
 	return eventsCommand
 }
 
@@ -52,10 +53,15 @@ func processSystemEventsOptions(cmd *cobra.Command) (types.SystemEventsOptions, 
 	if err != nil {
 		return types.SystemEventsOptions{}, err
 	}
+	filters, err := cmd.Flags().GetStringSlice("filter")
+	if err != nil {
+		return types.SystemEventsOptions{}, err
+	}
 	return types.SystemEventsOptions{
 		Stdout:   cmd.OutOrStdout(),
 		GOptions: globalOptions,
 		Format:   format,
+		Filters:  filters,
 	}, nil
 }
 
