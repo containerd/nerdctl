@@ -18,8 +18,10 @@ package image
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -152,7 +154,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 	resolver := docker.NewResolver(resolverOpts)
 	if err = pushFunc(resolver); err != nil {
 		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused"
-		if !errutil.IsErrHTTPResponseToHTTPSClient(err) && !errutil.IsErrConnectionRefused(err) {
+		if !errors.Is(err, http.ErrSchemeMismatch) && !errutil.IsErrConnectionRefused(err) {
 			return err
 		}
 		if options.GOptions.InsecureRegistry {
