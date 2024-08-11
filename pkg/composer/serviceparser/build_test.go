@@ -19,7 +19,6 @@ package serviceparser
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/pkg/composer/projectloader"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
@@ -59,7 +58,7 @@ secrets:
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 
-	project, err := projectloader.Load(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
 	fooSvc, err := project.GetService("foo")
