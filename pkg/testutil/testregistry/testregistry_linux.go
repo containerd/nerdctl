@@ -17,6 +17,8 @@
 package testregistry
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"os"
@@ -68,6 +70,8 @@ func EnsureImages(base *testutil.Base) {
 }
 
 func NewAuthServer(base *testutil.Base, ca *testca.CA, port int, user, pass string, tls bool) *TokenAuthServer {
+	EnsureImages(base)
+
 	name := testutil.Identifier(base.T)
 	// listen on 0.0.0.0 to enable 127.0.0.1
 	listenIP := net.ParseIP("0.0.0.0")
@@ -339,7 +343,7 @@ func NewRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundC
 	var cert *testca.Cert
 	if ca != nil {
 		scheme = "https"
-		cert = ca.NewCert(hostIP.String(), "127.0.0.1")
+		cert = ca.NewCert(hostIP.String(), "127.0.0.1", "localhost", "::1")
 		args = append(args,
 			"--env", "REGISTRY_HTTP_TLS_CERTIFICATE=/registry/domain.crt",
 			"--env", "REGISTRY_HTTP_TLS_KEY=/registry/domain.key",
@@ -394,12 +398,20 @@ func NewRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundC
 			if err != nil {
 				return "", err
 			}
+			err = generateCertsd(hDir, ca.CertPath, "localhost", port)
+			if err != nil {
+				return "", err
+			}
 			if port == 443 {
 				err = generateCertsd(hDir, ca.CertPath, hostIP.String(), 0)
 				if err != nil {
 					return "", err
 				}
 				err = generateCertsd(hDir, ca.CertPath, "127.0.0.1", 0)
+				if err != nil {
+					return "", err
+				}
+				err = generateCertsd(hDir, ca.CertPath, "localhost", 0)
 				if err != nil {
 					return "", err
 				}
@@ -467,4 +479,18 @@ func NewWithBasicAuth(base *testutil.Base, user, pass string, port int, tls bool
 		ca = testca.New(base.T)
 	}
 	return NewRegistry(base, ca, port, auth, nil)
+}
+
+func SafeRandomString(n int) string {
+	b := make([]byte, n)
+	l, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
+	if l != n {
+		panic(fmt.Errorf("expected %d bytes, got %d bytes", n, l))
+	}
+	// XXX WARNING there is something in the registry (or more likely in the way we generate htpasswd files)
+	// that is broken and does not resist truly random strings
+	return base64.URLEncoding.EncodeToString(b)
 }

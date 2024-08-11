@@ -401,7 +401,7 @@ func (c *Cmd) AssertOK() {
 func (c *Cmd) AssertFail() {
 	c.Base.T.Helper()
 	res := c.runIfNecessary()
-	assert.Assert(c.Base.T, res.ExitCode != 0)
+	assert.Assert(c.Base.T, res.ExitCode != 0, res)
 }
 
 func (c *Cmd) AssertExitCode(exitCode int) {
