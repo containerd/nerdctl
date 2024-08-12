@@ -32,7 +32,14 @@ jobs:
           sudo losetup -Dv
           sudo losetup -lv
       - name: "Register QEMU (tonistiigi/binfmt)"
-        run: docker run --privileged --rm tonistiigi/binfmt --install all
+        run: |
+          # `--install all` will only install emulation for architectures that cannot be natively executed
+          # Since some arm64 platforms do provide native fallback execution for 32 bits,
+          # armv7 emulation may or may not be installed, causing variance in the result of `uname -m`.
+          # To avoid that, we explicitly list the architectures we do want emulation for.
+          docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
+          docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
+          docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Run unit tests"
         run: go test -v ./pkg/...
       - name: "Run integration tests"
