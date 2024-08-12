@@ -18,7 +18,9 @@ package main
 
 import (
 	"errors"
+	"os"
 
+	"github.com/moby/term"
 	"github.com/spf13/cobra"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -81,6 +83,13 @@ func processExecCommandOptions(cmd *cobra.Command) (types.ContainerExecOptions, 
 	if flagT {
 		if flagD {
 			return types.ContainerExecOptions{}, errors.New("currently flag -t and -d cannot be specified together (FIXME)")
+		}
+	}
+
+	_, isTerminal := term.GetFdInfo(os.Stdin)
+	if !flagD {
+		if flagT && flagI && !isTerminal {
+			return types.ContainerExecOptions{}, errors.New("the input device is not a TTY")
 		}
 	}
 
