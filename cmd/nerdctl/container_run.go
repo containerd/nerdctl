@@ -22,8 +22,11 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/containerd/console"
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -37,7 +40,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/signalutil"
 	"github.com/containerd/nerdctl/v2/pkg/taskutil"
-	"github.com/spf13/cobra"
 )
 
 const (

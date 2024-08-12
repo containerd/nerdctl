@@ -29,13 +29,15 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/vishvananda/netlink"
+
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/systemutil"
-	"github.com/go-viper/mapstructure/v2"
-	"github.com/vishvananda/netlink"
 )
 
 const (

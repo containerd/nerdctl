@@ -23,12 +23,13 @@ import (
 	"strings"
 
 	"github.com/compose-spec/compose-go/v2/types"
+	securejoin "github.com/cyphar/filepath-securejoin"
+
 	"github.com/containerd/containerd/v2/pkg/identifiers"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
 
-	securejoin "github.com/cyphar/filepath-securejoin"
+	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
 )
 
 func parseBuildConfig(c *types.BuildConfig, project *types.Project, imageName string) (*Build, error) {

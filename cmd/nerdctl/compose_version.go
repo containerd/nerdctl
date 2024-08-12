@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/containerd/nerdctl/v2/pkg/version"
 	"github.com/spf13/cobra"
+
+	"github.com/containerd/nerdctl/v2/pkg/version"
 )
 
 func newComposeVersionCommand() *cobra.Command {

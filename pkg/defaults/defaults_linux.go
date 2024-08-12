@@ -25,6 +25,7 @@ import (
 	"github.com/containerd/containerd/v2/plugins"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 

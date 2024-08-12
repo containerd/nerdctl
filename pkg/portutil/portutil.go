@@ -22,11 +22,13 @@ import (
 	"net"
 	"strings"
 
+	"github.com/docker/go-connections/nat"
+
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
-	"github.com/docker/go-connections/nat"
 )
 
 // return respectively ip, hostPort, containerPort

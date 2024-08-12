@@ -34,8 +34,9 @@ import (
 	"github.com/containerd/containerd/v2/core/remotes/docker"
 	"github.com/containerd/containerd/v2/pkg/progress"
 	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/v2/pkg/imgutil/jobs"
 	"github.com/containerd/platforms"
+
+	"github.com/containerd/nerdctl/v2/pkg/imgutil/jobs"
 )
 
 // Push pushes an image to a remote registry.

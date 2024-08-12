@@ -31,11 +31,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/moby/sys/mountinfo"
+
 	"github.com/containerd/cgroups/v3"
 	"github.com/containerd/cgroups/v3/cgroup1"
 	"github.com/containerd/containerd/v2/pkg/seccomp"
 	"github.com/containerd/log"
-	"github.com/moby/sys/mountinfo"
 )
 
 var (

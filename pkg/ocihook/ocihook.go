@@ -35,6 +35,7 @@ import (
 
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/v2/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/v2/pkg/labels"

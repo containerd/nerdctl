@@ -23,14 +23,15 @@ import (
 	"fmt"
 	"os"
 
+	dockercliconfig "github.com/docker/cli/cli/config"
+	"github.com/docker/cli/cli/config/credentials"
+	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
+
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/containerd/v2/core/remotes/docker"
 	dockerconfig "github.com/containerd/containerd/v2/core/remotes/docker/config"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
-	dockercliconfig "github.com/docker/cli/cli/config"
-	"github.com/docker/cli/cli/config/credentials"
-	dockercliconfigtypes "github.com/docker/cli/cli/config/types"
 )
 
 var PushTracker = docker.NewInMemoryTracker()

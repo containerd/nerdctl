@@ -20,10 +20,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/v2/pkg/composer"
-	"github.com/spf13/cobra"
 )
 
 func newComposeRemoveCommand() *cobra.Command {

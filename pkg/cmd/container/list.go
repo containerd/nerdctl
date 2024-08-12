@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/containerd/v2/pkg/progress"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"

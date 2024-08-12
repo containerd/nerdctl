@@ -42,9 +42,10 @@ import (
 	"github.com/containerd/containerd/v2/pkg/rootfs"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
+	"github.com/containerd/platforms"
+
 	imgutil "github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
-	"github.com/containerd/platforms"
 )
 
 type Changes struct {

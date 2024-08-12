@@ -31,13 +31,14 @@ import (
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
+	"github.com/containerd/typeurl/v2"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	nerdctlContainer "github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
-	"github.com/containerd/typeurl/v2"
 )
 
 type updateResourceOptions struct {

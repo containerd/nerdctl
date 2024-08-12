@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/ipfs"
 )

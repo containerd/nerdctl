@@ -36,6 +36,7 @@ import (
 	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/containerd/v2/defaults"
+
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"

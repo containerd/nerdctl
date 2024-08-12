@@ -30,10 +30,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 	"gotest.tools/v3/poll"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func TestRunEntrypointWithBuild(t *testing.T) {

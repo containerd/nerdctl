@@ -38,6 +38,7 @@ import (
 	"strings"
 
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 

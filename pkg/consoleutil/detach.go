@@ -21,8 +21,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/containerd/log"
 	"github.com/moby/term"
+
+	"github.com/containerd/log"
 )
 
 const DefaultDetachKeys = "ctrl-p,ctrl-q"

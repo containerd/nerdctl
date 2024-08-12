@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )

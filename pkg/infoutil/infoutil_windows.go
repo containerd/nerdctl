@@ -26,6 +26,7 @@ import (
 	"golang.org/x/sys/windows/registry"
 
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/sysinfo"
 )

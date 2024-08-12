@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	containerd "github.com/containerd/containerd/v2/client"
+
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
 

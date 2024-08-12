@@ -24,11 +24,11 @@ import (
 	"strings"
 	"testing"
 
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/nerdctl/v2/pkg/apparmorutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-
-	"gotest.tools/v3/assert"
 )
 
 func getCapEff(base *testutil.Base, args ...string) uint64 {

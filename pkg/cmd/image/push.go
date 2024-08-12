@@ -38,6 +38,10 @@ import (
 	dockerconfig "github.com/containerd/containerd/v2/core/remotes/docker/config"
 	"github.com/containerd/containerd/v2/pkg/reference"
 	"github.com/containerd/log"
+	"github.com/containerd/stargz-snapshotter/estargz"
+	"github.com/containerd/stargz-snapshotter/estargz/zstdchunked"
+	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
@@ -47,9 +51,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/signutil"
 	"github.com/containerd/nerdctl/v2/pkg/snapshotterutil"
-	"github.com/containerd/stargz-snapshotter/estargz"
-	"github.com/containerd/stargz-snapshotter/estargz/zstdchunked"
-	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
 )
 
 // Push pushes an image specified by `rawRef`.

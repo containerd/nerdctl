@@ -27,10 +27,11 @@ import (
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/images/archive"
 	"github.com/containerd/containerd/v2/pkg/archive/compression"
+	"github.com/containerd/platforms"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
-	"github.com/containerd/platforms"
 )
 
 type readCounter struct {

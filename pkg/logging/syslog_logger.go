@@ -27,11 +27,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/containerd/log"
 	"github.com/docker/go-connections/tlsconfig"
 	syslog "github.com/yuchanns/srslog"
 
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
+	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 

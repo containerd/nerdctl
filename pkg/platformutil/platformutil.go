@@ -21,8 +21,9 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/platforms"
+
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
 // NewMatchComparerFromOCISpecPlatformSlice returns MatchComparer.

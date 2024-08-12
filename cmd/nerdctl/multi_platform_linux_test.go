@@ -22,10 +22,11 @@ import (
 	"strings"
 	"testing"
 
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
-	"gotest.tools/v3/assert"
 )
 
 func testMultiPlatformRun(base *testutil.Base, alpineImage string) {

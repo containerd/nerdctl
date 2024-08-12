@@ -25,12 +25,14 @@ import (
 	"strings"
 	"testing"
 
+	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
+
 	"github.com/containerd/errdefs"
+
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
-	"gotest.tools/v3/assert"
-	"gotest.tools/v3/icmd"
 )
 
 // TestRunInternetConnectivity tests Internet connectivity with `apk update`

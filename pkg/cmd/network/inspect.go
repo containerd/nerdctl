@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/netwalker"

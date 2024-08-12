@@ -42,6 +42,7 @@ import (
 	"github.com/containerd/containerd/v2/core/runtime/restart"
 	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/labels"

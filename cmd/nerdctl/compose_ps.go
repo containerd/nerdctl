@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/errdefs"
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"

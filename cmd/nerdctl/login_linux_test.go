@@ -25,10 +25,11 @@ import (
 	"strconv"
 	"testing"
 
+	"gotest.tools/v3/icmd"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testca"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
-	"gotest.tools/v3/icmd"
 )
 
 func safeRandomString(n int) string {

@@ -25,9 +25,11 @@ import (
 
 	composecli "github.com/compose-spec/compose-go/v2/cli"
 	compose "github.com/compose-spec/compose-go/v2/types"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/identifiers"
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
 )

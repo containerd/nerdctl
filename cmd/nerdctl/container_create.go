@@ -20,11 +20,12 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/spf13/cobra"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
-	"github.com/spf13/cobra"
 )
 
 func newCreateCommand() *cobra.Command {

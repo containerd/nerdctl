@@ -24,9 +24,10 @@ import (
 	"syscall"
 	"testing"
 
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"gotest.tools/v3/assert"
 )
 
 func TestCopyToContainer(t *testing.T) {

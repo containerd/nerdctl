@@ -19,8 +19,9 @@ package main
 import (
 	"strings"
 
-	"github.com/containerd/containerd/v2/pkg/cap"
 	"github.com/spf13/cobra"
+
+	"github.com/containerd/containerd/v2/pkg/cap"
 )
 
 func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

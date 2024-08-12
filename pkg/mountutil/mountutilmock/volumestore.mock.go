@@ -19,8 +19,9 @@ package mountutilmock
 import (
 	"reflect"
 
-	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"go.uber.org/mock/gomock"
+
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 )
 
 // MockVolumeStore is a mock of VolumeStore interface

@@ -24,12 +24,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"gotest.tools/v3/assert"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/content"
+
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
-	"gotest.tools/v3/assert"
 )
 
 type jweKeyPair struct {
