@@ -22,13 +22,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coreos/go-iptables/iptables"
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	iptablesutil "github.com/containerd/nerdctl/v2/pkg/testutil/iptables"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
-	"github.com/coreos/go-iptables/iptables"
-
-	"gotest.tools/v3/assert"
 )
 
 func TestStopStart(t *testing.T) {

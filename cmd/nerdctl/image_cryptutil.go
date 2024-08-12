@@ -17,10 +17,11 @@
 package main
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
-	"github.com/spf13/cobra"
 )
 
 // registerImgcryptFlags register flags that correspond to parseImgcryptFlags().

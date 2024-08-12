@@ -26,11 +26,11 @@ import (
 	"testing"
 	"text/template"
 
+	"gotest.tools/v3/assert"
+
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-
-	"gotest.tools/v3/assert"
 )
 
 const preExistingNetworkConfigTemplate = `

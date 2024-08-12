@@ -19,8 +19,9 @@ package main
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func TestRemoveProcessContainer(t *testing.T) {

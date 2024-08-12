@@ -19,11 +19,12 @@ package main
 import (
 	"errors"
 
+	"github.com/spf13/cobra"
+
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
-	"github.com/spf13/cobra"
 )
 
 func newComposeCopyCommand() *cobra.Command {

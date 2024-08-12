@@ -21,10 +21,11 @@ import (
 	"runtime"
 	"testing"
 
+	"gotest.tools/v3/icmd"
+
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
-	"gotest.tools/v3/icmd"
 )
 
 func TestImageConvertNydus(t *testing.T) {

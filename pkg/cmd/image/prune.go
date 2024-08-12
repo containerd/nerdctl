@@ -25,9 +25,10 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/log"
+	"github.com/containerd/platforms"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
-	"github.com/containerd/platforms"
 )
 
 // Prune will remove all dangling images. If all is specified, will also remove all images not referenced by any container.

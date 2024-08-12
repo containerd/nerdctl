@@ -19,8 +19,9 @@ package infoutil
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 )
 
 func TestParseBuildctlVersion(t *testing.T) {

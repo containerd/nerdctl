@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd/v2/contrib/apparmor"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/defaults"
 )

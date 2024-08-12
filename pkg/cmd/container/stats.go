@@ -32,6 +32,8 @@ import (
 	"github.com/containerd/containerd/v2/core/events"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
+	"github.com/containerd/typeurl/v2"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerinspector"
@@ -42,7 +44,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/statsutil"
-	"github.com/containerd/typeurl/v2"
 )
 
 type stats struct {

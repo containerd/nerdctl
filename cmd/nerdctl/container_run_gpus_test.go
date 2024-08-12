@@ -19,9 +19,10 @@ package main
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"gotest.tools/v3/assert"
 	is "gotest.tools/v3/assert/cmp"
+
+	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 )
 
 func TestParseGpusOptAll(t *testing.T) {

@@ -23,9 +23,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"github.com/containerd/platforms"
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/platforms"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func TestBuild(t *testing.T) {

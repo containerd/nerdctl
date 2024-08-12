@@ -25,6 +25,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	containerd "github.com/containerd/containerd/v2/client"
+
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 )

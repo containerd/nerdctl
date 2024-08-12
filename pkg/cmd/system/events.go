@@ -30,9 +30,10 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/events"
 	"github.com/containerd/log"
+	"github.com/containerd/typeurl/v2"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
-	"github.com/containerd/typeurl/v2"
 )
 
 // EventOut contains information about an event.

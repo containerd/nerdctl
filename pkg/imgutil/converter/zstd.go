@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/v2/core/images/converter/uncompress"
 	"github.com/containerd/containerd/v2/pkg/archive/compression"
 	"github.com/containerd/errdefs"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 

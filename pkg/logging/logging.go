@@ -29,11 +29,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
+	"github.com/muesli/cancelreader"
+
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
-	"github.com/fsnotify/fsnotify"
-	"github.com/muesli/cancelreader"
 )
 
 const (

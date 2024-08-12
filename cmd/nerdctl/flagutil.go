@@ -17,8 +17,9 @@
 package main
 
 import (
-	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/spf13/cobra"
+
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
 func processImageSignOptions(cmd *cobra.Command) (opt types.ImageSignOptions, err error) {

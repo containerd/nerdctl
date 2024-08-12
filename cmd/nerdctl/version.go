@@ -23,13 +23,15 @@ import (
 	"os"
 	"text/template"
 
+	"github.com/spf13/cobra"
+
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
-	"github.com/spf13/cobra"
 )
 
 func newVersionCommand() *cobra.Command {

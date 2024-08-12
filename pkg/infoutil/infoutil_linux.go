@@ -20,13 +20,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/docker/docker/pkg/meminfo"
+
 	"github.com/containerd/cgroups/v3"
+
 	"github.com/containerd/nerdctl/v2/pkg/apparmorutil"
 	"github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/sysinfo"
-	"github.com/docker/docker/pkg/meminfo"
 )
 
 const UnameO = "GNU/Linux"

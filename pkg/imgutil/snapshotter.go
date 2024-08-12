@@ -23,10 +23,11 @@ import (
 	"github.com/containerd/containerd/v2/core/images"
 	ctdsnapshotters "github.com/containerd/containerd/v2/pkg/snapshotters"
 	"github.com/containerd/log"
+	"github.com/containerd/stargz-snapshotter/fs/source"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
 	"github.com/containerd/nerdctl/v2/pkg/snapshotterutil"
-	"github.com/containerd/stargz-snapshotter/fs/source"
 )
 
 const (

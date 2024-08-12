@@ -21,10 +21,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/errdefs"
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
+
+	"github.com/containerd/errdefs"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 // TestVolumeRemove does test a large variety of volume remove situations, albeit none of them being

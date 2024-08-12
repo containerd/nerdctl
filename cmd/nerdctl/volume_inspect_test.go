@@ -25,11 +25,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/errdefs"
-	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
+
+	"github.com/containerd/errdefs"
+
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func createFileWithSize(base *testutil.Base, vol string, size int64) {

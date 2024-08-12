@@ -31,6 +31,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/config"
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"

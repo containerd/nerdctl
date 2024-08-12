@@ -23,12 +23,14 @@ import (
 	"net"
 	"path/filepath"
 
-	"github.com/containerd/errdefs"
-	gocni "github.com/containerd/go-cni"
-	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	b4nnapi "github.com/rootless-containers/bypass4netns/pkg/api"
 	"github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
 	rlkclient "github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
+
+	"github.com/containerd/errdefs"
+	gocni "github.com/containerd/go-cni"
+
+	"github.com/containerd/nerdctl/v2/pkg/annotations"
 )
 
 func NewBypass4netnsCNIBypassManager(client client.Client, rlkClient rlkclient.Client, annotationsMap map[string]string) (*Bypass4netnsCNIBypassManager, error) {

@@ -27,6 +27,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/containerd/v2/core/mount"
+
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )

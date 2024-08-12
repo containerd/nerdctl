@@ -25,8 +25,10 @@ import (
 	"strings"
 
 	"github.com/compose-spec/compose-go/v2/types"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/composer/pipetagger"
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/labels"

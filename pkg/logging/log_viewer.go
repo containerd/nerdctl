@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/labels/k8slabels"
 )
 

@@ -25,6 +25,7 @@ import (
 
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/oci"
+
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 

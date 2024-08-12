@@ -23,12 +23,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/containerd/cgroups/v3"
-	"github.com/containerd/continuity/testutil/loopback"
-	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/moby/sys/userns"
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/cgroups/v3"
+	"github.com/containerd/continuity/testutil/loopback"
+
+	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func TestRunCgroupV2(t *testing.T) {

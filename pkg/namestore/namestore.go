@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd/v2/pkg/identifiers"
+
 	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 )
 

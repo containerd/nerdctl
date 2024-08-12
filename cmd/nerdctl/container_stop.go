@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	containerd "github.com/containerd/containerd/v2/client"
+
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"

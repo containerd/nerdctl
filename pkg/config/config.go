@@ -19,6 +19,7 @@ package config
 import (
 	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
+
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
 )
 

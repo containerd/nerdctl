@@ -34,6 +34,10 @@ jobs:
         run: make lint-yaml
       - name: shellcheck
         run: make lint-shell
+      - name: go imports ordering
+        run: |
+          go install -v github.com/incu6us/goimports-reviser/v3@latest
+          make lint-imports
 
   test-unit:
     runs-on: ubuntu-24.04

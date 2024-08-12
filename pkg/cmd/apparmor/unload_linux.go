@@ -18,6 +18,7 @@ package apparmor
 
 import (
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/apparmorutil"
 )
 

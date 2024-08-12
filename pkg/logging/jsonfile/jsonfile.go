@@ -26,8 +26,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/containerd/log"
 	timetypes "github.com/docker/docker/api/types/time"
+
+	"github.com/containerd/log"
 )
 
 // Entry is compatible with Docker "json-file" logs

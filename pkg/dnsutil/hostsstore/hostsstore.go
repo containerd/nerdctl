@@ -24,9 +24,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/containerd/errdefs"
-	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 	types100 "github.com/containernetworking/cni/pkg/types/100"
+
+	"github.com/containerd/errdefs"
+
+	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 )
 
 const (

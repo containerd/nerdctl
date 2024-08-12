@@ -23,10 +23,11 @@ import (
 	"testing"
 
 	"github.com/Microsoft/hcsshim"
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"gotest.tools/v3/assert"
 )
 
 // TestRunInternetConnectivity tests Internet connectivity by pinging github.com.

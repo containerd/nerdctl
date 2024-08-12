@@ -23,9 +23,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/moby/sys/userns"
+
 	"github.com/containerd/containerd/v2/pkg/apparmor"
 	"github.com/containerd/log"
-	"github.com/moby/sys/userns"
 )
 
 // CanLoadNewProfile returns whether the current process can load a new AppArmor profile.

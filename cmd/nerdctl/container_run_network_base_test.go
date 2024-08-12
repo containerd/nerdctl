@@ -26,9 +26,10 @@ import (
 	"strings"
 	"testing"
 
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
-	"gotest.tools/v3/assert"
 )
 
 // Tests various port mapping argument combinations by starting an nginx container and

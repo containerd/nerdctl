@@ -70,7 +70,13 @@ clean:
 lint: lint-go lint-yaml lint-shell
 
 lint-go:
-	cd $(MAKEFILE_DIR) && golangci-lint run $(VERBOSE_FLAG_LONG)
+	cd $(MAKEFILE_DIR) && golangci-lint run $(VERBOSE_FLAG_LONG) ./...
+
+lint-imports:
+	cd $(MAKEFILE_DIR) && goimports-reviser -list-diff -company-prefixes "github.com/containerd" ./...
+
+lint-fix-imports:
+	cd $(MAKEFILE_DIR) && goimports-reviser -company-prefixes "github.com/containerd" ./...
 
 lint-yaml:
 	cd $(MAKEFILE_DIR) && yamllint .

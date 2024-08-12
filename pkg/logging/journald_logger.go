@@ -28,12 +28,14 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
-	"github.com/containerd/log"
-	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/coreos/go-systemd/v22/journal"
 	"github.com/docker/cli/templates"
 	timetypes "github.com/docker/docker/api/types/time"
+
+	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
+	"github.com/containerd/log"
+
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
 var JournalDriverLogOpts = []string{

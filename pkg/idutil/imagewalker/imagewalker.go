@@ -26,6 +26,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
+
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
