@@ -52,6 +52,8 @@ type Base struct {
 	DaemonIsKillable bool
 	EnableIPv6       bool
 	IPv6Compatible   bool
+	EnableKube       bool
+	KubeCompatible   bool
 	Binary           string
 	Args             []string
 	Env              []string
@@ -148,7 +150,7 @@ func (b *Base) systemctlArgs() []string {
 func (b *Base) KillDaemon() {
 	b.T.Helper()
 	if !b.DaemonIsKillable {
-		b.T.Skip("daemon is not killable (hint: set \"-test.kill-daemon\")")
+		b.T.Skip("daemon is not killable (hint: set \"-test.allow-kill-daemon\")")
 	}
 	target := b.systemctlTarget()
 	b.T.Logf("killing %q", target)
@@ -540,12 +542,14 @@ var (
 	flagTestTarget     Target
 	flagTestKillDaemon bool
 	flagTestIPv6       bool
+	flagTestKube       bool
 )
 
 func M(m *testing.M) {
 	flag.StringVar(&flagTestTarget, "test.target", Nerdctl, "target to test")
-	flag.BoolVar(&flagTestKillDaemon, "test.kill-daemon", false, "enable tests that kill the daemon")
-	flag.BoolVar(&flagTestIPv6, "test.ipv6", false, "enable tests on IPv6")
+	flag.BoolVar(&flagTestKillDaemon, "test.allow-kill-daemon", false, "enable tests that kill the daemon")
+	flag.BoolVar(&flagTestIPv6, "test.only-ipv6", false, "enable tests on IPv6")
+	flag.BoolVar(&flagTestKube, "test.only-kube", false, "enable tests on Kube")
 	flag.Parse()
 	fmt.Fprintf(os.Stderr, "test target: %q\n", flagTestTarget)
 	os.Exit(m.Run())
@@ -560,6 +564,10 @@ func GetTarget() string {
 
 func GetEnableIPv6() bool {
 	return flagTestIPv6
+}
+
+func GetEnableKube() bool {
+	return flagTestKube
 }
 
 func GetDaemonIsKillable() bool {
@@ -681,30 +689,45 @@ func NewBaseWithNamespace(t *testing.T, ns string) *Base {
 	if ns == "" || ns == "default" || ns == Namespace {
 		t.Fatalf(`the other base namespace cannot be "%s"`, ns)
 	}
-	return newBase(t, ns, false)
+	return newBase(t, ns, false, false)
 }
 
 func NewBaseWithIPv6Compatible(t *testing.T) *Base {
-	return newBase(t, Namespace, true)
+	return newBase(t, Namespace, true, false)
+}
+
+func NewBaseForKube(t *testing.T) *Base {
+	base := newBase(t, "k8s.io", false, true)
+	// NOTE: kubectl namespaces are not the same as containerd namespaces.
+	// We still want kube test objects segregated in their own Kube API namespace.
+	KubectlHelper(base, "create", "namespace", Namespace).Run()
+	return base
 }
 
 func NewBase(t *testing.T) *Base {
-	return newBase(t, Namespace, false)
+	return newBase(t, Namespace, false, false)
 }
 
-func newBase(t *testing.T, ns string, ipv6Compatible bool) *Base {
+func newBase(t *testing.T, ns string, ipv6Compatible bool, kubeCompatible bool) *Base {
 	base := &Base{
 		T:                t,
 		Target:           GetTarget(),
 		DaemonIsKillable: GetDaemonIsKillable(),
 		EnableIPv6:       GetEnableIPv6(),
 		IPv6Compatible:   ipv6Compatible,
+		EnableKube:       GetEnableKube(),
+		KubeCompatible:   kubeCompatible,
 		Env:              os.Environ(),
 	}
 	if base.EnableIPv6 && !base.IPv6Compatible {
 		t.Skip("runner skips non-IPv6 compatible tests in the IPv6 environment")
 	} else if !base.EnableIPv6 && base.IPv6Compatible {
 		t.Skip("runner skips IPv6 compatible tests in the non-IPv6 environment")
+	}
+	if base.EnableKube && !base.KubeCompatible {
+		t.Skip("runner skips non-kube compatible tests in the kube environment")
+	} else if !base.EnableKube && base.KubeCompatible {
+		t.Skip("runner skips kube compatible tests in the non-kube environment")
 	}
 	var err error
 	switch base.Target {
@@ -754,4 +777,14 @@ func RegisterBuildCacheCleanup(t *testing.T) {
 	t.Cleanup(func() {
 		NewBase(t).Cmd("builder", "prune", "--all", "--force").Run()
 	})
+}
+
+func KubectlHelper(base *Base, args ...string) *Cmd {
+	base.T.Helper()
+	icmdCmd := icmd.Command("kubectl", append([]string{"--namespace", Namespace}, args...)...)
+	icmdCmd.Env = base.Env
+	return &Cmd{
+		Cmd:  icmdCmd,
+		Base: base,
+	}
 }

@@ -16,6 +16,10 @@
 
 # shellcheck disable=SC2034,SC2015
 set -o errexit -o errtrace -o functrace -o nounset -o pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]:-$PWD}")" 2>/dev/null 1>&2 && pwd)"
+readonly root
+# shellcheck source=/dev/null
+. "$root/scripts/lib.sh"
 
 ######################
 # Definitions
@@ -66,141 +70,6 @@ SLIRP4NETNS_CHECKSUM=linux
 STARGZ_SNAPSHOTTER_CHECKSUM=linux
 # We specifically want the static ones
 TINI_CHECKSUM=static
-
-
-######################
-# Lib
-######################
-
-# Simple logger
-readonly LOG_LEVEL_DEBUG=0
-readonly LOG_LEVEL_INFO=1
-readonly LOG_LEVEL_WARNING=2
-readonly LOG_LEVEL_ERROR=3
-
-readonly LOG_COLOR_BLACK=0
-readonly LOG_COLOR_RED=1
-readonly LOG_COLOR_GREEN=2
-readonly LOG_COLOR_YELLOW=3
-readonly LOG_COLOR_BLUE=4
-readonly LOG_COLOR_MAGENTA=5
-readonly LOG_COLOR_CYAN=6
-readonly LOG_COLOR_WHITE=7
-readonly LOG_COLOR_DEFAULT=9
-
-readonly LOG_STYLE_DEBUG=( setaf "$LOG_COLOR_WHITE" )
-readonly LOG_STYLE_INFO=( setaf "$LOG_COLOR_GREEN" )
-readonly LOG_STYLE_WARNING=( setaf "$LOG_COLOR_YELLOW" )
-readonly LOG_STYLE_ERROR=( setaf "$LOG_COLOR_RED" )
-
-_log::log(){
-  local level
-  local style
-  local numeric_level
-  local message="$2"
-
-  level="$(printf "%s" "$1" | tr '[:lower:]' '[:upper:]')"
-  numeric_level="$(printf "LOG_LEVEL_%s" "$level")"
-  style="LOG_STYLE_${level}[@]"
-
-  [ "${!numeric_level}" -ge "$LOG_LEVEL" ] || return 0
-
-  [ ! "$TERM" ] || [ ! -t 2 ] || >&2 tput "${!style}" 2>/dev/null || true
-  >&2 printf "[%s] %s: %s\n" "$(date 2>/dev/null || true)" "$(printf "%s" "$level" | tr '[:lower:]' '[:upper:]')" "$message"
-  [ ! "$TERM" ] || [ ! -t 2 ] || >&2 tput op 2>/dev/null || true
-}
-
-log::init(){
-  local _ll
-  # Default log to warning if unspecified
-  _ll="$(printf "LOG_LEVEL_%s" "${NERDCTL_CI_LOG_LEVEL:-warning}" | tr '[:lower:]' '[:upper:]')"
-  # Default to 3 (warning) if unrecognized
-  LOG_LEVEL="${!_ll:-3}"
-}
-
-log::debug(){
-  _log::log debug "$@"
-}
-
-log::info(){
-  _log::log info "$@"
-}
-
-log::warning(){
-  _log::log warning "$@"
-}
-
-log::error(){
-  _log::log error "$@"
-}
-
-# Helpers
-host::require(){
-  local binary="$1"
-  command -v "$binary" >/dev/null || {
-    log::error "You need $binary for this script to work, and it cannot be found in your path"
-    exit 1
-  }
-}
-
-fs::mktemp(){
-  mktemp -dq "${TMPDIR:-/tmp}/$prefix.XXXXXX" 2>/dev/null || mktemp -dq || {
-    log::error "Failed to create temporary directory"
-    exit 1
-  }
-}
-
-http::get(){
-  local args=(curl --proto '=https' --tlsv1.2 -fsSL)
-  args+=("$@")
-
-  log::debug "${args[*]}"
-  "${args[@]}"
-}
-
-http::checksum(){
-  local urls=("$@")
-  local url
-
-  local prefix="nerdctl-checksum"
-
-  local temp
-  temp="$(fs::mktemp)"
-
-  for url in "${urls[@]}"; do
-    http::get -o "$temp/${url##*/}" "$url"
-  done
-
-  cd "$temp"
-  shasum -a 256 ./*
-  cd - >/dev/null || true
-}
-
-# Github API helpers
-# Set GITHUB_TOKEN to use authenticated requests to workaround limitations
-github::request(){
-  local endpoint="$1"
-  local args=(
-    -H "Accept: application/vnd.github+json"
-    -H "X-GitHub-Api-Version: 2022-11-28"
-  )
-
-  [ "${GITHUB_TOKEN:-}" == "" ] || args+=(-H "Authorization: Bearer $GITHUB_TOKEN")
-
-  http::get "${args[@]}" https://api.github.com/"$endpoint"
-}
-
-github::tags::getlatest(){
-  local repo="$1"
-  github::request "repos/$repo/tags" |
-    jq -rc .[0].name
-}
-
-github::releases::latest(){
-  local repo="$1"
-  github::request "repos/$repo/releases" |
-    jq -rc .[]
-}
 
 version::compare(){
   local raw_version_fd="$1"
@@ -304,7 +173,7 @@ latest::release(){
       higher_data="$line"
       higher_readable="$(echo "$line" | jq -rc .name | sed -E 's/(.*[ ])?(v?[0-9][0-9.a-z-]+).*/\2/')"
     fi
-  done < <(github::releases::latest "$repo")
+  done < <(github::releases "$repo")
 
   log::info " >>> latest release detected: $higher_readable"
 }
@@ -314,7 +183,7 @@ latest::tag(){
   local repo="$1"
 
   log::info "Analyzing tags for $repo"
-  github::tags::getlatest "$repo"
+  github::tags::latest "$repo"
 }
 
 # Once a latest release has been retrieved for a given project, you can get the url to the asset matching OS and ARCH
@@ -341,13 +210,6 @@ assets::get(){
     printf "%s\n" "$(echo "$found" | jq -rc .browser_download_url)"
   }
 }
-
-log::init
-host::require jq
-host::require curl
-host::require shasum
-host::require docker
-host::require tput
 
 ######################
 # Script

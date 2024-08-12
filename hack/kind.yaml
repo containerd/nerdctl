@@ -1,0 +1,12 @@
+# https://pkg.go.dev/sigs.k8s.io/kind/pkg/apis/config/v1alpha4#Cluster
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: _output/nerdctl
+        containerPath: /usr/local/bin/nerdctl
+      - hostPath: /tmp/go
+        containerPath: /usr/local/go
+      - hostPath: .
+        containerPath: /nerdctl-source
