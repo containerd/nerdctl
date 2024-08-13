@@ -18,7 +18,9 @@ package main
 
 import (
 	"errors"
+	"os"
 
+	"github.com/moby/term"
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -37,7 +39,8 @@ func newComposeExecCommand() *cobra.Command {
 	}
 	composeExecCommand.Flags().SetInterspersed(false)
 
-	composeExecCommand.Flags().BoolP("no-TTY", "T", false, "Disable pseudo-TTY allocation. By default nerdctl compose exec allocates a TTY.")
+	_, isTerminal := term.GetFdInfo(os.Stdout)
+	composeExecCommand.Flags().BoolP("no-TTY", "T", !isTerminal, "Disable pseudo-TTY allocation. By default nerdctl compose exec allocates a TTY.")
 	composeExecCommand.Flags().BoolP("detach", "d", false, "Detached mode: Run containers in the background")
 	composeExecCommand.Flags().StringP("workdir", "w", "", "Working directory inside the container")
 	// env needs to be StringArray, not StringSlice, to prevent "FOO=foo1,foo2" from being split to {"FOO=foo1", "foo2"}
