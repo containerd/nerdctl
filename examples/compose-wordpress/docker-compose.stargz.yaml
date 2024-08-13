@@ -4,18 +4,12 @@
 services:
   wordpress:
     image: ghcr.io/stargz-containers/wordpress:5.7-esgz
-    volumes:
-      # workaround for https://github.com/containerd/stargz-snapshotter/issues/444
-      - "/run"
     extends:
       file: docker-compose.yaml
       service: wordpress
 
   db:
     image: ghcr.io/stargz-containers/mariadb:10.5-esgz
-    volumes:
-      # workaround for https://github.com/containerd/stargz-snapshotter/issues/444
-      - "/run"
     extends:
       file: docker-compose.yaml
       service: db

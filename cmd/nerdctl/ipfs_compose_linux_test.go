@@ -32,6 +32,7 @@ import (
 func TestIPFSComposeUp(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
+	base.Args = append([]string{"--debug-full"}, base.Args...)
 
 	iReg := testregistry.NewIPFSRegistry(base, nil, 0, nil, nil)
 	t.Cleanup(func() {
@@ -90,8 +91,6 @@ services:
       WORDPRESS_DB_PASSWORD: examplepass
       WORDPRESS_DB_NAME: exampledb
     volumes:
-      # workaround for https://github.com/containerd/stargz-snapshotter/issues/444
-      - "/run"
       - wordpress:/var/www/html
 
   db:
@@ -103,8 +102,6 @@ services:
       MYSQL_PASSWORD: examplepass
       MYSQL_RANDOM_ROOT_PASSWORD: '1'
     volumes:
-      # workaround for https://github.com/containerd/stargz-snapshotter/issues/444
-      - "/run"
       - db:/var/lib/mysql
 
 volumes:
