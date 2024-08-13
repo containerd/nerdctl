@@ -82,8 +82,6 @@ jobs:
             containerd: v1.7.16
           - ubuntu: 22.04
             containerd: v1.7.16
-          - ubuntu: 22.04
-            containerd: main
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -168,10 +166,6 @@ jobs:
             containerd: v1.7.16
             rootlesskit: v1.1.1
             target: test-integration-rootless
-          - ubuntu: 22.04
-            containerd: main
-            rootlesskit: v2.0.2
-            target: test-integration-rootless
           - ubuntu: 20.04
             containerd: v1.6.31
             rootlesskit: v1.1.1
@@ -183,10 +177,6 @@ jobs:
           - ubuntu: 22.04
             containerd: v1.7.16
             rootlesskit: v1.1.1
-            target: test-integration-rootless-port-slirp4netns
-          - ubuntu: 22.04
-            containerd: main
-            rootlesskit: v2.0.2
             target: test-integration-rootless-port-slirp4netns
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
