@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/pkg/testutil"
 	"gotest.tools/v3/assert"
 )
 
