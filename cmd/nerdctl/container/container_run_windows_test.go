@@ -117,3 +117,18 @@ func TestRunProcessContainerWithDevice(t *testing.T) {
 		"cmd", "/S", "/C", "dir C:\\Windows\\System32\\HostDriverStore",
 	).AssertOutContains("FileRepository")
 }
+
+func TestRunWithTtyAndDetached(t *testing.T) {
+	base := testutil.NewBase(t)
+	imageName := testutil.CommonImage
+	withTtyContainerName := "with-terminal-" + testutil.Identifier(t)
+
+	// with -t, success, the container should run with tty support.
+	base.Cmd("run", "-d", "-t", "--name", withTtyContainerName, imageName, "cmd", "/c", "echo", "Hello, World with TTY!").AssertOK()
+	defer base.Cmd("container", "rm", "-f", withTtyContainerName).AssertOK()
+
+	// Check logs for successful command execution (with TTY specific behavior if any)
+	base.Cmd("logs", withTtyContainerName).AssertOutContains("Hello, World with TTY!")
+	withTtyContainer := base.InspectContainer(withTtyContainerName)
+	assert.Equal(base.T, 0, withTtyContainer.State.ExitCode)
+}
