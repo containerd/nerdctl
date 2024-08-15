@@ -48,6 +48,9 @@ jobs:
     steps:
       - name: Set GO env
         run: |
+          # Enable extended globbing features to use advanced pattern matching
+          shopt -s extglob
+
           # Get latest containerd
           args=(curl --proto '=https' --tlsv1.2 -fsSL -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28")
           [ "${GITHUB_TOKEN:-}" == "" ] && {
@@ -59,7 +62,8 @@ jobs:
           # Get latest golang version and split it in components
           norm=()
           while read -r line; do
-            norm+=("$line")
+            line_trimmed="${line//+([[:space:]])/}"
+            norm+=("$line_trimmed")
           done < \
             <(sed -E 's/^go([0-9]+)[.]([0-9]+)([.]([0-9]+))?(([a-z]+)([0-9]+))?/\1.\2\n\4\n\6\n\7/i' \
               <(curl -fsSL "https://go.dev/dl/?mode=json&include=all" | jq -rc .[0].version) \
