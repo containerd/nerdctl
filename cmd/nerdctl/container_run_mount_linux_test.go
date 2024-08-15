@@ -115,8 +115,8 @@ func TestRunAnonymousVolumeWithTypeMountFlag(t *testing.T) {
 func TestRunAnonymousVolumeWithBuild(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -134,8 +134,8 @@ VOLUME /foo
 func TestRunCopyingUpInitialContentsOnVolume(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 	volName := testutil.Identifier(t) + "-vol"
@@ -161,8 +161,8 @@ CMD ["cat", "/mnt/initial_file"]
 func TestRunCopyingUpInitialContentsOnDockerfileVolume(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 	volName := testutil.Identifier(t) + "-vol"
@@ -195,8 +195,8 @@ CMD ["cat", "/mnt/initial_file"]
 func TestRunCopyingUpInitialContentsOnVolumeShouldRetainSymlink(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -218,8 +218,8 @@ CMD ["readlink", "/mnt/passwd"]
 func TestRunCopyingUpInitialContentsShouldNotResetTheCopiedContents(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	tID := testutil.Identifier(t)
 	imageName := tID + "-img"
 	volumeName := tID + "-vol"

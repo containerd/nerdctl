@@ -747,3 +747,11 @@ func ImageRepo(s string) string {
 	repo, _ := imgutil.ParseRepoTag(s)
 	return repo
 }
+
+// RegisterBuildCacheCleanup adds a 'builder prune --all --force' cleanup function
+// to run on test teardown.
+func RegisterBuildCacheCleanup(t *testing.T) {
+	t.Cleanup(func() {
+		NewBase(t).Cmd("builder", "prune", "--all", "--force").Run()
+	})
+}

@@ -1242,6 +1242,10 @@ Usage: `nerdctl builder prune`
 Flags:
 
 - :nerd_face: `--buildkit-host=<BUILDKIT_HOST>`: BuildKit address
+- :whale: `--all`: Remove all unused build cache, not just dangling ones
+- :whale: `--force`: Do not prompt for confirmation
+
+Unimplemented `docker builder prune` flags: `--filter`, `--keep-storage`
 
 ### :nerd_face: nerdctl builder debug
 
@@ -1259,8 +1263,6 @@ Flags:
 - :nerd_face: `--image`: Image to use for debugging stage
 - :nerd_face: `--target`: Set the target build stage to build
 - :nerd_face: `--build-arg`: Set build-time variables
-
-Unimplemented `docker builder prune` flags: `--all`, `--filter`, `--force`, `--keep-storage`
 
 ## System
 

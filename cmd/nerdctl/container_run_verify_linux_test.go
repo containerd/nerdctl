@@ -28,6 +28,7 @@ func TestRunVerifyCosign(t *testing.T) {
 	testutil.RequireExecutable(t, "cosign")
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	t.Parallel()
 
 	base := testutil.NewBase(t)
@@ -37,7 +38,6 @@ func TestRunVerifyCosign(t *testing.T) {
 	reg := testregistry.NewWithNoAuth(base, 0, false)
 	t.Cleanup(func() {
 		keyPair.cleanup()
-		base.Cmd("builder", "prune").Run()
 		reg.Cleanup(nil)
 	})
 

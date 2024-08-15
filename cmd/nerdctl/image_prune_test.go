@@ -25,9 +25,9 @@ import (
 
 func TestImagePrune(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").AssertOK()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).AssertOK()
 
@@ -47,9 +47,9 @@ func TestImagePrune(t *testing.T) {
 
 func TestImagePruneAll(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").AssertOK()
 	imageName := testutil.Identifier(t)
 
 	dockerfile := fmt.Sprintf(`FROM %s

@@ -118,8 +118,8 @@ volumes:
 func TestIPFSComposeUpBuild(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	ipfsCID := pushImageToIPFS(t, base, testutil.NginxAlpineImage)
 	ipfsCIDBase := strings.TrimPrefix(ipfsCID, "ipfs://")
 

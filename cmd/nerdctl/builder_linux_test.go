@@ -30,6 +30,39 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
+func TestBuilderPrune(t *testing.T) {
+	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
+
+	base := testutil.NewBase(t)
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-test-builder-prune"]`, testutil.CommonImage)
+
+	buildCtx := createBuildContext(t, dockerfile)
+
+	testCases := []struct {
+		name        string
+		commandArgs []string
+	}{
+		{
+			name:        "TestBuilderPruneForce",
+			commandArgs: []string{"builder", "prune", "--force"},
+		},
+		{
+			name:        "TestBuilderPruneForceAll",
+			commandArgs: []string{"builder", "prune", "--force", "--all"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			base.Cmd("build", buildCtx).AssertOK()
+			base.Cmd(tc.commandArgs...).AssertOK()
+		})
+	}
+}
+
 func TestBuilderDebug(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
@@ -49,6 +82,7 @@ func TestBuildWithPull(t *testing.T) {
 		t.Skipf("skipped because the test needs a custom buildkitd config")
 	}
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 
 	oldImage := testutil.BusyboxImage
 	oldImageSha := "141c253bc4c3fd0a201d32dc1f493bcf3fff003b6df416dea4f41046e0f37d47"
@@ -86,8 +120,8 @@ namespace = "%s"`, testutil.Namespace)
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			testutil.RegisterBuildCacheCleanup(t)
 			base := testutil.NewBase(t)
-			defer base.Cmd("builder", "prune").AssertOK()
 			base.Cmd("image", "prune", "--force", "--all").AssertOK()
 
 			base.Cmd("pull", oldImage).Run()

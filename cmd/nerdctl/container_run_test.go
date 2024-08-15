@@ -40,8 +40,8 @@ import (
 func TestRunEntrypointWithBuild(t *testing.T) {
 	t.Parallel()
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 

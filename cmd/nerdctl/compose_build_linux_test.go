@@ -46,8 +46,8 @@ services:
 	dockerfile := fmt.Sprintf(`FROM %s`, testutil.AlpineImage)
 
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()

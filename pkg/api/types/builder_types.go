@@ -82,4 +82,6 @@ type BuilderPruneOptions struct {
 	BuildKitHost string
 	// All will remove all unused images and all build cache, not just dangling ones
 	All bool
+	// Force will not prompt for confirmation.
+	Force bool
 }
