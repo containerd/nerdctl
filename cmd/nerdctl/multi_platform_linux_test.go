@@ -54,9 +54,9 @@ func TestMultiPlatformRun(t *testing.T) {
 func TestMultiPlatformBuildPush(t *testing.T) {
 	testutil.DockerIncompatible(t) // non-buildx version of `docker build` lacks multi-platform. Also, `docker push` lacks --platform.
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	tID := testutil.Identifier(t)
 	reg := testregistry.NewWithNoAuth(base, 0, false)
 	defer reg.Cleanup(nil)
@@ -81,9 +81,9 @@ RUN echo dummy
 func TestMultiPlatformBuildPushNoRun(t *testing.T) {
 	testutil.DockerIncompatible(t) // non-buildx version of `docker build` lacks multi-platform. Also, `docker push` lacks --platform.
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	tID := testutil.Identifier(t)
 	reg := testregistry.NewWithNoAuth(base, 0, false)
 	defer reg.Cleanup(nil)
@@ -121,9 +121,9 @@ func TestMultiPlatformPullPushAllPlatforms(t *testing.T) {
 func TestMultiPlatformComposeUpBuild(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 
 	const dockerComposeYAML = `
 services:

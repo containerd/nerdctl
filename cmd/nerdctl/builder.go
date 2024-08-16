@@ -22,11 +22,11 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 
-	"github.com/containerd/log"
-
-	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/builder"
 )
 
 func newBuilderCommand() *cobra.Command {
@@ -58,29 +58,83 @@ func newBuilderPruneCommand() *cobra.Command {
 	}
 
 	AddStringFlag(buildPruneCommand, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
+
+	buildPruneCommand.Flags().BoolP("all", "a", false, "Remove all unused build cache, not just dangling ones")
+	buildPruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
 	return buildPruneCommand
 }
 
 func builderPruneAction(cmd *cobra.Command, _ []string) error {
+	options, err := processBuilderPruneOptions(cmd)
+	if err != nil {
+		return err
+	}
+
+	if !options.Force {
+		var (
+			confirm string
+			msg     string
+		)
+
+		if options.All {
+			msg = "This will remove all build cache."
+		} else {
+			msg = "This will remove any dangling build cache."
+		}
+		msg += " Are you sure you want to continue? [y/N] "
+
+		fmt.Fprintf(cmd.OutOrStdout(), "WARNING! %s", msg)
+		fmt.Fscanf(cmd.InOrStdin(), "%s", &confirm)
+
+		if strings.ToLower(confirm) != "y" {
+			return nil
+		}
+	}
+
+	prunedObjects, err := builder.Prune(cmd.Context(), options)
+	if err != nil {
+		return err
+	}
+
+	var totalReclaimedSpace int64
+
+	for _, prunedObject := range prunedObjects {
+		totalReclaimedSpace += prunedObject.Size
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "Total:  %s\n", units.BytesSize(float64(totalReclaimedSpace)))
+
+	return nil
+}
+
+func processBuilderPruneOptions(cmd *cobra.Command) (types.BuilderPruneOptions, error) {
 	globalOptions, err := processRootCmdFlags(cmd)
 	if err != nil {
-		return err
+		return types.BuilderPruneOptions{}, err
 	}
+
 	buildkitHost, err := getBuildkitHost(cmd, globalOptions.Namespace)
 	if err != nil {
-		return err
+		return types.BuilderPruneOptions{}, err
 	}
-	buildctlBinary, err := buildkitutil.BuildctlBinary()
+
+	all, err := cmd.Flags().GetBool("all")
 	if err != nil {
-		return err
+		return types.BuilderPruneOptions{}, err
 	}
-	buildctlArgs := buildkitutil.BuildctlBaseArgs(buildkitHost)
-	buildctlArgs = append(buildctlArgs, "prune")
-	log.L.Debugf("running %s %v", buildctlBinary, buildctlArgs)
-	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
-	buildctlCmd.Env = os.Environ()
-	buildctlCmd.Stdout = cmd.OutOrStdout()
-	return buildctlCmd.Run()
+
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return types.BuilderPruneOptions{}, err
+	}
+
+	return types.BuilderPruneOptions{
+		Stderr:       cmd.OutOrStderr(),
+		GOptions:     globalOptions,
+		BuildKitHost: buildkitHost,
+		All:          all,
+		Force:        force,
+	}, nil
 }
 
 func newBuilderDebugCommand() *cobra.Command {

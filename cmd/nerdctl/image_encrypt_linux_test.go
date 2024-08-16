@@ -78,7 +78,7 @@ func rmiAll(base *testutil.Base) {
 
 	base.T.Logf("Pruning build caches")
 	if _, err := buildkitutil.GetBuildkitHost(testutil.Namespace); err == nil {
-		base.Cmd("builder", "prune").AssertOK()
+		base.Cmd("builder", "prune", "--force").AssertOK()
 	}
 
 	// For BuildKit >= 0.11, pruning cache isn't enough to remove manifest blobs that are referred by build history blobs

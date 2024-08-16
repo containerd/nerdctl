@@ -32,8 +32,8 @@ import (
 
 func TestBuild(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -57,8 +57,8 @@ CMD ["echo", "nerdctl-build-test-string"]
 
 func TestBuildIsShareableForCompatiblePlatform(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -87,8 +87,8 @@ CMD ["echo", "nerdctl-build-test-string"]
 // This isn't currently supported by nerdctl with BuildKit OCI worker.
 func TestBuildBaseImage(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 	imageName2 := imageName + "-2"
@@ -122,8 +122,8 @@ CMD ["cat", "/hello2"]
 func TestBuildFromContainerd(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 	imageName2 := imageName + "-2"
@@ -152,8 +152,8 @@ CMD ["cat", "/hello2"]
 
 func TestBuildFromStdin(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -166,8 +166,8 @@ CMD ["echo", "nerdctl-build-test-stdin"]
 
 func TestBuildWithDockerfile(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -198,8 +198,8 @@ CMD ["echo", "nerdctl-build-test-dockerfile"]
 
 func TestBuildLocal(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	const testFileName = "nerdctl-build-test"
 	const testContent = "nerdctl"
 	outputDir := t.TempDir()
@@ -243,8 +243,8 @@ func createBuildContext(t *testing.T, dockerfile string) string {
 
 func TestBuildWithBuildArg(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -288,8 +288,8 @@ CMD echo $TEST_STRING
 
 func TestBuildWithIIDFile(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -312,8 +312,8 @@ CMD ["echo", "nerdctl-build-test-string"]
 
 func TestBuildWithLabels(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -330,8 +330,8 @@ LABEL name=nerdctl-build-test-label
 
 func TestBuildMultipleTags(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	img := testutil.Identifier(t)
 	imgWithNoTag, imgWithCustomTag := fmt.Sprintf("%s%d", img, 2), fmt.Sprintf("%s%d:hello", img, 3)
 	defer base.Cmd("rmi", img).AssertOK()
@@ -354,10 +354,10 @@ func TestBuildMultipleTags(t *testing.T) {
 }
 
 func TestBuildWithContainerfile(t *testing.T) {
-	testutil.RequiresBuild(t)
 	testutil.DockerIncompatible(t)
+	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -375,8 +375,8 @@ CMD ["echo", "nerdctl-build-test-string"]
 
 func TestBuildWithDockerFileAndContainerfile(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").Run()
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).Run()
 
@@ -404,8 +404,8 @@ CMD ["echo", "dockerfile"]
 
 func TestBuildNoTag(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").AssertOK()
 	base.Cmd("image", "prune", "--force", "--all").AssertOK()
 
 	dockerfile := fmt.Sprintf(`FROM %s
@@ -420,8 +420,8 @@ CMD ["echo", "nerdctl-build-notag-string"]
 
 func TestBuildContextDockerImageAlias(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").AssertOK()
 	base.Cmd("image", "prune", "--force", "--all").AssertOK()
 
 	dockerfile := `FROM myorg/myapp
@@ -435,8 +435,8 @@ CMD ["echo", "nerdctl-build-myorg/myapp"]`
 
 func TestBuildContextWithCopyFromDir(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").AssertOK()
 	base.Cmd("image", "prune", "--force", "--all").AssertOK()
 
 	content := "hello_from_dir_2"
@@ -487,8 +487,8 @@ CMD ["cat", "/source-date-epoch"]
 
 func TestBuildNetwork(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	defer base.Cmd("builder", "prune").AssertOK()
 
 	dockerfile := fmt.Sprintf(`FROM %s
 RUN apk add --no-cache curl
@@ -540,6 +540,7 @@ func buildWithNamedBuilder(base *testutil.Base, builderName string, args ...stri
 
 func TestBuildAttestation(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
 	builderName := testutil.Identifier(t)
 	if testutil.GetTarget() == testutil.Docker {
@@ -547,7 +548,6 @@ func TestBuildAttestation(t *testing.T) {
 		defer base.Cmd("buildx", "rm", builderName).AssertOK()
 		base.Cmd("buildx", "create", "--name", builderName, "--bootstrap", "--use").AssertOK()
 	}
-	defer base.Cmd("builder", "prune").Run()
 
 	dockerfile := "FROM " + testutil.NginxAlpineImage
 	buildCtx := createBuildContext(t, dockerfile)
