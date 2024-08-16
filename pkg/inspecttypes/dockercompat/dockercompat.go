@@ -173,7 +173,7 @@ type ContainerState struct {
 }
 
 type NetworkSettings struct {
-	Ports *nat.PortMap `json:",omitempty"`
+	Ports *nat.PortMap
 	DefaultNetworkSettings
 	Networks map[string]*NetworkEndpointSettings
 }
@@ -337,12 +337,15 @@ func statusFromNative(x containerd.Status, labels map[string]string) string {
 }
 
 func networkSettingsFromNative(n *native.NetNS, sp *specs.Spec) (*NetworkSettings, error) {
-	if n == nil {
-		return nil, nil
-	}
 	res := &NetworkSettings{
 		Networks: make(map[string]*NetworkEndpointSettings),
 	}
+	resPortMap := make(nat.PortMap)
+	res.Ports = &resPortMap
+	if n == nil {
+		return res, nil
+	}
+
 	var primary *NetworkEndpointSettings
 	for _, x := range n.Interfaces {
 		if x.Interface.Flags&net.FlagLoopback != 0 {
@@ -386,8 +389,11 @@ func networkSettingsFromNative(n *native.NetNS, sp *specs.Spec) (*NetworkSetting
 			if err != nil {
 				return nil, err
 			}
-			res.Ports = nports
+			for portLabel, portBindings := range *nports {
+				resPortMap[portLabel] = portBindings
+			}
 		}
+
 		if x.Index == n.PrimaryInterface {
 			primary = nes
 		}
