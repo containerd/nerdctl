@@ -17,11 +17,13 @@
 package dockercompat
 
 import (
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 
+	"github.com/docker/go-connections/nat"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"gotest.tools/v3/assert"
 
@@ -90,6 +92,10 @@ func TestContainerFromNative(t *testing.T) {
 						"nerdctl/hostname":  "host1",
 					},
 					Hostname: "host1",
+				},
+				NetworkSettings: &NetworkSettings{
+					Ports:    &nat.PortMap{},
+					Networks: map[string]*NetworkEndpointSettings{},
 				},
 			},
 		},
@@ -172,6 +178,10 @@ func TestContainerFromNative(t *testing.T) {
 					// ignore sysfs mountpoint
 				},
 				Config: &Config{},
+				NetworkSettings: &NetworkSettings{
+					Ports:    &nat.PortMap{},
+					Networks: map[string]*NetworkEndpointSettings{},
+				},
 			},
 		},
 		// ctr container, mount /mnt/foo:/mnt/foo:rw,rslave; internal sysfs mount; hostname
@@ -226,12 +236,128 @@ func TestContainerFromNative(t *testing.T) {
 				Config: &Config{
 					Hostname: "host1",
 				},
+				NetworkSettings: &NetworkSettings{
+					Ports:    &nat.PortMap{},
+					Networks: map[string]*NetworkEndpointSettings{},
+				},
 			},
 		},
 	}
 
 	for _, tc := range testcase {
-		d, _ := ContainerFromNative(tc.n)
-		assert.DeepEqual(t, d, tc.expected)
+		t.Run(tc.name, func(tt *testing.T) {
+			d, _ := ContainerFromNative(tc.n)
+			assert.DeepEqual(tt, d, tc.expected)
+		})
+	}
+}
+
+func TestNetworkSettingsFromNative(t *testing.T) {
+	tempStateDir, err := os.MkdirTemp(t.TempDir(), "rw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(tempStateDir, "resolv.conf"), []byte(""), 0644)
+	defer os.RemoveAll(tempStateDir)
+
+	testcase := []struct {
+		name     string
+		n        *native.NetNS
+		s        *specs.Spec
+		expected *NetworkSettings
+	}{
+		// Given null native.NetNS, Return initialized NetworkSettings
+		//    UseCase: Inspect a Stopped Container
+		{
+			name: "Given Null NetNS, Return initialized NetworkSettings",
+			n:    nil,
+			s:    &specs.Spec{},
+			expected: &NetworkSettings{
+				Ports:    &nat.PortMap{},
+				Networks: map[string]*NetworkEndpointSettings{},
+			},
+		},
+		// Given native.NetNS with single Interface with Port Annotations, Return populated NetworkSettings
+		//   UseCase: Inspect a Running Container with published ports
+		{
+			name: "Given NetNS with single Interface with Port Annotation, Return populated NetworkSettings",
+			n: &native.NetNS{
+				Interfaces: []native.NetInterface{
+					{
+						Interface: net.Interface{
+							Index: 1,
+							MTU:   1500,
+							Name:  "eth0.100",
+							Flags: net.FlagUp,
+						},
+						HardwareAddr: "xx:xx:xx:xx:xx:xx",
+						Flags:        []string{},
+						Addrs:        []string{"10.0.4.30/24"},
+					},
+				},
+			},
+			s: &specs.Spec{
+				Annotations: map[string]string{
+					"nerdctl/ports": "[{\"HostPort\":8075,\"ContainerPort\":77,\"Protocol\":\"tcp\",\"HostIP\":\"127.0.0.1\"}]",
+				},
+			},
+			expected: &NetworkSettings{
+				Ports: &nat.PortMap{
+					nat.Port("77/tcp"): []nat.PortBinding{
+						{
+							HostIP:   "127.0.0.1",
+							HostPort: "8075",
+						},
+					},
+				},
+				Networks: map[string]*NetworkEndpointSettings{
+					"unknown-eth0.100": {
+						IPAddress:   "10.0.4.30",
+						IPPrefixLen: 24,
+						MacAddress:  "xx:xx:xx:xx:xx:xx",
+					},
+				},
+			},
+		},
+		// Given native.NetNS with single Interface without Port Annotations, Return valid NetworkSettings w/ empty Ports
+		//   UseCase: Inspect a Running Container without published ports
+		{
+			name: "Given NetNS with single Interface without Port Annotations, Return valid NetworkSettings w/ empty Ports",
+			n: &native.NetNS{
+				Interfaces: []native.NetInterface{
+					{
+						Interface: net.Interface{
+							Index: 1,
+							MTU:   1500,
+							Name:  "eth0.100",
+							Flags: net.FlagUp,
+						},
+						HardwareAddr: "xx:xx:xx:xx:xx:xx",
+						Flags:        []string{},
+						Addrs:        []string{"10.0.4.30/24"},
+					},
+				},
+			},
+			s: &specs.Spec{
+				Annotations: map[string]string{},
+			},
+			expected: &NetworkSettings{
+				Ports: &nat.PortMap{},
+				Networks: map[string]*NetworkEndpointSettings{
+					"unknown-eth0.100": {
+						IPAddress:   "10.0.4.30",
+						IPPrefixLen: 24,
+						MacAddress:  "xx:xx:xx:xx:xx:xx",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testcase {
+		t.Run(tc.name, func(tt *testing.T) {
+			d, _ := networkSettingsFromNative(tc.n, tc.s)
+			assert.DeepEqual(tt, d, tc.expected)
+		})
 	}
 }
