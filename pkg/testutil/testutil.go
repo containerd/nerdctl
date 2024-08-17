@@ -18,6 +18,7 @@ package testutil
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -496,7 +497,7 @@ func (c *Cmd) AssertOutStreamsExactly(stdout, stderr string) {
 			msg += fmt.Sprintf("stderr mismatch, expected %q, got %q\n", stderr, serr)
 		}
 		if msg != "" {
-			return fmt.Errorf(msg)
+			return errors.New(msg)
 		}
 		return nil
 	}
