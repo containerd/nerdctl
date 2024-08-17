@@ -34,42 +34,43 @@ import (
 // Prune will remove all dangling images. If all is specified, will also remove all images not referenced by any container.
 func Prune(ctx context.Context, client *containerd.Client, options types.ImagePruneOptions) error {
 	var (
-		imageStore     = client.ImageService()
-		contentStore   = client.ContentStore()
-		containerStore = client.ContainerService()
+		imageStore   = client.ImageService()
+		contentStore = client.ContentStore()
 	)
 
-	imageList, err := imageStore.List(ctx)
+	var (
+		imagesToBeRemoved []images.Image
+		err               error
+	)
+
+	filters := []imgutil.Filter{}
+	if len(options.Filters) > 0 {
+		parsedFilters, err := imgutil.ParseFilters(options.Filters)
+		if err != nil {
+			return err
+		}
+		if len(parsedFilters.Labels) > 0 {
+			filters = append(filters, imgutil.FilterByLabel(ctx, client, parsedFilters.Labels))
+		}
+		if len(parsedFilters.Until) > 0 {
+			filters = append(filters, imgutil.FilterUntil(parsedFilters.Until))
+		}
+	}
+
+	if options.All {
+		// Remove all unused images; not just dangling ones
+		imagesToBeRemoved, err = imgutil.GetUnusedImages(ctx, client, filters...)
+	} else {
+		// Remove dangling images only
+		imagesToBeRemoved, err = imgutil.GetDanglingImages(ctx, client, filters...)
+	}
 	if err != nil {
 		return err
 	}
 
-	var filteredImages []images.Image
-
-	if options.All {
-		containerList, err := containerStore.List(ctx)
-		if err != nil {
-			return err
-		}
-		usedImages := make(map[string]struct{})
-		for _, container := range containerList {
-			usedImages[container.Image] = struct{}{}
-		}
-
-		for _, image := range imageList {
-			if _, ok := usedImages[image.Name]; ok {
-				continue
-			}
-
-			filteredImages = append(filteredImages, image)
-		}
-	} else {
-		filteredImages = imgutil.FilterDangling(imageList, true)
-	}
-
 	delOpts := []images.DeleteOpt{images.SynchronousDelete()}
 	removedImages := make(map[string][]digest.Digest)
-	for _, image := range filteredImages {
+	for _, image := range imagesToBeRemoved {
 		digests, err := image.RootFS(ctx, contentStore, platforms.DefaultStrict())
 		if err != nil {
 			log.G(ctx).WithError(err).Warnf("failed to enumerate rootfs")

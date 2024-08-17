@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
@@ -70,4 +71,58 @@ func TestImagePruneAll(t *testing.T) {
 	base.Cmd("rm", "-f", tID).AssertOK()
 	base.Cmd("image", "prune", "--force", "--all").AssertOutContains(imageName)
 	base.Cmd("images").AssertOutNotContains(imageName)
+}
+
+func TestImagePruneFilterLabel(t *testing.T) {
+	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
+
+	base := testutil.NewBase(t)
+	imageName := testutil.Identifier(t)
+	t.Cleanup(func() { base.Cmd("rmi", "--force", imageName) })
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-test-image-prune-filter-label"]
+LABEL foo=bar
+LABEL version=0.1`, testutil.CommonImage)
+
+	buildCtx := createBuildContext(t, dockerfile)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("images", "--all").AssertOutContains(imageName)
+
+	base.Cmd("image", "prune", "--force", "--all", "--filter", "label=foo=baz").AssertOK()
+	base.Cmd("images", "--all").AssertOutContains(imageName)
+
+	base.Cmd("image", "prune", "--force", "--all", "--filter", "label=foo=bar").AssertOK()
+	base.Cmd("images", "--all").AssertOutNotContains(imageName)
+}
+
+func TestImagePruneFilterUntil(t *testing.T) {
+	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
+
+	// Docker image's created timestamp is set based on base image creation time.
+	testutil.DockerIncompatible(t)
+
+	base := testutil.NewBase(t)
+	imageName := testutil.Identifier(t)
+	t.Cleanup(func() { base.Cmd("rmi", "--force", imageName) })
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-test-image-prune-filter-until"]`, testutil.CommonImage)
+
+	buildCtx := createBuildContext(t, dockerfile)
+
+	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+	base.Cmd("images", "--all").AssertOutContains(imageName)
+
+	base.Cmd("image", "prune", "--force", "--all", "--filter", "until=12h").AssertOK()
+	base.Cmd("images", "--all").AssertOutContains(imageName)
+
+	// Pause to ensure enough time has passed for the image to be cleaned on next prune.
+	time.Sleep(3 * time.Second)
+
+	base.Cmd("image", "prune", "--force", "--all", "--filter", "until=10ms").AssertOK()
+	base.Cmd("images", "--all").AssertOutNotContains(imageName)
 }
