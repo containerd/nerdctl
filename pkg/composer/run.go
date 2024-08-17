@@ -129,7 +129,7 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 	if ro.User != "" {
 		targetSvc.User = ro.User
 	}
-	if ro.Volume != nil && len(ro.Volume) > 0 {
+	if len(ro.Volume) > 0 {
 		for _, v := range ro.Volume {
 			vc, err := format.ParseVolume(v)
 			if err != nil {
@@ -138,15 +138,15 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 			targetSvc.Volumes = append(targetSvc.Volumes, vc)
 		}
 	}
-	if ro.Entrypoint != nil && len(ro.Entrypoint) > 0 {
+	if len(ro.Entrypoint) > 0 {
 		targetSvc.Entrypoint = make([]string, len(ro.Entrypoint))
 		copy(targetSvc.Entrypoint, ro.Entrypoint)
 	}
-	if ro.Env != nil && len(ro.Env) > 0 {
+	if len(ro.Env) > 0 {
 		envs := types.NewMappingWithEquals(ro.Env)
 		targetSvc.Environment.OverrideBy(envs)
 	}
-	if ro.Label != nil && len(ro.Label) > 0 {
+	if len(ro.Label) > 0 {
 		label := types.NewMappingWithEquals(ro.Label)
 		for k, v := range label {
 			if v != nil {
@@ -163,7 +163,7 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 		for k := range svcs {
 			svcs[k].Ports = []types.ServicePortConfig{}
 		}
-		if ro.Publish != nil && len(ro.Publish) > 0 {
+		if len(ro.Publish) > 0 {
 			for _, p := range ro.Publish {
 				pc, err := types.ParsePortConfig(p)
 				if err != nil {

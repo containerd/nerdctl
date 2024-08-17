@@ -198,7 +198,7 @@ func (m *containerNetworkManager) VerifyNetworkOptions(_ context.Context) error 
 		return errors.New("container networking mode is currently only supported on Linux")
 	}
 
-	if m.netOpts.NetworkSlice != nil && len(m.netOpts.NetworkSlice) > 1 {
+	if len(m.netOpts.NetworkSlice) > 1 {
 		return errors.New("conflicting options: only one network specification is allowed when using '--network=container:<container>'")
 	}
 
