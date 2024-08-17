@@ -54,12 +54,11 @@ ARG SOCI_SNAPSHOTTER_VERSION=0.6.1
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.4.0 AS xx
 
 
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS build-base-debian
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS build-base-debian
 COPY --from=xx / /
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
     git \
-    pkg-config \
     dpkg-dev
 ARG TARGETARCH
 # libbtrfs: for containerd
@@ -69,7 +68,8 @@ RUN xx-apt-get update -qq && xx-apt-get install -qq --no-install-recommends \
     gcc \
     libc6-dev \
     libbtrfs-dev \
-    libseccomp-dev
+    libseccomp-dev \
+    pkg-config
 
 FROM build-base-debian AS build-containerd
 ARG TARGETARCH
