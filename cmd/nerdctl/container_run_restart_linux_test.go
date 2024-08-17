@@ -41,7 +41,7 @@ func TestRunRestart(t *testing.T) {
 	}
 	base := testutil.NewBase(t)
 	if !base.DaemonIsKillable {
-		t.Skip("daemon is not killable (hint: set \"-test.kill-daemon\")")
+		t.Skip("daemon is not killable (hint: set \"-test.allow-kill-daemon\")")
 	}
 	t.Log("NOTE: this test may take a while")
 

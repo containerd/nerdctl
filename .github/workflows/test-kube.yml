@@ -1,0 +1,27 @@
+# This pipeline purpose is solely meant to run a subset of our test suites against a kube cluster
+name: kube
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+env:
+  ROOTFUL: true
+
+jobs:
+  linux:
+    runs-on: "ubuntu-24.04"
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 1
+      - name: "Run Kube integration tests"
+        run: |
+          ./hack/build-integration-kube.sh
+          sudo ./_output/nerdctl exec nerdctl-test-control-plane bash -c -- 'export TMPDIR="$HOME"/tmp; mkdir -p "$TMPDIR"; cd /nerdctl-source; /usr/local/go/bin/go test ./cmd/nerdctl/ -test.only-kube'

@@ -284,14 +284,14 @@ jobs:
           timeout_minutes: 30
           max_attempts: 2
           retry_on: error
-          command: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon
+          command: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.allow-kill-daemon
       - name: "Ensure that the IPv6 integration test suite is compatible with Docker"
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 30
           max_attempts: 2
           retry_on: error
-          command: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.kill-daemon -test.ipv6
+          command: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.allow-kill-daemon -test.only-ipv6
 
   test-integration-windows:
     runs-on: windows-2022
