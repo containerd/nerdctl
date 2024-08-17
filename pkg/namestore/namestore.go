@@ -22,8 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/containerd/containerd/v2/pkg/identifiers"
-
+	"github.com/containerd/nerdctl/v2/pkg/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 )
 
@@ -49,8 +48,8 @@ type nameStore struct {
 }
 
 func (x *nameStore) Acquire(name, id string) error {
-	if err := identifiers.Validate(name); err != nil {
-		return fmt.Errorf("invalid name %q: %w", name, err)
+	if err := identifiers.ValidateDockerCompat(name); err != nil {
+		return fmt.Errorf("invalid name: %w", err)
 	}
 	if strings.TrimSpace(id) != id {
 		return fmt.Errorf("untrimmed ID %q", id)
@@ -69,8 +68,8 @@ func (x *nameStore) Release(name, id string) error {
 	if name == "" {
 		return nil
 	}
-	if err := identifiers.Validate(name); err != nil {
-		return fmt.Errorf("invalid name %q: %w", name, err)
+	if err := identifiers.ValidateDockerCompat(name); err != nil {
+		return fmt.Errorf("invalid name: %w", err)
 	}
 	if strings.TrimSpace(id) != id {
 		return fmt.Errorf("untrimmed ID %q", id)
@@ -96,8 +95,8 @@ func (x *nameStore) Rename(oldName, id, newName string) error {
 	if oldName == "" || newName == "" {
 		return nil
 	}
-	if err := identifiers.Validate(newName); err != nil {
-		return fmt.Errorf("invalid name %q: %w", oldName, err)
+	if err := identifiers.ValidateDockerCompat(newName); err != nil {
+		return fmt.Errorf("invalid name %q: %w", newName, err)
 	}
 	fn := func() error {
 		oldFileName := filepath.Join(x.dir, oldName)

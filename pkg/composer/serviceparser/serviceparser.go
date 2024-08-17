@@ -31,9 +31,9 @@ import (
 	"github.com/compose-spec/compose-go/v2/types"
 
 	"github.com/containerd/containerd/v2/contrib/nvidia"
-	"github.com/containerd/containerd/v2/pkg/identifiers"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
 )
 
@@ -851,8 +851,8 @@ func fileReferenceConfigToFlagV(c types.FileReferenceConfig, project *types.Proj
 		log.L.Warnf("Ignoring: %s: %+v", objType, unknown)
 	}
 
-	if err := identifiers.Validate(c.Source); err != nil {
-		return "", fmt.Errorf("%s source %q is invalid: %w", objType, c.Source, err)
+	if err := identifiers.ValidateDockerCompat(c.Source); err != nil {
+		return "", fmt.Errorf("invalid source name for %s: %w", objType, err)
 	}
 
 	var obj types.FileObjectConfig

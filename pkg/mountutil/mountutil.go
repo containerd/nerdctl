@@ -26,10 +26,10 @@ import (
 	"github.com/moby/sys/userns"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
-	"github.com/containerd/containerd/v2/pkg/identifiers"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/idgen"
 	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
@@ -260,7 +260,7 @@ func createDirOnHost(src string, createDir bool) error {
 }
 
 func isNamedVolume(s string) bool {
-	err := identifiers.Validate(s)
+	err := identifiers.ValidateDockerCompat(s)
 
 	// If the volume name is invalid, we assume it is a path
 	return err == nil
