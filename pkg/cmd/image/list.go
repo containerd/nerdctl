@@ -80,36 +80,29 @@ func List(ctx context.Context, client *containerd.Client, filters, nameAndRefFil
 			return nil, err
 		}
 
-		if f.Dangling != nil {
-			imageList = imgutil.FilterDangling(imageList, *f.Dangling)
+		filters := []imgutil.Filter{}
+		if f.Dangling != nil && *f.Dangling {
+			filters = append(filters, imgutil.FilterDanglingImages())
+		} else if f.Dangling != nil {
+			filters = append(filters, imgutil.FilterTaggedImages())
 		}
 
-		imageList, err = imgutil.FilterByLabel(ctx, client, imageList, f.Labels)
+		if len(f.Labels) > 0 {
+			filters = append(filters, imgutil.FilterByLabel(ctx, client, f.Labels))
+		}
+
+		if len(f.Reference) > 0 {
+			filters = append(filters, imgutil.FilterByReference(f.Reference))
+		}
+
+		if len(f.Before) > 0 || len(f.Since) > 0 {
+			filters = append(filters, imgutil.FilterByCreatedAt(ctx, client, f.Before, f.Since))
+		}
+
+		imageList, err = imgutil.ApplyFilters(imageList, filters...)
 		if err != nil {
-			return nil, err
+			return []images.Image{}, err
 		}
-
-		imageList, err = imgutil.FilterByReference(imageList, f.Reference)
-		if err != nil {
-			return nil, err
-		}
-
-		var beforeImages []images.Image
-		if len(f.Before) > 0 {
-			beforeImages, err = imageStore.List(ctx, f.Before...)
-			if err != nil {
-				return nil, err
-			}
-		}
-		var sinceImages []images.Image
-		if len(f.Since) > 0 {
-			sinceImages, err = imageStore.List(ctx, f.Since...)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		imageList = imgutil.FilterImages(imageList, beforeImages, sinceImages)
 	}
 
 	sort.Slice(imageList, func(i, j int) bool {

@@ -746,7 +746,7 @@ Flags:
   - :nerd_face: `--format=wide`: Wide table
   - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
 - :whale: `--digests`: Show digests (compatible with Docker, unlike ID)
-- :whale: `-f, --filter`: Filter the images. For now, only 'before=<image:tag>' and 'since=<image:tag>' is supported.
+- :whale: `-f, --filter`: Filter the images.
   - :whale: `--filter=before=<image:tag>`: Images created before given image (exclusive)
   - :whale: `--filter=since=<image:tag>`: Images created after given image (exclusive)
   - :whale: `--filter=label<key>=<value>`: Matches images based on the presence of a label alone or a label and a value

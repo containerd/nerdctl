@@ -64,7 +64,10 @@ func Prune(ctx context.Context, client *containerd.Client, options types.ImagePr
 			filteredImages = append(filteredImages, image)
 		}
 	} else {
-		filteredImages = imgutil.FilterDangling(imageList, true)
+		filteredImages, err = imgutil.FilterDanglingImages()(imageList)
+		if err != nil {
+			return err
+		}
 	}
 
 	delOpts := []images.DeleteOpt{images.SynchronousDelete()}

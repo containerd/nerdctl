@@ -79,6 +79,7 @@ func TestImages(t *testing.T) {
 
 func TestImagesFilter(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	t.Parallel()
 	base := testutil.NewBase(t)
 	tempName := testutil.Identifier(base.T)
@@ -121,6 +122,7 @@ LABEL version=0.1`, testutil.CommonImage)
 
 func TestImagesFilterDangling(t *testing.T) {
 	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
 	base.Cmd("images", "prune", "--all").AssertOK()
 
