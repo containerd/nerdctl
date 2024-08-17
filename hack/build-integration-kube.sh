@@ -21,8 +21,8 @@ readonly root
 # shellcheck source=/dev/null
 . "$root/scripts/lib.sh"
 
-GO_VERSION=1.22
-KIND_VERSION=v0.23.0
+GO_VERSION=1.23
+KIND_VERSION=v0.24.0
 
 [ "$(uname -m)" == "aarch64" ] && GOARCH=arm64 || GOARCH=amd64
 

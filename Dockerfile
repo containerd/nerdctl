@@ -23,13 +23,13 @@ ARG RUNC_VERSION=v1.1.13
 ARG CNI_PLUGINS_VERSION=v1.5.1
 
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.15.0
+ARG BUILDKIT_VERSION=v0.15.2
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.15.1
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=v1.1.11
 # Extra deps: Rootless
-ARG ROOTLESSKIT_VERSION=v2.1.0
+ARG ROOTLESSKIT_VERSION=v2.3.1
 ARG SLIRP4NETNS_VERSION=v1.3.1
 # Extra deps: bypass4netns
 ARG BYPASS4NETNS_VERSION=v0.4.1
@@ -44,22 +44,21 @@ ARG TINI_VERSION=v0.19.0
 ARG BUILDG_VERSION=v0.4.1
 
 # Test deps
-ARG GO_VERSION=1.22
+ARG GO_VERSION=1.23
 ARG UBUNTU_VERSION=24.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
 ARG GOTESTSUM_VERSION=v1.12.0
 ARG NYDUS_VERSION=v2.2.5
-ARG SOCI_SNAPSHOTTER_VERSION=0.6.1
+ARG SOCI_SNAPSHOTTER_VERSION=0.7.0
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.4.0 AS xx
 
 
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS build-base-debian
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS build-base-debian
 COPY --from=xx / /
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
     git \
-    pkg-config \
     dpkg-dev
 ARG TARGETARCH
 # libbtrfs: for containerd
@@ -69,7 +68,8 @@ RUN xx-apt-get update -qq && xx-apt-get install -qq --no-install-recommends \
     gcc \
     libc6-dev \
     libbtrfs-dev \
-    libseccomp-dev
+    libseccomp-dev \
+    pkg-config
 
 FROM build-base-debian AS build-containerd
 ARG TARGETARCH
