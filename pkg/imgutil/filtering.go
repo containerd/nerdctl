@@ -18,6 +18,7 @@ package imgutil
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -35,15 +36,23 @@ import (
 const (
 	FilterBeforeType    = "before"
 	FilterSinceType     = "since"
+	FilterUntilType     = "until"
 	FilterLabelType     = "label"
 	FilterReferenceType = "reference"
 	FilterDanglingType  = "dangling"
+)
+
+var (
+	errMultipleUntilFilters     = errors.New("more than one until filter provided")
+	errNoUntilTimestamp         = errors.New("no until timestamp provided")
+	errUnparsableUntilTimestamp = errors.New("unable to parse until timestamp")
 )
 
 // Filters contains all types of filters to filter images.
 type Filters struct {
 	Before    []string
 	Since     []string
+	Until     string
 	Labels    map[string]string
 	Reference []string
 	Dangling  *bool
@@ -85,6 +94,13 @@ func ParseFilters(filters []string) (*Filters, error) {
 				}
 				f.Since = append(f.Since, fmt.Sprintf("name==%s", canonicalRef.String()))
 				f.Since = append(f.Since, fmt.Sprintf("name==%s", tempFilterToken[1]))
+			} else if tempFilterToken[0] == FilterUntilType {
+				if len(tempFilterToken[0]) == 0 {
+					return nil, errNoUntilTimestamp
+				} else if len(f.Until) > 0 {
+					return nil, errMultipleUntilFilters
+				}
+				f.Until = tempFilterToken[1]
 			} else if tempFilterToken[0] == FilterLabelType {
 				// To support filtering labels by keys.
 				f.Labels[tempFilterToken[1]] = ""
@@ -161,6 +177,57 @@ func FilterByCreatedAt(ctx context.Context, client *containerd.Client, before []
 	}
 }
 
+// FilterUntil filters images created before the provided timestamp.
+func FilterUntil(until string) Filter {
+	return func(imageList []images.Image) ([]images.Image, error) {
+		if len(until) == 0 {
+			return []images.Image{}, errNoUntilTimestamp
+		}
+
+		var (
+			parsedTime time.Time
+			err        error
+		)
+
+		type parseUntilFunc func(string) (time.Time, error)
+		parsingFuncs := []parseUntilFunc{
+			func(until string) (time.Time, error) {
+				return time.Parse(time.RFC3339, until)
+			},
+			func(until string) (time.Time, error) {
+				return time.Parse(time.RFC3339Nano, until)
+			},
+			func(until string) (time.Time, error) {
+				return time.Parse(time.DateOnly, until)
+			},
+			func(until string) (time.Time, error) {
+				// Go duration strings
+				d, err := time.ParseDuration(until)
+				if err != nil {
+					return time.Time{}, err
+				}
+				return time.Now().Add(-d), nil
+			},
+		}
+
+		for _, parse := range parsingFuncs {
+			parsedTime, err = parse(until)
+			if err != nil {
+				continue
+			}
+			break
+		}
+
+		if err != nil {
+			return []images.Image{}, errUnparsableUntilTimestamp
+		}
+
+		return filter(imageList, func(i images.Image) (bool, error) {
+			return imageCreatedBefore(i, parsedTime), nil
+		})
+	}
+}
+
 // FilterByLabel filters an image list based on labels applied to the image's config specification for the platform.
 // Any matching label will include the image in the list.
 func FilterByLabel(ctx context.Context, client *containerd.Client, labels map[string]string) Filter {
@@ -219,6 +286,10 @@ func filter[T any](items []T, f func(item T) (bool, error)) ([]T, error) {
 
 func imageCreatedBetween(image images.Image, min time.Time, max time.Time) bool {
 	return image.CreatedAt.After(min) && image.CreatedAt.Before(max)
+}
+
+func imageCreatedBefore(image images.Image, max time.Time) bool {
+	return image.CreatedAt.Before(max)
 }
 
 func matchesAllLabels(imageCfgLabels map[string]string, filterLabels map[string]string) bool {

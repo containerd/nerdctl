@@ -38,6 +38,7 @@ func newImagePruneCommand() *cobra.Command {
 	}
 
 	imagePruneCommand.Flags().BoolP("all", "a", false, "Remove all unused images, not just dangling ones")
+	imagePruneCommand.Flags().StringSlice("filter", []string{}, "Filter output based on conditions provided")
 	imagePruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
 	return imagePruneCommand
 }
@@ -52,6 +53,14 @@ func processImagePruneOptions(cmd *cobra.Command) (types.ImagePruneOptions, erro
 		return types.ImagePruneOptions{}, err
 	}
 
+	var filters []string
+	if cmd.Flags().Changed("filter") {
+		filters, err = cmd.Flags().GetStringSlice("filter")
+		if err != nil {
+			return types.ImagePruneOptions{}, err
+		}
+	}
+
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return types.ImagePruneOptions{}, err
@@ -61,6 +70,7 @@ func processImagePruneOptions(cmd *cobra.Command) (types.ImagePruneOptions, erro
 		Stdout:   cmd.OutOrStdout(),
 		GOptions: globalOptions,
 		All:      all,
+		Filters:  filters,
 		Force:    force,
 	}, err
 }

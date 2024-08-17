@@ -236,6 +236,8 @@ type ImagePruneOptions struct {
 	GOptions GlobalCommandOptions
 	// All Remove all unused images, not just dangling ones.
 	All bool
+	// Filters output based on conditions provided for the --filter argument
+	Filters []string
 	// Force will not prompt for confirmation.
 	Force bool
 }

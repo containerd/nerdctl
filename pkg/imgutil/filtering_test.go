@@ -108,11 +108,96 @@ func TestApplyFilters(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "ReturnErrorAndEmptyListOnFilterError",
+			images: []images.Image{
+				{
+					Name: "<none>:<none>",
+				},
+				{
+					Name: "docker.io/library/hello-world:latest",
+				},
+			},
+			filters: []Filter{
+				FilterDanglingImages(),
+				FilterUntil(""),
+			},
+			expectedImages: []images.Image{},
+			expectedErr:    errNoUntilTimestamp,
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			actualImages, err := ApplyFilters(test.images, test.filters...)
+			if test.expectedErr == nil {
+				assert.NilError(t, err)
+			} else {
+				assert.ErrorIs(t, err, test.expectedErr)
+			}
+			assert.Equal(t, len(actualImages), len(test.expectedImages))
+			assert.DeepEqual(t, actualImages, test.expectedImages)
+		})
+	}
+}
+
+func TestFilterUntil(t *testing.T) {
+	now := time.Now().UTC()
+
+	tests := []struct {
+		name           string
+		until          string
+		images         []images.Image
+		expectedImages []images.Image
+		expectedErr    error
+	}{
+		{
+			name:           "EmptyTimestampReturnsError",
+			until:          "",
+			images:         []images.Image{},
+			expectedImages: []images.Image{},
+			expectedErr:    errNoUntilTimestamp,
+		},
+		{
+			name:           "UnparseableTimestampReturnsError",
+			until:          "-2006-01-02T15:04:05Z07:00",
+			images:         []images.Image{},
+			expectedImages: []images.Image{},
+			expectedErr:    errUnparsableUntilTimestamp,
+		},
+		{
+			name:  "ImagesOlderThan3Hours(Go duration)",
+			until: "3h",
+			images: []images.Image{
+				{
+					Name:      "image:yesterday",
+					CreatedAt: now.Add(-24 * time.Hour),
+				},
+				{
+					Name:      "image:today",
+					CreatedAt: now.Add(-12 * time.Hour),
+				},
+				{
+					Name:      "image:latest",
+					CreatedAt: now,
+				},
+			},
+			expectedImages: []images.Image{
+				{
+					Name:      "image:yesterday",
+					CreatedAt: now.Add(-24 * time.Hour),
+				},
+				{
+					Name:      "image:today",
+					CreatedAt: now.Add(-12 * time.Hour),
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			actualImages, err := FilterUntil(test.until)(test.images)
 			if test.expectedErr == nil {
 				assert.NilError(t, err)
 			} else {
@@ -292,6 +377,11 @@ func TestFilterTaggedImages(t *testing.T) {
 }
 
 func TestImageCreatedBetween(t *testing.T) {
+	var (
+		unixEpoch = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+		y2k       = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+		now       = time.Now()
+	)
 	tests := []struct {
 		name         string
 		image        images.Image
@@ -300,30 +390,48 @@ func TestImageCreatedBetween(t *testing.T) {
 		fallsBetween bool
 	}{
 		{
-			name: "BetweenImage",
+			name: "PreviousImage",
 			image: images.Image{
-				CreatedAt: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+				CreatedAt: unixEpoch,
 			},
-			lhs:          time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
-			rhs:          time.Now(),
+			lhs:          y2k,
+			rhs:          now,
+			fallsBetween: false,
+		},
+		{
+			name: "AfterImage",
+			image: images.Image{
+				CreatedAt: now,
+			},
+			lhs:          unixEpoch,
+			rhs:          y2k,
+			fallsBetween: false,
+		},
+		{
+			name: "InBetweenTimeImage",
+			image: images.Image{
+				CreatedAt: y2k,
+			},
+			lhs:          unixEpoch,
+			rhs:          now,
 			fallsBetween: true,
 		},
 		{
 			name: "ExclusiveLeft",
 			image: images.Image{
-				CreatedAt: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
+				CreatedAt: unixEpoch,
 			},
-			lhs:          time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
-			rhs:          time.Now(),
+			lhs:          unixEpoch,
+			rhs:          now,
 			fallsBetween: false,
 		},
 		{
 			name: "ExclusiveRight",
 			image: images.Image{
-				CreatedAt: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+				CreatedAt: now,
 			},
-			lhs:          time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC),
-			rhs:          time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+			lhs:          unixEpoch,
+			rhs:          now,
 			fallsBetween: false,
 		},
 	}
@@ -350,26 +458,26 @@ func TestMatchesAnyLabel(t *testing.T) {
 		},
 		{
 			name:          "SingleMatchingLabel",
-			imageLabels:   map[string]string{"org": "com.containerd.nerdctl"},
-			labelsToMatch: map[string]string{"org": "com.containerd.nerdctl"},
+			imageLabels:   map[string]string{"org": "com.example.nerdctl"},
+			labelsToMatch: map[string]string{"org": "com.example.nerdctl"},
 			matches:       true,
 		},
 		{
 			name:          "KeyOnlyMatchingLabel",
-			imageLabels:   map[string]string{"org": "com.containerd.nerdctl"},
+			imageLabels:   map[string]string{"org": "com.example.nerdctl"},
 			labelsToMatch: map[string]string{"org": ""},
 			matches:       true,
 		},
 		{
 			name:          "KeyValueDoesNotMatch",
-			imageLabels:   map[string]string{"org": "com.containerd.nerdctl"},
-			labelsToMatch: map[string]string{"org": "com.containerd.containerd"},
+			imageLabels:   map[string]string{"org": "com.example.nerdctl"},
+			labelsToMatch: map[string]string{"org": "com.example.containerd"},
 			matches:       false,
 		},
 		{
 			name:          "AllMatchingLabel",
-			imageLabels:   map[string]string{"org": "com.containerd.nerdctl", "foo": "bar"},
-			labelsToMatch: map[string]string{"org": "com.containerd.containerd", "foo": "bar"},
+			imageLabels:   map[string]string{"org": "com.example.nerdctl", "foo": "bar"},
+			labelsToMatch: map[string]string{"org": "com.example.containerd", "foo": "bar"},
 			matches:       false,
 		},
 	}

@@ -886,9 +886,10 @@ Usage: `nerdctl image prune [OPTIONS]`
 Flags:
 
 - :whale: `-a, --all`: Remove all unused images, not just dangling ones
+- :whale: `-f, --filter`: Filter the images.
+  - :whale: `--filter=until=<timestamp>`: Images created before given date formatted timestamps or Go duration strings. Currently does not support Unix timestamps.
+  - :whale: `--filter=label<key>=<value>`: Matches images based on the presence of a label alone or a label and a value
 - :whale: `-f, --force`: Do not prompt for confirmation
-
-Unimplemented `docker image prune` flags: `--filter`
 
 ### :nerd_face: nerdctl image convert
 

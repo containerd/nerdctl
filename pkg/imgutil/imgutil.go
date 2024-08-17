@@ -423,3 +423,52 @@ func UnpackedImageSize(ctx context.Context, s snapshots.Snapshotter, img contain
 
 	return total.Size, err
 }
+
+// GetUnusedImages returns the list of all images which are not referenced by a container.
+func GetUnusedImages(ctx context.Context, client *containerd.Client, filters ...Filter) ([]images.Image, error) {
+	var (
+		imageStore     = client.ImageService()
+		containerStore = client.ContainerService()
+	)
+
+	containers, err := containerStore.List(ctx)
+	if err != nil {
+		return []images.Image{}, err
+	}
+
+	usedImages := make(map[string]struct{})
+	for _, container := range containers {
+		usedImages[container.Image] = struct{}{}
+	}
+
+	allImages, err := imageStore.List(ctx)
+	if err != nil {
+		return []images.Image{}, err
+	}
+
+	unusedImages := make([]images.Image, 0, len(allImages))
+	for _, image := range allImages {
+		if _, ok := usedImages[image.Name]; ok {
+			continue
+		}
+		unusedImages = append(unusedImages, image)
+	}
+
+	return ApplyFilters(unusedImages, filters...)
+}
+
+// GetDanglingImages returns the list of all images which are not tagged.
+func GetDanglingImages(ctx context.Context, client *containerd.Client, filters ...Filter) ([]images.Image, error) {
+	var (
+		imageStore = client.ImageService()
+	)
+
+	allImages, err := imageStore.List(ctx)
+	if err != nil {
+		return []images.Image{}, err
+	}
+
+	filters = append([]Filter{FilterDanglingImages()}, filters...)
+
+	return ApplyFilters(allImages, filters...)
+}
