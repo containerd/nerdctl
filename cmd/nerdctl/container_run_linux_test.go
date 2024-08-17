@@ -26,7 +26,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -400,9 +399,6 @@ func TestRunSigProxy(t *testing.T) {
 }
 
 func TestRunWithFluentdLogDriver(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("fluentd log driver is not yet implemented on Windows")
-	}
 	base := testutil.NewBase(t)
 	tempDirectory := t.TempDir()
 	err := os.Chmod(tempDirectory, 0777)
@@ -432,9 +428,6 @@ func TestRunWithFluentdLogDriver(t *testing.T) {
 }
 
 func TestRunWithFluentdLogDriverWithLogOpt(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("fluentd log driver is not yet implemented on Windows")
-	}
 	base := testutil.NewBase(t)
 	tempDirectory := t.TempDir()
 	err := os.Chmod(tempDirectory, 0777)

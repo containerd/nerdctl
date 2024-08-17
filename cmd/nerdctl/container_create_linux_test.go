@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -154,9 +153,6 @@ func TestCreateWithMACAddress(t *testing.T) {
 }
 
 func TestCreateWithTty(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("json-file log driver is not yet implemented on Windows")
-	}
 	base := testutil.NewBase(t)
 	imageName := testutil.CommonImage
 	withoutTtyContainerName := "without-terminal-" + testutil.Identifier(t)
