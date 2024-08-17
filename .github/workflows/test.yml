@@ -170,15 +170,15 @@ jobs:
             target: test-integration-rootless
           - ubuntu: 22.04
             containerd: v1.7.19
-            rootlesskit: v2.1.0
+            rootlesskit: v2.3.1
             target: test-integration-rootless
           - ubuntu: 24.04
             containerd: v2.0.0-rc.3
-            rootlesskit: v2.1.0
+            rootlesskit: v2.3.1
             target: test-integration-rootless
           - ubuntu: 24.04
             containerd: v1.7.19
-            rootlesskit: v2.1.0
+            rootlesskit: v2.3.1
             target: test-integration-rootless-port-slirp4netns
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
