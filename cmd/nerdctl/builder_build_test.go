@@ -462,7 +462,6 @@ RUN ["cat", "/hello_from_dir2.txt"]`, testutil.CommonImage, filename)
 // https://github.com/docker/buildx/pull/1482
 func TestBuildSourceDateEpoch(t *testing.T) {
 	testutil.RequiresBuild(t)
-	testutil.DockerIncompatible(t) // Needs buildx v0.10 (https://github.com/docker/buildx/pull/1489)
 	base := testutil.NewBase(t)
 	imageName := testutil.Identifier(t)
 	defer base.Cmd("rmi", imageName).AssertOK()

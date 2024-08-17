@@ -102,10 +102,10 @@ func TestImagePruneFilterUntil(t *testing.T) {
 	testutil.RequiresBuild(t)
 	testutil.RegisterBuildCacheCleanup(t)
 
-	// Docker image's created timestamp is set based on base image creation time.
-	testutil.DockerIncompatible(t)
-
 	base := testutil.NewBase(t)
+	// For deterministically testing the filter, set the image's created timestamp to 2 hours in the past.
+	base.Env = append(base.Env, fmt.Sprintf("SOURCE_DATE_EPOCH=%d", time.Now().Add(-2*time.Hour).Unix()))
+
 	imageName := testutil.Identifier(t)
 	teardown := func() {
 		// Image should have been pruned; but cleanup on failure.
