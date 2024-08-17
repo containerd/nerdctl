@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"runtime"
 	"testing"
 
 	"gotest.tools/v3/icmd"
@@ -29,9 +28,6 @@ import (
 )
 
 func TestImageConvertNydus(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("no windows support yet")
-	}
 	testutil.RequireExecutable(t, "nydus-image")
 	testutil.DockerIncompatible(t)
 
