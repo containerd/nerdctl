@@ -222,7 +222,7 @@ jobs:
           if echo "${ROOTLESSKIT_VERSION}" | grep -q v1; then
             WORKAROUND_ISSUE_622=1
           fi
-          echo "WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622}" >>$GITHUB_ENV
+          echo "WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622}" >> "$GITHUB_ENV"
       - name: "Test (network driver=slirp4netns, port driver=builtin)"
         uses: nick-fields/retry@v3
         with:

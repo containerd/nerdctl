@@ -182,6 +182,8 @@ http::checksum(){
   local temp
   temp="$(fs::mktemp "http-checksum")"
 
+  host::require shasum
+
   for url in "${urls[@]}"; do
     http::get "$temp/${url##*/}" "$url"
   done
@@ -233,4 +235,3 @@ log::init
 host::require jq
 host::require tar
 host::require curl
-host::require shasum

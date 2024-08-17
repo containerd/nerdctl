@@ -215,91 +215,118 @@ assets::get(){
 # Script
 ######################
 
-docker_args=(docker build -t test-integration --target test-integration)
+canary::build::integration(){
+  docker_args=(docker build -t test-integration --target test-integration)
 
-for dep in "${dependencies[@]}"; do
-  shortname="${dep##*/}"
-  [ "$shortname" != "plugins" ] || shortname="cni-plugins"
-  [ "$shortname" != "fuse-overlayfs-snapshotter" ] || shortname="containerd-fuse-overlayfs"
-  for bl in "${blacklist[@]}"; do
-    if [ "$bl" == "$shortname" ]; then
-      log::warning "Dependency $shortname is blacklisted and will be left to its currently pinned version"
-      break
+  for dep in "${dependencies[@]}"; do
+    shortname="${dep##*/}"
+    [ "$shortname" != "plugins" ] || shortname="cni-plugins"
+    [ "$shortname" != "fuse-overlayfs-snapshotter" ] || shortname="containerd-fuse-overlayfs"
+    for bl in "${blacklist[@]}"; do
+      if [ "$bl" == "$shortname" ]; then
+        log::warning "Dependency $shortname is blacklisted and will be left to its currently pinned version"
+        break
+      fi
+    done
+    [ "$bl" != "$shortname" ] || continue
+
+    shortsafename="$(printf "%s" "$shortname" | tr '[:lower:]' '[:upper:]' | tr '-' '_')"
+
+    exclusion="${shortsafename}_EXCLUDE"
+    latest::release "$dep" "${!exclusion:-}"
+
+    # XXX containerd does not display "v" in its released versions
+    [ "${higher_readable:0:1}" == v ] || higher_readable="v$higher_readable"
+
+    checksum="${shortsafename}_CHECKSUM"
+    if [ "${!checksum:-}" != "" ]; then
+      # Checksum file
+      checksum_file=./Dockerfile.d/SHA256SUMS.d/"${shortname}-${higher_readable}"
+      if [ ! -e "$checksum_file" ]; then
+        # Get assets - try first os/arch - fallback on gnu style arch otherwise
+        assets=()
+
+        # Most well behaved go projects will tag with a go os and arch
+        candidate="$(assets::get "${!checksum:-}" "amd64")"
+        # Then non go projects tend to use gnu style
+        [ "$candidate" != "" ] || candidate="$(assets::get "" "x86_64")"
+        # And then some projects which are linux only do not specify the OS
+        [ "$candidate" != "" ] || candidate="$(assets::get "" "amd64")"
+        [ "$candidate" == "" ] || assets+=("$candidate")
+
+        candidate="$(assets::get "${!checksum:-}" "arm64")"
+        [ "$candidate" != "" ] || candidate="$(assets::get "" "aarch64")"
+        [ "$candidate" != "" ] || candidate="$(assets::get "" "arm64")"
+        [ "$candidate" == "" ] || assets+=("$candidate")
+        # Fallback to source if there is nothing else
+
+        [ "${#assets[@]}" != 0 ] || candidate="$(assets::get "" "source")"
+        [ "$candidate" == "" ] || assets+=("$candidate")
+
+        # XXX very special...
+        if [ "$shortsafename" == "STARGZ_SNAPSHOTTER" ]; then
+          assets+=("https://raw.githubusercontent.com/containerd/stargz-snapshotter/${higher_readable}/script/config/etc/systemd/system/stargz-snapshotter.service")
+        fi
+
+        # Write the checksum for what we found
+        if [ "${#assets[@]}" == 0 ]; then
+          log::error "No asset found for this checksum-able dependency. Dropping off."
+          exit 1
+        fi
+        http::checksum "${assets[@]}" > "$checksum_file"
+      fi
     fi
+
+    while read -r line; do
+      # Extract value after "=" from a possible dockerfile `ARG XXX_VERSION`
+      old_version=$(echo "$line" | grep "ARG ${shortsafename}_VERSION=") || true
+      old_version="${old_version##*=}"
+      [ "$old_version" != "" ] || continue
+      # If the Dockerfile version does NOT start with a v, adapt to that
+      [ "${old_version:0:1}" == "v" ] || higher_readable="${higher_readable:1}"
+
+      if [ "$old_version" != "$higher_readable" ]; then
+        log::warning "Dependency ${shortsafename} is going to use an updated version $higher_readable (currently: $old_version)"
+      fi
+    done < ./Dockerfile
+
+    docker_args+=(--build-arg "${shortsafename}_VERSION=$higher_readable")
   done
-  [ "$bl" != "$shortname" ] || continue
-
-  shortsafename="$(printf "%s" "$shortname" | tr '[:lower:]' '[:upper:]' | tr '-' '_')"
-
-  exclusion="${shortsafename}_EXCLUDE"
-  latest::release "$dep" "${!exclusion:-}"
-
-  # XXX containerd does not display "v" in its released versions
-  [ "${higher_readable:0:1}" == v ] || higher_readable="v$higher_readable"
-
-  checksum="${shortsafename}_CHECKSUM"
-  if [ "${!checksum:-}" != "" ]; then
-    # Checksum file
-    checksum_file=./Dockerfile.d/SHA256SUMS.d/"${shortname}-${higher_readable}"
-    if [ ! -e "$checksum_file" ]; then
-      # Get assets - try first os/arch - fallback on gnu style arch otherwise
-      assets=()
-
-      # Most well behaved go projects will tag with a go os and arch
-      candidate="$(assets::get "${!checksum:-}" "amd64")"
-      # Then non go projects tend to use gnu style
-      [ "$candidate" != "" ] || candidate="$(assets::get "" "x86_64")"
-      # And then some projects which are linux only do not specify the OS
-      [ "$candidate" != "" ] || candidate="$(assets::get "" "amd64")"
-      [ "$candidate" == "" ] || assets+=("$candidate")
-
-      candidate="$(assets::get "${!checksum:-}" "arm64")"
-      [ "$candidate" != "" ] || candidate="$(assets::get "" "aarch64")"
-      [ "$candidate" != "" ] || candidate="$(assets::get "" "arm64")"
-      [ "$candidate" == "" ] || assets+=("$candidate")
-      # Fallback to source if there is nothing else
-
-      [ "${#assets[@]}" != 0 ] || candidate="$(assets::get "" "source")"
-      [ "$candidate" == "" ] || assets+=("$candidate")
-
-      # XXX very special...
-      if [ "$shortsafename" == "STARGZ_SNAPSHOTTER" ]; then
-        assets+=("https://raw.githubusercontent.com/containerd/stargz-snapshotter/${higher_readable}/script/config/etc/systemd/system/stargz-snapshotter.service")
-      fi
-
-      # Write the checksum for what we found
-      if [ "${#assets[@]}" == 0 ]; then
-        log::error "No asset found for this checksum-able dependency. Dropping off."
-        exit 1
-      fi
-      http::checksum "${assets[@]}" > "$checksum_file"
-    fi
-  fi
-
-  while read -r line; do
-    # Extract value after "=" from a possible dockerfile `ARG XXX_VERSION`
-    old_version=$(echo "$line" | grep "ARG ${shortsafename}_VERSION=") || true
-    old_version="${old_version##*=}"
-    [ "$old_version" != "" ] || continue
-    # If the Dockerfile version does NOT start with a v, adapt to that
-    [ "${old_version:0:1}" == "v" ] || higher_readable="${higher_readable:1}"
-
-    if [ "$old_version" != "$higher_readable" ]; then
-      log::warning "Dependency ${shortsafename} is going to use an updated version $higher_readable (currently: $old_version)"
-    fi
-  done < ./Dockerfile
-
-  docker_args+=(--build-arg "${shortsafename}_VERSION=$higher_readable")
-done
 
 
-GO_VERSION="$(curl -fsSL "https://go.dev/dl/?mode=json&include=all" | jq -rc .[0].version)"
-GO_VERSION="${GO_VERSION##*go}"
-# If a release candidate, docker hub may not have the corresponding image yet.
-# So, soften the version to just "rc", as they provide that as an alias to the latest available rc on their side
-# See https://github.com/containerd/nerdctl/issues/3223
-! grep -Eq "rc[0-9]+$" <<<"$GO_VERSION" || GO_VERSION="${GO_VERSION%rc[0-9]*}-rc"
-docker_args+=(--build-arg "GO_VERSION=$GO_VERSION")
+  GO_VERSION="$(curl -fsSL "https://go.dev/dl/?mode=json&include=all" | jq -rc .[0].version)"
+  GO_VERSION="${GO_VERSION##*go}"
+  # If a release candidate, docker hub may not have the corresponding image yet.
+  # So, soften the version to just "rc", as they provide that as an alias to the latest available rc on their side
+  # See https://github.com/containerd/nerdctl/issues/3223
+  ! grep -Eq "rc[0-9]+$" <<<"$GO_VERSION" || GO_VERSION="${GO_VERSION%rc[0-9]*}-rc"
+  docker_args+=(--build-arg "GO_VERSION=$GO_VERSION")
 
-log::debug "${docker_args[*]} ."
-"${docker_args[@]}" "."
+  log::debug "${docker_args[*]} ."
+  "${docker_args[@]}" "."
+}
+
+
+canary::golang::latest(){
+    # Enable extended globbing features to use advanced pattern matching
+    shopt -s extglob
+
+    # Get latest golang version and split it in components
+    norm=()
+    while read -r line; do
+      line_trimmed="${line//+([[:space:]])/}"
+      norm+=("$line_trimmed")
+    done < \
+      <(sed -E 's/^go([0-9]+)[.]([0-9]+)([.]([0-9]+))?(([a-z]+)([0-9]+))?/\1.\2\n\4\n\6\n\7/i' \
+        <(curl -fsSL "https://go.dev/dl/?mode=json&include=all" | jq -rc .[0].version) \
+      )
+
+    # Serialize version, making sure we have a patch version, and separate possible rcX into .rc-X
+    [ "${norm[1]}" != "" ] || norm[1]="0"
+    norm[1]=".${norm[1]}"
+    [ "${norm[2]}" == "" ] || norm[2]="-${norm[2]}"
+    [ "${norm[3]}" == "" ] || norm[3]=".${norm[3]}"
+    # Save it
+    IFS=
+    echo "GO_VERSION=${norm[*]}" >> "$GITHUB_ENV"
+}

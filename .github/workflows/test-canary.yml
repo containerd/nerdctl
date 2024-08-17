@@ -15,6 +15,27 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  lint:
+    runs-on: "ubuntu-24.04"
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 1
+      - name: Set GO env
+        run: |
+          . ./hack/build-integration-canary.sh
+          canary::golang::latest
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: true
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6.1.0
+        with:
+          args: --verbose
+
   linux:
     runs-on: "ubuntu-24.04"
     timeout-minutes: 40
@@ -24,7 +45,8 @@ jobs:
           fetch-depth: 1
       - name: "Prepare integration test environment"
         run: |
-          ./hack/build-integration-canary.sh
+          . ./hack/build-integration-canary.sh
+          canary::build::integration
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
           sudo systemctl disable --now snapd.service snapd.socket
@@ -53,40 +75,21 @@ jobs:
       run:
         shell: bash
     steps:
+      - uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 1
       - name: Set GO env
         run: |
-          # Enable extended globbing features to use advanced pattern matching
-          shopt -s extglob
-
           # Get latest containerd
           args=(curl --proto '=https' --tlsv1.2 -fsSL -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28")
           [ "${GITHUB_TOKEN:-}" == "" ] && {
             >&2 printf "GITHUB_TOKEN is not set - you might face rate limitations with the Github API\n"
           } || args+=(-H "Authorization: Bearer $GITHUB_TOKEN")
           ctd_v="$("${args[@]}" https://api.github.com/repos/containerd/containerd/tags | jq -rc .[0].name)"
-          echo "CONTAINERD_VERSION=${ctd_v:1}" >> $GITHUB_ENV
+          echo "CONTAINERD_VERSION=${ctd_v:1}" >> "$GITHUB_ENV"
 
-          # Get latest golang version and split it in components
-          norm=()
-          while read -r line; do
-            line_trimmed="${line//+([[:space:]])/}"
-            norm+=("$line_trimmed")
-          done < \
-            <(sed -E 's/^go([0-9]+)[.]([0-9]+)([.]([0-9]+))?(([a-z]+)([0-9]+))?/\1.\2\n\4\n\6\n\7/i' \
-              <(curl -fsSL "https://go.dev/dl/?mode=json&include=all" | jq -rc .[0].version) \
-            )
-
-          # Serialize version, making sure we have a patch version, and separate possible rcX into .rc-X
-          [ "${norm[1]}" != "" ] || norm[1]="0"
-          norm[1]=".${norm[1]}"
-          [ "${norm[2]}" == "" ] || norm[2]="-${norm[2]}"
-          [ "${norm[3]}" == "" ] || norm[3]=".${norm[3]}"
-          # Save it
-          IFS=
-          echo "GO_VERSION=${norm[*]}" >> $GITHUB_ENV
-      - uses: actions/checkout@v4.1.7
-        with:
-          fetch-depth: 1
+          . ./hack/build-integration-canary.sh
+          canary::golang::latest
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
