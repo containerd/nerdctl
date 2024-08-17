@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	distributionref "github.com/distribution/reference"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
@@ -300,6 +301,16 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 			continue
 		}
 
+		if isOCILayout := strings.HasPrefix(v, "oci-layout://"); isOCILayout {
+			args, err := parseBuildContextFromOCILayout(k, v)
+			if err != nil {
+				return "", nil, false, "", nil, nil, err
+			}
+
+			buildctlArgs = append(buildctlArgs, args...)
+			continue
+		}
+
 		path, err := filepath.Abs(v)
 		if err != nil {
 			return "", nil, false, "", nil, nil, err
@@ -533,4 +544,62 @@ func parseContextNames(values []string) (map[string]string, error) {
 		result[kv[0]] = kv[1]
 	}
 	return result, nil
+}
+
+var (
+	ErrOCILayoutPrefixNotFound = errors.New("OCI layout prefix not found")
+	ErrOCILayoutEmptyDigest    = errors.New("OCI layout cannot have empty digest")
+)
+
+func parseBuildContextFromOCILayout(name, path string) ([]string, error) {
+	path, found := strings.CutPrefix(path, "oci-layout://")
+	if !found {
+		return []string{}, ErrOCILayoutPrefixNotFound
+	}
+
+	abspath, err := filepath.Abs(path)
+	if err != nil {
+		return []string{}, err
+	}
+
+	ociIndex, err := readOCIIndexFromPath(abspath)
+	if err != nil {
+		return []string{}, err
+	}
+
+	var digest string
+	for _, manifest := range ociIndex.Manifests {
+		if images.IsManifestType(manifest.MediaType) {
+			digest = manifest.Digest.String()
+		}
+	}
+
+	if digest == "" {
+		return []string{}, ErrOCILayoutEmptyDigest
+	}
+
+	return []string{
+		fmt.Sprintf("--oci-layout=parent-image-key=%s", abspath),
+		fmt.Sprintf("--opt=context:%s=oci-layout:parent-image-key@%s", name, digest),
+	}, nil
+}
+
+func readOCIIndexFromPath(path string) (*ocispec.Index, error) {
+	ociIndexJSONFile, err := os.Open(filepath.Join(path, "index.json"))
+	if err != nil {
+		return nil, err
+	}
+	defer ociIndexJSONFile.Close()
+
+	rawBytes, err := io.ReadAll(ociIndexJSONFile)
+	if err != nil {
+		return nil, err
+	}
+
+	var ociIndex *ocispec.Index
+	err = json.Unmarshal(rawBytes, &ociIndex)
+	if err != nil {
+		return nil, err
+	}
+	return ociIndex, nil
 }
