@@ -84,11 +84,6 @@ func ParentMain(hostGatewayIP string) error {
 	detachNetNSMode := detachedNetNSPath != ""
 	log.L.Debugf("RootlessKit detach-netns mode: %v", detachNetNSMode)
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
 	// FIXME: remove dependency on `nsenter` binary
 	arg0, err := exec.LookPath("nsenter")
 	if err != nil {
@@ -96,13 +91,24 @@ func ParentMain(hostGatewayIP string) error {
 	}
 	// args are compatible with both util-linux nsenter and busybox nsenter
 	args := []string{
-		"-r/",     // root dir (busybox nsenter wants this to be explicitly specified),
-		"-w" + wd, // work dir
-		"--preserve-credentials",
+		"-r/", // root dir (busybox nsenter wants this to be explicitly specified),
+	}
+
+	// Only append wd if we do have a working dir
+	// - https://github.com/rootless-containers/usernetes/pull/327
+	// - https://github.com/containerd/nerdctl/issues/3328
+	wd, err := os.Getwd()
+	if err != nil {
+		log.L.WithError(err).Warn("unable to determine working directory")
+	} else {
+		args = append(args, "-w"+wd)
+	}
+
+	args = append(args, "--preserve-credentials",
 		"-m", "-U",
 		"-t", strconv.Itoa(childPid),
 		"-F", // no fork
-	}
+	)
 	if !detachNetNSMode {
 		args = append(args, "-n")
 	}
