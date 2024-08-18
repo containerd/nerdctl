@@ -64,7 +64,10 @@ require (
 	gotest.tools/v3 v3.5.1
 )
 
-require github.com/moby/sys/user v0.1.0 // indirect
+require (
+	github.com/moby/docker-image-spec v1.3.1 // indirect
+	github.com/moby/sys/user v0.1.0 // indirect
+)
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
