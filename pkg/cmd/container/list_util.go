@@ -48,6 +48,8 @@ type containerFilterContext struct {
 	labelFilterFuncs   []func(map[string]string) bool
 	volumeFilterFuncs  []func([]*containerutil.ContainerVolume) bool
 	networkFilterFuncs []func([]string) bool
+
+	all bool
 }
 
 func (cl *containerFilterContext) MatchesFilters(ctx context.Context) []containerd.Container {
@@ -264,6 +266,7 @@ func (cl *containerFilterContext) matchesStatusFilter(status containerd.Status) 
 	if len(cl.statusFilterFuncs) == 0 {
 		return true
 	}
+	cl.all = true
 	for _, statusFilterFunc := range cl.statusFilterFuncs {
 		if !statusFilterFunc(status.Status) {
 			continue

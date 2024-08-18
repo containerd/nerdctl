@@ -53,7 +53,7 @@ func newPsCommand() *cobra.Command {
 	psCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json", "table", "wide"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	psCommand.Flags().StringSliceP("filter", "f", nil, "Filter matches containers based on given conditions")
+	psCommand.Flags().StringSliceP("filter", "f", nil, "Filter matches containers based on given conditions. When specifying the condition 'status', it filters all containers")
 	return psCommand
 }
 

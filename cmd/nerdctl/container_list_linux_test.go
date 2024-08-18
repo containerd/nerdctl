@@ -576,6 +576,33 @@ func TestContainerListWithFilter(t *testing.T) {
 		}
 		return nil
 	})
+
+	// filter container state without option "-a".
+	base.Cmd("ps", "--filter", "status=exited").AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) < 2 {
+			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+		}
+
+		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+		err := tab.ParseHeader(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse header: %v", err)
+		}
+		containerNames := map[string]struct{}{
+			testContainerC.name: {},
+		}
+		for idx, line := range lines {
+			if idx == 0 {
+				continue
+			}
+			containerName, _ := tab.ReadRow(line, "NAMES")
+			if _, ok := containerNames[containerName]; !ok {
+				return fmt.Errorf("unexpected container %s found", containerName)
+			}
+		}
+		return nil
+	})
 }
 
 func TestContainerListCheckCreatedTime(t *testing.T) {
