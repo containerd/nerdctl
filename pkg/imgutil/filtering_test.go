@@ -20,8 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/containerd/containerd/v2/core/images"
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/containerd/v2/core/images"
 )
 
 func TestApplyFilters(t *testing.T) {
