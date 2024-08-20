@@ -12,8 +12,8 @@ github.com/Masterminds/semver/v3 v3.2.1 h1:RN9w6+7QoMeJVGyfmbcgs28Br8cvmnucEXnY0
 github.com/Masterminds/semver/v3 v3.2.1/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
-github.com/Microsoft/hcsshim v0.12.5 h1:bpTInLlDy/nDRWFVcefDZZ1+U8tS+rz3MxjKgu9boo0=
-github.com/Microsoft/hcsshim v0.12.5/go.mod h1:tIUGego4G1EN5Hb6KC90aDYiUI2dqLSTTOCjVNpOgZ8=
+github.com/Microsoft/hcsshim v0.12.6 h1:qEnZjoHXv+4/s0LmKZWE0/AiZmMWEIkFfWBSf1a0wlU=
+github.com/Microsoft/hcsshim v0.12.6/go.mod h1:ZABCLVcvLMjIkzr9rUGcQ1QA0p0P3Ps+d3N1g2DsFfk=
 github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM=
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 h1:DDGfHa7BWjL4YnC6+E63dPcxHo2sUxDIu8g3QgEJdRY=
