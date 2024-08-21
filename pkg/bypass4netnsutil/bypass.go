@@ -28,7 +28,7 @@ import (
 	rlkclient "github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
 
 	"github.com/containerd/errdefs"
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/go-cni"
 
 	"github.com/containerd/nerdctl/v2/pkg/annotations"
 )
@@ -66,7 +66,7 @@ type Bypass4netnsCNIBypassManager struct {
 	ignoreBind    bool
 }
 
-func (b4nnm *Bypass4netnsCNIBypassManager) StartBypass(ctx context.Context, ports []gocni.PortMapping, id, stateDir string) error {
+func (b4nnm *Bypass4netnsCNIBypassManager) StartBypass(ctx context.Context, ports []cni.PortMapping, id, stateDir string) error {
 	socketPath, err := GetSocketPathByID(id)
 	if err != nil {
 		return err

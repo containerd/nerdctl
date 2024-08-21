@@ -21,7 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/go-cni"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/portutil"
@@ -144,7 +144,7 @@ func loadNetworkFlags(cmd *cobra.Command) (types.NetworkOptions, error) {
 		return netOpts, err
 	}
 	portSlice = strutil.DedupeStrSlice(portSlice)
-	portMappings := []gocni.PortMapping{}
+	portMappings := []cni.PortMapping{}
 	for _, p := range portSlice {
 		pm, err := portutil.ParseFlagP(p)
 		if err != nil {

@@ -22,7 +22,7 @@ import (
 	"sort"
 	"testing"
 
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/go-cni"
 
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -38,7 +38,7 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []gocni.PortMapping
+		want    []cni.PortMapping
 		wantErr bool
 	}{
 		{
@@ -46,7 +46,7 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 			args: args{
 				s: "3000",
 			},
-			want: []gocni.PortMapping{
+			want: []cni.PortMapping{
 				{
 					HostPort:      3000,
 					ContainerPort: 3000,
@@ -61,7 +61,7 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 			args: args{
 				s: "3000-3001",
 			},
-			want: []gocni.PortMapping{
+			want: []cni.PortMapping{
 				{
 					HostPort:      3000,
 					ContainerPort: 3000,
@@ -90,7 +90,7 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 			args: args{
 				s: "3000-3001/tcp",
 			},
-			want: []gocni.PortMapping{
+			want: []cni.PortMapping{
 				{
 					HostPort:      3000,
 					ContainerPort: 3000,
@@ -111,7 +111,7 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 			args: args{
 				s: "3000-3001/udp",
 			},
-			want: []gocni.PortMapping{
+			want: []cni.PortMapping{
 				{
 					HostPort:      3000,
 					ContainerPort: 3000,
@@ -168,7 +168,7 @@ func TestParsePortsLabel(t *testing.T) {
 	tests := []struct {
 		name     string
 		labelMap map[string]string
-		want     []gocni.PortMapping
+		want     []cni.PortMapping
 		wantErr  bool
 	}{
 		{
@@ -176,7 +176,7 @@ func TestParsePortsLabel(t *testing.T) {
 			labelMap: map[string]string{
 				labels.Ports: "[{\"HostPort\":12345,\"ContainerPort\":10000,\"Protocol\":\"tcp\",\"HostIP\":\"0.0.0.0\"}]",
 			},
-			want: []gocni.PortMapping{
+			want: []cni.PortMapping{
 				{
 					HostPort:      3000,
 					ContainerPort: 8080,
@@ -191,13 +191,13 @@ func TestParsePortsLabel(t *testing.T) {
 			labelMap: map[string]string{
 				labels.Ports: "",
 			},
-			want:    []gocni.PortMapping{},
+			want:    []cni.PortMapping{},
 			wantErr: false,
 		},
 		{
 			name:     "empty ports (key not exists)",
 			labelMap: map[string]string{},
-			want:     []gocni.PortMapping{},
+			want:     []cni.PortMapping{},
 			wantErr:  false,
 		},
 		{
@@ -251,7 +251,7 @@ func TestParseFlagP(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []gocni.PortMapping
+		want    []cni.PortMapping
 		wantErr bool
 	}{
 		{
@@ -259,7 +259,7 @@ func TestParseFlagP(t *testing.T) {
 			args: args{
 				s: "127.0.0.1:3000:8080/tcp",
 			},
-			want: []gocni.PortMapping{
+			want: []cni.PortMapping{
 				{
 					HostPort:      3000,
 					ContainerPort: 8080,
@@ -274,7 +274,7 @@ func TestParseFlagP(t *testing.T) {
 			args: args{
 				s: "127.0.0.1:3000-3001:8080-8081/tcp",
 			},
-			want: []gocni.PortMapping{
+			want: []cni.PortMapping{
 				{
 					HostPort:      3000,
 					ContainerPort: 8080,
@@ -303,7 +303,7 @@ func TestParseFlagP(t *testing.T) {
 			args: args{
 				s: "3000:8080/tcp",
 			},
-			want: []gocni.PortMapping{
+			want: []cni.PortMapping{
 				{
 					HostPort:      3000,
 					ContainerPort: 8080,
@@ -318,7 +318,7 @@ func TestParseFlagP(t *testing.T) {
 			args: args{
 				s: "3000:8080",
 			},
-			want: []gocni.PortMapping{
+			want: []cni.PortMapping{
 				{
 					HostPort:      3000,
 					ContainerPort: 8080,
@@ -333,7 +333,7 @@ func TestParseFlagP(t *testing.T) {
 			args: args{
 				s: "3000:8080/udp",
 			},
-			want: []gocni.PortMapping{
+			want: []cni.PortMapping{
 				{
 					HostPort:      3000,
 					ContainerPort: 8080,
@@ -348,7 +348,7 @@ func TestParseFlagP(t *testing.T) {
 			args: args{
 				s: "3000:8080/sctp",
 			},
-			want: []gocni.PortMapping{
+			want: []cni.PortMapping{
 				{
 					HostPort:      3000,
 					ContainerPort: 8080,
@@ -363,7 +363,7 @@ func TestParseFlagP(t *testing.T) {
 			args: args{
 				s: "[::0]:8080:80/tcp",
 			},
-			want: []gocni.PortMapping{
+			want: []cni.PortMapping{
 				{
 					HostPort:      8080,
 					ContainerPort: 80,

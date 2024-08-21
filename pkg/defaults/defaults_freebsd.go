@@ -17,7 +17,7 @@
 package defaults
 
 import (
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/go-cni"
 )
 
 const (
@@ -32,11 +32,11 @@ func DataRoot() string {
 
 func CNIPath() string {
 	// default: /opt/cni/bin
-	return gocni.DefaultCNIDir
+	return cni.DefaultCNIDir
 }
 
 func CNINetConfPath() string {
-	return gocni.DefaultNetDir
+	return cni.DefaultNetDir
 }
 
 func CNIRuntimeDir() string {

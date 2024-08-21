@@ -17,7 +17,7 @@
 package types
 
 import (
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/go-cni"
 )
 
 // NetworkOptions struct defining networking-related options.
@@ -43,5 +43,5 @@ type NetworkOptions struct {
 	// UTS namespace to use
 	UTSNamespace string
 	// PortMappings specifies a list of ports to publish from the container to the host
-	PortMappings []gocni.PortMapping
+	PortMappings []cni.PortMapping
 }
