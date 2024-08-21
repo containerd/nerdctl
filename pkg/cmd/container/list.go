@@ -77,9 +77,10 @@ func filterContainers(ctx context.Context, client *containerd.Client, filters []
 		}
 	}
 
-	if all {
+	if all || filterCtx.all {
 		return containers, nil
 	}
+
 	var upContainers []containerd.Container
 	for _, c := range containers {
 		cStatus := formatter.ContainerStatus(ctx, c)

@@ -460,7 +460,7 @@ Flags:
   - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`
 - :whale: `-n, --last`: Show n last created containers (includes all states)
 - :whale: `-l, --latest`: Show the latest created container (includes all states)
-- :whale: `-f, --filter`: Filter containers based on given conditions
+- :whale: `-f, --filter`: Filter containers based on given conditions. When specifying the condition 'status', it filters all containers
   - :whale: `--filter id=<value>`: Container's ID. Both full ID and
     truncated ID are supported
   - :whale: `--filter name=<value>`: Container's name
@@ -470,7 +470,7 @@ Flags:
     `--all`
   - :whale: `--filter status=<value>`: One of `created, running, paused,
     stopped, exited, pausing, unknown`. Note that `restarting, removing, dead` are
-    not supported and will be ignored
+    not supported and will be ignored. When specifying this condition, it filters all containers.
   - :whale: `--filter before/since=<ID/name>`: Filter containers created before
     or after a given ID or name
   - :whale: `--filter volume=<value>`: Filter by a given mounted volume or bind
