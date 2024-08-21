@@ -28,7 +28,7 @@ import (
 func TestKubeCommitPush(t *testing.T) {
 	t.Parallel()
 
-	base := testutil.NewBaseForKube(t)
+	base := testutil.NewBaseForKubernetes(t)
 	tID := testutil.Identifier(t)
 
 	var containerID string
@@ -49,7 +49,7 @@ func TestKubeCommitPush(t *testing.T) {
 	}
 
 	tearDown := func() {
-		testutil.KubectlHelper(base, "delete", "pod", tID).Run()
+		testutil.KubectlHelper(base, "delete", "pod", "-f", tID).Run()
 	}
 
 	tearDown()
