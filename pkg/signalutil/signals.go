@@ -17,7 +17,7 @@
 package signalutil
 
 import (
-	gocontext "context"
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -29,12 +29,12 @@ import (
 
 // killer is from https://github.com/containerd/containerd/blob/v1.7.0-rc.2/cmd/ctr/commands/signals.go#L30-L32
 type killer interface {
-	Kill(gocontext.Context, syscall.Signal, ...containerd.KillOpts) error
+	Kill(context.Context, syscall.Signal, ...containerd.KillOpts) error
 }
 
 // ForwardAllSignals forwards signals.
 // From https://github.com/containerd/containerd/blob/v1.7.0-rc.2/cmd/ctr/commands/signals.go#L34-L55
-func ForwardAllSignals(ctx gocontext.Context, task killer) chan os.Signal {
+func ForwardAllSignals(ctx context.Context, task killer) chan os.Signal {
 	sigc := make(chan os.Signal, 128)
 	signal.Notify(sigc)
 	go func() {

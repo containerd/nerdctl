@@ -17,7 +17,7 @@
 package consoleutil
 
 import (
-	gocontext "context"
+	"context"
 	"time"
 
 	"github.com/containerd/console"
@@ -26,7 +26,7 @@ import (
 
 // HandleConsoleResize resizes the console.
 // From https://github.com/containerd/containerd/blob/v1.7.0-rc.2/cmd/ctr/commands/tasks/tasks_windows.go#L34-L61
-func HandleConsoleResize(ctx gocontext.Context, task resizer, con console.Console) error {
+func HandleConsoleResize(ctx context.Context, task resizer, con console.Console) error {
 	// do an initial resize of the console
 	size, err := con.Size()
 	if err != nil {
