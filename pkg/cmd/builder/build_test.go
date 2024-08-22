@@ -187,3 +187,42 @@ func TestIsBuildPlatformDefault(t *testing.T) {
 		})
 	}
 }
+
+func TestParseBuildctlArgsForOCILayout(t *testing.T) {
+	tests := []struct {
+		name          string
+		ociLayoutName string
+		ociLayoutPath string
+		expectedArgs  []string
+		errorIsNil    bool
+		expectedErr   string
+	}{
+		{
+			name:          "PrefixNotFoundError",
+			ociLayoutName: "unit-test",
+			ociLayoutPath: "/tmp/oci-layout/",
+			expectedArgs:  []string{},
+			expectedErr:   ErrOCILayoutPrefixNotFound.Error(),
+		},
+		{
+			name:          "DirectoryNotFoundError",
+			ociLayoutName: "unit-test",
+			ociLayoutPath: "oci-layout:///tmp/oci-layout",
+			expectedArgs:  []string{},
+			expectedErr:   "open /tmp/oci-layout/index.json: no such file or directory",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			args, err := parseBuildContextFromOCILayout(test.ociLayoutName, test.ociLayoutPath)
+			if test.errorIsNil {
+				assert.NilError(t, err)
+			} else {
+				assert.Error(t, err, test.expectedErr)
+			}
+			assert.Equal(t, len(args), len(test.expectedArgs))
+			assert.DeepEqual(t, args, test.expectedArgs)
+		})
+	}
+}
