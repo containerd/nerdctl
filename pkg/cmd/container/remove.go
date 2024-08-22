@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 	"syscall"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -168,31 +167,26 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			delOpts = append(delOpts, containerd.WithSnapshotCleanup)
 		}
 
-		// NOTE: on non-Windows platforms, network cleanup is performed by OCI hooks.
-		// Seeing as though Windows does not currently support OCI hooks, we must explicitly
-		// perform the network cleanup from the main nerdctl executable.
-		if runtime.GOOS == "windows" {
-			spec, err := c.Spec(ctx)
-			if err != nil {
-				retErr = err
-				return
-			}
+		spec, err := c.Spec(ctx)
+		if err != nil {
+			retErr = err
+			return
+		}
 
-			netOpts, err := containerutil.NetworkOptionsFromSpec(spec)
-			if err != nil {
-				retErr = fmt.Errorf("failed to load container networking options from specs: %s", err)
-				return
-			}
+		netOpts, err := containerutil.NetworkOptionsFromSpec(spec)
+		if err != nil {
+			retErr = fmt.Errorf("failed to load container networking options from specs: %s", err)
+			return
+		}
 
-			networkManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netOpts, client)
-			if err != nil {
-				retErr = fmt.Errorf("failed to instantiate network options manager: %s", err)
-				return
-			}
+		networkManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netOpts, client)
+		if err != nil {
+			retErr = fmt.Errorf("failed to instantiate network options manager: %s", err)
+			return
+		}
 
-			if err := networkManager.CleanupNetworking(ctx, c); err != nil {
-				log.G(ctx).WithError(err).Warnf("failed to clean up container networking: %q", id)
-			}
+		if err := networkManager.CleanupNetworking(ctx, c); err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to clean up container networking: %q", id)
 		}
 
 		// Delete the container now. If it fails, try again without snapshot cleanup

@@ -366,15 +366,82 @@ func (m *hostNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 }
 
 // SetupNetworking Performs setup actions required for the container with the given ID.
-func (m *hostNetworkManager) SetupNetworking(_ context.Context, _ string) error {
-	// NOTE: there are no setup steps required for host networking.
+func (m *hostNetworkManager) SetupNetworking(ctx context.Context, containerID string) error {
+	// Retrieve the container
+	container, err := m.client.ContainerService().Get(ctx, containerID)
+	if err != nil {
+		return err
+	}
+
+	// Get the dataStore
+	dataStore, err := clientutil.DataStore(m.globalOptions.DataRoot, m.globalOptions.Address)
+	if err != nil {
+		return err
+	}
+
+	// Get the hostsStore
+	hs, err := hostsstore.NewStore(dataStore)
+	if err != nil {
+		return err
+	}
+
+	// Get extra-hosts
+	extraHostsJSON := container.Labels[labels.ExtraHosts]
+	var extraHosts []string
+	if err = json.Unmarshal([]byte(extraHostsJSON), &extraHosts); err != nil {
+		return err
+	}
+
+	hosts := make(map[string]string)
+	for _, host := range extraHosts {
+		if v := strings.SplitN(host, ":", 2); len(v) == 2 {
+			hosts[v[0]] = v[1]
+		}
+	}
+
+	// Prep the meta
+	hsMeta := hostsstore.Meta{
+		Namespace:  container.Labels[labels.Namespace],
+		ID:         container.ID,
+		Hostname:   container.Labels[labels.Hostname],
+		ExtraHosts: hosts,
+		Name:       container.Labels[labels.Name],
+	}
+
+	// Save the meta information
+	if err = hs.Acquire(hsMeta); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // CleanupNetworking Performs any required cleanup actions for the given container.
 // Should only be called to revert any setup steps performed in SetupNetworking.
-func (m *hostNetworkManager) CleanupNetworking(_ context.Context, _ containerd.Container) error {
-	// NOTE: there are no setup steps required for host networking.
+func (m *hostNetworkManager) CleanupNetworking(ctx context.Context, container containerd.Container) error {
+	// Get the dataStore
+	dataStore, err := clientutil.DataStore(m.globalOptions.DataRoot, m.globalOptions.Address)
+	if err != nil {
+		return err
+	}
+
+	// Get the hostsStore
+	hs, err := hostsstore.NewStore(dataStore)
+	if err != nil {
+		return err
+	}
+
+	// Get labels
+	lbls, err := container.Labels(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Release
+	if err = hs.Release(lbls[labels.Namespace], container.ID()); err != nil {
+		return err
+	}
+
 	return nil
 }
 

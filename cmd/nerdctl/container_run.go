@@ -377,13 +377,8 @@ func runAction(cmd *cobra.Command, args []string) error {
 	id := c.ID()
 	if createOpt.Rm && !createOpt.Detach {
 		defer func() {
-			// NOTE: OCI hooks (which are used for CNI network setup/teardown on Linux)
-			// are not currently supported on Windows, so we must explicitly call
-			// network setup/cleanup from the main nerdctl executable.
-			if runtime.GOOS == "windows" {
-				if err := netManager.CleanupNetworking(ctx, c); err != nil {
-					log.L.Warnf("failed to clean up container networking: %s", err)
-				}
+			if err := netManager.CleanupNetworking(ctx, c); err != nil {
+				log.L.Warnf("failed to clean up container networking: %s", err)
 			}
 			if err := container.RemoveContainer(ctx, c, createOpt.GOptions, true, true, client); err != nil {
 				log.L.WithError(err).Warnf("failed to remove container %s", id)
