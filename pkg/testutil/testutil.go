@@ -794,7 +794,7 @@ func KubectlHelper(base *Base, args ...string) *Cmd {
 	}
 }
 
-// SetupDockerContinerBuilder creates a Docker builder using the docker-container driver
+// SetupDockerContainerBuilder creates a Docker builder using the docker-container driver
 // and adds cleanup steps to test cleanup. The builder name is returned as output.
 //
 // If not docker, this function returns an empty string as the builder name.

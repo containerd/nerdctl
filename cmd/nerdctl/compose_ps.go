@@ -262,7 +262,7 @@ func composeContainerPrintableTab(ctx context.Context, container containerd.Cont
 	}, nil
 }
 
-// composeContainerPrintableTab constructs composeContainerPrintable with fields
+// composeContainerPrintableJSON constructs composeContainerPrintable with fields
 // only for json output and compatible docker output.
 func composeContainerPrintableJSON(ctx context.Context, container containerd.Container) (composeContainerPrintable, error) {
 	info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
