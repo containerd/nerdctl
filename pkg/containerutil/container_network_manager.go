@@ -32,6 +32,7 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/oci"
+	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -449,12 +450,17 @@ func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 
 	// `/etc/hostname` does not exist on FreeBSD
 	if runtime.GOOS == "linux" && m.netOpts.UTSNamespace != UtsNamespaceHost {
-		// If no hostname is set, default to first 12 characters of the container ID.
 		hostname := m.netOpts.Hostname
 		if hostname == "" {
-			hostname = containerID
-			if len(hostname) > 12 {
-				hostname = hostname[0:12]
+			// Hostname by default should be the host hostname
+			hostname, err = os.Hostname()
+			if err != nil {
+				log.L.WithError(err).Warn("could not get hostname")
+				// If no hostname is set, default to first 12 characters of the container ID.
+				hostname = containerID
+				if len(hostname) > 12 {
+					hostname = hostname[0:12]
+				}
 			}
 		}
 		m.netOpts.Hostname = hostname
