@@ -310,7 +310,7 @@ func firewallPluginGEQ110(firewallPath string) (bool, error) {
 	return ver.GreaterThan(ver110) || ver.Equal(ver110), nil
 }
 
-// guesssFirewallPluginVersion guess the version of the CNI firewall plugin (not the version of the implemented CNI spec).
+// guessFirewallPluginVersion guess the version of the CNI firewall plugin (not the version of the implemented CNI spec).
 //
 // stderr is like "CNI firewall plugin v1.1.0\n", or "CNI firewall plugin version unknown\n"
 func guessFirewallPluginVersion(stderr string) (*semver.Version, error) {
