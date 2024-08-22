@@ -290,7 +290,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		parts := strings.SplitN(host, ":", 2)
 		// If the IP Address is a string called "host-gateway", replace this value with the IP address stored
 		// in the daemon level HostGateway IP config variable.
-		if parts[1] == dockeropts.HostGatewayName {
+		if len(parts) == 2 && parts[1] == dockeropts.HostGatewayName {
 			if options.GOptions.HostGatewayIP == "" {
 				return nil, nil, fmt.Errorf("unable to derive the IP value for host-gateway")
 			}
