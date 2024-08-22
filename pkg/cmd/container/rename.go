@@ -22,6 +22,7 @@ import (
 	"runtime"
 
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -78,7 +79,8 @@ func renameContainer(ctx context.Context, container containerd.Container, newNam
 	}
 	if runtime.GOOS == "linux" {
 		if err := hostst.Update(ns, container.ID(), newName); err != nil {
-			return err
+			log.G(ctx).WithError(err).Warn("failed to update host networking definitions " +
+				"- if your container is using network 'none', this is expected - otherwise, please report this as a bug")
 		}
 	}
 	labels := map[string]string{
