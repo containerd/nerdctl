@@ -99,8 +99,6 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	switch event {
 	case "createRuntime":
 		return onCreateRuntime(opts)
-	case "startContainer":
-		return onStartContainer(opts)
 	case "postStop":
 		return onPostStop(opts)
 	default:
@@ -486,18 +484,11 @@ func applyNetworkSettings(opts *handlerOpts) error {
 func onCreateRuntime(opts *handlerOpts) error {
 	loadAppArmor()
 
-	if opts.cni != nil {
-		return applyNetworkSettings(opts)
-	}
-	return nil
-}
-
-func onStartContainer(opts *handlerOpts) error {
 	name := opts.state.Annotations[labels.Name]
 	ns := opts.state.Annotations[labels.Namespace]
 	namst, err := namestore.New(opts.dataStore, ns)
 	if err != nil {
-		log.L.WithError(err).Error("failed opening the namestore in onStartContainer")
+		log.L.WithError(err).Error("failed opening the namestore in onCreateRuntime")
 	} else if err := namst.Acquire(name, opts.state.ID); err != nil {
 		log.L.WithError(err).Error("failed re-acquiring name - see https://github.com/containerd/nerdctl/issues/2992")
 	}
