@@ -37,6 +37,7 @@ import (
 	"github.com/containerd/containerd/v2/core/runtime/restart"
 	"github.com/containerd/containerd/v2/pkg/cio"
 	"github.com/containerd/containerd/v2/pkg/oci"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
@@ -371,6 +372,13 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
+		// NOTE: NotFound doesn't mean that container hasn't started.
+		// In docker/CRI-containerd plugin, the task will be deleted
+		// when it exits. So, the status will be "created" for this
+		// case.
+		if errdefs.IsNotFound(err) {
+			return nil
+		}
 		return err
 	}
 
