@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"regexp"
 	"runtime"
 	"strings"
@@ -421,6 +422,24 @@ func TestRunDNS(t *testing.T) {
 	cmd.AssertOutContains("nameserver 8.8.8.8\n")
 	cmd.AssertOutContains("search test\n")
 	cmd.AssertOutContains("options attempts:10\n")
+}
+
+func TestRunNetworkHostHostname(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	hostname, err := os.Hostname()
+	assert.NilError(t, err)
+	hostname = hostname + "\n"
+	base.Cmd("run", "--rm", "--network", "host", testutil.CommonImage, "hostname").AssertOutExactly(hostname)
+	base.Cmd("run", "--rm", "--network", "host", testutil.CommonImage, "sh", "-euxc", "echo $HOSTNAME").AssertOutExactly(hostname)
+	base.Cmd("run", "--rm", "--network", "host", "--hostname", "override", testutil.CommonImage, "hostname").AssertOutExactly("override\n")
+	base.Cmd("run", "--rm", "--network", "host", "--hostname", "override", testutil.CommonImage, "sh", "-euxc", "echo $HOSTNAME").AssertOutExactly("override\n")
+}
+
+func TestRunNetworkHost2613(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	base.Cmd("run", "--rm", "--add-host", "foo:1.2.3.4", testutil.CommonImage, "getent", "hosts", "foo").AssertOutExactly("1.2.3.4           foo  foo\n")
 }
 
 func TestSharedNetworkStack(t *testing.T) {

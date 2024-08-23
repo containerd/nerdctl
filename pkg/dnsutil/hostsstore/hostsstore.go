@@ -89,10 +89,10 @@ func DeallocHostsFile(dataStore, ns, id string) error {
 
 func NewStore(dataStore string) (Store, error) {
 	store := &store{
-		dataStore: dataStore,
-		hostsD:    filepath.Join(dataStore, hostsDirBasename),
+		dataStore:      dataStore,
+		hostsDirectory: filepath.Join(dataStore, hostsDirBasename),
 	}
-	return store, os.MkdirAll(store.hostsD, 0700)
+	return store, os.MkdirAll(store.hostsDirectory, 0700)
 }
 
 type Meta struct {
@@ -113,8 +113,8 @@ type Store interface {
 type store struct {
 	// dataStore is /var/lib/nerdctl/<ADDRHASH>
 	dataStore string
-	// hostsD is /var/lib/nerdctl/<ADDRHASH>/etchosts
-	hostsD string
+	// hostsDirectory is /var/lib/nerdctl/<ADDRHASH>/etchosts
+	hostsDirectory string
 }
 
 func (x *store) Acquire(meta Meta) error {
@@ -127,20 +127,20 @@ func (x *store) Acquire(meta Meta) error {
 		if err != nil {
 			return err
 		}
-		metaPath := filepath.Join(x.hostsD, meta.Namespace, meta.ID, metaJSON)
+		metaPath := filepath.Join(x.hostsDirectory, meta.Namespace, meta.ID, metaJSON)
 		if err := os.WriteFile(metaPath, metaB, 0644); err != nil {
 			return err
 		}
-		return newUpdater(meta.ID, x.hostsD).update()
+		return newUpdater(meta.ID, x.hostsDirectory).update()
 	}
-	return lockutil.WithDirLock(x.hostsD, fn)
+	return lockutil.WithDirLock(x.hostsDirectory, fn)
 }
 
 // Release is triggered by Poststop hooks.
 // It is called after the containerd task is deleted but before the delete operation returns.
 func (x *store) Release(ns, id string) error {
 	fn := func() error {
-		metaPath := filepath.Join(x.hostsD, ns, id, metaJSON)
+		metaPath := filepath.Join(x.hostsDirectory, ns, id, metaJSON)
 		if _, err := os.Stat(metaPath); errors.Is(err, os.ErrNotExist) {
 			return nil
 		}
@@ -151,14 +151,14 @@ func (x *store) Release(ns, id string) error {
 		if err := os.RemoveAll(metaPath); err != nil {
 			return err
 		}
-		return newUpdater(id, x.hostsD).update()
+		return newUpdater(id, x.hostsDirectory).update()
 	}
-	return lockutil.WithDirLock(x.hostsD, fn)
+	return lockutil.WithDirLock(x.hostsDirectory, fn)
 }
 
 func (x *store) Update(ns, id, newName string) error {
 	fn := func() error {
-		metaPath := filepath.Join(x.hostsD, ns, id, metaJSON)
+		metaPath := filepath.Join(x.hostsDirectory, ns, id, metaJSON)
 		metaB, err := os.ReadFile(metaPath)
 		if err != nil {
 			return err
@@ -175,7 +175,7 @@ func (x *store) Update(ns, id, newName string) error {
 		if err := os.WriteFile(metaPath, metaB, 0644); err != nil {
 			return err
 		}
-		return newUpdater(meta.ID, x.hostsD).update()
+		return newUpdater(meta.ID, x.hostsDirectory).update()
 	}
-	return lockutil.WithDirLock(x.hostsD, fn)
+	return lockutil.WithDirLock(x.hostsDirectory, fn)
 }

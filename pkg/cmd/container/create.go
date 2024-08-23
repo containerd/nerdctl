@@ -290,7 +290,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		parts := strings.SplitN(host, ":", 2)
 		// If the IP Address is a string called "host-gateway", replace this value with the IP address stored
 		// in the daemon level HostGateway IP config variable.
-		if parts[1] == dockeropts.HostGatewayName {
+		if len(parts) == 2 && parts[1] == dockeropts.HostGatewayName {
 			if options.GOptions.HostGatewayIP == "" {
 				return nil, nil, fmt.Errorf("unable to derive the IP value for host-gateway")
 			}
@@ -316,10 +316,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 
 	c, containerErr := client.NewContainer(ctx, id, cOpts...)
 	var netSetupErr error
-	// NOTE: on non-Windows platforms, network setup is performed by OCI hooks.
-	// Seeing as though Windows does not currently support OCI hooks, we must explicitly
-	// perform network setup/teardown in the main nerdctl executable.
-	if containerErr == nil && runtime.GOOS == "windows" {
+	if containerErr == nil {
 		netSetupErr = netManager.SetupNetworking(ctx, id)
 		if netSetupErr != nil {
 			log.G(ctx).WithError(netSetupErr).Warnf("networking setup error has occurred")
