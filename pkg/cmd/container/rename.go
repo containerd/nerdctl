@@ -68,25 +68,40 @@ func Rename(ctx context.Context, client *containerd.Client, containerID, newCont
 }
 
 func renameContainer(ctx context.Context, container containerd.Container, newName, ns string,
-	namst namestore.NameStore, hostst hostsstore.Store) error {
+	namst namestore.NameStore, hostst hostsstore.Store) (err error) {
 	l, err := container.Labels(ctx)
 	if err != nil {
 		return err
 	}
 	name := l[labels.Name]
-	if err := namst.Rename(name, container.ID(), newName); err != nil {
+
+	id := container.ID()
+
+	defer func() {
+		// If we errored, rollback whatever we can
+		if err != nil {
+			lbls := map[string]string{
+				labels.Name: name,
+			}
+			namst.Rename(newName, id, name)
+			hostst.Update(ns, id, name)
+			container.SetLabels(ctx, lbls)
+		}
+	}()
+
+	if err = namst.Rename(name, id, newName); err != nil {
 		return err
 	}
 	if runtime.GOOS == "linux" {
-		if err := hostst.Update(ns, container.ID(), newName); err != nil {
+		if err = hostst.Update(ns, id, newName); err != nil {
 			log.G(ctx).WithError(err).Warn("failed to update host networking definitions " +
 				"- if your container is using network 'none', this is expected - otherwise, please report this as a bug")
 		}
 	}
-	labels := map[string]string{
+	lbls := map[string]string{
 		labels.Name: newName,
 	}
-	if _, err = container.SetLabels(ctx, labels); err != nil {
+	if _, err = container.SetLabels(ctx, lbls); err != nil {
 		return err
 	}
 	return nil
