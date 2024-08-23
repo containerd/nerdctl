@@ -293,40 +293,58 @@ canary::build::integration(){
     docker_args+=(--build-arg "${shortsafename}_VERSION=$higher_readable")
   done
 
-
-  GO_VERSION="$(curl -fsSL "https://go.dev/dl/?mode=json&include=all" | jq -rc .[0].version)"
-  GO_VERSION="${GO_VERSION##*go}"
-  # If a release candidate, docker hub may not have the corresponding image yet.
-  # So, soften the version to just "rc", as they provide that as an alias to the latest available rc on their side
-  # See https://github.com/containerd/nerdctl/issues/3223
-  ! grep -Eq "rc[0-9]+$" <<<"$GO_VERSION" || GO_VERSION="${GO_VERSION%rc[0-9]*}-rc"
-  docker_args+=(--build-arg "GO_VERSION=$GO_VERSION")
+  hub_available_go_version="$(canary::golang::hublatest)"
+  if [ "$hub_available_go_version" != "" ]; then
+    docker_args+=(--build-arg "GO_VERSION=$hub_available_go_version")
+  fi
 
   log::debug "${docker_args[*]} ."
   "${docker_args[@]}" "."
 }
 
+# Hub usually has a delay before available golang version show-up. This method will find the latest available one.
+# See
+# - https://github.com/containerd/nerdctl/issues/3224
+# - https://github.com/containerd/nerdctl/issues/3306
+canary::golang::hublatest(){
+  local hub_tags
+  local go_version
+  local available_version=""
+  local index
+
+  hub_tags="$(http::get /dev/stdout "https://registry-1.docker.io/v2/library/golang/tags/list" -H "Authorization: Bearer $(http::get /dev/stdout "https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Alibrary%2Fgolang%3Apull" | jq  -rc .access_token)")"
+
+  index=0
+  while [ "$available_version" == "" ] && [ "$index" -lt 5 ]; do
+    go_version="$(http::get /dev/stdout "https://go.dev/dl/?mode=json&include=all" | jq -rc .[$index].version)"
+    go_version="${go_version##*go}"
+    available_version="$(printf "%s" "$hub_tags" | jq -rc ".tags[] | select(.==\"$go_version\")")"
+    ((index++))
+  done || true
+
+  printf "%s" "$available_version"
+}
 
 canary::golang::latest(){
-    # Enable extended globbing features to use advanced pattern matching
-    shopt -s extglob
+  # Enable extended globbing features to use advanced pattern matching
+  shopt -s extglob
 
-    # Get latest golang version and split it in components
-    norm=()
-    while read -r line; do
-      line_trimmed="${line//+([[:space:]])/}"
-      norm+=("$line_trimmed")
-    done < \
-      <(sed -E 's/^go([0-9]+)[.]([0-9]+)([.]([0-9]+))?(([a-z]+)([0-9]+))?/\1.\2\n\4\n\6\n\7/i' \
-        <(curl -fsSL "https://go.dev/dl/?mode=json&include=all" | jq -rc .[0].version) \
-      )
+  # Get latest golang version and split it in components
+  norm=()
+  while read -r line; do
+    line_trimmed="${line//+([[:space:]])/}"
+    norm+=("$line_trimmed")
+  done < \
+    <(sed -E 's/^go([0-9]+)[.]([0-9]+)([.]([0-9]+))?(([a-z]+)([0-9]+))?/\1.\2\n\4\n\6\n\7/i' \
+      <(curl -fsSL "https://go.dev/dl/?mode=json&include=all" | jq -rc .[0].version) \
+    )
 
-    # Serialize version, making sure we have a patch version, and separate possible rcX into .rc-X
-    [ "${norm[1]}" != "" ] || norm[1]="0"
-    norm[1]=".${norm[1]}"
-    [ "${norm[2]}" == "" ] || norm[2]="-${norm[2]}"
-    [ "${norm[3]}" == "" ] || norm[3]=".${norm[3]}"
-    # Save it
-    IFS=
-    echo "GO_VERSION=${norm[*]}" >> "$GITHUB_ENV"
+  # Serialize version, making sure we have a patch version, and separate possible rcX into .rc-X
+  [ "${norm[1]}" != "" ] || norm[1]="0"
+  norm[1]=".${norm[1]}"
+  [ "${norm[2]}" == "" ] || norm[2]="-${norm[2]}"
+  [ "${norm[3]}" == "" ] || norm[3]=".${norm[3]}"
+  # Save it
+  IFS=
+  echo "GO_VERSION=${norm[*]}" >> "$GITHUB_ENV"
 }
