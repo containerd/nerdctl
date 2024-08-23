@@ -509,12 +509,6 @@ func withNerdctlOCIHook(cmd string, args []string) (oci.SpecOpts, error) {
 			Args: crArgs,
 			Env:  os.Environ(),
 		})
-		scArgs := append(args, "startContainer")
-		s.Hooks.CreateRuntime = append(s.Hooks.StartContainer, specs.Hook{
-			Path: cmd,
-			Args: scArgs,
-			Env:  os.Environ(),
-		})
 		argsCopy := append([]string(nil), args...)
 		psArgs := append(argsCopy, "postStop")
 		s.Hooks.Poststop = append(s.Hooks.Poststop, specs.Hook{
