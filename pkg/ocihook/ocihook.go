@@ -443,6 +443,18 @@ func applyNetworkSettings(opts *handlerOpts) error {
 		ExtraHosts: opts.extraHosts,
 		Name:       opts.state.Annotations[labels.Name],
 	}
+
+	// When containerd gets bounced, containers that were previously running and that are restarted will go again
+	// through onCreateRuntime (*unlike* in a normal stop/start flow).
+	// As such, a container may very well have an ip already. The bridge plugin would thus refuse to loan a new one
+	// and error out, thus making the onCreateRuntime hook fail. In turn, runc (or containerd) will mis-interpret this,
+	// and subsequently call onPostStop (although the container will not get deleted), and we will release the name...
+	// leading to a bricked system where multiple containers may share the same name.
+	// Thus, we do pre-emptively clean things up - error is not checked, as in the majority of cases, that would
+	// legitimately error (and that does not matter)
+	// See https://github.com/containerd/nerdctl/issues/3355
+	_ = opts.cni.Remove(ctx, opts.fullID, "", namespaceOpts...)
+
 	cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, namespaceOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to call cni.Setup: %w", err)
