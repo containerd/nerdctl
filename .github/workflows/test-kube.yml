@@ -1,5 +1,5 @@
-# This pipeline purpose is solely meant to run a subset of our test suites against a kube cluster
-name: kube
+# This pipeline purpose is solely meant to run a subset of our test suites against a kubernetes cluster
+name: kubernetes
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 1
-      - name: "Run Kube integration tests"
+      - name: "Run Kubernetes integration tests"
         run: |
-          ./hack/build-integration-kube.sh
-          sudo ./_output/nerdctl exec nerdctl-test-control-plane bash -c -- 'export TMPDIR="$HOME"/tmp; mkdir -p "$TMPDIR"; cd /nerdctl-source; /usr/local/go/bin/go test ./cmd/nerdctl/ -test.only-kube'
+          ./hack/build-integration-kubernetes.sh
+          sudo ./_output/nerdctl exec nerdctl-test-control-plane bash -c -- 'export TMPDIR="$HOME"/tmp; mkdir -p "$TMPDIR"; cd /nerdctl-source; /usr/local/go/bin/go test ./cmd/nerdctl/ -test.only-kubernetes'

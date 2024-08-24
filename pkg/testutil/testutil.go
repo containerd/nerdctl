@@ -48,16 +48,16 @@ import (
 )
 
 type Base struct {
-	T                testing.TB
-	Target           Target
-	DaemonIsKillable bool
-	EnableIPv6       bool
-	IPv6Compatible   bool
-	EnableKube       bool
-	KubeCompatible   bool
-	Binary           string
-	Args             []string
-	Env              []string
+	T                    testing.TB
+	Target               Target
+	DaemonIsKillable     bool
+	EnableIPv6           bool
+	IPv6Compatible       bool
+	EnableKubernetes     bool
+	KubernetesCompatible bool
+	Binary               string
+	Args                 []string
+	Env                  []string
 }
 
 // WithStdin sets the standard input of Cmd to the specified reader
@@ -550,7 +550,7 @@ func M(m *testing.M) {
 	flag.StringVar(&flagTestTarget, "test.target", Nerdctl, "target to test")
 	flag.BoolVar(&flagTestKillDaemon, "test.allow-kill-daemon", false, "enable tests that kill the daemon")
 	flag.BoolVar(&flagTestIPv6, "test.only-ipv6", false, "enable tests on IPv6")
-	flag.BoolVar(&flagTestKube, "test.only-kube", false, "enable tests on Kube")
+	flag.BoolVar(&flagTestKube, "test.only-kubernetes", false, "enable tests on Kubernetes")
 	flag.Parse()
 	fmt.Fprintf(os.Stderr, "test target: %q\n", flagTestTarget)
 	os.Exit(m.Run())
@@ -567,7 +567,7 @@ func GetEnableIPv6() bool {
 	return flagTestIPv6
 }
 
-func GetEnableKube() bool {
+func GetEnableKubernetes() bool {
 	return flagTestKube
 }
 
@@ -701,7 +701,7 @@ func NewBaseWithIPv6Compatible(t *testing.T) *Base {
 	return newBase(t, Namespace, true, false)
 }
 
-func NewBaseForKube(t *testing.T) *Base {
+func NewBaseForKubernetes(t *testing.T) *Base {
 	base := newBase(t, "k8s.io", false, true)
 	// NOTE: kubectl namespaces are not the same as containerd namespaces.
 	// We still want kube test objects segregated in their own Kube API namespace.
@@ -713,26 +713,26 @@ func NewBase(t *testing.T) *Base {
 	return newBase(t, Namespace, false, false)
 }
 
-func newBase(t *testing.T, ns string, ipv6Compatible bool, kubeCompatible bool) *Base {
+func newBase(t *testing.T, ns string, ipv6Compatible bool, kubernetesCompatible bool) *Base {
 	base := &Base{
-		T:                t,
-		Target:           GetTarget(),
-		DaemonIsKillable: GetDaemonIsKillable(),
-		EnableIPv6:       GetEnableIPv6(),
-		IPv6Compatible:   ipv6Compatible,
-		EnableKube:       GetEnableKube(),
-		KubeCompatible:   kubeCompatible,
-		Env:              os.Environ(),
+		T:                    t,
+		Target:               GetTarget(),
+		DaemonIsKillable:     GetDaemonIsKillable(),
+		EnableIPv6:           GetEnableIPv6(),
+		IPv6Compatible:       ipv6Compatible,
+		EnableKubernetes:     GetEnableKubernetes(),
+		KubernetesCompatible: kubernetesCompatible,
+		Env:                  os.Environ(),
 	}
 	if base.EnableIPv6 && !base.IPv6Compatible {
 		t.Skip("runner skips non-IPv6 compatible tests in the IPv6 environment")
 	} else if !base.EnableIPv6 && base.IPv6Compatible {
 		t.Skip("runner skips IPv6 compatible tests in the non-IPv6 environment")
 	}
-	if base.EnableKube && !base.KubeCompatible {
-		t.Skip("runner skips non-kube compatible tests in the kube environment")
-	} else if !base.EnableKube && base.KubeCompatible {
-		t.Skip("runner skips kube compatible tests in the non-kube environment")
+	if base.EnableKubernetes && !base.KubernetesCompatible {
+		t.Skip("runner skips non-Kubernetes compatible tests in the Kubernetes environment")
+	} else if !base.EnableKubernetes && base.KubernetesCompatible {
+		t.Skip("runner skips Kubernetes compatible tests in the non-Kubernetes environment")
 	}
 	var err error
 	switch base.Target {
