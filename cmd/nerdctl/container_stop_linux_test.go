@@ -135,3 +135,25 @@ func TestStopCleanupForwards(t *testing.T) {
 	base.Cmd("stop", testContainerName).AssertOK()
 	assert.Equal(t, iptablesutil.ForwardExists(t, ipt, chain, containerIP, hostPort), false)
 }
+
+// Regression test for https://github.com/containerd/nerdctl/issues/3353
+func TestStopCreated(t *testing.T) {
+	t.Parallel()
+
+	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+
+	tearDown := func() {
+		base.Cmd("rm", "-f", tID).Run()
+	}
+
+	setup := func() {
+		base.Cmd("create", "--name", tID, testutil.CommonImage).AssertOK()
+	}
+
+	t.Cleanup(tearDown)
+	tearDown()
+	setup()
+
+	base.Cmd("stop", tID).AssertOK()
+}

@@ -56,7 +56,11 @@ func (x *nameStore) Acquire(name, id string) error {
 	}
 	fn := func() error {
 		fileName := filepath.Join(x.dir, name)
-		if b, err := os.ReadFile(fileName); err == nil {
+		// If containerd was bounced, previously running containers that would get restarted will go again through
+		// onCreateRuntime (unlike in a "normal" stop/start flow).
+		// As such, we need to allow reacquiring by the same id
+		// See: https://github.com/containerd/nerdctl/issues/3354
+		if b, err := os.ReadFile(fileName); err == nil && string(b) != id {
 			return fmt.Errorf("name %q is already used by ID %q", name, string(b))
 		}
 		return os.WriteFile(fileName, []byte(id), 0600)
