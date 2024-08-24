@@ -514,10 +514,9 @@ func onCreateRuntime(opts *handlerOpts) error {
 	// Set StartedAt
 	lf := state.NewLifecycleState(opts.state.Annotations[labels.StateDir])
 	return lf.WithLock(func() error {
-		err := lf.Load()
-		if err != nil {
-			return err
-		}
+		// Errors are voluntarily ignored here, as they should not be fatal.
+		// The lifecycle struct is also already warning about the issue.
+		_ = lf.Load()
 		lf.StartedAt = time.Now()
 		return lf.Save()
 	})
