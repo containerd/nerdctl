@@ -51,8 +51,9 @@ func NewLifecycleState(stateDir string) *LifecycleState {
 }
 
 type LifecycleState struct {
-	stateDir  string
-	StartedAt time.Time `json:"started_at"`
+	stateDir    string
+	StartedAt   time.Time `json:"started_at"`
+	CreateError bool      `json:"create_error"`
 }
 
 func (lf *LifecycleState) WithLock(fun func() error) error {
