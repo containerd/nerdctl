@@ -65,7 +65,6 @@ jobs:
       - name: "Run unit tests"
         run: go test -v ./pkg/...
       - name: "Run integration tests"
-        continue-on-error: true
         run: docker run -t --rm --privileged test-integration
 
   windows:
@@ -113,5 +112,4 @@ jobs:
           ctrdVersion: ${{ env.CONTAINERD_VERSION }}
         run: powershell hack/configure-windows-ci.ps1
       - name: "Run integration tests"
-        continue-on-error: true
         run: go test -v ./cmd/...
