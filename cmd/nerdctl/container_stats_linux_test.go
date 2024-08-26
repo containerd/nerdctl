@@ -45,3 +45,31 @@ func TestStats(t *testing.T) {
 	base.Cmd("container", "stats", "--no-stream").AssertOutContains(testContainerName)
 	base.Cmd("container", "stats", "--no-stream", testContainerName).AssertOK()
 }
+
+func TestStatsMemoryLimitNotSet(t *testing.T) {
+	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
+		t.Skip("test skipped for rootless containers on cgroup v1")
+	}
+	testContainerName := testutil.Identifier(t)[:12]
+
+	base := testutil.NewBase(t)
+	defer base.Cmd("rm", "-f", testContainerName).Run()
+
+	base.Cmd("run", "-d", "--name", testContainerName, testutil.AlpineImage, "sleep", "10").AssertOK()
+	base.Cmd("stats", "--no-stream").AssertOutNotContains("16EiB")
+	base.Cmd("stats", "--no-stream", testContainerName).AssertOK()
+}
+
+func TestStatsMemoryLimitSet(t *testing.T) {
+	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
+		t.Skip("test skipped for rootless containers on cgroup v1")
+	}
+	testContainerName := testutil.Identifier(t)[:12]
+
+	base := testutil.NewBase(t)
+	defer base.Cmd("rm", "-f", testContainerName).Run()
+
+	base.Cmd("run", "-d", "--name", testContainerName, "--memory", "1g", testutil.AlpineImage, "sleep", "10").AssertOK()
+	base.Cmd("stats", "--no-stream").AssertOutContains("1GiB")
+	base.Cmd("stats", "--no-stream", testContainerName).AssertOK()
+}
