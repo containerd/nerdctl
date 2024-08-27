@@ -8,7 +8,7 @@ go 1.22.0
 // We should still move back to upstream in the future, and remove our copy.
 
 require (
-	github.com/Masterminds/semver/v3 v3.2.1
+	github.com/Masterminds/semver/v3 v3.3.0
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/Microsoft/hcsshim v0.12.6
 	github.com/compose-spec/compose-go/v2 v2.1.6
