@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -170,16 +171,23 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore string,
 	processLogFunc := func(reader io.Reader, dataChan chan string) {
 		defer wg.Done()
 		defer close(dataChan)
-		scanner := bufio.NewScanner(reader)
-		for scanner.Scan() {
-			if scanner.Err() != nil {
-				log.L.Errorf("failed to read log: %v", scanner.Err())
-				return
+		r := bufio.NewReader(reader)
+
+		var err error
+
+		for err == nil {
+			var s string
+			s, err = r.ReadString('\n')
+
+			if len(s) > 0 {
+				dataChan <- strings.TrimSuffix(s, "\n")
 			}
-			dataChan <- scanner.Text()
+
+			if err != nil && err != io.EOF {
+				log.L.WithError(err).Error("failed to read log")
+			}
 		}
 	}
-
 	go processLogFunc(stdoutR, stdout)
 	go processLogFunc(stderrR, stderr)
 	go func() {
