@@ -25,8 +25,17 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
+/*
+This test below is meant to assert that https://github.com/containerd/nerdctl/issues/827 is NOT fixed.
+Obviously, once we fix the issue, it should be replaced by something that assert it works.
+Unfortunately, this is flaky.
+It will regularly succeed or fail, making random PR fail the Kube check.
+*/
+
 func TestKubeCommitPush(t *testing.T) {
 	t.Parallel()
+
+	t.Skip("Test that confirm that #827 is still broken is too flaky")
 
 	base := testutil.NewBaseForKubernetes(t)
 	tID := testutil.Identifier(t)
@@ -62,6 +71,7 @@ func TestKubeCommitPush(t *testing.T) {
 			"change the expectation to 'success'.")
 
 		base.Cmd("commit", containerID, "registry.example.com/my-app:v1").AssertOK()
+		// See note above.
 		base.Cmd("push", "registry.example.com/my-app:v1").Assert(icmd.Expected{
 			ExitCode: 1,
 			Err:      "failed to create a tmp single-platform image",
