@@ -162,6 +162,8 @@ type ContainerCreateOptions struct {
 	Umask string
 	// GroupAdd specifies additional groups to join
 	GroupAdd []string
+	// UserNS specifies the user namespace mode for the container
+	UserNS string
 	// #endregion
 
 	// #region for security flags

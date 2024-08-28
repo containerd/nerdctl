@@ -241,6 +241,10 @@ func processContainerCreateOptions(cmd *cobra.Command) (types.ContainerCreateOpt
 	if err != nil {
 		return opt, err
 	}
+	opt.UserNS, err = cmd.Flags().GetString("userns")
+	if err != nil {
+		return
+	}
 	// #endregion
 
 	// #region for security flags
