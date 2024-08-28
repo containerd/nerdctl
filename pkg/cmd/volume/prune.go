@@ -19,10 +19,12 @@ package volume
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	containerd "github.com/containerd/containerd/v2/client"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
 
@@ -33,60 +35,50 @@ func Prune(ctx context.Context, client *containerd.Client, options types.VolumeP
 	if err != nil {
 		return err
 	}
-	err = volStore.Lock()
-	if err != nil {
-		return err
-	}
-	defer volStore.Unlock()
 
-	// Get containers and see which volumes are used
-	containers, err := client.Containers(ctx)
-	if err != nil {
-		return err
-	}
+	var toRemove []string // nolint: prealloc
 
-	usedVolumesList, err := usedVolumes(ctx, containers)
-	if err != nil {
-		return err
-	}
-	var removeNames []string // nolint: prealloc
-
-	// Get the list of known volumes from the store
-	volumes, err := volStore.List(false)
-	if err != nil {
-		return err
-	}
-
-	// Iterate through the known volumes, making sure we do not remove in-use volumes
-	// but capture as well anon volumes (if --all was passed)
-	for _, volume := range volumes {
-		if _, ok := usedVolumesList[volume.Name]; ok {
-			continue
+	err = volStore.Prune(func(volumes []*native.Volume) ([]string, error) {
+		// Get containers and see which volumes are used
+		containers, err := client.Containers(ctx)
+		if err != nil {
+			return nil, err
 		}
-		if !options.All {
-			if volume.Labels == nil {
+
+		usedVolumesList, err := usedVolumes(ctx, containers)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, volume := range volumes {
+			if _, ok := usedVolumesList[volume.Name]; ok {
 				continue
 			}
-			val, ok := (*volume.Labels)[labels.AnonymousVolumes]
-			//skip the named volume and only remove the anonymous volume
-			if !ok || val != "" {
-				continue
+			if !options.All {
+				if volume.Labels == nil {
+					continue
+				}
+				val, ok := (*volume.Labels)[labels.AnonymousVolumes]
+				// skip the named volume and only remove the anonymous volume
+				if !ok || val != "" {
+					continue
+				}
 			}
+			toRemove = append(toRemove, volume.Name)
 		}
-		removeNames = append(removeNames, volume.Name)
-	}
 
-	// Remove the volumes from that list
-	removedNames, _, err := volStore.Remove(removeNames)
+		return toRemove, nil
+	})
+
 	if err != nil {
 		return err
 	}
-	if len(removedNames) > 0 {
+
+	if len(toRemove) > 0 {
 		fmt.Fprintln(options.Stdout, "Deleted Volumes:")
-		for _, name := range removedNames {
-			fmt.Fprintln(options.Stdout, name)
-		}
+		fmt.Fprintln(options.Stdout, strings.Join(toRemove, "\n"))
 		fmt.Fprintln(options.Stdout, "")
 	}
+
 	return nil
 }

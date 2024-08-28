@@ -44,6 +44,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/v2/pkg/ocihook/state"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/store"
 )
 
 const (
@@ -408,7 +409,7 @@ func applyNetworkSettings(opts *handlerOpts) error {
 		return err
 	}
 	ctx := context.Background()
-	hs, err := hostsstore.NewStore(opts.dataStore)
+	hs, err := hostsstore.New(opts.dataStore, opts.state.Annotations[labels.Namespace])
 	if err != nil {
 		return err
 	}
@@ -436,7 +437,6 @@ func applyNetworkSettings(opts *handlerOpts) error {
 		gocni.WithArgs("NERDCTL_CNI_DHCP_HOSTNAME", opts.state.Annotations[labels.Hostname]),
 	)
 	hsMeta := hostsstore.Meta{
-		Namespace:  opts.state.Annotations[labels.Namespace],
 		ID:         opts.state.ID,
 		Networks:   make(map[string]*types100.Result, len(opts.cniNames)),
 		Hostname:   opts.state.Annotations[labels.Hostname],
@@ -510,30 +510,46 @@ func onCreateRuntime(opts *handlerOpts) error {
 		netError = applyNetworkSettings(opts)
 	}
 
-	lf := state.NewLifecycleState(opts.state.Annotations[labels.StateDir])
+	// Set StartedAt and CreateError
+	lf, err := state.New(opts.state.Annotations[labels.StateDir])
+	if err != nil {
+		return err
+	}
 
-	return errors.Join(netError, lf.WithLock(func() error {
-		// Errors are voluntarily ignored here, as they should not be fatal.
-		// The lifecycle struct is also already warning about the issue.
-		_ = lf.Load()
+	err = lf.Transform(func(lf *state.Store) error {
 		lf.StartedAt = time.Now()
 		lf.CreateError = netError != nil
-		return lf.Save()
-	}))
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return netError
 }
 
 func onPostStop(opts *handlerOpts) error {
-	// See https://github.com/containerd/nerdctl/issues/3357
-	// Check if we actually errored during runtimeCreate
-	// If that is the case, CreateError is set, and we are in postStop while the container will NOT be deleted (see ticket).
-	// In that case, do NOT treat this as a deletion, as the container is still there.
-	// Reset CreateError, and return.
-	lf := state.NewLifecycleState(opts.state.Annotations[labels.StateDir])
-	if lf.WithLock(lf.Load) == nil {
-		if lf.CreateError {
-			lf.CreateError = false
-			return lf.WithLock(lf.Save)
-		}
+	lf, err := state.New(opts.state.Annotations[labels.StateDir])
+	if err != nil {
+		return err
+	}
+
+	var shouldExit bool
+	err = lf.Transform(func(lf *state.Store) error {
+		// See https://github.com/containerd/nerdctl/issues/3357
+		// Check if we actually errored during runtimeCreate
+		// If that is the case, CreateError is set, and we are in postStop while the container will NOT be deleted (see ticket).
+		// Thus, do NOT treat this as a deletion, as the container is still there.
+		// Reset CreateError, and return.
+		shouldExit = lf.CreateError
+		lf.CreateError = false
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if shouldExit {
+		return nil
 	}
 
 	ctx := context.Background()
@@ -586,11 +602,11 @@ func onPostStop(opts *handlerOpts) error {
 			log.L.WithError(err).Errorf("failed to call cni.Remove")
 			return err
 		}
-		hs, err := hostsstore.NewStore(opts.dataStore)
+		hs, err := hostsstore.New(opts.dataStore, ns)
 		if err != nil {
 			return err
 		}
-		if err := hs.Release(ns, opts.state.ID); err != nil {
+		if err := hs.Release(opts.state.ID); err != nil {
 			return err
 		}
 	}
@@ -599,7 +615,8 @@ func onPostStop(opts *handlerOpts) error {
 		return err
 	}
 	name := opts.state.Annotations[labels.Name]
-	if err := namst.Release(name, opts.state.ID); err != nil {
+	// Double-releasing may happen with containers started with --rm, so, ignore NotFound errors
+	if err := namst.Release(name, opts.state.ID); err != nil && !errors.Is(err, store.ErrNotFound) {
 		return fmt.Errorf("failed to release container name %s: %w", name, err)
 	}
 	return nil

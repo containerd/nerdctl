@@ -42,9 +42,5 @@ func ValidateDockerCompat(s string) error {
 		return fmt.Errorf("identifier %q must match pattern %q: %w", s, AllowedIdentfierChars, errdefs.ErrInvalidArgument)
 	}
 
-	if err := validatePlatformSpecific(s); err != nil {
-		return err
-	}
-
 	return nil
 }

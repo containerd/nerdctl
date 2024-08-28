@@ -128,6 +128,7 @@ func (c *Composer) downVolume(ctx context.Context, shortName string) error {
 	}
 	// shortName is like "db_data", fullName is like "compose-wordpress_db_data"
 	fullName := vol.Name
+	// FIXME: this is racy. See note in up_volume.go
 	volExists, err := c.VolumeExists(fullName)
 	if err != nil {
 		return err

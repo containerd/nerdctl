@@ -230,10 +230,18 @@ func (m *containerNetworkManager) getContainerNetworkFilePaths(containerID strin
 	if err != nil {
 		return "", "", "", err
 	}
+	hostsStore, err := hostsstore.New(dataStore, m.globalOptions.Namespace)
+	if err != nil {
+		return "", "", "", err
+	}
 
 	hostnamePath := filepath.Join(conStateDir, "hostname")
 	resolvConfPath := filepath.Join(conStateDir, "resolv.conf")
-	etcHostsPath := hostsstore.HostsPath(dataStore, m.globalOptions.Namespace, containerID)
+
+	etcHostsPath, err := hostsStore.HostsPath(containerID)
+	if err != nil {
+		return "", "", "", err
+	}
 
 	return hostnamePath, resolvConfPath, etcHostsPath, nil
 }
@@ -380,7 +388,7 @@ func (m *hostNetworkManager) SetupNetworking(ctx context.Context, containerID st
 	}
 
 	// Get the hostsStore
-	hs, err := hostsstore.NewStore(dataStore)
+	hs, err := hostsstore.New(dataStore, container.Labels[labels.Namespace])
 	if err != nil {
 		return err
 	}
@@ -401,7 +409,6 @@ func (m *hostNetworkManager) SetupNetworking(ctx context.Context, containerID st
 
 	// Prep the meta
 	hsMeta := hostsstore.Meta{
-		Namespace:  container.Labels[labels.Namespace],
 		ID:         container.ID,
 		Hostname:   container.Labels[labels.Hostname],
 		ExtraHosts: hosts,
@@ -425,20 +432,20 @@ func (m *hostNetworkManager) CleanupNetworking(ctx context.Context, container co
 		return err
 	}
 
-	// Get the hostsStore
-	hs, err := hostsstore.NewStore(dataStore)
-	if err != nil {
-		return err
-	}
-
 	// Get labels
 	lbls, err := container.Labels(ctx)
 	if err != nil {
 		return err
 	}
 
+	// Get the hostsStore
+	hs, err := hostsstore.New(dataStore, lbls[labels.Namespace])
+	if err != nil {
+		return err
+	}
+
 	// Release
-	if err = hs.Release(lbls[labels.Namespace], container.ID()); err != nil {
+	if err = hs.Release(container.ID()); err != nil {
 		return err
 	}
 
@@ -503,11 +510,20 @@ func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 	resolvConfPath := filepath.Join(stateDir, "resolv.conf")
 	copyFileContent("/etc/resolv.conf", resolvConfPath)
 
-	etcHostsPath, err := hostsstore.AllocHostsFile(dataStore, m.globalOptions.Namespace, containerID)
+	hs, err := hostsstore.New(dataStore, m.globalOptions.Namespace)
 	if err != nil {
 		return nil, nil, err
 	}
-	copyFileContent("/etc/hosts", etcHostsPath)
+
+	content, err := os.ReadFile("/etc/hosts")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	etcHostsPath, err := hs.AllocHostsFile(containerID, content)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	specs := []oci.SpecOpts{
 		oci.WithHostNamespace(specs.NetworkNamespace),

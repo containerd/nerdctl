@@ -99,10 +99,16 @@ func (m *cniNetworkManager) ContainerNetworkingOpts(_ context.Context, container
 	}
 
 	// the content of /etc/hosts is created in OCI Hook
-	etcHostsPath, err := hostsstore.AllocHostsFile(dataStore, m.globalOptions.Namespace, containerID)
+	hs, err := hostsstore.New(dataStore, m.globalOptions.Namespace)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	etcHostsPath, err := hs.AllocHostsFile(containerID, []byte(""))
+	if err != nil {
+		return nil, nil, err
+	}
+
 	opts = append(opts, withCustomResolvConf(resolvConfPath), withCustomHosts(etcHostsPath))
 
 	if m.netOpts.UTSNamespace != UtsNamespaceHost {

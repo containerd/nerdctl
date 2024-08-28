@@ -14,119 +14,167 @@
    limitations under the License.
 */
 
+// Package namestore provides a simple store for containers to exclusively acquire and release names.
+// All methods are safe to use concurrently.
+// Note that locking of the store is done at the namespace level.
+// The namestore is currently used by container create, remove, rename, and as part of the ocihook events cycle.
 package namestore
 
 import (
+	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/identifiers"
-	"github.com/containerd/nerdctl/v2/pkg/lockutil"
+	"github.com/containerd/nerdctl/v2/pkg/store"
 )
 
-func New(dataStore, ns string) (NameStore, error) {
-	dir := filepath.Join(dataStore, "names", ns)
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return nil, err
+// ErrNameStore will wrap all errors here
+var ErrNameStore = errors.New("name-store error")
+
+// New will return a NameStore for a given namespace.
+func New(stateDir, namespace string) (NameStore, error) {
+	if namespace == "" {
+		return nil, errors.Join(ErrNameStore, store.ErrInvalidArgument)
 	}
-	store := &nameStore{
-		dir: dir,
+
+	st, err := store.New(filepath.Join(stateDir, namespace), 0, 0)
+	if err != nil {
+		return nil, errors.Join(ErrNameStore, err)
 	}
-	return store, nil
+
+	return &nameStore{
+		safeStore: st,
+	}, nil
 }
 
+// NameStore allows acquiring, releasing and renaming.
+// "names" must abide by identifiers.ValidateDockerCompat
+// A container cannot release or rename a name it does not own.
+// A container cannot acquire a name that is already owned by another container.
+// Re-acquiring a name does not error and is a no-op.
+// Double releasing a name will error.
+// Note that technically a given container may acquire multiple different names, although this is not
+// something we do in the codebase.
 type NameStore interface {
+	// Acquire exclusively grants `name` to container with `id`.
 	Acquire(name, id string) error
+	// Acquire allows the container owning a specific name to release it
 	Release(name, id string) error
+	// Rename allows the container owning a specific name to change it to newName (if available)
 	Rename(oldName, id, newName string) error
 }
 
 type nameStore struct {
-	dir string
+	safeStore store.Store
 }
 
-func (x *nameStore) Acquire(name, id string) error {
-	if err := identifiers.ValidateDockerCompat(name); err != nil {
-		return fmt.Errorf("invalid name: %w", err)
-	}
-	if strings.TrimSpace(id) != id {
-		return fmt.Errorf("untrimmed ID %q", id)
-	}
-	fn := func() error {
-		fileName := filepath.Join(x.dir, name)
-		if b, err := os.ReadFile(fileName); err == nil {
-			if strings.TrimSpace(string(b)) == "" {
-				// currently acquired for an empty id - this obviously should never happen
-				// this is recoverable, and we are not hard erroring, but still indicative that something was wrong
-				// https://github.com/containerd/nerdctl/issues/3351
-				log.L.Errorf("current name %q is reserved for a an empty id - please report this is as a bug", name)
-			} else if string(b) != id {
-				// if acquired by a different container, we error out here
-				return fmt.Errorf("name %q is already used by ID %q", name, string(b))
-			}
-			// Otherwise, this is just re-acquiring after a restart
-			// For example, if containerd was bounced, previously running containers that would get restarted will go
-			// again through onCreateRuntime (unlike in a "normal" stop/start flow).
-			// As such, we are allowing reacquiring by the same id
-			// See: https://github.com/containerd/nerdctl/issues/3354
-		}
-		return os.WriteFile(fileName, []byte(id), 0600)
-	}
-	return lockutil.WithDirLock(x.dir, fn)
-}
-
-func (x *nameStore) Release(name, id string) error {
-	if name == "" {
-		return nil
-	}
-	if err := identifiers.ValidateDockerCompat(name); err != nil {
-		return fmt.Errorf("invalid name: %w", err)
-	}
-	if strings.TrimSpace(id) != id {
-		return fmt.Errorf("untrimmed ID %q", id)
-	}
-	fn := func() error {
-		fileName := filepath.Join(x.dir, name)
-		b, err := os.ReadFile(fileName)
+func (x *nameStore) Acquire(name, id string) (err error) {
+	defer func() {
 		if err != nil {
-			if os.IsNotExist(err) {
-				err = nil
-			}
-			return err
+			err = errors.Join(ErrNameStore, err)
 		}
-		if s := strings.TrimSpace(string(b)); s != id {
-			return fmt.Errorf("name %q is used by ID %q, not by %q", name, s, id)
-		}
-		return os.RemoveAll(fileName)
+	}()
+
+	if err = identifiers.ValidateDockerCompat(name); err != nil {
+		return err
 	}
-	return lockutil.WithDirLock(x.dir, fn)
+
+	return x.safeStore.WithLock(func() error {
+		var previousID []byte
+		previousID, err = x.safeStore.Get(name)
+		if err != nil {
+			if !errors.Is(err, store.ErrNotFound) {
+				return err
+			}
+		} else if string(previousID) == "" {
+			// This has happened in the past, probably following some other error condition of OS restart
+			// We do warn about it, but do not hard-error and let the new container acquire the name
+			log.L.Warnf("name %q was locked by an empty id - this is abnormal and should be reported", name)
+		} else if string(previousID) != id {
+			// If the name is already used by another container, that is a hard error
+			return fmt.Errorf("name %q is already used by ID %q", name, previousID)
+		}
+
+		// If the id was the same, we are "re-acquiring".
+		// Maybe containerd was bounced, so previously running containers that would get restarted will go again through
+		// onCreateRuntime (unlike in a "normal" stop/start flow), without ever had gone through onPostStop.
+		// As such, reacquiring by the same id is not a bug...
+		// See: https://github.com/containerd/nerdctl/issues/3354
+		return x.safeStore.Set([]byte(id), name)
+	})
 }
 
-func (x *nameStore) Rename(oldName, id, newName string) error {
-	if oldName == "" || newName == "" {
-		return nil
+func (x *nameStore) Release(name, id string) (err error) {
+	defer func() {
+		if err != nil {
+			err = errors.Join(ErrNameStore, err)
+		}
+	}()
+
+	if err = identifiers.ValidateDockerCompat(name); err != nil {
+		return err
 	}
-	if err := identifiers.ValidateDockerCompat(newName); err != nil {
-		return fmt.Errorf("invalid name %q: %w", newName, err)
-	}
-	fn := func() error {
-		oldFileName := filepath.Join(x.dir, oldName)
-		b, err := os.ReadFile(oldFileName)
+
+	return x.safeStore.WithLock(func() error {
+		var content []byte
+		content, err = x.safeStore.Get(name)
 		if err != nil {
 			return err
 		}
-		if s := strings.TrimSpace(string(b)); s != id {
-			return fmt.Errorf("name %q is used by ID %q, not by %q", oldName, s, id)
+
+		if string(content) != id {
+			// Never seen this, but technically possible if downstream code is messed-up
+			return fmt.Errorf("cannot release name %q (used by ID %q, not by %q)", name, content, id)
 		}
-		newFileName := filepath.Join(x.dir, newName)
-		if b, err := os.ReadFile(newFileName); err == nil {
-			return fmt.Errorf("name %q is already used by ID %q", newName, string(b))
+
+		return x.safeStore.Delete(name)
+	})
+}
+
+func (x *nameStore) Rename(oldName, id, newName string) (err error) {
+	defer func() {
+		if err != nil {
+			err = errors.Join(ErrNameStore, err)
 		}
-		return os.Rename(oldFileName, newFileName)
+	}()
+
+	if err = identifiers.ValidateDockerCompat(newName); err != nil {
+		return err
 	}
-	return lockutil.WithDirLock(x.dir, fn)
+
+	return x.safeStore.WithLock(func() error {
+		var doesExist bool
+		var content []byte
+		doesExist, err = x.safeStore.Exists(newName)
+		if err != nil {
+			return err
+		}
+
+		if doesExist {
+			content, err = x.safeStore.Get(newName)
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf("name %q is already used by ID %q", newName, string(content))
+		}
+
+		content, err = x.safeStore.Get(oldName)
+		if err != nil {
+			return err
+		}
+
+		if string(content) != id {
+			return fmt.Errorf("name %q is used by ID %q, not by %q", oldName, content, id)
+		}
+
+		err = x.safeStore.Set(content, newName)
+		if err != nil {
+			return err
+		}
+
+		return x.safeStore.Delete(oldName)
+	})
 }

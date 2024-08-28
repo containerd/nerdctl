@@ -292,8 +292,11 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		cs.Pid = n.Process.Pid
 		cs.ExitCode = int(n.Process.Status.ExitStatus)
 		if containerAnnotations[labels.StateDir] != "" {
-			lf := state.NewLifecycleState(containerAnnotations[labels.StateDir])
-			if err := lf.WithLock(lf.Load); err == nil && !time.Time.IsZero(lf.StartedAt) {
+			if lf, err := state.New(containerAnnotations[labels.StateDir]); err != nil {
+				log.L.WithError(err).Errorf("failed retrieving state")
+			} else if err = lf.Load(); err != nil {
+				log.L.WithError(err).Errorf("failed retrieving StartedAt from state")
+			} else if !time.Time.IsZero(lf.StartedAt) {
 				cs.StartedAt = lf.StartedAt.UTC().Format(time.RFC3339Nano)
 			}
 		}

@@ -18,7 +18,6 @@ package namespace
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -120,13 +119,10 @@ func namespaceLsAction(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			log.L.Warn(err)
 		} else {
-			volEnts, err := volStore.List(false)
+			numVolumes, err = volStore.Count()
 			if err != nil {
-				if !os.IsNotExist(err) {
-					log.L.Warn(err)
-				}
+				log.L.Warn(err)
 			}
-			numVolumes = len(volEnts)
 		}
 
 		labels, err := client.NamespaceService().Labels(ctx, ns)

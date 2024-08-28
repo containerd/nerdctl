@@ -258,7 +258,7 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 
 		log.G(ctx).Debugf("creating anonymous volume %q, for \"VOLUME %s\"",
 			anonVolName, imgVolRaw)
-		anonVol, err := volStore.Create(anonVolName, []string{})
+		anonVol, err := volStore.CreateWithoutLock(anonVolName, []string{})
 		if err != nil {
 			return nil, nil, nil, err
 		}

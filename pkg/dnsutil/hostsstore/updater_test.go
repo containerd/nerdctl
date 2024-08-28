@@ -74,8 +74,7 @@ func TestCreateLine(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		thatMeta := &Meta{
-			Namespace: "default",
-			ID:        "984d63ce45ae",
+			ID: "984d63ce45ae",
 			Networks: map[string]*types100.Result{
 				tc.thatNetwork: {
 					Interfaces: []*types100.Interface{
