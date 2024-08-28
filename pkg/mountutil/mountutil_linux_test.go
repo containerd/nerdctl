@@ -22,15 +22,11 @@ import (
 	"testing"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"go.uber.org/mock/gomock"
 	"gotest.tools/v3/assert"
 	is "gotest.tools/v3/assert/cmp"
 
 	"github.com/containerd/containerd/v2/core/mount"
 	"github.com/containerd/containerd/v2/pkg/oci"
-
-	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
-	mocks "github.com/containerd/nerdctl/v2/pkg/mountutil/mountutilmock"
 )
 
 // TestParseVolumeOptions tests volume options are parsed as expected.
@@ -265,23 +261,6 @@ func TestProcessFlagV(t *testing.T) {
 		},
 	}
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockVolumeStore := mocks.NewMockVolumeStore(ctrl)
-	mockVolumeStore.
-		EXPECT().
-		Get(gomock.Any(), false).
-		Return(&native.Volume{Name: "test_volume", Mountpoint: "/test/volume", Size: 1024}, nil).
-		AnyTimes()
-	mockVolumeStore.
-		EXPECT().
-		Create(gomock.Any(), nil).
-		Return(&native.Volume{Name: "test_volume", Mountpoint: "/test/volume"}, nil).AnyTimes()
-
-	mockOs := mocks.NewMockOs(ctrl)
-	mockOs.EXPECT().Stat(gomock.Any()).Return(nil, nil).AnyTimes()
-
 	for _, tt := range tests {
 		t.Run(tt.rawSpec, func(t *testing.T) {
 			processedVolSpec, err := ProcessFlagV(tt.rawSpec, mockVolumeStore, false)
@@ -346,16 +325,6 @@ func TestProcessFlagVAnonymousVolumes(t *testing.T) {
 			err:     "expected an absolute path, got \"\"",
 		},
 	}
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockVolumeStore := mocks.NewMockVolumeStore(ctrl)
-	mockVolumeStore.
-		EXPECT().
-		Create(gomock.Any(), []string{}).
-		Return(&native.Volume{Name: "test_volume", Mountpoint: "/test/volume"}, nil).
-		AnyTimes()
 
 	for _, tt := range tests {
 		t.Run(tt.rawSpec, func(t *testing.T) {
