@@ -27,7 +27,7 @@ func newIPFSCommand() *cobra.Command {
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "ipfs",
 		Short:         "Distributing images on IPFS",
-		RunE:          unknownSubcommandAction,
+		RunE:          helpers.UnknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

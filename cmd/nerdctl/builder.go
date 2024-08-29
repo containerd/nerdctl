@@ -35,7 +35,7 @@ func newBuilderCommand() *cobra.Command {
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "builder",
 		Short:         "Manage builds",
-		RunE:          unknownSubcommandAction,
+		RunE:          helpers.UnknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

@@ -234,7 +234,7 @@ Config file ($NERDCTL_TOML): %s
 		}
 		return nil
 	}
-	rootCmd.RunE = unknownSubcommandAction
+	rootCmd.RunE = helpers.UnknownSubcommandAction
 	rootCmd.AddCommand(
 		newCreateCommand(),
 		// #region Run & Exec
@@ -344,25 +344,6 @@ func globalFlags(cmd *cobra.Command) (string, []string) {
 		}
 	})
 	return args0, args
-}
-
-// unknownSubcommandAction is needed to let `nerdctl system non-existent-command` fail
-// https://github.com/containerd/nerdctl/issues/487
-//
-// Ideally this should be implemented in Cobra itself.
-func unknownSubcommandAction(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return cmd.Help()
-	}
-	// The output mimics https://github.com/spf13/cobra/blob/v1.2.1/command.go#L647-L662
-	msg := fmt.Sprintf("unknown subcommand %q for %q", args[0], cmd.Name())
-	if suggestions := cmd.SuggestionsFor(args[0]); len(suggestions) > 0 {
-		msg += "\n\nDid you mean this?\n"
-		for _, s := range suggestions {
-			msg += fmt.Sprintf("\t%v\n", s)
-		}
-	}
-	return errors.New(msg)
 }
 
 // AddStringFlag is similar to cmd.Flags().String but supports aliases and env var

@@ -28,7 +28,7 @@ func newIPFSRegistryCommand() *cobra.Command {
 		Use:           "registry",
 		Short:         "Manage read-only registry backed by IPFS",
 		PreRunE:       checkExperimental("ipfs"),
-		RunE:          unknownSubcommandAction,
+		RunE:          helpers.UnknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

@@ -27,7 +27,7 @@ func newNetworkCommand() *cobra.Command {
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "network",
 		Short:         "Manage networks",
-		RunE:          unknownSubcommandAction,
+		RunE:          helpers.UnknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

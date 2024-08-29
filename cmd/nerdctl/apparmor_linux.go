@@ -27,7 +27,7 @@ func newApparmorCommand() *cobra.Command {
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "apparmor",
 		Short:         "Manage AppArmor profiles",
-		RunE:          unknownSubcommandAction,
+		RunE:          helpers.UnknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
