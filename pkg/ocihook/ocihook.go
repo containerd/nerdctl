@@ -505,25 +505,37 @@ func onCreateRuntime(opts *handlerOpts) error {
 		log.L.WithError(err).Error("failed re-acquiring name - see https://github.com/containerd/nerdctl/issues/2992")
 	}
 
+	var netError error
 	if opts.cni != nil {
-		if err = applyNetworkSettings(opts); err != nil {
-			return err
-		}
+		netError = applyNetworkSettings(opts)
 	}
 
-	// Set StartedAt
 	lf := state.NewLifecycleState(opts.state.Annotations[labels.StateDir])
-	return lf.WithLock(func() error {
-		err := lf.Load()
-		if err != nil {
-			return err
-		}
+
+	return errors.Join(netError, lf.WithLock(func() error {
+		// Errors are voluntarily ignored here, as they should not be fatal.
+		// The lifecycle struct is also already warning about the issue.
+		_ = lf.Load()
 		lf.StartedAt = time.Now()
+		lf.CreateError = netError != nil
 		return lf.Save()
-	})
+	}))
 }
 
 func onPostStop(opts *handlerOpts) error {
+	// See https://github.com/containerd/nerdctl/issues/3357
+	// Check if we actually errored during runtimeCreate
+	// If that is the case, CreateError is set, and we are in postStop while the container will NOT be deleted (see ticket).
+	// In that case, do NOT treat this as a deletion, as the container is still there.
+	// Reset CreateError, and return.
+	lf := state.NewLifecycleState(opts.state.Annotations[labels.StateDir])
+	if lf.WithLock(lf.Load) == nil {
+		if lf.CreateError {
+			lf.CreateError = false
+			return lf.WithLock(lf.Save)
+		}
+	}
+
 	ctx := context.Background()
 	ns := opts.state.Annotations[labels.Namespace]
 	if opts.cni != nil {

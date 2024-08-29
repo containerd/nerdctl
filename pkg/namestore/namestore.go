@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 )
@@ -56,12 +58,21 @@ func (x *nameStore) Acquire(name, id string) error {
 	}
 	fn := func() error {
 		fileName := filepath.Join(x.dir, name)
-		// If containerd was bounced, previously running containers that would get restarted will go again through
-		// onCreateRuntime (unlike in a "normal" stop/start flow).
-		// As such, we need to allow reacquiring by the same id
-		// See: https://github.com/containerd/nerdctl/issues/3354
-		if b, err := os.ReadFile(fileName); err == nil && string(b) != id {
-			return fmt.Errorf("name %q is already used by ID %q", name, string(b))
+		if b, err := os.ReadFile(fileName); err == nil {
+			if strings.TrimSpace(string(b)) == "" {
+				// currently acquired for an empty id - this obviously should never happen
+				// this is recoverable, and we are not hard erroring, but still indicative that something was wrong
+				// https://github.com/containerd/nerdctl/issues/3351
+				log.L.Errorf("current name %q is reserved for a an empty id - please report this is as a bug", name)
+			} else if string(b) != id {
+				// if acquired by a different container, we error out here
+				return fmt.Errorf("name %q is already used by ID %q", name, string(b))
+			}
+			// Otherwise, this is just re-acquiring after a restart
+			// For example, if containerd was bounced, previously running containers that would get restarted will go
+			// again through onCreateRuntime (unlike in a "normal" stop/start flow).
+			// As such, we are allowing reacquiring by the same id
+			// See: https://github.com/containerd/nerdctl/issues/3354
 		}
 		return os.WriteFile(fileName, []byte(id), 0600)
 	}

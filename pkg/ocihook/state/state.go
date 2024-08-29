@@ -24,6 +24,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 )
 
@@ -49,8 +51,9 @@ func NewLifecycleState(stateDir string) *LifecycleState {
 }
 
 type LifecycleState struct {
-	stateDir  string
-	StartedAt time.Time `json:"started_at"`
+	stateDir    string
+	StartedAt   time.Time `json:"started_at"`
+	CreateError bool      `json:"create_error"`
 }
 
 func (lf *LifecycleState) WithLock(fun func() error) error {
@@ -71,6 +74,8 @@ func (lf *LifecycleState) Load() error {
 	} else {
 		err = json.Unmarshal(data, lf)
 		if err != nil {
+			// Logging an error, as Load errors are generally ignored downstream
+			log.L.Error("unable to unmarshall lifecycle data")
 			return fmt.Errorf("unable to unmarshall lifecycle data: %w", err)
 		}
 	}
@@ -78,11 +83,16 @@ func (lf *LifecycleState) Load() error {
 }
 
 func (lf *LifecycleState) Save() error {
+	// Write atomically (write, then move) to avoid incomplete writes from happening
 	data, err := json.Marshal(lf)
 	if err != nil {
 		return fmt.Errorf("unable to marshall lifecycle data: %w", err)
 	}
-	err = os.WriteFile(filepath.Join(lf.stateDir, lifecycleFile), data, 0600)
+	err = os.WriteFile(filepath.Join(lf.stateDir, "."+lifecycleFile), data, 0600)
+	if err != nil {
+		return fmt.Errorf("unable to write lifecycle file: %w", err)
+	}
+	err = os.Rename(filepath.Join(lf.stateDir, "."+lifecycleFile), filepath.Join(lf.stateDir, lifecycleFile))
 	if err != nil {
 		return fmt.Errorf("unable to write lifecycle file: %w", err)
 	}
