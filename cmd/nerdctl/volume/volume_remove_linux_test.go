@@ -14,14 +14,10 @@
    limitations under the License.
 */
 
-package main
+package volume
 
 import (
-	"crypto/rand"
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -30,53 +26,27 @@ import (
 
 	"github.com/containerd/errdefs"
 
-	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-func createFileWithSize(base *testutil.Base, vol string, size int64) {
-	v := base.InspectVolume(vol)
-	token := make([]byte, size)
-	_, _ = rand.Read(token)
-	err := os.WriteFile(filepath.Join(v.Mountpoint, "test-file"), token, 0644)
-	assert.NilError(base.T, err)
-}
-
-func TestVolumeInspect(t *testing.T) {
+// TestVolumeRemove does test a large variety of volume remove situations, albeit none of them being
+// hard filesystem errors.
+// Behavior in such cases is largely unspecified, as there is no easy way to compare with Docker.
+// Anyhow, borked filesystem conditions is not something we should be expected to deal with in a smart way.
+func TestVolumeRemove(t *testing.T) {
 	t.Parallel()
 
 	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
 
-	var size int64 = 1028
-
+	inUse := errdefs.ErrFailedPrecondition.Error()
 	malformed := errdefs.ErrInvalidArgument.Error()
 	notFound := errdefs.ErrNotFound.Error()
 	requireArg := "requires at least 1 arg"
 	if base.Target == testutil.Docker {
 		malformed = "no such volume"
 		notFound = "no such volume"
+		inUse = "volume is in use"
 	}
-
-	tearUp := func(t *testing.T) {
-		base.Cmd("volume", "create", tID).AssertOK()
-		base.Cmd("volume", "create", "--label", "foo=fooval", "--label", "bar=barval", tID+"-second").AssertOK()
-
-		// Obviously note here that if inspect code gets totally hosed, this entire suite will
-		// probably fail right here on the tearUp instead of actually testing something
-		createFileWithSize(base, tID, size)
-	}
-
-	tearDown := func(t *testing.T) {
-		base.Cmd("volume", "rm", "-f", tID).Run()
-		base.Cmd("volume", "rm", "-f", tID+"-second").Run()
-	}
-
-	tearDown(t)
-	t.Cleanup(func() {
-		tearDown(t)
-	})
-	tearUp(t)
 
 	testCases := []struct {
 		description        string
@@ -90,7 +60,7 @@ func TestVolumeInspect(t *testing.T) {
 		{
 			description: "arg missing should fail",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect")
+				return base.Cmd("volume", "rm")
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
@@ -102,7 +72,7 @@ func TestVolumeInspect(t *testing.T) {
 		{
 			description: "invalid identifier should fail",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", "∞")
+				return base.Cmd("volume", "rm", "∞")
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
@@ -114,7 +84,7 @@ func TestVolumeInspect(t *testing.T) {
 		{
 			description: "non existent volume should fail",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", "doesnotexist")
+				return base.Cmd("volume", "rm", "doesnotexist")
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
@@ -124,120 +94,152 @@ func TestVolumeInspect(t *testing.T) {
 			},
 		},
 		{
-			description: "success",
+			description: "busy volume should fail",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", tID)
+				return base.Cmd("volume", "rm", tID)
+			},
+			tearUp: func(tID string) {
+				base.Cmd("volume", "create", tID).AssertOK()
+				base.Cmd("run", "-v", fmt.Sprintf("%s:/volume", tID), "--name", tID, testutil.CommonImage).AssertOK()
 			},
 			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID)
+				base.Cmd("rm", "-f", tID).Run()
+				base.Cmd("volume", "rm", "-f", tID).Run()
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
-					ExitCode: 0,
-					Out:      tID,
-				}
-			},
-			inspect: func(t *testing.T, stdout string, stderr string) {
-				var dc []native.Volume
-				if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
-					t.Fatal(err)
-				}
-				assert.Assert(t, len(dc) == 1, fmt.Sprintf("one result, not %d", len(dc)))
-				assert.Assert(t, dc[0].Name == tID, fmt.Sprintf("expected name to be %q (was %q)", tID, dc[0].Name))
-				assert.Assert(t, dc[0].Labels == nil, fmt.Sprintf("expected labels to be nil and were %v", dc[0].Labels))
-			},
-		},
-		{
-			description: "inspect labels",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", tID+"-second")
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 0,
-					Out:      tID,
-				}
-			},
-			inspect: func(t *testing.T, stdout string, stderr string) {
-				var dc []native.Volume
-				if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
-					t.Fatal(err)
+					ExitCode: 1,
+					Err:      inUse,
 				}
 
-				labels := *dc[0].Labels
-				assert.Assert(t, len(labels) == 2, fmt.Sprintf("two results, not %d", len(labels)))
-				assert.Assert(t, labels["foo"] == "fooval", fmt.Sprintf("label foo should be fooval, not %s", labels["foo"]))
-				assert.Assert(t, labels["bar"] == "barval", fmt.Sprintf("label bar should be barval, not %s", labels["bar"]))
 			},
 		},
 		{
-			description: "inspect size",
+			description: "busy anonymous volume should fail",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", "--size", tID)
+				// Inspect the container and find the anonymous volume id
+				inspect := base.InspectContainer(tID)
+				var anonName string
+				for _, v := range inspect.Mounts {
+					if v.Destination == "/volume" {
+						anonName = v.Name
+						break
+					}
+				}
+				assert.Assert(t, anonName != "", "Failed to find anonymous volume id")
+
+				// Try to remove that anon volume
+				return base.Cmd("volume", "rm", anonName)
+			},
+			tearUp: func(tID string) {
+				// base.Cmd("volume", "create", tID).AssertOK()
+				base.Cmd("run", "-v", fmt.Sprintf("%s:/volume", tID), "--name", tID, testutil.CommonImage).AssertOK()
+			},
+			tearDown: func(tID string) {
+				base.Cmd("rm", "-f", tID).Run()
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
-					ExitCode: 0,
-					Out:      tID,
+					ExitCode: 1,
+					Err:      inUse,
 				}
+
 			},
-			inspect: func(t *testing.T, stdout string, stderr string) {
-				var dc []native.Volume
-				if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
-					t.Fatal(err)
-				}
-				assert.Assert(t, dc[0].Size == size, fmt.Sprintf("expected size to be %d (was %d)", size, dc[0].Size))
-			},
-			dockerIncompatible: true,
 		},
 		{
-			description: "multi success",
+			description: "freed volume should succeed",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", tID, tID+"-second")
+				return base.Cmd("volume", "rm", tID)
+			},
+			tearUp: func(tID string) {
+				base.Cmd("volume", "create", tID).AssertOK()
+				base.Cmd("run", "-v", fmt.Sprintf("%s:/volume", tID), "--name", tID, testutil.CommonImage).AssertOK()
+				base.Cmd("rm", "-f", tID).AssertOK()
+			},
+			tearDown: func(tID string) {
+				base.Cmd("rm", "-f", tID).Run()
+				base.Cmd("volume", "rm", "-f", tID).Run()
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
-					ExitCode: 0,
+					Out: tID,
 				}
-			},
-			inspect: func(t *testing.T, stdout string, stderr string) {
-				var dc []native.Volume
-				if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
-					t.Fatal(err)
-				}
-				assert.Assert(t, len(dc) == 2, fmt.Sprintf("two results, not %d", len(dc)))
-				assert.Assert(t, dc[0].Name == tID, fmt.Sprintf("expected name to be %q (was %q)", tID, dc[0].Name))
-				assert.Assert(t, dc[1].Name == tID+"-second", fmt.Sprintf("expected name to be %q (was %q)", tID+"-second", dc[1].Name))
 			},
 		},
 		{
-			description: "part success multi",
+			description: "dangling volume should succeed",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", "invalid∞", "nonexistent", tID)
+				return base.Cmd("volume", "rm", tID)
+			},
+			tearUp: func(tID string) {
+				base.Cmd("volume", "create", tID).AssertOK()
+			},
+			tearDown: func(tID string) {
+				base.Cmd("volume", "rm", "-f", tID).Run()
+			},
+			expected: func(tID string) icmd.Expected {
+				return icmd.Expected{
+					Out: tID,
+				}
+			},
+		},
+		{
+			description: "part success multi-remove",
+			command: func(tID string) *testutil.Cmd {
+				return base.Cmd("volume", "rm", "invalid∞", "nonexistent", tID+"-busy", tID)
+			},
+			tearUp: func(tID string) {
+				base.Cmd("volume", "create", tID).AssertOK()
+				base.Cmd("volume", "create", tID+"-busy").AssertOK()
+				base.Cmd("run", "-v", fmt.Sprintf("%s:/volume", tID+"-busy"), "--name", tID, testutil.CommonImage).AssertOK()
+			},
+			tearDown: func(tID string) {
+				base.Cmd("rm", "-f", tID).Run()
+				base.Cmd("volume", "rm", "-f", tID).Run()
+				base.Cmd("volume", "rm", "-f", tID+"-busy").Run()
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
 					ExitCode: 1,
 					Out:      tID,
-					Err:      notFound,
 				}
 			},
 			inspect: func(t *testing.T, stdout string, stderr string) {
 				assert.Assert(t, strings.Contains(stderr, notFound))
+				assert.Assert(t, strings.Contains(stderr, inUse))
 				assert.Assert(t, strings.Contains(stderr, malformed))
-
-				var dc []native.Volume
-				if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
-					t.Fatal(err)
-				}
-				assert.Assert(t, len(dc) == 1, fmt.Sprintf("one result, not %d", len(dc)))
-				assert.Assert(t, dc[0].Name == tID, fmt.Sprintf("expected name to be %q (was %q)", tID, dc[0].Name))
 			},
 		},
 		{
-			description: "multi failure",
+			description: "success multi-remove",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", "invalid∞", "nonexistent")
+				return base.Cmd("volume", "rm", tID+"-1", tID+"-2")
+			},
+			tearUp: func(tID string) {
+				base.Cmd("volume", "create", tID+"-1").AssertOK()
+				base.Cmd("volume", "create", tID+"-2").AssertOK()
+			},
+			tearDown: func(tID string) {
+				base.Cmd("volume", "rm", "-f", tID+"-1", tID+"-2").Run()
+			},
+			expected: func(tID string) icmd.Expected {
+				return icmd.Expected{
+					Out: tID + "-1\n" + tID + "-2",
+				}
+			},
+		},
+		{
+			description: "failing multi-remove",
+			tearUp: func(tID string) {
+				base.Cmd("volume", "create", tID+"-busy").AssertOK()
+				base.Cmd("run", "-v", fmt.Sprintf("%s:/volume", tID+"-busy"), "--name", tID, testutil.CommonImage).AssertOK()
+			},
+			tearDown: func(tID string) {
+				base.Cmd("rm", "-f", tID).Run()
+				base.Cmd("volume", "rm", "-f", tID+"-busy").Run()
+			},
+			command: func(tID string) *testutil.Cmd {
+				return base.Cmd("volume", "rm", "invalid∞", "nonexistent", tID+"-busy")
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
@@ -246,6 +248,7 @@ func TestVolumeInspect(t *testing.T) {
 			},
 			inspect: func(t *testing.T, stdout string, stderr string) {
 				assert.Assert(t, strings.Contains(stderr, notFound))
+				assert.Assert(t, strings.Contains(stderr, inUse))
 				assert.Assert(t, strings.Contains(stderr, malformed))
 			},
 		},
@@ -260,7 +263,8 @@ func TestVolumeInspect(t *testing.T) {
 
 			tt.Parallel()
 
-			// We use the main test tID here
+			tID := testutil.Identifier(tt)
+
 			if currentTest.tearDown != nil {
 				currentTest.tearDown(tID)
 				tt.Cleanup(func() {

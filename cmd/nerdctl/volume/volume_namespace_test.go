@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package volume
 
 import (
 	"testing"
@@ -26,18 +26,31 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-func TestVolumeCreate(t *testing.T) {
+func TestVolumeNamespace(t *testing.T) {
+	testutil.DockerIncompatible(t)
+
 	t.Parallel()
 
 	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+	otherBase := testutil.NewBaseWithNamespace(t, tID+"-1")
+	thirdBase := testutil.NewBaseWithNamespace(t, tID+"-2")
 
-	malformed := errdefs.ErrInvalidArgument.Error()
-	atMost := "at most 1 arg"
-	exitCodeVariant := 1
-	if base.Target == testutil.Docker {
-		malformed = "invalid"
-		exitCodeVariant = 125
+	tearUp := func(t *testing.T) {
+		base.Cmd("volume", "create", tID).AssertOK()
 	}
+
+	tearDown := func(t *testing.T) {
+		base.Cmd("volume", "rm", "-f", tID).Run()
+		otherBase.Cmd("namespace", "rm", "-f", tID+"-1").Run()
+		thirdBase.Cmd("namespace", "rm", "-f", tID+"-2").Run()
+	}
+
+	tearDown(t)
+	t.Cleanup(func() {
+		tearDown(t)
+	})
+	tearUp(t)
 
 	testCases := []struct {
 		description        string
@@ -49,94 +62,52 @@ func TestVolumeCreate(t *testing.T) {
 		dockerIncompatible bool
 	}{
 		{
-			description: "arg missing should create anonymous volume",
+			description: "inspect another namespace volume should fail",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create")
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 0,
-				}
-			},
-		},
-		{
-			description: "invalid identifier should fail",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create", "∞")
+				return otherBase.Cmd("volume", "inspect", tID)
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
 					ExitCode: 1,
-					Err:      malformed,
+					Err:      errdefs.ErrNotFound.Error(),
 				}
 			},
 		},
 		{
-			description: "too many args should fail",
+			description: "remove another namespace volume should fail",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create", "too", "many")
+				return otherBase.Cmd("volume", "remove", tID)
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
 					ExitCode: 1,
-					Err:      atMost,
+					Err:      errdefs.ErrNotFound.Error(),
 				}
 			},
 		},
 		{
-			description: "success",
+			description: "prune should leave other namespace untouched",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create", tID)
+				return otherBase.Cmd("volume", "prune", "-a", "-f")
 			},
 			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID).Run()
+				// Assert that the volume is here in the base namespace
+				// both before and after the prune command
+				base.Cmd("volume", "inspect", tID).AssertOK()
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
 					ExitCode: 0,
-					Out:      tID,
 				}
 			},
 		},
 		{
-			description: "success with labels",
+			description: "create with namespace should work",
 			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create", "--label", "foo1=baz1", "--label", "foo2=baz2", tID)
+				return thirdBase.Cmd("volume", "create", tID)
 			},
 			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID).Run()
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 0,
-					Out:      tID,
-				}
-			},
-		},
-		{
-			description: "invalid labels",
-			command: func(tID string) *testutil.Cmd {
-				// See https://github.com/containerd/nerdctl/issues/3126
-				return base.Cmd("volume", "create", "--label", "a", "--label", "", tID)
-			},
-			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID).Run()
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: exitCodeVariant,
-					Err:      malformed,
-				}
-			},
-		},
-		{
-			description: "creating already existing volume should succeed",
-			command: func(tID string) *testutil.Cmd {
-				base.Cmd("volume", "create", tID).AssertOK()
-				return base.Cmd("volume", "create", tID)
-			},
-			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID).Run()
+				thirdBase.Cmd("volume", "remove", "-f", tID).Run()
 			},
 			expected: func(tID string) icmd.Expected {
 				return icmd.Expected{
@@ -150,10 +121,14 @@ func TestVolumeCreate(t *testing.T) {
 	for _, test := range testCases {
 		currentTest := test
 		t.Run(currentTest.description, func(tt *testing.T) {
+			if currentTest.dockerIncompatible {
+				testutil.DockerIncompatible(tt)
+			}
+
 			tt.Parallel()
 
-			tID := testutil.Identifier(tt)
-
+			// Note that here we are using the main test tID
+			// since we are testing against the volume created in it
 			if currentTest.tearDown != nil {
 				currentTest.tearDown(tID)
 				tt.Cleanup(func() {
@@ -164,8 +139,14 @@ func TestVolumeCreate(t *testing.T) {
 				currentTest.tearUp(tID)
 			}
 
+			// See https://github.com/containerd/nerdctl/issues/3130
+			// We run first to capture the underlying icmd command and output
 			cmd := currentTest.command(tID)
+			res := cmd.Run()
 			cmd.Assert(currentTest.expected(tID))
+			if currentTest.inspect != nil {
+				currentTest.inspect(tt, res.Stdout(), res.Stderr())
+			}
 		})
 	}
 }

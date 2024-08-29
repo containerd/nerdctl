@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package volume
 
 import (
 	"github.com/spf13/cobra"
@@ -22,7 +22,7 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 )
 
-func newVolumeCommand() *cobra.Command {
+func NewVolumeCommand() *cobra.Command {
 	volumeCommand := &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "volume",

@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package volume
 
 import (
 	"github.com/spf13/cobra"
