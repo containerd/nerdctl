@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/apparmor"
 	"github.com/containerd/nerdctl/v2/pkg/defaults"
 )
@@ -47,5 +48,5 @@ func apparmorUnloadAction(cmd *cobra.Command, args []string) error {
 }
 
 func apparmorUnloadShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return shellCompleteApparmorProfiles(cmd)
+	return completion.ShellCompleteApparmorProfiles(cmd)
 }

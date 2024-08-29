@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -62,7 +63,7 @@ func tagAction(cmd *cobra.Command, args []string) error {
 func tagShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) < 2 {
 		// show image names
-		return shellCompleteImageNames(cmd)
+		return completion.ShellCompleteImageNames(cmd)
 	}
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }

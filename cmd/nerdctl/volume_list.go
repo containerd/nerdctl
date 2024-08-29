@@ -22,7 +22,6 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
-	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 )
 
 func newVolumeLsCommand() *cobra.Command {
@@ -83,13 +82,4 @@ func volumeLsAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return volume.List(options)
-}
-
-func getVolumes(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (map[string]native.Volume, error) {
-	volumeSize, err := cmd.Flags().GetBool("size")
-	if err != nil {
-		// The `nerdctl volume rm` does not have the flag `size`, so set it to false as the default value.
-		volumeSize = false
-	}
-	return volume.Volumes(globalOptions.Namespace, globalOptions.DataRoot, globalOptions.Address, volumeSize, nil)
 }

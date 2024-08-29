@@ -16,17 +16,4 @@
 
 package main
 
-import "github.com/spf13/cobra"
-
-const (
-	DefaultNetworkDriver = "nat"
-)
-
-func shellCompleteNetworkDrivers(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	candidates := []string{"nat"}
-	return candidates, cobra.ShellCompDirectiveNoFileComp
-}
-
-func shellCompleteIPAMDrivers(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return []string{"default"}, cobra.ShellCompDirectiveNoFileComp
-}
+const DefaultNetworkDriver = "nat"

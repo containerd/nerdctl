@@ -18,17 +18,4 @@
 
 package main
 
-import "github.com/spf13/cobra"
-
-const (
-	DefaultNetworkDriver = "bridge"
-)
-
-func shellCompleteNetworkDrivers(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	candidates := []string{"bridge", "macvlan", "ipvlan"}
-	return candidates, cobra.ShellCompDirectiveNoFileComp
-}
-
-func shellCompleteIPAMDrivers(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return []string{"default", "host-local", "dhcp"}, cobra.ShellCompDirectiveNoFileComp
-}
+const DefaultNetworkDriver = "bridge"

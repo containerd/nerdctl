@@ -21,6 +21,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -71,5 +72,5 @@ func pauseShellComplete(cmd *cobra.Command, args []string, toComplete string) ([
 	statusFilterFn := func(st containerd.ProcessStatus) bool {
 		return st == containerd.Running
 	}
-	return shellCompleteContainerNames(cmd, statusFilterFn)
+	return completion.ShellCompleteContainerNames(cmd, statusFilterFn)
 }

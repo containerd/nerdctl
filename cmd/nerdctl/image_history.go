@@ -35,6 +35,7 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
@@ -271,5 +272,5 @@ func (x *historyPrinter) printHistory(printable historyPrintable) error {
 
 func historyShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	return shellCompleteImageNames(cmd)
+	return completion.ShellCompleteImageNames(cmd)
 }

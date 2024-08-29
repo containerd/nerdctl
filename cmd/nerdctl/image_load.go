@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -41,7 +42,7 @@ func newLoadCommand() *cobra.Command {
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	loadCommand.Flags().StringSlice("platform", []string{}, "Import content for a specific platform")
-	loadCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	loadCommand.RegisterFlagCompletionFunc("platform", completion.ShellCompletePlatforms)
 	loadCommand.Flags().Bool("all-platforms", false, "Import content for all platforms")
 	// #endregion
 

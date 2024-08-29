@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -37,7 +38,7 @@ func registerImgcryptFlags(cmd *cobra.Command, encrypt bool) {
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	flags.StringSlice("platform", []string{}, "Convert content for a specific platform")
-	cmd.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	cmd.RegisterFlagCompletionFunc("platform", completion.ShellCompletePlatforms)
 	flags.Bool("all-platforms", false, "Convert content for all platforms")
 	// #endregion
 
@@ -124,5 +125,5 @@ func getImgcryptAction(encrypt bool) func(cmd *cobra.Command, args []string) err
 
 func imgcryptShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	return shellCompleteImageNames(cmd)
+	return completion.ShellCompleteImageNames(cmd)
 }

@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -104,5 +105,5 @@ func containerInspectAction(cmd *cobra.Command, args []string) error {
 
 func containerInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show container names
-	return shellCompleteContainerNames(cmd, nil)
+	return completion.ShellCompleteContainerNames(cmd, nil)
 }

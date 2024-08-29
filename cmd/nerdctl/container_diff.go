@@ -33,6 +33,7 @@ import (
 	"github.com/containerd/log"
 	"github.com/containerd/platforms"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -226,5 +227,5 @@ func appendChanges(changes []fs.Change, new fs.Change) []fs.Change {
 
 func diffShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show container names
-	return shellCompleteContainerNames(cmd, nil)
+	return completion.ShellCompleteContainerNames(cmd, nil)
 }

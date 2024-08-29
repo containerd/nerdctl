@@ -32,6 +32,7 @@ import (
 
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/config"
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
@@ -162,15 +163,15 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, 
 	AddPersistentStringFlag(rootCmd, "address", []string{"a", "H"}, nil, []string{"host"}, aliasToBeInherited, cfg.Address, "CONTAINERD_ADDRESS", `containerd address, optionally with "unix://" prefix`)
 	// -n is aliases (conflicts with nerdctl logs -n)
 	AddPersistentStringFlag(rootCmd, "namespace", []string{"n"}, nil, nil, aliasToBeInherited, cfg.Namespace, "CONTAINERD_NAMESPACE", `containerd namespace, such as "moby" for Docker, "k8s.io" for Kubernetes`)
-	rootCmd.RegisterFlagCompletionFunc("namespace", shellCompleteNamespaceNames)
+	rootCmd.RegisterFlagCompletionFunc("namespace", completion.ShellCompleteNamespaceNames)
 	AddPersistentStringFlag(rootCmd, "snapshotter", nil, nil, []string{"storage-driver"}, aliasToBeInherited, cfg.Snapshotter, "CONTAINERD_SNAPSHOTTER", "containerd snapshotter")
-	rootCmd.RegisterFlagCompletionFunc("snapshotter", shellCompleteSnapshotterNames)
-	rootCmd.RegisterFlagCompletionFunc("storage-driver", shellCompleteSnapshotterNames)
+	rootCmd.RegisterFlagCompletionFunc("snapshotter", completion.ShellCompleteSnapshotterNames)
+	rootCmd.RegisterFlagCompletionFunc("storage-driver", completion.ShellCompleteSnapshotterNames)
 	AddPersistentStringFlag(rootCmd, "cni-path", nil, nil, nil, aliasToBeInherited, cfg.CNIPath, "CNI_PATH", "cni plugins binary directory")
 	AddPersistentStringFlag(rootCmd, "cni-netconfpath", nil, nil, nil, aliasToBeInherited, cfg.CNINetConfPath, "NETCONFPATH", "cni config directory")
 	rootCmd.PersistentFlags().String("data-root", cfg.DataRoot, "Root directory of persistent nerdctl state (managed by nerdctl, not by containerd)")
 	rootCmd.PersistentFlags().String("cgroup-manager", cfg.CgroupManager, `Cgroup manager to use ("cgroupfs"|"systemd")`)
-	rootCmd.RegisterFlagCompletionFunc("cgroup-manager", shellCompleteCgroupManagerNames)
+	rootCmd.RegisterFlagCompletionFunc("cgroup-manager", completion.ShellCompleteCgroupManagerNames)
 	rootCmd.PersistentFlags().Bool("insecure-registry", cfg.InsecureRegistry, "skips verifying HTTPS certs, and allows falling back to plain HTTP")
 	// hosts-dir is defined as StringSlice, not StringArray, to allow specifying "--hosts-dir=/etc/containerd/certs.d,/etc/docker/certs.d"
 	rootCmd.PersistentFlags().StringSlice("hosts-dir", cfg.HostsDir, "A directory that contains <HOST:PORT>/hosts.toml (containerd style) or <HOST:PORT>/{ca.cert, cert.pem, key.pem} (docker style)")

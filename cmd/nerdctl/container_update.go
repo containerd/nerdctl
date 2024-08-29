@@ -33,6 +33,7 @@ import (
 	"github.com/containerd/log"
 	"github.com/containerd/typeurl/v2"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -398,5 +399,5 @@ func copySpec(spec *runtimespec.Spec) (*runtimespec.Spec, error) {
 }
 
 func updateShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return shellCompleteContainerNames(cmd, nil)
+	return completion.ShellCompleteContainerNames(cmd, nil)
 }

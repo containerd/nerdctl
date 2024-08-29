@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -96,7 +97,7 @@ func newImageConvertCommand() *cobra.Command {
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	imageConvertCommand.Flags().StringSlice("platform", []string{}, "Convert content for a specific platform")
-	imageConvertCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	imageConvertCommand.RegisterFlagCompletionFunc("platform", completion.ShellCompletePlatforms)
 	imageConvertCommand.Flags().Bool("all-platforms", false, "Convert content for all platforms")
 	// #endregion
 
@@ -298,5 +299,5 @@ func imageConvertAction(cmd *cobra.Command, args []string) error {
 
 func imageConvertShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	return shellCompleteImageNames(cmd)
+	return completion.ShellCompleteImageNames(cmd)
 }

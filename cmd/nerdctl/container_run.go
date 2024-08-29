@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/console"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -105,18 +106,18 @@ func setCreateFlags(cmd *cobra.Command) {
 
 	// #region platform flags
 	cmd.Flags().String("platform", "", "Set platform (e.g. \"amd64\", \"arm64\")") // not a slice, and there is no --all-platforms
-	cmd.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	cmd.RegisterFlagCompletionFunc("platform", completion.ShellCompletePlatforms)
 	// #endregion
 
 	// #region network flags
 	// network (net) is defined as StringSlice, not StringArray, to allow specifying "--network=cni1,cni2"
 	cmd.Flags().StringSlice("network", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none"|"container:<container>"|<CNI>)`)
 	cmd.RegisterFlagCompletionFunc("network", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return shellCompleteNetworkNames(cmd, []string{})
+		return completion.ShellCompleteNetworkNames(cmd, []string{})
 	})
 	cmd.Flags().StringSlice("net", []string{netutil.DefaultNetworkName}, `Connect a container to a network ("bridge"|"host"|"none"|<CNI>)`)
 	cmd.RegisterFlagCompletionFunc("net", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return shellCompleteNetworkNames(cmd, []string{})
+		return completion.ShellCompleteNetworkNames(cmd, []string{})
 	})
 	// dns is defined as StringSlice, not StringArray, to allow specifying "--dns=1.1.1.1,8.8.8.8" (compatible with Podman)
 	cmd.Flags().StringSlice("dns", nil, "Set custom DNS servers")

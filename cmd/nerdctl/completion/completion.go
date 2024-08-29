@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package completion
 
 import (
 	"context"
@@ -25,12 +25,15 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 )
 
-func shellCompleteImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
+func ShellCompleteImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
@@ -53,7 +56,7 @@ func shellCompleteImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirec
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-func shellCompleteContainerNames(cmd *cobra.Command, filterFunc func(containerd.ProcessStatus) bool) ([]string, cobra.ShellCompDirective) {
+func ShellCompleteContainerNames(cmd *cobra.Command, filterFunc func(containerd.ProcessStatus) bool) ([]string, cobra.ShellCompDirective) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
@@ -101,8 +104,8 @@ func shellCompleteContainerNames(cmd *cobra.Command, filterFunc func(containerd.
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-// shellCompleteNetworkNames includes {"bridge","host","none"}
-func shellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, cobra.ShellCompDirective) {
+// ShellCompleteNetworkNames includes {"bridge","host","none"}
+func ShellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, cobra.ShellCompDirective) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
@@ -134,7 +137,7 @@ func shellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, 
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-func shellCompleteVolumeNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
+func ShellCompleteVolumeNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
@@ -150,7 +153,7 @@ func shellCompleteVolumeNames(cmd *cobra.Command) ([]string, cobra.ShellCompDire
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-func shellCompletePlatforms(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func ShellCompletePlatforms(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	candidates := []string{
 		"amd64",
 		"arm64",
@@ -162,4 +165,13 @@ func shellCompletePlatforms(cmd *cobra.Command, args []string, toComplete string
 		"linux/arm/v6", // "arm/v6" is invalid (interpreted as OS="arm", Arch="v7")
 	}
 	return candidates, cobra.ShellCompDirectiveNoFileComp
+}
+
+func getVolumes(cmd *cobra.Command, globalOptions types.GlobalCommandOptions) (map[string]native.Volume, error) {
+	volumeSize, err := cmd.Flags().GetBool("size")
+	if err != nil {
+		// The `nerdctl volume rm` does not have the flag `size`, so set it to false as the default value.
+		volumeSize = false
+	}
+	return volume.Volumes(globalOptions.Namespace, globalOptions.DataRoot, globalOptions.Address, volumeSize, nil)
 }

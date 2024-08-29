@@ -14,22 +14,10 @@
    limitations under the License.
 */
 
-package main
+package completion
 
-import (
-	"github.com/spf13/cobra"
+import "github.com/spf13/cobra"
 
-	"github.com/containerd/nerdctl/v2/pkg/apparmorutil"
-)
-
-func shellCompleteApparmorProfiles(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
-	profiles, err := apparmorutil.Profiles()
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
-	}
-	var names []string // nolint: prealloc
-	for _, f := range profiles {
-		names = append(names, f.Name)
-	}
-	return names, cobra.ShellCompDirectiveNoFileComp
+func ShellCompleteCgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }

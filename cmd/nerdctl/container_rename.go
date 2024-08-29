@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -62,5 +63,5 @@ func renameAction(cmd *cobra.Command, args []string) error {
 	return container.Rename(ctx, client, args[0], args[1], options)
 }
 func renameShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return shellCompleteContainerNames(cmd, nil)
+	return completion.ShellCompleteContainerNames(cmd, nil)
 }

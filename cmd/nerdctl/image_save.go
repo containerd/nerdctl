@@ -23,6 +23,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -45,7 +46,7 @@ func newSaveCommand() *cobra.Command {
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	saveCommand.Flags().StringSlice("platform", []string{}, "Export content for a specific platform")
-	saveCommand.RegisterFlagCompletionFunc("platform", shellCompletePlatforms)
+	saveCommand.RegisterFlagCompletionFunc("platform", completion.ShellCompletePlatforms)
 	saveCommand.Flags().Bool("all-platforms", false, "Export content for all platforms")
 	// #endregion
 
@@ -110,5 +111,5 @@ func saveAction(cmd *cobra.Command, args []string) error {
 
 func saveShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	return shellCompleteImageNames(cmd)
+	return completion.ShellCompleteImageNames(cmd)
 }

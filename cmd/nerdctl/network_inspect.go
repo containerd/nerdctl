@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/network"
@@ -70,5 +71,5 @@ func networkInspectAction(cmd *cobra.Command, args []string) error {
 func networkInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show network names, including "bridge"
 	exclude := []string{"host", "none"}
-	return shellCompleteNetworkNames(cmd, exclude)
+	return completion.ShellCompleteNetworkNames(cmd, exclude)
 }

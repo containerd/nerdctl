@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -116,7 +117,7 @@ func logsAction(cmd *cobra.Command, args []string) error {
 
 func logsShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show container names (TODO: only show containers with logs)
-	return shellCompleteContainerNames(cmd, nil)
+	return completion.ShellCompleteContainerNames(cmd, nil)
 }
 
 // Attempts to parse the argument given to `-n/--tail` as a uint.

@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/network"
@@ -39,10 +40,10 @@ func newNetworkCreateCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	networkCreateCommand.Flags().StringP("driver", "d", DefaultNetworkDriver, "Driver to manage the Network")
-	networkCreateCommand.RegisterFlagCompletionFunc("driver", shellCompleteNetworkDrivers)
+	networkCreateCommand.RegisterFlagCompletionFunc("driver", completion.ShellCompleteNetworkDrivers)
 	networkCreateCommand.Flags().StringArrayP("opt", "o", nil, "Set driver specific options")
 	networkCreateCommand.Flags().String("ipam-driver", "default", "IP Address Management Driver")
-	networkCreateCommand.RegisterFlagCompletionFunc("ipam-driver", shellCompleteIPAMDrivers)
+	networkCreateCommand.RegisterFlagCompletionFunc("ipam-driver", completion.ShellCompleteIPAMDrivers)
 	networkCreateCommand.Flags().StringArray("ipam-opt", nil, "Set IPAM driver specific options")
 	networkCreateCommand.Flags().StringArray("subnet", nil, `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
 	networkCreateCommand.Flags().String("gateway", "", `Gateway for the master subnet`)
