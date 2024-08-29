@@ -25,6 +25,7 @@ import (
 	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/builder"
 )
@@ -71,23 +72,16 @@ func builderPruneAction(cmd *cobra.Command, _ []string) error {
 	}
 
 	if !options.Force {
-		var (
-			confirm string
-			msg     string
-		)
+		var msg string
 
 		if options.All {
 			msg = "This will remove all build cache."
 		} else {
 			msg = "This will remove any dangling build cache."
 		}
-		msg += " Are you sure you want to continue? [y/N] "
 
-		fmt.Fprintf(cmd.OutOrStdout(), "WARNING! %s", msg)
-		fmt.Fscanf(cmd.InOrStdin(), "%s", &confirm)
-
-		if strings.ToLower(confirm) != "y" {
-			return nil
+		if confirmed, err := helpers.Confirm(cmd, fmt.Sprintf("WARNING! %s.", msg)); err != nil || !confirmed {
+			return err
 		}
 	}
 

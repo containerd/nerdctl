@@ -17,11 +17,9 @@
 package main
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -59,15 +57,7 @@ func grantPrunePermission(cmd *cobra.Command) (bool, error) {
 	}
 
 	if !force {
-		var confirm string
-		msg := "This will remove all stopped containers."
-		msg += "\nAre you sure you want to continue? [y/N] "
-		fmt.Fprintf(cmd.OutOrStdout(), "WARNING! %s", msg)
-		fmt.Fscanf(cmd.InOrStdin(), "%s", &confirm)
-
-		if strings.ToLower(confirm) != "y" {
-			return false, nil
-		}
+		return helpers.Confirm(cmd, "WARNING! This will remove all stopped containers.")
 	}
 	return true, nil
 }

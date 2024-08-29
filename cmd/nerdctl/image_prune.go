@@ -18,10 +18,10 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
@@ -82,22 +82,15 @@ func imagePruneAction(cmd *cobra.Command, _ []string) error {
 	}
 
 	if !options.Force {
-		var (
-			confirm string
-			msg     string
-		)
+		var msg string
 		if !options.All {
 			msg = "This will remove all dangling images."
 		} else {
 			msg = "This will remove all images without at least one container associated to them."
 		}
-		msg += "\nAre you sure you want to continue? [y/N] "
 
-		fmt.Fprintf(cmd.OutOrStdout(), "WARNING! %s", msg)
-		fmt.Fscanf(cmd.InOrStdin(), "%s", &confirm)
-
-		if strings.ToLower(confirm) != "y" {
-			return nil
+		if confirmed, err := helpers.Confirm(cmd, fmt.Sprintf("WARNING! %s.", msg)); err != nil || !confirmed {
+			return err
 		}
 	}
 
