@@ -14,28 +14,9 @@
    limitations under the License.
 */
 
-package main
+package helpers
 
-import (
-	"github.com/spf13/cobra"
-
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+const (
+	Category   = "category"
+	Management = "management"
 )
-
-func newApparmorCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Annotations:   map[string]string{helpers.Category: helpers.Management},
-		Use:           "apparmor",
-		Short:         "Manage AppArmor profiles",
-		RunE:          unknownSubcommandAction,
-		SilenceUsage:  true,
-		SilenceErrors: true,
-	}
-	cmd.AddCommand(
-		newApparmorLsCommand(),
-		newApparmorInspectCommand(),
-		newApparmorLoadCommand(),
-		newApparmorUnloadCommand(),
-	)
-	return cmd
-}

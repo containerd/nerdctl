@@ -42,11 +42,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/version"
 )
 
-const (
-	Category   = "category"
-	Management = "management"
-)
-
 var (
 	// To print Bold Text
 	Bold = color.New(color.Bold).SprintfFunc()
@@ -75,7 +70,7 @@ func usage(c *cobra.Command) error {
 		if f.Hidden {
 			continue
 		}
-		if f.Annotations[Category] == Management {
+		if f.Annotations[helpers.Category] == helpers.Management {
 			managementCommands = append(managementCommands, f)
 		} else {
 			nonManagementCommands = append(nonManagementCommands, f)
@@ -103,7 +98,7 @@ func usage(c *cobra.Command) error {
 		t += "\n"
 		return t
 	}
-	s += printCommands("Management commands", managementCommands)
+	s += printCommands("helpers.Management commands", managementCommands)
 	s += printCommands("Commands", nonManagementCommands)
 
 	s += Bold("Flags") + ":\n"
@@ -293,7 +288,7 @@ Config file ($NERDCTL_TOML): %s
 		newTopCommand(),
 		newStatsCommand(),
 
-		// #region Management
+		// #region helpers.Management
 		newContainerCommand(),
 		newImageCommand(),
 		newNetworkCommand(),

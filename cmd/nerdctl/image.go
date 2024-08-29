@@ -18,11 +18,13 @@ package main
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 )
 
 func newImageCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Annotations:   map[string]string{Category: Management},
+		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "image",
 		Short:         "Manage images",
 		RunE:          unknownSubcommandAction,

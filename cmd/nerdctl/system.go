@@ -16,11 +16,15 @@
 
 package main
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+)
 
 func newSystemCommand() *cobra.Command {
 	var systemCommand = &cobra.Command{
-		Annotations:   map[string]string{Category: Management},
+		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "system",
 		Short:         "Manage containerd",
 		RunE:          unknownSubcommandAction,

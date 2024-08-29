@@ -32,7 +32,7 @@ import (
 
 func newBuilderCommand() *cobra.Command {
 	var builderCommand = &cobra.Command{
-		Annotations:   map[string]string{Category: Management},
+		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "builder",
 		Short:         "Manage builds",
 		RunE:          unknownSubcommandAction,

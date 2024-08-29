@@ -18,11 +18,13 @@ package main
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 )
 
 func newContainerCommand() *cobra.Command {
 	containerCommand := &cobra.Command{
-		Annotations:   map[string]string{Category: Management},
+		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "container",
 		Short:         "Manage containers",
 		RunE:          unknownSubcommandAction,

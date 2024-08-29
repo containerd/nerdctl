@@ -18,11 +18,13 @@ package main
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 )
 
 func newIPFSCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Annotations:   map[string]string{Category: Management},
+		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "ipfs",
 		Short:         "Distributing images on IPFS",
 		RunE:          unknownSubcommandAction,

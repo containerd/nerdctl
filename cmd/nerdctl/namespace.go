@@ -35,7 +35,7 @@ import (
 
 func newNamespaceCommand() *cobra.Command {
 	namespaceCommand := &cobra.Command{
-		Annotations:   map[string]string{Category: Management},
+		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "namespace",
 		Aliases:       []string{"ns"},
 		Short:         "Manage containerd namespaces",
