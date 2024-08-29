@@ -35,6 +35,7 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
@@ -78,7 +79,7 @@ type historyPrintable struct {
 }
 
 func historyAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}

@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
@@ -71,7 +72,7 @@ func newPushCommand() *cobra.Command {
 }
 
 func processImagePushOptions(cmd *cobra.Command) (types.ImagePushOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ImagePushOptions{}, err
 	}
@@ -145,4 +146,27 @@ func pushAction(cmd *cobra.Command, args []string) error {
 func pushShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
 	return shellCompleteImageNames(cmd)
+}
+
+func processImageSignOptions(cmd *cobra.Command) (opt types.ImageSignOptions, err error) {
+	if opt.Provider, err = cmd.Flags().GetString("sign"); err != nil {
+		return
+	}
+	if opt.CosignKey, err = cmd.Flags().GetString("cosign-key"); err != nil {
+		return
+	}
+	if opt.NotationKeyName, err = cmd.Flags().GetString("notation-key-name"); err != nil {
+		return
+	}
+	return
+}
+
+func processSociOptions(cmd *cobra.Command) (opt types.SociOptions, err error) {
+	if opt.SpanSize, err = cmd.Flags().GetInt64("soci-span-size"); err != nil {
+		return
+	}
+	if opt.MinLayerSize, err = cmd.Flags().GetInt64("soci-min-layer-size"); err != nil {
+		return
+	}
+	return
 }

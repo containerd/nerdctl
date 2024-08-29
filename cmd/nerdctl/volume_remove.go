@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
@@ -41,7 +42,7 @@ func newVolumeRmCommand() *cobra.Command {
 }
 
 func processVolumeRmOptions(cmd *cobra.Command) (types.VolumeRemoveOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.VolumeRemoveOptions{}, err
 	}

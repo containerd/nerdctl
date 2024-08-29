@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/v2/pkg/composer"
@@ -69,7 +70,7 @@ func newComposeRunCommand() *cobra.Command {
 }
 
 func composeRunAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}

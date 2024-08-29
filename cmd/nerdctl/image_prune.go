@@ -44,7 +44,7 @@ func newImagePruneCommand() *cobra.Command {
 }
 
 func processImagePruneOptions(cmd *cobra.Command) (types.ImagePruneOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ImagePruneOptions{}, err
 	}

@@ -24,6 +24,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -48,7 +49,7 @@ func newTopCommand() *cobra.Command {
 func topAction(cmd *cobra.Command, args []string) error {
 	// NOTE: rootless container does not rely on cgroupv1.
 	// more details about possible ways to resolve this concern: #223
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}

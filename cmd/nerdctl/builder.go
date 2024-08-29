@@ -102,7 +102,7 @@ func builderPruneAction(cmd *cobra.Command, _ []string) error {
 }
 
 func processBuilderPruneOptions(cmd *cobra.Command) (types.BuilderPruneOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.BuilderPruneOptions{}, err
 	}
@@ -151,7 +151,7 @@ func newBuilderDebugCommand() *cobra.Command {
 }
 
 func builderDebugAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}

@@ -25,6 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -82,7 +83,7 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 }
 
 func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBuildOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
 	}

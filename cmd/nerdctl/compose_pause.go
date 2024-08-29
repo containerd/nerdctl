@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 )
@@ -36,7 +37,7 @@ func newComposePauseCommand() *cobra.Command {
 }
 
 func composePauseAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
@@ -71,7 +72,7 @@ func newComposeUnpauseCommand() *cobra.Command {
 }
 
 func composeUnpauseAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}

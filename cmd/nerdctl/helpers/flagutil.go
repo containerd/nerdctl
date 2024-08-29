@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package helpers
 
 import (
 	"github.com/spf13/cobra"
@@ -22,20 +22,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
-func processImageSignOptions(cmd *cobra.Command) (opt types.ImageSignOptions, err error) {
-	if opt.Provider, err = cmd.Flags().GetString("sign"); err != nil {
-		return
-	}
-	if opt.CosignKey, err = cmd.Flags().GetString("cosign-key"); err != nil {
-		return
-	}
-	if opt.NotationKeyName, err = cmd.Flags().GetString("notation-key-name"); err != nil {
-		return
-	}
-	return
-}
-
-func processImageVerifyOptions(cmd *cobra.Command) (opt types.ImageVerifyOptions, err error) {
+func ProcessImageVerifyOptions(cmd *cobra.Command) (opt types.ImageVerifyOptions, err error) {
 	if opt.Provider, err = cmd.Flags().GetString("verify"); err != nil {
 		return
 	}
@@ -57,17 +44,7 @@ func processImageVerifyOptions(cmd *cobra.Command) (opt types.ImageVerifyOptions
 	return
 }
 
-func processSociOptions(cmd *cobra.Command) (opt types.SociOptions, err error) {
-	if opt.SpanSize, err = cmd.Flags().GetInt64("soci-span-size"); err != nil {
-		return
-	}
-	if opt.MinLayerSize, err = cmd.Flags().GetInt64("soci-min-layer-size"); err != nil {
-		return
-	}
-	return
-}
-
-func processRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error) {
+func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error) {
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
 		return types.GlobalCommandOptions{}, err

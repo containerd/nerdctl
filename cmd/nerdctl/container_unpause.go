@@ -21,6 +21,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -40,7 +41,7 @@ func newUnpauseCommand() *cobra.Command {
 }
 
 func processContainerUnpauseOptions(cmd *cobra.Command) (types.ContainerUnpauseOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerUnpauseOptions{}, err
 	}

@@ -32,6 +32,7 @@ import (
 	gocni "github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
@@ -74,7 +75,7 @@ type composeContainerPrintable struct {
 }
 
 func composePsAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}

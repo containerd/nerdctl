@@ -33,6 +33,7 @@ import (
 	"github.com/containerd/log"
 	"github.com/containerd/typeurl/v2"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	nerdctlContainer "github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -89,7 +90,7 @@ func setUpdateFlags(cmd *cobra.Command) {
 }
 
 func updateAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}

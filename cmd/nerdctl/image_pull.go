@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
@@ -71,7 +72,7 @@ func newPullCommand() *cobra.Command {
 }
 
 func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ImagePullOptions{}, err
 	}
@@ -112,7 +113,7 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 		return types.ImagePullOptions{}, err
 	}
 
-	verifyOptions, err := processImageVerifyOptions(cmd)
+	verifyOptions, err := helpers.ProcessImageVerifyOptions(cmd)
 	if err != nil {
 		return types.ImagePullOptions{}, err
 	}

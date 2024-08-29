@@ -25,6 +25,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -56,7 +57,7 @@ func newExecCommand() *cobra.Command {
 }
 
 func processExecCommandOptions(cmd *cobra.Command) (types.ContainerExecOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerExecOptions{}, err
 	}

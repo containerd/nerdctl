@@ -24,13 +24,14 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 )
 
 func shellCompleteImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -53,7 +54,7 @@ func shellCompleteImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirec
 }
 
 func shellCompleteContainerNames(cmd *cobra.Command, filterFunc func(containerd.ProcessStatus) bool) ([]string, cobra.ShellCompDirective) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -102,7 +103,7 @@ func shellCompleteContainerNames(cmd *cobra.Command, filterFunc func(containerd.
 
 // shellCompleteNetworkNames includes {"bridge","host","none"}
 func shellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, cobra.ShellCompDirective) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -134,7 +135,7 @@ func shellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, 
 }
 
 func shellCompleteVolumeNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}

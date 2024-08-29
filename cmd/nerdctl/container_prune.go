@@ -39,7 +39,7 @@ func newContainerPruneCommand() *cobra.Command {
 }
 
 func processContainerPruneOptions(cmd *cobra.Command) (types.ContainerPruneOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerPruneOptions{}, err
 	}
