@@ -117,7 +117,7 @@ func logsAction(cmd *cobra.Command, args []string) error {
 
 func logsShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show container names (TODO: only show containers with logs)
-	return completion.ShellCompleteContainerNames(cmd, nil)
+	return completion.ContainerNames(cmd, nil)
 }
 
 // Attempts to parse the argument given to `-n/--tail` as a uint.

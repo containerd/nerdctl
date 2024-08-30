@@ -272,5 +272,5 @@ func (x *historyPrinter) printHistory(printable historyPrintable) error {
 
 func historyShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	return completion.ShellCompleteImageNames(cmd)
+	return completion.ImageNames(cmd)
 }

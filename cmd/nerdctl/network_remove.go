@@ -66,5 +66,5 @@ func networkRmAction(cmd *cobra.Command, args []string) error {
 func networkRmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show network names, including "bridge"
 	exclude := []string{netutil.DefaultNetworkName, "host", "none"}
-	return completion.ShellCompleteNetworkNames(cmd, exclude)
+	return completion.NetworkNames(cmd, exclude)
 }

@@ -33,7 +33,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 )
 
-func ShellCompleteImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
+func ImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
@@ -56,7 +56,7 @@ func ShellCompleteImageNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirec
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-func ShellCompleteContainerNames(cmd *cobra.Command, filterFunc func(containerd.ProcessStatus) bool) ([]string, cobra.ShellCompDirective) {
+func ContainerNames(cmd *cobra.Command, filterFunc func(containerd.ProcessStatus) bool) ([]string, cobra.ShellCompDirective) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
@@ -104,8 +104,8 @@ func ShellCompleteContainerNames(cmd *cobra.Command, filterFunc func(containerd.
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-// ShellCompleteNetworkNames includes {"bridge","host","none"}
-func ShellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, cobra.ShellCompDirective) {
+// NetworkNames includes {"bridge","host","none"}
+func NetworkNames(cmd *cobra.Command, exclude []string) ([]string, cobra.ShellCompDirective) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
@@ -137,7 +137,7 @@ func ShellCompleteNetworkNames(cmd *cobra.Command, exclude []string) ([]string, 
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-func ShellCompleteVolumeNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
+func VolumeNames(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
@@ -153,7 +153,7 @@ func ShellCompleteVolumeNames(cmd *cobra.Command) ([]string, cobra.ShellCompDire
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-func ShellCompletePlatforms(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func Platforms(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	candidates := []string{
 		"amd64",
 		"arm64",

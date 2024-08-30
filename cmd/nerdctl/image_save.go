@@ -46,7 +46,7 @@ func newSaveCommand() *cobra.Command {
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	saveCommand.Flags().StringSlice("platform", []string{}, "Export content for a specific platform")
-	saveCommand.RegisterFlagCompletionFunc("platform", completion.ShellCompletePlatforms)
+	saveCommand.RegisterFlagCompletionFunc("platform", completion.Platforms)
 	saveCommand.Flags().Bool("all-platforms", false, "Export content for all platforms")
 	// #endregion
 
@@ -111,5 +111,5 @@ func saveAction(cmd *cobra.Command, args []string) error {
 
 func saveShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	return completion.ShellCompleteImageNames(cmd)
+	return completion.ImageNames(cmd)
 }

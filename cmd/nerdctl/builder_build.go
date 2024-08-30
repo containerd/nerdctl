@@ -73,7 +73,7 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	buildCommand.Flags().StringSlice("platform", []string{}, "Set target platform for build (e.g., \"amd64\", \"arm64\")")
-	buildCommand.RegisterFlagCompletionFunc("platform", completion.ShellCompletePlatforms)
+	buildCommand.RegisterFlagCompletionFunc("platform", completion.Platforms)
 	buildCommand.Flags().StringArray("build-context", []string{}, "Additional build contexts (e.g., name=path)")
 	// #endregion
 

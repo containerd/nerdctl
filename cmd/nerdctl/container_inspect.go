@@ -105,5 +105,5 @@ func containerInspectAction(cmd *cobra.Command, args []string) error {
 
 func containerInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show container names
-	return completion.ShellCompleteContainerNames(cmd, nil)
+	return completion.ContainerNames(cmd, nil)
 }

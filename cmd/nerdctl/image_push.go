@@ -43,7 +43,7 @@ func newPushCommand() *cobra.Command {
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	pushCommand.Flags().StringSlice("platform", []string{}, "Push content for a specific platform")
-	pushCommand.RegisterFlagCompletionFunc("platform", completion.ShellCompletePlatforms)
+	pushCommand.RegisterFlagCompletionFunc("platform", completion.Platforms)
 	pushCommand.Flags().Bool("all-platforms", false, "Push content for all platforms")
 	// #endregion
 
@@ -146,7 +146,7 @@ func pushAction(cmd *cobra.Command, args []string) error {
 
 func pushShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	return completion.ShellCompleteImageNames(cmd)
+	return completion.ImageNames(cmd)
 }
 
 func processImageSignOptions(cmd *cobra.Command) (opt types.ImageSignOptions, err error) {

@@ -148,7 +148,7 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 func imagesShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) == 0 {
 		// show image names
-		return completion.ShellCompleteImageNames(cmd)
+		return completion.ImageNames(cmd)
 	}
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }

@@ -48,5 +48,5 @@ func apparmorUnloadAction(cmd *cobra.Command, args []string) error {
 }
 
 func apparmorUnloadShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return completion.ShellCompleteApparmorProfiles(cmd)
+	return completion.ApparmorProfiles(cmd)
 }

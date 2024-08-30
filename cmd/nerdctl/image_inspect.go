@@ -48,7 +48,7 @@ func newImageInspectCommand() *cobra.Command {
 
 	// #region platform flags
 	imageInspectCommand.Flags().String("platform", "", "Inspect a specific platform") // not a slice, and there is no --all-platforms
-	imageInspectCommand.RegisterFlagCompletionFunc("platform", completion.ShellCompletePlatforms)
+	imageInspectCommand.RegisterFlagCompletionFunc("platform", completion.Platforms)
 	// #endregion
 
 	return imageInspectCommand
@@ -100,5 +100,5 @@ func imageInspectAction(cmd *cobra.Command, args []string) error {
 
 func imageInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	return completion.ShellCompleteImageNames(cmd)
+	return completion.ImageNames(cmd)
 }

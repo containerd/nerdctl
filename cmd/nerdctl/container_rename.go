@@ -63,5 +63,5 @@ func renameAction(cmd *cobra.Command, args []string) error {
 	return container.Rename(ctx, client, args[0], args[1], options)
 }
 func renameShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return completion.ShellCompleteContainerNames(cmd, nil)
+	return completion.ContainerNames(cmd, nil)
 }

@@ -24,7 +24,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
-func ShellCompleteApparmorProfiles(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
+func ApparmorProfiles(cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
 	profiles, err := apparmorutil.Profiles()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
@@ -36,7 +36,7 @@ func ShellCompleteApparmorProfiles(cmd *cobra.Command) ([]string, cobra.ShellCom
 	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
-func ShellCompleteCgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func CgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	candidates := []string{"cgroupfs"}
 	if ncdefaults.IsSystemdAvailable() {
 		candidates = append(candidates, "systemd")

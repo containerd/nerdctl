@@ -94,7 +94,7 @@ func commitAction(cmd *cobra.Command, args []string) error {
 
 func commitShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) == 0 {
-		return completion.ShellCompleteContainerNames(cmd, nil)
+		return completion.ContainerNames(cmd, nil)
 	}
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }

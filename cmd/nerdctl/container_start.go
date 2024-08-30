@@ -88,5 +88,5 @@ func startShellComplete(cmd *cobra.Command, args []string, toComplete string) ([
 	statusFilterFn := func(st containerd.ProcessStatus) bool {
 		return st != containerd.Running && st != containerd.Unknown
 	}
-	return completion.ShellCompleteContainerNames(cmd, statusFilterFn)
+	return completion.ContainerNames(cmd, statusFilterFn)
 }

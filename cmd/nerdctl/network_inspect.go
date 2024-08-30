@@ -71,5 +71,5 @@ func networkInspectAction(cmd *cobra.Command, args []string) error {
 func networkInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show network names, including "bridge"
 	exclude := []string{"host", "none"}
-	return completion.ShellCompleteNetworkNames(cmd, exclude)
+	return completion.NetworkNames(cmd, exclude)
 }

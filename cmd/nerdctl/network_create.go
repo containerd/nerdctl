@@ -40,10 +40,10 @@ func newNetworkCreateCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	networkCreateCommand.Flags().StringP("driver", "d", DefaultNetworkDriver, "Driver to manage the Network")
-	networkCreateCommand.RegisterFlagCompletionFunc("driver", completion.ShellCompleteNetworkDrivers)
+	networkCreateCommand.RegisterFlagCompletionFunc("driver", completion.NetworkDrivers)
 	networkCreateCommand.Flags().StringArrayP("opt", "o", nil, "Set driver specific options")
 	networkCreateCommand.Flags().String("ipam-driver", "default", "IP Address helpers.Management Driver")
-	networkCreateCommand.RegisterFlagCompletionFunc("ipam-driver", completion.ShellCompleteIPAMDrivers)
+	networkCreateCommand.RegisterFlagCompletionFunc("ipam-driver", completion.IPAMDrivers)
 	networkCreateCommand.Flags().StringArray("ipam-opt", nil, "Set IPAM driver specific options")
 	networkCreateCommand.Flags().StringArray("subnet", nil, `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
 	networkCreateCommand.Flags().String("gateway", "", `Gateway for the master subnet`)

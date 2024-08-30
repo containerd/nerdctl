@@ -42,7 +42,7 @@ func newLoadCommand() *cobra.Command {
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	loadCommand.Flags().StringSlice("platform", []string{}, "Import content for a specific platform")
-	loadCommand.RegisterFlagCompletionFunc("platform", completion.ShellCompletePlatforms)
+	loadCommand.RegisterFlagCompletionFunc("platform", completion.Platforms)
 	loadCommand.Flags().Bool("all-platforms", false, "Import content for all platforms")
 	// #endregion
 

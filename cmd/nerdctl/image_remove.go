@@ -82,5 +82,5 @@ func rmiAction(cmd *cobra.Command, args []string) error {
 
 func rmiShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show image names
-	return completion.ShellCompleteImageNames(cmd)
+	return completion.ImageNames(cmd)
 }

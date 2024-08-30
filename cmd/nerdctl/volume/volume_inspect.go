@@ -74,5 +74,5 @@ func volumeInspectAction(cmd *cobra.Command, args []string) error {
 
 func volumeInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show volume names
-	return completion.ShellCompleteVolumeNames(cmd)
+	return completion.VolumeNames(cmd)
 }

@@ -45,7 +45,7 @@ func newPullCommand() *cobra.Command {
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
 	pullCommand.Flags().StringSlice("platform", nil, "Pull content for a specific platform")
-	pullCommand.RegisterFlagCompletionFunc("platform", completion.ShellCompletePlatforms)
+	pullCommand.RegisterFlagCompletionFunc("platform", completion.Platforms)
 	pullCommand.Flags().Bool("all-platforms", false, "Pull content for all platforms")
 	// #endregion
 

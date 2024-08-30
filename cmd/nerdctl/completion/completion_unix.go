@@ -29,16 +29,16 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
-func ShellCompleteNetworkDrivers(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func NetworkDrivers(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	candidates := []string{"bridge", "macvlan", "ipvlan"}
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-func ShellCompleteIPAMDrivers(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func IPAMDrivers(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return []string{"default", "host-local", "dhcp"}, cobra.ShellCompDirectiveNoFileComp
 }
 
-func ShellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func NamespaceNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
@@ -64,7 +64,7 @@ func ShellCompleteNamespaceNames(cmd *cobra.Command, args []string, toComplete s
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
 
-func ShellCompleteSnapshotterNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func SnapshotterNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
