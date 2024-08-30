@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package namespace
 
 import (
 	"github.com/spf13/cobra"
@@ -25,40 +25,37 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/namespace"
 )
 
-func newNamespaceInspectCommand() *cobra.Command {
-	namespaceInspectCommand := &cobra.Command{
-		Use:           "inspect NAMESPACE",
-		Short:         "Display detailed information on one or more namespaces.",
-		RunE:          labelInspectAction,
+func newNamespaceCreateCommand() *cobra.Command {
+	namespaceCreateCommand := &cobra.Command{
+		Use:           "create NAMESPACE",
+		Short:         "Create a new namespace",
 		Args:          cobra.MinimumNArgs(1),
+		RunE:          namespaceCreateAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	namespaceInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
-	namespaceInspectCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
-	})
-	return namespaceInspectCommand
+
+	namespaceCreateCommand.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
+	return namespaceCreateCommand
 }
 
-func processNamespaceInspectOptions(cmd *cobra.Command) (types.NamespaceInspectOptions, error) {
+func processNamespaceCreateCommandOption(cmd *cobra.Command) (types.NamespaceCreateOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
-		return types.NamespaceInspectOptions{}, err
+		return types.NamespaceCreateOptions{}, err
 	}
-	format, err := cmd.Flags().GetString("format")
+	labels, err := cmd.Flags().GetStringArray("label")
 	if err != nil {
-		return types.NamespaceInspectOptions{}, err
+		return types.NamespaceCreateOptions{}, err
 	}
-	return types.NamespaceInspectOptions{
+	return types.NamespaceCreateOptions{
 		GOptions: globalOptions,
-		Format:   format,
-		Stdout:   cmd.OutOrStdout(),
+		Labels:   labels,
 	}, nil
 }
 
-func labelInspectAction(cmd *cobra.Command, args []string) error {
-	options, err := processNamespaceInspectOptions(cmd)
+func namespaceCreateAction(cmd *cobra.Command, args []string) error {
+	options, err := processNamespaceCreateCommandOption(cmd)
 	if err != nil {
 		return err
 	}
@@ -69,5 +66,5 @@ func labelInspectAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	return namespace.Inspect(ctx, client, args, options)
+	return namespace.Create(ctx, client, args[0], options)
 }

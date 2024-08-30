@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package namespace
 
 import (
 	"github.com/spf13/cobra"
@@ -25,37 +25,36 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/namespace"
 )
 
-func newNamespaceCreateCommand() *cobra.Command {
-	namespaceCreateCommand := &cobra.Command{
-		Use:           "create NAMESPACE",
-		Short:         "Create a new namespace",
+func newNamespacelabelUpdateCommand() *cobra.Command {
+	namespaceLableCommand := &cobra.Command{
+		Use:           "update [flags] NAMESPACE",
+		Short:         "Update labels for a namespace",
+		RunE:          labelUpdateAction,
 		Args:          cobra.MinimumNArgs(1),
-		RunE:          namespaceCreateAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-
-	namespaceCreateCommand.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
-	return namespaceCreateCommand
+	namespaceLableCommand.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
+	return namespaceLableCommand
 }
 
-func processNamespaceCreateCommandOption(cmd *cobra.Command) (types.NamespaceCreateOptions, error) {
+func processNamespaceUpdateCommandOption(cmd *cobra.Command) (types.NamespaceUpdateOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
-		return types.NamespaceCreateOptions{}, err
+		return types.NamespaceUpdateOptions{}, err
 	}
 	labels, err := cmd.Flags().GetStringArray("label")
 	if err != nil {
-		return types.NamespaceCreateOptions{}, err
+		return types.NamespaceUpdateOptions{}, err
 	}
-	return types.NamespaceCreateOptions{
+	return types.NamespaceUpdateOptions{
 		GOptions: globalOptions,
 		Labels:   labels,
 	}, nil
 }
 
-func namespaceCreateAction(cmd *cobra.Command, args []string) error {
-	options, err := processNamespaceCreateCommandOption(cmd)
+func labelUpdateAction(cmd *cobra.Command, args []string) error {
+	options, err := processNamespaceUpdateCommandOption(cmd)
 	if err != nil {
 		return err
 	}
@@ -66,5 +65,5 @@ func namespaceCreateAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	return namespace.Create(ctx, client, args[0], options)
+	return namespace.Update(ctx, client, args[0], options)
 }

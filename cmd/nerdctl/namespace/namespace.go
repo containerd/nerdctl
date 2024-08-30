@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package namespace
 
 import (
 	"fmt"
@@ -33,7 +33,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 )
 
-func newNamespaceCommand() *cobra.Command {
+func NewNamespaceCommand() *cobra.Command {
 	namespaceCommand := &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "namespace",
