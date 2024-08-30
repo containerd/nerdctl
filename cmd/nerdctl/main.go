@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/image"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/internal"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/ipfs"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/login"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/namespace"
@@ -305,7 +306,7 @@ Config file ($NERDCTL_TOML): %s
 		// #endregion
 
 		// Internal
-		newInternalCommand(),
+		internal.NewInternalCommand(),
 
 		// login
 		login.NewLoginCommand(),

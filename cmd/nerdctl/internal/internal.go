@@ -14,13 +14,13 @@
    limitations under the License.
 */
 
-package main
+package internal
 
 import (
 	"github.com/spf13/cobra"
 )
 
-func newInternalCommand() *cobra.Command {
+func NewInternalCommand() *cobra.Command {
 	var internalCommand = &cobra.Command{
 		Use:           "internal",
 		Short:         "DO NOT EXECUTE MANUALLY",
