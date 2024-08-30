@@ -14,26 +14,14 @@
    limitations under the License.
 */
 
-package main
+package ipfs
 
 import (
-	"github.com/spf13/cobra"
+	"testing"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-func newIPFSRegistryCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Annotations:   map[string]string{helpers.Category: helpers.Management},
-		Use:           "registry",
-		Short:         "Manage read-only registry backed by IPFS",
-		PreRunE:       helpers.CheckExperimental("ipfs"),
-		RunE:          helpers.UnknownSubcommandAction,
-		SilenceUsage:  true,
-		SilenceErrors: true,
-	}
-	cmd.AddCommand(
-		newIPFSRegistryServeCommand(),
-	)
-	return cmd
+func TestMain(m *testing.M) {
+	testutil.M(m)
 }

@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package ipfs
 
 import (
 	"github.com/spf13/cobra"
@@ -22,17 +22,18 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 )
 
-func newIPFSCommand() *cobra.Command {
+func newIPFSRegistryCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
-		Use:           "ipfs",
-		Short:         "Distributing images on IPFS",
+		Use:           "registry",
+		Short:         "Manage read-only registry backed by IPFS",
+		PreRunE:       helpers.CheckExperimental("ipfs"),
 		RunE:          helpers.UnknownSubcommandAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
 	cmd.AddCommand(
-		newIPFSRegistryCommand(),
+		newIPFSRegistryServeCommand(),
 	)
 	return cmd
 }

@@ -33,6 +33,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/ipfs"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/login"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/namespace"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/network"
@@ -314,7 +315,7 @@ Config file ($NERDCTL_TOML): %s
 		newComposeCommand(),
 
 		// IPFS
-		newIPFSCommand(),
+		ipfs.NewIPFSCommand(),
 	)
 	addApparmorCommand(rootCmd)
 	addCpCommand(rootCmd)
