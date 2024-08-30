@@ -14,28 +14,29 @@
    limitations under the License.
 */
 
-package main
+package apparmor
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/pkg/cmd/apparmor"
+	"github.com/containerd/nerdctl/v2/pkg/defaults"
 )
 
-func newApparmorCommand() *cobra.Command {
+func newApparmorLoadCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Annotations:   map[string]string{helpers.Category: helpers.Management},
-		Use:           "apparmor",
-		Short:         "Manage AppArmor profiles",
-		RunE:          helpers.UnknownSubcommandAction,
+		Use:           "load",
+		Short:         fmt.Sprintf("Load the default AppArmor profile %q. Requires root.", defaults.AppArmorProfileName),
+		Args:          cobra.NoArgs,
+		RunE:          apparmorLoadAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	cmd.AddCommand(
-		newApparmorLsCommand(),
-		newApparmorInspectCommand(),
-		newApparmorLoadCommand(),
-		newApparmorUnloadCommand(),
-	)
 	return cmd
+}
+
+func apparmorLoadAction(cmd *cobra.Command, args []string) error {
+	return apparmor.Load()
 }
