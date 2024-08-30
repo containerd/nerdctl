@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package system
 
 import (
 	"github.com/spf13/cobra"
@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/system"
 )
 
-func newEventsCommand() *cobra.Command {
+func NewEventsCommand() *cobra.Command {
 	shortHelp := `Get real time events from the server`
 	longHelp := shortHelp + "\nNOTE: The output format is not compatible with Docker."
 	var eventsCommand = &cobra.Command{

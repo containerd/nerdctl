@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package system
 
 import (
 	"github.com/spf13/cobra"
@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/system"
 )
 
-func newInfoCommand() *cobra.Command {
+func NewInfoCommand() *cobra.Command {
 	var infoCommand = &cobra.Command{
 		Use:           "info",
 		Args:          cobra.NoArgs,

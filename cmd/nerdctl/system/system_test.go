@@ -14,28 +14,14 @@
    limitations under the License.
 */
 
-package main
+package system
 
 import (
-	"github.com/spf13/cobra"
+	"testing"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-func newSystemCommand() *cobra.Command {
-	var systemCommand = &cobra.Command{
-		Annotations:   map[string]string{helpers.Category: helpers.Management},
-		Use:           "system",
-		Short:         "Manage containerd",
-		RunE:          helpers.UnknownSubcommandAction,
-		SilenceUsage:  true,
-		SilenceErrors: true,
-	}
-	// versionCommand is not here
-	systemCommand.AddCommand(
-		newEventsCommand(),
-		newInfoCommand(),
-		newSystemPruneCommand(),
-	)
-	return systemCommand
+func TestMain(m *testing.M) {
+	testutil.M(m)
 }
