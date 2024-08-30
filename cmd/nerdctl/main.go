@@ -33,9 +33,11 @@ import (
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/builder"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/compose"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/container"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/image"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/inspect"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/internal"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/ipfs"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/login"
@@ -290,7 +292,7 @@ Config file ($NERDCTL_TOML): %s
 		// #endregion
 
 		// Inspect
-		newInspectCommand(),
+		inspect.NewInspectCommand(),
 
 		// stats
 		container.NewTopCommand(),
@@ -316,7 +318,7 @@ Config file ($NERDCTL_TOML): %s
 		login.NewLogoutCommand(),
 
 		// Compose
-		newComposeCommand(),
+		compose.NewComposeCommand(),
 
 		// IPFS
 		ipfs.NewIPFSCommand(),
@@ -415,39 +417,6 @@ func AddPersistentBoolFlag(cmd *cobra.Command, name string, aliases, nonPersiste
 			persistentFlags.BoolVarP(p, a, a, value, aliasesUsage)
 		} else {
 			persistentFlags.BoolVar(p, a, value, aliasesUsage)
-		}
-	}
-}
-
-// AddPersistentStringArrayFlag is similar to cmd.Flags().StringArray but supports aliases and env var and persistent.
-// See https://github.com/spf13/cobra/blob/main/user_guide.md#persistent-flags to learn what is "persistent".
-func AddPersistentStringArrayFlag(cmd *cobra.Command, name string, aliases, nonPersistentAliases []string, value []string, env string, usage string) {
-	if env != "" {
-		usage = fmt.Sprintf("%s [$%s]", usage, env)
-	}
-	if envV, ok := os.LookupEnv(env); ok {
-		value = []string{envV}
-	}
-	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
-	p := new([]string)
-	flags := cmd.Flags()
-	for _, a := range nonPersistentAliases {
-		if len(a) == 1 {
-			// pflag doesn't support short-only flags, so we have to register long one as well here
-			flags.StringArrayVarP(p, a, a, value, aliasesUsage)
-		} else {
-			flags.StringArrayVar(p, a, value, aliasesUsage)
-		}
-	}
-
-	persistentFlags := cmd.PersistentFlags()
-	persistentFlags.StringArrayVar(p, name, value, usage)
-	for _, a := range aliases {
-		if len(a) == 1 {
-			// pflag doesn't support short-only flags, so we have to register long one as well here
-			persistentFlags.StringArrayVarP(p, a, a, value, aliasesUsage)
-		} else {
-			persistentFlags.StringArrayVar(p, a, value, aliasesUsage)
 		}
 	}
 }
