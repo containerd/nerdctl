@@ -47,7 +47,7 @@ func newHistoryCommand() *cobra.Command {
 	var historyCommand = &cobra.Command{
 		Use:               "history [flags] IMAGE",
 		Short:             "Show the history of an image",
-		Args:              IsExactArgs(1),
+		Args:              helpers.IsExactArgs(1),
 		RunE:              historyAction,
 		ValidArgsFunction: historyShellComplete,
 		SilenceUsage:      true,

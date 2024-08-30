@@ -40,7 +40,7 @@ The following containers are supported:
 `
 	var logsCommand = &cobra.Command{
 		Use:               "logs [flags] CONTAINER",
-		Args:              IsExactArgs(1),
+		Args:              helpers.IsExactArgs(1),
 		Short:             shortUsage,
 		Long:              longUsage,
 		RunE:              logsAction,

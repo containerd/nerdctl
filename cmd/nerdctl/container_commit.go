@@ -30,7 +30,7 @@ func newCommitCommand() *cobra.Command {
 	var commitCommand = &cobra.Command{
 		Use:               "commit [flags] CONTAINER REPOSITORY[:TAG]",
 		Short:             "Create a new image from a container's changes",
-		Args:              IsExactArgs(2),
+		Args:              helpers.IsExactArgs(2),
 		RunE:              commitAction,
 		ValidArgsFunction: commitShellComplete,
 		SilenceUsage:      true,
