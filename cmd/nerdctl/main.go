@@ -31,8 +31,10 @@ import (
 
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/builder"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/image"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/ipfs"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/login"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/namespace"
@@ -266,17 +268,17 @@ Config file ($NERDCTL_TOML): %s
 		// #endregion
 
 		// Build
-		newBuildCommand(),
+		builder.NewBuildCommand(),
 
 		// #region Image management
-		newImagesCommand(),
-		newPullCommand(),
-		newPushCommand(),
-		newLoadCommand(),
-		newSaveCommand(),
-		newTagCommand(),
-		newRmiCommand(),
-		newHistoryCommand(),
+		image.NewImagesCommand(),
+		image.NewPullCommand(),
+		image.NewPushCommand(),
+		image.NewLoadCommand(),
+		image.NewSaveCommand(),
+		image.NewTagCommand(),
+		image.NewRmiCommand(),
+		image.NewHistoryCommand(),
 		// #endregion
 
 		// #region System
@@ -294,12 +296,12 @@ Config file ($NERDCTL_TOML): %s
 
 		// #region helpers.Management
 		newContainerCommand(),
-		newImageCommand(),
+		image.NewImageCommand(),
 		network.NewNetworkCommand(),
 		volume.NewVolumeCommand(),
 		newSystemCommand(),
 		namespace.NewNamespaceCommand(),
-		newBuilderCommand(),
+		builder.NewBuilderCommand(),
 		// #endregion
 
 		// Internal

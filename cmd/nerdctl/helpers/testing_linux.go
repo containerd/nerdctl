@@ -17,8 +17,13 @@
 package helpers
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -76,4 +81,57 @@ func ComposeUp(t *testing.T, base *testutil.Base, dockerComposeYAML string, opts
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
 	base.Cmd("volume", "inspect", fmt.Sprintf("%s_db", projectName)).AssertFail()
 	base.Cmd("network", "inspect", fmt.Sprintf("%s_default", projectName)).AssertFail()
+}
+
+func ExtractDockerArchive(archiveTarPath, rootfsPath string) error {
+	if err := os.MkdirAll(rootfsPath, 0755); err != nil {
+		return err
+	}
+	workDir, err := os.MkdirTemp("", "extract-docker-archive")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(workDir)
+	if err := ExtractTarFile(workDir, archiveTarPath); err != nil {
+		return err
+	}
+	manifestJSONPath := filepath.Join(workDir, "manifest.json")
+	manifestJSONBytes, err := os.ReadFile(manifestJSONPath)
+	if err != nil {
+		return err
+	}
+	var mani DockerArchiveManifestJSON
+	if err := json.Unmarshal(manifestJSONBytes, &mani); err != nil {
+		return err
+	}
+	if len(mani) > 1 {
+		return fmt.Errorf("multi-image archive cannot be extracted: contains %d images", len(mani))
+	}
+	if len(mani) < 1 {
+		return errors.New("invalid archive")
+	}
+	ent := mani[0]
+	for _, l := range ent.Layers {
+		layerTarPath := filepath.Join(workDir, l)
+		if err := ExtractTarFile(rootfsPath, layerTarPath); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type DockerArchiveManifestJSON []DockerArchiveManifestJSONEntry
+
+type DockerArchiveManifestJSONEntry struct {
+	Config   string
+	RepoTags []string
+	Layers   []string
+}
+
+func ExtractTarFile(dirPath, tarFilePath string) error {
+	cmd := exec.Command("tar", "Cxf", dirPath, tarFilePath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to run %v: %q: %w", cmd.Args, string(out), err)
+	}
+	return nil
 }

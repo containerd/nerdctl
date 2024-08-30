@@ -18,6 +18,7 @@ package helpers
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -138,4 +139,43 @@ func CreateBuildContext(t *testing.T, dockerfile string) string {
 	err := os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644)
 	assert.NilError(t, err)
 	return tmpDir
+}
+
+func RequiresSoci(base *testutil.Base) {
+	info := base.Info()
+	for _, p := range info.Plugins.Storage {
+		if p == "soci" {
+			return
+		}
+	}
+	base.T.Skip("test requires soci")
+}
+
+type CosignKeyPair struct {
+	PublicKey  string
+	PrivateKey string
+	Cleanup    func()
+}
+
+func NewCosignKeyPair(t testing.TB, path string, password string) *CosignKeyPair {
+	td, err := os.MkdirTemp(t.TempDir(), path)
+	assert.NilError(t, err)
+
+	cmd := exec.Command("cosign", "generate-key-pair")
+	cmd.Dir = td
+	cmd.Env = append(cmd.Env, fmt.Sprintf("COSIGN_PASSWORD=%s", password))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("failed to run %v: %v (%q)", cmd.Args, err, string(out))
+	}
+
+	publicKey := filepath.Join(td, "cosign.pub")
+	privateKey := filepath.Join(td, "cosign.key")
+
+	return &CosignKeyPair{
+		PublicKey:  publicKey,
+		PrivateKey: privateKey,
+		Cleanup: func() {
+			_ = os.RemoveAll(td)
+		},
+	}
 }

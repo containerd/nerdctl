@@ -24,6 +24,7 @@ import (
 
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/builder"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/network"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -62,7 +63,7 @@ func processSystemPruneOptions(cmd *cobra.Command) (types.SystemPruneOptions, er
 		return types.SystemPruneOptions{}, err
 	}
 
-	buildkitHost, err := getBuildkitHost(cmd, globalOptions.Namespace)
+	buildkitHost, err := builder.GetBuildkitHost(cmd, globalOptions.Namespace)
 	if err != nil {
 		log.L.WithError(err).Warn("BuildKit is not running. Build caches will not be pruned.")
 		buildkitHost = ""

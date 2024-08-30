@@ -35,10 +35,10 @@ func TestRunVerifyCosign(t *testing.T) {
 	base := testutil.NewBase(t)
 	base.Env = append(base.Env, "COSIGN_PASSWORD=1")
 
-	keyPair := newCosignKeyPair(t, "cosign-key-pair", "1")
+	keyPair := helpers.NewCosignKeyPair(t, "cosign-key-pair", "1")
 	reg := testregistry.NewWithNoAuth(base, 0, false)
 	t.Cleanup(func() {
-		keyPair.cleanup()
+		keyPair.Cleanup()
 		reg.Cleanup(nil)
 	})
 
@@ -51,7 +51,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", testImageRef, buildCtx).AssertOK()
-	base.Cmd("push", testImageRef, "--sign=cosign", "--cosign-key="+keyPair.privateKey).AssertOK()
-	base.Cmd("run", "--rm", "--verify=cosign", "--cosign-key="+keyPair.publicKey, testImageRef).AssertOK()
+	base.Cmd("push", testImageRef, "--sign=cosign", "--cosign-key="+keyPair.PrivateKey).AssertOK()
+	base.Cmd("run", "--rm", "--verify=cosign", "--cosign-key="+keyPair.PublicKey, testImageRef).AssertOK()
 	base.Cmd("run", "--rm", "--verify=cosign", "--cosign-key=dummy", testImageRef).AssertFail()
 }
