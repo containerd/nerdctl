@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/containerd/log"
 )
@@ -137,4 +138,27 @@ func AddDurationFlag(cmd *cobra.Command, name string, aliases []string, value ti
 			flags.DurationVar(p, a, value, aliasesUsage)
 		}
 	}
+}
+
+func GlobalFlags(cmd *cobra.Command) (string, []string) {
+	args0, err := os.Executable()
+	if err != nil {
+		log.L.WithError(err).Warnf("cannot call os.Executable(), assuming the executable to be %q", os.Args[0])
+		args0 = os.Args[0]
+	}
+	if len(os.Args) < 2 {
+		return args0, nil
+	}
+
+	rootCmd := cmd.Root()
+	flagSet := rootCmd.Flags()
+	args := []string{}
+	flagSet.VisitAll(func(f *pflag.Flag) {
+		key := f.Name
+		val := f.Value.String()
+		if f.Changed {
+			args = append(args, "--"+key+"="+val)
+		}
+	})
+	return args0, args
 }

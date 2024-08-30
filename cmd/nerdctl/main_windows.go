@@ -27,7 +27,3 @@ func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
 func addApparmorCommand(rootCmd *cobra.Command) {
 	// NOP
 }
-
-func addCpCommand(rootCmd *cobra.Command) {
-	// NOP
-}

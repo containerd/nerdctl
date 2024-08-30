@@ -33,6 +33,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/builder"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/container"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/image"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/internal"
@@ -243,29 +244,29 @@ Config file ($NERDCTL_TOML): %s
 	}
 	rootCmd.RunE = helpers.UnknownSubcommandAction
 	rootCmd.AddCommand(
-		newCreateCommand(),
+		container.NewCreateCommand(),
 		// #region Run & Exec
-		newRunCommand(),
-		newUpdateCommand(),
-		newExecCommand(),
+		container.NewRunCommand(),
+		container.NewUpdateCommand(),
+		container.NewExecCommand(),
 		// #endregion
 
 		// #region Container management
-		newPsCommand(),
-		newLogsCommand(),
-		newPortCommand(),
-		newStopCommand(),
-		newStartCommand(),
-		newDiffCommand(),
-		newRestartCommand(),
-		newKillCommand(),
-		newRmCommand(),
-		newPauseCommand(),
-		newUnpauseCommand(),
-		newCommitCommand(),
-		newWaitCommand(),
-		newRenameCommand(),
-		newAttachCommand(),
+		container.NewPsCommand(),
+		container.NewLogsCommand(),
+		container.NewPortCommand(),
+		container.NewStopCommand(),
+		container.NewStartCommand(),
+		container.NewDiffCommand(),
+		container.NewRestartCommand(),
+		container.NewKillCommand(),
+		container.NewRmCommand(),
+		container.NewPauseCommand(),
+		container.NewUnpauseCommand(),
+		container.NewCommitCommand(),
+		container.NewWaitCommand(),
+		container.NewRenameCommand(),
+		container.NewAttachCommand(),
 		// #endregion
 
 		// Build
@@ -292,11 +293,11 @@ Config file ($NERDCTL_TOML): %s
 		newInspectCommand(),
 
 		// stats
-		newTopCommand(),
-		newStatsCommand(),
+		container.NewTopCommand(),
+		container.NewStatsCommand(),
 
 		// #region helpers.Management
-		newContainerCommand(),
+		container.NewContainerCommand(),
 		image.NewImageCommand(),
 		network.NewNetworkCommand(),
 		volume.NewVolumeCommand(),
@@ -321,36 +322,13 @@ Config file ($NERDCTL_TOML): %s
 		ipfs.NewIPFSCommand(),
 	)
 	addApparmorCommand(rootCmd)
-	addCpCommand(rootCmd)
+	container.AddCpCommand(rootCmd)
 
 	// add aliasToBeInherited to subCommand(s) InheritedFlags
 	for _, subCmd := range rootCmd.Commands() {
 		subCmd.InheritedFlags().AddFlagSet(aliasToBeInherited)
 	}
 	return rootCmd, nil
-}
-
-func globalFlags(cmd *cobra.Command) (string, []string) {
-	args0, err := os.Executable()
-	if err != nil {
-		log.L.WithError(err).Warnf("cannot call os.Executable(), assuming the executable to be %q", os.Args[0])
-		args0 = os.Args[0]
-	}
-	if len(os.Args) < 2 {
-		return args0, nil
-	}
-
-	rootCmd := cmd.Root()
-	flagSet := rootCmd.Flags()
-	args := []string{}
-	flagSet.VisitAll(func(f *pflag.Flag) {
-		key := f.Name
-		val := f.Value.String()
-		if f.Changed {
-			args = append(args, "--"+key+"="+val)
-		}
-	})
-	return args0, args
 }
 
 // AddPersistentStringFlag is similar to AddStringFlag but persistent.

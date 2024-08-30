@@ -70,7 +70,7 @@ func newComposeCommand() *cobra.Command {
 }
 
 func getComposeOptions(cmd *cobra.Command, debugFull, experimental bool) (composer.Options, error) {
-	nerdctlCmd, nerdctlArgs := globalFlags(cmd)
+	nerdctlCmd, nerdctlArgs := helpers.GlobalFlags(cmd)
 	projectDirectory, err := cmd.Flags().GetString("project-directory")
 	if err != nil {
 		return composer.Options{}, err
