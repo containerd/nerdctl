@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package network
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/network"
 )
 
-var networkDriversToKeep = []string{"host", "none", DefaultNetworkDriver}
+var NetworkDriversToKeep = []string{"host", "none", DefaultNetworkDriver}
 
 func newNetworkPruneCommand() *cobra.Command {
 	networkPruneCommand := &cobra.Command{
@@ -67,7 +67,7 @@ func networkPruneAction(cmd *cobra.Command, _ []string) error {
 	}
 	options := types.NetworkPruneOptions{
 		GOptions:             globalOptions,
-		NetworkDriversToKeep: networkDriversToKeep,
+		NetworkDriversToKeep: NetworkDriversToKeep,
 		Stdout:               cmd.OutOrStdout(),
 	}
 

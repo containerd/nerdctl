@@ -34,6 +34,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/network"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/volume"
 	"github.com/containerd/nerdctl/v2/pkg/config"
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
@@ -292,7 +293,7 @@ Config file ($NERDCTL_TOML): %s
 		// #region helpers.Management
 		newContainerCommand(),
 		newImageCommand(),
-		newNetworkCommand(),
+		network.NewNetworkCommand(),
 		volume.NewVolumeCommand(),
 		newSystemCommand(),
 		newNamespaceCommand(),

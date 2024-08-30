@@ -14,6 +14,6 @@
    limitations under the License.
 */
 
-package main
+package network
 
 const DefaultNetworkDriver = "nat"

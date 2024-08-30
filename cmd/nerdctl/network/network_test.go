@@ -1,5 +1,3 @@
-//go:build unix
-
 /*
    Copyright The containerd Authors.
 
@@ -16,6 +14,14 @@
    limitations under the License.
 */
 
-package main
+package network
 
-const DefaultNetworkDriver = "bridge"
+import (
+	"testing"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
+)
+
+func TestMain(m *testing.M) {
+	testutil.M(m)
+}

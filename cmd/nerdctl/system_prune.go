@@ -25,6 +25,7 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/network"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/system"
@@ -74,7 +75,7 @@ func processSystemPruneOptions(cmd *cobra.Command) (types.SystemPruneOptions, er
 		All:                  all,
 		Volumes:              vFlag,
 		BuildKitHost:         buildkitHost,
-		NetworkDriversToKeep: networkDriversToKeep,
+		NetworkDriversToKeep: network.NetworkDriversToKeep,
 	}, nil
 }
 
