@@ -98,6 +98,7 @@ func TestRunAnonymousVolume(t *testing.T) {
 func TestRunVolumeRelativePath(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
+	base.Dir = t.TempDir()
 	base.Cmd("run", "--rm", "-v", "./foo:/mnt/foo", testutil.AlpineImage).AssertOK()
 	base.Cmd("run", "--rm", "-v", "./foo", testutil.AlpineImage).AssertOK()
 

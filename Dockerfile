@@ -318,8 +318,8 @@ RUN curl -o nydus-static.tgz -fsSL --proto '=https' --tlsv1.2 "https://github.co
   tar xzf nydus-static.tgz && \
   mv nydus-static/nydus-image nydus-static/nydusd nydus-static/nydusify /usr/bin/ && \
   rm nydus-static.tgz
-CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=github.com/containerd/nerdctl/v2/cmd/nerdctl/...", \
-  "--", "-timeout=60m", "-args", "-test.allow-kill-daemon"]
+CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=./cmd/nerdctl/...", \
+  "--", "-timeout=60m", "-p", "1", "-args", "-test.allow-kill-daemon"]
 
 FROM test-integration AS test-integration-rootless
 # Install SSH for creating systemd user session.
@@ -340,12 +340,11 @@ COPY ./Dockerfile.d/etc_systemd_system_user@.service.d_delegate.conf /etc/system
 # ipfs daemon for rootless containerd will be enabled in /test-integration-rootless.sh
 RUN systemctl disable test-integration-ipfs-offline
 VOLUME /home/rootless/.local/share
-RUN go test -o /usr/local/bin/nerdctl.test -c ./cmd/nerdctl
 COPY ./Dockerfile.d/test-integration-rootless.sh /
+RUN chmod a+rx /test-integration-rootless.sh
 CMD ["/test-integration-rootless.sh", \
-  "gotestsum", "--format=testname", "--rerun-fails=2", "--raw-command", \
-  "--", "/usr/local/go/bin/go", "tool", "test2json", "-t", "-p", "github.com/containerd/nerdctl/v2/cmd/nerdctl",  \
-  "/usr/local/bin/nerdctl.test", "-test.v", "-test.timeout=60m", "-test.allow-kill-daemon"]
+  "gotestsum", "--format=testname", "--rerun-fails=2", "--packages=./cmd/nerdctl/...", \
+  "--", "-timeout=60m", "-p", "1", "-args", "-test.allow-kill-daemon"]
 
 # test for CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns
 FROM test-integration-rootless AS test-integration-rootless-port-slirp4netns
@@ -353,7 +352,7 @@ COPY ./Dockerfile.d/home_rootless_.config_systemd_user_containerd.service.d_port
 RUN chown -R rootless:rootless /home/rootless/.config
 
 FROM test-integration AS test-integration-ipv6
-CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=github.com/containerd/nerdctl/v2/cmd/nerdctl/...", \
-  "--", "-timeout=60m", "-args", "-test.allow-kill-daemon", "-test.only-ipv6"]
+CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=./cmd/nerdctl/...", \
+  "--", "-timeout=60m", "-p", "1", "-args", "-test.allow-kill-daemon", "-test.only-ipv6"]
 
 FROM base AS demo

@@ -58,6 +58,7 @@ type Base struct {
 	Binary               string
 	Args                 []string
 	Env                  []string
+	Dir                  string
 }
 
 // WithStdin sets the standard input of Cmd to the specified reader
@@ -70,6 +71,7 @@ func WithStdin(r io.Reader) func(*Cmd) {
 func (b *Base) Cmd(args ...string) *Cmd {
 	icmdCmd := icmd.Command(b.Binary, append(b.Args, args...)...)
 	icmdCmd.Env = b.Env
+	icmdCmd.Dir = b.Dir
 	cmd := &Cmd{
 		Cmd:  icmdCmd,
 		Base: b,
@@ -83,6 +85,7 @@ func (b *Base) ComposeCmd(args ...string) *Cmd {
 	binaryArgs := append(b.Args, append([]string{"compose"}, args...)...)
 	icmdCmd := icmd.Command(binary, binaryArgs...)
 	icmdCmd.Env = b.Env
+	icmdCmd.Dir = b.Dir
 	cmd := &Cmd{
 		Cmd:  icmdCmd,
 		Base: b,

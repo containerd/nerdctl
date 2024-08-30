@@ -22,6 +22,7 @@ jobs:
         with:
           fetch-depth: 1
       - name: "Run Kubernetes integration tests"
+        # See https://github.com/containerd/nerdctl/blob/main/docs/testing.md#about-parallelization
         run: |
           ./hack/build-integration-kubernetes.sh
-          sudo ./_output/nerdctl exec nerdctl-test-control-plane bash -c -- 'export TMPDIR="$HOME"/tmp; mkdir -p "$TMPDIR"; cd /nerdctl-source; /usr/local/go/bin/go test ./cmd/nerdctl/ -test.only-kubernetes'
+          sudo ./_output/nerdctl exec nerdctl-test-control-plane bash -c -- 'export TMPDIR="$HOME"/tmp; mkdir -p "$TMPDIR"; cd /nerdctl-source; /usr/local/go/bin/go test -p 1 ./cmd/nerdctl/... -test.only-kubernetes'
