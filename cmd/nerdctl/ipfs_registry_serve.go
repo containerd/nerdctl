@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/ipfs"
 )
@@ -38,10 +39,10 @@ func newIPFSRegistryServeCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	AddStringFlag(ipfsRegistryServeCommand, "listen-registry", nil, defaultIPFSRegistry, "IPFS_REGISTRY_SERVE_LISTEN_REGISTRY", "address to listen")
-	AddStringFlag(ipfsRegistryServeCommand, "ipfs-address", nil, "", "IPFS_REGISTRY_SERVE_IPFS_ADDRESS", "multiaddr of IPFS API (default is pulled from $IPFS_PATH/api file. If $IPFS_PATH env var is not present, it defaults to ~/.ipfs)")
-	AddIntFlag(ipfsRegistryServeCommand, "read-retry-num", nil, defaultIPFSReadRetryNum, "IPFS_REGISTRY_SERVE_READ_RETRY_NUM", "times to retry query on IPFS. Zero or lower means no retry.")
-	AddDurationFlag(ipfsRegistryServeCommand, "read-timeout", nil, defaultIPFSReadTimeoutDuration, "IPFS_REGISTRY_SERVE_READ_TIMEOUT", "timeout duration of a read request to IPFS. Zero means no timeout.")
+	helpers.AddStringFlag(ipfsRegistryServeCommand, "listen-registry", nil, defaultIPFSRegistry, "IPFS_REGISTRY_SERVE_LISTEN_REGISTRY", "address to listen")
+	helpers.AddStringFlag(ipfsRegistryServeCommand, "ipfs-address", nil, "", "IPFS_REGISTRY_SERVE_IPFS_ADDRESS", "multiaddr of IPFS API (default is pulled from $IPFS_PATH/api file. If $IPFS_PATH env var is not present, it defaults to ~/.ipfs)")
+	helpers.AddIntFlag(ipfsRegistryServeCommand, "read-retry-num", nil, defaultIPFSReadRetryNum, "IPFS_REGISTRY_SERVE_READ_RETRY_NUM", "times to retry query on IPFS. Zero or lower means no retry.")
+	helpers.AddDurationFlag(ipfsRegistryServeCommand, "read-timeout", nil, defaultIPFSReadTimeoutDuration, "IPFS_REGISTRY_SERVE_READ_TIMEOUT", "timeout duration of a read request to IPFS. Zero means no timeout.")
 
 	return ipfsRegistryServeCommand
 }

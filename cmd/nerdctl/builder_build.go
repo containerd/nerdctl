@@ -44,7 +44,7 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	AddStringFlag(buildCommand, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
+	helpers.AddStringFlag(buildCommand, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
 	buildCommand.Flags().StringArrayP("tag", "t", nil, "Name and optionally a tag in the 'name:tag' format")
 	buildCommand.Flags().StringP("file", "f", "", "Name of the Dockerfile")
 	buildCommand.Flags().String("target", "", "Set the target build stage to build")

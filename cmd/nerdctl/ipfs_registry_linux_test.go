@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
@@ -42,7 +43,7 @@ func TestIPFSRegistryWithLazyPulling(t *testing.T) {
 	testutil.DockerIncompatible(t)
 
 	base := testutil.NewBase(t)
-	requiresStargz(base)
+	helpers.RequiresStargz(base)
 	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=stargz")
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, "--estargz")
 	ipfsRegistryAddr := "localhost:5555"

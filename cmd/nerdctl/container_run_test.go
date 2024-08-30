@@ -34,6 +34,7 @@ import (
 	"gotest.tools/v3/icmd"
 	"gotest.tools/v3/poll"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
@@ -50,7 +51,7 @@ ENTRYPOINT ["echo", "foo"]
 CMD ["echo", "bar"]
 	`, testutil.CommonImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("run", "--rm", imageName).AssertOutExactly("foo echo bar\n")
@@ -440,7 +441,7 @@ FROM scratch
 COPY --from=builder /go/src/logger/logger /
 	`
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 	tmpDir := t.TempDir()
 	base.Cmd("build", buildCtx, "--output", fmt.Sprintf("type=local,src=/go/src/logger/logger,dest=%s", tmpDir)).AssertOK()
 	defer base.Cmd("image", "rm", "-f", imageName).AssertOK()

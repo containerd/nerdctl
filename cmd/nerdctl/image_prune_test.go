@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
@@ -35,7 +36,7 @@ func TestImagePrune(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 	CMD ["echo", "nerdctl-test-image-prune"]`, testutil.CommonImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", buildCtx).AssertOK()
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
@@ -56,7 +57,7 @@ func TestImagePruneAll(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 	CMD ["echo", "nerdctl-test-image-prune"]`, testutil.CommonImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	// The following commands will clean up all images, so it should fail at this point.
@@ -86,7 +87,7 @@ CMD ["echo", "nerdctl-test-image-prune-filter-label"]
 LABEL foo=bar
 LABEL version=0.1`, testutil.CommonImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("images", "--all").AssertOutContains(imageName)
@@ -117,7 +118,7 @@ func TestImagePruneFilterUntil(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-test-image-prune-filter-until"]`, testutil.CommonImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("images", "--all").AssertOutContains(imageName)

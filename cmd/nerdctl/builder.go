@@ -58,7 +58,7 @@ func newBuilderPruneCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	AddStringFlag(buildPruneCommand, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
+	helpers.AddStringFlag(buildPruneCommand, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
 
 	buildPruneCommand.Flags().BoolP("all", "a", false, "Remove all unused build cache, not just dangling ones")
 	buildPruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
@@ -136,7 +136,7 @@ func newBuilderDebugCommand() *cobra.Command {
 	var buildDebugCommand = &cobra.Command{
 		Use:           "debug",
 		Short:         shortHelp,
-		PreRunE:       checkExperimental("`nerdctl builder debug`"),
+		PreRunE:       helpers.CheckExperimental("`nerdctl builder debug`"),
 		RunE:          builderDebugAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,

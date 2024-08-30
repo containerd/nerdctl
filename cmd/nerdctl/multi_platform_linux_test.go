@@ -24,6 +24,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
@@ -68,7 +69,7 @@ func TestMultiPlatformBuildPush(t *testing.T) {
 RUN echo dummy
 	`, testutil.AlpineImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, "--platform=amd64,arm64,linux/arm/v7", buildCtx).AssertOK()
 	testMultiPlatformRun(base, imageName)
@@ -95,7 +96,7 @@ func TestMultiPlatformBuildPushNoRun(t *testing.T) {
 CMD echo dummy
 	`, testutil.AlpineImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, "--platform=amd64,arm64,linux/arm/v7", buildCtx).AssertOK()
 	testMultiPlatformRun(base, imageName)

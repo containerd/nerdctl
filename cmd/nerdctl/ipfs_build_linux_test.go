@@ -25,6 +25,7 @@ import (
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
@@ -43,7 +44,7 @@ func TestIPFSBuild(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, ipfsCIDBase)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	done := ipfsRegistryUp(t, base)
 	defer done()

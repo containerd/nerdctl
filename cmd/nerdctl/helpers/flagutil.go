@@ -17,6 +17,8 @@
 package helpers
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -112,4 +114,17 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 		Experimental:     experimental,
 		HostGatewayIP:    hostGatewayIP,
 	}, nil
+}
+
+func CheckExperimental(feature string) func(cmd *cobra.Command, args []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		globalOptions, err := ProcessRootCmdFlags(cmd)
+		if err != nil {
+			return err
+		}
+		if !globalOptions.Experimental {
+			return fmt.Errorf("%s is experimental feature, you should enable experimental config", feature)
+		}
+		return nil
+	}
 }

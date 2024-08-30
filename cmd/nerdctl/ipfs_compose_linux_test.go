@@ -24,6 +24,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
@@ -67,14 +68,14 @@ func TestIPFSComposeUp(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			base := testutil.NewBase(t)
 			if tt.requiresStargz {
-				requiresStargz(base)
+				helpers.RequiresStargz(base)
 			}
 			ipfsImgs := make([]string, 2)
 			for i, img := range []string{testutil.WordpressImage, testutil.MariaDBImage} {
 				ipfsImgs[i] = pushImageToIPFS(t, base, img, tt.pushOptions...)
 			}
 			base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER="+tt.snapshotter)
-			testComposeUp(t, base, fmt.Sprintf(`
+			helpers.ComposeUp(t, base, fmt.Sprintf(`
 version: '3.1'
 
 services:

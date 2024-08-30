@@ -22,6 +22,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
@@ -51,7 +52,7 @@ func TestBuildContextWithOCILayout(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 LABEL layer=oci-layout-parent
 CMD ["echo", "test-nerdctl-build-context-oci-layout-parent"]`, testutil.CommonImage)
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	tarPath := fmt.Sprintf("%s/%s.tar", buildCtx, ociLayout)
 
@@ -66,7 +67,7 @@ CMD ["echo", "test-nerdctl-build-context-oci-layout-parent"]`, testutil.CommonIm
 
 	dockerfile = fmt.Sprintf(`FROM %s
 CMD ["echo", "test-nerdctl-build-context-oci-layout"]`, ociLayout)
-	buildCtx = createBuildContext(t, dockerfile)
+	buildCtx = helpers.CreateBuildContext(t, dockerfile)
 
 	var buildArgs = []string{}
 	if testutil.IsDocker() {

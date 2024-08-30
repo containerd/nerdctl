@@ -26,6 +26,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
@@ -39,7 +40,7 @@ func TestBuilderPrune(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-test-builder-prune"]`, testutil.CommonImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	testCases := []struct {
 		name        string
@@ -71,7 +72,7 @@ func TestBuilderDebug(t *testing.T) {
 CMD ["echo", "nerdctl-builder-debug-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("builder", "debug", buildCtx).CmdOption(testutil.WithStdin(bytes.NewReader([]byte("c\n")))).AssertOK()
 }
@@ -132,7 +133,7 @@ namespace = "%s"`, testutil.Namespace)
 			err := os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644)
 			assert.NilError(t, err)
 
-			buildCtx := createBuildContext(t, dockerfile)
+			buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 			buildCmd := []string{"build", buildCtx}
 			switch tc.pull {

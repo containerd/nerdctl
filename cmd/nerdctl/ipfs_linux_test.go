@@ -22,6 +22,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -37,23 +38,23 @@ func TestIPFS(t *testing.T) {
 	base.Cmd("run", "--rm", ipfsCID, "echo", "hello").AssertOK()
 
 	// encryption
-	keyPair := newJWEKeyPair(t)
-	defer keyPair.cleanup()
+	keyPair := helpers.NewJWEKeyPair(t)
+	defer keyPair.Cleanup()
 	tID := testutil.Identifier(t)
 	encryptImageRef := tID + ":enc"
 	layersNum := 1
-	base.Cmd("image", "encrypt", "--recipient=jwe:"+keyPair.pub, ipfsCID, encryptImageRef).AssertOK()
+	base.Cmd("image", "encrypt", "--recipient=jwe:"+keyPair.Pub, ipfsCID, encryptImageRef).AssertOK()
 	base.Cmd("image", "inspect", "--mode=native", "--format={{len .Manifest.Layers}}", encryptImageRef).AssertOutExactly(fmt.Sprintf("%d\n", layersNum))
 	for i := 0; i < layersNum; i++ {
 		base.Cmd("image", "inspect", "--mode=native", fmt.Sprintf("--format={{json (index .Manifest.Layers %d) }}", i), encryptImageRef).AssertOutContains("org.opencontainers.image.enc.keys.jwe")
 	}
 	ipfsCIDEnc := cidOf(t, base.Cmd("push", "ipfs://"+encryptImageRef).OutLines())
-	rmiAll(base)
+	helpers.RmiAll(base)
 
 	decryptImageRef := tID + ":dec"
 	base.Cmd("pull", "--unpack=false", ipfsCIDEnc).AssertOK()
-	base.Cmd("image", "decrypt", "--key="+keyPair.pub, ipfsCIDEnc, decryptImageRef).AssertFail() // decryption needs prv key, not pub key
-	base.Cmd("image", "decrypt", "--key="+keyPair.prv, ipfsCIDEnc, decryptImageRef).AssertOK()
+	base.Cmd("image", "decrypt", "--key="+keyPair.Pub, ipfsCIDEnc, decryptImageRef).AssertFail() // decryption needs prv key, not pub key
+	base.Cmd("image", "decrypt", "--key="+keyPair.Prv, ipfsCIDEnc, decryptImageRef).AssertOK()
 	base.Cmd("run", "--rm", decryptImageRef, "/bin/sh", "-c", "echo hello").AssertOK()
 }
 
@@ -91,7 +92,7 @@ func TestIPFSCommit(t *testing.T) {
 	base.Cmd("kill", newContainer).AssertOK()
 	base.Cmd("rm", newContainer).AssertOK()
 	ipfsCID2 := cidOf(t, base.Cmd("push", "ipfs://"+newImg).OutLines())
-	rmiAll(base)
+	helpers.RmiAll(base)
 	base.Cmd("pull", ipfsCID2).AssertOK()
 	base.Cmd("run", "--rm", ipfsCID2, "/bin/sh", "-c", "cat /hello").AssertOK()
 }
@@ -99,7 +100,7 @@ func TestIPFSCommit(t *testing.T) {
 func TestIPFSWithLazyPulling(t *testing.T) {
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	requiresStargz(base)
+	helpers.RequiresStargz(base)
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, "--estargz")
 
 	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=stargz")
@@ -114,7 +115,7 @@ func TestIPFSWithLazyPullingCommit(t *testing.T) {
 	}
 	testutil.DockerIncompatible(t)
 	base := testutil.NewBase(t)
-	requiresStargz(base)
+	helpers.RequiresStargz(base)
 	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, "--estargz")
 
 	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=stargz")
@@ -127,7 +128,7 @@ func TestIPFSWithLazyPullingCommit(t *testing.T) {
 	base.Cmd("kill", newContainer).AssertOK()
 	base.Cmd("rm", newContainer).AssertOK()
 	ipfsCID2 := cidOf(t, base.Cmd("push", "--estargz", "ipfs://"+newImg).OutLines())
-	rmiAll(base)
+	helpers.RmiAll(base)
 
 	base.Cmd("pull", ipfsCID2).AssertOK()
 	base.Cmd("run", "--rm", ipfsCID2, "/bin/sh", "-c", "ls /.stargz-snapshotter && cat /hello").AssertOK()

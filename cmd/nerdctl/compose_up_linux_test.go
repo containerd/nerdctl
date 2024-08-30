@@ -29,6 +29,7 @@ import (
 
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -37,7 +38,7 @@ import (
 
 func TestComposeUp(t *testing.T) {
 	base := testutil.NewBase(t)
-	testComposeUp(t, base, fmt.Sprintf(`
+	helpers.ComposeUp(t, base, fmt.Sprintf(`
 version: '3.1'
 
 services:
@@ -70,57 +71,6 @@ volumes:
   wordpress:
   db:
 `, testutil.WordpressImage, testutil.MariaDBImage))
-}
-
-func testComposeUp(t *testing.T, base *testutil.Base, dockerComposeYAML string, opts ...string) {
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-
-	base.ComposeCmd(append(append([]string{"-f", comp.YAMLFullPath()}, opts...), "up", "-d")...).AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
-	base.Cmd("volume", "inspect", fmt.Sprintf("%s_db", projectName)).AssertOK()
-	base.Cmd("network", "inspect", fmt.Sprintf("%s_default", projectName)).AssertOK()
-
-	checkWordpress := func() error {
-		resp, err := nettestutil.HTTPGet("http://127.0.0.1:8080", 10, false)
-		if err != nil {
-			return err
-		}
-		respBody, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		if !strings.Contains(string(respBody), testutil.WordpressIndexHTMLSnippet) {
-			t.Logf("respBody=%q", respBody)
-			return fmt.Errorf("respBody does not contain %q", testutil.WordpressIndexHTMLSnippet)
-		}
-		return nil
-	}
-
-	var wordpressWorking bool
-	for i := 0; i < 30; i++ {
-		t.Logf("(retry %d)", i)
-		err := checkWordpress()
-		if err == nil {
-			wordpressWorking = true
-			break
-		}
-		// NOTE: "<h1>Error establishing a database connection</h1>" is expected for the first few iterations
-		t.Log(err)
-		time.Sleep(3 * time.Second)
-	}
-
-	if !wordpressWorking {
-		t.Fatal("wordpress is not working")
-	}
-	t.Log("wordpress seems functional")
-
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
-	base.Cmd("volume", "inspect", fmt.Sprintf("%s_db", projectName)).AssertFail()
-	base.Cmd("network", "inspect", fmt.Sprintf("%s_default", projectName)).AssertFail()
 }
 
 func TestComposeUpBuild(t *testing.T) {
@@ -505,7 +455,7 @@ func TestComposeUpWithBypass4netns(t *testing.T) {
 	testutil.RequireKernelVersion(t, ">= 5.9.0-0")
 	testutil.RequireSystemService(t, "bypass4netnsd")
 	base := testutil.NewBase(t)
-	testComposeUp(t, base, fmt.Sprintf(`
+	helpers.ComposeUp(t, base, fmt.Sprintf(`
 version: '3.1'
 
 services:
