@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package login
 
 import (
 	"errors"
@@ -30,7 +30,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/login"
 )
 
-func newLoginCommand() *cobra.Command {
+func NewLoginCommand() *cobra.Command {
 	var loginCommand = &cobra.Command{
 		Use:           "login [flags] [SERVER]",
 		Args:          cobra.MaximumNArgs(1),

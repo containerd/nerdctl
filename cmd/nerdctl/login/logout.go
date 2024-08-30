@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package login
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 )
 
-func newLogoutCommand() *cobra.Command {
+func NewLogoutCommand() *cobra.Command {
 	var logoutCommand = &cobra.Command{
 		Use:               "logout [flags] [SERVER]",
 		Args:              cobra.MaximumNArgs(1),

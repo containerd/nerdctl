@@ -34,6 +34,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/login"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/namespace"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/network"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/volume"
@@ -305,10 +306,10 @@ Config file ($NERDCTL_TOML): %s
 		newInternalCommand(),
 
 		// login
-		newLoginCommand(),
+		login.NewLoginCommand(),
 
 		// Logout
-		newLogoutCommand(),
+		login.NewLogoutCommand(),
 
 		// Compose
 		newComposeCommand(),
