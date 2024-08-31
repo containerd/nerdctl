@@ -228,7 +228,9 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 			output = fmt.Sprintf("type=local,dest=%s", output)
 		}
 		if strings.Contains(output, "type=docker") || strings.Contains(output, "type=oci") {
-			needsLoading = true
+			if !strings.Contains(output, "dest=") {
+				needsLoading = true
+			}
 		}
 	}
 	if tags = strutil.DedupeStrSlice(options.Tag); len(tags) > 0 {
