@@ -102,6 +102,7 @@ func ParentMain(hostGatewayIP string) error {
 		log.L.WithError(err).Warn("unable to determine working directory")
 	} else {
 		args = append(args, "-w"+wd)
+		os.Setenv("PWD", wd)
 	}
 
 	args = append(args, "--preserve-credentials",
