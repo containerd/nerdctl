@@ -112,4 +112,5 @@ jobs:
           ctrdVersion: ${{ env.CONTAINERD_VERSION }}
         run: powershell hack/configure-windows-ci.ps1
       - name: "Run integration tests"
-        run: go test -v ./cmd/...
+        # See https://github.com/containerd/nerdctl/blob/main/docs/testing.md#about-parallelization
+        run: go test -p 1 -v ./cmd/nerdctl/...

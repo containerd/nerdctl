@@ -56,5 +56,8 @@ EOF
 	systemctl --user restart stargz-snapshotter.service
 	export IPFS_PATH="/home/rootless/.local/share/ipfs"
 	containerd-rootless-setuptool.sh install-bypass4netnsd
-	exec "$@"
+	# Once ssh-ed, we lost the Dockerfile working dir, so, get back in the nerdctl checkout
+	cd /go/src/github.com/containerd/nerdctl
+	# We also lose the PATH (and SendEnv=PATH would require sshd config changes)
+	exec env PATH="/usr/local/go/bin:$PATH" "$@"
 fi

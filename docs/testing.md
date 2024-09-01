@@ -21,17 +21,33 @@ Be sure to first `make && sudo make install`
 
 ```bash
 # Test all with nerdctl (rootless mode, if running go as a non-root user)
-go test ./cmd/nerdctl/...
+go test -p 1 ./cmd/nerdctl/...
 
 # Test all with nerdctl rootful
-go test -exec sudo ./cmd/nerdctl/...
+go test -p 1 -exec sudo ./cmd/nerdctl/...
 
 # Test all with docker
-go test ./cmd/nerdctl/... -args -test.target=docker
+go test -p 1 ./cmd/nerdctl/... -args -test.target=docker
 
 # Test just the tests(s) which names match TestVolume.*
-go test ./cmd/nerdctl/... -run "TestVolume.*"
+go test -p 1 ./cmd/nerdctl/... -run "TestVolume.*"
+# Or alternatively, just test the subpackage
+go test ./cmd/nerdctl/volume
 ```
+
+### About parallelization
+
+By default, when `go test ./foo/...` finds subpackages, it does create _a separate test binary
+per sub-package_, and execute them _in parallel_.
+This effectively will make distinct tests in different subpackages to be executed in
+parallel, regardless of whether they called `t.Parallel` or not.
+
+The `-p 1` flag does inhibit this behavior, and forces go to run each sub-package
+sequentially.
+
+Note that this is different from the `--parallel` flag, which controls the amount of
+parallelization that a single go test binary will use when faced with tests that do
+explicitly allow it (with a call to `t.Parallel()`).
 
 ### Or test in a container
 

@@ -290,14 +290,16 @@ jobs:
           timeout_minutes: 30
           max_attempts: 2
           retry_on: error
-          command: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.allow-kill-daemon
+          # See https://github.com/containerd/nerdctl/blob/main/docs/testing.md#about-parallelization
+          command: go test -p 1 -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.allow-kill-daemon
       - name: "Ensure that the IPv6 integration test suite is compatible with Docker"
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 30
           max_attempts: 2
           retry_on: error
-          command: go test -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.allow-kill-daemon -test.only-ipv6
+          # See https://github.com/containerd/nerdctl/blob/main/docs/testing.md#about-parallelization
+          command: go test -p 1 -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.allow-kill-daemon -test.only-ipv6
 
   test-integration-windows:
     runs-on: windows-2022
@@ -330,7 +332,8 @@ jobs:
         run: powershell hack/configure-windows-ci.ps1
       # TODO: Run unit tests
       - name: "Run integration tests"
-        run: go test -v ./cmd/...
+        # See https://github.com/containerd/nerdctl/blob/main/docs/testing.md#about-parallelization
+        run: go test -p 1 -v ./cmd/nerdctl/...
 
   test-integration-freebsd:
     name: FreeBSD
