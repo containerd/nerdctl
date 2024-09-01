@@ -17,18 +17,14 @@
 package login
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
-	"strings"
 
 	"golang.org/x/net/context/ctxhttp"
-	"golang.org/x/term"
 
 	"github.com/containerd/containerd/v2/core/remotes/docker"
 	"github.com/containerd/containerd/v2/core/remotes/docker/config"
@@ -66,7 +62,7 @@ func Login(ctx context.Context, options types.LoginCommandOptions, stdout io.Wri
 	}
 
 	if err != nil || credentials.Username == "" || credentials.Password == "" {
-		err = configureAuthentication(credentials, options.Username, options.Password)
+		err = promptUserForAuthentication(credentials, options.Username, options.Password, stdout)
 		if err != nil {
 			return err
 		}
@@ -204,57 +200,4 @@ func tryLoginWithRegHost(ctx context.Context, rh docker.RegistryHost) error {
 	}
 
 	return errors.New("too many 401 (probably)")
-}
-
-func configureAuthentication(credentials *dockerconfigresolver.Credentials, username, password string) error {
-	if username = strings.TrimSpace(username); username == "" {
-		username = credentials.Username
-	}
-	if username == "" {
-		fmt.Print("Enter Username: ")
-		usr, err := readUsername()
-		if err != nil {
-			return err
-		}
-		username = usr
-	}
-	if username == "" {
-		return fmt.Errorf("error: Username is Required")
-	}
-
-	if password == "" {
-		fmt.Print("Enter Password: ")
-		pwd, err := readPassword()
-		fmt.Println()
-		if err != nil {
-			return err
-		}
-		password = pwd
-	}
-	if password == "" {
-		return fmt.Errorf("error: Password is Required")
-	}
-
-	credentials.Username = username
-	credentials.Password = password
-
-	return nil
-}
-
-func readUsername() (string, error) {
-	var fd *os.File
-	if term.IsTerminal(int(os.Stdin.Fd())) {
-		fd = os.Stdin
-	} else {
-		return "", fmt.Errorf("stdin is not a terminal (Hint: use `nerdctl login --username=USERNAME --password-stdin`)")
-	}
-
-	reader := bufio.NewReader(fd)
-	username, err := reader.ReadString('\n')
-	if err != nil {
-		return "", fmt.Errorf("error reading username: %w", err)
-	}
-	username = strings.TrimSpace(username)
-
-	return username, nil
 }
