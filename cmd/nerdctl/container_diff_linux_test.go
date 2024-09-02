@@ -23,7 +23,11 @@ import (
 )
 
 func TestDiff(t *testing.T) {
-	t.Parallel()
+	// It is unclear why this is failing with docker when run in parallel
+	// Obviously some other container test is interfering
+	if testutil.GetTarget() != testutil.Docker {
+		t.Parallel()
+	}
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
 	defer base.Cmd("rm", containerName).Run()
