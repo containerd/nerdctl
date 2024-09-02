@@ -195,3 +195,91 @@ func AddPersistentStringArrayFlag(cmd *cobra.Command, name string, aliases, nonP
 		}
 	}
 }
+
+// AddPersistentStringFlag is similar to AddStringFlag but persistent.
+// See https://github.com/spf13/cobra/blob/main/user_guide.md#persistent-flags to learn what is "persistent".
+func AddPersistentStringFlag(cmd *cobra.Command, name string, aliases, localAliases, persistentAliases []string, aliasToBeInherited *pflag.FlagSet, value string, env, usage string) {
+	if env != "" {
+		usage = fmt.Sprintf("%s [$%s]", usage, env)
+	}
+	if envV, ok := os.LookupEnv(env); ok {
+		value = envV
+	}
+	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
+	p := new(string)
+
+	// flags is full set of flag(s)
+	// flags can redefine alias already used in subcommands
+	flags := cmd.Flags()
+	for _, a := range aliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			flags.StringVarP(p, a, a, value, aliasesUsage)
+		} else {
+			flags.StringVar(p, a, value, aliasesUsage)
+		}
+		// non-persistent flags are not added to the InheritedFlags, so we should add them manually
+		f := flags.Lookup(a)
+		aliasToBeInherited.AddFlag(f)
+	}
+
+	// localFlags are local to the rootCmd
+	localFlags := cmd.LocalFlags()
+	for _, a := range localAliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			localFlags.StringVarP(p, a, a, value, aliasesUsage)
+		} else {
+			localFlags.StringVar(p, a, value, aliasesUsage)
+		}
+	}
+
+	// persistentFlags cannot redefine alias already used in subcommands
+	persistentFlags := cmd.PersistentFlags()
+	persistentFlags.StringVar(p, name, value, usage)
+	for _, a := range persistentAliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			persistentFlags.StringVarP(p, a, a, value, aliasesUsage)
+		} else {
+			persistentFlags.StringVar(p, a, value, aliasesUsage)
+		}
+	}
+}
+
+// AddPersistentBoolFlag is similar to AddBoolFlag but persistent.
+// See https://github.com/spf13/cobra/blob/main/user_guide.md#persistent-flags to learn what is "persistent".
+func AddPersistentBoolFlag(cmd *cobra.Command, name string, aliases, nonPersistentAliases []string, value bool, env, usage string) {
+	if env != "" {
+		usage = fmt.Sprintf("%s [$%s]", usage, env)
+	}
+	if envV, ok := os.LookupEnv(env); ok {
+		var err error
+		value, err = strconv.ParseBool(envV)
+		if err != nil {
+			log.L.WithError(err).Warnf("Invalid boolean value for `%s`", env)
+		}
+	}
+	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
+	p := new(bool)
+	flags := cmd.Flags()
+	for _, a := range nonPersistentAliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			flags.BoolVarP(p, a, a, value, aliasesUsage)
+		} else {
+			flags.BoolVar(p, a, value, aliasesUsage)
+		}
+	}
+
+	persistentFlags := cmd.PersistentFlags()
+	persistentFlags.BoolVar(p, name, value, usage)
+	for _, a := range aliases {
+		if len(a) == 1 {
+			// pflag doesn't support short-only flags, so we have to register long one as well here
+			persistentFlags.BoolVarP(p, a, a, value, aliasesUsage)
+		} else {
+			persistentFlags.BoolVar(p, a, value, aliasesUsage)
+		}
+	}
+}
