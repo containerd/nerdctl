@@ -27,6 +27,7 @@ import (
 
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
@@ -432,10 +433,10 @@ func TestComposePushAndPullWithCosignVerify(t *testing.T) {
 	base := testutil.NewBase(t)
 	base.Env = append(base.Env, "COSIGN_PASSWORD=1")
 
-	keyPair := newCosignKeyPair(t, "cosign-key-pair", "1")
+	keyPair := helpers.NewCosignKeyPair(t, "cosign-key-pair", "1")
 	reg := testregistry.NewWithNoAuth(base, 0, false)
 	t.Cleanup(func() {
-		keyPair.cleanup()
+		keyPair.Cleanup()
 		reg.Cleanup(nil)
 	})
 
@@ -475,8 +476,8 @@ services:
     x-nerdctl-sign: none
     entrypoint:
       - stty
-`, imageSvc0, keyPair.publicKey, keyPair.privateKey,
-		imageSvc1, keyPair.privateKey, imageSvc2)
+`, imageSvc0, keyPair.PublicKey, keyPair.PrivateKey,
+		imageSvc1, keyPair.PrivateKey, imageSvc2)
 
 	dockerfile := fmt.Sprintf(`FROM %s`, testutil.AlpineImage)
 

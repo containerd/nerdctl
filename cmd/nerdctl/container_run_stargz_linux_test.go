@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
@@ -30,17 +31,7 @@ func TestRunStargz(t *testing.T) {
 	}
 
 	base := testutil.NewBase(t)
-	requiresStargz(base)
+	helpers.RequiresStargz(base)
 	// if stargz snapshotter is functional, "/.stargz-snapshotter" appears
 	base.Cmd("--snapshotter=stargz", "run", "--rm", testutil.FedoraESGZImage, "ls", "/.stargz-snapshotter").AssertOK()
-}
-
-func requiresStargz(base *testutil.Base) {
-	info := base.Info()
-	for _, p := range info.Plugins.Storage {
-		if p == "stargz" {
-			return
-		}
-	}
-	base.T.Skip("test requires stargz")
 }

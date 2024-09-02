@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/v2/pkg/composer"
@@ -42,7 +43,7 @@ func newComposeRemoveCommand() *cobra.Command {
 }
 
 func composeRemoveAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
@@ -51,18 +52,15 @@ func composeRemoveAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if !force {
-		var confirm string
 		services := "all"
 		if len(args) != 0 {
 			services = strings.Join(args, ",")
 		}
-		msg := fmt.Sprintf("This will remove all stopped containers from services: %s.", services)
-		msg += "\nAre you sure you want to continue? [y/N] "
-		fmt.Fprintf(cmd.OutOrStdout(), "WARNING! %s", msg)
-		fmt.Fscanf(cmd.InOrStdin(), "%s", &confirm)
 
-		if strings.ToLower(confirm) != "y" {
-			return nil
+		msg := fmt.Sprintf("This will remove all stopped containers from services: %s.", services)
+
+		if confirmed, err := helpers.Confirm(cmd, fmt.Sprintf("WARNING! %s.", msg)); err != nil || !confirmed {
+			return err
 		}
 	}
 

@@ -35,6 +35,7 @@ import (
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -70,7 +71,7 @@ func prepareCustomRootfs(base *testutil.Base, imageName string) string {
 	base.Cmd("save", "-o", archiveTarPath, imageName).AssertOK()
 	rootfs, err := os.MkdirTemp(base.T.TempDir(), "rootfs")
 	assert.NilError(base.T, err)
-	err = extractDockerArchive(archiveTarPath, rootfs)
+	err = helpers.ExtractDockerArchive(archiveTarPath, rootfs)
 	assert.NilError(base.T, err)
 	return rootfs
 }

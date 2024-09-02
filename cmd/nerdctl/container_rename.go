@@ -19,6 +19,8 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -27,7 +29,7 @@ import (
 func newRenameCommand() *cobra.Command {
 	var renameCommand = &cobra.Command{
 		Use:               "rename [flags] CONTAINER NEW_NAME",
-		Args:              IsExactArgs(2),
+		Args:              helpers.IsExactArgs(2),
 		Short:             "rename a container",
 		RunE:              renameAction,
 		ValidArgsFunction: renameShellComplete,
@@ -38,7 +40,7 @@ func newRenameCommand() *cobra.Command {
 }
 
 func processContainerRenameOptions(cmd *cobra.Command) (types.ContainerRenameOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerRenameOptions{}, err
 	}
@@ -61,5 +63,5 @@ func renameAction(cmd *cobra.Command, args []string) error {
 	return container.Rename(ctx, client, args[0], args[1], options)
 }
 func renameShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return shellCompleteContainerNames(cmd, nil)
+	return completion.ContainerNames(cmd, nil)
 }

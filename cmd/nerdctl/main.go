@@ -23,7 +23,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/pelletier/go-toml/v2"
@@ -32,17 +31,22 @@ import (
 
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/builder"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/image"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/internal"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/ipfs"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/login"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/namespace"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/network"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/volume"
 	"github.com/containerd/nerdctl/v2/pkg/config"
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
 	"github.com/containerd/nerdctl/v2/pkg/logging"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/version"
-)
-
-const (
-	Category   = "category"
-	Management = "management"
 )
 
 var (
@@ -73,7 +77,7 @@ func usage(c *cobra.Command) error {
 		if f.Hidden {
 			continue
 		}
-		if f.Annotations[Category] == Management {
+		if f.Annotations[helpers.Category] == helpers.Management {
 			managementCommands = append(managementCommands, f)
 		} else {
 			nonManagementCommands = append(nonManagementCommands, f)
@@ -101,7 +105,7 @@ func usage(c *cobra.Command) error {
 		t += "\n"
 		return t
 	}
-	s += printCommands("Management commands", managementCommands)
+	s += printCommands("helpers.Management commands", managementCommands)
 	s += printCommands("Commands", nonManagementCommands)
 
 	s += Bold("Flags") + ":\n"
@@ -161,15 +165,15 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, 
 	AddPersistentStringFlag(rootCmd, "address", []string{"a", "H"}, nil, []string{"host"}, aliasToBeInherited, cfg.Address, "CONTAINERD_ADDRESS", `containerd address, optionally with "unix://" prefix`)
 	// -n is aliases (conflicts with nerdctl logs -n)
 	AddPersistentStringFlag(rootCmd, "namespace", []string{"n"}, nil, nil, aliasToBeInherited, cfg.Namespace, "CONTAINERD_NAMESPACE", `containerd namespace, such as "moby" for Docker, "k8s.io" for Kubernetes`)
-	rootCmd.RegisterFlagCompletionFunc("namespace", shellCompleteNamespaceNames)
+	rootCmd.RegisterFlagCompletionFunc("namespace", completion.NamespaceNames)
 	AddPersistentStringFlag(rootCmd, "snapshotter", nil, nil, []string{"storage-driver"}, aliasToBeInherited, cfg.Snapshotter, "CONTAINERD_SNAPSHOTTER", "containerd snapshotter")
-	rootCmd.RegisterFlagCompletionFunc("snapshotter", shellCompleteSnapshotterNames)
-	rootCmd.RegisterFlagCompletionFunc("storage-driver", shellCompleteSnapshotterNames)
+	rootCmd.RegisterFlagCompletionFunc("snapshotter", completion.SnapshotterNames)
+	rootCmd.RegisterFlagCompletionFunc("storage-driver", completion.SnapshotterNames)
 	AddPersistentStringFlag(rootCmd, "cni-path", nil, nil, nil, aliasToBeInherited, cfg.CNIPath, "CNI_PATH", "cni plugins binary directory")
 	AddPersistentStringFlag(rootCmd, "cni-netconfpath", nil, nil, nil, aliasToBeInherited, cfg.CNINetConfPath, "NETCONFPATH", "cni config directory")
 	rootCmd.PersistentFlags().String("data-root", cfg.DataRoot, "Root directory of persistent nerdctl state (managed by nerdctl, not by containerd)")
 	rootCmd.PersistentFlags().String("cgroup-manager", cfg.CgroupManager, `Cgroup manager to use ("cgroupfs"|"systemd")`)
-	rootCmd.RegisterFlagCompletionFunc("cgroup-manager", shellCompleteCgroupManagerNames)
+	rootCmd.RegisterFlagCompletionFunc("cgroup-manager", completion.CgroupManagerNames)
 	rootCmd.PersistentFlags().Bool("insecure-registry", cfg.InsecureRegistry, "skips verifying HTTPS certs, and allows falling back to plain HTTP")
 	// hosts-dir is defined as StringSlice, not StringArray, to allow specifying "--hosts-dir=/etc/containerd/certs.d,/etc/docker/certs.d"
 	rootCmd.PersistentFlags().StringSlice("hosts-dir", cfg.HostsDir, "A directory that contains <HOST:PORT>/hosts.toml (containerd style) or <HOST:PORT>/{ca.cert, cert.pem, key.pem} (docker style)")
@@ -208,7 +212,7 @@ Config file ($NERDCTL_TOML): %s
 	}
 
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		globalOptions, err := processRootCmdFlags(cmd)
+		globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 		if err != nil {
 			return err
 		}
@@ -237,7 +241,7 @@ Config file ($NERDCTL_TOML): %s
 		}
 		return nil
 	}
-	rootCmd.RunE = unknownSubcommandAction
+	rootCmd.RunE = helpers.UnknownSubcommandAction
 	rootCmd.AddCommand(
 		newCreateCommand(),
 		// #region Run & Exec
@@ -265,17 +269,17 @@ Config file ($NERDCTL_TOML): %s
 		// #endregion
 
 		// Build
-		newBuildCommand(),
+		builder.NewBuildCommand(),
 
 		// #region Image management
-		newImagesCommand(),
-		newPullCommand(),
-		newPushCommand(),
-		newLoadCommand(),
-		newSaveCommand(),
-		newTagCommand(),
-		newRmiCommand(),
-		newHistoryCommand(),
+		image.NewImagesCommand(),
+		image.NewPullCommand(),
+		image.NewPushCommand(),
+		image.NewLoadCommand(),
+		image.NewSaveCommand(),
+		image.NewTagCommand(),
+		image.NewRmiCommand(),
+		image.NewHistoryCommand(),
 		// #endregion
 
 		// #region System
@@ -291,30 +295,30 @@ Config file ($NERDCTL_TOML): %s
 		newTopCommand(),
 		newStatsCommand(),
 
-		// #region Management
+		// #region helpers.Management
 		newContainerCommand(),
-		newImageCommand(),
-		newNetworkCommand(),
-		newVolumeCommand(),
+		image.NewImageCommand(),
+		network.NewNetworkCommand(),
+		volume.NewVolumeCommand(),
 		newSystemCommand(),
-		newNamespaceCommand(),
-		newBuilderCommand(),
+		namespace.NewNamespaceCommand(),
+		builder.NewBuilderCommand(),
 		// #endregion
 
 		// Internal
-		newInternalCommand(),
+		internal.NewInternalCommand(),
 
 		// login
-		newLoginCommand(),
+		login.NewLoginCommand(),
 
 		// Logout
-		newLogoutCommand(),
+		login.NewLogoutCommand(),
 
 		// Compose
 		newComposeCommand(),
 
 		// IPFS
-		newIPFSCommand(),
+		ipfs.NewIPFSCommand(),
 	)
 	addApparmorCommand(rootCmd)
 	addCpCommand(rootCmd)
@@ -347,99 +351,6 @@ func globalFlags(cmd *cobra.Command) (string, []string) {
 		}
 	})
 	return args0, args
-}
-
-// unknownSubcommandAction is needed to let `nerdctl system non-existent-command` fail
-// https://github.com/containerd/nerdctl/issues/487
-//
-// Ideally this should be implemented in Cobra itself.
-func unknownSubcommandAction(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return cmd.Help()
-	}
-	// The output mimics https://github.com/spf13/cobra/blob/v1.2.1/command.go#L647-L662
-	msg := fmt.Sprintf("unknown subcommand %q for %q", args[0], cmd.Name())
-	if suggestions := cmd.SuggestionsFor(args[0]); len(suggestions) > 0 {
-		msg += "\n\nDid you mean this?\n"
-		for _, s := range suggestions {
-			msg += fmt.Sprintf("\t%v\n", s)
-		}
-	}
-	return errors.New(msg)
-}
-
-// AddStringFlag is similar to cmd.Flags().String but supports aliases and env var
-func AddStringFlag(cmd *cobra.Command, name string, aliases []string, value string, env, usage string) {
-	if env != "" {
-		usage = fmt.Sprintf("%s [$%s]", usage, env)
-	}
-	if envV, ok := os.LookupEnv(env); ok {
-		value = envV
-	}
-	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
-	p := new(string)
-	flags := cmd.Flags()
-	flags.StringVar(p, name, value, usage)
-	for _, a := range aliases {
-		if len(a) == 1 {
-			// pflag doesn't support short-only flags, so we have to register long one as well here
-			flags.StringVarP(p, a, a, value, aliasesUsage)
-		} else {
-			flags.StringVar(p, a, value, aliasesUsage)
-		}
-	}
-}
-
-// AddIntFlag is similar to cmd.Flags().Int but supports aliases and env var
-func AddIntFlag(cmd *cobra.Command, name string, aliases []string, value int, env, usage string) {
-	if env != "" {
-		usage = fmt.Sprintf("%s [$%s]", usage, env)
-	}
-	if envV, ok := os.LookupEnv(env); ok {
-		v, err := strconv.ParseInt(envV, 10, 64)
-		if err != nil {
-			log.L.WithError(err).Warnf("Invalid int value for `%s`", env)
-		}
-		value = int(v)
-	}
-	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
-	p := new(int)
-	flags := cmd.Flags()
-	flags.IntVar(p, name, value, usage)
-	for _, a := range aliases {
-		if len(a) == 1 {
-			// pflag doesn't support short-only flags, so we have to register long one as well here
-			flags.IntVarP(p, a, a, value, aliasesUsage)
-		} else {
-			flags.IntVar(p, a, value, aliasesUsage)
-		}
-	}
-}
-
-// AddDurationFlag is similar to cmd.Flags().Duration but supports aliases and env var
-func AddDurationFlag(cmd *cobra.Command, name string, aliases []string, value time.Duration, env, usage string) {
-	if env != "" {
-		usage = fmt.Sprintf("%s [$%s]", usage, env)
-	}
-	if envV, ok := os.LookupEnv(env); ok {
-		var err error
-		value, err = time.ParseDuration(envV)
-		if err != nil {
-			log.L.WithError(err).Warnf("Invalid duration value for `%s`", env)
-		}
-	}
-	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
-	p := new(time.Duration)
-	flags := cmd.Flags()
-	flags.DurationVar(p, name, value, usage)
-	for _, a := range aliases {
-		if len(a) == 1 {
-			// pflag doesn't support short-only flags, so we have to register long one as well here
-			flags.DurationVarP(p, a, a, value, aliasesUsage)
-		} else {
-			flags.DurationVar(p, a, value, aliasesUsage)
-		}
-	}
 }
 
 // AddPersistentStringFlag is similar to AddStringFlag but persistent.
@@ -560,36 +471,5 @@ func AddPersistentStringArrayFlag(cmd *cobra.Command, name string, aliases, nonP
 		} else {
 			persistentFlags.StringArrayVar(p, a, value, aliasesUsage)
 		}
-	}
-}
-
-func checkExperimental(feature string) func(cmd *cobra.Command, args []string) error {
-	return func(cmd *cobra.Command, args []string) error {
-		globalOptions, err := processRootCmdFlags(cmd)
-		if err != nil {
-			return err
-		}
-		if !globalOptions.Experimental {
-			return fmt.Errorf("%s is experimental feature, you should enable experimental config", feature)
-		}
-		return nil
-	}
-}
-
-// IsExactArgs returns an error if there is not the exact number of args
-func IsExactArgs(number int) cobra.PositionalArgs {
-	return func(cmd *cobra.Command, args []string) error {
-		if len(args) == number {
-			return nil
-		}
-		return fmt.Errorf(
-			"%q requires exactly %d %s.\nSee '%s --help'.\n\nUsage:  %s\n\n%s",
-			cmd.CommandPath(),
-			number,
-			"argument(s)",
-			cmd.CommandPath(),
-			cmd.UseLine(),
-			cmd.Short,
-		)
 	}
 }

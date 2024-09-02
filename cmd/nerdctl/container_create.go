@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -61,7 +62,7 @@ func processContainerCreateOptions(cmd *cobra.Command) (types.ContainerCreateOpt
 		Stderr: cmd.ErrOrStderr(),
 	}
 
-	opt.GOptions, err = processRootCmdFlags(cmd)
+	opt.GOptions, err = helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return opt, err
 	}
@@ -404,7 +405,7 @@ func processContainerCreateOptions(cmd *cobra.Command) (types.ContainerCreateOpt
 	// #endregion
 
 	// #region for image pull and verify options
-	imageVerifyOpt, err := processImageVerifyOptions(cmd)
+	imageVerifyOpt, err := helpers.ProcessImageVerifyOptions(cmd)
 	if err != nil {
 		return opt, err
 	}

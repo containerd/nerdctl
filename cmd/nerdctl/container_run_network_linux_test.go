@@ -31,6 +31,7 @@ import (
 
 	"github.com/containerd/errdefs"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
@@ -632,7 +633,7 @@ func TestRunContainerWithStaticIP6(t *testing.T) {
 				return
 			}
 			cmd.AssertOutWithFunc(func(stdout string) error {
-				ip := findIPv6(stdout)
+				ip := helpers.FindIPv6(stdout)
 				if !subnet.Contains(ip) {
 					return fmt.Errorf("expected subnet %s include ip %s", subnet, ip)
 				}

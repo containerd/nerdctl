@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
@@ -26,7 +27,7 @@ func newComposeCommand() *cobra.Command {
 	var composeCommand = &cobra.Command{
 		Use:              "compose [flags] COMMAND",
 		Short:            "Compose",
-		RunE:             unknownSubcommandAction,
+		RunE:             helpers.UnknownSubcommandAction,
 		SilenceUsage:     true,
 		SilenceErrors:    true,
 		TraverseChildren: true, // required for global short hands like -f

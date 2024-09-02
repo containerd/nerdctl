@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -43,7 +44,7 @@ Using 'nerdctl cp' with untrusted or malicious containers is unsupported and may
   nerdctl cp [flags] SRC_PATH|- CONTAINER:DEST_PATH`
 	var cpCommand = &cobra.Command{
 		Use:               usage,
-		Args:              IsExactArgs(2),
+		Args:              helpers.IsExactArgs(2),
 		Short:             shortHelp,
 		Long:              longHelp,
 		RunE:              cpAction,
@@ -78,7 +79,7 @@ func cpAction(cmd *cobra.Command, args []string) error {
 }
 
 func processCpOptions(cmd *cobra.Command, args []string) (types.ContainerCpOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerCpOptions{}, err
 	}

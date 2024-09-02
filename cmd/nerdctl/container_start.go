@@ -21,6 +21,8 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -46,7 +48,7 @@ func newStartCommand() *cobra.Command {
 }
 
 func processContainerStartOptions(cmd *cobra.Command) (types.ContainerStartOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerStartOptions{}, err
 	}
@@ -86,5 +88,5 @@ func startShellComplete(cmd *cobra.Command, args []string, toComplete string) ([
 	statusFilterFn := func(st containerd.ProcessStatus) bool {
 		return st != containerd.Running && st != containerd.Unknown
 	}
-	return shellCompleteContainerNames(cmd, statusFilterFn)
+	return completion.ContainerNames(cmd, statusFilterFn)
 }

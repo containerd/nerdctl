@@ -27,6 +27,7 @@ import (
 
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
@@ -53,7 +54,7 @@ func newVersionCommand() *cobra.Command {
 func versionAction(cmd *cobra.Command, args []string) error {
 	var w io.Writer = os.Stdout
 	var tmpl *template.Template
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}

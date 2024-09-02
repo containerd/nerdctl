@@ -22,6 +22,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	imageCmd "github.com/containerd/nerdctl/v2/cmd/nerdctl/image"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -69,7 +72,7 @@ func addInspectFlags(cmd *cobra.Command) {
 }
 
 func inspectAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
@@ -113,7 +116,7 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 	var containerInspectOptions types.ContainerInspectOptions
 	if inspectImage {
 		platform := ""
-		imageInspectOptions, err = processImageInspectOptions(cmd, &platform)
+		imageInspectOptions, err = imageCmd.ProcessImageInspectOptions(cmd, &platform)
 		if err != nil {
 			return err
 		}
@@ -165,8 +168,8 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 
 func inspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show container names
-	containers, _ := shellCompleteContainerNames(cmd, nil)
+	containers, _ := completion.ContainerNames(cmd, nil)
 	// show image names
-	images, _ := shellCompleteImageNames(cmd)
+	images, _ := completion.ImageNames(cmd)
 	return append(containers, images...), cobra.ShellCompDirectiveNoFileComp
 }

@@ -28,6 +28,7 @@ import (
 
 	"github.com/containerd/containerd/v2/core/mount"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
@@ -125,7 +126,7 @@ func TestRunAnonymousVolumeWithBuild(t *testing.T) {
 VOLUME /foo
         `, testutil.AlpineImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("run", "--rm", "-v", "/foo", testutil.AlpineImage,
@@ -147,7 +148,7 @@ RUN mkdir -p /mnt && echo hi > /mnt/initial_file
 CMD ["cat", "/mnt/initial_file"]
         `, testutil.AlpineImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 
@@ -175,7 +176,7 @@ VOLUME /mnt
 CMD ["cat", "/mnt/initial_file"]
         `, testutil.AlpineImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	//AnonymousVolume
@@ -208,7 +209,7 @@ CMD ["readlink", "/mnt/passwd"]
         `, testutil.AlpineImage)
 	const expected = "../../../../../../../../../../../../../../../../../../etc/passwd\n"
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 
@@ -235,7 +236,7 @@ func TestRunCopyingUpInitialContentsShouldNotResetTheCopiedContents(t *testing.T
 RUN echo -n "rev0" > /mnt/file
 `, testutil.AlpineImage)
 
-	buildCtx := createBuildContext(t, dockerfile)
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 

@@ -33,6 +33,8 @@ import (
 	"github.com/containerd/log"
 	"github.com/containerd/typeurl/v2"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	nerdctlContainer "github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -89,7 +91,7 @@ func setUpdateFlags(cmd *cobra.Command) {
 }
 
 func updateAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
@@ -397,5 +399,5 @@ func copySpec(spec *runtimespec.Spec) (*runtimespec.Spec, error) {
 }
 
 func updateShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return shellCompleteContainerNames(cmd, nil)
+	return completion.ContainerNames(cmd, nil)
 }

@@ -24,6 +24,9 @@ import (
 
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/builder"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/network"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/system"
@@ -45,7 +48,7 @@ func newSystemPruneCommand() *cobra.Command {
 }
 
 func processSystemPruneOptions(cmd *cobra.Command) (types.SystemPruneOptions, error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.SystemPruneOptions{}, err
 	}
@@ -60,7 +63,7 @@ func processSystemPruneOptions(cmd *cobra.Command) (types.SystemPruneOptions, er
 		return types.SystemPruneOptions{}, err
 	}
 
-	buildkitHost, err := getBuildkitHost(cmd, globalOptions.Namespace)
+	buildkitHost, err := builder.GetBuildkitHost(cmd, globalOptions.Namespace)
 	if err != nil {
 		log.L.WithError(err).Warn("BuildKit is not running. Build caches will not be pruned.")
 		buildkitHost = ""
@@ -73,7 +76,7 @@ func processSystemPruneOptions(cmd *cobra.Command) (types.SystemPruneOptions, er
 		All:                  all,
 		Volumes:              vFlag,
 		BuildKitHost:         buildkitHost,
-		NetworkDriversToKeep: networkDriversToKeep,
+		NetworkDriversToKeep: network.NetworkDriversToKeep,
 	}, nil
 }
 

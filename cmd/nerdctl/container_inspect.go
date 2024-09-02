@@ -21,6 +21,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -56,7 +58,7 @@ var validModeType = map[string]bool{
 }
 
 func processContainerInspectOptions(cmd *cobra.Command) (opt types.ContainerInspectOptions, err error) {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return
 	}
@@ -103,5 +105,5 @@ func containerInspectAction(cmd *cobra.Command, args []string) error {
 
 func containerInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show container names
-	return shellCompleteContainerNames(cmd, nil)
+	return completion.ContainerNames(cmd, nil)
 }

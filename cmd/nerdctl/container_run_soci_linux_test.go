@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
@@ -41,7 +42,7 @@ func TestRunSoci(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			base := testutil.NewBase(t)
-			requiresSoci(base)
+			helpers.RequiresSoci(base)
 
 			//counting initial snapshot mounts
 			initialMounts, err := exec.Command("mount").Output()
@@ -72,14 +73,4 @@ func TestRunSoci(t *testing.T) {
 			}
 		})
 	}
-}
-
-func requiresSoci(base *testutil.Base) {
-	info := base.Info()
-	for _, p := range info.Plugins.Storage {
-		if p == "soci" {
-			return
-		}
-	}
-	base.T.Skip("test requires soci")
 }

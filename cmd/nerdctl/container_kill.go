@@ -21,6 +21,8 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -41,7 +43,7 @@ func newKillCommand() *cobra.Command {
 }
 
 func killAction(cmd *cobra.Command, args []string) error {
-	globalOptions, err := processRootCmdFlags(cmd)
+	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
 	}
@@ -70,5 +72,5 @@ func killShellComplete(cmd *cobra.Command, _ []string, _ string) ([]string, cobr
 	statusFilterFn := func(st containerd.ProcessStatus) bool {
 		return st != containerd.Stopped && st != containerd.Created && st != containerd.Unknown
 	}
-	return shellCompleteContainerNames(cmd, statusFilterFn)
+	return completion.ContainerNames(cmd, statusFilterFn)
 }
