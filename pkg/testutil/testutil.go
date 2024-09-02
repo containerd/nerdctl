@@ -37,12 +37,14 @@ import (
 	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/containerd/v2/defaults"
+	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
@@ -549,14 +551,63 @@ var (
 	flagTestKube       bool
 )
 
+var (
+	testLockFile = filepath.Join(os.TempDir(), "nerdctl-test-prevent-concurrency", ".lock")
+)
+
 func M(m *testing.M) {
 	flag.StringVar(&flagTestTarget, "test.target", Nerdctl, "target to test")
 	flag.BoolVar(&flagTestKillDaemon, "test.allow-kill-daemon", false, "enable tests that kill the daemon")
 	flag.BoolVar(&flagTestIPv6, "test.only-ipv6", false, "enable tests on IPv6")
 	flag.BoolVar(&flagTestKube, "test.only-kubernetes", false, "enable tests on Kubernetes")
 	flag.Parse()
-	fmt.Fprintf(os.Stderr, "test target: %q\n", flagTestTarget)
-	os.Exit(m.Run())
+
+	os.Exit(func() int {
+		// If there is a lockfile (no err), or if we error-ed stating it (permission), another test run is currently going.
+		// Note that this could be racy. The .lock file COULD get acquired after this and before we hit the lock section.
+		// This is not a big deal then: we will just wait for the lock to free.
+		if _, err := os.Stat(testLockFile); err == nil || !errors.Is(err, os.ErrNotExist) {
+			log.L.Errorf("Another test binary is already running. If you think this is an error, manually remove %s", testLockFile)
+			return 1
+		}
+
+		err := os.MkdirAll(filepath.Dir(testLockFile), 0o777)
+		if err != nil {
+			log.L.WithError(err).Errorf("failed creating testing lock directory %q", filepath.Dir(testLockFile))
+			return 1
+		}
+
+		// Ensure that permissions are set to 777 (regardless of umask value), so that we do not lock people out when
+		// switching between rootful and rootless locking
+		os.Chmod(filepath.Dir(testLockFile), 0o777)
+
+		// Acquire lock
+		lock, err := lockutil.Lock(filepath.Dir(testLockFile))
+		if err != nil {
+			log.L.WithError(err).Errorf("failed acquiring testing lock %q", filepath.Dir(testLockFile))
+			return 1
+		}
+
+		// Release...
+		defer lockutil.Unlock(lock)
+
+		// Create marker file
+		err = os.WriteFile(testLockFile, []byte("prevent testing from running in parallel for subpackages integration tests"), 0o666)
+		if err != nil {
+			log.L.WithError(err).Errorf("failed writing lock file %q", testLockFile)
+			return 1
+		}
+
+		// Ensure cleanup
+		defer func() {
+			os.Remove(testLockFile)
+		}()
+
+		// Now, run the tests
+		fmt.Fprintf(os.Stderr, "test target: %q\n", flagTestTarget)
+
+		return m.Run()
+	}())
 }
 
 func GetTarget() string {
