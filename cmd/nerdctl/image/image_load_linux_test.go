@@ -32,23 +32,35 @@ import (
 func TestLoadStdinFromPipe(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-
+	img := testutil.Identifier(t)
 	tmp := t.TempDir()
-	img := testutil.Identifier(t) + "image"
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	base.Cmd("tag", testutil.CommonImage, img).AssertOK()
-	base.Cmd("save", img, "-o", filepath.Join(tmp, "common.tar")).AssertOK()
-	base.Cmd("rmi", "-f", img).AssertOK()
-	loadCmd := strings.Join(base.Cmd("load").Command, " ")
 	output := filepath.Join(tmp, "output")
 
+	setup := func() {
+		base.Cmd("pull", testutil.CommonImage).AssertOK()
+		base.Cmd("tag", testutil.CommonImage, img).AssertOK()
+		base.Cmd("save", img, "-o", filepath.Join(tmp, "common.tar")).AssertOK()
+		base.Cmd("rmi", "-f", img).AssertOK()
+	}
+
+	tearDown := func() {
+		base.Cmd("rmi", "-f", img).AssertOK()
+	}
+
+	t.Cleanup(tearDown)
+	tearDown()
+
+	setup()
+
+	loadCmd := strings.Join(base.Cmd("load").Command, " ")
 	combined, err := exec.Command("sh", "-euxc", fmt.Sprintf("`cat %s/common.tar | %s > %s`", tmp, loadCmd, output)).CombinedOutput()
 	assert.NilError(t, err, "failed with error %s and combined output is %s", err, string(combined))
+
 	fb, err := os.ReadFile(output)
 	assert.NilError(t, err)
 
 	assert.Assert(t, strings.Contains(string(fb), fmt.Sprintf("Loaded image: %s:latest", img)))
-	base.Cmd("images").AssertOutContains(testutil.ImageRepo(testutil.CommonImage))
+	base.Cmd("images").AssertOutContains(img)
 }
 
 func TestLoadStdinEmpty(t *testing.T) {
