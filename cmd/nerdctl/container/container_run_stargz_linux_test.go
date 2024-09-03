@@ -14,16 +14,24 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
-	"github.com/spf13/cobra"
+	"runtime"
+	"testing"
+
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
-	return false
-}
+func TestRunStargz(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	if runtime.GOARCH != "amd64" {
+		t.Skip("skipping test as FedoraESGZImage is amd64 only")
+	}
 
-func addApparmorCommand(rootCmd *cobra.Command) {
-	// NOP
+	base := testutil.NewBase(t)
+	helpers.RequiresStargz(base)
+	// if stargz snapshotter is functional, "/.stargz-snapshotter" appears
+	base.Cmd("--snapshotter=stargz", "run", "--rm", testutil.FedoraESGZImage, "ls", "/.stargz-snapshotter").AssertOK()
 }

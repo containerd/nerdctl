@@ -14,16 +14,14 @@
    limitations under the License.
 */
 
-package main
+package inspect
 
 import (
-	"github.com/spf13/cobra"
+	"testing"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
-	return false
-}
-
-func addApparmorCommand(rootCmd *cobra.Command) {
-	// NOP
+func TestMain(m *testing.M) {
+	testutil.M(m)
 }

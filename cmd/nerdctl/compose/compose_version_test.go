@@ -14,16 +14,25 @@
    limitations under the License.
 */
 
-package main
+package compose
 
 import (
-	"github.com/spf13/cobra"
+	"testing"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
-	return false
+func TestComposeVersion(t *testing.T) {
+	base := testutil.NewBase(t)
+	base.ComposeCmd("version").AssertOutContains("Compose version ")
 }
 
-func addApparmorCommand(rootCmd *cobra.Command) {
-	// NOP
+func TestComposeVersionShort(t *testing.T) {
+	base := testutil.NewBase(t)
+	base.ComposeCmd("version", "--short").AssertOK()
+}
+
+func TestComposeVersionJson(t *testing.T) {
+	base := testutil.NewBase(t)
+	base.ComposeCmd("version", "--format", "json").AssertOutContains("{\"version\":\"")
 }

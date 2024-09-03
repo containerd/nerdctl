@@ -14,16 +14,16 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
-	"github.com/spf13/cobra"
+	"testing"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
-	return false
-}
-
-func addApparmorCommand(rootCmd *cobra.Command) {
-	// NOP
+func TestRunSysctl(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	base.Cmd("run", "--rm", "--sysctl", "net.ipv4.ip_forward=1", testutil.AlpineImage, "cat", "/proc/sys/net/ipv4/ip_forward").AssertOutExactly("1\n")
 }

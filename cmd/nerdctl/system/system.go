@@ -14,16 +14,28 @@
    limitations under the License.
 */
 
-package main
+package system
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 )
 
-func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
-	return false
-}
-
-func addApparmorCommand(rootCmd *cobra.Command) {
-	// NOP
+func NewSystemCommand() *cobra.Command {
+	var systemCommand = &cobra.Command{
+		Annotations:   map[string]string{helpers.Category: helpers.Management},
+		Use:           "system",
+		Short:         "Manage containerd",
+		RunE:          helpers.UnknownSubcommandAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+	// versionCommand is not here
+	systemCommand.AddCommand(
+		NewEventsCommand(),
+		NewInfoCommand(),
+		newSystemPruneCommand(),
+	)
+	return systemCommand
 }

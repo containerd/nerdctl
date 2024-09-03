@@ -14,16 +14,10 @@
    limitations under the License.
 */
 
-package main
+package container
 
-import (
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
-func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
-	return false
-}
-
-func addApparmorCommand(rootCmd *cobra.Command) {
+func AddCpCommand(rootCmd *cobra.Command) {
 	// NOP
 }
