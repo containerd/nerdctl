@@ -18,4 +18,8 @@ package types
 
 import "github.com/containerd/nerdctl/v2/pkg/config"
 
-type GlobalCommandOptions config.Config
+type GlobalCommandOptions struct {
+	config.Config
+
+	ExplicitInsecureRegistry bool
+}

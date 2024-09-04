@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/config"
 )
 
 func ProcessImageVerifyOptions(cmd *cobra.Command) (opt types.ImageVerifyOptions, err error) {
@@ -84,6 +85,8 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 		return types.GlobalCommandOptions{}, err
 	}
 	insecureRegistry, err := cmd.Flags().GetBool("insecure-registry")
+	// Store whether the insecure-registry flag was provided explicitly or not
+	explicitInsecureRegistry := cmd.Flags().Changed("insecure-registry")
 	if err != nil {
 		return types.GlobalCommandOptions{}, err
 	}
@@ -100,19 +103,22 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 		return types.GlobalCommandOptions{}, err
 	}
 	return types.GlobalCommandOptions{
-		Debug:            debug,
-		DebugFull:        debugFull,
-		Address:          address,
-		Namespace:        namespace,
-		Snapshotter:      snapshotter,
-		CNIPath:          cniPath,
-		CNINetConfPath:   cniConfigPath,
-		DataRoot:         dataRoot,
-		CgroupManager:    cgroupManager,
-		InsecureRegistry: insecureRegistry,
-		HostsDir:         hostsDir,
-		Experimental:     experimental,
-		HostGatewayIP:    hostGatewayIP,
+		Config: config.Config{
+			Debug:            debug,
+			DebugFull:        debugFull,
+			Address:          address,
+			Namespace:        namespace,
+			Snapshotter:      snapshotter,
+			CNIPath:          cniPath,
+			CNINetConfPath:   cniConfigPath,
+			DataRoot:         dataRoot,
+			CgroupManager:    cgroupManager,
+			InsecureRegistry: insecureRegistry,
+			HostsDir:         hostsDir,
+			Experimental:     experimental,
+			HostGatewayIP:    hostGatewayIP,
+		},
+		ExplicitInsecureRegistry: explicitInsecureRegistry,
 	}, nil
 }
 
