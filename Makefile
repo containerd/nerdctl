@@ -70,7 +70,9 @@ clean:
 lint: lint-go lint-imports lint-yaml lint-shell
 
 lint-go:
-	cd $(MAKEFILE_DIR) && golangci-lint run $(VERBOSE_FLAG_LONG) ./...
+	cd $(MAKEFILE_DIR) && GOOS=linux golangci-lint run $(VERBOSE_FLAG_LONG) ./... && \
+		GOOS=windows golangci-lint run $(VERBOSE_FLAG_LONG) ./... && \
+		GOOS=freebsd golangci-lint run $(VERBOSE_FLAG_LONG) ./...
 
 lint-imports:
 	cd $(MAKEFILE_DIR) && ./hack/lint-imports.sh
