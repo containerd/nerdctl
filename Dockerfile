@@ -90,7 +90,7 @@ WORKDIR /go/src/github.com/opencontainers/runc
 RUN git checkout ${RUNC_VERSION} && \
   mkdir -p /out
 ENV CGO_ENABLED=1
-RUN GO=xx-go make static && \
+RUN GO=xx-go CC=$(xx-info)-gcc STRIP=$(xx-info)-strip make static && \
   xx-verify --static runc && cp -v -a runc /out/runc.${TARGETARCH}
 
 FROM build-base-debian AS build-bypass4netns
