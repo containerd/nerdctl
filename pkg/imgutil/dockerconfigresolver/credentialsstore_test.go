@@ -168,27 +168,41 @@ func TestBrokenCredentialsStore(t *testing.T) {
 		},
 	}
 
-	t.Run("Broken Docker Config testing", func(t *testing.T) {
+	t.Run("Docker Config testing with a variety of filesystem situations", func(t *testing.T) {
+		// Do NOT parallelize this test, as it relies on Chdir, which would have side effects for other tests.
 		registryURL, err := Parse("registry")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		for _, tc := range testCases {
-			t.Run(tc.description, func(t *testing.T) {
+		for _, testCase := range testCases {
+			tc := testCase
+			t.Run(tc.description, func(tt *testing.T) {
+				// See https://github.com/containerd/nerdctl/issues/3413
+				var oldpwd string
 				directory := tc.setup()
-				cs, err := NewCredentialsStore(directory)
-				assert.ErrorIs(t, err, tc.errorNew)
+				oldpwd, err = os.Getwd()
+				assert.NilError(tt, err)
+				// Ignore the error, as the destination may not be a directory
+				_ = os.Chdir(directory)
+				tt.Cleanup(func() {
+					err = os.Chdir(oldpwd)
+					assert.NilError(tt, err)
+				})
+
+				var cs *CredentialsStore
+				cs, err = NewCredentialsStore(directory)
+				assert.ErrorIs(tt, err, tc.errorNew)
 				if err != nil {
 					return
 				}
 
 				var af *Credentials
 				af, err = cs.Retrieve(registryURL, true)
-				assert.ErrorIs(t, err, tc.errorRead)
+				assert.ErrorIs(tt, err, tc.errorRead)
 
 				err = cs.Store(registryURL, af)
-				assert.ErrorIs(t, err, tc.errorWrite)
+				assert.ErrorIs(tt, err, tc.errorWrite)
 			})
 		}
 	})
