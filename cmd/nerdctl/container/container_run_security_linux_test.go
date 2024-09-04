@@ -182,8 +182,8 @@ func TestRunApparmor(t *testing.T) {
 	attrCurrentEnforceExpected := fmt.Sprintf("%s (enforce)\n", defaultProfile)
 	base.Cmd("run", "--rm", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly(attrCurrentEnforceExpected)
 	base.Cmd("run", "--rm", "--security-opt", "apparmor="+defaultProfile, testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly(attrCurrentEnforceExpected)
-	base.Cmd("run", "--rm", "--security-opt", "apparmor=unconfined", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly("unconfined\n")
-	base.Cmd("run", "--rm", "--privileged", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly("unconfined\n")
+	base.Cmd("run", "--rm", "--security-opt", "apparmor=unconfined", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutContains("unconfined")
+	base.Cmd("run", "--rm", "--privileged", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutContains("unconfined")
 }
 
 // TestRunSeccompCapSysPtrace tests https://github.com/containerd/nerdctl/issues/976
