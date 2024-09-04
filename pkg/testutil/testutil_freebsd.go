@@ -16,6 +16,8 @@
 
 package testutil
 
+import "fmt"
+
 const (
 	CommonImage = "docker.io/knast/freebsd:13-STABLE"
 
@@ -26,3 +28,13 @@ const (
 	// https://www.rfc-editor.org/rfc/rfc793
 	ExpectedConnectionRefusedError = "connection refused"
 )
+
+var (
+	AlpineImage      = mirrorOf("alpine:3.13")
+	NginxAlpineImage = mirrorOf("nginx:1.19-alpine")
+)
+
+func mirrorOf(s string) string {
+	// plain mirror, NOT stargz-converted images
+	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
+}
