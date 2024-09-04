@@ -649,6 +649,7 @@ func writeEtcHostnameForContainer(globalOptions types.GlobalCommandOptions, host
 
 // Loads all available networks and verifies that every selected network
 // from the networkSlice is of a type within supportedTypes.
+// nolint:unused
 func verifyNetworkTypes(env *netutil.CNIEnv, networkSlice []string, supportedTypes []string) (map[string]*netutil.NetworkConfig, error) {
 	netMap, err := env.NetworkMap()
 	if err != nil {

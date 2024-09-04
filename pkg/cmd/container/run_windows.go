@@ -49,7 +49,7 @@ func setPlatformOptions(
 	internalLabels *internalLabels,
 	options types.ContainerCreateOptions,
 ) ([]oci.SpecOpts, error) {
-	var opts []oci.SpecOpts
+	opts := []oci.SpecOpts{}
 	if options.CPUs > 0.0 {
 		opts = append(opts, oci.WithWindowsCPUCount(uint64(options.CPUs)))
 	}

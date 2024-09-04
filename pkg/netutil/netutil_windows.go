@@ -95,7 +95,3 @@ func (e *CNIEnv) generateIPAM(driver string, subnets []string, gatewayStr, ipRan
 	}
 	return ipam, nil
 }
-
-func removeBridgeNetworkInterface(name string) error {
-	return nil
-}

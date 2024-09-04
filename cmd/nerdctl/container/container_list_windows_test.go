@@ -32,7 +32,6 @@ import (
 type psTestContainer struct {
 	name    string
 	labels  map[string]string
-	volumes []string
 	network string
 }
 

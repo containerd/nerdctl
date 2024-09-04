@@ -18,5 +18,4 @@ package ocihook
 
 func loadAppArmor() {
 	//noop
-	return
 }

@@ -133,6 +133,7 @@ func TestParseIPAMRange(t *testing.T) {
 // Note that this test will require a CNI driver bearing the same name as
 // the type of the default network. (denoted by netutil.DefaultNetworkName,
 // which is used as both the name of the default network and its Driver)
+// nolint:unused
 func testDefaultNetworkCreation(t *testing.T) {
 	// To prevent subnet collisions when attempting to recreate the default network
 	// in the isolated CNI config dir we'll be using, we must first delete

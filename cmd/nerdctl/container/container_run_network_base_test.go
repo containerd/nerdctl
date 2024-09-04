@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -222,29 +221,4 @@ func baseTestRunPort(t *testing.T, nginxImage string, nginxIndexHTMLSnippet stri
 		})
 	}
 
-}
-
-func valuesOfMapStringString(m map[string]string) map[string]struct{} {
-	res := make(map[string]struct{})
-	for _, v := range m {
-		res[v] = struct{}{}
-	}
-	return res
-}
-
-func extractHostPort(portMapping string, port string) (string, error) {
-	// Regular expression to extract host port from port mapping information
-	re := regexp.MustCompile(`(?P<containerPort>\d{1,5})/tcp ->.*?0.0.0.0:(?P<hostPort>\d{1,5}).*?`)
-	portMappingLines := strings.Split(portMapping, "\n")
-	for _, portMappingLine := range portMappingLines {
-		// Find the matches
-		matches := re.FindStringSubmatch(portMappingLine)
-		// Check if there is a match
-		if len(matches) >= 3 && matches[1] == port {
-			// Extract the host port number
-			hostPort := matches[2]
-			return hostPort, nil
-		}
-	}
-	return "", fmt.Errorf("could not extract host port from port mapping: %s", portMapping)
 }

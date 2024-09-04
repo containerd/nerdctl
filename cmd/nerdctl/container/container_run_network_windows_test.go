@@ -126,22 +126,22 @@ func TestHnsEndpointsExistDuringContainerLifecycle(t *testing.T) {
 		"tail", "-f",
 	)
 	t.Logf("Creating HNS lifecycle test container with command: %q", strings.Join(cmd.Command, " "))
-	containerId := strings.TrimSpace(cmd.Run().Stdout())
-	t.Logf("HNS endpoint lifecycle test container ID: %q", containerId)
+	containerID := strings.TrimSpace(cmd.Run().Stdout())
+	t.Logf("HNS endpoint lifecycle test container ID: %q", containerID)
 
 	// HNS endpoints should be allocated on container creation.
-	assertHnsEndpointsExistence(t, true, containerId, testNet.Name)
+	assertHnsEndpointsExistence(t, true, containerID, testNet.Name)
 
 	// Starting and stopping the container should NOT affect/change the endpoints.
-	base.Cmd("start", containerId).AssertOK()
-	assertHnsEndpointsExistence(t, true, containerId, testNet.Name)
+	base.Cmd("start", containerID).AssertOK()
+	assertHnsEndpointsExistence(t, true, containerID, testNet.Name)
 
-	base.Cmd("stop", containerId).AssertOK()
-	assertHnsEndpointsExistence(t, true, containerId, testNet.Name)
+	base.Cmd("stop", containerID).AssertOK()
+	assertHnsEndpointsExistence(t, true, containerID, testNet.Name)
 
 	// Removing the container should remove the HNS endpoints.
-	base.Cmd("rm", containerId).AssertOK()
-	assertHnsEndpointsExistence(t, false, containerId, testNet.Name)
+	base.Cmd("rm", containerID).AssertOK()
+	assertHnsEndpointsExistence(t, false, containerID, testNet.Name)
 }
 
 // Returns a network to be used for testing.
