@@ -34,6 +34,8 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -119,4 +121,126 @@ func containerTop(ctx context.Context, stdio io.Writer, client *containerd.Clien
 	}
 
 	return w.Flush()
+}
+
+// appendProcess2ProcList is from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L49-L55
+func appendProcess2ProcList(procList *ContainerTopOKBody, fields []string) {
+	// Make sure number of fields equals number of header titles
+	// merging "overhanging" fields
+	process := fields[:len(procList.Titles)-1]
+	process = append(process, strings.Join(fields[len(procList.Titles)-1:], " "))
+	procList.Processes = append(procList.Processes, process)
+}
+
+// psPidsArg is from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L119-L131
+//
+// psPidsArg converts a slice of PIDs to a string consisting
+// of comma-separated list of PIDs prepended by "-q".
+// For example, psPidsArg([]uint32{1,2,3}) returns "-q1,2,3".
+func psPidsArg(pids []uint32) string {
+	b := []byte{'-', 'q'}
+	for i, p := range pids {
+		b = strconv.AppendUint(b, uint64(p), 10)
+		if i < len(pids)-1 {
+			b = append(b, ',')
+		}
+	}
+	return string(b)
+}
+
+// validatePSArgs is from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L19-L35
+func validatePSArgs(psArgs string) error {
+	// NOTE: \\s does not detect unicode whitespaces.
+	// So we use fieldsASCII instead of strings.Fields in parsePSOutput.
+	// See https://github.com/docker/docker/pull/24358
+	// nolint: gosimple
+	re := regexp.MustCompile(`\s+(\S*)=\s*(PID\S*)`)
+	for _, group := range re.FindAllStringSubmatch(psArgs, -1) {
+		if len(group) >= 3 {
+			k := group[1]
+			v := group[2]
+			if k != "pid" {
+				return fmt.Errorf("specifying \"%s=%s\" is not allowed", k, v)
+			}
+		}
+	}
+	return nil
+}
+
+// fieldsASCII is from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L37-L47
+//
+// fieldsASCII is similar to strings.Fields but only allows ASCII whitespaces
+func fieldsASCII(s string) []string {
+	fn := func(r rune) bool {
+		switch r {
+		case '\t', '\n', '\f', '\r', ' ':
+			return true
+		}
+		return false
+	}
+	return strings.FieldsFunc(s, fn)
+}
+
+// hasPid is from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L57-L64
+func hasPid(procs []uint32, pid int) bool {
+	for _, p := range procs {
+		if int(p) == pid {
+			return true
+		}
+	}
+	return false
+}
+
+// parsePSOutput is from https://github.com/moby/moby/blob/v20.10.6/daemon/top_unix.go#L66-L117
+func parsePSOutput(output []byte, procs []uint32) (*ContainerTopOKBody, error) {
+	procList := &ContainerTopOKBody{}
+
+	lines := strings.Split(string(output), "\n")
+	procList.Titles = fieldsASCII(lines[0])
+
+	pidIndex := -1
+	for i, name := range procList.Titles {
+		if name == "PID" {
+			pidIndex = i
+			break
+		}
+	}
+	if pidIndex == -1 {
+		return nil, fmt.Errorf("couldn't find PID field in ps output")
+	}
+
+	// loop through the output and extract the PID from each line
+	// fixing #30580, be able to display thread line also when "m" option used
+	// in "docker top" client command
+	preContainedPidFlag := false
+	for _, line := range lines[1:] {
+		if len(line) == 0 {
+			continue
+		}
+		fields := fieldsASCII(line)
+
+		var (
+			p   int
+			err error
+		)
+
+		if fields[pidIndex] == "-" {
+			if preContainedPidFlag {
+				appendProcess2ProcList(procList, fields)
+			}
+			continue
+		}
+		p, err = strconv.Atoi(fields[pidIndex])
+		if err != nil {
+			return nil, fmt.Errorf("unexpected pid '%s': %s", fields[pidIndex], err)
+		}
+
+		if hasPid(procs, p) {
+			preContainedPidFlag = true
+			appendProcess2ProcList(procList, fields)
+			continue
+		}
+		preContainedPidFlag = false
+	}
+	return procList, nil
 }

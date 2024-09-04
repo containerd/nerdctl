@@ -29,18 +29,22 @@ func TestImageEncryptJWE(t *testing.T) {
 	testutil.RequiresBuild(t)
 	testutil.DockerIncompatible(t)
 	keyPair := helpers.NewJWEKeyPair(t)
-	defer keyPair.Cleanup()
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
 	reg := testregistry.NewWithNoAuth(base, 0, false)
+
+	defer keyPair.Cleanup()
 	defer reg.Cleanup(nil)
+
 	base.Cmd("pull", testutil.CommonImage).AssertOK()
 	encryptImageRef := fmt.Sprintf("127.0.0.1:%d/%s:encrypted", reg.Port, tID)
-	defer base.Cmd("rmi", encryptImageRef).Run()
 	base.Cmd("image", "encrypt", "--recipient=jwe:"+keyPair.Pub, testutil.CommonImage, encryptImageRef).AssertOK()
 	base.Cmd("image", "inspect", "--mode=native", "--format={{len .Index.Manifests}}", encryptImageRef).AssertOutExactly("1\n")
 	base.Cmd("image", "inspect", "--mode=native", "--format={{json .Manifest.Layers}}", encryptImageRef).AssertOutContains("org.opencontainers.image.enc.keys.jwe")
 	base.Cmd("push", encryptImageRef).AssertOK()
+
+	defer base.Cmd("rmi", encryptImageRef).Run()
+
 	// remove all local images (in the nerdctl-test namespace), to ensure that we do not have blobs of the original image.
 	helpers.RmiAll(base)
 	base.Cmd("pull", encryptImageRef).AssertFail() // defaults to --unpack=true, and fails due to missing prv key

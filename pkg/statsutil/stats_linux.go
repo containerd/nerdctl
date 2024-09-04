@@ -25,6 +25,15 @@ import (
 	v2 "github.com/containerd/cgroups/v3/cgroup2/stats"
 )
 
+func calculateMemPercent(limit float64, usedNo float64) float64 {
+	// Limit will never be 0 unless the container is not running and we haven't
+	// got any data from cgroup
+	if limit != 0 {
+		return usedNo / limit * 100.0
+	}
+	return 0
+}
+
 func SetCgroupStatsFields(previousStats *ContainerStats, data *v1.Metrics, links []netlink.Link) (StatsEntry, error) {
 
 	cpuPercent := calculateCgroupCPUPercent(previousStats, data)

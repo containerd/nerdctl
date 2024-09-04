@@ -118,12 +118,12 @@ func (m *cniNetworkManager) CleanupNetworking(ctx context.Context, container con
 		return fmt.Errorf("failed to get container specs for networking cleanup: %s", err)
 	}
 
-	netNsId, found := spec.Annotations[ocihook.NetworkNamespace]
+	netNsID, found := spec.Annotations[ocihook.NetworkNamespace]
 	if !found {
 		return fmt.Errorf("no %q annotation present on container with ID %s", ocihook.NetworkNamespace, containerID)
 	}
 
-	return cni.Remove(ctx, containerID, netNsId, m.getCNINamespaceOpts()...)
+	return cni.Remove(ctx, containerID, netNsID, m.getCNINamespaceOpts()...)
 }
 
 // Returns the set of NetworkingOptions which should be set as labels on the container.

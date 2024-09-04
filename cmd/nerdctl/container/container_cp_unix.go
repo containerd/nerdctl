@@ -1,3 +1,5 @@
+//go:build unix
+
 /*
    Copyright The containerd Authors.
 
