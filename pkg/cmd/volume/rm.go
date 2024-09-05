@@ -33,45 +33,38 @@ import (
 )
 
 func Remove(ctx context.Context, client *containerd.Client, volumes []string, options types.VolumeRemoveOptions) error {
-	// Get the volume store and lock it until we are done.
-	// This will prevent racing new containers from being created or removed until we are done with the cleanup of volumes
 	volStore, err := Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {
 		return err
 	}
-	err = volStore.Lock()
-	if err != nil {
-		return err
-	}
-	defer volStore.Unlock()
 
-	// Get containers and see which volumes are used
 	containers, err := client.Containers(ctx)
 	if err != nil {
 		return err
 	}
 
-	usedVolumesList, err := usedVolumes(ctx, containers)
-	if err != nil {
-		return err
-	}
-
-	volumeNames := []string{}
-	cannotRemove := []error{}
-
-	for _, name := range volumes {
-		if _, ok := usedVolumesList[name]; ok {
-			cannotRemove = append(cannotRemove, fmt.Errorf("volume %q is in use (%w)", name, errdefs.ErrFailedPrecondition))
-			continue
+	// Note: to avoid racy behavior, this is called by volStore.Remove *inside a lock*
+	removableVolumes := func() (volumeNames []string, cannotRemove []error, err error) {
+		usedVolumesList, err := usedVolumes(ctx, containers)
+		if err != nil {
+			return nil, nil, err
 		}
-		volumeNames = append(volumeNames, name)
+
+		for _, name := range volumes {
+			if _, ok := usedVolumesList[name]; ok {
+				cannotRemove = append(cannotRemove, fmt.Errorf("volume %q is in use (%w)", name, errdefs.ErrFailedPrecondition))
+				continue
+			}
+			volumeNames = append(volumeNames, name)
+		}
+
+		return volumeNames, cannotRemove, nil
 	}
-	// if err is set, this is a hard filesystem error
-	removedNames, warns, err := volStore.Remove(volumeNames)
+
+	removedNames, cannotRemove, err := volStore.Remove(removableVolumes)
 	if err != nil {
 		return err
 	}
-	cannotRemove = append(cannotRemove, warns...)
 	// Otherwise, output on stdout whatever was successful
 	for _, name := range removedNames {
 		fmt.Fprintln(options.Stdout, name)

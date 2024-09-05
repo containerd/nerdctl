@@ -42,9 +42,9 @@ func (c *Composer) upVolume(ctx context.Context, shortName string) error {
 
 	// shortName is like "db_data", fullName is like "compose-wordpress_db_data"
 	fullName := vol.Name
-	// FIXME: this is racy. By the time we get below to creating the volume, there is no guarantee that things are still fine
-	// Furthermore, volStore.Get no longer errors if the volume already exists (docker behavior), so, the purpose of this
-	// call needs to be assessed (it might still error if the name is malformed, or if there is a filesystem error)
+	// FIXME: this is racy. By the time we get below to creating the volume, there is no guarantee that things are still fine.
+	// Furthermore, by the time we are done creating all the volumes, they may very well have been destroyed.
+	// This cannot be fixed without getting rid of the whole "shell-out" approach entirely.
 	volExists, err := c.VolumeExists(fullName)
 	if err != nil {
 		return err

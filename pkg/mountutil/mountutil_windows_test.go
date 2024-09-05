@@ -22,12 +22,8 @@ import (
 	"testing"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"go.uber.org/mock/gomock"
 	"gotest.tools/v3/assert"
 	is "gotest.tools/v3/assert/cmp"
-
-	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
-	mocks "github.com/containerd/nerdctl/v2/pkg/mountutil/mountutilmock"
 )
 
 func TestParseVolumeOptions(t *testing.T) {
@@ -268,23 +264,6 @@ func TestProcessFlagV(t *testing.T) {
 		},
 	}
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockVolumeStore := mocks.NewMockVolumeStore(ctrl)
-	mockVolumeStore.
-		EXPECT().
-		Get(gomock.Any(), false).
-		Return(&native.Volume{Name: "test_volume", Mountpoint: "C:\\test\\directory", Size: 1024}, nil).
-		AnyTimes()
-	mockVolumeStore.
-		EXPECT().
-		Create(gomock.Any(), nil).
-		Return(&native.Volume{Name: "test_volume", Mountpoint: "C:\\test\\directory"}, nil).AnyTimes()
-
-	mockOs := mocks.NewMockOs(ctrl)
-	mockOs.EXPECT().Stat(gomock.Any()).Return(nil, nil).AnyTimes()
-
 	for _, tt := range tests {
 		t.Run(tt.rawSpec, func(t *testing.T) {
 			processedVolSpec, err := ProcessFlagV(tt.rawSpec, mockVolumeStore, true)
@@ -341,16 +320,6 @@ func TestProcessFlagVAnonymousVolumes(t *testing.T) {
 			err:     "only directories can be mapped as anonymous volumes",
 		},
 	}
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockVolumeStore := mocks.NewMockVolumeStore(ctrl)
-	mockVolumeStore.
-		EXPECT().
-		Create(gomock.Any(), []string{}).
-		Return(&native.Volume{Name: "test_volume", Mountpoint: "C:\\test\\directory"}, nil).
-		AnyTimes()
 
 	for _, tt := range tests {
 		t.Run(tt.rawSpec, func(t *testing.T) {

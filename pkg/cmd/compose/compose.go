@@ -77,15 +77,8 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 	if err != nil {
 		return nil, err
 	}
-	options.VolumeExists = func(volName string) (bool, error) {
-		_, volGetErr := volStore.Get(volName, false)
-		if volGetErr == nil {
-			return true, nil
-		} else if errors.Is(volGetErr, errdefs.ErrNotFound) {
-			return false, nil
-		}
-		return false, volGetErr
-	}
+	// FIXME: this is racy. See note in up_volume.go
+	options.VolumeExists = volStore.Exists
 
 	options.ImageExists = func(ctx context.Context, rawRef string) (bool, error) {
 		refNamed, err := referenceutil.ParseAny(rawRef)

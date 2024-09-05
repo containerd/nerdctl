@@ -59,12 +59,14 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/store"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
 // Create will create a container.
 func Create(ctx context.Context, client *containerd.Client, args []string, netManager containerutil.NetworkOptionsManager, options types.ContainerCreateOptions) (containerd.Container, func(), error) {
-	// Acquire an exclusive lock on the volume store until we are done to avoid being raced by other volume operations
+	// Acquire an exclusive lock on the volume store until we are done to avoid being raced by any other
+	// volume operations (or any other operation involving volume manipulation)
 	volStore, err := volume.Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {
 		return nil, nil, err
@@ -73,7 +75,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	if err != nil {
 		return nil, nil, err
 	}
-	defer volStore.Unlock()
+	defer volStore.Release()
 
 	// simulate the behavior of double dash
 	newArg := []string{}
@@ -840,7 +842,8 @@ func generateGcFunc(ctx context.Context, container containerd.Container, ns, id,
 			if containerNameStore, errE = namestore.New(dataStore, ns); errE != nil {
 				log.G(ctx).WithError(errE).Warnf("failed to instantiate container name store during cleanup for container %q", id)
 			}
-			if errE = containerNameStore.Release(name, id); errE != nil {
+			// Double-releasing may happen with containers started with --rm, so, ignore NotFound errors
+			if errE := containerNameStore.Release(name, id); errE != nil && !errors.Is(errE, store.ErrNotFound) {
 				log.G(ctx).WithError(errE).Warnf("failed to release container name store for container %q (%s)", name, id)
 			}
 		}

@@ -1,5 +1,3 @@
-//go:build !windows
-
 /*
    Copyright The containerd Authors.
 
@@ -16,8 +14,24 @@
    limitations under the License.
 */
 
-package identifiers
+package mountutil
 
-func validatePlatformSpecific(identifier string) error {
-	return nil
+import (
+	"runtime"
+
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
+)
+
+type MockVolumeStore struct {
+	volumestore.VolumeStore
 }
+
+func (mv *MockVolumeStore) CreateWithoutLock(name string, labels []string) (*native.Volume, error) {
+	if runtime.GOOS == "windows" {
+		return &native.Volume{Name: "test_volume", Mountpoint: "C:\\test\\directory"}, nil
+	}
+	return &native.Volume{Name: "test_volume", Mountpoint: "/test/volume"}, nil
+}
+
+var mockVolumeStore = &MockVolumeStore{}

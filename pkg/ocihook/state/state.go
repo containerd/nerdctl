@@ -14,87 +14,114 @@
    limitations under the License.
 */
 
+// Package state provides a store to retrieve and save container lifecycle related information
+// This is typically used by oci-hooks for information that cannot be retrieved / updated otherwise
+// Specifically, the state carries container start time, and transient information about possible failures during
+// hook events processing.
+// All store methods are safe to use concurrently and only write atomically.
+// Since the state is transient and carrying solely informative data, errors returned from here could be treated as
+// soft-failures.
+// Note that locking is done at the container state directory level.
+// state is currently used by ocihooks and for read by dockercompat (to display started-at time)
 package state
 
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
-	"github.com/containerd/log"
-
-	"github.com/containerd/nerdctl/v2/pkg/lockutil"
+	"github.com/containerd/nerdctl/v2/pkg/store"
 )
 
-// This is meant to store stateful informations about containers that we receive from ocihooks
-// We are storing them inside the container statedir
-// Note that you MUST use WithLock to perform any operation (like Read or Write).
-// Typically:
-// lf.WithLock(func ()error {
-//   lf.Load()
-//   // Modify something on the object
-//   lf.StartedAt = ...
-//   lf.Save()
-// })
+// lifecycleFile is the name of file carrying the container information, relative to stateDir
+const lifecycleFile = "lifecycle.json"
 
-const (
-	lifecycleFile = "lifecycle.json"
-)
+// ErrLifecycleStore will wrap all errors here
+var ErrLifecycleStore = errors.New("lifecycle-store error")
 
-func NewLifecycleState(stateDir string) *LifecycleState {
-	return &LifecycleState{
-		stateDir: stateDir,
+// New will return a lifecycle struct for the container which stateDir is passed as argument
+func New(stateDir string) (*Store, error) {
+	st, err := store.New(stateDir, 0, 0)
+	if err != nil {
+		return nil, errors.Join(ErrLifecycleStore, err)
 	}
+
+	return &Store{
+		safeStore: st,
+	}, nil
 }
 
-type LifecycleState struct {
-	stateDir    string
+// Store exposes methods to retrieve and transform state information about containers.
+type Store struct {
+	safeStore store.Store
+
+	// StartedAt reflects the time at which we received the oci-hook onCreateRuntime event
 	StartedAt   time.Time `json:"started_at"`
 	CreateError bool      `json:"create_error"`
 }
 
-func (lf *LifecycleState) WithLock(fun func() error) error {
-	err := lockutil.WithDirLock(lf.stateDir, fun)
-	if err != nil {
-		return fmt.Errorf("failed to lock state dir: %w", err)
-	}
-
-	return nil
-}
-
-func (lf *LifecycleState) Load() error {
-	data, err := os.ReadFile(filepath.Join(lf.stateDir, lifecycleFile))
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("unable to read lifecycle file: %w", err)
-		}
-	} else {
-		err = json.Unmarshal(data, lf)
+// Load will populate the struct with existing in-store lifecycle information
+func (lf *Store) Load() (err error) {
+	defer func() {
 		if err != nil {
-			// Logging an error, as Load errors are generally ignored downstream
-			log.L.Error("unable to unmarshall lifecycle data")
-			return fmt.Errorf("unable to unmarshall lifecycle data: %w", err)
+			err = errors.Join(ErrLifecycleStore, err)
 		}
-	}
-	return nil
+	}()
+
+	return lf.safeStore.WithLock(lf.rawLoad)
 }
 
-func (lf *LifecycleState) Save() error {
-	// Write atomically (write, then move) to avoid incomplete writes from happening
+// Transform should be used to perform random mutations
+func (lf *Store) Transform(fun func(lf *Store) error) (err error) {
+	defer func() {
+		if err != nil {
+			err = errors.Join(ErrLifecycleStore, err)
+		}
+	}()
+
+	return lf.safeStore.WithLock(func() error {
+		err = lf.rawLoad()
+		if err != nil {
+			return err
+		}
+		err = fun(lf)
+		if err != nil {
+			return err
+		}
+		return lf.rawSave()
+	})
+}
+
+// Delete will destroy the lifecycle data
+func (lf *Store) Delete() (err error) {
+	defer func() {
+		if err != nil {
+			err = errors.Join(ErrLifecycleStore, err)
+		}
+	}()
+
+	return lf.safeStore.WithLock(lf.rawDelete)
+}
+
+func (lf *Store) rawLoad() (err error) {
+	data, err := lf.safeStore.Get(lifecycleFile)
+	if err == nil {
+		err = json.Unmarshal(data, lf)
+	} else if errors.Is(err, store.ErrNotFound) {
+		err = nil
+	}
+
+	return err
+}
+
+func (lf *Store) rawSave() (err error) {
 	data, err := json.Marshal(lf)
 	if err != nil {
-		return fmt.Errorf("unable to marshall lifecycle data: %w", err)
+		return err
 	}
-	err = os.WriteFile(filepath.Join(lf.stateDir, "."+lifecycleFile), data, 0600)
-	if err != nil {
-		return fmt.Errorf("unable to write lifecycle file: %w", err)
-	}
-	err = os.Rename(filepath.Join(lf.stateDir, "."+lifecycleFile), filepath.Join(lf.stateDir, lifecycleFile))
-	if err != nil {
-		return fmt.Errorf("unable to write lifecycle file: %w", err)
-	}
-	return nil
+	return lf.safeStore.Set(data, lifecycleFile)
+}
+
+func (lf *Store) rawDelete() (err error) {
+	return lf.safeStore.Delete(lifecycleFile)
 }

@@ -32,13 +32,14 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
-	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 	"github.com/containerd/nerdctl/v2/pkg/namestore"
+	"github.com/containerd/nerdctl/v2/pkg/store"
 )
 
 var _ error = ErrContainerStatus{}
@@ -128,18 +129,10 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		return err
 	}
 	// Get volume store
-	volStore, err := volume.Store(globalOptions.Namespace, globalOptions.DataRoot, globalOptions.Address)
+	volStore, err := volumestore.New(dataStore, globalOptions.Namespace)
 	if err != nil {
 		return err
 	}
-	// Note: technically, it is not strictly necessary to acquire an exclusive lock on the volume store here.
-	// Worst case scenario, we would fail removing anonymous volumes later on, which is a soft error, and which would
-	// only happen if we concurrently tried to remove the same container.
-	err = volStore.Lock()
-	if err != nil {
-		return err
-	}
-	defer volStore.Unlock()
 	// Decode IPC
 	ipc, err := ipcutil.DecodeIPCLabel(containerLabels[labels.IPC])
 	if err != nil {
@@ -212,24 +205,34 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 
 		// Enforce release name here in case the poststop hook name release fails - soft failure
 		if name != "" {
-			if err = nameStore.Release(name, id); err != nil {
+			// Double-releasing may happen with containers started with --rm, so, ignore NotFound errors
+			if err := nameStore.Release(name, id); err != nil && !errors.Is(err, store.ErrNotFound) {
 				log.G(ctx).WithError(err).Warnf("failed to release container name %s", name)
 			}
 		}
 
-		// De-allocate hosts file - soft failure
-		if err = hostsstore.DeallocHostsFile(dataStore, containerNamespace, id); err != nil {
+		hs, err := hostsstore.New(dataStore, containerNamespace)
+		if err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to instantiate hostsstore for %q", containerNamespace)
+		} else if err = hs.DeallocHostsFile(id); err != nil {
+			// De-allocate hosts file - soft failure
 			log.G(ctx).WithError(err).Warnf("failed to remove hosts file for container %q", id)
 		}
 
 		// Volume removal is not handled by the poststop hook lifecycle because it depends on removeAnonVolumes option
+		// Note that the anonymous volume list has been obtained earlier, without locking the volume store.
+		// Technically, a concurrent operation MAY have deleted these anonymous volumes already at this point, which
+		// would make this operation here "soft fail".
+		// This is not a problem per-se, though we will output a warning in that case.
 		if anonVolumesJSON, ok := containerLabels[labels.AnonymousVolumes]; ok && removeAnonVolumes {
 			var anonVolumes []string
 			if err = json.Unmarshal([]byte(anonVolumesJSON), &anonVolumes); err != nil {
 				log.G(ctx).WithError(err).Warnf("failed to unmarshall anonvolume information for container %q", id)
 			} else {
 				var errs []error
-				_, errs, err = volStore.Remove(anonVolumes)
+				_, errs, err = volStore.Remove(func() ([]string, []error, error) {
+					return anonVolumes, nil, nil
+				})
 				if err != nil || len(errs) > 0 {
 					log.G(ctx).WithError(err).Warnf("failed to remove anonymous volumes %v", anonVolumes)
 				}

@@ -189,7 +189,7 @@ func handleAnonymousVolumes(s string, volStore volumestore.VolumeStore) (volumeS
 	res.AnonymousVolume = idgen.GenerateID()
 
 	log.L.Debugf("creating anonymous volume %q, for %q", res.AnonymousVolume, s)
-	anonVol, err := volStore.Create(res.AnonymousVolume, []string{})
+	anonVol, err := volStore.CreateWithoutLock(res.AnonymousVolume, []string{})
 	if err != nil {
 		return res, fmt.Errorf("failed to create an anonymous volume %q: %w", res.AnonymousVolume, err)
 	}
@@ -204,7 +204,7 @@ func handleNamedVolumes(source string, volStore volumestore.VolumeStore) (volume
 	res.Name = source
 
 	// Create returns an existing volume or creates a new one if necessary.
-	vol, err := volStore.Create(res.Name, nil)
+	vol, err := volStore.CreateWithoutLock(res.Name, nil)
 	if err != nil {
 		return res, fmt.Errorf("failed to get volume %q: %w", res.Name, err)
 	}

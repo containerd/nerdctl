@@ -14,297 +14,374 @@
    limitations under the License.
 */
 
+// Package volumestore allows manipulating containers' volumes.
+// All methods are safe to use concurrently (and perform atomic writes), except CreateWithoutLock, which is specifically
+// meant to be used multiple times, inside a Lock-ed section.
 package volumestore
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
-	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
-	"github.com/containerd/nerdctl/v2/pkg/lockutil"
+	"github.com/containerd/nerdctl/v2/pkg/store"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
 const (
+	volumeDirBasename  = "volumes"
 	dataDirName        = "_data"
 	volumeJSONFileName = "volume.json"
 )
 
-// VolumeStore allows manipulating containers' volumes
-// Every method is protected by a file lock, and is safe to use concurrently.
-// If you need to use multiple methods successively (for example: List, then Remove), you should instead optin
-// for an explicit durable lock, by first calling `Lock` then `defer Unlock`.
-// This is also true (and important to do) for any operation that is going to inspect containers before going for
-// creation or removal of volumes.
+// ErrNameStore will wrap all errors here
+var ErrVolumeStore = errors.New("volume-store error")
+
 type VolumeStore interface {
-	Create(name string, labels []string) (*native.Volume, error)
+	// Exists checks if a given volume exists
+	Exists(name string) (bool, error)
+	// Get returns an existing volume
 	Get(name string, size bool) (*native.Volume, error)
+	// Create will either return an existing volume, or create a new one
+	// NOTE that different labels will NOT create a new volume if there is one by that name already,
+	// but instead return the existing one with the (possibly different) labels
+	Create(name string, labels []string) (vol *native.Volume, err error)
+	// List returns all existing volumes.
+	// Note that list is expensive as it reads all volumes individual info
 	List(size bool) (map[string]native.Volume, error)
-	Remove(names []string) (removed []string, warns []error, err error)
+	// Remove one of more volumes
+	Remove(generator func() ([]string, []error, error)) (removed []string, warns []error, err error)
+	// Prune will call a filtering function expected to return the volumes name to delete
+	Prune(filter func(volumes []*native.Volume) ([]string, error)) (err error)
+	// Count returns the number of volumes
+	Count() (count int, err error)
+
+	// Lock: see store implementation
 	Lock() error
-	Unlock() error
+	// CreateWithoutLock will create a volume (or return an existing one).
+	// This method does NOT lock (unlike Create).
+	// It is meant to be used between `Lock` and `Release`, and is specifically useful when multiple different volume
+	// creation will have to happen in different method calls (eg: container create).
+	CreateWithoutLock(name string, labels []string) (*native.Volume, error)
+	// Release: see store implementation
+	Release() error
 }
 
 // New returns a VolumeStore
-func New(dataStore, ns string) (VolumeStore, error) {
-	if dataStore == "" || ns == "" {
-		return nil, errdefs.ErrInvalidArgument
-	}
-	volStoreDir := filepath.Join(dataStore, "volumes", ns)
+func New(dataStore, namespace string) (volStore VolumeStore, err error) {
+	defer func() {
+		if err != nil {
+			err = errors.Join(ErrVolumeStore, err)
+		}
+	}()
 
-	if err := os.MkdirAll(volStoreDir, 0700); err != nil {
+	if dataStore == "" || namespace == "" {
+		return nil, store.ErrInvalidArgument
+	}
+
+	st, err := store.New(filepath.Join(dataStore, volumeDirBasename, namespace), 0, 0o644)
+	if err != nil {
 		return nil, err
 	}
-	vs := &volumeStore{
-		dir: volStoreDir,
-	}
-	return vs, nil
+
+	return &volumeStore{
+		Locker:  st,
+		manager: st,
+	}, nil
 }
 
 type volumeStore struct {
-	dir    string
-	locked *os.File
+	// Expose the lock primitives directly to satisfy interface for Lock and Release
+	store.Locker
+
+	manager store.Manager
 }
 
-// Lock should be called when you need an exclusive lock on the volume store for an extended period of time
-// spanning multiple atomic method calls.
-// Be sure to defer Unlock to release it.
-func (vs *volumeStore) Lock() error {
-	if vs.locked != nil {
-		return fmt.Errorf("cannot lock already locked volume store %q", vs.dir)
-	}
-
-	dirFile, err := lockutil.Lock(vs.dir)
-	if err != nil {
-		return err
-	}
-
-	vs.locked = dirFile
-	return nil
-}
-
-// Unlock should be called once done (see Lock) to release the persistent lock on the store
-func (vs *volumeStore) Unlock() error {
-	if vs.locked == nil {
-		return fmt.Errorf("cannot unlock already unlocked volume store %q", vs.dir)
-	}
-
+// Exists checks if a volume exists in the store
+func (vs *volumeStore) Exists(name string) (doesExist bool, err error) {
 	defer func() {
-		vs.locked = nil
+		if err != nil {
+			err = errors.Join(ErrVolumeStore, err)
+		}
 	}()
 
-	if err := lockutil.Unlock(vs.locked); err != nil {
-		return fmt.Errorf("failed to unlock volume store %q: %w", vs.dir, err)
+	if err = identifiers.ValidateDockerCompat(name); err != nil {
+		return false, err
 	}
-	return nil
+
+	// No need for a lock here, the operation is atomic
+	return vs.manager.Exists(name)
 }
 
-// Create will create a new volume, or return an existing one if there is one already by that name
-// Besides a possible locking error, it might return ErrInvalidArgument, hard filesystem errors, json errors
-func (vs *volumeStore) Create(name string, labels []string) (*native.Volume, error) {
-	if err := identifiers.ValidateDockerCompat(name); err != nil {
-		return nil, fmt.Errorf("invalid volume name: %w", err)
-	}
-
-	volPath := filepath.Join(vs.dir, name)
-	volDataPath := filepath.Join(volPath, dataDirName)
-	volFilePath := filepath.Join(volPath, volumeJSONFileName)
-
-	vol := &native.Volume{}
-
-	fn := func() error {
-		// Failures that are not os.ErrExist must exit here
-		if err := os.Mkdir(volPath, 0700); err != nil && !errors.Is(err, os.ErrExist) {
-			return err
-		}
-		if err := os.Mkdir(volDataPath, 0755); err != nil && !errors.Is(err, os.ErrExist) {
-			return err
-		}
-
-		volOpts := struct {
-			Labels map[string]string `json:"labels"`
-		}{}
-
-		if len(labels) > 0 {
-			volOpts.Labels = strutil.ConvertKVStringsToMap(labels)
-		}
-
-		// Failure here must exit, no need to clean-up
-		labelsJSON, err := json.MarshalIndent(volOpts, "", "    ")
+// Get retrieves a native volume from the store, optionally with its size
+func (vs *volumeStore) Get(name string, size bool) (vol *native.Volume, err error) {
+	defer func() {
 		if err != nil {
-			return err
+			err = errors.Join(ErrVolumeStore, err)
 		}
+	}()
 
-		// If it does not exist
-		if _, err = os.Stat(volFilePath); err != nil {
-			// Any other stat error than "not exists", hard exit
-			if !errors.Is(err, os.ErrNotExist) {
-				return err
-			}
-			// Error was does not exist, so, write it
-			if err = os.WriteFile(volFilePath, labelsJSON, 0644); err != nil {
-				return err
-			}
-		} else {
-			log.L.Warnf("volume %q already exists and will be returned as-is", name)
-		}
-
-		// At this point, we either have a volume, or created a new one successfully
-		vol.Name = name
-		vol.Mountpoint = volDataPath
-
-		return nil
-	}
-
-	var err error
-	if vs.locked == nil {
-		err = lockutil.WithDirLock(vs.dir, fn)
-	} else {
-		err = fn()
-	}
-	if err != nil {
+	if err = identifiers.ValidateDockerCompat(name); err != nil {
 		return nil, err
 	}
 
-	return vol, nil
+	// If we require the size, this is no longer atomic, so, we need to lock
+	err = vs.WithLock(func() error {
+		vol, err = vs.rawGet(name, size)
+		return err
+	})
+
+	return vol, err
 }
 
-// Get retrieves a native volume from the store
-// Besides a possible locking error, it might return ErrInvalidArgument, ErrNotFound, or a filesystem error
-func (vs *volumeStore) Get(name string, size bool) (*native.Volume, error) {
-	if err := identifiers.ValidateDockerCompat(name); err != nil {
-		return nil, fmt.Errorf("invalid volume name: %w", err)
-	}
-	volPath := filepath.Join(vs.dir, name)
-	volDataPath := filepath.Join(volPath, dataDirName)
-	volFilePath := filepath.Join(volPath, volumeJSONFileName)
-
-	vol := &native.Volume{}
-
-	fn := func() error {
-		if _, err := os.Stat(volDataPath); err != nil {
-			if os.IsNotExist(err) {
-				return fmt.Errorf("%q does not exist in the volume store: %w", name, errdefs.ErrNotFound)
-			}
-			return fmt.Errorf("filesystem error reading %q from the volume store: %w", name, err)
-		}
-
-		volumeDataBytes, err := os.ReadFile(volFilePath)
+// CreateWithoutLock will create a new volume, or return an existing one if there is one already by that name
+// It does NOT lock for you - unlike all the other methods - though it *will* error if you do not lock.
+// This is on purpose as volume creation in most cases are done during container creation,
+// and implies an extended period of time for locking.
+// To use:
+// volStore.Lock()
+// defer volStore.Release()
+// volStore.CreateWithoutLock(...)
+func (vs *volumeStore) CreateWithoutLock(name string, labels []string) (vol *native.Volume, err error) {
+	defer func() {
 		if err != nil {
-			if os.IsNotExist(err) {
-				return fmt.Errorf("%q labels file does not exist in the volume store: %w", name, errdefs.ErrNotFound)
-			}
-			return fmt.Errorf("filesystem error reading %q from the volume store: %w", name, err)
+			err = errors.Join(ErrVolumeStore, err)
 		}
+	}()
 
-		vol.Name = name
-		vol.Mountpoint = volDataPath
-		vol.Labels = labels(volumeDataBytes)
-
-		if size {
-			vol.Size, err = volumeSize(vol)
-			if err != nil {
-				return fmt.Errorf("failed reading volume size for %q from the volume store: %w", name, err)
-			}
-		}
-		return nil
-	}
-
-	var err error
-	if vs.locked == nil {
-		err = lockutil.WithDirLock(vs.dir, fn)
-	} else {
-		err = fn()
-	}
-	if err != nil {
+	if err = identifiers.ValidateDockerCompat(name); err != nil {
 		return nil, err
 	}
 
-	return vol, nil
+	return vs.rawCreate(name, labels)
 }
 
-// List retrieves all known volumes from the store.
-// Besides a possible locking error, it might return ErrNotFound (indicative that the store is in a broken state), or a filesystem error
-func (vs *volumeStore) List(size bool) (map[string]native.Volume, error) {
-	res := map[string]native.Volume{}
-
-	fn := func() error {
-		dirEntries, err := os.ReadDir(vs.dir)
+func (vs *volumeStore) Create(name string, labels []string) (vol *native.Volume, err error) {
+	defer func() {
 		if err != nil {
-			return fmt.Errorf("filesystem error while trying to list volumes from the volume store: %w", err)
+			err = errors.Join(ErrVolumeStore, err)
+		}
+	}()
+
+	if err = identifiers.ValidateDockerCompat(name); err != nil {
+		return nil, err
+	}
+
+	err = vs.Locker.WithLock(func() error {
+		vol, err = vs.rawCreate(name, labels)
+		return err
+	})
+
+	return vol, err
+}
+
+func (vs *volumeStore) Count() (count int, err error) {
+	defer func() {
+		if err != nil {
+			err = errors.Join(ErrVolumeStore, err)
+		}
+	}()
+
+	err = vs.Locker.WithLock(func() error {
+		names, err := vs.manager.List()
+		if err != nil {
+			return err
 		}
 
-		for _, dirEntry := range dirEntries {
-			name := dirEntry.Name()
-			vol, err := vs.Get(name, size)
+		count = len(names)
+		return nil
+	})
+
+	return count, err
+}
+
+func (vs *volumeStore) List(size bool) (res map[string]native.Volume, err error) {
+	defer func() {
+		if err != nil {
+			err = errors.Join(ErrVolumeStore, err)
+		}
+	}()
+
+	res = make(map[string]native.Volume)
+
+	err = vs.Locker.WithLock(func() error {
+		names, err := vs.manager.List()
+		if err != nil {
+			return err
+		}
+
+		for _, name := range names {
+			vol, err := vs.rawGet(name, size)
 			if err != nil {
-				return err
+				log.L.WithError(err).Errorf("something is wrong with %q", name)
+				continue
 			}
 			res[name] = *vol
 		}
-		return nil
-	}
 
-	var err error
-	// Since we are calling Get, we need to acquire a global lock
-	if vs.locked == nil {
-		err = vs.Lock()
-		if err != nil {
-			return nil, err
-		}
-		defer vs.Unlock()
-	}
-	err = fn()
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
+		return nil
+	})
+
+	return res, err
 }
 
 // Remove will remove one or more containers
-// Besides a possible locking error, it might return hard filesystem errors
-// Any other failure (ErrInvalidArgument, ErrNotFound) is a soft error that will be added the `warns`
-func (vs *volumeStore) Remove(names []string) (removed []string, warns []error, err error) {
-	fn := func() error {
+func (vs *volumeStore) Remove(generator func() ([]string, []error, error)) (removed []string, warns []error, err error) {
+	defer func() {
+		if err != nil {
+			err = errors.Join(ErrVolumeStore, err)
+		}
+	}()
+
+	err = vs.Locker.WithLock(func() error {
+		var names []string
+		names, warns, err = generator()
+		if err != nil {
+			return err
+		}
+
 		for _, name := range names {
 			// Invalid name, soft error
-			if err := identifiers.ValidateDockerCompat(name); err != nil {
-				warns = append(warns, fmt.Errorf("invalid volume name: %w", err))
+			if err = identifiers.ValidateDockerCompat(name); err != nil {
+				// TODO: we are clearly mixing presentation concerns here
+				// This should be handled by the cli, not here
+				warns = append(warns, err)
 				continue
 			}
-			dir := filepath.Join(vs.dir, name)
-			// Does not exist, soft error
-			if _, err := os.Stat(dir); err != nil {
-				if os.IsNotExist(err) {
-					warns = append(warns, fmt.Errorf("no such volume: %s (%w)", name, errdefs.ErrNotFound))
-					continue
-				}
-				return fmt.Errorf("filesystem error while trying to remove volumes from the volume store: %w", err)
+
+			// Erroring on Exists is a hard error
+			// !doesExist is a soft error
+			// Inability to delete is a hard error
+			if doesExist, err := vs.manager.Exists(name); err != nil {
+				return err
+			} else if !doesExist {
+				// TODO: see above
+				warns = append(warns, fmt.Errorf("volume %q: %w", name, store.ErrNotFound))
+				continue
+			} else if err = vs.manager.Delete(name); err != nil {
+				return err
 			}
-			// Hard filesystem error, hard error, and stop here
-			if err := os.RemoveAll(dir); err != nil {
-				return fmt.Errorf("filesystem error while trying to remove volumes from the volume store: %w", err)
-			}
+
 			// Otherwise, add it the list of successfully removed
 			removed = append(removed, name)
 		}
-		return nil
-	}
 
-	if vs.locked == nil {
-		err = lockutil.WithDirLock(vs.dir, fn)
-	} else {
-		err = fn()
-	}
+		return nil
+	})
 
 	return removed, warns, err
+}
+
+func (vs *volumeStore) Prune(filter func(vol []*native.Volume) ([]string, error)) (err error) {
+	defer func() {
+		if err != nil {
+			err = errors.Join(ErrVolumeStore, err)
+		}
+	}()
+
+	return vs.Locker.WithLock(func() error {
+		names, err := vs.manager.List()
+		if err != nil {
+			return err
+		}
+
+		res := []*native.Volume{}
+		for _, name := range names {
+			vol, err := vs.rawGet(name, false)
+			if err != nil {
+				log.L.WithError(err).Errorf("something is wrong with %q", name)
+				continue
+			}
+			res = append(res, vol)
+		}
+
+		toDelete, err := filter(res)
+		if err != nil {
+			return err
+		}
+
+		for _, name := range toDelete {
+			err = vs.manager.Delete(name)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
+
+func (vs *volumeStore) rawGet(name string, size bool) (vol *native.Volume, err error) {
+	content, err := vs.manager.Get(name, volumeJSONFileName)
+	if err != nil {
+		return nil, err
+	}
+
+	vol = &native.Volume{
+		Name:   name,
+		Labels: labels(content),
+	}
+
+	vol.Mountpoint, err = vs.manager.Location(name, dataDirName)
+	if err != nil {
+		return nil, err
+	}
+
+	if size {
+		vol.Size, err = vs.manager.GroupSize(name, dataDirName)
+		if err != nil {
+			return nil, errors.Join(fmt.Errorf("failed reading volume size for %q", name), err)
+		}
+	}
+
+	return vol, nil
+}
+
+func (vs *volumeStore) rawCreate(name string, labels []string) (vol *native.Volume, err error) {
+	volOpts := struct {
+		Labels map[string]string `json:"labels"`
+	}{}
+
+	if len(labels) > 0 {
+		volOpts.Labels = strutil.ConvertKVStringsToMap(labels)
+	}
+
+	// Failure here must exit, no need to clean-up
+	labelsJSON, err := json.MarshalIndent(volOpts, "", "    ")
+	if err != nil {
+		return nil, err
+	}
+
+	if doesExist, err := vs.manager.Exists(name, volumeJSONFileName); err != nil {
+		return nil, err
+	} else if !doesExist {
+		if err = vs.manager.Set(labelsJSON, name, volumeJSONFileName); err != nil {
+			return nil, err
+		}
+	} else {
+		log.L.Warnf("volume %q already exists and will be returned as-is", name)
+		// FIXME: we do not check if the existing volume has the same labels as requested - should we?
+	}
+
+	// At this point, we either have an existing volume, or created a new one successfully
+	vol = &native.Volume{
+		Name: name,
+	}
+
+	if err = vs.manager.GroupEnsure(name, dataDirName); err != nil {
+		return nil, err
+	}
+
+	if vol.Mountpoint, err = vs.manager.Location(name, dataDirName); err != nil {
+		return nil, err
+	}
+
+	return vol, nil
 }
 
 // Private helpers
@@ -317,22 +394,4 @@ func labels(b []byte) *map[string]string {
 		return nil
 	}
 	return vo.Labels
-}
-
-func volumeSize(volume *native.Volume) (int64, error) {
-	var size int64
-	var walkFn = func(_ string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			size += info.Size()
-		}
-		return err
-	}
-	var err = filepath.Walk(volume.Mountpoint, walkFn)
-	if err != nil {
-		return 0, err
-	}
-	return size, nil
 }
