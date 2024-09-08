@@ -354,12 +354,16 @@ func TestRunContainerWithStaticIP(t *testing.T) {
 			useNetwork:        true,
 			checkTheIPAddress: false,
 		},
-		{
-			ip:                "10.4.0.2",
-			shouldSuccess:     true,
-			useNetwork:        false,
-			checkTheIPAddress: false,
-		},
+		// XXX see https://github.com/containerd/nerdctl/issues/3101
+		// seems the incompatibility is coming from CNI plugin upgrade. This test has been disabled in main.
+		/*
+			{
+				ip:                "10.4.0.2",
+				shouldSuccess:     true,
+				useNetwork:        false,
+				checkTheIPAddress: false,
+			},
+		*/
 	}
 	tID := testutil.Identifier(t)
 	for i, tc := range testCases {
