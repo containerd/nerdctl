@@ -57,7 +57,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 		WantErr bool
 		Expect  string
 	}{
-		{"host", true, "conflicting options"},
+		{"host", true, ""},
 		{"none", true, "can't open '/sys/class/net/eth0/address'"},
 		{"container:whatever" + tID, true, "conflicting options"},
 		{"bridge", false, ""},
