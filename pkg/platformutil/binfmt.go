@@ -21,7 +21,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/platforms"
 )
 
 func qemuArchFromOCIArch(ociArch string) (string, error) {

@@ -24,10 +24,10 @@ import (
 	"testing"
 
 	"github.com/containerd/cgroups/v3"
-	"github.com/containerd/containerd/pkg/userns"
 	"github.com/containerd/continuity/testutil/loopback"
 	"github.com/containerd/nerdctl/pkg/cmd/container"
 	"github.com/containerd/nerdctl/pkg/testutil"
+	"github.com/moby/sys/userns"
 	"gotest.tools/v3/assert"
 )
 

@@ -19,7 +19,7 @@ package rootlessutil
 import (
 	"os"
 
-	"github.com/containerd/containerd/pkg/userns"
+	"github.com/moby/sys/userns"
 )
 
 func IsRootlessChild() bool {

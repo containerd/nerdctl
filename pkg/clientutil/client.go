@@ -26,10 +26,10 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/systemutil"
+	"github.com/containerd/platforms"
 	"github.com/opencontainers/go-digest"
 )
 

@@ -89,7 +89,7 @@ func TestReadLogs(t *testing.T) {
 			err = ReadLogs(&tc.logViewOptions, stdoutBuf, stderrBuf, stopChan)
 
 			if err != nil {
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 			}
 			if stderrBuf.Len() > 0 {
 				t.Fatalf("Stderr: %v", stderrBuf.String())

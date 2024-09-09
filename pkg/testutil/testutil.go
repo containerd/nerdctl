@@ -458,7 +458,7 @@ func (c *Cmd) AssertOutStreamsExactly(stdout, stderr string) {
 			msg += fmt.Sprintf("stderr mismatch, expected %q, got %q\n", stderr, serr)
 		}
 		if msg != "" {
-			return fmt.Errorf(msg)
+			return fmt.Errorf("%s", msg)
 		}
 		return nil
 	}

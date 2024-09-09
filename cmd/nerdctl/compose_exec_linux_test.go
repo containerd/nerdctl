@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -98,7 +97,7 @@ services:
 		if !strings.Contains(stdout, "\nBAR=bar1 bar2\n") {
 			return errors.New("got bad BAR")
 		}
-		if !strings.Contains(stdout, "\nBAZ=\n") && runtime.GOOS != "windows" {
+		if !strings.Contains(stdout, "\nBAZ=\n") {
 			return errors.New("got bad BAZ")
 		}
 		if strings.Contains(stdout, "QUX") {
@@ -113,10 +112,10 @@ services:
 		if !strings.Contains(stdout, "\nGRAULT=grault_key=grault_value\n") {
 			return errors.New("got bad GRAULT")
 		}
-		if !strings.Contains(stdout, "\nGARPLY=\n") && runtime.GOOS != "windows" {
+		if !strings.Contains(stdout, "\nGARPLY=\n") {
 			return errors.New("got bad GARPLY")
 		}
-		if !strings.Contains(stdout, "\nWALDO=\n") && runtime.GOOS != "windows" {
+		if !strings.Contains(stdout, "\nWALDO=\n") {
 			return errors.New("got bad WALDO")
 		}
 
