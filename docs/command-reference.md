@@ -137,9 +137,11 @@ Usage: `nerdctl run [OPTIONS] IMAGE [COMMAND] [ARG...]`
 
 Basic flags:
 
+- :whale: `-a, --attach`: Attach STDIN, STDOUT, or STDERR
 - :whale: :blue_square: `-i, --interactive`: Keep STDIN open even if not attached"
 - :whale: :blue_square: `-t, --tty`: Allocate a pseudo-TTY
   - :warning: WIP: currently `-t` conflicts with `-d`
+- :whale: `-sig-proxy`: Proxy received signals to the process (default true)
 - :whale: :blue_square: `-d, --detach`: Run container in background and print container ID
 - :whale: `--restart=(no|always|on-failure|unless-stopped)`: Restart policy to apply when a container exits
   - Default: "no"
@@ -376,9 +378,9 @@ IPFS flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker run` flags:
-    `--attach`, `--blkio-weight-device`, `--cpu-rt-*`, `--device-*`,
+    `--blkio-weight-device`, `--cpu-rt-*`, `--device-*`,
     `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
-    `--link*`, `--mac-address`, `--publish-all`, `--sig-proxy`, `--storage-opt`,
+    `--link*`, `--mac-address`, `--publish-all`, `--storage-opt`,
     `--userns`, `--volume-driver`
 
 ### :whale: :blue_square: nerdctl exec
@@ -1256,8 +1258,10 @@ Usage: `nerdctl events [OPTIONS]`
 Flags:
 
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :whale: `-f, --filter`: Filter containers based on given conditions
+  - :whale: `--filter event=<value>`: Event's status. Start is the only supported status.
 
-Unimplemented `docker events` flags: `--filter`, `--since`, `--until`
+Unimplemented `docker events` flags: `--since`, `--until`
 
 ### :whale: nerdctl info
 

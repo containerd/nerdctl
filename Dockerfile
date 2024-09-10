@@ -18,43 +18,43 @@
 # TODO: verify commit hash
 
 # Basic deps
-ARG CONTAINERD_VERSION=v1.7.16
-ARG RUNC_VERSION=v1.1.12
-ARG CNI_PLUGINS_VERSION=v1.4.1
+ARG CONTAINERD_VERSION=v1.7.22
+ARG RUNC_VERSION=v1.1.14
+ARG CNI_PLUGINS_VERSION=v1.5.1
 
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.12.5
+ARG BUILDKIT_VERSION=v0.15.2
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.15.1
 # Extra deps: Encryption
-ARG IMGCRYPT_VERSION=v1.1.10
+ARG IMGCRYPT_VERSION=v1.1.11
 # Extra deps: Rootless
-ARG ROOTLESSKIT_VERSION=v2.0.2
-ARG SLIRP4NETNS_VERSION=v1.2.3
+ARG ROOTLESSKIT_VERSION=v2.3.1
+ARG SLIRP4NETNS_VERSION=v1.3.1
 # Extra deps: bypass4netns
-ARG BYPASS4NETNS_VERSION=v0.4.0
+ARG BYPASS4NETNS_VERSION=v0.4.1
 # Extra deps: FUSE-OverlayFS
 ARG FUSE_OVERLAYFS_VERSION=v1.13
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v1.0.8
 # Extra deps: IPFS
-ARG KUBO_VERSION=v0.27.0
+ARG KUBO_VERSION=v0.29.0
 # Extra deps: Init
 ARG TINI_VERSION=v0.19.0
 # Extra deps: Debug
 ARG BUILDG_VERSION=v0.4.1
 
 # Test deps
-ARG GO_VERSION=1.21
-ARG UBUNTU_VERSION=22.04
+ARG GO_VERSION=1.23
+ARG UBUNTU_VERSION=24.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
-ARG GOTESTSUM_VERSION=v1.11.0
-ARG NYDUS_VERSION=v2.2.4
-ARG SOCI_SNAPSHOTTER_VERSION=0.4.0
+ARG GOTESTSUM_VERSION=v1.12.0
+ARG NYDUS_VERSION=v2.2.5
+ARG SOCI_SNAPSHOTTER_VERSION=0.7.0
 
-FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.3.0 AS xx
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.5.0 AS xx
 
 
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS build-base-debian
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS build-base-debian
 COPY --from=xx / /
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
@@ -63,7 +63,7 @@ ARG TARGETARCH
 # libbtrfs: for containerd
 # libseccomp: for runc and bypass4netns
 RUN xx-apt-get update && \
-  xx-apt-get install -y binutils gcc libc6-dev libbtrfs-dev libseccomp-dev
+  xx-apt-get install -y binutils gcc libc6-dev libbtrfs-dev libseccomp-dev pkg-config
 
 FROM build-base-debian AS build-containerd
 ARG TARGETARCH
@@ -323,7 +323,7 @@ RUN apt-get update && \
   apt-get install -qq -y \
   uidmap \
   openssh-server openssh-client
-# TODO: update containerized-systemd to enable sshd by default, or allow `systemctl wants <TARGET> sshd` here
+# TODO: update containerized-systemd to enable sshd by default, or allow `systemctl wants <TARGET> ssh` here
 RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
   useradd -m -s /bin/bash rootless && \
   mkdir -p -m 0700 /home/rootless/.ssh && \

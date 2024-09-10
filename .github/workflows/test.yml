@@ -8,12 +8,12 @@ on:
   pull_request:
 
 env:
-  GO_VERSION: 1.21.x
+  GO_VERSION: 1.23.x
 
 jobs:
   project:
     name: Project Checks
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4.1.1
@@ -34,7 +34,7 @@ jobs:
         working-directory: src/github.com/containerd/nerdctl
 
   lint:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4.1.1
@@ -46,15 +46,15 @@ jobs:
           check-latest: true
           cache: true
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3.7.0
+        uses: golangci/golangci-lint-action@v6.1.0
         with:
-          version: v1.55.2
+          version: v1.60.1
           args: --verbose
       - name: yamllint-lint
         run: yamllint .
 
   test-unit:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4.1.1
@@ -74,15 +74,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
+        # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
           - ubuntu: 20.04
             containerd: v1.6.31
           - ubuntu: 20.04
-            containerd: v1.7.16
+            containerd: v1.7.22
           - ubuntu: 22.04
-            containerd: v1.7.16
+            containerd: v1.7.22
           - ubuntu: 22.04
+            containerd: main
+          - ubuntu: 24.04
+            containerd: v1.7.22
+          - ubuntu: 24.04
             containerd: main
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
@@ -110,10 +114,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-20.04: cgroup v1, ubuntu-22.04: cgroup v2
+        # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
-          - ubuntu: 22.04
-            containerd: v1.7.16
+          - ubuntu: 24.04
+            containerd: v1.7.22
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -154,39 +158,55 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-22.04: cgroup v1, ubuntu-22.04: cgroup v2
+        # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
           - ubuntu: 20.04
             containerd: v1.6.31
             rootlesskit: v1.1.1
             target: test-integration-rootless
           - ubuntu: 20.04
-            containerd: v1.7.16
-            rootlesskit: v2.0.2
+            containerd: v1.7.22
+            rootlesskit: v2.3.1
             target: test-integration-rootless
           - ubuntu: 22.04
-            containerd: v1.7.16
+            containerd: v1.7.22
             rootlesskit: v1.1.1
             target: test-integration-rootless
           - ubuntu: 22.04
-            containerd: main
-            rootlesskit: v2.0.2
+            containerd: main  # v2.0.0-rc.X
+            rootlesskit: v2.3.1
+            target: test-integration-rootless
+          - ubuntu: 24.04
+            containerd: v1.7.22
+            rootlesskit: v1.1.1
+            target: test-integration-rootless
+          - ubuntu: 24.04
+            containerd: main  # v2.0.0-rc.X
+            rootlesskit: v2.3.1
             target: test-integration-rootless
           - ubuntu: 20.04
             containerd: v1.6.31
             rootlesskit: v1.1.1
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 20.04
-            containerd: v1.7.16
-            rootlesskit: v2.0.2
+            containerd: v1.7.22
+            rootlesskit: v2.3.1
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 22.04
-            containerd: v1.7.16
+            containerd: v1.7.22
             rootlesskit: v1.1.1
             target: test-integration-rootless-port-slirp4netns
           - ubuntu: 22.04
-            containerd: main
-            rootlesskit: v2.0.2
+            containerd: main  # v2.0.0-rc.X
+            rootlesskit: v2.3.1
+            target: test-integration-rootless-port-slirp4netns
+          - ubuntu: 24.04
+            containerd: v1.7.22
+            rootlesskit: v1.1.1
+            target: test-integration-rootless-port-slirp4netns
+          - ubuntu: 24.04
+            containerd: main  # v2.0.0-rc.X
+            rootlesskit: v2.3.1
             target: test-integration-rootless-port-slirp4netns
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
@@ -194,7 +214,22 @@ jobs:
       ROOTLESSKIT_VERSION: "${{ matrix.rootlesskit }}"
       TEST_TARGET: "${{ matrix.target }}"
     steps:
-      - uses: actions/checkout@v4.1.1
+      - name: "Set up AppArmor"
+        if: matrix.ubuntu == '24.04'
+        run: |
+          cat <<EOT | sudo tee "/etc/apparmor.d/usr.local.bin.rootlesskit"
+          abi <abi/4.0>,
+          include <tunables/global>
+
+          /usr/local/bin/rootlesskit flags=(unconfined) {
+            userns,
+
+            # Site-specific additions and overrides. See local/README for details.
+            include if exists <local/usr.local.bin.rootlesskit>
+          }
+          EOT
+          sudo systemctl restart apparmor.service
+      - uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 1
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -205,11 +240,11 @@ jobs:
         run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=1 ${TEST_TARGET}
 
   cross:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       matrix:
-        go-version: ["1.21.x", "1.22.x"]
+        go-version: ["1.22.x", "1.23.x"]
     steps:
       - uses: actions/checkout@v4.1.1
         with:
@@ -223,8 +258,8 @@ jobs:
         run: GO_VERSION="$(echo ${{ matrix.go-version }} | sed -e s/.x//)" make artifacts
 
   test-integration-docker-compatibility:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    runs-on: ubuntu-22.04  # TODO: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4.1.1
         with:
@@ -234,15 +269,25 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
           check-latest: true
-      - name: "Enable BuildKit"
+      - name: "Install Docker v24"
         run: |
           set -eux -o pipefail
+          # Uninstall the preinstalled Docker
+          sudo apt-get remove docker-* containerd.io
           # Enable BuildKit explicitly
           sudo apt-get install -y moreutils
           cat /etc/docker/daemon.json
           jq '.features.buildkit = true' </etc/docker/daemon.json  | sudo sponge /etc/docker/daemon.json
           cat /etc/docker/daemon.json
-          sudo systemctl restart docker
+          # Download Docker packages
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/containerd.io_1.6.33-1_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce_24.0.9-1~ubuntu.22.04~jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce-cli_24.0.9-1~ubuntu.22.04~jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-buildx-plugin_0.13.1-1~ubuntu.22.04~jammy_amd64.deb
+          curl -OSL https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-compose-plugin_2.25.0-1~ubuntu.22.04~jammy_amd64.deb
+          # Install Docker
+          sudo apt-get install -y ./*.deb
+          rm -f ./*.deb
           # Print docker info
           docker info
           docker version
@@ -276,7 +321,7 @@ jobs:
       - uses: actions/checkout@v4.1.1
         with:
           repository: containerd/containerd
-          ref: v1.7.16
+          ref: v1.7.22
           path: containerd
           fetch-depth: 1
       - name: "Set up CNI"
@@ -284,7 +329,7 @@ jobs:
         run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
       - name: "Set up containerd"
         env:
-          ctrdVersion: 1.7.16
+          ctrdVersion: 1.7.22
         run: powershell hack/configure-windows-ci.ps1
       # TODO: Run unit tests
       - name: "Run integration tests"
@@ -292,9 +337,8 @@ jobs:
 
   test-integration-freebsd:
     name: FreeBSD
-    # "Larger" runner is needed for nested virtualization
-    # https://github.com/organizations/containerd/settings/actions/runners
-    runs-on: ubuntu-latest-4-cores
+    # ubuntu-24.04 lacks the vagrant package
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
 
     steps:

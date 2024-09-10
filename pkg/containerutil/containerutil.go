@@ -266,7 +266,13 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 		}
 	}
 	detachC := make(chan struct{})
-	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, con, logURI, detachKeys, namespace, detachC)
+	attachStreamOpt := []string{}
+	if flagA {
+		// In start, flagA attaches only STDOUT/STDERR
+		// source: https://github.com/containerd/nerdctl/blob/main/docs/command-reference.md#whale-nerdctl-start
+		attachStreamOpt = []string{"STDOUT", "STDERR"}
+	}
+	task, err := taskutil.NewTask(ctx, client, container, attachStreamOpt, false, flagT, true, con, logURI, detachKeys, namespace, detachC)
 	if err != nil {
 		return err
 	}

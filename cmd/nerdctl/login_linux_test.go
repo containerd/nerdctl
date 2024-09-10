@@ -71,7 +71,7 @@ func TestLoginWithSpecificRegHosts(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		t.Logf(tc.log)
+		t.Log(tc.log)
 		base.Cmd("--debug-full", "--hosts-dir", reg.HostsDir, "login", "-u", "admin", "-p", "validTestPassword", tc.url).AssertOK()
 	}
 

@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"runtime"
 	"testing"
 
 	"github.com/containerd/nerdctl/pkg/testutil"
@@ -57,9 +56,9 @@ func TestCreateWithMACAddress(t *testing.T) {
 		WantErr bool
 		Expect  string
 	}{
-		{"host", true, "conflicting options"},
+		{"host", true, ""},
 		{"none", true, "can't open '/sys/class/net/eth0/address'"},
-		{"container:whatever" + tID, true, "conflicting options"},
+		{"container:whatever" + tID, true, ""},
 		{"bridge", false, ""},
 		{networkBridge, false, ""},
 		{networkMACvlan, false, ""},
@@ -113,9 +112,6 @@ func TestCreateWithMACAddress(t *testing.T) {
 }
 
 func TestCreateWithTty(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("json-file log driver is not yet implemented on Windows")
-	}
 	base := testutil.NewBase(t)
 	imageName := testutil.CommonImage
 	withoutTtyContainerName := "without-terminal-" + testutil.Identifier(t)

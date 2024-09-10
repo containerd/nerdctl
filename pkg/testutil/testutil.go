@@ -31,6 +31,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/defaults"
+	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/imgutil"
 	"github.com/containerd/nerdctl/pkg/infoutil"
@@ -350,6 +351,11 @@ func (c *Cmd) Run() *icmd.Result {
 	return icmd.RunCmd(c.Cmd)
 }
 
+func (c *Cmd) Start() *icmd.Result {
+	c.Base.T.Helper()
+	return icmd.StartCmd(c.Cmd)
+}
+
 func (c *Cmd) CmdOption(cmdOptions ...func(*Cmd)) *Cmd {
 	for _, opt := range cmdOptions {
 		opt(c)
@@ -452,7 +458,7 @@ func (c *Cmd) AssertOutStreamsExactly(stdout, stderr string) {
 			msg += fmt.Sprintf("stderr mismatch, expected %q, got %q\n", stderr, serr)
 		}
 		if msg != "" {
-			return fmt.Errorf(msg)
+			return fmt.Errorf("%s", msg)
 		}
 		return nil
 	}
@@ -532,6 +538,12 @@ func GetEnableIPv6() bool {
 }
 
 func GetDaemonIsKillable() bool {
+	if flagTestKillDaemon && strings.HasPrefix(infoutil.DistroName(), "Ubuntu 24.04") { // FIXME: check systemd version, not distro
+		log.L.Warn("FIXME: Ignoring -test.kill-daemon: the flag does not seem to work on Ubuntu 24.04")
+		// > Failed to kill unit containerd.service: Failed to send signal SIGKILL to auxiliary processes: Invalid argument\n
+		// https://github.com/containerd/nerdctl/pull/3129#issuecomment-2185780506
+		return false
+	}
 	return flagTestKillDaemon
 }
 

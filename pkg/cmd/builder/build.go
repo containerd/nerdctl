@@ -29,17 +29,17 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/images/archive"
-	"github.com/containerd/containerd/platforms"
-	dockerreference "github.com/containerd/containerd/reference/docker"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/pkg/clientutil"
 	"github.com/containerd/nerdctl/pkg/platformutil"
 	"github.com/containerd/nerdctl/pkg/strutil"
+	"github.com/containerd/platforms"
+	dockerreference "github.com/distribution/reference"
 )
 
 func Build(ctx context.Context, client *containerd.Client, options types.BuilderBuildOptions) error {

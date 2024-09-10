@@ -29,8 +29,8 @@ import (
 
 	"github.com/containerd/containerd"
 	eventstypes "github.com/containerd/containerd/api/events"
-	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/pkg/api/types"
 	"github.com/containerd/nerdctl/pkg/clientutil"
@@ -81,14 +81,14 @@ func (s *stats) isKnownContainer(cid string) (int, bool) {
 }
 
 // Stats displays a live stream of container(s) resource usage statistics.
-func Stats(ctx context.Context, client *containerd.Client, containerIds []string, options types.ContainerStatsOptions) error {
+func Stats(ctx context.Context, client *containerd.Client, containerIDs []string, options types.ContainerStatsOptions) error {
 	// NOTE: rootless container does not rely on cgroupv1.
 	// more details about possible ways to resolve this concern: #223
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
 		return errors.New("stats requires cgroup v2 for rootless containers, see https://rootlesscontaine.rs/getting-started/common/cgroup2/")
 	}
 
-	showAll := len(containerIds) == 0
+	showAll := len(containerIDs) == 0
 	closeChan := make(chan error)
 
 	var err error
@@ -227,7 +227,7 @@ func Stats(ctx context.Context, client *containerd.Client, containerIds []string
 			},
 		}
 
-		if err := walker.WalkAll(ctx, containerIds, false); err != nil {
+		if err := walker.WalkAll(ctx, containerIDs, false); err != nil {
 			return err
 		}
 
