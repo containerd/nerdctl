@@ -25,8 +25,8 @@ github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDk
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/compose-spec/compose-go/v2 v2.2.0 h1:VsQosGhuO+H9wh5laiIiAe4TVd73kQ5NWwmNrdm0HRA=
 github.com/compose-spec/compose-go/v2 v2.2.0/go.mod h1:lFN0DrMxIncJGYAXTfWuajfwj5haBJqrBkarHcnjJKc=
-github.com/containerd/accelerated-container-image v1.2.1 h1:ODV7nD5o5VmHIZT1OzadRQxOBLnQWnvSEouG6hFh6hA=
-github.com/containerd/accelerated-container-image v1.2.1/go.mod h1:EvKVWor6ZQNUyYp0MZm5hw4k21ropuz7EegM+m/Jb/Q=
+github.com/containerd/accelerated-container-image v1.2.2 h1:GzBaFYyA3JFJGor9de1tX2aLSIG1vIewdNzJrcP3dco=
+github.com/containerd/accelerated-container-image v1.2.2/go.mod h1:EvKVWor6ZQNUyYp0MZm5hw4k21ropuz7EegM+m/Jb/Q=
 github.com/containerd/cgroups/v3 v3.0.3 h1:S5ByHZ/h9PMe5IOQoN7E+nMc2UcLEM/V48DGDJ9kip0=
 github.com/containerd/cgroups/v3 v3.0.3/go.mod h1:8HBe7V3aWGLFPd/k03swSIsGjZhHI2WzJmticMgVuz0=
 github.com/containerd/console v1.0.4 h1:F2g4+oChYvBTsASRTz8NP6iIAi97J3TtSAsLbIFn4ro=
