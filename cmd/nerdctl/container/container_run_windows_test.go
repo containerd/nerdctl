@@ -119,6 +119,7 @@ func TestRunProcessContainerWithDevice(t *testing.T) {
 }
 
 func TestRunWithTtyAndDetached(t *testing.T) {
+	fmt.Println("> Is this always failing now?")
 	base := testutil.NewBase(t)
 	imageName := testutil.CommonImage
 	withTtyContainerName := "with-terminal-" + testutil.Identifier(t)
