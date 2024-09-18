@@ -459,30 +459,6 @@ COPY --from=builder /go/src/logger/logger /
 	assert.Check(t, strings.Contains(log, "bar"))
 }
 
-func TestRunWithTtyAndDetached(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("json-file log driver is not yet implemented on Windows")
-	}
-	base := testutil.NewBase(t)
-	imageName := testutil.CommonImage
-	withoutTtyContainerName := "without-terminal-" + testutil.Identifier(t)
-	withTtyContainerName := "with-terminal-" + testutil.Identifier(t)
-
-	// without -t, fail
-	base.Cmd("run", "-d", "--name", withoutTtyContainerName, imageName, "stty").AssertOK()
-	defer base.Cmd("container", "rm", "-f", withoutTtyContainerName).AssertOK()
-	base.Cmd("logs", withoutTtyContainerName).AssertCombinedOutContains("stty: standard input: Not a tty")
-	withoutTtyContainer := base.InspectContainer(withoutTtyContainerName)
-	assert.Equal(base.T, 1, withoutTtyContainer.State.ExitCode)
-
-	// with -t, success
-	base.Cmd("run", "-d", "-t", "--name", withTtyContainerName, imageName, "stty").AssertOK()
-	defer base.Cmd("container", "rm", "-f", withTtyContainerName).AssertOK()
-	base.Cmd("logs", withTtyContainerName).AssertCombinedOutContains("speed 38400 baud; line = 0;")
-	withTtyContainer := base.InspectContainer(withTtyContainerName)
-	assert.Equal(base.T, 0, withTtyContainer.State.ExitCode)
-}
-
 // history: There was a bug that the --add-host items disappear when the another container created.
 // This case ensures that it's doesn't happen.
 // (https://github.com/containerd/nerdctl/issues/2560)

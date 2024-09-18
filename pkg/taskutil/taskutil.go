@@ -96,11 +96,15 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 		if len(args) != 2 {
 			return nil, errors.New("parse logging path error")
 		}
-		ioCreator = cio.TerminalBinaryIO(u.Path, map[string]string{
+		parsedPath := u.Path
+		// For Windows, remove the leading slash
+		if (runtime.GOOS == "windows") && (strings.HasPrefix(parsedPath, "/")) {
+			parsedPath = strings.TrimLeft(parsedPath, "/")
+		}
+		ioCreator = cio.TerminalBinaryIO(parsedPath, map[string]string{
 			args[0]: args[1],
 		})
 	} else if flagT && !flagD {
-
 		if con == nil {
 			return nil, errors.New("got nil con with flagT=true")
 		}

@@ -498,3 +498,24 @@ func TestRunWithDetachKeys(t *testing.T) {
 	container := base.InspectContainer(containerName)
 	assert.Equal(base.T, container.State.Running, true)
 }
+
+func TestRunWithTtyAndDetached(t *testing.T) {
+	base := testutil.NewBase(t)
+	imageName := testutil.CommonImage
+	withoutTtyContainerName := "without-terminal-" + testutil.Identifier(t)
+	withTtyContainerName := "with-terminal-" + testutil.Identifier(t)
+
+	// without -t, fail
+	base.Cmd("run", "-d", "--name", withoutTtyContainerName, imageName, "stty").AssertOK()
+	defer base.Cmd("container", "rm", "-f", withoutTtyContainerName).AssertOK()
+	base.Cmd("logs", withoutTtyContainerName).AssertCombinedOutContains("stty: standard input: Not a tty")
+	withoutTtyContainer := base.InspectContainer(withoutTtyContainerName)
+	assert.Equal(base.T, 1, withoutTtyContainer.State.ExitCode)
+
+	// with -t, success
+	base.Cmd("run", "-d", "-t", "--name", withTtyContainerName, imageName, "stty").AssertOK()
+	defer base.Cmd("container", "rm", "-f", withTtyContainerName).AssertOK()
+	base.Cmd("logs", withTtyContainerName).AssertCombinedOutContains("speed 38400 baud; line = 0;")
+	withTtyContainer := base.InspectContainer(withTtyContainerName)
+	assert.Equal(base.T, 0, withTtyContainer.State.ExitCode)
+}
