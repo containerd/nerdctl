@@ -106,7 +106,10 @@ func execActionWithContainer(ctx context.Context, client *containerd.Client, con
 
 	var con console.Console
 	if options.TTY {
-		con = console.Current()
+		con, err = consoleutil.Current()
+		if err != nil {
+			return err
+		}
 		defer con.Reset()
 		if err := con.SetRaw(); err != nil {
 			return err
@@ -164,7 +167,11 @@ func generateExecProcessSpec(ctx context.Context, client *containerd.Client, con
 	pspec := spec.Process
 	pspec.Terminal = options.TTY
 	if pspec.Terminal {
-		if size, err := console.Current().Size(); err == nil {
+		con, err := consoleutil.Current()
+		if err != nil {
+			return nil, err
+		}
+		if size, err := con.Size(); err == nil {
 			pspec.ConsoleSize = &specs.Box{Height: uint(size.Height), Width: uint(size.Width)}
 		}
 	}
