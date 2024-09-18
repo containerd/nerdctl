@@ -17,155 +17,97 @@
 package volume
 
 import (
+	"errors"
 	"testing"
-
-	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/errdefs"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestVolumeCreate(t *testing.T) {
-	t.Parallel()
+	nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-
-	malformed := errdefs.ErrInvalidArgument.Error()
-	atMost := "at most 1 arg"
-	exitCodeVariant := 1
-	if base.Target == testutil.Docker {
-		malformed = "invalid"
-		exitCodeVariant = 125
-	}
-
-	testCases := []struct {
-		description        string
-		command            func(tID string) *testutil.Cmd
-		tearUp             func(tID string)
-		tearDown           func(tID string)
-		expected           func(tID string) icmd.Expected
-		inspect            func(t *testing.T, stdout string, stderr string)
-		dockerIncompatible bool
-	}{
+	tg := &test.Group{
 		{
-			description: "arg missing should create anonymous volume",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create")
+			Description: "arg missing should create anonymous volume",
+			Command:     test.RunCommand("volume", "create"),
+			Expected:    test.Expects(0, nil, nil),
+		},
+		{
+			Description: "invalid identifier should fail",
+			Command:     test.RunCommand("volume", "create", "∞"),
+			Expected:    test.Expects(1, []error{errdefs.ErrInvalidArgument}, nil),
+		},
+		{
+			Description: "too many args should fail",
+			Command:     test.RunCommand("volume", "create", "too", "many"),
+			Expected:    test.Expects(1, []error{errors.New("at most 1 arg")}, nil),
+		},
+		{
+			Description: "success",
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("volume", "create", data.Identifier())
 			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 0,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("volume", "rm", "-f", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.Equals(data.Identifier() + "\n"),
 				}
 			},
 		},
 		{
-			description: "invalid identifier should fail",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create", "∞")
+			Description: "success with labels",
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("volume", "create", "--label", "foo1=baz1", "--label", "foo2=baz2", data.Identifier())
 			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 1,
-					Err:      malformed,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("volume", "rm", "-f", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.Equals(data.Identifier() + "\n"),
 				}
 			},
 		},
 		{
-			description: "too many args should fail",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create", "too", "many")
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 1,
-					Err:      atMost,
-				}
-			},
-		},
-		{
-			description: "success",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create", tID)
-			},
-			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID).Run()
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 0,
-					Out:      tID,
-				}
-			},
-		},
-		{
-			description: "success with labels",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "create", "--label", "foo1=baz1", "--label", "foo2=baz2", tID)
-			},
-			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID).Run()
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 0,
-					Out:      tID,
-				}
-			},
-		},
-		{
-			description: "invalid labels",
-			command: func(tID string) *testutil.Cmd {
+			Description: "invalid labels",
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
 				// See https://github.com/containerd/nerdctl/issues/3126
-				return base.Cmd("volume", "create", "--label", "a", "--label", "", tID)
+				return helpers.Command("volume", "create", "--label", "a", "--label", "", data.Identifier())
 			},
-			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID).Run()
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("volume", "rm", "-f", data.Identifier())
 			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: exitCodeVariant,
-					Err:      malformed,
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					// NOTE: docker returns 125 on this
+					ExitCode: -1,
+					Errors:   []error{errdefs.ErrInvalidArgument},
 				}
 			},
 		},
 		{
-			description: "creating already existing volume should succeed",
-			command: func(tID string) *testutil.Cmd {
-				base.Cmd("volume", "create", tID).AssertOK()
-				return base.Cmd("volume", "create", tID)
+			Description: "creating already existing volume should succeed",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("volume", "create", data.Identifier())
 			},
-			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID).Run()
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("volume", "create", data.Identifier())
 			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 0,
-					Out:      tID,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("volume", "rm", "-f", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.Equals(data.Identifier() + "\n"),
 				}
 			},
 		},
 	}
 
-	for _, test := range testCases {
-		currentTest := test
-		t.Run(currentTest.description, func(tt *testing.T) {
-			tt.Parallel()
-
-			tID := testutil.Identifier(tt)
-
-			if currentTest.tearDown != nil {
-				currentTest.tearDown(tID)
-				tt.Cleanup(func() {
-					currentTest.tearDown(tID)
-				})
-			}
-			if currentTest.tearUp != nil {
-				currentTest.tearUp(tID)
-			}
-
-			cmd := currentTest.command(tID)
-			cmd.Assert(currentTest.expected(tID))
-		})
-	}
+	tg.Run(t)
 }
