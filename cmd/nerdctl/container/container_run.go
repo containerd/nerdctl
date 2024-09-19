@@ -389,7 +389,10 @@ func runAction(cmd *cobra.Command, args []string) error {
 
 	var con console.Console
 	if createOpt.TTY && !createOpt.Detach {
-		con = console.Current()
+		con, err = consoleutil.Current()
+		if err != nil {
+			return err
+		}
 		defer con.Reset()
 		if err := con.SetRaw(); err != nil {
 			return err

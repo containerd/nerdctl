@@ -66,7 +66,10 @@ func Attach(ctx context.Context, client *containerd.Client, req string, options 
 		con console.Console
 	)
 	if spec.Process.Terminal {
-		con = console.Current()
+		con, err = consoleutil.Current()
+		if err != nil {
+			return err
+		}
 		defer con.Reset()
 		if err := con.SetRaw(); err != nil {
 			return fmt.Errorf("failed to set the console to raw mode: %w", err)

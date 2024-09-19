@@ -244,7 +244,10 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 	flagT := process.Process.Terminal
 	var con console.Console
 	if flagA && flagT {
-		con = console.Current()
+		con, err = consoleutil.Current()
+		if err != nil {
+			return err
+		}
 		defer con.Reset()
 		if err := con.SetRaw(); err != nil {
 			return err
