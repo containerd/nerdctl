@@ -43,7 +43,7 @@ require (
 	github.com/fatih/color v1.17.0
 	github.com/fluent/fluent-logger-golang v1.9.0
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/go-viper/mapstructure/v2 v2.1.0
+	github.com/go-viper/mapstructure/v2 v2.2.0
 	github.com/ipfs/go-cid v0.4.1
 	github.com/klauspost/compress v1.17.9
 	github.com/mattn/go-isatty v0.0.20
