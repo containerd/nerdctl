@@ -21,10 +21,11 @@
 # NOTICE: https://github.com/moby/moby/blob/v20.10.3/NOTICE
 # -----------------------------------------------------------------------------
 
-# containerd-rootless-setuptool.sh: setup tool for containerd-rootless.sh
+# containerd-rootless-systemd.sh: tool to setup systemd units for
+# starting containerd-rootless.sh on startup and on-demand.
 # Needs to be executed as a non-root user.
 #
-# Typical usage: containerd-rootless-setuptool.sh install
+# Typical usage: containerd-rootless-systemd.sh install
 set -eu
 
 # utility functions
