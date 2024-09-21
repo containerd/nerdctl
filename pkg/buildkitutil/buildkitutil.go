@@ -117,7 +117,7 @@ func GetWorkerLabels(buildkitHost string) (labels map[string]string, _ error) {
 func getHint() string {
 	hint := "`buildctl` needs to be installed and `buildkitd` needs to be running, see https://github.com/moby/buildkit"
 	if rootlessutil.IsRootless() {
-		hint += " , and `containerd-rootless-setuptool.sh install-buildkit` for OCI worker or `containerd-rootless-setuptool.sh install-buildkit-containerd` for containerd worker"
+		hint += " , and `containerd-rootless-systemd.sh install-buildkit` for OCI worker or `containerd-rootless-systemd.sh install-buildkit-containerd` for containerd worker"
 	}
 	return hint
 }

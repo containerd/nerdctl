@@ -44,7 +44,7 @@
 #   however, there is a relatively minor drawback with BuildKit prior to v0.13:
 #   the host loopback IP address (127.0.0.1) and abstract sockets are exposed to Dockerfile's "RUN" instructions during `nerdctl build` (not `nerdctl run`).
 #   The drawback is fixed in BuildKit v0.13. Upgrading from a prior version of BuildKit needs removing the old systemd unit:
-#   `containerd-rootless-setuptool.sh uninstall-buildkit && rm -f ~/.config/buildkit/buildkitd.toml`
+#   `containerd-rootless-systemd.sh uninstall-buildkit && rm -f ~/.config/buildkit/buildkitd.toml`
 
 # See also: https://github.com/containerd/nerdctl/blob/main/docs/rootless.md#configuring-rootlesskit
 
@@ -67,7 +67,7 @@ if [ -z "$_CONTAINERD_ROOTLESS_CHILD" ]; then
 	fi
 	case "$1" in
 	"check" | "install" | "uninstall")
-		echo "Did you mean 'containerd-rootless-setuptool.sh $*' ?"
+		echo "Did you mean 'containerd-rootless-systemd.sh $*' ?"
 		exit 1
 		;;
 	esac

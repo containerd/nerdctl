@@ -91,7 +91,7 @@ binaries: nerdctl
 install:
 	install -D -m 755 $(CURDIR)/_output/nerdctl $(DESTDIR)$(BINDIR)/nerdctl
 	install -D -m 755 $(MAKEFILE_DIR)/extras/rootless/containerd-rootless.sh $(DESTDIR)$(BINDIR)/containerd-rootless.sh
-	install -D -m 755 $(MAKEFILE_DIR)/extras/rootless/containerd-rootless-setuptool.sh $(DESTDIR)$(BINDIR)/containerd-rootless-setuptool.sh
+	install -D -m 755 $(MAKEFILE_DIR)/extras/rootless/containerd-rootless-systemd.sh $(DESTDIR)$(BINDIR)/containerd-rootless-systemd.sh
 	install -D -m 644 -t $(DESTDIR)$(DOCDIR)/nerdctl $(MAKEFILE_DIR)/docs/*.md
 
 # Note that these options will not work on macOS - unless you use gnu-tar instead of tar

@@ -222,7 +222,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 			}
 			o.bypassClient, err = b4nndclient.New(socketPath)
 			if err != nil {
-				return nil, fmt.Errorf("bypass4netnsd not running? (Hint: run `containerd-rootless-setuptool.sh install-bypass4netnsd`): %w", err)
+				return nil, fmt.Errorf("bypass4netnsd not running? (Hint: run `containerd-rootless-systemd.sh install-bypass4netnsd`): %w", err)
 			}
 		}
 	}
@@ -481,7 +481,7 @@ func applyNetworkSettings(opts *handlerOpts) error {
 			}
 			err = bm.StartBypass(ctx, opts.ports, opts.state.ID, opts.state.Annotations[labels.StateDir])
 			if err != nil {
-				return fmt.Errorf("bypass4netnsd not running? (Hint: run `containerd-rootless-setuptool.sh install-bypass4netnsd`): %w", err)
+				return fmt.Errorf("bypass4netnsd not running? (Hint: run `containerd-rootless-systemd.sh install-bypass4netnsd`): %w", err)
 			}
 		}
 		if !b4nnBindEnabled && len(opts.ports) > 0 {

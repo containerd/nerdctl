@@ -109,7 +109,7 @@ linux/amd64, go1.18.2, 45b0a11
 To launch rootless containerd:
 
 ```console
-$ containerd-rootless-setuptool.sh install
+$ containerd-rootless-systemd.sh install
 ```
 
 To run a container with rootless containerd:

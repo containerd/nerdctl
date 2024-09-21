@@ -73,7 +73,7 @@ $ sudo nerdctl run -d --name nginx -p 80:80 nginx:alpine
 
 ### Rootless
 \`\`\`console
-$ containerd-rootless-setuptool.sh install
+$ containerd-rootless-systemd.sh install
 $ nerdctl run -d --name nginx -p 8080:80 nginx:alpine
 \`\`\`
 

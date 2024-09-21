@@ -39,10 +39,10 @@ This limitation can be avoided using containerd worker as mentioned later.
 |-------------------|-----------------------------------|
 
 ```
-$ CONTAINERD_NAMESPACE=default containerd-rootless-setuptool.sh install-buildkit-containerd
+$ CONTAINERD_NAMESPACE=default containerd-rootless-systemd.sh install-buildkit-containerd
 ```
 
-`containerd-rootless-setuptool.sh` is aware of `CONTAINERD_NAMESPACE` and `CONTAINERD_SNAPSHOTTER` envvars.
+`containerd-rootless-systemd.sh` is aware of `CONTAINERD_NAMESPACE` and `CONTAINERD_SNAPSHOTTER` envvars.
 It installs buildkitd to the specified containerd namespace.
 This allows BuildKit using containerd-managed images in that namespace as the base image.
 Note that BuildKit can't use images in other namespaces as of now.
@@ -77,7 +77,7 @@ Then add the following configuration to `/etc/buildkit/buildkitd.toml` to enable
 ### Rootless
 
 ```
-$ containerd-rootless-setuptool.sh install-buildkit
+$ containerd-rootless-systemd.sh install-buildkit
 ```
 
 As mentioned in the above, BuildKit with this configuration cannot use images managed by containerd.

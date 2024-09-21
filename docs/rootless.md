@@ -4,10 +4,10 @@ See https://rootlesscontaine.rs/getting-started/common/ for the prerequisites.
 
 ## Daemon (containerd)
 
-Use [`containerd-rootless-setuptool.sh`](../extras/rootless) to set up rootless containerd.
+Use [`containerd-rootless-systemd.sh`](../extras/rootless) to set up rootless containerd.
 
 ```console
-$ containerd-rootless-setuptool.sh install
+$ containerd-rootless-systemd.sh install
 [INFO] Checking RootlessKit functionality
 [INFO] Checking cgroup v2
 [INFO] Checking overlayfs
@@ -21,7 +21,7 @@ $ containerd-rootless-setuptool.sh install
 [INFO] You do NOT need to specify $CONTAINERD_ADDRESS explicitly.
 ```
 
-The usage of `containerd-rootless-setuptool.sh` is almost same as [`dockerd-rootless-setuptool.sh`](https://rootlesscontaine.rs/getting-started/docker/) .
+The usage of `containerd-rootless-systemd.sh` is almost same as [`dockerd-rootless-setuptool.sh`](https://rootlesscontaine.rs/getting-started/docker/) .
 
 Resource limitation flags such as `nerdctl run --memory` require systemd and cgroup v2: https://rootlesscontaine.rs/getting-started/common/cgroup2/
 
@@ -41,7 +41,7 @@ Depending on your kernel version, you may need to enable FUSE-OverlayFS or set `
 To enable BuildKit, run the following command:
 
 ```console
-$ containerd-rootless-setuptool.sh install-buildkit
+$ containerd-rootless-systemd.sh install-buildkit
 ```
 
 ## Snapshotters
@@ -59,7 +59,7 @@ For other hosts, [`fuse-overlayfs` snapshotter](https://github.com/containerd/fu
 
 To enable `fuse-overlayfs` snapshotter, run the following command:
 ```console
-$ containerd-rootless-setuptool.sh install-fuse-overlayfs
+$ containerd-rootless-systemd.sh install-fuse-overlayfs
 ```
 
 Then, add the following config to `~/.config/containerd/config.toml`, and run `systemctl --user restart containerd.service`:
@@ -84,7 +84,7 @@ If `fuse-overlayfs` does not work, try `export CONTAINERD_SNAPSHOTTER=native`.
 
 To enable Stargz snapshotter, run the following command:
 ```console
-$ containerd-rootless-setuptool.sh install-stargz
+$ containerd-rootless-systemd.sh install-stargz
 ```
 
 Then, add the following config to `~/.config/containerd/config.toml` and run `systemctl --user restart containerd.service`:
@@ -128,7 +128,7 @@ Acceleration with bypass4netns is available with:
 You also need to have `bypass4netnsd` (bypass4netns daemon) to be running.
 Example
 ```console
-$ containerd-rootless-setuptool.sh install-bypass4netnsd
+$ containerd-rootless-systemd.sh install-bypass4netnsd
 $ nerdctl run -it --rm -p 8080:80 --annotation nerdctl/bypass4netns=true alpine
 ```
 
@@ -150,7 +150,7 @@ Rootless containerd recognizes the following environment variables to configure 
   however, there is a relatively minor drawback with BuildKit prior to v0.13:
   the host loopback IP address (127.0.0.1) and abstract sockets are exposed to Dockerfile's "RUN" instructions during `nerdctl build` (not `nerdctl run`).
   The drawback is fixed in BuildKit v0.13. Upgrading from a prior version of BuildKit needs removing the old systemd unit:
-  `containerd-rootless-setuptool.sh uninstall-buildkit && rm -f ~/.config/buildkit/buildkitd.toml`
+  `containerd-rootless-systemd.sh uninstall-buildkit && rm -f ~/.config/buildkit/buildkitd.toml`
 
 To set these variables, create `~/.config/systemd/user/containerd.service.d/override.conf` as follows:
 ```ini

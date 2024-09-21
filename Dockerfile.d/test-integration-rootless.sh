@@ -30,17 +30,17 @@ if [[ "$(id -u)" = "0" ]]; then
 	systemctl start ssh
 	exec ssh -o StrictHostKeyChecking=no rootless@localhost "$0" "$@"
 else
-	containerd-rootless-setuptool.sh install
+	containerd-rootless-systemd.sh install
 	if grep -q "options use-vc" /etc/resolv.conf; then
-		containerd-rootless-setuptool.sh nsenter -- sh -euc 'echo "options use-vc" >>/etc/resolv.conf'
+		containerd-rootless-systemd.sh nsenter -- sh -euc 'echo "options use-vc" >>/etc/resolv.conf'
 	fi
 
 	if [[ -e /workaround-issue-622 ]]; then
 		echo "WORKAROUND_ISSUE_622: Not enabling BuildKit (https://github.com/containerd/nerdctl/issues/622)" >&2
 	else
-		CONTAINERD_NAMESPACE="nerdctl-test" containerd-rootless-setuptool.sh install-buildkit-containerd
+		CONTAINERD_NAMESPACE="nerdctl-test" containerd-rootless-systemd.sh install-buildkit-containerd
 	fi
-	containerd-rootless-setuptool.sh install-stargz
+	containerd-rootless-systemd.sh install-stargz
 	if [ ! -f "/home/rootless/.config/containerd/config.toml" ] ; then
 		echo "version = 2" > /home/rootless/.config/containerd/config.toml
 	fi
@@ -51,11 +51,11 @@ else
     address = "/run/user/$(id -u)/containerd-stargz-grpc/containerd-stargz-grpc.sock"
 EOF
 	systemctl --user restart containerd.service
-	containerd-rootless-setuptool.sh -- install-ipfs --init --offline # offline ipfs daemon for testing
+	containerd-rootless-systemd.sh -- install-ipfs --init --offline # offline ipfs daemon for testing
 	echo "ipfs = true" >>/home/rootless/.config/containerd-stargz-grpc/config.toml
 	systemctl --user restart stargz-snapshotter.service
 	export IPFS_PATH="/home/rootless/.local/share/ipfs"
-	containerd-rootless-setuptool.sh install-bypass4netnsd
+	containerd-rootless-systemd.sh install-bypass4netnsd
 	# Once ssh-ed, we lost the Dockerfile working dir, so, get back in the nerdctl checkout
 	cd /go/src/github.com/containerd/nerdctl
 	# We also lose the PATH (and SendEnv=PATH would require sshd config changes)

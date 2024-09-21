@@ -299,7 +299,7 @@ Using SETUID bit is highly discouraged. Consider using [Rootless mode](#rootless
 ### How to use nerdctl as a non-root user? (Rootless mode)
 
 ```
-containerd-rootless-setuptool.sh install
+containerd-rootless-systemd.sh install
 nerdctl run -d --name nginx -p 8080:80 nginx:alpine
 ```
 
@@ -352,6 +352,6 @@ systemctl --user start dbus
 
 Run the following commands:
 ```
-containerd-rootless-setuptool.sh uninstall
+containerd-rootless-systemd.sh uninstall
 rootlesskit rm -rf ~/.local/share/containerd ~/.local/share/nerdctl ~/.config/containerd
 ```
