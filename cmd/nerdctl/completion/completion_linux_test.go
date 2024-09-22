@@ -20,53 +20,189 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestCompletion(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	const gsc = "__complete"
-	// cmd is executed with base.Args={"--namespace=nerdctl-test"}
-	base.Cmd(gsc, "--cgroup-manager", "").AssertOutContains("cgroupfs\n")
-	base.Cmd(gsc, "--snapshotter", "").AssertOutContains("native\n")
-	base.Cmd(gsc, "").AssertOutContains("run\t")
-	base.Cmd(gsc, "run", "-").AssertOutContains("--network\t")
-	base.Cmd(gsc, "run", "--n").AssertOutContains("--network\t")
-	base.Cmd(gsc, "run", "--ne").AssertOutContains("--network\t")
-	base.Cmd(gsc, "run", "--net", "").AssertOutContains("host\n")
-	base.Cmd(gsc, "run", "-it", "--net", "").AssertOutContains("host\n")
-	base.Cmd(gsc, "run", "-it", "--rm", "--net", "").AssertOutContains("host\n")
-	base.Cmd(gsc, "run", "--restart", "").AssertOutContains("always\n")
-	base.Cmd(gsc, "network", "rm", "").AssertOutNotContains("host\n") // host is unremovable
-	base.Cmd(gsc, "run", "--cap-add", "").AssertOutContains("sys_admin\n")
-	base.Cmd(gsc, "run", "--cap-add", "").AssertOutNotContains("CAP_SYS_ADMIN\n") // invalid form
+	nerdtest.Setup()
 
-	// Tests with an image
-	base.Cmd("pull", testutil.AlpineImage).AssertOK()
-	base.Cmd(gsc, "run", "-i", "").AssertOutContains(testutil.AlpineImage)
-	base.Cmd(gsc, "run", "-it", "").AssertOutContains(testutil.AlpineImage)
-	base.Cmd(gsc, "run", "-it", "--rm", "").AssertOutContains(testutil.AlpineImage)
+	testCase := &test.Case{
+		Description: "Base completion",
+		Require:     test.Not(nerdtest.Docker),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", testutil.AlpineImage)
+			helpers.Ensure("network", "create", data.Identifier())
+			helpers.Ensure("volume", "create", data.Identifier())
+			data.Set("identifier", data.Identifier())
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("network", "rm", data.Identifier())
+			helpers.Anyhow("volume", "rm", data.Identifier())
+		},
+		SubTests: []*test.Case{
+			{
+				Description: "--cgroup-manager",
+				Command:     test.RunCommand("__complete", "--cgroup-manager", ""),
+				Expected:    test.Expects(0, nil, test.Contains("cgroupfs\n")),
+			},
+			{
+				Description: "--snapshotter",
+				Command:     test.RunCommand("__complete", "--snapshotter", ""),
+				Expected:    test.Expects(0, nil, test.Contains("native\n")),
+			},
+			{
+				Description: "empty",
+				Command:     test.RunCommand("__complete", ""),
+				Expected:    test.Expects(0, nil, test.Contains("run\t")),
+			},
+			{
+				Description: "run -",
+				Command:     test.RunCommand("__complete", "run", "-"),
+				Expected:    test.Expects(0, nil, test.Contains("--network\t")),
+			},
+			{
+				Description: "run --n",
+				Command:     test.RunCommand("__complete", "run", "--n"),
+				Expected:    test.Expects(0, nil, test.Contains("--network\t")),
+			},
+			{
+				Description: "run --ne",
+				Command:     test.RunCommand("__complete", "run", "--ne"),
+				Expected:    test.Expects(0, nil, test.Contains("--network\t")),
+			},
+			{
+				Description: "run --net",
+				Command:     test.RunCommand("__complete", "run", "--net", ""),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.Contains("host\n"),
+							test.Contains(data.Get("identifier")+"\n"),
+						),
+					}
+				},
+			},
+			{
+				Description: "run -it --net",
+				Command:     test.RunCommand("__complete", "run", "-it", "--net", ""),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.Contains("host\n"),
+							test.Contains(data.Get("identifier")+"\n"),
+						),
+					}
+				},
+			},
+			{
+				Description: "run -ti --rm --net",
+				Command:     test.RunCommand("__complete", "run", "-it", "--rm", "--net", ""),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.Contains("host\n"),
+							test.Contains(data.Get("identifier")+"\n"),
+						),
+					}
+				},
+			},
+			{
+				Description: "run --restart",
+				Command:     test.RunCommand("__complete", "run", "--restart", ""),
+				Expected:    test.Expects(0, nil, test.Contains("always\n")),
+			},
+			{
+				Description: "network --rm",
+				Command:     test.RunCommand("__complete", "network", "rm", ""),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.DoesNotContain("host\n"),
+							test.Contains(data.Get("identifier")+"\n"),
+						),
+					}
+				},
+			},
+			{
+				Description: "run --cap-add",
+				Command:     test.RunCommand("__complete", "run", "--cap-add", ""),
+				Expected: test.Expects(0, nil, test.All(
+					test.Contains("sys_admin\n"),
+					test.DoesNotContain("CAP_SYS_ADMIN\n"),
+				)),
+			},
+			{
+				Description: "volume inspect",
+				Command:     test.RunCommand("__complete", "volume", "inspect", ""),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.Contains(data.Get("identifier") + "\n"),
+					}
+				},
+			},
+			{
+				Description: "volume rm",
+				Command:     test.RunCommand("__complete", "volume", "rm", ""),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.Contains(data.Get("identifier") + "\n"),
+					}
+				},
+			},
+			{
+				Description: "no namespace --cgroup-manager",
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					cmd := helpers.Command()
+					cmd.Clear()
+					cmd.WithBinary("nerdctl")
+					cmd.WithArgs("__complete", "--cgroup-manager", "")
+					return cmd
+				},
+				Expected: test.Expects(0, nil, test.Contains("cgroupfs\n")),
+			},
+			{
+				Description: "no namespace empty",
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					return helpers.Command().Clear().WithBinary("nerdctl").WithArgs("__complete", "")
+				},
+				Expected: test.Expects(0, nil, test.Contains("run\t")),
+			},
+			{
+				Description: "namespace space empty",
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					// mind {"--namespace=nerdctl-test"} vs {"--namespace", "nerdctl-test"}
+					return helpers.Command().Clear().WithBinary("nerdctl").
+						WithArgs("__complete", "--namespace", testutil.Namespace, "")
+				},
+				Expected: test.Expects(0, nil, test.Contains("run\t")),
+			},
+			{
+				Description: "run -i",
+				Command:     test.RunCommand("__complete", "run", "-i", ""),
+				Expected:    test.Expects(0, nil, test.Contains(testutil.AlpineImage)),
+			},
+			{
+				Description: "run -it",
+				Command:     test.RunCommand("__complete", "run", "-it", ""),
+				Expected:    test.Expects(0, nil, test.Contains(testutil.AlpineImage)),
+			},
+			{
+				Description: "run -it --rm",
+				Command:     test.RunCommand("__complete", "run", "-it", "--rm", ""),
+				Expected:    test.Expects(0, nil, test.Contains(testutil.AlpineImage)),
+			},
+			{
+				Description: "namespace run -i",
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					// mind {"--namespace=nerdctl-test"} vs {"--namespace", "nerdctl-test"}
+					return helpers.Command().Clear().WithBinary("nerdctl").
+						WithArgs("__complete", "--namespace", testutil.Namespace, "run", "-i", "")
+				},
+				Expected: test.Expects(0, nil, test.Contains(testutil.AlpineImage+"\n")),
+			},
+		},
+	}
 
-	// Tests with a network
-	testNetworkName := "nerdctl-test-completion"
-	defer base.Cmd("network", "rm", testNetworkName).Run()
-	base.Cmd("network", "create", testNetworkName).AssertOK()
-	base.Cmd(gsc, "network", "rm", "").AssertOutContains(testNetworkName)
-	base.Cmd(gsc, "run", "--net", "").AssertOutContains(testNetworkName)
-
-	// Tests with a volume
-	testVolumekName := "nerdctl-test-completion"
-	defer base.Cmd("volume", "rm", testVolumekName).Run()
-	base.Cmd("volume", "create", testVolumekName).AssertOK()
-	base.Cmd(gsc, "volume", "inspect", "").AssertOutContains(testVolumekName)
-	base.Cmd(gsc, "volume", "rm", "").AssertOutContains(testVolumekName)
-
-	// Tests with raw base (without Args={"--namespace=nerdctl-test"})
-	rawBase := testutil.NewBase(t)
-	rawBase.Args = nil // unset "--namespace=nerdctl-test"
-	rawBase.Cmd(gsc, "--cgroup-manager", "").AssertOutContains("cgroupfs\n")
-	rawBase.Cmd(gsc, "").AssertOutContains("run\t")
-	// mind {"--namespace=nerdctl-test"} vs {"--namespace", "nerdctl-test"}
-	rawBase.Cmd(gsc, "--namespace", testutil.Namespace, "").AssertOutContains("run\t")
-	rawBase.Cmd(gsc, "--namespace", testutil.Namespace, "run", "-i", "").AssertOutContains(testutil.AlpineImage)
+	testCase.Run(t)
 }
