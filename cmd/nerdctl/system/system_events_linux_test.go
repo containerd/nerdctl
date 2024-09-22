@@ -17,96 +17,84 @@
 package system
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 	"time"
 
-	"gotest.tools/v3/assert"
-
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func testEventFilter(t *testing.T, args ...string) string {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	testContainerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", testContainerName).Run()
-
-	fullArgs := []string{"events", "--filter"}
-	fullArgs = append(fullArgs, args...)
-	fullArgs = append(fullArgs,
-		"--format",
-		"json",
-	)
-
-	eventsCmd := base.Cmd(fullArgs...).Start()
-	base.Cmd("run", "--rm", testutil.CommonImage).Start()
-	time.Sleep(3 * time.Second)
-	return eventsCmd.Stdout()
+func testEventFilterExecutor(data test.Data, helpers test.Helpers) test.Command {
+	cmd := helpers.Command("events", "--filter", data.Get("filter"), "--format", "json")
+	cmd.Background(1 * time.Second)
+	helpers.Ensure("run", "--rm", testutil.CommonImage)
+	return cmd
 }
 
 func TestEventFilters(t *testing.T) {
+	nerdtest.Setup()
 
-	type testCase struct {
-		name       string
-		args       []string
-		nerdctlOut string
-		dockerOut  string
-		dockerSkip bool
+	testGroup := &test.Group{
+		{
+			Description: "CapitalizedFilter",
+			Require:     test.Not(nerdtest.Docker),
+			Command:     testEventFilterExecutor,
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.Contains(data.Get("output")),
+				}
+			},
+			Data: test.WithData("filter", "event=START").
+				Set("output", "\"Status\":\"start\""),
+		},
+		{
+			Description: "StartEventFilter",
+			Command:     testEventFilterExecutor,
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.Contains(data.Get("output")),
+				}
+			},
+			Data: test.WithData("filter", "event=start").
+				Set("output", "tatus\":\"start\""),
+		},
+		{
+			Description: "UnsupportedEventFilter",
+			Require:     test.Not(nerdtest.Docker),
+			Command:     testEventFilterExecutor,
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.Contains(data.Get("output")),
+				}
+			},
+			Data: test.WithData("filter", "event=unknown").
+				Set("output", "\"Status\":\"unknown\""),
+		},
+		{
+			Description: "StatusFilter",
+			Command:     testEventFilterExecutor,
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.Contains(data.Get("output")),
+				}
+			},
+			Data: test.WithData("filter", "status=start").
+				Set("output", "tatus\":\"start\""),
+		},
+		{
+			Description: "UnsupportedStatusFilter",
+			Require:     test.Not(nerdtest.Docker),
+			Command:     testEventFilterExecutor,
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.Contains(data.Get("output")),
+				}
+			},
+			Data: test.WithData("filter", "status=unknown").
+				Set("output", "\"Status\":\"unknown\""),
+		},
 	}
-	testCases := []testCase{
-		{
-			name:       "CapitializedFilter",
-			args:       []string{"event=START"},
-			nerdctlOut: "\"Status\":\"start\"",
-			dockerOut:  "\"status\":\"start\"",
-			dockerSkip: true,
-		},
-		{
-			name:       "StartEventFilter",
-			args:       []string{"event=start"},
-			nerdctlOut: "\"Status\":\"start\"",
-			dockerOut:  "\"status\":\"start\"",
-			dockerSkip: false,
-		},
-		{
-			name:       "UnsupportedEventFilter",
-			args:       []string{"event=unknown"},
-			nerdctlOut: "\"Status\":\"unknown\"",
-			dockerSkip: true,
-		},
-		{
-			name:       "StatusFilter",
-			args:       []string{"status=start"},
-			nerdctlOut: "\"Status\":\"start\"",
-			dockerOut:  "\"status\":\"start\"",
-			dockerSkip: false,
-		},
-		{
-			name:       "UnsupportedStatusFilter",
-			args:       []string{"status=unknown"},
-			nerdctlOut: "\"Status\":\"unknown\"",
-			dockerSkip: true,
-		},
-	}
 
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			actualOut := testEventFilter(t, tc.args...)
-			errorMsg := fmt.Sprintf("%s failed;\nActual Filter Result: '%s'", tc.name, actualOut)
-
-			isDocker := testutil.GetTarget() == testutil.Docker
-			if isDocker && tc.dockerSkip {
-				t.Skip("test is incompatible with Docker")
-			}
-
-			if isDocker {
-				assert.Equal(t, true, strings.Contains(actualOut, tc.dockerOut), errorMsg)
-			} else {
-				assert.Equal(t, true, strings.Contains(actualOut, tc.nerdctlOut), errorMsg)
-			}
-		})
-	}
+	testGroup.Run(t)
 }
