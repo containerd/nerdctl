@@ -20,19 +20,52 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestNetworkPrune(t *testing.T) {
-	base := testutil.NewBase(t)
-	testNetwork := testutil.Identifier(t)
-	base.Cmd("network", "create", testNetwork).AssertOK()
-	defer base.Cmd("network", "prune", "-f").Run()
+	nerdtest.Setup()
 
-	tID := testutil.Identifier(t)
-	base.Cmd("run", "-d", "--net", testNetwork, "--name", tID, testutil.NginxAlpineImage).AssertOK()
-	defer base.Cmd("rm", "-f", tID).Run()
+	testGroup := &test.Group{
+		{
+			Description: "Prune does not collect started container network",
+			Require:     nerdtest.Private,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier())
+				helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.NginxAlpineImage)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: test.RunCommand("network", "prune", "-f"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.DoesNotContain(data.Identifier()),
+				}
+			},
+		},
+		{
+			Description: "Prune does collect stopped container network",
+			Require:     nerdtest.Private,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier())
+				helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.NginxAlpineImage)
+				helpers.Ensure("stop", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: test.RunCommand("network", "prune", "-f"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.Contains(data.Identifier()),
+				}
+			},
+		},
+	}
 
-	base.Cmd("network", "prune", "-f").AssertOutNotContains(testNetwork)
-	base.Cmd("stop", tID).AssertOK()
-	base.Cmd("network", "prune", "-f").AssertOutContains(testNetwork)
+	testGroup.Run(t)
 }
