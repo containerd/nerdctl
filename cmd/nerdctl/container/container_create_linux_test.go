@@ -17,14 +17,22 @@
 package container
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/opencontainers/go-digest"
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/containerd/v2/defaults"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestCreate(t *testing.T) {
@@ -173,4 +181,122 @@ func TestCreateWithTty(t *testing.T) {
 	base.Cmd("logs", withTtyContainerName).AssertCombinedOutContains("speed 38400 baud; line = 0;")
 	withTtyContainer := base.InspectContainer(withTtyContainerName)
 	assert.Equal(base.T, 0, withTtyContainer.State.ExitCode)
+}
+
+// TestIssue2993 tests https://github.com/containerd/nerdctl/issues/2993
+func TestIssue2993(t *testing.T) {
+	testutil.DockerIncompatible(t)
+
+	nerdtest.Setup()
+
+	const (
+		containersPathKey = "containersPath"
+		etchostsPathKey   = "etchostsPath"
+	)
+
+	getAddrHash := func(addr string) string {
+		const addrHashLen = 8
+
+		d := digest.SHA256.FromString(addr)
+		h := d.Encoded()[0:addrHashLen]
+
+		return h
+	}
+
+	testCase := &test.Group{
+		{
+			Description: "Issue #2993 - nerdctl no longer leaks containers and etchosts directories and files when container creation fails.",
+			Require:     nerdtest.Private,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
+
+				dataRoot := string(data.ReadConfig(nerdtest.DataRoot))
+				h := getAddrHash(defaults.DefaultAddress)
+				dataStore := filepath.Join(dataRoot, h)
+				namespace := data.Identifier()
+
+				containersPath := filepath.Join(dataStore, "containers", namespace)
+				containersDirs, err := os.ReadDir(containersPath)
+				assert.NilError(t, err)
+				assert.Equal(t, len(containersDirs), 1)
+
+				etchostsPath := filepath.Join(dataStore, "etchosts", namespace)
+				etchostsDirs, err := os.ReadDir(etchostsPath)
+				assert.NilError(t, err)
+				assert.Equal(t, len(etchostsDirs), 1)
+
+				data.Set(containersPathKey, containersPath)
+				data.Set(etchostsPathKey, etchostsPath)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("run", "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 1,
+					Errors:   []error{errors.New("is already used by ID")},
+					Output: func(stdout string, info string, t *testing.T) {
+						containersDirs, err := os.ReadDir(data.Get(containersPathKey))
+						assert.NilError(t, err)
+						assert.Equal(t, len(containersDirs), 1)
+
+						etchostsDirs, err := os.ReadDir(data.Get(etchostsPathKey))
+						assert.NilError(t, err)
+						assert.Equal(t, len(etchostsDirs), 1)
+					},
+				}
+			},
+		},
+		{
+			Description: "Issue #2993 - nerdctl no longer leaks containers and etchosts directories and files when containers are removed.",
+			Require:     nerdtest.Private,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
+
+				dataRoot := string(data.ReadConfig(nerdtest.DataRoot))
+				h := getAddrHash(defaults.DefaultAddress)
+				dataStore := filepath.Join(dataRoot, h)
+				namespace := data.Identifier()
+
+				containersPath := filepath.Join(dataStore, "containers", namespace)
+				containersDirs, err := os.ReadDir(containersPath)
+				assert.NilError(t, err)
+				assert.Equal(t, len(containersDirs), 1)
+
+				etchostsPath := filepath.Join(dataStore, "etchosts", namespace)
+				etchostsDirs, err := os.ReadDir(etchostsPath)
+				assert.NilError(t, err)
+				assert.Equal(t, len(etchostsDirs), 1)
+
+				data.Set(containersPathKey, containersPath)
+				data.Set(etchostsPathKey, etchostsPath)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("rm", "-f", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Errors:   []error{},
+					Output: func(stdout string, info string, t *testing.T) {
+						containersDirs, err := os.ReadDir(data.Get(containersPathKey))
+						assert.NilError(t, err)
+						assert.Equal(t, len(containersDirs), 0)
+
+						etchostsDirs, err := os.ReadDir(data.Get(etchostsPathKey))
+						assert.NilError(t, err)
+						assert.Equal(t, len(etchostsDirs), 0)
+					},
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
 }

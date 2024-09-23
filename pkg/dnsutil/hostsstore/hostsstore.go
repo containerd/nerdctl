@@ -89,7 +89,7 @@ type Store interface {
 	Release(id string) error
 	Update(id, newName string) error
 	HostsPath(id string) (location string, err error)
-	DeallocHostsFile(id string) (err error)
+	Delete(id string) (err error)
 	AllocHostsFile(id string, content []byte) (location string, err error)
 }
 
@@ -185,14 +185,13 @@ func (x *hostsStore) AllocHostsFile(id string, content []byte) (location string,
 	return x.safeStore.Location(id, hostsFile)
 }
 
-func (x *hostsStore) DeallocHostsFile(id string) (err error) {
-	defer func() {
-		if err != nil {
-			err = errors.Join(ErrHostsStore, err)
-		}
-	}()
+func (x *hostsStore) Delete(id string) (err error) {
+	err = x.safeStore.WithLock(func() error { return x.safeStore.Delete(id) })
+	if err != nil {
+		err = errors.Join(ErrHostsStore, err)
+	}
 
-	return x.safeStore.WithLock(func() error { return x.safeStore.Delete(id, hostsFile) })
+	return err
 }
 
 func (x *hostsStore) HostsPath(id string) (location string, err error) {

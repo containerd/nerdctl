@@ -46,6 +46,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
+	"github.com/containerd/nerdctl/v2/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/v2/pkg/flagutil"
 	"github.com/containerd/nerdctl/v2/pkg/idgen"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
@@ -118,7 +119,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 
 	platformOpts, err := setPlatformOptions(ctx, client, id, netManager.NetworkOptions().UTSNamespace, &internalLabels, options)
 	if err != nil {
-		return nil, nil, err
+		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 	}
 	opts = append(opts, platformOpts...)
 
@@ -130,7 +131,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		}
 		ocispecPlatforms, err := platformutil.NewOCISpecPlatformSlice(false, platformSS)
 		if err != nil {
-			return nil, nil, err
+			return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 		}
 		rawRef := args[0]
 
@@ -141,13 +142,13 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 
 		ensuredImage, err = image.EnsureImage(ctx, client, rawRef, options.ImagePullOpt)
 		if err != nil {
-			return nil, nil, err
+			return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 		}
 	}
 
 	rootfsOpts, rootfsCOpts, err := generateRootfsOpts(args, id, ensuredImage, options)
 	if err != nil {
-		return nil, nil, err
+		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 	}
 	opts = append(opts, rootfsOpts...)
 	cOpts = append(cOpts, rootfsCOpts...)
@@ -158,12 +159,12 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 
 	envs, err := flagutil.MergeEnvFileAndOSEnv(options.EnvFile, options.Env)
 	if err != nil {
-		return nil, nil, err
+		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 	}
 
 	if options.Interactive {
 		if options.Detach {
-			return nil, nil, errors.New("currently flag -i and -d cannot be specified together (FIXME)")
+			return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), errors.New("currently flag -i and -d cannot be specified together (FIXME)")
 		}
 	}
 
@@ -174,7 +175,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	var mountOpts []oci.SpecOpts
 	mountOpts, internalLabels.anonVolumes, internalLabels.mountPoints, err = generateMountOpts(ctx, client, ensuredImage, volStore, options)
 	if err != nil {
-		return nil, nil, err
+		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 	}
 	opts = append(opts, mountOpts...)
 
@@ -186,30 +187,30 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	// 3, nerdctl start/restart demo
 	logConfig, err := generateLogConfig(dataStore, id, options.LogDriver, options.LogOpt, options.GOptions.Namespace)
 	if err != nil {
-		return nil, nil, err
+		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 	}
 	internalLabels.logURI = logConfig.LogURI
 
 	restartOpts, err := generateRestartOpts(ctx, client, options.Restart, logConfig.LogURI, options.InRun)
 	if err != nil {
-		return nil, nil, err
+		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 	}
 	cOpts = append(cOpts, restartOpts...)
 
 	if err = netManager.VerifyNetworkOptions(ctx); err != nil {
-		return nil, nil, fmt.Errorf("failed to verify networking settings: %s", err)
+		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), fmt.Errorf("failed to verify networking settings: %s", err)
 	}
 
 	netOpts, netNewContainerOpts, err := netManager.ContainerNetworkingOpts(ctx, id)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate networking spec options: %s", err)
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), fmt.Errorf("failed to generate networking spec options: %s", err)
 	}
 	opts = append(opts, netOpts...)
 	cOpts = append(cOpts, netNewContainerOpts...)
 
 	netLabelOpts, err := netManager.InternalNetworkingOptionLabels(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate internal networking labels: %s", err)
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), fmt.Errorf("failed to generate internal networking labels: %s", err)
 	}
 
 	envs = append(envs, "HOSTNAME="+netLabelOpts.Hostname)
@@ -230,37 +231,37 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	if runtime.GOOS != "windows" {
 		hookOpt, err := withNerdctlOCIHook(options.NerdctlCmd, options.NerdctlArgs)
 		if err != nil {
-			return nil, nil, err
+			return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 		}
 		opts = append(opts, hookOpt)
 	}
 
 	uOpts, err := generateUserOpts(options.User)
 	if err != nil {
-		return nil, nil, err
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
 	opts = append(opts, uOpts...)
 	gOpts, err := generateGroupsOpts(options.GroupAdd)
 	if err != nil {
-		return nil, nil, err
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
 	opts = append(opts, gOpts...)
 
 	umaskOpts, err := generateUmaskOpts(options.Umask)
 	if err != nil {
-		return nil, nil, err
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
 	opts = append(opts, umaskOpts...)
 
 	rtCOpts, err := generateRuntimeCOpts(options.GOptions.CgroupManager, options.Runtime)
 	if err != nil {
-		return nil, nil, err
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
 	cOpts = append(cOpts, rtCOpts...)
 
 	lCOpts, err := withContainerLabels(options.Label, options.LabelFile, ensuredImage)
 	if err != nil {
-		return nil, nil, err
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
 	cOpts = append(cOpts, lCOpts...)
 
@@ -276,10 +277,10 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	if options.Name != "" {
 		containerNameStore, err = namestore.New(dataStore, options.GOptions.Namespace)
 		if err != nil {
-			return nil, nil, err
+			return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 		}
 		if err := containerNameStore.Acquire(options.Name, id); err != nil {
-			return nil, nil, err
+			return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 		}
 	}
 	internalLabels.name = options.Name
@@ -287,14 +288,14 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	internalLabels.extraHosts = strutil.DedupeStrSlice(netManager.NetworkOptions().AddHost)
 	for i, host := range internalLabels.extraHosts {
 		if _, err := dockercliopts.ValidateExtraHost(host); err != nil {
-			return nil, nil, err
+			return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 		}
 		parts := strings.SplitN(host, ":", 2)
 		// If the IP Address is a string called "host-gateway", replace this value with the IP address stored
 		// in the daemon level HostGateway IP config variable.
 		if len(parts) == 2 && parts[1] == dockeropts.HostGatewayName {
 			if options.GOptions.HostGatewayIP == "" {
-				return nil, nil, fmt.Errorf("unable to derive the IP value for host-gateway")
+				return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), fmt.Errorf("unable to derive the IP value for host-gateway")
 			}
 			parts[1] = options.GOptions.HostGatewayIP
 			internalLabels.extraHosts[i] = fmt.Sprintf(`%s:%s`, parts[0], parts[1])
@@ -304,7 +305,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	// TODO: abolish internal labels and only use annotations
 	ilOpt, err := withInternalLabels(internalLabels)
 	if err != nil {
-		return nil, nil, err
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
 	cOpts = append(cOpts, ilOpt)
 
@@ -815,6 +816,29 @@ func generateLogConfig(dataStore string, id string, logDriver string, logOpt []s
 		}
 	}
 	return logConfig, nil
+}
+
+func generateRemoveStateDirFunc(ctx context.Context, id string, internalLabels internalLabels) func() {
+	return func() {
+		if rmErr := os.RemoveAll(internalLabels.stateDir); rmErr != nil {
+			log.G(ctx).WithError(rmErr).Warnf("failed to remove container %q state dir %q", id, internalLabels.stateDir)
+		}
+	}
+}
+
+func generateRemoveOrphanedDirsFunc(ctx context.Context, id, dataStore string, internalLabels internalLabels) func() {
+	return func() {
+		if rmErr := os.RemoveAll(internalLabels.stateDir); rmErr != nil {
+			log.G(ctx).WithError(rmErr).Warnf("failed to remove container %q state dir %q", id, internalLabels.stateDir)
+		}
+
+		hs, err := hostsstore.New(dataStore, internalLabels.namespace)
+		if err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to instantiate hostsstore for %q", internalLabels.namespace)
+		} else if err = hs.Delete(id); err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to remove an etchosts directory for container %q", id)
+		}
+	}
 }
 
 func generateGcFunc(ctx context.Context, container containerd.Container, ns, id, name, dataStore string, containerErr error, containerNameStore namestore.NameStore, netManager containerutil.NetworkOptionsManager, internalLabels internalLabels) func() {
