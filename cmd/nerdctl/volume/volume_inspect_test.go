@@ -19,266 +19,185 @@ package volume
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
-	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/errdefs"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func createFileWithSize(base *testutil.Base, vol string, size int64) {
-	v := base.InspectVolume(vol)
+func createFileWithSize(mountPoint string, size int64) error {
 	token := make([]byte, size)
 	_, _ = rand.Read(token)
-	err := os.WriteFile(filepath.Join(v.Mountpoint, "test-file"), token, 0644)
-	assert.NilError(base.T, err)
+	err := os.WriteFile(filepath.Join(mountPoint, "test-file"), token, 0644)
+	return err
 }
 
 func TestVolumeInspect(t *testing.T) {
-	t.Parallel()
-
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
+	nerdtest.Setup()
 
 	var size int64 = 1028
 
-	malformed := errdefs.ErrInvalidArgument.Error()
-	notFound := errdefs.ErrNotFound.Error()
-	requireArg := "requires at least 1 arg"
-	if base.Target == testutil.Docker {
-		malformed = "no such volume"
-		notFound = "no such volume"
-	}
+	tc := &test.Case{
+		Description: "Volume inspect",
+		Setup: func(data test.Data, helpers test.Helpers) {
+			data.Set("volprefix", data.Identifier())
+			helpers.Ensure("volume", "create", data.Identifier())
+			helpers.Ensure("volume", "create", "--label", "foo=fooval", "--label", "bar=barval", data.Identifier()+"-second")
+			// Obviously note here that if inspect code gets totally hosed, this entire suite will
+			// probably fail right here on the Setup instead of actually testing something
+			vol := nerdtest.InspectVolume(helpers, data.Identifier())
+			err := createFileWithSize(vol.Mountpoint, size)
+			assert.NilError(t, err, "File creation failed")
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("volume", "rm", "-f", data.Identifier())
+			helpers.Anyhow("volume", "rm", "-f", data.Identifier()+"-second")
+		},
 
-	tearUp := func(t *testing.T) {
-		base.Cmd("volume", "create", tID).AssertOK()
-		base.Cmd("volume", "create", "--label", "foo=fooval", "--label", "bar=barval", tID+"-second").AssertOK()
-
-		// Obviously note here that if inspect code gets totally hosed, this entire suite will
-		// probably fail right here on the tearUp instead of actually testing something
-		createFileWithSize(base, tID, size)
-	}
-
-	tearDown := func(t *testing.T) {
-		base.Cmd("volume", "rm", "-f", tID).Run()
-		base.Cmd("volume", "rm", "-f", tID+"-second").Run()
-	}
-
-	tearDown(t)
-	t.Cleanup(func() {
-		tearDown(t)
-	})
-	tearUp(t)
-
-	testCases := []struct {
-		description        string
-		command            func(tID string) *testutil.Cmd
-		tearUp             func(tID string)
-		tearDown           func(tID string)
-		expected           func(tID string) icmd.Expected
-		inspect            func(t *testing.T, stdout string, stderr string)
-		dockerIncompatible bool
-	}{
-		{
-			description: "arg missing should fail",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect")
+		SubTests: []*test.Case{
+			{
+				Description: "arg missing should fail",
+				Command:     test.RunCommand("volume", "inspect"),
+				Expected:    test.Expects(1, []error{errors.New("requires at least 1 arg")}, nil),
 			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 1,
-					Err:      requireArg,
-				}
+			{
+				Description: "invalid identifier should fail",
+				Command:     test.RunCommand("volume", "inspect", "∞"),
+				Expected:    test.Expects(1, []error{errdefs.ErrInvalidArgument}, nil),
 			},
-		},
-		{
-			description: "invalid identifier should fail",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", "∞")
+			{
+				Description: "non existent volume should fail",
+				Command:     test.RunCommand("volume", "inspect", "doesnotexist"),
+				Expected:    test.Expects(1, []error{errdefs.ErrNotFound}, nil),
 			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 1,
-					Err:      malformed,
-				}
+			{
+				Description: "success",
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					return helpers.Command("volume", "inspect", data.Get("volprefix"))
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.Contains(data.Get("volprefix")),
+							func(stdout string, info string, t *testing.T) {
+								var dc []native.Volume
+								if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
+									t.Fatal(err)
+								}
+								assert.Assert(t, len(dc) == 1, fmt.Sprintf("one result, not %d", len(dc))+info)
+								assert.Assert(t, dc[0].Name == data.Get("volprefix"), fmt.Sprintf("expected name to be %q (was %q)", data.Get("volprefix"), dc[0].Name)+info)
+								assert.Assert(t, dc[0].Labels == nil, fmt.Sprintf("expected labels to be nil and were %v", dc[0].Labels)+info)
+							},
+						),
+					}
+				},
 			},
-		},
-		{
-			description: "non existent volume should fail",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", "doesnotexist")
+			{
+				Description: "inspect labels",
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					return helpers.Command("volume", "inspect", data.Get("volprefix")+"-second")
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.Contains(data.Get("volprefix")),
+							func(stdout string, info string, t *testing.T) {
+								var dc []native.Volume
+								if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
+									t.Fatal(err)
+								}
+								labels := *dc[0].Labels
+								assert.Assert(t, len(labels) == 2, fmt.Sprintf("two results, not %d", len(labels)))
+								assert.Assert(t, labels["foo"] == "fooval", fmt.Sprintf("label foo should be fooval, not %s", labels["foo"]))
+								assert.Assert(t, labels["bar"] == "barval", fmt.Sprintf("label bar should be barval, not %s", labels["bar"]))
+							},
+						),
+					}
+				},
 			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 1,
-					Err:      notFound,
-				}
+			{
+				Description: "inspect size",
+				Require:     test.Not(nerdtest.Docker),
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					return helpers.Command("volume", "inspect", "--size", data.Get("volprefix"))
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.Contains(data.Get("volprefix")),
+							func(stdout string, info string, t *testing.T) {
+								var dc []native.Volume
+								if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
+									t.Fatal(err)
+								}
+								assert.Assert(t, dc[0].Size == size, fmt.Sprintf("expected size to be %d (was %d)", size, dc[0].Size))
+							},
+						),
+					}
+				},
 			},
-		},
-		{
-			description: "success",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", tID)
+			{
+				Description: "multi success",
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					return helpers.Command("volume", "inspect", data.Get("volprefix"), data.Get("volprefix")+"-second")
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.Contains(data.Get("volprefix")),
+							test.Contains(data.Get("volprefix")+"-second"),
+							func(stdout string, info string, t *testing.T) {
+								var dc []native.Volume
+								if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
+									t.Fatal(err)
+								}
+								assert.Assert(t, len(dc) == 2, fmt.Sprintf("two results, not %d", len(dc)))
+								assert.Assert(t, dc[0].Name == data.Get("volprefix"), fmt.Sprintf("expected name to be %q (was %q)", data.Get("volprefix"), dc[0].Name))
+								assert.Assert(t, dc[1].Name == data.Get("volprefix")+"-second", fmt.Sprintf("expected name to be %q (was %q)", data.Get("volprefix")+"-second", dc[1].Name))
+							},
+						),
+					}
+				},
 			},
-			tearDown: func(tID string) {
-				base.Cmd("volume", "rm", "-f", tID)
+			{
+				Description: "part success multi",
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					return helpers.Command("volume", "inspect", "invalid∞", "nonexistent", data.Get("volprefix"))
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						ExitCode: 1,
+						Errors:   []error{errdefs.ErrNotFound, errdefs.ErrInvalidArgument},
+						Output: test.All(
+							test.Contains(data.Get("volprefix")),
+							func(stdout string, info string, t *testing.T) {
+								var dc []native.Volume
+								if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
+									t.Fatal(err)
+								}
+								assert.Assert(t, len(dc) == 1, fmt.Sprintf("one result, not %d", len(dc)))
+								assert.Assert(t, dc[0].Name == data.Get("volprefix"), fmt.Sprintf("expected name to be %q (was %q)", data.Get("volprefix"), dc[0].Name))
+							},
+						),
+					}
+				},
 			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 0,
-					Out:      tID,
-				}
-			},
-			inspect: func(t *testing.T, stdout string, stderr string) {
-				var dc []native.Volume
-				if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
-					t.Fatal(err)
-				}
-				assert.Assert(t, len(dc) == 1, fmt.Sprintf("one result, not %d", len(dc)))
-				assert.Assert(t, dc[0].Name == tID, fmt.Sprintf("expected name to be %q (was %q)", tID, dc[0].Name))
-				assert.Assert(t, dc[0].Labels == nil, fmt.Sprintf("expected labels to be nil and were %v", dc[0].Labels))
-			},
-		},
-		{
-			description: "inspect labels",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", tID+"-second")
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 0,
-					Out:      tID,
-				}
-			},
-			inspect: func(t *testing.T, stdout string, stderr string) {
-				var dc []native.Volume
-				if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
-					t.Fatal(err)
-				}
-
-				labels := *dc[0].Labels
-				assert.Assert(t, len(labels) == 2, fmt.Sprintf("two results, not %d", len(labels)))
-				assert.Assert(t, labels["foo"] == "fooval", fmt.Sprintf("label foo should be fooval, not %s", labels["foo"]))
-				assert.Assert(t, labels["bar"] == "barval", fmt.Sprintf("label bar should be barval, not %s", labels["bar"]))
-			},
-		},
-		{
-			description: "inspect size",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", "--size", tID)
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 0,
-					Out:      tID,
-				}
-			},
-			inspect: func(t *testing.T, stdout string, stderr string) {
-				var dc []native.Volume
-				if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
-					t.Fatal(err)
-				}
-				assert.Assert(t, dc[0].Size == size, fmt.Sprintf("expected size to be %d (was %d)", size, dc[0].Size))
-			},
-			dockerIncompatible: true,
-		},
-		{
-			description: "multi success",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", tID, tID+"-second")
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 0,
-				}
-			},
-			inspect: func(t *testing.T, stdout string, stderr string) {
-				var dc []native.Volume
-				if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
-					t.Fatal(err)
-				}
-				assert.Assert(t, len(dc) == 2, fmt.Sprintf("two results, not %d", len(dc)))
-				assert.Assert(t, dc[0].Name == tID, fmt.Sprintf("expected name to be %q (was %q)", tID, dc[0].Name))
-				assert.Assert(t, dc[1].Name == tID+"-second", fmt.Sprintf("expected name to be %q (was %q)", tID+"-second", dc[1].Name))
-			},
-		},
-		{
-			description: "part success multi",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", "invalid∞", "nonexistent", tID)
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 1,
-					Out:      tID,
-					Err:      notFound,
-				}
-			},
-			inspect: func(t *testing.T, stdout string, stderr string) {
-				assert.Assert(t, strings.Contains(stderr, notFound))
-				assert.Assert(t, strings.Contains(stderr, malformed))
-
-				var dc []native.Volume
-				if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
-					t.Fatal(err)
-				}
-				assert.Assert(t, len(dc) == 1, fmt.Sprintf("one result, not %d", len(dc)))
-				assert.Assert(t, dc[0].Name == tID, fmt.Sprintf("expected name to be %q (was %q)", tID, dc[0].Name))
-			},
-		},
-		{
-			description: "multi failure",
-			command: func(tID string) *testutil.Cmd {
-				return base.Cmd("volume", "inspect", "invalid∞", "nonexistent")
-			},
-			expected: func(tID string) icmd.Expected {
-				return icmd.Expected{
-					ExitCode: 1,
-				}
-			},
-			inspect: func(t *testing.T, stdout string, stderr string) {
-				assert.Assert(t, strings.Contains(stderr, notFound))
-				assert.Assert(t, strings.Contains(stderr, malformed))
+			{
+				Description: "multi failure",
+				Command:     test.RunCommand("volume", "inspect", "invalid∞", "nonexistent"),
+				Expected:    test.Expects(1, []error{errdefs.ErrNotFound, errdefs.ErrInvalidArgument}, nil),
 			},
 		},
 	}
 
-	for _, test := range testCases {
-		currentTest := test
-		t.Run(currentTest.description, func(tt *testing.T) {
-			if currentTest.dockerIncompatible {
-				testutil.DockerIncompatible(tt)
-			}
-
-			tt.Parallel()
-
-			// We use the main test tID here
-			if currentTest.tearDown != nil {
-				currentTest.tearDown(tID)
-				tt.Cleanup(func() {
-					currentTest.tearDown(tID)
-				})
-			}
-			if currentTest.tearUp != nil {
-				currentTest.tearUp(tID)
-			}
-
-			// See https://github.com/containerd/nerdctl/issues/3130
-			// We run first to capture the underlying icmd command and output
-			cmd := currentTest.command(tID)
-			res := cmd.Run()
-			cmd.Assert(currentTest.expected(tID))
-			if currentTest.inspect != nil {
-				currentTest.inspect(tt, res.Stdout(), res.Stderr())
-			}
-		})
-	}
+	tc.Run(t)
 }

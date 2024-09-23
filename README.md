@@ -253,7 +253,7 @@ Using `go install github.com/containerd/nerdctl/v2/cmd/nerdctl` is possible, but
 
 ### Testing
 
-See [testing nerdctl](docs/dev/testing.md).
+See [testing nerdctl](docs/testing/README.md).
 
 ### Contributing to nerdctl
 

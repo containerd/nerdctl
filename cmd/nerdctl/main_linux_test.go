@@ -20,17 +20,39 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 // TestIssue108 tests https://github.com/containerd/nerdctl/issues/108
 // ("`nerdctl run --net=host -it` fails while `nerdctl run -it --net=host` works")
 func TestIssue108(t *testing.T) {
-	base := testutil.NewBase(t)
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	unbuffer := []string{"unbuffer"}
-	base.CmdWithHelper(unbuffer, "run", "-it", "--rm", "--net=host", testutil.AlpineImage,
-		"echo", "this was always working").AssertOK()
-	base.CmdWithHelper(unbuffer, "run", "--rm", "--net=host", "-it", testutil.AlpineImage,
-		"echo", "this was not working due to issue #108").AssertOK()
+	nerdtest.Setup()
+
+	testGroup := &test.Group{
+		{
+			Description: "-it --net=host",
+			Require:     test.Binary("unbuffer"),
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.
+					Command("run", "-it", "--rm", "--net=host", testutil.AlpineImage, "echo", "this was always working").
+					WithWrapper("unbuffer")
+			},
+			// Note: unbuffer will merge stdout and stderr, preventing exact match here
+			Expected: test.Expects(0, nil, test.Contains("this was always working")),
+		},
+		{
+			Description: "--net=host -it",
+			Require:     test.Binary("unbuffer"),
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.
+					Command("run", "--rm", "--net=host", "-it", testutil.AlpineImage, "echo", "this was not working due to issue #108").
+					WithWrapper("unbuffer")
+			},
+			// Note: unbuffer will merge stdout and stderr, preventing exact match here
+			Expected: test.Expects(0, nil, test.Contains("this was not working due to issue #108")),
+		},
+	}
+
+	testGroup.Run(t)
 }

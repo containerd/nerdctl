@@ -1,5 +1,10 @@
 # Testing nerdctl
 
+This document covers basic usage of nerdctl testing tasks, and generic recommendations
+and principles about writing tests.
+
+For more comprehensive information about nerdctl test tools, see [tools.md](tools.md).
+
 ## Lint
 
 ```
