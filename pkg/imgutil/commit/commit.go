@@ -44,6 +44,8 @@ import (
 	"github.com/containerd/log"
 	"github.com/containerd/platforms"
 
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	imgutil "github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
@@ -66,8 +68,29 @@ var (
 	emptyDigest  = digest.Digest("")
 )
 
-func Commit(ctx context.Context, client *containerd.Client, container containerd.Container, opts *Opts) (digest.Digest, error) {
-	lf, err := containerutil.Lock(ctx, container)
+func Commit(ctx context.Context, client *containerd.Client, container containerd.Container, opts *Opts, globalOptions types.GlobalCommandOptions) (digest.Digest, error) {
+	// Get labels
+	containerLabels, err := container.Labels(ctx)
+	if err != nil {
+		return emptyDigest, err
+	}
+
+	// Get datastore
+	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
+	if err != nil {
+		return emptyDigest, err
+	}
+
+	// Ensure we do have a stateDir label
+	stateDir := containerLabels[labels.StateDir]
+	if stateDir == "" {
+		stateDir, err = containerutil.ContainerStateDirPath(globalOptions.Namespace, dataStore, container.ID())
+		if err != nil {
+			return emptyDigest, err
+		}
+	}
+
+	lf, err := containerutil.Lock(stateDir)
 	if err != nil {
 		return emptyDigest, err
 	}

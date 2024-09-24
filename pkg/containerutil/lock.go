@@ -17,27 +17,12 @@
 package containerutil
 
 import (
-	"context"
-	"errors"
 	"path/filepath"
 
-	"github.com/containerd/containerd/v2/client"
-
-	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/store"
 )
 
-func Lock(ctx context.Context, c client.Container) (store.Store, error) {
-	containerLabels, err := c.Labels(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	stateDir := containerLabels[labels.StateDir]
-	if stateDir == "" {
-		return nil, errors.New("container is missing statedir label")
-	}
-
+func Lock(stateDir string) (store.Store, error) {
 	stor, err := store.New(filepath.Join(stateDir, "oplock"), 0, 0)
 	if err != nil {
 		return nil, err
