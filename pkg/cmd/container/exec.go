@@ -133,12 +133,9 @@ func execActionWithContainer(ctx context.Context, client *containerd.Client, con
 		return nil
 	}
 	status := <-statusC
-	code, _, err := status.Result()
+	_, _, err := status.Result()
 	if err != nil {
 		return err
-	}
-	if code != 0 {
-		return fmt.Errorf("exec failed with exit code %d", code)
 	}
 	return nil
 }
