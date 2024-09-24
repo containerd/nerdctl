@@ -20,7 +20,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"os"
 
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/containerd/v2/core/remotes/docker"
@@ -57,24 +56,9 @@ func WithSkipVerifyCerts(b bool) Opt {
 
 // WithHostsDirs specifies directories like /etc/containerd/certs.d and /etc/docker/certs.d
 func WithHostsDirs(orig []string) Opt {
-	var ss []string
-	if len(orig) == 0 {
-		log.L.Debug("no hosts dir was specified")
-	}
-	for _, v := range orig {
-		if _, err := os.Stat(v); err == nil {
-			log.L.Debugf("Found hosts dir %q", v)
-			ss = append(ss, v)
-		} else {
-			if errors.Is(err, os.ErrNotExist) {
-				log.L.WithError(err).Debugf("Ignoring hosts dir %q", v)
-			} else {
-				log.L.WithError(err).Warnf("Ignoring hosts dir %q", v)
-			}
-		}
-	}
+	validDirs := validateDirectories(orig)
 	return func(o *opts) {
-		o.hostsDirs = ss
+		o.hostsDirs = validDirs
 	}
 }
 
@@ -96,14 +80,19 @@ func NewHostOptions(ctx context.Context, refHostname string, optFuncs ...Opt) (*
 	}
 	var ho dockerconfig.HostOptions
 
-	ho.HostDir = func(s string) (string, error) {
-		for _, hostsDir := range o.hostsDirs {
-			found, err := dockerconfig.HostDirFromRoot(hostsDir)(s)
-			if (err != nil && !errdefs.IsNotFound(err)) || (found != "") {
-				return found, err
-			}
+	ho.HostDir = func(hostURL string) (string, error) {
+		regURL, err := Parse(hostURL)
+		if err != nil {
+			return "", err
 		}
-		return "", nil
+		dir, err := hostDirsFromRoot(regURL, o.hostsDirs)
+		if err != nil {
+			if errors.Is(err, errdefs.ErrNotFound) {
+				err = nil
+			}
+			return "", err
+		}
+		return dir, nil
 	}
 
 	if o.authCreds != nil {
