@@ -107,8 +107,23 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		return err
 	}
 
+	// Get datastore
+	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
+	if err != nil {
+		return err
+	}
+
+	// Ensure we do have a stateDir label
+	stateDir := containerLabels[labels.StateDir]
+	if stateDir == "" {
+		stateDir, err = containerutil.ContainerStateDirPath(globalOptions.Namespace, dataStore, c.ID())
+		if err != nil {
+			return err
+		}
+	}
+
 	// Lock the container state
-	lf, err := containerutil.Lock(ctx, c)
+	lf, err := containerutil.Lock(stateDir)
 	if err != nil {
 		return err
 	}
@@ -132,11 +147,7 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 	if err != nil {
 		return err
 	}
-	// Get datastore
-	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
-	if err != nil {
-		return err
-	}
+
 	// Get namestore
 	nameStore, err := namestore.New(dataStore, containerNamespace)
 	if err != nil {

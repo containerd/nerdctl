@@ -57,7 +57,7 @@ func Commit(ctx context.Context, client *containerd.Client, rawRef string, req s
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			imageID, err := commit.Commit(ctx, client, found.Container, opts)
+			imageID, err := commit.Commit(ctx, client, found.Container, opts, options.GOptions)
 			if err != nil {
 				return err
 			}
