@@ -101,20 +101,34 @@ func Remove(ctx context.Context, client *containerd.Client, containers []string,
 // - then and ONLY then, on a successful container remove, clean things-up on our side (volume store, etcetera)
 // If you do need to add more cleanup, please do so at the bottom of the defer function
 func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions types.GlobalCommandOptions, force bool, removeAnonVolumes bool, client *containerd.Client) (retErr error) {
-	// defer the storage of remove error in the dedicated label
+	// Get labels
+	containerLabels, err := c.Labels(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Lock the container state
+	lf, err := containerutil.Lock(ctx, c)
+	if err != nil {
+		return err
+	}
+
 	defer func() {
+		// If there was an error, update the label
+		// Note that we will (obviously) not store any unlocking or statedir removal error from below
 		if retErr != nil {
 			containerutil.UpdateErrorLabel(ctx, c, retErr)
+		}
+		// Release the lock
+		retErr = errors.Join(lf.Release(), retErr)
+		// Note: technically, this is racy...
+		if retErr == nil {
+			retErr = os.RemoveAll(containerLabels[labels.StateDir])
 		}
 	}()
 
 	// Get namespace
 	containerNamespace, err := namespaces.NamespaceRequired(ctx)
-	if err != nil {
-		return err
-	}
-	// Get labels
-	containerLabels, err := c.Labels(ctx)
 	if err != nil {
 		return err
 	}
@@ -139,9 +153,8 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		return err
 	}
 
-	// Get the container id, stateDir and name
+	// Get the container id and name
 	id := c.ID()
-	stateDir := containerLabels[labels.StateDir]
 	name := containerLabels[labels.Name]
 
 	// This will evaluate retErr to decide if we proceed with removal or not
@@ -196,11 +209,6 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		// Cleanup IPC - soft failure
 		if err = ipcutil.CleanUp(ipc); err != nil {
 			log.G(ctx).WithError(err).Warnf("failed to cleanup IPC for container %q", id)
-		}
-
-		// Remove state dir - soft failure
-		if err = os.RemoveAll(stateDir); err != nil {
-			log.G(ctx).WithError(err).Warnf("failed to remove container state dir %s", stateDir)
 		}
 
 		// Enforce release name here in case the poststop hook name release fails - soft failure

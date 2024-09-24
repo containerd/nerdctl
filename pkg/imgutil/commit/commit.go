@@ -44,6 +44,7 @@ import (
 	"github.com/containerd/log"
 	"github.com/containerd/platforms"
 
+	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	imgutil "github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
@@ -66,6 +67,12 @@ var (
 )
 
 func Commit(ctx context.Context, client *containerd.Client, container containerd.Container, opts *Opts) (digest.Digest, error) {
+	lf, err := containerutil.Lock(ctx, container)
+	if err != nil {
+		return emptyDigest, err
+	}
+	defer lf.Release()
+
 	id := container.ID()
 	info, err := container.Info(ctx)
 	if err != nil {

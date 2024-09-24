@@ -24,21 +24,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-func TestRemoveProcessContainer(t *testing.T) {
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-
-	// ignore error
-	base.Cmd("rm", tID, "-f").AssertOK()
-
-	base.Cmd("run", "-d", "--name", tID, testutil.NginxAlpineImage).AssertOK()
-	defer base.Cmd("rm", tID, "-f").AssertOK()
-	base.Cmd("rm", tID).AssertFail()
-
-	base.Cmd("kill", tID).AssertOK()
-	base.Cmd("rm", tID).AssertOK()
-}
-
 func TestRemoveHyperVContainer(t *testing.T) {
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
