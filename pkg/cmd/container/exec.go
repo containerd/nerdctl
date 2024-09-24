@@ -133,7 +133,7 @@ func execActionWithContainer(ctx context.Context, client *containerd.Client, con
 		return nil
 	}
 	status := <-statusC
-	_, _, err := status.Result()
+	_, _, err = status.Result()
 	if err != nil {
 		return err
 	}
