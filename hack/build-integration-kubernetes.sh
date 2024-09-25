@@ -23,6 +23,7 @@ readonly root
 
 GO_VERSION=1.23
 KIND_VERSION=v0.24.0
+CNI_PLUGINS_VERSION=v1.5.1
 
 [ "$(uname -m)" == "aarch64" ] && GOARCH=arm64 || GOARCH=amd64
 
@@ -51,6 +52,19 @@ install::kubectl(){
 
   http::get "$temp"/kubectl "https://storage.googleapis.com/kubernetes-release/release/$version/bin/linux/${GOARCH:-amd64}/kubectl"
   host::install "$temp"/kubectl
+}
+
+install::cni(){
+  local version="$1"
+  local temp
+  temp="$(fs::mktemp "install")"
+
+  http::get "$temp"/cni.tgz "https://github.com/containernetworking/plugins/releases/download/$version/cni-plugins-${GOOS:-linux}-${GOARCH:-amd64}-$version.tgz"
+  sudo mkdir -p /opt/cni/bin
+  sudo tar xzf "$temp"/cni.tgz -C /opt/cni/bin
+  mkdir -p ~/opt/cni/bin
+  tar xzf "$temp"/cni.tgz -C ~/opt/cni/bin
+  rm "$temp"/cni.tgz
 }
 
 exec::kind(){
@@ -84,6 +98,9 @@ main(){
   make binaries
   PATH=$(pwd)/_output:"$PATH"
   export PATH
+
+  # Add CNI plugins
+  install::cni "$CNI_PLUGINS_VERSION"
 
   # Hack to get go into kind control plane
   exec::nerdctl rm -f go-kind 2>/dev/null || true

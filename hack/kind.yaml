@@ -10,3 +10,5 @@ nodes:
         containerPath: /usr/local/go
       - hostPath: .
         containerPath: /nerdctl-source
+      - hostPath: /opt/cni
+        containerPath: /opt/cni
