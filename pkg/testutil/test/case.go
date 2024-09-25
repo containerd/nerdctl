@@ -133,7 +133,7 @@ func (test *Case) seal(t *testing.T) {
 
 	// Check the requirements
 	if test.Require != nil {
-		test.Require(test.Data, t)
+		test.Require(test.Data, true, t)
 	}
 }
 

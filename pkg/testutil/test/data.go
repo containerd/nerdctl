@@ -19,6 +19,7 @@ package test
 import (
 	"crypto/sha256"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -116,17 +117,26 @@ func (dt *data) getConfig() map[ConfigKey]ConfigValue {
 	return dt.config
 }
 
-func defaultIdentifierHashing(name string) string {
-	s := strings.ReplaceAll(name, " ", "_")
-	s = strings.ReplaceAll(s, "/", "_")
-	s = strings.ReplaceAll(s, "-", "_")
-	s = strings.ReplaceAll(s, ",", "_")
-	s = strings.ToLower(s)
-	if len(s) > 76 {
-		s = fmt.Sprintf("%x", sha256.Sum256([]byte(s)))
+func defaultIdentifierHashing(names ...string) string {
+	// Notes: identifier MAY be used for namespaces, image names, etc.
+	// So, the rules are stringent on what it can contain.
+	replaceWith := []byte("-")
+	name := strings.ToLower(strings.Join(names, string(replaceWith)))
+	// Ensure we have a unique identifier despite characters replacements (well, as unique as the names collection being passed)
+	signature := fmt.Sprintf("%x", sha256.Sum256([]byte(name)))[0:8]
+	// Make sure we do not use any unsafe characters
+	safeName := regexp.MustCompile(`[^a-z0-9-]+`)
+	// And we avoid repeats of the separator
+	noRepeat := regexp.MustCompile(fmt.Sprintf(`[%s]{2,}`, replaceWith))
+	sn := safeName.ReplaceAll([]byte(name), replaceWith)
+	sn = noRepeat.ReplaceAll(sn, replaceWith)
+	// Do not allow trailing or leading dash (as that may stutter)
+	name = strings.Trim(string(sn), string(replaceWith))
+	// Ensure we will never go above 76 characters in length (with signature)
+	if len(name) > 67 {
+		name = name[0:67]
 	}
-
-	return s
+	return name + "-" + signature
 }
 
 // TODO: allow to pass custom hashing methods?

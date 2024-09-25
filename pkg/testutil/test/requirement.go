@@ -23,11 +23,11 @@ import (
 	"testing"
 )
 
-func MakeRequirement(fn func(data Data) (bool, string)) Requirement {
-	return func(data Data, t *testing.T) (bool, string) {
-		ret, mess := fn(data)
+func MakeRequirement(fn func(data Data, t *testing.T) (bool, string)) Requirement {
+	return func(data Data, skip bool, t *testing.T) (bool, string) {
+		ret, mess := fn(data, t)
 
-		if t != nil && !ret {
+		if skip && !ret {
 			t.Helper()
 			t.Skipf("Test skipped as %s", mess)
 		}
@@ -37,7 +37,7 @@ func MakeRequirement(fn func(data Data) (bool, string)) Requirement {
 }
 
 func Binary(name string) Requirement {
-	return MakeRequirement(func(data Data) (ret bool, mess string) {
+	return MakeRequirement(func(data Data, t *testing.T) (ret bool, mess string) {
 		mess = fmt.Sprintf("executable %q has been found in PATH", name)
 		ret = true
 		if _, err := exec.LookPath(name); err != nil {
@@ -50,8 +50,8 @@ func Binary(name string) Requirement {
 }
 
 func OS(os string) Requirement {
-	return MakeRequirement(func(data Data) (ret bool, mess string) {
-		mess = fmt.Sprintf("current operating is %q", runtime.GOOS)
+	return MakeRequirement(func(data Data, t *testing.T) (ret bool, mess string) {
+		mess = fmt.Sprintf("current operating system is %q", runtime.GOOS)
 		ret = true
 		if runtime.GOOS != os {
 			ret = false
@@ -61,49 +61,38 @@ func OS(os string) Requirement {
 	})
 }
 
-var Windows = MakeRequirement(func(data Data) (ret bool, mess string) {
-	ret = runtime.GOOS == "windows"
-	if ret {
-		mess = "operating system is Windows"
-	} else {
-		mess = "operating system is not Windows"
-	}
-	return ret, mess
-})
+func Arch(arch string) Requirement {
+	return MakeRequirement(func(data Data, t *testing.T) (ret bool, mess string) {
+		mess = fmt.Sprintf("current architecture is %q", runtime.GOARCH)
+		ret = true
+		if runtime.GOARCH != arch {
+			ret = false
+		}
 
-var Linux = MakeRequirement(func(data Data) (ret bool, mess string) {
-	ret = runtime.GOOS == "linux"
-	if ret {
-		mess = "operating system is Linux"
-	} else {
-		mess = "operating system is not Linux"
-	}
-	return ret, mess
-})
+		return ret, mess
+	})
+}
 
-var Darwin = MakeRequirement(func(data Data) (ret bool, mess string) {
-	ret = runtime.GOOS == "darwin"
-	if ret {
-		mess = "operating system is Darwin"
-	} else {
-		mess = "operating system is not Darwin"
-	}
-	return ret, mess
-})
+var Amd64 = Arch("amd64")
+var Arm64 = Arch("arm64")
+var Windows = OS("windows")
+var Linux = OS("linux")
+var Darwin = OS("darwin")
 
 func Not(requirement Requirement) Requirement {
-	return MakeRequirement(func(data Data) (ret bool, mess string) {
-		b, mess := requirement(data, nil)
+	return MakeRequirement(func(data Data, t *testing.T) (ret bool, mess string) {
+		b, mess := requirement(data, false, t)
+
 		return !b, mess
 	})
 }
 
 func Require(thing ...Requirement) Requirement {
-	return func(data Data, t *testing.T) (ret bool, mess string) {
+	return func(data Data, skip bool, t *testing.T) (ret bool, mess string) {
 		for _, th := range thing {
-			b, m := th(data, nil)
+			b, m := th(data, false, t)
 			if !b {
-				if t != nil {
+				if skip {
 					t.Helper()
 					t.Skipf("Test skipped as %s", m)
 				}
