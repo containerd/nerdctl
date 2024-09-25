@@ -22,6 +22,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/errdefs"
+	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
@@ -31,7 +32,7 @@ import (
 func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagOptions) error {
 	imageService := client.ImageService()
 	var srcName string
-	imagewalker := &imagewalker.ImageWalker{
+	walker := &imagewalker.ImageWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found imagewalker.Found) error {
 			if srcName == "" {
@@ -40,7 +41,7 @@ func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagO
 			return nil
 		},
 	}
-	matchCount, err := imagewalker.Walk(ctx, options.Source)
+	matchCount, err := walker.Walk(ctx, options.Source)
 	if err != nil {
 		return err
 	}
@@ -59,17 +60,25 @@ func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagO
 	}
 	defer done(ctx)
 
-	image, err := imageService.Get(ctx, srcName)
+	// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3425
+	err = EnsureAllContent(ctx, client, srcName, options.GOptions)
+	if err != nil {
+		log.G(ctx).Warn("Unable to fetch missing layers before committing. " +
+			"If you try to save or push this image, it might fail. See https://github.com/containerd/nerdctl/issues/3439.")
+	}
+
+	img, err := imageService.Get(ctx, srcName)
 	if err != nil {
 		return err
 	}
-	image.Name = target.String()
-	if _, err = imageService.Create(ctx, image); err != nil {
+
+	img.Name = target.String()
+	if _, err = imageService.Create(ctx, img); err != nil {
 		if errdefs.IsAlreadyExists(err) {
-			if err = imageService.Delete(ctx, image.Name); err != nil {
+			if err = imageService.Delete(ctx, img.Name); err != nil {
 				return err
 			}
-			if _, err = imageService.Create(ctx, image); err != nil {
+			if _, err = imageService.Create(ctx, img); err != nil {
 				return err
 			}
 		} else {
