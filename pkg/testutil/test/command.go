@@ -128,7 +128,9 @@ func (gc *GenericCommand) Run(expect *Expected) {
 
 func (gc *GenericCommand) boot() icmd.Cmd {
 	// This is a helper function, not to appear in the debugging output
-	gc.t.Helper()
+	if gc.t != nil {
+		gc.t.Helper()
+	}
 
 	binary := gc.mainBinary
 	args := gc.mainArgs
@@ -153,6 +155,10 @@ func (gc *GenericCommand) boot() icmd.Cmd {
 	icmdCmd.Dir = gc.WorkingDir
 	if icmdCmd.Dir == "" {
 		icmdCmd.Dir = gc.tempDir
+	}
+
+	if gc.stdin != nil {
+		icmdCmd.Stdin = gc.stdin
 	}
 
 	// Attach any extra env we have
@@ -182,8 +188,9 @@ func (gc *GenericCommand) Clear() Command {
 	return gc
 }
 
-func (gc *GenericCommand) WithT(t *testing.T) {
+func (gc *GenericCommand) WithT(t *testing.T) Command {
 	gc.t = t
+	return gc
 }
 
 func (gc *GenericCommand) WithTempDir(tempDir string) {

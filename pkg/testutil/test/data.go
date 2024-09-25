@@ -17,9 +17,8 @@
 package test
 
 import (
-	"crypto/sha256"
+	"crypto/sha1"
 	"fmt"
-	"strings"
 	"testing"
 )
 
@@ -117,16 +116,10 @@ func (dt *data) getConfig() map[ConfigKey]ConfigValue {
 }
 
 func defaultIdentifierHashing(name string) string {
-	s := strings.ReplaceAll(name, " ", "_")
-	s = strings.ReplaceAll(s, "/", "_")
-	s = strings.ReplaceAll(s, "-", "_")
-	s = strings.ReplaceAll(s, ",", "_")
-	s = strings.ToLower(s)
-	if len(s) > 76 {
-		s = fmt.Sprintf("%x", sha256.Sum256([]byte(s)))
-	}
-
-	return s
+	// So... looks like the docker registry implementation is not happy with valid image names...
+	// "cannot specify 64-byte hexadecimal strings"
+	// Using sha1 then...
+	return fmt.Sprintf("%x", sha1.Sum([]byte(name)))
 }
 
 // TODO: allow to pass custom hashing methods?
