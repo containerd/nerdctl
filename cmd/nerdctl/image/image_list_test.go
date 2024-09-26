@@ -110,6 +110,8 @@ LABEL version=0.1`, testutil.CommonImage)
 		base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage)).AssertOutNotContains(testutil.ImageRepo(testutil.CommonImage))
 		base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage), testutil.CommonImage).AssertOutNotContains(testutil.ImageRepo(testutil.CommonImage))
 		base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage), testutil.CommonImage).AssertOutNotContains(tempName)
+		base.Cmd("images", "--filter", fmt.Sprintf("since=%s:%s", "non-exists-image", "non-exists-image")).AssertOutContains(tempName)
+		base.Cmd("images", "--filter", fmt.Sprintf("before=%s:%s", "non-exists-image", "non-exists-image")).AssertOutContains(tempName)
 	}
 	base.Cmd("images", "--filter", "label=foo=bar").AssertOutContains(tempName)
 	base.Cmd("images", "--filter", "label=foo=bar1").AssertOutNotContains(tempName)

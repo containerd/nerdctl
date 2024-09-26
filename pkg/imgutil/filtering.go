@@ -150,10 +150,12 @@ func FilterByCreatedAt(ctx context.Context, client *containerd.Client, before []
 			if err != nil {
 				return []images.Image{}, err
 			}
-			maxTime = beforeImages[0].CreatedAt
-			for _, image := range beforeImages {
-				if image.CreatedAt.After(maxTime) {
-					maxTime = image.CreatedAt
+			if len(beforeImages) > 0 {
+				maxTime = beforeImages[0].CreatedAt
+				for _, image := range beforeImages {
+					if image.CreatedAt.After(maxTime) {
+						maxTime = image.CreatedAt
+					}
 				}
 			}
 		}
@@ -163,10 +165,12 @@ func FilterByCreatedAt(ctx context.Context, client *containerd.Client, before []
 			if err != nil {
 				return []images.Image{}, err
 			}
-			minTime = sinceImages[0].CreatedAt
-			for _, image := range sinceImages {
-				if image.CreatedAt.Before(minTime) {
-					minTime = image.CreatedAt
+			if len(sinceImages) > 0 {
+				minTime = sinceImages[0].CreatedAt
+				for _, image := range sinceImages {
+					if image.CreatedAt.Before(minTime) {
+						minTime = image.CreatedAt
+					}
 				}
 			}
 		}
