@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -78,7 +78,7 @@ jobs:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 1
       - name: "Prepare integration test environment"
@@ -120,7 +120,7 @@ jobs:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 1
       - name: Enable ipv4 and ipv6 forwarding
@@ -207,7 +207,7 @@ jobs:
           }
           EOT
           sudo systemctl restart apparmor.service
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 1
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -244,7 +244,7 @@ jobs:
       matrix:
         go-version: ["1.22.x", "1.23.x"]
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -259,7 +259,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -308,7 +308,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -317,7 +317,7 @@ jobs:
           cache: true
           check-latest: true
       - run: go install ./cmd/nerdctl
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           repository: containerd/containerd
           ref: v1.7.19
@@ -342,7 +342,7 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
       - uses: actions/cache@v4
         with:
           path: /root/.vagrant.d

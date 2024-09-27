@@ -19,7 +19,7 @@ jobs:
     runs-on: "ubuntu-24.04"
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 1
       - name: Set GO env
@@ -40,7 +40,7 @@ jobs:
     runs-on: "ubuntu-24.04"
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 1
       - name: "Prepare integration test environment"
@@ -74,7 +74,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 1
       - name: Set GO env
@@ -97,7 +97,7 @@ jobs:
       - run: go install ./cmd/nerdctl
       # This here is solely to get the cni install script, which has not been modified in 3+ years.
       # There is little to no reason to update this to latest containerd
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           repository: containerd/containerd
           ref: "v1.7.19"
