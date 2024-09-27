@@ -21,41 +21,56 @@ import (
 	"fmt"
 	"testing"
 
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func testInfoJSON(stdout string) error {
-	var info dockercompat.Info
-	if err := json.Unmarshal([]byte(stdout), &info); err != nil {
-		return err
-	}
+func testInfoComparator(stdout string, info string, t *testing.T) {
+	var dinf dockercompat.Info
+	err := json.Unmarshal([]byte(stdout), &dinf)
+	assert.NilError(t, err, "failed to unmarshal stdout"+info)
 	unameM := infoutil.UnameM()
-	if info.Architecture != unameM {
-		return fmt.Errorf("expected info.Architecture to be %q, got %q", unameM, info.Architecture)
-	}
-	return nil
+	assert.Assert(t, dinf.Architecture == unameM, fmt.Sprintf("expected info.Architecture to be %q, got %q", unameM, dinf.Architecture)+info)
 }
 
 func TestInfo(t *testing.T) {
-	base := testutil.NewBase(t)
-	base.Cmd("info", "--format", "{{json .}}").AssertOutWithFunc(testInfoJSON)
-}
+	nerdtest.Setup()
 
-func TestInfoConvenienceForm(t *testing.T) {
-	testutil.DockerIncompatible(t) // until https://github.com/docker/cli/pull/3355 gets merged
-	base := testutil.NewBase(t)
-	base.Cmd("info", "--format", "json").AssertOutWithFunc(testInfoJSON)
-}
+	testGroup := &test.Group{
+		{
+			Description: "info",
+			Command:     test.RunCommand("info", "--format", "{{json .}}"),
+			Expected:    test.Expects(0, nil, testInfoComparator),
+		},
+		{
+			Description: "info convenience form",
+			Command:     test.RunCommand("info", "--format", "json"),
+			Expected:    test.Expects(0, nil, testInfoComparator),
+		},
+		{
+			Description: "info with namespace",
+			Require:     test.Not(nerdtest.Docker),
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command().Clear().WithBinary("nerdctl").WithArgs("info")
+			},
+			Expected: test.Expects(0, nil, test.Contains("Namespace:	default")),
+		},
+		{
+			Description: "info with namespace env var",
+			Env: map[string]string{
+				"CONTAINERD_NAMESPACE": "test",
+			},
+			Require: test.Not(nerdtest.Docker),
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command().Clear().WithBinary("nerdctl").WithArgs("info")
+			},
+			Expected: test.Expects(0, nil, test.Contains("Namespace:	test")),
+		},
+	}
 
-func TestInfoWithNamespace(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	base.Args = nil // unset "--namespace=nerdctl-test"
-
-	base.Cmd("info").AssertOutContains("Namespace:	default")
-
-	base.Env = append(base.Env, "CONTAINERD_NAMESPACE=test")
-	base.Cmd("info").AssertOutContains("Namespace:	test")
+	testGroup.Run(t)
 }

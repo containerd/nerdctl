@@ -17,78 +17,101 @@
 package network
 
 import (
-	"runtime"
+	"encoding/json"
+	"errors"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestNetworkInspect(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("IPAMConfig not implemented on Windows yet")
-	}
+	nerdtest.Setup()
 
-	testNetwork := testutil.Identifier(t)
 	const (
 		testSubnet  = "10.24.24.0/24"
 		testGateway = "10.24.24.1"
 		testIPRange = "10.24.24.0/25"
 	)
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("network", "rm", testNetwork).Run()
+	testGroup := &test.Group{
+		{
+			Description: "Test network inspect",
+			// IPAMConfig is not implemented on Windows yet
+			Require: test.Not(test.Windows),
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", "--label", "tag=testNetwork", "--subnet", testSubnet,
+					"--gateway", testGateway, "--ip-range", testIPRange, data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("network", "inspect", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, info string, t *testing.T) {
+						var dc []dockercompat.Network
 
-	args := []string{
-		"network", "create", "--label", "tag=testNetwork", "--subnet", testSubnet,
-		"--gateway", testGateway, "--ip-range", testIPRange,
-		testNetwork,
-	}
-	base.Cmd(args...).AssertOK()
-	got := base.InspectNetwork(testNetwork)
+						err := json.Unmarshal([]byte(stdout), &dc)
+						assert.NilError(t, err, "Unable to unmarshal output\n"+info)
+						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+						got := dc[0]
 
-	assert.DeepEqual(base.T, testNetwork, got.Name)
+						assert.Equal(t, got.Name, data.Identifier(), info)
+						assert.Equal(t, got.Labels["tag"], "testNetwork", info)
+						assert.Equal(t, len(got.IPAM.Config), 1, info)
+						assert.Equal(t, got.IPAM.Config[0].Subnet, testSubnet, info)
+						assert.Equal(t, got.IPAM.Config[0].Gateway, testGateway, info)
+						assert.Equal(t, got.IPAM.Config[0].IPRange, testIPRange, info)
+					},
+				}
+			},
+		},
+		{
+			Description: "Test network with namespace",
+			Require:     test.Not(nerdtest.Docker),
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Identifier())
+				helpers.Anyhow("namespace", "remove", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("network", "create", data.Identifier())
+			},
 
-	expectedLabels := map[string]string{
-		"tag": "testNetwork",
-	}
-	assert.DeepEqual(base.T, expectedLabels, got.Labels)
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, info string, t *testing.T) {
+						cmd := helpers.Command().Clear().WithBinary("nerdctl").WithArgs("--namespace", data.Identifier())
 
-	expectedIPAM := dockercompat.IPAM{
-		Config: []dockercompat.IPAMConfig{
-			{
-				Subnet:  testSubnet,
-				Gateway: testGateway,
-				IPRange: testIPRange,
+						cmd.Clone().WithArgs("network", "inspect", data.Identifier()).Run(&test.Expected{
+							ExitCode: 1,
+							Errors:   []error{errors.New("no such network")},
+						})
+
+						cmd.Clone().WithArgs("network", "remove", data.Identifier()).Run(&test.Expected{
+							ExitCode: 1,
+							Errors:   []error{errors.New("no such network")},
+						})
+
+						cmd.Clone().WithArgs("network", "ls").Run(&test.Expected{
+							Output: test.DoesNotContain(data.Identifier()),
+						})
+
+						cmd.Clone().WithArgs("network", "prune", "-f").Run(&test.Expected{
+							Output: test.DoesNotContain(data.Identifier()),
+						})
+					},
+				}
 			},
 		},
 	}
-	assert.DeepEqual(base.T, expectedIPAM, got.IPAM)
-}
 
-func TestNetworkWithNamespace(t *testing.T) {
-	testutil.DockerIncompatible(t)
-
-	t.Parallel()
-
-	tID := testutil.Identifier(t)
-	base := testutil.NewBase(t)
-	baseOther := testutil.NewBaseWithNamespace(t, tID)
-
-	tearDown := func() {
-		base.Cmd("network", "rm", tID).Run()
-		baseOther.Cmd("namespace", "remove", tID).Run()
-	}
-	tearDown()
-	t.Cleanup(tearDown)
-
-	base.Cmd("network", "create", tID).AssertOK()
-
-	// Other namespace cannot inspect, prune, see, or remove this network
-	baseOther.Cmd("network", "inspect", tID).AssertFail()
-	baseOther.Cmd("network", "prune", "-f").AssertOutNotContains(tID)
-	baseOther.Cmd("network", "ls").AssertOutNotContains(tID)
-	baseOther.Cmd("network", "remove", tID).AssertFail()
+	testGroup.Run(t)
 }

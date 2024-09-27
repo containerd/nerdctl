@@ -17,66 +17,93 @@
 package network
 
 import (
-	"fmt"
 	"net"
+	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	ipv6helper "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func TestNetworkCreateWithMTU(t *testing.T) {
-	testNetwork := testutil.Identifier(t)
-	base := testutil.NewBase(t)
-
-	args := []string{
-		"network", "create", testNetwork,
-		"--driver", "bridge", "--opt", "com.docker.network.driver.mtu=9216",
-	}
-	base.Cmd(args...).AssertOK()
-	defer base.Cmd("network", "rm", testNetwork).AssertOK()
-
-	base.Cmd("run", "--rm", "--net", testNetwork, testutil.AlpineImage, "ifconfig", "eth0").AssertOutContains("MTU:9216")
-}
-
 func TestNetworkCreate(t *testing.T) {
-	base := testutil.NewBase(t)
-	testNetwork := testutil.Identifier(t)
+	nerdtest.Setup()
 
-	base.Cmd("network", "create", testNetwork).AssertOK()
-	defer base.Cmd("network", "rm", testNetwork).AssertOK()
+	testGroup := &test.Group{
+		{
+			Description: "Network create",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier())
+				netw := nerdtest.InspectNetwork(helpers, data.Identifier())
+				assert.Equal(t, len(netw.IPAM.Config), 1)
+				data.Set("subnet", netw.IPAM.Config[0].Subnet)
 
-	net := base.InspectNetwork(testNetwork)
-	assert.Equal(t, len(net.IPAM.Config), 1)
+				helpers.Ensure("network", "create", data.Identifier()+"-1")
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Identifier())
+				helpers.Anyhow("network", "rm", data.Identifier()+"-1")
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				data.Set("container2", helpers.Capture("run", "--rm", "--net", data.Identifier()+"-1", testutil.AlpineImage, "ip", "route"))
+				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.AlpineImage, "ip", "route")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Errors:   nil,
+					Output: func(stdout string, info string, t *testing.T) {
+						assert.Assert(t, strings.Contains(stdout, data.Get("subnet")), info)
+						assert.Assert(t, !strings.Contains(data.Get("container2"), data.Get("subnet")), info)
+					},
+				}
+			},
+		},
+		{
+			Description: "Network create with MTU",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier(), "--driver", "bridge", "--opt", "com.docker.network.driver.mtu=9216")
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.AlpineImage, "ifconfig", "eth0")
+			},
+			Expected: test.Expects(0, nil, test.Contains("MTU:9216")),
+		},
+		{
+			Description: "Network create with ipv6",
+			Require:     nerdtest.OnlyIPv6,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				subnetStr := "2001:db8:8::/64"
+				data.Set("subnetStr", subnetStr)
+				_, _, err := net.ParseCIDR(subnetStr)
+				assert.Assert(t, err == nil)
 
-	base.Cmd("run", "--rm", "--net", testNetwork, testutil.CommonImage, "ip", "route").AssertOutContains(net.IPAM.Config[0].Subnet)
+				helpers.Ensure("network", "create", data.Identifier(), "--ipv6", "--subnet", subnetStr)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.CommonImage, "ip", "addr", "show", "dev", "eth0")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, info string, t *testing.T) {
+						_, subnet, _ := net.ParseCIDR(data.Get("subnetStr"))
+						ip := ipv6helper.FindIPv6(stdout)
+						assert.Assert(t, subnet.Contains(ip), info)
+					},
+				}
+			},
+		},
+	}
 
-	base.Cmd("network", "create", testNetwork+"-1").AssertOK()
-	defer base.Cmd("network", "rm", testNetwork+"-1").AssertOK()
-
-	base.Cmd("run", "--rm", "--net", testNetwork+"-1", testutil.CommonImage, "ip", "route").AssertOutNotContains(net.IPAM.Config[0].Subnet)
-}
-
-func TestNetworkCreateIPv6(t *testing.T) {
-	base := testutil.NewBaseWithIPv6Compatible(t)
-	testNetwork := testutil.Identifier(t)
-
-	subnetStr := "2001:db8:8::/64"
-	_, subnet, err := net.ParseCIDR(subnetStr)
-	assert.Assert(t, err == nil)
-
-	base.Cmd("network", "create", "--ipv6", "--subnet", subnetStr, testNetwork).AssertOK()
-	t.Cleanup(func() {
-		base.Cmd("network", "rm", testNetwork).Run()
-	})
-
-	base.Cmd("run", "--rm", "--net", testNetwork, testutil.CommonImage, "ip", "addr", "show", "dev", "eth0").AssertOutWithFunc(func(stdout string) error {
-		ip := helpers.FindIPv6(stdout)
-		if subnet.Contains(ip) {
-			return nil
-		}
-		return fmt.Errorf("expected subnet %s include ip %s", subnet, ip)
-	})
+	testGroup.Run(t)
 }
