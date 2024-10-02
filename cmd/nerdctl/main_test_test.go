@@ -80,8 +80,7 @@ func TestTest(t *testing.T) {
 				return cmd
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				if data.Get("first-run") == "" {
-					data.Set("first-run", "first cleanup")
+				if data.Get("status") == "uninitialized" {
 					return
 				}
 				if data.Get("status") != "uninitialized-setup-command" {

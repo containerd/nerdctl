@@ -20,63 +20,125 @@ import (
 	"fmt"
 	"testing"
 
-	"gotest.tools/v3/icmd"
-
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
-func TestImageConvertNydus(t *testing.T) {
-	testutil.RequireExecutable(t, "nydus-image")
-	testutil.DockerIncompatible(t)
+func TestImageConvert(t *testing.T) {
+	nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	t.Parallel()
-
-	convertedImage := testutil.Identifier(t) + ":nydus"
-	base.Cmd("rmi", convertedImage).Run()
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	base.Cmd("image", "convert", "--nydus", "--oci",
-		testutil.CommonImage, convertedImage).AssertOK()
-	defer base.Cmd("rmi", convertedImage).Run()
-
-	// use `nydusify` check whether the convertd nydus image is valid
-
-	// skip if rootless
-	if rootlessutil.IsRootless() {
-		t.Skip("Nydusify check is not supported rootless mode.")
-	}
-
-	// skip if nydusify and nydusd are not installed
-	testutil.RequireExecutable(t, "nydusify")
-	testutil.RequireExecutable(t, "nydusd")
-
-	// setup local docker registry
-	registry := testregistry.NewWithNoAuth(base, 0, false)
-	remoteImage := fmt.Sprintf("%s:%d/nydusd-image:test", "localhost", registry.Port)
-	t.Cleanup(func() {
-		base.Cmd("rmi", remoteImage).Run()
-		registry.Cleanup(nil)
-	})
-
-	base.Cmd("tag", convertedImage, remoteImage).AssertOK()
-	base.Cmd("push", remoteImage).AssertOK()
-	nydusifyCmd := testutil.Cmd{
-		Cmd: icmd.Command(
-			"nydusify",
-			"check",
-			"--source",
-			testutil.CommonImage,
-			"--target",
-			remoteImage,
-			"--source-insecure",
-			"--target-insecure",
+	testCase := &test.Case{
+		Description: "Test image conversion",
+		Require: test.Require(
+			test.Not(test.Windows),
+			test.Not(nerdtest.Docker),
 		),
-		Base: base,
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", testutil.CommonImage)
+		},
+		SubTests: []*test.Case{
+			{
+				Description: "esgz",
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", data.Identifier("converted-image"))
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					return helpers.Command("image", "convert", "--oci", "--estargz",
+						testutil.CommonImage, data.Identifier("converted-image"))
+				},
+				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "nydus",
+				Require: test.Require(
+					test.Binary("nydus-image"),
+				),
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", data.Identifier("converted-image"))
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					return helpers.Command("image", "convert", "--oci", "--nydus",
+						testutil.CommonImage, data.Identifier("converted-image"))
+				},
+				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "zstd",
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", data.Identifier("converted-image"))
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					return helpers.Command("image", "convert", "--oci", "--zstd", "--zstd-compression-level", "3",
+						testutil.CommonImage, data.Identifier("converted-image"))
+				},
+				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "zstdchunked",
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", data.Identifier("converted-image"))
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					return helpers.Command("image", "convert", "--oci", "--zstdchunked", "--zstdchunked-compression-level", "3",
+						testutil.CommonImage, data.Identifier("converted-image"))
+				},
+				Expected: test.Expects(0, nil, nil),
+			},
+		},
 	}
 
-	// nydus is creating temporary files - make sure we are in a proper location for that
-	nydusifyCmd.Cmd.Dir = base.T.TempDir()
-	nydusifyCmd.AssertOK()
+	testCase.Run(t)
+
+}
+
+func TestImageConvertNydusVerify(t *testing.T) {
+	nerdtest.Setup()
+
+	const remoteImageKey = "remoteImageKey"
+
+	var registry *testregistry.RegistryServer
+
+	testCase := &test.Case{
+		Description: "TestImageConvertNydusVerify",
+		Require: test.Require(
+			test.Linux,
+			test.Binary("nydus-image"),
+			test.Binary("nydusify"),
+			test.Binary("nydusd"),
+			test.Not(nerdtest.Docker),
+			nerdtest.RootFul,
+		),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", testutil.CommonImage)
+			base := testutil.NewBase(t)
+			registry = testregistry.NewWithNoAuth(base, 80, false)
+			data.Set(remoteImageKey, fmt.Sprintf("%s:%d/nydusd-image:test", "localhost", registry.Port))
+			helpers.Ensure("image", "convert", "--nydus", "--oci", testutil.CommonImage, data.Identifier("converted-image"))
+			helpers.Ensure("tag", data.Identifier("converted-image"), data.Get(remoteImageKey))
+			helpers.Ensure("push", data.Get(remoteImageKey))
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rmi", data.Identifier("converted-image"))
+			if registry != nil {
+				registry.Cleanup(nil)
+				helpers.Anyhow("rmi", data.Get(remoteImageKey))
+			}
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.Command {
+			return helpers.CustomCommand("nydusify",
+				"check",
+				"--source",
+				testutil.CommonImage,
+				"--target",
+				data.Get(remoteImageKey),
+				"--source-insecure",
+				"--target-insecure",
+			)
+		},
+		Expected: test.Expects(0, nil, nil),
+	}
+
+	testCase.Run(t)
 }

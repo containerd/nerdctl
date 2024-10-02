@@ -55,7 +55,7 @@ func TestInfo(t *testing.T) {
 			Description: "info with namespace",
 			Require:     test.Not(nerdtest.Docker),
 			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.Command().Clear().WithBinary("nerdctl").WithArgs("info")
+				return helpers.CustomCommand("nerdctl", "info")
 			},
 			Expected: test.Expects(0, nil, test.Contains("Namespace:	default")),
 		},
@@ -66,7 +66,7 @@ func TestInfo(t *testing.T) {
 			},
 			Require: test.Not(nerdtest.Docker),
 			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.Command().Clear().WithBinary("nerdctl").WithArgs("info")
+				return helpers.CustomCommand("nerdctl", "info")
 			},
 			Expected: test.Expects(0, nil, test.Contains("Namespace:	test")),
 		},

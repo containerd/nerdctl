@@ -153,18 +153,14 @@ func TestCompletion(t *testing.T) {
 			{
 				Description: "no namespace --cgroup-manager",
 				Command: func(data test.Data, helpers test.Helpers) test.Command {
-					cmd := helpers.Command()
-					cmd.Clear()
-					cmd.WithBinary("nerdctl")
-					cmd.WithArgs("__complete", "--cgroup-manager", "")
-					return cmd
+					return helpers.CustomCommand("nerdctl", "__complete", "--cgroup-manager", "")
 				},
 				Expected: test.Expects(0, nil, test.Contains("cgroupfs\n")),
 			},
 			{
 				Description: "no namespace empty",
 				Command: func(data test.Data, helpers test.Helpers) test.Command {
-					return helpers.Command().Clear().WithBinary("nerdctl").WithArgs("__complete", "")
+					return helpers.CustomCommand("nerdctl", "__complete", "")
 				},
 				Expected: test.Expects(0, nil, test.Contains("run\t")),
 			},
@@ -172,8 +168,8 @@ func TestCompletion(t *testing.T) {
 				Description: "namespace space empty",
 				Command: func(data test.Data, helpers test.Helpers) test.Command {
 					// mind {"--namespace=nerdctl-test"} vs {"--namespace", "nerdctl-test"}
-					return helpers.Command().Clear().WithBinary("nerdctl").
-						WithArgs("__complete", "--namespace", testutil.Namespace, "")
+					ns, _ := data.Surface(test.SystemKey(nerdtest.Namespace))
+					return helpers.CustomCommand("nerdctl", "__complete", "--namespace", string(ns), "")
 				},
 				Expected: test.Expects(0, nil, test.Contains("run\t")),
 			},
@@ -196,8 +192,8 @@ func TestCompletion(t *testing.T) {
 				Description: "namespace run -i",
 				Command: func(data test.Data, helpers test.Helpers) test.Command {
 					// mind {"--namespace=nerdctl-test"} vs {"--namespace", "nerdctl-test"}
-					return helpers.Command().Clear().WithBinary("nerdctl").
-						WithArgs("__complete", "--namespace", testutil.Namespace, "run", "-i", "")
+					ns, _ := data.Surface(test.SystemKey(nerdtest.Namespace))
+					return helpers.CustomCommand("nerdctl", "__complete", "--namespace", string(ns), "run", "-i", "")
 				},
 				Expected: test.Expects(0, nil, test.Contains(testutil.AlpineImage+"\n")),
 			},

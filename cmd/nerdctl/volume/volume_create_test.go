@@ -29,7 +29,7 @@ import (
 func TestVolumeCreate(t *testing.T) {
 	nerdtest.Setup()
 
-	tg := &test.Group{
+	testGroup := &test.Group{
 		{
 			Description: "arg missing should create anonymous volume",
 			Command:     test.RunCommand("volume", "create"),
@@ -82,13 +82,8 @@ func TestVolumeCreate(t *testing.T) {
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("volume", "rm", "-f", data.Identifier())
 			},
-			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-				return &test.Expected{
-					// NOTE: docker returns 125 on this
-					ExitCode: -1,
-					Errors:   []error{errdefs.ErrInvalidArgument},
-				}
-			},
+			// NOTE: docker returns 125 on this
+			Expected: test.Expects(-1, []error{errdefs.ErrInvalidArgument}, nil),
 		},
 		{
 			Description: "creating already existing volume should succeed",
@@ -109,5 +104,5 @@ func TestVolumeCreate(t *testing.T) {
 		},
 	}
 
-	tg.Run(t)
+	testGroup.Run(t)
 }

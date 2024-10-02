@@ -18,152 +18,217 @@ package image
 
 import (
 	"fmt"
-	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"gotest.tools/v3/assert"
+
+	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
-func TestImageVerifyWithCosign(t *testing.T) {
-	testutil.RequireExecutable(t, "cosign")
-	testutil.DockerIncompatible(t)
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
-	base.Env = append(base.Env, "COSIGN_PASSWORD=1")
-	keyPair := helpers.NewCosignKeyPair(t, "cosign-key-pair", "1")
-	defer keyPair.Cleanup()
-	tID := testutil.Identifier(t)
-	reg := testregistry.NewWithNoAuth(base, 0, false)
-	defer reg.Cleanup(nil)
-	localhostIP := "127.0.0.1"
-	t.Logf("localhost IP=%q", localhostIP)
-	testImageRef := fmt.Sprintf("%s:%d/%s",
-		localhostIP, reg.Port, tID)
-	t.Logf("testImageRef=%q", testImageRef)
+func TestImagePullWithCosign(t *testing.T) {
+	nerdtest.Setup()
 
-	dockerfile := fmt.Sprintf(`FROM %s
+	var registry *testregistry.RegistryServer
+	var keyPair *testhelpers.CosignKeyPair
+
+	testCase := &test.Case{
+		Description: "TestImagePullWithCosign",
+		Require: test.Require(
+			test.Linux,
+			nerdtest.Build,
+			test.Binary("cosign"),
+			test.Not(nerdtest.Docker),
+		),
+		Env: map[string]string{
+			"COSIGN_PASSWORD": "1",
+		},
+		Setup: func(data test.Data, helpers test.Helpers) {
+			keyPair = testhelpers.NewCosignKeyPair(t, "cosign-key-pair", "1")
+			base := testutil.NewBase(t)
+			registry = testregistry.NewWithNoAuth(base, 80, false)
+			testImageRef := fmt.Sprintf("%s/%s", "127.0.0.1", data.Identifier())
+			dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+			buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+			helpers.Ensure("build", "-t", testImageRef, buildCtx)
+			helpers.Ensure("push", "--sign=cosign", "--cosign-key="+keyPair.PrivateKey, testImageRef+":one")
+			helpers.Ensure("push", "--sign=cosign", "--cosign-key="+keyPair.PrivateKey, testImageRef+":two")
+			helpers.Ensure("rmi", "-f", testImageRef)
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			if keyPair != nil {
+				keyPair.Cleanup()
+			}
+			if registry != nil {
+				registry.Cleanup(nil)
+				testImageRef := fmt.Sprintf("%s/%s", "127.0.0.1", data.Identifier())
+				helpers.Anyhow("rmi", "-f", testImageRef)
+			}
+		},
+		SubTests: []*test.Case{
+			{
+				Description: "Pull with the correct key",
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					testImageRef := fmt.Sprintf("%s/%s", "127.0.0.1", data.Identifier())
+					return helpers.Command("pull", "--verify=cosign", "--cosign-key="+keyPair.PublicKey, testImageRef+":one")
+				},
+				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "Pull with unrelated key",
+				Env: map[string]string{
+					"COSIGN_PASSWORD": "2",
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					newKeyPair := testhelpers.NewCosignKeyPair(t, "cosign-key-pair-test", "2")
+					testImageRef := fmt.Sprintf("%s/%s", "127.0.0.1", data.Identifier())
+					return helpers.Command("pull", "--verify=cosign", "--cosign-key="+newKeyPair.PublicKey, testImageRef+":two")
+				},
+				Expected: test.Expects(1, nil, nil),
+			},
+		},
+	}
 
-	base.Cmd("build", "-t", testImageRef, buildCtx).AssertOK()
-	base.Cmd("push", testImageRef, "--sign=cosign", "--cosign-key="+keyPair.PrivateKey).AssertOK()
-	base.Cmd("pull", testImageRef, "--verify=cosign", "--cosign-key="+keyPair.PublicKey).AssertOK()
+	testCase.Run(t)
 }
 
 func TestImagePullPlainHttpWithDefaultPort(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
-	reg := testregistry.NewWithNoAuth(base, 80, false)
-	defer reg.Cleanup(nil)
-	testImageRef := fmt.Sprintf("%s/%s:%s",
-		reg.IP.String(), testutil.Identifier(t), strings.Split(testutil.CommonImage, ":")[1])
-	t.Logf("testImageRef=%q", testImageRef)
-	t.Logf("testImageRef=%q", testImageRef)
-	dockerfile := fmt.Sprintf(`FROM %s
-CMD ["echo", "nerdctl-build-test-string"]
-	`, testutil.CommonImage)
+	nerdtest.Setup()
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-	base.Cmd("build", "-t", testImageRef, buildCtx).AssertOK()
-	base.Cmd("--insecure-registry", "push", testImageRef).AssertOK()
-	base.Cmd("--insecure-registry", "pull", testImageRef).AssertOK()
-}
+	var registry *testregistry.RegistryServer
 
-func TestImageVerifyWithCosignShouldFailWhenKeyIsNotCorrect(t *testing.T) {
-	testutil.RequireExecutable(t, "cosign")
-	testutil.DockerIncompatible(t)
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
-	base.Env = append(base.Env, "COSIGN_PASSWORD=1")
-	keyPair := helpers.NewCosignKeyPair(t, "cosign-key-pair", "1")
-	defer keyPair.Cleanup()
-	tID := testutil.Identifier(t)
-	reg := testregistry.NewWithNoAuth(base, 0, false)
-	defer reg.Cleanup(nil)
-	localhostIP := "127.0.0.1"
-	t.Logf("localhost IP=%q", localhostIP)
-	testImageRef := fmt.Sprintf("%s:%d/%s",
-		localhostIP, reg.Port, tID)
-	t.Logf("testImageRef=%q", testImageRef)
-
-	dockerfile := fmt.Sprintf(`FROM %s
-CMD ["echo", "nerdctl-build-test-string"]
-	`, testutil.CommonImage)
-
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-
-	base.Cmd("build", "-t", testImageRef, buildCtx).AssertOK()
-	base.Cmd("push", testImageRef, "--sign=cosign", "--cosign-key="+keyPair.PrivateKey).AssertOK()
-	base.Cmd("pull", testImageRef, "--verify=cosign", "--cosign-key="+keyPair.PublicKey).AssertOK()
-
-	base.Env = append(base.Env, "COSIGN_PASSWORD=2")
-	newKeyPair := helpers.NewCosignKeyPair(t, "cosign-key-pair-test", "2")
-	base.Cmd("pull", testImageRef, "--verify=cosign", "--cosign-key="+newKeyPair.PublicKey).AssertFail()
-}
-
-func TestPullSoci(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	tests := []struct {
-		name                         string
-		sociIndexDigest              string
-		image                        string
-		remoteSnapshotsExpectedCount int
-	}{
-		{
-			name:                         "Run without specifying SOCI index",
-			sociIndexDigest:              "",
-			image:                        testutil.FfmpegSociImage,
-			remoteSnapshotsExpectedCount: 11,
-		},
-		{
-			name:                         "Run with bad SOCI index",
-			sociIndexDigest:              "sha256:thisisabadindex0000000000000000000000000000000000000000000000000",
-			image:                        testutil.FfmpegSociImage,
-			remoteSnapshotsExpectedCount: 11,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	testCase := &test.Case{
+		Description: "TestImagePullPlainHttpWithDefaultPort",
+		Require: test.Require(
+			test.Linux,
+			test.Not(nerdtest.Docker),
+			nerdtest.Build,
+		),
+		Setup: func(data test.Data, helpers test.Helpers) {
 			base := testutil.NewBase(t)
-			helpers.RequiresSoci(base)
+			registry = testregistry.NewWithNoAuth(base, 80, false)
+			testImageRef := fmt.Sprintf("%s/%s:%s",
+				registry.IP.String(), data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+			dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-string"]
+	`, testutil.CommonImage)
 
-			//counting initial snapshot mounts
-			initialMounts, err := exec.Command("mount").Output()
-			if err != nil {
-				t.Fatal(err)
+			buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+			helpers.Ensure("build", "-t", testImageRef, buildCtx)
+			helpers.Ensure("--insecure-registry", "push", testImageRef)
+			helpers.Ensure("rmi", "-f", testImageRef)
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.Command {
+			testImageRef := fmt.Sprintf("%s/%s:%s",
+				registry.IP.String(), data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+			return helpers.Command("--insecure-registry", "pull", testImageRef)
+		},
+		Expected: test.Expects(0, nil, nil),
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			if registry != nil {
+				registry.Cleanup(nil)
+				testImageRef := fmt.Sprintf("%s/%s:%s",
+					registry.IP.String(), data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+				helpers.Anyhow("rmi", "-f", testImageRef)
 			}
-
-			remoteSnapshotsInitialCount := strings.Count(string(initialMounts), "fuse.rawBridge")
-
-			pullOutput := base.Cmd("--snapshotter=soci", "pull", tt.image).Out()
-			base.T.Logf("pull output: %s", pullOutput)
-
-			actualMounts, err := exec.Command("mount").Output()
-			if err != nil {
-				t.Fatal(err)
-			}
-			remoteSnapshotsActualCount := strings.Count(string(actualMounts), "fuse.rawBridge")
-			base.T.Logf("number of actual mounts: %v", remoteSnapshotsActualCount-remoteSnapshotsInitialCount)
-
-			rmiOutput := base.Cmd("rmi", testutil.FfmpegSociImage).Out()
-			base.T.Logf("rmi output: %s", rmiOutput)
-
-			base.T.Logf("number of expected mounts: %v", tt.remoteSnapshotsExpectedCount)
-
-			if tt.remoteSnapshotsExpectedCount != (remoteSnapshotsActualCount - remoteSnapshotsInitialCount) {
-				t.Fatalf("incorrect number of remote snapshots; expected=%d, actual=%d",
-					tt.remoteSnapshotsExpectedCount, remoteSnapshotsActualCount-remoteSnapshotsInitialCount)
-			}
-		})
+		},
 	}
+
+	testCase.Run(t)
+}
+
+func TestImagePullSoci(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Description: "TestImagePullSoci",
+		Require: test.Require(
+			test.Linux,
+			test.Not(nerdtest.Docker),
+			nerdtest.Soci,
+		),
+
+		// NOTE: these tests cannot be run in parallel, as they depend on the output of host `mount`
+		// They also feel prone to raciness...
+		SubTests: []*test.Case{
+			{
+				Description: "Run without specifying SOCI index",
+				NoParallel:  true,
+				Data: test.
+					WithData("remoteSnapshotsExpectedCount", "11").
+					Set("sociIndexDigest", ""),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					cmd := helpers.CustomCommand("mount")
+					cmd.Run(&test.Expected{
+						Output: func(stdout string, info string, t *testing.T) {
+							data.Set("remoteSnapshotsInitialCount", strconv.Itoa(strings.Count(stdout, "fuse.rawBridge")))
+						},
+					})
+					helpers.Ensure("--snapshotter=soci", "pull", testutil.FfmpegSociImage)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", testutil.FfmpegSociImage)
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					return helpers.CustomCommand("mount")
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: func(stdout string, info string, t *testing.T) {
+							remoteSnapshotsInitialCount, _ := strconv.Atoi(data.Get("remoteSnapshotsInitialCount"))
+							remoteSnapshotsActualCount := strings.Count(stdout, "fuse.rawBridge")
+							assert.Equal(t,
+								data.Get("remoteSnapshotsExpectedCount"),
+								strconv.Itoa(remoteSnapshotsActualCount-remoteSnapshotsInitialCount),
+								info)
+						},
+					}
+				},
+			},
+			{
+				Description: "Run with bad SOCI index",
+				NoParallel:  true,
+				Data: test.
+					WithData("remoteSnapshotsExpectedCount", "11").
+					Set("sociIndexDigest", "sha256:thisisabadindex0000000000000000000000000000000000000000000000000"),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					cmd := helpers.CustomCommand("mount")
+					cmd.Run(&test.Expected{
+						Output: func(stdout string, info string, t *testing.T) {
+							data.Set("remoteSnapshotsInitialCount", strconv.Itoa(strings.Count(stdout, "fuse.rawBridge")))
+						},
+					})
+					helpers.Ensure("--snapshotter=soci", "pull", testutil.FfmpegSociImage)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", testutil.FfmpegSociImage)
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					return helpers.CustomCommand("mount")
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: func(stdout string, info string, t *testing.T) {
+							remoteSnapshotsInitialCount, _ := strconv.Atoi(data.Get("remoteSnapshotsInitialCount"))
+							remoteSnapshotsActualCount := strings.Count(stdout, "fuse.rawBridge")
+							assert.Equal(t,
+								data.Get("remoteSnapshotsExpectedCount"),
+								strconv.Itoa(remoteSnapshotsActualCount-remoteSnapshotsInitialCount),
+								info)
+						},
+					}
+				},
+			},
+		},
+	}
+
+	testCase.Run(t)
 }

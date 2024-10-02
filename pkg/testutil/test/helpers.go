@@ -18,6 +18,7 @@ package test
 
 import "testing"
 
+// Helpers provides a set of helpers to run commands with simple expectations, available in most stages of a test (Setup, Cleanup, etc...)
 type Helpers interface {
 	Ensure(args ...string)
 	Anyhow(args ...string)
@@ -28,25 +29,33 @@ type Helpers interface {
 	CustomCommand(binary string, args ...string) Command
 }
 
-type helpers struct {
-	cmd Command
+// FIXME: see `nerdtest/test.go` for why this is exported - it should not be
+
+type HelpersInternal struct {
+	CmdInternal Command
 }
 
-func (hel *helpers) Ensure(args ...string) {
-	hel.Command(args...).Run(&Expected{})
+// Ensure will run a command and make sure it is successful
+func (hel *HelpersInternal) Ensure(args ...string) {
+	hel.Command(args...).Run(&Expected{
+		ExitCode: 0,
+	})
 }
 
-func (hel *helpers) Anyhow(args ...string) {
+// Anyhow will run a command regardless of outcome (may or may not fail)
+func (hel *HelpersInternal) Anyhow(args ...string) {
 	hel.Command(args...).Run(nil)
 }
 
-func (hel *helpers) Fail(args ...string) {
+// Fail will run a command and make sure it does fail
+func (hel *HelpersInternal) Fail(args ...string) {
 	hel.Command(args...).Run(&Expected{
 		ExitCode: 1,
 	})
 }
 
-func (hel *helpers) Capture(args ...string) string {
+// Capture will run a command, ensure it is successful and return stdout
+func (hel *HelpersInternal) Capture(args ...string) string {
 	var ret string
 	hel.Command(args...).Run(&Expected{
 		Output: func(stdout string, info string, t *testing.T) {
@@ -56,15 +65,17 @@ func (hel *helpers) Capture(args ...string) string {
 	return ret
 }
 
-func (hel *helpers) Command(args ...string) Command {
-	cc := hel.cmd.Clone()
+// Command will return a clone of your base command without running it
+func (hel *HelpersInternal) Command(args ...string) Command {
+	cc := hel.CmdInternal.Clone()
 	cc.WithArgs(args...)
 	return cc
 }
 
-func (hel *helpers) CustomCommand(binary string, args ...string) Command {
-	cc := hel.cmd.Clone()
-	cc.Clear()
+// CustomCommand will return a command for the requested binary and args, with all the environment of your test
+// (eg: Env, Cwd, etc.)
+func (hel *HelpersInternal) CustomCommand(binary string, args ...string) Command {
+	cc := hel.CmdInternal.Clear()
 	cc.WithBinary(binary)
 	cc.WithArgs(args...)
 	return cc

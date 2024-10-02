@@ -30,94 +30,102 @@ import (
 
 // GenericCommand is a concrete Command implementation
 type GenericCommand struct {
-	WorkingDir string
-	Env        map[string]string
+	WorkingDir   string
+	Env          map[string]string
+	EnvBlackList []string
 
 	t            *testing.T
 	tempDir      string
 	helperBinary string
 	helperArgs   []string
+	prependArgs  []string
 	mainBinary   string
 	mainArgs     []string
 	result       *icmd.Result
-	stdin        io.Reader
-	async        bool
-	timeout      time.Duration
+
+	stdin   io.Reader
+	async   bool
+	timeout time.Duration
 }
 
-func (gc *GenericCommand) WithBinary(binary string) Command {
+func (gc *GenericCommand) WithBinary(binary string) {
 	gc.mainBinary = binary
-	return gc
 }
 
-func (gc *GenericCommand) WithArgs(args ...string) Command {
+func (gc *GenericCommand) WithArgs(args ...string) {
 	gc.mainArgs = append(gc.mainArgs, args...)
-	return gc
+}
+
+func (gc *GenericCommand) PrependArgs(args ...string) {
+	gc.prependArgs = append(gc.prependArgs, args...)
 }
 
 // WithEnv will overload the command env with values from the passed map
-func (gc *GenericCommand) WithEnv(env map[string]string) Command {
+func (gc *GenericCommand) WithEnv(env map[string]string) {
 	if gc.Env == nil {
 		gc.Env = map[string]string{}
 	}
 	for k, v := range env {
 		gc.Env[k] = v
 	}
-	return gc
 }
 
-func (gc *GenericCommand) WithWrapper(binary string, args ...string) Command {
+func (gc *GenericCommand) WithWrapper(binary string, args ...string) {
 	gc.helperBinary = binary
 	gc.helperArgs = args
-	return gc
 }
 
 // WithStdin sets the standard input of Cmd to the specified reader
-func (gc *GenericCommand) WithStdin(r io.Reader) Command {
+func (gc *GenericCommand) WithStdin(r io.Reader) {
 	gc.stdin = r
-	return gc
 }
 
-func (gc *GenericCommand) Background(timeout time.Duration) Command {
+func (gc *GenericCommand) Background(timeout time.Duration) {
 	// Run it
 	gc.async = true
 	i := gc.boot()
-	gc.result = icmd.StartCmd(i)
 	gc.timeout = timeout
-	return gc
+	gc.result = icmd.StartCmd(i)
 }
 
-// TODO: it should be possible to:
-// - timeout execution
+// TODO: it should be possible to timeout execution
+// Primitives (gc.timeout) is here, it is just a matter of exposing a WithTimeout method
+// - UX to be decided
+// - validate use case: would we ever need this?
+
 func (gc *GenericCommand) Run(expect *Expected) {
+	if gc.t != nil {
+		gc.t.Helper()
+	}
+
 	var result *icmd.Result
 	var env []string
 	if gc.async {
 		result = icmd.WaitOnCmd(gc.timeout, gc.result)
 		env = gc.result.Cmd.Env
 	} else {
-		icmdCmd := gc.boot()
-		env = icmdCmd.Env
+		iCmdCmd := gc.boot()
+		env = iCmdCmd.Env
 		// Run it
-		result = icmd.RunCmd(icmdCmd)
+		result = icmd.RunCmd(iCmdCmd)
 	}
 
 	// Check our expectations, if any
 	if expect != nil {
-		// Build the debug string - additionally attach the env (which icmd does not do)
+		// Build the debug string - additionally attach the env (which iCmd does not do)
 		debug := result.String() + "Env:\n" + strings.Join(env, "\n")
 		// ExitCode goes first
 		if expect.ExitCode == -1 {
 			assert.Assert(gc.t, result.ExitCode != 0,
-				"Expected exit code to be different than 0"+debug)
+				"Expected exit code to be different than 0\n"+debug)
 		} else {
 			assert.Assert(gc.t, expect.ExitCode == result.ExitCode,
-				fmt.Sprintf("Expected exit code: %d", expect.ExitCode)+debug)
+				fmt.Sprintf("Expected exit code: %d\n", expect.ExitCode)+debug)
 		}
 		// Range through the expected errors and confirm they are seen on stderr
 		for _, expectErr := range expect.Errors {
 			assert.Assert(gc.t, strings.Contains(result.Stderr(), expectErr.Error()),
-				fmt.Sprintf("Expected error: %q to be found in stderr", expectErr.Error())+debug)
+				fmt.Sprintf("Expected error: %q to be found in stderr\n", expectErr.Error())+debug)
 		}
 		// Finally, check the output if we are asked to
 		if expect.Output != nil {
@@ -128,10 +136,12 @@ func (gc *GenericCommand) Run(expect *Expected) {
 
 func (gc *GenericCommand) boot() icmd.Cmd {
 	// This is a helper function, not to appear in the debugging output
-	gc.t.Helper()
+	if gc.t != nil {
+		gc.t.Helper()
+	}
 
 	binary := gc.mainBinary
-	args := gc.mainArgs
+	args := append(gc.prependArgs, gc.mainArgs...)
 	if gc.helperBinary != "" {
 		args = append([]string{binary}, args...)
 		args = append(gc.helperArgs, args...)
@@ -139,33 +149,48 @@ func (gc *GenericCommand) boot() icmd.Cmd {
 	}
 
 	// Create the command and set the env
-	// TODO: do we really need icmd?
-	icmdCmd := icmd.Command(binary, args...)
-	icmdCmd.Env = []string{}
+	// TODO: do we really need iCmd?
+	gc.t.Log(binary, strings.Join(args, " "))
+
+	iCmdCmd := icmd.Command(binary, args...)
+	iCmdCmd.Env = []string{}
 	for _, v := range os.Environ() {
-		// Ignore LS_COLORS from the env, just too much noise
-		if !strings.HasPrefix(v, "LS_COLORS") {
-			icmdCmd.Env = append(icmdCmd.Env, v)
+		add := true
+		for _, b := range gc.EnvBlackList {
+			if strings.HasPrefix(v, b+"=") {
+				add = false
+				break
+			}
+		}
+		if add {
+			iCmdCmd.Env = append(iCmdCmd.Env, v)
 		}
 	}
 
 	// Ensure the subprocess gets executed in a temporary directory unless explicitly instructed otherwise
-	icmdCmd.Dir = gc.WorkingDir
-	if icmdCmd.Dir == "" {
-		icmdCmd.Dir = gc.tempDir
+	iCmdCmd.Dir = gc.WorkingDir
+	if iCmdCmd.Dir == "" {
+		iCmdCmd.Dir = gc.tempDir
+	}
+
+	if gc.stdin != nil {
+		iCmdCmd.Stdin = gc.stdin
 	}
 
 	// Attach any extra env we have
 	for k, v := range gc.Env {
-		icmdCmd.Env = append(icmdCmd.Env, fmt.Sprintf("%s=%s", k, v))
+		iCmdCmd.Env = append(iCmdCmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	return icmdCmd
+	return iCmdCmd
 }
 
 func (gc *GenericCommand) Clone() Command {
-	// Copy the command and return a new one - with WorkingDir, binary, args, etc
+	// Copy the command and return a new one - with almost everything from the parent command
 	cc := *gc
+	cc.result = nil
+	cc.stdin = nil
+	cc.timeout = 0
 	// Clone Env
 	cc.Env = make(map[string]string, len(gc.Env))
 	for k, v := range gc.Env {
@@ -175,17 +200,33 @@ func (gc *GenericCommand) Clone() Command {
 }
 
 func (gc *GenericCommand) Clear() Command {
-	gc.mainBinary = ""
-	gc.helperBinary = ""
-	gc.mainArgs = []string{}
-	gc.helperArgs = []string{}
-	return gc
+	cc := *gc
+	cc.mainBinary = ""
+	cc.helperBinary = ""
+	cc.mainArgs = []string{}
+	cc.prependArgs = []string{}
+	cc.helperArgs = []string{}
+	// Clone Env
+	cc.Env = make(map[string]string, len(gc.Env))
+	for k, v := range gc.Env {
+		cc.Env[k] = v
+	}
+	return &cc
 }
 
-func (gc *GenericCommand) WithT(t *testing.T) {
+func (gc *GenericCommand) WithT(t *testing.T) Command {
 	gc.t = t
+	return gc
 }
 
 func (gc *GenericCommand) WithTempDir(tempDir string) {
 	gc.tempDir = tempDir
+}
+
+func (gc *GenericCommand) T() *testing.T {
+	return gc.t
+}
+
+func (gc *GenericCommand) TempDir() string {
+	return gc.tempDir
 }

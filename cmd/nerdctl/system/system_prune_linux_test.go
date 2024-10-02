@@ -23,16 +23,17 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestSystemPrune(t *testing.T) {
-	nerdtest.Setup()
+	testCase := nerdtest.Setup()
 
-	testGroup := &test.Group{
+	testCase.NoParallel = true
+
+	testCase.SubTests = []*test.Case{
 		{
 			Description: "volume prune all success",
 			// Private because of prune evidently
@@ -83,24 +84,11 @@ func TestSystemPrune(t *testing.T) {
 				helpers.Ensure("system", "prune", "-f", "--volumes", "--all")
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				buildctlBinary, err := buildkitutil.BuildctlBinary()
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				host, err := buildkitutil.GetBuildkitHost(testutil.Namespace)
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				buildctlArgs := buildkitutil.BuildctlBaseArgs(host)
-				buildctlArgs = append(buildctlArgs, "du")
-
-				return helpers.CustomCommand(buildctlBinary, buildctlArgs...)
+				return nerdtest.BuildCtlCommand(data, helpers, "du")
 			},
 			Expected: test.Expects(0, nil, test.Contains("Total:\t\t0B")),
 		},
 	}
 
-	testGroup.Run(t)
+	testCase.Run(t)
 }

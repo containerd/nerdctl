@@ -17,44 +17,141 @@
 package ipfs
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"gotest.tools/v3/assert"
+
+	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func TestIPFSRegistry(t *testing.T) {
-	testutil.DockerIncompatible(t)
-
-	base := testutil.NewBase(t)
-	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=overlayfs")
-	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage)
-	ipfsRegistryAddr := "localhost:5555"
-	ipfsRegistryRef := ipfsRegistryReference(ipfsRegistryAddr, ipfsCID)
-
-	done := ipfsRegistryUp(t, base, "--listen-registry", ipfsRegistryAddr)
-	defer done()
-	base.Cmd("pull", ipfsRegistryRef).AssertOK()
-	base.Cmd("run", "--rm", ipfsRegistryRef, "echo", "hello").AssertOK()
+func pushToIPFS(helpers test.Helpers, name string, opts ...string) string {
+	var ipfsCID string
+	cmd := helpers.Command("push", "ipfs://"+name)
+	cmd.WithArgs(opts...)
+	cmd.Run(&test.Expected{
+		Output: func(stdout string, info string, t *testing.T) {
+			lines := strings.Split(stdout, "\n")
+			assert.Equal(t, len(lines) >= 2, true)
+			ipfsCID = lines[len(lines)-2]
+		},
+	})
+	return ipfsCID
 }
 
-func TestIPFSRegistryWithLazyPulling(t *testing.T) {
-	testutil.DockerIncompatible(t)
+func TestIPFSNerdctlRegistry(t *testing.T) {
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	helpers.RequiresStargz(base)
-	base.Env = append(base.Env, "CONTAINERD_SNAPSHOTTER=stargz")
-	ipfsCID := pushImageToIPFS(t, base, testutil.AlpineImage, "--estargz")
-	ipfsRegistryAddr := "localhost:5555"
-	ipfsRegistryRef := ipfsRegistryReference(ipfsRegistryAddr, ipfsCID)
+	// FIXME: this is bad and likely to collide with other tests
+	const listenAddr = "localhost:5555"
 
-	done := ipfsRegistryUp(t, base, "--listen-registry", ipfsRegistryAddr)
-	defer done()
-	base.Cmd("pull", ipfsRegistryRef).AssertOK()
-	base.Cmd("run", "--rm", ipfsRegistryRef, "ls", "/.stargz-snapshotter").AssertOK()
-}
+	const ipfsImageURLKey = "ipfsImageURLKey"
 
-func ipfsRegistryReference(addr string, c string) string {
-	return addr + "/ipfs/" + strings.TrimPrefix(c, "ipfs://")
+	var ipfsServer test.Command
+
+	testCase.Require = test.Require(
+		test.Linux,
+		test.Not(nerdtest.Docker),
+		// FIXME: requiring a lot more than that - we need a working ipfs daemon
+		test.Binary("ipfs"),
+	)
+
+	testCase.Env = map[string]string{
+		// Point IPFS_PATH to the expected location
+		"IPFS_PATH": filepath.Join(os.Getenv("HOME"), ".local/share/ipfs"),
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("pull", "--quiet", testutil.AlpineImage)
+
+		// Start a local ipfs backed registry
+		ipfsServer = helpers.Command("ipfs", "registry", "serve", "--listen-registry", listenAddr)
+		// Once foregrounded, do not wait for it more than a second
+		ipfsServer.Background(1 * time.Second)
+		// Apparently necessary to let it start...
+		time.Sleep(time.Second)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if ipfsServer != nil {
+			// Close the server once done
+			ipfsServer.Run(nil)
+		}
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "with default snapshotter",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				data.Set(ipfsImageURLKey, data.Get(listenAddr)+"/ipfs/"+pushToIPFS(helpers, testutil.AlpineImage))
+				helpers.Ensure("pull", data.Get(ipfsImageURLKey))
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				if data.Get(ipfsImageURLKey) != "" {
+					helpers.Anyhow("rmi", data.Get(ipfsImageURLKey))
+				}
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("run", "--rm", data.Get(ipfsImageURLKey), "echo", "hello")
+			},
+			Expected: test.Expects(0, nil, test.Equals("hello\n")),
+		},
+		{
+			Description: "with stargz snapshotterr",
+			NoParallel:  true,
+			Require:     nerdtest.Stargz,
+			Env: map[string]string{
+				"CONTAINERD_SNAPSHOTTER": "stargz",
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				data.Set(ipfsImageURLKey, data.Get(listenAddr)+"/ipfs/"+pushToIPFS(helpers, testutil.AlpineImage, "--estargz"))
+				helpers.Ensure("pull", data.Get(ipfsImageURLKey))
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				if data.Get(ipfsImageURLKey) != "" {
+					helpers.Anyhow("rmi", data.Get(ipfsImageURLKey))
+				}
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("run", "--rm", data.Get(ipfsImageURLKey), "ls", "/.stargz-snapshotter")
+			},
+			Expected: test.Expects(0, nil, test.Equals("sha256:1a490fdbdb8603c0acc0ae04d8cdc78fea40bbd26acc33bdb06a854531a04c81.json\n")),
+		},
+		{
+			Description: "with build",
+			NoParallel:  true,
+			Require:     nerdtest.Build,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rmi", data.Identifier("built-image"))
+				if data.Get(ipfsImageURLKey) != "" {
+					helpers.Anyhow("rmi", data.Get(ipfsImageURLKey))
+				}
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				data.Set(ipfsImageURLKey, data.Get(listenAddr)+"/ipfs/"+pushToIPFS(helpers, testutil.AlpineImage))
+
+				dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-string"]
+	`, data.Get(ipfsImageURLKey))
+
+				buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+
+				helpers.Ensure("build", "-t", data.Identifier("built-image"), buildCtx)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("run", "--rm", data.Identifier("built-image"))
+			},
+			Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+		},
+	}
+
+	testCase.Run(t)
 }

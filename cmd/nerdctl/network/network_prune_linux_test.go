@@ -25,12 +25,14 @@ import (
 )
 
 func TestNetworkPrune(t *testing.T) {
-	nerdtest.Setup()
+	testCase := nerdtest.Setup()
 
-	testGroup := &test.Group{
+	testCase.Require = nerdtest.Private
+
+	testCase.SubTests = []*test.Case{
 		{
 			Description: "Prune does not collect started container network",
-			Require:     nerdtest.Private,
+			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier())
 				helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.NginxAlpineImage)
@@ -48,7 +50,7 @@ func TestNetworkPrune(t *testing.T) {
 		},
 		{
 			Description: "Prune does collect stopped container network",
-			Require:     nerdtest.Private,
+			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier())
 				helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.NginxAlpineImage)
@@ -67,5 +69,5 @@ func TestNetworkPrune(t *testing.T) {
 		},
 	}
 
-	testGroup.Run(t)
+	testCase.Run(t)
 }

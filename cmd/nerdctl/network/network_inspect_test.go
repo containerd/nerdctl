@@ -39,7 +39,7 @@ func TestNetworkInspect(t *testing.T) {
 
 	testGroup := &test.Group{
 		{
-			Description: "Test network inspect",
+			Description: "basic",
 			// IPAMConfig is not implemented on Windows yet
 			Require: test.Not(test.Windows),
 			Setup: func(data test.Data, helpers test.Helpers) {
@@ -74,7 +74,7 @@ func TestNetworkInspect(t *testing.T) {
 			},
 		},
 		{
-			Description: "Test network with namespace",
+			Description: "with namespace",
 			Require:     test.Not(nerdtest.Docker),
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("network", "rm", data.Identifier())
@@ -88,23 +88,31 @@ func TestNetworkInspect(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output: func(stdout string, info string, t *testing.T) {
-						cmd := helpers.Command().Clear().WithBinary("nerdctl").WithArgs("--namespace", data.Identifier())
+						cmd := helpers.CustomCommand("nerdctl", "--namespace", data.Identifier())
 
-						cmd.Clone().WithArgs("network", "inspect", data.Identifier()).Run(&test.Expected{
+						com := cmd.Clone()
+						com.WithArgs("network", "inspect", data.Identifier())
+						com.Run(&test.Expected{
 							ExitCode: 1,
 							Errors:   []error{errors.New("no such network")},
 						})
 
-						cmd.Clone().WithArgs("network", "remove", data.Identifier()).Run(&test.Expected{
+						com = cmd.Clone()
+						com.WithArgs("network", "remove", data.Identifier())
+						com.Run(&test.Expected{
 							ExitCode: 1,
 							Errors:   []error{errors.New("no such network")},
 						})
 
-						cmd.Clone().WithArgs("network", "ls").Run(&test.Expected{
+						com = cmd.Clone()
+						com.WithArgs("network", "ls")
+						com.Run(&test.Expected{
 							Output: test.DoesNotContain(data.Identifier()),
 						})
 
-						cmd.Clone().WithArgs("network", "prune", "-f").Run(&test.Expected{
+						com = cmd.Clone()
+						com.WithArgs("network", "prune", "-f")
+						com.Run(&test.Expected{
 							Output: test.DoesNotContain(data.Identifier()),
 						})
 					},

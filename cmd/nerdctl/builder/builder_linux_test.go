@@ -18,136 +18,141 @@ package builder
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func TestBuilderPrune(t *testing.T) {
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
+func TestBuilder(t *testing.T) {
+	nerdtest.Setup()
 
-	base := testutil.NewBase(t)
+	// FIXME: this is a dirty hack to pass a function from Setup to Cleanup, which is not currently possible
+	var bkGC func()
 
-	dockerfile := fmt.Sprintf(`FROM %s
+	testCase := &test.Case{
+		Require: nerdtest.Build,
+		SubTests: []*test.Case{
+			{
+				Description: "PruneForce",
+				Setup: func(data test.Data, helpers test.Helpers) {
+					dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-test-builder-prune"]`, testutil.CommonImage)
-
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-
-	testCases := []struct {
-		name        string
-		commandArgs []string
-	}{
-		{
-			name:        "TestBuilderPruneForce",
-			commandArgs: []string{"builder", "prune", "--force"},
-		},
-		{
-			name:        "TestBuilderPruneForceAll",
-			commandArgs: []string{"builder", "prune", "--force", "--all"},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			base.Cmd("build", buildCtx).AssertOK()
-			base.Cmd(tc.commandArgs...).AssertOK()
-		})
-	}
-}
-
-func TestBuilderDebug(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-
-	dockerfile := fmt.Sprintf(`FROM %s
-CMD ["echo", "nerdctl-builder-debug-test-string"]
-	`, testutil.CommonImage)
-
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-
-	base.Cmd("builder", "debug", buildCtx).CmdOption(testutil.WithStdin(bytes.NewReader([]byte("c\n")))).AssertOK()
-}
-
-func TestBuildWithPull(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	if rootlessutil.IsRootless() {
-		t.Skipf("skipped because the test needs a custom buildkitd config")
-	}
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-
-	oldImage := testutil.BusyboxImage
-	oldImageSha := "141c253bc4c3fd0a201d32dc1f493bcf3fff003b6df416dea4f41046e0f37d47"
-	newImage := testutil.AlpineImage
-
-	buildkitConfig := fmt.Sprintf(`[worker.oci]
+					buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+					helpers.Ensure("build", buildCtx)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("builder", "prune", "--all", "--force")
+				},
+				Command:  test.RunCommand("builder", "prune", "--force"),
+				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "PruneForceAll",
+				Setup: func(data test.Data, helpers test.Helpers) {
+					dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-test-builder-prune"]`, testutil.CommonImage)
+					buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+					helpers.Ensure("build", buildCtx)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("builder", "prune", "--all", "--force")
+				},
+				Command:  test.RunCommand("builder", "prune", "--force", "--all"),
+				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "Debug",
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("builder", "prune", "--all", "--force")
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.Command {
+					dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-builder-debug-test-string"]`, testutil.CommonImage)
+					buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+					cmd := helpers.Command("builder", "debug", buildCtx)
+					cmd.WithStdin(bytes.NewReader([]byte("c\n")))
+					return cmd
+				},
+				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "WithPull",
+				Require:     nerdtest.RootFul,
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("builder", "prune", "--all", "--force")
+					if bkGC != nil {
+						bkGC()
+					}
+				},
+				Setup: func(data test.Data, helpers test.Helpers) {
+					buildkitConfig := fmt.Sprintf(`[worker.oci]
 enabled = false
 
 [worker.containerd]
 enabled = true
 namespace = "%s"`, testutil.Namespace)
 
-	cleanup := useBuildkitConfig(t, buildkitConfig)
-	defer cleanup()
+					bkGC = useBuildkitConfig(t, buildkitConfig)
+					oldImage := testutil.BusyboxImage
+					oldImageSha := "141c253bc4c3fd0a201d32dc1f493bcf3fff003b6df416dea4f41046e0f37d47"
+					newImage := testutil.AlpineImage
 
-	testCases := []struct {
-		name string
-		pull string
-	}{
-		{
-			name: "build with local image",
-			pull: "false",
-		},
-		{
-			name: "build with newest image",
-			pull: "true",
-		},
-		{
-			name: "build with buildkit default",
-			// buildkit default pulls from remote
-			pull: "default",
+					helpers.Ensure("pull", oldImage)
+					helpers.Ensure("tag", oldImage, newImage)
+
+					dockerfile := fmt.Sprintf(`FROM %s`, newImage)
+					buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+
+					data.Set("buildCtx", buildCtx)
+					data.Set("oldImageSha", oldImageSha)
+				},
+				SubTests: []*test.Case{
+					{
+						Command: func(data test.Data, helpers test.Helpers) test.Command {
+							return helpers.Command("build", data.Get("buildCtx"), "--pull=false")
+						},
+						Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+							return &test.Expected{
+								ExitCode: 1,
+								Errors:   []error{errors.New(data.Get("oldImageSha"))},
+							}
+						},
+					},
+					{
+						Command: func(data test.Data, helpers test.Helpers) test.Command {
+							return helpers.Command("build", data.Get("buildCtx"), "--pull=true")
+						},
+						Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+							return &test.Expected{
+								ExitCode: 0,
+							}
+						},
+					},
+					{
+						Command: func(data test.Data, helpers test.Helpers) test.Command {
+							return helpers.Command("build", data.Get("buildCtx"))
+						},
+						Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+							return &test.Expected{
+								ExitCode: 0,
+							}
+						},
+					},
+				},
+			},
 		},
 	}
 
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			testutil.RegisterBuildCacheCleanup(t)
-			base := testutil.NewBase(t)
-			base.Cmd("image", "prune", "--force", "--all").AssertOK()
-
-			base.Cmd("pull", oldImage).Run()
-			base.Cmd("tag", oldImage, newImage).Run()
-
-			dockerfile := fmt.Sprintf(`FROM %s`, newImage)
-			tmpDir := t.TempDir()
-			err := os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644)
-			assert.NilError(t, err)
-
-			buildCtx := helpers.CreateBuildContext(t, dockerfile)
-
-			buildCmd := []string{"build", buildCtx}
-			switch tc.pull {
-			case "false":
-				buildCmd = append(buildCmd, "--pull=false")
-				base.Cmd(buildCmd...).AssertErrContains(oldImageSha)
-			case "true":
-				buildCmd = append(buildCmd, "--pull=true")
-				base.Cmd(buildCmd...).AssertErrNotContains(oldImageSha)
-			case "default":
-				base.Cmd(buildCmd...).AssertErrNotContains(oldImageSha)
-			}
-		})
-	}
+	testCase.Run(t)
 }
 
 func useBuildkitConfig(t *testing.T, config string) (cleanup func()) {
