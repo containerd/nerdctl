@@ -39,6 +39,11 @@ func TestURLParsingAndID(t *testing.T) {
 			error:   ErrUnsupportedScheme,
 		},
 		{
+			address:    "",
+			identifier: "https://index.docker.io/v1/",
+			allIDs:     []string{"https://index.docker.io/v1/"},
+		},
+		{
 			address:    "https://index.docker.io/v1/",
 			identifier: "https://index.docker.io/v1/",
 			allIDs:     []string{"https://index.docker.io/v1/"},

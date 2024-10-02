@@ -83,7 +83,7 @@ func (cs *CredentialsStore) Store(registryURL *RegistryURL, credentials *Credent
 	if registryURL.Namespace != nil {
 		credentials.ServerAddress = fmt.Sprintf("%s%s?%s", registryURL.Host, registryURL.Path, registryURL.RawQuery)
 	} else {
-		credentials.ServerAddress = registryURL.Host
+		credentials.ServerAddress = registryURL.CanonicalIdentifier()
 	}
 
 	// XXX future namespaced url likely require special handling here
