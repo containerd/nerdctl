@@ -269,15 +269,28 @@ func volumeMatchesFilter(vol native.Volume, labelFilterFuncs []func(*map[string]
 			return false
 		}
 	}
-	for _, nameFilterFunc := range nameFilterFuncs {
-		if !nameFilterFunc(vol.Name) {
-			return false
-		}
+
+	if !anyMatch(vol.Name, nameFilterFuncs) {
+		return false
 	}
+
 	for _, sizeFilterFunc := range sizeFilterFuncs {
 		if !sizeFilterFunc(vol.Size) {
 			return false
 		}
 	}
+
 	return true
+}
+
+func anyMatch[T any](vol T, filters []func(T) bool) bool {
+	if len(filters) == 0 {
+		return true
+	}
+	for _, f := range filters {
+		if f(vol) {
+			return true
+		}
+	}
+	return false
 }
