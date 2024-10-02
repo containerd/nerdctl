@@ -48,6 +48,13 @@ func Save(ctx context.Context, client *containerd.Client, images []string, optio
 			if found.UniqueImages > 1 {
 				return fmt.Errorf("ambiguous digest ID: multiple IDs found with provided prefix %s", found.Req)
 			}
+
+			// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3425
+			err = EnsureAllContent(ctx, client, found.Image.Name, options.GOptions)
+			if err != nil {
+				return err
+			}
+
 			imgName := found.Image.Name
 			imgDigest := found.Image.Target.Digest.String()
 			if _, ok := savedImages[imgDigest]; !ok {

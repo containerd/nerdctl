@@ -127,7 +127,8 @@ func TestImagesFilterDangling(t *testing.T) {
 	testutil.RequiresBuild(t)
 	testutil.RegisterBuildCacheCleanup(t)
 	base := testutil.NewBase(t)
-	base.Cmd("images", "prune", "--all").AssertOK()
+	base.Cmd("container", "prune", "-f").AssertOK()
+	base.Cmd("image", "prune", "--all", "-f").AssertOK()
 
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-notag-string"]

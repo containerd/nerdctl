@@ -170,6 +170,20 @@ func InspectNetwork(helpers test.Helpers, name string, args ...string) dockercom
 	return dc[0]
 }
 
+func InspectImage(helpers test.Helpers, name string) dockercompat.Image {
+	var dc []dockercompat.Image
+	cmd := helpers.Command("image", "inspect", name)
+	cmd.Run(&test.Expected{
+		ExitCode: 0,
+		Output: func(stdout string, info string, t *testing.T) {
+			err := json.Unmarshal([]byte(stdout), &dc)
+			assert.NilError(t, err, "Unable to unmarshal output\n"+info)
+			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+		},
+	})
+	return dc[0]
+}
+
 func nerdctlSetup(testCase *test.Case, t *testing.T) test.Command {
 	t.Helper()
 
