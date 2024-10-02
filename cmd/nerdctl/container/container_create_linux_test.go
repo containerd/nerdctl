@@ -206,14 +206,16 @@ func TestIssue2993(t *testing.T) {
 	testCase := &test.Group{
 		{
 			Description: "Issue #2993 - nerdctl no longer leaks containers and etchosts directories and files when container creation fails.",
-			Require:     nerdtest.Private,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
+				dataRoot := data.TempDir()
 
-				dataRoot := string(data.ReadConfig(nerdtest.DataRoot))
+				helpers.Ensure("run", "--data-root", dataRoot, "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
+
 				h := getAddrHash(defaults.DefaultAddress)
 				dataStore := filepath.Join(dataRoot, h)
-				namespace := data.Identifier()
+
+				// FIXME: update with next tooling iteration to retrieve from the command
+				namespace := "nerdctl-test"
 
 				containersPath := filepath.Join(dataStore, "containers", namespace)
 				containersDirs, err := os.ReadDir(containersPath)
@@ -229,10 +231,10 @@ func TestIssue2993(t *testing.T) {
 				data.Set(etchostsPathKey, etchostsPath)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("rm", "--data-root", data.TempDir(), "-f", data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.Command("run", "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
+				return helpers.Command("run", "--data-root", data.TempDir(), "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -252,14 +254,16 @@ func TestIssue2993(t *testing.T) {
 		},
 		{
 			Description: "Issue #2993 - nerdctl no longer leaks containers and etchosts directories and files when containers are removed.",
-			Require:     nerdtest.Private,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
+				dataRoot := data.TempDir()
 
-				dataRoot := string(data.ReadConfig(nerdtest.DataRoot))
+				helpers.Ensure("run", "--data-root", dataRoot, "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
+
 				h := getAddrHash(defaults.DefaultAddress)
 				dataStore := filepath.Join(dataRoot, h)
-				namespace := data.Identifier()
+
+				// FIXME: update with next tooling iteration to retrieve from the command
+				namespace := "nerdctl-test"
 
 				containersPath := filepath.Join(dataStore, "containers", namespace)
 				containersDirs, err := os.ReadDir(containersPath)
@@ -275,10 +279,10 @@ func TestIssue2993(t *testing.T) {
 				data.Set(etchostsPathKey, etchostsPath)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("--data-root", data.TempDir(), "rm", "-f", data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.Command("rm", "-f", data.Identifier())
+				return helpers.Command("--data-root", data.TempDir(), "rm", "-f", data.Identifier())
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
