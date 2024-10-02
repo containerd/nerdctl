@@ -69,10 +69,10 @@ jobs:
             containerd: v1.7.19
             runner: "ubuntu-22.04"
           - ubuntu: 24.04
-            containerd: v2.0.0-rc.4
+            containerd: v2.0.0-rc.5
             runner: "ubuntu-24.04"
           - ubuntu: 24.04
-            containerd: v2.0.0-rc.4
+            containerd: v2.0.0-rc.5
             runner: github-arm64-2c-8gb
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
@@ -179,7 +179,7 @@ jobs:
             rootlesskit: v2.3.1
             target: test-integration-rootless
           - ubuntu: 24.04
-            containerd: v2.0.0-rc.4
+            containerd: v2.0.0-rc.5
             rootlesskit: v2.3.1
             target: test-integration-rootless
           - ubuntu: 24.04
