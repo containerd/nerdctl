@@ -102,8 +102,10 @@ func (rn *RegistryURL) AllIdentifiers() []string {
 
 	// Docker behavior: if the domain was index.docker.io over 443, we are allowed to additionally read the canonical
 	// docker credentials
-	if rn.Hostname() == "index.docker.io" && rn.Port() == standardHTTPSPort {
-		fullList = append(fullList, dockerIndexServer)
+	if rn.Port() == standardHTTPSPort {
+		if rn.Hostname() == "index.docker.io" || rn.Hostname() == "registry-1.docker.io" {
+			fullList = append(fullList, dockerIndexServer)
+		}
 	}
 
 	// Add legacy variants
