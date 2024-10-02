@@ -28,17 +28,12 @@ import (
 )
 
 func TestMyThing(t *testing.T) {
-	nerdtest.Setup()
-
 	// Declare your test
-	myTest := &test.Case{
-		Description: "A first test",
-		// This is going to run `nerdctl info` (or `docker info`)
-		Command:     test.RunCommand("info"),
-		// Verify the command exits with 0, and stdout contains the word `Kernel`
-		Expected:    test.Expects(0, nil, test.Contains("Kernel")),
-	}
-
+	myTest := nerdtest.Setup()
+	// This is going to run `nerdctl info` (or `docker info`)
+	myTest.Command = test.RunCommand("info")
+    // Verify the command exits with 0, and stdout contains the word `Kernel`
+    myTest.Expected = test.Expects(0, nil, test.Contains("Kernel"))
 	// Run it
 	myTest.Run(t)
 }
@@ -53,7 +48,7 @@ You already saw two (`test.Expects` and `test.Contains`):
 First, `test.Expects(exitCode int, errors []error, outputCompare Comparator)`, which is
 convenient to quickly describe what you expect overall.
 
-`exitCode` is obvious.
+`exitCode` is obvious (note that passing -1 as an exit code will just verify the commands does fail without comparing the code).
 
 `errors` is a slice of go `error`, that allows you to compare what is seen on stderr
 with existing errors (for example: `errdefs.ErrNotFound`), or more generally
@@ -69,6 +64,7 @@ Secondly, `test.Contains`, is a `Comparator`.
 Besides `test.Contains(string)`, there are a few more:
 - `test.DoesNotContain(string)`
 - `test.Equals(string)`
+- `test.Match(*regexp.Regexp)`
 - `test.All(comparators ...Comparator)`, which allows you to bundle together a bunch of other comparators
 
 The following example shows how to implement your own custom `Comparator`
@@ -250,12 +246,20 @@ func TestMyThing(t *testing.T) {
 }
 ```
 
+Note that custom commands also unlock access to advanced properties for specific cases.
+Specifically:
+- `Background(timeout time.Duration)` which allows you to background a command execution
+- `WithWrapper(binary string, args ...string)` which allows you to "wrap" your command with another binary
+- `WithStdin(io.Reader)` which allows you to pass a reader to the command stdin
+- `Clone()` which returns a copy of the command, with env, cwd, etc
+- `Clear()` which returns a copy of the command, with env, cwd, etc, but without a binary or args
+
 ### On `helpers`
 
 Inside a custom `Executor`, `Manager`, or `Butler`, you have access to a collection of
 `helpers` to simplify command execution:
 
-- `helpers.Ensure(args ...string)` will run a command and ensure it exits succesfully
+- `helpers.Ensure(args ...string)` will run a command and ensure it exits successfully
 - `helpers.Fail(args ...string)` will run a command and ensure it fails
 - `helpers.Anyhow(args ...string)` will run a command but does not care if it succeeds or fails
 - `helpers.Capture(args ...string)` will run a command, ensure it is successful, and return the output
@@ -331,9 +335,9 @@ func TestMyThing(t *testing.T) {
 
 Subtests are just regular tests, attached to the `SubTests` slice of a test.
 
-Note that a subtest will inherit its parent `Data` and `Env`, in the state they are at
+Note that a subtest will inherit its parent `Data`, `Config` and `Env`, in the state they are at
 after the parent test has run its `Setup` and `Command` routines (but before `Cleanup`).
-This does _not_ apply to `Identifier()` and `TempDir()`, which are unique to the sub-test.
+This does _not_ apply to `Identifier()` and `TempDir()`, which are unique to the subtest.
 
 Also note that a test does not have to have a `Command`.
 This is a convenient pattern if you just need a common `Setup` for a bunch of subtests.
@@ -344,6 +348,8 @@ A `test.Group` is just a convenient way to represent a slice of tests.
 
 Note that unlike a `test.Case`, a group cannot define properties inherited by
 subtests, nor `Setup` or `Cleanup` routines.
+
+Also note that a group ALWAYS run in parallel with other tests at the same level.
 
 - if you just have a bunch of subtests you want to run, put them in a `test.Group`
 - if you want to have a global setup, or otherwise set a common property first for your subtests, use a `test.Case` with `SubTests`
@@ -374,11 +380,15 @@ test.Require(req ...Requirement) // a test runs only if all requirements are ful
 
 nerdtest.Docker // a test only run on Docker - normally used with test.Not(nerdtest.Docker)
 nerdtest.Soci // a test requires the soci snapshotter
-nerdtest.Rootless // a test requires Rootless (or Not(Rootless), indicating it requires Rootful)
+nerdtest.Rootless // a test requires Rootless
+nerdtest.RootFul // a test requires Rootful
 nerdtest.Build // a test requires buildkit
 nerdtest.CGroup // a test requires cgroup
 nerdtest.OnlyIPv6 // a test is meant to run solely in the ipv6 environment
+nerdtest.OnlyKubernetes // a test is meant to run solely in the Kubernetes environment
 nerdtest.NerdctlNeedsFixing // indicates that a test cannot be run on nerdctl yet as a fix is required
+nerdtest.BrokenTest // indicates that a test needs to be fixed and has been restricted to run only in certain cases
+nerdtest.IsFlaky // indicates that a test will fail in a flaky way - this may be the test fault, or more likely something racy in nerdctl
 nerdtest.Private // see below
 ```
 
@@ -401,4 +411,8 @@ that are guaranteed to have side effects on others, or that do require an exclus
 environment.
 
 Using private is generally preferable to disabling parallelization, as doing the latter
-would slow down the run and won't have the same guarantees about the environment.
+would slow down the run and won't have the same isolation guarantees about the environment.
+
+## Utilities
+
+TBD

@@ -25,49 +25,46 @@ import (
 )
 
 func TestNetworkPrune(t *testing.T) {
-	nerdtest.Setup()
+	testCase := nerdtest.Setup()
 
-	testCase := &test.Case{
-		Description: "TestNetworkPrune",
-		Require:     nerdtest.Private,
+	testCase.Require = nerdtest.Private
 
-		SubTests: []*test.Case{
-			{
-				Description: "Prune does not collect started container network",
-				NoParallel:  true,
-				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("network", "create", data.Identifier())
-					helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.NginxAlpineImage)
-				},
-				Cleanup: func(data test.Data, helpers test.Helpers) {
-					helpers.Anyhow("rm", "-f", data.Identifier())
-					helpers.Anyhow("network", "rm", data.Identifier())
-				},
-				Command: test.RunCommand("network", "prune", "-f"),
-				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-					return &test.Expected{
-						Output: test.DoesNotContain(data.Identifier()),
-					}
-				},
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Prune does not collect started container network",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier())
+				helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.NginxAlpineImage)
 			},
-			{
-				Description: "Prune does collect stopped container network",
-				NoParallel:  true,
-				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("network", "create", data.Identifier())
-					helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.NginxAlpineImage)
-					helpers.Ensure("stop", data.Identifier())
-				},
-				Cleanup: func(data test.Data, helpers test.Helpers) {
-					helpers.Anyhow("rm", "-f", data.Identifier())
-					helpers.Anyhow("network", "rm", data.Identifier())
-				},
-				Command: test.RunCommand("network", "prune", "-f"),
-				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-					return &test.Expected{
-						Output: test.Contains(data.Identifier()),
-					}
-				},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: test.RunCommand("network", "prune", "-f"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.DoesNotContain(data.Identifier()),
+				}
+			},
+		},
+		{
+			Description: "Prune does collect stopped container network",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier())
+				helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.NginxAlpineImage)
+				helpers.Ensure("stop", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: test.RunCommand("network", "prune", "-f"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.Contains(data.Identifier()),
+				}
 			},
 		},
 	}

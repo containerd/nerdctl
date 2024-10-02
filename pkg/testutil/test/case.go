@@ -22,13 +22,14 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-// Group informally describes a slice of tests
+// Group informally describes a slice of tests to be run in parallel
 type Group []*Case
 
 func (tg *Group) Run(t *testing.T) {
 	t.Helper()
 	// If the group contains only one test, no need to create a subtest
 	sub := len(*tg) > 1
+	// If we do have subtests, the root test is marked parallel
 	if sub {
 		t.Parallel()
 	}
@@ -60,7 +61,7 @@ type Case struct {
 	// Cleanup
 	Cleanup Butler
 	// Requirement
-	Require Requirement
+	Require *Requirement
 
 	// SubTests
 	SubTests []*Case
@@ -78,98 +79,128 @@ type Case struct {
 func (test *Case) Run(t *testing.T) {
 	t.Helper()
 	// Run the test
-	testRun := func(tt *testing.T) {
-		tt.Helper()
-		test.seal(tt)
+	testRun := func(subT *testing.T) {
+		subT.Helper()
 
-		if registeredInit == nil {
+		assert.Assert(subT, test.t == nil, "You cannot run a test multiple times")
+
+		// Attach testing.T
+		test.t = subT
+		assert.Assert(test.t, test.Description != "", "A test description cannot be empty")
+		assert.Assert(test.t, test.Command == nil || test.Expected != nil,
+			"Expectations for a test command cannot be nil. You may want to use Setup instead.")
+
+		// Ensure we have env
+		if test.Env == nil {
+			test.Env = map[string]string{}
+		}
+
+		// If we have a parent, get parent env and data
+		var parentData Data
+		if test.parent != nil {
+			parentData = test.parent.Data
+			for k, v := range test.parent.Env {
+				if _, ok := test.Env[k]; !ok {
+					test.Env[k] = v
+				}
+			}
+		}
+
+		// Inherit and attach Data
+		test.Data = configureData(test.t, test.Data, parentData)
+
+		if registeredHooks == nil {
 			bc := &GenericCommand{}
 			bc.WithEnv(test.Env)
-			bc.WithT(tt)
+			bc.WithT(test.t)
 			bc.WithTempDir(test.Data.TempDir())
 			test.baseCommand = bc
 		} else {
-			test.baseCommand = registeredInit(test, test.t)
+			test.baseCommand = registeredHooks.OnInitialize(test, test.t)
 		}
 
-		test.exec(tt)
+		// Set base command
+		test.helpers = &HelpersInternal{
+			CmdInternal: test.baseCommand,
+		}
+
+		setups := []func(data Data, helpers Helpers){}
+		cleanups := []func(data Data, helpers Helpers){}
+
+		// Register custom cleanup if any - MUST run before Requirements cleanups
+		if test.Cleanup != nil {
+			cleanups = append(cleanups, test.Cleanup)
+		}
+
+		// Check the requirements before going any further
+		if test.Require != nil {
+			shouldRun, message := test.Require.Check(test.Data, test.helpers, test.t)
+			if !shouldRun {
+				test.t.Skipf("test skipped as: %s", message)
+			} else {
+				if test.Require.Setup != nil {
+					setups = append(setups, test.Require.Setup)
+				}
+				if test.Require.Cleanup != nil {
+					cleanups = append(cleanups, test.Require.Cleanup)
+				}
+			}
+		}
+
+		// Register setup if any
+		if test.Setup != nil {
+			setups = append(setups, test.Setup)
+		}
+
+		// Run optional post requirement hook
+		if registeredHooks != nil {
+			registeredHooks.OnPostRequirements(test, test.t, test.baseCommand)
+		}
+
+		// Set parallel unless asked not to
+		if !test.NoParallel {
+			test.t.Parallel()
+		}
+
+		// Execute cleanups now
+		for _, cleanup := range cleanups {
+			cleanup(test.Data, test.helpers)
+		}
+		test.t.Cleanup(func() {
+			for _, cleanup := range cleanups {
+				cleanup(test.Data, test.helpers)
+			}
+		})
+
+		// Setup now
+		for _, setup := range setups {
+			setup(test.Data, test.helpers)
+		}
+
+		// ENV may have been changed by setup routines
+		test.baseCommand.WithEnv(test.Env)
+		// And config as well, which may have effects
+		if registeredHooks != nil {
+			registeredHooks.OnPostSetup(test, test.t, test.baseCommand)
+		}
+
+		// Run the command if any, with expectations
+		// Note: if we have a command, we already know we DO have Expected
+		if test.Command != nil {
+			test.Command(test.Data, test.helpers).Run(test.Expected(test.Data, test.helpers))
+		}
+
+		// Go for the subtests now
+		for _, subTest := range test.SubTests {
+			subTest.parent = test
+			subTest.subIt = true
+			subTest.Run(test.t)
+		}
 	}
 
 	if test.subIt {
 		t.Run(test.Description, testRun)
 	} else {
 		testRun(t)
-	}
-}
-
-// seal is a private method to prepare the test
-func (test *Case) seal(t *testing.T) {
-	t.Helper()
-	assert.Assert(t, test.t == nil, "You cannot run a test multiple times")
-	assert.Assert(t, test.Description != "", "A test description cannot be empty")
-	assert.Assert(t, test.Command == nil || test.Expected != nil,
-		"Expectations for a test command cannot be nil. You may want to use Setup instead.")
-
-	// Ensure we have env
-	if test.Env == nil {
-		test.Env = map[string]string{}
-	}
-
-	// If we have a parent, get parent env and data
-	var parentData Data
-	if test.parent != nil {
-		parentData = test.parent.Data
-		for k, v := range test.parent.Env {
-			if _, ok := test.Env[k]; !ok {
-				test.Env[k] = v
-			}
-		}
-	}
-
-	// Attach testing.T
-	test.t = t
-	// Inherit and attach Data
-	test.Data = configureData(t, test.Data, parentData)
-
-	// Check the requirements
-	if test.Require != nil {
-		test.Require(test.Data, true, t)
-	}
-}
-
-// exec is a private method that will take care of the test setup, command and cleanup execution
-func (test *Case) exec(t *testing.T) {
-	t.Helper()
-	test.helpers = &helpers{
-		test.baseCommand,
-	}
-
-	// Set parallel unless asked not to
-	if !test.NoParallel {
-		t.Parallel()
-	}
-
-	// Register cleanup if there is any, and run it to collect any leftovers from previous runs
-	if test.Cleanup != nil {
-		test.Cleanup(test.Data, test.helpers)
-		t.Cleanup(func() {
-			test.Cleanup(test.Data, test.helpers)
-		})
-	}
-
-	// Run setup
-	if test.Setup != nil {
-		test.Setup(test.Data, test.helpers)
-	}
-
-	// Run the command if any, with expectations
-	if test.Command != nil {
-		test.Command(test.Data, test.helpers).Run(test.Expected(test.Data, test.helpers))
-	}
-
-	for _, subTest := range test.SubTests {
-		subTest.parent = test
-		subTest.subIt = true
-		subTest.Run(t)
 	}
 }

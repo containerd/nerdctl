@@ -18,39 +18,66 @@ package image
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"gotest.tools/v3/assert"
+
+	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
 func TestImageEncryptJWE(t *testing.T) {
-	testutil.RequiresBuild(t)
-	testutil.DockerIncompatible(t)
-	keyPair := helpers.NewJWEKeyPair(t)
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-	reg := testregistry.NewWithNoAuth(base, 0, false)
+	nerdtest.Setup()
 
-	defer keyPair.Cleanup()
-	defer reg.Cleanup(nil)
+	var registry *testregistry.RegistryServer
+	var keyPair *testhelpers.JweKeyPair
 
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	encryptImageRef := fmt.Sprintf("127.0.0.1:%d/%s:encrypted", reg.Port, tID)
-	base.Cmd("image", "encrypt", "--recipient=jwe:"+keyPair.Pub, testutil.CommonImage, encryptImageRef).AssertOK()
-	base.Cmd("image", "inspect", "--mode=native", "--format={{len .Index.Manifests}}", encryptImageRef).AssertOutExactly("1\n")
-	base.Cmd("image", "inspect", "--mode=native", "--format={{json .Manifest.Layers}}", encryptImageRef).AssertOutContains("org.opencontainers.image.enc.keys.jwe")
-	base.Cmd("push", encryptImageRef).AssertOK()
+	const remoteImageKey = "remoteImageKey"
 
-	defer base.Cmd("rmi", encryptImageRef).Run()
+	testCase := &test.Case{
+		Description: "TestImageEncryptJWE",
+		Require: test.Require(
+			test.Linux,
+			test.Not(nerdtest.Docker),
+			// This test needs to rmi the common image
+			nerdtest.Private,
+		),
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			if registry != nil {
+				registry.Cleanup(nil)
+				keyPair.Cleanup()
+				helpers.Anyhow("rmi", "-f", data.Get(remoteImageKey))
+			}
+			helpers.Anyhow("rmi", "-f", data.Identifier("decrypted"))
+		},
+		Setup: func(data test.Data, helpers test.Helpers) {
+			base := testutil.NewBase(t)
+			registry = testregistry.NewWithNoAuth(base, 0, false)
+			keyPair = testhelpers.NewJWEKeyPair(t)
+			helpers.Ensure("pull", testutil.CommonImage)
+			encryptImageRef := fmt.Sprintf("127.0.0.1:%d/%s:encrypted", registry.Port, data.Identifier())
+			helpers.Ensure("image", "encrypt", "--recipient=jwe:"+keyPair.Pub, testutil.CommonImage, encryptImageRef)
+			inspector := helpers.Capture("image", "inspect", "--mode=native", "--format={{len .Index.Manifests}}", encryptImageRef)
+			assert.Equal(t, inspector, "1\n")
+			inspector = helpers.Capture("image", "inspect", "--mode=native", "--format={{json .Manifest.Layers}}", encryptImageRef)
+			assert.Assert(t, strings.Contains(inspector, "org.opencontainers.image.enc.keys.jwe"))
+			helpers.Ensure("push", encryptImageRef)
+			helpers.Anyhow("rmi", "-f", encryptImageRef)
+			helpers.Anyhow("rmi", "-f", testutil.CommonImage)
+			data.Set(remoteImageKey, encryptImageRef)
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.Command {
+			helpers.Fail("pull", data.Get(remoteImageKey))
+			helpers.Ensure("pull", "--unpack=false", data.Get(remoteImageKey))
+			helpers.Fail("image", "decrypt", "--key="+keyPair.Pub, data.Get(remoteImageKey), data.Identifier("decrypted")) // decryption needs prv key, not pub key
+			return helpers.Command("image", "decrypt", "--key="+keyPair.Prv, data.Get(remoteImageKey), data.Identifier("decrypted"))
+		},
+		Expected: test.Expects(0, nil, nil),
+	}
 
-	// remove all local images (in the nerdctl-test namespace), to ensure that we do not have blobs of the original image.
-	helpers.RmiAll(base)
-	base.Cmd("pull", encryptImageRef).AssertFail() // defaults to --unpack=true, and fails due to missing prv key
-	base.Cmd("pull", "--unpack=false", encryptImageRef).AssertOK()
-	decryptImageRef := tID + ":decrypted"
-	defer base.Cmd("rmi", decryptImageRef).Run()
-	base.Cmd("image", "decrypt", "--key="+keyPair.Pub, encryptImageRef, decryptImageRef).AssertFail() // decryption needs prv key, not pub key
-	base.Cmd("image", "decrypt", "--key="+keyPair.Prv, encryptImageRef, decryptImageRef).AssertOK()
+	testCase.Run(t)
 }

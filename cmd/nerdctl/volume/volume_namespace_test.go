@@ -26,71 +26,81 @@ import (
 )
 
 func TestVolumeNamespace(t *testing.T) {
-	nerdtest.Setup()
+	testCase := nerdtest.Setup()
 
-	tg := &test.Case{
-		Description: "Namespaces",
-		Require:     test.Not(nerdtest.Docker),
-		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Set("root_namespace", data.Identifier())
-			data.Set("root_volume", data.Identifier())
-			helpers.Ensure("--namespace", data.Identifier(), "volume", "create", data.Identifier())
+	// Docker does not support namespaces
+	testCase.Require = test.Not(nerdtest.Docker)
+
+	// Create a volume in a different namespace
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Set("root_namespace", data.Identifier())
+		data.Set("root_volume", data.Identifier())
+		helpers.Ensure("--namespace", data.Identifier(), "volume", "create", data.Identifier())
+	}
+
+	// Cleanup once done
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Get("root_namespace") != "" {
+			helpers.Anyhow("--namespace", data.Identifier(), "volume", "remove", data.Identifier())
+			helpers.Anyhow("namespace", "remove", data.Identifier())
+		}
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "inspect another namespace volume should fail",
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("volume", "inspect", data.Get("root_volume"))
+			},
+			Expected: test.Expects(1, []error{
+				errdefs.ErrNotFound,
+			}, nil),
 		},
-		SubTests: []*test.Case{
-			{
-				Description: "inspect another namespace volume should fail",
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
-					return helpers.Command("volume", "inspect", data.Get("root_volume"))
-				},
-				Expected: test.Expects(1, []error{
-					errdefs.ErrNotFound,
-				}, nil),
+		{
+			Description: "removing another namespace volume should fail",
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("volume", "remove", data.Get("root_volume"))
 			},
-			{
-				Description: "removing another namespace volume should fail",
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
-					return helpers.Command("volume", "remove", data.Get("root_volume"))
-				},
-				Expected: test.Expects(1, []error{
-					errdefs.ErrNotFound,
-				}, nil),
-			},
-			{
-				Description: "prune should leave another namespace volume untouched",
-				NoParallel:  true,
-				Command:     test.RunCommand("volume", "prune", "-a", "-f"),
-				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-					return &test.Expected{
-						Output: test.All(
-							test.DoesNotContain(data.Get("root_volume")),
-							func(stdout string, info string, t *testing.T) {
-								helpers.Ensure("--namespace", data.Get("root_namespace"), "volume", "inspect", data.Get("root_volume"))
-							},
-						),
-					}
-				},
-			},
-			{
-				Description: "create with the same name should work, then delete it",
-				NoParallel:  true,
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
-					return helpers.Command("volume", "create", data.Get("root_volume"))
-				},
-				Cleanup: func(data test.Data, helpers test.Helpers) {
-					helpers.Anyhow("volume", "rm", data.Get("root_volume"))
-				},
-				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
-							helpers.Ensure("volume", "inspect", data.Get("root_volume"))
-							helpers.Ensure("volume", "rm", data.Get("root_volume"))
+			Expected: test.Expects(1, []error{
+				errdefs.ErrNotFound,
+			}, nil),
+		},
+		{
+			Description: "prune should leave another namespace volume untouched",
+			// Make it private so that we do not interact with other tests in the main namespace
+			Require: nerdtest.Private,
+			Command: test.RunCommand("volume", "prune", "-a", "-f"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.All(
+						test.DoesNotContain(data.Get("root_volume")),
+						func(stdout string, info string, t *testing.T) {
 							helpers.Ensure("--namespace", data.Get("root_namespace"), "volume", "inspect", data.Get("root_volume"))
 						},
-					}
-				},
+					),
+				}
+			},
+		},
+		{
+			Description: "create with the same name should work, then delete it",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("volume", "create", data.Get("root_volume"))
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("volume", "rm", data.Get("root_volume"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, info string, t *testing.T) {
+						helpers.Ensure("volume", "inspect", data.Get("root_volume"))
+						helpers.Ensure("volume", "rm", data.Get("root_volume"))
+						helpers.Ensure("--namespace", data.Get("root_namespace"), "volume", "inspect", data.Get("root_volume"))
+					},
+				}
 			},
 		},
 	}
 
-	tg.Run(t)
+	testCase.Run(t)
 }

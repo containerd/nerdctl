@@ -27,64 +27,67 @@ import (
 )
 
 func TestNetworkLsFilter(t *testing.T) {
-	nerdtest.Setup()
+	testCase := nerdtest.Setup()
 
-	testCase := &test.Case{
-		Description: "Test network list",
-		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Set("identifier", data.Identifier())
-			data.Set("label", data.Identifier()+"=label-1")
-			data.Set("netID1", helpers.Capture("network", "create", "--label="+data.Get("label"), data.Identifier()+"-1"))
-			data.Set("netID2", helpers.Capture("network", "create", data.Identifier()+"-2"))
-		},
-		Cleanup: func(data test.Data, helpers test.Helpers) {
-			helpers.Anyhow("network", "rm", data.Identifier()+"-1")
-			helpers.Anyhow("network", "rm", data.Identifier()+"-2")
-		},
-		SubTests: []*test.Case{
-			{
-				Description: "filter label",
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
-					return helpers.Command("network", "ls", "--quiet", "--filter", "label="+data.Get("label"))
-				},
-				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
-							var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-							assert.Assert(t, len(lines) >= 1, info)
-							netNames := map[string]struct{}{
-								data.Get("netID1")[:12]: {},
-							}
+	testCase.Require = nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3086")
 
-							for _, name := range lines {
-								_, ok := netNames[name]
-								assert.Assert(t, ok, info)
-							}
-						},
-					}
-				},
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Set("identifier", data.Identifier())
+		data.Set("label", "mylabel=label-1")
+		data.Set("net1", data.Identifier("1"))
+		data.Set("net2", data.Identifier("2"))
+		data.Set("netID1", helpers.Capture("network", "create", "--label="+data.Get("label"), data.Get("net1")))
+		data.Set("netID2", helpers.Capture("network", "create", data.Get("net2")))
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("network", "rm", data.Identifier("1"))
+		helpers.Anyhow("network", "rm", data.Identifier("2"))
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "filter label",
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("network", "ls", "--quiet", "--filter", "label="+data.Get("label"))
 			},
-			{
-				Description: "filter name",
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
-					return helpers.Command("network", "ls", "--quiet", "--filter", "name="+data.Get("identifier")+"-2")
-				},
-				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
-							var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-							assert.Assert(t, len(lines) >= 1, info)
-							netNames := map[string]struct{}{
-								data.Get("netID2")[:12]: {},
-							}
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, info string, t *testing.T) {
+						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 1, info)
+						netNames := map[string]struct{}{
+							data.Get("netID1")[:12]: {},
+						}
 
-							for _, name := range lines {
-								_, ok := netNames[name]
-								assert.Assert(t, ok, info)
-							}
-						},
-					}
-				},
+						for _, name := range lines {
+							_, ok := netNames[name]
+							assert.Assert(t, ok, info)
+						}
+					},
+				}
+			},
+		},
+		{
+			Description: "filter name",
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("network", "ls", "--quiet", "--filter", "name="+data.Get("net2"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, info string, t *testing.T) {
+						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 1, info)
+						netNames := map[string]struct{}{
+							data.Get("netID2")[:12]: {},
+						}
+
+						for _, name := range lines {
+							_, ok := netNames[name]
+							assert.Assert(t, ok, info)
+						}
+					},
+				}
 			},
 		},
 	}

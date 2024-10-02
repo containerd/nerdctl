@@ -36,9 +36,10 @@ import (
 	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestRunCustomRootfs(t *testing.T) {
@@ -458,64 +459,96 @@ func TestRunWithFluentdLogDriverWithLogOpt(t *testing.T) {
 }
 
 func TestRunWithOOMScoreAdj(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("test skipped for rootless containers.")
-	}
-	t.Parallel()
-	base := testutil.NewBase(t)
-	var score = "-42"
+	nerdtest.Setup()
 
-	base.Cmd("run", "--rm", "--oom-score-adj", score, testutil.AlpineImage, "cat", "/proc/self/oom_score_adj").AssertOutContains(score)
+	testCase := &test.Case{
+		Description: "TestStartDetachKeys",
+		Require:     nerdtest.RootFul,
+		Command:     test.RunCommand("run", "--rm", "--oom-score-adj", "-42", testutil.AlpineImage, "cat", "/proc/self/oom_score_adj"),
+		Expected:    test.Expects(0, nil, test.Contains("-42")),
+	}
+
+	testCase.Run(t)
 }
 
-func TestRunWithDetachKeys(t *testing.T) {
-	t.Parallel()
+func TestRunDetachKeys(t *testing.T) {
+	nerdtest.Setup()
 
-	if testutil.GetTarget() == testutil.Docker {
-		t.Skip("When detaching from a container, for a session started with 'docker attach'" +
-			", it prints 'read escape sequence', but for one started with 'docker (run|start)', it prints nothing." +
-			" However, the flag is called '--detach-keys' in all cases" +
-			", so nerdctl prints 'read detach keys' for all cases" +
-			", and that's why this test is skipped for Docker.")
+	testCase := &test.Case{
+		Description: "TestStartDetachKeys",
+		Require:     test.Binary("unbuffer"),
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("container", "rm", "-f", data.Identifier())
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.Command {
+			si := testutil.NewDelayOnceReader(bytes.NewReader([]byte{1, 2}))
+			cmd := helpers.
+				Command("run", "-it", "--detach-keys=ctrl-a,ctrl-b", "--name", data.Identifier(), testutil.CommonImage)
+			cmd.WithStdin(si)
+			cmd.WithWrapper("unbuffer", "-p")
+			return cmd
+		},
+		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+			return &test.Expected{
+				Output: func(stdout string, info string, t *testing.T) {
+					container := nerdtest.InspectContainer(helpers, data.Identifier())
+					assert.Equal(t, container.State.Running, true, info)
+				},
+			}
+		},
 	}
 
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-	opts := []func(*testutil.Cmd){
-		testutil.WithStdin(testutil.NewDelayOnceReader(bytes.NewReader([]byte{1, 2}))), // https://www.physics.udel.edu/~watson/scen103/ascii.html
-	}
-	defer base.Cmd("container", "rm", "-f", containerName).AssertOK()
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	//
-	// "-p" is needed because we need unbuffer to read from stdin, and from [1]:
-	// "Normally, unbuffer does not read from stdin. This simplifies use of unbuffer in some situations.
-	//  To use unbuffer in a pipeline, use the -p flag."
-	//
-	// [1] https://linux.die.net/man/1/unbuffer
-	base.CmdWithHelper([]string{"unbuffer", "-p"}, "run", "-it", "--detach-keys=ctrl-a,ctrl-b", "--name", containerName, testutil.CommonImage).
-		CmdOption(opts...).AssertOutContains("read detach keys")
-	container := base.InspectContainer(containerName)
-	assert.Equal(base.T, container.State.Running, true)
+	testCase.Run(t)
 }
 
 func TestRunWithTtyAndDetached(t *testing.T) {
-	base := testutil.NewBase(t)
-	imageName := testutil.CommonImage
-	withoutTtyContainerName := "without-terminal-" + testutil.Identifier(t)
-	withTtyContainerName := "with-terminal-" + testutil.Identifier(t)
+	nerdtest.Setup()
 
-	// without -t, fail
-	base.Cmd("run", "-d", "--name", withoutTtyContainerName, imageName, "stty").AssertOK()
-	defer base.Cmd("container", "rm", "-f", withoutTtyContainerName).AssertOK()
-	base.Cmd("logs", withoutTtyContainerName).AssertCombinedOutContains("stty: standard input: Not a tty")
-	withoutTtyContainer := base.InspectContainer(withoutTtyContainerName)
-	assert.Equal(base.T, 1, withoutTtyContainer.State.ExitCode)
+	testGroup := &test.Group{
+		{
+			Description: "without terminal",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("container", "rm", "-f", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "stty")
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("logs", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Errors: []error{errors.New("stty: standard input: Not a tty")},
+					Output: func(stdout string, info string, t *testing.T) {
+						container := nerdtest.InspectContainer(helpers, data.Identifier())
+						assert.Equal(t, container.State.ExitCode, 1, info)
+					},
+				}
+			},
+		},
+		{
+			Description: "with terminal",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("container", "rm", "-f", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "-t", "--name", data.Identifier(), testutil.CommonImage, "stty")
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.Command {
+				return helpers.Command("logs", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.All(
+						test.Contains("speed 38400 baud; line = 0;"),
+						func(stdout string, info string, t *testing.T) {
+							container := nerdtest.InspectContainer(helpers, data.Identifier())
+							assert.Equal(t, container.State.ExitCode, 0, info)
+						}),
+				}
+			},
+		},
+	}
 
-	// with -t, success
-	base.Cmd("run", "-d", "-t", "--name", withTtyContainerName, imageName, "stty").AssertOK()
-	defer base.Cmd("container", "rm", "-f", withTtyContainerName).AssertOK()
-	base.Cmd("logs", withTtyContainerName).AssertCombinedOutContains("speed 38400 baud; line = 0;")
-	withTtyContainer := base.InspectContainer(withTtyContainerName)
-	assert.Equal(base.T, 0, withTtyContainer.State.ExitCode)
+	testGroup.Run(t)
 }

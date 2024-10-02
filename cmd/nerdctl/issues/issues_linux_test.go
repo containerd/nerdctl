@@ -28,10 +28,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
-func TestMain(m *testing.M) {
-	testutil.M(m)
-}
-
 func TestIssue3425(t *testing.T) {
 	nerdtest.Setup()
 

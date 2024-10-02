@@ -22,9 +22,16 @@ import (
 	"time"
 )
 
-// A Requirement is a function that can evaluate random requirement and possibly skip a test
-// See test.MakeRequirement to make your own
-type Requirement func(data Data, skip bool, t *testing.T) (bool, string)
+// An Evaluator is a function that decides whether a test should run on not, to be fed to MakeRequirement
+type Evaluator func(data Data, helpers Helpers, t *testing.T) (bool, string)
+
+// A Requirement offers a way to verify random conditions to decide if a test should be skipped
+// It can furthermore (optionally) provide custom setup and cleanup routines to perform
+type Requirement struct {
+	Check   Evaluator
+	Setup   Butler
+	Cleanup Butler
+}
 
 // A Butler is the function signature meant to be attached to a Setup or Cleanup routine for a test.Case
 type Butler func(data Data, helpers Helpers)
@@ -42,15 +49,15 @@ type Manager func(data Data, helpers Helpers) *Expected
 // Typically, a Case has a base-command, from which all commands involved in the test are derived.
 type Command interface {
 	// WithBinary specifies what binary to execute
-	WithBinary(binary string) Command
+	WithBinary(binary string)
 	// WithArgs specifies the args to pass to the binary. Note that WithArgs is additive.
-	WithArgs(args ...string) Command
+	WithArgs(args ...string)
 	// WithEnv adds the passed map to the environment of the command to be executed
-	WithEnv(env map[string]string) Command
+	WithEnv(env map[string]string)
 	// WithWrapper allows wrapping a command with another command (for example: `time`, `unbuffer`)
-	WithWrapper(binary string, args ...string) Command
+	WithWrapper(binary string, args ...string)
 	// WithStdin allows passing a reader to be used for stdin for the command
-	WithStdin(r io.Reader) Command
+	WithStdin(r io.Reader)
 	// Run does execute the command, and compare the output with the provided expectation.
 	// Passing nil for `Expected` will just run the command regardless of outcome.
 	// An empty `&Expected{}` is (of course) equivalent to &Expected{Exit: 0}, meaning the command is verified to be
@@ -58,12 +65,15 @@ type Command interface {
 	Run(expect *Expected)
 	// Clone returns a copy of the command
 	Clone() Command
-	// Clear will clear binary and arguments, but retain the env, or any other custom properties
+	// Clear does a clone, but will clear binary and arguments, but retain the env, or any other custom properties
+	// Gotcha: if GenericCommand is embedded with a custom Run and an overridden Clear to return the embedding type
+	// the result will be the embedding command, no longer the GenericCommand
 	Clear() Command
-	// Allow starting a command in the background
-	Background(timeout time.Duration) Command
+	// Background allows starting a command in the background
+	Background(timeout time.Duration)
 }
 
+// A Comparator is the function signature to implement when implementing testing against stdout of a command
 type Comparator func(stdout string, info string, t *testing.T)
 
 // Expected expresses the expected output of a command
@@ -85,7 +95,7 @@ type SystemValue string
 // Data is meant to hold information about a test:
 // - first, any random key value data that the test implementer wants to carry / modify - this is test data
 // - second, configuration specific to the binary being tested - typically defined by the specialized command being tested
-// - third, immutable "system" info (unique identifier, tempdir, or other SystemKey/Value pairs)
+// - third, immutable "system" info (unique identifier, tempDir, or other SystemKey/Value pairs)
 type Data interface {
 	// Get returns the value of a certain key for custom data
 	Get(key string) string
@@ -93,13 +103,13 @@ type Data interface {
 	Set(key string, value string) Data
 
 	// Identifier returns the test identifier that can be used to name resources
-	Identifier() string
+	Identifier(suffix ...string) string
 	// TempDir returns the test temporary directory
 	TempDir() string
 	// Sink allows to define ONCE a certain system property
 	Sink(key SystemKey, value SystemValue)
 	// Surface allows retrieving a certain system property
-	Surface(key SystemKey) SystemValue
+	Surface(key SystemKey) (SystemValue, error)
 
 	// WithConfig allows setting a declared ConfigKey to a ConfigValue
 	WithConfig(key ConfigKey, value ConfigValue) Data
@@ -110,10 +120,16 @@ type Data interface {
 	getConfig() map[ConfigKey]ConfigValue
 }
 
+type Hooks interface {
+	OnInitialize(testCase *Case, t *testing.T) Command
+	OnPostRequirements(testCase *Case, t *testing.T, com Command)
+	OnPostSetup(testCase *Case, t *testing.T, com Command)
+}
+
 var (
-	registeredInit func(test *Case, t *testing.T) Command
+	registeredHooks Hooks
 )
 
-func CustomCommand(custom func(test *Case, t *testing.T) Command) {
-	registeredInit = custom
+func CustomCommand(hooks Hooks) {
+	registeredHooks = hooks
 }

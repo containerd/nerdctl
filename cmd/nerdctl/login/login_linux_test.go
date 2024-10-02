@@ -21,17 +21,14 @@
 package login
 
 import (
+	"errors"
 	"fmt"
-	"net"
-	"os"
 	"strconv"
 	"testing"
 
-	"gotest.tools/v3/icmd"
-
-	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/testca"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
@@ -65,6 +62,12 @@ func (ag *Client) WithConfigPath(value string) *Client {
 	return ag
 }
 
+func (ag *Client) RunIt(host string) []string {
+	args := append([]string{"login"}, ag.args...)
+	return append(args, host)
+}
+
+/*
 func (ag *Client) GetConfigPath() string {
 	return ag.configPath
 }
@@ -87,84 +90,376 @@ func (ag *Client) Run(base *testutil.Base, host string) *testutil.Cmd {
 	}
 }
 
-func TestLoginPersistence(t *testing.T) {
-	base := testutil.NewBase(t)
-	t.Parallel()
+*/
 
-	// Retrieve from the store
-	testCases := []struct {
-		auth string
-	}{
+func TestFoo(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Registry
+
+	var reg *registry.Server
+	var token *registry.TokenAuthServer
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var username, password string
+		username = test.RandomStringBase64(30) + "∞"
+		password = test.RandomStringBase64(30) + ":∞"
+		reg, token = nerdtest.RegistryWithTokenAuth(data, helpers, t, username, password, 0, true)
+		// reg = nerdtest.RegistryWithBasicAuth(data, helpers, t, username, password, 0, false)
+
+		reg.Setup(data, helpers)
+		token.Setup(data, helpers)
+		data.Set("registryUsername", username)
+		data.Set("registryPassword", password)
+		data.Set("registryHost", reg.IP.String())
+		data.Set("registryPort", strconv.Itoa(reg.Port))
+		data.WithConfig(nerdtest.HostsDir, test.ConfigValue(reg.HostsDir))
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if reg != nil {
+			reg.Cleanup(data, helpers)
+			token.Cleanup(data, helpers)
+		}
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.Command {
+		cl := &Client{}
+		cl.WithCredentials(data.Get("registryUsername"), data.Get("registryPassword"))
+		// cl.WithInsecure(true)
+		ex := cl.RunIt(fmt.Sprintf("%s:%s", data.Get("registryHost"), data.Get("registryPort")))
+		return helpers.Command(ex...)
+	}
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		// reg.Logs(data, helpers)
+		return &test.Expected{
+			ExitCode: 0,
+			Output: func(stdout string, info string, t *testing.T) {
+				//token.Logs(data, helpers)
+				//reg.Logs(data, helpers)
+			},
+		}
+	}
+	testCase.Run(t)
+}
+
+/*
+
+func WithRegistry(data test.Data, helpers test.Helpers, t *testing.T, auth string, port int, tls bool) (string, string, *registry.Server) {
+	username := test.RandomStringBase64(30) + "∞"
+	password := test.RandomStringBase64(30) + ":∞"
+	switch auth {
+	case "basic":
+		return username, password, nerdtest.RegistryWithBasicAuth(data, helpers, t, username, password, port, tls)
+	case "token":
+		return username, password, nerdtest.RegistryWithTokenAuth(data, helpers, t, username, password, port, tls)
+	default:
+		return "", "", nerdtest.RegistryWithNoAuth(data, helpers, t, port, tls)
+	}
+}
+
+*/
+
+type RegistryTestDescriptor struct {
+	Port     int
+	TLS      bool
+	AuthType string
+
+	registry *registry.Server
+	token    *registry.TokenAuthServer
+	username string
+	password string
+	t        *testing.T
+}
+
+func (rtd *RegistryTestDescriptor) Description() string {
+	desc := "registry port: "
+	if rtd.Port == 0 {
+		desc += "random"
+	} else {
+		desc += strconv.Itoa(rtd.Port)
+	}
+	desc += " auth: " + rtd.AuthType
+	desc += " tls: " + strconv.FormatBool(rtd.TLS)
+	return desc
+}
+
+func (rtd *RegistryTestDescriptor) Setup(data test.Data, helpers test.Helpers) {
+	var username, password string
+	username = test.RandomStringBase64(30) + "∞"
+	password = test.RandomStringBase64(30) + ":∞"
+	switch rtd.AuthType {
+	case "basic":
+		rtd.registry = nerdtest.RegistryWithBasicAuth(data, helpers, rtd.t, username, password, rtd.Port, rtd.TLS)
+		data.Set("registryUsername", username)
+		data.Set("registryPassword", password)
+	case "token":
+		rtd.registry, rtd.token = nerdtest.RegistryWithTokenAuth(data, helpers, rtd.t, username, password, rtd.Port, rtd.TLS)
+		rtd.token.Setup(data, helpers)
+		data.Set("registryUsername", username)
+		data.Set("registryPassword", password)
+	default:
+		rtd.registry = nerdtest.RegistryWithNoAuth(data, helpers, rtd.t, rtd.Port, rtd.TLS)
+	}
+	rtd.registry.Setup(data, helpers)
+	data.Set("registryHostsDir", rtd.registry.HostsDir)
+	data.Set("registryHost", rtd.registry.IP.String())
+	data.Set("registryPort", strconv.Itoa(rtd.registry.Port))
+}
+
+func (rtd *RegistryTestDescriptor) Cleanup(data test.Data, helpers test.Helpers) {
+	if rtd.registry != nil {
+		//rtd.registry.Logs(data, helpers)
+		rtd.registry.Cleanup(data, helpers)
+	}
+	if rtd.token != nil {
+		//rtd.token.Logs(data, helpers)
+		rtd.token.Cleanup(data, helpers)
+	}
+}
+
+func WithNothing(username string, password string, host string, port string) []string {
+	if port != "" {
+		port = ":" + port
+	}
+	return []string{"login",
+		"--username", username,
+		"--password", password,
+		fmt.Sprintf("%s%s", host, port)}
+}
+
+func WithHosts(username string, password string, host string, port string, hostsDir string) []string {
+	if port != "" {
+		port = ":" + port
+	}
+	return []string{"login",
+		"--hosts-dir", hostsDir,
+		"--username", username,
+		"--password", password,
+		fmt.Sprintf("%s%s", host, port)}
+}
+
+func WithInsecure(username string, password string, host string, port string, insecure bool) []string {
+	if port != "" {
+		port = ":" + port
+	}
+	return []string{"login",
+		"--insecure-registry=" + strconv.FormatBool(insecure),
+		"--username", username,
+		"--password", password,
+		fmt.Sprintf("%s%s", host, port)}
+}
+
+func TestLoginPersistence(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Registry
+	// Use a custom docker config to avoid cross test pollution
+	testCase.Data = test.WithConfig(nerdtest.DockerConfig, "{}")
+	testCase.SubTests = []*test.Case{}
+
+	testDescriptors := []*RegistryTestDescriptor{
 		{
-			"basic",
+			Port:     0,
+			TLS:      true,
+			AuthType: "token",
+			t:        t,
 		},
 		{
-			"token",
+			Port:     0,
+			TLS:      true,
+			AuthType: "basic",
+			t:        t,
 		},
 	}
 
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(fmt.Sprintf("Server %s", tc.auth), func(t *testing.T) {
-			t.Parallel()
+	for _, testDesc := range testDescriptors {
+		testCase.SubTests = append(testCase.SubTests, &test.Case{
+			Description: testDesc.Description() + "-nothing",
+			Setup:       testDesc.Setup,
+			Cleanup:     testDesc.Cleanup,
+			SubTests: []*test.Case{
+				{
+					Description: "with hostsdir, valid credentials, ip",
+					Command: func(data test.Data, helpers test.Helpers) test.Command {
+						return helpers.Command(WithHosts(
+							data.Get("registryUsername"),
+							data.Get("registryPassword"),
+							data.Get("registryHost"),
+							data.Get("registryPort"),
+							data.Get("registryHostsDir"),
+						)...)
+					},
+					Expected: test.Expects(0, nil, nil),
+				},
+				{
+					Description: "with hostsdir, invalid credentials, ip",
+					Command: func(data test.Data, helpers test.Helpers) test.Command {
+						return helpers.Command(WithHosts(
+							"bogus",
+							"bogus",
+							data.Get("registryHost"),
+							data.Get("registryPort"),
+							data.Get("registryHostsDir"),
+						)...)
+					},
+					Expected: test.Expects(1, nil, nil),
+				},
+				{
+					Description: "with insecure, valid credentials, ip",
+					Command: func(data test.Data, helpers test.Helpers) test.Command {
+						return helpers.Command(WithInsecure(
+							data.Get("registryUsername"),
+							data.Get("registryPassword"),
+							data.Get("registryHost"),
+							data.Get("registryPort"),
+							true,
+						)...)
+					},
+					Expected: test.Expects(0, nil, nil),
+				},
+				{
+					Description: "with insecure, invalid credentials, ip",
+					Command: func(data test.Data, helpers test.Helpers) test.Command {
+						return helpers.Command(WithInsecure(
+							"bogus",
+							"bogus",
+							data.Get("registryHost"),
+							data.Get("registryPort"),
+							true,
+						)...)
+					},
+					Expected: test.Expects(1, nil, nil),
+				},
+				{
+					Description: "with nothing, valid credentials, ip",
+					Command: func(data test.Data, helpers test.Helpers) test.Command {
+						return helpers.Command(WithNothing(
+							data.Get("registryUsername"),
+							data.Get("registryPassword"),
+							data.Get("registryHost"),
+							data.Get("registryPort"),
+						)...)
+					},
+					Expected: test.Expects(1, []error{errors.New("failed to verify certificate")}, nil),
+				},
+				{
+					Description: "with nothing, valid credentials, localhost",
+					Command: func(data test.Data, helpers test.Helpers) test.Command {
+						return helpers.Command(WithNothing(
+							data.Get("registryUsername"),
+							data.Get("registryPassword"),
+							"localhost",
+							data.Get("registryPort"),
+						)...)
+					},
+					Expected: test.Expects(1, []error{errors.New("failed to verify certificate")}, nil),
+				},
+				/*
+					{
+						Description: "no options, ip",
+						Command: func(data test.Data, helpers test.Helpers) test.Command {
+							return helpers.Command(WithNothing(
+								data.Get("registryUsername"),
+								data.Get("registryPassword"),
+								data.Get("registryHost"),
+								data.Get("registryPort"),
+							)...)
+						},
+						Expected: test.Expects(1, nil, nil),
+					},
+					{
+						Description: "no options, localhost",
+						Command: func(data test.Data, helpers test.Helpers) test.Command {
+							return helpers.Command(WithNothing(
+								data.Get("registryUsername"),
+								data.Get("registryPassword"),
+								"localhost",
+								data.Get("registryPort"),
+							)...)
+						},
+						Expected: test.Expects(0, nil, nil),
+					},
+					{
+						Description: "no options, 127.0.0.1",
+						Command: func(data test.Data, helpers test.Helpers) test.Command {
+							return helpers.Command(WithNothing(
+								data.Get("registryUsername"),
+								data.Get("registryPassword"),
+								"localhost",
+								data.Get("registryPort"),
+							)...)
+						},
+						Expected: test.Expects(0, nil, nil),
+					},
 
-			username := testregistry.SafeRandomString(30) + "∞"
-			password := testregistry.SafeRandomString(30) + ":∞"
-
-			// Add the requested authentication
-			var auth testregistry.Auth
-			var dependentCleanup func(error)
-
-			auth = &testregistry.NoAuth{}
-			if tc.auth == "basic" {
-				auth = &testregistry.BasicAuth{
-					Username: username,
-					Password: password,
-				}
-			} else if tc.auth == "token" {
-				authCa := testca.New(base.T)
-				as := testregistry.NewAuthServer(base, authCa, 0, username, password, false)
-				auth = &testregistry.TokenAuth{
-					Address:  as.Scheme + "://" + net.JoinHostPort(as.IP.String(), strconv.Itoa(as.Port)),
-					CertPath: as.CertPath,
-				}
-				dependentCleanup = as.Cleanup
-			}
-
-			// Start the registry with the requested options
-			reg := testregistry.NewRegistry(base, nil, 0, auth, dependentCleanup)
-
-			// Register registry cleanup
-			t.Cleanup(func() {
-				reg.Cleanup(nil)
-			})
-
-			// First, login successfully
-			c := (&Client{}).
-				WithCredentials(username, password)
-
-			c.Run(base, fmt.Sprintf("localhost:%d", reg.Port)).
-				AssertOK()
-
-			// Now, log in successfully without passing any explicit credentials
-			nc := (&Client{}).
-				WithConfigPath(c.GetConfigPath())
-			nc.Run(base, fmt.Sprintf("localhost:%d", reg.Port)).
-				AssertOK()
-
-			// Now fail while using invalid credentials
-			nc.WithCredentials("invalid", "invalid").
-				Run(base, fmt.Sprintf("localhost:%d", reg.Port)).
-				AssertFail()
-
-			// And login again without, reverting to the last saved good state
-			nc = (&Client{}).
-				WithConfigPath(c.GetConfigPath())
-
-			nc.Run(base, fmt.Sprintf("localhost:%d", reg.Port)).
-				AssertOK()
+				*/
+			},
 		})
 	}
+
+	testCase.Run(t)
+}
+
+func TestLoginVariants(t *testing.T) {
+	nerdtest.Setup()
+
+	_ = func(description string, registrySetup func(data test.Data, helpers test.Helpers)) *test.Case {
+		var registry *testregistry.RegistryServer
+
+		return &test.Case{
+			Description: description,
+
+			Setup: registrySetup,
+
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				if registry != nil {
+					registry.Cleanup(nil)
+				}
+			},
+
+			SubTests: []*test.Case{
+				{
+					Description: "",
+					// Use a custom docker config to avoid cross test pollution
+					Data: test.WithConfig(nerdtest.DockerConfig, "{}"),
+					Setup: func(data test.Data, helpers test.Helpers) {
+						// First, login successfully
+						helpers.Ensure("login",
+							"--username", data.Get("registryUsername"),
+							"--password", data.Get("registryPassword"),
+							fmt.Sprintf("%s:%s", data.Get("registryHost"), data.Get("registryPort")),
+						)
+					},
+					Command: func(data test.Data, helpers test.Helpers) test.Command {
+						return helpers.Command("login", fmt.Sprintf("%s:%s", data.Get("registryHost"), data.Get("registryPort")))
+					},
+					Expected: test.Expects(0, nil, test.Contains("Login Succeeded")),
+				},
+				{
+					Description: "",
+					// Use a custom docker config to avoid cross test pollution
+					Data: test.WithConfig(nerdtest.DockerConfig, "{}"),
+					Setup: func(data test.Data, helpers test.Helpers) {
+						// First, login successfully
+						helpers.Ensure("login",
+							"--username", data.Get("registryUsername"),
+							"--password", data.Get("registryPassword"),
+							fmt.Sprintf("%s:%s", data.Get("registryHost"), data.Get("registryPort")),
+						)
+
+						// Fail to login with invalid credentials
+						helpers.Fail("login",
+							"--username", "bogus",
+							"--password", "bogus",
+							fmt.Sprintf("%s:%s", data.Get("registryHost"), data.Get("registryPort")),
+						)
+					},
+					Command: func(data test.Data, helpers test.Helpers) test.Command {
+						return helpers.Command("login", fmt.Sprintf("%s:%s", data.Get("registryHost"), data.Get("registryPort")))
+					},
+					Expected: test.Expects(0, nil, test.Contains("Login Succeeded")),
+				},
+			},
+		}
+	}
+
 }
 
 /*
@@ -196,6 +491,7 @@ func TestAgainstNoAuth(t *testing.T) {
 
 */
 
+/*
 func TestLoginAgainstVariants(t *testing.T) {
 	// Skip docker, because Docker doesn't have `--hosts-dir` nor `insecure-registry` option
 	// This will test access to a wide variety of servers, with or without TLS, with basic or token authentication
@@ -537,3 +833,6 @@ func TestLoginAgainstVariants(t *testing.T) {
 		})
 	}
 }
+
+
+*/

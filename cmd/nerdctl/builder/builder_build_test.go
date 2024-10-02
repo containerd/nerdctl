@@ -17,9 +17,11 @@
 package builder
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -27,61 +29,148 @@ import (
 
 	"github.com/containerd/platforms"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func TestBuild(t *testing.T) {
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
-	imageName := testutil.Identifier(t)
-	defer base.Cmd("rmi", imageName).Run()
+func TestBuildBAB(t *testing.T) {
+	nerdtest.Setup()
 
-	dockerfile := fmt.Sprintf(`FROM %s
-CMD ["echo", "nerdctl-build-test-string"]
-	`, testutil.CommonImage)
+	testGroup := &test.Group{
+		{
+			Description: "TestBuild",
+			Require:     nerdtest.Build,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
+				buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+				data.Set("buildCtx", buildCtx)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rmi", data.Identifier())
+				helpers.Anyhow("builder", "prune", "--all", "--force")
+			},
+			Expected: test.Expects(0, nil, nil),
+			SubTests: []*test.Case{
+				{
+					Description: "Successfully build with tag first buildctx second",
+					Setup: func(data test.Data, helpers test.Helpers) {
+						helpers.Ensure("build", "-t", data.Identifier(), data.Get("buildCtx"))
+					},
+					Command: func(data test.Data, helpers test.Helpers) test.Command {
+						return helpers.Command("run", "--rm", data.Identifier())
+					},
+					Cleanup: func(data test.Data, helpers test.Helpers) {
+						helpers.Anyhow("rmi", data.Identifier())
+					},
+					Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+				},
+				{
+					Description: "Successfully build with buildctx first tag second",
+					Setup: func(data test.Data, helpers test.Helpers) {
+						helpers.Ensure("build", data.Get("buildCtx"), "-t", data.Identifier())
+					},
+					Command: func(data test.Data, helpers test.Helpers) test.Command {
+						return helpers.Command("run", "--rm", data.Identifier())
+					},
+					Cleanup: func(data test.Data, helpers test.Helpers) {
+						helpers.Anyhow("rmi", data.Identifier())
+					},
+					Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+				},
+				{
+					Description: "Successfully build with output docker, main tag still works",
+					Setup: func(data test.Data, helpers test.Helpers) {
+						helpers.Ensure("build", data.Get("buildCtx"), "-t", data.Identifier(), "--output=type=docker,name="+data.Identifier("ignored"))
+					},
+					Command: func(data test.Data, helpers test.Helpers) test.Command {
+						return helpers.Command("run", "--rm", data.Identifier())
+					},
+					Cleanup: func(data test.Data, helpers test.Helpers) {
+						helpers.Anyhow("rmi", data.Identifier())
+					},
+					Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+				},
+				{
+					Description: "Successfully build with output docker, name cannot be used",
+					Setup: func(data test.Data, helpers test.Helpers) {
+						helpers.Ensure("build", data.Get("buildCtx"), "-t", data.Identifier(), "--output=type=docker,name="+data.Identifier("ignored"))
+					},
+					Command: func(data test.Data, helpers test.Helpers) test.Command {
+						return helpers.Command("run", "--rm", data.Identifier("ignored"))
+					},
+					Cleanup: func(data test.Data, helpers test.Helpers) {
+						helpers.Anyhow("rmi", data.Identifier())
+					},
+					Expected: test.Expects(1, nil, nil),
+				},
+			},
+		},
+	}
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-
-	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
-	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
-	base.Cmd("run", "--rm", imageName).AssertOutExactly("nerdctl-build-test-string\n")
-
-	ignoredImageNamed := imageName + "-" + "ignored"
-	outputOpt := fmt.Sprintf("--output=type=docker,name=%s", ignoredImageNamed)
-	base.Cmd("build", buildCtx, "-t", imageName, outputOpt).AssertOK()
-
-	base.Cmd("run", "--rm", imageName).AssertOutExactly("nerdctl-build-test-string\n")
-	base.Cmd("run", "--rm", ignoredImageNamed).AssertFail()
+	testGroup.Run(t)
 }
 
-func TestBuildIsShareableForCompatiblePlatform(t *testing.T) {
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
-	imageName := testutil.Identifier(t)
-	defer base.Cmd("rmi", imageName).Run()
+func TestCanBuildOnOtherPlatform(t *testing.T) {
+	nerdtest.Setup()
 
-	dockerfile := fmt.Sprintf(`FROM %s
-CMD ["echo", "nerdctl-build-test-string"]
-	`, testutil.CommonImage)
+	requireEmulation := test.MakeRequirement(func(data test.Data, helpers test.Helpers, t *testing.T) (bool, string) {
+		host, err := buildkitutil.GetBuildkitHost(testutil.Namespace)
+		assert.NilError(t, err)
+		var plt []struct {
+			Platforms []platforms.Platform
+		}
+		cmd := &test.GenericCommand{}
+		cmd.WithT(t)
+		cmd.WithBinary("buildctl")
+		cmd.WithArgs("--addr", host, "debug", "workers", "--format", "json")
+		cmd.Run(&test.Expected{
+			ExitCode: 0,
+			Output: func(stdout string, info string, t *testing.T) {
+				err = json.Unmarshal([]byte(stdout), &plt)
+				assert.NilError(t, err, info)
+			},
+		})
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+		assert.Assert(t, len(plt) > 0)
+		var found *platforms.Platform
+		for _, plat := range plt[0].Platforms {
+			if plat.Architecture != runtime.GOARCH && plat.OS != runtime.GOOS {
+				found = &plat
+				break
+			}
+		}
 
-	base.Cmd("build", buildCtx, "-t", imageName).AssertErrNotContains("tarball")
+		mess := "buildkit worker does not support emulation"
+		ret := found != nil
+		if ret {
+			mess = "buildkit worker does support emulation"
+			data.Set("OS", found.OS)
+			data.Set("Arch", found.Architecture)
+		}
 
-	d := platforms.DefaultSpec()
-	platformConfig := fmt.Sprintf("%s/%s", d.OS, d.Architecture)
-	base.Cmd("build", buildCtx, "-t", imageName, "--platform", platformConfig).AssertOK()
-	base.Cmd("build", buildCtx, "-t", imageName, "--platform", platformConfig, "--progress", "plain").AssertErrNotContains("tarball")
+		return ret, mess
+	})
 
-	n := platforms.Platform{OS: "linux", Architecture: "arm", Variant: ""}
-	if n.OS != d.OS && n.Architecture != d.Architecture {
-		notCompatiblePlatformConfig := fmt.Sprintf("%s/%s", n.OS, n.Architecture)
-		base.Cmd("build", buildCtx, "-t", imageName, "--platform", notCompatiblePlatformConfig).AssertOK()
-		base.Cmd("build", buildCtx, "-t", imageName, "--platform", notCompatiblePlatformConfig, "--progress", "plain").AssertErrContains("tarball")
+	testCase := &test.Case{
+		Description: "Successfully build on emulated platforms",
+		Require: test.Require(
+			nerdtest.Build,
+			requireEmulation,
+		),
+		Command: func(data test.Data, helpers test.Helpers) test.Command {
+			return helpers.Command("build", data.Get("buildCtx"), "--platform", fmt.Sprintf("%s/%s", data.Get("OS"), data.Get("Architecture")), "-t", data.Identifier())
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rmi", data.Identifier())
+		},
+		Expected: test.Expects(0, nil, nil),
 	}
+
+	testCase.Run(t)
 }
 
 // TestBuildBaseImage tests if an image can be built on the previously built image.
@@ -100,7 +189,7 @@ RUN echo hello > /hello
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
@@ -110,7 +199,7 @@ RUN echo hello2 > /hello2
 CMD ["cat", "/hello2"]
 	`, imageName)
 
-	buildCtx2 := helpers.CreateBuildContext(t, dockerfile2)
+	buildCtx2 := testhelpers.CreateBuildContext(t, dockerfile2)
 
 	base.Cmd("build", "-t", imageName2, buildCtx2).AssertOK()
 	base.Cmd("build", buildCtx2, "-t", imageName2).AssertOK()
@@ -143,7 +232,7 @@ RUN echo hello2 > /hello2
 CMD ["cat", "/hello2"]
 	`, imageName)
 
-	buildCtx2 := helpers.CreateBuildContext(t, dockerfile2)
+	buildCtx2 := testhelpers.CreateBuildContext(t, dockerfile2)
 
 	base.Cmd("build", "-t", imageName2, buildCtx2).AssertOK()
 	base.Cmd("build", buildCtx2, "-t", imageName2).AssertOK()
@@ -209,7 +298,7 @@ func TestBuildLocal(t *testing.T) {
 COPY %s /`,
 		testFileName)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 
 	if err := os.WriteFile(filepath.Join(buildCtx, testFileName), []byte(testContent), 0644); err != nil {
 		t.Fatal(err)
@@ -248,7 +337,7 @@ ENV TEST_STRING=$TEST_STRING
 CMD echo $TEST_STRING
 	`, testutil.CommonImage)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", buildCtx, "-t", imageName).AssertOK()
 	base.Cmd("run", "--rm", imageName).AssertOutExactly("1\n")
@@ -291,7 +380,7 @@ func TestBuildWithIIDFile(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 	fileName := filepath.Join(t.TempDir(), "id.txt")
 
 	base.Cmd("build", "-t", imageName, buildCtx, "--iidfile", fileName).AssertOK()
@@ -314,7 +403,7 @@ func TestBuildWithLabels(t *testing.T) {
 LABEL name=nerdctl-build-test-label
 	`, testutil.CommonImage)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx, "--label", "label=test").AssertOK()
 	defer base.Cmd("rmi", imageName).Run()
@@ -337,7 +426,7 @@ func TestBuildMultipleTags(t *testing.T) {
 		dockerfile := fmt.Sprintf(`FROM %s
 		CMD ["echo", "%s"]
 			`, testutil.CommonImage, output)
-		buildCtx := helpers.CreateBuildContext(t, dockerfile)
+		buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 
 		base.Cmd("build", "-t", img, buildCtx).AssertOK()
 		base.Cmd("build", buildCtx, "-t", img, "-t", imgWithNoTag, "-t", imgWithCustomTag).AssertOK()
@@ -390,7 +479,7 @@ CMD ["echo", "dockerfile"]
 	err = os.WriteFile(filepath.Join(tmpDir, "Containerfile"), []byte(containerfile), 0644)
 	assert.NilError(t, err)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
 	base.Cmd("run", "--rm", imageName).AssertOutExactly("dockerfile\n")
@@ -405,7 +494,7 @@ func TestBuildNoTag(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-notag-string"]
 	`, testutil.CommonImage)
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", buildCtx).AssertOK()
 	base.Cmd("images").AssertOutContains("<none>")
@@ -420,7 +509,7 @@ func TestBuildContextDockerImageAlias(t *testing.T) {
 
 	dockerfile := `FROM myorg/myapp
 CMD ["echo", "nerdctl-build-myorg/myapp"]`
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", buildCtx, fmt.Sprintf("--build-context=myorg/myapp=docker-image://%s", testutil.CommonImage)).AssertOK()
 	base.Cmd("images").AssertOutContains("<none>")
@@ -445,7 +534,7 @@ func TestBuildContextWithCopyFromDir(t *testing.T) {
 COPY --from=dir2 /%s /hello_from_dir2.txt
 RUN ["cat", "/hello_from_dir2.txt"]`, testutil.CommonImage, filename)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", buildCtx, fmt.Sprintf("--build-context=dir2=%s", dir2)).AssertOK()
 	base.Cmd("images").AssertOutContains("<none>")
@@ -466,7 +555,7 @@ RUN echo $SOURCE_DATE_EPOCH >/source-date-epoch
 CMD ["cat", "/source-date-epoch"]
 	`, testutil.CommonImage)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 
 	const sourceDateEpochEnvStr = "1111111111"
 	base.Env = append(base.Env, "SOURCE_DATE_EPOCH="+sourceDateEpochEnvStr)
@@ -487,7 +576,7 @@ func TestBuildNetwork(t *testing.T) {
 RUN apk add --no-cache curl
 RUN curl -I http://google.com
 	`, testutil.CommonImage)
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 
 	validCases := []struct {
 		name     string
@@ -543,7 +632,7 @@ func TestBuildAttestation(t *testing.T) {
 	}
 
 	dockerfile := "FROM " + testutil.NginxAlpineImage
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 
 	// Test sbom
 	outputSBOMDir := t.TempDir()

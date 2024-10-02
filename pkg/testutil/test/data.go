@@ -17,20 +17,22 @@
 package test
 
 import (
-	"crypto/sha1"
 	"fmt"
+	"regexp"
+	"strings"
 	"testing"
+
+	"github.com/opencontainers/go-digest"
 )
 
 // Contains the implementation of the Data interface
-
 type data struct {
 	config map[ConfigKey]ConfigValue
 
 	system map[SystemKey]SystemValue
 
 	labels  map[string]string
-	testID  string
+	testID  func(suffix ...string) string
 	tempDir string
 }
 
@@ -67,8 +69,8 @@ func (dt *data) Set(key string, value string) Data {
 	return dt
 }
 
-func (dt *data) Identifier() string {
-	return dt.testID
+func (dt *data) Identifier(suffix ...string) string {
+	return dt.testID(suffix...)
 }
 
 func (dt *data) TempDir() string {
@@ -91,20 +93,24 @@ func (dt *data) adopt(parent Data) {
 }
 
 func (dt *data) Sink(key SystemKey, value SystemValue) {
+	if dt.system == nil {
+		dt.system = map[SystemKey]SystemValue{}
+	}
 	if _, ok := dt.system[key]; !ok {
 		dt.system[key] = value
 	} else {
-		// XXX should we really panic?
 		panic(fmt.Sprintf("Unable to set system key %s multiple times", key))
 	}
 }
 
-func (dt *data) Surface(key SystemKey) SystemValue {
-	if v, ok := dt.system[key]; ok {
-		return v
+func (dt *data) Surface(key SystemKey) (SystemValue, error) {
+	if dt.system == nil {
+		dt.system = map[SystemKey]SystemValue{}
 	}
-	// XXX should we really panic?
-	panic(fmt.Sprintf("Unable to retrieve system key %s", key))
+	if v, ok := dt.system[key]; ok {
+		return v, nil
+	}
+	return "", fmt.Errorf("unable to retrieve system key %s", key)
 }
 
 func (dt *data) getLabels() map[string]string {
@@ -115,14 +121,25 @@ func (dt *data) getConfig() map[ConfigKey]ConfigValue {
 	return dt.config
 }
 
-func defaultIdentifierHashing(name string) string {
-	// So... looks like the docker registry implementation is not happy with valid image names...
-	// "cannot specify 64-byte hexadecimal strings"
-	// Using sha1 then...
-	return fmt.Sprintf("%x", sha1.Sum([]byte(name)))
+func defaultIdentifierHashing(names ...string) string {
+	// Notes: this identifier MAY be used for namespaces, image names, etc.
+	// So, the rules are stringent on what it can contain.
+	replaceWith := []byte("-")
+	name := strings.ToLower(strings.Join(names, string(replaceWith)))
+	// Ensure we have a unique identifier despite characters replacements (well, as unique as name)
+	signature := digest.SHA256.FromString(name).Encoded()[0:8]
+	// Make sure we do not use any unsafe characters
+	safeName := regexp.MustCompile(`[^a-zA-Z0-9-]+`)
+	noRepeat := regexp.MustCompile(fmt.Sprintf(`[%s]{2,}`, replaceWith))
+	sn := safeName.ReplaceAll([]byte(name), replaceWith)
+	sn = noRepeat.ReplaceAll(sn, replaceWith)
+	// Ensure we will never go above 76 characters in length (with signature)
+	if len(sn) > 67 {
+		sn = sn[0:67]
+	}
+	return string(sn) + "-" + signature
 }
 
-// TODO: allow to pass custom hashing methods?
 func configureData(t *testing.T, seedData Data, parent Data) Data {
 	if seedData == nil {
 		seedData = &data{}
@@ -131,7 +148,10 @@ func configureData(t *testing.T, seedData Data, parent Data) Data {
 		config:  seedData.getConfig(),
 		labels:  seedData.getLabels(),
 		tempDir: t.TempDir(),
-		testID:  defaultIdentifierHashing(t.Name()),
+		testID: func(suffix ...string) string {
+			suffix = append([]string{t.Name()}, suffix...)
+			return defaultIdentifierHashing(suffix...)
+		},
 	}
 	if parent != nil {
 		dat.adopt(parent)
