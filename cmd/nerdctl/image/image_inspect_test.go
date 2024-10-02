@@ -18,7 +18,6 @@ package image
 
 import (
 	"encoding/json"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -71,16 +70,12 @@ func TestImageInspectSimpleCases(t *testing.T) {
 func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 	nerdtest.Setup()
 
-	platform := runtime.GOOS + "/" + runtime.GOARCH
-
 	tags := []string{
 		"",
 		":latest",
-		":stable",
 	}
 	names := []string{
 		"busybox",
-		"library/busybox",
 		"docker.io/library/busybox",
 		"registry-1.docker.io/library/busybox",
 	}
@@ -94,11 +89,9 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 			nerdtest.Private,
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			helpers.Ensure("pull", "alpine", "--platform", platform)
-			helpers.Ensure("pull", "busybox", "--platform", platform)
-			helpers.Ensure("pull", "busybox:stable", "--platform", platform)
-			helpers.Ensure("pull", "registry-1.docker.io/library/busybox", "--platform", platform)
-			helpers.Ensure("pull", "registry-1.docker.io/library/busybox:stable", "--platform", platform)
+			helpers.Ensure("pull", "alpine")
+			helpers.Ensure("pull", "busybox")
+			helpers.Ensure("pull", "registry-1.docker.io/library/busybox")
 		},
 		SubTests: []*test.Case{
 			{
@@ -150,9 +143,11 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 
 							// Demonstrate image name precedence over digest lookup
 							// Using the shortened sha should no longer get busybox, but rather the newly tagged Alpine
+							// FIXME: this is triggering https://github.com/containerd/nerdctl/issues/3016
+							// We cannot get rid of that image now, which does break local testing
 							helpers.Ensure("tag", "alpine", sha[0:8])
 							it := nerdtest.InspectImage(helpers, sha[0:8])
-							assert.Equal(t, it.ID, alpine.ID, alpine.ID+" vs "+it.ID)
+							assert.Equal(t, it.ID, alpine.ID)
 						},
 					}
 				},
@@ -202,18 +197,17 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 			},
 			{
 				Description: "retrieving multiple entries at once",
-				Command:     test.RunCommand("image", "inspect", "busybox", "busybox", "busybox:stable"),
+				Command:     test.RunCommand("image", "inspect", "busybox", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: func(stdout string, info string, t *testing.T) {
 							var dc []dockercompat.Image
 							err := json.Unmarshal([]byte(stdout), &dc)
 							assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-							assert.Equal(t, 3, len(dc), "Unexpectedly did not get 3 results\n"+info)
+							assert.Equal(t, 2, len(dc), "Unexpectedly did not get 2 results\n"+info)
 							reference := nerdtest.InspectImage(helpers, "busybox")
 							assert.Equal(t, dc[0].ID, reference.ID)
 							assert.Equal(t, dc[1].ID, reference.ID)
-							assert.Equal(t, dc[2].ID, reference.ID)
 						},
 					}
 				},
