@@ -61,6 +61,17 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		}
 		log.G(ctx).Infof("pushing image %q to IPFS", ref)
 
+		parsedRef, err := distributionref.ParseDockerRef(ref)
+		if err != nil {
+			return err
+		}
+
+		// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3489
+		err = EnsureAllContent(ctx, client, parsedRef.String(), options.GOptions)
+		if err != nil {
+			return err
+		}
+
 		var ipfsPath string
 		if options.IpfsAddress != "" {
 			dir, err := os.MkdirTemp("", "apidirtmp")
@@ -78,7 +89,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		if options.Estargz {
 			layerConvert = eStargzConvertFunc()
 		}
-		c, err := ipfs.Push(ctx, client, ref, layerConvert, options.AllPlatforms, options.Platforms, options.IpfsEnsureImage, ipfsPath)
+		c, err := ipfs.Push(ctx, client, parsedRef.String(), layerConvert, options.AllPlatforms, options.Platforms, options.IpfsEnsureImage, ipfsPath)
 		if err != nil {
 			log.G(ctx).WithError(err).Warnf("ipfs push failed")
 			return err

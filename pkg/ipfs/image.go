@@ -37,7 +37,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
-	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
 const ipfsPathEnv = "IPFS_PATH"
@@ -93,11 +92,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, layerCo
 			log.G(ctx).WithError(err).Warnf("failed to ensure the existence of image %q", rawRef)
 		}
 	}
-	ref, err := referenceutil.ParseAny(rawRef)
-	if err != nil {
-		return "", err
-	}
-	return ipfs.PushWithIPFSPath(ctx, client, ref.String(), layerConvert, platMC, &ipath)
+	return ipfs.PushWithIPFSPath(ctx, client, rawRef, layerConvert, platMC, &ipath)
 }
 
 // ensureContentsOfIPFSImage ensures that the entire contents of an existing IPFS image are fully downloaded to containerd.
