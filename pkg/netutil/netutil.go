@@ -253,16 +253,17 @@ type cniNetworkConfig struct {
 
 func (e *CNIEnv) CreateNetwork(opts types.NetworkCreateOptions) (*NetworkConfig, error) { //nolint:revive
 	var net *NetworkConfig
-	netMap, err := e.NetworkMap()
-	if err != nil {
-		return nil, err
-	}
-
-	if _, ok := netMap[opts.Name]; ok {
-		return nil, errdefs.ErrAlreadyExists
-	}
 
 	fn := func() error {
+		netMap, err := e.NetworkMap()
+		if err != nil {
+			return err
+		}
+
+		if _, ok := netMap[opts.Name]; ok {
+			return errdefs.ErrAlreadyExists
+		}
+
 		ipam, err := e.generateIPAM(opts.IPAMDriver, opts.Subnets, opts.Gateway, opts.IPRange, opts.IPAMOptions, opts.IPv6)
 		if err != nil {
 			return err
@@ -277,7 +278,7 @@ func (e *CNIEnv) CreateNetwork(opts types.NetworkCreateOptions) (*NetworkConfig,
 		}
 		return e.writeNetworkConfig(net)
 	}
-	err = lockutil.WithDirLock(e.NetconfPath, fn)
+	err := lockutil.WithDirLock(e.NetconfPath, fn)
 	if err != nil {
 		return nil, err
 	}
