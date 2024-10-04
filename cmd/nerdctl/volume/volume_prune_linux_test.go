@@ -56,54 +56,58 @@ func TestVolumePrune(t *testing.T) {
 	}
 
 	// This set must be marked as private, since we cannot prune without interacting with other tests.
-	testGroup := &test.Group{
-		{
-			Description: "prune anonymous only",
-			Require:     nerdtest.Private,
-			Command:     test.RunCommand("volume", "prune", "-f"),
-			Setup:       setup,
-			Cleanup:     cleanup,
-			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-				return &test.Expected{
-					Output: test.All(
-						test.DoesNotContain(data.Get("anonIDBusy")),
-						test.Contains(data.Get("anonIDDangling")),
-						test.DoesNotContain(data.Get("namedBusy")),
-						test.DoesNotContain(data.Get("namedDangling")),
-						func(stdout string, info string, t *testing.T) {
-							helpers.Ensure("volume", "inspect", data.Get("anonIDBusy"))
-							helpers.Fail("volume", "inspect", data.Get("anonIDDangling"))
-							helpers.Ensure("volume", "inspect", data.Get("namedBusy"))
-							helpers.Ensure("volume", "inspect", data.Get("namedDangling"))
-						},
-					),
-				}
+	testCase := &test.Case{
+		Description: "Prune",
+		Require:     nerdtest.Private,
+		SubTests: []*test.Case{
+			{
+				Description: "prune anonymous only",
+				NoParallel:  true,
+				Command:     test.RunCommand("volume", "prune", "-f"),
+				Setup:       setup,
+				Cleanup:     cleanup,
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.DoesNotContain(data.Get("anonIDBusy")),
+							test.Contains(data.Get("anonIDDangling")),
+							test.DoesNotContain(data.Get("namedBusy")),
+							test.DoesNotContain(data.Get("namedDangling")),
+							func(stdout string, info string, t *testing.T) {
+								helpers.Ensure("volume", "inspect", data.Get("anonIDBusy"))
+								helpers.Fail("volume", "inspect", data.Get("anonIDDangling"))
+								helpers.Ensure("volume", "inspect", data.Get("namedBusy"))
+								helpers.Ensure("volume", "inspect", data.Get("namedDangling"))
+							},
+						),
+					}
+				},
 			},
-		},
-		{
-			Description: "prune all",
-			Require:     nerdtest.Private,
-			Command:     test.RunCommand("volume", "prune", "-f", "--all"),
-			Setup:       setup,
-			Cleanup:     cleanup,
-			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-				return &test.Expected{
-					Output: test.All(
-						test.DoesNotContain(data.Get("anonIDBusy")),
-						test.Contains(data.Get("anonIDDangling")),
-						test.DoesNotContain(data.Get("namedBusy")),
-						test.Contains(data.Get("namedDangling")),
-						func(stdout string, info string, t *testing.T) {
-							helpers.Ensure("volume", "inspect", data.Get("anonIDBusy"))
-							helpers.Fail("volume", "inspect", data.Get("anonIDDangling"))
-							helpers.Ensure("volume", "inspect", data.Get("namedBusy"))
-							helpers.Fail("volume", "inspect", data.Get("namedDangling"))
-						},
-					),
-				}
+			{
+				Description: "prune all",
+				NoParallel:  true,
+				Command:     test.RunCommand("volume", "prune", "-f", "--all"),
+				Setup:       setup,
+				Cleanup:     cleanup,
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.DoesNotContain(data.Get("anonIDBusy")),
+							test.Contains(data.Get("anonIDDangling")),
+							test.DoesNotContain(data.Get("namedBusy")),
+							test.Contains(data.Get("namedDangling")),
+							func(stdout string, info string, t *testing.T) {
+								helpers.Ensure("volume", "inspect", data.Get("anonIDBusy"))
+								helpers.Fail("volume", "inspect", data.Get("anonIDDangling"))
+								helpers.Ensure("volume", "inspect", data.Get("namedBusy"))
+								helpers.Fail("volume", "inspect", data.Get("namedDangling"))
+							},
+						),
+					}
+				},
 			},
 		},
 	}
 
-	testGroup.Run(t)
+	testCase.Run(t)
 }

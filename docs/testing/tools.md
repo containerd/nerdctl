@@ -5,7 +5,7 @@
 The integration test suite in nerdctl is meant to apply to both nerdctl and docker,
 and further support additional test properties to target specific contexts (ipv6, kube).
 
-Basic _usage_ is covered in the [testing docs](testing.md).
+Basic _usage_ is covered in the [testing docs](README.md).
 
 This here covers how to write tests, leveraging nerdctl `pkg/testutil/test`
 which has been specifically developed to take care of repetitive tasks,
@@ -166,9 +166,6 @@ Note that `Data` additionally exposes the following functions:
 Secondly, `Data` allows defining and manipulating "configuration" data.
 
 In the case of nerdctl here, the following configuration options are defined:
-- `WithConfig(Docker, NotCompatible)` to flag a test as not compatible
-- `WithConfig(Mode, Private)` will entirely isolate the test using a different
-namespace, data root, nerdctl config, etc
 - `WithConfig(NerdctlToml, "foo")` which allows specifying a custom config
 - `WithConfig(DataRoot, "foo")` allowing to point to a custom data-root
 - `WithConfig(HostsDir, "foo")` to point to a specific hosts directory
@@ -358,7 +355,50 @@ All tests (and subtests) are assumed to be parallelizable.
 You can force a specific `test.Case` to not be run in parallel though,
 by setting its `NoParallel` property to `true`.
 
-Note that if you want better isolation, it is usually better to use
-`WithConfig(nerdtest.Mode, nerdtest.Private)` instead.
-This will keep the test parallel (for nerdctl), but isolate it in a different context.
-For Docker (which does not support namespaces), it is equivalent to passing `NoParallel: true`.
+Note that if you want better isolation, it is usually better to use the requirement
+`nerdtest.Private` instead of `NoParallel` (see below).
+
+## Requirements
+
+`test.Case` has a `Require` property that allow enforcing specific, per-test requirements.
+
+Here are a few:
+```go
+test.Windows // a test runs only on Windows (or Not(Windows))
+test.Linux // a test runs only on Linux
+test.Darwin // a test runs only on Darwin
+test.OS(name string) // a test runs only on the OS `name`
+test.Binary(name string) // a test requires the bin `name` to be in the PATH
+test.Not(req Requirement) // a test runs only if the opposite of the requirement `req` is fulfilled
+test.Require(req ...Requirement) // a test runs only if all requirements are fulfilled
+
+nerdtest.Docker // a test only run on Docker - normally used with test.Not(nerdtest.Docker)
+nerdtest.Soci // a test requires the soci snapshotter
+nerdtest.Rootless // a test requires Rootless (or Not(Rootless), indicating it requires Rootful)
+nerdtest.Build // a test requires buildkit
+nerdtest.CGroup // a test requires cgroup
+nerdtest.OnlyIPv6 // a test is meant to run solely in the ipv6 environment
+nerdtest.NerdctlNeedsFixing // indicates that a test cannot be run on nerdctl yet as a fix is required
+nerdtest.Private // see below
+```
+
+### About `nerdtest.Private`
+
+While all requirements above are self-descriptive or obvious, and are going to skip
+tests for environments that do not match the requirements, `nerdtest.Private` is  a
+special case.
+
+What it does when required is: create a private namespace, data-root, hosts-dir, nerdctl.toml and
+DOCKER_CONFIG that is private to the test.
+
+Note that subtests are going to inherit that environment as well.
+
+If the target is Docker - which does not support namespaces for eg - asking for `private`
+will merely disable parallelization.
+
+The purpose of private is to provide a truly clean-room environment for tests
+that are guaranteed to have side effects on others, or that do require an exclusive, pristine
+environment.
+
+Using private is generally preferable to disabling parallelization, as doing the latter
+would slow down the run and won't have the same guarantees about the environment.

@@ -24,7 +24,7 @@ import (
 
 // A Requirement is a function that can evaluate random requirement and possibly skip a test
 // See test.MakeRequirement to make your own
-type Requirement func(data Data, t *testing.T) (bool, string)
+type Requirement func(data Data, skip bool, t *testing.T) (bool, string)
 
 // A Butler is the function signature meant to be attached to a Setup or Cleanup routine for a test.Case
 type Butler func(data Data, helpers Helpers)
