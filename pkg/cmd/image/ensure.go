@@ -19,7 +19,6 @@ package image
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 
@@ -43,7 +42,6 @@ func EnsureAllContent(ctx context.Context, client *containerd.Client, srcName st
 	imageService := client.ImageService()
 	img, err := imageService.Get(ctx, srcName)
 	if err != nil {
-		fmt.Println("Failed getting imageservice")
 		return err
 	}
 
