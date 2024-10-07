@@ -159,16 +159,12 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 		cniOpts := []gocni.Opt{
 			gocni.WithPluginDir([]string{cniPath}),
 		}
-		netMap, err := e.NetworkMap()
-		if err != nil {
-			return nil, err
-		}
+		var netw *netutil.NetworkConfig
 		for _, netstr := range networks {
-			net, ok := netMap[netstr]
-			if !ok {
-				return nil, fmt.Errorf("no such network: %q", netstr)
+			if netw, err = e.NetworkByNameOrID(netstr); err != nil {
+				return nil, err
 			}
-			cniOpts = append(cniOpts, gocni.WithConfListBytes(net.Bytes))
+			cniOpts = append(cniOpts, gocni.WithConfListBytes(netw.Bytes))
 			o.cniNames = append(o.cniNames, netstr)
 		}
 		o.cni, err = gocni.New(cniOpts...)

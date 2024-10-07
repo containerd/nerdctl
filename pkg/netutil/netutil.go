@@ -53,6 +53,48 @@ type CNIEnv struct {
 
 type CNIEnvOpt func(e *CNIEnv) error
 
+func (e *CNIEnv) ListNetworksMatch(reqs []string, allowPseudoNetwork bool) (list map[string][]*NetworkConfig, errs []error) {
+	var err error
+
+	var networkConfigs []*NetworkConfig
+	err = lockutil.WithDirLock(e.NetconfPath, func() error {
+		networkConfigs, err = e.networkConfigList()
+		return err
+	})
+	if err != nil {
+		return nil, []error{err}
+	}
+
+	list = make(map[string][]*NetworkConfig)
+	for _, req := range reqs {
+		if !allowPseudoNetwork && (req == "host" || req == "none") {
+			errs = append(errs, fmt.Errorf("pseudo network not allowed: %s", req))
+			continue
+		}
+
+		result := []*NetworkConfig{}
+		// First match by name
+		for _, networkConfig := range networkConfigs {
+			if networkConfig.Name == req {
+				result = append(result, networkConfig)
+			}
+		}
+		// If nothing, try to match the id
+		if len(result) == 0 {
+			for _, networkConfig := range networkConfigs {
+				if networkConfig.NerdctlID != nil {
+					if len(req) <= len((*networkConfig.NerdctlID)) && (*networkConfig.NerdctlID)[0:len(req)] == req {
+						result = append(result, networkConfig)
+					}
+				}
+			}
+		}
+		list[req] = result
+	}
+
+	return list, errs
+}
+
 func UsedNetworks(ctx context.Context, client *containerd.Client) (map[string][]string, error) {
 	nsService := client.NamespaceService()
 	nsList, err := nsService.List(ctx)
@@ -188,19 +230,29 @@ func (e *CNIEnv) NetworkMap() (map[string]*NetworkConfig, error) { //nolint:revi
 			log.L.Warnf("duplicate network name %q, %#v will get superseded by %#v", n.Name, original, n)
 		}
 		m[n.Name] = n
-		if n.NerdctlID != nil {
-			id := *n.NerdctlID
-			m[id] = n
-			if len(id) > 12 {
-				id = id[:12]
-				m[id] = n
-			}
-		}
 	}
 	return m, nil
 }
 
-func (e *CNIEnv) FilterNetworks(filterf func(*NetworkConfig) bool) ([]*NetworkConfig, error) {
+func (e *CNIEnv) NetworkByNameOrID(key string) (*NetworkConfig, error) {
+	networks, err := e.networkConfigList()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, n := range networks {
+		if n.Name == key {
+			return n, nil
+		}
+		if n.NerdctlID != nil && (*n.NerdctlID == key || (*n.NerdctlID)[0:12] == key) {
+			return n, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no such network: %q", key)
+}
+
+func (e *CNIEnv) filterNetworks(filterf func(*NetworkConfig) bool) ([]*NetworkConfig, error) {
 	networkConfigs, err := e.networkConfigList()
 	if err != nil {
 		return nil, err
@@ -230,8 +282,8 @@ func (e *CNIEnv) usedSubnets() ([]*net.IPNet, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, net := range networkConfigs {
-		usedSubnets = append(usedSubnets, net.subnets()...)
+	for _, netConf := range networkConfigs {
+		usedSubnets = append(usedSubnets, netConf.subnets()...)
 	}
 	return usedSubnets, nil
 }
@@ -252,7 +304,7 @@ type cniNetworkConfig struct {
 }
 
 func (e *CNIEnv) CreateNetwork(opts types.NetworkCreateOptions) (*NetworkConfig, error) { //nolint:revive
-	var net *NetworkConfig
+	var netConf *NetworkConfig
 
 	fn := func() error {
 		netMap, err := e.NetworkMap()
@@ -272,17 +324,17 @@ func (e *CNIEnv) CreateNetwork(opts types.NetworkCreateOptions) (*NetworkConfig,
 		if err != nil {
 			return err
 		}
-		net, err = e.generateNetworkConfig(opts.Name, opts.Labels, plugins)
+		netConf, err = e.generateNetworkConfig(opts.Name, opts.Labels, plugins)
 		if err != nil {
 			return err
 		}
-		return e.writeNetworkConfig(net)
+		return e.writeNetworkConfig(netConf)
 	}
 	err := lockutil.WithDirLock(e.NetconfPath, fn)
 	if err != nil {
 		return nil, err
 	}
-	return net, nil
+	return netConf, nil
 }
 
 func (e *CNIEnv) RemoveNetwork(net *NetworkConfig) error {
@@ -309,7 +361,7 @@ func (e *CNIEnv) GetDefaultNetworkConfig() (*NetworkConfig, error) {
 		}
 		return false
 	}
-	labelMatches, err := e.FilterNetworks(defaultLabelFilterF)
+	labelMatches, err := e.filterNetworks(defaultLabelFilterF)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +376,7 @@ func (e *CNIEnv) GetDefaultNetworkConfig() (*NetworkConfig, error) {
 	defaultNameFilterF := func(nc *NetworkConfig) bool {
 		return nc.Name == DefaultNetworkName
 	}
-	nameMatches, err := e.FilterNetworks(defaultNameFilterF)
+	nameMatches, err := e.filterNetworks(defaultNameFilterF)
 	if err != nil {
 		return nil, err
 	}
@@ -460,11 +512,11 @@ func (e *CNIEnv) networkConfigList() ([]*NetworkConfig, error) {
 				return nil, err
 			}
 		}
-		id, labels := nerdctlIDLabels(lcl.Bytes)
+		id, lbls := nerdctlIDLabels(lcl.Bytes)
 		l = append(l, &NetworkConfig{
 			NetworkConfigList: lcl,
 			NerdctlID:         id,
-			NerdctlLabels:     labels,
+			NerdctlLabels:     lbls,
 			File:              fileName,
 		})
 	}
@@ -567,7 +619,7 @@ func structToMap(in interface{}) (map[string]interface{}, error) {
 }
 
 // ParseMTU parses the mtu option
-func ParseMTU(mtu string) (int, error) {
+func parseMTU(mtu string) (int, error) {
 	if mtu == "" {
 		return 0, nil // default
 	}
