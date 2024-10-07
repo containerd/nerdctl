@@ -189,8 +189,8 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 			},
 			{
 				Description: "label=version",
-				Require:     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3512"),
-				Command:     test.Command("images", "--filter", "label=version"),
+				//				Require:     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3512"),
+				Command: test.Command("images", "--filter", "label=version"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: test.Contains(data.Get("builtImageID")),
