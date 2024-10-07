@@ -35,22 +35,22 @@ import (
 // Behavior in such cases is largely unspecified, as there is no easy way to compare with Docker.
 // Anyhow, borked filesystem conditions is not something we should be expected to deal with in a smart way.
 func TestVolumeRemove(t *testing.T) {
-	nerdtest.Setup()
+	testCase := nerdtest.Setup()
 
-	testGroup := &test.Group{
+	testCase.SubTests = []*test.Case{
 		{
 			Description: "arg missing should fail",
-			Command:     test.RunCommand("volume", "rm"),
+			Command:     test.Command("volume", "rm"),
 			Expected:    test.Expects(1, []error{errors.New("requires at least 1 arg")}, nil),
 		},
 		{
 			Description: "invalid identifier should fail",
-			Command:     test.RunCommand("volume", "rm", "∞"),
+			Command:     test.Command("volume", "rm", "∞"),
 			Expected:    test.Expects(1, []error{errdefs.ErrInvalidArgument}, nil),
 		},
 		{
 			Description: "non existent volume should fail",
-			Command:     test.RunCommand("volume", "rm", "doesnotexist"),
+			Command:     test.Command("volume", "rm", "doesnotexist"),
 			Expected:    test.Expects(1, []error{errdefs.ErrNotFound}, nil),
 		},
 		{
@@ -62,22 +62,22 @@ func TestVolumeRemove(t *testing.T) {
 					"--name", data.Identifier(), testutil.CommonImage)
 			},
 
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.Command("volume", "rm", data.Identifier())
-			},
-
-			Expected: test.Expects(1, []error{errdefs.ErrFailedPrecondition}, nil),
-
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
 				helpers.Anyhow("volume", "rm", "-f", data.Identifier())
 			},
+
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("volume", "rm", data.Identifier())
+			},
+
+			Expected: test.Expects(1, []error{errdefs.ErrFailedPrecondition}, nil),
 		},
 		{
 			Description: "busy anonymous volume should fail",
 
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "-v", fmt.Sprintf("%s:/volume", data.Identifier()), "--name", data.Identifier(), testutil.CommonImage)
+				helpers.Ensure("run", "-v", "/volume", "--name", data.Identifier(), testutil.CommonImage)
 				// Inspect the container and find the anonymous volume id
 				inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 				var anonName string
@@ -87,20 +87,21 @@ func TestVolumeRemove(t *testing.T) {
 						break
 					}
 				}
-				assert.Assert(t, anonName != "", "Failed to find anonymous volume id")
+				assert.Assert(t, anonName != "", "Failed to find anonymous volume id", inspect)
 				data.Set("anonName", anonName)
 			},
 
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("volume", "rm", "-f", data.Get("anonName"))
+			},
+
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				// Try to remove that anon volume
 				return helpers.Command("volume", "rm", data.Get("anonName"))
 			},
 
 			Expected: test.Expects(1, []error{errdefs.ErrFailedPrecondition}, nil),
-
-			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", data.Identifier())
-			},
 		},
 		{
 			Description: "freed volume should succeed",
@@ -111,7 +112,12 @@ func TestVolumeRemove(t *testing.T) {
 				helpers.Ensure("rm", "-f", data.Identifier())
 			},
 
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("volume", "rm", "-f", data.Identifier())
+			},
+
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("volume", "rm", data.Identifier())
 			},
 
@@ -120,18 +126,9 @@ func TestVolumeRemove(t *testing.T) {
 					Output: test.Equals(data.Identifier() + "\n"),
 				}
 			},
-
-			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", data.Identifier())
-				helpers.Anyhow("volume", "rm", "-f", data.Identifier())
-			},
 		},
 		{
 			Description: "dangling volume should succeed",
-
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.Command("volume", "rm", data.Identifier())
-			},
 
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("volume", "create", data.Identifier())
@@ -139,6 +136,10 @@ func TestVolumeRemove(t *testing.T) {
 
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("volume", "rm", "-f", data.Identifier())
+			},
+
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("volume", "rm", data.Identifier())
 			},
 
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -150,20 +151,20 @@ func TestVolumeRemove(t *testing.T) {
 		{
 			Description: "part success multi-remove",
 
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.Command("volume", "rm", "invalid∞", "nonexistent", data.Identifier()+"-busy", data.Identifier())
-			},
-
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("volume", "create", data.Identifier())
-				helpers.Ensure("volume", "create", data.Identifier()+"-busy")
-				helpers.Ensure("run", "-v", fmt.Sprintf("%s:/volume", data.Identifier()+"-busy"), "--name", data.Identifier(), testutil.CommonImage)
+				helpers.Ensure("volume", "create", data.Identifier("busy"))
+				helpers.Ensure("run", "-v", fmt.Sprintf("%s:/volume", data.Identifier("busy")), "--name", data.Identifier(), testutil.CommonImage)
 			},
 
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
 				helpers.Anyhow("volume", "rm", "-f", data.Identifier())
-				helpers.Anyhow("volume", "rm", "-f", data.Identifier()+"-busy")
+				helpers.Anyhow("volume", "rm", "-f", data.Identifier("busy"))
+			},
+
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("volume", "rm", "invalid∞", "nonexistent", data.Identifier("busy"), data.Identifier())
 			},
 
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -181,22 +182,22 @@ func TestVolumeRemove(t *testing.T) {
 		{
 			Description: "success multi-remove",
 
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.Command("volume", "rm", data.Identifier()+"-1", data.Identifier()+"-2")
-			},
-
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("volume", "create", data.Identifier()+"-1")
-				helpers.Ensure("volume", "create", data.Identifier()+"-2")
+				helpers.Ensure("volume", "create", data.Identifier("1"))
+				helpers.Ensure("volume", "create", data.Identifier("2"))
 			},
 
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("volume", "rm", "-f", data.Identifier()+"-1", data.Identifier()+"-2")
+				helpers.Anyhow("volume", "rm", "-f", data.Identifier("1"), data.Identifier("2"))
+			},
+
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("volume", "rm", data.Identifier("1"), data.Identifier("2"))
 			},
 
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Equals(data.Identifier() + "-1\n" + data.Identifier() + "-2" + "\n"),
+					Output: test.Equals(data.Identifier("1") + "\n" + data.Identifier("2") + "\n"),
 				}
 			},
 		},
@@ -204,17 +205,17 @@ func TestVolumeRemove(t *testing.T) {
 			Description: "failing multi-remove",
 
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("volume", "create", data.Identifier()+"-busy")
-				helpers.Ensure("run", "-v", fmt.Sprintf("%s:/volume", data.Identifier()+"-busy"), "--name", data.Identifier(), testutil.CommonImage)
+				helpers.Ensure("volume", "create", data.Identifier("busy"))
+				helpers.Ensure("run", "-v", fmt.Sprintf("%s:/volume", data.Identifier("busy")), "--name", data.Identifier(), testutil.CommonImage)
 			},
 
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
-				helpers.Anyhow("volume", "rm", "-f", data.Identifier()+"-busy")
+				helpers.Anyhow("volume", "rm", "-f", data.Identifier("busy"))
 			},
 
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.Command("volume", "rm", "invalid∞", "nonexistent", data.Identifier()+"-busy")
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("volume", "rm", "invalid∞", "nonexistent", data.Identifier("busy"))
 			},
 
 			Expected: test.Expects(1, []error{
@@ -225,5 +226,5 @@ func TestVolumeRemove(t *testing.T) {
 		},
 	}
 
-	testGroup.Run(t)
+	testCase.Run(t)
 }
