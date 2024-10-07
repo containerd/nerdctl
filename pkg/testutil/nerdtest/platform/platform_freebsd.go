@@ -14,14 +14,16 @@
    limitations under the License.
 */
 
-package testregistry
+package platform
 
-import (
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/hoststoml"
-)
-
-func generateCertsd(dir string, certPath string, hostIP string, port int) error {
-	return (&hoststoml.HostsToml{
-		CA: certPath,
-	}).Save(dir, hostIP, port)
+func DataHome() (string, error) {
+	panic("not supported")
 }
+
+var (
+	// The following are here solely for freebsd to compile / lint. They are not used, as the corresponding tests are running only on linux.
+	RegistryImageStable = "registry:2"
+	RegistryImageNext   = "ghcr.io/distribution/distribution:"
+	KuboImage           = "ipfs/kubo:v0.16.0"
+	DockerAuthImage     = "cesanta/docker_auth:1.7"
+)

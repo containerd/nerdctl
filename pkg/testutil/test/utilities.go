@@ -14,14 +14,29 @@
    limitations under the License.
 */
 
-package testregistry
+package test
 
 import (
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/hoststoml"
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
+	"os"
 )
 
-func generateCertsd(dir string, certPath string, hostIP string, port int) error {
-	return (&hoststoml.HostsToml{
-		CA: certPath,
-	}).Save(dir, hostIP, port)
+// IsRoot returns true if we are root... simple
+func IsRoot() bool {
+	return os.Geteuid() == 0
+}
+
+// RandomStringBase64 generates a base64 encoded random string
+func RandomStringBase64(n int) string {
+	b := make([]byte, n)
+	l, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
+	if l != n {
+		panic(fmt.Errorf("expected %d bytes, got %d bytes", n, l))
+	}
+	return base64.URLEncoding.EncodeToString(b)
 }
