@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package main
+package issues
 
 import (
 	"testing"
@@ -24,19 +24,24 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
+func TestMain(m *testing.M) {
+	testutil.M(m)
+}
+
 // TestIssue108 tests https://github.com/containerd/nerdctl/issues/108
 // ("`nerdctl run --net=host -it` fails while `nerdctl run -it --net=host` works")
 func TestIssue108(t *testing.T) {
-	nerdtest.Setup()
+	testCase := nerdtest.Setup()
 
-	testGroup := &test.Group{
+	testCase.SubTests = []*test.Case{
 		{
 			Description: "-it --net=host",
 			Require:     test.Binary("unbuffer"),
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.
-					Command("run", "-it", "--rm", "--net=host", testutil.AlpineImage, "echo", "this was always working").
-					WithWrapper("unbuffer")
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.
+					Command("run", "-it", "--rm", "--net=host", testutil.AlpineImage, "echo", "this was always working")
+				cmd.WithWrapper("unbuffer")
+				return cmd
 			},
 			// Note: unbuffer will merge stdout and stderr, preventing exact match here
 			Expected: test.Expects(0, nil, test.Contains("this was always working")),
@@ -44,15 +49,16 @@ func TestIssue108(t *testing.T) {
 		{
 			Description: "--net=host -it",
 			Require:     test.Binary("unbuffer"),
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.
-					Command("run", "--rm", "--net=host", "-it", testutil.AlpineImage, "echo", "this was not working due to issue #108").
-					WithWrapper("unbuffer")
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.
+					Command("run", "--rm", "--net=host", "-it", testutil.AlpineImage, "echo", "this was not working due to issue #108")
+				cmd.WithWrapper("unbuffer")
+				return cmd
 			},
 			// Note: unbuffer will merge stdout and stderr, preventing exact match here
 			Expected: test.Expects(0, nil, test.Contains("this was not working due to issue #108")),
 		},
 	}
 
-	testGroup.Run(t)
+	testCase.Run(t)
 }
