@@ -14,14 +14,20 @@
    limitations under the License.
 */
 
-package testregistry
+package platform
 
 import (
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/hoststoml"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-func generateCertsd(dir string, certPath string, hostIP string, port int) error {
-	return (&hoststoml.HostsToml{
-		CA: certPath,
-	}).Save(dir, hostIP, port)
+func DataHome() (string, error) {
+	return rootlessutil.XDGDataHome()
 }
+
+var (
+	RegistryImageStable = testutil.RegistryImageStable
+	RegistryImageNext   = testutil.RegistryImageNext
+	KuboImage           = testutil.KuboImage
+	DockerAuthImage     = testutil.DockerAuthImage
+)

@@ -14,14 +14,18 @@
    limitations under the License.
 */
 
-package testregistry
+package nerdtest
 
-import (
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/hoststoml"
-)
+import "github.com/containerd/nerdctl/v2/pkg/testutil"
 
-func generateCertsd(dir string, certPath string, hostIP string, port int) error {
-	return (&hoststoml.HostsToml{
-		CA: certPath,
-	}).Save(dir, hostIP, port)
+func environmentHasIPv6() bool {
+	return testutil.GetEnableIPv6()
+}
+
+func environmentHasKubernetes() bool {
+	return testutil.GetEnableKubernetes()
+}
+
+func environmentIsForFlaky() bool {
+	return testutil.GetFlakyEnvironment()
 }
