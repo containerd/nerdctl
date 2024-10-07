@@ -18,117 +18,212 @@ package image
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"gotest.tools/v3/assert"
+
+	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestImagePrune(t *testing.T) {
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	imageName := testutil.Identifier(t)
-	defer base.Cmd("rmi", imageName).AssertOK()
+	// Cannot use a custom namespace with buildkitd right now, so, no parallel it is
+	testCase.NoParallel = true
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		// We need to delete everything here for prune to make any sense
+		imgList := strings.TrimSpace(helpers.Capture("images", "--no-trunc", "-aq"))
+		if imgList != "" {
+			helpers.Ensure(append([]string{"rmi", "-f"}, strings.Split(imgList, "\n")...)...)
+		}
+	}
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "without all",
+			NoParallel:  true,
+			Require: test.Require(
+				// This never worked with Docker - the only reason we ever got <none> was side effects from other tests
+				// See inline comments.
+				test.Not(nerdtest.Docker),
+				nerdtest.Build,
+			),
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rmi", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				dockerfile := fmt.Sprintf(`FROM %s
+				CMD ["echo", "nerdctl-test-image-prune"]
+					`, testutil.CommonImage)
 
-	dockerfile := fmt.Sprintf(`FROM %s
-	CMD ["echo", "nerdctl-test-image-prune"]`, testutil.CommonImage)
+				buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+				helpers.Ensure("build", buildCtx)
+				// After we rebuild with tag, docker will no longer show the <none> version from above
+				// Swapping order does not change anything.
+				helpers.Ensure("build", "-t", data.Identifier(), buildCtx)
+				imgList := helpers.Capture("images")
+				assert.Assert(t, strings.Contains(imgList, "<none>"), "Missing <none>")
+				assert.Assert(t, strings.Contains(imgList, data.Identifier()), "Missing "+data.Identifier())
+			},
+			Command: test.Command("image", "prune", "--force"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.All(
+						func(stdout string, info string, t *testing.T) {
+							assert.Assert(t, !strings.Contains(stdout, data.Identifier()), info)
+						},
+						func(stdout string, info string, t *testing.T) {
+							imgList := helpers.Capture("images")
+							assert.Assert(t, !strings.Contains(imgList, "<none>"), imgList)
+							assert.Assert(t, strings.Contains(imgList, data.Identifier()), info)
+						},
+					),
+				}
+			},
+		},
+		{
+			Description: "with all",
+			Require: test.Require(
+				// Same as above
+				test.Not(nerdtest.Docker),
+				nerdtest.Build,
+			),
+			// Cannot use a custom namespace with buildkitd right now, so, no parallel it is
+			NoParallel: true,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rmi", data.Identifier())
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				dockerfile := fmt.Sprintf(`FROM %s
+				CMD ["echo", "nerdctl-test-image-prune"]
+					`, testutil.CommonImage)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-
-	base.Cmd("build", buildCtx).AssertOK()
-	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
-	base.Cmd("images").AssertOutContainsAll(imageName, "<none>")
-
-	base.Cmd("image", "prune", "--force").AssertOutNotContains(imageName)
-	base.Cmd("images").AssertOutNotContains("<none>")
-	base.Cmd("images").AssertOutContains(imageName)
-}
-
-func TestImagePruneAll(t *testing.T) {
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-
-	base := testutil.NewBase(t)
-	imageName := testutil.Identifier(t)
-
-	dockerfile := fmt.Sprintf(`FROM %s
-	CMD ["echo", "nerdctl-test-image-prune"]`, testutil.CommonImage)
-
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-
-	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
-	// The following commands will clean up all images, so it should fail at this point.
-	defer base.Cmd("rmi", imageName).AssertFail()
-	base.Cmd("images").AssertOutContains(imageName)
-
-	tID := testutil.Identifier(t)
-	base.Cmd("run", "--name", tID, imageName).AssertOK()
-	base.Cmd("image", "prune", "--force", "--all").AssertOutNotContains(imageName)
-	base.Cmd("images").AssertOutContains(imageName)
-
-	base.Cmd("rm", "-f", tID).AssertOK()
-	base.Cmd("image", "prune", "--force", "--all").AssertOutContains(imageName)
-	base.Cmd("images").AssertOutNotContains(imageName)
-}
-
-func TestImagePruneFilterLabel(t *testing.T) {
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-
-	base := testutil.NewBase(t)
-	imageName := testutil.Identifier(t)
-	t.Cleanup(func() { base.Cmd("rmi", "--force", imageName) })
-
-	dockerfile := fmt.Sprintf(`FROM %s
+				buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+				helpers.Ensure("build", buildCtx)
+				helpers.Ensure("build", "-t", data.Identifier(), buildCtx)
+				imgList := helpers.Capture("images")
+				assert.Assert(t, strings.Contains(imgList, "<none>"), "Missing <none>")
+				assert.Assert(t, strings.Contains(imgList, data.Identifier()), "Missing "+data.Identifier())
+				helpers.Ensure("run", "--name", data.Identifier(), data.Identifier())
+			},
+			Command: test.Command("image", "prune", "--force", "--all"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.All(
+						func(stdout string, info string, t *testing.T) {
+							assert.Assert(t, !strings.Contains(stdout, data.Identifier()), info)
+						},
+						func(stdout string, info string, t *testing.T) {
+							imgList := helpers.Capture("images")
+							assert.Assert(t, strings.Contains(imgList, data.Identifier()), info)
+							assert.Assert(t, !strings.Contains(imgList, "<none>"), imgList)
+							helpers.Ensure("rm", "-f", data.Identifier())
+							removed := helpers.Capture("image", "prune", "--force", "--all")
+							assert.Assert(t, strings.Contains(removed, data.Identifier()), info)
+							imgList = helpers.Capture("images")
+							assert.Assert(t, !strings.Contains(imgList, data.Identifier()), info)
+						},
+					),
+				}
+			},
+		},
+		{
+			Description: "with filter label",
+			Require:     nerdtest.Build,
+			// Cannot use a custom namespace with buildkitd right now, so, no parallel it is
+			NoParallel: true,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rmi", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-test-image-prune-filter-label"]
 LABEL foo=bar
 LABEL version=0.1`, testutil.CommonImage)
-
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-
-	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
-	base.Cmd("images", "--all").AssertOutContains(imageName)
-
-	base.Cmd("image", "prune", "--force", "--all", "--filter", "label=foo=baz").AssertOK()
-	base.Cmd("images", "--all").AssertOutContains(imageName)
-
-	base.Cmd("image", "prune", "--force", "--all", "--filter", "label=foo=bar").AssertOK()
-	base.Cmd("images", "--all").AssertOutNotContains(imageName)
-}
-
-func TestImagePruneFilterUntil(t *testing.T) {
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-
-	base := testutil.NewBase(t)
-	// For deterministically testing the filter, set the image's created timestamp to 2 hours in the past.
-	base.Env = append(base.Env, fmt.Sprintf("SOURCE_DATE_EPOCH=%d", time.Now().Add(-2*time.Hour).Unix()))
-
-	imageName := testutil.Identifier(t)
-	teardown := func() {
-		// Image should have been pruned; but cleanup on failure.
-		base.Cmd("rmi", "--force", imageName).Run()
+				buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+				helpers.Ensure("build", "-t", data.Identifier(), buildCtx)
+				imgList := helpers.Capture("images")
+				assert.Assert(t, strings.Contains(imgList, data.Identifier()), "Missing "+data.Identifier())
+			},
+			Command: test.Command("image", "prune", "--force", "--all", "--filter", "label=foo=baz"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.All(
+						func(stdout string, info string, t *testing.T) {
+							assert.Assert(t, !strings.Contains(stdout, data.Identifier()), info)
+						},
+						func(stdout string, info string, t *testing.T) {
+							imgList := helpers.Capture("images")
+							assert.Assert(t, strings.Contains(imgList, data.Identifier()), info)
+						},
+						func(stdout string, info string, t *testing.T) {
+							prune := helpers.Capture("image", "prune", "--force", "--all", "--filter", "label=foo=bar")
+							assert.Assert(t, strings.Contains(prune, data.Identifier()), info)
+							imgList := helpers.Capture("images")
+							assert.Assert(t, !strings.Contains(imgList, data.Identifier()), info)
+						},
+					),
+				}
+			},
+		},
+		{
+			Description: "with until",
+			Require:     nerdtest.Build,
+			// Cannot use a custom namespace with buildkitd right now, so, no parallel it is
+			NoParallel: true,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rmi", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				dockerfile := fmt.Sprintf(`FROM %s
+RUN echo "Anything, so that we create actual content for docker to set the current time for CreatedAt"
+CMD ["echo", "nerdctl-test-image-prune-until"]`, testutil.CommonImage)
+				buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+				helpers.Ensure("build", "-t", data.Identifier(), buildCtx)
+				imgList := helpers.Capture("images")
+				assert.Assert(t, strings.Contains(imgList, data.Identifier()), "Missing "+data.Identifier())
+				data.Set("imageID", data.Identifier())
+			},
+			Command: test.Command("image", "prune", "--force", "--all", "--filter", "until=12h"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.All(
+						test.DoesNotContain(data.Get("imageID")),
+						func(stdout string, info string, t *testing.T) {
+							imgList := helpers.Capture("images")
+							assert.Assert(t, strings.Contains(imgList, data.Get("imageID")), info)
+						},
+					),
+				}
+			},
+			SubTests: []*test.Case{
+				{
+					Description: "Wait and remove until=10ms",
+					NoParallel:  true,
+					Setup: func(data test.Data, helpers test.Helpers) {
+						time.Sleep(1 * time.Second)
+					},
+					Command: test.Command("image", "prune", "--force", "--all", "--filter", "until=10ms"),
+					Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+						return &test.Expected{
+							Output: test.All(
+								test.Contains(data.Get("imageID")),
+								func(stdout string, info string, t *testing.T) {
+									imgList := helpers.Capture("images")
+									assert.Assert(t, !strings.Contains(imgList, data.Get("imageID")), imgList, info)
+								},
+							),
+						}
+					},
+				},
+			},
+		},
 	}
-	t.Cleanup(teardown)
-	teardown()
 
-	dockerfile := fmt.Sprintf(`FROM %s
-CMD ["echo", "nerdctl-test-image-prune-filter-until"]`, testutil.CommonImage)
-
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-
-	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
-	base.Cmd("images", "--all").AssertOutContains(imageName)
-
-	base.Cmd("image", "prune", "--force", "--all", "--filter", "until=12h").AssertOK()
-	base.Cmd("images", "--all").AssertOutContains(imageName)
-
-	// Pause to ensure enough time has passed for the image to be cleaned on next prune.
-	time.Sleep(3 * time.Second)
-
-	base.Cmd("image", "prune", "--force", "--all", "--filter", "until=10ms").AssertOK()
-	base.Cmd("images", "--all").AssertOutNotContains(imageName)
+	testCase.Run(t)
 }
