@@ -30,25 +30,27 @@ import (
 )
 
 func TestNetworkCreate(t *testing.T) {
-	nerdtest.Setup()
+	testCase := nerdtest.Setup()
 
-	testGroup := &test.Group{
+	testCase.SubTests = []*test.Case{
 		{
-			Description: "Network create",
+			Description: "vanilla",
+			// #3491 and #3508 may have helped - commenting this out for now
+			// Require:     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3086"),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier())
 				netw := nerdtest.InspectNetwork(helpers, data.Identifier())
 				assert.Equal(t, len(netw.IPAM.Config), 1)
 				data.Set("subnet", netw.IPAM.Config[0].Subnet)
 
-				helpers.Ensure("network", "create", data.Identifier()+"-1")
+				helpers.Ensure("network", "create", data.Identifier("1"))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("network", "rm", data.Identifier())
-				helpers.Anyhow("network", "rm", data.Identifier()+"-1")
+				helpers.Anyhow("network", "rm", data.Identifier("1"))
 			},
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				data.Set("container2", helpers.Capture("run", "--rm", "--net", data.Identifier()+"-1", testutil.AlpineImage, "ip", "route"))
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				data.Set("container2", helpers.Capture("run", "--rm", "--net", data.Identifier("1"), testutil.AlpineImage, "ip", "route"))
 				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.AlpineImage, "ip", "route")
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -63,21 +65,25 @@ func TestNetworkCreate(t *testing.T) {
 			},
 		},
 		{
-			Description: "Network create with MTU",
+			Description: "with MTU",
+			// #3491 and #3508 may have helped - commenting this out for now
+			// Require:     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3086"),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier(), "--driver", "bridge", "--opt", "com.docker.network.driver.mtu=9216")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("network", "rm", data.Identifier())
 			},
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.AlpineImage, "ifconfig", "eth0")
 			},
 			Expected: test.Expects(0, nil, test.Contains("MTU:9216")),
 		},
 		{
-			Description: "Network create with ipv6",
-			Require:     nerdtest.OnlyIPv6,
+			Description: "with ipv6",
+			// #3491 and #3508 may have helped - commenting this out for now
+			// Require:     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3086"),
+			Require: nerdtest.OnlyIPv6,
 			Setup: func(data test.Data, helpers test.Helpers) {
 				subnetStr := "2001:db8:8::/64"
 				data.Set("subnetStr", subnetStr)
@@ -89,7 +95,7 @@ func TestNetworkCreate(t *testing.T) {
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("network", "rm", data.Identifier())
 			},
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.CommonImage, "ip", "addr", "show", "dev", "eth0")
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -105,5 +111,5 @@ func TestNetworkCreate(t *testing.T) {
 		},
 	}
 
-	testGroup.Run(t)
+	testCase.Run(t)
 }
