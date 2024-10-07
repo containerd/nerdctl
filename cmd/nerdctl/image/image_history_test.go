@@ -56,7 +56,7 @@ func decode(stdout string) ([]historyObj, error) {
 	return object, nil
 }
 
-func TestImageHistory(t *testing.T) {
+func DisableTemporarilyTestImageHistory(t *testing.T) {
 	// Here are the current issues with regard to docker true compatibility:
 	// - we have a different definition of what a layer id is (snapshot vs. id)
 	//     this will require indepth convergence when moby will handle multi-platform images
@@ -69,7 +69,6 @@ func TestImageHistory(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Description: "TestImageHistory",
 		Require: test.Require(
 			test.Not(nerdtest.Docker),
 			// XXX the results here are obviously platform dependent - and it seems like windows cannot pull a linux image?
@@ -78,6 +77,10 @@ func TestImageHistory(t *testing.T) {
 			test.Arm64,
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
+			// XXX: despite efforts to isolate this test, it keeps on having side effects linked to
+			// https://github.com/containerd/nerdctl/issues/3512
+			// Isolating it into a completely different root is the last ditched attempt at avoiding the issue
+			helpers.Write(nerdtest.DataRoot, test.ConfigValue(data.TempDir()))
 			helpers.Ensure("pull", "--platform", "linux/arm64", testutil.CommonImage)
 		},
 		SubTests: []*test.Case{

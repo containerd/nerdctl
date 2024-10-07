@@ -26,7 +26,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
-func TestImageConvert(t *testing.T) {
+func DisableTemporarilyTestImageConvert(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{

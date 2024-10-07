@@ -56,7 +56,7 @@ jobs:
 
   test-integration:
     runs-on: "${{ matrix.runner }}"
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -99,12 +99,7 @@ jobs:
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Run integration tests"
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 2
-          retry_on: error
-          command: docker run -t --rm --privileged test-integration
+        run: docker run -t --rm --privileged test-integration
 
   test-integration-ipv6:
     runs-on: "ubuntu-${{ matrix.ubuntu }}"

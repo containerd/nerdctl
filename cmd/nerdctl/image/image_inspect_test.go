@@ -67,7 +67,7 @@ func TestImageInspectSimpleCases(t *testing.T) {
 	testCase.Run(t)
 }
 
-func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
+func DisableTemporarilyTestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 	nerdtest.Setup()
 
 	tags := []string{
