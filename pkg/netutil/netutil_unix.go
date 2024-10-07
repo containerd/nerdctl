@@ -102,7 +102,7 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 		for opt, v := range opts {
 			switch opt {
 			case "mtu", "com.docker.network.driver.mtu":
-				mtu, err = ParseMTU(v)
+				mtu, err = parseMTU(v)
 				if err != nil {
 					return nil, err
 				}
@@ -148,7 +148,7 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 		for opt, v := range opts {
 			switch opt {
 			case "mtu", "com.docker.network.driver.mtu":
-				mtu, err = ParseMTU(v)
+				mtu, err = parseMTU(v)
 				if err != nil {
 					return nil, err
 				}

@@ -667,17 +667,14 @@ func writeEtcHostnameForContainer(globalOptions types.GlobalCommandOptions, host
 // from the networkSlice is of a type within supportedTypes.
 // nolint:unused
 func verifyNetworkTypes(env *netutil.CNIEnv, networkSlice []string, supportedTypes []string) (map[string]*netutil.NetworkConfig, error) {
-	netMap, err := env.NetworkMap()
-	if err != nil {
-		return nil, err
-	}
-
 	res := make(map[string]*netutil.NetworkConfig, len(networkSlice))
+	var netConfig *netutil.NetworkConfig
+	var err error
 	for _, netstr := range networkSlice {
-		netConfig, ok := netMap[netstr]
-		if !ok {
-			return nil, fmt.Errorf("network %s not found", netstr)
+		if netConfig, err = env.NetworkByNameOrID(netstr); err != nil {
+			return nil, err
 		}
+
 		netType := netConfig.Plugins[0].Network.Type
 		if supportedTypes != nil && !strutil.InStringSlice(supportedTypes, netType) {
 			return nil, fmt.Errorf("network type %q is not supported for network mapping %q, must be one of: %v", netType, netstr, supportedTypes)
