@@ -86,6 +86,9 @@ lint-yaml:
 lint-shell: $(call recursive_wildcard,$(MAKEFILE_DIR)/,*.sh)
 	shellcheck -a -x $^
 
+test-unit:
+	go test -v $(MAKEFILE_DIR)/pkg/...
+
 binaries: nerdctl
 
 install:

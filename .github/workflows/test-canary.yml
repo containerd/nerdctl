@@ -65,7 +65,7 @@ jobs:
       - name: "Run unit tests"
         run: go test -v ./pkg/...
       - name: "Run integration tests"
-        run: docker run -t --rm --privileged test-integration
+        run: docker run -t --rm --privileged test-integration ./hack/test-integration.sh
 
   windows:
     runs-on: windows-latest
