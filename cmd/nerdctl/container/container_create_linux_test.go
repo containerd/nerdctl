@@ -187,7 +187,11 @@ func TestCreateWithTty(t *testing.T) {
 func TestIssue2993(t *testing.T) {
 	testCase := nerdtest.Setup()
 
-	testCase.Require = test.Not(nerdtest.Docker)
+	testCase.Require = test.Require(
+		test.Not(nerdtest.Docker),
+		// Maybe the use of a custom data root has an impact?
+		nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3518"),
+	)
 
 	const (
 		containersPathKey = "containersPath"
