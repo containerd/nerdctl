@@ -383,8 +383,8 @@ func TestRunWithLogBinary(t *testing.T) {
 	imageName := testutil.Identifier(t) + "-image"
 	containerName := testutil.Identifier(t)
 
-	const dockerfile = `
-FROM golang:latest as builder
+	var dockerfile = `
+FROM ` + testutil.GolangImage + ` as builder
 WORKDIR /go/src/
 RUN mkdir -p logger
 WORKDIR /go/src/logger

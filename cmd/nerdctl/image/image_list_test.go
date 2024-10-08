@@ -95,12 +95,12 @@ LABEL version=0.1`, testutil.CommonImage)
 	base.Cmd("build", "-t", tempName, "-f", buildCtx+"/Dockerfile", buildCtx).AssertOK()
 	defer base.Cmd("rmi", tempName).AssertOK()
 
-	busyboxGlibc, busyboxUclibc := "busybox:glibc", "busybox:uclibc"
-	base.Cmd("pull", busyboxGlibc).AssertOK()
-	defer base.Cmd("rmi", busyboxGlibc).AssertOK()
-
-	base.Cmd("pull", busyboxUclibc).AssertOK()
-	defer base.Cmd("rmi", busyboxUclibc).AssertOK()
+	// This test is about testing local filtering of image names - as such, we do not need remote images at all
+	taggedOne, taggedTwo := "taggedimage:xfoox", "taggedimage:yzfooyz"
+	base.Cmd("tag", testutil.CommonImage, taggedOne).Run()
+	base.Cmd("tag", testutil.CommonImage, taggedTwo).Run()
+	defer base.Cmd("rmi", taggedOne).AssertOK()
+	defer base.Cmd("rmi", taggedTwo).AssertOK()
 
 	// before/since filters are not compatible with DOCKER_BUILDKIT=1? (but still compatible with DOCKER_BUILDKIT=0)
 	if base.Target == testutil.Nerdctl {
@@ -119,8 +119,8 @@ LABEL version=0.1`, testutil.CommonImage)
 	base.Cmd("images", "--filter", "label=foo=bar", "--filter", "label=version=0.2").AssertOutNotContains(tempName)
 	base.Cmd("images", "--filter", "label=version").AssertOutContains(tempName)
 	base.Cmd("images", "--filter", fmt.Sprintf("reference=%s*", tempName)).AssertOutContains(tempName)
-	base.Cmd("images", "--filter", "reference=busy*:*libc*").AssertOutContains("glibc")
-	base.Cmd("images", "--filter", "reference=busy*:*libc*").AssertOutContains("uclibc")
+	base.Cmd("images", "--filter", "reference=tag*:*foo*").AssertOutContains("xfoox")
+	base.Cmd("images", "--filter", "reference=tag*:*foo*").AssertOutContains("yzfooyz")
 }
 
 func TestImagesFilterDangling(t *testing.T) {

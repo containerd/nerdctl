@@ -43,6 +43,7 @@ var (
 	FluentdImage                = "fluent/fluentd:v1.17.0-debian-1.0"
 	KuboImage                   = mirrorOf("ipfs/kubo:v0.16.0")
 	SystemdImage                = "ghcr.io/containerd/stargz-snapshotter:0.15.1-kind"
+	GolangImage                 = mirrorOf("golang:1.18")
 
 	// Source: https://gist.github.com/cpuguy83/fcf3041e5d8fb1bb5c340915aabeebe0
 	NonDistBlobImage = "ghcr.io/cpuguy83/non-dist-blob:latest"
