@@ -11,6 +11,9 @@ version: 2
 updates:
   # Dependencies listed in go.mod
   - package-ecosystem: "gomod"
+    ignore:
+      - dependency-name: "github.com/containerd/errdefs"
+        update-types: ["version-update:semver-minor"]
     directory: "/"  # Location of package manifests
     schedule:
       interval: "daily"
