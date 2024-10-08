@@ -619,6 +619,7 @@ func structToMap(in interface{}) (map[string]interface{}, error) {
 }
 
 // ParseMTU parses the mtu option
+// nolint:unused
 func parseMTU(mtu string) (int, error) {
 	if mtu == "" {
 		return 0, nil // default
