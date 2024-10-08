@@ -64,13 +64,25 @@ func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 		return -1, err
 	}
 
-	matchCount := len(images)
 	// to handle the `rmi -f` case where returned images are different but
 	// have the same short prefix.
 	uniqueImages := make(map[digest.Digest]bool)
 	for _, image := range images {
 		uniqueImages[image.Target.Digest] = true
 	}
+
+	// Allow to nerdctl rmi <short digest ids of another images> to remove images.
+	if len(uniqueImages) > 1 {
+		imageIDPrefix := fmt.Sprintf("sha256:%s", regexp.QuoteMeta(req))
+		for i := len(images) - 1; i >= 0; i-- {
+			if strings.HasPrefix(images[i].Target.Digest.String(), imageIDPrefix) {
+				delete(uniqueImages, images[i].Target.Digest)
+				images = append(images[:i], images[i+1:]...)
+			}
+		}
+	}
+
+	matchCount := len(images)
 
 	for i, img := range images {
 		f := Found{
