@@ -125,7 +125,10 @@ func TestImagesFilter(t *testing.T) {
 
 	testCase := &test.Case{
 		Description: "TestImagesFilter",
-		Require:     nerdtest.Build,
+		Require: test.Require(
+			nerdtest.Build,
+			nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3512"),
+		),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", testutil.CommonImage)
 			helpers.Ensure("tag", testutil.CommonImage, "taggedimage:one-fragment-one")

@@ -46,6 +46,7 @@ func TestIPFSCompNoBuild(t *testing.T) {
 		test.Not(nerdtest.Docker),
 		nerdtest.Registry,
 		nerdtest.IPFS,
+		nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3510"),
 		// See note below
 		// nerdtest.Private,
 	)
