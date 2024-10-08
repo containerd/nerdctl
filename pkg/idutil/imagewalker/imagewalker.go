@@ -31,11 +31,12 @@ import (
 )
 
 type Found struct {
-	Image        images.Image
-	Req          string // The raw request string. name, short ID, or long ID.
-	MatchIndex   int    // Begins with 0, up to MatchCount - 1.
-	MatchCount   int    // 1 on exact match. > 1 on ambiguous match. Never be <= 0.
-	UniqueImages int    // Number of unique images in all found images.
+	Image          images.Image
+	Req            string // The raw request string. name, short ID, or long ID.
+	MatchIndex     int    // Begins with 0, up to MatchCount - 1.
+	MatchCount     int    // 1 on exact match. > 1 on ambiguous match. Never be <= 0.
+	UniqueImages   int    // Number of unique images in all found images.
+	NameMatchIndex int    // Image index with a name matching the argument for `nerdctl rmi`.
 }
 
 type OnFound func(ctx context.Context, found Found) error
@@ -50,8 +51,12 @@ type ImageWalker struct {
 // Returns the number of the found entries.
 func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 	var filters []string
-	if parsedReference, err := referenceutil.Parse(req); err == nil {
-		filters = append(filters, fmt.Sprintf("name==%s", parsedReference.String()))
+	var parsedReferenceStr string
+
+	parsedReference, err := referenceutil.Parse(req)
+	if err == nil {
+		parsedReferenceStr = parsedReference.String()
+		filters = append(filters, fmt.Sprintf("name==%s", parsedReferenceStr))
 	}
 	filters = append(filters,
 		fmt.Sprintf("name==%s", req),
@@ -68,17 +73,23 @@ func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 	// to handle the `rmi -f` case where returned images are different but
 	// have the same short prefix.
 	uniqueImages := make(map[digest.Digest]bool)
-	for _, image := range images {
+	nameMatchIndex := -1
+	for i, image := range images {
 		uniqueImages[image.Target.Digest] = true
+		// to get target image index for `nerdctl rmi <short digest ids of another images>`.
+		if (parsedReferenceStr != "" && image.Name == parsedReferenceStr) || image.Name == req {
+			nameMatchIndex = i
+		}
 	}
 
 	for i, img := range images {
 		f := Found{
-			Image:        img,
-			Req:          req,
-			MatchIndex:   i,
-			MatchCount:   matchCount,
-			UniqueImages: len(uniqueImages),
+			Image:          img,
+			Req:            req,
+			MatchIndex:     i,
+			MatchCount:     matchCount,
+			UniqueImages:   len(uniqueImages),
+			NameMatchIndex: nameMatchIndex,
 		}
 		if e := w.OnFound(ctx, f); e != nil {
 			return -1, e

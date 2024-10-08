@@ -65,11 +65,18 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 	walker := &imagewalker.ImageWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found imagewalker.Found) error {
-			// if found multiple images, return error unless in force-mode and
-			// there is only 1 unique image.
-			if found.MatchCount > 1 && !(options.Force && found.UniqueImages == 1) {
-				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+			if found.NameMatchIndex == -1 {
+				// if found multiple images, return error unless in force-mode and
+				// there is only 1 unique image.
+				if found.MatchCount > 1 && !(options.Force && found.UniqueImages == 1) {
+					return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+				}
+			} else if found.NameMatchIndex != found.MatchIndex {
+				// when there is an image with a name matching the argument but the argument is a digest short id,
+				// the deletion process is not performed.
+				return nil
 			}
+
 			if cid, ok := runningImages[found.Image.Name]; ok {
 				return fmt.Errorf("conflict: unable to delete %s (cannot be forced) - image is being used by running container %s", found.Req, cid)
 			}
