@@ -169,10 +169,11 @@ func TestFileStoreConcurrent(t *testing.T) {
 
 	go func() {
 		lErr := tempStore.WithLock(func() error {
-			err := tempStore.Set([]byte("routine 1"), "concurrentkey")
+			// Windows does not allow files starting with con
+			err := tempStore.Set([]byte("routine 1"), "c0ncurrentkey")
 			assert.NilError(t, err, "writing should not error")
 			time.Sleep(1 * time.Second)
-			result, err := tempStore.Get("concurrentkey")
+			result, err := tempStore.Get("c0ncurrentkey")
 			assert.NilError(t, err, "reading should not error")
 			assert.Assert(t, string(result) == "routine 1")
 			return nil
@@ -183,10 +184,10 @@ func TestFileStoreConcurrent(t *testing.T) {
 	go func() {
 		time.Sleep(500 * time.Millisecond)
 		lErr := tempStore.WithLock(func() error {
-			err := tempStore.Set([]byte("routine 2"), "concurrentkey")
+			err := tempStore.Set([]byte("routine 2"), "c0ncurrentkey")
 			assert.NilError(t, err, "writing should not error")
 			time.Sleep(1 * time.Second)
-			result, err := tempStore.Get("concurrentkey")
+			result, err := tempStore.Get("c0ncurrentkey")
 			assert.NilError(t, err, "reading should not error")
 			assert.Assert(t, string(result) == "routine 2")
 			return nil
@@ -195,10 +196,10 @@ func TestFileStoreConcurrent(t *testing.T) {
 	}()
 
 	lErr := tempStore.WithLock(func() error {
-		err := tempStore.Set([]byte("main routine 1"), "concurrentkey")
+		err := tempStore.Set([]byte("main routine 1"), "c0ncurrentkey")
 		assert.NilError(t, err, "writing should not error")
 		time.Sleep(1 * time.Second)
-		result, err := tempStore.Get("concurrentkey")
+		result, err := tempStore.Get("c0ncurrentkey")
 		assert.NilError(t, err, "reading should not error")
 		assert.Assert(t, string(result) == "main routine 1")
 		return nil
@@ -208,10 +209,10 @@ func TestFileStoreConcurrent(t *testing.T) {
 	time.Sleep(750 * time.Millisecond)
 
 	lErr = tempStore.WithLock(func() error {
-		err := tempStore.Set([]byte("main routine 2"), "concurrentkey")
+		err := tempStore.Set([]byte("main routine 2"), "c0ncurrentkey")
 		assert.NilError(t, err, "writing should not error")
 		time.Sleep(1 * time.Second)
-		result, err := tempStore.Get("concurrentkey")
+		result, err := tempStore.Get("c0ncurrentkey")
 		assert.NilError(t, err, "reading should not error")
 		assert.Assert(t, string(result) == "main routine 2")
 		return nil
