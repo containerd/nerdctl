@@ -39,6 +39,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/v2/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 	"github.com/containerd/nerdctl/v2/pkg/namestore"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
@@ -91,6 +92,26 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 			log.L.Logger.WithError(err).Error("failed closing oci hook log file")
 		}
 	}()
+
+	// FIXME: CNI plugins are not safe to use concurrently
+	// See
+	// https://github.com/containerd/nerdctl/issues/3518
+	// https://github.com/containerd/nerdctl/issues/2908
+	// and likely others
+	// Fixing these issues would require a lot of work, possibly even stopping using individual cni binaries altogether
+	// or at least being very mindful in what operation we call inside CNIEnv at what point, with filesystem locking.
+	// This below is a stopgap solution that just enforces a global lock
+	// Note this here is probably not enough, as concurrent CNI operations may happen outside of the scope of ocihooks
+	// through explicit calls to Remove, etc.
+	err = os.MkdirAll(cniNetconfPath, 0o700)
+	if err != nil {
+		return err
+	}
+	lock, err := lockutil.Lock(cniNetconfPath)
+	if err != nil {
+		return err
+	}
+	defer lockutil.Unlock(lock)
 
 	opts, err := newHandlerOpts(&state, dataStore, cniPath, cniNetconfPath)
 	if err != nil {
