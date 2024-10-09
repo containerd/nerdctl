@@ -180,9 +180,7 @@ func (b *Base) EnsureDaemonActive() {
 		sleep    = 3 * time.Second
 	)
 	for i := 0; i < maxRetry; i++ {
-		cmd := exec.Command("systemctl",
-			append(systemctlArgs,
-				[]string{"is-active", target}...)...)
+		cmd := exec.Command("systemctl", append(systemctlArgs, "is-active", target)...)
 		out, err := cmd.CombinedOutput()
 		b.T.Logf("(retry=%d) %s", i, string(out))
 		if err == nil {
@@ -204,10 +202,7 @@ func (b *Base) DumpDaemonLogs(minutes int) {
 	b.T.Helper()
 	target := b.systemctlTarget()
 	cmd := exec.Command("journalctl",
-		append(b.systemctlArgs(),
-			[]string{"-u", target,
-				"--no-pager",
-				"-S", fmt.Sprintf("%d min ago", minutes)}...)...)
+		append(b.systemctlArgs(), "-u", target, "--no-pager", "-S", fmt.Sprintf("%d min ago", minutes))...)
 	b.T.Logf("===== %v =====", cmd.Args)
 	out, err := cmd.CombinedOutput()
 	if err != nil {

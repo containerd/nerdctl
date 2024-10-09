@@ -127,7 +127,6 @@ func TestImagesFilter(t *testing.T) {
 		Description: "TestImagesFilter",
 		Require: test.Require(
 			nerdtest.Build,
-			nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3512"),
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", testutil.CommonImage)
