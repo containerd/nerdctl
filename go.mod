@@ -33,7 +33,7 @@ require (
 	github.com/containernetworking/plugins v1.5.1
 	github.com/coreos/go-iptables v0.8.0
 	github.com/coreos/go-systemd/v22 v22.5.0
-	github.com/cyphar/filepath-securejoin v0.3.3
+	github.com/cyphar/filepath-securejoin v0.3.4
 	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v27.3.1+incompatible
 	github.com/docker/docker v27.3.1+incompatible
