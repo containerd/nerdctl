@@ -73,7 +73,7 @@ func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 
 	// Allow to nerdctl rmi <short digest ids of another images> to remove images.
 	if len(uniqueImages) > 1 {
-		imageIDPrefix := fmt.Sprintf("sha256:%s", regexp.QuoteMeta(req))
+		imageIDPrefix := fmt.Sprintf("sha256:%s", req)
 		for i := len(images) - 1; i >= 0; i-- {
 			if strings.HasPrefix(images[i].Target.Digest.String(), imageIDPrefix) {
 				delete(uniqueImages, images[i].Target.Digest)
