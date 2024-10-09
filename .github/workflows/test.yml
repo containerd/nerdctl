@@ -15,62 +15,10 @@ env:
   LONG_TIMEOUT: 60
 
 jobs:
-  lint-go:
+  test-unit:
     # Supposed to work: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/evaluate-expressions-in-workflows-and-actions#example-returning-a-json-data-type
     # Apparently does not
     # timeout-minutes: ${{ fromJSON(env.SHORT_TIMEOUT) }}
-    timeout-minutes: 5
-    name: lint-go ${{ matrix.goos }}
-    runs-on: "${{ matrix.os }}"
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            goos: linux
-          - os: ubuntu-24.04
-            goos: freebsd
-          # FIXME: this is currently failing in a non-sensical way, so, running on linux instead...
-          # - os: windows-2022
-          - os: ubuntu-24.04
-            goos: windows
-    env:
-      GOOS: "${{ matrix.goos }}"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-          cache: true
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          args: --verbose
-
-  lint-other:
-    timeout-minutes: 5
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-          cache: true
-      - name: yaml
-        run: make lint-yaml
-      - name: shell
-        run: make lint-shell
-      - name: go imports ordering
-        run: |
-          go install -v github.com/incu6us/goimports-reviser/v3@latest
-          make lint-imports
-
-  test-unit:
     timeout-minutes: 5
     name: unit ${{ matrix.goos }}
     runs-on: "${{ matrix.os }}"
@@ -83,7 +31,7 @@ jobs:
           - os: ubuntu-24.04
             goos: linux
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.1
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -96,7 +44,7 @@ jobs:
 
   test-integration:
     timeout-minutes: 60
-    name: integration ${{ matrix.containerd }} ${{ matrix.runner }}
+    name: rootful | ${{ matrix.containerd }} | ${{ matrix.runner }}
     runs-on: "${{ matrix.runner }}"
     strategy:
       fail-fast: false
@@ -119,7 +67,7 @@ jobs:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.1
         with:
           fetch-depth: 1
       - name: "Prepare integration test environment"
@@ -148,7 +96,7 @@ jobs:
 
   test-integration-ipv6:
     timeout-minutes: 60
-    name: ipv6 ${{ matrix.containerd }} ${{ matrix.ubuntu }}
+    name: ipv6 | ${{ matrix.containerd }} | ${{ matrix.ubuntu }}
     runs-on: "ubuntu-${{ matrix.ubuntu }}"
     strategy:
       fail-fast: false
@@ -157,11 +105,13 @@ jobs:
         include:
           - ubuntu: 24.04
             containerd: v1.7.22
+          - ubuntu: 24.04
+            containerd: v2.0.0-rc.5
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.1
         with:
           fetch-depth: 1
       - name: Enable ipv4 and ipv6 forwarding
@@ -200,7 +150,7 @@ jobs:
 
   test-integration-rootless:
     timeout-minutes: 60
-    name: rootless ${{ matrix.containerd }} ${{ matrix.rootlesskit }} ${{ matrix.ubuntu }} ${{ matrix.target }}
+    name: "${{ matrix.target }} | ${{ matrix.containerd }} | ${{ matrix.rootlesskit }} | ${{ matrix.ubuntu }}"
     runs-on: "ubuntu-${{ matrix.ubuntu }}"
     strategy:
       fail-fast: false
@@ -210,24 +160,24 @@ jobs:
           - ubuntu: 20.04
             containerd: v1.6.36
             rootlesskit: v1.1.1  # Deprecated
-            target: test-integration-rootless
+            target: rootless
           - ubuntu: 22.04
             containerd: v1.7.22
             rootlesskit: v2.3.1
-            target: test-integration-rootless
+            target: rootless
           - ubuntu: 24.04
             containerd: v2.0.0-rc.5
             rootlesskit: v2.3.1
-            target: test-integration-rootless
+            target: rootless
           - ubuntu: 24.04
             containerd: v1.7.22
             rootlesskit: v2.3.1
-            target: test-integration-rootless-port-slirp4netns
+            target: rootless-port-slirp4netns
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
       ROOTLESSKIT_VERSION: "${{ matrix.rootlesskit }}"
-      TEST_TARGET: "${{ matrix.target }}"
+      TEST_TARGET: "test-integration-${{ matrix.target }}"
     steps:
       - name: "Set up AppArmor"
         if: matrix.ubuntu == '24.04'
@@ -244,7 +194,7 @@ jobs:
           }
           EOT
           sudo systemctl restart apparmor.service
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.1
         with:
           fetch-depth: 1
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -271,14 +221,14 @@ jobs:
       - name: "Test (network driver=slirp4netns, port driver=builtin) (flaky)"
         run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} ${TEST_TARGET} /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky
 
-  cross:
+  build:
     timeout-minutes: 5
     runs-on: ubuntu-24.04
     strategy:
       matrix:
         go-version: ["1.22.x", "1.23.x"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.1
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -286,14 +236,15 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache: true
           check-latest: true
-      - name: "Cross"
+      - name: "build"
         run: GO_VERSION="$(echo ${{ matrix.go-version }} | sed -e s/.x//)" make binaries
 
   test-integration-docker-compatibility:
     timeout-minutes: 60
+    name: docker
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.1
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -324,16 +275,17 @@ jobs:
       - name: "Ensure that the IPv6 integration test suite is compatible with Docker"
         run: ./hack/test-integration.sh -test.target=docker -test.only-ipv6
       - name: "Ensure that the integration test suite is compatible with Docker (flaky only)"
-        run: ./hack/test-integration.sh -test.target=docker -test.only-flaky
+        run: go test -p 1 -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.allow-kill-daemon -test.only-flaky
 
   test-integration-windows:
-    timeout-minutes: 60
+    timeout-minutes: 30
+    name: windows
     runs-on: windows-2022
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.1
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -343,7 +295,7 @@ jobs:
           check-latest: true
       - run: go install ./cmd/nerdctl
       - run: go install -v gotest.tools/gotestsum@v1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.1
         with:
           repository: containerd/containerd
           ref: v1.7.22
@@ -357,11 +309,9 @@ jobs:
           ctrdVersion: 1.7.22
         run: powershell hack/configure-windows-ci.ps1
       - name: "Run integration tests"
-        run: |
-          ./hack/test-integration.sh
+        run: ./hack/test-integration.sh
       - name: "Run integration tests (flaky)"
-        run: |
-          ./hack/test-integration.sh -test.only-flaky
+        run: ./hack/test-integration.sh -test.only-flaky
 
   test-integration-freebsd:
     timeout-minutes: 60
@@ -370,7 +320,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.1
       - uses: actions/cache@v4
         with:
           path: /root/.vagrant.d
