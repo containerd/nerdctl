@@ -193,6 +193,61 @@ func TestRunSeccompCapSysPtrace(t *testing.T) {
 	// Docker/Moby 's seccomp profile allows ptrace(2) by default, but containerd does not (yet): https://github.com/containerd/containerd/issues/6802
 }
 
+func TestRunSystemPathsUnconfined(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	const findmnt = "`apk add -q findmnt && findmnt -R /proc && findmnt -R /sys`"
+	result := base.Cmd("run", "--rm", testutil.AlpineImage, "sh", "-euxc", findmnt).Run()
+	defaultContainerOutput := result.Combined()
+
+	var confined []string
+
+	for _, path := range []string{
+		"/proc/kcore",
+		"/proc/keys",
+		"/proc/latency_stats",
+		"/proc/sched_debug",
+		"/proc/scsi",
+		"/proc/timer_list",
+		"/proc/timer_stats",
+		"/sys/firmware",
+		"/sys/fs/selinux",
+	} {
+		// Not each distribution will support every masked path here.
+		if strings.Contains(defaultContainerOutput, path) {
+			confined = append(confined, path)
+		}
+	}
+
+	assert.Check(t, len(confined) != 0, "Default container has no confined paths to validate")
+
+	result = base.Cmd("run", "--rm", "--security-opt", "systempaths=unconfined", testutil.AlpineImage, "sh", "-euxc", findmnt).Run()
+	unconfinedContainerOutput := result.Combined()
+
+	for _, path := range confined {
+		assert.Assert(t, !strings.Contains(unconfinedContainerOutput, path), fmt.Sprintf("%s should not be masked when unconfined", path))
+	}
+
+	for _, path := range []string{
+		"/proc/acpi",
+		"/proc/bus",
+		"/proc/fs",
+		"/proc/irq",
+		"/proc/sysrq-trigger",
+		"/proc/sys",
+	} {
+		findmntPath := fmt.Sprintf("`apk add -q findmnt && findmnt %s`", path)
+
+		result := base.Cmd("run", "--rm", testutil.AlpineImage, "sh", "-euxc", findmntPath).Run()
+
+		// Not each distribution will support every read-only path here.
+		if strings.Contains(result.Combined(), path) {
+			result = base.Cmd("run", "--rm", "--security-opt", "systempaths=unconfined", testutil.AlpineImage, "sh", "-euxc", findmntPath).Run()
+			assert.Assert(t, !strings.Contains(result.Combined(), "ro,"), fmt.Sprintf("%s should not be read-only when unconfined", path))
+		}
+	}
+}
+
 func TestRunPrivileged(t *testing.T) {
 	// docker does not support --privileged-without-host-devices
 	testutil.DockerIncompatible(t)

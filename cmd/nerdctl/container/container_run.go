@@ -183,6 +183,7 @@ func setCreateFlags(cmd *cobra.Command) {
 			"seccomp=", "seccomp=" + defaults.SeccompProfileName, "seccomp=unconfined",
 			"apparmor=", "apparmor=" + defaults.AppArmorProfileName, "apparmor=unconfined",
 			"no-new-privileges",
+			"systempaths=unconfined",
 			"privileged-without-host-devices"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	// cap-add and cap-drop are defined as StringSlice, not StringArray, to allow specifying "--cap-add=CAP_SYS_ADMIN,CAP_NET_ADMIN" (compatible with Podman)
