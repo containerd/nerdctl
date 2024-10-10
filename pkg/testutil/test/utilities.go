@@ -20,13 +20,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"os"
 )
-
-// IsRoot returns true if we are root... simple
-func IsRoot() bool {
-	return os.Geteuid() == 0
-}
 
 // RandomStringBase64 generates a base64 encoded random string
 func RandomStringBase64(n int) string {

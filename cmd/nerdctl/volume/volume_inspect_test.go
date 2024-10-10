@@ -51,7 +51,7 @@ func TestVolumeInspect(t *testing.T) {
 		&test.Requirement{
 			Check: func(data test.Data, helpers test.Helpers) (bool, string) {
 				isDocker, _ := nerdtest.Docker.Check(data, helpers)
-				return !isDocker || test.IsRoot(), "docker cli needs to be run as root"
+				return !isDocker || os.Geteuid() == 0, "docker cli needs to be run as root"
 			},
 		})
 

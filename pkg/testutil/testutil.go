@@ -562,7 +562,7 @@ func M(m *testing.M) {
 	flag.BoolVar(&flagTestKillDaemon, "test.allow-kill-daemon", false, "enable tests that kill the daemon")
 	flag.BoolVar(&flagTestIPv6, "test.only-ipv6", false, "enable tests on IPv6")
 	flag.BoolVar(&flagTestKube, "test.only-kubernetes", false, "enable tests on Kubernetes")
-	flag.BoolVar(&flagTestFlaky, "test.only-flaky", false, "enable testing of flaky tests only")
+	flag.BoolVar(&flagTestFlaky, "test.only-flaky", false, "enable testing of flaky tests only (if false, flaky tests are ignored)")
 	if flag.Lookup("test.v") != nil {
 		flagVerbose = true
 	}

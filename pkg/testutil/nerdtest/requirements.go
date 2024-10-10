@@ -32,7 +32,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-var BuildkitHost test.ConfigKey = "bkHost"
+var BuildkitHost test.ConfigKey = "BuildkitHost"
 
 // These are used for ambient requirements
 var ipv6 test.ConfigKey = "IPv6Test"
