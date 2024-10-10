@@ -28,8 +28,7 @@ func TestCompletion(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Description: "Base completion",
-		Require:     test.Not(nerdtest.Docker),
+		Require: test.Not(nerdtest.Docker),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", testutil.AlpineImage)
 			helpers.Ensure("network", "create", data.Identifier())
@@ -43,37 +42,37 @@ func TestCompletion(t *testing.T) {
 		SubTests: []*test.Case{
 			{
 				Description: "--cgroup-manager",
-				Command:     test.RunCommand("__complete", "--cgroup-manager", ""),
+				Command:     test.Command("__complete", "--cgroup-manager", ""),
 				Expected:    test.Expects(0, nil, test.Contains("cgroupfs\n")),
 			},
 			{
 				Description: "--snapshotter",
-				Command:     test.RunCommand("__complete", "--snapshotter", ""),
+				Command:     test.Command("__complete", "--snapshotter", ""),
 				Expected:    test.Expects(0, nil, test.Contains("native\n")),
 			},
 			{
 				Description: "empty",
-				Command:     test.RunCommand("__complete", ""),
+				Command:     test.Command("__complete", ""),
 				Expected:    test.Expects(0, nil, test.Contains("run\t")),
 			},
 			{
 				Description: "run -",
-				Command:     test.RunCommand("__complete", "run", "-"),
+				Command:     test.Command("__complete", "run", "-"),
 				Expected:    test.Expects(0, nil, test.Contains("--network\t")),
 			},
 			{
 				Description: "run --n",
-				Command:     test.RunCommand("__complete", "run", "--n"),
+				Command:     test.Command("__complete", "run", "--n"),
 				Expected:    test.Expects(0, nil, test.Contains("--network\t")),
 			},
 			{
 				Description: "run --ne",
-				Command:     test.RunCommand("__complete", "run", "--ne"),
+				Command:     test.Command("__complete", "run", "--ne"),
 				Expected:    test.Expects(0, nil, test.Contains("--network\t")),
 			},
 			{
 				Description: "run --net",
-				Command:     test.RunCommand("__complete", "run", "--net", ""),
+				Command:     test.Command("__complete", "run", "--net", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: test.All(
@@ -85,7 +84,7 @@ func TestCompletion(t *testing.T) {
 			},
 			{
 				Description: "run -it --net",
-				Command:     test.RunCommand("__complete", "run", "-it", "--net", ""),
+				Command:     test.Command("__complete", "run", "-it", "--net", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: test.All(
@@ -97,7 +96,7 @@ func TestCompletion(t *testing.T) {
 			},
 			{
 				Description: "run -ti --rm --net",
-				Command:     test.RunCommand("__complete", "run", "-it", "--rm", "--net", ""),
+				Command:     test.Command("__complete", "run", "-it", "--rm", "--net", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: test.All(
@@ -109,12 +108,12 @@ func TestCompletion(t *testing.T) {
 			},
 			{
 				Description: "run --restart",
-				Command:     test.RunCommand("__complete", "run", "--restart", ""),
+				Command:     test.Command("__complete", "run", "--restart", ""),
 				Expected:    test.Expects(0, nil, test.Contains("always\n")),
 			},
 			{
 				Description: "network --rm",
-				Command:     test.RunCommand("__complete", "network", "rm", ""),
+				Command:     test.Command("__complete", "network", "rm", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: test.All(
@@ -126,7 +125,7 @@ func TestCompletion(t *testing.T) {
 			},
 			{
 				Description: "run --cap-add",
-				Command:     test.RunCommand("__complete", "run", "--cap-add", ""),
+				Command:     test.Command("__complete", "run", "--cap-add", ""),
 				Expected: test.Expects(0, nil, test.All(
 					test.Contains("sys_admin\n"),
 					test.DoesNotContain("CAP_SYS_ADMIN\n"),
@@ -134,7 +133,7 @@ func TestCompletion(t *testing.T) {
 			},
 			{
 				Description: "volume inspect",
-				Command:     test.RunCommand("__complete", "volume", "inspect", ""),
+				Command:     test.Command("__complete", "volume", "inspect", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: test.Contains(data.Get("identifier") + "\n"),
@@ -143,7 +142,7 @@ func TestCompletion(t *testing.T) {
 			},
 			{
 				Description: "volume rm",
-				Command:     test.RunCommand("__complete", "volume", "rm", ""),
+				Command:     test.Command("__complete", "volume", "rm", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: test.Contains(data.Get("identifier") + "\n"),
@@ -152,52 +151,46 @@ func TestCompletion(t *testing.T) {
 			},
 			{
 				Description: "no namespace --cgroup-manager",
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
-					cmd := helpers.Command()
-					cmd.Clear()
-					cmd.WithBinary("nerdctl")
-					cmd.WithArgs("__complete", "--cgroup-manager", "")
-					return cmd
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Custom("nerdctl", "__complete", "--cgroup-manager", "")
 				},
 				Expected: test.Expects(0, nil, test.Contains("cgroupfs\n")),
 			},
 			{
 				Description: "no namespace empty",
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
-					return helpers.Command().Clear().WithBinary("nerdctl").WithArgs("__complete", "")
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Custom("nerdctl", "__complete", "")
 				},
 				Expected: test.Expects(0, nil, test.Contains("run\t")),
 			},
 			{
 				Description: "namespace space empty",
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					// mind {"--namespace=nerdctl-test"} vs {"--namespace", "nerdctl-test"}
-					return helpers.Command().Clear().WithBinary("nerdctl").
-						WithArgs("__complete", "--namespace", testutil.Namespace, "")
+					return helpers.Custom("nerdctl", "__complete", "--namespace", string(helpers.Read(nerdtest.Namespace)), "")
 				},
 				Expected: test.Expects(0, nil, test.Contains("run\t")),
 			},
 			{
 				Description: "run -i",
-				Command:     test.RunCommand("__complete", "run", "-i", ""),
+				Command:     test.Command("__complete", "run", "-i", ""),
 				Expected:    test.Expects(0, nil, test.Contains(testutil.AlpineImage)),
 			},
 			{
 				Description: "run -it",
-				Command:     test.RunCommand("__complete", "run", "-it", ""),
+				Command:     test.Command("__complete", "run", "-it", ""),
 				Expected:    test.Expects(0, nil, test.Contains(testutil.AlpineImage)),
 			},
 			{
 				Description: "run -it --rm",
-				Command:     test.RunCommand("__complete", "run", "-it", "--rm", ""),
+				Command:     test.Command("__complete", "run", "-it", "--rm", ""),
 				Expected:    test.Expects(0, nil, test.Contains(testutil.AlpineImage)),
 			},
 			{
 				Description: "namespace run -i",
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					// mind {"--namespace=nerdctl-test"} vs {"--namespace", "nerdctl-test"}
-					return helpers.Command().Clear().WithBinary("nerdctl").
-						WithArgs("__complete", "--namespace", testutil.Namespace, "run", "-i", "")
+					return helpers.Custom("nerdctl", "__complete", "--namespace", string(helpers.Read(nerdtest.Namespace)), "run", "-i", "")
 				},
 				Expected: test.Expects(0, nil, test.Contains(testutil.AlpineImage+"\n")),
 			},

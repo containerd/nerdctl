@@ -185,9 +185,13 @@ func TestCreateWithTty(t *testing.T) {
 
 // TestIssue2993 tests https://github.com/containerd/nerdctl/issues/2993
 func TestIssue2993(t *testing.T) {
-	testutil.DockerIncompatible(t)
+	testCase := nerdtest.Setup()
 
-	nerdtest.Setup()
+	testCase.Require = test.Require(
+		test.Not(nerdtest.Docker),
+		// Maybe the use of a custom data root has an impact?
+		nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3518"),
+	)
 
 	const (
 		containersPathKey = "containersPath"
@@ -203,7 +207,7 @@ func TestIssue2993(t *testing.T) {
 		return h
 	}
 
-	testCase := &test.Group{
+	testCase.SubTests = []*test.Case{
 		{
 			Description: "Issue #2993 - nerdctl no longer leaks containers and etchosts directories and files when container creation fails.",
 			Setup: func(data test.Data, helpers test.Helpers) {
@@ -233,7 +237,7 @@ func TestIssue2993(t *testing.T) {
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "--data-root", data.TempDir(), "-f", data.Identifier())
 			},
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--data-root", data.TempDir(), "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -281,7 +285,7 @@ func TestIssue2993(t *testing.T) {
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("--data-root", data.TempDir(), "rm", "-f", data.Identifier())
 			},
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("--data-root", data.TempDir(), "rm", "-f", data.Identifier())
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {

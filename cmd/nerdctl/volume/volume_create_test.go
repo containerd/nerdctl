@@ -18,6 +18,7 @@ package volume
 
 import (
 	"errors"
+	"regexp"
 	"testing"
 
 	"github.com/containerd/errdefs"
@@ -27,27 +28,27 @@ import (
 )
 
 func TestVolumeCreate(t *testing.T) {
-	nerdtest.Setup()
+	testCase := nerdtest.Setup()
 
-	tg := &test.Group{
+	testCase.SubTests = []*test.Case{
 		{
 			Description: "arg missing should create anonymous volume",
-			Command:     test.RunCommand("volume", "create"),
-			Expected:    test.Expects(0, nil, nil),
+			Command:     test.Command("volume", "create"),
+			Expected:    test.Expects(0, nil, test.Match(regexp.MustCompile("^[a-f0-9]{64}\n$"))),
 		},
 		{
 			Description: "invalid identifier should fail",
-			Command:     test.RunCommand("volume", "create", "∞"),
+			Command:     test.Command("volume", "create", "∞"),
 			Expected:    test.Expects(1, []error{errdefs.ErrInvalidArgument}, nil),
 		},
 		{
 			Description: "too many args should fail",
-			Command:     test.RunCommand("volume", "create", "too", "many"),
+			Command:     test.Command("volume", "create", "too", "many"),
 			Expected:    test.Expects(1, []error{errors.New("at most 1 arg")}, nil),
 		},
 		{
 			Description: "success",
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("volume", "create", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -61,7 +62,7 @@ func TestVolumeCreate(t *testing.T) {
 		},
 		{
 			Description: "success with labels",
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("volume", "create", "--label", "foo1=baz1", "--label", "foo2=baz2", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -74,28 +75,23 @@ func TestVolumeCreate(t *testing.T) {
 			},
 		},
 		{
-			Description: "invalid labels",
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
+			Description: "invalid labels should fail",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				// See https://github.com/containerd/nerdctl/issues/3126
 				return helpers.Command("volume", "create", "--label", "a", "--label", "", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("volume", "rm", "-f", data.Identifier())
 			},
-			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-				return &test.Expected{
-					// NOTE: docker returns 125 on this
-					ExitCode: -1,
-					Errors:   []error{errdefs.ErrInvalidArgument},
-				}
-			},
+			// NOTE: docker returns 125 on this
+			Expected: test.Expects(-1, []error{errdefs.ErrInvalidArgument}, nil),
 		},
 		{
 			Description: "creating already existing volume should succeed",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("volume", "create", data.Identifier())
 			},
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("volume", "create", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -109,5 +105,5 @@ func TestVolumeCreate(t *testing.T) {
 		},
 	}
 
-	tg.Run(t)
+	testCase.Run(t)
 }

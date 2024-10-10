@@ -180,9 +180,7 @@ func (b *Base) EnsureDaemonActive() {
 		sleep    = 3 * time.Second
 	)
 	for i := 0; i < maxRetry; i++ {
-		cmd := exec.Command("systemctl",
-			append(systemctlArgs,
-				[]string{"is-active", target}...)...)
+		cmd := exec.Command("systemctl", append(systemctlArgs, "is-active", target)...)
 		out, err := cmd.CombinedOutput()
 		b.T.Logf("(retry=%d) %s", i, string(out))
 		if err == nil {
@@ -204,10 +202,7 @@ func (b *Base) DumpDaemonLogs(minutes int) {
 	b.T.Helper()
 	target := b.systemctlTarget()
 	cmd := exec.Command("journalctl",
-		append(b.systemctlArgs(),
-			[]string{"-u", target,
-				"--no-pager",
-				"-S", fmt.Sprintf("%d min ago", minutes)}...)...)
+		append(b.systemctlArgs(), "-u", target, "--no-pager", "-S", fmt.Sprintf("%d min ago", minutes))...)
 	b.T.Logf("===== %v =====", cmd.Args)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -549,6 +544,8 @@ var (
 	flagTestKillDaemon bool
 	flagTestIPv6       bool
 	flagTestKube       bool
+	flagVerbose        bool
+	flagTestFlaky      bool
 )
 
 var (
@@ -560,6 +557,10 @@ func M(m *testing.M) {
 	flag.BoolVar(&flagTestKillDaemon, "test.allow-kill-daemon", false, "enable tests that kill the daemon")
 	flag.BoolVar(&flagTestIPv6, "test.only-ipv6", false, "enable tests on IPv6")
 	flag.BoolVar(&flagTestKube, "test.only-kubernetes", false, "enable tests on Kubernetes")
+	flag.BoolVar(&flagTestFlaky, "test.only-flaky", false, "enable testing of flaky tests only")
+	if flag.Lookup("test.v") != nil {
+		flagVerbose = true
+	}
 	flag.Parse()
 
 	os.Exit(func() int {
@@ -625,6 +626,10 @@ func GetEnableKubernetes() bool {
 	return flagTestKube
 }
 
+func GetFlakyEnvironment() bool {
+	return flagTestFlaky
+}
+
 func GetDaemonIsKillable() bool {
 	return flagTestKillDaemon
 }
@@ -632,6 +637,8 @@ func GetDaemonIsKillable() bool {
 func IsDocker() bool {
 	return GetTarget() == Docker
 }
+
+func GetVerbose() bool { return flagVerbose }
 
 func DockerIncompatible(t testing.TB) {
 	if IsDocker() {
@@ -787,6 +794,9 @@ func newBase(t *testing.T, ns string, ipv6Compatible bool, kubernetesCompatible 
 		t.Skip("runner skips non-Kubernetes compatible tests in the Kubernetes environment")
 	} else if !base.EnableKubernetes && base.KubernetesCompatible {
 		t.Skip("runner skips Kubernetes compatible tests in the non-Kubernetes environment")
+	}
+	if !GetFlakyEnvironment() && !GetEnableKubernetes() && !GetEnableIPv6() {
+		t.Skip("legacy tests are considered flaky by default and are skipped unless in the flaky environment")
 	}
 	var err error
 	switch base.Target {

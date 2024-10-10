@@ -29,6 +29,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testca"
@@ -56,17 +57,17 @@ type TokenAuthServer struct {
 }
 
 func EnsureImages(base *testutil.Base) {
-	registryImage := testutil.RegistryImageStable
+	registryImage := platform.RegistryImageStable
 	up := os.Getenv("DISTRIBUTION_VERSION")
 	if up != "" {
 		if up[0:1] != "v" {
 			up = "v" + up
 		}
-		registryImage = testutil.RegistryImageNext + up
+		registryImage = platform.RegistryImageNext + up
 	}
-	base.Cmd("pull", registryImage).AssertOK()
-	base.Cmd("pull", testutil.DockerAuthImage).AssertOK()
-	base.Cmd("pull", testutil.KuboImage).AssertOK()
+	base.Cmd("pull", "--quiet", registryImage).AssertOK()
+	base.Cmd("pull", "--quiet", platform.DockerAuthImage).AssertOK()
+	base.Cmd("pull", "--quiet", platform.KuboImage).AssertOK()
 }
 
 func NewAuthServer(base *testutil.Base, ca *testca.CA, port int, user, pass string, tls bool) *TokenAuthServer {
