@@ -11,7 +11,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.3.0
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/Microsoft/hcsshim v0.12.7
-	github.com/compose-spec/compose-go/v2 v2.2.0
+	github.com/compose-spec/compose-go/v2 v2.3.0
 	github.com/containerd/accelerated-container-image v1.2.2
 	github.com/containerd/cgroups/v3 v3.0.3
 	github.com/containerd/console v1.0.4
