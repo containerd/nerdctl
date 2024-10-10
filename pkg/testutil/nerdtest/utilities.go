@@ -25,15 +25,19 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
+
+func IsDocker() bool {
+	return testutil.GetTarget() == "docker"
+}
 
 // InspectContainer is a helper that can be used inside custom commands or Setup
 func InspectContainer(helpers test.Helpers, name string) dockercompat.Container {
 	var dc []dockercompat.Container
 	cmd := helpers.Command("container", "inspect", name)
 	cmd.Run(&test.Expected{
-		ExitCode: 0,
 		Output: func(stdout string, info string, t *testing.T) {
 			err := json.Unmarshal([]byte(stdout), &dc)
 			assert.NilError(t, err, "Unable to unmarshal output\n"+info)
@@ -43,14 +47,10 @@ func InspectContainer(helpers test.Helpers, name string) dockercompat.Container 
 	return dc[0]
 }
 
-func InspectVolume(helpers test.Helpers, name string, args ...string) native.Volume {
+func InspectVolume(helpers test.Helpers, name string) native.Volume {
 	var dc []native.Volume
-	cmdArgs := append([]string{"volume", "inspect"}, args...)
-	cmdArgs = append(cmdArgs, name)
-
-	cmd := helpers.Command(cmdArgs...)
+	cmd := helpers.Command("volume", "inspect", name)
 	cmd.Run(&test.Expected{
-		ExitCode: 0,
 		Output: func(stdout string, info string, t *testing.T) {
 			err := json.Unmarshal([]byte(stdout), &dc)
 			assert.NilError(t, err, "Unable to unmarshal output\n"+info)
@@ -60,14 +60,10 @@ func InspectVolume(helpers test.Helpers, name string, args ...string) native.Vol
 	return dc[0]
 }
 
-func InspectNetwork(helpers test.Helpers, name string, args ...string) dockercompat.Network {
+func InspectNetwork(helpers test.Helpers, name string) dockercompat.Network {
 	var dc []dockercompat.Network
-	cmdArgs := append([]string{"network", "inspect"}, args...)
-	cmdArgs = append(cmdArgs, name)
-
-	cmd := helpers.Command(cmdArgs...)
+	cmd := helpers.Command("network", "inspect", name)
 	cmd.Run(&test.Expected{
-		ExitCode: 0,
 		Output: func(stdout string, info string, t *testing.T) {
 			err := json.Unmarshal([]byte(stdout), &dc)
 			assert.NilError(t, err, "Unable to unmarshal output\n"+info)
@@ -81,7 +77,6 @@ func InspectImage(helpers test.Helpers, name string) dockercompat.Image {
 	var dc []dockercompat.Image
 	cmd := helpers.Command("image", "inspect", name)
 	cmd.Run(&test.Expected{
-		ExitCode: 0,
 		Output: func(stdout string, info string, t *testing.T) {
 			err := json.Unmarshal([]byte(stdout), &dc)
 			assert.NilError(t, err, "Unable to unmarshal output\n"+info)
@@ -91,16 +86,16 @@ func InspectImage(helpers test.Helpers, name string) dockercompat.Image {
 	return dc[0]
 }
 
+const (
+	maxRetry = 5
+	sleep    = time.Second
+)
+
 func EnsureContainerStarted(helpers test.Helpers, con string) {
-	const (
-		maxRetry = 5
-		sleep    = time.Second
-	)
 	for i := 0; i < maxRetry; i++ {
 		count := i
 		cmd := helpers.Command("container", "inspect", con)
 		cmd.Run(&test.Expected{
-			ExitCode: 0,
 			Output: func(stdout string, info string, t *testing.T) {
 				var dc []dockercompat.Container
 				err := json.Unmarshal([]byte(stdout), &dc)
@@ -110,7 +105,7 @@ func EnsureContainerStarted(helpers test.Helpers, con string) {
 					return
 				}
 				if count == maxRetry-1 {
-					t.Fatalf("conainer %s not running", con)
+					t.Fatalf("container %s still not running after %d retries", con, count)
 				}
 				time.Sleep(sleep)
 			},

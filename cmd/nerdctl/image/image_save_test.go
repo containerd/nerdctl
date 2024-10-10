@@ -17,54 +17,119 @@
 package image
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"gotest.tools/v3/assert"
+
+	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func TestSaveById(t *testing.T) {
-	// See detailed comment in TestRunCustomRootfs for why we need a separate namespace.
-	base := testutil.NewBaseWithNamespace(t, testutil.Identifier(t))
-	t.Cleanup(func() {
-		base.Cmd("namespace", "remove", testutil.Identifier(t)).Run()
-	})
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	inspect := base.InspectImage(testutil.CommonImage)
-	var id string
-	if testutil.GetTarget() == testutil.Docker {
-		id = inspect.ID
-	} else {
-		id = strings.Split(inspect.RepoDigests[0], ":")[1]
+func TestSaveContent(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Description: "Test content (linux only)",
+		Require:     test.Not(test.Windows),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("save", "-o", filepath.Join(data.TempDir(), "out.tar"), testutil.CommonImage)
+		},
+		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+			return &test.Expected{
+				Output: func(stdout string, info string, t *testing.T) {
+					rootfsPath := filepath.Join(data.TempDir(), "rootfs")
+					err := testhelpers.ExtractDockerArchive(filepath.Join(data.TempDir(), "out.tar"), rootfsPath)
+					assert.NilError(t, err)
+					etcOSReleasePath := filepath.Join(rootfsPath, "/etc/os-release")
+					etcOSReleaseBytes, err := os.ReadFile(etcOSReleasePath)
+					assert.NilError(t, err)
+					etcOSRelease := string(etcOSReleaseBytes)
+					assert.Assert(t, strings.Contains(etcOSRelease, "Alpine"))
+				},
+			}
+		},
 	}
-	archiveTarPath := filepath.Join(t.TempDir(), "id.tar")
-	base.Cmd("save", "-o", archiveTarPath, id).AssertOK()
-	base.Cmd("rmi", "-f", testutil.CommonImage).AssertOK()
-	base.Cmd("load", "-i", archiveTarPath).AssertOK()
-	base.Cmd("run", "--rm", id, "sh", "-euxc", "echo foo").AssertOK()
+
+	testCase.Run(t)
 }
 
-func TestSaveByIdWithDifferentNames(t *testing.T) {
-	// See detailed comment in TestRunCustomRootfs for why we need a separate namespace.
-	base := testutil.NewBaseWithNamespace(t, testutil.Identifier(t))
-	t.Cleanup(func() {
-		base.Cmd("namespace", "remove", testutil.Identifier(t)).Run()
-	})
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	inspect := base.InspectImage(testutil.CommonImage)
-	var id string
-	if testutil.GetTarget() == testutil.Docker {
-		id = inspect.ID
-	} else {
-		id = strings.Split(inspect.RepoDigests[0], ":")[1]
+func TestSave(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	// This test relies on the fact that we can remove the common image, which definitely conflicts with others,
+	// hence the private mode.
+	// Further note though, that this will hide the fact this the save command could fail if some layers are missing.
+	// See https://github.com/containerd/nerdctl/issues/3425 and others for details.
+	testCase.Require = nerdtest.Private
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Single image, by id",
+			NoParallel:  true,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				if data.Get("id") != "" {
+					helpers.Anyhow("rmi", "-f", data.Get("id"))
+				}
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+				img := nerdtest.InspectImage(helpers, testutil.CommonImage)
+				var id string
+				// Docker and Nerdctl do not agree on what is the definition of an image ID
+				if nerdtest.IsDocker() {
+					id = img.ID
+				} else {
+					id = strings.Split(img.RepoDigests[0], ":")[1]
+				}
+				tarPath := filepath.Join(data.TempDir(), "out.tar")
+				helpers.Ensure("save", "-o", tarPath, id)
+				helpers.Ensure("rmi", "-f", testutil.CommonImage)
+				helpers.Ensure("load", "-i", tarPath)
+				data.Set("id", id)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", data.Get("id"), "sh", "-euxc", "echo foo")
+			},
+			Expected: test.Expects(0, nil, test.Equals("foo\n")),
+		},
+		{
+			Description: "Image with different names, by id",
+			NoParallel:  true,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				if data.Get("id") != "" {
+					helpers.Anyhow("rmi", "-f", data.Get("id"))
+				}
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+				img := nerdtest.InspectImage(helpers, testutil.CommonImage)
+				var id string
+				if nerdtest.IsDocker() {
+					id = img.ID
+				} else {
+					id = strings.Split(img.RepoDigests[0], ":")[1]
+				}
+				helpers.Ensure("tag", testutil.CommonImage, data.Identifier())
+				tarPath := filepath.Join(data.TempDir(), "out.tar")
+				helpers.Ensure("save", "-o", tarPath, id)
+				helpers.Ensure("rmi", "-f", testutil.CommonImage)
+				helpers.Ensure("load", "-i", tarPath)
+				data.Set("id", id)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", data.Get("id"), "sh", "-euxc", "echo foo")
+			},
+			Expected: test.Expects(0, nil, test.Equals("foo\n")),
+		},
 	}
 
-	base.Cmd("tag", testutil.CommonImage, "foobar").AssertOK()
-
-	archiveTarPath := filepath.Join(t.TempDir(), "id.tar")
-	base.Cmd("save", "-o", archiveTarPath, id).AssertOK()
-	base.Cmd("rmi", "-f", testutil.CommonImage).AssertOK()
-	base.Cmd("load", "-i", archiveTarPath).AssertOK()
-	base.Cmd("run", "--rm", id, "sh", "-euxc", "echo foo").AssertOK()
+	testCase.Run(t)
 }

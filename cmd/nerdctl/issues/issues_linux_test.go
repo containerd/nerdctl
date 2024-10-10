@@ -20,40 +20,20 @@ package issues
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
-	"gotest.tools/v3/assert"
-
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
-func TestMain(m *testing.M) {
-	testutil.M(m)
-}
-
 func TestIssue3425(t *testing.T) {
 	nerdtest.Setup()
 
 	var registry *testregistry.RegistryServer
 
-	var ipfsPath string
-	if rootlessutil.IsRootless() {
-		var err error
-		ipfsPath, err = rootlessutil.XDGDataHome()
-		ipfsPath = filepath.Join(ipfsPath, "ipfs")
-		assert.NilError(t, err)
-	} else {
-		ipfsPath = filepath.Join(os.Getenv("HOME"), ".ipfs")
-	}
-
 	testCase := &test.Case{
-		Description: "TestIssue3425",
 		Setup: func(data test.Data, helpers test.Helpers) {
 			base := testutil.NewBase(t)
 			registry = testregistry.NewWithNoAuth(base, 0, false)
@@ -78,7 +58,7 @@ func TestIssue3425(t *testing.T) {
 					helpers.Anyhow("rm", "-f", data.Identifier())
 					helpers.Anyhow("rmi", "-f", fmt.Sprintf("localhost:%d/%s", registry.Port, data.Identifier()))
 				},
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("push", fmt.Sprintf("localhost:%d/%s", registry.Port, data.Identifier()))
 				},
 				Expected: test.Expects(0, nil, nil),
@@ -97,7 +77,7 @@ func TestIssue3425(t *testing.T) {
 					helpers.Anyhow("rm", "-f", data.Identifier())
 					helpers.Anyhow("rmi", "-f", fmt.Sprintf("localhost:%d/%s", registry.Port, data.Identifier()))
 				},
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("push", fmt.Sprintf("localhost:%d/%s", registry.Port, data.Identifier()))
 				},
 				Expected: test.Expects(0, nil, nil),
@@ -114,7 +94,7 @@ func TestIssue3425(t *testing.T) {
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rm", "-f", data.Identifier())
 				},
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("save", testutil.CommonImage)
 				},
 				Expected: test.Expects(0, nil, nil),
@@ -136,7 +116,7 @@ func TestIssue3425(t *testing.T) {
 					helpers.Anyhow("rm", "-f", data.Identifier())
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("image", "convert", "--oci", "--estargz", testutil.CommonImage, data.Identifier())
 				},
 				Expected: test.Expects(0, nil, nil),
@@ -145,13 +125,10 @@ func TestIssue3425(t *testing.T) {
 				Description: "with ipfs",
 				Require: test.Require(
 					nerdtest.Private,
+					nerdtest.IPFS,
 					test.Not(test.Windows),
 					test.Not(nerdtest.Docker),
-					test.Binary("ipfs"),
 				),
-				Env: map[string]string{
-					"IPFS_PATH": ipfsPath,
-				},
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("image", "pull", testutil.CommonImage)
 					helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage)
@@ -162,7 +139,7 @@ func TestIssue3425(t *testing.T) {
 					helpers.Anyhow("rm", "-f", data.Identifier())
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Command: func(data test.Data, helpers test.Helpers) test.Command {
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("image", "push", "ipfs://"+testutil.CommonImage)
 				},
 				Expected: test.Expects(0, nil, nil),

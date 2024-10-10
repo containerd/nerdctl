@@ -18,37 +18,66 @@ package test
 
 import "testing"
 
+// Helpers provides a set of helpers to run commands with simple expectations, available at all stages of a test (Setup, Cleanup, etc...)
 type Helpers interface {
+	// Ensure runs a command and verifies it is succeeding
 	Ensure(args ...string)
+	// Anyhow runs a command and ignores its result
 	Anyhow(args ...string)
+	// Fail runs a command and verifies it failed
 	Fail(args ...string)
+	// Capture runs a command, verifies it succeeded, and returns stdout
 	Capture(args ...string) string
+	// Err runs a command, and returns stderr regardless of its outcome
+	// This is mostly useful for debugging
+	Err(args ...string) string
 
-	Command(args ...string) Command
-	CustomCommand(binary string, args ...string) Command
+	// Command will return a populated command from the default internal command, with the provided arguments,
+	// ready to be Run or further configured
+	Command(args ...string) TestableCommand
+	// Custom will return a bare command, without configuration nor defaults (still has the Env)
+	Custom(binary string, args ...string) TestableCommand
+
+	// Read return the config value associated with a key
+	Read(key ConfigKey) ConfigValue
+	// Write saves a value in the config
+	Write(key ConfigKey, value ConfigValue)
+
+	// T returns the current testing object
+	T() *testing.T
 }
 
-type helpers struct {
-	cmd Command
+// This is the implementation of Helpers
+
+type helpersInternal struct {
+	cmdInternal CustomizableCommand
+
+	t *testing.T
 }
 
-func (hel *helpers) Ensure(args ...string) {
-	hel.Command(args...).Run(&Expected{})
+// Ensure will run a command and make sure it is successful
+func (help *helpersInternal) Ensure(args ...string) {
+	help.Command(args...).Run(&Expected{
+		ExitCode: 0,
+	})
 }
 
-func (hel *helpers) Anyhow(args ...string) {
-	hel.Command(args...).Run(nil)
+// Anyhow will run a command regardless of outcome (may or may not fail)
+func (help *helpersInternal) Anyhow(args ...string) {
+	help.Command(args...).Run(nil)
 }
 
-func (hel *helpers) Fail(args ...string) {
-	hel.Command(args...).Run(&Expected{
+// Fail will run a command and make sure it does fail
+func (help *helpersInternal) Fail(args ...string) {
+	help.Command(args...).Run(&Expected{
 		ExitCode: 1,
 	})
 }
 
-func (hel *helpers) Capture(args ...string) string {
+// Capture will run a command, ensure it is successful and return stdout
+func (help *helpersInternal) Capture(args ...string) string {
 	var ret string
-	hel.Command(args...).Run(&Expected{
+	help.Command(args...).Run(&Expected{
 		Output: func(stdout string, info string, t *testing.T) {
 			ret = stdout
 		},
@@ -56,16 +85,37 @@ func (hel *helpers) Capture(args ...string) string {
 	return ret
 }
 
-func (hel *helpers) Command(args ...string) Command {
-	cc := hel.cmd.Clone()
+// Capture will run a command, ensure it is successful and return stdout
+func (help *helpersInternal) Err(args ...string) string {
+	cmd := help.Command(args...)
+	cmd.Run(nil)
+	return cmd.Stderr()
+}
+
+// Command will return a clone of your base command without running it
+func (help *helpersInternal) Command(args ...string) TestableCommand {
+	cc := help.cmdInternal.Clone()
 	cc.WithArgs(args...)
 	return cc
 }
 
-func (hel *helpers) CustomCommand(binary string, args ...string) Command {
-	cc := hel.cmd.Clone()
-	cc.Clear()
+// Custom will return a command for the requested binary and args, with the environment of your test
+// (eg: Env, Cwd, etc.)
+func (help *helpersInternal) Custom(binary string, args ...string) TestableCommand {
+	cc := help.cmdInternal.clear()
 	cc.WithBinary(binary)
 	cc.WithArgs(args...)
 	return cc
+}
+
+func (help *helpersInternal) Read(key ConfigKey) ConfigValue {
+	return help.cmdInternal.read(key)
+}
+
+func (help *helpersInternal) Write(key ConfigKey, value ConfigValue) {
+	help.cmdInternal.write(key, value)
+}
+
+func (help *helpersInternal) T() *testing.T {
+	return help.t
 }

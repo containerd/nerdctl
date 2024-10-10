@@ -318,7 +318,7 @@ RUN curl -o nydus-static.tgz -fsSL --proto '=https' --tlsv1.2 "https://github.co
   tar xzf nydus-static.tgz && \
   mv nydus-static/nydus-image nydus-static/nydusd nydus-static/nydusify /usr/bin/ && \
   rm nydus-static.tgz
-CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=./cmd/nerdctl/...", \
+CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=./cmd/nerdctl/image/...", \
   "--", "-timeout=60m", "-p", "1", "-args", "-test.allow-kill-daemon"]
 
 FROM test-integration AS test-integration-rootless

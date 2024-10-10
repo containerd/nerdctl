@@ -20,57 +20,49 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
-	"testing"
 )
 
-func MakeRequirement(fn func(data Data, t *testing.T) (bool, string)) Requirement {
-	return func(data Data, skip bool, t *testing.T) (bool, string) {
-		ret, mess := fn(data, t)
+func Binary(name string) *Requirement {
+	return &Requirement{
+		Check: func(data Data, helpers Helpers) (bool, string) {
+			mess := fmt.Sprintf("executable %q has been found in PATH", name)
+			ret := true
+			if _, err := exec.LookPath(name); err != nil {
+				ret = false
+				mess = fmt.Sprintf("executable %q doesn't exist in PATH", name)
+			}
 
-		if skip && !ret {
-			t.Helper()
-			t.Skipf("Test skipped as %s", mess)
-		}
-
-		return ret, mess
+			return ret, mess
+		},
 	}
 }
 
-func Binary(name string) Requirement {
-	return MakeRequirement(func(data Data, t *testing.T) (ret bool, mess string) {
-		mess = fmt.Sprintf("executable %q has been found in PATH", name)
-		ret = true
-		if _, err := exec.LookPath(name); err != nil {
-			ret = false
-			mess = fmt.Sprintf("executable %q doesn't exist in PATH", name)
-		}
+func OS(os string) *Requirement {
+	return &Requirement{
+		Check: func(data Data, helpers Helpers) (bool, string) {
+			mess := fmt.Sprintf("current operating system is %q", runtime.GOOS)
+			ret := true
+			if runtime.GOOS != os {
+				ret = false
+			}
 
-		return ret, mess
-	})
+			return ret, mess
+		},
+	}
 }
 
-func OS(os string) Requirement {
-	return MakeRequirement(func(data Data, t *testing.T) (ret bool, mess string) {
-		mess = fmt.Sprintf("current operating system is %q", runtime.GOOS)
-		ret = true
-		if runtime.GOOS != os {
-			ret = false
-		}
+func Arch(arch string) *Requirement {
+	return &Requirement{
+		Check: func(data Data, helpers Helpers) (bool, string) {
+			mess := fmt.Sprintf("current architecture is %q", runtime.GOARCH)
+			ret := true
+			if runtime.GOARCH != arch {
+				ret = false
+			}
 
-		return ret, mess
-	})
-}
-
-func Arch(arch string) Requirement {
-	return MakeRequirement(func(data Data, t *testing.T) (ret bool, mess string) {
-		mess = fmt.Sprintf("current architecture is %q", runtime.GOARCH)
-		ret = true
-		if runtime.GOARCH != arch {
-			ret = false
-		}
-
-		return ret, mess
-	})
+			return ret, mess
+		},
+	}
 }
 
 var Amd64 = Arch("amd64")
@@ -79,26 +71,45 @@ var Windows = OS("windows")
 var Linux = OS("linux")
 var Darwin = OS("darwin")
 
-func Not(requirement Requirement) Requirement {
-	return MakeRequirement(func(data Data, t *testing.T) (ret bool, mess string) {
-		b, mess := requirement(data, false, t)
+// NOTE: Not will always lose setups and cleanups...
 
-		return !b, mess
-	})
+func Not(requirement *Requirement) *Requirement {
+	return &Requirement{
+		Check: func(data Data, helpers Helpers) (bool, string) {
+			ret, mess := requirement.Check(data, helpers)
+			return !ret, mess
+		},
+	}
 }
 
-func Require(thing ...Requirement) Requirement {
-	return func(data Data, skip bool, t *testing.T) (ret bool, mess string) {
-		for _, th := range thing {
-			b, m := th(data, false, t)
-			if !b {
-				if skip {
-					t.Helper()
-					t.Skipf("Test skipped as %s", m)
+func Require(requirements ...*Requirement) *Requirement {
+	return &Requirement{
+		Check: func(data Data, helpers Helpers) (bool, string) {
+			ret := true
+			mess := ""
+			var subMess string
+			for _, requirement := range requirements {
+				ret, subMess = requirement.Check(data, helpers)
+				mess += "\n" + subMess
+				if !ret {
+					return ret, mess
 				}
-				return false, ""
 			}
-		}
-		return true, ""
+			return ret, mess
+		},
+		Setup: func(data Data, helpers Helpers) {
+			for _, requirement := range requirements {
+				if requirement.Setup != nil {
+					requirement.Setup(data, helpers)
+				}
+			}
+		},
+		Cleanup: func(data Data, helpers Helpers) {
+			for _, requirement := range requirements {
+				if requirement.Cleanup != nil {
+					requirement.Cleanup(data, helpers)
+				}
+			}
+		},
 	}
 }
