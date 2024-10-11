@@ -17,11 +17,11 @@
 package container
 
 import (
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestDiff(t *testing.T) {

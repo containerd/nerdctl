@@ -32,6 +32,7 @@ func TestKubeCommitSave(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		containerID := ""
+		nerdtest.KubeCtlCommand(helpers, "create", "namespace", string(nerdtest.Namespace))
 		nerdtest.KubeCtlCommand(helpers, "run", "--image", testutil.CommonImage, data.Identifier(), "--", "sleep", "Inf").Run(&test.Expected{})
 		nerdtest.KubeCtlCommand(helpers, "wait", "pod", data.Identifier(), "--for=condition=ready", "--timeout=1m").Run(&test.Expected{})
 		nerdtest.KubeCtlCommand(helpers, "exec", data.Identifier(), "--", "mkdir", "-p", "/tmp/whatever").Run(&test.Expected{})

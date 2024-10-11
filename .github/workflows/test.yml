@@ -20,7 +20,7 @@ jobs:
     # Apparently does not
     # timeout-minutes: ${{ fromJSON(env.SHORT_TIMEOUT) }}
     timeout-minutes: 5
-    name: unit ${{ matrix.goos }}
+    name: unit | ${{ matrix.goos }}
     runs-on: "${{ matrix.os }}"
     strategy:
       matrix:

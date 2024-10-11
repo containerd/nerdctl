@@ -1,3 +1,5 @@
+//go:build unix
+
 /*
    Copyright The containerd Authors.
 
@@ -17,35 +19,53 @@
 package container
 
 import (
+	"runtime"
 	"testing"
 
+	"github.com/containerd/nerdctl/v2/pkg/infoutil"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func TestTopHyperVContainer(t *testing.T) {
-	if !testutil.HyperVSupported() {
-		t.Skip("HyperV is not enabled, skipping test")
+func TestTop(t *testing.T) {
+	//more details https://github.com/containerd/nerdctl/pull/223#issuecomment-851395178
+	if runtime.GOOS == "linux" {
+		if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
+			t.Skip("test skipped for rootless containers on cgroup v1")
+		}
 	}
 
 	testCase := nerdtest.Setup()
 
-	testCase.Require = test.Windows
-
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "--isolation", "hyperv", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "inf")
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "inf")
+		data.Set("cID", data.Identifier())
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
 
-	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		return helpers.Command("top", data.Identifier())
-	}
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "with o pid,user,cmd",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("top", data.Get("cID"), "-o", "pid,user,cmd")
+			},
 
-	testCase.Expected = test.Expects(0, nil, nil)
+			Expected: test.Expects(0, nil, nil),
+		},
+		{
+			Description: "simple",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("top", data.Get("cID"))
+			},
+
+			Expected: test.Expects(0, nil, nil),
+		},
+	}
 
 	testCase.Run(t)
 }

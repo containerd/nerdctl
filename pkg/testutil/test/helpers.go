@@ -70,7 +70,7 @@ func (help *helpersInternal) Anyhow(args ...string) {
 // Fail will run a command and make sure it does fail
 func (help *helpersInternal) Fail(args ...string) {
 	help.Command(args...).Run(&Expected{
-		ExitCode: 1,
+		ExitCode: -1,
 	})
 }
 
