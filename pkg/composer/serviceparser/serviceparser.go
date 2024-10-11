@@ -385,7 +385,7 @@ func getNetworks(project *types.Project, svc types.ServiceConfig) ([]networkName
 			return nil, errors.New("net and network_mode must not be set together")
 		}
 		if strings.Contains(svc.NetworkMode, ":") {
-			if !strings.HasPrefix(svc.NetworkMode, "container:") {
+			if !strings.HasPrefix(svc.NetworkMode, "container:") && !strings.HasPrefix(svc.NetworkMode, "ns:") {
 				return nil, fmt.Errorf("unsupported network_mode: %q", svc.NetworkMode)
 			}
 		}

@@ -29,6 +29,7 @@ const (
 	Host
 	CNI
 	Container
+	Namespace
 )
 
 var netTypeToName = map[interface{}]string{
@@ -37,6 +38,7 @@ var netTypeToName = map[interface{}]string{
 	Host:      "host",
 	CNI:       "cni",
 	Container: "container",
+	Namespace: "ns",
 }
 
 func Detect(names []string) (Type, error) {
@@ -54,6 +56,8 @@ func Detect(names []string) (Type, error) {
 			tmp = Host
 		case "container":
 			tmp = Container
+		case "ns":
+			tmp = Namespace
 		default:
 			tmp = CNI
 		}
