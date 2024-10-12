@@ -215,7 +215,15 @@ func NewCNIEnv(cniPath, cniConfPath string, opts ...CNIEnvOpt) (*CNIEnv, error) 
 }
 
 func (e *CNIEnv) NetworkList() ([]*NetworkConfig, error) {
-	return e.networkConfigList()
+	var netConfigList []*NetworkConfig
+	var err error
+	fn := func() error {
+		netConfigList, err = e.networkConfigList()
+		return err
+	}
+	err = lockutil.WithDirLock(e.NetconfPath, fn)
+
+	return netConfigList, err
 }
 
 func (e *CNIEnv) NetworkMap() (map[string]*NetworkConfig, error) { //nolint:revive
