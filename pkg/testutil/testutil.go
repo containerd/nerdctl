@@ -549,6 +549,8 @@ var (
 	flagTestKillDaemon bool
 	flagTestIPv6       bool
 	flagTestKube       bool
+	flagVerbose        bool
+	flagTestFlaky      bool
 )
 
 var (
@@ -560,6 +562,10 @@ func M(m *testing.M) {
 	flag.BoolVar(&flagTestKillDaemon, "test.allow-kill-daemon", false, "enable tests that kill the daemon")
 	flag.BoolVar(&flagTestIPv6, "test.only-ipv6", false, "enable tests on IPv6")
 	flag.BoolVar(&flagTestKube, "test.only-kubernetes", false, "enable tests on Kubernetes")
+	flag.BoolVar(&flagTestFlaky, "test.only-flaky", false, "enable testing of flaky tests only (if false, flaky tests are ignored)")
+	if flag.Lookup("test.v") != nil {
+		flagVerbose = true
+	}
 	flag.Parse()
 
 	os.Exit(func() int {
@@ -625,6 +631,10 @@ func GetEnableKubernetes() bool {
 	return flagTestKube
 }
 
+func GetFlakyEnvironment() bool {
+	return flagTestFlaky
+}
+
 func GetDaemonIsKillable() bool {
 	return flagTestKillDaemon
 }
@@ -632,6 +642,8 @@ func GetDaemonIsKillable() bool {
 func IsDocker() bool {
 	return GetTarget() == Docker
 }
+
+func GetVerbose() bool { return flagVerbose }
 
 func DockerIncompatible(t testing.TB) {
 	if IsDocker() {

@@ -24,143 +24,290 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/tabutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func TestImagesWithNames(t *testing.T) {
-	t.Parallel()
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	base.Cmd("images", "--names", testutil.CommonImage).AssertOutContains(testutil.CommonImage)
-	base.Cmd("images", "--names", testutil.CommonImage).AssertOutWithFunc(func(out string) error {
-		lines := strings.Split(strings.TrimSpace(out), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-		}
-		tab := tabutil.NewReader("NAME\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-		name, _ := tab.ReadRow(lines[1], "NAME")
-		assert.Equal(t, name, testutil.CommonImage)
-		return nil
-	})
-}
-
 func TestImages(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	header := "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE"
-	if base.Target == testutil.Docker {
-		header = "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE"
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Description: "TestImages",
+		Require:     test.Not(nerdtest.Docker),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", testutil.CommonImage)
+			helpers.Ensure("pull", testutil.NginxAlpineImage)
+		},
+		SubTests: []*test.Case{
+			{
+				Description: "No params",
+				Command:     test.Command("images"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: func(stdout string, info string, t *testing.T) {
+							lines := strings.Split(strings.TrimSpace(stdout), "\n")
+							assert.Assert(t, len(lines) >= 2, info)
+							header := "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE"
+							if nerdtest.IsDocker() {
+								header = "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE"
+							}
+							tab := tabutil.NewReader(header)
+							err := tab.ParseHeader(lines[0])
+							assert.NilError(t, err, info)
+							found := false
+							for _, line := range lines[1:] {
+								repo, _ := tab.ReadRow(line, "REPOSITORY")
+								tag, _ := tab.ReadRow(line, "TAG")
+								if repo+":"+tag == testutil.CommonImage {
+									found = true
+									break
+								}
+							}
+							assert.Assert(t, found, info)
+						},
+					}
+				},
+			},
+			{
+				Description: "With names",
+				Command:     test.Command("images", "--names", testutil.CommonImage),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.Contains(testutil.CommonImage),
+							func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) >= 2, info)
+								tab := tabutil.NewReader("NAME\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE")
+								err := tab.ParseHeader(lines[0])
+								assert.NilError(t, err, info)
+								found := false
+								for _, line := range lines[1:] {
+									name, _ := tab.ReadRow(line, "NAME")
+									if name == testutil.CommonImage {
+										found = true
+										break
+									}
+								}
+
+								assert.Assert(t, found, info)
+							},
+						),
+					}
+				},
+			},
+			{
+				Description: "CheckCreatedTime",
+				Command:     test.Command("images", "--format", "'{{json .CreatedAt}}'"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: func(stdout string, info string, t *testing.T) {
+							lines := strings.Split(strings.TrimSpace(stdout), "\n")
+							assert.Assert(t, len(lines) >= 2, info)
+							createdTimes := lines
+							slices.Reverse(createdTimes)
+							assert.Assert(t, slices.IsSorted(createdTimes), info)
+						},
+					}
+				},
+			},
+		},
 	}
 
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	base.Cmd("images", testutil.CommonImage).AssertOutWithFunc(func(out string) error {
-		lines := strings.Split(strings.TrimSpace(out), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-		}
-		tab := tabutil.NewReader(header)
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-		repo, _ := tab.ReadRow(lines[1], "REPOSITORY")
-		tag, _ := tab.ReadRow(lines[1], "TAG")
-		assert.Equal(t, repo+":"+tag, testutil.CommonImage)
-		return nil
-	})
+	testCase.Run(t)
 }
 
 func TestImagesFilter(t *testing.T) {
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	t.Parallel()
-	base := testutil.NewBase(t)
-	tempName := testutil.Identifier(base.T)
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
+	nerdtest.Setup()
 
-	dockerfile := fmt.Sprintf(`FROM %s
+	testCase := &test.Case{
+		Description: "TestImagesFilter",
+		Require:     nerdtest.Build,
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", testutil.CommonImage)
+			helpers.Ensure("tag", testutil.CommonImage, "taggedimage:one-fragment-one")
+			helpers.Ensure("tag", testutil.CommonImage, "taggedimage:two-fragment-two")
+
+			dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-string"] \n
 LABEL foo=bar
-LABEL version=0.1`, testutil.CommonImage)
-
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-	base.Cmd("build", "-t", tempName, "-f", buildCtx+"/Dockerfile", buildCtx).AssertOK()
-	defer base.Cmd("rmi", tempName).AssertOK()
-
-	// This test is about testing local filtering of image names - as such, we do not need remote images at all
-	taggedOne, taggedTwo := "taggedimage:xfoox", "taggedimage:yzfooyz"
-	base.Cmd("tag", testutil.CommonImage, taggedOne).Run()
-	base.Cmd("tag", testutil.CommonImage, taggedTwo).Run()
-	defer base.Cmd("rmi", taggedOne).AssertOK()
-	defer base.Cmd("rmi", taggedTwo).AssertOK()
-
-	// before/since filters are not compatible with DOCKER_BUILDKIT=1? (but still compatible with DOCKER_BUILDKIT=0)
-	if base.Target == testutil.Nerdctl {
-		base.Cmd("images", "--filter", fmt.Sprintf("before=%s:%s", tempName, "latest")).AssertOutContains(testutil.ImageRepo(testutil.CommonImage))
-		base.Cmd("images", "--filter", fmt.Sprintf("before=%s:%s", tempName, "latest")).AssertOutNotContains(tempName)
-		base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage)).AssertOutContains(tempName)
-		base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage)).AssertOutNotContains(testutil.ImageRepo(testutil.CommonImage))
-		base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage), testutil.CommonImage).AssertOutNotContains(testutil.ImageRepo(testutil.CommonImage))
-		base.Cmd("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage), testutil.CommonImage).AssertOutNotContains(tempName)
-		base.Cmd("images", "--filter", fmt.Sprintf("since=%s:%s", "non-exists-image", "non-exists-image")).AssertOutContains(tempName)
-		base.Cmd("images", "--filter", fmt.Sprintf("before=%s:%s", "non-exists-image", "non-exists-image")).AssertOutContains(tempName)
+LABEL version=0.1
+RUN echo "actually creating a layer so that docker sets the createdAt time"
+`, testutil.CommonImage)
+			buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+			data.Set("buildCtx", buildCtx)
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rmi", "taggedimage:one-fragment-one")
+			helpers.Anyhow("rmi", "taggedimage:two-fragment-two")
+			helpers.Anyhow("rmi", data.Identifier())
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			data.Set("builtImageID", data.Identifier())
+			return helpers.Command("build", "-t", data.Identifier(), data.Get("buildCtx"))
+		},
+		Expected: test.Expects(0, nil, nil),
+		SubTests: []*test.Case{
+			{
+				Description: "label=foo=bar",
+				Command:     test.Command("images", "--filter", "label=foo=bar"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.Contains(data.Get("builtImageID")),
+					}
+				},
+			},
+			{
+				Description: "label=foo=bar1",
+				Command:     test.Command("images", "--filter", "label=foo=bar1"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.DoesNotContain(data.Get("builtImageID")),
+					}
+				},
+			},
+			{
+				Description: "label=foo=bar label=version=0.1",
+				Command:     test.Command("images", "--filter", "label=foo=bar", "--filter", "label=version=0.1"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.Contains(data.Get("builtImageID")),
+					}
+				},
+			},
+			{
+				Description: "label=foo=bar label=version=0.1",
+				Command:     test.Command("images", "--filter", "label=foo=bar", "--filter", "label=version=0.2"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.DoesNotContain(data.Get("builtImageID")),
+					}
+				},
+			},
+			{
+				Description: "label=version",
+				Require:     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3512"),
+				Command:     test.Command("images", "--filter", "label=version"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.Contains(data.Get("builtImageID")),
+					}
+				},
+			},
+			{
+				Description: "reference=ID*",
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("images", "--filter", fmt.Sprintf("reference=%s*", data.Get("builtImageID")))
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.Contains(data.Get("builtImageID")),
+					}
+				},
+			},
+			{
+				Description: "reference=tagged*:*fragment*",
+				Command:     test.Command("images", "--filter", "reference=tagged*:*fragment*"),
+				Expected: test.Expects(0, nil, test.All(
+					test.Contains("one-"),
+					test.Contains("two-"),
+				)),
+			},
+			{
+				Description: "before=ID:latest",
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("images", "--filter", fmt.Sprintf("before=%s:latest", data.Get("builtImageID")))
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.Contains(testutil.ImageRepo(testutil.CommonImage)),
+							test.DoesNotContain(data.Get("builtImageID")),
+						),
+					}
+				},
+			},
+			{
+				Description: "since=" + testutil.CommonImage,
+				Command:     test.Command("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage)),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.Contains(data.Get("builtImageID")),
+							test.DoesNotContain(testutil.ImageRepo(testutil.CommonImage)),
+						),
+					}
+				},
+			},
+			{
+				Description: "since=" + testutil.CommonImage + " " + testutil.CommonImage,
+				Command:     test.Command("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage), testutil.CommonImage),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.All(
+							test.DoesNotContain(data.Get("builtImageID")),
+							test.DoesNotContain(testutil.ImageRepo(testutil.CommonImage)),
+						),
+					}
+				},
+			},
+			{
+				Description: "since=non-exists-image",
+				Require:     nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3511"),
+				Command:     test.Command("images", "--filter", "since=non-exists-image"),
+				Expected:    test.Expects(-1, nil, nil),
+			},
+			{
+				Description: "before=non-exists-image",
+				Require:     nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3511"),
+				Command:     test.Command("images", "--filter", "before=non-exists-image"),
+				Expected:    test.Expects(-1, nil, nil),
+			},
+		},
 	}
-	base.Cmd("images", "--filter", "label=foo=bar").AssertOutContains(tempName)
-	base.Cmd("images", "--filter", "label=foo=bar1").AssertOutNotContains(tempName)
-	base.Cmd("images", "--filter", "label=foo=bar", "--filter", "label=version=0.1").AssertOutContains(tempName)
-	base.Cmd("images", "--filter", "label=foo=bar", "--filter", "label=version=0.2").AssertOutNotContains(tempName)
-	base.Cmd("images", "--filter", "label=version").AssertOutContains(tempName)
-	base.Cmd("images", "--filter", fmt.Sprintf("reference=%s*", tempName)).AssertOutContains(tempName)
-	base.Cmd("images", "--filter", "reference=tag*:*foo*").AssertOutContains("xfoox")
-	base.Cmd("images", "--filter", "reference=tag*:*foo*").AssertOutContains("yzfooyz")
+
+	testCase.Run(t)
 }
 
 func TestImagesFilterDangling(t *testing.T) {
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
-	base.Cmd("container", "prune", "-f").AssertOK()
-	base.Cmd("image", "prune", "--all", "-f").AssertOK()
+	nerdtest.Setup()
 
-	dockerfile := fmt.Sprintf(`FROM %s
+	testCase := &test.Case{
+		Description: "TestImagesFilterDangling",
+		// This test relies on a clean slate and the ability to GC everything
+		NoParallel: true,
+		Require:    nerdtest.Build,
+		Setup: func(data test.Data, helpers test.Helpers) {
+			dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-notag-string"]
 	`, testutil.CommonImage)
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-
-	base.Cmd("build", "-f", buildCtx+"/Dockerfile", buildCtx).AssertOK()
-
-	// dangling image test
-	base.Cmd("images", "--filter", "dangling=true").AssertOutContains("<none>")
-	base.Cmd("images", "--filter", "dangling=false").AssertOutNotContains("<none>")
-}
-
-func TestImageListCheckCreatedTime(t *testing.T) {
-	base := testutil.NewBase(t)
-
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
-	base.Cmd("pull", testutil.NginxAlpineImage).AssertOK()
-
-	var createdTimes []string
-
-	base.Cmd("images", "--format", "'{{json .CreatedAt}}'").AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 4 lines, got %d", len(lines))
-		}
-		createdTimes = append(createdTimes, lines...)
-		return nil
-	})
-
-	slices.Reverse(createdTimes)
-	if !slices.IsSorted(createdTimes) {
-		t.Errorf("expected images in decending order")
+			buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+			data.Set("buildCtx", buildCtx)
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("container", "prune", "-f")
+			helpers.Anyhow("image", "prune", "--all", "-f")
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("build", data.Get("buildCtx"))
+		},
+		Expected: test.Expects(0, nil, nil),
+		SubTests: []*test.Case{
+			{
+				Description: "dangling",
+				Command:     test.Command("images", "--filter", "dangling=true"),
+				Expected:    test.Expects(0, nil, test.Contains("<none>")),
+			},
+			{
+				Description: "not dangling",
+				Command:     test.Command("images", "--filter", "dangling=false"),
+				Expected:    test.Expects(0, nil, test.DoesNotContain("<none>")),
+			},
+		},
 	}
+
+	testCase.Run(t)
 }

@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func testEventFilterExecutor(data test.Data, helpers test.Helpers) test.Command {
+func testEventFilterExecutor(data test.Data, helpers test.Helpers) test.TestableCommand {
 	cmd := helpers.Command("events", "--filter", data.Get("filter"), "--format", "json")
 	cmd.Background(1 * time.Second)
 	helpers.Ensure("run", "--rm", testutil.CommonImage)
@@ -33,9 +33,9 @@ func testEventFilterExecutor(data test.Data, helpers test.Helpers) test.Command 
 }
 
 func TestEventFilters(t *testing.T) {
-	nerdtest.Setup()
+	testCase := nerdtest.Setup()
 
-	testGroup := &test.Group{
+	testCase.SubTests = []*test.Case{
 		{
 			Description: "CapitalizedFilter",
 			Require:     test.Not(nerdtest.Docker),
@@ -96,5 +96,5 @@ func TestEventFilters(t *testing.T) {
 		},
 	}
 
-	testGroup.Run(t)
+	testCase.Run(t)
 }

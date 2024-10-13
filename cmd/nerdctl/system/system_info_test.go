@@ -38,24 +38,24 @@ func testInfoComparator(stdout string, info string, t *testing.T) {
 }
 
 func TestInfo(t *testing.T) {
-	nerdtest.Setup()
+	testCase := nerdtest.Setup()
 
-	testGroup := &test.Group{
+	testCase.SubTests = []*test.Case{
 		{
 			Description: "info",
-			Command:     test.RunCommand("info", "--format", "{{json .}}"),
+			Command:     test.Command("info", "--format", "{{json .}}"),
 			Expected:    test.Expects(0, nil, testInfoComparator),
 		},
 		{
 			Description: "info convenience form",
-			Command:     test.RunCommand("info", "--format", "json"),
+			Command:     test.Command("info", "--format", "json"),
 			Expected:    test.Expects(0, nil, testInfoComparator),
 		},
 		{
 			Description: "info with namespace",
 			Require:     test.Not(nerdtest.Docker),
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.Command().Clear().WithBinary("nerdctl").WithArgs("info")
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Custom("nerdctl", "info")
 			},
 			Expected: test.Expects(0, nil, test.Contains("Namespace:	default")),
 		},
@@ -65,12 +65,12 @@ func TestInfo(t *testing.T) {
 				"CONTAINERD_NAMESPACE": "test",
 			},
 			Require: test.Not(nerdtest.Docker),
-			Command: func(data test.Data, helpers test.Helpers) test.Command {
-				return helpers.Command().Clear().WithBinary("nerdctl").WithArgs("info")
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Custom("nerdctl", "info")
 			},
 			Expected: test.Expects(0, nil, test.Contains("Namespace:	test")),
 		},
 	}
 
-	testGroup.Run(t)
+	testCase.Run(t)
 }

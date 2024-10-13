@@ -18,30 +18,18 @@ package test
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
 )
 
-func RunCommand(args ...string) Executor {
-	return func(data Data, helpers Helpers) Command {
+// RunCommand is the simplest way to express a test.TestableCommand for very basic cases when access to test data is not necessary
+func Command(args ...string) Executor {
+	return func(data Data, helpers Helpers) TestableCommand {
 		return helpers.Command(args...)
 	}
-}
-
-// WithData returns a data object with a certain key value set
-func WithData(key string, value string) Data {
-	dat := &data{}
-	dat.Set(key, value)
-	return dat
-}
-
-// WithConfig returns a data object with a certain config property set
-func WithConfig(key ConfigKey, value ConfigValue) Data {
-	dat := &data{}
-	dat.WithConfig(key, value)
-	return dat
 }
 
 // Expects is provided as a simple helper covering "expectations" for simple use-cases where access to the test data is not necessary
@@ -55,7 +43,7 @@ func Expects(exitCode int, errors []error, output Comparator) Manager {
 	}
 }
 
-// All can be used as a parameter for expected.Output and allow passing a collection of conditions to match
+// All can be used as a parameter for expected.Output to group a set of comparators
 func All(comparators ...Comparator) Comparator {
 	return func(stdout string, info string, t *testing.T) {
 		t.Helper()
@@ -69,7 +57,7 @@ func All(comparators ...Comparator) Comparator {
 func Contains(compare string) Comparator {
 	return func(stdout string, info string, t *testing.T) {
 		t.Helper()
-		assert.Assert(t, strings.Contains(stdout, compare), fmt.Sprintf("Expected output to contain: %q", compare)+info)
+		assert.Check(t, strings.Contains(stdout, compare), fmt.Sprintf("Output does not contain: %q", compare)+info)
 	}
 }
 
@@ -77,7 +65,7 @@ func Contains(compare string) Comparator {
 func DoesNotContain(compare string) Comparator {
 	return func(stdout string, info string, t *testing.T) {
 		t.Helper()
-		assert.Assert(t, !strings.Contains(stdout, compare), fmt.Sprintf("Expected output to not contain: %q", compare)+info)
+		assert.Check(t, !strings.Contains(stdout, compare), fmt.Sprintf("Output does contain: %q", compare)+info)
 	}
 }
 
@@ -86,5 +74,14 @@ func Equals(compare string) Comparator {
 	return func(stdout string, info string, t *testing.T) {
 		t.Helper()
 		assert.Equal(t, compare, stdout, info)
+	}
+}
+
+// Provisional - expected use, but have not seen it so far
+// Match is to be used for expected.Output to ensure we match a regexp
+func Match(reg *regexp.Regexp) Comparator {
+	return func(stdout string, info string, t *testing.T) {
+		t.Helper()
+		assert.Check(t, reg.MatchString(stdout), fmt.Sprintf("Output does not match: %s", reg), info)
 	}
 }

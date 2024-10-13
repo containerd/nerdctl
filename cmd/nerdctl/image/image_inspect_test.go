@@ -40,7 +40,7 @@ func TestImageInspectSimpleCases(t *testing.T) {
 		SubTests: []*test.Case{
 			{
 				Description: "Contains some stuff",
-				Command:     test.RunCommand("image", "inspect", testutil.CommonImage),
+				Command:     test.Command("image", "inspect", testutil.CommonImage),
 				Expected: test.Expects(0, nil, func(stdout string, info string, t *testing.T) {
 					var dc []dockercompat.Image
 					err := json.Unmarshal([]byte(stdout), &dc)
@@ -53,12 +53,12 @@ func TestImageInspectSimpleCases(t *testing.T) {
 			},
 			{
 				Description: "RawFormat support (.Id)",
-				Command:     test.RunCommand("image", "inspect", testutil.CommonImage, "--format", "{{.Id}}"),
+				Command:     test.Command("image", "inspect", testutil.CommonImage, "--format", "{{.Id}}"),
 				Expected:    test.Expects(0, nil, nil),
 			},
 			{
 				Description: "typedFormat support (.ID)",
-				Command:     test.RunCommand("image", "inspect", testutil.CommonImage, "--format", "{{.ID}}"),
+				Command:     test.Command("image", "inspect", testutil.CommonImage, "--format", "{{.ID}}"),
 				Expected:    test.Expects(0, nil, nil),
 			},
 		},
@@ -81,7 +81,6 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 	}
 
 	testCase := &test.Case{
-		Description: "TestImageInspectDifferentValidReferencesForTheSameImage",
 		Require: test.Require(
 			test.Not(nerdtest.Docker),
 			test.Not(test.Windows),
@@ -96,7 +95,7 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 		SubTests: []*test.Case{
 			{
 				Description: "name and tags +/- sha combinations",
-				Command:     test.RunCommand("image", "inspect", "busybox"),
+				Command:     test.Command("image", "inspect", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: func(stdout string, info string, t *testing.T) {
@@ -121,7 +120,7 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 			},
 			{
 				Description: "by digest, short or long, with or without prefix",
-				Command:     test.RunCommand("image", "inspect", "busybox"),
+				Command:     test.Command("image", "inspect", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: func(stdout string, info string, t *testing.T) {
@@ -154,7 +153,7 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 			},
 			{
 				Description: "prove that wrong references with correct digest do not get resolved",
-				Command:     test.RunCommand("image", "inspect", "busybox"),
+				Command:     test.Command("image", "inspect", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: func(stdout string, info string, t *testing.T) {
@@ -176,7 +175,7 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 			},
 			{
 				Description: "prove that invalid reference return no result without crashing",
-				Command:     test.RunCommand("image", "inspect", "busybox"),
+				Command:     test.Command("image", "inspect", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: func(stdout string, info string, t *testing.T) {
@@ -197,7 +196,7 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 			},
 			{
 				Description: "retrieving multiple entries at once",
-				Command:     test.RunCommand("image", "inspect", "busybox", "busybox"),
+				Command:     test.Command("image", "inspect", "busybox", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: func(stdout string, info string, t *testing.T) {
