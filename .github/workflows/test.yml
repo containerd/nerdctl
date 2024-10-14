@@ -66,7 +66,7 @@ jobs:
             containerd: v1.6.36
             runner: "ubuntu-20.04"
           - ubuntu: 22.04
-            containerd: v1.7.22
+            containerd: v1.7.23
             runner: "ubuntu-22.04"
           - ubuntu: 24.04
             containerd: v2.0.0-rc.5
@@ -115,7 +115,7 @@ jobs:
         # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
           - ubuntu: 24.04
-            containerd: v1.7.22
+            containerd: v1.7.23
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -175,7 +175,7 @@ jobs:
             rootlesskit: v1.1.1  # Deprecated
             target: test-integration-rootless
           - ubuntu: 22.04
-            containerd: v1.7.22
+            containerd: v1.7.23
             rootlesskit: v2.3.1
             target: test-integration-rootless
           - ubuntu: 24.04
@@ -183,7 +183,7 @@ jobs:
             rootlesskit: v2.3.1
             target: test-integration-rootless
           - ubuntu: 24.04
-            containerd: v1.7.22
+            containerd: v1.7.23
             rootlesskit: v2.3.1
             target: test-integration-rootless-port-slirp4netns
     env:
@@ -320,7 +320,7 @@ jobs:
       - uses: actions/checkout@v4.2.1
         with:
           repository: containerd/containerd
-          ref: v1.7.22
+          ref: v1.7.23
           path: containerd
           fetch-depth: 1
       - name: "Set up CNI"
@@ -328,7 +328,7 @@ jobs:
         run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
       - name: "Set up containerd"
         env:
-          ctrdVersion: 1.7.22
+          ctrdVersion: 1.7.23
         run: powershell hack/configure-windows-ci.ps1
       # TODO: Run unit tests
       - name: "Run integration tests"
