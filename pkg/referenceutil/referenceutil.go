@@ -17,94 +17,121 @@
 package referenceutil
 
 import (
-	"fmt"
 	"path"
 	"strings"
 
-	distributionref "github.com/distribution/reference"
+	"github.com/distribution/reference"
 	"github.com/ipfs/go-cid"
+	"github.com/opencontainers/go-digest"
 )
 
-// Reference is a reference to an image.
-type Reference interface {
+type Protocol string
 
-	// String returns the full reference which can be understood by containerd.
-	String() string
+const IPFSProtocol Protocol = "ipfs"
+const IPNSProtocol Protocol = "ipns"
+const shortIDLength = 5
+
+type ImageReference struct {
+	Protocol    Protocol
+	Digest      digest.Digest
+	Tag         string
+	ExplicitTag string
+	Path        string
+	Domain      string
+
+	nn reference.Reference
 }
 
-// ParseAnyReference parses the passed reference as IPFS, CID, or a classic reference.
-// Unlike ParseAny, it is not limited to the DockerRef limitations (being either tagged or digested)
-// and should be used instead.
-func ParseAnyReference(rawRef string) (Reference, error) {
-	if scheme, ref, err := ParseIPFSRefWithScheme(rawRef); err == nil {
-		return Reference(stringRef{scheme: scheme, s: ref}), nil
+func (ir *ImageReference) Name() string {
+	ret := ir.Domain
+	if ret != "" {
+		ret += "/"
 	}
-	if c, err := cid.Decode(rawRef); err == nil {
-		return c, nil
-	}
-	return distributionref.ParseAnyReference(rawRef)
+	ret += ir.Path
+	return ret
 }
 
-// ParseAny parses the passed reference with allowing it to be non-docker reference.
-// If the ref has IPFS scheme or can be parsed as CID, it's parsed as an IPFS reference.
-// Otherwise it's parsed as a docker reference.
-func ParseAny(rawRef string) (Reference, error) {
-	if scheme, ref, err := ParseIPFSRefWithScheme(rawRef); err == nil {
-		return stringRef{scheme: scheme, s: ref}, nil
+func (ir *ImageReference) FamiliarName() string {
+	if ir.Protocol != "" && ir.Domain == "" {
+		return ir.Path
 	}
-	if c, err := cid.Decode(rawRef); err == nil {
-		return c, nil
+	if ir.nn != nil {
+		return reference.FamiliarName(ir.nn.(reference.Named))
 	}
-	return ParseDockerRef(rawRef)
+	return ""
 }
 
-// ParseDockerRef parses the passed reference with assuming it's a docker reference.
-func ParseDockerRef(rawRef string) (distributionref.Named, error) {
-	return distributionref.ParseDockerRef(rawRef)
+func (ir *ImageReference) FamiliarMatch(pattern string) (bool, error) {
+	return reference.FamiliarMatch(pattern, ir.nn)
 }
 
-// ParseIPFSRefWithScheme parses the passed reference with assuming it's an IPFS reference with scheme prefix.
-func ParseIPFSRefWithScheme(name string) (scheme, ref string, err error) {
-	if strings.HasPrefix(name, "ipfs://") || strings.HasPrefix(name, "ipns://") {
-		return name[:4], name[7:], nil
+func (ir *ImageReference) String() string {
+	if ir.Protocol != "" && ir.Domain == "" {
+		return ir.Path
 	}
-	return "", "", fmt.Errorf("reference is not an IPFS reference")
-}
-
-type stringRef struct {
-	scheme string
-	s      string
-}
-
-func (s stringRef) String() string {
-	return s.s
-}
-
-// SuggestContainerName generates a container name from name.
-// The result MUST NOT be parsed.
-func SuggestContainerName(rawRef, containerID string) string {
-	const shortIDLength = 5
-	if len(containerID) < shortIDLength {
-		panic(fmt.Errorf("got too short (< %d) container ID: %q", shortIDLength, containerID))
+	if ir.Path == "" && ir.Digest != "" {
+		return ir.Digest.String()
 	}
-	name := "untitled-" + containerID[:shortIDLength]
-	if rawRef != "" {
-		r, err := ParseAny(rawRef)
-		if err == nil {
-			switch rr := r.(type) {
-			case distributionref.Named:
-				if rrName := rr.Name(); rrName != "" {
-					imageNameBased := path.Base(rrName)
-					if imageNameBased != "" {
-						name = imageNameBased + "-" + containerID[:shortIDLength]
-					}
-				}
-			case cid.Cid:
-				name = "ipfs" + "-" + rr.String()[:shortIDLength] + "-" + containerID[:shortIDLength]
-			case stringRef:
-				name = rr.scheme + "-" + rr.s[:shortIDLength] + "-" + containerID[:shortIDLength]
-			}
-		}
+	if ir.nn != nil {
+		return ir.nn.String()
 	}
-	return name
+	return ""
+}
+
+func (ir *ImageReference) SuggestContainerName(suffix string) string {
+	name := "untitled"
+	if ir.Protocol != "" && ir.Domain == "" {
+		name = string(ir.Protocol) + "-" + ir.String()[:shortIDLength]
+	} else if ir.Path != "" {
+		name = path.Base(ir.Path)
+	}
+	return name + "-" + suffix[:5]
+}
+
+func Parse(rawRef string) (*ImageReference, error) {
+	ir := &ImageReference{}
+
+	if strings.HasPrefix(rawRef, "ipfs://") {
+		ir.Protocol = IPFSProtocol
+		rawRef = rawRef[7:]
+	} else if strings.HasPrefix(rawRef, "ipns://") {
+		ir.Protocol = IPNSProtocol
+		rawRef = rawRef[7:]
+	}
+	if decodedCID, err := cid.Decode(rawRef); err == nil {
+		ir.Protocol = IPFSProtocol
+		rawRef = decodedCID.String()
+		ir.Path = rawRef
+		return ir, nil
+	}
+
+	if dgst, err := digest.Parse(rawRef); err == nil {
+		ir.Digest = dgst
+		return ir, nil
+	} else if dgst, err := digest.Parse("sha256:" + rawRef); err == nil {
+		ir.Digest = dgst
+		return ir, nil
+	}
+
+	var err error
+	ir.nn, err = reference.ParseNormalizedNamed(rawRef)
+	if err != nil {
+		return ir, err
+	}
+	if tg, ok := ir.nn.(reference.Tagged); ok {
+		ir.ExplicitTag = tg.Tag()
+	}
+	if tg, ok := ir.nn.(reference.Named); ok {
+		ir.nn = reference.TagNameOnly(tg)
+		ir.Domain = reference.Domain(tg)
+		ir.Path = reference.Path(tg)
+	}
+	if tg, ok := ir.nn.(reference.Tagged); ok {
+		ir.Tag = tg.Tag()
+	}
+	if tg, ok := ir.nn.(reference.Digested); ok {
+		ir.Digest = tg.Digest()
+	}
+
+	return ir, nil
 }
