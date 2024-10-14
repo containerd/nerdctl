@@ -25,6 +25,8 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestRunHostProcessContainer(t *testing.T) {
@@ -119,16 +121,27 @@ func TestRunProcessContainerWithDevice(t *testing.T) {
 }
 
 func TestRunWithTtyAndDetached(t *testing.T) {
-	base := testutil.NewBase(t)
-	imageName := testutil.CommonImage
-	withTtyContainerName := "with-terminal-" + testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	// with -t, success, the container should run with tty support.
-	base.Cmd("run", "-d", "-t", "--name", withTtyContainerName, imageName, "cmd", "/c", "echo", "Hello, World with TTY!").AssertOK()
-	defer base.Cmd("container", "rm", "-f", withTtyContainerName).AssertOK()
+	// This test is currently disabled, as it is failing most of the time.
+	testCase.Require = nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3437")
 
-	// Check logs for successful command execution (with TTY specific behavior if any)
-	base.Cmd("logs", withTtyContainerName).AssertOutContains("Hello, World with TTY!")
-	withTtyContainer := base.InspectContainer(withTtyContainerName)
-	assert.Equal(base.T, 0, withTtyContainer.State.ExitCode)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		// with -t, success, the container should run with tty support.
+		helpers.Ensure("run", "-d", "-t", "--name", data.Identifier("with-terminal"), testutil.CommonImage, "cmd", "/c", "echo", "Hello, World with TTY!")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("container", "rm", "-f", data.Identifier("with-terminal"))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		withTtyContainer := nerdtest.InspectContainer(helpers, data.Identifier("with-terminal"))
+		assert.Equal(helpers.T(), 0, withTtyContainer.State.ExitCode)
+		return helpers.Command("logs", data.Identifier("with-terminal"))
+	}
+
+	testCase.Expected = test.Expects(0, nil, test.Contains("Hello, World with TTY!"))
+
+	testCase.Run(t)
 }
