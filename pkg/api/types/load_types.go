@@ -29,4 +29,6 @@ type ImageLoadOptions struct {
 	Platform []string
 	// AllPlatforms import content for all platforms
 	AllPlatforms bool
+	// Quiet suppresses the load output.
+	Quiet bool
 }

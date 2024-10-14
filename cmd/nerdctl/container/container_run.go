@@ -92,6 +92,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	})
 	cmd.Flags().Bool("rm", false, "Automatically remove the container when it exits")
 	cmd.Flags().String("pull", "missing", `Pull image before running ("always"|"missing"|"never")`)
+	cmd.Flags().BoolP("quiet", "q", false, "Suppress the pull output")
 	cmd.RegisterFlagCompletionFunc("pull", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"always", "missing", "never"}, cobra.ShellCompDirectiveNoFileComp
 	})

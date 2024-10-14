@@ -409,12 +409,17 @@ func processContainerCreateOptions(cmd *cobra.Command) (types.ContainerCreateOpt
 	if err != nil {
 		return opt, err
 	}
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return opt, err
+	}
 	opt.ImagePullOpt = types.ImagePullOptions{
 		GOptions:      opt.GOptions,
 		VerifyOptions: imageVerifyOpt,
 		IPFSAddress:   opt.IPFSAddress,
 		Stdout:        opt.Stdout,
 		Stderr:        opt.Stderr,
+		Quiet:         quiet,
 	}
 	// #endregion
 

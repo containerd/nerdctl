@@ -38,6 +38,7 @@ func NewLoadCommand() *cobra.Command {
 	}
 
 	loadCommand.Flags().StringP("input", "i", "", "Read from tar archive file, instead of STDIN")
+	loadCommand.Flags().BoolP("quiet", "q", false, "Suppress the load output")
 
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
@@ -66,6 +67,10 @@ func processLoadCommandFlags(cmd *cobra.Command) (types.ImageLoadOptions, error)
 	if err != nil {
 		return types.ImageLoadOptions{}, err
 	}
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return types.ImageLoadOptions{}, err
+	}
 	return types.ImageLoadOptions{
 		GOptions:     globalOptions,
 		Input:        input,
@@ -73,6 +78,7 @@ func processLoadCommandFlags(cmd *cobra.Command) (types.ImageLoadOptions, error)
 		AllPlatforms: allPlatforms,
 		Stdout:       cmd.OutOrStdout(),
 		Stdin:        cmd.InOrStdin(),
+		Quiet:        quiet,
 	}, nil
 }
 

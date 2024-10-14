@@ -79,3 +79,33 @@ func TestLoadStdinEmpty(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestLoadQuiet(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Description: "TestLoadQuiet",
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", testutil.CommonImage)
+			helpers.Ensure("tag", testutil.CommonImage, data.Identifier())
+			helpers.Ensure("save", data.Identifier(), "-o", filepath.Join(data.TempDir(), "common.tar"))
+			helpers.Ensure("rmi", "-f", data.Identifier())
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rmi", "-f", data.Identifier())
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("load", "--quiet", "--input", filepath.Join(data.TempDir(), "common.tar"))
+		},
+		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+			return &test.Expected{
+				Output: test.All(
+					test.Contains(fmt.Sprintf("Loaded image: %s:latest", data.Identifier())),
+					test.DoesNotContain("Loading layer"),
+				),
+			}
+		},
+	}
+
+	testCase.Run(t)
+}

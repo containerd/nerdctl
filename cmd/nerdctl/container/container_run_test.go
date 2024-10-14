@@ -631,3 +631,30 @@ func TestRunAttachFlag(t *testing.T) {
 		})
 	}
 }
+
+func TestRunQuiet(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	teardown := func() {
+		base.Cmd("rmi", "-f", testutil.CommonImage).Run()
+	}
+	defer teardown()
+	teardown()
+
+	sentinel := "test run quiet"
+	result := base.Cmd("run", "--rm", "--quiet", testutil.CommonImage, fmt.Sprintf(`echo "%s"`, sentinel)).Run()
+	assert.Assert(t, strings.Contains(result.Combined(), sentinel))
+
+	wasQuiet := func(output, sentinel string) bool {
+		return !strings.Contains(output, sentinel)
+	}
+
+	// Docker and nerdctl image pulls are not 1:1.
+	if testutil.GetTarget() == testutil.Docker {
+		sentinel = "Pull complete"
+	} else {
+		sentinel = "resolved"
+	}
+
+	assert.Assert(t, wasQuiet(result.Combined(), sentinel), "Found %s in container run output", sentinel)
+}

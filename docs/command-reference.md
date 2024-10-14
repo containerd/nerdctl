@@ -151,6 +151,7 @@ Basic flags:
 - :whale: `--rm`: Automatically remove the container when it exits
 - :whale: `--pull=(always|missing|never)`: Pull image before running
   - Default: "missing"
+- :whale: `-q, --quiet`: Suppress the pull output
 - :whale: `--pid=(host|container:<container>)`: PID namespace to use
 - :whale: `--uts=(host)` : UTS namespace to use
 - :whale: `--stop-signal`: Signal to stop a container (default "SIGTERM")
@@ -815,10 +816,9 @@ Usage: `nerdctl load [OPTIONS]`
 Flags:
 
 - :whale: `-i, --input`: Read from tar archive file, instead of STDIN
+- :whale: `-q, --quiet`: Suppress the load output
 - :nerd_face: `--platform=(amd64|arm64|...)`: Import content for a specific platform
 - :nerd_face: `--all-platforms`: Import content for all platforms
-
-Unimplemented `docker load` flags: `--quiet`
 
 ### :whale: nerdctl save
 
