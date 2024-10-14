@@ -24,8 +24,6 @@ import (
 	"strings"
 	"time"
 
-	distributionref "github.com/distribution/reference"
-
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
 
@@ -80,19 +78,19 @@ func ParseFilters(filters []string) (*Filters, error) {
 				}
 				f.Dangling = &isDangling
 			} else if tempFilterToken[0] == FilterBeforeType {
-				canonicalRef, err := referenceutil.ParseAny(tempFilterToken[1])
+				parsedReference, err := referenceutil.Parse(tempFilterToken[1])
 				if err != nil {
 					return nil, err
 				}
 
-				f.Before = append(f.Before, fmt.Sprintf("name==%s", canonicalRef.String()))
+				f.Before = append(f.Before, fmt.Sprintf("name==%s", parsedReference.String()))
 				f.Before = append(f.Before, fmt.Sprintf("name==%s", tempFilterToken[1]))
 			} else if tempFilterToken[0] == FilterSinceType {
-				canonicalRef, err := referenceutil.ParseAny(tempFilterToken[1])
+				parsedReference, err := referenceutil.Parse(tempFilterToken[1])
 				if err != nil {
 					return nil, err
 				}
-				f.Since = append(f.Since, fmt.Sprintf("name==%s", canonicalRef.String()))
+				f.Since = append(f.Since, fmt.Sprintf("name==%s", parsedReference.String()))
 				f.Since = append(f.Since, fmt.Sprintf("name==%s", tempFilterToken[1]))
 			} else if tempFilterToken[0] == FilterUntilType {
 				if len(tempFilterToken[0]) == 0 {
@@ -311,13 +309,13 @@ func matchesAllLabels(imageCfgLabels map[string]string, filterLabels map[string]
 func matchesReferences(image images.Image, referencePatterns []string) (bool, error) {
 	var matches int
 
-	reference, err := distributionref.ParseAnyReference(image.Name)
+	parsedReference, err := referenceutil.Parse(image.Name)
 	if err != nil {
 		return false, err
 	}
 
 	for _, pattern := range referencePatterns {
-		familiarMatch, err := distributionref.FamiliarMatch(pattern, reference)
+		familiarMatch, err := parsedReference.FamiliarMatch(pattern)
 		if err != nil {
 			return false, err
 		}

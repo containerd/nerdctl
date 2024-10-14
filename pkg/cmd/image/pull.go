@@ -45,7 +45,12 @@ func Pull(ctx context.Context, client *containerd.Client, rawRef string, options
 func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePullOptions) (*imgutil.EnsuredImage, error) {
 	var ensured *imgutil.EnsuredImage
 
-	if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(rawRef); err == nil {
+	parsedReference, err := referenceutil.Parse(rawRef)
+	if err != nil {
+		return nil, err
+	}
+
+	if parsedReference.Protocol != "" {
 		if options.VerifyOptions.Provider != "none" {
 			return nil, errors.New("--verify flag is not supported on IPFS as of now")
 		}
@@ -63,7 +68,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 			ipfsPath = dir
 		}
 
-		ensured, err = ipfs.EnsureImage(ctx, client, scheme, ref, ipfsPath, options)
+		ensured, err = ipfs.EnsureImage(ctx, client, string(parsedReference.Protocol), parsedReference.String(), ipfsPath, options)
 		if err != nil {
 			return nil, err
 		}

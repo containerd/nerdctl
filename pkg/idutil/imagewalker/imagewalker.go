@@ -50,8 +50,8 @@ type ImageWalker struct {
 // Returns the number of the found entries.
 func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 	var filters []string
-	if canonicalRef, err := referenceutil.ParseAny(req); err == nil {
-		filters = append(filters, fmt.Sprintf("name==%s", canonicalRef.String()))
+	if parsedReference, err := referenceutil.Parse(req); err == nil {
+		filters = append(filters, fmt.Sprintf("name==%s", parsedReference.String()))
 	}
 	filters = append(filters,
 		fmt.Sprintf("name==%s", req),

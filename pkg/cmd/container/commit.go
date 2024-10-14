@@ -33,7 +33,7 @@ import (
 
 // Commit will commit a container’s file changes or settings into a new image.
 func Commit(ctx context.Context, client *containerd.Client, rawRef string, req string, options types.ContainerCommitOptions) error {
-	named, err := referenceutil.ParseDockerRef(rawRef)
+	parsedReference, err := referenceutil.Parse(rawRef)
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func Commit(ctx context.Context, client *containerd.Client, rawRef string, req s
 	opts := &commit.Opts{
 		Author:  options.Author,
 		Message: options.Message,
-		Ref:     named.String(),
+		Ref:     parsedReference.String(),
 		Pause:   options.Pause,
 		Changes: changes,
 	}
