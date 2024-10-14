@@ -27,8 +27,11 @@ import (
 
 type Protocol string
 
-const IPFSProtocol Protocol = "ipfs"
-const IPNSProtocol Protocol = "ipns"
+const (
+	IPFSProtocol       Protocol = "ipfs"
+	IPNSProtocol       Protocol = "ipns"
+	OCIArchiveProtocol Protocol = "oci-archive"
+)
 const shortIDLength = 5
 
 type ImageReference struct {
@@ -97,6 +100,10 @@ func Parse(rawRef string) (*ImageReference, error) {
 	} else if strings.HasPrefix(rawRef, "ipns://") {
 		ir.Protocol = IPNSProtocol
 		rawRef = rawRef[7:]
+	} else if strings.HasPrefix(rawRef, "oci-archive://") {
+		ir.Protocol = OCIArchiveProtocol
+		ir.Path = rawRef[14:]
+		return ir, nil
 	}
 	if decodedCID, err := cid.Decode(rawRef); err == nil {
 		ir.Protocol = IPFSProtocol

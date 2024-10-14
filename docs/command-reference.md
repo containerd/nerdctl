@@ -134,6 +134,7 @@ Run a command in a new container.
 Usage: `nerdctl run [OPTIONS] IMAGE [COMMAND] [ARG...]`
 
 :nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IPFS. See [`ipfs.md`](./ipfs.md) for details.
+:nerd_face: `oci-archive://` prefix can be used for `IMAGE` to specify a local file system path to an OCI formatted tarball.
 
 Basic flags:
 
@@ -423,6 +424,7 @@ Create a new container.
 Usage: `nerdctl create [OPTIONS] IMAGE [COMMAND] [ARG...]`
 
 :nerd_face: `ipfs://` prefix can be used for `IMAGE` to pull it from IPFS. See [`ipfs.md`](./ipfs.md) for details.
+:nerd_face: `oci-archive://` prefix can be used for `IMAGE` to specify a local file system path to an OCI formatted tarball.
 
 The `nerdctl create` command similar to `nerdctl run -d` except the container is never started. You can then use the `nerdctl start <container_id>` command to start the container at any point.
 
