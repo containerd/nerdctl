@@ -17,6 +17,7 @@
 package referenceutil
 
 import (
+	"errors"
 	"path"
 	"strings"
 
@@ -30,6 +31,8 @@ type Protocol string
 const IPFSProtocol Protocol = "ipfs"
 const IPNSProtocol Protocol = "ipns"
 const shortIDLength = 5
+
+var ErrLoadOCIArchiveRequired = errors.New("image must be loaded from archive before parsing image reference")
 
 type ImageReference struct {
 	Protocol    Protocol
@@ -97,6 +100,10 @@ func Parse(rawRef string) (*ImageReference, error) {
 	} else if strings.HasPrefix(rawRef, "ipns://") {
 		ir.Protocol = IPNSProtocol
 		rawRef = rawRef[7:]
+	} else if strings.HasPrefix(rawRef, "oci-archive://") {
+		// The image must be loaded from the specified archive path first
+		// before parsing the image reference specified in its OCI image manifest.
+		return nil, ErrLoadOCIArchiveRequired
 	}
 	if decodedCID, err := cid.Decode(rawRef); err == nil {
 		ir.Protocol = IPFSProtocol

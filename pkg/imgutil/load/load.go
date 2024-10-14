@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
@@ -74,6 +75,25 @@ func FromArchive(ctx context.Context, client *containerd.Client, options types.I
 		unpackedImages = append(unpackedImages, img)
 	}
 	return unpackedImages, nil
+}
+
+// FromOCIArchive loads and unpacks the images from the OCI formatted archive at the provided file system path.
+func FromOCIArchive(ctx context.Context, client *containerd.Client, pathToOCIArchive string, options types.ImageLoadOptions) ([]images.Image, error) {
+	const ociArchivePrefix = "oci-archive://"
+	pathToOCIArchive = strings.TrimPrefix(pathToOCIArchive, ociArchivePrefix)
+
+	const separator = ":"
+	if strings.Contains(pathToOCIArchive, separator) {
+		subs := strings.Split(pathToOCIArchive, separator)
+		if len(subs) != 2 {
+			return nil, errors.New("too many seperators found in oci-archive path")
+		}
+		pathToOCIArchive = subs[0]
+	}
+
+	options.Input = pathToOCIArchive
+
+	return FromArchive(ctx, client, options)
 }
 
 type readCounter struct {
