@@ -145,18 +145,28 @@ func FilterByCreatedAt(ctx context.Context, client *containerd.Client, before []
 			maxTime = time.Now()
 		)
 
+		fetchImageNames := func(names []string) string {
+			parsedNames := make([]string, 0, len(names))
+			for _, name := range names {
+				parsedNames = append(parsedNames, strings.TrimPrefix(name, "name=="))
+			}
+			return strings.Join(parsedNames, ",")
+		}
+
 		imageStore := client.ImageService()
 		if len(before) > 0 {
 			beforeImages, err := imageStore.List(ctx, before...)
 			if err != nil {
 				return []images.Image{}, err
 			}
-			if len(beforeImages) > 0 {
-				maxTime = beforeImages[0].CreatedAt
-				for _, image := range beforeImages {
-					if image.CreatedAt.After(maxTime) {
-						maxTime = image.CreatedAt
-					}
+			if len(beforeImages) == 0 {
+				//nolint:stylecheck
+				return []images.Image{}, fmt.Errorf("No such image: %s", fetchImageNames(before))
+			}
+			maxTime = beforeImages[0].CreatedAt
+			for _, image := range beforeImages {
+				if image.CreatedAt.After(maxTime) {
+					maxTime = image.CreatedAt
 				}
 			}
 		}
@@ -166,12 +176,14 @@ func FilterByCreatedAt(ctx context.Context, client *containerd.Client, before []
 			if err != nil {
 				return []images.Image{}, err
 			}
-			if len(sinceImages) > 0 {
-				minTime = sinceImages[0].CreatedAt
-				for _, image := range sinceImages {
-					if image.CreatedAt.Before(minTime) {
-						minTime = image.CreatedAt
-					}
+			if len(sinceImages) == 0 {
+				//nolint:stylecheck
+				return []images.Image{}, fmt.Errorf("No such image: %s", fetchImageNames(since))
+			}
+			minTime = sinceImages[0].CreatedAt
+			for _, image := range sinceImages {
+				if image.CreatedAt.Before(minTime) {
+					minTime = image.CreatedAt
 				}
 			}
 		}
