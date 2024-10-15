@@ -46,6 +46,7 @@ func TestIPFSCompNoBuild(t *testing.T) {
 		test.Not(nerdtest.Docker),
 		nerdtest.Registry,
 		nerdtest.IPFS,
+		nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3510"),
 		// See note below
 		// nerdtest.Private,
 	)
@@ -153,6 +154,7 @@ services:
       WORDPRESS_DB_USER: exampleuser
       WORDPRESS_DB_PASSWORD: examplepass
       WORDPRESS_DB_NAME: exampledb
+    # FIXME: this is flaky and will make the container fail on occasions
     volumes:
       - wordpress:/var/www/html
 

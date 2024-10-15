@@ -19,6 +19,7 @@ package image
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -69,6 +70,10 @@ func TestSave(t *testing.T) {
 	// Further note though, that this will hide the fact this the save command could fail if some layers are missing.
 	// See https://github.com/containerd/nerdctl/issues/3425 and others for details.
 	testCase.Require = nerdtest.Private
+
+	if runtime.GOOS == "windows" {
+		testCase.Require = nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3524")
+	}
 
 	testCase.SubTests = []*test.Case{
 		{

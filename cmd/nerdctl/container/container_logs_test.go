@@ -82,6 +82,7 @@ func TestLogsOutStreamsSeparated(t *testing.T) {
 }
 
 func TestLogsWithInheritedFlags(t *testing.T) {
+	// Seen flaky with Docker
 	t.Parallel()
 	base := testutil.NewBase(t)
 	for k, v := range base.Args {
