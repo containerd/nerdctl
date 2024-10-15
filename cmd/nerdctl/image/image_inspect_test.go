@@ -18,6 +18,7 @@ package image
 
 import (
 	"encoding/json"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -35,7 +36,7 @@ func TestImageInspectSimpleCases(t *testing.T) {
 	testCase := &test.Case{
 		Description: "TestImageInspect",
 		Setup: func(data test.Data, helpers test.Helpers) {
-			helpers.Ensure("pull", testutil.CommonImage)
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 		},
 		SubTests: []*test.Case{
 			{
@@ -62,6 +63,10 @@ func TestImageInspectSimpleCases(t *testing.T) {
 				Expected:    test.Expects(0, nil, nil),
 			},
 		},
+	}
+
+	if runtime.GOOS == "windows" {
+		testCase.Require = nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3524")
 	}
 
 	testCase.Run(t)

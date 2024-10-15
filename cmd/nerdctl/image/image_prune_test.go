@@ -53,7 +53,7 @@ func TestImagePrune(t *testing.T) {
 				nerdtest.Build,
 			),
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rmi", data.Identifier())
+				helpers.Anyhow("rmi", "-f", data.Identifier())
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
 				dockerfile := fmt.Sprintf(`FROM %s
@@ -95,7 +95,7 @@ func TestImagePrune(t *testing.T) {
 			// Cannot use a custom namespace with buildkitd right now, so, no parallel it is
 			NoParallel: true,
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rmi", data.Identifier())
+				helpers.Anyhow("rmi", "-f", data.Identifier())
 				helpers.Anyhow("rm", "-f", data.Identifier())
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
@@ -138,7 +138,7 @@ func TestImagePrune(t *testing.T) {
 			// Cannot use a custom namespace with buildkitd right now, so, no parallel it is
 			NoParallel: true,
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rmi", data.Identifier())
+				helpers.Anyhow("rmi", "-f", data.Identifier())
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
 				dockerfile := fmt.Sprintf(`FROM %s
@@ -177,7 +177,7 @@ LABEL version=0.1`, testutil.CommonImage)
 			// Cannot use a custom namespace with buildkitd right now, so, no parallel it is
 			NoParallel: true,
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rmi", data.Identifier())
+				helpers.Anyhow("rmi", "-f", data.Identifier())
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
 				dockerfile := fmt.Sprintf(`FROM %s

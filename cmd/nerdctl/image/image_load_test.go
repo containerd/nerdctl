@@ -43,7 +43,7 @@ func TestLoadStdinFromPipe(t *testing.T) {
 			helpers.Ensure("rmi", "-f", data.Identifier())
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
-			helpers.Anyhow("rmi", data.Identifier())
+			helpers.Anyhow("rmi", "-f", data.Identifier())
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 			cmd := helpers.Command("load")

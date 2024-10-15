@@ -125,7 +125,9 @@ func TestImagesFilter(t *testing.T) {
 
 	testCase := &test.Case{
 		Description: "TestImagesFilter",
-		Require:     nerdtest.Build,
+		Require: test.Require(
+			nerdtest.Build,
+		),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", testutil.CommonImage)
 			helpers.Ensure("tag", testutil.CommonImage, "taggedimage:one-fragment-one")
@@ -141,9 +143,9 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 			data.Set("buildCtx", buildCtx)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
-			helpers.Anyhow("rmi", "taggedimage:one-fragment-one")
-			helpers.Anyhow("rmi", "taggedimage:two-fragment-two")
-			helpers.Anyhow("rmi", data.Identifier())
+			helpers.Anyhow("rmi", "-f", "taggedimage:one-fragment-one")
+			helpers.Anyhow("rmi", "-f", "taggedimage:two-fragment-two")
+			helpers.Anyhow("rmi", "-f", data.Identifier())
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 			data.Set("builtImageID", data.Identifier())
@@ -179,7 +181,7 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				},
 			},
 			{
-				Description: "label=foo=bar label=version=0.1",
+				Description: "label=foo=bar label=version=0.2",
 				Command:     test.Command("images", "--filter", "label=foo=bar", "--filter", "label=version=0.2"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
@@ -189,7 +191,6 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 			},
 			{
 				Description: "label=version",
-				Require:     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3512"),
 				Command:     test.Command("images", "--filter", "label=version"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{

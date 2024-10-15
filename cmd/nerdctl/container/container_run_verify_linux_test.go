@@ -20,38 +20,56 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestRunVerifyCosign(t *testing.T) {
-	testutil.RequireExecutable(t, "cosign")
-	testutil.DockerIncompatible(t)
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	t.Parallel()
+	var keyPair *testhelpers.CosignKeyPair
+	var reg *registry.Server
 
-	base := testutil.NewBase(t)
-	base.Env = append(base.Env, "COSIGN_PASSWORD=1")
+	testCase := nerdtest.Setup()
 
-	keyPair := helpers.NewCosignKeyPair(t, "cosign-key-pair", "1")
-	reg := testregistry.NewWithNoAuth(base, 0, false)
-	t.Cleanup(func() {
-		keyPair.Cleanup()
-		reg.Cleanup(nil)
-	})
+	testCase.Require = test.Require(
+		test.Binary("cosign"),
+		test.Not(nerdtest.Docker),
+		nerdtest.Build,
+	)
 
-	tID := testutil.Identifier(t)
-	testImageRef := fmt.Sprintf("127.0.0.1:%d/%s", reg.Port, tID)
-	dockerfile := fmt.Sprintf(`FROM %s
-CMD ["echo", "nerdctl-build-test-string"]
-	`, testutil.CommonImage)
+	testCase.Env = map[string]string{
+		"COSIGN_PASSWORD": "1",
+	}
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		keyPair = testhelpers.NewCosignKeyPair(t, "cosign-key-pair", "1")
+		reg = nerdtest.RegistryWithNoAuth(data, helpers, 0, false)
+	}
 
-	base.Cmd("build", "-t", testImageRef, buildCtx).AssertOK()
-	base.Cmd("push", testImageRef, "--sign=cosign", "--cosign-key="+keyPair.PrivateKey).AssertOK()
-	base.Cmd("run", "--rm", "--verify=cosign", "--cosign-key="+keyPair.PublicKey, testImageRef).AssertOK()
-	base.Cmd("run", "--rm", "--verify=cosign", "--cosign-key=dummy", testImageRef).AssertFail()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if keyPair != nil {
+			keyPair.Cleanup()
+		}
+		if reg != nil {
+			reg.Cleanup(data, helpers)
+		}
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		testImageRef := fmt.Sprintf("127.0.0.1:%d/%s", reg.Port, data.Identifier())
+		dockerfile := fmt.Sprintf(`FROM %s
+		CMD ["echo", "nerdctl-build-test-string"]
+			`, testutil.CommonImage)
+
+		buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+
+		helpers.Ensure("build", "-t", testImageRef, buildCtx)
+		helpers.Ensure("push", testImageRef, "--sign=cosign", "--cosign-key="+keyPair.PrivateKey)
+		helpers.Ensure("run", "--rm", "--verify=cosign", "--cosign-key="+keyPair.PublicKey, testImageRef)
+		return helpers.Command("run", "--rm", "--verify=cosign", "--cosign-key=dummy", testImageRef)
+	}
+
+	testCase.Expected = test.Expects(1, nil, nil)
 }

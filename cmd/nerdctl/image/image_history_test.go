@@ -75,6 +75,10 @@ func TestImageHistory(t *testing.T) {
 			test.Not(test.Windows),
 			// XXX Currently, history does not work on non-native platform, so, we cannot test reliably on other platforms
 			test.Arm64,
+			// Because of issues with multi-platform code, temp-reduced-image, this platform specific image here will
+			// introduce flaky behavior to other tests.
+			// There is likely complex issues at play, around https://github.com/containerd/nerdctl/issues/3513
+			nerdtest.Private,
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			// XXX: despite efforts to isolate this test, it keeps on having side effects linked to

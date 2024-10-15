@@ -15,27 +15,6 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  lint:
-    runs-on: "ubuntu-24.04"
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4.2.1
-        with:
-          fetch-depth: 1
-      - name: Set GO env
-        run: |
-          . ./hack/build-integration-canary.sh
-          canary::golang::latest
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-          cache: true
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6.1.1
-        with:
-          args: --verbose
-
   linux:
     runs-on: "ubuntu-24.04"
     timeout-minutes: 40
@@ -65,11 +44,13 @@ jobs:
       - name: "Run unit tests"
         run: go test -v ./pkg/...
       - name: "Run integration tests"
-        run: docker run -t --rm --privileged test-integration
+        run: docker run -t --rm --privileged test-integration ./hack/test-integration.sh
+      - name: "Run integration tests (flaky)"
+        run: docker run -t --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky
 
   windows:
-    runs-on: windows-latest
     timeout-minutes: 30
+    runs-on: windows-latest
     defaults:
       run:
         shell: bash
@@ -95,6 +76,7 @@ jobs:
           cache: true
           check-latest: true
       - run: go install ./cmd/nerdctl
+      - run: go install -v gotest.tools/gotestsum@v1
       # This here is solely to get the cni install script, which has not been modified in 3+ years.
       # There is little to no reason to update this to latest containerd
       - uses: actions/checkout@v4.2.1
@@ -112,5 +94,6 @@ jobs:
           ctrdVersion: ${{ env.CONTAINERD_VERSION }}
         run: powershell hack/configure-windows-ci.ps1
       - name: "Run integration tests"
-        # See https://github.com/containerd/nerdctl/blob/main/docs/testing/README.md#about-parallelization
-        run: go test -p 1 -v ./cmd/nerdctl/...
+        run: ./hack/test-integration.sh
+      - name: "Run integration tests (flaky)"
+        run: ./hack/test-integration.sh -test.only-flaky

@@ -176,7 +176,7 @@ func TestImagePullSoci(t *testing.T) {
 					helpers.Ensure("--snapshotter=soci", "pull", testutil.FfmpegSociImage)
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
-					helpers.Anyhow("rmi", testutil.FfmpegSociImage)
+					helpers.Anyhow("rmi", "-f", testutil.FfmpegSociImage)
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Custom("mount")
@@ -210,7 +210,7 @@ func TestImagePullSoci(t *testing.T) {
 					helpers.Ensure("--snapshotter=soci", "pull", testutil.FfmpegSociImage)
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
-					helpers.Anyhow("rmi", testutil.FfmpegSociImage)
+					helpers.Anyhow("rmi", "-f", testutil.FfmpegSociImage)
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Custom("mount")

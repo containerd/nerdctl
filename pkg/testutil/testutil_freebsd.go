@@ -32,6 +32,7 @@ const (
 var (
 	AlpineImage      = mirrorOf("alpine:3.13")
 	NginxAlpineImage = mirrorOf("nginx:1.19-alpine")
+	GolangImage      = mirrorOf("golang:1.18")
 )
 
 func mirrorOf(s string) string {

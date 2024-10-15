@@ -68,6 +68,11 @@ var OnlyKubernetes = &test.Requirement{
 		if !ret {
 			mess = "runner skips Kubernetes compatible tests in the non-Kubernetes environment"
 		}
+		_, err := exec.LookPath("kubectl")
+		if err != nil {
+			ret = false
+			mess = fmt.Sprintf("kubectl is not in the path: %+v", err)
+		}
 		return ret, mess
 	},
 }

@@ -35,8 +35,6 @@ func TestNetworkCreate(t *testing.T) {
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "vanilla",
-			// #3491 and #3508 may have helped - commenting this out for now
-			// Require:     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3086"),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier())
 				netw := nerdtest.InspectNetwork(helpers, data.Identifier())
@@ -66,8 +64,6 @@ func TestNetworkCreate(t *testing.T) {
 		},
 		{
 			Description: "with MTU",
-			// #3491 and #3508 may have helped - commenting this out for now
-			// Require:     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3086"),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier(), "--driver", "bridge", "--opt", "com.docker.network.driver.mtu=9216")
 			},
@@ -81,9 +77,7 @@ func TestNetworkCreate(t *testing.T) {
 		},
 		{
 			Description: "with ipv6",
-			// #3491 and #3508 may have helped - commenting this out for now
-			// Require:     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3086"),
-			Require: nerdtest.OnlyIPv6,
+			Require:     nerdtest.OnlyIPv6,
 			Setup: func(data test.Data, helpers test.Helpers) {
 				subnetStr := "2001:db8:8::/64"
 				data.Set("subnetStr", subnetStr)

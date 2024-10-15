@@ -17,12 +17,13 @@
 package container
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestStats(t *testing.T) {
@@ -31,17 +32,54 @@ func TestStats(t *testing.T) {
 	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
 		t.Skip("test skipped for rootless containers on cgroup v1")
 	}
-	testContainerName := testutil.Identifier(t)[:12]
-	exitedTestContainerName := fmt.Sprintf("%s-exited", testContainerName)
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainerName).Run()
-	defer base.Cmd("rm", "-f", exitedTestContainerName).Run()
-	base.Cmd("run", "--name", exitedTestContainerName, testutil.AlpineImage, "echo", "'exited'").AssertOK()
+	testCase := nerdtest.Setup()
 
-	base.Cmd("run", "-d", "--name", testContainerName, testutil.AlpineImage, "sleep", "10").AssertOK()
-	base.Cmd("stats", "--no-stream").AssertOutContains(testContainerName)
-	base.Cmd("stats", "--no-stream", testContainerName).AssertOK()
-	base.Cmd("container", "stats", "--no-stream").AssertOutContains(testContainerName)
-	base.Cmd("container", "stats", "--no-stream", testContainerName).AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier()[:12])
+		helpers.Anyhow("rm", "-f", data.Identifier()[:12]+"-exited")
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "--name", data.Identifier()[:12], testutil.AlpineImage, "sleep", "inf")
+		helpers.Ensure("run", "--name", data.Identifier()[:12]+"-exited", testutil.AlpineImage, "echo", "'exited'")
+		data.Set("id", data.Identifier()[:12])
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "stats",
+			Command:     test.Command("stats", "--no-stream"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.Contains(data.Get("id")),
+				}
+			},
+		},
+		{
+			Description: "container stats",
+			Command:     test.Command("container", "stats", "--no-stream"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: test.Contains(data.Get("id")),
+				}
+			},
+		},
+		{
+			Description: "stats ID",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("stats", "--no-stream", data.Get("id"))
+			},
+			Expected: test.Expects(0, nil, nil),
+		},
+		{
+			Description: "container stats  ID",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("container", "stats", "--no-stream", data.Get("id"))
+			},
+			Expected: test.Expects(0, nil, nil),
+		},
+	}
+
+	testCase.Run(t)
 }

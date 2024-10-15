@@ -24,17 +24,20 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func TestTopHyperVContainer(t *testing.T) {
-	if !testutil.HyperVSupported() {
-		t.Skip("HyperV is not enabled, skipping test")
-	}
-
+func TestDiff(t *testing.T) {
 	testCase := nerdtest.Setup()
 
-	testCase.Require = test.Windows
+	// It is unclear why this is failing with docker when run in parallel
+	// Obviously some other container test is interfering
+	if nerdtest.IsDocker() {
+		testCase.NoParallel = true
+	}
+
+	testCase.Require = test.Not(test.Windows)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "--isolation", "hyperv", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "inf")
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-euxc", "touch /a; touch /bin/b; rm /bin/base64")
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -42,10 +45,15 @@ func TestTopHyperVContainer(t *testing.T) {
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		return helpers.Command("top", data.Identifier())
+		return helpers.Command("diff", data.Identifier())
 	}
 
-	testCase.Expected = test.Expects(0, nil, nil)
+	testCase.Expected = test.Expects(0, nil, test.All(
+		test.Contains("A /a"),
+		test.Contains("C /bin"),
+		test.Contains("A /bin/b"),
+		test.Contains("D /bin/base64"),
+	))
 
 	testCase.Run(t)
 }

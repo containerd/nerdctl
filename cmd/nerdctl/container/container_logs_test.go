@@ -95,6 +95,8 @@ func TestLogsWithInheritedFlags(t *testing.T) {
 	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
 		"sh", "-euxc", "echo foo; echo bar").AssertOK()
 
+	// NOTE: seen with Docker: there are circumstances where this happens too fast and we get foo
+	time.Sleep(1 * time.Second)
 	// test rootCmd alias `-n` already used in logs subcommand
 	base.Cmd("logs", "-n", "1", containerName).AssertOutWithFunc(func(stdout string) error {
 		if !(stdout == "bar\n" || stdout == "") {
