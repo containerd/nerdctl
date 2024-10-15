@@ -141,9 +141,9 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 			data.Set("buildCtx", buildCtx)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
-			helpers.Anyhow("rmi", "taggedimage:one-fragment-one")
-			helpers.Anyhow("rmi", "taggedimage:two-fragment-two")
-			helpers.Anyhow("rmi", data.Identifier())
+			helpers.Anyhow("rmi", "-f", "taggedimage:one-fragment-one")
+			helpers.Anyhow("rmi", "-f", "taggedimage:two-fragment-two")
+			helpers.Anyhow("rmi", "-f", data.Identifier())
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 			data.Set("builtImageID", data.Identifier())

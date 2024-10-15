@@ -72,8 +72,8 @@ func TestIPFSCompNoBuild(t *testing.T) {
 			ipfsRegistry.Cleanup(data, helpers)
 		}
 		// Speeding up repeat tests...
-		helpers.Anyhow("rmi", testutil.WordpressImage)
-		helpers.Anyhow("rmi", testutil.MariaDBImage)
+		helpers.Anyhow("rmi", "-f", testutil.WordpressImage)
+		helpers.Anyhow("rmi", "-f", testutil.MariaDBImage)
 	}
 
 	testCase.Run(t)
@@ -127,8 +127,8 @@ func subtestTestIPFSCompNoB(t *testing.T, stargz bool, byAddr bool) *test.Case {
 		// Deliberately electing to not remove them here so that we can parallelize and cut down the running time
 		/*
 			if data.Get(mariaImageCIDKey) != "" {
-				helpers.Anyhow("rmi", data.Get(mariaImageCIDKey))
-				helpers.Anyhow("rmi", data.Get(wordpressImageCIDKey))
+				helpers.Anyhow("rmi", "-f", data.Get(mariaImageCIDKey))
+				helpers.Anyhow("rmi", "-f", data.Get(wordpressImageCIDKey))
 			}
 		*/
 	}
@@ -233,7 +233,7 @@ COPY index.html /usr/share/nginx/html/index.html
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		if ipfsServer != nil {
 			// Close the server once done
-			helpers.Anyhow("rmi", data.Get(mainImageCIDKey))
+			helpers.Anyhow("rmi", "-f", data.Get(mainImageCIDKey))
 			ipfsServer.Run(nil)
 		}
 		if comp != nil {

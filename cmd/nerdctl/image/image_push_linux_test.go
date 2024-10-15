@@ -72,7 +72,7 @@ func TestPush(t *testing.T) {
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					if data.Get("testImageRef") != "" {
-						helpers.Anyhow("rmi", data.Get("testImageRef"))
+						helpers.Anyhow("rmi", "-f", data.Get("testImageRef"))
 					}
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -92,7 +92,7 @@ func TestPush(t *testing.T) {
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					if data.Get("testImageRef") != "" {
-						helpers.Anyhow("rmi", data.Get("testImageRef"))
+						helpers.Anyhow("rmi", "-f", data.Get("testImageRef"))
 					}
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -126,7 +126,7 @@ func TestPush(t *testing.T) {
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					if data.Get("testImageRef") != "" {
-						helpers.Anyhow("rmi", data.Get("testImageRef"))
+						helpers.Anyhow("rmi", "-f", data.Get("testImageRef"))
 					}
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -149,7 +149,7 @@ func TestPush(t *testing.T) {
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					if data.Get("testImageRef") != "" {
-						helpers.Anyhow("rmi", data.Get("testImageRef"))
+						helpers.Anyhow("rmi", "-f", data.Get("testImageRef"))
 					}
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -172,7 +172,7 @@ func TestPush(t *testing.T) {
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					if data.Get("testImageRef") != "" {
-						helpers.Anyhow("rmi", data.Get("testImageRef"))
+						helpers.Anyhow("rmi", "-f", data.Get("testImageRef"))
 					}
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -192,7 +192,7 @@ func TestPush(t *testing.T) {
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					if data.Get("testImageRef") != "" {
-						helpers.Anyhow("rmi", data.Get("testImageRef"))
+						helpers.Anyhow("rmi", "-f", data.Get("testImageRef"))
 					}
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -224,7 +224,7 @@ func TestPush(t *testing.T) {
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					if data.Get("testImageRef") != "" {
-						helpers.Anyhow("rmi", data.Get("testImageRef"))
+						helpers.Anyhow("rmi", "-f", data.Get("testImageRef"))
 					}
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -259,7 +259,7 @@ func TestPush(t *testing.T) {
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					if data.Get("testImageRef") != "" {
-						helpers.Anyhow("rmi", data.Get("testImageRef"))
+						helpers.Anyhow("rmi", "-f", data.Get("testImageRef"))
 					}
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
