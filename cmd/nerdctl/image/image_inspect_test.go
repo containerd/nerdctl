@@ -33,7 +33,6 @@ func TestImageInspectSimpleCases(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Description: "TestImageInspect",
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", testutil.CommonImage)
 		},
