@@ -29,9 +29,6 @@ import (
 func TestNetworkLsFilter(t *testing.T) {
 	testCase := nerdtest.Setup()
 
-	// #3491 and #3508 may have helped - commenting this out for now
-	// testCase.Require =     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3086"),
-
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		data.Set("identifier", data.Identifier())
 		data.Set("label", "mylabel=label-1")
