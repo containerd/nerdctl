@@ -108,7 +108,7 @@ func TestImageConvertNydusVerify(t *testing.T) {
 			test.Binary("nydusify"),
 			test.Binary("nydusd"),
 			test.Not(nerdtest.Docker),
-			nerdtest.RootFul,
+			nerdtest.Rootful,
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", testutil.CommonImage)

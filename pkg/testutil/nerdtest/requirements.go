@@ -131,8 +131,8 @@ var BrokenTest = func(message string, req *test.Requirement) *test.Requirement {
 	}
 }
 
-// RootLess marks a test as suitable only for the rootless environment
-var RootLess = &test.Requirement{
+// Rootless marks a test as suitable only for the rootless environment
+var Rootless = &test.Requirement{
 	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
 		// Make sure we DO not return "IsRootless true" for docker
 		ret = getTarget() == targetNerdctl && rootlessutil.IsRootless()
@@ -145,8 +145,8 @@ var RootLess = &test.Requirement{
 	},
 }
 
-// RootFul marks a test as suitable only for rootful env
-var RootFul = test.Not(RootLess)
+// Rootful marks a test as suitable only for rootful env
+var Rootful = test.Not(Rootless)
 
 // CGroup requires that cgroup is enabled
 var CGroup = &test.Requirement{
