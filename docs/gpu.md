@@ -82,4 +82,7 @@ echo "/run/nvidia/driver/usr/lib/x86_64-linux-gnu" > /etc/ld.so.conf.d/nvidia.co
 ldconfig
 ```
 
-And then, the `nerdctl run --gpus` can run successfully.
+And then, the `nerdctl run --gpus` can run successfully. eg:
+```
+nerdctl run -it --rm --runtime=/usr/local/nvidia/toolkit/nvidia-container-runtime --gpus all nvidia/cuda:12.3.1-base-ubuntu20.04 nvidia-smi
+```
