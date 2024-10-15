@@ -58,7 +58,7 @@ explicitly allow it (with a call to `t.Parallel()`).
 
 ```bash
 docker build -t test-integration --target test-integration .
-docker run -t --rm --privileged test-integration
+docker run -t --rm --privileged test-integration ./hack/test-integration.sh
 ```
 
 ### Principles
