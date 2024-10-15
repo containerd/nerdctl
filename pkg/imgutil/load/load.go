@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package image
+package load
 
 import (
 	"context"
@@ -98,6 +98,7 @@ func loadImage(ctx context.Context, client *containerd.Client, in io.Reader, pla
 		if !options.Quiet {
 			fmt.Fprintf(options.Stdout, "unpacking %s (%s)...\n", img.Name, img.Target.Digest)
 		}
+
 		err = image.Unpack(ctx, options.GOptions.Snapshotter)
 		if err != nil {
 			return err
