@@ -767,14 +767,6 @@ func NewBaseWithIPv6Compatible(t *testing.T) *Base {
 	return newBase(t, Namespace, true, false)
 }
 
-func NewBaseForKubernetes(t *testing.T) *Base {
-	base := newBase(t, "k8s.io", false, true)
-	// NOTE: kubectl namespaces are not the same as containerd namespaces.
-	// We still want kube test objects segregated in their own Kube API namespace.
-	KubectlHelper(base, "create", "namespace", Namespace).Run()
-	return base
-}
-
 func NewBase(t *testing.T) *Base {
 	return newBase(t, Namespace, false, false)
 }
@@ -848,16 +840,6 @@ func RegisterBuildCacheCleanup(t *testing.T) {
 	t.Cleanup(func() {
 		NewBase(t).Cmd("builder", "prune", "--all", "--force").Run()
 	})
-}
-
-func KubectlHelper(base *Base, args ...string) *Cmd {
-	base.T.Helper()
-	icmdCmd := icmd.Command("kubectl", append([]string{"--namespace", Namespace}, args...)...)
-	icmdCmd.Env = base.Env
-	return &Cmd{
-		Cmd:  icmdCmd,
-		Base: base,
-	}
 }
 
 // SetupDockerContainerBuilder creates a Docker builder using the docker-container driver
