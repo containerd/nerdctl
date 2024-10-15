@@ -73,10 +73,10 @@ func Load(ctx context.Context, client *containerd.Client, options types.ImageLoa
 	if err != nil {
 		return err
 	}
-	return loadImage(ctx, client, decompressor, platMC, false, options)
+	return loadImage(ctx, client, decompressor, platMC, options)
 }
 
-func loadImage(ctx context.Context, client *containerd.Client, in io.Reader, platMC platforms.MatchComparer, quiet bool, options types.ImageLoadOptions) error {
+func loadImage(ctx context.Context, client *containerd.Client, in io.Reader, platMC platforms.MatchComparer, options types.ImageLoadOptions) error {
 	// In addition to passing WithImagePlatform() to client.Import(), we also need to pass WithDefaultPlatform() to NewClient().
 	// Otherwise unpacking may fail.
 	r := &readCounter{Reader: in}
@@ -95,19 +95,17 @@ func loadImage(ctx context.Context, client *containerd.Client, in io.Reader, pla
 		image := containerd.NewImageWithPlatform(client, img, platMC)
 
 		// TODO: Show unpack status
-		if !quiet {
+		if !options.Quiet {
 			fmt.Fprintf(options.Stdout, "unpacking %s (%s)...\n", img.Name, img.Target.Digest)
 		}
 		err = image.Unpack(ctx, options.GOptions.Snapshotter)
 		if err != nil {
 			return err
 		}
-		if quiet {
-			fmt.Fprintln(options.Stdout, img.Target.Digest)
-		} else {
-			repo, tag := imgutil.ParseRepoTag(img.Name)
-			fmt.Fprintf(options.Stdout, "Loaded image: %s:%s\n", repo, tag)
-		}
+
+		// Loaded message is shown even when quiet.
+		repo, tag := imgutil.ParseRepoTag(img.Name)
+		fmt.Fprintf(options.Stdout, "Loaded image: %s:%s\n", repo, tag)
 	}
 
 	return nil
