@@ -1,6 +1,7 @@
 module github.com/containerd/nerdctl/v2
 
 go 1.22.0
+toolchain go1.23.2
 
 // FIXME:
 // github.com/docker/docker/pkg/sysinfo has been replaced by a fork kept under ./pkg2/sysinfo
@@ -30,7 +31,7 @@ require (
 	github.com/containerd/stargz-snapshotter/ipfs v0.15.2-0.20240709063920-1dac5ef89319
 	github.com/containerd/typeurl/v2 v2.2.0
 	github.com/containernetworking/cni v1.2.3
-	github.com/containernetworking/plugins v1.5.1
+	github.com/containernetworking/plugins v1.6.0
 	github.com/coreos/go-iptables v0.8.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.3.4
