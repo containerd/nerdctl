@@ -37,7 +37,7 @@ func TestLoadStdinFromPipe(t *testing.T) {
 		Description: "TestLoadStdinFromPipe",
 		Require:     test.Linux,
 		Setup: func(data test.Data, helpers test.Helpers) {
-			helpers.Ensure("pull", testutil.CommonImage)
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 			helpers.Ensure("tag", testutil.CommonImage, data.Identifier())
 			helpers.Ensure("save", data.Identifier(), "-o", filepath.Join(data.TempDir(), "common.tar"))
 			helpers.Ensure("rmi", "-f", data.Identifier())

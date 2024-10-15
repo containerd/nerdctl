@@ -64,7 +64,7 @@ func TestPush(t *testing.T) {
 			{
 				Description: "plain http",
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("pull", testutil.CommonImage)
+					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
 						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
 					data.Set("testImageRef", testImageRef)
@@ -84,7 +84,7 @@ func TestPush(t *testing.T) {
 				Description: "plain http with insecure",
 				Require:     test.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("pull", testutil.CommonImage)
+					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
 						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
 					data.Set("testImageRef", testImageRef)
@@ -103,7 +103,7 @@ func TestPush(t *testing.T) {
 			{
 				Description: "plain http with localhost",
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("pull", testutil.CommonImage)
+					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
 						"127.0.0.1", registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
 					data.Set("testImageRef", testImageRef)
@@ -118,7 +118,7 @@ func TestPush(t *testing.T) {
 				Description: "plain http with insecure, default port",
 				Require:     test.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("pull", testutil.CommonImage)
+					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s/%s:%s",
 						registryNoAuthHTTPDefault.IP.String(), data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
 					data.Set("testImageRef", testImageRef)
@@ -138,7 +138,7 @@ func TestPush(t *testing.T) {
 				Description: "with insecure, with login",
 				Require:     test.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("pull", testutil.CommonImage)
+					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
 						registryTokenAuthHTTPSRandom.IP.String(), registryTokenAuthHTTPSRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
 					data.Set("testImageRef", testImageRef)
@@ -161,7 +161,7 @@ func TestPush(t *testing.T) {
 				Description: "with hosts dir, with login",
 				Require:     test.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("pull", testutil.CommonImage)
+					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
 						registryTokenAuthHTTPSRandom.IP.String(), registryTokenAuthHTTPSRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
 					data.Set("testImageRef", testImageRef)
@@ -184,7 +184,7 @@ func TestPush(t *testing.T) {
 				Description: "non distributable artifacts",
 				Require:     test.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("pull", testutil.NonDistBlobImage)
+					helpers.Ensure("pull", "--quiet", testutil.NonDistBlobImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
 						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.NonDistBlobImage, ":")[1])
 					data.Set("testImageRef", testImageRef)
@@ -216,7 +216,7 @@ func TestPush(t *testing.T) {
 				Description: "non distributable artifacts (with)",
 				Require:     test.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("pull", testutil.NonDistBlobImage)
+					helpers.Ensure("pull", "--quiet", testutil.NonDistBlobImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
 						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.NonDistBlobImage, ":")[1])
 					data.Set("testImageRef", testImageRef)
@@ -251,7 +251,7 @@ func TestPush(t *testing.T) {
 					test.Not(nerdtest.Docker),
 				),
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("pull", testutil.UbuntuImage)
+					helpers.Ensure("pull", "--quiet", testutil.UbuntuImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
 						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.UbuntuImage, ":")[1])
 					data.Set("testImageRef", testImageRef)

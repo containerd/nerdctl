@@ -85,7 +85,7 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
 				data.Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.AlpineImage))
-				helpers.Ensure("pull", data.Get(ipfsImageURLKey))
+				helpers.Ensure("pull", "--quiet", data.Get(ipfsImageURLKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				if data.Get(ipfsImageURLKey) != "" {
@@ -103,7 +103,7 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 			Require:     nerdtest.Stargz,
 			Setup: func(data test.Data, helpers test.Helpers) {
 				data.Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.AlpineImage, "--estargz"))
-				helpers.Ensure("pull", data.Get(ipfsImageURLKey))
+				helpers.Ensure("pull", "--quiet", data.Get(ipfsImageURLKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				if data.Get(ipfsImageURLKey) != "" {

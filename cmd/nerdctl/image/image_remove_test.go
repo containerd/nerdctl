@@ -166,7 +166,7 @@ func TestRemove(t *testing.T) {
 			NoParallel:  true,
 			Require:     test.Not(test.Windows),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("pull", testutil.NginxAlpineImage)
+				helpers.Ensure("pull", "--quiet", testutil.NginxAlpineImage)
 				helpers.Ensure("create", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 				helpers.Ensure("rmi", testutil.NginxAlpineImage)
 			},

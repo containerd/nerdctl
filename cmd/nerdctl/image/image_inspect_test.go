@@ -87,9 +87,9 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 			nerdtest.Private,
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			helpers.Ensure("pull", "alpine")
-			helpers.Ensure("pull", "busybox")
-			helpers.Ensure("pull", "registry-1.docker.io/library/busybox")
+			helpers.Ensure("pull", "--quiet", "alpine")
+			helpers.Ensure("pull", "--quiet", "busybox")
+			helpers.Ensure("pull", "--quiet", "registry-1.docker.io/library/busybox")
 		},
 		SubTests: []*test.Case{
 			{

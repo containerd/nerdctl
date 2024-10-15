@@ -38,8 +38,8 @@ func TestImages(t *testing.T) {
 		Description: "TestImages",
 		Require:     test.Not(nerdtest.Docker),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			helpers.Ensure("pull", testutil.CommonImage)
-			helpers.Ensure("pull", testutil.NginxAlpineImage)
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+			helpers.Ensure("pull", "--quiet", testutil.NginxAlpineImage)
 		},
 		SubTests: []*test.Case{
 			{
@@ -127,7 +127,7 @@ func TestImagesFilter(t *testing.T) {
 		Description: "TestImagesFilter",
 		Require:     nerdtest.Build,
 		Setup: func(data test.Data, helpers test.Helpers) {
-			helpers.Ensure("pull", testutil.CommonImage)
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 			helpers.Ensure("tag", testutil.CommonImage, "taggedimage:one-fragment-one")
 			helpers.Ensure("tag", testutil.CommonImage, "taggedimage:two-fragment-two")
 

@@ -36,7 +36,7 @@ func TestImageConvert(t *testing.T) {
 			test.Not(nerdtest.Docker),
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			helpers.Ensure("pull", testutil.CommonImage)
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 		},
 		SubTests: []*test.Case{
 			{
@@ -111,7 +111,7 @@ func TestImageConvertNydusVerify(t *testing.T) {
 			nerdtest.Rootful,
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			helpers.Ensure("pull", testutil.CommonImage)
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 			base := testutil.NewBase(t)
 			registry = testregistry.NewWithNoAuth(base, 0, false)
 			data.Set(remoteImageKey, fmt.Sprintf("%s:%d/nydusd-image:test", "localhost", registry.Port))
