@@ -24,23 +24,24 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
 func TestIssue3425(t *testing.T) {
 	nerdtest.Setup()
 
-	var registry *testregistry.RegistryServer
+	var reg *registry.Server
 
 	testCase := &test.Case{
+		Require: nerdtest.Registry,
 		Setup: func(data test.Data, helpers test.Helpers) {
-			base := testutil.NewBase(t)
-			registry = testregistry.NewWithNoAuth(base, 0, false)
+			reg = nerdtest.RegistryWithNoAuth(data, helpers, 0, false)
+			reg.Setup(data, helpers)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
-			if registry != nil {
-				registry.Cleanup(nil)
+			if reg != nil {
+				reg.Cleanup(data, helpers)
 			}
 		},
 		SubTests: []*test.Case{
@@ -52,14 +53,14 @@ func TestIssue3425(t *testing.T) {
 					helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage)
 					helpers.Ensure("image", "rm", "-f", testutil.CommonImage)
 					helpers.Ensure("image", "pull", testutil.CommonImage)
-					helpers.Ensure("tag", testutil.CommonImage, fmt.Sprintf("localhost:%d/%s", registry.Port, data.Identifier()))
+					helpers.Ensure("tag", testutil.CommonImage, fmt.Sprintf("localhost:%d/%s", reg.Port, data.Identifier()))
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rm", "-f", data.Identifier())
-					helpers.Anyhow("rmi", "-f", fmt.Sprintf("localhost:%d/%s", registry.Port, data.Identifier()))
+					helpers.Anyhow("rmi", "-f", fmt.Sprintf("localhost:%d/%s", reg.Port, data.Identifier()))
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Command("push", fmt.Sprintf("localhost:%d/%s", registry.Port, data.Identifier()))
+					return helpers.Command("push", fmt.Sprintf("localhost:%d/%s", reg.Port, data.Identifier()))
 				},
 				Expected: test.Expects(0, nil, nil),
 			},
@@ -71,14 +72,14 @@ func TestIssue3425(t *testing.T) {
 					helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "touch", "/something")
 					helpers.Ensure("image", "rm", "-f", testutil.CommonImage)
 					helpers.Ensure("image", "pull", testutil.CommonImage)
-					helpers.Ensure("commit", data.Identifier(), fmt.Sprintf("localhost:%d/%s", registry.Port, data.Identifier()))
+					helpers.Ensure("commit", data.Identifier(), fmt.Sprintf("localhost:%d/%s", reg.Port, data.Identifier()))
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rm", "-f", data.Identifier())
-					helpers.Anyhow("rmi", "-f", fmt.Sprintf("localhost:%d/%s", registry.Port, data.Identifier()))
+					helpers.Anyhow("rmi", "-f", fmt.Sprintf("localhost:%d/%s", reg.Port, data.Identifier()))
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Command("push", fmt.Sprintf("localhost:%d/%s", registry.Port, data.Identifier()))
+					return helpers.Command("push", fmt.Sprintf("localhost:%d/%s", reg.Port, data.Identifier()))
 				},
 				Expected: test.Expects(0, nil, nil),
 			},
