@@ -45,10 +45,14 @@ var privilegedWithoutDevicesOpts = []oci.SpecOpts{
 	oci.WithNewPrivileges,
 }
 
+const (
+	systemPathsUnconfined = "unconfined"
+)
+
 func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([]oci.SpecOpts, error) {
 	for k := range securityOptsMap {
 		switch k {
-		case "seccomp", "apparmor", "no-new-privileges", "privileged-without-host-devices":
+		case "seccomp", "apparmor", "no-new-privileges", "systempaths", "privileged-without-host-devices":
 		default:
 			log.L.Warnf("unknown security-opt: %q", k)
 		}
@@ -97,6 +101,13 @@ func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([
 
 	if !nnp {
 		opts = append(opts, oci.WithNewPrivileges)
+	}
+
+	if value, ok := securityOptsMap["systempaths"]; ok && value == systemPathsUnconfined {
+		opts = append(opts, oci.WithMaskedPaths(nil))
+		opts = append(opts, oci.WithReadonlyPaths(nil))
+	} else if ok && value != systemPathsUnconfined {
+		return nil, errors.New(`invalid security-opt "systempaths=unconfined"`)
 	}
 
 	privilegedWithoutHostDevices, err := maputil.MapBoolValueAsOpt(securityOptsMap, "privileged-without-host-devices")
