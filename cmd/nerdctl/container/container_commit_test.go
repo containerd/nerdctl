@@ -17,39 +17,64 @@
 package container
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestCommit(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	switch base.Info().CgroupDriver {
-	case "none", "":
-		t.Skip("requires cgroup (for pausing)")
-	}
-	testContainer := testutil.Identifier(t)
-	testImage := testutil.Identifier(t) + "-img"
-	defer base.Cmd("rm", "-f", testContainer).Run()
-	defer base.Cmd("rmi", testImage).Run()
+	testCase := nerdtest.Setup()
 
-	for _, pause := range []string{
-		"true",
-		"false",
-	} {
-		base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "infinity").AssertOK()
-		base.EnsureContainerStarted(testContainer)
-		base.Cmd("exec", testContainer, "sh", "-euxc", `echo hello-test-commit > /foo`).AssertOK()
-		base.Cmd(
-			"commit",
-			"-c", `CMD ["/foo"]`,
-			"-c", `ENTRYPOINT ["cat"]`,
-			fmt.Sprintf("--pause=%s", pause),
-			testContainer, testImage).AssertOK()
-		base.Cmd("run", "--rm", testImage).AssertOutExactly("hello-test-commit\n")
-		base.Cmd("rm", "-f", testContainer).Run()
-		base.Cmd("rmi", testImage).Run()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "with pause",
+			Require:     nerdtest.CGroup,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("rmi", "-f", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+				helpers.Ensure("exec", data.Identifier(), "sh", "-euxc", `echo hello-test-commit > /foo`)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				helpers.Ensure(
+					"commit",
+					"-c", `CMD ["/foo"]`,
+					"-c", `ENTRYPOINT ["cat"]`,
+					"--pause=true",
+					data.Identifier(), data.Identifier())
+				return helpers.Command("run", "--rm", data.Identifier())
+			},
+			Expected: test.Expects(0, nil, test.Equals("hello-test-commit\n")),
+		},
+		{
+			Description: "no pause",
+			Require:     test.Not(test.Windows),
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("rmi", "-f", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+				helpers.Ensure("exec", data.Identifier(), "sh", "-euxc", `echo hello-test-commit > /foo`)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				helpers.Ensure(
+					"commit",
+					"-c", `CMD ["/foo"]`,
+					"-c", `ENTRYPOINT ["cat"]`,
+					"--pause=false",
+					data.Identifier(), data.Identifier())
+				return helpers.Command("run", "--rm", data.Identifier())
+			},
+			Expected: test.Expects(0, nil, test.Equals("hello-test-commit\n")),
+		},
 	}
+
+	testCase.Run(t)
 }

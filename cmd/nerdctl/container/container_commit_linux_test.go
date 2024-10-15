@@ -21,76 +21,70 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-/*
-This test below is meant to assert that https://github.com/containerd/nerdctl/issues/827 is NOT fixed.
-Obviously, once we fix the issue, it should be replaced by something that assert it works.
-Unfortunately, this is flaky.
-It will regularly succeed or fail, making random PR fail the Kube check.
-*/
+func TestKubeCommitSave(t *testing.T) {
+	testCase := nerdtest.Setup()
 
-func TestKubeCommitPush(t *testing.T) {
-	t.Parallel()
+	testCase.Require = nerdtest.OnlyKubernetes
 
-	base := testutil.NewBaseForKubernetes(t)
-	tID := testutil.Identifier(t)
-
-	var containerID string
-	// var registryIP string
-
-	setup := func() {
-		testutil.KubectlHelper(base, "run", "--image", testutil.CommonImage, tID, "--", "sleep", "Inf").
-			AssertOK()
-
-		testutil.KubectlHelper(base, "wait", "pod", tID, "--for=condition=ready", "--timeout=1m").
-			AssertOK()
-
-		testutil.KubectlHelper(base, "exec", tID, "--", "mkdir", "-p", "/tmp/whatever").
-			AssertOK()
-
-		cmd := testutil.KubectlHelper(base, "get", "pods", tID, "-o", "jsonpath={ .status.containerStatuses[0].containerID }")
-		cmd.Run()
-		containerID = strings.TrimPrefix(cmd.Out(), "containerd://")
-
-		// This below is missing configuration to allow for plain http communication
-		// This is left here for future work to successfully start a registry usable in the cluster
-		/*
-			// Start a registry
-					testutil.KubectlHelper(base, "run", "--port", "5000", "--image", testutil.RegistryImageStable, "testregistry").
-						AssertOK()
-
-					testutil.KubectlHelper(base, "wait", "pod", "testregistry", "--for=condition=ready", "--timeout=1m").
-						AssertOK()
-
-					cmd = testutil.KubectlHelper(base, "get", "pods", tID, "-o", "jsonpath={ .status.hostIPs[0].ip }")
-					cmd.Run()
-					registryIP = cmd.Out()
-
-					cmd = testutil.KubectlHelper(base, "apply", "-f", "-", fmt.Sprintf(`apiVersion: v1
-				kind: ConfigMap
-				metadata:
-					name: local-registry
-					namespace: nerdctl-test
-				data:
-					localRegistryHosting.v1: |
-					host: "%s:5000"
-					help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
-			`, registryIP))
-		*/
-
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		containerID := ""
+		// NOTE: kubectl namespaces are not the same as containerd namespaces.
+		// We still want kube test objects segregated in their own Kube API namespace.
+		nerdtest.KubeCtlCommand(helpers, "create", "namespace", "nerdctl-test-k8s").Run(&test.Expected{})
+		nerdtest.KubeCtlCommand(helpers, "run", "--image", testutil.CommonImage, data.Identifier(), "--", "sleep", "Inf").Run(&test.Expected{})
+		nerdtest.KubeCtlCommand(helpers, "wait", "pod", data.Identifier(), "--for=condition=ready", "--timeout=1m").Run(&test.Expected{})
+		nerdtest.KubeCtlCommand(helpers, "exec", data.Identifier(), "--", "mkdir", "-p", "/tmp/whatever").Run(&test.Expected{})
+		nerdtest.KubeCtlCommand(helpers, "get", "pods", data.Identifier(), "-o", "jsonpath={ .status.containerStatuses[0].containerID }").Run(&test.Expected{
+			Output: func(stdout string, info string, t *testing.T) {
+				containerID = strings.TrimPrefix(stdout, "containerd://")
+			},
+		})
+		data.Set("containerID", containerID)
 	}
 
-	tearDown := func() {
-		testutil.KubectlHelper(base, "delete", "pod", "--all").Run()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		nerdtest.KubeCtlCommand(helpers, "delete", "pod", "--all").Run(nil)
 	}
 
-	tearDown()
-	t.Cleanup(tearDown)
-	setup()
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		helpers.Ensure("commit", data.Get("containerID"), "testcommitsave")
+		return helpers.Command("save", "testcommitsave")
+	}
 
-	t.Run("test commit / push on Kube (https://github.com/containerd/nerdctl/issues/827)", func(t *testing.T) {
-		base.Cmd("commit", containerID, "testcommitsave").AssertOK()
-		base.Cmd("save", "testcommitsave").AssertOK()
-	})
+	testCase.Expected = test.Expects(0, nil, nil)
+
+	testCase.Run(t)
+
+	// This below is missing configuration to allow for plain http communication
+	// This is left here for future work to successfully start a registry usable in the cluster
+	/*
+		// Start a registry
+				nerdtest.KubeCtlCommand(helpers, "run", "--port", "5000", "--image", testutil.RegistryImageStable, "testregistry").
+					Run(&test.Expected{})
+
+				nerdtest.KubeCtlCommand(helpers, "wait", "pod", "testregistry", "--for=condition=ready", "--timeout=1m").
+					AssertOK()
+
+				cmd = nerdtest.KubeCtlCommand(helpers, "get", "pods", tID, "-o", "jsonpath={ .status.hostIPs[0].ip }")
+				cmd.Run(&test.Expected{
+					Output: func(stdout string, info string, t *testing.T) {
+						registryIP = stdout
+					},
+				})
+
+				cmd = nerdtest.KubeCtlCommand(helpers, "apply", "-f", "-", fmt.Sprintf(`apiVersion: v1
+			kind: ConfigMap
+			metadata:
+				name: local-registry
+				namespace: nerdctl-test
+			data:
+				localRegistryHosting.v1: |
+				host: "%s:5000"
+				help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
+		`, registryIP))
+	*/
 }
