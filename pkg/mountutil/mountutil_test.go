@@ -34,4 +34,5 @@ func (mv *MockVolumeStore) CreateWithoutLock(name string, labels []string) (*nat
 	return &native.Volume{Name: "test_volume", Mountpoint: "/test/volume"}, nil
 }
 
+//nolint:unused
 var mockVolumeStore = &MockVolumeStore{}
