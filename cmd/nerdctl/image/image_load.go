@@ -94,5 +94,6 @@ func loadAction(cmd *cobra.Command, _ []string) error {
 	}
 	defer cancel()
 
-	return load.Load(ctx, client, options)
+	_, err = load.FromArchive(ctx, client, options)
+	return err
 }
