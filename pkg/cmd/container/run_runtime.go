@@ -18,6 +18,7 @@ package container
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -48,6 +49,9 @@ func generateRuntimeCOpts(cgroupManager, runtimeStr string) ([]containerd.NewCon
 				}
 				runtimeOpts = nil
 			}
+		} else if filepath.IsAbs(runtimeStr) {
+			// runtimeStr is absolute path to runtime binary
+			runtime = runtimeStr
 		} else {
 			// runtimeStr is a runc binary
 			runcOpts.BinaryName = runtimeStr
