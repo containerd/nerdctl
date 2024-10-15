@@ -57,7 +57,7 @@ func TestImageEncryptJWE(t *testing.T) {
 			base := testutil.NewBase(t)
 			registry = testregistry.NewWithNoAuth(base, 0, false)
 			keyPair = testhelpers.NewJWEKeyPair(t)
-			helpers.Ensure("pull", testutil.CommonImage)
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 			encryptImageRef := fmt.Sprintf("127.0.0.1:%d/%s:encrypted", registry.Port, data.Identifier())
 			helpers.Ensure("image", "encrypt", "--recipient=jwe:"+keyPair.Pub, testutil.CommonImage, encryptImageRef)
 			inspector := helpers.Capture("image", "inspect", "--mode=native", "--format={{len .Index.Manifests}}", encryptImageRef)
@@ -71,7 +71,7 @@ func TestImageEncryptJWE(t *testing.T) {
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 			helpers.Fail("pull", data.Get(remoteImageKey))
-			helpers.Ensure("pull", "--unpack=false", data.Get(remoteImageKey))
+			helpers.Ensure("pull", "--quiet", "--unpack=false", data.Get(remoteImageKey))
 			helpers.Fail("image", "decrypt", "--key="+keyPair.Pub, data.Get(remoteImageKey), data.Identifier("decrypted")) // decryption needs prv key, not pub key
 			return helpers.Command("image", "decrypt", "--key="+keyPair.Prv, data.Get(remoteImageKey), data.Identifier("decrypted"))
 		},

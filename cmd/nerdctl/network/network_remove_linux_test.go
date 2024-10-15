@@ -31,7 +31,7 @@ import (
 func TestNetworkRemove(t *testing.T) {
 	testCase := nerdtest.Setup()
 
-	testCase.Require = nerdtest.RootFul
+	testCase.Require = nerdtest.Rootful
 
 	testCase.SubTests = []*test.Case{
 		{

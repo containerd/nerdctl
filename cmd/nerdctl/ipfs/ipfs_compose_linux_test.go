@@ -71,7 +71,6 @@ func TestIPFSCompNoBuild(t *testing.T) {
 		if ipfsRegistry != nil {
 			ipfsRegistry.Cleanup(data, helpers)
 		}
-		// Speeding up repeat tests...
 		helpers.Anyhow("rmi", "-f", testutil.WordpressImage)
 		helpers.Anyhow("rmi", "-f", testutil.MariaDBImage)
 	}
@@ -91,13 +90,15 @@ func subtestTestIPFSCompNoB(t *testing.T, stargz bool, byAddr bool) *test.Case {
 
 	testCase.Description += "with"
 
-	if stargz {
-		testCase.Description += "-stargz"
+	if !stargz {
+		testCase.Description += "-no"
 	}
+	testCase.Description += "-stargz"
 
-	if byAddr {
-		testCase.Description += "-byAddr"
+	if !byAddr {
+		testCase.Description += "-no"
 	}
+	testCase.Description += "-byAddr"
 
 	if stargz {
 		testCase.Require = nerdtest.Stargz
