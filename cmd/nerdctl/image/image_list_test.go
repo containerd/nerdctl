@@ -18,6 +18,7 @@ package image
 
 import (
 	"fmt"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -117,6 +118,13 @@ func TestImages(t *testing.T) {
 		},
 	}
 
+	if runtime.GOOS == "windows" {
+		testCase.Require = test.Require(
+			testCase.Require,
+			nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3524"),
+		)
+	}
+
 	testCase.Run(t)
 }
 
@@ -179,7 +187,7 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				},
 			},
 			{
-				Description: "label=foo=bar label=version=0.1",
+				Description: "label=foo=bar label=version=0.2",
 				Command:     test.Command("images", "--filter", "label=foo=bar", "--filter", "label=version=0.2"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
@@ -189,7 +197,6 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 			},
 			{
 				Description: "label=version",
-				Require:     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3512"),
 				Command:     test.Command("images", "--filter", "label=version"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{

@@ -73,6 +73,7 @@ func TestStopStart(t *testing.T) {
 
 func TestStopWithStopSignal(t *testing.T) {
 	t.Parallel()
+	// This is flaky with Docker
 	base := testutil.NewBase(t)
 	testContainerName := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", testContainerName).Run()
