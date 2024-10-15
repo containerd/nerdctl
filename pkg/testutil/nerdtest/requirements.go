@@ -64,8 +64,13 @@ var OnlyIPv6 = &test.Requirement{
 var OnlyKubernetes = &test.Requirement{
 	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
 		helpers.Write(kubernetes, only)
+		if _, err := exec.LookPath("kubectl"); err != nil {
+			return false, fmt.Sprintf("kubectl is not in the path: %+v", err)
+		}
 		ret = environmentHasKubernetes()
-		if !ret {
+		if ret {
+			helpers.Write(Namespace, "k8s.io")
+		} else {
 			mess = "runner skips Kubernetes compatible tests in the non-Kubernetes environment"
 		}
 		return ret, mess

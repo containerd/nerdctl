@@ -35,6 +35,14 @@ func BuildCtlCommand(helpers test.Helpers, args ...string) test.TestableCommand 
 	return cmd
 }
 
+func KubeCtlCommand(helpers test.Helpers, args ...string) test.TestableCommand {
+	kubectl, _ := exec.LookPath("kubectl")
+	cmd := helpers.Custom(kubectl)
+	cmd.WithArgs("--namespace=nerdctl-test-k8s")
+	cmd.WithArgs(args...)
+	return cmd
+}
+
 func RegistryWithTokenAuth(data test.Data, helpers test.Helpers, user, pass string, port int, tls bool) (*registry.Server, *registry.TokenAuthServer) {
 	rca := ca.New(data, helpers.T())
 	as := registry.NewCesantaAuthServer(data, helpers, rca, 0, user, pass, tls)
