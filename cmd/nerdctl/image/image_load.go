@@ -23,7 +23,7 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
-	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil/load"
 )
 
 func NewLoadCommand() *cobra.Command {
@@ -94,5 +94,5 @@ func loadAction(cmd *cobra.Command, _ []string) error {
 	}
 	defer cancel()
 
-	return image.Load(ctx, client, options)
+	return load.Load(ctx, client, options)
 }
