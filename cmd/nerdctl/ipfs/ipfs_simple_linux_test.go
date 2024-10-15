@@ -55,7 +55,7 @@ func TestIPFSSimple(t *testing.T) {
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				if data.Get(mainImageCIDKey) != "" {
-					helpers.Anyhow("rmi", data.Get(mainImageCIDKey))
+					helpers.Anyhow("rmi", "-f", data.Get(mainImageCIDKey))
 				}
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -76,7 +76,7 @@ func TestIPFSSimple(t *testing.T) {
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				if data.Get(mainImageCIDKey) != "" {
-					helpers.Anyhow("rmi", data.Get(mainImageCIDKey))
+					helpers.Anyhow("rmi", "-f", data.Get(mainImageCIDKey))
 				}
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -105,10 +105,10 @@ func TestIPFSSimple(t *testing.T) {
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", data.Identifier("commit-container"))
-				helpers.Anyhow("rmi", data.Identifier("commit-image"))
+				helpers.Anyhow("rmi", "-f", data.Identifier("commit-image"))
 				if data.Get(mainImageCIDKey) != "" {
-					helpers.Anyhow("rmi", data.Get(mainImageCIDKey))
-					helpers.Anyhow("rmi", data.Get(transformedImageCIDKey))
+					helpers.Anyhow("rmi", "-f", data.Get(mainImageCIDKey))
+					helpers.Anyhow("rmi", "-f", data.Get(transformedImageCIDKey))
 				}
 			},
 
@@ -143,10 +143,10 @@ func TestIPFSSimple(t *testing.T) {
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", data.Identifier("commit-container"))
-				helpers.Anyhow("rmi", data.Identifier("commit-image"))
+				helpers.Anyhow("rmi", "-f", data.Identifier("commit-image"))
 				if data.Get(mainImageCIDKey) != "" {
-					helpers.Anyhow("rmi", data.Get(mainImageCIDKey))
-					helpers.Anyhow("rmi", data.Get(transformedImageCIDKey))
+					helpers.Anyhow("rmi", "-f", data.Get(mainImageCIDKey))
+					helpers.Anyhow("rmi", "-f", data.Get(transformedImageCIDKey))
 				}
 			},
 

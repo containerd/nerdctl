@@ -89,7 +89,7 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				if data.Get(ipfsImageURLKey) != "" {
-					helpers.Anyhow("rmi", data.Get(ipfsImageURLKey))
+					helpers.Anyhow("rmi", "-f", data.Get(ipfsImageURLKey))
 				}
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -107,7 +107,7 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				if data.Get(ipfsImageURLKey) != "" {
-					helpers.Anyhow("rmi", data.Get(ipfsImageURLKey))
+					helpers.Anyhow("rmi", "-f", data.Get(ipfsImageURLKey))
 				}
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -120,9 +120,9 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 			NoParallel:  true,
 			Require:     nerdtest.Build,
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rmi", data.Identifier("built-image"))
+				helpers.Anyhow("rmi", "-f", data.Identifier("built-image"))
 				if data.Get(ipfsImageURLKey) != "" {
-					helpers.Anyhow("rmi", data.Get(ipfsImageURLKey))
+					helpers.Anyhow("rmi", "-f", data.Get(ipfsImageURLKey))
 				}
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {

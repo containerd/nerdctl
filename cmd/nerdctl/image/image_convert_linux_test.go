@@ -42,7 +42,7 @@ func TestImageConvert(t *testing.T) {
 			{
 				Description: "esgz",
 				Cleanup: func(data test.Data, helpers test.Helpers) {
-					helpers.Anyhow("rmi", data.Identifier("converted-image"))
+					helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("image", "convert", "--oci", "--estargz",
@@ -56,7 +56,7 @@ func TestImageConvert(t *testing.T) {
 					test.Binary("nydus-image"),
 				),
 				Cleanup: func(data test.Data, helpers test.Helpers) {
-					helpers.Anyhow("rmi", data.Identifier("converted-image"))
+					helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("image", "convert", "--oci", "--nydus",
@@ -67,7 +67,7 @@ func TestImageConvert(t *testing.T) {
 			{
 				Description: "zstd",
 				Cleanup: func(data test.Data, helpers test.Helpers) {
-					helpers.Anyhow("rmi", data.Identifier("converted-image"))
+					helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("image", "convert", "--oci", "--zstd", "--zstd-compression-level", "3",
@@ -78,7 +78,7 @@ func TestImageConvert(t *testing.T) {
 			{
 				Description: "zstdchunked",
 				Cleanup: func(data test.Data, helpers test.Helpers) {
-					helpers.Anyhow("rmi", data.Identifier("converted-image"))
+					helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("image", "convert", "--oci", "--zstdchunked", "--zstdchunked-compression-level", "3",
@@ -120,10 +120,10 @@ func TestImageConvertNydusVerify(t *testing.T) {
 			helpers.Ensure("push", data.Get(remoteImageKey))
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
-			helpers.Anyhow("rmi", data.Identifier("converted-image"))
+			helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
 			if registry != nil {
 				registry.Cleanup(nil)
-				helpers.Anyhow("rmi", data.Get(remoteImageKey))
+				helpers.Anyhow("rmi", "-f", data.Get(remoteImageKey))
 			}
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
