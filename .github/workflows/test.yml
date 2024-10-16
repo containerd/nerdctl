@@ -267,6 +267,11 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
           check-latest: true
+      - name: Enable CDI in the Docker daemon.
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{ "features": {"cdi": true} }' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
       - name: "Print docker info"
         run: |
           set -eux -o pipefail

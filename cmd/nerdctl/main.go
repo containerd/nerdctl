@@ -183,6 +183,7 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, 
 	// Experimental enable experimental feature, see in https://github.com/containerd/nerdctl/blob/main/docs/experimental.md
 	helpers.AddPersistentBoolFlag(rootCmd, "experimental", nil, nil, cfg.Experimental, "NERDCTL_EXPERIMENTAL", "Control experimental: https://github.com/containerd/nerdctl/blob/main/docs/experimental.md")
 	helpers.AddPersistentStringFlag(rootCmd, "host-gateway-ip", nil, nil, nil, aliasToBeInherited, cfg.HostGatewayIP, "NERDCTL_HOST_GATEWAY_IP", "IP address that the special 'host-gateway' string in --add-host resolves to. Defaults to the IP address of the host. It has no effect without setting --add-host")
+	rootCmd.PersistentFlags().StringSlice("cdi-spec-dirs", cfg.CDISpecDirs, "The directories to search for CDI spec files. Defaults to /etc/cdi,/var/run/cdi")
 	return aliasToBeInherited, nil
 }
 
