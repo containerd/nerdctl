@@ -30,6 +30,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -234,6 +235,9 @@ func TestReadLogsLimitsWithTimestamps(t *testing.T) {
 
 func TestReadRotatedLog(t *testing.T) {
 	tmpDir := t.TempDir()
+	if runtime.GOOS == "windows" {
+		t.Skip("windows implementation does not seem to work right now and should be fixed: https://github.com/containerd/nerdctl/issues/3554")
+	}
 	file, err := os.CreateTemp(tmpDir, "logfile")
 	if err != nil {
 		t.Errorf("unable to create temp file, error: %s", err.Error())

@@ -18,6 +18,7 @@ package builder
 
 import (
 	"reflect"
+	"runtime"
 	"testing"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
@@ -211,6 +212,10 @@ func TestParseBuildctlArgsForOCILayout(t *testing.T) {
 			expectedArgs:  []string{},
 			expectedErr:   "open /tmp/oci-layout/index.json: no such file or directory",
 		},
+	}
+
+	if runtime.GOOS == "windows" {
+		tests[1].expectedErr = "open D:\\tmp\\oci-layout\\index.json: The system cannot find the path specified."
 	}
 
 	for _, test := range tests {
