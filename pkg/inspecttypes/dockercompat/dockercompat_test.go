@@ -68,7 +68,7 @@ func TestContainerFromNative(t *testing.T) {
 			expected: &Container{
 				Created:        "0001-01-01T00:00:00Z",
 				Platform:       runtime.GOOS,
-				ResolvConfPath: tempStateDir + "/resolv.conf",
+				ResolvConfPath: filepath.Join(tempStateDir, "resolv.conf"),
 				State: &ContainerState{
 					Status:     "running",
 					Running:    true,
