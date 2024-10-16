@@ -17,6 +17,7 @@
 package serviceparser
 
 import (
+	"runtime"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -30,6 +31,11 @@ func lastOf(ss []string) string {
 
 func TestParseBuild(t *testing.T) {
 	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("test is not compatible with windows")
+	}
+
 	const dockerComposeYAML = `
 services:
   foo:
