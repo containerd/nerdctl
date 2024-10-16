@@ -24,7 +24,7 @@ import (
 // See https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
 // https://stackoverflow.com/questions/1976007/what-characters-are-forbidden-in-windows-and-linux-directory-names
 var (
-	disallowedKeywords = regexp.MustCompile(`(?i)^(con|prn|nul|aux|com[1-9¹²³]|lpt[1-9¹²³])([.].*)?`)
+	disallowedKeywords = regexp.MustCompile(`(?i)^(con|prn|nul|aux|com[1-9¹²³]|lpt[1-9¹²³])([.].*)?$`)
 	reservedCharacters = regexp.MustCompile(`[\x{0}-\x{1f}<>:"/\\|?*]`)
 )
 
