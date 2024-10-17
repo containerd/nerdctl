@@ -45,6 +45,7 @@ type GenericCommand struct {
 	envBlackList []string
 	stdin        io.Reader
 	async        bool
+	pty          bool
 	timeout      time.Duration
 	workingDir   string
 
@@ -65,6 +66,10 @@ func (gc *GenericCommand) WithWrapper(binary string, args ...string) {
 	gc.helperArgs = args
 }
 
+func (gc *GenericCommand) WithPseudoTTY() {
+	gc.pty = true
+}
+
 func (gc *GenericCommand) WithStdin(r io.Reader) {
 	gc.stdin = r
 }
@@ -77,6 +82,7 @@ func (gc *GenericCommand) WithCwd(path string) {
 // Primitives (gc.timeout) is here, it is just a matter of exposing a WithTimeout method
 // - UX to be decided
 // - validate use case: would we ever need this?
+
 func (gc *GenericCommand) Run(expect *Expected) {
 	if gc.t != nil {
 		gc.t.Helper()
@@ -90,6 +96,16 @@ func (gc *GenericCommand) Run(expect *Expected) {
 	} else {
 		iCmdCmd := gc.boot()
 		env = iCmdCmd.Env
+
+		if gc.pty {
+			pty, tty, _ := Open()
+			iCmdCmd.Stdin = tty
+			iCmdCmd.Stdout = tty
+			iCmdCmd.Stderr = tty
+			defer pty.Close()
+			defer tty.Close()
+		}
+
 		// Run it
 		result = icmd.RunCmd(iCmdCmd)
 	}
