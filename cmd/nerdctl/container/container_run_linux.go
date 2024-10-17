@@ -22,8 +22,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/containerd/v2/pkg/cap"
-
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 )
 
 func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -34,11 +32,4 @@ func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 		candidates = append(candidates, s)
 	}
 	return candidates, cobra.ShellCompDirectiveNoFileComp
-}
-
-func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	if len(args) == 0 {
-		return completion.ImageNames(cmd)
-	}
-	return nil, cobra.ShellCompDirectiveNoFileComp
 }

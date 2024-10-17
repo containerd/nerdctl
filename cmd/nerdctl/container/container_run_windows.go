@@ -24,7 +24,3 @@ func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]s
 	candidates := []string{}
 	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
-
-func runShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return nil, cobra.ShellCompDirectiveNoFileComp
-}
