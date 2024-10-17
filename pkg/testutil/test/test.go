@@ -97,6 +97,8 @@ type TestableCommand interface {
 	WithArgs(args ...string)
 	// WithWrapper allows wrapping a command with another command (for example: `time`, `unbuffer`)
 	WithWrapper(binary string, args ...string)
+	// WithPseudoTTY
+	WithPseudoTTY()
 	// WithStdin allows passing a reader to be used for stdin for the command
 	WithStdin(r io.Reader)
 	// WithCwd allows specifying the working directory for the command
