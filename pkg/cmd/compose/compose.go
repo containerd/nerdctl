@@ -35,14 +35,31 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/ipfs"
+	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/signutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
+//nolint:unused
+var locked *os.File
+
 // New returns a new *composer.Composer.
 func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, options composer.Options, stdout, stderr io.Writer) (*composer.Composer, error) {
+	// Compose right now cannot be made safe to use concurrently, as we shell out to nerdctl for multiple operations,
+	// preventing us from using the lock mechanisms from the API.
+	// This here imposes a global lock, effectively preventing multiple compose commands from being run in parallel and
+	// preventing some of the problems with concurrent execution.
+	// This should be removed once we have better, in-depth solutions to make this concurrency safe.
+	// Note that we do not close the lock explicitly. Instead, the lock will get released when the `locked` global
+	// variable will get collected and the file descriptor closed (eg: when the binary exits).
+	var err error
+	locked, err = lockutil.Lock(globalOptions.DataRoot)
+	if err != nil {
+		return nil, err
+	}
+
 	cniEnv, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath, netutil.WithNamespace(globalOptions.Namespace), netutil.WithDefaultNetwork())
 	if err != nil {
 		return nil, err
