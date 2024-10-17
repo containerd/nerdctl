@@ -43,7 +43,9 @@ const (
 	NginxAlpineImage            = "registry.k8s.io/e2e-test-images/nginx:1.14-2"
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
 
-	GolangImage = "fixme-test-using-this-image-is-disabled-on-windows"
+	GolangImage  = "fixme-test-using-this-image-is-disabled-on-windows"
+	BusyboxImage = "fixme-test-using-this-image-is-disabled-on-windows"
+	AlpineImage  = "fixme-test-using-this-image-is-disabled-on-windows"
 
 	// This error string is expected when attempting to connect to a TCP socket
 	// for a service which actively refuses the connection.
