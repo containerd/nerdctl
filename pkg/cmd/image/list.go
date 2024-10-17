@@ -47,7 +47,7 @@ import (
 )
 
 // ListCommandHandler `List` and print images matching filters in `options`.
-func ListCommandHandler(ctx context.Context, client *containerd.Client, options types.ImageListOptions) error {
+func ListCommandHandler(ctx context.Context, client *containerd.Client, options *types.ImageListOptions) error {
 	imageList, err := List(ctx, client, options.Filters, options.NameAndRefFilter)
 	if err != nil {
 		return err
@@ -126,7 +126,7 @@ type imagePrintable struct {
 	Platform string // nerdctl extension
 }
 
-func printImages(ctx context.Context, client *containerd.Client, imageList []images.Image, options types.ImageListOptions) error {
+func printImages(ctx context.Context, client *containerd.Client, imageList []images.Image, options *types.ImageListOptions) error {
 	w := options.Stdout
 	digestsFlag := options.Digests
 	if options.Format == "wide" {

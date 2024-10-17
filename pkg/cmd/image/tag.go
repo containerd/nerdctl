@@ -49,7 +49,7 @@ func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagO
 		return fmt.Errorf("%s: not found", options.Source)
 	}
 
-	target, err := referenceutil.ParseDockerRef(options.Target)
+	parsedReference, err := referenceutil.Parse(options.Target)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagO
 		return err
 	}
 
-	img.Name = target.String()
+	img.Name = parsedReference.String()
 	if _, err = imageService.Create(ctx, img); err != nil {
 		if errdefs.IsAlreadyExists(err) {
 			if err = imageService.Delete(ctx, img.Name); err != nil {

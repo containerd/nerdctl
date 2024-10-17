@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"reflect"
 
-	distributionref "github.com/distribution/reference"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
@@ -44,6 +43,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
 // EnsuredImage contains the image existed in containerd and its metadata.
@@ -61,7 +61,7 @@ type PullMode = string
 // GetExistingImage returns the specified image if exists in containerd. Return errdefs.NotFound() if not exists.
 func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotter, rawRef string, platform ocispec.Platform) (*EnsuredImage, error) {
 	var res *EnsuredImage
-	imagewalker := &imagewalker.ImageWalker{
+	imgwalker := &imagewalker.ImageWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found imagewalker.Found) error {
 			if res != nil {
@@ -89,7 +89,7 @@ func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 			return nil
 		},
 	}
-	count, err := imagewalker.Walk(ctx, rawRef)
+	count, err := imgwalker.Walk(ctx, rawRef)
 	if err != nil {
 		return nil, err
 	}
@@ -126,40 +126,38 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 		return nil, fmt.Errorf("image not available: %q", rawRef)
 	}
 
-	named, err := distributionref.ParseDockerRef(rawRef)
+	parsedReference, err := referenceutil.Parse(rawRef)
 	if err != nil {
 		return nil, err
 	}
-	ref := named.String()
-	refDomain := distributionref.Domain(named)
 
 	var dOpts []dockerconfigresolver.Opt
 	if options.GOptions.InsecureRegistry {
-		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", refDomain)
+		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", parsedReference.Domain)
 		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
 	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.GOptions.HostsDir))
-	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
+	resolver, err := dockerconfigresolver.New(ctx, parsedReference.Domain, dOpts...)
 	if err != nil {
 		return nil, err
 	}
 
-	img, err := PullImage(ctx, client, resolver, ref, options)
+	img, err := PullImage(ctx, client, resolver, parsedReference.String(), options)
 	if err != nil {
 		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused".
 		if !errors.Is(err, http.ErrSchemeMismatch) && !errutil.IsErrConnectionRefused(err) {
 			return nil, err
 		}
 		if options.GOptions.InsecureRegistry {
-			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
+			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", parsedReference.Domain)
 			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
-			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
+			resolver, err = dockerconfigresolver.New(ctx, parsedReference.Domain, dOpts...)
 			if err != nil {
 				return nil, err
 			}
-			return PullImage(ctx, client, resolver, ref, options)
+			return PullImage(ctx, client, resolver, parsedReference.String(), options)
 		}
-		log.G(ctx).WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
+		log.G(ctx).WithError(err).Errorf("server %q does not seem to support HTTPS", parsedReference.Domain)
 		log.G(ctx).Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
 		return nil, err
 
@@ -169,25 +167,23 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 
 // ResolveDigest resolves `rawRef` and returns its descriptor digest.
 func ResolveDigest(ctx context.Context, rawRef string, insecure bool, hostsDirs []string) (string, error) {
-	named, err := distributionref.ParseDockerRef(rawRef)
+	parsedReference, err := referenceutil.Parse(rawRef)
 	if err != nil {
 		return "", err
 	}
-	ref := named.String()
-	refDomain := distributionref.Domain(named)
 
 	var dOpts []dockerconfigresolver.Opt
 	if insecure {
-		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", refDomain)
+		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", parsedReference.Domain)
 		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 	}
 	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(hostsDirs))
-	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
+	resolver, err := dockerconfigresolver.New(ctx, parsedReference.Domain, dOpts...)
 	if err != nil {
 		return "", err
 	}
 
-	_, desc, err := resolver.Resolve(ctx, ref)
+	_, desc, err := resolver.Resolve(ctx, parsedReference.String())
 	if err != nil {
 		return "", err
 	}
@@ -362,20 +358,13 @@ func ReadImageConfig(ctx context.Context, img containerd.Image) (ocispec.Image, 
 func ParseRepoTag(imgName string) (string, string) {
 	log.L.Debugf("raw image name=%q", imgName)
 
-	ref, err := distributionref.ParseDockerRef(imgName)
+	parsedReference, err := referenceutil.Parse(imgName)
 	if err != nil {
 		log.L.WithError(err).Debugf("unparsable image name %q", imgName)
 		return "", ""
 	}
 
-	var tag string
-
-	if tagged, ok := ref.(distributionref.Tagged); ok {
-		tag = tagged.Tag()
-	}
-	repository := distributionref.FamiliarName(ref)
-
-	return repository, tag
+	return parsedReference.FamiliarName(), parsedReference.Tag
 }
 
 // ResourceUsage will return:

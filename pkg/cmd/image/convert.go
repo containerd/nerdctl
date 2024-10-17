@@ -57,17 +57,17 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 		return errors.New("src and target image need to be specified")
 	}
 
-	srcNamed, err := referenceutil.ParseAny(srcRawRef)
+	parsedReference, err := referenceutil.Parse(srcRawRef)
 	if err != nil {
 		return err
 	}
-	srcRef := srcNamed.String()
+	srcRef := parsedReference.String()
 
-	targetNamed, err := referenceutil.ParseDockerRef(targetRawRef)
+	parsedReference, err = referenceutil.Parse(targetRawRef)
 	if err != nil {
 		return err
 	}
-	targetRef := targetNamed.String()
+	targetRef := parsedReference.String()
 
 	platMC, err := platformutil.NewMatchComparer(options.AllPlatforms, options.Platforms)
 	if err != nil {

@@ -271,7 +271,12 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		if ensuredImage != nil {
 			imageRef = ensuredImage.Ref
 		}
-		options.Name = referenceutil.SuggestContainerName(imageRef, id)
+		parsedReference, err := referenceutil.Parse(imageRef)
+		// Ignore cases where the imageRef is ""
+		if err != nil && imageRef != "" {
+			return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
+		}
+		options.Name = parsedReference.SuggestContainerName(id)
 	}
 	if options.Name != "" {
 		containerNameStore, err = namestore.New(dataStore, options.GOptions.Namespace)

@@ -28,7 +28,6 @@ import (
 	"strconv"
 	"strings"
 
-	distributionref "github.com/distribution/reference"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -42,6 +41,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
@@ -235,19 +235,19 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 	}
 	if tags = strutil.DedupeStrSlice(options.Tag); len(tags) > 0 {
 		ref := tags[0]
-		named, err := distributionref.ParseNormalizedNamed(ref)
+		parsedReference, err := referenceutil.Parse(ref)
 		if err != nil {
 			return "", nil, false, "", nil, nil, err
 		}
-		output += ",name=" + distributionref.TagNameOnly(named).String()
+		output += ",name=" + parsedReference.String()
 
 		// pick the first tag and add it to output
 		for idx, tag := range tags {
-			named, err := distributionref.ParseNormalizedNamed(tag)
+			parsedReference, err = referenceutil.Parse(tag)
 			if err != nil {
 				return "", nil, false, "", nil, nil, err
 			}
-			tags[idx] = distributionref.TagNameOnly(named).String()
+			tags[idx] = parsedReference.String()
 		}
 	} else if len(tags) == 0 {
 		output = output + ",dangling-name-prefix=<none>"

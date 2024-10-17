@@ -40,17 +40,17 @@ func Crypt(ctx context.Context, client *containerd.Client, srcRawRef, targetRawR
 		return errors.New("src and target image need to be specified")
 	}
 
-	srcNamed, err := referenceutil.ParseAny(srcRawRef)
+	parsedRerefence, err := referenceutil.Parse(srcRawRef)
 	if err != nil {
 		return err
 	}
-	srcRef := srcNamed.String()
+	srcRef := parsedRerefence.String()
 
-	targetNamed, err := referenceutil.ParseDockerRef(targetRawRef)
+	parsedRerefence, err = referenceutil.Parse(targetRawRef)
 	if err != nil {
 		return err
 	}
-	targetRef := targetNamed.String()
+	targetRef := parsedRerefence.String()
 
 	platMC, err := platformutil.NewMatchComparer(options.AllPlatforms, options.Platforms)
 	if err != nil {

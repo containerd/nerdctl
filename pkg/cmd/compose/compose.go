@@ -98,11 +98,11 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 	options.VolumeExists = volStore.Exists
 
 	options.ImageExists = func(ctx context.Context, rawRef string) (bool, error) {
-		refNamed, err := referenceutil.ParseAny(rawRef)
+		parsedReference, err := referenceutil.Parse(rawRef)
 		if err != nil {
 			return false, err
 		}
-		ref := refNamed.String()
+		ref := parsedReference.String()
 		if _, err := client.ImageService().Get(ctx, ref); err != nil {
 			if errors.Is(err, errdefs.ErrNotFound) {
 				return false, nil
@@ -133,8 +133,12 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 			Stderr:          stderr,
 		}
 
-		// IPFS reference
-		if scheme, ref, err := referenceutil.ParseIPFSRefWithScheme(imageName); err == nil {
+		parsedReference, err := referenceutil.Parse(imageName)
+		if err != nil {
+			return err
+		}
+
+		if parsedReference.Protocol != "" {
 			var ipfsPath string
 			if ipfsAddress := options.IPFSAddress; ipfsAddress != "" {
 				dir, err := os.MkdirTemp("", "apidirtmp")
@@ -147,7 +151,7 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 				}
 				ipfsPath = dir
 			}
-			_, err = ipfs.EnsureImage(ctx, client, scheme, ref, ipfsPath, imgPullOpts)
+			_, err = ipfs.EnsureImage(ctx, client, string(parsedReference.Protocol), parsedReference.String(), ipfsPath, imgPullOpts)
 			return err
 		}
 

@@ -23,8 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/distribution/reference"
-
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/log"
@@ -39,22 +37,16 @@ import (
 
 func inspectIdentifier(ctx context.Context, client *containerd.Client, identifier string) ([]images.Image, string, string, error) {
 	// Figure out what we have here - digest, tag, name
-	parsedIdentifier, err := referenceutil.ParseAnyReference(identifier)
+	parsedReference, err := referenceutil.Parse(identifier)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("invalid identifier %s: %w", identifier, err)
+		return nil, "", "", err
 	}
 	digest := ""
-	if identifierDigest, hasDigest := parsedIdentifier.(reference.Digested); hasDigest {
-		digest = identifierDigest.Digest().String()
+	if parsedReference.Digest != "" {
+		digest = parsedReference.Digest.String()
 	}
-	name := ""
-	if identifierName, hasName := parsedIdentifier.(reference.Named); hasName {
-		name = identifierName.Name()
-	}
-	tag := "latest"
-	if identifierTag, hasTag := parsedIdentifier.(reference.Tagged); hasTag && identifierTag.Tag() != "" {
-		tag = identifierTag.Tag()
-	}
+	name := parsedReference.Name()
+	tag := parsedReference.Tag
 
 	// Initialize filters
 	var filters []string
@@ -136,26 +128,26 @@ func Inspect(ctx context.Context, client *containerd.Client, identifiers []strin
 			}
 
 			// If dockercompat: does the candidate have a name? Get it if so
-			candidateRef, err := referenceutil.ParseAnyReference(candidateNativeImage.Image.Name)
+			parsedReference, err := referenceutil.Parse(candidateNativeImage.Image.Name)
 			if err != nil {
 				log.G(ctx).WithError(err).WithField("name", candidateNativeImage.Image.Name).Error("the found image has an unparsable name")
 				continue
 			}
-			parsedCandidateNameTag, candidateHasAName := candidateRef.(reference.NamedTagged)
 
 			// If we were ALSO asked for a specific name on top of the digest, we need to make sure we keep only the image with that name
 			if requestedName != "" {
 				// If the candidate did not have a name, then we should ignore this one and continue
-				if !candidateHasAName {
+				if parsedReference.Name() == "" {
 					continue
 				}
 
 				// Otherwise, the candidate has a name. If it is the one we want, store it and continue, otherwise, fall through
-				candidateTag := parsedCandidateNameTag.Tag()
-				if candidateTag == "" {
-					candidateTag = "latest"
+				candidateTag := parsedReference.Tag
+				// If the name had a digest, an empty tag is not normalized to latest, so, account for that here
+				if requestedTag == "" {
+					requestedTag = "latest"
 				}
-				if parsedCandidateNameTag.Name() == requestedName && candidateTag == requestedTag {
+				if parsedReference.Name() == requestedName && candidateTag == requestedTag {
 					validatedImage, err = dockercompat.ImageFromNative(candidateNativeImage)
 					if err != nil {
 						log.G(ctx).WithError(err).WithField("name", candidateNativeImage.Image.Name).Error("could not get a docker compat version of the native image")
@@ -175,9 +167,13 @@ func Inspect(ctx context.Context, client *containerd.Client, identifiers []strin
 			// - we got a request by digest, but we already had the image stored
 			// - we got a request by name, and the name of the candidate did not match the requested name
 			// Now, check if the candidate has a name - if it does, populate repoTags and repoDigests
-			if candidateHasAName {
-				repoTags = append(repoTags, fmt.Sprintf("%s:%s", reference.FamiliarName(parsedCandidateNameTag), parsedCandidateNameTag.Tag()))
-				repoDigests = append(repoDigests, fmt.Sprintf("%s@%s", reference.FamiliarName(parsedCandidateNameTag), candidateImage.Target.Digest.String()))
+			if parsedReference.Name() != "" {
+				tag := parsedReference.Tag
+				if tag == "" {
+					tag = "latest"
+				}
+				repoTags = append(repoTags, fmt.Sprintf("%s:%s", parsedReference.FamiliarName(), tag))
+				repoDigests = append(repoDigests, fmt.Sprintf("%s@%s", parsedReference.FamiliarName(), candidateImage.Target.Digest.String()))
 			}
 		}
 

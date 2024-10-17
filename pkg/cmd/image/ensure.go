@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"os"
 
-	distributionref "github.com/distribution/reference"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -35,6 +34,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/fetch"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
 func EnsureAllContent(ctx context.Context, client *containerd.Client, srcName string, options types.GlobalCommandOptions) error {
@@ -61,12 +61,10 @@ func EnsureAllContent(ctx context.Context, client *containerd.Client, srcName st
 }
 
 func ensureOne(ctx context.Context, client *containerd.Client, rawRef string, target ocispec.Descriptor, platform ocispec.Platform, options types.GlobalCommandOptions) error {
-
-	named, err := distributionref.ParseDockerRef(rawRef)
+	parsedReference, err := referenceutil.Parse(rawRef)
 	if err != nil {
 		return err
 	}
-	refDomain := distributionref.Domain(named)
 	// if platform == nil {
 	//	platform = platforms.DefaultSpec()
 	//}
@@ -82,11 +80,11 @@ func ensureOne(ctx context.Context, client *containerd.Client, rawRef string, ta
 		// Get a resolver
 		var dOpts []dockerconfigresolver.Opt
 		if options.InsecureRegistry {
-			log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", refDomain)
+			log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", parsedReference.Domain)
 			dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 		}
 		dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.HostsDir))
-		resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
+		resolver, err := dockerconfigresolver.New(ctx, parsedReference.Domain, dOpts...)
 		if err != nil {
 			return err
 		}
@@ -105,16 +103,16 @@ func ensureOne(ctx context.Context, client *containerd.Client, rawRef string, ta
 				return err
 			}
 			if options.InsecureRegistry {
-				log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
+				log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", parsedReference.Domain)
 				dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
-				resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
+				resolver, err = dockerconfigresolver.New(ctx, parsedReference.Domain, dOpts...)
 				if err != nil {
 					return err
 				}
 				config.Resolver = resolver
 				return fetch.Fetch(ctx, client, rawRef, config)
 			}
-			log.G(ctx).WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
+			log.G(ctx).WithError(err).Errorf("server %q does not seem to support HTTPS", parsedReference.Domain)
 			log.G(ctx).Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
 		}
 
