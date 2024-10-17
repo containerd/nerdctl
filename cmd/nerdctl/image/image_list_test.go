@@ -179,7 +179,7 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				},
 			},
 			{
-				Description: "label=foo=bar label=version=0.1",
+				Description: "label=foo=bar label=version=0.2",
 				Command:     test.Command("images", "--filter", "label=foo=bar", "--filter", "label=version=0.2"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
