@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/platforms"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
@@ -55,7 +56,11 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 	// Note that we do not close the lock explicitly. Instead, the lock will get released when the `locked` global
 	// variable will get collected and the file descriptor closed (eg: when the binary exits).
 	var err error
-	locked, err = lockutil.Lock(globalOptions.DataRoot)
+	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
+	if err != nil {
+		return nil, err
+	}
+	locked, err = lockutil.Lock(dataStore)
 	if err != nil {
 		return nil, err
 	}
