@@ -180,9 +180,7 @@ func (b *Base) EnsureDaemonActive() {
 		sleep    = 3 * time.Second
 	)
 	for i := 0; i < maxRetry; i++ {
-		cmd := exec.Command("systemctl",
-			append(systemctlArgs,
-				[]string{"is-active", target}...)...)
+		cmd := exec.Command("systemctl", append(systemctlArgs, "is-active", target)...)
 		out, err := cmd.CombinedOutput()
 		b.T.Logf("(retry=%d) %s", i, string(out))
 		if err == nil {
@@ -204,10 +202,7 @@ func (b *Base) DumpDaemonLogs(minutes int) {
 	b.T.Helper()
 	target := b.systemctlTarget()
 	cmd := exec.Command("journalctl",
-		append(b.systemctlArgs(),
-			[]string{"-u", target,
-				"--no-pager",
-				"-S", fmt.Sprintf("%d min ago", minutes)}...)...)
+		append(b.systemctlArgs(), "-u", target, "--no-pager", "-S", fmt.Sprintf("%d min ago", minutes))...)
 	b.T.Logf("===== %v =====", cmd.Args)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -767,14 +762,6 @@ func NewBaseWithIPv6Compatible(t *testing.T) *Base {
 	return newBase(t, Namespace, true, false)
 }
 
-func NewBaseForKubernetes(t *testing.T) *Base {
-	base := newBase(t, "k8s.io", false, true)
-	// NOTE: kubectl namespaces are not the same as containerd namespaces.
-	// We still want kube test objects segregated in their own Kube API namespace.
-	KubectlHelper(base, "create", "namespace", Namespace).Run()
-	return base
-}
-
 func NewBase(t *testing.T) *Base {
 	return newBase(t, Namespace, false, false)
 }
@@ -799,6 +786,9 @@ func newBase(t *testing.T, ns string, ipv6Compatible bool, kubernetesCompatible 
 		t.Skip("runner skips non-Kubernetes compatible tests in the Kubernetes environment")
 	} else if !base.EnableKubernetes && base.KubernetesCompatible {
 		t.Skip("runner skips Kubernetes compatible tests in the non-Kubernetes environment")
+	}
+	if !GetFlakyEnvironment() && !GetEnableKubernetes() && !GetEnableIPv6() {
+		t.Skip("legacy tests are considered flaky by default and are skipped unless in the flaky environment")
 	}
 	var err error
 	switch base.Target {
@@ -848,16 +838,6 @@ func RegisterBuildCacheCleanup(t *testing.T) {
 	t.Cleanup(func() {
 		NewBase(t).Cmd("builder", "prune", "--all", "--force").Run()
 	})
-}
-
-func KubectlHelper(base *Base, args ...string) *Cmd {
-	base.T.Helper()
-	icmdCmd := icmd.Command("kubectl", append([]string{"--namespace", Namespace}, args...)...)
-	icmdCmd.Env = base.Env
-	return &Cmd{
-		Cmd:  icmdCmd,
-		Base: base,
-	}
 }
 
 // SetupDockerContainerBuilder creates a Docker builder using the docker-container driver

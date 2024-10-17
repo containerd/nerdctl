@@ -1,0 +1,82 @@
+name: lint
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+
+env:
+  GO_VERSION: 1.23.x
+
+jobs:
+  go:
+    timeout-minutes: 5
+    name: "go | ${{ matrix.goos }} | ${{ matrix.gonext }}"
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            goos: linux
+          - os: ubuntu-24.04
+            goos: freebsd
+          # FIXME: this is currently failing in a non-sensical way, so, running on linux instead...
+          # - os: windows-2022
+          - os: ubuntu-24.04
+            goos: windows
+          - os: ubuntu-24.04
+            goos: linux
+            # This allows the canary script to select any upcoming golang alpha/beta/RC
+            gonext: next
+          - os: ubuntu-24.04
+            goos: freebsd
+            gonext: next
+          - os: ubuntu-24.04
+            goos: windows
+            gonext: next
+    env:
+      GOOS: "${{ matrix.goos }}"
+    steps:
+      - uses: actions/checkout@v4.2.1
+        with:
+          fetch-depth: 1
+      - name: Set GO env
+        run: |
+          # If gonext is specified, get the latest available golang pre-release instead of the major version
+          if [ "$gonext" != "" ]; then
+            . ./hack/build-integration-canary.sh
+            canary::golang::latest
+          fi
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: true
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          args: --verbose
+
+  other:
+    timeout-minutes: 5
+    name: yaml | shell | imports order
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.1
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: true
+      - name: yaml
+        run: make lint-yaml
+      - name: shell
+        run: make lint-shell
+      - name: go imports ordering
+        run: |
+          go install -v github.com/incu6us/goimports-reviser/v3@latest
+          make lint-imports
