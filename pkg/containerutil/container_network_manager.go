@@ -132,6 +132,10 @@ func NewNetworkingOptionsManager(globalOptions types.GlobalCommandOptions, netOp
 		manager = &containerNetworkManager{globalOptions, netOpts, client}
 	case nettype.CNI:
 		manager = &cniNetworkManager{globalOptions, netOpts, client, cniNetworkManagerPlatform{}}
+	case nettype.Namespace:
+		// We'll handle Namespace networking identically to Host-mode networking, but
+		// put the container in the specified network namespace instead of the root.
+		manager = &hostNetworkManager{globalOptions, netOpts, client}
 	default:
 		return nil, fmt.Errorf("unexpected container networking type: %q", netType)
 	}
@@ -491,6 +495,26 @@ func copyFileContent(src string, dst string) error {
 	return nil
 }
 
+// getHostNetworkingNamespace Returns an oci.SpecOpts representing the network namespace to
+// be used by the hostNetworkManager. When running with `--network=host` this would be the host's
+// root namespace, but `--network=ns:<path>` can be used to run a container in an existing netns.
+func getHostNetworkingNamespace(netModeArg string) (oci.SpecOpts, error) {
+	if !strings.Contains(netModeArg, ":") {
+		// Use the host root namespace by default
+		return oci.WithHostNamespace(specs.NetworkNamespace), nil
+	}
+
+	netItems := strings.Split(netModeArg, ":")
+	if len(netItems) < 2 {
+		return nil, fmt.Errorf("namespace networking argument format must be 'ns:<path>', got: %q", netModeArg)
+	}
+	netnsPath := netItems[1]
+	return oci.WithLinuxNamespace(specs.LinuxNamespace{
+		Type: specs.NetworkNamespace,
+		Path: netnsPath,
+	}), nil
+}
+
 // ContainerNetworkingOpts Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
 // the network specs which need to be applied to the container with the given ID.
 func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containerID string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
@@ -525,8 +549,13 @@ func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 		return nil, nil, err
 	}
 
+	netModeArg := m.netOpts.NetworkSlice[0]
+	netNamespace, err := getHostNetworkingNamespace(netModeArg)
+	if err != nil {
+		return nil, nil, err
+	}
 	specs := []oci.SpecOpts{
-		oci.WithHostNamespace(specs.NetworkNamespace),
+		netNamespace,
 		withDedupMounts("/etc/hosts", withCustomHosts(etcHostsPath)),
 		withDedupMounts("/etc/resolv.conf", withCustomResolvConf(resolvConfPath)),
 	}

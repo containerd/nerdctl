@@ -21,14 +21,19 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/exec"
 	"regexp"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/containernetworking/plugins/pkg/ns"
+	"github.com/vishvananda/netlink"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 
+	"github.com/containerd/containerd/v2/pkg/netns"
 	"github.com/containerd/errdefs"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
@@ -497,6 +502,41 @@ func TestSharedNetworkStack(t *testing.T) {
 	base.Cmd("start", containerNameJoin).AssertOK()
 	base.Cmd("exec", containerNameJoin, "wget", "-qO-", "http://127.0.0.1:80").
 		AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
+}
+
+func TestRunContainerInExistingNetNS(t *testing.T) {
+	if rootlessutil.IsRootless() {
+		t.Skip("Can't create new netns in rootless mode")
+	}
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+
+	netNS, err := netns.NewNetNS(t.TempDir() + "/netns")
+	assert.NilError(t, err)
+	err = netNS.Do(func(netns ns.NetNS) error {
+		loopback, err := netlink.LinkByName("lo")
+		assert.NilError(t, err)
+		err = netlink.LinkSetUp(loopback)
+		assert.NilError(t, err)
+		return nil
+	})
+	assert.NilError(t, err)
+	defer netNS.Remove()
+
+	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	base.Cmd("run", "-d", "--name", containerName,
+		"--network=ns:"+netNS.GetPath(), testutil.NginxAlpineImage).AssertOK()
+	base.EnsureContainerStarted(containerName)
+	time.Sleep(3 * time.Second)
+
+	err = netNS.Do(func(netns ns.NetNS) error {
+		stdout, err := exec.Command("curl", "-s", "http://127.0.0.1:80").Output()
+		assert.NilError(t, err)
+		assert.Assert(t, strings.Contains(string(stdout), testutil.NginxAlpineIndexHTMLSnippet))
+		return nil
+	})
+	assert.NilError(t, err)
 }
 
 func TestRunContainerWithMACAddress(t *testing.T) {
