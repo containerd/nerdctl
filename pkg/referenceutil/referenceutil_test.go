@@ -27,7 +27,6 @@ func TestReferenceUtil(t *testing.T) {
 	needles := map[string]struct {
 		Error         string
 		String        string
-		Normalized    string
 		Suggested     string
 		FamiliarName  string
 		FamiliarMatch map[string]bool
@@ -82,7 +81,6 @@ func TestReferenceUtil(t *testing.T) {
 		"sha256:4b826db5f1f14d1db0b560304f189d4b17798ddce2278b7822c9d32313fe3f50": {
 			Error:        "",
 			String:       "sha256:4b826db5f1f14d1db0b560304f189d4b17798ddce2278b7822c9d32313fe3f50",
-			Normalized:   "sha256:4b826db5f1f14d1db0b560304f189d4b17798ddce2278b7822c9d32313fe3f50",
 			Suggested:    "untitled-abcde",
 			FamiliarName: "",
 			Protocol:     "",
@@ -94,7 +92,6 @@ func TestReferenceUtil(t *testing.T) {
 		"4b826db5f1f14d1db0b560304f189d4b17798ddce2278b7822c9d32313fe3f50": {
 			Error:        "",
 			String:       "sha256:4b826db5f1f14d1db0b560304f189d4b17798ddce2278b7822c9d32313fe3f50",
-			Normalized:   "sha256:4b826db5f1f14d1db0b560304f189d4b17798ddce2278b7822c9d32313fe3f50",
 			Suggested:    "untitled-abcde",
 			FamiliarName: "",
 			Protocol:     "",
@@ -106,7 +103,6 @@ func TestReferenceUtil(t *testing.T) {
 		"image_name": {
 			Error:        "",
 			String:       "docker.io/library/image_name:latest",
-			Normalized:   "docker.io/library/image_name:latest",
 			Suggested:    "image_name-abcde",
 			FamiliarName: "image_name",
 			Protocol:     "",
@@ -119,7 +115,6 @@ func TestReferenceUtil(t *testing.T) {
 		"library/image_name": {
 			Error:        "",
 			String:       "docker.io/library/image_name:latest",
-			Normalized:   "docker.io/library/image_name:latest",
 			Suggested:    "image_name-abcde",
 			FamiliarName: "image_name",
 			Protocol:     "",
@@ -132,7 +127,6 @@ func TestReferenceUtil(t *testing.T) {
 		"something/image_name": {
 			Error:        "",
 			String:       "docker.io/something/image_name:latest",
-			Normalized:   "docker.io/something/image_name:latest",
 			Suggested:    "image_name-abcde",
 			FamiliarName: "something/image_name",
 			Protocol:     "",
@@ -145,7 +139,6 @@ func TestReferenceUtil(t *testing.T) {
 		"docker.io/library/image_name": {
 			Error:        "",
 			String:       "docker.io/library/image_name:latest",
-			Normalized:   "docker.io/library/image_name:latest",
 			Suggested:    "image_name-abcde",
 			FamiliarName: "image_name",
 			Protocol:     "",
@@ -158,7 +151,6 @@ func TestReferenceUtil(t *testing.T) {
 		"image_name:latest": {
 			Error:        "",
 			String:       "docker.io/library/image_name:latest",
-			Normalized:   "docker.io/library/image_name:latest",
 			Suggested:    "image_name-abcde",
 			FamiliarName: "image_name",
 			Protocol:     "",
@@ -171,7 +163,6 @@ func TestReferenceUtil(t *testing.T) {
 		"image_name:foo": {
 			Error:        "",
 			String:       "docker.io/library/image_name:foo",
-			Normalized:   "docker.io/library/image_name:foo",
 			Suggested:    "image_name-abcde",
 			FamiliarName: "image_name",
 			Protocol:     "",
@@ -184,7 +175,6 @@ func TestReferenceUtil(t *testing.T) {
 		"image_name@sha256:4b826db5f1f14d1db0b560304f189d4b17798ddce2278b7822c9d32313fe3f50": {
 			Error:        "",
 			String:       "docker.io/library/image_name@sha256:4b826db5f1f14d1db0b560304f189d4b17798ddce2278b7822c9d32313fe3f50",
-			Normalized:   "docker.io/library/image_name@sha256:4b826db5f1f14d1db0b560304f189d4b17798ddce2278b7822c9d32313fe3f50",
 			Suggested:    "image_name-abcde",
 			FamiliarName: "image_name",
 			Protocol:     "",
@@ -197,7 +187,6 @@ func TestReferenceUtil(t *testing.T) {
 		"image_name:latest@sha256:4b826db5f1f14d1db0b560304f189d4b17798ddce2278b7822c9d32313fe3f50": {
 			Error:        "",
 			String:       "docker.io/library/image_name:latest@sha256:4b826db5f1f14d1db0b560304f189d4b17798ddce2278b7822c9d32313fe3f50",
-			Normalized:   "docker.io/library/image_name:latest@sha256:4b826db5f1f14d1db0b560304f189d4b17798ddce2278b7822c9d32313fe3f50",
 			Suggested:    "image_name-abcde",
 			FamiliarName: "image_name",
 			Protocol:     "",
@@ -210,7 +199,6 @@ func TestReferenceUtil(t *testing.T) {
 		"ghcr.io:1234/image_name": {
 			Error:        "",
 			String:       "ghcr.io:1234/image_name:latest",
-			Normalized:   "ghcr.io:1234/image_name:latest",
 			Suggested:    "image_name-abcde",
 			FamiliarName: "ghcr.io:1234/image_name",
 			Protocol:     "",
@@ -223,7 +211,6 @@ func TestReferenceUtil(t *testing.T) {
 		"ghcr.io/sub_name/image_name": {
 			Error:        "",
 			String:       "ghcr.io/sub_name/image_name:latest",
-			Normalized:   "ghcr.io/sub_name/image_name:latest",
 			Suggested:    "image_name-abcde",
 			FamiliarName: "ghcr.io/sub_name/image_name",
 			Protocol:     "",
@@ -236,7 +223,6 @@ func TestReferenceUtil(t *testing.T) {
 		"bafkreicq4dg6nkef5ju422ptedcwfz6kcvpvvhuqeykfrwq5krazf3muze": {
 			Error:        "",
 			String:       "bafkreicq4dg6nkef5ju422ptedcwfz6kcvpvvhuqeykfrwq5krazf3muze",
-			Normalized:   "bafkreicq4dg6nkef5ju422ptedcwfz6kcvpvvhuqeykfrwq5krazf3muze",
 			Suggested:    "ipfs-bafkr-abcde",
 			FamiliarName: "bafkreicq4dg6nkef5ju422ptedcwfz6kcvpvvhuqeykfrwq5krazf3muze",
 			Protocol:     "ipfs",
@@ -249,7 +235,6 @@ func TestReferenceUtil(t *testing.T) {
 		"ipfs://bafkreicq4dg6nkef5ju422ptedcwfz6kcvpvvhuqeykfrwq5krazf3muze": {
 			Error:        "",
 			String:       "bafkreicq4dg6nkef5ju422ptedcwfz6kcvpvvhuqeykfrwq5krazf3muze",
-			Normalized:   "bafkreicq4dg6nkef5ju422ptedcwfz6kcvpvvhuqeykfrwq5krazf3muze",
 			Suggested:    "ipfs-bafkr-abcde",
 			FamiliarName: "bafkreicq4dg6nkef5ju422ptedcwfz6kcvpvvhuqeykfrwq5krazf3muze",
 			Protocol:     "ipfs",
@@ -262,7 +247,6 @@ func TestReferenceUtil(t *testing.T) {
 		"ipfs://ghcr.io/stargz-containers/alpine:3.13-org": {
 			Error:        "",
 			String:       "ghcr.io/stargz-containers/alpine:3.13-org",
-			Normalized:   "ghcr.io/stargz-containers/alpine:3.13-org",
 			Suggested:    "alpine-abcde",
 			FamiliarName: "ghcr.io/stargz-containers/alpine",
 			FamiliarMatch: map[string]bool{
@@ -280,7 +264,6 @@ func TestReferenceUtil(t *testing.T) {
 		"ipfs://alpine": {
 			Error:        "",
 			String:       "docker.io/library/alpine:latest",
-			Normalized:   "docker.io/library/alpine:latest",
 			Suggested:    "alpine-abcde",
 			FamiliarName: "alpine",
 			Protocol:     "ipfs",

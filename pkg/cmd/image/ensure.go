@@ -65,9 +65,6 @@ func ensureOne(ctx context.Context, client *containerd.Client, rawRef string, ta
 	if err != nil {
 		return err
 	}
-	// if platform == nil {
-	//	platform = platforms.DefaultSpec()
-	//}
 	pltf := []ocispec.Platform{platform}
 	platformComparer := platformutil.NewMatchComparerFromOCISpecPlatformSlice(pltf)
 
