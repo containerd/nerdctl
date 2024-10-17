@@ -33,30 +33,26 @@ func TestMain(m *testing.M) {
 func TestIssue108(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	testCase.Require = test.Linux
+
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "-it --net=host",
-			Require:     test.Binary("unbuffer"),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				cmd := helpers.
-					Command("run", "-it", "--rm", "--net=host", testutil.AlpineImage, "echo", "this was always working")
-				cmd.WithWrapper("unbuffer")
+				cmd := helpers.Command("run", "-it", "--rm", "--net=host", testutil.AlpineImage, "echo", "this was always working")
+				cmd.WithPseudoTTY()
 				return cmd
 			},
-			// Note: unbuffer will merge stdout and stderr, preventing exact match here
-			Expected: test.Expects(0, nil, test.Contains("this was always working")),
+			Expected: test.Expects(0, nil, test.Equals("this was always working\r\n")),
 		},
 		{
 			Description: "--net=host -it",
-			Require:     test.Binary("unbuffer"),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				cmd := helpers.
-					Command("run", "--rm", "--net=host", "-it", testutil.AlpineImage, "echo", "this was not working due to issue #108")
-				cmd.WithWrapper("unbuffer")
+				cmd := helpers.Command("run", "--rm", "--net=host", "-it", testutil.AlpineImage, "echo", "this was not working due to issue #108")
+				cmd.WithPseudoTTY()
 				return cmd
 			},
-			// Note: unbuffer will merge stdout and stderr, preventing exact match here
-			Expected: test.Expects(0, nil, test.Contains("this was not working due to issue #108")),
+			Expected: test.Expects(0, nil, test.Equals("this was not working due to issue #108\r\n")),
 		},
 	}
 

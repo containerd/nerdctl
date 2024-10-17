@@ -16,7 +16,10 @@
 
 package test
 
-import "errors"
+import (
+	"os"
+)
 
-var ErrPTYFailure = errors.New("pty failure")
-var ErrPTYUnsupportedPlatform = errors.New("pty not supported on this platform")
+func Open() (pty, tty *os.File, err error) {
+	return nil, nil, ErrPTYUnsupportedPlatform
+}
