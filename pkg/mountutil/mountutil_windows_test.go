@@ -38,7 +38,7 @@ func TestParseVolumeOptions(t *testing.T) {
 			vType:   "bind",
 			src:     "dummy",
 			optsRaw: "rw",
-			wants:   []string{},
+			wants:   nil,
 		},
 		{
 			vType:   "volume",

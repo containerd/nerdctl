@@ -40,8 +40,19 @@ jobs:
           make lint-imports
 
   test-unit:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 5
+    name: unit | ${{ matrix.goos }}
+    runs-on: "${{ matrix.os }}"
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        include:
+          - os: windows-2022
+            goos: windows
+          - os: ubuntu-24.04
+            goos: linux
     steps:
       - uses: actions/checkout@v4.2.1
         with:
@@ -51,6 +62,17 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
           cache: true
+      - if: ${{ matrix.goos=='windows' }}
+        uses: actions/checkout@v4.2.1
+        with:
+          repository: containerd/containerd
+          ref: v1.7.23
+          path: containerd
+          fetch-depth: 1
+      - if: ${{ matrix.goos=='windows' }}
+        name: "Set up CNI"
+        working-directory: containerd
+        run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
       - name: "Run unit tests"
         run: go test -v ./pkg/...
 
