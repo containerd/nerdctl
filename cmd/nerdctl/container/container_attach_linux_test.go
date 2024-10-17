@@ -63,6 +63,8 @@ func prepareContainerToAttach(base *testutil.Base, containerName string) {
 func TestAttach(t *testing.T) {
 	t.Parallel()
 
+	t.Skip("This test is very unstable and currently skipped. See https://github.com/containerd/nerdctl/issues/3558")
+
 	skipAttachForDocker(t)
 
 	base := testutil.NewBase(t)
