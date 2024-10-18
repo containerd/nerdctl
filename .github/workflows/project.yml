@@ -9,7 +9,7 @@ on:
 
 jobs:
   project:
-    name: Project Checks
+    name: checks
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
