@@ -273,6 +273,14 @@ func TestReferenceUtil(t *testing.T) {
 			Tag:          "latest",
 			ExplicitTag:  "",
 		},
+		"oci-archive:///tmp/build/saved-image.tar": {
+			Protocol:     "oci-archive",
+			Path:         "/tmp/build/saved-image.tar",
+			Error:        "",
+			String:       "/tmp/build/saved-image.tar",
+			Suggested:    "oci-archive-/tmp/-abcde",
+			FamiliarName: "/tmp/build/saved-image.tar",
+		},
 	}
 
 	for k, v := range needles {
