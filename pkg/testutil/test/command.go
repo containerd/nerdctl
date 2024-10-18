@@ -28,6 +28,9 @@ import (
 	"gotest.tools/v3/icmd"
 )
 
+const ExitCodeGenericFail = -1
+const ExitCodeNoCheck = -2
+
 // GenericCommand is a concrete Command implementation
 type GenericCommand struct {
 	Config  Config
@@ -117,7 +120,10 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		// Build the debug string - additionally attach the env (which iCmd does not do)
 		debug := result.String() + "Env:\n" + strings.Join(env, "\n")
 		// ExitCode goes first
-		if expect.ExitCode == -1 {
+		if expect.ExitCode == ExitCodeNoCheck { //nolint:revive
+			// -2 means we do not care at all about exit code
+		} else if expect.ExitCode == ExitCodeGenericFail {
+			// -1 means any error
 			assert.Assert(gc.t, result.ExitCode != 0,
 				"Expected exit code to be different than 0\n"+debug)
 		} else {

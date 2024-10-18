@@ -82,34 +82,38 @@ func (cc *CesantaConfig) Save(path string) error {
 	return err
 }
 
+// FIXME: this is a copy of the utility method EnsureContainerStarted
+// We cannot reference it (circular dep), so the copy.
+// To be fixed later when we will be done migrating test helpers to the new framework and we can split them
+// in meaningful subpackages.
+
 func ensureContainerStarted(helpers test.Helpers, con string) {
-	const maxRetry = 5
-	const sleep = time.Second
-	success := false
-	for i := 0; i < maxRetry && !success; i++ {
-		time.Sleep(sleep)
-		count := i
-		cmd := helpers.Command("container", "inspect", con)
-		cmd.Run(&test.Expected{
-			Output: func(stdout string, info string, t *testing.T) {
-				var dc []dockercompat.Container
-				err := json.Unmarshal([]byte(stdout), &dc)
-				assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-				assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
-				if dc[0].State.Running {
-					success = true
-					return
-				}
-				if count == maxRetry-1 {
-					// FIXME: there is currently no simple way to capture stderr
-					// Sometimes, it is convenient for debugging, like here
-					// Here we cheat with unbuffer which will bundle stderr and stdout together
-					// This is just bad
-					t.Error(helpers.Err("logs", con))
-					t.Fatalf("container %s still not running after %d retries", con, count)
-				}
-			},
-		})
+	started := false
+	for i := 0; i < 5 && !started; i++ {
+		helpers.Command("container", "inspect", con).
+			Run(&test.Expected{
+				ExitCode: test.ExitCodeNoCheck,
+				Output: func(stdout string, info string, t *testing.T) {
+					var dc []dockercompat.Container
+					err := json.Unmarshal([]byte(stdout), &dc)
+					if err != nil || len(dc) == 0 {
+						return
+					}
+					assert.Equal(t, len(dc), 1, "Unexpectedly got multiple results\n"+info)
+					started = dc[0].State.Running
+				},
+			})
+		time.Sleep(time.Second)
+	}
+
+	if !started {
+		ins := helpers.Capture("container", "inspect", con)
+		lgs := helpers.Capture("logs", con)
+		ps := helpers.Capture("ps", "-a")
+		helpers.T().Log(ins)
+		helpers.T().Log(lgs)
+		helpers.T().Log(ps)
+		helpers.T().Fatalf("container %s still not running after %d retries", con, 5)
 	}
 }
 
