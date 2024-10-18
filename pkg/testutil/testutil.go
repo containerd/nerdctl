@@ -854,21 +854,3 @@ func KubectlHelper(base *Base, args ...string) *Cmd {
 		Base: base,
 	}
 }
-
-// SetupDockerContainerBuilder creates a Docker builder using the docker-container driver
-// and adds cleanup steps to test cleanup. The builder name is returned as output.
-//
-// If not docker, this function returns an empty string as the builder name.
-func SetupDockerContainerBuilder(t *testing.T) string {
-	var name string
-	if IsDocker() {
-		name = fmt.Sprintf("%s-container", Identifier(t))
-		base := NewBase(t)
-		base.Cmd("buildx", "create", "--name", name, "--driver=docker-container").AssertOK()
-		t.Cleanup(func() {
-			base.Cmd("buildx", "stop", name).AssertOK()
-			base.Cmd("buildx", "rm", "--force", name).AssertOK()
-		})
-	}
-	return name
-}

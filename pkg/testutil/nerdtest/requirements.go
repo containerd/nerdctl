@@ -271,7 +271,12 @@ var Build = &test.Requirement{
 		return ret, mess
 	},
 	Cleanup: func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("builder", "prune", "--all", "--force")
+		// Previously, every build test was sequential, and was purging the build cache.
+		// Running this in parallel of any other test depending on build will trash it.
+		// The only way to parallelize any test involving build is indeed to disable this.
+		// The price to pay is that we might get cache from another test.
+		// This can be avoided individually by passing --no-cache if and when necessary
+		// helpers.Anyhow("builder", "prune", "--all", "--force")
 	},
 }
 
