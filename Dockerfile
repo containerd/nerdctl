@@ -276,7 +276,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
 RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
     expect \
-    git
+    git \
+    make
 COPY --from=goversion /GOVERSION /GOVERSION
 ARG TARGETARCH
 RUN curl -fsSL --proto '=https' --tlsv1.2 https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local
@@ -314,8 +315,6 @@ RUN curl -o nydus-static.tgz -fsSL --proto '=https' --tlsv1.2 "https://github.co
   tar xzf nydus-static.tgz && \
   mv nydus-static/nydus-image nydus-static/nydusd nydus-static/nydusify /usr/bin/ && \
   rm nydus-static.tgz
-CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=./cmd/nerdctl/...", \
-  "--", "-timeout=60m", "-p", "1", "-args", "-test.allow-kill-daemon"]
 
 FROM test-integration AS test-integration-rootless
 # Install SSH for creating systemd user session.
@@ -338,17 +337,10 @@ RUN systemctl disable test-integration-ipfs-offline
 VOLUME /home/rootless/.local/share
 COPY ./Dockerfile.d/test-integration-rootless.sh /
 RUN chmod a+rx /test-integration-rootless.sh
-CMD ["/test-integration-rootless.sh", \
-  "gotestsum", "--format=testname", "--rerun-fails=2", "--packages=./cmd/nerdctl/...", \
-  "--", "-timeout=60m", "-p", "1", "-args", "-test.allow-kill-daemon"]
 
 # test for CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns
 FROM test-integration-rootless AS test-integration-rootless-port-slirp4netns
 COPY ./Dockerfile.d/home_rootless_.config_systemd_user_containerd.service.d_port-slirp4netns.conf /home/rootless/.config/systemd/user/containerd.service.d/port-slirp4netns.conf
 RUN chown -R rootless:rootless /home/rootless/.config
-
-FROM test-integration AS test-integration-ipv6
-CMD ["gotestsum", "--format=testname", "--rerun-fails=2", "--packages=./cmd/nerdctl/...", \
-  "--", "-timeout=60m", "-p", "1", "-args", "-test.allow-kill-daemon", "-test.only-ipv6"]
 
 FROM base AS demo
