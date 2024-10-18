@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 
@@ -79,6 +80,11 @@ var in = strutil.InStringSlice
 
 func TestParse(t *testing.T) {
 	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("test is not compatible with windows")
+	}
+
 	const dockerComposeYAML = `
 version: '3.1'
 
@@ -333,6 +339,10 @@ services:
 
 func TestParseRelative(t *testing.T) {
 	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("test is not compatible with windows")
+	}
 	const dockerComposeYAML = `
 services:
   foo:
@@ -408,6 +418,9 @@ services:
 
 func TestParseConfigs(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("test is not compatible with windows")
+	}
 	const dockerComposeYAML = `
 services:
   foo:

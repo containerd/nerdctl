@@ -46,6 +46,10 @@ func TestBrokenCredentialsStore(t *testing.T) {
 		// Anyhow, this test is about extreme cases & conditions (filesystem errors wrt credentials loading).
 		t.Skip("skipping broken credential store tests for freebsd")
 	}
+	if runtime.GOOS == "windows" {
+		// Same as above
+		t.Skip("test is not compatible with windows")
+	}
 
 	testCases := []struct {
 		description string
