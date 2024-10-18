@@ -131,6 +131,8 @@ func TestCreateWithMACAddress(t *testing.T) {
 				// res = base.Cmd("start", "-i", containerName).
 				//	CmdOption(testutil.WithStdin(strings.NewReader("ip addr show eth0 | grep ether | awk '{printf $2}'"))).Run()
 				res = base.Cmd("start", "-a", containerName).Run()
+				// FIXME: flaky - this has failed on the CI once, with the output NOT containing anything
+				// https://github.com/containerd/nerdctl/actions/runs/11392051487/job/31697214002?pr=3535#step:7:271
 				assert.Assert(t, strings.Contains(res.Stdout(), expect), fmt.Sprintf("expected output to contain %q: %q", expect, res.Stdout()))
 				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded")
 			} else {
