@@ -44,11 +44,13 @@ jobs:
       - name: "Run unit tests"
         run: go test -v ./pkg/...
       - name: "Run integration tests"
-        run: docker run -t --rm --privileged test-integration
+        run: docker run -t --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=false
+      - name: "Run integration tests (flaky)"
+        run: docker run -t --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=true
 
   windows:
-    runs-on: windows-latest
     timeout-minutes: 30
+    runs-on: windows-latest
     defaults:
       run:
         shell: bash
@@ -74,6 +76,7 @@ jobs:
           cache: true
           check-latest: true
       - run: go install ./cmd/nerdctl
+      - run: go install -v gotest.tools/gotestsum@v1
       # This here is solely to get the cni install script, which has not been modified in 3+ years.
       # There is little to no reason to update this to latest containerd
       - uses: actions/checkout@v4.2.1
@@ -91,5 +94,6 @@ jobs:
           ctrdVersion: ${{ env.CONTAINERD_VERSION }}
         run: powershell hack/configure-windows-ci.ps1
       - name: "Run integration tests"
-        # See https://github.com/containerd/nerdctl/blob/main/docs/testing/README.md#about-parallelization
-        run: go test -p 1 -v ./cmd/nerdctl/...
+        run: ./hack/test-integration.sh -test.only-flaky=false
+      - name: "Run integration tests (flaky)"
+        run: ./hack/test-integration.sh -test.only-flaky=true

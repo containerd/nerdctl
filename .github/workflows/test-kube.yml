@@ -10,13 +10,12 @@ on:
     paths-ignore:
       - '**.md'
 
-env:
-  ROOTFUL: true
-
 jobs:
   linux:
     runs-on: "ubuntu-24.04"
     timeout-minutes: 40
+    env:
+      ROOTFUL: true
     steps:
       - uses: actions/checkout@v4.2.1
         with:
