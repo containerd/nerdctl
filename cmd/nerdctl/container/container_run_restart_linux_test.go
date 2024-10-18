@@ -70,6 +70,7 @@ func TestRunRestart(t *testing.T) {
 	}
 	assert.NilError(t, check(30))
 
+	base.EnsureDaemonActive()
 	base.KillDaemon()
 	base.EnsureDaemonActive()
 
