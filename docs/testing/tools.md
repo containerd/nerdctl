@@ -48,7 +48,9 @@ You already saw two (`test.Expects` and `test.Contains`):
 First, `test.Expects(exitCode int, errors []error, outputCompare Comparator)`, which is
 convenient to quickly describe what you expect overall.
 
-`exitCode` is obvious (note that passing -1 as an exit code will just verify the commands does fail without comparing the code).
+`exitCode` is obvious (note that passing -1 as an exit code will just
+verify the commands does fail without comparing the code, and -2 will not verify the exit
+code at all).
 
 `errors` is a slice of go `error`, that allows you to compare what is seen on stderr
 with existing errors (for example: `errdefs.ErrNotFound`), or more generally
