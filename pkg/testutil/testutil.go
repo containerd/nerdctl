@@ -787,6 +787,9 @@ func newBase(t *testing.T, ns string, ipv6Compatible bool, kubernetesCompatible 
 	} else if !base.EnableKubernetes && base.KubernetesCompatible {
 		t.Skip("runner skips Kubernetes compatible tests in the non-Kubernetes environment")
 	}
+	if !GetFlakyEnvironment() && !GetEnableKubernetes() && !GetEnableIPv6() {
+		t.Skip("legacy tests are considered flaky by default and are skipped unless in the flaky environment")
+	}
 	var err error
 	switch base.Target {
 	case Nerdctl:
