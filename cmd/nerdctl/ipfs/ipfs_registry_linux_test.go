@@ -18,6 +18,8 @@ package ipfs
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -25,7 +27,6 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
@@ -132,7 +133,9 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, data.Get(ipfsImageURLKey))
 
-				buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+				buildCtx := data.TempDir()
+				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+				assert.NilError(helpers.T(), err)
 
 				helpers.Ensure("build", "-t", data.Identifier("built-image"), buildCtx)
 			},

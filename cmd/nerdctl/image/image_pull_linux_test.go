@@ -18,6 +18,8 @@ package image
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -56,7 +58,9 @@ func TestImagePullWithCosign(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-			buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+			buildCtx := data.TempDir()
+			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+			assert.NilError(helpers.T(), err)
 			helpers.Ensure("build", "-t", testImageRef+":one", buildCtx)
 			helpers.Ensure("build", "-t", testImageRef+":two", buildCtx)
 			helpers.Ensure("push", "--sign=cosign", "--cosign-key="+keyPair.PrivateKey, testImageRef+":one")
@@ -120,7 +124,9 @@ func TestImagePullPlainHttpWithDefaultPort(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-			buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+			buildCtx := data.TempDir()
+			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+			assert.NilError(helpers.T(), err)
 			helpers.Ensure("build", "-t", testImageRef, buildCtx)
 			helpers.Ensure("--insecure-registry", "push", testImageRef)
 			helpers.Ensure("rmi", "-f", testImageRef)

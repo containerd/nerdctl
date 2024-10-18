@@ -18,13 +18,14 @@ package image
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"gotest.tools/v3/assert"
 
-	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
@@ -61,7 +62,9 @@ func TestImagePrune(t *testing.T) {
 				CMD ["echo", "nerdctl-test-image-prune"]
 					`, testutil.CommonImage)
 
-				buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+				buildCtx := data.TempDir()
+				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+				assert.NilError(helpers.T(), err)
 				helpers.Ensure("build", buildCtx)
 				// After we rebuild with tag, docker will no longer show the <none> version from above
 				// Swapping order does not change anything.
@@ -107,7 +110,9 @@ func TestImagePrune(t *testing.T) {
 				CMD ["echo", "nerdctl-test-image-prune"]
 					`, testutil.CommonImage)
 
-				buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+				buildCtx := data.TempDir()
+				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+				assert.NilError(helpers.T(), err)
 				helpers.Ensure("build", buildCtx)
 				helpers.Ensure("build", "-t", identifier, buildCtx)
 				imgList := helpers.Capture("images")
@@ -149,7 +154,9 @@ func TestImagePrune(t *testing.T) {
 CMD ["echo", "nerdctl-test-image-prune-filter-label"]
 LABEL foo=bar
 LABEL version=0.1`, testutil.CommonImage)
-				buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+				buildCtx := data.TempDir()
+				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+				assert.NilError(helpers.T(), err)
 				helpers.Ensure("build", "-t", data.Identifier(), buildCtx)
 				imgList := helpers.Capture("images")
 				assert.Assert(t, strings.Contains(imgList, data.Identifier()), "Missing "+data.Identifier())
@@ -187,7 +194,9 @@ LABEL version=0.1`, testutil.CommonImage)
 				dockerfile := fmt.Sprintf(`FROM %s
 RUN echo "Anything, so that we create actual content for docker to set the current time for CreatedAt"
 CMD ["echo", "nerdctl-test-image-prune-until"]`, testutil.CommonImage)
-				buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+				buildCtx := data.TempDir()
+				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+				assert.NilError(helpers.T(), err)
 				helpers.Ensure("build", "-t", data.Identifier(), buildCtx)
 				imgList := helpers.Capture("images")
 				assert.Assert(t, strings.Contains(imgList, data.Identifier()), "Missing "+data.Identifier())

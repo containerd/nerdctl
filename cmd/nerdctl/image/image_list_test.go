@@ -19,6 +19,8 @@ package image
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -26,7 +28,6 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/tabutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -144,7 +145,9 @@ LABEL foo=bar
 LABEL version=0.1
 RUN echo "actually creating a layer so that docker sets the createdAt time"
 `, testutil.CommonImage)
-			buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+			buildCtx := data.TempDir()
+			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+			assert.NilError(helpers.T(), err)
 			data.Set("buildCtx", buildCtx)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -290,7 +293,9 @@ func TestImagesFilterDangling(t *testing.T) {
 			dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-notag-string"]
 	`, testutil.CommonImage)
-			buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
+			buildCtx := data.TempDir()
+			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+			assert.NilError(helpers.T(), err)
 			data.Set("buildCtx", buildCtx)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
