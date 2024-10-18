@@ -104,8 +104,9 @@ main(){
 
   # Hack to get go into kind control plane
   exec::nerdctl rm -f go-kind 2>/dev/null || true
-  exec::nerdctl run -d --name go-kind golang:"$GO_VERSION" sleep Inf
+  exec::nerdctl run -d --quiet --name go-kind golang:"$GO_VERSION" sleep Inf
   exec::nerdctl cp go-kind:/usr/local/go /tmp/go
+  exec::nerdctl rm -f go-kind
 
   # Create fresh cluster
   log::info "Creating new cluster"
