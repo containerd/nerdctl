@@ -15,27 +15,6 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  lint:
-    runs-on: "ubuntu-24.04"
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4.2.1
-        with:
-          fetch-depth: 1
-      - name: Set GO env
-        run: |
-          . ./hack/build-integration-canary.sh
-          canary::golang::latest
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-          cache: true
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6.1.1
-        with:
-          args: --verbose
-
   linux:
     runs-on: "ubuntu-24.04"
     timeout-minutes: 40
