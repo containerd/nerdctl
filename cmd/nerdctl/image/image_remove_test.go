@@ -311,9 +311,7 @@ func TestIssue3016(t *testing.T) {
 	testCase := nerdtest.Setup()
 
 	const (
-		alpineImageName  = "alpine"
-		busyboxImageName = "busybox"
-		tagIDKey         = "tagID"
+		tagIDKey = "tagID"
 	)
 
 	testCase.SubTests = []*test.Case{
@@ -323,20 +321,20 @@ func TestIssue3016(t *testing.T) {
 				test.Not(test.Windows),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("pull", alpineImageName)
-				helpers.Ensure("pull", busyboxImageName)
+				helpers.Ensure("pull", testutil.AlpineImage)
+				helpers.Ensure("pull", testutil.BusyboxImage)
 
-				img := nerdtest.InspectImage(helpers, busyboxImageName)
-				tagID := strings.TrimPrefix(img.RepoDigests[0], "busybox@sha256:")[0:8]
-				assert.Equal(t, len(tagID), 8)
+				img := nerdtest.InspectImage(helpers, testutil.BusyboxImage)
+				repoName, _ := imgutil.ParseRepoTag(testutil.BusyboxImage)
+				tagID := strings.TrimPrefix(img.RepoDigests[0], repoName+"@sha256:")[0:8]
 
-				helpers.Ensure("tag", alpineImageName, tagID)
+				helpers.Ensure("tag", testutil.AlpineImage, tagID)
 
 				data.Set(tagIDKey, tagID)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rmi", alpineImageName)
-				helpers.Anyhow("rmi", busyboxImageName)
+				helpers.Anyhow("rmi", "-f", testutil.AlpineImage)
+				helpers.Anyhow("rmi", "-f", testutil.BusyboxImage)
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("rmi", data.Get(tagIDKey))
