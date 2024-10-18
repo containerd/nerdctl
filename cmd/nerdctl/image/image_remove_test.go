@@ -18,7 +18,10 @@ package image
 
 import (
 	"errors"
+	"strings"
 	"testing"
+
+	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -293,6 +296,59 @@ func TestRemove(t *testing.T) {
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
 							Output: test.DoesNotContain(repoName),
+						})
+					},
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
+}
+
+// TestIssue3016 tests https://github.com/containerd/nerdctl/issues/3016
+func TestIssue3016(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	const (
+		tagIDKey = "tagID"
+	)
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Issue #3016 - Tags created using the short digest ids of container images cannot be deleted using the nerdctl rmi command.",
+			Require: test.Require(
+				test.Not(test.Windows),
+			),
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("pull", testutil.AlpineImage)
+				helpers.Ensure("pull", testutil.BusyboxImage)
+
+				img := nerdtest.InspectImage(helpers, testutil.BusyboxImage)
+				repoName, _ := imgutil.ParseRepoTag(testutil.BusyboxImage)
+				tagID := strings.TrimPrefix(img.RepoDigests[0], repoName+"@sha256:")[0:8]
+
+				helpers.Ensure("tag", testutil.AlpineImage, tagID)
+
+				data.Set(tagIDKey, tagID)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rmi", "-f", testutil.AlpineImage)
+				helpers.Anyhow("rmi", "-f", testutil.BusyboxImage)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("rmi", data.Get(tagIDKey))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Errors:   []error{},
+					Output: func(stdout string, info string, t *testing.T) {
+						helpers.Command("images", data.Get(tagIDKey)).Run(&test.Expected{
+							ExitCode: 0,
+							Output: func(stdout string, info string, t *testing.T) {
+								assert.Equal(t, len(strings.Split(stdout, "\n")), 2)
+							},
 						})
 					},
 				}
