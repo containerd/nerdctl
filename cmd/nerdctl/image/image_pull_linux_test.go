@@ -38,7 +38,6 @@ func TestImagePullWithCosign(t *testing.T) {
 	var keyPair *testhelpers.CosignKeyPair
 
 	testCase := &test.Case{
-		Description: "TestImagePullWithCosign",
 		Require: test.Require(
 			test.Linux,
 			nerdtest.Build,
@@ -107,7 +106,6 @@ func TestImagePullPlainHttpWithDefaultPort(t *testing.T) {
 	var registry *testregistry.RegistryServer
 
 	testCase := &test.Case{
-		Description: "TestImagePullPlainHttpWithDefaultPort",
 		Require: test.Require(
 			test.Linux,
 			test.Not(nerdtest.Docker),
@@ -150,7 +148,6 @@ func TestImagePullSoci(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Description: "TestImagePullSoci",
 		Require: test.Require(
 			test.Linux,
 			test.Not(nerdtest.Docker),

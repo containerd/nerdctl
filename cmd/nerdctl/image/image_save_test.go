@@ -35,8 +35,7 @@ func TestSaveContent(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Description: "Test content (linux only)",
-		Require:     test.Not(test.Windows),
+		Require: test.Not(test.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 		},
