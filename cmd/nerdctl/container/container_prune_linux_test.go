@@ -20,36 +20,36 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestPruneContainer(t *testing.T) {
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	tearDown := func() {
-		defer base.Cmd("rm", "-f", tID+"-1").Run()
-		defer base.Cmd("rm", "-f", tID+"-2").Run()
+	testCase.Require = nerdtest.Private
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier("1"))
+		helpers.Anyhow("rm", "-f", data.Identifier("2"))
 	}
 
-	tearUp := func() {
-		base.Cmd("run", "-d", "--name", tID+"-1", "-v", "/anonymous", testutil.CommonImage, "sleep", "infinity").AssertOK()
-		base.Cmd("exec", tID+"-1", "touch", "/anonymous/foo").AssertOK()
-		base.Cmd("create", "--name", tID+"-2", testutil.CommonImage, "sleep", "infinity").AssertOK()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier("1"), "-v", "/anonymous", testutil.CommonImage, "sleep", "infinity")
+		helpers.Ensure("exec", data.Identifier("1"), "touch", "/anonymous/foo")
+		helpers.Ensure("create", "--name", data.Identifier("2"), testutil.CommonImage, "sleep", "infinity")
 	}
 
-	tearDown()
-	t.Cleanup(tearDown)
-	tearUp()
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		helpers.Ensure("container", "prune", "-f")
+		helpers.Ensure("inspect", data.Identifier("1"))
+		helpers.Fail("inspect", data.Identifier("2"))
+		// https://github.com/containerd/nerdctl/issues/3134
+		helpers.Ensure("exec", data.Identifier("1"), "ls", "-lA", "/anonymous/foo")
+		helpers.Ensure("kill", data.Identifier("1"))
+		helpers.Ensure("container", "prune", "-f")
+		return helpers.Command("inspect", data.Identifier("1"))
+	}
 
-	base.Cmd("container", "prune", "-f").AssertOK()
-	// tID-1 is still running, tID-2 is not
-	base.Cmd("inspect", tID+"-1").AssertOK()
-	base.Cmd("inspect", tID+"-2").AssertFail()
-
-	// https://github.com/containerd/nerdctl/issues/3134
-	base.Cmd("exec", tID+"-1", "ls", "-lA", "/anonymous/foo").AssertOK()
-
-	base.Cmd("kill", tID+"-1").AssertOK()
-	base.Cmd("container", "prune", "-f").AssertOK()
-	base.Cmd("inspect", tID+"-1").AssertFail()
+	testCase.Expected = test.Expects(1, nil, nil)
 }
