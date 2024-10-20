@@ -20,22 +20,30 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestRemoveContainer(t *testing.T) {
-	t.Parallel()
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "inf")
+	}
 
-	// ignore error
-	base.Cmd("rm", tID, "-f").AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
 
-	base.Cmd("run", "-d", "--name", tID, testutil.NginxAlpineImage).AssertOK()
-	defer base.Cmd("rm", tID, "-f").AssertOK()
-	base.Cmd("rm", tID).AssertFail()
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		helpers.Fail("rm", data.Identifier())
 
-	// `kill` does return before the container actually stops
-	base.Cmd("stop", tID).AssertOK()
-	base.Cmd("rm", tID).AssertOK()
+		// FIXME: should (re-)evaluate this
+		// `kill` seems to return before the container actually stops
+		helpers.Ensure("stop", data.Identifier())
+
+		return helpers.Command("rm", data.Identifier())
+	}
+
+	testCase.Expected = test.Expects(0, nil, nil)
 }
