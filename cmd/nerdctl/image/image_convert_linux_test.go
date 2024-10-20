@@ -30,7 +30,6 @@ func TestImageConvert(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Description: "Test image conversion",
 		Require: test.Require(
 			test.Not(test.Windows),
 			test.Not(nerdtest.Docker),
@@ -101,7 +100,6 @@ func TestImageConvertNydusVerify(t *testing.T) {
 	var registry *testregistry.RegistryServer
 
 	testCase := &test.Case{
-		Description: "TestImageConvertNydusVerify",
 		Require: test.Require(
 			test.Linux,
 			test.Binary("nydus-image"),
