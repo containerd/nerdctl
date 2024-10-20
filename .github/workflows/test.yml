@@ -11,9 +11,14 @@ on:
 
 env:
   GO_VERSION: 1.23.x
+  SHORT_TIMEOUT: 5
+  LONG_TIMEOUT: 60
 
 jobs:
   test-unit:
+    # Supposed to work: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/evaluate-expressions-in-workflows-and-actions#example-returning-a-json-data-type
+    # Apparently does not
+    # timeout-minutes: ${{ fromJSON(env.SHORT_TIMEOUT) }}
     timeout-minutes: 5
     name: unit | ${{ matrix.goos }}
     runs-on: "${{ matrix.os }}"
@@ -48,11 +53,12 @@ jobs:
         working-directory: containerd
         run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
       - name: "Run unit tests"
-        run: go test -v ./pkg/...
+        run: make test-unit
 
   test-integration:
+    timeout-minutes: 60
+    name: rootful | ${{ matrix.containerd }} | ${{ matrix.runner }}
     runs-on: "${{ matrix.runner }}"
-    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -95,23 +101,21 @@ jobs:
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Run integration tests"
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 2
-          retry_on: error
-          command: docker run -t --rm --privileged test-integration
+        run: docker run -t --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=false
+      - name: "Run integration tests (flaky)"
+        run: docker run -t --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=true
 
   test-integration-ipv6:
+    timeout-minutes: 60
+    name: ipv6 | ${{ matrix.containerd }} | ${{ matrix.ubuntu }}
     runs-on: "ubuntu-${{ matrix.ubuntu }}"
-    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
           - ubuntu: 24.04
-            containerd: v1.7.23
+            containerd: v2.0.0-rc.5
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -129,7 +133,7 @@ jobs:
           echo '{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64", "experimental": true, "ip6tables": true}' | sudo tee /etc/docker/daemon.json
           sudo systemctl restart docker
       - name: "Prepare integration test environment"
-        run: docker build -t test-integration-ipv6 --target test-integration-ipv6 --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+        run: docker build -t test-integration --target test-integration --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
           sudo systemctl disable --now snapd.service snapd.socket
@@ -147,20 +151,16 @@ jobs:
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Run integration tests"
         # The nested IPv6 network inside docker and qemu is complex and needs a bunch of sysctl config.
-        # Therefore it's hard to debug why the IPv6 tests fail in such an isolation layer.
+        # Therefore, it's hard to debug why the IPv6 tests fail in such an isolation layer.
         # On the other side, using the host network is easier at configuration.
         # Besides, each job is running on a different instance, which means using host network here
         # is safe and has no side effects on others.
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 2
-          retry_on: error
-          command: docker run --network host -t --rm --privileged test-integration-ipv6
+        run: docker run --network host -t --rm --privileged test-integration ./hack/test-integration.sh -test.only-ipv6
 
   test-integration-rootless:
-    runs-on: "ubuntu-${{ matrix.ubuntu }}"
     timeout-minutes: 60
+    name: "${{ matrix.target }} | ${{ matrix.containerd }} | ${{ matrix.rootlesskit }} | ${{ matrix.ubuntu }}"
+    runs-on: "ubuntu-${{ matrix.ubuntu }}"
     strategy:
       fail-fast: false
       matrix:
@@ -169,24 +169,24 @@ jobs:
           - ubuntu: 20.04
             containerd: v1.6.36
             rootlesskit: v1.1.1  # Deprecated
-            target: test-integration-rootless
+            target: rootless
           - ubuntu: 22.04
             containerd: v1.7.23
             rootlesskit: v2.3.1
-            target: test-integration-rootless
+            target: rootless
           - ubuntu: 24.04
             containerd: v2.0.0-rc.5
             rootlesskit: v2.3.1
-            target: test-integration-rootless
+            target: rootless
           - ubuntu: 24.04
             containerd: v1.7.23
             rootlesskit: v2.3.1
-            target: test-integration-rootless-port-slirp4netns
+            target: rootless-port-slirp4netns
     env:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
       ROOTLESSKIT_VERSION: "${{ matrix.rootlesskit }}"
-      TEST_TARGET: "${{ matrix.target }}"
+      TEST_TARGET: "test-integration-${{ matrix.target }}"
     steps:
       - name: "Set up AppArmor"
         if: matrix.ubuntu == '24.04'
@@ -226,16 +226,14 @@ jobs:
           fi
           echo "WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622}" >> "$GITHUB_ENV"
       - name: "Test (network driver=slirp4netns, port driver=builtin)"
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 2
-          retry_on: error
-          command: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} ${TEST_TARGET}
+        run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} ${TEST_TARGET} /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false
+      - name: "Test (network driver=slirp4netns, port driver=builtin) (flaky)"
+        run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} ${TEST_TARGET} /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true
 
-  cross:
+  build:
+    timeout-minutes: 5
+    name: "build | ${{ matrix.go-version }}"
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
     strategy:
       matrix:
         go-version: ["1.22.x", "1.23.x"]
@@ -248,12 +246,13 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache: true
           check-latest: true
-      - name: "Cross"
+      - name: "build"
         run: GO_VERSION="$(echo ${{ matrix.go-version }} | sed -e s/.x//)" make binaries
 
   test-integration-docker-compatibility:
+    timeout-minutes: 60
+    name: docker
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4.2.1
         with:
@@ -280,26 +279,18 @@ jobs:
       - name: "Prepare integration test environment"
         run: |
           sudo apt-get install -y expect
+          go install -v gotest.tools/gotestsum@v1
       - name: "Ensure that the integration test suite is compatible with Docker"
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 2
-          retry_on: error
-          # See https://github.com/containerd/nerdctl/blob/main/docs/testing/README.md#about-parallelization
-          command: go test -p 1 -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.allow-kill-daemon
+        run: WITH_SUDO=true ./hack/test-integration.sh -test.target=docker
       - name: "Ensure that the IPv6 integration test suite is compatible with Docker"
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 30
-          max_attempts: 2
-          retry_on: error
-          # See https://github.com/containerd/nerdctl/blob/main/docs/testing/README.md#about-parallelization
-          command: go test -p 1 -timeout 20m -v -exec sudo ./cmd/nerdctl/... -args -test.target=docker -test.allow-kill-daemon -test.only-ipv6
+        run: WITH_SUDO=true ./hack/test-integration.sh -test.target=docker -test.only-ipv6
+      - name: "Ensure that the integration test suite is compatible with Docker (flaky only)"
+        run: WITH_SUDO=true ./hack/test-integration.sh -test.target=docker -test.only-flaky
 
   test-integration-windows:
-    runs-on: windows-2022
     timeout-minutes: 30
+    name: windows
+    runs-on: windows-2022
     defaults:
       run:
         shell: bash
@@ -313,6 +304,7 @@ jobs:
           cache: true
           check-latest: true
       - run: go install ./cmd/nerdctl
+      - run: go install -v gotest.tools/gotestsum@v1
       - uses: actions/checkout@v4.2.1
         with:
           repository: containerd/containerd
@@ -326,16 +318,16 @@ jobs:
         env:
           ctrdVersion: 1.7.23
         run: powershell hack/configure-windows-ci.ps1
-      # TODO: Run unit tests
       - name: "Run integration tests"
-        # See https://github.com/containerd/nerdctl/blob/main/docs/testing/README.md#about-parallelization
-        run: go test -p 1 -v ./cmd/nerdctl/...
+        run: ./hack/test-integration.sh -test.only-flaky=false
+      - name: "Run integration tests (flaky)"
+        run: ./hack/test-integration.sh -test.only-flaky=true
 
   test-integration-freebsd:
+    timeout-minutes: 60
     name: FreeBSD
     # ubuntu-24.04 lacks the vagrant package
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4.2.1

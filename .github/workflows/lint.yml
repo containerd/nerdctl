@@ -55,7 +55,6 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           args: --verbose
-
   other:
     timeout-minutes: 5
     name: yaml | shell | imports order
