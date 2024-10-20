@@ -35,18 +35,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func TestCreate(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-
-	base.Cmd("create", "--name", tID, testutil.CommonImage, "echo", "foo").AssertOK()
-	defer base.Cmd("rm", "-f", tID).Run()
-	base.Cmd("ps", "-a").AssertOutContains("Created")
-	base.Cmd("start", tID).AssertOK()
-	base.Cmd("logs", tID).AssertOutContains("foo")
-}
-
 func TestCreateWithLabel(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
@@ -216,8 +204,7 @@ func TestIssue2993(t *testing.T) {
 				h := getAddrHash(defaults.DefaultAddress)
 				dataStore := filepath.Join(dataRoot, h)
 
-				// FIXME: update with next tooling iteration to retrieve from the command
-				namespace := "nerdctl-test"
+				namespace := string(helpers.Read(nerdtest.Namespace))
 
 				containersPath := filepath.Join(dataStore, "containers", namespace)
 				containersDirs, err := os.ReadDir(containersPath)
@@ -264,8 +251,7 @@ func TestIssue2993(t *testing.T) {
 				h := getAddrHash(defaults.DefaultAddress)
 				dataStore := filepath.Join(dataRoot, h)
 
-				// FIXME: update with next tooling iteration to retrieve from the command
-				namespace := "nerdctl-test"
+				namespace := string(helpers.Read(nerdtest.Namespace))
 
 				containersPath := filepath.Join(dataStore, "containers", namespace)
 				containersDirs, err := os.ReadDir(containersPath)
