@@ -20,28 +20,31 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestWait(t *testing.T) {
-	t.Parallel()
-	tID := testutil.Identifier(t)
-	testContainerName1 := tID + "-1"
-	testContainerName2 := tID + "-2"
-	testContainerName3 := tID + "-3"
+	testCase := nerdtest.Setup()
 
-	const expected = `0
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier("1"), data.Identifier("2"), data.Identifier("3"))
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier("1"), testutil.CommonImage)
+		helpers.Ensure("run", "-d", "--name", data.Identifier("2"), testutil.CommonImage, "sleep", "1")
+		helpers.Ensure("run", "-d", "--name", data.Identifier("3"), testutil.CommonImage, "sh", "-euxc", "sleep 5; exit 123")
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("wait", data.Identifier("1"), data.Identifier("2"), data.Identifier("3"))
+	}
+
+	testCase.Expected = test.Expects(0, nil, test.Equals(`0
 0
 123
-`
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainerName1, testContainerName2, testContainerName3).Run()
+`))
 
-	base.Cmd("run", "-d", "--name", testContainerName1, testutil.CommonImage, "sleep", "1").AssertOK()
-
-	base.Cmd("run", "-d", "--name", testContainerName2, testutil.CommonImage, "sleep", "1").AssertOK()
-
-	base.Cmd("run", "--name", testContainerName3, testutil.CommonImage, "sh", "-euxc", "sleep 5; exit 123").AssertExitCode(123)
-
-	base.Cmd("wait", testContainerName1, testContainerName2, testContainerName3).AssertOutExactly(expected)
-
+	testCase.Run(t)
 }
