@@ -1,3 +1,5 @@
+//go:build !windows
+
 /*
    Copyright The containerd Authors.
 
@@ -14,16 +16,14 @@
    limitations under the License.
 */
 
-package container
+package nerdtest
 
 import (
-	"testing"
-
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func TestRunSysctl(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "--sysctl", "net.ipv4.ip_forward=1", testutil.CommonImage, "cat", "/proc/sys/net/ipv4/ip_forward").AssertOutExactly("1\n")
+var HyperV = &test.Requirement{
+	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+		return false, "HyperV is a windows-only feature"
+	},
 }

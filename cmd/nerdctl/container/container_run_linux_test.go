@@ -53,7 +53,7 @@ func TestRunCustomRootfs(t *testing.T) {
 	// happening in the default namespace BEFORE this test is run is SOMETIMES setting conditions that will make this fail
 	// Possible suspects would be concurrent pulls somehow effing things up w. namespaces.
 	base := testutil.NewBaseWithNamespace(t, testutil.Identifier(t))
-	rootfs := prepareCustomRootfs(base, testutil.AlpineImage)
+	rootfs := prepareCustomRootfs(base, testutil.CommonImage)
 	t.Cleanup(func() {
 		base.Cmd("namespace", "remove", testutil.Identifier(t)).Run()
 	})
@@ -81,7 +81,7 @@ func TestRunShmSize(t *testing.T) {
 	base := testutil.NewBase(t)
 	const shmSize = "32m"
 
-	base.Cmd("run", "--rm", "--shm-size", shmSize, testutil.AlpineImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
+	base.Cmd("run", "--rm", "--shm-size", shmSize, testutil.CommonImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
 }
 
 func TestRunShmSizeIPCShareable(t *testing.T) {
@@ -90,7 +90,7 @@ func TestRunShmSizeIPCShareable(t *testing.T) {
 	const shmSize = "32m"
 
 	container := testutil.Identifier(t)
-	base.Cmd("run", "--rm", "--name", container, "--ipc", "shareable", "--shm-size", shmSize, testutil.AlpineImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
+	base.Cmd("run", "--rm", "--name", container, "--ipc", "shareable", "--shm-size", shmSize, testutil.CommonImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
 	defer base.Cmd("rm", "-f", container)
 }
 
@@ -99,7 +99,7 @@ func TestRunIPCShareableRemoveMount(t *testing.T) {
 	base := testutil.NewBase(t)
 	container := testutil.Identifier(t)
 
-	base.Cmd("run", "--name", container, "--ipc", "shareable", testutil.AlpineImage, "sleep", "0").AssertOK()
+	base.Cmd("run", "--name", container, "--ipc", "shareable", testutil.CommonImage, "sleep", "0").AssertOK()
 	base.Cmd("rm", container).AssertOK()
 }
 
@@ -108,7 +108,7 @@ func TestRunIPCContainerNotExists(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	container := testutil.Identifier(t)
-	result := base.Cmd("run", "--name", container, "--ipc", "container:abcd1234", testutil.AlpineImage, "sleep", "infinity").Run()
+	result := base.Cmd("run", "--name", container, "--ipc", "container:abcd1234", testutil.CommonImage, "sleep", "infinity").Run()
 	defer base.Cmd("rm", "-f", container)
 	combined := result.Combined()
 	if !strings.Contains(strings.ToLower(combined), "no such container: abcd1234") {
@@ -121,12 +121,12 @@ func TestRunShmSizeIPCContainer(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	const shmSize = "32m"
-	sharedContainerResult := base.Cmd("run", "-d", "--ipc", "shareable", "--shm-size", shmSize, testutil.AlpineImage, "sleep", "infinity").Run()
+	sharedContainerResult := base.Cmd("run", "-d", "--ipc", "shareable", "--shm-size", shmSize, testutil.CommonImage, "sleep", "infinity").Run()
 	baseContainerID := strings.TrimSpace(sharedContainerResult.Stdout())
 	defer base.Cmd("rm", "-f", baseContainerID).Run()
 
 	base.Cmd("run", "--rm", fmt.Sprintf("--ipc=container:%s", baseContainerID),
-		testutil.AlpineImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
+		testutil.CommonImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
 }
 
 func TestRunIPCContainer(t *testing.T) {
@@ -134,12 +134,12 @@ func TestRunIPCContainer(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	const shmSize = "32m"
-	victimContainerResult := base.Cmd("run", "-d", "--ipc", "shareable", "--shm-size", shmSize, testutil.AlpineImage, "sleep", "infinity").Run()
+	victimContainerResult := base.Cmd("run", "-d", "--ipc", "shareable", "--shm-size", shmSize, testutil.CommonImage, "sleep", "infinity").Run()
 	victimContainerID := strings.TrimSpace(victimContainerResult.Stdout())
 	defer base.Cmd("rm", "-f", victimContainerID).Run()
 
 	base.Cmd("run", "--rm", fmt.Sprintf("--ipc=container:%s", victimContainerID),
-		testutil.AlpineImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
+		testutil.CommonImage, "/bin/grep", "shm", "/proc/self/mounts").AssertOutContains("size=32768k")
 }
 
 func TestRunPidHost(t *testing.T) {
@@ -147,7 +147,7 @@ func TestRunPidHost(t *testing.T) {
 	base := testutil.NewBase(t)
 	pid := os.Getpid()
 
-	base.Cmd("run", "--rm", "--pid=host", testutil.AlpineImage, "ps", "auxw").AssertOutContains(strconv.Itoa(pid))
+	base.Cmd("run", "--rm", "--pid=host", testutil.CommonImage, "ps", "auxw").AssertOutContains(strconv.Itoa(pid))
 }
 
 func TestRunUtsHost(t *testing.T) {
@@ -160,21 +160,21 @@ func TestRunUtsHost(t *testing.T) {
 	hostName, err := os.Hostname()
 	assert.NilError(base.T, err)
 
-	base.Cmd("run", "--rm", "--uts=host", testutil.AlpineImage, "hostname").AssertOutContains(hostName)
+	base.Cmd("run", "--rm", "--uts=host", testutil.CommonImage, "hostname").AssertOutContains(hostName)
 	// Validate we can't provide a hostname with uts=host
-	base.Cmd("run", "--rm", "--uts=host", "--hostname=foobar", testutil.AlpineImage, "hostname").AssertFail()
+	base.Cmd("run", "--rm", "--uts=host", "--hostname=foobar", testutil.CommonImage, "hostname").AssertFail()
 }
 
 func TestRunPidContainer(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 
-	sharedContainerResult := base.Cmd("run", "-d", testutil.AlpineImage, "sleep", "infinity").Run()
+	sharedContainerResult := base.Cmd("run", "-d", testutil.CommonImage, "sleep", "infinity").Run()
 	baseContainerID := strings.TrimSpace(sharedContainerResult.Stdout())
 	defer base.Cmd("rm", "-f", baseContainerID).Run()
 
 	base.Cmd("run", "--rm", fmt.Sprintf("--pid=container:%s", baseContainerID),
-		testutil.AlpineImage, "ps", "ax").AssertOutContains("sleep infinity")
+		testutil.CommonImage, "ps", "ax").AssertOutContains("sleep infinity")
 }
 
 func TestRunIpcHost(t *testing.T) {
@@ -186,13 +186,13 @@ func TestRunIpcHost(t *testing.T) {
 	assert.NilError(base.T, err)
 	defer os.Remove(testFilePath)
 
-	base.Cmd("run", "--rm", "--ipc=host", testutil.AlpineImage, "ls", testFilePath).AssertOK()
+	base.Cmd("run", "--rm", "--ipc=host", testutil.CommonImage, "ls", testFilePath).AssertOK()
 }
 
 func TestRunAddHost(t *testing.T) {
 	// Not parallelizable (https://github.com/containerd/nerdctl/issues/1127)
 	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "--add-host", "testing.example.com:10.0.0.1", testutil.AlpineImage, "cat", "/etc/hosts").AssertOutWithFunc(func(stdout string) error {
+	base.Cmd("run", "--rm", "--add-host", "testing.example.com:10.0.0.1", testutil.CommonImage, "cat", "/etc/hosts").AssertOutWithFunc(func(stdout string) error {
 		var found bool
 		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
 		for sc.Scan() {
@@ -208,7 +208,7 @@ func TestRunAddHost(t *testing.T) {
 		}
 		return nil
 	})
-	base.Cmd("run", "--rm", "--add-host", "test:10.0.0.1", "--add-host", "test1:10.0.0.1", testutil.AlpineImage, "cat", "/etc/hosts").AssertOutWithFunc(func(stdout string) error {
+	base.Cmd("run", "--rm", "--add-host", "test:10.0.0.1", "--add-host", "test1:10.0.0.1", testutil.CommonImage, "cat", "/etc/hosts").AssertOutWithFunc(func(stdout string) error {
 		var found int
 		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
 		for sc.Scan() {
@@ -224,7 +224,7 @@ func TestRunAddHost(t *testing.T) {
 		}
 		return nil
 	})
-	base.Cmd("run", "--rm", "--add-host", "10.0.0.1:testing.example.com", testutil.AlpineImage, "cat", "/etc/hosts").AssertFail()
+	base.Cmd("run", "--rm", "--add-host", "10.0.0.1:testing.example.com", testutil.CommonImage, "cat", "/etc/hosts").AssertFail()
 
 	response := "This is the expected response for --add-host special IP test."
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -241,7 +241,7 @@ func TestRunAddHostWithCustomHostGatewayIP(t *testing.T) {
 	// Not parallelizable (https://github.com/containerd/nerdctl/issues/1127)
 	base := testutil.NewBase(t)
 	testutil.DockerIncompatible(t)
-	base.Cmd("run", "--rm", "--host-gateway-ip", "192.168.5.2", "--add-host", "test:host-gateway", testutil.AlpineImage, "cat", "/etc/hosts").AssertOutWithFunc(func(stdout string) error {
+	base.Cmd("run", "--rm", "--host-gateway-ip", "192.168.5.2", "--add-host", "test:host-gateway", testutil.CommonImage, "cat", "/etc/hosts").AssertOutWithFunc(func(stdout string) error {
 		var found bool
 		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
 		for sc.Scan() {
@@ -265,11 +265,11 @@ func TestRunUlimit(t *testing.T) {
 	ulimit := "nofile=622:622"
 	ulimit2 := "nofile=622:722"
 
-	base.Cmd("run", "--rm", "--ulimit", ulimit, testutil.AlpineImage, "sh", "-c", "ulimit -Sn").AssertOutExactly("622\n")
-	base.Cmd("run", "--rm", "--ulimit", ulimit, testutil.AlpineImage, "sh", "-c", "ulimit -Hn").AssertOutExactly("622\n")
+	base.Cmd("run", "--rm", "--ulimit", ulimit, testutil.CommonImage, "sh", "-c", "ulimit -Sn").AssertOutExactly("622\n")
+	base.Cmd("run", "--rm", "--ulimit", ulimit, testutil.CommonImage, "sh", "-c", "ulimit -Hn").AssertOutExactly("622\n")
 
-	base.Cmd("run", "--rm", "--ulimit", ulimit2, testutil.AlpineImage, "sh", "-c", "ulimit -Sn").AssertOutExactly("622\n")
-	base.Cmd("run", "--rm", "--ulimit", ulimit2, testutil.AlpineImage, "sh", "-c", "ulimit -Hn").AssertOutExactly("722\n")
+	base.Cmd("run", "--rm", "--ulimit", ulimit2, testutil.CommonImage, "sh", "-c", "ulimit -Sn").AssertOutExactly("622\n")
+	base.Cmd("run", "--rm", "--ulimit", ulimit2, testutil.CommonImage, "sh", "-c", "ulimit -Hn").AssertOutExactly("722\n")
 }
 
 func TestRunWithInit(t *testing.T) {
@@ -278,7 +278,7 @@ func TestRunWithInit(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	container := testutil.Identifier(t)
-	base.Cmd("run", "-d", "--name", container, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--name", container, testutil.CommonImage, "sleep", "infinity").AssertOK()
 	defer base.Cmd("rm", "-f", container).Run()
 
 	base.Cmd("stop", "--time=3", container).AssertOK()
@@ -288,7 +288,7 @@ func TestRunWithInit(t *testing.T) {
 	// Test with --init-path
 	container1 := container + "-1"
 	base.Cmd("run", "-d", "--name", container1, "--init-binary", "tini-custom",
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+		testutil.CommonImage, "sleep", "infinity").AssertOK()
 	defer base.Cmd("rm", "-f", container1).Run()
 
 	base.Cmd("stop", "--time=3", container1).AssertOK()
@@ -297,7 +297,7 @@ func TestRunWithInit(t *testing.T) {
 	// Test with --init
 	container2 := container + "-2"
 	base.Cmd("run", "-d", "--name", container2, "--init",
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+		testutil.CommonImage, "sleep", "infinity").AssertOK()
 	defer base.Cmd("rm", "-f", container2).Run()
 
 	base.Cmd("stop", "--time=3", container2).AssertOK()
@@ -465,7 +465,7 @@ func TestRunWithOOMScoreAdj(t *testing.T) {
 	base := testutil.NewBase(t)
 	var score = "-42"
 
-	base.Cmd("run", "--rm", "--oom-score-adj", score, testutil.AlpineImage, "cat", "/proc/self/oom_score_adj").AssertOutContains(score)
+	base.Cmd("run", "--rm", "--oom-score-adj", score, testutil.CommonImage, "cat", "/proc/self/oom_score_adj").AssertOutContains(score)
 }
 
 func TestRunWithDetachKeys(t *testing.T) {

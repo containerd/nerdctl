@@ -49,7 +49,7 @@ func testMultiPlatformRun(base *testutil.Base, alpineImage string) {
 
 func TestMultiPlatformRun(t *testing.T) {
 	base := testutil.NewBase(t)
-	testMultiPlatformRun(base, testutil.AlpineImage)
+	testMultiPlatformRun(base, testutil.CommonImage)
 }
 
 func TestMultiPlatformBuildPush(t *testing.T) {
@@ -67,7 +67,7 @@ func TestMultiPlatformBuildPush(t *testing.T) {
 
 	dockerfile := fmt.Sprintf(`FROM %s
 RUN echo dummy
-	`, testutil.AlpineImage)
+	`, testutil.CommonImage)
 
 	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
@@ -94,7 +94,7 @@ func TestMultiPlatformBuildPushNoRun(t *testing.T) {
 
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD echo dummy
-	`, testutil.AlpineImage)
+	`, testutil.CommonImage)
 
 	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
@@ -113,8 +113,8 @@ func TestMultiPlatformPullPushAllPlatforms(t *testing.T) {
 	pushImageName := fmt.Sprintf("localhost:%d/%s:latest", reg.Port, tID)
 	defer base.Cmd("rmi", pushImageName).Run()
 
-	base.Cmd("pull", "--all-platforms", testutil.AlpineImage).AssertOK()
-	base.Cmd("tag", testutil.AlpineImage, pushImageName).AssertOK()
+	base.Cmd("pull", "--all-platforms", testutil.CommonImage).AssertOK()
+	base.Cmd("tag", testutil.CommonImage, pushImageName).AssertOK()
 	base.Cmd("push", "--all-platforms", pushImageName).AssertOK()
 	testMultiPlatformRun(base, pushImageName)
 }

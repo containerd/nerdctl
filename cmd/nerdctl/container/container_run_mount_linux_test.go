@@ -61,7 +61,7 @@ func TestRunVolume(t *testing.T) {
 		"-v", fmt.Sprintf("%s:/mnt2:ro", roDir),
 		"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
 		"-v", fmt.Sprintf("%s:/mnt4:ro", roVolName),
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"top",
 	).AssertOK()
 	base.Cmd("exec", containerName, "sh", "-exc", "echo -n str1 > /mnt1/file1").AssertOK()
@@ -73,14 +73,14 @@ func TestRunVolume(t *testing.T) {
 		"--rm",
 		"-v", fmt.Sprintf("%s:/mnt1", rwDir),
 		"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"cat", "/mnt1/file1", "/mnt3/file3",
 	).AssertOutExactly("str1str3")
 	base.Cmd("run",
 		"--rm",
 		"-v", fmt.Sprintf("%s:/mnt3/mnt1", rwDir),
 		"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"cat", "/mnt3/mnt1/file1", "/mnt3/file3",
 	).AssertOutExactly("str1str3")
 }
@@ -88,29 +88,29 @@ func TestRunVolume(t *testing.T) {
 func TestRunAnonymousVolume(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "-v", "/foo", testutil.AlpineImage).AssertOK()
-	base.Cmd("run", "--rm", "-v", "TestVolume2:/foo", testutil.AlpineImage).AssertOK()
-	base.Cmd("run", "--rm", "-v", "TestVolume", testutil.AlpineImage).AssertOK()
+	base.Cmd("run", "--rm", "-v", "/foo", testutil.CommonImage).AssertOK()
+	base.Cmd("run", "--rm", "-v", "TestVolume2:/foo", testutil.CommonImage).AssertOK()
+	base.Cmd("run", "--rm", "-v", "TestVolume", testutil.CommonImage).AssertOK()
 
 	// Destination must be an absolute path not named volume
-	base.Cmd("run", "--rm", "-v", "TestVolume2:TestVolumes", testutil.AlpineImage).AssertFail()
+	base.Cmd("run", "--rm", "-v", "TestVolume2:TestVolumes", testutil.CommonImage).AssertFail()
 }
 
 func TestRunVolumeRelativePath(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	base.Dir = t.TempDir()
-	base.Cmd("run", "--rm", "-v", "./foo:/mnt/foo", testutil.AlpineImage).AssertOK()
-	base.Cmd("run", "--rm", "-v", "./foo", testutil.AlpineImage).AssertOK()
+	base.Cmd("run", "--rm", "-v", "./foo:/mnt/foo", testutil.CommonImage).AssertOK()
+	base.Cmd("run", "--rm", "-v", "./foo", testutil.CommonImage).AssertOK()
 
 	// Destination must be an absolute path not a relative path
-	base.Cmd("run", "--rm", "-v", "./foo:./foo", testutil.AlpineImage).AssertFail()
+	base.Cmd("run", "--rm", "-v", "./foo:./foo", testutil.CommonImage).AssertFail()
 }
 
 func TestRunAnonymousVolumeWithTypeMountFlag(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "--mount", "type=volume,dst=/foo", testutil.AlpineImage,
+	base.Cmd("run", "--rm", "--mount", "type=volume,dst=/foo", testutil.CommonImage,
 		"mountpoint", "-q", "/foo").AssertOK()
 }
 
@@ -124,12 +124,12 @@ func TestRunAnonymousVolumeWithBuild(t *testing.T) {
 
 	dockerfile := fmt.Sprintf(`FROM %s
 VOLUME /foo
-        `, testutil.AlpineImage)
+        `, testutil.CommonImage)
 
 	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
 	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
-	base.Cmd("run", "--rm", "-v", "/foo", testutil.AlpineImage,
+	base.Cmd("run", "--rm", "-v", "/foo", testutil.CommonImage,
 		"mountpoint", "-q", "/foo").AssertOK()
 }
 
@@ -146,7 +146,7 @@ func TestRunCopyingUpInitialContentsOnVolume(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 RUN mkdir -p /mnt && echo hi > /mnt/initial_file
 CMD ["cat", "/mnt/initial_file"]
-        `, testutil.AlpineImage)
+        `, testutil.CommonImage)
 
 	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
@@ -174,7 +174,7 @@ func TestRunCopyingUpInitialContentsOnDockerfileVolume(t *testing.T) {
 RUN mkdir -p /mnt && echo hi > /mnt/initial_file
 VOLUME /mnt
 CMD ["cat", "/mnt/initial_file"]
-        `, testutil.AlpineImage)
+        `, testutil.CommonImage)
 
 	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
@@ -206,7 +206,7 @@ func TestRunCopyingUpInitialContentsOnVolumeShouldRetainSymlink(t *testing.T) {
 RUN ln -s ../../../../../../../../../../../../../../../../../../etc/passwd /mnt/passwd
 VOLUME /mnt
 CMD ["readlink", "/mnt/passwd"]
-        `, testutil.AlpineImage)
+        `, testutil.CommonImage)
 	const expected = "../../../../../../../../../../../../../../../../../../etc/passwd\n"
 
 	buildCtx := helpers.CreateBuildContext(t, dockerfile)
@@ -234,7 +234,7 @@ func TestRunCopyingUpInitialContentsShouldNotResetTheCopiedContents(t *testing.T
 
 	dockerfile := fmt.Sprintf(`FROM %s
 RUN echo -n "rev0" > /mnt/file
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	buildCtx := helpers.CreateBuildContext(t, dockerfile)
 
@@ -276,10 +276,10 @@ func TestRunTmpfs(t *testing.T) {
 			return nil
 		}
 	}
-	base.Cmd("run", "--rm", "--tmpfs", "/tmp", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "noexec"}, nil))
-	base.Cmd("run", "--rm", "--tmpfs", "/tmp:size=64m,exec", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=65536k"}, []string{"noexec"}))
+	base.Cmd("run", "--rm", "--tmpfs", "/tmp", testutil.CommonImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "noexec"}, nil))
+	base.Cmd("run", "--rm", "--tmpfs", "/tmp:size=64m,exec", testutil.CommonImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=65536k"}, []string{"noexec"}))
 	// for https://github.com/containerd/nerdctl/issues/594
-	base.Cmd("run", "--rm", "--tmpfs", "/dev/shm:rw,exec,size=1g", testutil.AlpineImage, "grep", "/dev/shm", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=1048576k"}, []string{"noexec"}))
+	base.Cmd("run", "--rm", "--tmpfs", "/dev/shm:rw,exec,size=1g", testutil.CommonImage, "grep", "/dev/shm", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=1048576k"}, []string{"noexec"}))
 }
 
 func TestRunBindMountTmpfs(t *testing.T) {
@@ -299,8 +299,8 @@ func TestRunBindMountTmpfs(t *testing.T) {
 			return nil
 		}
 	}
-	base.Cmd("run", "--rm", "--mount", "type=tmpfs,target=/tmp", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "noexec"}))
-	base.Cmd("run", "--rm", "--mount", "type=tmpfs,target=/tmp,tmpfs-size=64m", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=65536k"}))
+	base.Cmd("run", "--rm", "--mount", "type=tmpfs,target=/tmp", testutil.CommonImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "noexec"}))
+	base.Cmd("run", "--rm", "--mount", "type=tmpfs,target=/tmp,tmpfs-size=64m", testutil.CommonImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=65536k"}))
 }
 
 func TestRunBindMountBind(t *testing.T) {
@@ -323,7 +323,7 @@ func TestRunBindMountBind(t *testing.T) {
 		"--name", containerName,
 		"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1", rwDir),
 		"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt2,ro", roDir),
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"top",
 	).AssertOK()
 	base.Cmd("exec", containerName, "sh", "-exc", "echo -n str1 > /mnt1/file1").AssertOK()
@@ -332,7 +332,7 @@ func TestRunBindMountBind(t *testing.T) {
 	base.Cmd("run",
 		"--rm",
 		"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1", rwDir),
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"cat", "/mnt1/file1",
 	).AssertOutExactly("str1")
 
@@ -402,7 +402,7 @@ func TestRunMountBindMode(t *testing.T) {
 	base.Cmd("run",
 		"--rm",
 		"--mount", fmt.Sprintf("type=bind,bind-nonrecursive,src=%s,target=/mnt1", tmpDir1),
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
 	).AssertOutWithFunc(func(stdout string) error {
 		lines := strings.Split(strings.TrimSpace(stdout), "\n")
@@ -418,7 +418,7 @@ func TestRunMountBindMode(t *testing.T) {
 	base.Cmd("run",
 		"--rm",
 		"--mount", fmt.Sprintf("type=bind,bind-nonrecursive=false,src=%s,target=/mnt1", tmpDir1),
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
 	).AssertOutWithFunc(func(stdout string) error {
 		lines := strings.Split(strings.TrimSpace(stdout), "\n")
@@ -468,7 +468,7 @@ func TestRunVolumeBindMode(t *testing.T) {
 	base.Cmd("run",
 		"--rm",
 		"-v", fmt.Sprintf("%s:/mnt1:bind", tmpDir1),
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
 	).AssertOutWithFunc(func(stdout string) error {
 		lines := strings.Split(strings.TrimSpace(stdout), "\n")
@@ -484,7 +484,7 @@ func TestRunVolumeBindMode(t *testing.T) {
 	base.Cmd("run",
 		"--rm",
 		"-v", fmt.Sprintf("%s:/mnt1:rbind", tmpDir1),
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
 	).AssertOutWithFunc(func(stdout string) error {
 		lines := strings.Split(strings.TrimSpace(stdout), "\n")
@@ -591,7 +591,7 @@ func TestRunBindMountPropagation(t *testing.T) {
 				"--privileged",
 				"--name", c.name,
 				"--mount", c.mountOption,
-				testutil.AlpineImage,
+				testutil.CommonImage,
 				"top").AssertOK()
 			defer base.Cmd("rm", "-f", c.name).Run()
 		}
@@ -670,14 +670,14 @@ func TestRunVolumesFrom(t *testing.T) {
 		"-v", fmt.Sprintf("%s:/mnt2:ro", roDir),
 		"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
 		"-v", fmt.Sprintf("%s:/mnt4:ro", roVolName),
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"top",
 	).AssertOK()
 	base.Cmd("run",
 		"-d",
 		"--name", toContainerName,
 		"--volumes-from", fromContainerName,
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"top",
 	).AssertOK()
 	base.Cmd("exec", toContainerName, "sh", "-exc", "echo -n str1 > /mnt1/file1").AssertOK()
@@ -688,7 +688,7 @@ func TestRunVolumesFrom(t *testing.T) {
 	base.Cmd("run",
 		"--rm",
 		"--volumes-from", fromContainerName,
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"cat", "/mnt1/file1", "/mnt3/file3",
 	).AssertOutExactly("str1str3")
 }
@@ -704,7 +704,7 @@ func TestBindMountWhenHostFolderDoesNotExist(t *testing.T) {
 	defer os.RemoveAll(hostDir)
 	hp := filepath.Join(hostDir, "does-not-exist")
 	base.Cmd("run", "--name", containerName, "-d", "-v", fmt.Sprintf("%s:/tmp",
-		hp), testutil.AlpineImage).AssertOK()
+		hp), testutil.CommonImage).AssertOK()
 	base.Cmd("rm", "-f", containerName).AssertOK()
 
 	// Host directory should get created
@@ -714,7 +714,7 @@ func TestBindMountWhenHostFolderDoesNotExist(t *testing.T) {
 	// Test for --mount
 	os.RemoveAll(hp)
 	base.Cmd("run", "--name", containerName, "-d", "--mount", fmt.Sprintf("type=bind, source=%s, target=/tmp",
-		hp), testutil.AlpineImage).AssertFail()
+		hp), testutil.CommonImage).AssertFail()
 	_, err = os.Stat(hp)
 	assert.ErrorIs(t, err, os.ErrNotExist)
 }

@@ -218,9 +218,9 @@ func TestContainerInspectState(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer base.Cmd("rm", "-f", tc.containerName).Run()
 			if tc.want.Error != "" {
-				base.Cmd("run", "--name", tc.containerName, testutil.AlpineImage, tc.cmd).AssertFail()
+				base.Cmd("run", "--name", tc.containerName, testutil.CommonImage, tc.cmd).AssertFail()
 			} else {
-				base.Cmd("run", "--name", tc.containerName, testutil.AlpineImage, tc.cmd).AssertOK()
+				base.Cmd("run", "--name", tc.containerName, testutil.CommonImage, tc.cmd).AssertOK()
 			}
 			inspect := base.InspectContainer(tc.containerName)
 			assert.Assert(t, strings.Contains(inspect.State.Error, tc.want.Error), fmt.Sprintf("expected: %s, actual: %s", tc.want.Error, inspect.State.Error))

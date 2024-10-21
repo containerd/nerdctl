@@ -37,8 +37,6 @@ func TestPush(t *testing.T) {
 	var registryNoAuthHTTPRandom, registryNoAuthHTTPDefault, registryTokenAuthHTTPSRandom *testregistry.RegistryServer
 
 	testCase := &test.Case{
-		Description: "Test push",
-
 		Require: test.Linux,
 
 		Setup: func(data test.Data, helpers test.Helpers) {
