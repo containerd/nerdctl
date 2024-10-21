@@ -39,6 +39,8 @@ type Config struct {
 	HostsDir         []string `toml:"hosts_dir"`
 	Experimental     bool     `toml:"experimental"`
 	HostGatewayIP    string   `toml:"host_gateway_ip"`
+	// CDISpecDirs is a list of directories in which CDI specifications can be found.
+	CDISpecDirs []string `toml:"cdi_spec_dirs,omitempty"`
 }
 
 // New creates a default Config object statically,
@@ -58,5 +60,6 @@ func New() *Config {
 		HostsDir:         ncdefaults.HostsDirs(),
 		Experimental:     true,
 		HostGatewayIP:    ncdefaults.HostGatewayIP(),
+		CDISpecDirs:      []string{"/etc/cdi", "/var/run/cdi"},
 	}
 }
