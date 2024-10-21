@@ -11,14 +11,16 @@ require (
 	github.com/containerd/accelerated-container-image v1.1.2
 	github.com/containerd/cgroups/v3 v3.0.3
 	github.com/containerd/console v1.0.4
-	github.com/containerd/containerd v1.7.22
+	github.com/containerd/containerd v1.7.23
 	github.com/containerd/containerd/api v1.7.19
 	github.com/containerd/continuity v0.4.3
+	github.com/containerd/errdefs v0.3.0
 	github.com/containerd/fifo v1.1.0
 	github.com/containerd/go-cni v1.1.9
 	github.com/containerd/imgcrypt v1.1.9
 	github.com/containerd/log v0.1.0
 	github.com/containerd/nydus-snapshotter v0.13.4
+	github.com/containerd/platforms v0.2.1
 	github.com/containerd/stargz-snapshotter v0.15.1
 	github.com/containerd/stargz-snapshotter/estargz v0.15.1
 	github.com/containerd/stargz-snapshotter/ipfs v0.15.1
@@ -72,9 +74,7 @@ require (
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/cilium/ebpf v0.11.0 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
-	github.com/containerd/errdefs v0.1.0
 	github.com/containerd/go-runc v1.0.0 // indirect
-	github.com/containerd/platforms v0.2.1
 	github.com/containerd/ttrpc v1.2.5 // indirect
 	github.com/containerd/typeurl v1.0.3-0.20220422153119-7f6e6d160d67 // indirect
 	github.com/containers/ocicrypt v1.1.10 // indirect
