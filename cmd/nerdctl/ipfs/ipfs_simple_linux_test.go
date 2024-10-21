@@ -42,7 +42,7 @@ func TestIPFSSimple(t *testing.T) {
 	)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("pull", "--quiet", testutil.AlpineImage)
+		helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 	}
 
 	testCase.SubTests = []*test.Case{
@@ -50,7 +50,7 @@ func TestIPFSSimple(t *testing.T) {
 			Description: "with default snapshotter",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.AlpineImage))
+				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.CommonImage))
 				helpers.Ensure("pull", "ipfs://"+data.Get(mainImageCIDKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -71,7 +71,7 @@ func TestIPFSSimple(t *testing.T) {
 				nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3475"),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.AlpineImage, "--estargz"))
+				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.CommonImage, "--estargz"))
 				helpers.Ensure("pull", "ipfs://"+data.Get(mainImageCIDKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -88,7 +88,7 @@ func TestIPFSSimple(t *testing.T) {
 			Description: "with commit and push",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.AlpineImage))
+				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.CommonImage))
 				helpers.Ensure("pull", "ipfs://"+data.Get(mainImageCIDKey))
 
 				// Run a container that does modify something, then commit and push it
@@ -126,7 +126,7 @@ func TestIPFSSimple(t *testing.T) {
 				nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3475"),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.AlpineImage, "--estargz"))
+				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.CommonImage, "--estargz"))
 				helpers.Ensure("pull", "ipfs://"+data.Get(mainImageCIDKey))
 
 				// Run a container that does modify something, then commit and push it
@@ -161,7 +161,7 @@ func TestIPFSSimple(t *testing.T) {
 			NoParallel:  true,
 			Require:     test.Binary("openssl"),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.AlpineImage))
+				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.CommonImage))
 				helpers.Ensure("pull", "ipfs://"+data.Get(mainImageCIDKey))
 
 				// Prep a key pair

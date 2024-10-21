@@ -43,7 +43,7 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 	)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("pull", "--quiet", testutil.AlpineImage)
+		helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 
 		ipfsRegistry = registry.NewKuboRegistry(data, helpers, t, nil, 0, nil)
 		ipfsRegistry.Setup(data, helpers)
@@ -62,7 +62,7 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 			Description: "with default snapshotter",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				ipfsCID := pushToIPFS(helpers, testutil.AlpineImage, fmt.Sprintf("--ipfs-address=%s", data.Get(ipfsAddrKey)))
+				ipfsCID := pushToIPFS(helpers, testutil.CommonImage, fmt.Sprintf("--ipfs-address=%s", data.Get(ipfsAddrKey)))
 				helpers.Ensure("pull", "--ipfs-address", data.Get(ipfsAddrKey), "ipfs://"+ipfsCID)
 				data.Set(mainImageCIDKey, ipfsCID)
 			},
@@ -85,7 +85,7 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 				nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3475"),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				ipfsCID := pushToIPFS(helpers, testutil.AlpineImage, fmt.Sprintf("--ipfs-address=%s", data.Get(ipfsAddrKey)), "--estargz")
+				ipfsCID := pushToIPFS(helpers, testutil.CommonImage, fmt.Sprintf("--ipfs-address=%s", data.Get(ipfsAddrKey)), "--estargz")
 				helpers.Ensure("pull", "--ipfs-address", data.Get(ipfsAddrKey), "ipfs://"+ipfsCID)
 				data.Set(mainImageCIDKey, ipfsCID)
 			},

@@ -84,19 +84,19 @@ func TestRunCgroupV2(t *testing.T) {
 		"--memory", "42m",
 		"--pids-limit", "42",
 		"--cpu-shares", "2000", "--cpuset-cpus", "0-1",
-		"-w", "/sys/fs/cgroup", testutil.AlpineImage,
+		"-w", "/sys/fs/cgroup", testutil.CommonImage,
 		"cat", "cpu.max", "memory.max", "memory.swap.max",
 		"pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected1)
 	base.Cmd("run", "--rm",
 		"--cpu-quota", "42000", "--cpuset-mems", "0",
 		"--cpu-period", "100000", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m",
 		"--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1",
-		"-w", "/sys/fs/cgroup", testutil.AlpineImage,
+		"-w", "/sys/fs/cgroup", testutil.CommonImage,
 		"cat", "cpu.max", "memory.max", "memory.swap.max", "memory.low", "pids.max",
 		"cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
 
 	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate1", "-w", "/sys/fs/cgroup", "-d",
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+		testutil.CommonImage, "sleep", "infinity").AssertOK()
 	defer base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate1").Run()
 	update := []string{"update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
 		"--memory", "42m",
@@ -115,7 +115,7 @@ func TestRunCgroupV2(t *testing.T) {
 
 	defer base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate2").Run()
 	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate2", "-w", "/sys/fs/cgroup", "-d",
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+		testutil.CommonImage, "sleep", "infinity").AssertOK()
 	base.EnsureContainerStarted(testutil.Identifier(t) + "-testUpdate2")
 
 	base.Cmd("update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
@@ -165,8 +165,8 @@ func TestRunCgroupV1(t *testing.T) {
 	cpusetCpus := "/sys/fs/cgroup/cpuset/cpuset.cpus"
 
 	const expected = "42000\n100000\n0\n44040192\n6291456\n104857600\n0\n42\n2000\n0-1\n"
-	base.Cmd("run", "--rm", "--cpus", "0.42", "--cpuset-mems", "0", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m", "--memory-swappiness", "0", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage, "cat", quota, period, cpusetMems, memoryLimit, memoryReservation, memorySwap, memorySwappiness, pidsLimit, cpuShare, cpusetCpus).AssertOutExactly(expected)
-	base.Cmd("run", "--rm", "--cpu-quota", "42000", "--cpu-period", "100000", "--cpuset-mems", "0", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m", "--memory-swappiness", "0", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage, "cat", quota, period, cpusetMems, memoryLimit, memoryReservation, memorySwap, memorySwappiness, pidsLimit, cpuShare, cpusetCpus).AssertOutExactly(expected)
+	base.Cmd("run", "--rm", "--cpus", "0.42", "--cpuset-mems", "0", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m", "--memory-swappiness", "0", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.CommonImage, "cat", quota, period, cpusetMems, memoryLimit, memoryReservation, memorySwap, memorySwappiness, pidsLimit, cpuShare, cpusetCpus).AssertOutExactly(expected)
+	base.Cmd("run", "--rm", "--cpu-quota", "42000", "--cpu-period", "100000", "--cpuset-mems", "0", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m", "--memory-swappiness", "0", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.CommonImage, "cat", quota, period, cpusetMems, memoryLimit, memoryReservation, memorySwap, memorySwappiness, pidsLimit, cpuShare, cpusetCpus).AssertOutExactly(expected)
 }
 
 func TestRunDevice(t *testing.T) {
@@ -199,7 +199,7 @@ func TestRunDevice(t *testing.T) {
 		"--name", containerName,
 		"--device", lo[0].Device+":r",
 		"--device", lo[1].Device,
-		testutil.AlpineImage, "sleep", "infinity").Run()
+		testutil.CommonImage, "sleep", "infinity").Run()
 
 	base.Cmd("exec", containerName, "cat", lo[0].Device).AssertOutContains(loContent[0])
 	base.Cmd("exec", containerName, "cat", lo[1].Device).AssertOutContains(loContent[1])
@@ -290,7 +290,7 @@ func TestRunCgroupConf(t *testing.T) {
 	if !info.MemoryLimit {
 		t.Skip("test requires MemoryLimit")
 	}
-	base.Cmd("run", "--rm", "--cgroup-conf", "memory.high=33554432", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
+	base.Cmd("run", "--rm", "--cgroup-conf", "memory.high=33554432", "-w", "/sys/fs/cgroup", testutil.CommonImage,
 		"cat", "memory.high").AssertOutExactly("33554432\n")
 }
 
@@ -331,7 +331,7 @@ func TestRunCgroupParent(t *testing.T) {
 		containerName,
 		"--cgroupns=host",
 		"--cgroup-parent", parent,
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"sleep",
 		"infinity",
 	).AssertOK()
@@ -364,7 +364,7 @@ func TestRunBlkioWeightCgroupV2(t *testing.T) {
 	containerName := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", containerName).AssertOK()
 	// when bfq io scheduler is used, the io.weight knob is exposed as io.bfq.weight
-	base.Cmd("run", "--name", containerName, "--blkio-weight", "300", "-w", "/sys/fs/cgroup", testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "--name", containerName, "--blkio-weight", "300", "-w", "/sys/fs/cgroup", testutil.CommonImage, "sleep", "infinity").AssertOK()
 	base.Cmd("exec", containerName, "cat", "io.bfq.weight").AssertOutExactly("default 300\n")
 	base.Cmd("update", containerName, "--blkio-weight", "400").AssertOK()
 	base.Cmd("exec", containerName, "cat", "io.bfq.weight").AssertOutExactly("default 400\n")

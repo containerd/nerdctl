@@ -35,7 +35,7 @@ func getCapEff(base *testutil.Base, args ...string) uint64 {
 	fullArgs := []string{"run", "--rm"}
 	fullArgs = append(fullArgs, args...)
 	fullArgs = append(fullArgs,
-		testutil.AlpineImage,
+		testutil.CommonImage,
 		"sh",
 		"-euc",
 		"grep -w ^CapEff: /proc/self/status | sed -e \"s/^CapEff:[[:space:]]*//g\"",
@@ -148,7 +148,7 @@ func TestRunSecurityOptSeccomp(t *testing.T) {
 			args := []string{"run", "--rm"}
 			args = append(args, tc.args...)
 			// NOTE: busybox grep does not support -oP \K
-			args = append(args, testutil.AlpineImage, "grep", "-Eo", `^Seccomp:\s*([0-9]+)`, "/proc/1/status")
+			args = append(args, testutil.CommonImage, "grep", "-Eo", `^Seccomp:\s*([0-9]+)`, "/proc/1/status")
 			cmd := base.Cmd(args...)
 			f := func(expectedSeccomp int) func(string) error {
 				return func(stdout string) error {
@@ -180,16 +180,16 @@ func TestRunApparmor(t *testing.T) {
 		attrCurrentPath = "/proc/self/attr/current"
 	}
 	attrCurrentEnforceExpected := fmt.Sprintf("%s (enforce)\n", defaultProfile)
-	base.Cmd("run", "--rm", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly(attrCurrentEnforceExpected)
-	base.Cmd("run", "--rm", "--security-opt", "apparmor="+defaultProfile, testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly(attrCurrentEnforceExpected)
-	base.Cmd("run", "--rm", "--security-opt", "apparmor=unconfined", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutContains("unconfined")
-	base.Cmd("run", "--rm", "--privileged", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutContains("unconfined")
+	base.Cmd("run", "--rm", testutil.CommonImage, "cat", attrCurrentPath).AssertOutExactly(attrCurrentEnforceExpected)
+	base.Cmd("run", "--rm", "--security-opt", "apparmor="+defaultProfile, testutil.CommonImage, "cat", attrCurrentPath).AssertOutExactly(attrCurrentEnforceExpected)
+	base.Cmd("run", "--rm", "--security-opt", "apparmor=unconfined", testutil.CommonImage, "cat", attrCurrentPath).AssertOutContains("unconfined")
+	base.Cmd("run", "--rm", "--privileged", testutil.CommonImage, "cat", attrCurrentPath).AssertOutContains("unconfined")
 }
 
 // TestRunSeccompCapSysPtrace tests https://github.com/containerd/nerdctl/issues/976
 func TestRunSeccompCapSysPtrace(t *testing.T) {
 	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "--cap-add", "sys_ptrace", testutil.AlpineImage, "sh", "-euxc", "apk add -q strace && strace true").AssertOK()
+	base.Cmd("run", "--rm", "--cap-add", "sys_ptrace", testutil.CommonImage, "sh", "-euxc", "apk add -q strace && strace true").AssertOK()
 	// Docker/Moby 's seccomp profile allows ptrace(2) by default, but containerd does not (yet): https://github.com/containerd/containerd/issues/6802
 }
 
@@ -197,7 +197,7 @@ func TestRunSystemPathsUnconfined(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	const findmnt = "`apk add -q findmnt && findmnt -R /proc && findmnt -R /sys`"
-	result := base.Cmd("run", "--rm", testutil.AlpineImage, "sh", "-euxc", findmnt).Run()
+	result := base.Cmd("run", "--rm", testutil.CommonImage, "sh", "-euxc", findmnt).Run()
 	defaultContainerOutput := result.Combined()
 
 	var confined []string
@@ -221,7 +221,7 @@ func TestRunSystemPathsUnconfined(t *testing.T) {
 
 	assert.Check(t, len(confined) != 0, "Default container has no confined paths to validate")
 
-	result = base.Cmd("run", "--rm", "--security-opt", "systempaths=unconfined", testutil.AlpineImage, "sh", "-euxc", findmnt).Run()
+	result = base.Cmd("run", "--rm", "--security-opt", "systempaths=unconfined", testutil.CommonImage, "sh", "-euxc", findmnt).Run()
 	unconfinedContainerOutput := result.Combined()
 
 	for _, path := range confined {
@@ -238,11 +238,11 @@ func TestRunSystemPathsUnconfined(t *testing.T) {
 	} {
 		findmntPath := fmt.Sprintf("`apk add -q findmnt && findmnt %s`", path)
 
-		result := base.Cmd("run", "--rm", testutil.AlpineImage, "sh", "-euxc", findmntPath).Run()
+		result := base.Cmd("run", "--rm", testutil.CommonImage, "sh", "-euxc", findmntPath).Run()
 
 		// Not each distribution will support every read-only path here.
 		if strings.Contains(result.Combined(), path) {
-			result = base.Cmd("run", "--rm", "--security-opt", "systempaths=unconfined", testutil.AlpineImage, "sh", "-euxc", findmntPath).Run()
+			result = base.Cmd("run", "--rm", "--security-opt", "systempaths=unconfined", testutil.CommonImage, "sh", "-euxc", findmntPath).Run()
 			assert.Assert(t, !strings.Contains(result.Combined(), "ro,"), fmt.Sprintf("%s should not be read-only when unconfined", path))
 		}
 	}
@@ -273,10 +273,10 @@ func TestRunPrivileged(t *testing.T) {
 	}()
 
 	// get device with host devices
-	base.Cmd("run", "--rm", "--privileged", testutil.AlpineImage, "ls", devPath).AssertOutExactly(devPath + "\n")
+	base.Cmd("run", "--rm", "--privileged", testutil.CommonImage, "ls", devPath).AssertOutExactly(devPath + "\n")
 
 	// get device without host devices
-	res := base.Cmd("run", "--rm", "--privileged", "--security-opt", "privileged-without-host-devices", testutil.AlpineImage, "ls", devPath).Run()
+	res := base.Cmd("run", "--rm", "--privileged", "--security-opt", "privileged-without-host-devices", testutil.CommonImage, "ls", devPath).Run()
 
 	// normally for not a exists file, the `ls` will return `1``.
 	assert.Check(t, res.ExitCode != 0, res)
