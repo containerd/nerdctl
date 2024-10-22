@@ -104,7 +104,7 @@ func TestIPFSSimple(t *testing.T) {
 				helpers.Ensure("pull", "ipfs://"+data.Get(transformedImageCIDKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", data.Identifier("commit-container"))
+				helpers.Anyhow("rm", "-f", data.Identifier("commit-container"))
 				helpers.Anyhow("rmi", "-f", data.Identifier("commit-image"))
 				if data.Get(mainImageCIDKey) != "" {
 					helpers.Anyhow("rmi", "-f", data.Get(mainImageCIDKey))
@@ -142,7 +142,7 @@ func TestIPFSSimple(t *testing.T) {
 				helpers.Ensure("pull", "ipfs://"+data.Get(transformedImageCIDKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", data.Identifier("commit-container"))
+				helpers.Anyhow("rm", "-f", data.Identifier("commit-container"))
 				helpers.Anyhow("rmi", "-f", data.Identifier("commit-image"))
 				if data.Get(mainImageCIDKey) != "" {
 					helpers.Anyhow("rmi", "-f", data.Get(mainImageCIDKey))
