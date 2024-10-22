@@ -115,14 +115,8 @@ func TestRemove(t *testing.T) {
 		{
 			Description: "Remove image with running container - with -f",
 			NoParallel:  true,
-			// FIXME: nerdctl is broken
-			// https://github.com/containerd/nerdctl/issues/3454
-			// If an image is associated with a running/paused containers, `docker rmi -f imageName`
-			// untags `imageName` (left a `<none>` image) without deletion; `docker rmi -rf imageID` fails.
-			// In both cases, `nerdctl rmi -f` will fail.
 			Require: test.Require(
 				test.Not(test.Windows),
-				test.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
@@ -133,11 +127,9 @@ func TestRemove(t *testing.T) {
 			Command: test.Command("rmi", "-f", testutil.CommonImage),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 1,
-					Errors:   []error{errors.New("image is being used")},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.Contains(repoName),
+							Output: test.DoesNotContain(repoName),
 						})
 					},
 				}
@@ -225,12 +217,6 @@ func TestRemove(t *testing.T) {
 			Require: test.Require(
 				test.Not(test.Windows),
 				nerdtest.CGroup,
-				// FIXME: nerdctl is broken
-				// https://github.com/containerd/nerdctl/issues/3454
-				// If an image is associated with a running/paused containers, `docker rmi -f imageName`
-				// untags `imageName` (left a `<none>` image) without deletion; `docker rmi -rf imageID` fails.
-				// In both cases, `nerdctl rmi -f` will fail.
-				test.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
@@ -242,11 +228,9 @@ func TestRemove(t *testing.T) {
 			Command: test.Command("rmi", "-f", testutil.CommonImage),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 1,
-					Errors:   []error{errors.New("image is being used")},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.Contains(repoName),
+							Output: test.DoesNotContain(repoName),
 						})
 					},
 				}
@@ -334,11 +318,9 @@ func TestIssue3016(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 0,
-					Errors:   []error{},
+					Errors: []error{},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images", data.Get(tagIDKey)).Run(&test.Expected{
-							ExitCode: 0,
 							Output: func(stdout string, info string, t *testing.T) {
 								assert.Equal(t, len(strings.Split(stdout, "\n")), 2)
 							},
