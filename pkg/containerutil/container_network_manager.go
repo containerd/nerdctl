@@ -179,9 +179,64 @@ func (m *noneNetworkManager) InternalNetworkingOptionLabels(_ context.Context) (
 
 // ContainerNetworkingOpts Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
 // the network specs which need to be applied to the container with the given ID.
-func (m *noneNetworkManager) ContainerNetworkingOpts(_ context.Context, _ string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
+func (m *noneNetworkManager) ContainerNetworkingOpts(_ context.Context, containerID string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
+	dataStore, err := clientutil.DataStore(m.globalOptions.DataRoot, m.globalOptions.Address)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stateDir, err := ContainerStateDirPath(m.globalOptions.Namespace, dataStore, containerID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resolvConfPath := filepath.Join(stateDir, "resolv.conf")
+	copyFileContent("/etc/resolv.conf", resolvConfPath)
+
+	hs, err := hostsstore.New(dataStore, m.globalOptions.Namespace)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	content, err := os.ReadFile("/etc/hosts")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	etcHostsPath, err := hs.AllocHostsFile(containerID, content)
+	if err != nil {
+		return nil, nil, err
+	}
+	copyFileContent("/etc/hosts", etcHostsPath)
+
+	specs := []oci.SpecOpts{
+		withDedupMounts("/etc/hosts", withCustomHosts(etcHostsPath)),
+		withDedupMounts("/etc/resolv.conf", withCustomResolvConf(resolvConfPath)),
+		oci.WithHostNamespace(specs.NetworkNamespace),
+	}
+
+	// `/etc/hostname` does not exist on FreeBSD
+	if runtime.GOOS == "linux" {
+		// If no hostname is set, default to first 12 characters of the container ID.
+		hostname := m.netOpts.Hostname
+		if hostname == "" {
+			hostname = containerID
+			if len(hostname) > 12 {
+				hostname = hostname[0:12]
+			}
+		}
+		m.netOpts.Hostname = hostname
+
+		hostnameOpts, err := writeEtcHostnameForContainer(m.globalOptions, m.netOpts.Hostname, containerID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if hostnameOpts != nil {
+			specs = append(specs, hostnameOpts...)
+		}
+	}
 	// No options to return if no network settings are provided.
-	return []oci.SpecOpts{}, []containerd.NewContainerOpts{}, nil
+	return specs, []containerd.NewContainerOpts{}, nil
 }
 
 // types.NetworkOptionsManager implementation for container networking settings.
