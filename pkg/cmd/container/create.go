@@ -50,6 +50,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/flagutil"
 	"github.com/containerd/nerdctl/v2/pkg/idgen"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil/load"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
@@ -122,6 +123,39 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 	}
 	opts = append(opts, platformOpts...)
+
+	if _, err := referenceutil.Parse(args[0]); errors.Is(err, referenceutil.ErrLoadOCIArchiveRequired) {
+		imageRef := args[0]
+
+		// Load and create the platform specified by the user.
+		// If none specified, fallback to the default platform.
+		platform := []string{}
+		if options.Platform != "" {
+			platform = append(platform, options.Platform)
+		}
+
+		images, err := load.FromOCIArchive(ctx, client, imageRef, types.ImageLoadOptions{
+			Stdout:       options.Stdout,
+			GOptions:     options.GOptions,
+			Platform:     platform,
+			AllPlatforms: false,
+			Quiet:        options.ImagePullOpt.Quiet,
+		})
+		if err != nil {
+			return nil, nil, err
+		} else if len(images) == 0 {
+			// This is a regression and should not occur.
+			return nil, nil, errors.New("OCI archive did not contain any images")
+		}
+
+		image := images[0].Name
+		// Multiple images loaded from the provided archive. Default to the first image found.
+		if len(images) != 1 {
+			log.L.Warnf("multiple images are found for the platform, defaulting to image %s...", image)
+		}
+
+		args[0] = image
+	}
 
 	var ensuredImage *imgutil.EnsuredImage
 	if !options.Rootfs {

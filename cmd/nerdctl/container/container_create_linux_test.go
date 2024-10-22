@@ -29,6 +29,7 @@ import (
 
 	"github.com/containerd/containerd/v2/defaults"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
@@ -305,4 +306,35 @@ func TestIssue2993(t *testing.T) {
 	}
 
 	testCase.Run(t)
+}
+
+func TestCreateFromOCIArchive(t *testing.T) {
+	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
+
+	// Docker does not support creating containers from OCI archive.
+	testutil.DockerIncompatible(t)
+
+	base := testutil.NewBase(t)
+	imageName := testutil.Identifier(t)
+	containerName := testutil.Identifier(t)
+
+	teardown := func() {
+		base.Cmd("rm", "-f", containerName).Run()
+		base.Cmd("rmi", "-f", imageName).Run()
+	}
+	defer teardown()
+	teardown()
+
+	const sentinel = "test-nerdctl-create-from-oci-archive"
+	dockerfile := fmt.Sprintf(`FROM %s
+	CMD ["echo", "%s"]`, testutil.CommonImage, sentinel)
+
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	tag := fmt.Sprintf("%s:latest", imageName)
+	tarPath := fmt.Sprintf("%s/%s.tar", buildCtx, imageName)
+
+	base.Cmd("build", "--tag", tag, fmt.Sprintf("--output=type=oci,dest=%s", tarPath), buildCtx).AssertOK()
+	base.Cmd("create", "--rm", "--name", containerName, fmt.Sprintf("oci-archive://%s", tarPath)).AssertOK()
+	base.Cmd("start", "--attach", containerName).AssertOutContains("test-nerdctl-create-from-oci-archive")
 }

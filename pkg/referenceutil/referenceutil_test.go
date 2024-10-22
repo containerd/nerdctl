@@ -273,6 +273,9 @@ func TestReferenceUtil(t *testing.T) {
 			Tag:          "latest",
 			ExplicitTag:  "",
 		},
+		"oci-archive:///tmp/build/saved-image.tar": {
+			Error: "image must be loaded from archive before parsing image reference",
+		},
 	}
 
 	for k, v := range needles {

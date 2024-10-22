@@ -658,3 +658,31 @@ func TestRunQuiet(t *testing.T) {
 
 	assert.Assert(t, wasQuiet(result.Combined(), sentinel), "Found %s in container run output", sentinel)
 }
+
+func TestRunFromOCIArchive(t *testing.T) {
+	testutil.RequiresBuild(t)
+	testutil.RegisterBuildCacheCleanup(t)
+
+	// Docker does not support running container images from OCI archive.
+	testutil.DockerIncompatible(t)
+
+	base := testutil.NewBase(t)
+	imageName := testutil.Identifier(t)
+
+	teardown := func() {
+		base.Cmd("rmi", "-f", imageName).Run()
+	}
+	defer teardown()
+	teardown()
+
+	const sentinel = "test-nerdctl-run-from-oci-archive"
+	dockerfile := fmt.Sprintf(`FROM %s
+	CMD ["echo", "%s"]`, testutil.CommonImage, sentinel)
+
+	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	tag := fmt.Sprintf("%s:latest", imageName)
+	tarPath := fmt.Sprintf("%s/%s.tar", buildCtx, imageName)
+
+	base.Cmd("build", "--tag", tag, fmt.Sprintf("--output=type=oci,dest=%s", tarPath), buildCtx).AssertOK()
+	base.Cmd("run", "--rm", fmt.Sprintf("oci-archive://%s", tarPath)).AssertOutContainsAll(fmt.Sprintf("Loaded image: %s", tag), sentinel)
+}
