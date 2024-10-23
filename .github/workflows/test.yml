@@ -13,6 +13,47 @@ env:
   GO_VERSION: 1.23.x
 
 jobs:
+  build-deps:
+    runs-on: "${{ matrix.runner }}"
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
+        include:
+          - runner: ubuntu-24.04
+            containerd: v1.6.36
+            arch: amd64
+          - runner: ubuntu-24.04
+            containerd: v1.7.23
+            arch: amd64
+          - runner: ubuntu-24.04
+            containerd: v2.0.0-rc.5
+            arch: amd64
+          - runner: github-arm64-2c-8gb
+            containerd: v2.0.0-rc.5
+            arch: arm64
+    env:
+      CONTAINERD_VERSION: "${{ matrix.containerd }}"
+      ARCH: "${{ matrix.arch }}"
+    steps:
+      - uses: actions/checkout@v4.2.1
+        with:
+          fetch-depth: 1
+      - name: Expose GitHub Runtime variables for gha
+        uses: crazy-max/ghaction-github-runtime@v3
+      - name: Enable containerd to be able to use gha cache
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{"features": {"containerd-snapshotter": true}}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+      - name: "Prepare integration test environment"
+        run: |
+          docker build \
+            --cache-to type=gha,mode=max,scope=${ARCH}-${CONTAINERD_VERSION} \
+            --cache-from type=gha,scope=${ARCH}-${CONTAINERD_VERSION} \
+            --target build-deps --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+
   test-unit:
     timeout-minutes: 5
     name: unit | ${{ matrix.goos }}
@@ -51,6 +92,7 @@ jobs:
         run: go test -v ./pkg/...
 
   test-integration:
+    needs: build-deps
     runs-on: "${{ matrix.runner }}"
     timeout-minutes: 40
     strategy:
@@ -61,24 +103,39 @@ jobs:
           - ubuntu: 20.04
             containerd: v1.6.36
             runner: "ubuntu-20.04"
+            arch: amd64
           - ubuntu: 22.04
             containerd: v1.7.23
             runner: "ubuntu-22.04"
+            arch: amd64
           - ubuntu: 24.04
             containerd: v2.0.0-rc.5
             runner: "ubuntu-24.04"
+            arch: amd64
           - ubuntu: 24.04
             containerd: v2.0.0-rc.5
             runner: github-arm64-2c-8gb
+            arch: arm64
     env:
-      UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
+      ARCH: "${{ matrix.arch }}"
+      UBUNTU_VERSION: "${{ matrix.ubuntu }}"
     steps:
       - uses: actions/checkout@v4.2.1
         with:
           fetch-depth: 1
+      - name: Expose GitHub Runtime variables for gha
+        uses: crazy-max/ghaction-github-runtime@v3
+      - name: Enable containerd to be able to use gha cache
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{"features": {"containerd-snapshotter": true}}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
       - name: "Prepare integration test environment"
-        run: docker build -t test-integration --target test-integration --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+        run: |
+          docker build \
+            --cache-from type=gha,scope=${ARCH}-${CONTAINERD_VERSION} \
+            -t test-integration --target test-integration --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
           sudo systemctl disable --now snapd.service snapd.socket
@@ -103,6 +160,7 @@ jobs:
           command: docker run -t --rm --privileged test-integration
 
   test-integration-ipv6:
+    needs: build-deps
     runs-on: "ubuntu-${{ matrix.ubuntu }}"
     timeout-minutes: 40
     strategy:
@@ -112,9 +170,12 @@ jobs:
         include:
           - ubuntu: 24.04
             containerd: v1.7.23
+            arch: amd64
     env:
-      UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
+      ARCH: "${{ matrix.arch }}"
+      RUNNER: "ubuntu-${{ matrix.ubuntu }}"
+      UBUNTU_VERSION: "${{ matrix.ubuntu }}"
     steps:
       - uses: actions/checkout@v4.2.1
         with:
@@ -123,13 +184,19 @@ jobs:
         run: |
           sudo sysctl -w net.ipv6.conf.all.forwarding=1
           sudo sysctl -w net.ipv4.ip_forward=1
-      - name: Enable IPv6 for Docker
+
+      - name: Expose GitHub Runtime variables for gha
+        uses: crazy-max/ghaction-github-runtime@v3
+      - name: Enable IPv6 for Docker, and configure docker to use containerd for gha
         run: |
           sudo mkdir -p /etc/docker
-          echo '{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64", "experimental": true, "ip6tables": true}' | sudo tee /etc/docker/daemon.json
+          echo '{"features": {"containerd-snapshotter": true}, "ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64", "experimental": true, "ip6tables": true}' | sudo tee /etc/docker/daemon.json
           sudo systemctl restart docker
       - name: "Prepare integration test environment"
-        run: docker build -t test-integration-ipv6 --target test-integration-ipv6 --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
+        run: |
+          docker build \
+            --cache-from type=gha,scope=${ARCH}-${CONTAINERD_VERSION} \
+            -t test-integration-ipv6 --target test-integration-ipv6 --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
           sudo systemctl disable --now snapd.service snapd.socket
@@ -159,6 +226,7 @@ jobs:
           command: docker run --network host -t --rm --privileged test-integration-ipv6
 
   test-integration-rootless:
+    needs: build-deps
     runs-on: "ubuntu-${{ matrix.ubuntu }}"
     timeout-minutes: 60
     strategy:
@@ -170,21 +238,27 @@ jobs:
             containerd: v1.6.36
             rootlesskit: v1.1.1  # Deprecated
             target: test-integration-rootless
+            arch: amd64
           - ubuntu: 22.04
             containerd: v1.7.23
             rootlesskit: v2.3.1
             target: test-integration-rootless
+            arch: amd64
           - ubuntu: 24.04
             containerd: v2.0.0-rc.5
             rootlesskit: v2.3.1
             target: test-integration-rootless
+            arch: amd64
           - ubuntu: 24.04
             containerd: v1.7.23
             rootlesskit: v2.3.1
             target: test-integration-rootless-port-slirp4netns
+            arch: amd64
     env:
-      UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
+      ARCH: "${{ matrix.arch }}"
+      RUNNER: "ubuntu-${{ matrix.ubuntu }}"
+      UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       ROOTLESSKIT_VERSION: "${{ matrix.rootlesskit }}"
       TEST_TARGET: "${{ matrix.target }}"
     steps:
@@ -215,8 +289,18 @@ jobs:
           docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
+      - name: Expose GitHub Runtime variables for gha
+        uses: crazy-max/ghaction-github-runtime@v3
+      - name: Enable containerd to be able to use gha cache
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{"features": {"containerd-snapshotter": true}}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
       - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
-        run: docker build -t ${TEST_TARGET} --target ${TEST_TARGET} --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} --build-arg ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION} .
+        run: |
+          docker build \
+            --cache-from type=gha,scope=${ARCH}-${CONTAINERD_VERSION} \
+            -t ${TEST_TARGET} --target ${TEST_TARGET} --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} --build-arg ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION} .
       - name: "Disable BuildKit for RootlessKit v1 (workaround for issue #622)"
         run: |
           # https://github.com/containerd/nerdctl/issues/622
