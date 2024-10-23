@@ -171,6 +171,23 @@ var CGroup = &test.Requirement{
 	},
 }
 
+var CgroupsAccessible = test.Require(
+	CGroup,
+	&test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+			isRootLess := getTarget() == targetNerdctl && rootlessutil.IsRootless()
+			if isRootLess {
+				stdout := helpers.Capture("info", "--format", "{{ json . }}")
+				var dinf dockercompat.Info
+				err := json.Unmarshal([]byte(stdout), &dinf)
+				assert.NilError(helpers.T(), err, "failed to parse docker info")
+				return dinf.CgroupVersion == "2", "we are rootless, and cgroup version is not 2"
+			}
+			return true, ""
+		},
+	},
+)
+
 // Soci requires that the soci snapshotter is enabled
 var Soci = &test.Requirement{
 	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
