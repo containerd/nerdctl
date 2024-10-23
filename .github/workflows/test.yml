@@ -33,7 +33,7 @@ jobs:
           - os: ubuntu-24.04
             goos: linux
     steps:
-      - uses: actions/checkout@v4.2.1
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -42,7 +42,7 @@ jobs:
           check-latest: true
           cache: true
       - if: ${{ matrix.goos=='windows' }}
-        uses: actions/checkout@v4.2.1
+        uses: actions/checkout@v4.2.2
         with:
           repository: containerd/containerd
           ref: v1.7.23
@@ -80,7 +80,7 @@ jobs:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
-      - uses: actions/checkout@v4.2.1
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
       - name: "Prepare integration test environment"
@@ -120,7 +120,7 @@ jobs:
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
     steps:
-      - uses: actions/checkout@v4.2.1
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
       - name: Enable ipv4 and ipv6 forwarding
@@ -203,7 +203,7 @@ jobs:
           }
           EOT
           sudo systemctl restart apparmor.service
-      - uses: actions/checkout@v4.2.1
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -238,7 +238,7 @@ jobs:
       matrix:
         go-version: ["1.22.x", "1.23.x"]
     steps:
-      - uses: actions/checkout@v4.2.1
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -254,7 +254,7 @@ jobs:
     name: docker
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4.2.1
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -295,7 +295,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4.2.1
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
@@ -305,7 +305,7 @@ jobs:
           check-latest: true
       - run: go install ./cmd/nerdctl
       - run: go install -v gotest.tools/gotestsum@v1
-      - uses: actions/checkout@v4.2.1
+      - uses: actions/checkout@v4.2.2
         with:
           repository: containerd/containerd
           ref: v1.7.23
@@ -330,7 +330,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v4.2.1
+      - uses: actions/checkout@v4.2.2
       - uses: actions/cache@v4
         with:
           path: /root/.vagrant.d
