@@ -104,7 +104,7 @@ func TestRunInternetConnectivity(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			args := []string{"run", "--rm"}
 			args = append(args, tc.args...)
-			args = append(args, testutil.AlpineImage, "apk", "update")
+			args = append(args, testutil.CommonImage, "apk", "update")
 			cmd := base.Cmd(args...)
 			cmd.AssertOutContains("OK")
 		})

@@ -62,7 +62,7 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 	)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("pull", "--quiet", testutil.AlpineImage)
+		helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 
 		// Start a local ipfs backed registry
 		ipfsServer = helpers.Command("ipfs", "registry", "serve", "--listen-registry", listenAddr)
@@ -84,7 +84,7 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 			Description: "with default snapshotter",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				data.Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.AlpineImage))
+				data.Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.CommonImage))
 				helpers.Ensure("pull", "--quiet", data.Get(ipfsImageURLKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -102,7 +102,7 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 			NoParallel:  true,
 			Require:     nerdtest.Stargz,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				data.Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.AlpineImage, "--estargz"))
+				data.Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.CommonImage, "--estargz"))
 				helpers.Ensure("pull", "--quiet", data.Get(ipfsImageURLKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -126,7 +126,7 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 				}
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
-				data.Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.AlpineImage))
+				data.Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.CommonImage))
 
 				dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-string"]

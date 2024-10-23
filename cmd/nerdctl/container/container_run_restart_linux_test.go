@@ -97,7 +97,7 @@ func TestRunRestartWithOnFailure(t *testing.T) {
 	}
 	tID := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", tID).Run()
-	base.Cmd("run", "-d", "--restart=on-failure:2", "--name", tID, testutil.AlpineImage, "sh", "-c", "exit 1").AssertOK()
+	base.Cmd("run", "-d", "--restart=on-failure:2", "--name", tID, testutil.CommonImage, "sh", "-c", "exit 1").AssertOK()
 
 	check := func(log poll.LogT) poll.Result {
 		inspect := base.InspectContainer(tID)
@@ -118,7 +118,7 @@ func TestRunRestartWithUnlessStopped(t *testing.T) {
 	}
 	tID := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", tID).Run()
-	base.Cmd("run", "-d", "--restart=unless-stopped", "--name", tID, testutil.AlpineImage, "sh", "-c", "exit 1").AssertOK()
+	base.Cmd("run", "-d", "--restart=unless-stopped", "--name", tID, testutil.CommonImage, "sh", "-c", "exit 1").AssertOK()
 
 	check := func(log poll.LogT) poll.Result {
 		inspect := base.InspectContainer(tID)
@@ -142,7 +142,7 @@ func TestUpdateRestartPolicy(t *testing.T) {
 	}
 	tID := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", tID).Run()
-	base.Cmd("run", "-d", "--restart=on-failure:1", "--name", tID, testutil.AlpineImage, "sh", "-c", "exit 1").AssertOK()
+	base.Cmd("run", "-d", "--restart=on-failure:1", "--name", tID, testutil.CommonImage, "sh", "-c", "exit 1").AssertOK()
 	base.Cmd("update", "--restart=on-failure:2", tID).AssertOK()
 	check := func(log poll.LogT) poll.Result {
 		inspect := base.InspectContainer(tID)

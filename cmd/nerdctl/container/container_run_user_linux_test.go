@@ -40,7 +40,7 @@ func TestRunUserGID(t *testing.T) {
 			if userStr != "" {
 				cmd = append(cmd, "--user", userStr)
 			}
-			cmd = append(cmd, testutil.AlpineImage, "id", "-nG")
+			cmd = append(cmd, testutil.CommonImage, "id", "-nG")
 			base.Cmd(cmd...).AssertOutContains(expected)
 		})
 	}
@@ -50,7 +50,7 @@ func TestRunUmask(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 	testutil.DockerIncompatible(t)
-	base.Cmd("run", "--rm", "--umask", "0200", testutil.AlpineImage, "sh", "-c", "umask").AssertOutContains("0200")
+	base.Cmd("run", "--rm", "--umask", "0200", testutil.CommonImage, "sh", "-c", "umask").AssertOutContains("0200")
 }
 
 func TestRunAddGroup(t *testing.T) {
@@ -114,7 +114,7 @@ func TestRunAddGroup(t *testing.T) {
 			for _, group := range testCase.groups {
 				cmd = append(cmd, "--group-add", group)
 			}
-			cmd = append(cmd, testutil.AlpineImage, "id", "-nG")
+			cmd = append(cmd, testutil.CommonImage, "id", "-nG")
 			base.Cmd(cmd...).AssertOutExactly(testCase.expected + "\n")
 		})
 	}

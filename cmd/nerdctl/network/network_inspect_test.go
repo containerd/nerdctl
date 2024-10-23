@@ -38,6 +38,15 @@ func TestNetworkInspect(t *testing.T) {
 		testIPRange = "10.24.24.0/25"
 	)
 
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("network", "create", data.Identifier("basenet"))
+		data.Set("basenet", data.Identifier("basenet"))
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("network", "rm", data.Identifier("basenet"))
+	}
+
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "non existent network",
@@ -88,6 +97,18 @@ func TestNetworkInspect(t *testing.T) {
 			}),
 		},
 		{
+			Description: "nat",
+			Require:     test.Windows,
+			Command:     test.Command("network", "inspect", "nat"),
+			Expected: test.Expects(0, nil, func(stdout string, info string, t *testing.T) {
+				var dc []dockercompat.Network
+				err := json.Unmarshal([]byte(stdout), &dc)
+				assert.NilError(t, err, "Unable to unmarshal output\n"+info)
+				assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+				assert.Equal(t, dc[0].Name, "nat")
+			}),
+		},
+		{
 			Description: "custom",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", "custom")
@@ -106,9 +127,8 @@ func TestNetworkInspect(t *testing.T) {
 		},
 		{
 			Description: "match exact id",
-			Require:     test.Not(test.Windows),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				id := strings.TrimSpace(helpers.Capture("network", "inspect", "bridge", "--format", "{{ .Id }}"))
+				id := strings.TrimSpace(helpers.Capture("network", "inspect", data.Get("basenet"), "--format", "{{ .Id }}"))
 				return helpers.Command("network", "inspect", id)
 			},
 			Expected: test.Expects(0, nil, func(stdout string, info string, t *testing.T) {
@@ -121,9 +141,8 @@ func TestNetworkInspect(t *testing.T) {
 		},
 		{
 			Description: "match part of id",
-			Require:     test.Not(test.Windows),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				id := strings.TrimSpace(helpers.Capture("network", "inspect", "bridge", "--format", "{{ .Id }}"))
+				id := strings.TrimSpace(helpers.Capture("network", "inspect", data.Get("basenet"), "--format", "{{ .Id }}"))
 				return helpers.Command("network", "inspect", id[0:25])
 			},
 			Expected: test.Expects(0, nil, func(stdout string, info string, t *testing.T) {
@@ -136,14 +155,13 @@ func TestNetworkInspect(t *testing.T) {
 		},
 		{
 			Description: "using another net short id",
-			Require:     test.Not(test.Windows),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				id := strings.TrimSpace(helpers.Capture("network", "inspect", "bridge", "--format", "{{ .Id }}"))
+				id := strings.TrimSpace(helpers.Capture("network", "inspect", data.Get("basenet"), "--format", "{{ .Id }}"))
 				helpers.Ensure("network", "create", id[0:12])
 				data.Set("netname", id[0:12])
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				id := strings.TrimSpace(helpers.Capture("network", "inspect", "bridge", "--format", "{{ .Id }}"))
+				id := strings.TrimSpace(helpers.Capture("network", "inspect", data.Get("basenet"), "--format", "{{ .Id }}"))
 				helpers.Anyhow("network", "remove", id[0:12])
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {

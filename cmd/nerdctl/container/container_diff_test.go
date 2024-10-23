@@ -24,11 +24,20 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
-func TestRemoveContainer(t *testing.T) {
+func TestDiff(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	// It is unclear why this is failing with docker when run in parallel
+	// Obviously some other container test is interfering
+	if nerdtest.IsDocker() {
+		testCase.NoParallel = true
+	}
+
+	testCase.Require = test.Not(test.Windows)
+
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "inf")
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-euxc", "touch /a; touch /bin/b; rm /bin/base64")
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -36,13 +45,15 @@ func TestRemoveContainer(t *testing.T) {
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		helpers.Fail("rm", data.Identifier())
-
-		// `kill` does return before the container actually stops
-		helpers.Ensure("kill", data.Identifier())
-
-		return helpers.Command("rm", data.Identifier())
+		return helpers.Command("diff", data.Identifier())
 	}
 
-	testCase.Expected = test.Expects(0, nil, nil)
+	testCase.Expected = test.Expects(0, nil, test.All(
+		test.Contains("A /a"),
+		test.Contains("C /bin"),
+		test.Contains("A /bin/b"),
+		test.Contains("D /bin/base64"),
+	))
+
+	testCase.Run(t)
 }

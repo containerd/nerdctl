@@ -1,0 +1,88 @@
+/*
+   Copyright The containerd Authors.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
+package container
+
+import (
+	"runtime"
+	"testing"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+)
+
+func TestTop(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	//more details https://github.com/containerd/nerdctl/pull/223#issuecomment-851395178
+	if runtime.GOOS == "linux" {
+		testCase.Require = nerdtest.RootfulOrCGroupV2
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+		data.Set("cID", data.Identifier())
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "with o pid,user,cmd",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("top", data.Get("cID"), "-o", "pid,user,cmd")
+			},
+
+			Expected: test.Expects(0, nil, nil),
+		},
+		{
+			Description: "simple",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("top", data.Get("cID"))
+			},
+
+			Expected: test.Expects(0, nil, nil),
+		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestTopHyperVContainer(t *testing.T) {
+
+	testCase := nerdtest.Setup()
+
+	testCase.Require = nerdtest.HyperV
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "--isolation", "hyperv", "-d", "--name", data.Identifier("container"), testutil.CommonImage, "sleep", "infinity")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier("container"))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("top", data.Identifier("container"))
+	}
+
+	testCase.Expected = test.Expects(0, nil, nil)
+
+	testCase.Run(t)
+}

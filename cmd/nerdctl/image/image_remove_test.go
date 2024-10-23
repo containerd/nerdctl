@@ -43,11 +43,10 @@ func TestRemove(t *testing.T) {
 			Description: "Remove image with stopped container - without -f",
 			NoParallel:  true,
 			Require: test.Require(
-				test.Not(test.Windows),
 				test.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage)
+				helpers.Ensure("run", "--name", data.Identifier(), testutil.CommonImage)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -68,9 +67,8 @@ func TestRemove(t *testing.T) {
 		{
 			Description: "Remove image with stopped container - with -f",
 			NoParallel:  true,
-			Require:     test.Not(test.Windows),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage)
+				helpers.Ensure("run", "--name", data.Identifier(), testutil.CommonImage)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -90,11 +88,10 @@ func TestRemove(t *testing.T) {
 			Description: "Remove image with running container - without -f",
 			NoParallel:  true,
 			Require: test.Require(
-				test.Not(test.Windows),
 				test.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -121,11 +118,10 @@ func TestRemove(t *testing.T) {
 			// untags `imageName` (left a `<none>` image) without deletion; `docker rmi -rf imageID` fails.
 			// In both cases, `nerdctl rmi -f` will fail.
 			Require: test.Require(
-				test.Not(test.Windows),
 				test.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -146,9 +142,8 @@ func TestRemove(t *testing.T) {
 		{
 			Description: "Remove image with created container - without -f",
 			NoParallel:  true,
-			Require:     test.Not(test.Windows),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("create", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("create", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -167,10 +162,9 @@ func TestRemove(t *testing.T) {
 		{
 			Description: "Remove image with created container - with -f",
 			NoParallel:  true,
-			Require:     test.Not(test.Windows),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("pull", "--quiet", testutil.NginxAlpineImage)
-				helpers.Ensure("create", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("create", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 				helpers.Ensure("rmi", testutil.NginxAlpineImage)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -195,12 +189,11 @@ func TestRemove(t *testing.T) {
 			Description: "Remove image with paused container - without -f",
 			NoParallel:  true,
 			Require: test.Require(
-				test.Not(test.Windows),
 				test.Not(nerdtest.Docker),
 				nerdtest.CGroup,
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 				helpers.Ensure("pause", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -223,7 +216,6 @@ func TestRemove(t *testing.T) {
 			Description: "Remove image with paused container - with -f",
 			NoParallel:  true,
 			Require: test.Require(
-				test.Not(test.Windows),
 				nerdtest.CGroup,
 				// FIXME: nerdctl is broken
 				// https://github.com/containerd/nerdctl/issues/3454
@@ -233,7 +225,7 @@ func TestRemove(t *testing.T) {
 				test.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 				helpers.Ensure("pause", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -256,11 +248,10 @@ func TestRemove(t *testing.T) {
 			Description: "Remove image with killed container - without -f",
 			NoParallel:  true,
 			Require: test.Require(
-				test.Not(test.Windows),
 				test.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 				helpers.Ensure("kill", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -282,9 +273,8 @@ func TestRemove(t *testing.T) {
 		{
 			Description: "Remove image with killed container - with -f",
 			NoParallel:  true,
-			Require:     test.Not(test.Windows),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 				helpers.Ensure("kill", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
