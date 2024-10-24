@@ -115,16 +115,16 @@ func processCpOptions(cmd *cobra.Command, args []string) (types.ContainerCpOptio
 	}
 
 	container2host := srcSpec.Container != nil
-	var container string
+	var containerReq string
 	if container2host {
-		container = *srcSpec.Container
+		containerReq = *srcSpec.Container
 	} else {
-		container = *destSpec.Container
+		containerReq = *destSpec.Container
 	}
 	return types.ContainerCpOptions{
 		GOptions:       globalOptions,
 		Container2Host: container2host,
-		ContainerReq:   container,
+		ContainerReq:   containerReq,
 		DestPath:       destSpec.Path,
 		SrcPath:        srcSpec.Path,
 		FollowSymLink:  flagL,

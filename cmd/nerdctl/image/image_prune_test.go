@@ -39,6 +39,10 @@ func TestImagePrune(t *testing.T) {
 		// We need to delete everything here for prune to make any sense
 		imgList := strings.TrimSpace(helpers.Capture("images", "--no-trunc", "-aq"))
 		if imgList != "" {
+			containers := helpers.Capture("ps", "-a")
+			images := helpers.Capture("images", "-a")
+			helpers.T().Log(containers)
+			helpers.T().Log(images)
 			helpers.Ensure(append([]string{"rmi", "-f"}, strings.Split(imgList, "\n")...)...)
 		}
 	}
