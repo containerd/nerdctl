@@ -10,15 +10,15 @@ go 1.22.0
 require (
 	github.com/Masterminds/semver/v3 v3.3.0
 	github.com/Microsoft/go-winio v0.6.2
-	github.com/Microsoft/hcsshim v0.12.7
+	github.com/Microsoft/hcsshim v0.12.8
 	github.com/compose-spec/compose-go/v2 v2.3.0
 	github.com/containerd/accelerated-container-image v1.2.3
 	github.com/containerd/cgroups/v3 v3.0.3
 	github.com/containerd/console v1.0.4
-	github.com/containerd/containerd/api v1.8.0-rc.3
-	github.com/containerd/containerd/v2 v2.0.0-rc.5
+	github.com/containerd/containerd/api v1.8.0-rc.4
+	github.com/containerd/containerd/v2 v2.0.0-rc.6
 	github.com/containerd/continuity v0.4.3
-	github.com/containerd/errdefs v0.1.0
+	github.com/containerd/errdefs v0.3.0
 	github.com/containerd/fifo v1.1.0
 	github.com/containerd/go-cni v1.1.10
 	github.com/containerd/imgcrypt v1.2.0-rc1.0.20240709223013-f3769dc3e47f
@@ -81,9 +81,11 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/cilium/ebpf v0.16.0 // indirect
+	github.com/containerd/containerd v1.7.23 // indirect
+	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/go-runc v1.1.0 // indirect
 	github.com/containerd/plugin v0.1.0 // indirect
-	github.com/containerd/ttrpc v1.2.5 // indirect
+	github.com/containerd/ttrpc v1.2.6-0.20240827082320-b5cd6e4b3287 // indirect
 	github.com/containers/ocicrypt v1.2.0 // indirect
 	github.com/djherbis/times v1.6.0 // indirect
 	github.com/docker/docker-credential-helpers v0.8.2 // indirect
@@ -116,7 +118,7 @@ require (
 	github.com/multiformats/go-multihash v0.2.3 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
 	github.com/opencontainers/runtime-tools v0.9.1-0.20221107090550-2e043c6bd626 // indirect
-	github.com/opencontainers/selinux v1.11.0 // indirect
+	github.com/opencontainers/selinux v1.11.1 // indirect
 	github.com/philhofer/fwd v1.1.3-0.20240612014219-fbbf4953d986 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
@@ -130,15 +132,15 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.55.0 // indirect
-	go.opentelemetry.io/otel v1.30.0 // indirect
-	go.opentelemetry.io/otel/metric v1.30.0 // indirect
-	go.opentelemetry.io/otel/trace v1.30.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.56.0 // indirect
+	go.opentelemetry.io/otel v1.31.0 // indirect
+	go.opentelemetry.io/otel/metric v1.31.0 // indirect
+	go.opentelemetry.io/otel/trace v1.31.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/mod v0.21.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
-	google.golang.org/grpc v1.67.0 // indirect
-	google.golang.org/protobuf v1.34.2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20241007155032-5fefd90f89a9 // indirect
+	google.golang.org/grpc v1.67.1 // indirect
+	google.golang.org/protobuf v1.35.1 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 	tags.cncf.io/container-device-interface v0.8.0 // indirect
