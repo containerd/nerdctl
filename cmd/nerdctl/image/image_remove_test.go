@@ -32,6 +32,10 @@ import (
 func TestRemove(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	const (
+		imgShortIDKey = "imgShortID"
+	)
+
 	repoName, _ := imgutil.ParseRepoTag(testutil.CommonImage)
 	nginxRepoName, _ := imgutil.ParseRepoTag(testutil.NginxAlpineImage)
 	// NOTES:
@@ -112,28 +116,30 @@ func TestRemove(t *testing.T) {
 		{
 			Description: "Remove image with running container - with -f",
 			NoParallel:  true,
-			// FIXME: nerdctl is broken
-			// https://github.com/containerd/nerdctl/issues/3454
-			// If an image is associated with a running/paused containers, `docker rmi -f imageName`
-			// untags `imageName` (left a `<none>` image) without deletion; `docker rmi -rf imageID` fails.
-			// In both cases, `nerdctl rmi -f` will fail.
 			Require: test.Require(
 				test.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+
+				img := nerdtest.InspectImage(helpers, testutil.CommonImage)
+				repoName, _ := imgutil.ParseRepoTag(testutil.CommonImage)
+				imgShortID := strings.TrimPrefix(img.RepoDigests[0], repoName+"@sha256:")[0:8]
+
+				data.Set(imgShortIDKey, imgShortID)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("rmi", "-f", data.Get(imgShortIDKey))
 			},
 			Command: test.Command("rmi", "-f", testutil.CommonImage),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 1,
-					Errors:   []error{errors.New("image is being used")},
+					ExitCode: 0,
+					Errors:   []error{},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.Contains(repoName),
+							Output: test.Contains("<none>"),
 						})
 					},
 				}
@@ -219,28 +225,30 @@ func TestRemove(t *testing.T) {
 			NoParallel:  true,
 			Require: test.Require(
 				nerdtest.CGroup,
-				// FIXME: nerdctl is broken
-				// https://github.com/containerd/nerdctl/issues/3454
-				// If an image is associated with a running/paused containers, `docker rmi -f imageName`
-				// untags `imageName` (left a `<none>` image) without deletion; `docker rmi -rf imageID` fails.
-				// In both cases, `nerdctl rmi -f` will fail.
 				test.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 				helpers.Ensure("pause", data.Identifier())
+
+				img := nerdtest.InspectImage(helpers, testutil.CommonImage)
+				repoName, _ := imgutil.ParseRepoTag(testutil.CommonImage)
+				imgShortID := strings.TrimPrefix(img.RepoDigests[0], repoName+"@sha256:")[0:8]
+
+				data.Set(imgShortIDKey, imgShortID)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("rmi", "-f", data.Get(imgShortIDKey))
 			},
 			Command: test.Command("rmi", "-f", testutil.CommonImage),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 1,
-					Errors:   []error{errors.New("image is being used")},
+					ExitCode: 0,
+					Errors:   []error{},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.Contains(repoName),
+							Output: test.Contains("<none>"),
 						})
 					},
 				}
