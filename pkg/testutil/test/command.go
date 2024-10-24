@@ -49,6 +49,7 @@ type GenericCommand struct {
 	stdin        io.Reader
 	async        bool
 	pty          bool
+	ptyWriters   []func(*os.File) error
 	timeout      time.Duration
 	workingDir   string
 
@@ -69,8 +70,9 @@ func (gc *GenericCommand) WithWrapper(binary string, args ...string) {
 	gc.helperArgs = args
 }
 
-func (gc *GenericCommand) WithPseudoTTY() {
+func (gc *GenericCommand) WithPseudoTTY(writers ...func(*os.File) error) {
 	gc.pty = true
+	gc.ptyWriters = writers
 }
 
 func (gc *GenericCommand) WithStdin(r io.Reader) {
@@ -105,8 +107,18 @@ func (gc *GenericCommand) Run(expect *Expected) {
 			iCmdCmd.Stdin = tty
 			iCmdCmd.Stdout = tty
 			iCmdCmd.Stderr = tty
-			defer pty.Close()
-			defer tty.Close()
+
+			for _, writer := range gc.ptyWriters {
+				go func() {
+					err := writer(pty)
+					assert.NilError(gc.t, err)
+				}()
+			}
+
+			defer func() {
+				_ = tty.Close()
+				_ = pty.Close()
+			}()
 		}
 
 		// Run it
