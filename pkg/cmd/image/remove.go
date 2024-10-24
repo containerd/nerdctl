@@ -78,6 +78,19 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 			}
 
 			if cid, ok := runningImages[found.Image.Name]; ok {
+				if options.Force {
+					if err = is.Delete(ctx, found.Image.Name); err != nil {
+						return err
+					}
+					fmt.Fprintf(options.Stdout, "Untagged: %s\n", found.Image.Name)
+					fmt.Fprintf(options.Stdout, "Untagged: %s\n", found.Image.Target.Digest.String())
+
+					found.Image.Name = ":"
+					if _, err = is.Create(ctx, found.Image); err != nil {
+						return err
+					}
+					return nil
+				}
 				return fmt.Errorf("conflict: unable to delete %s (cannot be forced) - image is being used by running container %s", found.Req, cid)
 			}
 			if cid, ok := usedImages[found.Image.Name]; ok && !options.Force {
