@@ -81,7 +81,7 @@ CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
 					helpers.Ensure("build", data.Get("buildCtx"), "-t", data.Identifier(), "--output=type=docker,name="+data.Identifier("ignored"))
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Command("run", "--rm", data.Identifier())
+					return helpers.Command("run", "--rm", data.Identifier("ignored"))
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier())
