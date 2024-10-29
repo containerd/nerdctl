@@ -33,8 +33,8 @@ import (
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/containerd/v2/core/snapshots"
 	"github.com/containerd/errdefs"
-	"github.com/containerd/imgcrypt"
-	"github.com/containerd/imgcrypt/images/encryption"
+	"github.com/containerd/imgcrypt/v2"
+	"github.com/containerd/imgcrypt/v2/images/encryption"
 	"github.com/containerd/log"
 	"github.com/containerd/platforms"
 
