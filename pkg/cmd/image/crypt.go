@@ -26,8 +26,8 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/content"
 	"github.com/containerd/containerd/v2/core/images/converter"
-	"github.com/containerd/imgcrypt/images/encryption"
-	"github.com/containerd/imgcrypt/images/encryption/parsehelpers"
+	"github.com/containerd/imgcrypt/v2/images/encryption"
+	"github.com/containerd/imgcrypt/v2/images/encryption/parsehelpers"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
