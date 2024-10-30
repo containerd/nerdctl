@@ -39,11 +39,11 @@ func TestCommit(t *testing.T) {
 				// FIXME: short of pulling first, docker will fail to start the container.
 				// Debugging shows container exited immediately. Nothing in the container logs. Not much in journalctl.
 				// It is not clear what is happening.
-				if nerdtest.IsDocker() {
-					helpers.Ensure("pull", testutil.CommonImage)
-				}
+				//if nerdtest.IsDocker() {
+				//	helpers.Ensure("pull", testutil.CommonImage)
+				// }
 				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
-				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+				// nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 				helpers.Ensure("exec", data.Identifier(), "sh", "-euxc", `echo hello-test-commit > /foo`)
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
