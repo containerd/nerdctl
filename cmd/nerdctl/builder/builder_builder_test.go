@@ -90,7 +90,7 @@ CMD ["echo", "nerdctl-builder-debug-test-string"]`, testutil.CommonImage)
 					// FIXME: this test should be rewritten to dynamically retrieve the ids, and use images
 					// available on all platforms
 					oldImage := testutil.BusyboxImage
-					oldImageSha := "141c253bc4c3fd0a201d32dc1f493bcf3fff003b6df416dea4f41046e0f37d47"
+					oldImageSha := "7b3ccabffc97de872a30dfd234fd972a66d247c8cfc69b0550f276481852627c"
 					newImage := testutil.AlpineImage
 					newImageSha := "ec14c7992a97fc11425907e908340c6c3d6ff602f5f13d899e6b7027c9b4133a"
 

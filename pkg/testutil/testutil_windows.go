@@ -29,23 +29,22 @@ import (
 )
 
 const (
-	WindowsNano = "gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2"
-
 	// CommonImage.
 	//
 	// More work needs to be done to support windows containers in test framework
 	// for the tests that are run now this image (used in k8s upstream testing) meets the needs
-	// use gcr.io/k8s-staging-e2e-test-images/busybox:1.29-2-windows-amd64-ltsc2022 locally on windows 11
+	// use gcr.io/k8s-staging-e2e-test-images/busybox:1.36-1-windows-amd64-ltsc2022 locally on windows 11
 	// https://github.com/microsoft/Windows-Containers/issues/179
-	CommonImage = WindowsNano
+	BusyboxImage = "gcr.io/k8s-staging-e2e-test-images/busybox:1.36.1-1"
+	WindowsNano  = BusyboxImage
+	CommonImage  = WindowsNano
 
 	// NOTE(aznashwan): the upstream e2e Nginx test image is actually based on BusyBox.
 	NginxAlpineImage            = "registry.k8s.io/e2e-test-images/nginx:1.14-2"
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
 
-	GolangImage  = "fixme-test-using-this-image-is-disabled-on-windows"
-	BusyboxImage = "fixme-test-using-this-image-is-disabled-on-windows"
-	AlpineImage  = "fixme-test-using-this-image-is-disabled-on-windows"
+	GolangImage = "fixme-test-using-this-image-is-disabled-on-windows"
+	AlpineImage = "fixme-test-using-this-image-is-disabled-on-windows"
 
 	// This error string is expected when attempting to connect to a TCP socket
 	// for a service which actively refuses the connection.
