@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	BusyboxImage     = mirrorOf("busybox:1.28")
+	BusyboxImage     = "ghcr.io/containerd/busybox:1.36"
 	AlpineImage      = mirrorOf("alpine:3.13")
 	NginxAlpineImage = mirrorOf("nginx:1.19-alpine")
 	GolangImage      = mirrorOf("golang:1.18")
