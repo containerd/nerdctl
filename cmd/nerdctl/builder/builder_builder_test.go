@@ -86,6 +86,7 @@ CMD ["echo", "nerdctl-builder-debug-test-string"]`, testutil.CommonImage)
 			},
 			{
 				Description: "WithPull",
+				NoParallel:  true,
 				Setup: func(data test.Data, helpers test.Helpers) {
 					// FIXME: this test should be rewritten to dynamically retrieve the ids, and use images
 					// available on all platforms
@@ -105,6 +106,9 @@ CMD ["echo", "nerdctl-builder-debug-test-string"]`, testutil.CommonImage)
 					data.Set("buildCtx", buildCtx)
 					data.Set("oldImageSha", oldImageSha)
 					data.Set("newImageSha", newImageSha)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", testutil.AlpineImage)
 				},
 				SubTests: []*test.Case{
 					{
