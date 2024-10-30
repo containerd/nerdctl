@@ -56,9 +56,11 @@ func internalOCIHookAction(cmd *cobra.Command, args []string) error {
 	}
 	cniPath := globalOptions.CNIPath
 	cniNetconfpath := globalOptions.CNINetConfPath
+	bridgeIP := globalOptions.BridgeIP
 	return ocihook.Run(os.Stdin, os.Stderr, event,
 		dataStore,
 		cniPath,
 		cniNetconfpath,
+		bridgeIP,
 	)
 }
