@@ -10,7 +10,7 @@ go 1.22.0
 require (
 	github.com/Masterminds/semver/v3 v3.3.0
 	github.com/Microsoft/go-winio v0.6.2
-	github.com/Microsoft/hcsshim v0.12.8
+	github.com/Microsoft/hcsshim v0.12.9
 	github.com/compose-spec/compose-go/v2 v2.4.1
 	github.com/containerd/accelerated-container-image v1.2.3
 	github.com/containerd/cgroups/v3 v3.0.3
@@ -81,7 +81,6 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/cilium/ebpf v0.16.0 // indirect
-	github.com/containerd/containerd v1.7.23 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/go-runc v1.1.0 // indirect
 	github.com/containerd/plugin v0.1.0 // indirect
