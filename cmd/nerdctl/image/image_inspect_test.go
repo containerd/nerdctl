@@ -87,6 +87,7 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 	testCase := &test.Case{
 		Require: test.Require(
 			test.Not(nerdtest.Docker),
+			// FIXME: this test depends on hub images that do not have windows versions
 			test.Not(test.Windows),
 			// We need a clean slate
 			nerdtest.Private,

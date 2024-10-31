@@ -31,6 +31,7 @@ func TestImageConvert(t *testing.T) {
 
 	testCase := &test.Case{
 		Require: test.Require(
+			// FIXME: windows does not support stargz
 			test.Not(test.Windows),
 			test.Not(nerdtest.Docker),
 		),

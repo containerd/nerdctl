@@ -35,6 +35,7 @@ func TestSaveContent(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
+		// FIXME: move to busybox for windows?
 		Require: test.Not(test.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
