@@ -153,12 +153,14 @@ func TestRemove(t *testing.T) {
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
 			},
-			Command: test.Command("rmi", "-f", testutil.CommonImage),
+			Command: test.Command("rmi", testutil.CommonImage),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
+					ExitCode: 1,
+					Errors:   []error{errors.New("image is being used")},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.DoesNotContain(repoName),
+							Output: test.Contains(repoName),
 						})
 					},
 				}
