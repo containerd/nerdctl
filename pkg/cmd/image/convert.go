@@ -76,7 +76,7 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 	convertOpts = append(convertOpts, converter.WithPlatform(platMC))
 
 	// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3425
-	err = EnsureAllContent(ctx, client, srcRawRef, options.GOptions)
+	err = EnsureAllContent(ctx, client, srcRef, options.GOptions)
 	if err != nil {
 		return err
 	}
