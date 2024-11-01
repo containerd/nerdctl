@@ -37,10 +37,11 @@ func TestLoadStdinFromPipe(t *testing.T) {
 		Description: "TestLoadStdinFromPipe",
 		Require:     test.Linux,
 		Setup: func(data test.Data, helpers test.Helpers) {
+			identifier := data.Identifier()
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
-			helpers.Ensure("tag", testutil.CommonImage, data.Identifier())
-			helpers.Ensure("save", data.Identifier(), "-o", filepath.Join(data.TempDir(), "common.tar"))
-			helpers.Ensure("rmi", "-f", data.Identifier())
+			helpers.Ensure("tag", testutil.CommonImage, identifier)
+			helpers.Ensure("save", identifier, "-o", filepath.Join(data.TempDir(), "common.tar"))
+			helpers.Ensure("rmi", "-f", identifier)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rmi", "-f", data.Identifier())
@@ -53,11 +54,12 @@ func TestLoadStdinFromPipe(t *testing.T) {
 			return cmd
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+			identifier := data.Identifier()
 			return &test.Expected{
 				Output: test.All(
-					test.Contains(fmt.Sprintf("Loaded image: %s:latest", data.Identifier())),
+					test.Contains(fmt.Sprintf("Loaded image: %s:latest", identifier)),
 					func(stdout string, info string, t *testing.T) {
-						assert.Assert(t, strings.Contains(helpers.Capture("images"), data.Identifier()))
+						assert.Assert(t, strings.Contains(helpers.Capture("images"), identifier))
 					},
 				),
 			}
@@ -86,10 +88,11 @@ func TestLoadQuiet(t *testing.T) {
 	testCase := &test.Case{
 		Description: "TestLoadQuiet",
 		Setup: func(data test.Data, helpers test.Helpers) {
+			identifier := data.Identifier()
 			helpers.Ensure("pull", testutil.CommonImage)
-			helpers.Ensure("tag", testutil.CommonImage, data.Identifier())
-			helpers.Ensure("save", data.Identifier(), "-o", filepath.Join(data.TempDir(), "common.tar"))
-			helpers.Ensure("rmi", "-f", data.Identifier())
+			helpers.Ensure("tag", testutil.CommonImage, identifier)
+			helpers.Ensure("save", identifier, "-o", filepath.Join(data.TempDir(), "common.tar"))
+			helpers.Ensure("rmi", "-f", identifier)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rmi", "-f", data.Identifier())

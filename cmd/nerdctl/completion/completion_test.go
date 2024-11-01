@@ -34,14 +34,16 @@ func TestCompletion(t *testing.T) {
 	testCase := &test.Case{
 		Require: test.Not(nerdtest.Docker),
 		Setup: func(data test.Data, helpers test.Helpers) {
+			identifier := data.Identifier()
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
-			helpers.Ensure("network", "create", data.Identifier())
-			helpers.Ensure("volume", "create", data.Identifier())
-			data.Set("identifier", data.Identifier())
+			helpers.Ensure("network", "create", identifier)
+			helpers.Ensure("volume", "create", identifier)
+			data.Set("identifier", identifier)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
-			helpers.Anyhow("network", "rm", data.Identifier())
-			helpers.Anyhow("volume", "rm", data.Identifier())
+			identifier := data.Identifier()
+			helpers.Anyhow("network", "rm", identifier)
+			helpers.Anyhow("volume", "rm", identifier)
 		},
 		SubTests: []*test.Case{
 			{

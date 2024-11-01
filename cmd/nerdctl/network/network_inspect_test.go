@@ -200,8 +200,9 @@ func TestNetworkInspect(t *testing.T) {
 			Description: "with namespace",
 			Require:     test.Not(nerdtest.Docker),
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("network", "rm", data.Identifier())
-				helpers.Anyhow("namespace", "remove", data.Identifier())
+				identifier := data.Identifier()
+				helpers.Anyhow("network", "rm", identifier)
+				helpers.Anyhow("namespace", "remove", identifier)
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("network", "create", data.Identifier())

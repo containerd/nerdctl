@@ -56,6 +56,7 @@ func TestImagePrune(t *testing.T) {
 				helpers.Anyhow("rmi", "-f", data.Identifier())
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
+				identifier := data.Identifier()
 				dockerfile := fmt.Sprintf(`FROM %s
 				CMD ["echo", "nerdctl-test-image-prune"]
 					`, testutil.CommonImage)
@@ -64,22 +65,23 @@ func TestImagePrune(t *testing.T) {
 				helpers.Ensure("build", buildCtx)
 				// After we rebuild with tag, docker will no longer show the <none> version from above
 				// Swapping order does not change anything.
-				helpers.Ensure("build", "-t", data.Identifier(), buildCtx)
+				helpers.Ensure("build", "-t", identifier, buildCtx)
 				imgList := helpers.Capture("images")
 				assert.Assert(t, strings.Contains(imgList, "<none>"), "Missing <none>")
-				assert.Assert(t, strings.Contains(imgList, data.Identifier()), "Missing "+data.Identifier())
+				assert.Assert(t, strings.Contains(imgList, identifier), "Missing "+identifier)
 			},
 			Command: test.Command("image", "prune", "--force"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				identifier := data.Identifier()
 				return &test.Expected{
 					Output: test.All(
 						func(stdout string, info string, t *testing.T) {
-							assert.Assert(t, !strings.Contains(stdout, data.Identifier()), info)
+							assert.Assert(t, !strings.Contains(stdout, identifier), info)
 						},
 						func(stdout string, info string, t *testing.T) {
 							imgList := helpers.Capture("images")
 							assert.Assert(t, !strings.Contains(imgList, "<none>"), imgList)
-							assert.Assert(t, strings.Contains(imgList, data.Identifier()), info)
+							assert.Assert(t, strings.Contains(imgList, identifier), info)
 						},
 					),
 				}
@@ -95,21 +97,23 @@ func TestImagePrune(t *testing.T) {
 			// Cannot use a custom namespace with buildkitd right now, so, no parallel it is
 			NoParallel: true,
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rmi", "-f", data.Identifier())
-				helpers.Anyhow("rm", "-f", data.Identifier())
+				identifier := data.Identifier()
+				helpers.Anyhow("rmi", "-f", identifier)
+				helpers.Anyhow("rm", "-f", identifier)
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
+				identifier := data.Identifier()
 				dockerfile := fmt.Sprintf(`FROM %s
 				CMD ["echo", "nerdctl-test-image-prune"]
 					`, testutil.CommonImage)
 
 				buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
 				helpers.Ensure("build", buildCtx)
-				helpers.Ensure("build", "-t", data.Identifier(), buildCtx)
+				helpers.Ensure("build", "-t", identifier, buildCtx)
 				imgList := helpers.Capture("images")
 				assert.Assert(t, strings.Contains(imgList, "<none>"), "Missing <none>")
-				assert.Assert(t, strings.Contains(imgList, data.Identifier()), "Missing "+data.Identifier())
-				helpers.Ensure("run", "--name", data.Identifier(), data.Identifier())
+				assert.Assert(t, strings.Contains(imgList, identifier), "Missing "+identifier)
+				helpers.Ensure("run", "--name", identifier, identifier)
 			},
 			Command: test.Command("image", "prune", "--force", "--all"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {

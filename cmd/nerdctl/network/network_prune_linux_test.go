@@ -34,8 +34,9 @@ func TestNetworkPrune(t *testing.T) {
 			Description: "Prune does not collect started container network",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("network", "create", data.Identifier())
-				helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.NginxAlpineImage)
+				identifier := data.Identifier()
+				helpers.Ensure("network", "create", identifier)
+				helpers.Ensure("run", "-d", "--net", identifier, "--name", identifier, testutil.NginxAlpineImage)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())

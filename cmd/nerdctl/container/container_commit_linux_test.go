@@ -31,14 +31,15 @@ func TestKubeCommitSave(t *testing.T) {
 	testCase.Require = nerdtest.OnlyKubernetes
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		identifier := data.Identifier()
 		containerID := ""
 		// NOTE: kubectl namespaces are not the same as containerd namespaces.
 		// We still want kube test objects segregated in their own Kube API namespace.
 		nerdtest.KubeCtlCommand(helpers, "create", "namespace", "nerdctl-test-k8s").Run(&test.Expected{})
-		nerdtest.KubeCtlCommand(helpers, "run", "--image", testutil.CommonImage, data.Identifier(), "--", "sleep", "Inf").Run(&test.Expected{})
-		nerdtest.KubeCtlCommand(helpers, "wait", "pod", data.Identifier(), "--for=condition=ready", "--timeout=1m").Run(&test.Expected{})
-		nerdtest.KubeCtlCommand(helpers, "exec", data.Identifier(), "--", "mkdir", "-p", "/tmp/whatever").Run(&test.Expected{})
-		nerdtest.KubeCtlCommand(helpers, "get", "pods", data.Identifier(), "-o", "jsonpath={ .status.containerStatuses[0].containerID }").Run(&test.Expected{
+		nerdtest.KubeCtlCommand(helpers, "run", "--image", testutil.CommonImage, identifier, "--", "sleep", "Inf").Run(&test.Expected{})
+		nerdtest.KubeCtlCommand(helpers, "wait", "pod", identifier, "--for=condition=ready", "--timeout=1m").Run(&test.Expected{})
+		nerdtest.KubeCtlCommand(helpers, "exec", identifier, "--", "mkdir", "-p", "/tmp/whatever").Run(&test.Expected{})
+		nerdtest.KubeCtlCommand(helpers, "get", "pods", identifier, "-o", "jsonpath={ .status.containerStatuses[0].containerID }").Run(&test.Expected{
 			Output: func(stdout string, info string, t *testing.T) {
 				containerID = strings.TrimPrefix(stdout, "containerd://")
 			},
