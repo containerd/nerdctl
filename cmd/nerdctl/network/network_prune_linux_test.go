@@ -36,7 +36,7 @@ func TestNetworkPrune(t *testing.T) {
 			Setup: func(data test.Data, helpers test.Helpers) {
 				identifier := data.Identifier()
 				helpers.Ensure("network", "create", identifier)
-				helpers.Ensure("run", "-d", "--net", identifier, "--name", identifier, testutil.NginxAlpineImage)
+				helpers.Ensure("run", "-d", "--net", identifier, "--name", identifier, testutil.CommonImage, "sleep", nerdtest.Infinity)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -54,7 +54,7 @@ func TestNetworkPrune(t *testing.T) {
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier())
-				helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.NginxAlpineImage)
+				helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 				helpers.Ensure("stop", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {

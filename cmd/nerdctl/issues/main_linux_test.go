@@ -39,7 +39,7 @@ func TestIssue108(t *testing.T) {
 		{
 			Description: "-it --net=host",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				cmd := helpers.Command("run", "-it", "--rm", "--net=host", testutil.AlpineImage, "echo", "this was always working")
+				cmd := helpers.Command("run", "-it", "--rm", "--net=host", testutil.CommonImage, "echo", "this was always working")
 				cmd.WithPseudoTTY()
 				return cmd
 			},
@@ -48,7 +48,7 @@ func TestIssue108(t *testing.T) {
 		{
 			Description: "--net=host -it",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				cmd := helpers.Command("run", "--rm", "--net=host", "-it", testutil.AlpineImage, "echo", "this was not working due to issue #108")
+				cmd := helpers.Command("run", "--rm", "--net=host", "-it", testutil.CommonImage, "echo", "this was not working due to issue #108")
 				cmd.WithPseudoTTY()
 				return cmd
 			},

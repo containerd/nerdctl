@@ -49,8 +49,8 @@ func TestNetworkCreate(t *testing.T) {
 				helpers.Anyhow("network", "rm", data.Identifier("1"))
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				data.Set("container2", helpers.Capture("run", "--rm", "--net", data.Identifier("1"), testutil.AlpineImage, "ip", "route"))
-				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.AlpineImage, "ip", "route")
+				data.Set("container2", helpers.Capture("run", "--rm", "--net", data.Identifier("1"), testutil.CommonImage, "ip", "route"))
+				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.CommonImage, "ip", "route")
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -72,7 +72,7 @@ func TestNetworkCreate(t *testing.T) {
 				helpers.Anyhow("network", "rm", data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.AlpineImage, "ifconfig", "eth0")
+				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.CommonImage, "ifconfig", "eth0")
 			},
 			Expected: test.Expects(0, nil, test.Contains("MTU:9216")),
 		},
