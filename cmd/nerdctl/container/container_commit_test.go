@@ -63,10 +63,6 @@ func TestCommit(t *testing.T) {
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
 				identifier := data.Identifier()
-				// See note above about docker failing.
-				if nerdtest.IsDocker() {
-					helpers.Ensure("pull", testutil.CommonImage)
-				}
 				helpers.Ensure("run", "-d", "--name", identifier, testutil.CommonImage, "sleep", "infinity")
 				nerdtest.EnsureContainerStarted(helpers, identifier)
 				helpers.Ensure("exec", identifier, "sh", "-euxc", `echo hello-test-commit > /foo`)
