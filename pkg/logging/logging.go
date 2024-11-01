@@ -90,6 +90,9 @@ func GetDriver(name string, opts map[string]string) (Driver, error) {
 }
 
 func init() {
+	RegisterDriver("none", func(opts map[string]string) (Driver, error) {
+		return &NoneLogger{}, nil
+	}, NoneLogOptsValidate)
 	RegisterDriver("json-file", func(opts map[string]string) (Driver, error) {
 		return &JSONLogger{Opts: opts}, nil
 	}, JSONFileLogOptsValidate)

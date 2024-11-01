@@ -135,6 +135,10 @@ func InitContainerLogViewer(containerLabels map[string]string, lvopts LogViewOpt
 		return nil, fmt.Errorf("the `cri` log viewer requires nerdctl to be running in experimental mode")
 	}
 
+	if lcfg.Driver == "none" {
+		return nil, fmt.Errorf("log type `none` was selected, nothing to log")
+	}
+
 	lv := &ContainerLogViewer{
 		loggingConfig:     lcfg,
 		logViewingOptions: lvopts,
