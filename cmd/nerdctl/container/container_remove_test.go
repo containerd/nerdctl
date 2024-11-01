@@ -36,13 +36,14 @@ func TestRemoveContainer(t *testing.T) {
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		helpers.Fail("rm", data.Identifier())
+		containerID := data.Identifier()
+		helpers.Fail("rm", containerID)
 
 		// FIXME: should (re-)evaluate this
 		// `kill` seems to return before the container actually stops
-		helpers.Ensure("stop", data.Identifier())
+		helpers.Ensure("stop", containerID)
 
-		return helpers.Command("rm", data.Identifier())
+		return helpers.Command("rm", containerID)
 	}
 
 	testCase.Expected = test.Expects(0, nil, nil)

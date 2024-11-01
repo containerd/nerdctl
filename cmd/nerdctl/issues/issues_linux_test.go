@@ -49,15 +49,17 @@ func TestIssue3425(t *testing.T) {
 				Description: "with tag",
 				Require:     nerdtest.Private,
 				Setup: func(data test.Data, helpers test.Helpers) {
+					identifier := data.Identifier()
 					helpers.Ensure("image", "pull", testutil.CommonImage)
-					helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage)
+					helpers.Ensure("run", "-d", "--name", identifier, testutil.CommonImage)
 					helpers.Ensure("image", "rm", "-f", testutil.CommonImage)
 					helpers.Ensure("image", "pull", testutil.CommonImage)
-					helpers.Ensure("tag", testutil.CommonImage, fmt.Sprintf("localhost:%d/%s", reg.Port, data.Identifier()))
+					helpers.Ensure("tag", testutil.CommonImage, fmt.Sprintf("localhost:%d/%s", reg.Port, identifier))
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
-					helpers.Anyhow("rm", "-f", data.Identifier())
-					helpers.Anyhow("rmi", "-f", fmt.Sprintf("localhost:%d/%s", reg.Port, data.Identifier()))
+					identifier := data.Identifier()
+					helpers.Anyhow("rm", "-f", identifier)
+					helpers.Anyhow("rmi", "-f", fmt.Sprintf("localhost:%d/%s", reg.Port, identifier))
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("push", fmt.Sprintf("localhost:%d/%s", reg.Port, data.Identifier()))
@@ -68,11 +70,12 @@ func TestIssue3425(t *testing.T) {
 				Description: "with commit",
 				Require:     nerdtest.Private,
 				Setup: func(data test.Data, helpers test.Helpers) {
+					identifier := data.Identifier()
 					helpers.Ensure("image", "pull", testutil.CommonImage)
-					helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "touch", "/something")
+					helpers.Ensure("run", "-d", "--name", identifier, testutil.CommonImage, "touch", "/something")
 					helpers.Ensure("image", "rm", "-f", testutil.CommonImage)
 					helpers.Ensure("image", "pull", testutil.CommonImage)
-					helpers.Ensure("commit", data.Identifier(), fmt.Sprintf("localhost:%d/%s", reg.Port, data.Identifier()))
+					helpers.Ensure("commit", identifier, fmt.Sprintf("localhost:%d/%s", reg.Port, identifier))
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rm", "-f", data.Identifier())

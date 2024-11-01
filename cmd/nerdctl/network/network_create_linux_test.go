@@ -36,8 +36,9 @@ func TestNetworkCreate(t *testing.T) {
 		{
 			Description: "vanilla",
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("network", "create", data.Identifier())
-				netw := nerdtest.InspectNetwork(helpers, data.Identifier())
+				identifier := data.Identifier()
+				helpers.Ensure("network", "create", identifier)
+				netw := nerdtest.InspectNetwork(helpers, identifier)
 				assert.Equal(t, len(netw.IPAM.Config), 1)
 				data.Set("subnet", netw.IPAM.Config[0].Subnet)
 

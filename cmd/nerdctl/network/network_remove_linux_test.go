@@ -37,9 +37,10 @@ func TestNetworkRemove(t *testing.T) {
 		{
 			Description: "Simple network remove",
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("network", "create", data.Identifier())
-				data.Set("netID", nerdtest.InspectNetwork(helpers, data.Identifier()).ID)
-				helpers.Ensure("run", "--rm", "--net", data.Identifier(), "--name", data.Identifier(), testutil.CommonImage)
+				identifier := data.Identifier()
+				helpers.Ensure("network", "create", identifier)
+				data.Set("netID", nerdtest.InspectNetwork(helpers, identifier).ID)
+				helpers.Ensure("run", "--rm", "--net", identifier, "--name", identifier, testutil.CommonImage)
 				// Verity the network is here
 				_, err := netlink.LinkByName("br-" + data.Get("netID")[:12])
 				assert.NilError(t, err, "failed to find network br-"+data.Get("netID")[:12], "%v")

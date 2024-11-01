@@ -32,21 +32,24 @@ func TestCommit(t *testing.T) {
 			Description: "with pause",
 			Require:     nerdtest.CGroup,
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", data.Identifier())
-				helpers.Anyhow("rmi", "-f", data.Identifier())
+				identifier := data.Identifier()
+				helpers.Anyhow("rm", "-f", identifier)
+				helpers.Anyhow("rmi", "-f", identifier)
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
-				helpers.Ensure("exec", data.Identifier(), "sh", "-euxc", `echo hello-test-commit > /foo`)
+				identifier := data.Identifier()
+				helpers.Ensure("run", "-d", "--name", identifier, testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("exec", identifier, "sh", "-euxc", `echo hello-test-commit > /foo`)
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				identifier := data.Identifier()
 				helpers.Ensure(
 					"commit",
 					"-c", `CMD ["/foo"]`,
 					"-c", `ENTRYPOINT ["cat"]`,
 					"--pause=true",
-					data.Identifier(), data.Identifier())
-				return helpers.Command("run", "--rm", data.Identifier())
+					identifier, identifier)
+				return helpers.Command("run", "--rm", identifier)
 			},
 			Expected: test.Expects(0, nil, test.Equals("hello-test-commit\n")),
 		},
@@ -54,26 +57,29 @@ func TestCommit(t *testing.T) {
 			Description: "no pause",
 			Require:     test.Not(test.Windows),
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", data.Identifier())
-				helpers.Anyhow("rmi", "-f", data.Identifier())
+				identifier := data.Identifier()
+				helpers.Anyhow("rm", "-f", identifier)
+				helpers.Anyhow("rmi", "-f", identifier)
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
+				identifier := data.Identifier()
 				// See note above about docker failing.
 				if nerdtest.IsDocker() {
 					helpers.Ensure("pull", testutil.CommonImage)
 				}
-				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
-				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
-				helpers.Ensure("exec", data.Identifier(), "sh", "-euxc", `echo hello-test-commit > /foo`)
+				helpers.Ensure("run", "-d", "--name", identifier, testutil.CommonImage, "sleep", "infinity")
+				nerdtest.EnsureContainerStarted(helpers, identifier)
+				helpers.Ensure("exec", identifier, "sh", "-euxc", `echo hello-test-commit > /foo`)
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				identifier := data.Identifier()
 				helpers.Ensure(
 					"commit",
 					"-c", `CMD ["/foo"]`,
 					"-c", `ENTRYPOINT ["cat"]`,
 					"--pause=false",
-					data.Identifier(), data.Identifier())
-				return helpers.Command("run", "--rm", data.Identifier())
+					identifier, identifier)
+				return helpers.Command("run", "--rm", identifier)
 			},
 			Expected: test.Expects(0, nil, test.Equals("hello-test-commit\n")),
 		},
