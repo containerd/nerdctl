@@ -36,6 +36,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRunEntrypointWithBuild(t *testing.T) {
@@ -470,7 +471,7 @@ func TestRunAddHostRemainsWhenAnotherContainerCreated(t *testing.T) {
 
 	containerName := testutil.Identifier(t)
 	hostMapping := "test-add-host:10.0.0.1"
-	base.Cmd("run", "-d", "--add-host", hostMapping, "--name", containerName, testutil.CommonImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--add-host", hostMapping, "--name", containerName, testutil.CommonImage, "sleep", nerdtest.Infinity).AssertOK()
 	defer base.Cmd("container", "rm", "-f", containerName).Run()
 
 	checkEtcHosts := func(stdout string) error {

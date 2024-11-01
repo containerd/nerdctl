@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 // https://github.com/containerd/nerdctl/issues/2598
@@ -35,7 +36,7 @@ func TestContainerListWithFormatLabel(t *testing.T) {
 	base.Cmd("run", "-d",
 		"--name", cID,
 		"--label", labelK+"="+labelV,
-		testutil.CommonImage, "sleep", "infinity").AssertOK()
+		testutil.CommonImage, "sleep", nerdtest.Infinity).AssertOK()
 	defer base.Cmd("rm", "-f", cID).AssertOK()
 	base.Cmd("ps", "-a",
 		"--filter", "label="+labelK,
@@ -53,7 +54,7 @@ func TestContainerListWithJsonFormatLabel(t *testing.T) {
 	base.Cmd("run", "-d",
 		"--name", cID,
 		"--label", labelK+"="+labelV,
-		testutil.CommonImage, "sleep", "infinity").AssertOK()
+		testutil.CommonImage, "sleep", nerdtest.Infinity).AssertOK()
 	defer base.Cmd("rm", "-f", cID).AssertOK()
 	base.Cmd("ps", "-a",
 		"--filter", "label="+labelK,

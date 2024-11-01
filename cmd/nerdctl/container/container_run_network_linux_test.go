@@ -39,6 +39,7 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 )
 
@@ -492,7 +493,7 @@ func TestSharedNetworkStack(t *testing.T) {
 		"--name", containerNameJoin,
 		"--network=container:"+containerName,
 		testutil.CommonImage,
-		"sleep", "infinity").AssertOK()
+		"sleep", nerdtest.Infinity).AssertOK()
 
 	base.Cmd("exec", containerNameJoin, "wget", "-qO-", "http://127.0.0.1:80").
 		AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)

@@ -35,9 +35,9 @@ func TestPruneContainer(t *testing.T) {
 	}
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "-d", "--name", data.Identifier("1"), "-v", "/anonymous", testutil.CommonImage, "sleep", "infinity")
+		helpers.Ensure("run", "-d", "--name", data.Identifier("1"), "-v", "/anonymous", testutil.CommonImage, "sleep", nerdtest.Infinity)
 		helpers.Ensure("exec", data.Identifier("1"), "touch", "/anonymous/foo")
-		helpers.Ensure("create", "--name", data.Identifier("2"), testutil.CommonImage, "sleep", "infinity")
+		helpers.Ensure("create", "--name", data.Identifier("2"), testutil.CommonImage, "sleep", nerdtest.Infinity)
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {

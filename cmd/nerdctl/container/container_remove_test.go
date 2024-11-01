@@ -28,7 +28,7 @@ func TestRemoveContainer(t *testing.T) {
 	testCase := nerdtest.Setup()
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "inf")
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {

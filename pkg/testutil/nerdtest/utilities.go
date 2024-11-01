@@ -29,6 +29,14 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
+const (
+	// It seems that at this moment, the busybox on windows image we are using has an outdated version of sleep
+	// that does not support inf/infinity.
+	// This constant is provided as a mean for tests to express the intention of sleep infinity without having to
+	// worry about that and get windows compatibility.
+	Infinity = "3600"
+)
+
 func IsDocker() bool {
 	return testutil.GetTarget() == "docker"
 }

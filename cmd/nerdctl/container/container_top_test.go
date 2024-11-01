@@ -35,7 +35,7 @@ func TestTop(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		// FIXME: busybox 1.36 on windows still appears to not support sleep inf. Unclear why.
-		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "10")
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 		data.Set("cID", data.Identifier())
 	}
 
@@ -75,7 +75,7 @@ func TestTopHyperVContainer(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		// FIXME: busybox 1.36 on windows still appears to not support sleep inf. Unclear why.
-		helpers.Ensure("run", "--isolation", "hyperv", "-d", "--name", data.Identifier("container"), testutil.CommonImage, "sleep", "10")
+		helpers.Ensure("run", "--isolation", "hyperv", "-d", "--name", data.Identifier("container"), testutil.CommonImage, "sleep", nerdtest.Infinity)
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {

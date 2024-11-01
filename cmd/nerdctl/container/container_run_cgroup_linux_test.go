@@ -31,6 +31,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRunCgroupV2(t *testing.T) {
@@ -96,7 +97,7 @@ func TestRunCgroupV2(t *testing.T) {
 		"cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
 
 	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate1", "-w", "/sys/fs/cgroup", "-d",
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+		testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
 	defer base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate1").Run()
 	update := []string{"update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
 		"--memory", "42m",
@@ -115,7 +116,7 @@ func TestRunCgroupV2(t *testing.T) {
 
 	defer base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate2").Run()
 	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate2", "-w", "/sys/fs/cgroup", "-d",
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+		testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
 	base.EnsureContainerStarted(testutil.Identifier(t) + "-testUpdate2")
 
 	base.Cmd("update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
@@ -199,7 +200,7 @@ func TestRunDevice(t *testing.T) {
 		"--name", containerName,
 		"--device", lo[0].Device+":r",
 		"--device", lo[1].Device,
-		testutil.AlpineImage, "sleep", "infinity").Run()
+		testutil.AlpineImage, "sleep", nerdtest.Infinity).Run()
 
 	base.Cmd("exec", containerName, "cat", lo[0].Device).AssertOutContains(loContent[0])
 	base.Cmd("exec", containerName, "cat", lo[1].Device).AssertOutContains(loContent[1])
@@ -364,7 +365,7 @@ func TestRunBlkioWeightCgroupV2(t *testing.T) {
 	containerName := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", containerName).AssertOK()
 	// when bfq io scheduler is used, the io.weight knob is exposed as io.bfq.weight
-	base.Cmd("run", "--name", containerName, "--blkio-weight", "300", "-w", "/sys/fs/cgroup", testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "--name", containerName, "--blkio-weight", "300", "-w", "/sys/fs/cgroup", testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
 	base.Cmd("exec", containerName, "cat", "io.bfq.weight").AssertOutExactly("default 300\n")
 	base.Cmd("update", containerName, "--blkio-weight", "400").AssertOK()
 	base.Cmd("exec", containerName, "cat", "io.bfq.weight").AssertOutExactly("default 400\n")

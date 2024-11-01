@@ -65,7 +65,7 @@ func TestNetworkRemove(t *testing.T) {
 			Description: "Network remove when linked to container",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier())
-				helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("run", "-d", "--net", data.Identifier(), "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("network", "rm", data.Identifier())

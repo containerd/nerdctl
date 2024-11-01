@@ -39,6 +39,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRunCustomRootfs(t *testing.T) {
@@ -108,7 +109,7 @@ func TestRunIPCContainerNotExists(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	container := testutil.Identifier(t)
-	result := base.Cmd("run", "--name", container, "--ipc", "container:abcd1234", testutil.AlpineImage, "sleep", "infinity").Run()
+	result := base.Cmd("run", "--name", container, "--ipc", "container:abcd1234", testutil.AlpineImage, "sleep", nerdtest.Infinity).Run()
 	defer base.Cmd("rm", "-f", container)
 	combined := result.Combined()
 	if !strings.Contains(strings.ToLower(combined), "no such container: abcd1234") {
@@ -121,7 +122,7 @@ func TestRunShmSizeIPCContainer(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	const shmSize = "32m"
-	sharedContainerResult := base.Cmd("run", "-d", "--ipc", "shareable", "--shm-size", shmSize, testutil.AlpineImage, "sleep", "infinity").Run()
+	sharedContainerResult := base.Cmd("run", "-d", "--ipc", "shareable", "--shm-size", shmSize, testutil.AlpineImage, "sleep", nerdtest.Infinity).Run()
 	baseContainerID := strings.TrimSpace(sharedContainerResult.Stdout())
 	defer base.Cmd("rm", "-f", baseContainerID).Run()
 
@@ -134,7 +135,7 @@ func TestRunIPCContainer(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	const shmSize = "32m"
-	victimContainerResult := base.Cmd("run", "-d", "--ipc", "shareable", "--shm-size", shmSize, testutil.AlpineImage, "sleep", "infinity").Run()
+	victimContainerResult := base.Cmd("run", "-d", "--ipc", "shareable", "--shm-size", shmSize, testutil.AlpineImage, "sleep", nerdtest.Infinity).Run()
 	victimContainerID := strings.TrimSpace(victimContainerResult.Stdout())
 	defer base.Cmd("rm", "-f", victimContainerID).Run()
 
@@ -169,12 +170,12 @@ func TestRunPidContainer(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
 
-	sharedContainerResult := base.Cmd("run", "-d", testutil.AlpineImage, "sleep", "infinity").Run()
+	sharedContainerResult := base.Cmd("run", "-d", testutil.AlpineImage, "sleep", nerdtest.Infinity).Run()
 	baseContainerID := strings.TrimSpace(sharedContainerResult.Stdout())
 	defer base.Cmd("rm", "-f", baseContainerID).Run()
 
 	base.Cmd("run", "--rm", fmt.Sprintf("--pid=container:%s", baseContainerID),
-		testutil.AlpineImage, "ps", "ax").AssertOutContains("sleep infinity")
+		testutil.AlpineImage, "ps", "ax").AssertOutContains("sleep " + nerdtest.Infinity)
 }
 
 func TestRunIpcHost(t *testing.T) {
@@ -278,7 +279,7 @@ func TestRunWithInit(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	container := testutil.Identifier(t)
-	base.Cmd("run", "-d", "--name", container, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--name", container, testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
 	defer base.Cmd("rm", "-f", container).Run()
 
 	base.Cmd("stop", "--time=3", container).AssertOK()
@@ -288,7 +289,7 @@ func TestRunWithInit(t *testing.T) {
 	// Test with --init-path
 	container1 := container + "-1"
 	base.Cmd("run", "-d", "--name", container1, "--init-binary", "tini-custom",
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+		testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
 	defer base.Cmd("rm", "-f", container1).Run()
 
 	base.Cmd("stop", "--time=3", container1).AssertOK()
@@ -297,7 +298,7 @@ func TestRunWithInit(t *testing.T) {
 	// Test with --init
 	container2 := container + "-2"
 	base.Cmd("run", "-d", "--name", container2, "--init",
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+		testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
 	defer base.Cmd("rm", "-f", container2).Run()
 
 	base.Cmd("stop", "--time=3", container2).AssertOK()
