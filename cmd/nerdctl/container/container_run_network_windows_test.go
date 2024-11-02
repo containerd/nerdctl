@@ -53,7 +53,7 @@ func TestRunInternetConnectivity(t *testing.T) {
 			args = append(args, tc.args...)
 			// TODO(aznashwan): smarter way to ensure internet connectivity is working.
 			// ping doesn't seem to work on GitHub Actions ("Request timed out.")
-			args = append(args, testutil.CommonImage, "curl.exe -sSL https://github.com")
+			args = append(args, testutil.CommonImage, "curl.exe", "-sSL", "https://github.com")
 			cmd := base.Cmd(args...)
 			cmd.AssertOutContains("<!DOCTYPE html>")
 		})

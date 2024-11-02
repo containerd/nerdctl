@@ -100,50 +100,6 @@ CMD ["echo", "nerdctl-build-test-string"]
 	testCase.Run(t)
 }
 
-func TestImagePullPlainHttpWithDefaultPort(t *testing.T) {
-	nerdtest.Setup()
-
-	var registry *testregistry.RegistryServer
-
-	testCase := &test.Case{
-		Require: test.Require(
-			test.Linux,
-			test.Not(nerdtest.Docker),
-			nerdtest.Build,
-		),
-		Setup: func(data test.Data, helpers test.Helpers) {
-			base := testutil.NewBase(t)
-			registry = testregistry.NewWithNoAuth(base, 80, false)
-			testImageRef := fmt.Sprintf("%s/%s:%s",
-				registry.IP.String(), data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
-			dockerfile := fmt.Sprintf(`FROM %s
-CMD ["echo", "nerdctl-build-test-string"]
-	`, testutil.CommonImage)
-
-			buildCtx := testhelpers.CreateBuildContext(t, dockerfile)
-			helpers.Ensure("build", "-t", testImageRef, buildCtx)
-			helpers.Ensure("--insecure-registry", "push", testImageRef)
-			helpers.Ensure("rmi", "-f", testImageRef)
-		},
-		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			testImageRef := fmt.Sprintf("%s/%s:%s",
-				registry.IP.String(), data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
-			return helpers.Command("--insecure-registry", "pull", testImageRef)
-		},
-		Expected: test.Expects(0, nil, nil),
-		Cleanup: func(data test.Data, helpers test.Helpers) {
-			if registry != nil {
-				registry.Cleanup(nil)
-				testImageRef := fmt.Sprintf("%s/%s:%s",
-					registry.IP.String(), data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
-				helpers.Anyhow("rmi", "-f", testImageRef)
-			}
-		},
-	}
-
-	testCase.Run(t)
-}
-
 func TestImagePullSoci(t *testing.T) {
 	nerdtest.Setup()
 

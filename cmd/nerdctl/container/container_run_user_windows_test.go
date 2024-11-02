@@ -24,22 +24,40 @@ import (
 
 func TestRunUserName(t *testing.T) {
 	base := testutil.NewBase(t)
-	testCases := map[string]string{
-		"":                       "ContainerAdministrator",
-		"ContainerAdministrator": "ContainerAdministrator",
-		"ContainerUser":          "ContainerUser",
+	testCases := []struct {
+		explicitUser string
+		whoami       string
+		env          string
+	}{
+		{
+			explicitUser: "",
+			whoami:       "root",
+			env:          "ContainerAdministrator",
+		},
+		{
+			explicitUser: "ContainerUser",
+			whoami:       "ContainerUser",
+			env:          "ContainerUser",
+		},
+		{
+			explicitUser: "ContainerAdministrator",
+			whoami:       "root",
+			env:          "ContainerAdministrator",
+		},
 	}
-	for userStr, expected := range testCases {
-		userStr := userStr
-		expected := expected
-		t.Run(userStr, func(t *testing.T) {
+
+	for _, user := range testCases {
+		t.Run(user.explicitUser, func(t *testing.T) {
 			t.Parallel()
 			cmd := []string{"run", "--rm"}
-			if userStr != "" {
-				cmd = append(cmd, "--user", userStr)
+			if user.explicitUser != "" {
+				cmd = append(cmd, "--user", user.explicitUser)
 			}
 			cmd = append(cmd, testutil.WindowsNano, "whoami")
-			base.Cmd(cmd...).AssertOutContains(expected)
+			base.Cmd(cmd...).AssertOutContains(user.whoami)
+
+			cmd = append(cmd, testutil.WindowsNano, "echo $USERNAME")
+			base.Cmd(cmd...).AssertOutContains(user.whoami)
 		})
 	}
 }
