@@ -69,6 +69,7 @@ RUN xx-apt-get update -qq && xx-apt-get install -qq --no-install-recommends \
     libbtrfs-dev \
     libseccomp-dev \
     pkg-config
+RUN git config --global advice.detachedHead false
 
 FROM build-base-debian AS build-containerd
 ARG TARGETARCH
@@ -117,25 +118,19 @@ RUN xx-go --wrap && \
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS build-base
 RUN apk add --no-cache make git curl
-COPY . /go/src/github.com/containerd/nerdctl
-WORKDIR /go/src/github.com/containerd/nerdctl
+RUN git config --global advice.detachedHead false
 
 FROM build-base AS build-minimal
 RUN BINDIR=/out/bin make binaries install
 # We do not set CMD to `go test` here, because it requires systemd
 
-FROM build-base AS build-full
+FROM build-base AS build-dependencies
 ARG TARGETARCH
 ENV GOARCH=${TARGETARCH}
-RUN BINDIR=/out/bin make binaries install
-WORKDIR /nowhere
 COPY ./Dockerfile.d/SHA256SUMS.d/ /SHA256SUMS.d
-COPY README.md /out/share/doc/nerdctl/
-COPY docs /out/share/doc/nerdctl/docs
+WORKDIR /nowhere
 RUN echo "${TARGETARCH:-amd64}" | sed -e s/amd64/x86_64/ -e s/arm64/aarch64/ | tee /target_uname_m
-RUN mkdir -p /out/share/doc/nerdctl-full && \
-  echo "# nerdctl (full distribution)" > /out/share/doc/nerdctl-full/README.md && \
-  echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)" >> /out/share/doc/nerdctl-full/README.md
+RUN mkdir -p /out/share/doc/nerdctl-full && touch /out/share/doc/nerdctl-full/README.md
 ARG CONTAINERD_VERSION
 COPY --from=build-containerd /out/${TARGETARCH:-amd64}/* /out/bin/
 COPY --from=build-containerd /out/containerd.service /out/lib/systemd/system/containerd.service
@@ -181,13 +176,6 @@ RUN git clone https://github.com/containerd/imgcrypt.git /go/src/github.com/cont
   git checkout "${IMGCRYPT_VERSION}" && \
   CGO_ENABLED=0 make && DESTDIR=/out make install && \
   echo "- imgcrypt: ${IMGCRYPT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
-ARG ROOTLESSKIT_VERSION
-RUN fname="rootlesskit-$(cat /target_uname_m).tar.gz" && \
-  curl -o "${fname}" -fsSL --proto '=https' --tlsv1.2 "https://github.com/rootless-containers/rootlesskit/releases/download/${ROOTLESSKIT_VERSION}/${fname}" && \
-  grep "${fname}" "/SHA256SUMS.d/rootlesskit-${ROOTLESSKIT_VERSION}" | sha256sum -c && \
-  tar xzf "${fname}" -C /out/bin && \
-  rm -f "${fname}" /out/bin/rootlesskit-docker-proxy && \
-  echo "- RootlessKit: ${ROOTLESSKIT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG SLIRP4NETNS_VERSION
 RUN fname="slirp4netns-$(cat /target_uname_m)" && \
   curl -o "${fname}" -fsSL --proto '=https' --tlsv1.2 "https://github.com/rootless-containers/slirp4netns/releases/download/${SLIRP4NETNS_VERSION}/${fname}" && \
@@ -225,6 +213,13 @@ RUN fname="buildg-${BUILDG_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.
   tar xzf "${fname}" -C /out/bin && \
   rm -f "${fname}" && \
   echo "- buildg: ${BUILDG_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+ARG ROOTLESSKIT_VERSION
+RUN fname="rootlesskit-$(cat /target_uname_m).tar.gz" && \
+  curl -o "${fname}" -fsSL --proto '=https' --tlsv1.2 "https://github.com/rootless-containers/rootlesskit/releases/download/${ROOTLESSKIT_VERSION}/${fname}" && \
+  grep "${fname}" "/SHA256SUMS.d/rootlesskit-${ROOTLESSKIT_VERSION}" | sha256sum -c && \
+  tar xzf "${fname}" -C /out/bin && \
+  rm -f "${fname}" /out/bin/rootlesskit-docker-proxy && \
+  echo "- RootlessKit: ${ROOTLESSKIT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
@@ -236,6 +231,14 @@ RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
   mv /tmp/SHA256SUMS /out/share/doc/nerdctl-full/SHA256SUMS && \
   chown -R 0:0 /out
+
+FROM build-dependencies AS build-full
+COPY . /go/src/github.com/containerd/nerdctl
+RUN { echo "# nerdctl (full distribution)"; echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)"; cat /out/share/doc/nerdctl-full/README.md; } > /out/share/doc/nerdctl-full/README.md.new; mv /out/share/doc/nerdctl-full/README.md.new /out/share/doc/nerdctl-full/README.md
+WORKDIR /go/src/github.com/containerd/nerdctl
+RUN BINDIR=/out/bin make binaries install
+COPY README.md /out/share/doc/nerdctl/
+COPY docs /out/share/doc/nerdctl/docs
 
 FROM scratch AS out-full
 COPY --from=build-full /out /
