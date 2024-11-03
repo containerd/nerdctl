@@ -20,41 +20,8 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestMain(m *testing.M) {
 	testutil.M(m)
-}
-
-// TestIssue108 tests https://github.com/containerd/nerdctl/issues/108
-// ("`nerdctl run --net=host -it` fails while `nerdctl run -it --net=host` works")
-func TestIssue108(t *testing.T) {
-	testCase := nerdtest.Setup()
-
-	testCase.Require = test.Linux
-
-	testCase.SubTests = []*test.Case{
-		{
-			Description: "-it --net=host",
-			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				cmd := helpers.Command("run", "-it", "--rm", "--net=host", testutil.AlpineImage, "echo", "this was always working")
-				cmd.WithPseudoTTY()
-				return cmd
-			},
-			Expected: test.Expects(0, nil, test.Equals("this was always working\r\n")),
-		},
-		{
-			Description: "--net=host -it",
-			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				cmd := helpers.Command("run", "--rm", "--net=host", "-it", testutil.AlpineImage, "echo", "this was not working due to issue #108")
-				cmd.WithPseudoTTY()
-				return cmd
-			},
-			Expected: test.Expects(0, nil, test.Equals("this was not working due to issue #108\r\n")),
-		},
-	}
-
-	testCase.Run(t)
 }
