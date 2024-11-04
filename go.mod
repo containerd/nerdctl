@@ -18,7 +18,7 @@ require (
 	github.com/containerd/containerd/api v1.8.0-rc.4
 	github.com/containerd/containerd/v2 v2.0.0-rc.6
 	github.com/containerd/continuity v0.4.4
-	github.com/containerd/errdefs v0.3.0
+	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0
 	github.com/containerd/go-cni v1.1.10
 	github.com/containerd/imgcrypt/v2 v2.0.0-rc.1
