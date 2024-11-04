@@ -340,6 +340,8 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		}
 	}
 
+	internalLabels.rm = containerutil.EncodeContainerRmOptLabel(options.Rm)
+
 	// TODO: abolish internal labels and only use annotations
 	ilOpt, err := withInternalLabels(internalLabels)
 	if err != nil {
@@ -655,6 +657,8 @@ type internalLabels struct {
 	ipc string
 	// log
 	logURI string
+	// a label to check whether the --rm option is specified.
+	rm string
 }
 
 // WithInternalLabels sets the internal labels for a container.
@@ -730,6 +734,10 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 
 	if internalLabels.ipc != "" {
 		m[labels.IPC] = internalLabels.ipc
+	}
+
+	if internalLabels.rm != "" {
+		m[labels.ContainerAutoRemove] = internalLabels.rm
 	}
 
 	return containerd.WithAdditionalContainerLabels(m), nil

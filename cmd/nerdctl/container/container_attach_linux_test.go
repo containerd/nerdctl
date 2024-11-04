@@ -24,6 +24,8 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 // skipAttachForDocker should be called by attach-related tests that assert 'read detach keys' in stdout.
@@ -103,4 +105,57 @@ func TestAttachDetachKeys(t *testing.T) {
 		CmdOption(opts...).AssertOutContains("read detach keys")
 	container := base.InspectContainer(containerName)
 	assert.Equal(base.T, container.State.Running, true)
+}
+
+// TestIssue3568 tests https://github.com/containerd/nerdctl/issues/3568
+func TestDetachAttachKeysForAutoRemovedContainer(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Issue #3568 - A container should be deleted when detaching and attaching a container started with the --rm option.",
+			// In nerdctl the detach return code from the container is 0, but in docker the return code is 1.
+			// This behaviour is reported in https://github.com/containerd/nerdctl/issues/3571 so this test is skipped for Docker.
+			Require: test.Require(
+				test.Not(nerdtest.Docker),
+			),
+			Setup: func(data test.Data, helpers test.Helpers) {
+				cmd := helpers.Command("run", "--rm", "-it", "--detach-keys=ctrl-a,ctrl-b", "--name", data.Identifier(), testutil.CommonImage)
+				// unbuffer(1) can be installed with `apt-get install expect`.
+				//
+				// "-p" is needed because we need unbuffer to read from stdin, and from [1]:
+				// "Normally, unbuffer does not read from stdin. This simplifies use of unbuffer in some situations.
+				//  To use unbuffer in a pipeline, use the -p flag."
+				//
+				// [1] https://linux.die.net/man/1/unbuffer
+				cmd.WithWrapper("unbuffer", "-p")
+				cmd.WithStdin(testutil.NewDelayOnceReader(bytes.NewReader([]byte{1, 2}))) // https://www.physics.udel.edu/~watson/scen103/ascii.html
+				cmd.Run(&test.Expected{
+					ExitCode: 0,
+				})
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("attach", data.Identifier())
+				cmd.WithWrapper("unbuffer", "-p")
+				cmd.WithStdin(testutil.NewDelayOnceReader(strings.NewReader("exit\n")))
+				return cmd
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Errors:   []error{},
+					Output: test.All(
+						func(stdout string, info string, t *testing.T) {
+							assert.Assert(t, !strings.Contains(helpers.Capture("ps", "-a"), data.Identifier()))
+						},
+					),
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
 }

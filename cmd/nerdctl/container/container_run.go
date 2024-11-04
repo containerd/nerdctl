@@ -334,6 +334,8 @@ func processCreateCommandFlagsInRun(cmd *cobra.Command) (types.ContainerCreateOp
 // runAction is heavily based on ctr implementation:
 // https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/run/run.go
 func runAction(cmd *cobra.Command, args []string) error {
+	var isDetached bool
+
 	createOpt, err := processCreateCommandFlagsInRun(cmd)
 	if err != nil {
 		return err
@@ -378,8 +380,11 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}()
 
 	id := c.ID()
-	if createOpt.Rm && !createOpt.Detach {
+	if createOpt.Rm {
 		defer func() {
+			if isDetached {
+				return
+			}
 			if err := netManager.CleanupNetworking(ctx, c); err != nil {
 				log.L.Warnf("failed to clean up container networking: %s", err)
 			}
@@ -449,6 +454,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 			return errors.New("got a nil IO from the task")
 		}
 		io.Wait()
+		isDetached = true
 	case status := <-statusC:
 		if createOpt.Rm {
 			if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {

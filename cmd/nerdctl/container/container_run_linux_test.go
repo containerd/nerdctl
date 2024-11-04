@@ -40,6 +40,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestRunCustomRootfs(t *testing.T) {
@@ -519,4 +520,50 @@ func TestRunWithTtyAndDetached(t *testing.T) {
 	base.Cmd("logs", withTtyContainerName).AssertCombinedOutContains("speed 38400 baud; line = 0;")
 	withTtyContainer := base.InspectContainer(withTtyContainerName)
 	assert.Equal(base.T, 0, withTtyContainer.State.ExitCode)
+}
+
+// TestIssue3568 tests https://github.com/containerd/nerdctl/issues/3568
+func TestIssue3568(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Issue #3568 - Detaching from a container started by using --rm option causes the container to be deleted.",
+			// When detaching from a container, for a session started with 'docker attach', it prints 'read escape sequence', but for one started with 'docker (run|start)', it prints nothing.
+			// However, the flag is called '--detach-keys' in all cases, so nerdctl prints 'read detach keys' for all cases, and that's why this test is skipped for Docker.
+			Require: test.Require(
+				test.Not(nerdtest.Docker),
+			),
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("run", "--rm", "-it", "--detach-keys=ctrl-a,ctrl-b", "--name", data.Identifier(), testutil.CommonImage)
+				// unbuffer(1) can be installed with `apt-get install expect`.
+				//
+				// "-p" is needed because we need unbuffer to read from stdin, and from [1]:
+				// "Normally, unbuffer does not read from stdin. This simplifies use of unbuffer in some situations.
+				//  To use unbuffer in a pipeline, use the -p flag."
+				//
+				// [1] https://linux.die.net/man/1/unbuffer
+				cmd.WithWrapper("unbuffer", "-p")
+				cmd.WithStdin(testutil.NewDelayOnceReader(bytes.NewReader([]byte{1, 2}))) // https://www.physics.udel.edu/~watson/scen103/ascii.html
+				return cmd
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Errors:   []error{},
+					Output: test.All(
+						test.Contains("read detach keys"),
+						func(stdout string, info string, t *testing.T) {
+							assert.Assert(t, strings.Contains(helpers.Capture("ps"), data.Identifier()))
+						},
+					),
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
 }
