@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRename(t *testing.T) {
@@ -28,7 +29,7 @@ func TestRename(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	defer base.Cmd("rm", "-f", testContainerName).Run()
-	base.Cmd("run", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", nerdtest.Infinity).AssertOK()
 
 	defer base.Cmd("rm", "-f", testContainerName+"_new").Run()
 	base.Cmd("rename", testContainerName, testContainerName+"_new").AssertOK()
@@ -44,11 +45,11 @@ func TestRenameUpdateHosts(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	defer base.Cmd("rm", "-f", testContainerName).Run()
-	base.Cmd("run", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", nerdtest.Infinity).AssertOK()
 	base.EnsureContainerStarted(testContainerName)
 
 	defer base.Cmd("rm", "-f", testContainerName+"_1").Run()
-	base.Cmd("run", "-d", "--name", testContainerName+"_1", testutil.CommonImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainerName+"_1", testutil.CommonImage, "sleep", nerdtest.Infinity).AssertOK()
 	base.EnsureContainerStarted(testContainerName + "_1")
 
 	defer base.Cmd("rm", "-f", testContainerName+"_new").Run()

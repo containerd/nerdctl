@@ -200,7 +200,7 @@ func TestIssue2993(t *testing.T) {
 			Setup: func(data test.Data, helpers test.Helpers) {
 				dataRoot := data.TempDir()
 
-				helpers.Ensure("run", "--data-root", dataRoot, "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
+				helpers.Ensure("run", "--data-root", dataRoot, "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", nerdtest.Infinity)
 
 				h := getAddrHash(defaults.DefaultAddress)
 				dataStore := filepath.Join(dataRoot, h)
@@ -224,7 +224,7 @@ func TestIssue2993(t *testing.T) {
 				helpers.Anyhow("rm", "--data-root", data.TempDir(), "-f", data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("run", "--data-root", data.TempDir(), "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
+				return helpers.Command("run", "--data-root", data.TempDir(), "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", nerdtest.Infinity)
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -247,7 +247,7 @@ func TestIssue2993(t *testing.T) {
 			Setup: func(data test.Data, helpers test.Helpers) {
 				dataRoot := data.TempDir()
 
-				helpers.Ensure("run", "--data-root", dataRoot, "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", "infinity")
+				helpers.Ensure("run", "--data-root", dataRoot, "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", nerdtest.Infinity)
 
 				h := getAddrHash(defaults.DefaultAddress)
 				dataStore := filepath.Join(dataRoot, h)

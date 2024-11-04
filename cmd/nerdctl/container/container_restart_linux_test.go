@@ -25,6 +25,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRestart(t *testing.T) {
@@ -52,11 +53,11 @@ func TestRestartPIDContainer(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	baseContainerName := testutil.Identifier(t)
-	base.Cmd("run", "-d", "--name", baseContainerName, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--name", baseContainerName, testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
 	defer base.Cmd("rm", "-f", baseContainerName).Run()
 
 	sharedContainerName := fmt.Sprintf("%s-shared", baseContainerName)
-	base.Cmd("run", "-d", "--name", sharedContainerName, fmt.Sprintf("--pid=container:%s", baseContainerName), testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--name", sharedContainerName, fmt.Sprintf("--pid=container:%s", baseContainerName), testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
 	defer base.Cmd("rm", "-f", sharedContainerName).Run()
 
 	base.Cmd("restart", baseContainerName).AssertOK()
@@ -79,11 +80,11 @@ func TestRestartIPCContainer(t *testing.T) {
 	const shmSize = "32m"
 	baseContainerName := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", baseContainerName).Run()
-	base.Cmd("run", "-d", "--shm-size", shmSize, "--ipc", "shareable", "--name", baseContainerName, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--shm-size", shmSize, "--ipc", "shareable", "--name", baseContainerName, testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
 
 	sharedContainerName := fmt.Sprintf("%s-shared", baseContainerName)
 	defer base.Cmd("rm", "-f", sharedContainerName).Run()
-	base.Cmd("run", "-d", "--name", sharedContainerName, fmt.Sprintf("--ipc=container:%s", baseContainerName), testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--name", sharedContainerName, fmt.Sprintf("--ipc=container:%s", baseContainerName), testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
 
 	base.Cmd("stop", baseContainerName).Run()
 	base.Cmd("stop", sharedContainerName).Run()
@@ -104,7 +105,7 @@ func TestRestartWithTime(t *testing.T) {
 	base := testutil.NewBase(t)
 	tID := testutil.Identifier(t)
 
-	base.Cmd("run", "-d", "--name", tID, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--name", tID, testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
 	defer base.Cmd("rm", "-f", tID).AssertOK()
 
 	inspect := base.InspectContainer(tID)

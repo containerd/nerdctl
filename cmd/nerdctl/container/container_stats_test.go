@@ -47,8 +47,8 @@ func TestStats(t *testing.T) {
 	}
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "-d", "--name", data.Identifier("container"), testutil.CommonImage, "sleep", "10")
-		helpers.Ensure("run", "-d", "--name", data.Identifier("memlimited"), "--memory", "1g", testutil.CommonImage, "sleep", "10")
+		helpers.Ensure("run", "-d", "--name", data.Identifier("container"), testutil.CommonImage, "sleep", nerdtest.Infinity)
+		helpers.Ensure("run", "-d", "--name", data.Identifier("memlimited"), "--memory", "1g", testutil.CommonImage, "sleep", nerdtest.Infinity)
 		helpers.Ensure("run", "--name", data.Identifier("exited"), testutil.CommonImage, "echo", "'exited'")
 		data.Set("id", data.Identifier("container"))
 	}

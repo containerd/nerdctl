@@ -36,7 +36,7 @@ func TestKubeCommitSave(t *testing.T) {
 		// NOTE: kubectl namespaces are not the same as containerd namespaces.
 		// We still want kube test objects segregated in their own Kube API namespace.
 		nerdtest.KubeCtlCommand(helpers, "create", "namespace", "nerdctl-test-k8s").Run(&test.Expected{})
-		nerdtest.KubeCtlCommand(helpers, "run", "--image", testutil.CommonImage, identifier, "--", "sleep", "Inf").Run(&test.Expected{})
+		nerdtest.KubeCtlCommand(helpers, "run", "--image", testutil.CommonImage, identifier, "--", "sleep", nerdtest.Infinity).Run(&test.Expected{})
 		nerdtest.KubeCtlCommand(helpers, "wait", "pod", identifier, "--for=condition=ready", "--timeout=1m").Run(&test.Expected{})
 		nerdtest.KubeCtlCommand(helpers, "exec", identifier, "--", "mkdir", "-p", "/tmp/whatever").Run(&test.Expected{})
 		nerdtest.KubeCtlCommand(helpers, "get", "pods", identifier, "-o", "jsonpath={ .status.containerStatuses[0].containerID }").Run(&test.Expected{

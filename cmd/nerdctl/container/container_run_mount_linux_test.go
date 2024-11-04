@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRunVolume(t *testing.T) {
@@ -242,7 +243,7 @@ RUN echo -n "rev0" > /mnt/file
 
 	base.Cmd("volume", "create", volumeName)
 	runContainer := func() {
-		base.Cmd("run", "-d", "--name", containerName, "-v", volumeName+":/mnt", imageName, "sleep", "infinity").AssertOK()
+		base.Cmd("run", "-d", "--name", containerName, "-v", volumeName+":/mnt", imageName, "sleep", nerdtest.Infinity).AssertOK()
 	}
 	runContainer()
 	base.EnsureContainerStarted(containerName)

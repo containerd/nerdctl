@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestExecWithUser(t *testing.T) {
@@ -28,7 +29,7 @@ func TestExecWithUser(t *testing.T) {
 	testContainer := testutil.Identifier(t)
 
 	defer base.Cmd("rm", "-f", testContainer).Run()
-	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", nerdtest.Infinity).AssertOK()
 	base.EnsureContainerStarted(testContainer)
 
 	testCases := map[string]string{
@@ -59,7 +60,7 @@ func TestExecTTY(t *testing.T) {
 
 	testContainer := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", testContainer).Run()
-	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "infinity").AssertOK()
+	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", nerdtest.Infinity).AssertOK()
 
 	const sttyPartialOutput = "speed 38400 baud"
 	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
