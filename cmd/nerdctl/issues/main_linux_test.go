@@ -33,8 +33,6 @@ func TestMain(m *testing.M) {
 func TestIssue108(t *testing.T) {
 	testCase := nerdtest.Setup()
 
-	testCase.Require = test.Linux
-
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "-it --net=host",
