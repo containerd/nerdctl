@@ -100,4 +100,7 @@ const (
 	// Boolean value which can be parsed with strconv.ParseBool() is required.
 	// (like "nerdctl/default-network=true" or "nerdctl/default-network=false")
 	NerdctlDefaultNetwork = Prefix + "default-network"
+
+	// ContainerAutoRemove is to check whether the --rm option is specified.
+	ContainerAutoRemove = Prefix + "auto-remove"
 )

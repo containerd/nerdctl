@@ -28,8 +28,10 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
+	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/signalutil"
 )
 
@@ -37,6 +39,8 @@ import (
 func Attach(ctx context.Context, client *containerd.Client, req string, options types.ContainerAttachOptions) error {
 	// Find the container.
 	var container containerd.Container
+	var cStatus containerd.Status
+
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
@@ -53,6 +57,24 @@ func Attach(ctx context.Context, client *containerd.Client, req string, options 
 	} else if n > 1 {
 		return fmt.Errorf("more than one containers are found given the string: %s", req)
 	}
+
+	defer func() {
+		containerLabels, err := container.Labels(ctx)
+		if err != nil {
+			log.G(ctx).WithError(err).Errorf("failed to getting container labels: %s", err)
+			return
+		}
+		rm, err := containerutil.DecodeContainerRmOptLabel(containerLabels[labels.ContainerAutoRemove])
+		if err != nil {
+			log.G(ctx).WithError(err).Errorf("failed to decode string to bool value: %s", err)
+			return
+		}
+		if rm && cStatus.Status == containerd.Stopped {
+			if err = RemoveContainer(ctx, container, options.GOptions, true, true, client); err != nil {
+				log.L.WithError(err).Warnf("failed to remove container %s: %s", req, err)
+			}
+		}
+	}()
 
 	// Attach to the container.
 	var task containerd.Task
@@ -129,6 +151,10 @@ func Attach(ctx context.Context, client *containerd.Client, req string, options 
 		}
 		io.Wait()
 	case status := <-statusC:
+		cStatus, err = task.Status(ctx)
+		if err != nil {
+			return err
+		}
 		code, _, err := status.Result()
 		if err != nil {
 			return err

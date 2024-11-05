@@ -600,3 +600,13 @@ func GetContainerName(containerLabels map[string]string) string {
 	}
 	return ""
 }
+
+// EncodeContainerRmOptLabel encodes bool value for the --rm option into string value for a label.
+func EncodeContainerRmOptLabel(rmOpt bool) string {
+	return fmt.Sprintf("%t", rmOpt)
+}
+
+// DecodeContainerRmOptLabel decodes bool value for the --rm option from string value for a label.
+func DecodeContainerRmOptLabel(rmOptLabel string) (bool, error) {
+	return strconv.ParseBool(rmOptLabel)
+}
