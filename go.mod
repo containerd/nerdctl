@@ -16,7 +16,7 @@ require (
 	github.com/containerd/cgroups/v3 v3.0.3
 	github.com/containerd/console v1.0.4
 	github.com/containerd/containerd/api v1.8.0
-	github.com/containerd/containerd/v2 v2.0.0-rc.6
+	github.com/containerd/containerd/v2 v2.0.0
 	github.com/containerd/continuity v0.4.4
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0
@@ -24,7 +24,7 @@ require (
 	github.com/containerd/imgcrypt/v2 v2.0.0-rc.1
 	github.com/containerd/log v0.1.0
 	github.com/containerd/nydus-snapshotter v0.14.1-0.20240806063146-8fa319bfe9c5
-	github.com/containerd/platforms v0.2.1
+	github.com/containerd/platforms v1.0.0-rc.0
 	github.com/containerd/stargz-snapshotter v0.15.2-0.20240709063920-1dac5ef89319
 	github.com/containerd/stargz-snapshotter/estargz v0.15.2-0.20240709063920-1dac5ef89319
 	github.com/containerd/stargz-snapshotter/ipfs v0.15.2-0.20240709063920-1dac5ef89319
@@ -83,8 +83,8 @@ require (
 	github.com/cilium/ebpf v0.16.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/go-runc v1.1.0 // indirect
-	github.com/containerd/plugin v0.1.0 // indirect
-	github.com/containerd/ttrpc v1.2.6-0.20240827082320-b5cd6e4b3287 // indirect
+	github.com/containerd/plugin v1.0.0 // indirect
+	github.com/containerd/ttrpc v1.2.6 // indirect
 	github.com/containers/ocicrypt v1.2.0 // indirect
 	github.com/djherbis/times v1.6.0 // indirect
 	github.com/docker/docker-credential-helpers v0.8.2 // indirect
