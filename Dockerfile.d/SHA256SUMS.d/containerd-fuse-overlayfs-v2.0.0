@@ -1,0 +1,6 @@
+dc20341234be8fa44e1308c9f38e30d7239c12350a046c83f4d1c804b682fe6c  containerd-fuse-overlayfs-2.0.0-linux-amd64.tar.gz
+acfaa3a2caa6316b2c409bcb1c2600b6faee504188c412df8261024435dbfefc  containerd-fuse-overlayfs-2.0.0-linux-arm-v7.tar.gz
+8b8032a4e0d16aedf7797818944147cebefad32e6657e0b7089501bcfc732e57  containerd-fuse-overlayfs-2.0.0-linux-arm64.tar.gz
+b4603139b2a532ac9ed8df3197669d3df5dfd9bebda2aa5f507ad6e6dbb1ed77  containerd-fuse-overlayfs-2.0.0-linux-ppc64le.tar.gz
+9e169b401e063cfb0b7b192f911dcb2532ec86a64844d8c052e076fe692017c3  containerd-fuse-overlayfs-2.0.0-linux-riscv64.tar.gz
+e8dfe8e2aff5b32f2f5698909baadd0cb36aa85704ff8c568f6bcae186e0ccc5  containerd-fuse-overlayfs-2.0.0-linux-s390x.tar.gz
