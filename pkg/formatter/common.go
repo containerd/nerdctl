@@ -42,11 +42,16 @@ func FormatSlice(format string, writer io.Writer, x []interface{}) error {
 	var tmpl *template.Template
 	switch format {
 	case "":
-		b, err := json.MarshalIndent(x, "", "    ")
+		// Avoid escaping "<", ">", "&"
+		// https://pkg.go.dev/encoding/json
+		encoder := json.NewEncoder(writer)
+		encoder.SetIndent("", "    ")
+		encoder.SetEscapeHTML(false)
+		err := encoder.Encode(x)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(writer, string(b))
+		fmt.Fprint(writer, "\n")
 	case "raw", "table", "wide":
 		return errors.New("unsupported format: \"raw\", \"table\", and \"wide\"")
 	default:
