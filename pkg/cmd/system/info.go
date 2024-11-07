@@ -183,7 +183,7 @@ func printF(w io.Writer, label string, dockerCompatInfo string) {
 	if dockerCompatInfo == "" {
 		return
 	}
-	fmt.Fprintf(w, " %s%s\n", label, dockerCompatInfo)
+	fmt.Fprintf(w, "%s%s\n", label, dockerCompatInfo)
 }
 
 func printSecurityOptions(w io.Writer, securityOptions []string) {
