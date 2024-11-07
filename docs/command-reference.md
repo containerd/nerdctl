@@ -1260,6 +1260,8 @@ This is an [experimental](./experimental.md) feature.
 
 :warning: This command currently doesn't use the host's `buildkitd` daemon but uses the patched version of BuildKit provided by buildg. This should be fixed in the future.
 
+:warning: This command is currently incompatible with `docker buildx debug`.
+
 Usage: `nerdctl builder debug PATH`
 
 Flags:
