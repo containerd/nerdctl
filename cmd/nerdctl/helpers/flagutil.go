@@ -99,6 +99,10 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 	if err != nil {
 		return types.GlobalCommandOptions{}, err
 	}
+	bridgeIP, err := cmd.Flags().GetString("bridge-ip")
+	if err != nil {
+		return types.GlobalCommandOptions{}, err
+	}
 	return types.GlobalCommandOptions{
 		Debug:            debug,
 		DebugFull:        debugFull,
@@ -113,6 +117,7 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 		HostsDir:         hostsDir,
 		Experimental:     experimental,
 		HostGatewayIP:    hostGatewayIP,
+		BridgeIP:         bridgeIP,
 	}, nil
 }
 

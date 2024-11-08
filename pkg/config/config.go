@@ -39,6 +39,7 @@ type Config struct {
 	HostsDir         []string `toml:"hosts_dir"`
 	Experimental     bool     `toml:"experimental"`
 	HostGatewayIP    string   `toml:"host_gateway_ip"`
+	BridgeIP         string   `toml:"bridge_ip, omitempty"`
 }
 
 // New creates a default Config object statically,

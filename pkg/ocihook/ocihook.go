@@ -61,7 +61,7 @@ const (
 	NetworkNamespace = labels.Prefix + "network-namespace"
 )
 
-func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetconfPath string) error {
+func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetconfPath, bridgeIP string) error {
 	if stdin == nil || event == "" || dataStore == "" || cniPath == "" || cniNetconfPath == "" {
 		return errors.New("got insufficient args")
 	}
@@ -113,7 +113,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	}
 	defer lockutil.Unlock(lock)
 
-	opts, err := newHandlerOpts(&state, dataStore, cniPath, cniNetconfPath)
+	opts, err := newHandlerOpts(&state, dataStore, cniPath, cniNetconfPath, bridgeIP)
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	}
 }
 
-func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath string) (*handlerOpts, error) {
+func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath, bridgeIP string) (*handlerOpts, error) {
 	o := &handlerOpts{
 		state:     state,
 		dataStore: dataStore,
@@ -173,7 +173,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath strin
 	case nettype.Host, nettype.None, nettype.Container, nettype.Namespace:
 		// NOP
 	case nettype.CNI:
-		e, err := netutil.NewCNIEnv(cniPath, cniNetconfPath, netutil.WithNamespace(namespace), netutil.WithDefaultNetwork())
+		e, err := netutil.NewCNIEnv(cniPath, cniNetconfPath, netutil.WithNamespace(namespace), netutil.WithDefaultNetwork(bridgeIP))
 		if err != nil {
 			return nil, err
 		}

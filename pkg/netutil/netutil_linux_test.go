@@ -30,4 +30,5 @@ func TestDefaultNetworkCreation(t *testing.T) {
 	}
 
 	testDefaultNetworkCreation(t)
+	testDefaultNetworkCreationWithBridgeIP(t)
 }
