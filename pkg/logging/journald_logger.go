@@ -18,6 +18,7 @@ package logging
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -35,6 +36,8 @@ import (
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
+	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
@@ -52,8 +55,9 @@ func JournalLogOptsValidate(logOptMap map[string]string) error {
 }
 
 type JournaldLogger struct {
-	Opts map[string]string
-	vars map[string]string
+	Opts    map[string]string
+	vars    map[string]string
+	Address string
 }
 
 type identifier struct {
@@ -66,7 +70,7 @@ func (journaldLogger *JournaldLogger) Init(dataStore, ns, id string) error {
 	return nil
 }
 
-func (journaldLogger *JournaldLogger) PreProcess(dataStore string, config *logging.Config) error {
+func (journaldLogger *JournaldLogger) PreProcess(ctx context.Context, dataStore string, config *logging.Config) error {
 	if !journal.Enabled() {
 		return errors.New("the local systemd journal is not available for logging")
 	}
@@ -95,9 +99,37 @@ func (journaldLogger *JournaldLogger) PreProcess(dataStore string, config *loggi
 			syslogIdentifier = b.String()
 		}
 	}
+
+	client, ctx, cancel, err := clientutil.NewClient(ctx, config.Namespace, journaldLogger.Address)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		cancel()
+		client.Close()
+	}()
+	containerID := config.ID
+	container, err := client.LoadContainer(ctx, containerID)
+	if err != nil {
+		return err
+	}
+	containerLabels, err := container.Labels(ctx)
+	if err != nil {
+		return err
+	}
+	containerInfo, err := container.Info(ctx)
+	if err != nil {
+		return err
+	}
+
 	// construct log metadata for the container
 	vars := map[string]string{
 		"SYSLOG_IDENTIFIER": syslogIdentifier,
+		"CONTAINER_TAG":     syslogIdentifier,
+		"CONTAINER_ID":      shortID,
+		"CONTAINER_ID_FULL": containerID,
+		"CONTAINER_NAME":    containerutil.GetContainerName(containerLabels),
+		"IMAGE_NAME":        containerInfo.Image,
 	}
 	journaldLogger.vars = vars
 	return nil

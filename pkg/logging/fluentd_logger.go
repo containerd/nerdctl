@@ -17,6 +17,7 @@
 package logging
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net/url"
@@ -99,7 +100,7 @@ func (f *FluentdLogger) Init(dataStore, ns, id string) error {
 	return nil
 }
 
-func (f *FluentdLogger) PreProcess(_ string, config *logging.Config) error {
+func (f *FluentdLogger) PreProcess(_ context.Context, _ string, config *logging.Config) error {
 	if runtime.GOOS == "windows" {
 		// TODO: support fluentd on windows
 		return fmt.Errorf("logging to fluentd is not supported on windows")
