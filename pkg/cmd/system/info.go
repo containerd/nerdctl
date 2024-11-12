@@ -37,6 +37,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/logging"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
@@ -72,6 +73,7 @@ func Info(ctx context.Context, client *containerd.Client, options types.SystemIn
 		if err != nil {
 			return err
 		}
+		infoCompat.Plugins.Log = logging.Drivers()
 	default:
 		return fmt.Errorf("unknown mode %q", options.Mode)
 	}
