@@ -197,8 +197,8 @@ func getChanges(ctx context.Context, client *containerd.Client, container contai
 	return changes, err
 }
 
-func appendChanges(changes []fs.Change, new fs.Change) []fs.Change {
-	newDir, _ := filepath.Split(new.Path)
+func appendChanges(changes []fs.Change, fsChange fs.Change) []fs.Change {
+	newDir, _ := filepath.Split(fsChange.Path)
 	newDirPath := filepath.SplitList(newDir)
 
 	if len(changes) == 0 {
@@ -208,7 +208,7 @@ func appendChanges(changes []fs.Change, new fs.Change) []fs.Change {
 				Path: filepath.Join(newDirPath[:i+1]...),
 			})
 		}
-		return append(changes, new)
+		return append(changes, fsChange)
 	}
 	last := changes[len(changes)-1]
 	lastDir, _ := filepath.Split(last.Path)
@@ -222,7 +222,7 @@ func appendChanges(changes []fs.Change, new fs.Change) []fs.Change {
 			Path: filepath.Join(newDirPath[:i+1]...),
 		})
 	}
-	return append(changes, new)
+	return append(changes, fsChange)
 }
 
 func diffShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
