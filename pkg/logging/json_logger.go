@@ -88,10 +88,11 @@ func (jsonLogger *JSONLogger) PreProcess(dataStore string, config *logging.Confi
 	l := &logrotate.Logger{
 		Filename: jsonFilePath,
 	}
-	//maxSize Defaults to unlimited.
-	var capVal int64
-	capVal = -1
+	// MaxBytes is the maximum size in bytes of the log file before it gets
+	// rotated. If not set, it defaults to 100 MiB.
+	// see: https://github.com/fahedouch/go-logrotate/blob/6a8beddaea39b2b9c77109d7fa2fe92053c063e5/logrotate.go#L500
 	if capacity, ok := jsonLogger.Opts[MaxSize]; ok {
+		var capVal int64
 		var err error
 		capVal, err = units.FromHumanSize(capacity)
 		if err != nil {
@@ -100,8 +101,8 @@ func (jsonLogger *JSONLogger) PreProcess(dataStore string, config *logging.Confi
 		if capVal <= 0 {
 			return fmt.Errorf("max-size must be a positive number")
 		}
+		l.MaxBytes = capVal
 	}
-	l.MaxBytes = capVal
 	maxFile := 1
 	if maxFileString, ok := jsonLogger.Opts[MaxFile]; ok {
 		var err error
