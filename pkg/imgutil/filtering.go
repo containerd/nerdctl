@@ -302,12 +302,12 @@ func filter[T any](items []T, f func(item T) (bool, error)) ([]T, error) {
 	return filteredItems, nil
 }
 
-func imageCreatedBetween(image images.Image, min time.Time, max time.Time) bool {
-	return image.CreatedAt.After(min) && image.CreatedAt.Before(max)
+func imageCreatedBetween(image images.Image, minTime time.Time, maxTime time.Time) bool {
+	return image.CreatedAt.After(minTime) && image.CreatedAt.Before(maxTime)
 }
 
-func imageCreatedBefore(image images.Image, max time.Time) bool {
-	return image.CreatedAt.Before(max)
+func imageCreatedBefore(image images.Image, maxTime time.Time) bool {
+	return image.CreatedAt.Before(maxTime)
 }
 
 func matchesAllLabels(imageCfgLabels map[string]string, filterLabels map[string]string) bool {
