@@ -263,10 +263,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		if err != nil {
 			return result, err
 		}
-		// Update the output with the the image name if it is not already set
-		if !strings.Contains(output, "name=") {
-			output += ",name=" + parsedReference.String()
-		}
+		output += ",name=" + parsedReference.String()
 
 		// pick the first tag and add it to output
 		for idx, tag := range tags {
