@@ -111,12 +111,12 @@ func LastIPInSubnet(addr *net.IPNet) (net.IP, error) {
 	}
 	ones, bits := cidr.Mask.Size()
 	if ones == bits {
-		return cidr.IP, err
+		return cidr.IP, nil
 	}
 	for i := range cidr.IP {
 		cidr.IP[i] = cidr.IP[i] | ^cidr.Mask[i]
 	}
-	return cidr.IP, err
+	return cidr.IP, nil
 }
 
 // firstIPInSubnet gets the first IP in a subnet
@@ -129,8 +129,8 @@ func FirstIPInSubnet(addr *net.IPNet) (net.IP, error) {
 	}
 	ones, bits := cidr.Mask.Size()
 	if ones == bits {
-		return cidr.IP, err
+		return cidr.IP, nil
 	}
 	cidr.IP[len(cidr.IP)-1]++
-	return cidr.IP, err
+	return cidr.IP, nil
 }
