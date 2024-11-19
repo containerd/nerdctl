@@ -338,7 +338,7 @@ services:
 }
 
 func TestParseDevices(t *testing.T) {
-  const dockerComposeYAML = `
+	const dockerComposeYAML = `
 services:
   foo:
     image: nginx:alpine
