@@ -515,7 +515,7 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 	}
 
 	for _, v := range svc.Devices {
-		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--device=%s", v))
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--device=%s:%s:%s", v.Source, v.Target, v.Permissions))
 	}
 
 	for _, v := range svc.DNS {

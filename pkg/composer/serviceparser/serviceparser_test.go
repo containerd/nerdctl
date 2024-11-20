@@ -337,6 +337,36 @@ services:
 
 }
 
+func TestParseDevices(t *testing.T) {
+	const dockerComposeYAML = `
+services:
+  foo:
+    image: nginx:alpine
+    devices:
+      - /dev/a
+      - /dev/b:/dev/b
+      - /dev/c:/dev/c:rw
+`
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	assert.NilError(t, err)
+
+	fooSvc, err := project.GetService("foo")
+	assert.NilError(t, err)
+
+	foo, err := Parse(project, fooSvc)
+	assert.NilError(t, err)
+
+	t.Logf("foo: %+v", foo)
+	for _, c := range foo.Containers {
+		assert.Assert(t, in(c.RunArgs, "--device=/dev/a:/dev/a:rwm"))
+		assert.Assert(t, in(c.RunArgs, "--device=/dev/b:/dev/b:rwm"))
+		assert.Assert(t, in(c.RunArgs, "--device=/dev/c:/dev/c:rw"))
+	}
+}
+
 func TestParseRelative(t *testing.T) {
 	t.Parallel()
 
