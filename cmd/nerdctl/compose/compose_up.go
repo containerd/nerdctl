@@ -47,6 +47,8 @@ func newComposeUpCommand() *cobra.Command {
 	composeUpCommand.Flags().Bool("ipfs", false, "Allow pulling base images from IPFS during build")
 	composeUpCommand.Flags().Bool("quiet-pull", false, "Pull without printing progress information")
 	composeUpCommand.Flags().Bool("remove-orphans", false, "Remove containers for services not defined in the Compose file.")
+	composeUpCommand.Flags().Bool("force-recreate", false, "Recreate containers even if their configuration and image haven't changed.")
+	composeUpCommand.Flags().Bool("no-recreate", false, "Don't recreate containers if they exist, conflict with --force-recreate.")
 	composeUpCommand.Flags().StringArray("scale", []string{}, "Scale SERVICE to NUM instances. Overrides the `scale` setting in the Compose file if present.")
 	return composeUpCommand
 }
@@ -102,6 +104,17 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 	if err != nil {
 		return err
 	}
+	forceRecreate, err := cmd.Flags().GetBool("force-recreate")
+	if err != nil {
+		return err
+	}
+	noRecreate, err := cmd.Flags().GetBool("no-recreate")
+	if err != nil {
+		return err
+	}
+	if forceRecreate && noRecreate {
+		return errors.New("flag --force-recreate and --no-recreate cannot be specified together")
+	}
 	scale := make(map[string]int)
 	for _, s := range scaleSlice {
 		parts := strings.Split(s, "=")
@@ -141,6 +154,8 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		QuietPull:            quietPull,
 		RemoveOrphans:        removeOrphans,
 		Scale:                scale,
+		ForceRecreate:        forceRecreate,
+		NoRecreate:           noRecreate,
 	}
 	return c.Up(ctx, uo, services)
 }

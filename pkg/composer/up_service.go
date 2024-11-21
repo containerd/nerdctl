@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -45,6 +46,8 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 		}
 	}
 
+	recreate := uo.recreateStrategy()
+
 	var (
 		containers   = make(map[string]serviceparser.Container) // key: container ID
 		services     = []string{}
@@ -57,7 +60,7 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 		for _, container := range ps.Containers {
 			container := container
 			runEG.Go(func() error {
-				id, err := c.upServiceContainer(ctx, ps, container)
+				id, err := c.upServiceContainer(ctx, ps, container, recreate)
 				if err != nil {
 					return err
 				}
@@ -87,6 +90,7 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 		Follow:               true,
 		NoColor:              uo.NoColor,
 		NoLogPrefix:          uo.NoLogPrefix,
+		LatestRun:            recreate == RecreateNever,
 	}
 	if err := c.Logs(ctx, lo, services); err != nil {
 		return err
@@ -118,15 +122,35 @@ func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Ser
 
 // upServiceContainer must be called after ensureServiceImage
 // upServiceContainer returns container ID
-func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparser.Service, container serviceparser.Container) (string, error) {
+func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparser.Service, container serviceparser.Container, recreate string) (string, error) {
 	// check if container already exists
-	exists, err := c.containerExists(ctx, container.Name, service.Unparsed.Name)
+	existingCid, err := c.containerID(ctx, container.Name, service.Unparsed.Name)
 	if err != nil {
 		return "", fmt.Errorf("error while checking for containers with name %q: %s", container.Name, err)
 	}
 
+	// FIXME
+	if service.Unparsed.StdinOpen != service.Unparsed.Tty {
+		return "", fmt.Errorf("currently StdinOpen(-i) and Tty(-t) should be same")
+	}
+
+	var runFlagD bool
+	if !service.Unparsed.StdinOpen && !service.Unparsed.Tty {
+		container.RunArgs = append([]string{"-d"}, container.RunArgs...)
+		runFlagD = true
+	}
+
+	// start the existing container and exit early
+	if existingCid != "" && recreate == RecreateNever {
+		cmd := c.createNerdctlCmd(ctx, append([]string{"start"}, existingCid)...)
+		if err := c.executeUpCmd(ctx, cmd, container.Name, runFlagD, service.Unparsed.StdinOpen); err != nil {
+			return "", fmt.Errorf("error while starting existing container %s: %w", container.Name, err)
+		}
+		return existingCid, nil
+	}
+
 	// delete container if it already exists
-	if exists {
+	if existingCid != "" {
 		log.G(ctx).Debugf("Container %q already exists, deleting", container.Name)
 		delCmd := c.createNerdctlCmd(ctx, "rm", "-f", container.Name)
 		if err = delCmd.Run(); err != nil {
@@ -151,12 +175,6 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 	defer os.RemoveAll(tempDir)
 	cidFilename := filepath.Join(tempDir, "cid")
 
-	var runFlagD bool
-	if !service.Unparsed.StdinOpen && !service.Unparsed.Tty {
-		container.RunArgs = append([]string{"-d"}, container.RunArgs...)
-		runFlagD = true
-	}
-
 	//add metadata labels to container https://github.com/compose-spec/compose-spec/blob/master/spec.md#labels
 	container.RunArgs = append([]string{
 		"--cidfile=" + cidFilename,
@@ -169,22 +187,7 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 		log.G(ctx).Debugf("Running %v", cmd.Args)
 	}
 
-	// FIXME
-	if service.Unparsed.StdinOpen != service.Unparsed.Tty {
-		return "", fmt.Errorf("currently StdinOpen(-i) and Tty(-t) should be same")
-	}
-
-	if service.Unparsed.StdinOpen {
-		cmd.Stdin = os.Stdin
-	}
-	if !runFlagD {
-		cmd.Stdout = os.Stdout
-	}
-	// Always propagate stderr to print detailed error messages (https://github.com/containerd/nerdctl/issues/1942)
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Run()
-	if err != nil {
+	if err := c.executeUpCmd(ctx, cmd, container.Name, runFlagD, service.Unparsed.StdinOpen); err != nil {
 		return "", fmt.Errorf("error while creating container %s: %w", container.Name, err)
 	}
 
@@ -193,4 +196,26 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 		return "", fmt.Errorf("error while creating container %s: %w", container.Name, err)
 	}
 	return strings.TrimSpace(string(cid)), nil
+}
+
+func (c *Composer) executeUpCmd(ctx context.Context, cmd *exec.Cmd, containerName string, runFlagD, stdinOpen bool) error {
+	log.G(ctx).Infof("Running %v", cmd.Args)
+	if c.DebugPrintFull {
+		log.G(ctx).Debugf("Running %v", cmd.Args)
+	}
+
+	if stdinOpen {
+		cmd.Stdin = os.Stdin
+	}
+	if !runFlagD {
+		cmd.Stdout = os.Stdout
+	}
+	// Always propagate stderr to print detailed error messages (https://github.com/containerd/nerdctl/issues/1942)
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error while creating container %s: %w", containerName, err)
+	}
+
+	return nil
 }

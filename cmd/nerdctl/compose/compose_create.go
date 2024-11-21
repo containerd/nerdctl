@@ -65,7 +65,7 @@ func composeCreateAction(cmd *cobra.Command, args []string) error {
 	}
 	noRecreate, err := cmd.Flags().GetBool("no-recreate")
 	if err != nil {
-		return nil
+		return err
 	}
 	if forceRecreate && noRecreate {
 		return errors.New("flag --force-recreate and --no-recreate cannot be specified together")

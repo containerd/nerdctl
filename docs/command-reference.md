@@ -1410,8 +1410,10 @@ Flags:
 - :whale: `--quiet-pull`: Pull without printing progress information
 - :whale: `--scale`: Scale SERVICE to NUM instances. Overrides the `scale` setting in the Compose file if present.
 - :whale: `--remove-orphans`: Remove containers for services not defined in the Compose file
+- :whale: `--force-recreate`: force Compose to stop and recreate all containers
+- :whale: `--no-recreate`: force Compose to reuse existing containers
 
-Unimplemented `docker-compose up` (V1) flags: `--no-deps`, `--force-recreate`, `--always-recreate-deps`, `--no-recreate`,
+Unimplemented `docker-compose up` (V1) flags: `--no-deps`, `--always-recreate-deps`,
 `--no-start`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--exit-code-from`
 
 Unimplemented `docker compose up` (V2) flags: `--environment`
