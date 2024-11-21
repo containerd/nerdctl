@@ -82,7 +82,7 @@ jobs:
       - uses: actions/checkout@v4.2.2
         with:
           repository: containerd/containerd
-          ref: "v1.7.23"
+          ref: "v1.7.24"
           path: containerd
           fetch-depth: 1
       - name: "Set up CNI"
