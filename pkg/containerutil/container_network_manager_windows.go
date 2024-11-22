@@ -50,9 +50,8 @@ func (m *cniNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 	nonZeroArgs := nonZeroMapValues(map[string]interface{}{
 		"--hostname": m.netOpts.Hostname,
 		"--uts":      m.netOpts.UTSNamespace,
-		// NOTE: IP and MAC settings are currently ignored on Windows.
-		"--ip-address":  m.netOpts.IPAddress,
-		"--mac-address": m.netOpts.MACAddress,
+		// NOTE: IP setting is currently ignored on Windows.
+		"--ip-address": m.netOpts.IPAddress,
 		// NOTE: zero-length slices count as a non-zero-value so we explicitly check length:
 		"--dns-opt/--dns-option": len(m.netOpts.DNSResolvConfOptions) != 0,
 		"--dns-servers":          len(m.netOpts.DNSServers) != 0,
