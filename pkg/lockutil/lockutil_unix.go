@@ -72,8 +72,5 @@ func Unlock(locked *os.File) error {
 		_ = locked.Close()
 	}()
 
-	if err := flock(locked, unix.LOCK_UN); err != nil {
-		return err
-	}
-	return nil
+	return flock(locked, unix.LOCK_UN)
 }

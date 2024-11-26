@@ -39,7 +39,7 @@ const (
 	volumeJSONFileName = "volume.json"
 )
 
-// ErrNameStore will wrap all errors here
+// ErrVolumeStore will wrap all errors here
 var ErrVolumeStore = errors.New("volume-store error")
 
 type VolumeStore interface {
