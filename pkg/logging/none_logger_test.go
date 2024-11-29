@@ -17,6 +17,7 @@
 package logging
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -29,6 +30,7 @@ import (
 func TestNoneLogger(t *testing.T) {
 	// Create a temporary directory for potential log files
 	tmpDir := t.TempDir()
+	ctx := context.Background()
 
 	logger := &NoneLogger{
 		Opts: map[string]string{},
@@ -40,7 +42,7 @@ func TestNoneLogger(t *testing.T) {
 
 		// Run all logger methods
 		logger.Init(tmpDir, "namespace", "id")
-		logger.PreProcess(tmpDir, &logging.Config{})
+		logger.PreProcess(ctx, tmpDir, &logging.Config{})
 
 		stdout := make(chan string)
 		stderr := make(chan string)

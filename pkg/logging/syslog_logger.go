@@ -17,6 +17,7 @@
 package logging
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -122,7 +123,7 @@ func (sy *SyslogLogger) Init(dataStore string, ns string, id string) error {
 	return nil
 }
 
-func (sy *SyslogLogger) PreProcess(dataStore string, config *logging.Config) error {
+func (sy *SyslogLogger) PreProcess(ctx context.Context, dataStore string, config *logging.Config) error {
 	logger, err := parseSyslog(config.ID, sy.Opts)
 	if err != nil {
 		return err

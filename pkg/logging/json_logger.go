@@ -78,7 +78,7 @@ func (jsonLogger *JSONLogger) Init(dataStore, ns, id string) error {
 	return nil
 }
 
-func (jsonLogger *JSONLogger) PreProcess(dataStore string, config *logging.Config) error {
+func (jsonLogger *JSONLogger) PreProcess(ctx context.Context, dataStore string, config *logging.Config) error {
 	var jsonFilePath string
 	if logPath, ok := jsonLogger.Opts[LogPath]; ok {
 		jsonFilePath = logPath

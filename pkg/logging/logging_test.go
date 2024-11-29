@@ -38,7 +38,7 @@ func (m *MockDriver) Init(dataStore, ns, id string) error {
 	return nil
 }
 
-func (m *MockDriver) PreProcess(dataStore string, config *logging.Config) error {
+func (m *MockDriver) PreProcess(ctx context.Context, dataStore string, config *logging.Config) error {
 	return nil
 }
 

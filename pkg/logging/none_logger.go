@@ -17,6 +17,8 @@
 package logging
 
 import (
+	"context"
+
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 )
 
@@ -28,7 +30,7 @@ func (n *NoneLogger) Init(dataStore, ns, id string) error {
 	return nil
 }
 
-func (n *NoneLogger) PreProcess(dataStore string, config *logging.Config) error {
+func (n *NoneLogger) PreProcess(ctx context.Context, dataStore string, config *logging.Config) error {
 	return nil
 }
 

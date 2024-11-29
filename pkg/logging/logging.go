@@ -49,12 +49,12 @@ const (
 
 type Driver interface {
 	Init(dataStore, ns, id string) error
-	PreProcess(dataStore string, config *logging.Config) error
+	PreProcess(ctx context.Context, dataStore string, config *logging.Config) error
 	Process(stdout <-chan string, stderr <-chan string) error
 	PostProcess() error
 }
 
-type DriverFactory func(map[string]string) (Driver, error)
+type DriverFactory func(map[string]string, string) (Driver, error)
 type LogOptsValidateFunc func(logOptMap map[string]string) error
 
 var drivers = make(map[string]DriverFactory)
@@ -81,28 +81,28 @@ func Drivers() []string {
 	return ss
 }
 
-func GetDriver(name string, opts map[string]string) (Driver, error) {
+func GetDriver(name string, opts map[string]string, address string) (Driver, error) {
 	driverFactory, ok := drivers[name]
 	if !ok {
 		return nil, fmt.Errorf("unknown logging driver %q: %w", name, errdefs.ErrNotFound)
 	}
-	return driverFactory(opts)
+	return driverFactory(opts, address)
 }
 
 func init() {
-	RegisterDriver("none", func(opts map[string]string) (Driver, error) {
+	RegisterDriver("none", func(opts map[string]string, address string) (Driver, error) {
 		return &NoneLogger{}, nil
 	}, NoneLogOptsValidate)
-	RegisterDriver("json-file", func(opts map[string]string) (Driver, error) {
+	RegisterDriver("json-file", func(opts map[string]string, address string) (Driver, error) {
 		return &JSONLogger{Opts: opts}, nil
 	}, JSONFileLogOptsValidate)
-	RegisterDriver("journald", func(opts map[string]string) (Driver, error) {
-		return &JournaldLogger{Opts: opts}, nil
+	RegisterDriver("journald", func(opts map[string]string, address string) (Driver, error) {
+		return &JournaldLogger{Opts: opts, Address: address}, nil
 	}, JournalLogOptsValidate)
-	RegisterDriver("fluentd", func(opts map[string]string) (Driver, error) {
+	RegisterDriver("fluentd", func(opts map[string]string, address string) (Driver, error) {
 		return &FluentdLogger{Opts: opts}, nil
 	}, FluentdLogOptsValidate)
-	RegisterDriver("syslog", func(opts map[string]string) (Driver, error) {
+	RegisterDriver("syslog", func(opts map[string]string, address string) (Driver, error) {
 		return &SyslogLogger{Opts: opts}, nil
 	}, SyslogOptsValidate)
 }
@@ -121,9 +121,10 @@ func Main(argv2 string) error {
 
 // LogConfig is marshalled as "log-config.json"
 type LogConfig struct {
-	Driver string            `json:"driver"`
-	Opts   map[string]string `json:"opts,omitempty"`
-	LogURI string            `json:"-"`
+	Driver  string            `json:"driver"`
+	Opts    map[string]string `json:"opts,omitempty"`
+	LogURI  string            `json:"-"`
+	Address string            `json:"address"`
 }
 
 // LogConfigFilePath returns the path of log-config.json
@@ -149,7 +150,7 @@ func LoadLogConfig(dataStore, ns, id string) (LogConfig, error) {
 }
 
 func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore string, config *logging.Config) error {
-	if err := driver.PreProcess(dataStore, config); err != nil {
+	if err := driver.PreProcess(ctx, dataStore, config); err != nil {
 		return err
 	}
 
@@ -215,7 +216,7 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 			if err != nil {
 				return err
 			}
-			driver, err := GetDriver(logConfig.Driver, logConfig.Opts)
+			driver, err := GetDriver(logConfig.Driver, logConfig.Opts, logConfig.Address)
 			if err != nil {
 				return err
 			}

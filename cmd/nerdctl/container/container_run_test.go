@@ -329,19 +329,44 @@ func TestRunWithJournaldLogDriver(t *testing.T) {
 	time.Sleep(3 * time.Second)
 	journalctl, err := exec.LookPath("journalctl")
 	assert.NilError(t, err)
+
 	inspectedContainer := base.InspectContainer(containerName)
-	found := 0
-	check := func(log poll.LogT) poll.Result {
-		res := icmd.RunCmd(icmd.Command(journalctl, "--no-pager", "--since", "2 minutes ago", fmt.Sprintf("SYSLOG_IDENTIFIER=%s", inspectedContainer.ID[:12])))
-		assert.Equal(t, 0, res.ExitCode, res)
-		if strings.Contains(res.Stdout(), "bar") && strings.Contains(res.Stdout(), "foo") {
-			found = 1
-			return poll.Success()
-		}
-		return poll.Continue("reading from journald is not yet finished")
+
+	type testCase struct {
+		name   string
+		filter string
 	}
-	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(20*time.Second))
-	assert.Equal(t, 1, found)
+	testCases := []testCase{
+		{
+			name:   "filter journald logs using SYSLOG_IDENTIFIER field",
+			filter: fmt.Sprintf("SYSLOG_IDENTIFIER=%s", inspectedContainer.ID[:12]),
+		},
+		{
+			name:   "filter journald logs using CONTAINER_NAME field",
+			filter: fmt.Sprintf("CONTAINER_NAME=%s", containerName),
+		},
+		{
+			name:   "filter journald logs using IMAGE_NAME field",
+			filter: fmt.Sprintf("IMAGE_NAME=%s", testutil.CommonImage),
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			found := 0
+			check := func(log poll.LogT) poll.Result {
+				res := icmd.RunCmd(icmd.Command(journalctl, "--no-pager", "--since", "2 minutes ago", tc.filter))
+				assert.Equal(t, 0, res.ExitCode, res)
+				if strings.Contains(res.Stdout(), "bar") && strings.Contains(res.Stdout(), "foo") {
+					found = 1
+					return poll.Success()
+				}
+				return poll.Continue("reading from journald is not yet finished")
+			}
+			poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(20*time.Second))
+			assert.Equal(t, 1, found)
+		})
+	}
 }
 
 func TestRunWithJournaldLogDriverAndLogOpt(t *testing.T) {
