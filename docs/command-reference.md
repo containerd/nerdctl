@@ -1391,6 +1391,7 @@ Flags:
 - :whale: `-p, --project-name`: Specify an alternate project name
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 - :whale: `--profile: Specify a profile to enable
+- :whale: `--env-file` : Specify an alternate environment file
 
 ### :whale: nerdctl compose up
 
