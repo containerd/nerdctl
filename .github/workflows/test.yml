@@ -105,18 +105,6 @@ jobs:
       matrix:
         # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
-          - ubuntu: 20.04
-            containerd: v1.6.36
-            runner: "ubuntu-20.04"
-            arch: amd64
-          - ubuntu: 22.04
-            containerd: v1.7.24
-            runner: "ubuntu-22.04"
-            arch: amd64
-          - ubuntu: 24.04
-            containerd: v2.0.0
-            runner: "ubuntu-24.04"
-            arch: amd64
           - ubuntu: 24.04
             containerd: v2.0.0
             runner: arm64-8core-32gb
@@ -129,6 +117,24 @@ jobs:
       - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
+      - name: "DEBUG"
+        run: |
+          sudo apt-get purge containerd.io
+          NERDCTL_VERSION=2.0.0
+          curl -fsSL -o nerdctl.tar.gz https://github.com/containerd/nerdctl/releases/download/v$NERDCTL_VERSION/nerdctl-full-$NERDCTL_VERSION-linux-arm64.tar.gz
+          sudo tar -C /usr/local -xf nerdctl.tar.gz
+          sudo systemctl restart containerd
+          echo "Run alpine"
+          sudo nerdctl run alpine apk add curl
+          echo "Run debian default"
+          sudo nerdctl run debian apt-get update
+          echo "Run debian host"
+          sudo nerdctl run --net host debian apt-get update
+          echo "Run debian custom bridge"
+          sudo nerdctl network create --gateway 172.17.0.1 --subnet 172.17.0.0/16 hadron-bridge
+          sudo nerdctl run --net hadron-bridge debian apt-get update
+          exit 1
+
       - name: "Expose GitHub Runtime variables for gha"
         uses: crazy-max/ghaction-github-runtime@v3
       - name: "Prepare integration test environment"
