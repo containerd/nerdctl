@@ -64,6 +64,8 @@ linters:
     # - wrapcheck
     # - wsl
 linters-settings:
+  goimports:
+    local-prefixes: github.com/containerd/nerdctl/v2
   gocritic:
     enabled-checks:
       # Diagnostic
