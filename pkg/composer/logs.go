@@ -44,6 +44,14 @@ type LogsOptions struct {
 }
 
 func (c *Composer) Logs(ctx context.Context, lo LogsOptions, services []string) error {
+	// Whether we called `compose logs`, or we are showing logs at the end of `up`, while in non detach mode, we need
+	// to release the lock. At this point, no operation will be performed that needs exclusive locking anymore, and
+	// not releasing the lock would otherwise unduly prevent further compose operations.
+	// See https://github.com/containerd/nerdctl/issues/3678
+	if err := Unlock(); err != nil {
+		return err
+	}
+
 	var serviceNames []string
 	err := c.project.ForEachService(services, func(name string, svc *types.ServiceConfig) error {
 		serviceNames = append(serviceNames, svc.Name)
