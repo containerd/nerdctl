@@ -25,7 +25,7 @@ ARG CNI_PLUGINS_VERSION=v1.6.0
 # Extra deps: Build
 ARG BUILDKIT_VERSION=v0.18.0
 # Extra deps: Lazy-pulling
-ARG STARGZ_SNAPSHOTTER_VERSION=v0.16.1
+ARG STARGZ_SNAPSHOTTER_VERSION=v0.16.2
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=v2.0.0-rc.1
 # Extra deps: Rootless
