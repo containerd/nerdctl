@@ -39,6 +39,8 @@ func TestCreate(t *testing.T) {
 		helpers.Anyhow("rm", "-f", data.Identifier("container"))
 	}
 
+	testCase.Require = nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3717")
+
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "ps -a",
