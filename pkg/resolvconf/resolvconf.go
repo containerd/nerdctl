@@ -317,7 +317,16 @@ func Build(path string, dns, dnsSearch, dnsOptions []string) (*File, error) {
 		return nil, err
 	}
 
-	return &File{Content: content.Bytes(), Hash: hash}, os.WriteFile(path, content.Bytes(), 0644)
+	err = os.WriteFile(path, content.Bytes(), 0o644)
+	if err != nil {
+		return nil, err
+	}
+
+	// os.WriteFile relies on syscall.Open. Unless there are ACLs, the effective mode of the file will be matched
+	// against the current process umask.
+	// See https://www.man7.org/linux/man-pages/man2/open.2.html for details.
+	// Since we must make sure that these files are world readable, explicitly chmod them here.
+	return &File{Content: content.Bytes(), Hash: hash}, os.Chmod(path, 0o644)
 }
 
 func hashData(src io.Reader) (string, error) {

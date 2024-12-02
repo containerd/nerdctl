@@ -115,6 +115,14 @@ func (x *hostsStore) Acquire(meta Meta) (err error) {
 			return errors.Join(store.ErrSystemFailure, err)
 		}
 
+		// os.WriteFile relies on syscall.Open. Unless there are ACLs, the effective mode of the file will be matched
+		// against the current process umask.
+		// See https://www.man7.org/linux/man-pages/man2/open.2.html for details.
+		// Since we must make sure that these files are world readable, explicitly chmod them here.
+		if err = os.Chmod(loc, 0o644); err != nil {
+			err = errors.Join(store.ErrSystemFailure, err)
+		}
+
 		var content []byte
 		content, err = json.Marshal(meta)
 		if err != nil {
@@ -173,6 +181,14 @@ func (x *hostsStore) AllocHostsFile(id string, content []byte) (location string,
 
 		err = os.WriteFile(loc, content, 0o644)
 		if err != nil {
+			err = errors.Join(store.ErrSystemFailure, err)
+		}
+
+		// os.WriteFile relies on syscall.Open. Unless there are ACLs, the effective mode of the file will be matched
+		// against the current process umask.
+		// See https://www.man7.org/linux/man-pages/man2/open.2.html for details.
+		// Since we must make sure that these files are world readable, explicitly chmod them here.
+		if err = os.Chmod(loc, 0o644); err != nil {
 			err = errors.Join(store.ErrSystemFailure, err)
 		}
 
@@ -333,6 +349,7 @@ func (x *hostsStore) updateAllHosts() (err error) {
 		if err != nil {
 			log.L.WithError(err).Errorf("failed to write hosts file for %q", entry)
 		}
+		_ = os.Chmod(loc, 0o644)
 	}
 	return nil
 }
