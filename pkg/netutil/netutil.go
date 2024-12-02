@@ -501,7 +501,6 @@ func (e *CNIEnv) writeNetworkConfig(net *NetworkConfig) error {
 
 // networkConfigList loads config from dir if dir exists.
 func (e *CNIEnv) networkConfigList() ([]*NetworkConfig, error) {
-	l := []*NetworkConfig{}
 	common, err := libcni.ConfFiles(e.NetconfPath, []string{".conf", ".conflist", ".json"})
 	if err != nil {
 		return nil, err
@@ -513,34 +512,53 @@ func (e *CNIEnv) networkConfigList() ([]*NetworkConfig, error) {
 			return nil, err
 		}
 	}
-	fileNames := append(common, namespaced...)
+	return cniLoad(append(common, namespaced...))
+}
+
+func wrapCNIError(fileName string, err error) error {
+	return fmt.Errorf("failed marshalling json out of network configuration file %q: %w\n"+
+		"For details on the schema, see https://pkg.go.dev/github.com/containernetworking/cni/libcni#NetworkConfigList", fileName, err)
+}
+
+func cniLoad(fileNames []string) (configList []*NetworkConfig, err error) {
+	var fileName string
+
 	sort.Strings(fileNames)
-	for _, fileName := range fileNames {
-		var lcl *libcni.NetworkConfigList
+
+	for _, fileName = range fileNames {
+		var bytes []byte
+		bytes, err = os.ReadFile(fileName)
+		if err != nil {
+			return nil, fmt.Errorf("error reading %s: %w", fileName, err)
+		}
+
+		var netConfigList *libcni.NetworkConfigList
 		if strings.HasSuffix(fileName, ".conflist") {
-			lcl, err = libcni.ConfListFromFile(fileName)
+			netConfigList, err = libcni.ConfListFromBytes(bytes)
 			if err != nil {
-				return nil, err
+				return nil, wrapCNIError(fileName, err)
 			}
 		} else {
-			lc, err := libcni.ConfFromFile(fileName)
+			var netConfig *libcni.NetworkConfig
+			netConfig, err = libcni.ConfFromBytes(bytes)
 			if err != nil {
-				return nil, err
+				return nil, wrapCNIError(fileName, err)
 			}
-			lcl, err = libcni.ConfListFromConf(lc)
+			netConfigList, err = libcni.ConfListFromConf(netConfig)
 			if err != nil {
-				return nil, err
+				return nil, wrapCNIError(fileName, err)
 			}
 		}
-		id, lbls := nerdctlIDLabels(lcl.Bytes)
-		l = append(l, &NetworkConfig{
-			NetworkConfigList: lcl,
+		id, nerdctlLabels := nerdctlIDLabels(netConfigList.Bytes)
+		configList = append(configList, &NetworkConfig{
+			NetworkConfigList: netConfigList,
 			NerdctlID:         id,
-			NerdctlLabels:     lbls,
+			NerdctlLabels:     nerdctlLabels,
 			File:              fileName,
 		})
 	}
-	return l, nil
+
+	return configList, nil
 }
 
 func nerdctlIDLabels(b []byte) (*string, *map[string]string) {
