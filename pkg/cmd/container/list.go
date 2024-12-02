@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -40,11 +41,11 @@ import (
 
 // List prints containers according to `options`.
 func List(ctx context.Context, client *containerd.Client, options types.ContainerListOptions) ([]ListItem, error) {
-	containers, err := filterContainers(ctx, client, options.Filters, options.LastN, options.All)
+	containers, cMap, err := filterContainers(ctx, client, options.Filters, options.LastN, options.All)
 	if err != nil {
 		return nil, err
 	}
-	return prepareContainers(ctx, client, containers, options)
+	return prepareContainers(ctx, client, containers, cMap, options)
 }
 
 // filterContainers returns containers matching the filters.
@@ -53,14 +54,14 @@ func List(ctx context.Context, client *containerd.Client, options types.Containe
 //   - all means showing all containers (default shows just running).
 //   - lastN means only showing n last created containers (includes all states). Non-positive values are ignored.
 //     In other words, if lastN is positive, all will be set to true.
-func filterContainers(ctx context.Context, client *containerd.Client, filters []string, lastN int, all bool) ([]containerd.Container, error) {
+func filterContainers(ctx context.Context, client *containerd.Client, filters []string, lastN int, all bool) ([]containerd.Container, map[string]string, error) {
 	containers, err := client.Containers(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	filterCtx, err := foldContainerFilters(ctx, containers, filters)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	containers = filterCtx.MatchesFilters(ctx)
 
@@ -77,18 +78,37 @@ func filterContainers(ctx context.Context, client *containerd.Client, filters []
 		}
 	}
 
+	var wg sync.WaitGroup
+	statusPerContainer := make(map[string]string)
+	var mu sync.Mutex
+	// formatter.ContainerStatus(ctx, c) is time consuming so we do it in goroutines and return the container's id with status as a map.
+	// prepareContainers func will use this map to avoid call formatter.ContainerStatus again.
+	for _, c := range containers {
+		if c.ID() == "" {
+			return nil, nil, fmt.Errorf("container id is nill")
+		}
+		wg.Add(1)
+		go func(ctx context.Context, c containerd.Container) {
+			defer wg.Done()
+			cStatus := formatter.ContainerStatus(ctx, c)
+			mu.Lock()
+			statusPerContainer[c.ID()] = cStatus
+			mu.Unlock()
+		}(ctx, c)
+	}
+	wg.Wait()
 	if all || filterCtx.all {
-		return containers, nil
+		return containers, statusPerContainer, nil
 	}
 
 	var upContainers []containerd.Container
 	for _, c := range containers {
-		cStatus := formatter.ContainerStatus(ctx, c)
+		cStatus := statusPerContainer[c.ID()]
 		if strings.HasPrefix(cStatus, "Up") {
 			upContainers = append(upContainers, c)
 		}
 	}
-	return upContainers, nil
+	return upContainers, statusPerContainer, nil
 }
 
 type ListItem struct {
@@ -112,7 +132,7 @@ func (x *ListItem) Label(s string) string {
 	return x.LabelsMap[s]
 }
 
-func prepareContainers(ctx context.Context, client *containerd.Client, containers []containerd.Container, options types.ContainerListOptions) ([]ListItem, error) {
+func prepareContainers(ctx context.Context, client *containerd.Client, containers []containerd.Container, statusPerContainer map[string]string, options types.ContainerListOptions) ([]ListItem, error) {
 	listItems := make([]ListItem, len(containers))
 	snapshottersCache := map[string]snapshots.Snapshotter{}
 	for i, c := range containers {
@@ -136,6 +156,12 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 		if options.Truncate && len(id) > 12 {
 			id = id[:12]
 		}
+		var status string
+		if s, ok := statusPerContainer[c.ID()]; ok {
+			status = s
+		} else {
+			return nil, fmt.Errorf("can't get container %s status", c.ID())
+		}
 		li := ListItem{
 			Command:   formatter.InspectContainerCommand(spec, options.Truncate, true),
 			CreatedAt: info.CreatedAt,
@@ -144,7 +170,7 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 			Platform:  info.Labels[labels.Platform],
 			Names:     containerutil.GetContainerName(info.Labels),
 			Ports:     formatter.FormatPorts(info.Labels),
-			Status:    formatter.ContainerStatus(ctx, c),
+			Status:    status,
 			Runtime:   info.Runtime.Name,
 			Labels:    formatter.FormatLabels(info.Labels),
 			LabelsMap: info.Labels,
