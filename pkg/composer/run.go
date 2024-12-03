@@ -242,7 +242,7 @@ func (c *Composer) runServices(ctx context.Context, parsedServices []*servicepar
 		container := ps.Containers[0]
 
 		runEG.Go(func() error {
-			id, err := c.upServiceContainer(ctx, ps, container)
+			id, err := c.upServiceContainer(ctx, ps, container, RecreateForce)
 			if err != nil {
 				return err
 			}

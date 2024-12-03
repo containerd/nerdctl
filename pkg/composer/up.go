@@ -39,7 +39,20 @@ type UpOptions struct {
 	IPFS                 bool
 	QuietPull            bool
 	RemoveOrphans        bool
+	ForceRecreate        bool
+	NoRecreate           bool
 	Scale                map[string]int // map of service name to replicas
+}
+
+func (opts UpOptions) recreateStrategy() string {
+	switch {
+	case opts.ForceRecreate:
+		return RecreateForce
+	case opts.NoRecreate:
+		return RecreateNever
+	default:
+		return RecreateDiverged
+	}
 }
 
 func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) error {
