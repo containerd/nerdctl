@@ -82,6 +82,13 @@ func NewHostOptions(ctx context.Context, refHostname string, optFuncs ...Opt) (*
 
 	ho.HostDir = func(hostURL string) (string, error) {
 		regURL, err := Parse(hostURL)
+		// Docker inconsistencies handling: `index.docker.io` actually expects `docker.io` for hosts.toml on the filesystem
+		// See https://github.com/containerd/nerdctl/issues/3697
+		// FIXME: we need to reevaluate this comparing with what docker does. What should happen for FQ images with alternate docker domains? (eg: registry-1.docker.io)
+		if regURL.Hostname() == "index.docker.io" {
+			regURL.Host = "docker.io"
+		}
+
 		if err != nil {
 			return "", err
 		}
