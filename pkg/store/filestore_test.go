@@ -267,12 +267,12 @@ func TestFileStoreFilesystemRestrictions(t *testing.T) {
 	}
 
 	for _, v := range invalid {
-		err := validatePathComponent(v)
+		err := ValidatePathComponent(v)
 		assert.ErrorIs(t, err, ErrInvalidArgument, v)
 	}
 
 	for _, v := range valid {
-		err := validatePathComponent(v)
+		err := ValidatePathComponent(v)
 		assert.NilError(t, err, v)
 	}
 

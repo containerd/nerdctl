@@ -204,7 +204,7 @@ func (vs *fileStore) List(key ...string) ([]string, error) {
 
 	// Unlike Get, Set and Delete, List can have zero length key
 	for _, k := range key {
-		if err := validatePathComponent(k); err != nil {
+		if err := ValidatePathComponent(k); err != nil {
 			return nil, err
 		}
 	}
@@ -333,8 +333,8 @@ func (vs *fileStore) GroupSize(key ...string) (int64, error) {
 	return size, nil
 }
 
-// validatePathComponent will enforce os specific filename restrictions on a single path component
-func validatePathComponent(pathComponent string) error {
+// ValidatePathComponent will enforce os specific filename restrictions on a single path component
+func ValidatePathComponent(pathComponent string) error {
 	// https://en.wikipedia.org/wiki/Comparison_of_file_systems#Limits
 	if len(pathComponent) > 255 {
 		return errors.Join(ErrInvalidArgument, errors.New("identifiers must be stricly shorter than 256 characters"))
@@ -358,7 +358,7 @@ func validateAllPathComponents(pathComponent ...string) error {
 	}
 
 	for _, key := range pathComponent {
-		if err := validatePathComponent(key); err != nil {
+		if err := ValidatePathComponent(key); err != nil {
 			return err
 		}
 	}
