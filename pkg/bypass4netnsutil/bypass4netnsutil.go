@@ -131,8 +131,14 @@ func GetPidFilePathByID(id string) (string, error) {
 		return "", err
 	}
 
-	socketPath := filepath.Join(xdgRuntimeDir, "bypass4netns", id[0:15]+".pid")
-	return socketPath, nil
+	pidPath := filepath.Join(xdgRuntimeDir, "bypass4netns", id[0:15]+".pid")
+
+	err = os.MkdirAll(filepath.Join(xdgRuntimeDir, "bypass4netns"), 0o700)
+	if err != nil {
+		return "", err
+	}
+
+	return pidPath, nil
 }
 
 func IsBypass4netnsEnabled(annotationsMap map[string]string) (enabled, bindEnabled bool, err error) {
