@@ -29,7 +29,7 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/cio"
 	"github.com/containerd/errdefs"
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -131,8 +131,8 @@ func cleanupNetwork(ctx context.Context, container containerd.Container, globalO
 		if portErr != nil {
 			return fmt.Errorf("no oci spec: %q", portErr)
 		}
-		portMappings := []gocni.NamespaceOpts{
-			gocni.WithCapabilityPortMap(ports),
+		portMappings := []cni.NamespaceOpts{
+			cni.WithCapabilityPortMap(ports),
 		}
 
 		// retrieve info to get cni instance
@@ -158,26 +158,26 @@ func cleanupNetwork(ctx context.Context, container containerd.Container, globalO
 			if err != nil {
 				return err
 			}
-			cniOpts := []gocni.Opt{
-				gocni.WithPluginDir([]string{globalOpts.CNIPath}),
+			cniOpts := []cni.Opt{
+				cni.WithPluginDir([]string{globalOpts.CNIPath}),
 			}
 			var netw *netutil.NetworkConfig
 			for _, netstr := range networks {
 				if netw, err = e.NetworkByNameOrID(netstr); err != nil {
 					return err
 				}
-				cniOpts = append(cniOpts, gocni.WithConfListBytes(netw.Bytes))
+				cniOpts = append(cniOpts, cni.WithConfListBytes(netw.Bytes))
 			}
-			cni, err := gocni.New(cniOpts...)
+			cniObj, err := cni.New(cniOpts...)
 			if err != nil {
 				return err
 			}
 
-			var namespaceOpts []gocni.NamespaceOpts
+			var namespaceOpts []cni.NamespaceOpts
 			namespaceOpts = append(namespaceOpts, portMappings...)
 			namespace := spec.Annotations[labels.Namespace]
 			fullID := namespace + "-" + container.ID()
-			if err := cni.Remove(ctx, fullID, "", namespaceOpts...); err != nil {
+			if err := cniObj.Remove(ctx, fullID, "", namespaceOpts...); err != nil {
 				log.L.WithError(err).Errorf("failed to call cni.Remove")
 				return err
 			}

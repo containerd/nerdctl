@@ -29,7 +29,7 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/runtime/restart"
 	"github.com/containerd/errdefs"
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
@@ -323,7 +323,7 @@ type PortPublisher struct {
 // formatPublishers parses and returns docker-compatible []PortPublisher from
 // label map. If an error happens, an empty slice is returned.
 func formatPublishers(labelMap map[string]string) []PortPublisher {
-	mapper := func(pm gocni.PortMapping) PortPublisher {
+	mapper := func(pm cni.PortMapping) PortPublisher {
 		return PortPublisher{
 			URL:           pm.HostIP,
 			TargetPort:    int(pm.ContainerPort),

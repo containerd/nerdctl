@@ -24,7 +24,7 @@ import (
 	"github.com/rootless-containers/rootlesskit/v2/pkg/port"
 
 	"github.com/containerd/errdefs"
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/go-cni"
 )
 
 func NewRootlessCNIPortManager(client client.Client) (*RootlessCNIPortManager, error) {
@@ -41,7 +41,7 @@ type RootlessCNIPortManager struct {
 	client.Client
 }
 
-func (rlcpm *RootlessCNIPortManager) ExposePort(ctx context.Context, cpm gocni.PortMapping) error {
+func (rlcpm *RootlessCNIPortManager) ExposePort(ctx context.Context, cpm cni.PortMapping) error {
 	// NOTE: When `nerdctl run -p 8080:80` is being launched, cpm.HostPort is set to 8080 and cpm.ContainerPort is set to 80.
 	// We want to forward the port 8080 of the parent namespace into the port 8080 of the child namespace (which is the "host"
 	// from the point of view of CNI). So we do NOT set sp.ChildPort to cpm.ContainerPort here.
@@ -55,7 +55,7 @@ func (rlcpm *RootlessCNIPortManager) ExposePort(ctx context.Context, cpm gocni.P
 	return err
 }
 
-func (rlcpm *RootlessCNIPortManager) UnexposePort(ctx context.Context, cpm gocni.PortMapping) error {
+func (rlcpm *RootlessCNIPortManager) UnexposePort(ctx context.Context, cpm cni.PortMapping) error {
 	pm := rlcpm.Client.PortManager()
 	ports, err := pm.ListPorts(ctx)
 	if err != nil {

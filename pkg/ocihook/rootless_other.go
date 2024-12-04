@@ -24,13 +24,13 @@ import (
 
 	rlkclient "github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
 
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/go-cni"
 )
 
-func exposePortsRootless(ctx context.Context, rlkClient rlkclient.Client, ports []gocni.PortMapping) error {
+func exposePortsRootless(ctx context.Context, rlkClient rlkclient.Client, ports []cni.PortMapping) error {
 	return fmt.Errorf("cannot expose ports rootlessly on non-Linux hosts")
 }
 
-func unexposePortsRootless(ctx context.Context, rlkClient rlkclient.Client, ports []gocni.PortMapping) error {
+func unexposePortsRootless(ctx context.Context, rlkClient rlkclient.Client, ports []cni.PortMapping) error {
 	return fmt.Errorf("cannot unexpose ports rootlessly on non-Linux hosts")
 }

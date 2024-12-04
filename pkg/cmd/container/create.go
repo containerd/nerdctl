@@ -37,7 +37,7 @@ import (
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/cio"
 	"github.com/containerd/containerd/v2/pkg/oci"
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/annotations"
@@ -646,7 +646,7 @@ type internalLabels struct {
 	networks   []string
 	ipAddress  string
 	ip6Address string
-	ports      []gocni.PortMapping
+	ports      []cni.PortMapping
 	macAddress string
 	// volume
 	mountPoints []*mountutil.Processed

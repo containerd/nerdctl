@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 
 	"github.com/containerd/containerd/v2/plugins"
-	gocni "github.com/containerd/go-cni"
+	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -48,7 +48,7 @@ func DataRoot() string {
 
 func CNIPath() string {
 	candidates := []string{
-		gocni.DefaultCNIDir, // /opt/cni/bin
+		cni.DefaultCNIDir, // /opt/cni/bin
 		"/usr/local/libexec/cni",
 		"/usr/local/lib/cni",
 		"/usr/libexec/cni", // Fedora
@@ -74,12 +74,12 @@ func CNIPath() string {
 	}
 
 	// default: /opt/cni/bin
-	return gocni.DefaultCNIDir
+	return cni.DefaultCNIDir
 }
 
 func CNINetConfPath() string {
 	if !rootlessutil.IsRootless() {
-		return gocni.DefaultNetDir
+		return cni.DefaultNetDir
 	}
 	xch, err := rootlessutil.XDGConfigHome()
 	if err != nil {
