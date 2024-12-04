@@ -38,7 +38,7 @@ func validatePlatformSpecific(pathComponent string) error {
 	}
 
 	if pathComponent[len(pathComponent)-1:] == "." || pathComponent[len(pathComponent)-1:] == " " {
-		return fmt.Errorf("identifier %q cannot end with a space of dot", pathComponent)
+		return fmt.Errorf("identifier %q cannot end with a space or dot", pathComponent)
 	}
 
 	return nil
