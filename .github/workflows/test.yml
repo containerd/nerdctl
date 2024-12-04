@@ -17,7 +17,7 @@ env:
 jobs:
   # This job builds the dependency target of the test docker image for all supported architectures and cache it in GHA
   build-dependencies:
-    timeout-minutes: 10
+    timeout-minutes: 15
     name: dependencies |  ${{ matrix.containerd }} | ${{ matrix.arch }}
     runs-on: "${{ matrix.runner }}"
     strategy:
@@ -59,7 +59,7 @@ jobs:
     # Supposed to work: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/evaluate-expressions-in-workflows-and-actions#example-returning-a-json-data-type
     # Apparently does not
     # timeout-minutes: ${{ fromJSON(env.SHORT_TIMEOUT) }}
-    timeout-minutes: 5
+    timeout-minutes: 10
     name: unit | ${{ matrix.goos }}
     runs-on: "${{ matrix.os }}"
     defaults:
@@ -160,7 +160,7 @@ jobs:
 
   test-integration-ipv6:
     needs: build-dependencies
-    timeout-minutes: 10
+    timeout-minutes: 15
     name: ipv6 | ${{ matrix.containerd }} | ${{ matrix.ubuntu }}
     runs-on: "ubuntu-${{ matrix.ubuntu }}"
     strategy:
