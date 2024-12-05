@@ -14,8 +14,6 @@
    limitations under the License.
 */
 
-// Package issues is meant to document testing for complex scenarios type of issues that cannot simply be ascribed
-// to a specific package.
 package issues
 
 import (
@@ -68,7 +66,13 @@ func TestIssue3425(t *testing.T) {
 			},
 			{
 				Description: "with commit",
-				Require:     nerdtest.Private,
+				// FIXME: seems like windows commit is broken:
+				// time="2024-11-03T13:34:06Z" level=fatal msg="failed to apply diff: failed to reimport snapshot:
+				// hcsshim::ImportLayer failed in Win32: Cannot create a file when that file already exists. (0xb7)"
+				Require: test.Require(
+					nerdtest.Private,
+					test.Not(test.Windows),
+				),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					identifier := data.Identifier()
 					helpers.Ensure("image", "pull", testutil.CommonImage)

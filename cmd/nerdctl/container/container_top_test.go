@@ -46,7 +46,7 @@ func TestTop(t *testing.T) {
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "with o pid,user,cmd",
-			// Docker does not support top -o
+			// Docker does not support top -o.
 			Require: test.Not(nerdtest.Docker),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("top", data.Get("cID"), "-o", "pid,user,cmd")

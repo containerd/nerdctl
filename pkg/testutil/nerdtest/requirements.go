@@ -231,7 +231,7 @@ var Stargz = &test.Requirement{
 // Registry marks a test as requiring a registry to be deployed
 var Registry = test.Require(
 	// Registry requires Linux currently
-	test.Linux,
+	// test.Linux,
 	(func() *test.Requirement {
 		// Provisional: see note in cleanup
 		// var reg *registry.Server

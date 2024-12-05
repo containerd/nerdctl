@@ -35,7 +35,7 @@ const (
 	// for the tests that are run now this image (used in k8s upstream testing) meets the needs
 	// use gcr.io/k8s-staging-e2e-test-images/busybox:1.36-1-windows-amd64-ltsc2022 locally on windows 11
 	// https://github.com/microsoft/Windows-Containers/issues/179
-	BusyboxImage = "gcr.io/k8s-staging-e2e-test-images/busybox:1.36.1-1"
+	BusyboxImage = "docker.io/dubogus/win-busybox:latest" // "gcr.io/k8s-staging-e2e-test-images/busybox:1.36.1-1"
 	WindowsNano  = BusyboxImage
 	CommonImage  = WindowsNano
 

@@ -14,20 +14,14 @@
    limitations under the License.
 */
 
-package platform
+package issues
 
 import (
+	"testing"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-func DataHome() (string, error) {
-	panic("not supported")
+func TestMain(m *testing.M) {
+	testutil.M(m)
 }
-
-var (
-	RegistryImageStable = "dubogus/win-registry"
-	// Temporary deviations just so we do not fail on download - we need these images though
-	RegistryImageNext = testutil.CommonImage
-	KuboImage         = testutil.CommonImage // mirrorOf("ipfs/kubo:v0.16.0")
-	DockerAuthImage   = testutil.CommonImage // mirrorOf("cesanta/docker_auth:1.7")
-)
