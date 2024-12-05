@@ -46,7 +46,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/labels/k8slabels"
-	"github.com/containerd/nerdctl/v2/pkg/nsutil"
 	"github.com/containerd/nerdctl/v2/pkg/portutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/signalutil"
@@ -529,9 +528,6 @@ func Unpause(ctx context.Context, client *containerd.Client, id string) error {
 
 // ContainerStateDirPath returns the path to the Nerdctl-managed state directory for the container with the given ID.
 func ContainerStateDirPath(ns, dataStore, id string) (string, error) {
-	if err := nsutil.ValidateNamespaceName(ns); err != nil {
-		return "", fmt.Errorf("invalid namespace name %q for determining state dir of container %q: %s", ns, id, err)
-	}
 	return filepath.Join(dataStore, "containers", ns, id), nil
 }
 

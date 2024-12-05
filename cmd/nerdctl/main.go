@@ -49,6 +49,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
 	"github.com/containerd/nerdctl/v2/pkg/logging"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/store"
 	"github.com/containerd/nerdctl/v2/pkg/version"
 )
 
@@ -238,6 +239,16 @@ Config file ($NERDCTL_TOML): %s
 			default:
 				return fmt.Errorf("invalid cgroup-manager %q (supported values: \"systemd\", \"cgroupfs\", \"none\")", cgroupManager)
 			}
+		}
+
+		// Since we store containers' stateful information on the filesystem per namespace, we need namespaces to be
+		// valid, safe path segments. This is enforced by store.ValidatePathComponent.
+		// Note that the container runtime will further enforce additional restrictions on namespace names
+		// (containerd treats namespaces as valid identifiers - eg: alphanumericals + dash, starting with a letter)
+		// See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#path-segment-names for
+		// considerations about path segments identifiers.
+		if err = store.ValidatePathComponent(globalOptions.Namespace); err != nil {
+			return err
 		}
 		if appNeedsRootlessParentMain(cmd, args) {
 			// reexec /proc/self/exe with `nsenter` into RootlessKit namespaces
