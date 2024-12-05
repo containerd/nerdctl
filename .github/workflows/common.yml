@@ -1,0 +1,33 @@
+name: common
+
+on:
+  workflow_call:
+    inputs:
+      config-path:
+        required: true
+        type: string
+    outputs:
+      GO_VERSION:
+        description: "The first output string"
+        value: ${{ jobs.environment.outputs.output_go }}
+      REGISTRY_SERVER:
+        description: "The second output string"
+        value: ${{ jobs.environment.outputs.output_registry }}
+jobs:
+  environment:
+    env:
+      GO_VERSION: 1.23.x
+      REGISTRY_SERVER: ghcr.io
+      BUSYBOX_VERSION: 5ad83957fa74aafd061afbfb8da14ce3220659a9
+      REGISTRY_VERSION: v2.8.3
+      CURL_VERSION: 8.11.0_4
+    runs-on: ubuntu-24.04
+    steps:
+      - id: go
+        run: echo "GO_VERSION=$GO_VERSION" >> $GITHUB_OUTPUT
+      - id: registry
+        run: echo "REGISTRY_SERVER=$REGISTRY_SERVER" >> $GITHUB_OUTPUT
+    outputs:
+      output_go: ${{ steps.go.outputs.GO_VERSION }}
+      output_registry: ${{ steps.registry.outputs.REGISTRY_SERVER }}
+
