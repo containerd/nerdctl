@@ -103,9 +103,12 @@ func filterContainers(ctx context.Context, client *containerd.Client, filters []
 
 	var upContainers []containerd.Container
 	for _, c := range containers {
-		cStatus := statusPerContainer[c.ID()]
-		if strings.HasPrefix(cStatus, "Up") {
-			upContainers = append(upContainers, c)
+		if cStatus, ok := statusPerContainer[c.ID()]; ok {
+			if strings.HasPrefix(cStatus, "Up") {
+				upContainers = append(upContainers, c)
+			}
+		} else {
+			return nil, nil, fmt.Errorf("can't get container %s status", c.ID())
 		}
 	}
 	return upContainers, statusPerContainer, nil
