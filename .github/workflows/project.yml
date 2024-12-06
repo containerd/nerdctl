@@ -1,4 +1,4 @@
-name: project
+name: " "
 
 on:
   push:
@@ -8,24 +8,40 @@ on:
   pull_request:
 
 jobs:
+  # Source the common environment
+  environment:
+    name: "project checks"
+    uses: ./.github/workflows/reusable_environment.yml
+
   project:
-    name: checks
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    name: "project checks"
+    timeout-minutes: ${{ fromJSON(needs.environment.outputs.SHORT_TIMEOUT) }}
+    runs-on: ${{ needs.environment.outputs.HOST_UBUNTU_LTS }}
+    needs: environment
+
     steps:
-      - uses: actions/checkout@v4.2.2
+      - name: "Checkout"
+        uses: actions/checkout@v4
         with:
           path: src/github.com/containerd/nerdctl
+          # Fetch the last 100 commits
           fetch-depth: 100
-      - uses: actions/setup-go@v5
+
+      - name: "Install go"
+        uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version: ${{ needs.environment.outputs.GO_VERSION }}
           cache-dependency-path: src/github.com/containerd/nerdctl
-      - uses: containerd/project-checks@v1.1.0
+
+      - name: "Install and run default containerd project checks"
+        uses: containerd/project-checks@v1.1.0
         with:
           working-directory: src/github.com/containerd/nerdctl
-          repo-access-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: ./hack/verify-no-patent.sh
+
+      - name: "Verify no patent"
+        run: ./hack/verify-no-patent.sh
         working-directory: src/github.com/containerd/nerdctl
-      - run: ./hack/verify-pkg-isolation.sh
+
+      - name: "Verify package isolation"
+        run: ./hack/verify-pkg-isolation.sh
         working-directory: src/github.com/containerd/nerdctl

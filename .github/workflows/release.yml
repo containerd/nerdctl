@@ -1,27 +1,44 @@
 # See https://github.com/containerd/nerdctl/blob/main/MAINTAINERS_GUIDE.md for how to make a release.
 name: Release
+
 on:
   push:
     tags:
     - 'v*'
     - 'test-action-release-*'
 jobs:
+  # Source the common environment
+  environment:
+    name: " "
+    uses: ./.github/workflows/reusable_environment.yml
+
   release:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    name: "checks"
+    timeout-minutes: ${{ fromJSON(needs.environment.outputs.LONG_TIMEOUT) }}
+    runs-on: ${{ needs.environment.outputs.HOST_UBUNTU_LTS }}
+    needs: environment
+
     steps:
-    - uses: actions/checkout@v4.2.2
-    - uses: actions/setup-go@v5
+    - name: "Checkout"
+      uses: actions/checkout@v4
+
+    - name: "Install go"
+      uses: actions/setup-go@v5
       with:
-        go-version: 1.23.x
+        go-version: ${{ needs.environment.outputs.GO_VERSION }}
+        check-latest: true
+
     - name: "Compile binaries"
       run: make artifacts
+
     - name: "SHA256SUMS"
       run: |
         ( cd _output; sha256sum nerdctl-* ) | tee /tmp/SHA256SUMS
         mv /tmp/SHA256SUMS _output/SHA256SUMS
+
     - name: "The sha256sum of the SHA256SUMS file"
       run: (cd _output; sha256sum SHA256SUMS)
+
     - name: "Prepare the release note"
       run: |
         shasha=$(sha256sum _output/SHA256SUMS | awk '{print $1}')
@@ -35,6 +52,7 @@ jobs:
         - - -
         Release manager: [ADD YOUR NAME HERE] (@[ADD YOUR GITHUB ID HERE])
         EOF
+
     - name: "Create release"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

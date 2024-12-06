@@ -1,4 +1,5 @@
-name: lint
+# "Hide" the name from the GitHub check status line, as it just clutters the display
+name: " "
 
 on:
   push:
@@ -7,72 +8,42 @@ on:
       - 'release/**'
   pull_request:
 
-env:
-  GO_VERSION: 1.23.x
-
 jobs:
-  go:
-    timeout-minutes: 5
-    name: "go | ${{ matrix.goos }} | ${{ matrix.canary }}"
-    runs-on: "${{ matrix.os }}"
-    defaults:
-      run:
-        shell: bash
+  # Source the common environment
+  environment:
+    name: "lint"
+    uses: ./.github/workflows/reusable_environment.yml
+
+  # Linting go
+  lint-go:
+    # Define the matrix we want to lint on: every supported OS, with the current go version, and additionally go canary on linux
     strategy:
       matrix:
+        # The GOOS-es we run golint for, with no canary (eg: the base supported GO_VERSION)
+        goos: [linux, freebsd, windows]
+        # And no canary
+        canary: [false]
         include:
-          - os: ubuntu-24.04
-            goos: linux
-          - os: ubuntu-24.04
-            goos: freebsd
-          # FIXME: this is currently failing in a non-sensical way, so, running on linux instead...
-          # - os: windows-2022
-          - os: ubuntu-24.04
-            goos: windows
-          - os: ubuntu-24.04
-            goos: linux
-            # This allows the canary script to select any upcoming golang alpha/beta/RC
-            canary: go-canary
-    env:
-      GOOS: "${{ matrix.goos }}"
-    steps:
-      - uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 1
-      - name: Set GO env
-        run: |
-          # If canary is specified, get the latest available golang pre-release instead of the major version
-          if [ "$canary" != "" ]; then
-            . ./hack/build-integration-canary.sh
-            canary::golang::latest
-          fi
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-          cache: true
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          args: --verbose
-  other:
-    timeout-minutes: 5
-    name: yaml | shell | imports order
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 1
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-          cache: true
-      - name: yaml
-        run: make lint-yaml
-      - name: shell
-        run: make lint-shell
-      - name: go imports ordering
-        run: |
-          go install -v github.com/incu6us/goimports-reviser/v3@latest
-          make lint-imports
+          # Only run canary on linux (note: the canary script will select any upcoming golang alpha/beta/RC when the `canary` param is set to a non-empty string)
+          - goos: linux
+            canary: true
+
+    # If we do not "collapse" the name using a bogux matrix var, it will display all matrix parameters, which we do not want
+    name: "lint${{ matrix.c }}"
+    uses: ./.github/workflows/reusable_lint_go.yml
+    needs: environment
+    with:
+      goos: ${{ matrix.goos }}
+      canary: ${{ matrix.canary }}
+      os: ${{ needs.environment.outputs.HOST_UBUNTU_LTS }}
+      goversion: ${{ needs.environment.outputs.GO_VERSION }}
+      timeout-minutes: ${{ fromJSON(needs.environment.outputs.SHORT_TIMEOUT) }}
+
+  # Linting other filetypes
+  lint-other:
+    name: "lint"
+    uses: ./.github/workflows/reusable_lint_other.yml
+    needs: environment
+    with:
+      os: ${{ needs.environment.outputs.HOST_UBUNTU_LTS }}
+      timeout-minutes: ${{ fromJSON(needs.environment.outputs.SHORT_TIMEOUT) }}

@@ -1,0 +1,69 @@
+# This defines a reusable golint job that will run `make lint-go` and `make lint-imports`
+# See `inputs` for expected parameters
+name: tasks_lint_go
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+        description: "the host runner we are going to use"
+      goos:
+        required: true
+        type: string
+        description: "the GOOS we want to lint for (linux/windows/freebsd)"
+      goversion:
+        required: true
+        type: string
+        description: "the golang version we want to use"
+      canary:
+        required: false
+        type: boolean
+        default: false
+        description: "whether we want to try and find an alpha/beta/RC version of golang instead of the default version"
+      timeout-minutes:
+        required: false
+        type: number
+        default: 100
+        description: "the timeout in minutes for this task"
+
+jobs:
+  go:
+    name: "${{ inputs.goos }} ${{ inputs.canary && 'canary' || inputs.goversion }}"
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    runs-on: ${{ inputs.os }}
+
+    env:
+      GOOS: "${{ inputs.goos }}"
+      GO_VERSION: "${{ inputs.goversion }}"
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Set go version"
+        run: |
+          # If canary is specified, get the latest available golang pre-release instead of the major version
+          if [ "${{ inputs.canary }}" == true ]; then
+            . ./hack/build-integration-canary.sh
+            canary::golang::latest
+          fi
+
+      - name: "Install go"
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      - name: "Run golangci-lint"
+        uses: golangci/golangci-lint-action@v6
+        with:
+          args: --verbose
+
+      # Go imports ordering applies to all platforms, so, only run it once, for linux / no canary
+      - name: "Verify imports ordering"
+        if: ${{ inputs.goos == 'linux' && ! inputs.canary }}
+        run: |
+          go install github.com/incu6us/goimports-reviser/v3@latest
+          make lint-imports
