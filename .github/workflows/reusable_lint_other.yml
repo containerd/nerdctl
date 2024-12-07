@@ -1,0 +1,33 @@
+# This defines a reusable golint job that will run `make lint-go` and `make lint-imports`
+# See `inputs` for expected parameters
+name: tasks_lint_go
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+        description: "the host runner we are going to use"
+      timeout-minutes:
+        required: false
+        type: number
+        default: 100
+        description: "the timeout in minutes for this task"
+
+jobs:
+  yaml_shell_etc:
+    # TODO: we might want to add some markdown linter, and maybe a dockerfile linter in the future
+    name: "yaml | shell"
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    runs-on: ${{ inputs.os }}
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Lint yaml files"
+        run: make lint-yaml
+
+      - name: "Lint shellscripts"
+        run: make lint-shell
