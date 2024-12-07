@@ -80,7 +80,6 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
-          cache: true
       - if: ${{ matrix.goos=='windows' }}
         uses: actions/checkout@v4
         with:
@@ -319,7 +318,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
-          cache: true
           check-latest: true
       - name: "build"
         run: GO_VERSION="$(echo ${{ matrix.go-version }} | sed -e s/.x//)" make binaries
@@ -335,7 +333,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: true
           check-latest: true
       - name: "Register QEMU (tonistiigi/binfmt)"
         run: |
@@ -371,7 +368,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: true
           check-latest: true
       - run: go install ./cmd/nerdctl
       - run: go install -v gotest.tools/gotestsum@v1

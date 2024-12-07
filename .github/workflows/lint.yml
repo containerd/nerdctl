@@ -50,7 +50,6 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
-          cache: true
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
@@ -67,7 +66,6 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
-          cache: true
       - name: yaml
         run: make lint-yaml
       - name: shell

@@ -73,7 +73,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: true
           check-latest: true
       - run: go install ./cmd/nerdctl
       - run: go install -v gotest.tools/gotestsum@v1
