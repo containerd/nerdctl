@@ -40,11 +40,11 @@ jobs:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
       ARCH: "${{ matrix.arch }}"
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
       - name: "Expose GitHub Runtime variables for gha"
-        uses: crazy-max/ghaction-github-runtime@v3
+        uses: crazy-max/ghaction-github-runtime@b3a9207c0e1ef41f4cf215303c976869d0c2c1c4  # v3.0.0
       - name: "Build dependencies for the integration test environment image"
         run: |
           docker buildx create --name with-gha --use
@@ -73,16 +73,16 @@ jobs:
           - os: ubuntu-24.04
             goos: linux
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a  # v5.2.0
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
           cache: true
       - if: ${{ matrix.goos=='windows' }}
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           repository: containerd/containerd
           ref: v1.7.24
@@ -126,11 +126,11 @@ jobs:
       ARCH: "${{ matrix.arch }}"
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
       - name: "Expose GitHub Runtime variables for gha"
-        uses: crazy-max/ghaction-github-runtime@v3
+        uses: crazy-max/ghaction-github-runtime@b3a9207c0e1ef41f4cf215303c976869d0c2c1c4  # v3.0.0
       - name: "Prepare integration test environment"
         run: |
           docker buildx create --name with-gha --use
@@ -175,7 +175,7 @@ jobs:
       ARCH: "${{ matrix.arch }}"
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
       - name: Enable ipv4 and ipv6 forwarding
@@ -183,7 +183,7 @@ jobs:
           sudo sysctl -w net.ipv6.conf.all.forwarding=1
           sudo sysctl -w net.ipv4.ip_forward=1
       - name: "Expose GitHub Runtime variables for gha"
-        uses: crazy-max/ghaction-github-runtime@v3
+        uses: crazy-max/ghaction-github-runtime@b3a9207c0e1ef41f4cf215303c976869d0c2c1c4  # v3.0.0
       - name: Enable IPv6 for Docker, and configure docker to use containerd for gha
         run: |
           sudo mkdir -p /etc/docker
@@ -271,7 +271,7 @@ jobs:
           }
           EOT
           sudo systemctl restart apparmor.service
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -284,7 +284,7 @@ jobs:
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Expose GitHub Runtime variables for gha"
-        uses: crazy-max/ghaction-github-runtime@v3
+        uses: crazy-max/ghaction-github-runtime@b3a9207c0e1ef41f4cf215303c976869d0c2c1c4  # v3.0.0
       - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
         run: |
           docker buildx create --name with-gha --use
@@ -313,10 +313,10 @@ jobs:
       matrix:
         go-version: ["1.22.x", "1.23.x"]
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a  # v5.2.0
         with:
           go-version: ${{ matrix.go-version }}
           cache: true
@@ -329,10 +329,10 @@ jobs:
     name: docker
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a  # v5.2.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -365,17 +365,17 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a  # v5.2.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
           check-latest: true
       - run: go install ./cmd/nerdctl
       - run: go install -v gotest.tools/gotestsum@v1
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           repository: containerd/containerd
           ref: v1.7.24
@@ -399,10 +399,10 @@ jobs:
     # ubuntu-24.04 lacks the vagrant package
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
-      - uses: actions/cache@v4
+      - uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57  # v4.2.0
         with:
           path: /root/.vagrant.d
           key: vagrant-${{ matrix.box }}
