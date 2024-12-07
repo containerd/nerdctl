@@ -141,7 +141,7 @@ Rootless containerd recognizes the following environment variables to configure 
 * `CONTAINERD_ROOTLESS_ROOTLESSKIT_STATE_DIR=DIR`: the rootlesskit state dir. Defaults to `$XDG_RUNTIME_DIR/containerd-rootless`.
 * `CONTAINERD_ROOTLESS_ROOTLESSKIT_NET=(slirp4netns|vpnkit|lxc-user-nic)`: the rootlesskit network driver. Defaults to "slirp4netns" if slirp4netns (>= v0.4.0) is installed. Otherwise defaults to "vpnkit".
 * `CONTAINERD_ROOTLESS_ROOTLESSKIT_MTU=NUM`: the MTU value for the rootlesskit network driver. Defaults to 65520 for slirp4netns, 1500 for other drivers.
-* `CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=(builtin|slirp4netns)`: the rootlesskit port driver. Defaults to "builtin".
+* `CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=(builtin|slirp4netns)`: the rootlesskit port driver. Defaults to "builtin" (this driver does not propagate the container's source IP address and always uses 127.0.0.1. Please check [Port Drivers](https://github.com/rootless-containers/rootlesskit/blob/master/docs/port.md#port-drivers) for more details).
 * `CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX=(auto|true|false)`: whether to protect slirp4netns with a dedicated mount namespace. Defaults to "auto".
 * `CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP=(auto|true|false)`: whether to protect slirp4netns with seccomp. Defaults to "auto".
 * `CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS=(auto|true|false)`: whether to launch rootlesskit with the "detach-netns" mode.
