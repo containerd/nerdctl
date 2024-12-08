@@ -18,6 +18,7 @@ package container
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -39,17 +40,22 @@ func Cp(ctx context.Context, client *containerd.Client, options types.ContainerC
 				ctx,
 				client,
 				found.Container,
-				options.Container2Host,
-				options.DestPath,
-				options.SrcPath,
-				options.GOptions.Snapshotter,
-				options.FollowSymLink)
+				options)
 		},
 	}
 	count, err := walker.Walk(ctx, options.ContainerReq)
 
-	if count < 1 {
-		err = fmt.Errorf("could not find container: %s, with error: %w", options.ContainerReq, err)
+	if count == -1 {
+		if err == nil {
+			panic("nil error and count == -1 from ContainerWalker.Walk should never happen")
+		}
+		err = errors.Join(errors.New("unable to copy"), err)
+	} else if count == 0 {
+		if err != nil {
+			err = errors.Join(errors.New("unable to retrieve containers with error"), err)
+		} else {
+			err = fmt.Errorf("no container found for: %s", options.ContainerReq)
+		}
 	}
 
 	return err
