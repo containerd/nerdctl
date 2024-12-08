@@ -36,7 +36,7 @@ jobs:
     env:
       GOOS: "${{ matrix.goos }}"
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - name: Set GO env
@@ -50,7 +50,6 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
-          cache: true
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
@@ -60,14 +59,13 @@ jobs:
     name: yaml | shell | imports order
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
-          cache: true
       - name: yaml
         run: make lint-yaml
       - name: shell
