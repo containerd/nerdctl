@@ -32,6 +32,7 @@
   - [Containers do not automatically start after rebooting the host](#containers-do-not-automatically-start-after-rebooting-the-host)
   - [Error `failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: unable to apply cgroup configuration: unable to start unit ... {Name:Slice Value:"user.slice"} {Name:Delegate Value:true} ... Permission denied: unknown`](#error-failed-to-create-shim-task-oci-runtime-create-failed-runc-create-failed-unable-to-start-container-process-unable-to-apply-cgroup-configuration-unable-to-start-unit--nameslice-valueuserslice-namedelegate-valuetrue--permission-denied-unknown)
   - [How to uninstall ? / Can't remove `~/.local/share/containerd`](#how-to-uninstall---cant-remove-localsharecontainerd)
+  - [How to clean a dangling cache of buildkit?](#how-to-clean-a-dangling-cache-of-buildkit)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -355,3 +356,15 @@ Run the following commands:
 containerd-rootless-setuptool.sh uninstall
 rootlesskit rm -rf ~/.local/share/containerd ~/.local/share/nerdctl ~/.config/containerd
 ```
+
+### How to clean a dangling cache of buildkit?
+
+`buildkit` cache directory is located at `$HOME/.local/share/buildkit/`
+in rootless mode, which has same folder structure `/var/lib/buildkit/` in
+root mode.
+
+You can clear the cache objects by running the following command:
+```
+nerdctl builder prune
+```
+The command produce a progress message of id and size of removed objects.
