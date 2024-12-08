@@ -1242,6 +1242,8 @@ Clean up BuildKit build cache.
 
 :warning: The output format is not compatible with Docker.
 
+> **Tip**: cache directory may be located at `$HOME/.local/share/bulidkit/` in non-root mode, or `/var/lib/buildkit/` in root mode.
+
 Usage: `nerdctl builder prune`
 
 Flags:
