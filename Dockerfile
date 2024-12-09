@@ -50,7 +50,7 @@ ARG NYDUS_VERSION=v2.3.0
 ARG SOCI_SNAPSHOTTER_VERSION=0.8.0
 ARG KUBO_VERSION=v0.31.0
 
-FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.5.0 AS xx
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.6.0 AS xx
 
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS build-base-debian
