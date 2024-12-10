@@ -579,3 +579,75 @@ services:
 	}
 	c.Assert(expected)
 }
+
+func TestComposeUpWithIPv6(t *testing.T) {
+	base := testutil.NewBaseWithIPv6Compatible(t)
+
+	subnet := "2001:aaa::/64"
+	var dockerComposeYAML = fmt.Sprintf(`
+services:
+  svc0:
+    image: %s
+    networks:
+    - net0
+networks:
+  net0:
+    enable_ipv6: true
+    ipam:
+      config:
+      - subnet: %s`, testutil.CommonImage, subnet)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	inspectCmd := base.Cmd("network", "inspect", projectName+"_net0", "--format", "\"{{range .IPAM.Config}}{{.Subnet}} {{end}}\"")
+	result := inspectCmd.Run()
+	stdoutContent := result.Stdout() + result.Stderr()
+	assert.Assert(inspectCmd.Base.T, result.ExitCode == 0, stdoutContent)
+
+	if !strings.Contains(stdoutContent, subnet) {
+		log.L.Errorf("test failed, the actual subnets are %s", stdoutContent)
+		t.Fail()
+		return
+	}
+}
+
+func TestComposeUpWithIPv6Disabled(t *testing.T) {
+	base := testutil.NewBaseWithIPv6Compatible(t)
+
+	subnet := "2001:aab::/64"
+	var dockerComposeYAML = fmt.Sprintf(`
+services:
+  svc0:
+    image: %s
+    networks:
+    - net0
+networks:
+  net0:
+    enable_ipv6: false
+    ipam:
+      config:
+      - subnet: %s`, testutil.CommonImage, subnet)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	inspectCmd := base.Cmd("network", "inspect", projectName+"_net0", "--format", "\"{{range .IPAM.Config}}{{.Subnet}} {{end}}\"")
+	result := inspectCmd.Run()
+	stdoutContent := result.Stdout() + result.Stderr()
+	assert.Assert(inspectCmd.Base.T, result.ExitCode == 0, stdoutContent)
+
+	if strings.Contains(stdoutContent, subnet) {
+		log.L.Errorf("test failed, the actual subnets are %s", stdoutContent)
+		t.Fail()
+		return
+	}
+}
