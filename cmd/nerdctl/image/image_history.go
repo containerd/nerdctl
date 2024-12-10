@@ -92,22 +92,22 @@ func historyAction(cmd *cobra.Command, args []string) error {
 
 	walker := &imagewalker.ImageWalker{
 		Client: client,
-		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+		OnFound: func(ctx context.Context, found imagewalker.Found) (error, bool) {
 			if found.MatchCount > 1 {
-				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req), false
 			}
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 			img := containerd.NewImage(client, found.Image)
 			imageConfig, _, err := imgutil.ReadImageConfig(ctx, img)
 			if err != nil {
-				return fmt.Errorf("failed to ReadImageConfig: %w", err)
+				return fmt.Errorf("failed to ReadImageConfig: %w", err), false
 			}
 			configHistories := imageConfig.History
 			layerCounter := 0
 			diffIDs, err := img.RootFS(ctx)
 			if err != nil {
-				return fmt.Errorf("failed to get diffIDS: %w", err)
+				return fmt.Errorf("failed to get diffIDS: %w", err), false
 			}
 			var historys []historyPrintable
 			for _, h := range configHistories {
@@ -115,7 +115,7 @@ func historyAction(cmd *cobra.Command, args []string) error {
 				var snapshotName string
 				if !h.EmptyLayer {
 					if len(diffIDs) <= layerCounter {
-						return fmt.Errorf("too many non-empty layers in History section")
+						return fmt.Errorf("too many non-empty layers in History section"), false
 					}
 					diffIDs := diffIDs[0 : layerCounter+1]
 					chainID := identity.ChainID(diffIDs).String()
@@ -123,11 +123,11 @@ func historyAction(cmd *cobra.Command, args []string) error {
 					s := client.SnapshotService(globalOptions.Snapshotter)
 					stat, err := s.Stat(ctx, chainID)
 					if err != nil {
-						return fmt.Errorf("failed to get stat: %w", err)
+						return fmt.Errorf("failed to get stat: %w", err), false
 					}
 					use, err := s.Usage(ctx, chainID)
 					if err != nil {
-						return fmt.Errorf("failed to get usage: %w", err)
+						return fmt.Errorf("failed to get usage: %w", err), false
 					}
 					size = use.Size
 					snapshotName = stat.Name
@@ -147,9 +147,9 @@ func historyAction(cmd *cobra.Command, args []string) error {
 			}
 			err = printHistory(cmd, historys)
 			if err != nil {
-				return fmt.Errorf("failed printHistory: %w", err)
+				return fmt.Errorf("failed printHistory: %w", err), false
 			}
-			return nil
+			return nil, false
 		},
 	}
 

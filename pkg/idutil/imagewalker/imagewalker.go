@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/distribution/reference"
 	"github.com/opencontainers/go-digest"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -39,7 +40,7 @@ type Found struct {
 	NameMatchIndex int    // Image index with a name matching the argument for `nerdctl rmi`.
 }
 
-type OnFound func(ctx context.Context, found Found) error
+type OnFound func(ctx context.Context, found Found) (error, bool)
 
 type ImageWalker struct {
 	Client  *containerd.Client
@@ -52,16 +53,27 @@ type ImageWalker struct {
 func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 	var filters []string
 	var parsedReferenceStr string
+	var imagesTag, imagesRepo []images.Image
+	var tagNum int
+	var repo string
 
 	parsedReference, err := referenceutil.Parse(req)
 	if err == nil {
 		parsedReferenceStr = parsedReference.String()
 		filters = append(filters, fmt.Sprintf("name==%s", parsedReferenceStr))
 	}
+	//Get the image ID , if reg == imageTag use
+	image, err := w.Client.GetImage(ctx, parsedReferenceStr)
+	if err != nil {
+		repo = req
+	} else {
+		repo = strings.Split(image.Target().Digest.String(), ":")[1][:12]
+	}
+
 	filters = append(filters,
 		fmt.Sprintf("name==%s", req),
-		fmt.Sprintf("target.digest~=^sha256:%s.*$", regexp.QuoteMeta(req)),
-		fmt.Sprintf("target.digest~=^%s.*$", regexp.QuoteMeta(req)),
+		fmt.Sprintf("target.digest~=^sha256:%s.*$", regexp.QuoteMeta(repo)),
+		fmt.Sprintf("target.digest~=^%s.*$", regexp.QuoteMeta(repo)),
 	)
 
 	images, err := w.Client.ImageService().List(ctx, filters...)
@@ -69,12 +81,28 @@ func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 		return -1, err
 	}
 
-	matchCount := len(images)
+	//Distinguish between tag and non-tag
+	for _, ima := range images {
+		ref := ima.Name
+		parsed, err := reference.ParseAnyReference(ref)
+		if err != nil {
+			continue
+		}
+		switch parsed.(type) {
+		case reference.Canonical, reference.Digested:
+			imagesRepo = append(imagesRepo, ima)
+		case reference.Tagged:
+			imagesTag = append(imagesTag, ima)
+			tagNum++
+		}
+	}
+
+	matchCount := len(imagesTag)
 	// to handle the `rmi -f` case where returned images are different but
 	// have the same short prefix.
 	uniqueImages := make(map[digest.Digest]bool)
 	nameMatchIndex := -1
-	for i, image := range images {
+	for i, image := range imagesTag {
 		uniqueImages[image.Target.Digest] = true
 		// to get target image index for `nerdctl rmi <short digest ids of another images>`.
 		if (parsedReferenceStr != "" && image.Name == parsedReferenceStr) || image.Name == req {
@@ -82,7 +110,12 @@ func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 		}
 	}
 
-	for i, img := range images {
+	//The matchCount count is only required if it is passed in as an image ID
+	if nameMatchIndex != -1 || matchCount < 1 {
+		matchCount = 1
+	}
+
+	for i, img := range imagesTag {
 		f := Found{
 			Image:          img,
 			Req:            req,
@@ -91,8 +124,27 @@ func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 			UniqueImages:   len(uniqueImages),
 			NameMatchIndex: nameMatchIndex,
 		}
-		if e := w.OnFound(ctx, f); e != nil {
+		e, ok := w.OnFound(ctx, f)
+		if e != nil {
 			return -1, e
+		} else if ok {
+			tagNum = tagNum - 1
+		}
+	}
+	//If the corresponding imageTag does not exist, delete the repoDigests
+	if tagNum == 0 {
+		for i, img := range imagesRepo {
+			f := Found{
+				Image:          img,
+				Req:            req,
+				MatchIndex:     i,
+				MatchCount:     1,
+				UniqueImages:   len(uniqueImages),
+				NameMatchIndex: -1,
+			}
+			if e, _ := w.OnFound(ctx, f); e != nil {
+				return -1, e
+			}
 		}
 	}
 	return matchCount, nil
