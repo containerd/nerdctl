@@ -103,6 +103,10 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 	if err != nil {
 		return types.GlobalCommandOptions{}, err
 	}
+	kubeHideDupe, err := cmd.Flags().GetBool("kube-hide-dupe")
+	if err != nil {
+		return types.GlobalCommandOptions{}, err
+	}
 	return types.GlobalCommandOptions{
 		Debug:            debug,
 		DebugFull:        debugFull,
@@ -118,6 +122,7 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 		Experimental:     experimental,
 		HostGatewayIP:    hostGatewayIP,
 		BridgeIP:         bridgeIP,
+		KubeHideDupe:     kubeHideDupe,
 	}, nil
 }
 
