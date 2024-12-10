@@ -44,15 +44,15 @@ func Save(ctx context.Context, client *containerd.Client, images []string, optio
 	savedImages := make(map[string]struct{})
 	walker := &imagewalker.ImageWalker{
 		Client: client,
-		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+		OnFound: func(ctx context.Context, found imagewalker.Found) (error, bool) {
 			if found.UniqueImages > 1 {
-				return fmt.Errorf("ambiguous digest ID: multiple IDs found with provided prefix %s", found.Req)
+				return fmt.Errorf("ambiguous digest ID: multiple IDs found with provided prefix %s", found.Req), false
 			}
 
 			// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3425
 			err = EnsureAllContent(ctx, client, found.Image.Name, options.GOptions)
 			if err != nil {
-				return err
+				return err, false
 			}
 
 			imgName := found.Image.Name
@@ -61,7 +61,7 @@ func Save(ctx context.Context, client *containerd.Client, images []string, optio
 				savedImages[imgDigest] = struct{}{}
 				exportOpts = append(exportOpts, archive.WithImage(imageStore, imgName))
 			}
-			return nil
+			return nil, false
 		},
 	}
 

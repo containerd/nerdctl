@@ -65,7 +65,7 @@ Properties:
 	})
 	imagesCommand.Flags().Bool("digests", false, "Show digests (compatible with Docker, unlike ID)")
 	imagesCommand.Flags().Bool("names", false, "Show image names")
-	imagesCommand.Flags().BoolP("all", "a", true, "(unimplemented yet, always true)")
+	imagesCommand.Flags().BoolP("all", "a", false, "Show all images repo, include imageID, repoTAg, repoDigest")
 
 	return imagesCommand
 }
@@ -110,6 +110,10 @@ func processImageListOptions(cmd *cobra.Command, args []string) (*types.ImageLis
 	if err != nil {
 		return nil, err
 	}
+	all, err := cmd.Flags().GetBool("all")
+	if err != nil {
+		return nil, err
+	}
 	return &types.ImageListOptions{
 		GOptions:         globalOptions,
 		Quiet:            quiet,
@@ -119,7 +123,7 @@ func processImageListOptions(cmd *cobra.Command, args []string) (*types.ImageLis
 		NameAndRefFilter: filters,
 		Digests:          digests,
 		Names:            names,
-		All:              true,
+		All:              all,
 		Stdout:           cmd.OutOrStdout(),
 	}, nil
 
@@ -129,9 +133,6 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 	options, err := processImageListOptions(cmd, args)
 	if err != nil {
 		return err
-	}
-	if !options.All {
-		options.All = true
 	}
 
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)

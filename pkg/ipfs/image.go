@@ -108,9 +108,9 @@ func ensureContentsOfIPFSImage(ctx context.Context, client *containerd.Client, r
 	var img images.Image
 	walker := &imagewalker.ImageWalker{
 		Client: client,
-		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+		OnFound: func(ctx context.Context, found imagewalker.Found) (error, bool) {
 			img = found.Image
-			return nil
+			return nil, false
 		},
 	}
 	n, err := walker.Walk(ctx, ref)
