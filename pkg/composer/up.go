@@ -42,6 +42,7 @@ type UpOptions struct {
 	ForceRecreate        bool
 	NoRecreate           bool
 	Scale                map[string]int // map of service name to replicas
+	Pull                 string
 }
 
 func (opts UpOptions) recreateStrategy() string {

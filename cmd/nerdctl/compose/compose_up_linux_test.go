@@ -579,3 +579,38 @@ services:
 	}
 	c.Assert(expected)
 }
+
+func TestComposeUpPull(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = fmt.Sprintf(`
+services:
+  test:
+    image: %s
+    command: sh -euxc "echo hi"
+`, testutil.CommonImage)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	// Cases where pull is required
+	for _, pull := range []string{"missing", "always"} {
+		t.Run(fmt.Sprintf("pull=%s", pull), func(t *testing.T) {
+			base.Cmd("rmi", "-f", testutil.CommonImage).Run()
+			base.Cmd("images").AssertOutNotContains(testutil.CommonImage)
+			t.Cleanup(func() {
+				base.ComposeCmd("-f", comp.YAMLFullPath(), "down").AssertOK()
+			})
+			base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "--pull", pull).AssertOutContains("hi")
+		})
+	}
+
+	t.Run("pull=never, no pull", func(t *testing.T) {
+		base.Cmd("rmi", "-f", testutil.CommonImage).Run()
+		base.Cmd("images").AssertOutNotContains(testutil.CommonImage)
+		t.Cleanup(func() {
+			base.ComposeCmd("-f", comp.YAMLFullPath(), "down").AssertOK()
+		})
+		base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "--pull", "never").AssertExitCode(1)
+	})
+}
