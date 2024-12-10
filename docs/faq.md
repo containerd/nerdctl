@@ -359,7 +359,7 @@ rootlesskit rm -rf ~/.local/share/containerd ~/.local/share/nerdctl ~/.config/co
 
 ### How to clean a dangling cache of buildkit?
 
-`buildkit` cache directory is located at `$HOME/.local/share/bulidkit/`
+`buildkit` cache directory is located at `$HOME/.local/share/buildkit/`
 in rootless mode, which has same folder structure `/var/lib/buildkit/` in
 root mode.
 
