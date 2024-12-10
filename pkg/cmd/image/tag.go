@@ -34,11 +34,11 @@ func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagO
 	var srcName string
 	walker := &imagewalker.ImageWalker{
 		Client: client,
-		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+		OnFound: func(ctx context.Context, found imagewalker.Found) (error, bool) {
 			if srcName == "" {
 				srcName = found.Image.Name
 			}
-			return nil
+			return nil, false
 		},
 	}
 	matchCount, err := walker.Walk(ctx, options.Source)

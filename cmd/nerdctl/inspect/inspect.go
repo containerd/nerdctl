@@ -98,8 +98,8 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 
 	imagewalker := &imagewalker.ImageWalker{
 		Client: client,
-		OnFound: func(ctx context.Context, found imagewalker.Found) error {
-			return nil
+		OnFound: func(ctx context.Context, found imagewalker.Found) (error, bool) {
+			return nil, false
 		},
 	}
 

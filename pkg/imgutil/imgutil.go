@@ -63,16 +63,16 @@ func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 	var res *EnsuredImage
 	imgwalker := &imagewalker.ImageWalker{
 		Client: client,
-		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+		OnFound: func(ctx context.Context, found imagewalker.Found) (error, bool) {
 			if res != nil {
-				return nil
+				return nil, false
 			}
 			image := containerd.NewImageWithPlatform(client, found.Image, platforms.OnlyStrict(platform))
 			imgConfig, err := getImageConfig(ctx, image)
 			if err != nil {
 				// Image found but blob not found for foreign arch
 				// Ignore err and return nil, so that the walker can visit the next candidate.
-				return nil
+				return nil, false
 			}
 			res = &EnsuredImage{
 				Ref:         found.Image.Name,
@@ -83,10 +83,10 @@ func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 			}
 			if unpacked, err := image.IsUnpacked(ctx, snapshotter); err == nil && !unpacked {
 				if err := image.Unpack(ctx, snapshotter); err != nil {
-					return err
+					return err, false
 				}
 			}
-			return nil
+			return nil, false
 		},
 	}
 	count, err := imgwalker.Walk(ctx, rawRef)
