@@ -119,7 +119,7 @@ func (c *Composer) Create(ctx context.Context, opt CreateOptions, services []str
 		return err
 	}
 	for _, ps := range parsedServices {
-		if err := c.ensureServiceImage(ctx, ps, !opt.NoBuild, opt.Build, BuildOptions{}, false); err != nil {
+		if err := c.ensureServiceImage(ctx, ps, !opt.NoBuild, opt.Build, BuildOptions{}, false, ""); err != nil {
 			return err
 		}
 	}
