@@ -50,6 +50,7 @@ func newComposeUpCommand() *cobra.Command {
 	composeUpCommand.Flags().Bool("force-recreate", false, "Recreate containers even if their configuration and image haven't changed.")
 	composeUpCommand.Flags().Bool("no-recreate", false, "Don't recreate containers if they exist, conflict with --force-recreate.")
 	composeUpCommand.Flags().StringArray("scale", []string{}, "Scale SERVICE to NUM instances. Overrides the `scale` setting in the Compose file if present.")
+	composeUpCommand.Flags().String("pull", "", "Pull image before running (\"always\"|\"missing\"|\"never\")")
 	return composeUpCommand
 }
 
@@ -93,6 +94,10 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		return err
 	}
 	quietPull, err := cmd.Flags().GetBool("quiet-pull")
+	if err != nil {
+		return err
+	}
+	pull, err := cmd.Flags().GetString("pull")
 	if err != nil {
 		return err
 	}
@@ -154,6 +159,7 @@ func composeUpAction(cmd *cobra.Command, services []string) error {
 		QuietPull:            quietPull,
 		RemoveOrphans:        removeOrphans,
 		Scale:                scale,
+		Pull:                 pull,
 		ForceRecreate:        forceRecreate,
 		NoRecreate:           noRecreate,
 	}
