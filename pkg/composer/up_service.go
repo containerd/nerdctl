@@ -41,7 +41,7 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 
 	// TODO: parallelize loop for ensuring images (make sure not to mess up tty)
 	for _, ps := range parsedServices {
-		if err := c.ensureServiceImage(ctx, ps, !uo.NoBuild, uo.ForceBuild, BuildOptions{}, uo.QuietPull); err != nil {
+		if err := c.ensureServiceImage(ctx, ps, !uo.NoBuild, uo.ForceBuild, BuildOptions{}, uo.QuietPull, uo.Pull); err != nil {
 			return err
 		}
 	}
@@ -101,7 +101,7 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 	return nil
 }
 
-func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Service, allowBuild, forceBuild bool, bo BuildOptions, quiet bool) error {
+func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Service, allowBuild, forceBuild bool, bo BuildOptions, quiet bool, pullModeArg string) error {
 	if ps.Build != nil && allowBuild {
 		if ps.Build.Force || forceBuild {
 			return c.buildServiceImage(ctx, ps.Image, ps.Build, ps.Unparsed.Platform, bo)
@@ -117,6 +117,9 @@ func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Ser
 	}
 
 	log.G(ctx).Infof("Ensuring image %s", ps.Image)
+	if pullModeArg != "" {
+		return c.EnsureImage(ctx, ps.Image, pullModeArg, ps.Unparsed.Platform, ps, quiet)
+	}
 	return c.EnsureImage(ctx, ps.Image, ps.PullMode, ps.Unparsed.Platform, ps, quiet)
 }
 
