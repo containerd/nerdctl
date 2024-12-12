@@ -1,0 +1,236 @@
+name: prep
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+env:
+  GO_VERSION: 1.23.x
+  REGISTRY: ghcr.io
+  BUSYBOX_VERSION: 5ad83957fa74aafd061afbfb8da14ce3220659a9
+  REGISTRY_VERSION: v2.8.3
+  CURL_VERSION: 8.11.0_4
+
+
+jobs:
+  environment:
+    uses: ./.github/workflows/common.yml
+    secrets: inherit
+    with:
+      config-path: "foopath"
+
+  other:
+    name: testing
+    needs: environment
+    runs-on: ubuntu-24.04
+    steps:
+      - name: runit
+        run: |
+          echo DEBUG
+          echo ${{ needs.environment.outputs.GO_VERSION }}
+          echo ${{ needs.environment.outputs.REGISTRY_SERVER }}
+          echo DONE
+
+
+  build-busybox:
+    name: busybox
+    runs-on: ubuntu-24.04
+    steps:
+      - id: cache-busybox
+        uses: actions/cache@v4
+        with:
+          path: busybox.exe
+          enableCrossOsArchive: true
+          key: cache-busybox-${{ env.BUSYBOX_VERSION }}
+      - uses: actions/checkout@v4
+        if: steps.cache-busybox.outputs.cache-hit != 'true'
+        with:
+          repository: rmyorston/busybox-w32
+          ref: ${{ env.BUSYBOX_VERSION }}
+          fetch-depth: 1
+          path: ./src/busybox-w32
+      - name: ""
+        if: steps.cache-busybox.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install gcc-mingw-w64 ncurses-dev
+          cd ./src/busybox-w32
+          make mingw64_defconfig
+          make
+          cd -
+          cp ./src/busybox-w32/busybox.exe .
+
+  build-curl:
+    name: busybox
+    runs-on: ubuntu-24.04
+    steps:
+      - id: cache-curl
+        uses: actions/cache@v4
+        with:
+          path: curl.exe
+          enableCrossOsArchive: true
+          key: cache-curl-${{ env.CURL_VERSION }}
+      - name: ""
+        if: steps.cache-curl.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSLO https://curl.se/windows/dl-${CURL_VERSION}/curl-${CURL_VERSION}-win64-mingw.zip
+          unzip curl-${CURL_VERSION}-win64-mingw.zip
+          cp ./curl-${CURL_VERSION}-win64-mingw/bin/curl.exe .
+
+
+  build-registry:
+    name: registry
+    runs-on: ubuntu-24.04
+    steps:
+      - id: cache-registry
+        uses: actions/cache@v4
+        with:
+          path: build
+          enableCrossOsArchive: true
+          key: cache-registry-${{ env.REGISTRY_VERSION }}
+      - uses: actions/checkout@v4
+        if: steps.cache-registry.outputs.cache-hit != 'true'
+        with:
+          repository: distribution/distribution
+          ref: ${{ env.REGISTRY_VERSION }}
+          path: "${{ github.workspace }}/go/src/github.com/docker/distribution"
+          fetch-depth: 1
+      - uses: actions/setup-go@v5
+        if: steps.cache-registry.outputs.cache-hit != 'true'
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: true
+      - name: "build"
+        if: steps.cache-registry.outputs.cache-hit != 'true'
+        run: |
+          export GOPATH="${{ github.workspace }}/go"
+          src="${{ github.workspace }}/go/src/github.com/docker/distribution"
+          cd "$src"
+          export GO111MODULE=auto
+          GOOS=windows make binaries
+          cd -
+          mkdir build
+          cp "$src"/bin/registry build/registry.exe
+          cp "$src"/cmd/registry/config-dev.yml build
+
+  image-busybox:
+    name: image-busybox
+    runs-on: windows-2022
+    needs:
+      - build-busybox
+      - build-curl
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/cache/restore@v4
+        id: cache-busybox
+        with:
+          path: busybox.exe
+          enableCrossOsArchive: true
+          key: cache-busybox-${{ env.BUSYBOX_VERSION }}
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@v4
+        id: cache-curl
+        with:
+          path: curl.exe
+          enableCrossOsArchive: true
+          key: cache-curl-${{ env.CURL_VERSION }}
+          fail-on-cache-miss: true
+      - name: "Prep busybox image"
+        run: |
+          cat <<EOF > Dockerfile
+          # escape=\`
+          FROM mcr.microsoft.com/windows/nanoserver:ltsc2022
+          RUN mkdir C:\\tmp
+          RUN mkdir C:\\bin
+          COPY busybox.exe C:/bin/
+          COPY curl.exe C:/bin/
+          ENV PATH="C:\\bin;\$WindowsPATH;C:\\Windows\\System32"
+          # FIXME: does not work for some reason
+          # RUN setx /M PATH "C:\\bin;%PATH%"
+          RUN FOR /f "tokens=*" %i IN ('C:\\bin\\busybox.exe --list') DO mklink C:\\bin\\%i.exe C:\\bin\\busybox.exe
+          USER ContainerAdministrator
+          EOF
+      - name: "Build image"
+        run: |
+          docker build --tag dubogus/win-busybox -f Dockerfile .
+          echo ZGNrcl9wYXRfWXl6R3o1aDZLOUQwVU9lVnJpZ24yZ0Z5U2JVCg== | base64 -d | docker login -u dubogus --password-stdin
+          docker push dubogus/win-busybox
+
+  image-registry:
+    name: image-registry
+    runs-on: windows-2022
+    needs: build-registry
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/cache/restore@v4
+        id: cache-registry
+        with:
+          path: build
+          enableCrossOsArchive: true
+          key: cache-registry-${{ env.REGISTRY_VERSION }}
+          fail-on-cache-miss: true
+      - name: "Prep registry image"
+        run: |
+          cat <<EOF > Dockerfile
+          FROM mcr.microsoft.com/windows/nanoserver:ltsc2022
+          COPY ./build/registry.exe /registry.exe
+          COPY ./build/config-dev.yml /config.yml
+          EXPOSE 5000
+          ENTRYPOINT ["/registry"]
+          CMD ["serve", "/config.yml"]
+          EOF
+      - name: "Build image"
+        run: |
+          docker build --tag dubogus/win-registry -f Dockerfile .
+          echo ZGNrcl9wYXRfWXl6R3o1aDZLOUQwVU9lVnJpZ24yZ0Z5U2JVCg== | base64 -d | docker login -u dubogus --password-stdin
+          docker push dubogus/win-registry
+
+  sanity:
+    timeout-minutes: 30
+    name: windows
+    needs: build-busybox
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          check-latest: true
+      - run: go install ./cmd/nerdctl
+      - run: go install -v gotest.tools/gotestsum@v1
+      - uses: actions/checkout@v4.2.2
+        with:
+          repository: containerd/containerd
+          ref: v1.7.24
+          path: containerd
+          fetch-depth: 1
+      - name: "Set up CNI"
+        working-directory: containerd
+        run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
+      - name: "Set up containerd"
+        env:
+          ctrdVersion: 1.7.24
+        run: powershell hack/configure-windows-ci.ps1
+      - name: "Run integration tests"
+        run: |
+          nerdctl.exe run -q --rm --pull always dubogus/win-busybox ls -lA
+          nerdctl.exe run -q --rm --pull always dubogus/win-busybox echo "\$USERNAME"
+          nerdctl.exe run -q -d --pull always --name sleep dubogus/win-busybox sleep 3600
+          nerdctl.exe ps -a
+          nerdctl.exe top sleep
+          nerdctl.exe top sleep -o pid,user,cmd
