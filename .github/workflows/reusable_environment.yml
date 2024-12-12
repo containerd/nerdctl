@@ -1,0 +1,73 @@
+name: common_environment
+
+env:
+  GO_VERSION: 1.23.x
+  HOST_UBUNTU_LTS: ubuntu-24.04
+  SHORT_TIMEOUT: 5
+  LONG_TIMEOUT: 20
+  # Will use docker.io for Docker Hub if empty
+  REGISTRY: ghcr.io
+
+  # Versions for images we maintain
+  BUSYBOX_VERSION: 5ad83957fa74aafd061afbfb8da14ce3220659a9
+  DISTRIBUTION_VERSION: v2.8.3
+  CURL_VERSION: 8.11.0_4
+
+on:
+  workflow_call:
+    outputs:
+      GO_VERSION:
+        description: "The major golang version we are targeting"
+        value: ${{ jobs.environment.outputs.output_go }}
+      HOST_UBUNTU_LTS:
+        description: "The major LTS ubuntu host runner we run our tasks on"
+        value: ${{ jobs.environment.outputs.output_ubuntu_lts }}
+      SHORT_TIMEOUT:
+        description: "The timeout for tasks that are supposed to run fast (lint, etc)"
+        value: ${{ jobs.environment.outputs.output_short_timeout }}
+      LONG_TIMEOUT:
+        description: "The timeout for tasks that are going to run up to 20 minutes (building, integration, etc)"
+        value: ${{ jobs.environment.outputs.output_long_timeout }}
+      REGISTRY:
+        description: "The registry where to push our images"
+        value: ${{ jobs.environment.outputs.output_registry }}
+      BUSYBOX_VERSION:
+        description: "Busybox version"
+        value: ${{ jobs.environment.outputs.output_busybox }}
+      DISTRIBUTION_VERSION:
+        description: "Distribution version"
+        value: ${{ jobs.environment.outputs.output_distribution }}
+      CURL_VERSION:
+        description: "Curl version"
+        value: ${{ jobs.environment.outputs.output_curl }}
+
+jobs:
+  environment:
+    name: "environ"
+    runs-on: ubuntu-24.04
+    steps:
+      - id: go
+        run: echo "GO_VERSION=$GO_VERSION" >> $GITHUB_OUTPUT
+      - id: ubuntu_lts
+        run: echo "HOST_UBUNTU_LTS=$HOST_UBUNTU_LTS" >> $GITHUB_OUTPUT
+      - id: short_timeout
+        run: echo "SHORT_TIMEOUT=$SHORT_TIMEOUT" >> $GITHUB_OUTPUT
+      - id: long_timeout
+        run: echo "LONG_TIMEOUT=$LONG_TIMEOUT" >> $GITHUB_OUTPUT
+      - id: registry
+        run: echo "REGISTRY=$REGISTRY" >> $GITHUB_OUTPUT
+      - id: busybox
+        run: echo "BUSYBOX_VERSION=$BUSYBOX_VERSION" >> $GITHUB_OUTPUT
+      - id: distribution
+        run: echo "DISTRIBUTION_VERSION=$DISTRIBUTION_VERSION" >> $GITHUB_OUTPUT
+      - id: curl
+        run: echo "CURL_VERSION=$CURL_VERSION" >> $GITHUB_OUTPUT
+    outputs:
+      output_go: ${{ steps.go.outputs.GO_VERSION }}
+      output_ubuntu_lts: ${{ steps.ubuntu_lts.outputs.HOST_UBUNTU_LTS }}
+      output_short_timeout: ${{ steps.short_timeout.outputs.SHORT_TIMEOUT }}
+      output_long_timeout: ${{ steps.long_timeout.outputs.LONG_TIMEOUT }}
+      output_registry: ${{ steps.registry.outputs.REGISTRY }}
+      output_busybox: ${{ steps.registry.outputs.BUSYBOX_VERSION }}
+      output_distribution: ${{ steps.registry.outputs.DISTRIBUTION_VERSION }}
+      output_curl: ${{ steps.registry.outputs.CURL_VERSION }}
