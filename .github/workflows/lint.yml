@@ -12,9 +12,6 @@ jobs:
     timeout-minutes: 5
     name: "go | ${{ matrix.goos }} | ${{ matrix.goversion }}"
     runs-on: "${{ matrix.os }}"
-    defaults:
-      run:
-        shell: bash
     strategy:
       matrix:
         include:
@@ -32,37 +29,38 @@ jobs:
           - os: ubuntu-24.04
             goos: linux
             goversion: canary
-    env:
-      GOOS: "${{ matrix.goos }}"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
-      - name: "Install go"
-        uses: ./.github/actions/install-go
+      - name: "Install go linters"
+        uses: ./.github/actions/install-go-linters
         with:
           strategy: ${{ matrix.goversion }}
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@774c35bcccffb734694af9e921f12f57d882ef74  # v6.1.1
-        with:
-          args: --verbose
+      - name: "`make lint-imports`"
+        # Import ordering is not influenced by GOOS - running it multiple times is thus unnecessary
+        # Note we are picking freebsd as the GOOS to run it on, as linux is running multiple times (eg: canary)
+        if: ${{ matrix.goos=='freebsd' }}
+        shell: bash
+        run: |
+          make lint-imports
+      - name: "`make lint-go` for ${{ matrix.goos }}"
+        env:
+          VERBOSE: true
+          GOOS: ${{ matrix.goos }}
+        shell: bash
+        run: |
+          make lint-go
+
   other:
     timeout-minutes: 5
-    name: yaml | shell | imports order
+    name: yaml | shell
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
-      - name: "Install go"
-        uses: ./.github/actions/install-go
-        with:
-          strategy: latest-stable
       - name: yaml
         run: make lint-yaml
       - name: shell
         run: make lint-shell
-      - name: go imports ordering
-        run: |
-          go install -v github.com/incu6us/goimports-reviser/v3@latest
-          make lint-imports

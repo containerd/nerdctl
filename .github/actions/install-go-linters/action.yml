@@ -1,0 +1,35 @@
+name: "lint-go"
+description: "This action will install go linting tools (golangci-lint and goimports-reviser), and executes them on the codebase."
+inputs:
+  cache-dependency-path:
+    description: 'Used to specify the path to a dependency file - go.sum'
+  strategy:
+    description: "See install-go for info"
+  _golangci_version:
+    description: "Internal: the golangci version we want"
+    default: "89476e7a1eaa0a8a06c17343af960a5fd9e7edb7"  # v1.62.2
+  _goimports_version:
+    description: "Internal: the goimports reviser version we want"
+    default: "f034195cc8a7ffc7cc70d60aa3a25500874eaf04"  # v3.8.2
+
+runs:
+  using: composite
+  steps:
+    - name: "Install golang"
+      uses: ./.github/actions/install-go
+      with:
+        strategy: ${{ inputs.strategy }}
+    - name: "`go install` needed tools"
+      shell: bash
+      run: |
+        # go install golangci-lint and goimports-reviser
+        err="$(go install -v github.com/golangci/golangci-lint/cmd/golangci-lint@${{ inputs._golangci_version }} 2>&1)" || {
+          echo "Failed installing golangci:"
+          echo "$err"
+          exit 1
+        }
+        err="$(go install -v github.com/incu6us/goimports-reviser/v3@${{ inputs._goimports_version }} 2>&1)" || {
+          echo "Failed installing goimports-reviser:"
+          echo "$err"
+          exit 1
+        }
