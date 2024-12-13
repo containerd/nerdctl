@@ -1,0 +1,72 @@
+name: "Go install"
+description: "This action will install go (currently supported version by default). Operator may optionally require the `strategy` input:
+ - 'canary', for the latest RC/beta
+ - 'latest-stable', for the latest patch release for the currently supported version (this is normally the default, unless nerdctl is lagging)
+ - 'old-stable' for the latest patch release of the minimum minor go version nerdctl is supporting"
+inputs:
+  cache-dependency-path:
+    description: 'Used to specify the path to a dependency file - go.sum'
+  strategy:
+    default: ""
+    description: "You may set this to `canary`, `latest-stable`, or `old-stable`. Otherwise defauls to the explicitly supported version."
+  # These below are technically not input variables (that we expect people to specific or change).
+  # We are just abusing the system here for convenience, since a composite action does not let you define env.
+  # This here is the one, central location where we would update go versions when there is a newly supported go version.
+  _current:
+    default: "1.23.4"
+    description: "What we consider the current blessed go version (typically the latest patch release of the last major.minor version)"
+  _stable:
+    default: "1.23.x"
+    description: "The latest major.minor version we support"
+  _old_stable:
+    default: "1.22.x"
+    description: "The minimum major.minor go version that we still support"
+
+runs:
+  using: composite
+  steps:
+    - name: "Set GO_VERSION environment variable from user strategy"
+      shell: bash
+      run: |
+        golang::canary(){
+          # Enable extended globbing features to use advanced pattern matching
+          shopt -s extglob
+          # Get latest golang version and split it in components
+          norm=()
+          while read -r line; do
+            line_trimmed="${line//+([[:space:]])/}"
+            norm+=("$line_trimmed")
+          done < \
+            <(sed -E 's/^go([0-9]+)[.]([0-9]+)([.]([0-9]+))?(([a-z]+)([0-9]+))?/\1.\2\n\4\n\6\n\7/i' \
+              <(curl -fsSL "https://go.dev/dl/?mode=json&include=all" | jq -rc .[0].version) \
+            )
+          # Serialize version, making sure we have a patch version, and separate possible rcX into .rc-X
+          [ "${norm[1]}" != "" ] || norm[1]="0"
+          norm[1]=".${norm[1]}"
+          [ "${norm[2]}" == "" ] || norm[2]="-${norm[2]}"
+          [ "${norm[3]}" == "" ] || norm[3]=".${norm[3]}"
+          # Save it
+          IFS=
+          echo "GO_VERSION=${norm[*]}" >> "$GITHUB_ENV"
+        }
+
+        if [ "${{ inputs.strategy }}" == "canary" ]; then
+          golang::canary
+        elif [ "${{ inputs.strategy }}" == "latest-stable" ]; then
+          echo "GO_VERSION=${{ inputs._stable }}" >> "$GITHUB_ENV"
+        elif [ "${{ inputs.strategy }}" == "old-stable" ]; then
+          echo "GO_VERSION=${{ inputs._old_stable }}" >> "$GITHUB_ENV"
+        else
+          echo "GO_VERSION=${{ inputs._current }}" >> "$GITHUB_ENV"
+        fi
+    - name: "Setup Go"
+      uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a  # v5.2.0
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+        cache: true
+    - name: "Cleanup go version string"
+      shell: bash
+      # Remove possible trailing .x
+      run: |
+        echo "GO_VERSION=${GO_VERSION%.x*}" >> "$GITHUB_ENV"
