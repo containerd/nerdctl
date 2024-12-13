@@ -64,7 +64,10 @@ runs:
       with:
         go-version: ${{ env.GO_VERSION }}
         cache-dependency-path: ${{ inputs.cache-dependency-path }}
-        cache: true
+        # See https://github.com/containerd/nerdctl/issues/3733
+        # GitHub cache is very limited. We currently depend on it for the (more important) build dependencies caching.
+        # Disabling this here will slow down the setup a bit.
+        cache: false
     - name: "Cleanup go version string"
       shell: bash
       # Remove possible trailing .x
