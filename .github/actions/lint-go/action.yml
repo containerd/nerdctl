@@ -1,0 +1,26 @@
+name: "Go lint"
+description: "This action will install go linting tools (golangci-lint and goimports-reviser), and executes them on the codebase."
+inputs:
+  cache-dependency-path:
+    description: 'Used to specify the path to a dependency file - go.sum'
+  strategy:
+    description: "See intall-go for info"
+
+runs:
+  using: composite
+  steps:
+    - name: "Install go"
+      uses: ./.github/actions/install-go
+      with:
+        strategy: ${{ inputs.strategy }}
+    - name: "Run golangci-lint"
+      uses: golangci/golangci-lint-action@774c35bcccffb734694af9e921f12f57d882ef74  # v6.1.1
+      with:
+        args: --verbose
+        skip-save-cache: true
+        skip-cache: true
+    - name: "Check that go imports ordering is ok"
+      shell: bash
+      run: |
+        go install -v github.com/incu6us/goimports-reviser/v3@f034195cc8a7ffc7cc70d60aa3a25500874eaf04  # v3.8.2
+        make lint-imports
