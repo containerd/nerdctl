@@ -1,3 +1,5 @@
+//go:build unix && !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,21 +16,16 @@
    limitations under the License.
 */
 
-package main
+package containerinspector
 
 import (
-	"github.com/spf13/cobra"
+	"context"
+
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 )
 
-func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
-	return false
-}
+func InspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
+	r := &native.NetNS{}
 
-func addApparmorCommand(rootCmd *cobra.Command) {
-	// NOP
-}
-
-func resetSavedSETUID() error {
-	// NOP
-	return nil
+	return r, nil
 }

@@ -27,6 +27,8 @@ jobs:
             goos: linux
           - os: ubuntu-24.04
             goos: freebsd
+          - os: ubuntu-24.04
+            goos: darwin
           # FIXME: this is currently failing in a non-sensical way, so, running on linux instead...
           # - os: windows-2022
           - os: ubuntu-24.04

@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,13 +16,13 @@
    limitations under the License.
 */
 
-package container
+package namespace
 
 import (
-	"github.com/spf13/cobra"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
 )
 
-func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	candidates := []string{}
-	return candidates, cobra.ShellCompDirectiveNoFileComp
+func namespaceDeleteOpts(cgroup bool) ([]namespaces.DeleteOpts, error) {
+	var delOpts []namespaces.DeleteOpts
+	return delOpts, nil
 }

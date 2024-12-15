@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,9 +16,21 @@
    limitations under the License.
 */
 
-package buildkitutil
+package main
 
-func getRuntimeVariableDataDir() (string, error) {
-	// Per hier(7) dated July 6, 2023.
-	return "/var/run", nil
+import (
+	"github.com/spf13/cobra"
+)
+
+func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
+	return false
+}
+
+func addApparmorCommand(rootCmd *cobra.Command) {
+	// NOP
+}
+
+func resetSavedSETUID() error {
+	// NOP
+	return nil
 }
