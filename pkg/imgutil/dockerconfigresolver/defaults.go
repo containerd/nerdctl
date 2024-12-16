@@ -21,9 +21,10 @@ import "errors"
 type scheme string
 
 const (
-	standardHTTPSPort        = "443"
-	schemeHTTP        scheme = "http"
-	schemeHTTPS       scheme = "https"
+	StandardHTTPSPort = "443"
+
+	schemeHTTPS scheme = "https"
+	schemeHTTP  scheme = "http"
 	// schemeNerdctlExperimental is currently provisional, to unlock namespace based host authentication
 	// This may change or break without notice, and you should have no expectations that credentials saved like that
 	// will be supported in the future
