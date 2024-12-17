@@ -129,8 +129,9 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 		RFlags: types.RemoteSnapshotterFlags{
 			SociIndexDigest: sociIndexDigest,
 		},
-		Stdout: cmd.OutOrStdout(),
-		Stderr: cmd.OutOrStderr(),
+		Stdout:                 cmd.OutOrStdout(),
+		Stderr:                 cmd.OutOrStderr(),
+		ProgressOutputToStdout: true,
 	}, nil
 }
 
