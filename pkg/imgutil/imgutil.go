@@ -207,6 +207,9 @@ func PullImage(ctx context.Context, client *containerd.Client, resolver remotes.
 	}
 	if !options.Quiet {
 		config.ProgressOutput = options.Stderr
+		if options.ProgressOutputToStdout {
+			config.ProgressOutput = options.Stdout
+		}
 	}
 
 	// unpack(B) if given 1 platform unless specified by `unpack`

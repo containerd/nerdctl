@@ -236,3 +236,36 @@ func TestImagePullSoci(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestImagePullProcessOutput(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		SubTests: []*test.Case{
+			{
+				Description: "Pull Image - output should be in stdout",
+				NoParallel:  true,
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", "-f", testutil.BusyboxImage)
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("pull", testutil.BusyboxImage)
+				},
+				Expected: test.Expects(0, nil, test.Contains(testutil.BusyboxImage)),
+			},
+			{
+				Description: "Run Container with image pull - output should be in stderr",
+				NoParallel:  true,
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", "-f", testutil.BusyboxImage)
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("run", "--rm", testutil.BusyboxImage)
+				},
+				Expected: test.Expects(0, nil, test.DoesNotContain(testutil.BusyboxImage)),
+			},
+		},
+	}
+
+	testCase.Run(t)
+}
