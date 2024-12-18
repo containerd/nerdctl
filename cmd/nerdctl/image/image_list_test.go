@@ -317,3 +317,39 @@ CMD ["echo", "nerdctl-build-notag-string"]
 
 	testCase.Run(t)
 }
+
+func TestCriImages(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Require: test.Require(
+			nerdtest.OnlyKubernetes,
+			test.Not(nerdtest.Docker),
+		),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", "--quiet", testutil.NginxAlpineImage)
+		},
+		SubTests: []*test.Case{
+			{
+				Description: "the same imageId will not print no-repo:tag in k8s.io with kube-hide-dupe",
+				Command:     test.Command("--kube-hide-dupe", "images"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.DoesNotContain("<none>"),
+					}
+				},
+			},
+			{
+				Description: "the same imageId will print no-repo:tag in k8s.io without kube-hide-dupe",
+				Command:     test.Command("images"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.Contains("<none>"),
+					}
+				},
+			},
+		},
+	}
+
+	testCase.Run(t)
+}

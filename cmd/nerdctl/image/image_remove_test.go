@@ -351,3 +351,111 @@ func TestIssue3016(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestRemoveCri(t *testing.T) {
+	var numTags, numNoTags int
+	testCase := nerdtest.Setup()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("--kube-hide-dupe", "rmi", "-f", testutil.NginxAlpineImage)
+		numTags = len(strings.Split(strings.TrimSpace(helpers.Capture("--kube-hide-dupe", "images")), "\n"))
+		numNoTags = len(strings.Split(strings.TrimSpace(helpers.Capture("images")), "\n"))
+	}
+	testCase.Require = test.Require(
+		nerdtest.OnlyKubernetes,
+		test.Not(nerdtest.Docker),
+	)
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "After removing the tag, repodigest cleans it up together",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("pull", testutil.NginxAlpineImage)
+			},
+			Command: test.Command("rmi", "-f", testutil.NginxAlpineImage),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Errors:   []error{},
+					Output: func(stdout string, info string, t *testing.T) {
+						helpers.Command("--kube-hide-dupe", "images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, numTags == 17, info)
+								assert.Assert(t, len(lines) == numTags+1, info)
+							},
+						})
+						helpers.Command("images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numNoTags+1, info)
+							},
+						})
+					},
+				}
+			},
+		},
+		{
+			Description: "If there are other tags, the Repodigest will not be deleted",
+			NoParallel:  true,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("--kube-hide-dupe", "rmi", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("pull", testutil.NginxAlpineImage)
+				helpers.Ensure("tag", testutil.NginxAlpineImage, data.Identifier())
+			},
+			Command: test.Command("--kube-hide-dupe", "rmi", testutil.NginxAlpineImage),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Errors:   []error{},
+					Output: func(stdout string, info string, t *testing.T) {
+						helpers.Command("--kube-hide-dupe", "images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numTags+1, info)
+							},
+						})
+						helpers.Command("images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numNoTags+2, info)
+							},
+						})
+					},
+				}
+			},
+		},
+		{
+			Description: "After deleting a repo:tag, repodigest does not clean up when there are other repo:tag with the same imageID",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("pull", testutil.NginxAlpineImage)
+				helpers.Ensure("tag", testutil.NginxAlpineImage, data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				helpers.Ensure("--kube-hide-dupe", "rmi", "-f", testutil.NginxAlpineImage)
+				return helpers.Command("--kube-hide-dupe", "rmi", "-f", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, info string, t *testing.T) {
+						helpers.Command("--kube-hide-dupe", "images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numTags, info)
+							},
+						})
+						helpers.Command("images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numNoTags, info)
+							},
+						})
+					},
+				}
+			},
+		},
+	}
+	testCase.Run(t)
+}

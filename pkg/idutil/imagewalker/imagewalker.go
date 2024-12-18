@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/distribution/reference"
 	"github.com/opencontainers/go-digest"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -41,9 +42,28 @@ type Found struct {
 
 type OnFound func(ctx context.Context, found Found) error
 
+/*
+In order to resolve the issue with OnFoundCriRm, the same imageId under
+k8s.io is showing multiple results: repo:tag, repo:digest, configID. We expect
+to display only repo:tag, consistent with other namespaces and CRI.
+e.g.
+
+	nerdctl -n k8s.io images
+	REPOSITORY    TAG       IMAGE ID        CREATED        PLATFORM       SIZE         BLOB SIZE
+	centos        7         be65f488b776    3 hours ago    linux/amd64    211.5 MiB    72.6 MiB
+	centos        <none>    be65f488b776    3 hours ago    linux/amd64    211.5 MiB    72.6 MiB
+	<none>        <none>    be65f488b776    3 hours ago    linux/amd64    211.5 MiB    72.6 MiB
+
+The boolean value will return true only when the repo:tag is successfully
+deleted for each image. Once all repo:tag entries are deleted, it is necessary
+to clean up the remaining repo:digest and configID.
+*/
+type OnFoundCriRm func(ctx context.Context, found Found) (bool, error)
+
 type ImageWalker struct {
-	Client  *containerd.Client
-	OnFound OnFound
+	Client       *containerd.Client
+	OnFound      OnFound
+	OnFoundCriRm OnFoundCriRm
 }
 
 // Walk walks images and calls w.OnFound .
@@ -93,6 +113,108 @@ func (w *ImageWalker) Walk(ctx context.Context, req string) (int, error) {
 		}
 		if e := w.OnFound(ctx, f); e != nil {
 			return -1, e
+		}
+	}
+	return matchCount, nil
+}
+
+// Walk walks images and calls w.OnFound .
+// Req is name, short ID, or long ID.
+// Returns the number of the found entries.
+func (w *ImageWalker) WalkCriRm(ctx context.Context, req string) (int, error) {
+	var filters []string
+	var parsedReferenceStr, repo string
+	var imageTag, imagesRepo []images.Image
+	var tagNum int
+
+	parsedReference, err := referenceutil.Parse(req)
+	if err == nil {
+		parsedReferenceStr = parsedReference.String()
+		filters = append(filters, fmt.Sprintf("name==%s", parsedReferenceStr))
+	}
+	//Get the image ID , if reg == imageTag use
+	image, err := w.Client.GetImage(ctx, parsedReferenceStr)
+	if err != nil {
+		repo = req
+	} else {
+		repo = strings.Split(image.Target().Digest.String(), ":")[1][:12]
+	}
+
+	filters = append(filters,
+		fmt.Sprintf("name==%s", req),
+		fmt.Sprintf("target.digest~=^sha256:%s.*$", regexp.QuoteMeta(repo)),
+		fmt.Sprintf("target.digest~=^%s.*$", regexp.QuoteMeta(repo)),
+	)
+
+	images, err := w.Client.ImageService().List(ctx, filters...)
+	if err != nil {
+		return -1, err
+	}
+
+	//Distinguish between tag and non-tag
+	for _, ima := range images {
+		ref := ima.Name
+		parsed, err := reference.ParseAnyReference(ref)
+		if err != nil {
+			continue
+		}
+		switch parsed.(type) {
+		case reference.Canonical, reference.Digested:
+			imagesRepo = append(imagesRepo, ima)
+		case reference.Tagged:
+			imageTag = append(imageTag, ima)
+			tagNum++
+		}
+	}
+
+	matchCount := len(imageTag)
+	// to handle the `rmi -f` case where returned images are different but
+	// have the same short prefix.
+	uniqueImages := make(map[digest.Digest]bool)
+	nameMatchIndex := -1
+	for i, image := range imageTag {
+		uniqueImages[image.Target.Digest] = true
+		// to get target image index for `nerdctl rmi <short digest ids of another images>`.
+		if (parsedReferenceStr != "" && image.Name == parsedReferenceStr) || image.Name == req {
+			nameMatchIndex = i
+		}
+	}
+
+	//The matchCount count is only required if it is passed in as an image ID
+	if nameMatchIndex != -1 || matchCount < 1 {
+		matchCount = 1
+	}
+
+	for i, img := range imageTag {
+		f := Found{
+			Image:          img,
+			Req:            req,
+			MatchIndex:     i,
+			MatchCount:     matchCount,
+			UniqueImages:   len(uniqueImages),
+			NameMatchIndex: nameMatchIndex,
+		}
+		ok, e := w.OnFoundCriRm(ctx, f)
+		if e != nil {
+			return -1, e
+		} else if ok {
+			tagNum = tagNum - 1
+		}
+	}
+	//If the corresponding imageTag does not exist, delete the repoDigests
+	if tagNum == 0 {
+		for i, img := range imagesRepo {
+			f := Found{
+				Image:          img,
+				Req:            req,
+				MatchIndex:     i,
+				MatchCount:     1,
+				UniqueImages:   len(uniqueImages),
+				NameMatchIndex: -1,
+			}
+			if _, e := w.OnFoundCriRm(ctx, f); e != nil {
+				return -1, e
+			}
 		}
 	}
 	return matchCount, nil
