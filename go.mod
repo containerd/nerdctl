@@ -13,7 +13,7 @@ require (
 	github.com/Microsoft/hcsshim v0.12.9
 	github.com/compose-spec/compose-go/v2 v2.4.6
 	github.com/containerd/accelerated-container-image v1.2.3
-	github.com/containerd/cgroups/v3 v3.0.4
+	github.com/containerd/cgroups/v3 v3.0.5
 	github.com/containerd/console v1.0.4
 	github.com/containerd/containerd/api v1.8.0
 	github.com/containerd/containerd/v2 v2.0.1
