@@ -505,6 +505,41 @@ func TestSharedNetworkStack(t *testing.T) {
 		AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
 }
 
+func TestSharedNetworkWithNone(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("--network=container:<container name|id> only supports linux now")
+	}
+	base := testutil.NewBase(t)
+
+	containerName := testutil.Identifier(t)
+	t.Cleanup(func() {
+		base.Cmd("rm", "-f", containerName).Run()
+	})
+	base.Cmd("run", "-d", "--name", containerName, "--network", "none",
+		testutil.NginxAlpineImage).AssertOK()
+	base.EnsureContainerStarted(containerName)
+
+	containerNameJoin := testutil.Identifier(t) + "-network"
+	t.Cleanup(func() {
+		base.Cmd("rm", "-f", containerNameJoin).Run()
+	})
+	base.Cmd("run",
+		"-d",
+		"--name", containerNameJoin,
+		"--network=container:"+containerName,
+		testutil.CommonImage,
+		"sleep", "infinity").AssertOK()
+
+	base.Cmd("exec", containerNameJoin, "wget", "-qO-", "http://127.0.0.1:80").
+		AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
+
+	base.Cmd("restart", containerName).AssertOK()
+	base.Cmd("stop", "--time=1", containerNameJoin).AssertOK()
+	base.Cmd("start", containerNameJoin).AssertOK()
+	base.Cmd("exec", containerNameJoin, "wget", "-qO-", "http://127.0.0.1:80").
+		AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
+}
+
 func TestRunContainerInExistingNetNS(t *testing.T) {
 	if rootlessutil.IsRootless() {
 		t.Skip("Can't create new netns in rootless mode")
@@ -630,6 +665,8 @@ func TestHostsFileMounts(t *testing.T) {
 		"sh", "-euxc", "echo >> /etc/hosts").AssertOK()
 	base.Cmd("run", "--rm", "-v", "/etc/hosts:/etc/hosts", "--network", "host", testutil.CommonImage,
 		"sh", "-euxc", "head -n -1 /etc/hosts > temp && cat temp > /etc/hosts").AssertOK()
+	base.Cmd("run", "--rm", "--network", "none", testutil.CommonImage,
+		"sh", "-euxc", "echo >> /etc/hosts").AssertOK()
 
 	base.Cmd("run", "--rm", testutil.CommonImage,
 		"sh", "-euxc", "echo >> /etc/resolv.conf").AssertOK()
@@ -642,6 +679,8 @@ func TestHostsFileMounts(t *testing.T) {
 		"sh", "-euxc", "echo >> /etc/resolv.conf").AssertOK()
 	base.Cmd("run", "--rm", "-v", "/etc/resolv.conf:/etc/resolv.conf", "--network", "host", testutil.CommonImage,
 		"sh", "-euxc", "head -n -1 /etc/resolv.conf > temp && cat temp > /etc/resolv.conf").AssertOK()
+	base.Cmd("run", "--rm", "--network", "host", testutil.CommonImage,
+		"sh", "-euxc", "echo >> /etc/resolv.conf").AssertOK()
 }
 
 func TestRunContainerWithStaticIP6(t *testing.T) {
@@ -711,5 +750,41 @@ func TestRunContainerWithStaticIP6(t *testing.T) {
 				return nil
 			})
 		})
+	}
+}
+
+func TestNoneNetworkStaticConfigs(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	base := testutil.NewBase(t)
+
+	//TODO: Add tests for --dns --dns-search --add-host
+
+	// If running on Linux, verify /etc/hostname is correctly set
+	if runtime.GOOS == "linux" {
+		containerHostName := testutil.Identifier(t)
+		cmd := base.Cmd("run", "--rm", "--net", "none", "--hostname", containerHostName, testutil.CommonImage, "cat", "/etc/hostname")
+		output := cmd.Run().Combined()
+		hostname := strings.TrimSpace(output)
+
+		if len(containerHostName) > 12 {
+			assert.Equal(t, containerHostName[:12], hostname[:12])
+		} else {
+			assert.Equal(t, containerHostName, hostname[:12])
+		}
+
+		containerName := testutil.Identifier(t) + "-id"
+		t.Cleanup(func() {
+			base.Cmd("rm", "-f", containerName).Run()
+		})
+		cmd = base.Cmd("run", "-d", "--net", "none", "--name", containerName, testutil.CommonImage, "sleep", "infinity")
+		output = cmd.Run().Combined()
+		containerIDShort := strings.TrimSpace(output)[:12]
+
+		cmd = base.Cmd("exec", containerName, "cat", "/etc/hostname")
+		output = cmd.Run().Combined()
+		containerHostName = strings.TrimSpace(output)
+
+		assert.Equal(t, containerHostName, containerIDShort)
+
 	}
 }
