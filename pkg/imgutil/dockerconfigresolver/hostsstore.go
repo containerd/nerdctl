@@ -55,7 +55,7 @@ func hostDirsFromRoot(registryURL *RegistryURL, dirs []string) (string, error) {
 			return found, err
 		}
 		// If not found, and the port is standard, try again without the port
-		if registryURL.Port() == standardHTTPSPort {
+		if registryURL.Port() == StandardHTTPSPort {
 			found, err = config.HostDirFromRoot(hostsDir)(registryURL.Hostname())
 			if (err != nil && !errors.Is(err, errdefs.ErrNotFound)) || (found != "") {
 				return found, err
