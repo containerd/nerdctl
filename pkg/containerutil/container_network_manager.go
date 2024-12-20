@@ -42,6 +42,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/mountutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
+	"github.com/containerd/nerdctl/v2/pkg/resolvconf"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
@@ -162,13 +163,81 @@ func (m *noneNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 }
 
 // SetupNetworking Performs setup actions required for the container with the given ID.
-func (m *noneNetworkManager) SetupNetworking(_ context.Context, _ string) error {
+func (m *noneNetworkManager) SetupNetworking(ctx context.Context, containerID string) error {
+
+	// Retrieve the container
+	container, err := m.client.ContainerService().Get(ctx, containerID)
+	if err != nil {
+		return err
+	}
+
+	// Get the dataStore
+	dataStore, err := clientutil.DataStore(m.globalOptions.DataRoot, m.globalOptions.Address)
+	if err != nil {
+		return err
+	}
+
+	// Get the hostsStore
+	hs, err := hostsstore.New(dataStore, container.Labels[labels.Namespace])
+	if err != nil {
+		return err
+	}
+
+	// Get extra-hosts
+	extraHostsJSON := container.Labels[labels.ExtraHosts]
+	var extraHosts []string
+	if err = json.Unmarshal([]byte(extraHostsJSON), &extraHosts); err != nil {
+		return err
+	}
+
+	hosts := make(map[string]string)
+	for _, host := range extraHosts {
+		if v := strings.SplitN(host, ":", 2); len(v) == 2 {
+			hosts[v[0]] = v[1]
+		}
+	}
+
+	// Prep the meta
+	hsMeta := hostsstore.Meta{
+		ID:         container.ID,
+		Hostname:   container.Labels[labels.Hostname],
+		ExtraHosts: hosts,
+		Name:       container.Labels[labels.Name],
+	}
+
+	// Save the meta information
+	if err = hs.Acquire(hsMeta); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // CleanupNetworking Performs any required cleanup actions for the given container.
 // Should only be called to revert any setup steps performed in SetupNetworking.
-func (m *noneNetworkManager) CleanupNetworking(_ context.Context, _ containerd.Container) error {
+func (m *noneNetworkManager) CleanupNetworking(ctx context.Context, container containerd.Container) error {
+	// Get the dataStore
+	dataStore, err := clientutil.DataStore(m.globalOptions.DataRoot, m.globalOptions.Address)
+	if err != nil {
+		return err
+	}
+
+	// Get labels
+	lbls, err := container.Labels(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Get the hostsStore
+	hs, err := hostsstore.New(dataStore, lbls[labels.Namespace])
+	if err != nil {
+		return err
+	}
+
+	// Release
+	if err = hs.Release(container.ID()); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -179,9 +248,75 @@ func (m *noneNetworkManager) InternalNetworkingOptionLabels(_ context.Context) (
 
 // ContainerNetworkingOpts Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
 // the network specs which need to be applied to the container with the given ID.
-func (m *noneNetworkManager) ContainerNetworkingOpts(_ context.Context, _ string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
+func (m *noneNetworkManager) ContainerNetworkingOpts(_ context.Context, containerID string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
 	// No options to return if no network settings are provided.
-	return []oci.SpecOpts{}, []containerd.NewContainerOpts{}, nil
+	dataStore, err := clientutil.DataStore(m.globalOptions.DataRoot, m.globalOptions.Address)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stateDir, err := ContainerStateDirPath(m.globalOptions.Namespace, dataStore, containerID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resolvConfPath := filepath.Join(stateDir, "resolv.conf")
+	dns := []string{"127.0.0.1"}
+	dnsSearch := []string{}
+	dnsOptions := []string{}
+
+	if len(m.netOpts.DNSServers) > 0 {
+		dns = m.netOpts.DNSServers
+	}
+	if len(m.netOpts.DNSSearchDomains) > 0 {
+		dnsSearch = m.netOpts.DNSSearchDomains
+	}
+	if len(m.netOpts.DNSResolvConfOptions) > 0 {
+		dnsOptions = m.netOpts.DNSResolvConfOptions
+	}
+
+	// Call the Build function
+	_, err = resolvconf.Build(resolvConfPath, dns, dnsSearch, dnsOptions)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	hs, err := hostsstore.New(dataStore, m.globalOptions.Namespace)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	etcHostsPath, err := hs.AllocHostsFile(containerID, []byte{})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	specs := []oci.SpecOpts{
+		withDedupMounts("/etc/hosts", withCustomHosts(etcHostsPath)),
+		withDedupMounts("/etc/resolv.conf", withCustomResolvConf(resolvConfPath)),
+	}
+
+	// `/etc/hostname` does not exist on FreeBSD
+	if runtime.GOOS == "linux" {
+		// If no hostname is set, default to first 12 characters of the container ID.
+		hostname := m.netOpts.Hostname
+		if hostname == "" {
+			hostname = containerID
+			if len(hostname) > 12 {
+				hostname = hostname[0:12]
+			}
+		}
+		m.netOpts.Hostname = hostname
+
+		hostnameOpts, err := writeEtcHostnameForContainer(m.globalOptions, m.netOpts.Hostname, containerID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if hostnameOpts != nil {
+			specs = append(specs, hostnameOpts...)
+		}
+	}
+	return specs, []containerd.NewContainerOpts{}, nil
 }
 
 // types.NetworkOptionsManager implementation for container networking settings.
