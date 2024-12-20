@@ -266,16 +266,18 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 		if spec.Linux.Resources == nil {
 			spec.Linux.Resources = &runtimespec.LinuxResources{}
 		}
-		if spec.Linux.Resources.BlockIO == nil {
-			spec.Linux.Resources.BlockIO = &runtimespec.LinuxBlockIO{}
-		}
 		if cmd.Flags().Changed("blkio-weight") {
+			if spec.Linux.Resources.BlockIO == nil {
+				spec.Linux.Resources.BlockIO = &runtimespec.LinuxBlockIO{}
+			}
 			if spec.Linux.Resources.BlockIO.Weight != &opts.BlkioWeight {
 				spec.Linux.Resources.BlockIO.Weight = &opts.BlkioWeight
 			}
 		}
-		if spec.Linux.Resources.CPU == nil {
-			spec.Linux.Resources.CPU = &runtimespec.LinuxCPU{}
+		if cmd.Flags().Changed("cpu-shares") || cmd.Flags().Changed("cpu-quota") || cmd.Flags().Changed("cpu-period") || cmd.Flags().Changed("cpus") || cmd.Flags().Changed("cpuset-mems") || cmd.Flags().Changed("cpuset-cpus") {
+			if spec.Linux.Resources.CPU == nil {
+				spec.Linux.Resources.CPU = &runtimespec.LinuxCPU{}
+			}
 		}
 		if cmd.Flags().Changed("cpu-shares") {
 			if spec.Linux.Resources.CPU.Shares != &opts.CPUShares {
@@ -308,8 +310,10 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 				spec.Linux.Resources.CPU.Cpus = opts.CpusetCpus
 			}
 		}
-		if spec.Linux.Resources.Memory == nil {
-			spec.Linux.Resources.Memory = &runtimespec.LinuxMemory{}
+		if cmd.Flags().Changed("memory") || cmd.Flags().Changed("memory-reservation") {
+			if spec.Linux.Resources.Memory == nil {
+				spec.Linux.Resources.Memory = &runtimespec.LinuxMemory{}
+			}
 		}
 		if cmd.Flags().Changed("memory") {
 			if spec.Linux.Resources.Memory.Limit != &opts.MemoryLimitInBytes {
@@ -324,10 +328,10 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 				spec.Linux.Resources.Memory.Reservation = &opts.MemoryReservation
 			}
 		}
-		if spec.Linux.Resources.Pids == nil {
-			spec.Linux.Resources.Pids = &runtimespec.LinuxPids{}
-		}
 		if cmd.Flags().Changed("pids-limit") {
+			if spec.Linux.Resources.Pids == nil {
+				spec.Linux.Resources.Pids = &runtimespec.LinuxPids{}
+			}
 			if spec.Linux.Resources.Pids.Limit != opts.PidsLimit {
 				spec.Linux.Resources.Pids.Limit = opts.PidsLimit
 			}
