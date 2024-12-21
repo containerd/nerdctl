@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,10 +16,12 @@
    limitations under the License.
 */
 
-package completion
+package test
 
-import "github.com/spf13/cobra"
+import (
+	"os"
+)
 
-func CgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return nil, cobra.ShellCompDirectiveNoFileComp
+func Open() (pty, tty *os.File, err error) {
+	return nil, nil, ErrPTYUnsupportedPlatform
 }
