@@ -103,7 +103,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	// This below is a stopgap solution that just enforces a global lock
 	// Note this here is probably not enough, as concurrent CNI operations may happen outside of the scope of ocihooks
 	// through explicit calls to Remove, etc.
-	err = os.MkdirAll(cniNetconfPath, 0o700)
+	err = os.MkdirAll(cniNetconfPath, 0700)
 	if err != nil {
 		return err
 	}
