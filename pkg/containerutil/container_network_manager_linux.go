@@ -47,7 +47,7 @@ func (m *cniNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 		return err
 	}
 
-	// Load DNS from CNIEnv, by using the dns-portion. Should probably test for dns from the NetworkSlice
+	// Load DNS from CNIEnv
 	cniOpts := []cni.Opt{
                         cni.WithPluginDir([]string{m.globalOptions.CNIPath}),
 	}
@@ -57,9 +57,18 @@ func (m *cniNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 		return nil
 	}
 	cniOpts = append(cniOpts, cni.WithConfListBytes(netw.Bytes))
+	//fmt.Printf("container_network_manager_linux.go netOpts opts: %s", m.netOpts.NetworkSlice)
 
 	var netPlugin cni.CNI
 	netPlugin, err = cni.New(cniOpts...)
+
+        //log.L.Debugf("container_network_manager_linux.go CNI opts: %s", q.GetConfig().Networks[0])
+
+//	cniPlugin, err := json.Marshal(netPlugin.GetConfig())
+//	if err != nil {
+//		log.L.WithError(err).Errorf("Failed to marshal CNI config %v", err)
+//	}
+//        fmt.Printf("container_network_manager_linux.go CNI opts: %s", netPlugin.GetConfig().Networks[0].Config.Plugins[0].Network.DNS.Nameservers)
 
 	m.netOpts.DNSServers = append(m.netOpts.DNSServers, netPlugin.GetConfig().Networks[0].Config.Plugins[0].Network.DNS.Nameservers[:]...)
 	m.netOpts.DNSSearchDomains  = append(m.netOpts.DNSSearchDomains, netPlugin.GetConfig().Networks[0].Config.Plugins[0].Network.DNS.Search[:]...)
@@ -70,6 +79,8 @@ func (m *cniNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 			return err
 		}
 	}
+
+//	fmt.Printf("container_network_manager_linux.go:  %s", m.netOpts.DNSServers)
 
 	return validateUtsSettings(m.netOpts)
 }
