@@ -714,8 +714,9 @@ Flags:
 - :whale: `--label`: Set metadata for an image
 - :whale: `--network=(default|host|none)`: Set the networking mode for the RUN instructions during build.(compatible with `buildctl build`)
 - :whale: `--build-context`: Set additional contexts for build (e.g. dir2=/path/to/dir2, myorg/myapp=docker-image://path/to/myorg/myapp)
+- :whale: `--add-host`: Add a custom host-to-IP mapping (format: `host:ip`)
 
-Unimplemented `docker build` flags: `--add-host`, `--squash`
+Unimplemented `docker build` flags: `--squash`
 
 ### :whale: nerdctl commit
 

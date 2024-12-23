@@ -40,6 +40,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
+	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
@@ -451,6 +452,14 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		default:
 			log.L.Debugf("ignoring network build arg %s", options.NetworkMode)
 		}
+	}
+
+	if len(options.ExtraHosts) > 0 {
+		extraHosts, err := containerutil.ParseExtraHosts(options.ExtraHosts, options.GOptions.HostGatewayIP, "=")
+		if err != nil {
+			return "", nil, false, "", nil, nil, err
+		}
+		buildctlArgs = append(buildctlArgs, "--opt=add-hosts="+strings.Join(extraHosts, ","))
 	}
 
 	return buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, nil
