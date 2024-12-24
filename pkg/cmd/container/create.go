@@ -30,7 +30,6 @@ import (
 	"strings"
 
 	dockercliopts "github.com/docker/cli/opts"
-	dockeropts "github.com/docker/docker/opts"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -323,22 +322,12 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	internalLabels.name = options.Name
 	internalLabels.pidFile = options.PidFile
-	internalLabels.extraHosts = strutil.DedupeStrSlice(netManager.NetworkOptions().AddHost)
-	for i, host := range internalLabels.extraHosts {
-		if _, err := dockercliopts.ValidateExtraHost(host); err != nil {
-			return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
-		}
-		parts := strings.SplitN(host, ":", 2)
-		// If the IP Address is a string called "host-gateway", replace this value with the IP address stored
-		// in the daemon level HostGateway IP config variable.
-		if len(parts) == 2 && parts[1] == dockeropts.HostGatewayName {
-			if options.GOptions.HostGatewayIP == "" {
-				return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), fmt.Errorf("unable to derive the IP value for host-gateway")
-			}
-			parts[1] = options.GOptions.HostGatewayIP
-			internalLabels.extraHosts[i] = fmt.Sprintf(`%s:%s`, parts[0], parts[1])
-		}
+
+	extraHosts, err := containerutil.ParseExtraHosts(netManager.NetworkOptions().AddHost, options.GOptions.HostGatewayIP, ":")
+	if err != nil {
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
+	internalLabels.extraHosts = extraHosts
 
 	internalLabels.rm = containerutil.EncodeContainerRmOptLabel(options.Rm)
 

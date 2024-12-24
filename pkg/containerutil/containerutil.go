@@ -28,6 +28,8 @@ import (
 	"strings"
 	"time"
 
+	dockercliopts "github.com/docker/cli/opts"
+	dockeropts "github.com/docker/docker/opts"
 	"github.com/moby/sys/signal"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
@@ -49,6 +51,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/portutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/signalutil"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/taskutil"
 )
 
@@ -605,4 +608,35 @@ func EncodeContainerRmOptLabel(rmOpt bool) string {
 // DecodeContainerRmOptLabel decodes bool value for the --rm option from string value for a label.
 func DecodeContainerRmOptLabel(rmOptLabel string) (bool, error) {
 	return strconv.ParseBool(rmOptLabel)
+}
+
+// ParseExtraHosts takes an array of host-to-IP mapping strings, e.g. "localhost:127.0.0.1",
+// and a hostGatewayIP for resolving mappings to "host-gateway".
+//
+// Returns a map of host-to-IPs or errors if any mapping strings are not correctly formatted.
+func ParseExtraHosts(extraHosts []string, hostGatewayIP, separator string) ([]string, error) {
+	hosts := make([]string, 0, len(extraHosts))
+	for _, hostToIP := range strutil.DedupeStrSlice(extraHosts) {
+		if _, err := dockercliopts.ValidateExtraHost(hostToIP); err != nil {
+			return nil, err
+		}
+
+		parts := strings.SplitN(hostToIP, ":", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid host-to-IP map %s", hostToIP)
+		}
+
+		host, ip := parts[0], parts[1]
+
+		// If the IP address is a string called "host-gateway", replace this value with the IP address stored
+		// in the daemon level HostGatewayIP config variable.
+		if ip == dockeropts.HostGatewayName && hostGatewayIP == "" {
+			return nil, errors.New("unable to derive the IP value for host-gateway")
+		} else if ip == dockeropts.HostGatewayName {
+			ip = hostGatewayIP
+		}
+
+		hosts = append(hosts, host+separator+ip)
+	}
+	return hosts, nil
 }

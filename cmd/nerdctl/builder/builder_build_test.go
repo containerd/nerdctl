@@ -957,3 +957,32 @@ func TestBuildAttestation(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestBuildAddHost(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Require: test.Require(
+			nerdtest.Build,
+		),
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rmi", "-f", data.Identifier())
+		},
+		Setup: func(data test.Data, helpers test.Helpers) {
+			dockerfile := fmt.Sprintf(`FROM %s
+RUN ping -c 5 alpha
+RUN ping -c 5 beta
+`, testutil.CommonImage)
+			buildCtx := data.TempDir()
+			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+			assert.NilError(helpers.T(), err)
+			data.Set("buildCtx", buildCtx)
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("build", data.Get("buildCtx"), "-t", data.Identifier(), "--add-host", "alpha:127.0.0.1", "--add-host", "beta:127.0.0.1")
+		},
+		Expected: test.Expects(0, nil, nil),
+	}
+
+	testCase.Run(t)
+}
