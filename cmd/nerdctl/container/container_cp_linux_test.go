@@ -25,396 +25,933 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
 
+	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
+// For the test matrix, see https://docs.docker.com/engine/reference/commandline/cp/
+// Obviously, none of this is fully windows ready - obviously `nerdctl cp` itself is not either, so, ok for now.
+const (
+	// Use this to poke the testing rig for improper path handling
+	// TODO: fuzz this more seriously
+	// FIXME: the following will break the test (anything that will evaluate on the shell, obviously):
+	// - `
+	// - $a, ${a}, etc
+	complexify = "" //  = "-~a0-_.(){}[]*#! \"'∞"
+
+	pathDoesNotExistRelative = "does-not-exist" + complexify
+	pathDoesNotExistAbsolute = string(os.PathSeparator) + "does-not-exist" + complexify
+	pathIsAFileRelative      = "is-a-file" + complexify
+	pathIsAFileAbsolute      = string(os.PathSeparator) + "is-a-file" + complexify
+	pathIsADirRelative       = "is-a-dir" + complexify
+	pathIsADirAbsolute       = string(os.PathSeparator) + "is-a-dir" + complexify
+	pathIsAVolumeMount       = string(os.PathSeparator) + "is-a-volume-mount" + complexify
+
+	srcFileName = "test-file" + complexify
+
+	// Since nerdctl cp must NOT obey container wd, but instead resolve paths against the root, we set this
+	// explicitly to ensure we do the right thing wrt that.
+	containerCwd = "/nerdctl/cp/test"
+
+	dirPerm  = 0o755
+	filePerm = 0o644
+)
+
+var srcDirName = filepath.Join("three-levels-src-dir", "test-dir", "dir"+complexify)
+
+type testgroup struct {
+	description string // parent test description
+	toContainer bool   // copying to, or from container
+
+	// sourceSpec as specified by the user (without the container: part) - can be relative or absolute -
+	// if sourceSpec points to a file, you must use srcFileName for filename
+	sourceSpec    string
+	sourceIsAFile bool        // whether the provided sourceSpec points to a file or a dir
+	testCases     []testcases // testcases
+}
+
+type testcases struct {
+	description     string        // textual description of what the test is doing
+	destinationSpec string        // destination path as specified by the user (without the container: part) - can be relative or absolute
+	expect          icmd.Expected // expectation
+
+	// Optional
+	catFile  string                                                       // path that we "cat" - defaults to destinationSpec if not specified
+	setup    func(base *testutil.Base, container string, destPath string) // additional test setup if needed
+	tearDown func()                                                       // additional cleanup if needed
+	volume   func(base *testutil.Base, id string) (string, string, bool)  // volume creation function if needed (should return the volume name, mountPoint, readonly flag)
+}
+
 func TestCopyToContainer(t *testing.T) {
 	t.Parallel()
-	base := testutil.NewBase(t)
-	testContainer := testutil.Identifier(t)
-	testStoppedContainer := "stopped-container-" + testutil.Identifier(t)
 
-	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	testGroups := []*testgroup{
+		{
+			description:   "Copying to container, SRC_PATH is a file, absolute",
+			sourceSpec:    filepath.Join(string(os.PathSeparator), srcDirName, srcFileName),
+			sourceIsAFile: true,
+			toContainer:   true,
+			testCases: []testcases{
+				{
+					description:     "DEST_PATH does not exist, relative",
+					destinationSpec: pathDoesNotExistRelative,
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+				},
+				{
+					description:     "DEST_PATH does not exist, absolute",
+					destinationSpec: pathDoesNotExistAbsolute,
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+				},
+				{
+					description:     "DEST_PATH does not exist, relative, and ends with " + string(os.PathSeparator),
+					destinationSpec: pathDoesNotExistRelative + string(os.PathSeparator),
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrDestinationDirMustExist.Error(),
+					},
+				},
+				{
+					description:     "DEST_PATH does not exist, absolute, and ends with " + string(os.PathSeparator),
+					destinationSpec: pathDoesNotExistAbsolute + string(os.PathSeparator),
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrDestinationDirMustExist.Error(),
+					},
+				},
 
-	base.Cmd("run", "-d", "--name", testStoppedContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
-	defer base.Cmd("rm", "-f", testStoppedContainer).Run()
-	// Stop container immediately after starting for testing copying into stopped container
-	base.Cmd("stop", testStoppedContainer).AssertOK()
-	srcUID := os.Geteuid()
-	srcDir := t.TempDir()
-	srcFile := filepath.Join(srcDir, "test-file")
-	srcFileContent := []byte("test-file-content")
-	err := os.WriteFile(srcFile, srcFileContent, 0o644)
-	assert.NilError(t, err)
-
-	assertCat := func(catPath string, testContainer string, stopped bool) {
-		if stopped {
-			base.Cmd("start", testContainer).AssertOK()
-			defer base.Cmd("stop", testContainer).AssertOK()
-		}
-		t.Logf("catPath=%q", catPath)
-		base.Cmd("exec", testContainer, "cat", catPath).AssertOutExactly(string(srcFileContent))
-		base.Cmd("exec", testContainer, "stat", "-c", "%u", catPath).AssertOutExactly(fmt.Sprintf("%d\n", srcUID))
+				{
+					description:     "DEST_PATH is a file, relative",
+					destinationSpec: pathIsAFileRelative,
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, absolute",
+					destinationSpec: pathIsAFileAbsolute,
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, relative, ends with improper " + string(os.PathSeparator),
+					destinationSpec: pathIsAFileRelative + string(os.PathSeparator),
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrDestinationIsNotADir.Error(),
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, absolute, ends with improper " + string(os.PathSeparator),
+					destinationSpec: pathIsAFileAbsolute + string(os.PathSeparator),
+					expect: icmd.Expected{
+						ExitCode: 1,
+						// FIXME: it is unclear why the code path with absolute (this test) versus relative (just above)
+						// yields a different error. Both should ideally be ErrCannotCopyDirToFile
+						// This is probably happening somewhere in resolve.
+						// This is not a deal killer, as both DO error with a reasonable explanation, but a bit
+						// frustrating
+						Err: containerutil.ErrDestinationIsNotADir.Error(),
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, relative",
+					destinationSpec: pathIsADirRelative,
+					catFile:         filepath.Join(pathIsADirRelative, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, absolute",
+					destinationSpec: pathIsADirAbsolute,
+					catFile:         filepath.Join(pathIsADirAbsolute, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, relative, ends with " + string(os.PathSeparator),
+					destinationSpec: pathIsADirRelative + string(os.PathSeparator),
+					catFile:         filepath.Join(pathIsADirRelative, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, absolute, ends with " + string(os.PathSeparator),
+					destinationSpec: pathIsADirAbsolute + string(os.PathSeparator),
+					catFile:         filepath.Join(pathIsADirAbsolute, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a volume mount-point",
+					destinationSpec: pathIsAVolumeMount,
+					catFile:         filepath.Join(pathIsAVolumeMount, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					// FIXME the way we handle volume is not right - too complicated for the test author
+					volume: func(base *testutil.Base, id string) (string, string, bool) {
+						base.Cmd("volume", "create", id).Run()
+						return id, pathIsAVolumeMount, false
+					},
+				},
+				{
+					description:     "DEST_PATH is a read-only volume mount-point",
+					destinationSpec: pathIsAVolumeMount,
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrTargetIsReadOnly.Error(),
+					},
+					volume: func(base *testutil.Base, id string) (string, string, bool) {
+						base.Cmd("volume", "create", id).Run()
+						return id, pathIsAVolumeMount, true
+					},
+				},
+			},
+		},
+		{
+			description: "Copying to container, SRC_PATH is a directory",
+			sourceSpec:  srcDirName,
+			toContainer: true,
+			testCases: []testcases{
+				{
+					description:     "DEST_PATH does not exist, relative",
+					destinationSpec: pathDoesNotExistRelative,
+					catFile:         filepath.Join(pathDoesNotExistRelative, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+				},
+				{
+					description:     "DEST_PATH does not exist, absolute",
+					destinationSpec: pathDoesNotExistAbsolute,
+					catFile:         filepath.Join(pathDoesNotExistAbsolute, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+				},
+				{
+					description:     "DEST_PATH does not exist, relative, and ends with " + string(os.PathSeparator),
+					destinationSpec: pathDoesNotExistRelative + string(os.PathSeparator),
+					catFile:         filepath.Join(pathDoesNotExistRelative, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+				},
+				{
+					description:     "DEST_PATH does not exist, absolute, and ends with " + string(os.PathSeparator),
+					destinationSpec: pathDoesNotExistAbsolute + string(os.PathSeparator),
+					catFile:         filepath.Join(pathDoesNotExistAbsolute, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, relative",
+					destinationSpec: pathIsAFileRelative,
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrCannotCopyDirToFile.Error(),
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, absolute",
+					destinationSpec: pathIsAFileAbsolute,
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrCannotCopyDirToFile.Error(),
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, relative, ends with improper " + string(os.PathSeparator),
+					destinationSpec: pathIsAFileRelative + string(os.PathSeparator),
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrDestinationIsNotADir.Error(),
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, absolute, ends with improper " + string(os.PathSeparator),
+					destinationSpec: pathIsAFileAbsolute + string(os.PathSeparator),
+					expect: icmd.Expected{
+						ExitCode: 1,
+						// FIXME: it is unclear why the code path with absolute (this test) versus relative (just above)
+						// yields a different error. Both should ideally be ErrCannotCopyDirToFile
+						// This is probably happening somewhere in resolve.
+						// This is not a deal killer, as both DO error with a reasonable explanation, but a bit
+						// frustrating
+						Err: containerutil.ErrDestinationIsNotADir.Error(),
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, relative",
+					destinationSpec: pathIsADirRelative,
+					catFile:         filepath.Join(pathIsADirRelative, filepath.Base(srcDirName), srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, absolute",
+					destinationSpec: pathIsADirAbsolute,
+					catFile:         filepath.Join(pathIsADirAbsolute, filepath.Base(srcDirName), srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, relative, ends with " + string(os.PathSeparator),
+					destinationSpec: pathIsADirRelative + string(os.PathSeparator),
+					catFile:         filepath.Join(pathIsADirRelative, filepath.Base(srcDirName), srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, absolute, ends with " + string(os.PathSeparator),
+					destinationSpec: pathIsADirAbsolute + string(os.PathSeparator),
+					catFile:         filepath.Join(pathIsADirAbsolute, filepath.Base(srcDirName), srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					},
+				},
+			},
+		},
+		{
+			description: "Copying to container, SRC_PATH is a directory ending with /.",
+			sourceSpec:  srcDirName + string(os.PathSeparator) + ".",
+			toContainer: true,
+			testCases: []testcases{
+				{
+					description:     "DEST_PATH is a directory, relative",
+					destinationSpec: pathIsADirRelative,
+					catFile:         filepath.Join(pathIsADirRelative, srcFileName),
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, absolute",
+					destinationSpec: pathIsADirAbsolute,
+					catFile:         filepath.Join(pathIsADirAbsolute, srcFileName),
+					setup: func(base *testutil.Base, container string, destPath string) {
+						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					},
+				},
+			},
+		},
 	}
 
-	// For the test matrix, see https://docs.docker.com/engine/reference/commandline/cp/
-	t.Run("SRC_PATH specifies a file", func(t *testing.T) {
-		srcPath := srcFile
-		t.Run("DEST_PATH does not exist", func(t *testing.T) {
-			destPath := "/dest-no-exist-no-slash"
-			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
-			catPath := destPath
-			assertCat(catPath, testContainer, false)
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
-			assertCat(catPath, testStoppedContainer, true)
-		})
-		t.Run("DEST_PATH does not exist and ends with /", func(t *testing.T) {
-			destPath := "/dest-no-exist-with-slash/"
-			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertFail()
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertFail()
-		})
-		t.Run("DEST_PATH exists and is a file", func(t *testing.T) {
-			destPath := "/dest-file-exists"
-			base.Cmd("exec", testContainer, "touch", destPath).AssertOK()
-			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
-			catPath := destPath
-			assertCat(catPath, testContainer, false)
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
-			assertCat(catPath, testStoppedContainer, true)
-		})
-		t.Run("DEST_PATH exists and is a directory", func(t *testing.T) {
-			destPath := "/dest-dir-exists"
-			base.Cmd("exec", testContainer, "mkdir", "-p", destPath).AssertOK()
-			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
-			catPath := filepath.Join(destPath, filepath.Base(srcFile))
-			assertCat(catPath, testContainer, false)
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			base.Cmd("start", testStoppedContainer).AssertOK()
-			base.Cmd("exec", testStoppedContainer, "mkdir", "-p", destPath).AssertOK()
-			base.Cmd("stop", testStoppedContainer).AssertOK()
-			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
-			assertCat(catPath, testStoppedContainer, true)
-		})
-		t.Run("DEST_PATH is in a volume", func(t *testing.T) {
-			// Create a volume
-			vol := "somevol"
-			base.Cmd("volume", "create", vol).AssertOK()
-			defer base.Cmd("volume", "rm", vol).Run()
-			con := fmt.Sprintf("%s-with-volume", testContainer)
-			mountDir := "/some_dir"
-			base.Cmd("run", "-d", "--name", con, "-v", fmt.Sprintf("%s:%s", vol, mountDir), testutil.CommonImage, "sleep", "1h").AssertOK()
-			defer base.Cmd("rm", "-f", con).Run()
-			catPath := filepath.Join(mountDir, filepath.Base(srcFile))
-			// Running container test
-			base.Cmd("cp", srcPath, con+":"+mountDir).AssertOK()
-			assertCat(catPath, con, false)
-
-			// Skip for rootless
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			// Stopped container test
-			// Delete previously copied file
-			base.Cmd("exec", con, "rm", catPath).AssertOK()
-			base.Cmd("stop", con).AssertOK()
-			base.Cmd("cp", srcPath, con+":"+mountDir).AssertOK()
-			assertCat(catPath, con, true)
-		})
-		t.Run("Destination path is a read-only", func(t *testing.T) {
-			vol := "somevol"
-			base.Cmd("volume", "create", vol).AssertOK()
-			defer base.Cmd("volume", "rm", vol).Run()
-			con := fmt.Sprintf("%s-with-read-only-volume", testContainer)
-			mountDir := "/some_dir"
-			// Create container with read-only volume mounted
-			base.Cmd("run", "-d", "--name", con, "-v", fmt.Sprintf("%s:%s:ro", vol, mountDir), testutil.CommonImage, "sleep", "1h").AssertOK()
-			defer base.Cmd("rm", "-f", con).Run()
-			base.Cmd("cp", srcPath, con+":"+mountDir).AssertFail()
-
-			// Skip for rootless
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-
-			// Stopped container test
-			// Delete previously copied file
-			base.Cmd("stop", con).AssertOK()
-			base.Cmd("cp", srcPath, con+":"+mountDir).AssertFail()
-		})
-		t.Run("Destination path is a read-only and default tmpfs mount point", func(t *testing.T) {
-			vol := "somevol"
-			base.Cmd("volume", "create", vol).AssertOK()
-			defer base.Cmd("volume", "rm", vol).Run()
-			con := fmt.Sprintf("%s-with-read-only-volume", testContainer)
-
-			// /tmp is from rootfs of alpine
-			mountDir := "/tmp"
-			// Create container with read-only mounted volume mounted at /tmp
-			base.Cmd("run", "-d", "--name", con, "-v", fmt.Sprintf("%s:%s:ro", vol, mountDir), testutil.CommonImage, "sleep", "1h").AssertOK()
-			defer base.Cmd("rm", "-f", con).Run()
-			base.Cmd("cp", srcPath, con+":"+mountDir).AssertFail()
-
-			// Skip for rootless
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-
-			// Stopped container test
-			// Delete previously copied file
-			base.Cmd("stop", con).AssertOK()
-			base.Cmd("cp", srcPath, con+":"+mountDir).AssertFail()
-		})
-	})
-	t.Run("SRC_PATH specifies a directory", func(t *testing.T) {
-		srcPath := srcDir
-		t.Run("DEST_PATH does not exist", func(t *testing.T) {
-			destPath := "/dest2-no-exist"
-			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
-			catPath := filepath.Join(destPath, filepath.Base(srcFile))
-			assertCat(catPath, testContainer, false)
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
-			assertCat(catPath, testStoppedContainer, true)
-		})
-		t.Run("DEST_PATH exists and is a file", func(t *testing.T) {
-			destPath := "/dest2-file-exists"
-			base.Cmd("exec", testContainer, "touch", destPath).AssertOK()
-			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertFail()
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			base.Cmd("start", testStoppedContainer).AssertOK()
-			base.Cmd("exec", testStoppedContainer, "touch", destPath).AssertOK()
-			base.Cmd("stop", testStoppedContainer).AssertOK()
-			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertFail()
-		})
-		t.Run("DEST_PATH exists and is a directory", func(t *testing.T) {
-			t.Run("SRC_PATH does not end with `/.`", func(t *testing.T) {
-				destPath := "/dest2-dir-exists"
-				base.Cmd("exec", testContainer, "mkdir", "-p", destPath).AssertOK()
-				base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
-				catPath := filepath.Join(destPath, strings.TrimPrefix(srcFile, filepath.Dir(srcDir)+"/"))
-				assertCat(catPath, testContainer, false)
-				if rootlessutil.IsRootless() {
-					t.Skip("Test skipped in rootless mode for testStoppedContainer")
-				}
-				base.Cmd("start", testStoppedContainer).AssertOK()
-				base.Cmd("exec", testStoppedContainer, "mkdir", "-p", destPath).AssertOK()
-				base.Cmd("stop", testStoppedContainer).AssertOK()
-				base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
-				assertCat(catPath, testStoppedContainer, true)
-			})
-			t.Run("SRC_PATH does end with `/.`", func(t *testing.T) {
-				srcPath += "/."
-				destPath := "/dest2-dir2-exists"
-				base.Cmd("exec", testContainer, "mkdir", "-p", destPath).AssertOK()
-				base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertOK()
-				catPath := filepath.Join(destPath, filepath.Base(srcFile))
-				t.Logf("catPath=%q", catPath)
-				assertCat(catPath, testContainer, false)
-				if rootlessutil.IsRootless() {
-					t.Skip("Test skipped in rootless mode for testStoppedContainer")
-				}
-				base.Cmd("start", testStoppedContainer).AssertOK()
-				base.Cmd("exec", testStoppedContainer, "mkdir", "-p", destPath).AssertOK()
-				base.Cmd("stop", testStoppedContainer).AssertOK()
-				base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertOK()
-				assertCat(catPath, testStoppedContainer, true)
-			})
-		})
-	})
+	for _, tg := range testGroups {
+		cpTestHelper(t, tg)
+	}
 }
 
 func TestCopyFromContainer(t *testing.T) {
 	t.Parallel()
-	base := testutil.NewBase(t)
-	testContainer := testutil.Identifier(t)
-	testStoppedContainer := "stopped-container-" + testutil.Identifier(t)
-	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
-	defer base.Cmd("rm", "-f", testContainer).Run()
 
-	base.Cmd("run", "-d", "--name", testStoppedContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
-	defer base.Cmd("rm", "-f", testStoppedContainer).Run()
+	testGroups := []*testgroup{
+		{
+			description:   "Copying from container, SRC_PATH specifies a file",
+			sourceSpec:    srcFileName,
+			sourceIsAFile: true,
+			testCases: []testcases{
+				{
+					description:     "DEST_PATH does not exist, relative",
+					destinationSpec: pathDoesNotExistRelative,
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+				},
+				{
+					description:     "DEST_PATH does not exist, absolute",
+					destinationSpec: pathDoesNotExistAbsolute,
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+				},
+				{
+					description:     "DEST_PATH does not exist, relative, and ends with a path separator",
+					destinationSpec: pathDoesNotExistRelative + string(os.PathSeparator),
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrDestinationDirMustExist.Error(),
+					},
+				},
+				{
+					description:     "DEST_PATH does not exist, absolute, and ends with a path separator",
+					destinationSpec: pathDoesNotExistAbsolute + string(os.PathSeparator),
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrDestinationDirMustExist.Error(),
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, relative",
+					destinationSpec: pathIsAFileRelative,
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.WriteFile(destPath, []byte(""), filePerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, absolute",
+					destinationSpec: pathIsAFileAbsolute,
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.WriteFile(destPath, []byte(""), filePerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, relative, improperly ends with a separator",
+					destinationSpec: pathIsAFileRelative + string(os.PathSeparator),
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrDestinationIsNotADir.Error(),
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.WriteFile(destPath, []byte(""), filePerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, absolute, improperly ends with a separator",
+					destinationSpec: pathIsAFileAbsolute + string(os.PathSeparator),
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrDestinationIsNotADir.Error(),
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.WriteFile(destPath, []byte(""), filePerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, relative",
+					destinationSpec: pathIsADirRelative,
+					catFile:         filepath.Join(pathIsADirRelative, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(destPath, dirPerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, absolute",
+					destinationSpec: pathIsADirAbsolute,
+					catFile:         filepath.Join(pathIsADirAbsolute, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(destPath, dirPerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, relative, ending with a path separator",
+					destinationSpec: pathIsADirRelative + string(os.PathSeparator),
+					catFile:         filepath.Join(pathIsADirRelative, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(destPath, dirPerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, absolute, ending with a path separator",
+					destinationSpec: pathIsADirAbsolute + string(os.PathSeparator),
+					catFile:         filepath.Join(pathIsADirAbsolute, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(destPath, dirPerm)
+						assert.NilError(t, err)
+					},
+				},
+			},
+		},
+		{
+			description: "Copying from container, SRC_PATH specifies a dir",
+			sourceSpec:  srcDirName,
+			testCases: []testcases{
+				{
+					description:     "DEST_PATH does not exist, relative",
+					destinationSpec: pathDoesNotExistRelative,
+					catFile:         filepath.Join(pathDoesNotExistRelative, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+				},
+				{
+					description:     "DEST_PATH does not exist, absolute",
+					destinationSpec: pathDoesNotExistAbsolute,
+					catFile:         filepath.Join(pathDoesNotExistAbsolute, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+				},
+				{
+					description:     "DEST_PATH does not exist, relative, ends with path separator",
+					destinationSpec: pathDoesNotExistRelative + string(os.PathSeparator),
+					catFile:         filepath.Join(pathDoesNotExistRelative, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+				},
+				{
+					description:     "DEST_PATH does not exist, absolute, ends with path separator",
+					destinationSpec: pathDoesNotExistAbsolute + string(os.PathSeparator),
+					catFile:         filepath.Join(pathDoesNotExistAbsolute, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, relative",
+					destinationSpec: pathIsAFileRelative,
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrCannotCopyDirToFile.Error(),
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
+						assert.NilError(t, err)
+						err = os.WriteFile(destPath, []byte(""), filePerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, absolute",
+					destinationSpec: pathIsAFileAbsolute,
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrCannotCopyDirToFile.Error(),
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
+						assert.NilError(t, err)
+						err = os.WriteFile(destPath, []byte(""), filePerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, relative, improperly ends with path separator",
+					destinationSpec: pathIsAFileRelative + string(os.PathSeparator),
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrDestinationIsNotADir.Error(),
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
+						assert.NilError(t, err)
+						err = os.WriteFile(destPath, []byte(""), filePerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a file, absolute, improperly ends with path separator",
+					destinationSpec: pathIsAFileAbsolute + string(os.PathSeparator),
+					expect: icmd.Expected{
+						ExitCode: 1,
+						Err:      containerutil.ErrDestinationIsNotADir.Error(),
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
+						assert.NilError(t, err)
+						err = os.WriteFile(destPath, []byte(""), filePerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, relative",
+					destinationSpec: pathIsADirRelative,
+					catFile:         filepath.Join(pathIsADirRelative, filepath.Base(srcDirName), srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(destPath, dirPerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, absolute",
+					destinationSpec: pathIsADirAbsolute,
+					catFile:         filepath.Join(pathIsADirAbsolute, filepath.Base(srcDirName), srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(destPath, dirPerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, relative, ends with path separator",
+					destinationSpec: pathIsADirRelative + string(os.PathSeparator),
+					catFile:         filepath.Join(pathIsADirRelative, filepath.Base(srcDirName), srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(destPath, dirPerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, absolute, ends with path separator",
+					destinationSpec: pathIsADirAbsolute + string(os.PathSeparator),
+					catFile:         filepath.Join(pathIsADirAbsolute, filepath.Base(srcDirName), srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(destPath, dirPerm)
+						assert.NilError(t, err)
+					},
+				},
+			},
+		},
 
-	euid := os.Geteuid()
-	srcUID := 42
-	srcDir := "/test-dir"
-	srcFile := filepath.Join(srcDir, "test-file")
-	srcFileContent := []byte("test-file-content")
-	mkSrcScript := fmt.Sprintf("mkdir -p %q && echo -n %q >%q && chown %d %q", srcDir, srcFileContent, srcFile, srcUID, srcFile)
-	base.Cmd("exec", testContainer, "sh", "-euc", mkSrcScript).AssertOK()
-	base.Cmd("exec", testStoppedContainer, "sh", "-euc", mkSrcScript).AssertOK()
-	// Stop container for testing copying out of stopped container
-	base.Cmd("stop", testStoppedContainer)
-
-	assertCat := func(catPath string) {
-		t.Logf("catPath=%q", catPath)
-		got, err := os.ReadFile(catPath)
-		assert.NilError(t, err)
-		assert.DeepEqual(t, srcFileContent, got)
-		st, err := os.Stat(catPath)
-		assert.NilError(t, err)
-		stSys := st.Sys().(*syscall.Stat_t)
-		// stSys.Uid matches euid, not srcUID
-		assert.DeepEqual(t, uint32(euid), stSys.Uid)
+		{
+			description: "SRC_PATH is a dir, with a trailing slash/dot",
+			sourceSpec:  srcDirName + string(os.PathSeparator) + ".",
+			testCases: []testcases{
+				{
+					description:     "DEST_PATH is a directory, relative",
+					destinationSpec: pathIsADirRelative,
+					catFile:         filepath.Join(pathIsADirRelative, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(destPath, dirPerm)
+						assert.NilError(t, err)
+					},
+				},
+				{
+					description:     "DEST_PATH is a directory, absolute",
+					destinationSpec: pathIsADirAbsolute,
+					catFile:         filepath.Join(pathIsADirAbsolute, srcFileName),
+					expect: icmd.Expected{
+						ExitCode: 0,
+					},
+					setup: func(base *testutil.Base, container string, destPath string) {
+						err := os.MkdirAll(destPath, dirPerm)
+						assert.NilError(t, err)
+					},
+				},
+			},
+		},
 	}
 
-	td := t.TempDir()
-	// For the test matrix, see https://docs.docker.com/engine/reference/commandline/cp/
-	t.Run("SRC_PATH specifies a file", func(t *testing.T) {
-		srcPath := srcFile
-		t.Run("DEST_PATH does not exist", func(t *testing.T) {
-			destPath := filepath.Join(td, "dest-no-exist-no-slash")
-			base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertOK()
-			catPath := destPath
-			assertCat(catPath)
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
-			assertCat(catPath)
-		})
-		t.Run("DEST_PATH does not exist and ends with /", func(t *testing.T) {
-			destPath := td + "/dest-no-exist-with-slash/" // Avoid filepath.Join, to forcibly append "/"
-			base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertFail()
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertFail()
-		})
-		t.Run("DEST_PATH exists and is a file", func(t *testing.T) {
-			destPath := filepath.Join(td, "dest-file-exists")
-			err := os.WriteFile(destPath, []byte(""), 0o644)
-			assert.NilError(t, err)
-			base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertOK()
-			catPath := destPath
-			assertCat(catPath)
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
-			assertCat(catPath)
-		})
-		t.Run("DEST_PATH exists and is a directory", func(t *testing.T) {
-			destPath := filepath.Join(td, "dest-dir-exists")
-			err := os.Mkdir(destPath, 0o755)
-			assert.NilError(t, err)
-			base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertOK()
-			catPath := filepath.Join(destPath, filepath.Base(srcFile))
-			assertCat(catPath)
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
-			assertCat(catPath)
-		})
-		t.Run("SRC_PATH is in a volume", func(t *testing.T) {
-			// Setup
-			// Create a volume
-			vol := "somevol"
-			base.Cmd("volume", "create", vol).AssertOK()
-			defer base.Cmd("volume", "rm", "-f", vol).Run()
+	for _, tg := range testGroups {
+		cpTestHelper(t, tg)
+	}
+}
 
-			// Create container for test
-			con := fmt.Sprintf("%s-with-volume", testContainer)
+func assertCatHelper(base *testutil.Base, catPath string, fileContent []byte, container string, expectedUID int, containerIsStopped bool) {
+	base.T.Logf("catPath=%q", catPath)
+	if container != "" && containerIsStopped {
+		base.Cmd("start", container).AssertOK()
+		defer base.Cmd("stop", container).AssertOK()
+	}
 
-			mountDir := "/some_dir"
-			base.Cmd("run", "-d", "--name", con, "-v", fmt.Sprintf("%s:%s", vol, mountDir), testutil.CommonImage, "sleep", "1h").AssertOK()
-			defer base.Cmd("rm", "-f", con).Run()
+	if container == "" {
+		got, err := os.ReadFile(catPath)
+		assert.NilError(base.T, err, "Failed reading from file")
+		assert.DeepEqual(base.T, fileContent, got)
+		st, err := os.Stat(catPath)
+		assert.NilError(base.T, err)
+		stSys := st.Sys().(*syscall.Stat_t)
+		expected := uint32(expectedUID)
+		actual := stSys.Uid
+		assert.DeepEqual(base.T, expected, actual)
+	} else {
+		base.Cmd("exec", container, "sh", "-c", "--", fmt.Sprintf("ls -lA /; echo %q; cat %q", catPath, catPath)).AssertOutContains(string(fileContent))
+		base.Cmd("exec", container, "stat", "-c", "%u", catPath).AssertOutExactly(fmt.Sprintf("%d\n", expectedUID))
+	}
+}
 
-			// Create a file to mounted volume
-			mountedVolFile := filepath.Join(mountDir, "test-file")
-			mkSrcScript = fmt.Sprintf("echo -n %q >%q && chown %d %q", srcFileContent, mountedVolFile, srcUID, mountedVolFile)
-			base.Cmd("exec", con, "sh", "-euc", mkSrcScript).AssertOK()
+func cpTestHelper(t *testing.T, tg *testgroup) {
+	// Get the source path
+	groupSourceSpec := tg.sourceSpec
+	groupSourceDir := groupSourceSpec
+	if tg.sourceIsAFile {
+		groupSourceDir = filepath.Dir(groupSourceSpec)
+	}
 
-			// Create destination directory on host for copy
-			destPath := filepath.Join(td, "dest-dir")
-			err := os.Mkdir(destPath, 0o700)
-			assert.NilError(t, err)
+	// Copy direction
+	copyToContainer := tg.toContainer
+	// Description
+	description := tg.description
+	// Test cases
+	testCases := tg.testCases
 
-			catPath := filepath.Join(destPath, filepath.Base(mountedVolFile))
+	// Compute UIDs dependent on cp direction
+	var srcUID, destUID int
+	if copyToContainer {
+		srcUID = os.Geteuid()
+		destUID = srcUID
+	} else {
+		srcUID = 42
+		destUID = os.Geteuid()
+	}
 
-			// Running container test
-			base.Cmd("cp", con+":"+mountedVolFile, destPath).AssertOK()
-			assertCat(catPath)
+	t.Run(description, func(t *testing.T) {
+		t.Parallel()
 
-			// Skip for rootless
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			// Stopped container test
-			base.Cmd("stop", con).AssertOK()
-			base.Cmd("cp", con+":"+mountedVolFile, destPath).AssertOK()
-			assertCat(catPath)
-		})
-	})
-	t.Run("SRC_PATH specifies a directory", func(t *testing.T) {
-		srcPath := srcDir
-		t.Run("DEST_PATH does not exist", func(t *testing.T) {
-			destPath := filepath.Join(td, "dest2-no-exist")
-			base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertOK()
-			catPath := filepath.Join(destPath, filepath.Base(srcFile))
-			assertCat(catPath)
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
-			assertCat(catPath)
-		})
-		t.Run("DEST_PATH exists and is a file", func(t *testing.T) {
-			destPath := filepath.Join(td, "dest2-file-exists")
-			err := os.WriteFile(destPath, []byte(""), 0o644)
-			assert.NilError(t, err)
-			base.Cmd("cp", srcPath, testContainer+":"+destPath).AssertFail()
-			if rootlessutil.IsRootless() {
-				t.Skip("Test skipped in rootless mode for testStoppedContainer")
-			}
-			base.Cmd("cp", srcPath, testStoppedContainer+":"+destPath).AssertFail()
-		})
-		t.Run("DEST_PATH exists and is a directory", func(t *testing.T) {
-			t.Run("SRC_PATH does not end with `/.`", func(t *testing.T) {
-				destPath := filepath.Join(td, "dest2-dir-exists")
-				err := os.Mkdir(destPath, 0o755)
-				assert.NilError(t, err)
-				base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertOK()
-				catPath := filepath.Join(destPath, strings.TrimPrefix(srcFile, filepath.Dir(srcDir)+"/"))
-				assertCat(catPath)
-				if rootlessutil.IsRootless() {
-					t.Skip("Test skipped in rootless mode for testStoppedContainer")
+		for _, tc := range testCases {
+			testCase := tc
+
+			t.Run(testCase.description, func(t *testing.T) {
+				t.Parallel()
+
+				// Compute test-specific values
+				testID := testutil.Identifier(t)
+				containerRunning := testID + "-r"
+				containerStopped := testID + "-s"
+				sourceFileContent := []byte(testID)
+				tempDir := t.TempDir()
+
+				base := testutil.NewBase(t)
+				// Change working directory for commands to execute to the newly created temp directory on the host
+				// Note that ChDir won't do in a parallel context - and that setup func on the host below
+				// has to deal with that problem separately by making sure relative paths are resolved against temp
+				base.Dir = tempDir
+
+				// Prepare the specs and derived variables
+				sourceSpec := groupSourceSpec
+				destinationSpec := testCase.destinationSpec
+
+				// If the test case does not specify a catFile, start with the destination spec
+				catFile := testCase.catFile
+				if catFile == "" {
+					catFile = destinationSpec
 				}
-				base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
-				assertCat(catPath)
-			})
-			t.Run("SRC_PATH does end with `/.`", func(t *testing.T) {
-				srcPath += "/."
-				destPath := filepath.Join(td, "dest2-dir2-exists")
-				err := os.Mkdir(destPath, 0o755)
-				assert.NilError(t, err)
-				base.Cmd("cp", testContainer+":"+srcPath, destPath).AssertOK()
-				catPath := filepath.Join(destPath, filepath.Base(srcFile))
-				assertCat(catPath)
-				if rootlessutil.IsRootless() {
-					t.Skip("Test skipped in rootless mode for testStoppedContainer")
+
+				sourceFile := filepath.Join(groupSourceDir, srcFileName)
+				if copyToContainer {
+					// Use an absolute path for evaluation
+					if !filepath.IsAbs(catFile) {
+						catFile = filepath.Join(string(os.PathSeparator), catFile)
+					}
+					// If the sourceFile is still relative, make it absolute to the temp
+					sourceFile = filepath.Join(tempDir, sourceFile)
+					// If the spec path for source on the host was absolute, make sure we put that under tempDir
+					if filepath.IsAbs(sourceSpec) {
+						sourceSpec = tempDir + sourceSpec
+					}
+				} else {
+					// If we are copying to host, we need to make sure we have an absolute path to cat, relative to temp,
+					// whether it is relative, or "absolute"
+					catFile = filepath.Join(tempDir, catFile)
+					// If the spec for destination on the host was absolute, make sure we put that under tempDir
+					if filepath.IsAbs(destinationSpec) {
+						destinationSpec = tempDir + destinationSpec
+					}
 				}
-				base.Cmd("cp", testStoppedContainer+":"+srcPath, destPath).AssertOK()
-				assertCat(catPath)
+
+				// Teardown: clean-up containers and optional volume
+				tearDown := func() {
+					base.Cmd("rm", "-f", containerRunning).Run()
+					base.Cmd("rm", "-f", containerStopped).Run()
+					if testCase.volume != nil {
+						volID, _, _ := testCase.volume(base, testID)
+						base.Cmd("volume", "rm", volID).Run()
+					}
+				}
+
+				createFileOnHost := func() {
+					// Create file on the host
+					err := os.MkdirAll(filepath.Dir(sourceFile), dirPerm)
+					assert.NilError(t, err)
+					err = os.WriteFile(sourceFile, sourceFileContent, filePerm)
+					assert.NilError(t, err)
+				}
+
+				// Setup: create volume, containers, create the source file
+				setup := func() {
+					args := []string{"run", "-d", "-w", containerCwd}
+					if testCase.volume != nil {
+						vol, mount, ro := testCase.volume(base, testID)
+						volArg := fmt.Sprintf("%s:%s", vol, mount)
+						if ro {
+							volArg += ":ro"
+						}
+						args = append(args, "-v", volArg)
+					}
+					base.Cmd(append(args, "--name", containerRunning, testutil.CommonImage, "sleep", "Inf")...).AssertOK()
+					base.Cmd(append(args, "--name", containerStopped, testutil.CommonImage, "sleep", "Inf")...).AssertOK()
+
+					if copyToContainer {
+						createFileOnHost()
+					} else {
+						// Create file content in the container
+						// Note: cd /, otherwise we end-up in the container cwd, which is NOT obeyed by cp
+						mkSrcScript := fmt.Sprintf("cd /; mkdir -p %q && echo -n %q >%q && chown %d %q", filepath.Dir(sourceFile), sourceFileContent, sourceFile, srcUID, sourceFile)
+						base.Cmd("exec", containerRunning, "sh", "-euc", mkSrcScript).AssertOK()
+						base.Cmd("exec", containerStopped, "sh", "-euc", mkSrcScript).AssertOK()
+					}
+
+					// If we have optional setup, run that now
+					if testCase.setup != nil {
+						// Some specs may come with a trailing slash (proper or improper)
+						// Setup should still work in all cases (including if its a file), and get through to the actual test
+						setupDest := destinationSpec
+						setupDest = strings.TrimSuffix(setupDest, string(os.PathSeparator))
+						if !filepath.IsAbs(setupDest) {
+							if copyToContainer {
+								setupDest = filepath.Join(string(os.PathSeparator), setupDest)
+							} else {
+								setupDest = filepath.Join(tempDir, setupDest)
+							}
+						}
+						testCase.setup(base, containerRunning, setupDest)
+						testCase.setup(base, containerStopped, setupDest)
+					}
+
+					// Stop the "stopped" container
+					base.Cmd("stop", containerStopped).AssertOK()
+				}
+
+				tearDown()
+				t.Cleanup(tearDown)
+				// If we have custom teardown, do that
+				if testCase.tearDown != nil {
+					testCase.tearDown()
+					t.Cleanup(testCase.tearDown)
+				}
+
+				// Do the setup
+				setup()
+
+				// If Docker, removes the err part of expectation
+				if testutil.GetTarget() == testutil.Docker {
+					testCase.expect.Err = ""
+				}
+
+				// Build the final src and dest specifiers, including `containerXYZ:`
+				container := ""
+				if copyToContainer {
+					container = containerRunning
+					base.Cmd("cp", sourceSpec, containerRunning+":"+destinationSpec).Assert(testCase.expect)
+				} else {
+					base.Cmd("cp", containerRunning+":"+sourceSpec, destinationSpec).Assert(testCase.expect)
+				}
+
+				// Run the actual test for the running container
+				// If we expect the op to be a success, also check the destination file
+				if testCase.expect.ExitCode == 0 {
+					assertCatHelper(base, catFile, sourceFileContent, container, destUID, false)
+				}
+
+				// When copying container > host, we get shadowing from the previous container, possibly hiding failures
+				// Solution: clear-up the tempDir
+				if copyToContainer {
+					err := os.RemoveAll(tempDir)
+					assert.NilError(t, err)
+					err = os.MkdirAll(tempDir, dirPerm)
+					assert.NilError(t, err)
+					createFileOnHost()
+					defer os.RemoveAll(tempDir)
+				}
+
+				// ... and for the stopped container
+				container = ""
+				var cmd *testutil.Cmd
+				if copyToContainer {
+					container = containerStopped
+					cmd = base.Cmd("cp", sourceSpec, containerStopped+":"+destinationSpec)
+				} else {
+					cmd = base.Cmd("cp", containerStopped+":"+sourceSpec, destinationSpec)
+				}
+
+				if rootlessutil.IsRootless() && testutil.GetTarget() == testutil.Nerdctl {
+					cmd.Assert(
+						icmd.Expected{
+							ExitCode: 1,
+							Err:      containerutil.ErrRootlessCannotCp.Error(),
+						})
+					return
+				}
+
+				cmd.Assert(testCase.expect)
+				if testCase.expect.ExitCode == 0 {
+					assertCatHelper(base, catFile, sourceFileContent, container, destUID, true)
+				}
 			})
-		})
+		}
 	})
 }
