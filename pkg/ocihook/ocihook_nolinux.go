@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,10 +16,8 @@
    limitations under the License.
 */
 
-package container
+package ocihook
 
-import "github.com/spf13/cobra"
-
-func AddCpCommand(rootCmd *cobra.Command) {
-	// NOP
+func loadAppArmor() {
+	//noop
 }

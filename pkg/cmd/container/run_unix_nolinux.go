@@ -1,3 +1,5 @@
+//go:build unix && !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -17,10 +19,20 @@
 package container
 
 import (
-	"github.com/opencontainers/runtime-spec/specs-go"
+	"context"
+
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/oci"
+
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
-func setExecCapabilities(pspec *specs.Process) error {
-	//no op freebsd
-	return nil
+func setPlatformOptions(
+	ctx context.Context,
+	client *containerd.Client,
+	id, uts string,
+	internalLabels *internalLabels,
+	options types.ContainerCreateOptions,
+) ([]oci.SpecOpts, error) {
+	return []oci.SpecOpts{}, nil
 }

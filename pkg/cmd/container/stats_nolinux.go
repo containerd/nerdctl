@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,9 +16,13 @@
    limitations under the License.
 */
 
-package buildkitutil
+package container
 
-func getRuntimeVariableDataDir() string {
-	// Per hier(7) dated July 6, 2023.
-	return "/var/run"
+import (
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/statsutil"
+)
+
+func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStats, firstSet bool, anydata interface{}, pid int, interfaces []native.NetInterface) (statsutil.StatsEntry, error) {
+	return statsutil.StatsEntry{}, nil
 }
