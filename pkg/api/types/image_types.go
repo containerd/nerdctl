@@ -305,8 +305,6 @@ type ImageSquashOptions struct {
 	// TargetImageName is the name of the squashed image
 	TargetImageName string
 
-	// SquashLayerCount is the number of layers to squash
-	SquashLayerCount int
-	// SquashLayerDigest is the digest of the layer to squash
-	SquashLayerDigest string
+	// SquashLayerLastN is the number of layers to squash
+	SquashLayerLastN int
 }

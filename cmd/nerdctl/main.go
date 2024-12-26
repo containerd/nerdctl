@@ -295,7 +295,6 @@ Config file ($NERDCTL_TOML): %s
 		image.NewTagCommand(),
 		image.NewRmiCommand(),
 		image.NewHistoryCommand(),
-		image.NewSquashCommand(),
 		// #endregion
 
 		// #region System
