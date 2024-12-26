@@ -45,6 +45,7 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 		SilenceErrors: true,
 	}
 	helpers.AddStringFlag(buildCommand, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
+	buildCommand.Flags().StringArray("add-host", nil, "Add a custom host-to-IP mapping (format: \"host:ip\")")
 	buildCommand.Flags().StringArrayP("tag", "t", nil, "Name and optionally a tag in the 'name:tag' format")
 	buildCommand.Flags().StringP("file", "f", "", "Name of the Dockerfile")
 	buildCommand.Flags().String("target", "", "Set the target build stage to build")
@@ -89,6 +90,10 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 		return types.BuilderBuildOptions{}, err
 	}
 	buildKitHost, err := GetBuildkitHost(cmd, globalOptions.Namespace)
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
+	extraHosts, err := cmd.Flags().GetStringArray("add-host")
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
 	}
@@ -232,6 +237,7 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 		Stdin:                cmd.InOrStdin(),
 		NetworkMode:          network,
 		ExtendedBuildContext: extendedBuildCtx,
+		ExtraHosts:           extraHosts,
 	}, nil
 }
 

@@ -71,6 +71,8 @@ type BuilderBuildOptions struct {
 	NetworkMode string
 	// Pull determines if we should try to pull latest image from remote. Default is buildkit's default.
 	Pull *bool
+	// ExtraHosts is a set of custom host-to-IP mappings.
+	ExtraHosts []string
 }
 
 // BuilderPruneOptions specifies options for `nerdctl builder prune`.

@@ -378,6 +378,26 @@ Ulimit flags:
 
 - :whale: `--ulimit`: Set ulimit
 
+--ulimit can be used to restrict the following types of resources.
+
+| type       |  describe| value range                                                                                                                                                                                                      |
+|----|----|----|
+| core       | limits the core file size (KB)| A 64-bit integer (INT64), with no units. It can be 0, negative, where -1 represents UNLIMITED (i.e., no limit is applied), and any other negative values will be forcibly converted to a large positive integer.|
+| cpu        | max CPU time (MIN)| same as above|
+| data       |max data size (KB) | same as above|
+| fsize      | maximum filesize (KB)| same as above|
+| locks      | max number of file locks the user can hold | same as above|
+| memlock    | max locked-in-memory address space (KB) | same as above|
+| msgqueue   | max memory used by POSIX message queues (bytes)| same as above|
+| nice       | nice priority | same as above |
+| nproc      | max number of processes | same as above|
+| rss        | max resident set size (KB)| same as above|
+| rtprio     | max realtime priority| same as above|
+| rttime     | realtime timeout | same as above|
+| sigpending | max number of pending signals| same as above|
+| stack      | max stack size (KB) | same as above|
+| nofile    | max number of open file descriptors| A 64-bit integer (int64), with no units. It cannot be negative; negative values will be forcibly converted to a large number, and an "Operation not permitted" error will occur during setting|
+
 Verify flags:
 
 - :nerd_face: `--verify`: Verify the image (none|cosign|notation). See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md) for details.
@@ -714,8 +734,9 @@ Flags:
 - :whale: `--label`: Set metadata for an image
 - :whale: `--network=(default|host|none)`: Set the networking mode for the RUN instructions during build.(compatible with `buildctl build`)
 - :whale: `--build-context`: Set additional contexts for build (e.g. dir2=/path/to/dir2, myorg/myapp=docker-image://path/to/myorg/myapp)
+- :whale: `--add-host`: Add a custom host-to-IP mapping (format: `host:ip`)
 
-Unimplemented `docker build` flags: `--add-host`, `--squash`
+Unimplemented `docker build` flags: `--squash`
 
 ### :whale: nerdctl commit
 
