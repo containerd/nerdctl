@@ -34,6 +34,7 @@ func addSquashFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("message", "m", "", "Commit message")
 }
 
+// NewSquashCommand returns a new `squash` command to compress the number of layers of the image
 func NewSquashCommand() *cobra.Command {
 	var squashCommand = &cobra.Command{
 		Use:           "squash [flags] SOURCE_IMAGE TAG_IMAGE",

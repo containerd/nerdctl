@@ -44,6 +44,7 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 )
 
@@ -51,13 +52,15 @@ const (
 	emptyDigest = digest.Digest("")
 )
 
+// squashImage is the image for squash operation
 type squashImage struct {
-	ClientImage containerd.Image
-	Config      ocispec.Image
-	Image       images.Image
-	Manifest    *ocispec.Manifest
+	clientImage containerd.Image
+	config      ocispec.Image
+	image       images.Image
+	manifest    *ocispec.Manifest
 }
 
+// squashRuntime is the runtime for squash operation
 type squashRuntime struct {
 	opt types.ImageSquashOptions
 
@@ -70,6 +73,7 @@ type squashRuntime struct {
 	snapshotter  snapshots.Snapshotter
 }
 
+// initImage initializes the squashImage based on the source image reference
 func (sr *squashRuntime) initImage(ctx context.Context) (*squashImage, error) {
 	containerImage, err := sr.imageStore.Get(ctx, sr.opt.SourceImageRef)
 	if err != nil {
@@ -86,20 +90,21 @@ func (sr *squashRuntime) initImage(ctx context.Context) (*squashImage, error) {
 		return &squashImage{}, err
 	}
 	resImage := &squashImage{
-		ClientImage: clientImage,
-		Config:      config,
-		Image:       containerImage,
-		Manifest:    manifest,
+		clientImage: clientImage,
+		config:      config,
+		image:       containerImage,
+		manifest:    manifest,
 	}
 	return resImage, err
 }
 
+// generateSquashLayer generates the squash layer based on the given options
 func (sr *squashRuntime) generateSquashLayer(image *squashImage) ([]ocispec.Descriptor, error) {
 	// get the layer descriptors by the layer digest
 	if sr.opt.SquashLayerDigest != "" {
 		find := false
 		var res []ocispec.Descriptor
-		for _, layer := range image.Manifest.Layers {
+		for _, layer := range image.manifest.Layers {
 			if layer.Digest.String() == sr.opt.SquashLayerDigest {
 				find = true
 			}
@@ -114,13 +119,14 @@ func (sr *squashRuntime) generateSquashLayer(image *squashImage) ([]ocispec.Desc
 	}
 
 	// get the layer descriptors by the layer count
-	if sr.opt.SquashLayerCount > 1 && sr.opt.SquashLayerCount <= len(image.Manifest.Layers) {
-		return image.Manifest.Layers[len(image.Manifest.Layers)-sr.opt.SquashLayerCount:], nil
+	if sr.opt.SquashLayerCount > 1 && sr.opt.SquashLayerCount <= len(image.manifest.Layers) {
+		return image.manifest.Layers[len(image.manifest.Layers)-sr.opt.SquashLayerCount:], nil
 	}
 
 	return nil, fmt.Errorf("invalid squash option: %w", errdefs.ErrInvalidArgument)
 }
 
+// applyLayersToSnapshot applies the layers to the snapshot
 func (sr *squashRuntime) applyLayersToSnapshot(ctx context.Context, mount []mount.Mount, layers []ocispec.Descriptor) error {
 	for _, layer := range layers {
 		if _, err := sr.differ.Apply(ctx, layer, mount); err != nil {
@@ -157,7 +163,7 @@ func (sr *squashRuntime) createDiff(ctx context.Context, snapshotName string) (o
 
 func (sr *squashRuntime) generateBaseImageConfig(ctx context.Context, image *squashImage, remainingLayerCount int) (ocispec.Image, error) {
 	// generate squash squashImage config
-	orginalConfig, _, err := imgutil.ReadImageConfig(ctx, image.ClientImage) // aware of img.platform
+	orginalConfig, _, err := imgutil.ReadImageConfig(ctx, image.clientImage) // aware of img.platform
 	if err != nil {
 		return ocispec.Image{}, err
 	}
@@ -257,9 +263,9 @@ func (sr *squashRuntime) writeContentsForImage(ctx context.Context, snName strin
 	return newMfstDesc, configDesc.Digest, nil
 }
 
+// createSquashImage creates a new squashImage in the image store.
 func (sr *squashRuntime) createSquashImage(ctx context.Context, img images.Image) (images.Image, error) {
 	newImg, err := sr.imageStore.Update(ctx, img)
-	log.G(ctx).Infof("updated new squashImage %s", img.Name)
 	if err != nil {
 		// if err is `not found` in the message then create the squashImage, otherwise return the error
 		if !errdefs.IsNotFound(err) {
@@ -268,13 +274,12 @@ func (sr *squashRuntime) createSquashImage(ctx context.Context, img images.Image
 		if _, err := sr.imageStore.Create(ctx, img); err != nil {
 			return newImg, fmt.Errorf("failed to create new squashImage %s: %w", img.Name, err)
 		}
-		log.G(ctx).Infof("created new squashImage %s", img.Name)
 	}
 	return newImg, nil
 }
 
 // generateCommitImageConfig returns commit oci image config based on the container's image.
-func (sr *squashRuntime) generateCommitImageConfig(ctx context.Context, baseConfig ocispec.Image, diffID digest.Digest) (ocispec.Image, error) {
+func (sr *squashRuntime) generateCommitImageConfig(ctx context.Context, baseImg images.Image, baseConfig ocispec.Image, diffID digest.Digest) (ocispec.Image, error) {
 	createdTime := time.Now()
 	arch := baseConfig.Architecture
 	if arch == "" {
@@ -292,6 +297,7 @@ func (sr *squashRuntime) generateCommitImageConfig(ctx context.Context, baseConf
 	}
 	comment := strings.TrimSpace(sr.opt.Message)
 
+	baseImageDigest := strings.Split(baseImg.Target.Digest.String(), ":")[1][:12]
 	return ocispec.Image{
 		Platform: ocispec.Platform{
 			Architecture: arch,
@@ -307,7 +313,7 @@ func (sr *squashRuntime) generateCommitImageConfig(ctx context.Context, baseConf
 		},
 		History: append(baseConfig.History, ocispec.History{
 			Created:    &createdTime,
-			CreatedBy:  "",
+			CreatedBy:  fmt.Sprintf("squash from %s", baseImageDigest),
 			Author:     author,
 			Comment:    comment,
 			EmptyLayer: false,
@@ -317,19 +323,38 @@ func (sr *squashRuntime) generateCommitImageConfig(ctx context.Context, baseConf
 
 // Squash will squash the image with the given options.
 func Squash(ctx context.Context, client *containerd.Client, option types.ImageSquashOptions) error {
+	var srcName string
+	walker := &imagewalker.ImageWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+			if srcName == "" {
+				srcName = found.Image.Name
+			}
+			return nil
+		},
+	}
+	matchCount, err := walker.Walk(ctx, option.SourceImageRef)
+	if err != nil {
+		return err
+	}
+	if matchCount < 1 {
+		return fmt.Errorf("%s: not found", option.SourceImageRef)
+	}
+
+	option.SourceImageRef = srcName
 	sr := newSquashRuntime(client, option)
 	ctx = namespaces.WithNamespace(ctx, sr.namespace)
 	// init squashImage
-	image, err := sr.initImage(ctx)
+	img, err := sr.initImage(ctx)
 	if err != nil {
 		return err
 	}
 	// generate squash layers
-	sLayers, err := sr.generateSquashLayer(image)
+	sLayers, err := sr.generateSquashLayer(img)
 	if err != nil {
 		return err
 	}
-	remainingLayerCount := len(image.Manifest.Layers) - len(sLayers)
+	remainingLayerCount := len(img.manifest.Layers) - len(sLayers)
 	// Don't gc me and clean the dirty data after 1 hour!
 	ctx, done, err := sr.client.WithLease(ctx, leases.WithRandomID(), leases.WithExpiration(1*time.Hour))
 	if err != nil {
@@ -338,7 +363,7 @@ func Squash(ctx context.Context, client *containerd.Client, option types.ImageSq
 	defer done(ctx)
 
 	// generate remaining base squashImage config
-	baseImage, err := sr.generateBaseImageConfig(ctx, image, remainingLayerCount)
+	baseImage, err := sr.generateBaseImageConfig(ctx, img, remainingLayerCount)
 	if err != nil {
 		return err
 	}
@@ -348,27 +373,27 @@ func Squash(ctx context.Context, client *containerd.Client, option types.ImageSq
 		return err
 	}
 	// generate commit image config
-	imageConfig, err := sr.generateCommitImageConfig(ctx, baseImage, diffID)
+	imageConfig, err := sr.generateCommitImageConfig(ctx, img.image, baseImage, diffID)
 	if err != nil {
 		log.G(ctx).WithError(err).Error("failed to generate commit image config")
 		return fmt.Errorf("failed to generate commit image config: %w", err)
 	}
-	commitManifestDesc, _, err := sr.writeContentsForImage(ctx, sr.opt.GOptions.Snapshotter, imageConfig, image.Manifest.Layers[:remainingLayerCount], diffLayerDesc)
+	commitManifestDesc, _, err := sr.writeContentsForImage(ctx, sr.opt.GOptions.Snapshotter, imageConfig, img.manifest.Layers[:remainingLayerCount], diffLayerDesc)
 	if err != nil {
 		log.G(ctx).WithError(err).Error("failed to write contents for image")
 		return err
 	}
-	nimg := images.Image{
+	nImg := images.Image{
 		Name:      sr.opt.TargetImageName,
 		Target:    commitManifestDesc,
 		UpdatedAt: time.Now(),
 	}
-	_, err = sr.createSquashImage(ctx, nimg)
+	_, err = sr.createSquashImage(ctx, nImg)
 	if err != nil {
 		log.G(ctx).WithError(err).Error("failed to create squash image")
 		return err
 	}
-	cimg := containerd.NewImage(sr.client, nimg)
+	cimg := containerd.NewImage(sr.client, nImg)
 	if err := cimg.Unpack(ctx, sr.opt.GOptions.Snapshotter, containerd.WithSnapshotterPlatformCheck()); err != nil {
 		log.G(ctx).WithError(err).Error("failed to unpack squash image")
 		return err
@@ -434,6 +459,7 @@ func newSquashRuntime(client *containerd.Client, option types.ImageSquashOptions
 }
 
 // copied from github.com/containerd/containerd/rootfs/apply.go
+// which commit hash is 597d0d76ae03e945996ae6e003dae0c668fa158e by McGowan
 func uniquePart() string {
 	t := time.Now()
 	var b [3]byte
