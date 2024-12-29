@@ -111,12 +111,64 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 			}
 			return nil
 		},
+		OnFoundCriRm: func(ctx context.Context, found imagewalker.Found) (bool, error) {
+			if found.NameMatchIndex == -1 {
+				// if found multiple images, return error unless in force-mode and
+				// there is only 1 unique image.
+				if found.MatchCount > 1 && !(options.Force && found.UniqueImages == 1) {
+					return false, fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+				}
+			} else if found.NameMatchIndex != found.MatchIndex {
+				// when there is an image with a name matching the argument but the argument is a digest short id,
+				// the deletion process is not performed.
+				return false, nil
+			}
+
+			if cid, ok := runningImages[found.Image.Name]; ok {
+				if options.Force {
+					if err = is.Delete(ctx, found.Image.Name); err != nil {
+						return false, err
+					}
+					fmt.Fprintf(options.Stdout, "Untagged: %s\n", found.Image.Name)
+					fmt.Fprintf(options.Stdout, "Untagged: %s\n", found.Image.Target.Digest.String())
+
+					found.Image.Name = ":"
+					if _, err = is.Create(ctx, found.Image); err != nil {
+						return false, err
+					}
+					return false, nil
+				}
+				return false, fmt.Errorf("conflict: unable to delete %s (cannot be forced) - image is being used by running container %s", found.Req, cid)
+			}
+			if cid, ok := usedImages[found.Image.Name]; ok && !options.Force {
+				return false, fmt.Errorf("conflict: unable to delete %s (must be forced) - image is being used by stopped container %s", found.Req, cid)
+			}
+			// digests is used only for emulating human-readable output of `docker rmi`
+			digests, err := found.Image.RootFS(ctx, cs, platforms.DefaultStrict())
+			if err != nil {
+				log.G(ctx).WithError(err).Warning("failed to enumerate rootfs")
+			}
+
+			if err := is.Delete(ctx, found.Image.Name, delOpts...); err != nil {
+				return false, err
+			}
+			fmt.Fprintf(options.Stdout, "Untagged: %s@%s\n", found.Image.Name, found.Image.Target.Digest)
+			for _, digest := range digests {
+				fmt.Fprintf(options.Stdout, "Deleted: %s\n", digest)
+			}
+			return true, nil
+		},
 	}
 
 	var errs []string
 	var fatalErr bool
 	for _, req := range args {
-		n, err := walker.Walk(ctx, req)
+		var n int
+		if options.GOptions.KubeHideDupe && options.GOptions.Namespace == "k8s.io" {
+			n, err = walker.WalkCriRm(ctx, req)
+		} else {
+			n, err = walker.Walk(ctx, req)
+		}
 		if err != nil {
 			fatalErr = true
 		}

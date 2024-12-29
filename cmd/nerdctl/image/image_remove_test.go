@@ -351,3 +351,173 @@ func TestIssue3016(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
+	var numTags, numNoTags int
+	testCase := nerdtest.Setup()
+	testCase.NoParallel = true
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("--kube-hide-dupe", "rmi", "-f", testutil.BusyboxImage)
+	}
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		numTags = len(strings.Split(strings.TrimSpace(helpers.Capture("--kube-hide-dupe", "images")), "\n"))
+		numNoTags = len(strings.Split(strings.TrimSpace(helpers.Capture("images")), "\n"))
+	}
+	testCase.Require = test.Require(
+		nerdtest.OnlyKubernetes,
+	)
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "After removing the tag without kube-hide-dupe, repodigest is shown as <none>",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("pull", testutil.BusyboxImage)
+			},
+			Command: test.Command("rmi", "-f", testutil.BusyboxImage),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Errors:   []error{},
+					Output: func(stdout string, info string, t *testing.T) {
+						helpers.Command("--kube-hide-dupe", "images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numTags+1, info)
+							},
+						})
+						helpers.Command("images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numNoTags+1, info)
+							},
+						})
+					},
+				}
+			},
+		},
+		{
+			Description: "If there are other tags, the Repodigest will not be deleted",
+			NoParallel:  true,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("--kube-hide-dupe", "rmi", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("pull", testutil.BusyboxImage)
+				helpers.Ensure("tag", testutil.BusyboxImage, data.Identifier())
+			},
+			Command: test.Command("--kube-hide-dupe", "rmi", testutil.BusyboxImage),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Errors:   []error{},
+					Output: func(stdout string, info string, t *testing.T) {
+						helpers.Command("--kube-hide-dupe", "images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numTags+1, info)
+							},
+						})
+						helpers.Command("images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numNoTags+2, info)
+							},
+						})
+					},
+				}
+			},
+		},
+		{
+			Description: "After deleting all repo:tag entries, all repodigests will be cleaned up",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("pull", testutil.BusyboxImage)
+				helpers.Ensure("tag", testutil.BusyboxImage, data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				helpers.Ensure("--kube-hide-dupe", "rmi", "-f", testutil.BusyboxImage)
+				return helpers.Command("--kube-hide-dupe", "rmi", "-f", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, info string, t *testing.T) {
+						helpers.Command("--kube-hide-dupe", "images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numTags, info)
+							},
+						})
+						helpers.Command("images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numNoTags, info)
+							},
+						})
+					},
+				}
+			},
+		},
+		{
+			Description: "Test multiple IDs found with provided prefix and force with shortID",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("pull", testutil.BusyboxImage)
+				helpers.Ensure("tag", testutil.BusyboxImage, data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("--kube-hide-dupe", "images", testutil.BusyboxImage, "-q")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, info string, t *testing.T) {
+						helpers.Command("--kube-hide-dupe", "rmi", stdout[0:12]).Run(&test.Expected{
+							ExitCode: 1,
+							Errors:   []error{errors.New("multiple IDs found with provided prefix: ")},
+						})
+						helpers.Command("--kube-hide-dupe", "rmi", "--force", stdout[0:12]).Run(&test.Expected{
+							ExitCode: 0,
+						})
+						helpers.Command("images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numNoTags, info)
+							},
+						})
+					},
+				}
+			},
+		},
+		{
+			Description: "Test remove image with digestID",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("pull", testutil.BusyboxImage)
+				helpers.Ensure("tag", testutil.BusyboxImage, data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("--kube-hide-dupe", "images", testutil.BusyboxImage, "-q", "--no-trunc")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, info string, t *testing.T) {
+						imgID := strings.Split(stdout, "\n")
+						helpers.Command("--kube-hide-dupe", "rmi", imgID[0]).Run(&test.Expected{
+							ExitCode: 1,
+							Errors:   []error{errors.New("multiple IDs found with provided prefix: ")},
+						})
+						helpers.Command("--kube-hide-dupe", "rmi", "--force", imgID[0]).Run(&test.Expected{
+							ExitCode: 0,
+						})
+						helpers.Command("images").Run(&test.Expected{
+							Output: func(stdout string, info string, t *testing.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) == numNoTags, info)
+							},
+						})
+					},
+				}
+			},
+		},
+	}
+	testCase.Run(t)
+}

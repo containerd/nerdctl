@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
+	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
@@ -44,6 +45,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
 // ListCommandHandler `List` and print images matching filters in `options`.
@@ -128,6 +130,46 @@ type imagePrintable struct {
 
 func printImages(ctx context.Context, client *containerd.Client, imageList []images.Image, options *types.ImageListOptions) error {
 	w := options.Stdout
+	var finalImageList []images.Image
+	/*
+		the same imageId under k8s.io is showing multiple results: repo:tag, repo:digest, configID.
+		We expect to display only repo:tag, consistent with other namespaces and CRI
+		e.g.
+		nerdctl -n k8s.io images
+		REPOSITORY    TAG       IMAGE ID        CREATED        PLATFORM       SIZE         BLOB SIZE
+		centos        7         be65f488b776    3 hours ago    linux/amd64    211.5 MiB    72.6 MiB
+		centos        <none>    be65f488b776    3 hours ago    linux/amd64    211.5 MiB    72.6 MiB
+		<none>        <none>    be65f488b776    3 hours ago    linux/amd64    211.5 MiB    72.6 MiB
+		expect:
+		nerdctl --kube-hide-dupe -n k8s.io images
+		REPOSITORY    TAG       IMAGE ID        CREATED        PLATFORM       SIZE         BLOB SIZE
+		centos        7         be65f488b776    3 hours ago    linux/amd64    211.5 MiB    72.6 MiB
+	*/
+	if options.GOptions.KubeHideDupe && options.GOptions.Namespace == "k8s.io" {
+		imageDigest := make(map[digest.Digest]bool)
+		var imageNoTag []images.Image
+		for _, img := range imageList {
+			parsed, err := referenceutil.Parse(img.Name)
+			if err != nil {
+				continue
+			}
+			if parsed.Tag != "" {
+				finalImageList = append(finalImageList, img)
+				imageDigest[img.Target.Digest] = true
+				continue
+			}
+			imageNoTag = append(imageNoTag, img)
+		}
+		//Ensure that dangling images without a repo:tag are displayed correctly.
+		for _, ima := range imageNoTag {
+			if !imageDigest[ima.Target.Digest] {
+				finalImageList = append(finalImageList, ima)
+				imageDigest[ima.Target.Digest] = true
+			}
+		}
+	} else {
+		finalImageList = imageList
+	}
 	digestsFlag := options.Digests
 	if options.Format == "wide" {
 		digestsFlag = true
@@ -174,7 +216,7 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 		snapshotter: containerdutil.SnapshotService(client, options.GOptions.Snapshotter),
 	}
 
-	for _, img := range imageList {
+	for _, img := range finalImageList {
 		if err := printer.printImage(ctx, img); err != nil {
 			log.G(ctx).Warn(err)
 		}
