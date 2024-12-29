@@ -143,7 +143,8 @@ func cleanupNetwork(ctx context.Context, container containerd.Container, globalO
 		networksJSON := spec.Annotations[labels.Networks]
 		var networks []string
 		if err := json.Unmarshal([]byte(networksJSON), &networks); err != nil {
-			return err
+			log.G(ctx).WithError(err).Infof("unable to retrieve networking information for that container, which is likely managed by another tool")
+			return nil
 		}
 		netType, err := nettype.Detect(networks)
 		if err != nil {
