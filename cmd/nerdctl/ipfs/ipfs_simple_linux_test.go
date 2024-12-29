@@ -175,11 +175,13 @@ func TestIPFSSimple(t *testing.T) {
 				helpers.Ensure("image", "encrypt", "--recipient=jwe:"+keyPair.Pub, data.Get(mainImageCIDKey), data.Identifier("encrypted"))
 				cmd := helpers.Command("image", "inspect", "--mode=native", "--format={{len .Index.Manifests}}", data.Identifier("encrypted"))
 				cmd.Run(&test.Expected{
-					Output: test.Equals("1\n"),
+					ExitCode: 1,
+					Output:   test.Equals("1\n"),
 				})
 				cmd = helpers.Command("image", "inspect", "--mode=native", "--format={{json (index .Manifest.Layers 0) }}", data.Identifier("encrypted"))
 				cmd.Run(&test.Expected{
-					Output: test.Contains("org.opencontainers.image.enc.keys.jwe"),
+					ExitCode: 1,
+					Output:   test.Contains("org.opencontainers.image.enc.keys.jwe"),
 				})
 
 				// Push the encrypted image and save the CID

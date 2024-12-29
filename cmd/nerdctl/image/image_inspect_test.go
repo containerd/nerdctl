@@ -18,6 +18,8 @@ package image
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"runtime"
 	"strings"
 	"testing"
@@ -60,6 +62,14 @@ func TestImageInspectSimpleCases(t *testing.T) {
 				Description: "typedFormat support (.ID)",
 				Command:     test.Command("image", "inspect", testutil.CommonImage, "--format", "{{.ID}}"),
 				Expected:    test.Expects(0, nil, nil),
+			},
+			{
+				Description: "Error for image not found",
+				Command:     test.Command("image", "inspect", "dne:latest", "dne2:latest"),
+				Expected: test.Expects(1, []error{
+					errors.New("no such image: dne:latest"),
+					errors.New("no such image: dne2:latest"),
+				}, nil),
 			},
 		},
 	}
@@ -171,7 +181,8 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 							for _, id := range []string{"doesnotexist", "doesnotexist:either", "busybox:bogustag"} {
 								cmd := helpers.Command("image", "inspect", id+"@sha256:"+sha)
 								cmd.Run(&test.Expected{
-									Output: test.Equals(""),
+									ExitCode: 1,
+									Errors:   []error{fmt.Errorf("no such image: %s@sha256:%s", id, sha)},
 								})
 							}
 						},
@@ -192,7 +203,8 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 							for _, id := range []string{"∞∞∞∞∞∞∞∞∞∞", "busybox:∞∞∞∞∞∞∞∞∞∞"} {
 								cmd := helpers.Command("image", "inspect", id)
 								cmd.Run(&test.Expected{
-									Output: test.Equals(""),
+									ExitCode: 1,
+									Errors:   []error{fmt.Errorf("invalid reference format: %s", id)},
 								})
 							}
 						},
