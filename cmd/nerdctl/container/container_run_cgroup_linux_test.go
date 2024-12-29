@@ -18,6 +18,7 @@ package container
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -27,11 +28,14 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/cgroups/v3"
+	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/continuity/testutil/loopback"
 
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
+	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestRunCgroupV2(t *testing.T) {
@@ -168,6 +172,53 @@ func TestRunCgroupV1(t *testing.T) {
 	const expected = "42000\n100000\n0\n44040192\n6291456\n104857600\n0\n42\n2000\n0-1\n"
 	base.Cmd("run", "--rm", "--cpus", "0.42", "--cpuset-mems", "0", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m", "--memory-swappiness", "0", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage, "cat", quota, period, cpusetMems, memoryLimit, memoryReservation, memorySwap, memorySwappiness, pidsLimit, cpuShare, cpusetCpus).AssertOutExactly(expected)
 	base.Cmd("run", "--rm", "--cpu-quota", "42000", "--cpu-period", "100000", "--cpuset-mems", "0", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m", "--memory-swappiness", "0", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage, "cat", quota, period, cpusetMems, memoryLimit, memoryReservation, memorySwap, memorySwappiness, pidsLimit, cpuShare, cpusetCpus).AssertOutExactly(expected)
+}
+
+// TestIssue3781 tests https://github.com/containerd/nerdctl/issues/3781
+func TestIssue3781(t *testing.T) {
+	t.Parallel()
+	testCase := nerdtest.Setup()
+	testCase.Require = test.Not(nerdtest.Docker)
+
+	base := testutil.NewBase(t)
+	info := base.Info()
+	switch info.CgroupDriver {
+	case "none", "":
+		t.Skip("test requires cgroup driver")
+	}
+	containerName := testutil.Identifier(t)
+	base.Cmd("run", "-d", "--name", containerName, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	defer func() {
+		base.Cmd("rm", "-f", containerName)
+	}()
+	base.Cmd("update", "--cpuset-cpus", "0-1", containerName).AssertOK()
+	addr := base.ContainerdAddress()
+	client, err := containerd.New(addr, containerd.WithDefaultNamespace(testutil.Namespace))
+	assert.NilError(base.T, err)
+	ctx := context.Background()
+
+	// get container id by container name.
+	var cid string
+	var args []string
+	args = append(args, containerName)
+	walker := &containerwalker.ContainerWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if found.MatchCount > 1 {
+				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+			}
+			cid = found.Container.ID()
+			return nil
+		},
+	}
+	err = walker.WalkAll(ctx, args, true)
+	assert.NilError(base.T, err)
+
+	container, err := client.LoadContainer(ctx, cid)
+	assert.NilError(base.T, err)
+	spec, err := container.Spec(ctx)
+	assert.NilError(base.T, err)
+	assert.Equal(t, spec.Linux.Resources.Pids == nil, true)
 }
 
 func TestRunDevice(t *testing.T) {
