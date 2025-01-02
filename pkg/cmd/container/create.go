@@ -248,7 +248,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	envs = append(envs, "HOSTNAME="+netLabelOpts.Hostname)
 	opts = append(opts, oci.WithEnv(envs))
 
-	internalLabels.LoadNetOpts(netLabelOpts)
+	internalLabels.loadNetOpts(netLabelOpts)
 
 	// NOTE: OCI hooks are currently not supported on Windows so we skip setting them altogether.
 	// The OCI hooks we define (whose logic can be found in pkg/ocihook) primarily
@@ -726,8 +726,8 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 	return containerd.WithAdditionalContainerLabels(m), nil
 }
 
-// LoadNetOpts loads network options into InternalLabels.
-func (il *internalLabels) LoadNetOpts(opts types.NetworkOptions) {
+// loadNetOpts loads network options into InternalLabels.
+func (il *internalLabels) loadNetOpts(opts types.NetworkOptions) {
 	il.hostname = opts.Hostname
 	il.ports = opts.PortMappings
 	il.ipAddress = opts.IPAddress
