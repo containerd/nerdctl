@@ -101,6 +101,9 @@ const (
 	// (like "nerdctl/default-network=true" or "nerdctl/default-network=false")
 	NerdctlDefaultNetwork = Prefix + "default-network"
 
+	// LogConfig defines the loggin configuration passed to the container
+	LogConfig = Prefix + "log-config"
+
 	// ContainerAutoRemove is to check whether the --rm option is specified.
 	ContainerAutoRemove = Prefix + "auto-remove"
 )

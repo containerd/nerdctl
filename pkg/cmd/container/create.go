@@ -222,6 +222,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 	}
 	internalLabels.logURI = logConfig.LogURI
+	internalLabels.logConfig = logConfig
 
 	restartOpts, err := generateRestartOpts(ctx, client, options.Restart, logConfig.LogURI, options.InRun)
 	if err != nil {
@@ -641,7 +642,8 @@ type internalLabels struct {
 	// log
 	logURI string
 	// a label to check whether the --rm option is specified.
-	rm string
+	rm        string
+	logConfig logging.LogConfig
 }
 
 // WithInternalLabels sets the internal labels for a container.
@@ -672,6 +674,11 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 	}
 	if internalLabels.logURI != "" {
 		m[labels.LogURI] = internalLabels.logURI
+		logConfigJSON, err := json.Marshal(internalLabels.logConfig)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.LogConfig] = string(logConfigJSON)
 	}
 	if len(internalLabels.anonVolumes) > 0 {
 		anonVolumeJSON, err := json.Marshal(internalLabels.anonVolumes)

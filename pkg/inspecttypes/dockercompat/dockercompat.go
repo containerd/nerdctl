@@ -46,6 +46,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/logging"
 	"github.com/containerd/nerdctl/v2/pkg/ocihook/state"
 )
 
@@ -94,6 +95,11 @@ type ImageMetadata struct {
 	LastTagTime time.Time `json:",omitempty"`
 }
 
+type LogConfig struct {
+	Type   string
+	Config logging.LogConfig
+}
+
 // Container mimics a `docker container inspect` object.
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L340-L374
 type Container struct {
@@ -116,7 +122,7 @@ type Container struct {
 	// TODO: ProcessLabel    string
 	AppArmorProfile string
 	// TODO: ExecIDs         []string
-	// TODO: HostConfig      *container.HostConfig
+	HostConfig *HostConfig
 	// TODO: GraphDriver     GraphDriverData
 	SizeRw     *int64 `json:",omitempty"`
 	SizeRootFs *int64 `json:",omitempty"`
@@ -124,6 +130,15 @@ type Container struct {
 	Mounts          []MountPoint
 	Config          *Config
 	NetworkSettings *NetworkSettings
+}
+
+// From https://github.com/moby/moby/blob/8dbd90ec00daa26dc45d7da2431c965dec99e8b4/api/types/container/host_config.go#L391
+// HostConfig the non-portable Config structure of a container.
+type HostConfig struct {
+	ExtraHosts   []string    // List of extra hosts
+	PortBindings nat.PortMap // Port mapping between the exposed port (container) and the host
+	LogConfig    LogConfig   // Configuration of the logs for this container
+
 }
 
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
@@ -282,6 +297,32 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		c.Mounts = mounts
 	}
 
+	c.HostConfig = new(HostConfig)
+	if nedctlExtraHosts := n.Labels[labels.ExtraHosts]; nedctlExtraHosts != "" {
+		c.HostConfig.ExtraHosts = parseExtraHosts(nedctlExtraHosts)
+	}
+
+	if nerdctlLoguri := n.Labels[labels.LogURI]; nerdctlLoguri != "" {
+		c.HostConfig.LogConfig.Type = nerdctlLoguri
+		// c.HostConfig.LogConfig.Config = map[string]string{}
+	}
+	if logConfigJSON, ok := n.Labels[labels.LogConfig]; ok {
+		var logConfig logging.LogConfig
+		err := json.Unmarshal([]byte(logConfigJSON), &logConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal log config: %v", err)
+		}
+
+		// Assign the parsed LogConfig to c.HostConfig.LogConfig
+		c.HostConfig.LogConfig.Config = logConfig
+	} else {
+		// If LogConfig label is not present, set default values
+		c.HostConfig.LogConfig.Config = logging.LogConfig{
+			Driver: "json-file",
+			Opts:   make(map[string]string),
+		}
+	}
+
 	cs := new(ContainerState)
 	cs.Restarting = n.Labels[restart.StatusLabel] == string(containerd.Running)
 	cs.Error = n.Labels[labels.Error]
@@ -308,6 +349,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 			return nil, err
 		}
 		c.NetworkSettings = nSettings
+		c.HostConfig.PortBindings = *nSettings.Ports
 	}
 	c.State = cs
 	c.Config = &Config{
@@ -491,6 +533,15 @@ func convertToNatPort(portMappings []cni.PortMapping) (*nat.PortMap, error) {
 		portMap[newP] = ports
 	}
 	return &portMap, nil
+}
+
+func parseExtraHosts(extraHostsJSON string) []string {
+	var extraHosts []string
+	if err := json.Unmarshal([]byte(extraHostsJSON), &extraHosts); err != nil {
+		// Handle error or return empty slice
+		return []string{}
+	}
+	return extraHosts
 }
 
 type IPAMConfig struct {
