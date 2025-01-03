@@ -994,6 +994,25 @@ Flags:
 - `--platform=<PLATFORM>`        : Convert content for a specific platform
 - `--all-platforms`              : Convert content for all platforms (default: false)
 
+### :nerd_face: nerdctl image squash
+
+Squash an image layers.
+
+Usage: `nerdctl image squash [OPTIONS] SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]`
+
+Example:
+
+```bash
+nerdctl image pull example.com/foo:latest
+nerdctl image squash --layer-count=2 --message="squash commit" example.com/foo:latest example.com/foo:squashed
+```
+
+Flags:
+- `-c --layer-count=<COUNT>`: The number of layers that can be compressed
+- `-d --layer-digest=<DIGEST>`: The digest of the layer to be compressed
+- `-m --message=<MESSAGE>`: Commit message for the squashed image
+- `-a --author=<AUTHOR>`: Author of the squashed image
+
 ## Registry
 
 ### :whale: nerdctl login
