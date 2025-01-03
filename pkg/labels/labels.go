@@ -101,9 +101,18 @@ const (
 	// (like "nerdctl/default-network=true" or "nerdctl/default-network=false")
 	NerdctlDefaultNetwork = Prefix + "default-network"
 
-	// LogConfig defines the loggin configuration passed to the container
+	// LogConfig defines the logging configuration passed to the container
 	LogConfig = Prefix + "log-config"
 
 	// ContainerAutoRemove is to check whether the --rm option is specified.
 	ContainerAutoRemove = Prefix + "auto-remove"
+
+	// BlkioWeight to check if the --blkio-weight is specified
+	BlkioWeight = Prefix + "blkio-weight"
+
+	// CPUSetCPUs to check if the --cpuset-cpus is specified
+	CPUSetCPUs = Prefix + "cpuset-cpus"
+
+	// CPUSetMems to check if the --cpuset-mems is specified
+	CPUSetMems = Prefix + "cpuset-mems"
 )

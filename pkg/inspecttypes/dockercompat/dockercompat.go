@@ -46,7 +46,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
-	"github.com/containerd/nerdctl/v2/pkg/logging"
 	"github.com/containerd/nerdctl/v2/pkg/ocihook/state"
 )
 
@@ -97,7 +96,14 @@ type ImageMetadata struct {
 
 type LogConfig struct {
 	Type   string
-	Config logging.LogConfig
+	Config loggerLogConfig
+}
+
+type loggerLogConfig struct {
+	Driver  string            `json:"driver"`
+	Opts    map[string]string `json:"opts,omitempty"`
+	LogURI  string            `json:"-"`
+	Address string            `json:"address"`
 }
 
 // Container mimics a `docker container inspect` object.
@@ -138,7 +144,9 @@ type HostConfig struct {
 	ExtraHosts   []string    // List of extra hosts
 	PortBindings nat.PortMap // Port mapping between the exposed port (container) and the host
 	LogConfig    LogConfig   // Configuration of the logs for this container
-
+	BlkioWeight  uint16      // Block IO weight (relative weight vs. other containers)
+	CpusetMems   string      // CpusetMems 0-2, 0,1
+	CpusetCpus   string      // CpusetCpus 0-2, 0,1
 }
 
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
@@ -304,10 +312,9 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 
 	if nerdctlLoguri := n.Labels[labels.LogURI]; nerdctlLoguri != "" {
 		c.HostConfig.LogConfig.Type = nerdctlLoguri
-		// c.HostConfig.LogConfig.Config = map[string]string{}
 	}
 	if logConfigJSON, ok := n.Labels[labels.LogConfig]; ok {
-		var logConfig logging.LogConfig
+		var logConfig loggerLogConfig
 		err := json.Unmarshal([]byte(logConfigJSON), &logConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal log config: %v", err)
@@ -317,10 +324,27 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		c.HostConfig.LogConfig.Config = logConfig
 	} else {
 		// If LogConfig label is not present, set default values
-		c.HostConfig.LogConfig.Config = logging.LogConfig{
+		c.HostConfig.LogConfig.Config = loggerLogConfig{
 			Driver: "json-file",
 			Opts:   make(map[string]string),
 		}
+	}
+
+	if blkioWeightSet := n.Labels[labels.BlkioWeight]; blkioWeightSet != "" {
+		var blkioWeight uint16
+		_, err := fmt.Sscanf(blkioWeightSet, "%d", &blkioWeight)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert string to uint: %v", err)
+		}
+		c.HostConfig.BlkioWeight = blkioWeight
+	}
+
+	if cpusetmems := n.Labels[labels.CPUSetMems]; cpusetmems != "" {
+		c.HostConfig.CpusetMems = cpusetmems
+	}
+
+	if cpusetcpus := n.Labels[labels.CPUSetCPUs]; cpusetcpus != "" {
+		c.HostConfig.CpusetCpus = cpusetcpus
 	}
 
 	cs := new(ContainerState)

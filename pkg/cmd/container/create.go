@@ -326,6 +326,10 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 
 	internalLabels.rm = containerutil.EncodeContainerRmOptLabel(options.Rm)
 
+	internalLabels.cpusetCpus = options.CPUSetCPUs
+	internalLabels.cpusetMems = options.CPUSetMems
+	internalLabels.blkioWeight = options.BlkioWeight
+
 	// TODO: abolish internal labels and only use annotations
 	ilOpt, err := withInternalLabels(internalLabels)
 	if err != nil {
@@ -617,10 +621,13 @@ func withStop(stopSignal string, stopTimeout int, ensuredImage *imgutil.EnsuredI
 
 type internalLabels struct {
 	// labels from cmd options
-	namespace  string
-	platform   string
-	extraHosts []string
-	pidFile    string
+	namespace   string
+	platform    string
+	extraHosts  []string
+	pidFile     string
+	blkioWeight uint16
+	cpusetCpus  string
+	cpusetMems  string
 	// labels from cmd options or automatically set
 	name     string
 	hostname string
@@ -728,6 +735,18 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 
 	if internalLabels.rm != "" {
 		m[labels.ContainerAutoRemove] = internalLabels.rm
+	}
+
+	if internalLabels.blkioWeight > 0 {
+		m[labels.BlkioWeight] = fmt.Sprintf("%d", internalLabels.blkioWeight)
+	}
+
+	if internalLabels.cpusetMems != "" {
+		m[labels.CPUSetMems] = internalLabels.cpusetMems
+	}
+
+	if internalLabels.cpusetCpus != "" {
+		m[labels.CPUSetCPUs] = internalLabels.cpusetCpus
 	}
 
 	return containerd.WithAdditionalContainerLabels(m), nil
