@@ -322,3 +322,70 @@ CMD ["echo", "nerdctl-build-notag-string"]
 
 	testCase.Run(t)
 }
+
+func TestImagesKubeWithKubeHideDupe(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Require: test.Require(
+			nerdtest.OnlyKubernetes,
+		),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", "--quiet", testutil.BusyboxImage)
+		},
+		SubTests: []*test.Case{
+			{
+				Description: "The same imageID will not print no-repo:tag in k8s.io with kube-hide-dupe",
+				Command:     test.Command("--kube-hide-dupe", "images"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: func(stdout string, info string, t *testing.T) {
+							var imageID string
+							var skipLine int
+							lines := strings.Split(strings.TrimSpace(stdout), "\n")
+							header := "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE"
+							if nerdtest.IsDocker() {
+								header = "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE"
+							}
+							tab := tabutil.NewReader(header)
+							err := tab.ParseHeader(lines[0])
+							assert.NilError(t, err, info)
+							found := true
+							for i, line := range lines[1:] {
+								repo, _ := tab.ReadRow(line, "REPOSITORY")
+								tag, _ := tab.ReadRow(line, "TAG")
+								if repo+":"+tag == testutil.BusyboxImage {
+									skipLine = i
+									imageID, _ = tab.ReadRow(line, "IMAGE ID")
+									break
+								}
+							}
+							for i, line := range lines[1:] {
+								if i == skipLine {
+									continue
+								}
+								id, _ := tab.ReadRow(line, "IMAGE ID")
+								if id == imageID {
+									found = false
+									break
+								}
+							}
+							assert.Assert(t, found, info)
+						},
+					}
+				},
+			},
+			{
+				Description: "the same imageId will print no-repo:tag in k8s.io without kube-hide-dupe",
+				Command:     test.Command("images"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: test.Contains("<none>"),
+					}
+				},
+			},
+		},
+	}
+
+	testCase.Run(t)
+}
