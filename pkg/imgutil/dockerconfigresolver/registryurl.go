@@ -50,7 +50,7 @@ func Parse(address string) (*RegistryURL, error) {
 	}
 	// If it has no port, add the standard port explicitly
 	if u.Port() == "" {
-		u.Host = u.Hostname() + ":" + standardHTTPSPort
+		u.Host = u.Hostname() + ":" + StandardHTTPSPort
 	}
 	reg := &RegistryURL{URL: *u}
 	queryParams := u.Query()
@@ -74,7 +74,7 @@ type RegistryURL struct {
 // CanonicalIdentifier returns the identifier expected to be used to save credentials to docker auth config
 func (rn *RegistryURL) CanonicalIdentifier() string {
 	// If it is the docker index over https, port 443, on the /v1/ path, we use the docker fully qualified identifier
-	if rn.Scheme == string(schemeHTTPS) && rn.Hostname() == "index.docker.io" && rn.Path == "/v1/" && rn.Port() == standardHTTPSPort ||
+	if rn.Scheme == string(schemeHTTPS) && rn.Hostname() == "index.docker.io" && rn.Path == "/v1/" && rn.Port() == StandardHTTPSPort ||
 		rn.URL.String() == dockerIndexServer {
 		return dockerIndexServer
 	}
@@ -102,7 +102,7 @@ func (rn *RegistryURL) AllIdentifiers() []string {
 
 	// Docker behavior: if the domain was index.docker.io over 443, we are allowed to additionally read the canonical
 	// docker credentials
-	if rn.Port() == standardHTTPSPort {
+	if rn.Port() == StandardHTTPSPort {
 		if rn.Hostname() == "index.docker.io" || rn.Hostname() == "registry-1.docker.io" {
 			fullList = append(fullList, dockerIndexServer)
 		}
@@ -116,7 +116,7 @@ func (rn *RegistryURL) AllIdentifiers() []string {
 
 	// Note that docker does not try to be smart wrt explicit port vs. implied port
 	// If standard port, allow retrieving credentials from the variant without a port as well
-	if rn.Port() == standardHTTPSPort {
+	if rn.Port() == StandardHTTPSPort {
 		fullList = append(
 			fullList,
 			rn.Hostname(),
