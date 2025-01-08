@@ -52,7 +52,6 @@ func (m *cniNetworkManager) VerifyNetworkOptions(_ context.Context) error {
                         cni.WithPluginDir([]string{m.globalOptions.CNIPath}),
 	}
 
-
 	netw, err := e.NetworkByNameOrID(m.netOpts.NetworkSlice[0]) 
 	if (err != nil) {
 		return nil
