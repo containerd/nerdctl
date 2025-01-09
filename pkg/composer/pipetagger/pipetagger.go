@@ -19,6 +19,7 @@ package pipetagger
 import (
 	"bufio"
 	"fmt"
+	"github.com/containerd/log"
 	"hash/fnv"
 	"io"
 	"strings"
@@ -94,9 +95,15 @@ type PipeTagger struct {
 }
 
 func (x *PipeTagger) Run() error {
-	scanner := bufio.NewScanner(x.r)
-	for scanner.Scan() {
-		line := scanner.Text()
+	r := bufio.NewReader(x.r)
+
+	var err error
+
+	for err == nil {
+		var s string
+		s, err = r.ReadString('\n')
+		line := strings.TrimSuffix(s, "\n")
+
 		if x.width < 0 {
 			fmt.Fprintln(x.w, line)
 		} else {
@@ -106,6 +113,10 @@ func (x *PipeTagger) Run() error {
 				line,
 			)
 		}
+
+		if err != nil && err != io.EOF {
+			log.L.WithError(err).Error("failed to read log")
+		}
 	}
-	return scanner.Err()
+	return err
 }
