@@ -191,19 +191,18 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		}
 
 		netOpts, err := containerutil.NetworkOptionsFromSpec(spec)
-		if err != nil {
-			retErr = fmt.Errorf("failed to load container networking options from specs: %s", err)
-			return
-		}
+		if err == nil {
+			networkManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netOpts, client)
+			if err != nil {
+				retErr = fmt.Errorf("failed to instantiate network options manager: %s", err)
+				return
+			}
 
-		networkManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netOpts, client)
-		if err != nil {
-			retErr = fmt.Errorf("failed to instantiate network options manager: %s", err)
-			return
-		}
-
-		if err := networkManager.CleanupNetworking(ctx, c); err != nil {
-			log.G(ctx).WithError(err).Warnf("failed to clean up container networking: %q", id)
+			if err := networkManager.CleanupNetworking(ctx, c); err != nil {
+				log.G(ctx).WithError(err).Warnf("failed to clean up container networking: %q", id)
+			}
+		} else {
+			log.G(ctx).WithError(err).Infof("unable to retrieve networking information for that container, which is likely managed by another tool: %q", id)
 		}
 
 		// Delete the container now. If it fails, try again without snapshot cleanup
