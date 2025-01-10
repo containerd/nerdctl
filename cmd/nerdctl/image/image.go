@@ -42,6 +42,7 @@ func NewImageCommand() *cobra.Command {
 		NewLoadCommand(),
 		NewSaveCommand(),
 		NewTagCommand(),
+		NewSquashCommand(),
 		imageRmCommand(),
 		newImageConvertCommand(),
 		newImageInspectCommand(),
