@@ -20,7 +20,7 @@ require (
 	github.com/containerd/continuity v0.4.5
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0
-	github.com/containerd/go-cni v1.1.11
+	github.com/containerd/go-cni v1.1.12
 	github.com/containerd/imgcrypt/v2 v2.0.0
 	github.com/containerd/log v0.1.0
 	github.com/containerd/nydus-snapshotter v0.15.0
@@ -118,8 +118,10 @@ require (
 	github.com/multiformats/go-varint v0.0.7 // indirect
 	github.com/opencontainers/runtime-tools v0.9.1-0.20221107090550-2e043c6bd626 // indirect
 	github.com/opencontainers/selinux v1.11.1 // indirect
+	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
 	github.com/philhofer/fwd v1.1.3-0.20240612014219-fbbf4953d986 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/sasha-s/go-deadlock v0.3.5 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/smallstep/pkcs7 v0.1.1 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
