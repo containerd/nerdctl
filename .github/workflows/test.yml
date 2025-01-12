@@ -392,8 +392,7 @@ jobs:
   test-integration-freebsd:
     timeout-minutes: 30
     name: FreeBSD
-    # ubuntu-24.04 lacks the vagrant package
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
@@ -404,9 +403,19 @@ jobs:
           key: vagrant-${{ matrix.box }}
       - name: Set up vagrant
         run: |
+          # from https://github.com/containerd/containerd/blob/v2.0.1/.github/workflows/ci.yml#L583-L596
+          # which is based on https://github.com/opencontainers/runc/blob/v1.1.8/.cirrus.yml#L41-L49
+          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
-          sudo apt-get install -y libvirt-daemon libvirt-daemon-system vagrant vagrant-libvirt
+          sudo apt-get install -y libvirt-daemon libvirt-daemon-system vagrant ovmf
+          # https://github.com/vagrant-libvirt/vagrant-libvirt/issues/1725#issuecomment-1454058646
+          sudo cp /usr/share/OVMF/OVMF_VARS_4M.fd /var/lib/libvirt/qemu/nvram/
           sudo systemctl enable --now libvirtd
+          sudo apt-get build-dep -y ruby-libvirt
+          sudo apt-get install -y --no-install-recommends libxslt-dev libxml2-dev libvirt-dev ruby-bundler ruby-dev zlib1g-dev
+          sudo vagrant plugin install vagrant-libvirt
       - name: Boot VM
         run: |
           ln -sf Vagrantfile.freebsd Vagrantfile
