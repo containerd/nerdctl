@@ -28,7 +28,7 @@ jobs:
             containerd: v1.6.36
             arch: amd64
           - runner: ubuntu-24.04
-            containerd: v1.7.24
+            containerd: v1.7.25
             arch: amd64
           - runner: ubuntu-24.04
             containerd: v2.0.1
@@ -84,7 +84,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           repository: containerd/containerd
-          ref: v1.7.24
+          ref: v1.7.25
           path: containerd
           fetch-depth: 1
       - if: ${{ matrix.goos=='windows' }}
@@ -109,7 +109,7 @@ jobs:
             runner: "ubuntu-20.04"
             arch: amd64
           - ubuntu: 22.04
-            containerd: v1.7.24
+            containerd: v1.7.25
             runner: "ubuntu-22.04"
             arch: amd64
           - ubuntu: 24.04
@@ -234,7 +234,7 @@ jobs:
             target: rootless
             arch: amd64
           - ubuntu: 22.04
-            containerd: v1.7.24
+            containerd: v1.7.25
             rootlesskit: v2.3.1
             target: rootless
             arch: amd64
@@ -244,7 +244,7 @@ jobs:
             target: rootless
             arch: amd64
           - ubuntu: 24.04
-            containerd: v1.7.24
+            containerd: v1.7.25
             rootlesskit: v2.3.1
             target: rootless-port-slirp4netns
             arch: amd64
@@ -374,7 +374,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           repository: containerd/containerd
-          ref: v1.7.24
+          ref: v1.7.25
           path: containerd
           fetch-depth: 1
       - name: "Set up CNI"
@@ -382,7 +382,7 @@ jobs:
         run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
       - name: "Set up containerd"
         env:
-          ctrdVersion: 1.7.24
+          ctrdVersion: 1.7.25
         run: powershell hack/configure-windows-ci.ps1
       - name: "Run integration tests"
         run: ./hack/test-integration.sh -test.only-flaky=false
