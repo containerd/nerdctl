@@ -22,6 +22,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -29,10 +30,12 @@ import (
 	"time"
 
 	"github.com/containernetworking/plugins/pkg/ns"
+	"github.com/opencontainers/go-digest"
 	"github.com/vishvananda/netlink"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 
+	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/containerd/v2/pkg/netns"
 	"github.com/containerd/errdefs"
 
@@ -368,6 +371,27 @@ func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errdefs.ErrInvalidArgument},
+					Output: func(stdout string, info string, t *testing.T) {
+						getAddrHash := func(addr string) string {
+							const addrHashLen = 8
+
+							d := digest.SHA256.FromString(addr)
+							h := d.Encoded()[0:addrHashLen]
+
+							return h
+						}
+
+						dataRoot := data.TempDir()
+						h := getAddrHash(defaults.DefaultAddress)
+						dataStore := filepath.Join(dataRoot, h)
+						namespace := string(helpers.Read(nerdtest.Namespace))
+						etchostsPath := filepath.Join(dataStore, "etchosts", namespace)
+
+						etchostsDirs, err := os.ReadDir(etchostsPath)
+
+						assert.NilError(t, err)
+						assert.Equal(t, len(etchostsDirs), 0)
+					},
 				}
 			},
 		},
