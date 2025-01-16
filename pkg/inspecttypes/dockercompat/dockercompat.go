@@ -45,6 +45,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/ocihook/state"
 )
@@ -141,12 +142,15 @@ type Container struct {
 // From https://github.com/moby/moby/blob/8dbd90ec00daa26dc45d7da2431c965dec99e8b4/api/types/container/host_config.go#L391
 // HostConfig the non-portable Config structure of a container.
 type HostConfig struct {
-	ExtraHosts   []string    // List of extra hosts
-	PortBindings nat.PortMap // Port mapping between the exposed port (container) and the host
-	LogConfig    LogConfig   // Configuration of the logs for this container
-	BlkioWeight  uint16      // Block IO weight (relative weight vs. other containers)
-	CpusetMems   string      // CpusetMems 0-2, 0,1
-	CpusetCpus   string      // CpusetCpus 0-2, 0,1
+	ExtraHosts      []string    // List of extra hosts
+	PortBindings    nat.PortMap // Port mapping between the exposed port (container) and the host
+	LogConfig       LogConfig   // Configuration of the logs for this container
+	BlkioWeight     uint16      // Block IO weight (relative weight vs. other containers)
+	CpusetMems      string      // CpusetMems 0-2, 0,1
+	CpusetCpus      string      // CpusetCpus 0-2, 0,1
+	ContainerIDFile string      // File (path) where the containerId is written
+	GroupAdd        []string    // GroupAdd specifies additional groups to join
+	IpcMode         string      // IPC namespace to use for the container
 }
 
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
@@ -345,6 +349,22 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 
 	if cpusetcpus := n.Labels[labels.CPUSetCPUs]; cpusetcpus != "" {
 		c.HostConfig.CpusetCpus = cpusetcpus
+	}
+
+	if cidFile := n.Labels[labels.CIdFile]; cidFile != "" {
+		c.HostConfig.ContainerIDFile = cidFile
+	}
+
+	if groupAdd := n.Labels[labels.GroupAdd]; groupAdd != "" {
+		c.HostConfig.GroupAdd = parseGroups(groupAdd)
+	}
+
+	if ipcMode := n.Labels[labels.IPC]; ipcMode != "" {
+		ipc, err := ipcutil.DecodeIPCLabel(ipcMode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to Decode IPC Label: %v", err)
+		}
+		c.HostConfig.IpcMode = string(ipc.Mode)
 	}
 
 	cs := new(ContainerState)
@@ -566,6 +586,14 @@ func parseExtraHosts(extraHostsJSON string) []string {
 		return []string{}
 	}
 	return extraHosts
+}
+
+func parseGroups(groupAddJSON string) []string {
+	var groupAdd []string
+	if err := json.Unmarshal([]byte(groupAddJSON), &groupAdd); err != nil {
+		return []string{}
+	}
+	return groupAdd
 }
 
 type IPAMConfig struct {

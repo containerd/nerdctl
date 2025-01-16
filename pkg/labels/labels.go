@@ -115,4 +115,10 @@ const (
 
 	// CPUSetMems to check if the --cpuset-mems is specified
 	CPUSetMems = Prefix + "cpuset-mems"
+
+	// Cidfile is the ContainerId file set via the --cidfile flag
+	CIdFile = Prefix + "cid-file"
+
+	// GroupAdd is the List of additional groups, set via --group-add flag
+	GroupAdd = Prefix + "group-add"
 )

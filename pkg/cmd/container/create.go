@@ -99,6 +99,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		if err := writeCIDFile(options.CidFile, id); err != nil {
 			return nil, nil, err
 		}
+		internalLabels.cidFile = options.CidFile
 	}
 	dataStore, err := clientutil.DataStore(options.GOptions.DataRoot, options.GOptions.Address)
 	if err != nil {
@@ -269,6 +270,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	opts = append(opts, uOpts...)
 	gOpts, err := generateGroupsOpts(options.GroupAdd)
+	internalLabels.groupAdd = options.GroupAdd
 	if err != nil {
 		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
@@ -651,6 +653,12 @@ type internalLabels struct {
 	// a label to check whether the --rm option is specified.
 	rm        string
 	logConfig logging.LogConfig
+
+	// a label to chek if --cidfile is set
+	cidFile string
+
+	// label to check if --group-add is set
+	groupAdd []string
 }
 
 // WithInternalLabels sets the internal labels for a container.
@@ -747,6 +755,18 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 
 	if internalLabels.cpusetCpus != "" {
 		m[labels.CPUSetCPUs] = internalLabels.cpusetCpus
+	}
+
+	if internalLabels.cidFile != "" {
+		m[labels.CIdFile] = internalLabels.cidFile
+	}
+
+	if len(internalLabels.groupAdd) > 0 {
+		groupAddJSON, err := json.Marshal(internalLabels.groupAdd)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.GroupAdd] = string(groupAddJSON)
 	}
 
 	return containerd.WithAdditionalContainerLabels(m), nil
