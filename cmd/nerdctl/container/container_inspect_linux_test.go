@@ -229,3 +229,60 @@ func TestContainerInspectState(t *testing.T) {
 	}
 
 }
+
+func TestContainerInspectHostConfig(t *testing.T) {
+	testContainer := testutil.Identifier(t)
+
+	base := testutil.NewBase(t)
+	defer base.Cmd("rm", "-f", testContainer).Run()
+
+	// Run a container with various HostConfig options
+	base.Cmd("run", "-d", "--name", testContainer,
+		"--cpuset-cpus", "0-1",
+		"--cpuset-mems", "0",
+		"--blkio-weight", "500",
+		"--cpu-shares", "1024",
+		"--cpu-quota", "100000",
+		"--group-add", "1000",
+		"--group-add", "2000",
+		"--add-host", "host1:10.0.0.1",
+		"--add-host", "host2:10.0.0.2",
+		"--ipc", "host",
+		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+
+	inspect := base.InspectContainer(testContainer)
+
+	assert.Equal(t, "0-1", inspect.HostConfig.CPUSetCPUs)
+	assert.Equal(t, "0", inspect.HostConfig.CPUSetMems)
+	assert.Equal(t, uint16(500), inspect.HostConfig.BlkioWeight)
+	assert.Equal(t, uint64(1024), inspect.HostConfig.CPUShares)
+	assert.Equal(t, int64(100000), inspect.HostConfig.CPUQuota)
+	assert.DeepEqual(t, []string{"1000", "2000"}, inspect.HostConfig.GroupAdd)
+	expectedExtraHosts := []string{"host1:10.0.0.1", "host2:10.0.0.2"}
+	assert.DeepEqual(t, expectedExtraHosts, inspect.HostConfig.ExtraHosts)
+	assert.Equal(t, "host", inspect.HostConfig.IpcMode)
+	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Type)
+	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Config.Driver)
+}
+
+func TestContainerInspectHostConfigDefaults(t *testing.T) {
+	testContainer := testutil.Identifier(t)
+
+	base := testutil.NewBase(t)
+	defer base.Cmd("rm", "-f", testContainer).Run()
+
+	// Run a container without specifying HostConfig options
+	base.Cmd("run", "-d", "--name", testContainer, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+
+	inspect := base.InspectContainer(testContainer)
+	assert.Equal(t, "", inspect.HostConfig.CPUSetCPUs)
+	assert.Equal(t, "", inspect.HostConfig.CPUSetMems)
+	assert.Equal(t, uint16(0), inspect.HostConfig.BlkioWeight)
+	assert.Equal(t, uint64(0), inspect.HostConfig.CPUShares)
+	assert.Equal(t, int64(0), inspect.HostConfig.CPUQuota)
+	assert.Equal(t, 0, len(inspect.HostConfig.GroupAdd))
+	assert.Equal(t, 0, len(inspect.HostConfig.ExtraHosts))
+	assert.Equal(t, "", inspect.HostConfig.IpcMode)
+	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Type)
+	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Config.Driver)
+}
