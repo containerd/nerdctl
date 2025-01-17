@@ -888,6 +888,17 @@ func generateGcFunc(ctx context.Context, container containerd.Container, ns, id,
 			if netGcErr != nil {
 				log.G(ctx).WithError(netGcErr).Warnf("failed to revert container %q networking settings", id)
 			}
+		} else {
+			hs, err := hostsstore.New(dataStore, internalLabels.namespace)
+			if err != nil {
+				log.G(ctx).WithError(err).Warnf("failed to instantiate hostsstore for %q", internalLabels.namespace)
+			} else {
+				if _, err := hs.HostsPath(id); err != nil {
+					log.G(ctx).WithError(err).Warnf("an etchosts directory for container %q dosen't exist", id)
+				} else if err = hs.Delete(id); err != nil {
+					log.G(ctx).WithError(err).Warnf("failed to remove an etchosts directory for container %q", id)
+				}
+			}
 		}
 
 		ipc, ipcErr := ipcutil.DecodeIPCLabel(internalLabels.ipc)
