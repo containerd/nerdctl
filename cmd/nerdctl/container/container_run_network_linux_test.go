@@ -22,6 +22,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -29,10 +30,12 @@ import (
 	"time"
 
 	"github.com/containernetworking/plugins/pkg/ns"
+	"github.com/opencontainers/go-digest"
 	"github.com/vishvananda/netlink"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 
+	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/containerd/v2/pkg/netns"
 	"github.com/containerd/errdefs"
 
@@ -41,6 +44,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func extractHostPort(portMapping string, port string) (string, error) {
@@ -350,15 +354,50 @@ func TestRunPort(t *testing.T) {
 }
 
 func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
+	testCase := nerdtest.Setup()
 	// docker does not set label restriction to 4096 bytes
-	testutil.DockerIncompatible(t)
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", containerName).Run()
-	base.Cmd("run", "--rm", "--name", containerName, "-p", "22200-22299:22200-22299", testutil.CommonImage).AssertFail()
-	base.Cmd("run", "--rm", "--name", containerName, "-p", "22200-22299:22200-22299", testutil.CommonImage).AssertCombinedOutContains(errdefs.ErrInvalidArgument.Error())
-	base.Cmd("run", "--rm", "--name", containerName, testutil.CommonImage).AssertOK()
+	testCase.Require = test.Not(nerdtest.Docker)
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Run a container with invalid ports, and then clean up.",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "--data-root", data.TempDir(), "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--data-root", data.TempDir(), "--rm", "--name", data.Identifier(), "-p", "22200-22299:22200-22299", testutil.CommonImage)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 1,
+					Errors:   []error{errdefs.ErrInvalidArgument},
+					Output: func(stdout string, info string, t *testing.T) {
+						getAddrHash := func(addr string) string {
+							const addrHashLen = 8
+
+							d := digest.SHA256.FromString(addr)
+							h := d.Encoded()[0:addrHashLen]
+
+							return h
+						}
+
+						dataRoot := data.TempDir()
+						h := getAddrHash(defaults.DefaultAddress)
+						dataStore := filepath.Join(dataRoot, h)
+						namespace := string(helpers.Read(nerdtest.Namespace))
+						etchostsPath := filepath.Join(dataStore, "etchosts", namespace)
+
+						etchostsDirs, err := os.ReadDir(etchostsPath)
+
+						assert.NilError(t, err)
+						assert.Equal(t, len(etchostsDirs), 0)
+					},
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunContainerWithStaticIP(t *testing.T) {
