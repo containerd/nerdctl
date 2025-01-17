@@ -1443,7 +1443,7 @@ Unimplemented `docker compose up` (V2) flags: `--environment`
 
 ### :whale: nerdctl compose logs
 
-Create and start containers
+Show logs of running containers
 
 Usage: `nerdctl compose logs [OPTIONS] [SERVICE...]`
 
