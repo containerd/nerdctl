@@ -328,8 +328,6 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 
 	internalLabels.rm = containerutil.EncodeContainerRmOptLabel(options.Rm)
 
-	internalLabels.cpusetCpus = options.CPUSetCPUs
-	internalLabels.cpusetMems = options.CPUSetMems
 	internalLabels.blkioWeight = options.BlkioWeight
 
 	// TODO: abolish internal labels and only use annotations
@@ -749,24 +747,8 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 		m[labels.BlkioWeight] = fmt.Sprintf("%d", internalLabels.blkioWeight)
 	}
 
-	if internalLabels.cpusetMems != "" {
-		m[labels.CPUSetMems] = internalLabels.cpusetMems
-	}
-
-	if internalLabels.cpusetCpus != "" {
-		m[labels.CPUSetCPUs] = internalLabels.cpusetCpus
-	}
-
 	if internalLabels.cidFile != "" {
 		m[labels.CIdFile] = internalLabels.cidFile
-	}
-
-	if len(internalLabels.groupAdd) > 0 {
-		groupAddJSON, err := json.Marshal(internalLabels.groupAdd)
-		if err != nil {
-			return nil, err
-		}
-		m[labels.GroupAdd] = string(groupAddJSON)
 	}
 
 	return containerd.WithAdditionalContainerLabels(m), nil

@@ -146,8 +146,10 @@ type HostConfig struct {
 	PortBindings    nat.PortMap // Port mapping between the exposed port (container) and the host
 	LogConfig       LogConfig   // Configuration of the logs for this container
 	BlkioWeight     uint16      // Block IO weight (relative weight vs. other containers)
-	CpusetMems      string      // CpusetMems 0-2, 0,1
-	CpusetCpus      string      // CpusetCpus 0-2, 0,1
+	CPUSetMems      string      `json:"CpusetMems"` // CpusetMems 0-2, 0,1
+	CPUSetCPUs      string      `json:"CpusetCpus"` // CpusetCpus 0-2, 0,1
+	CPUQuota        int64       `json:"CpuQuota"`   // CPU CFS (Completely Fair Scheduler) quota
+	CPUShares       uint64      `json:"CpuShares"`  // CPU shares (relative weight vs. other containers)
 	ContainerIDFile string      // File (path) where the containerId is written
 	GroupAdd        []string    // GroupAdd specifies additional groups to join
 	IpcMode         string      // IPC namespace to use for the container
@@ -216,6 +218,13 @@ type NetworkSettings struct {
 	Ports *nat.PortMap
 	DefaultNetworkSettings
 	Networks map[string]*NetworkEndpointSettings
+}
+
+type CPUSettings struct {
+	cpuSetCpus string
+	cpuSetMems string
+	cpuShares  uint64
+	cpuQuota   int64
 }
 
 // DefaultNetworkSettings is from https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L405-L414
@@ -343,21 +352,16 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		c.HostConfig.BlkioWeight = blkioWeight
 	}
 
-	if cpusetmems := n.Labels[labels.CPUSetMems]; cpusetmems != "" {
-		c.HostConfig.CpusetMems = cpusetmems
-	}
-
-	if cpusetcpus := n.Labels[labels.CPUSetCPUs]; cpusetcpus != "" {
-		c.HostConfig.CpusetCpus = cpusetcpus
-	}
-
 	if cidFile := n.Labels[labels.CIdFile]; cidFile != "" {
 		c.HostConfig.ContainerIDFile = cidFile
 	}
 
-	if groupAdd := n.Labels[labels.GroupAdd]; groupAdd != "" {
-		c.HostConfig.GroupAdd = parseGroups(groupAdd)
+	groupAdd, err := groupAddFromNative(n.Spec.(*specs.Spec))
+	if err != nil {
+		return nil, fmt.Errorf("failed to groupAdd from native spec: %v", err)
 	}
+
+	c.HostConfig.GroupAdd = groupAdd
 
 	if ipcMode := n.Labels[labels.IPC]; ipcMode != "" {
 		ipc, err := ipcutil.DecodeIPCLabel(ipcMode)
@@ -395,6 +399,16 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		c.NetworkSettings = nSettings
 		c.HostConfig.PortBindings = *nSettings.Ports
 	}
+
+	cpuSetting, err := cpuSettingsFromNative(n.Spec.(*specs.Spec))
+	if err != nil {
+		return nil, fmt.Errorf("failed to Decode cpuSettings: %v", err)
+	}
+	c.HostConfig.CPUSetCPUs = cpuSetting.cpuSetCpus
+	c.HostConfig.CPUSetMems = cpuSetting.cpuSetMems
+	c.HostConfig.CPUQuota = cpuSetting.cpuQuota
+	c.HostConfig.CPUShares = cpuSetting.cpuShares
+
 	c.State = cs
 	c.Config = &Config{
 		Labels: n.Labels,
@@ -561,6 +575,41 @@ func networkSettingsFromNative(n *native.NetNS, sp *specs.Spec) (*NetworkSetting
 	return res, nil
 }
 
+func cpuSettingsFromNative(sp *specs.Spec) (*CPUSettings, error) {
+	res := &CPUSettings{}
+	if sp.Linux != nil && sp.Linux.Resources != nil && sp.Linux.Resources.CPU != nil {
+		if sp.Linux.Resources.CPU.Cpus != "" {
+			res.cpuSetCpus = sp.Linux.Resources.CPU.Cpus
+		}
+
+		if sp.Linux.Resources.CPU.Mems != "" {
+			res.cpuSetMems = sp.Linux.Resources.CPU.Mems
+		}
+
+		if sp.Linux.Resources.CPU.Shares != nil && *sp.Linux.Resources.CPU.Shares > 0 {
+			res.cpuShares = *sp.Linux.Resources.CPU.Shares
+		}
+
+		if sp.Linux.Resources.CPU.Quota != nil && *sp.Linux.Resources.CPU.Quota > 0 {
+			res.cpuQuota = *sp.Linux.Resources.CPU.Quota
+		}
+	}
+
+	return res, nil
+}
+
+func groupAddFromNative(sp *specs.Spec) ([]string, error) {
+	res := []string{}
+	if sp.Process != nil && sp.Process.User.AdditionalGids != nil {
+		for _, gid := range sp.Process.User.AdditionalGids {
+			if gid != 0 {
+				res = append(res, strconv.FormatUint(uint64(gid), 10))
+			}
+		}
+	}
+	return res, nil
+}
+
 func convertToNatPort(portMappings []cni.PortMapping) (*nat.PortMap, error) {
 	portMap := make(nat.PortMap)
 	for _, portMapping := range portMappings {
@@ -586,14 +635,6 @@ func parseExtraHosts(extraHostsJSON string) []string {
 		return []string{}
 	}
 	return extraHosts
-}
-
-func parseGroups(groupAddJSON string) []string {
-	var groupAdd []string
-	if err := json.Unmarshal([]byte(groupAddJSON), &groupAdd); err != nil {
-		return []string{}
-	}
-	return groupAdd
 }
 
 type IPAMConfig struct {
