@@ -248,13 +248,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	envs = append(envs, "HOSTNAME="+netLabelOpts.Hostname)
 	opts = append(opts, oci.WithEnv(envs))
 
-	// TODO(aznashwan): more formal way to load net opts into internalLabels:
-	internalLabels.hostname = netLabelOpts.Hostname
-	internalLabels.ports = netLabelOpts.PortMappings
-	internalLabels.ipAddress = netLabelOpts.IPAddress
-	internalLabels.ip6Address = netLabelOpts.IP6Address
-	internalLabels.networks = netLabelOpts.NetworkSlice
-	internalLabels.macAddress = netLabelOpts.MACAddress
+	internalLabels.loadNetOpts(netLabelOpts)
 
 	// NOTE: OCI hooks are currently not supported on Windows so we skip setting them altogether.
 	// The OCI hooks we define (whose logic can be found in pkg/ocihook) primarily
@@ -732,6 +726,16 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 	return containerd.WithAdditionalContainerLabels(m), nil
 }
 
+// loadNetOpts loads network options into InternalLabels.
+func (il *internalLabels) loadNetOpts(opts types.NetworkOptions) {
+	il.hostname = opts.Hostname
+	il.ports = opts.PortMappings
+	il.ipAddress = opts.IPAddress
+	il.ip6Address = opts.IP6Address
+	il.networks = opts.NetworkSlice
+	il.macAddress = opts.MACAddress
+}
+
 func dockercompatMounts(mountPoints []*mountutil.Processed) []dockercompat.MountPoint {
 	result := make([]dockercompat.MountPoint, len(mountPoints))
 	for i := range mountPoints {
@@ -883,6 +887,17 @@ func generateGcFunc(ctx context.Context, container containerd.Container, ns, id,
 			netGcErr := netManager.CleanupNetworking(ctx, container)
 			if netGcErr != nil {
 				log.G(ctx).WithError(netGcErr).Warnf("failed to revert container %q networking settings", id)
+			}
+		} else {
+			hs, err := hostsstore.New(dataStore, internalLabels.namespace)
+			if err != nil {
+				log.G(ctx).WithError(err).Warnf("failed to instantiate hostsstore for %q", internalLabels.namespace)
+			} else {
+				if _, err := hs.HostsPath(id); err != nil {
+					log.G(ctx).WithError(err).Warnf("an etchosts directory for container %q dosen't exist", id)
+				} else if err = hs.Delete(id); err != nil {
+					log.G(ctx).WithError(err).Warnf("failed to remove an etchosts directory for container %q", id)
+				}
 			}
 		}
 
