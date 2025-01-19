@@ -56,9 +56,8 @@ func Save(ctx context.Context, client *containerd.Client, images []string, optio
 			}
 
 			imgName := found.Image.Name
-			imgDigest := found.Image.Target.Digest.String()
-			if _, ok := savedImages[imgDigest]; !ok {
-				savedImages[imgDigest] = struct{}{}
+			if _, ok := savedImages[imgName]; !ok {
+				savedImages[imgName] = struct{}{}
 				exportOpts = append(exportOpts, archive.WithImage(imageStore, imgName))
 			}
 			return nil
