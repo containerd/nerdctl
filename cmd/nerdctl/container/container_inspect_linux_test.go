@@ -248,6 +248,8 @@ func TestContainerInspectHostConfig(t *testing.T) {
 		"--add-host", "host1:10.0.0.1",
 		"--add-host", "host2:10.0.0.2",
 		"--ipc", "host",
+		"--memory", "512m",
+		"--oom-kill-disable",
 		testutil.AlpineImage, "sleep", "infinity").AssertOK()
 
 	inspect := base.InspectContainer(testContainer)
@@ -263,6 +265,9 @@ func TestContainerInspectHostConfig(t *testing.T) {
 	assert.Equal(t, "host", inspect.HostConfig.IpcMode)
 	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Type)
 	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Config.Driver)
+	assert.Equal(t, int64(536870912), inspect.HostConfig.Memory)
+	assert.Equal(t, int64(1073741824), inspect.HostConfig.MemorySwap)
+	assert.Equal(t, bool(true), inspect.HostConfig.OomKillDisable)
 }
 
 func TestContainerInspectHostConfigDefaults(t *testing.T) {
@@ -285,4 +290,7 @@ func TestContainerInspectHostConfigDefaults(t *testing.T) {
 	assert.Equal(t, "", inspect.HostConfig.IpcMode)
 	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Type)
 	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Config.Driver)
+	assert.Equal(t, int64(0), inspect.HostConfig.Memory)
+	assert.Equal(t, int64(0), inspect.HostConfig.MemorySwap)
+	assert.Equal(t, bool(false), inspect.HostConfig.OomKillDisable)
 }

@@ -153,6 +153,10 @@ type HostConfig struct {
 	ContainerIDFile string      // File (path) where the containerId is written
 	GroupAdd        []string    // GroupAdd specifies additional groups to join
 	IpcMode         string      // IPC namespace to use for the container
+	CgroupnsMode    string      // Cgroup namespace mode to use for the container
+	Memory          int64       // Memory limit (in bytes)
+	MemorySwap      int64       // Total memory usage (memory + swap); set `-1` to enable unlimited swap
+	OomKillDisable  bool        // specifies whether to disable OOM Killer
 }
 
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
@@ -409,6 +413,20 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	c.HostConfig.CPUQuota = cpuSetting.cpuQuota
 	c.HostConfig.CPUShares = cpuSetting.cpuShares
 
+	cgroupNamespace, err := getCgroupnsFromNative(n.Spec.(*specs.Spec))
+	if err != nil {
+		return nil, fmt.Errorf("failed to Decode cgroupNamespace: %v", err)
+	}
+	c.HostConfig.CgroupnsMode = cgroupNamespace
+
+	memorySettings, err := getMemorySettingsFromNative(n.Spec.(*specs.Spec))
+	if err != nil {
+		return nil, fmt.Errorf("failed to Decode memory Settings: %v", err)
+	}
+
+	c.HostConfig.OomKillDisable = memorySettings.DisableOOMKiller
+	c.HostConfig.Memory = memorySettings.Limit
+	c.HostConfig.MemorySwap = memorySettings.Swap
 	c.State = cs
 	c.Config = &Config{
 		Labels: n.Labels,
@@ -598,6 +616,18 @@ func cpuSettingsFromNative(sp *specs.Spec) (*CPUSettings, error) {
 	return res, nil
 }
 
+func getCgroupnsFromNative(sp *specs.Spec) (string, error) {
+	res := ""
+	if sp.Linux != nil && len(sp.Linux.Namespaces) != 0 {
+		for _, ns := range sp.Linux.Namespaces {
+			if ns.Type == "cgroup" {
+				res = "private"
+			}
+		}
+	}
+	return res, nil
+}
+
 func groupAddFromNative(sp *specs.Spec) ([]string, error) {
 	res := []string{}
 	if sp.Process != nil && sp.Process.User.AdditionalGids != nil {
@@ -637,6 +667,24 @@ func parseExtraHosts(extraHostsJSON string) []string {
 	return extraHosts
 }
 
+func getMemorySettingsFromNative(sp *specs.Spec) (*MemorySetting, error) {
+	res := &MemorySetting{}
+	if sp.Linux != nil && sp.Linux.Resources != nil && sp.Linux.Resources.Memory != nil {
+		if sp.Linux.Resources.Memory.DisableOOMKiller != nil {
+			res.DisableOOMKiller = *sp.Linux.Resources.Memory.DisableOOMKiller
+		}
+
+		if sp.Linux.Resources.Memory.Limit != nil {
+			res.Limit = *sp.Linux.Resources.Memory.Limit
+		}
+
+		if sp.Linux.Resources.Memory.Swap != nil {
+			res.Swap = *sp.Linux.Resources.Memory.Swap
+		}
+	}
+	return res, nil
+}
+
 type IPAMConfig struct {
 	Subnet  string `json:"Subnet,omitempty"`
 	Gateway string `json:"Gateway,omitempty"`
@@ -665,6 +713,12 @@ type structuredCNI struct {
 			Ranges [][]IPAMConfig `json:"ranges"`
 		} `json:"ipam"`
 	} `json:"plugins"`
+}
+
+type MemorySetting struct {
+	Limit            int64 `json:"limit"`
+	Swap             int64 `json:"swap"`
+	DisableOOMKiller bool  `json:"disableOOMKiller"`
 }
 
 func NetworkFromNative(n *native.Network) (*Network, error) {
