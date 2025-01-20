@@ -112,4 +112,13 @@ const (
 
 	// Cidfile is the ContainerId file set via the --cidfile flag
 	CIdFile = Prefix + "cid-file"
+
+	// Custom DNS lookup servers.
+	DnsServer = Prefix + "dns"
+
+	// DNSResolvConfOptions set DNS options
+	DNSResolvConfOptions = Prefix + "dns-options"
+
+	// DNSSearchDomains set custom DNS search domains
+	DNSSearchDomains = Prefix + "dns-search"
 )

@@ -157,6 +157,9 @@ type HostConfig struct {
 	Memory          int64       // Memory limit (in bytes)
 	MemorySwap      int64       // Total memory usage (memory + swap); set `-1` to enable unlimited swap
 	OomKillDisable  bool        // specifies whether to disable OOM Killer
+	DNS             []string    `json:"Dns"`        // List of DNS server to lookup
+	DNSOptions      []string    `json:"DnsOptions"` // List of DNSOption to look for
+	DNSSearch       []string    `json:"DnsSearch"`  // List of DNSSearch to look for
 }
 
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
@@ -222,6 +225,12 @@ type NetworkSettings struct {
 	Ports *nat.PortMap
 	DefaultNetworkSettings
 	Networks map[string]*NetworkEndpointSettings
+}
+
+type DNSSettings struct {
+	DNSServers           []string
+	DNSResolvConfOptions []string
+	DNSSearchDomains     []string
 }
 
 type CPUSettings struct {
@@ -427,6 +436,16 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	c.HostConfig.OomKillDisable = memorySettings.DisableOOMKiller
 	c.HostConfig.Memory = memorySettings.Limit
 	c.HostConfig.MemorySwap = memorySettings.Swap
+
+	dnsSettings, err := getDnsFromNative(n.Labels)
+	if err != nil {
+		return nil, fmt.Errorf("failed to Decode dns Settings: %v", err)
+	}
+
+	c.HostConfig.DNS = dnsSettings.DNSServers
+	c.HostConfig.DNSOptions = dnsSettings.DNSResolvConfOptions
+	c.HostConfig.DNSSearch = dnsSettings.DNSSearchDomains
+
 	c.State = cs
 	c.Config = &Config{
 		Labels: n.Labels,
@@ -682,6 +701,30 @@ func getMemorySettingsFromNative(sp *specs.Spec) (*MemorySetting, error) {
 			res.Swap = *sp.Linux.Resources.Memory.Swap
 		}
 	}
+	return res, nil
+}
+
+func getDnsFromNative(Labels map[string]string) (*DNSSettings, error) {
+	res := &DNSSettings{}
+
+	if dnsServers := Labels[labels.DnsServer]; dnsServers != "" {
+		if err := json.Unmarshal([]byte(dnsServers), &res.DNSServers); err != nil {
+			return nil, fmt.Errorf("failed to parse DNS servers: %v", err)
+		}
+	}
+
+	if dnsOptions := Labels[labels.DNSResolvConfOptions]; dnsOptions != "" {
+		if err := json.Unmarshal([]byte(dnsOptions), &res.DNSResolvConfOptions); err != nil {
+			return nil, fmt.Errorf("failed to parse DNS options: %v", err)
+		}
+	}
+
+	if dnsSearch := Labels[labels.DNSSearchDomains]; dnsSearch != "" {
+		if err := json.Unmarshal([]byte(dnsSearch), &res.DNSSearchDomains); err != nil {
+			return nil, fmt.Errorf("failed to parse DNS search domains: %v", err)
+		}
+	}
+
 	return res, nil
 }
 

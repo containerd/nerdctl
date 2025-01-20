@@ -626,19 +626,20 @@ type internalLabels struct {
 	extraHosts  []string
 	pidFile     string
 	blkioWeight uint16
-	cpusetCpus  string
-	cpusetMems  string
 	// labels from cmd options or automatically set
 	name     string
 	hostname string
 	// automatically generated
 	stateDir string
 	// network
-	networks   []string
-	ipAddress  string
-	ip6Address string
-	ports      []cni.PortMapping
-	macAddress string
+	networks             []string
+	ipAddress            string
+	ip6Address           string
+	ports                []cni.PortMapping
+	macAddress           string
+	dnsServers           []string
+	dnsSearchDomains     []string
+	dnsResolvConfOptions []string
 	// volume
 	mountPoints []*mountutil.Processed
 	anonVolumes []string
@@ -751,6 +752,30 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 		m[labels.CIdFile] = internalLabels.cidFile
 	}
 
+	if len(internalLabels.dnsServers) > 0 {
+		dnsServersJSON, err := json.Marshal(internalLabels.dnsServers)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.DnsServer] = string(dnsServersJSON)
+	}
+
+	if len(internalLabels.dnsSearchDomains) > 0 {
+		dnsSearchJSON, err := json.Marshal(internalLabels.dnsSearchDomains)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.DNSSearchDomains] = string(dnsSearchJSON)
+	}
+
+	if len(internalLabels.dnsResolvConfOptions) > 0 {
+		dnsResolvConfOptionsJSON, err := json.Marshal(internalLabels.dnsResolvConfOptions)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.DNSResolvConfOptions] = string(dnsResolvConfOptionsJSON)
+	}
+
 	return containerd.WithAdditionalContainerLabels(m), nil
 }
 
@@ -762,6 +787,9 @@ func (il *internalLabels) loadNetOpts(opts types.NetworkOptions) {
 	il.ip6Address = opts.IP6Address
 	il.networks = opts.NetworkSlice
 	il.macAddress = opts.MACAddress
+	il.dnsServers = opts.DNSServers
+	il.dnsSearchDomains = opts.DNSSearchDomains
+	il.dnsResolvConfOptions = opts.DNSResolvConfOptions
 }
 
 func dockercompatMounts(mountPoints []*mountutil.Processed) []dockercompat.MountPoint {

@@ -294,3 +294,51 @@ func TestContainerInspectHostConfigDefaults(t *testing.T) {
 	assert.Equal(t, int64(0), inspect.HostConfig.MemorySwap)
 	assert.Equal(t, bool(false), inspect.HostConfig.OomKillDisable)
 }
+
+func TestContainerInspectHostConfigDNS(t *testing.T) {
+	testContainer := testutil.Identifier(t)
+
+	base := testutil.NewBase(t)
+	defer base.Cmd("rm", "-f", testContainer).Run()
+
+	// Run a container with DNS options
+	base.Cmd("run", "-d", "--name", testContainer,
+		"--dns", "8.8.8.8",
+		"--dns", "1.1.1.1",
+		"--dns-search", "example.com",
+		"--dns-search", "test.local",
+		"--dns-option", "ndots:5",
+		"--dns-option", "timeout:3",
+		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+
+	inspect := base.InspectContainer(testContainer)
+
+	// Check DNS servers
+	expectedDNSServers := []string{"8.8.8.8", "1.1.1.1"}
+	assert.DeepEqual(t, expectedDNSServers, inspect.HostConfig.DNS)
+
+	// Check DNS search domains
+	expectedDNSSearch := []string{"example.com", "test.local"}
+	assert.DeepEqual(t, expectedDNSSearch, inspect.HostConfig.DNSSearch)
+
+	// Check DNS options
+	expectedDNSOptions := []string{"ndots:5", "timeout:3"}
+	assert.DeepEqual(t, expectedDNSOptions, inspect.HostConfig.DNSOptions)
+}
+
+func TestContainerInspectHostConfigDNSDefaults(t *testing.T) {
+	testContainer := testutil.Identifier(t)
+
+	base := testutil.NewBase(t)
+	defer base.Cmd("rm", "-f", testContainer).Run()
+
+	// Run a container without specifying DNS options
+	base.Cmd("run", "-d", "--name", testContainer, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+
+	inspect := base.InspectContainer(testContainer)
+
+	// Check that DNS settings are empty by default
+	assert.Equal(t, 0, len(inspect.HostConfig.DNS))
+	assert.Equal(t, 0, len(inspect.HostConfig.DNSSearch))
+	assert.Equal(t, 0, len(inspect.HostConfig.DNSOptions))
+}
