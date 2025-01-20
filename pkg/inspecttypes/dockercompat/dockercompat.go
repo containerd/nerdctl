@@ -160,6 +160,7 @@ type HostConfig struct {
 	DNS             []string    `json:"Dns"`        // List of DNS server to lookup
 	DNSOptions      []string    `json:"DnsOptions"` // List of DNSOption to look for
 	DNSSearch       []string    `json:"DnsSearch"`  // List of DNSSearch to look for
+	OomScoreAdj     int         // specifies the tune container’s OOM preferences (-1000 to 1000, rootless: 100 to 1000)
 }
 
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
@@ -446,6 +447,9 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	c.HostConfig.DNSOptions = dnsSettings.DNSResolvConfOptions
 	c.HostConfig.DNSSearch = dnsSettings.DNSSearchDomains
 
+	oomScoreAdj, _ := getOomScoreAdjFromNative(n.Spec.(*specs.Spec))
+	c.HostConfig.OomScoreAdj = oomScoreAdj
+
 	c.State = cs
 	c.Config = &Config{
 		Labels: n.Labels,
@@ -725,6 +729,14 @@ func getDnsFromNative(Labels map[string]string) (*DNSSettings, error) {
 		}
 	}
 
+	return res, nil
+}
+
+func getOomScoreAdjFromNative(sp *specs.Spec) (int, error) {
+	var res int
+	if sp.Process != nil && sp.Process.OOMScoreAdj != nil {
+		res = *sp.Process.OOMScoreAdj
+	}
 	return res, nil
 }
 
