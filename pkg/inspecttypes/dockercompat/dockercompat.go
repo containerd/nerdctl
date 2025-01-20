@@ -36,6 +36,7 @@ import (
 	"time"
 
 	"github.com/docker/go-connections/nat"
+	"github.com/docker/go-units"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -161,6 +162,10 @@ type HostConfig struct {
 	DNSOptions      []string    `json:"DnsOptions"` // List of DNSOption to look for
 	DNSSearch       []string    `json:"DnsSearch"`  // List of DNSSearch to look for
 	OomScoreAdj     int         // specifies the tune container’s OOM preferences (-1000 to 1000, rootless: 100 to 1000)
+	ReadonlyRootfs  bool        // Is the container root filesystem in read-only
+	UTSMode         string      // UTS namespace to use for the container
+	ShmSize         int64       // Size of /dev/shm in bytes. The size must be greater than 0.
+
 }
 
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
@@ -450,6 +455,17 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	oomScoreAdj, _ := getOomScoreAdjFromNative(n.Spec.(*specs.Spec))
 	c.HostConfig.OomScoreAdj = oomScoreAdj
 
+	c.HostConfig.ReadonlyRootfs = false
+	if n.Spec.(*specs.Spec).Root != nil && n.Spec.(*specs.Spec).Root.Readonly {
+		c.HostConfig.ReadonlyRootfs = n.Spec.(*specs.Spec).Root.Readonly
+	}
+
+	utsMode, _ := getUtsModeFromNative(n.Spec.(*specs.Spec))
+	c.HostConfig.UTSMode = utsMode
+
+	shmSize, _ := getShmSizeFromNative(n.Spec.(*specs.Spec))
+	c.HostConfig.ShmSize = shmSize
+
 	c.State = cs
 	c.Config = &Config{
 		Labels: n.Labels,
@@ -736,6 +752,39 @@ func getOomScoreAdjFromNative(sp *specs.Spec) (int, error) {
 	var res int
 	if sp.Process != nil && sp.Process.OOMScoreAdj != nil {
 		res = *sp.Process.OOMScoreAdj
+	}
+	return res, nil
+}
+
+func getUtsModeFromNative(sp *specs.Spec) (string, error) {
+	if sp.Linux != nil && len(sp.Linux.Namespaces) > 0 {
+		for _, ns := range sp.Linux.Namespaces {
+			if ns.Type == "uts" {
+				return "", nil
+			}
+		}
+	}
+	return "host", nil
+}
+
+func getShmSizeFromNative(sp *specs.Spec) (int64, error) {
+	var res int64
+
+	if sp.Mounts != nil && len(sp.Mounts) > 0 {
+		for _, mount := range sp.Mounts {
+			if mount.Destination == "/dev/shm" {
+				for _, option := range mount.Options {
+					if strings.HasPrefix(option, "size=") {
+						sizeStr := strings.TrimPrefix(option, "size=")
+						size, err := units.RAMInBytes(sizeStr)
+						if err != nil {
+							return 0, fmt.Errorf("failed to parse shm size: %v", err)
+						}
+						res = size
+					}
+				}
+			}
+		}
 	}
 	return res, nil
 }

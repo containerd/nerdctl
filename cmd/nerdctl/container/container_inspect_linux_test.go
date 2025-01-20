@@ -250,6 +250,9 @@ func TestContainerInspectHostConfig(t *testing.T) {
 		"--ipc", "host",
 		"--memory", "512m",
 		"--oom-kill-disable",
+		"--read-only",
+		"--uts", "host",
+		"--shm-size", "256m",
 		testutil.AlpineImage, "sleep", "infinity").AssertOK()
 
 	inspect := base.InspectContainer(testContainer)
@@ -268,6 +271,9 @@ func TestContainerInspectHostConfig(t *testing.T) {
 	assert.Equal(t, int64(536870912), inspect.HostConfig.Memory)
 	assert.Equal(t, int64(1073741824), inspect.HostConfig.MemorySwap)
 	assert.Equal(t, bool(true), inspect.HostConfig.OomKillDisable)
+	assert.Equal(t, true, inspect.HostConfig.ReadonlyRootfs)
+	assert.Equal(t, "host", inspect.HostConfig.UTSMode)
+	assert.Equal(t, int64(268435456), inspect.HostConfig.ShmSize)
 }
 
 func TestContainerInspectHostConfigDefaults(t *testing.T) {
@@ -293,6 +299,9 @@ func TestContainerInspectHostConfigDefaults(t *testing.T) {
 	assert.Equal(t, int64(0), inspect.HostConfig.Memory)
 	assert.Equal(t, int64(0), inspect.HostConfig.MemorySwap)
 	assert.Equal(t, bool(false), inspect.HostConfig.OomKillDisable)
+	assert.Equal(t, false, inspect.HostConfig.ReadonlyRootfs)
+	assert.Equal(t, "", inspect.HostConfig.UTSMode)
+	assert.Equal(t, int64(67108864), inspect.HostConfig.ShmSize)
 }
 
 func TestContainerInspectHostConfigDNS(t *testing.T) {
