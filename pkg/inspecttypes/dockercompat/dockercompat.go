@@ -96,11 +96,6 @@ type ImageMetadata struct {
 	LastTagTime time.Time `json:",omitempty"`
 }
 
-type LogConfig struct {
-	Type   string
-	Config loggerLogConfig
-}
-
 type loggerLogConfig struct {
 	Driver  string            `json:"driver"`
 	Opts    map[string]string `json:"opts,omitempty"`
@@ -145,7 +140,7 @@ type Container struct {
 type HostConfig struct {
 	ExtraHosts      []string          // List of extra hosts
 	PortBindings    nat.PortMap       // Port mapping between the exposed port (container) and the host
-	LogConfig       LogConfig         // Configuration of the logs for this container
+	LogConfig       loggerLogConfig   // Configuration of the logs for this container
 	BlkioWeight     uint16            // Block IO weight (relative weight vs. other containers)
 	CPUSetMems      string            `json:"CpusetMems"` // CpusetMems 0-2, 0,1
 	CPUSetCPUs      string            `json:"CpusetCpus"` // CpusetCpus 0-2, 0,1
@@ -344,7 +339,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	}
 
 	if nerdctlLoguri := n.Labels[labels.LogURI]; nerdctlLoguri != "" {
-		c.HostConfig.LogConfig.Type = nerdctlLoguri
+		c.HostConfig.LogConfig.LogURI = nerdctlLoguri
 	}
 	if logConfigJSON, ok := n.Labels[labels.LogConfig]; ok {
 		var logConfig loggerLogConfig
@@ -354,10 +349,10 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		}
 
 		// Assign the parsed LogConfig to c.HostConfig.LogConfig
-		c.HostConfig.LogConfig.Config = logConfig
+		c.HostConfig.LogConfig = logConfig
 	} else {
 		// If LogConfig label is not present, set default values
-		c.HostConfig.LogConfig.Config = loggerLogConfig{
+		c.HostConfig.LogConfig = loggerLogConfig{
 			Driver: "json-file",
 			Opts:   make(map[string]string),
 		}
