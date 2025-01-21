@@ -41,7 +41,7 @@ type customMemoryOptions struct {
 	disableOOMKiller  *bool
 }
 
-func generateCgroupOpts(id string, options types.ContainerCreateOptions) ([]oci.SpecOpts, error) {
+func generateCgroupOpts(id string, options types.ContainerCreateOptions, internalLabels *internalLabels) ([]oci.SpecOpts, error) {
 	if options.KernelMemory != "" {
 		log.L.Warnf("The --kernel-memory flag is no longer supported. This flag is a noop.")
 	}
@@ -206,6 +206,7 @@ func generateCgroupOpts(id string, options types.ContainerCreateOptions) ([]oci.
 			return nil, fmt.Errorf("failed to parse device %q: %w", f, err)
 		}
 		opts = append(opts, oci.WithDevices(devPath, conPath, mode))
+		internalLabels.deviceMapping = append(internalLabels.deviceMapping, f)
 	}
 
 	return opts, nil

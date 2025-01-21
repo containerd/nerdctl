@@ -162,6 +162,7 @@ type HostConfig struct {
 	ShmSize         int64             // Size of /dev/shm in bytes. The size must be greater than 0.
 	Sysctls         map[string]string // List of Namespaced sysctls used for the container
 	Runtime         string            // Runtime to use with this container
+	Devices         []string          // List of devices to map inside the container
 }
 
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
@@ -439,7 +440,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	c.HostConfig.Memory = memorySettings.Limit
 	c.HostConfig.MemorySwap = memorySettings.Swap
 
-	dnsSettings, err := getDnsFromNative(n.Labels)
+	dnsSettings, err := getDNSFromNative(n.Labels)
 	if err != nil {
 		return nil, fmt.Errorf("failed to Decode dns Settings: %v", err)
 	}
@@ -477,6 +478,12 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		hostname = n.Labels[labels.Hostname]
 	}
 	c.Config.Hostname = hostname
+
+	c.HostConfig.Devices = []string{}
+	if nedctlDeviceMapping := n.Labels[labels.DeviceMapping]; nedctlDeviceMapping != "" {
+		devices, _ := parseDeviceMapping(nedctlDeviceMapping)
+		c.HostConfig.Devices = devices
+	}
 
 	return c, nil
 }
@@ -727,10 +734,10 @@ func getMemorySettingsFromNative(sp *specs.Spec) (*MemorySetting, error) {
 	return res, nil
 }
 
-func getDnsFromNative(Labels map[string]string) (*DNSSettings, error) {
+func getDNSFromNative(Labels map[string]string) (*DNSSettings, error) {
 	res := &DNSSettings{}
 
-	if dnsServers := Labels[labels.DnsServer]; dnsServers != "" {
+	if dnsServers := Labels[labels.DNSServer]; dnsServers != "" {
 		if err := json.Unmarshal([]byte(dnsServers), &res.DNSServers); err != nil {
 			return nil, fmt.Errorf("failed to parse DNS servers: %v", err)
 		}
@@ -773,7 +780,7 @@ func getUtsModeFromNative(sp *specs.Spec) (string, error) {
 func getShmSizeFromNative(sp *specs.Spec) (int64, error) {
 	var res int64
 
-	if sp.Mounts != nil && len(sp.Mounts) > 0 {
+	if len(sp.Mounts) > 0 {
 		for _, mount := range sp.Mounts {
 			if mount.Destination == "/dev/shm" {
 				for _, option := range mount.Options {
@@ -798,6 +805,15 @@ func getSysctlFromNative(sp *specs.Spec) (map[string]string, error) {
 		res = sp.Linux.Sysctl
 	}
 	return res, nil
+}
+
+func parseDeviceMapping(deviceMappingJSON string) ([]string, error) {
+	var devices []string
+	err := json.Unmarshal([]byte(deviceMappingJSON), &devices)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse device mapping: %v", err)
+	}
+	return devices, nil
 }
 
 type IPAMConfig struct {

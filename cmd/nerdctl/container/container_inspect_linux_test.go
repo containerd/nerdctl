@@ -255,6 +255,7 @@ func TestContainerInspectHostConfig(t *testing.T) {
 		"--shm-size", "256m",
 		"--runtime", "io.containerd.runtime.v1.linux",
 		"--sysctl", "net.core.somaxconn=1024",
+		"--device", "/dev/zero:/dev/null",
 		testutil.AlpineImage, "sleep", "infinity").AssertOK()
 
 	inspect := base.InspectContainer(testContainer)
@@ -268,8 +269,7 @@ func TestContainerInspectHostConfig(t *testing.T) {
 	expectedExtraHosts := []string{"host1:10.0.0.1", "host2:10.0.0.2"}
 	assert.DeepEqual(t, expectedExtraHosts, inspect.HostConfig.ExtraHosts)
 	assert.Equal(t, "host", inspect.HostConfig.IpcMode)
-	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Type)
-	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Config.Driver)
+	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Driver)
 	assert.Equal(t, int64(536870912), inspect.HostConfig.Memory)
 	assert.Equal(t, int64(1073741824), inspect.HostConfig.MemorySwap)
 	assert.Equal(t, bool(true), inspect.HostConfig.OomKillDisable)
@@ -281,6 +281,8 @@ func TestContainerInspectHostConfig(t *testing.T) {
 		"net.core.somaxconn": "1024",
 	}
 	assert.DeepEqual(t, expectedSysctls, inspect.HostConfig.Sysctls)
+	expectedDevices := []string{"/dev/null:/dev/null"}
+	assert.DeepEqual(t, expectedDevices, inspect.HostConfig.Devices)
 }
 
 func TestContainerInspectHostConfigDefaults(t *testing.T) {
@@ -301,8 +303,7 @@ func TestContainerInspectHostConfigDefaults(t *testing.T) {
 	assert.Equal(t, 0, len(inspect.HostConfig.GroupAdd))
 	assert.Equal(t, 0, len(inspect.HostConfig.ExtraHosts))
 	assert.Equal(t, "", inspect.HostConfig.IpcMode)
-	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Type)
-	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Config.Driver)
+	assert.Equal(t, "json-file", inspect.HostConfig.LogConfig.Driver)
 	assert.Equal(t, int64(0), inspect.HostConfig.Memory)
 	assert.Equal(t, int64(0), inspect.HostConfig.MemorySwap)
 	assert.Equal(t, bool(false), inspect.HostConfig.OomKillDisable)
@@ -311,6 +312,7 @@ func TestContainerInspectHostConfigDefaults(t *testing.T) {
 	assert.Equal(t, int64(67108864), inspect.HostConfig.ShmSize)
 	assert.Equal(t, "io.containerd.runc.v2", inspect.HostConfig.Runtime)
 	assert.Equal(t, 0, len(inspect.HostConfig.Sysctls))
+	assert.Equal(t, 0, len(inspect.HostConfig.Devices))
 }
 
 func TestContainerInspectHostConfigDNS(t *testing.T) {

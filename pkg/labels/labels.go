@@ -114,11 +114,14 @@ const (
 	CIdFile = Prefix + "cid-file"
 
 	// Custom DNS lookup servers.
-	DnsServer = Prefix + "dns"
+	DNSServer = Prefix + "dns"
 
 	// DNSResolvConfOptions set DNS options
 	DNSResolvConfOptions = Prefix + "dns-options"
 
 	// DNSSearchDomains set custom DNS search domains
 	DNSSearchDomains = Prefix + "dns-search"
+
+	//DeviceMapping specifies mapping host device to the container
+	DeviceMapping = Prefix + "devices"
 )
