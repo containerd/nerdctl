@@ -143,29 +143,30 @@ type Container struct {
 // From https://github.com/moby/moby/blob/8dbd90ec00daa26dc45d7da2431c965dec99e8b4/api/types/container/host_config.go#L391
 // HostConfig the non-portable Config structure of a container.
 type HostConfig struct {
-	ExtraHosts      []string    // List of extra hosts
-	PortBindings    nat.PortMap // Port mapping between the exposed port (container) and the host
-	LogConfig       LogConfig   // Configuration of the logs for this container
-	BlkioWeight     uint16      // Block IO weight (relative weight vs. other containers)
-	CPUSetMems      string      `json:"CpusetMems"` // CpusetMems 0-2, 0,1
-	CPUSetCPUs      string      `json:"CpusetCpus"` // CpusetCpus 0-2, 0,1
-	CPUQuota        int64       `json:"CpuQuota"`   // CPU CFS (Completely Fair Scheduler) quota
-	CPUShares       uint64      `json:"CpuShares"`  // CPU shares (relative weight vs. other containers)
-	ContainerIDFile string      // File (path) where the containerId is written
-	GroupAdd        []string    // GroupAdd specifies additional groups to join
-	IpcMode         string      // IPC namespace to use for the container
-	CgroupnsMode    string      // Cgroup namespace mode to use for the container
-	Memory          int64       // Memory limit (in bytes)
-	MemorySwap      int64       // Total memory usage (memory + swap); set `-1` to enable unlimited swap
-	OomKillDisable  bool        // specifies whether to disable OOM Killer
-	DNS             []string    `json:"Dns"`        // List of DNS server to lookup
-	DNSOptions      []string    `json:"DnsOptions"` // List of DNSOption to look for
-	DNSSearch       []string    `json:"DnsSearch"`  // List of DNSSearch to look for
-	OomScoreAdj     int         // specifies the tune container’s OOM preferences (-1000 to 1000, rootless: 100 to 1000)
-	ReadonlyRootfs  bool        // Is the container root filesystem in read-only
-	UTSMode         string      // UTS namespace to use for the container
-	ShmSize         int64       // Size of /dev/shm in bytes. The size must be greater than 0.
-
+	ExtraHosts      []string          // List of extra hosts
+	PortBindings    nat.PortMap       // Port mapping between the exposed port (container) and the host
+	LogConfig       LogConfig         // Configuration of the logs for this container
+	BlkioWeight     uint16            // Block IO weight (relative weight vs. other containers)
+	CPUSetMems      string            `json:"CpusetMems"` // CpusetMems 0-2, 0,1
+	CPUSetCPUs      string            `json:"CpusetCpus"` // CpusetCpus 0-2, 0,1
+	CPUQuota        int64             `json:"CpuQuota"`   // CPU CFS (Completely Fair Scheduler) quota
+	CPUShares       uint64            `json:"CpuShares"`  // CPU shares (relative weight vs. other containers)
+	ContainerIDFile string            // File (path) where the containerId is written
+	GroupAdd        []string          // GroupAdd specifies additional groups to join
+	IpcMode         string            // IPC namespace to use for the container
+	CgroupnsMode    string            // Cgroup namespace mode to use for the container
+	Memory          int64             // Memory limit (in bytes)
+	MemorySwap      int64             // Total memory usage (memory + swap); set `-1` to enable unlimited swap
+	OomKillDisable  bool              // specifies whether to disable OOM Killer
+	DNS             []string          `json:"Dns"`        // List of DNS server to lookup
+	DNSOptions      []string          `json:"DnsOptions"` // List of DNSOption to look for
+	DNSSearch       []string          `json:"DnsSearch"`  // List of DNSSearch to look for
+	OomScoreAdj     int               // specifies the tune container’s OOM preferences (-1000 to 1000, rootless: 100 to 1000)
+	ReadonlyRootfs  bool              // Is the container root filesystem in read-only
+	UTSMode         string            // UTS namespace to use for the container
+	ShmSize         int64             // Size of /dev/shm in bytes. The size must be greater than 0.
+	Sysctls         map[string]string // List of Namespaced sysctls used for the container
+	Runtime         string            // Runtime to use with this container
 }
 
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
@@ -465,6 +466,13 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 
 	shmSize, _ := getShmSizeFromNative(n.Spec.(*specs.Spec))
 	c.HostConfig.ShmSize = shmSize
+
+	sysctls, _ := getSysctlFromNative(n.Spec.(*specs.Spec))
+	c.HostConfig.Sysctls = sysctls
+
+	if n.Runtime.Name != "" {
+		c.HostConfig.Runtime = n.Runtime.Name
+	}
 
 	c.State = cs
 	c.Config = &Config{
@@ -785,6 +793,14 @@ func getShmSizeFromNative(sp *specs.Spec) (int64, error) {
 				}
 			}
 		}
+	}
+	return res, nil
+}
+
+func getSysctlFromNative(sp *specs.Spec) (map[string]string, error) {
+	var res map[string]string
+	if sp.Linux != nil && sp.Linux.Sysctl != nil {
+		res = sp.Linux.Sysctl
 	}
 	return res, nil
 }

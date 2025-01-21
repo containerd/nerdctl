@@ -253,6 +253,8 @@ func TestContainerInspectHostConfig(t *testing.T) {
 		"--read-only",
 		"--uts", "host",
 		"--shm-size", "256m",
+		"--runtime", "io.containerd.runtime.v1.linux",
+		"--sysctl", "net.core.somaxconn=1024",
 		testutil.AlpineImage, "sleep", "infinity").AssertOK()
 
 	inspect := base.InspectContainer(testContainer)
@@ -274,6 +276,11 @@ func TestContainerInspectHostConfig(t *testing.T) {
 	assert.Equal(t, true, inspect.HostConfig.ReadonlyRootfs)
 	assert.Equal(t, "host", inspect.HostConfig.UTSMode)
 	assert.Equal(t, int64(268435456), inspect.HostConfig.ShmSize)
+	assert.Equal(t, "io.containerd.runtime.v1.linux", inspect.HostConfig.Runtime)
+	expectedSysctls := map[string]string{
+		"net.core.somaxconn": "1024",
+	}
+	assert.DeepEqual(t, expectedSysctls, inspect.HostConfig.Sysctls)
 }
 
 func TestContainerInspectHostConfigDefaults(t *testing.T) {
@@ -302,6 +309,8 @@ func TestContainerInspectHostConfigDefaults(t *testing.T) {
 	assert.Equal(t, false, inspect.HostConfig.ReadonlyRootfs)
 	assert.Equal(t, "", inspect.HostConfig.UTSMode)
 	assert.Equal(t, int64(67108864), inspect.HostConfig.ShmSize)
+	assert.Equal(t, "io.containerd.runc.v2", inspect.HostConfig.Runtime)
+	assert.Equal(t, 0, len(inspect.HostConfig.Sysctls))
 }
 
 func TestContainerInspectHostConfigDNS(t *testing.T) {
