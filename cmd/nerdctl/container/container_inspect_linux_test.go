@@ -362,3 +362,39 @@ func TestContainerInspectHostConfigDNSDefaults(t *testing.T) {
 	assert.Equal(t, 0, len(inspect.HostConfig.DNSSearch))
 	assert.Equal(t, 0, len(inspect.HostConfig.DNSOptions))
 }
+
+func TestContainerInspectHostConfigPID(t *testing.T) {
+	testContainer1 := testutil.Identifier(t)
+	testContainer2 := testutil.Identifier(t)
+
+	base := testutil.NewBase(t)
+	defer base.Cmd("rm", "-f", testContainer1, testContainer2).Run()
+
+	// Run the first container
+	base.Cmd("run", "-d", "--name", testContainer1, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+
+	// Run a container with PID namespace options
+	base.Cmd("run", "-d", "--name", testContainer2,
+		"--pid", fmt.Sprintf("container:%s", testContainer1),
+		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+
+	inspect := base.InspectContainer(testContainer2)
+
+	assert.Equal(t, fmt.Sprintf("container:%s", testContainer1), inspect.HostConfig.PidMode)
+
+}
+
+func TestContainerInspectHostConfigPIDDefaults(t *testing.T) {
+	testContainer := testutil.Identifier(t)
+
+	base := testutil.NewBase(t)
+	defer base.Cmd("rm", "-f", testContainer).Run()
+
+	// Run a container without specifying PID options
+	base.Cmd("run", "-d", "--name", testContainer, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+
+	inspect := base.InspectContainer(testContainer)
+
+	// Check that PID mode is empty (private) by default
+	assert.Equal(t, "", inspect.HostConfig.PidMode)
+}

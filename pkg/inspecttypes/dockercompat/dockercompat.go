@@ -163,6 +163,8 @@ type HostConfig struct {
 	Sysctls         map[string]string // List of Namespaced sysctls used for the container
 	Runtime         string            // Runtime to use with this container
 	Devices         []string          // List of devices to map inside the container
+	PidMode         string            // PID namespace to use for the container
+	Tmpfs           []MountPoint      `json:",omitempty"` // List of tmpfs (mounts) used for the container
 }
 
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
@@ -292,6 +294,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		// XXX is this always right? what if the container OS is NOT the same as the host OS?
 		Platform: runtime.GOOS, // for Docker compatibility, this Platform string does NOT contain arch like "/amd64"
 	}
+	c.HostConfig = new(HostConfig)
 	if n.Labels[restart.StatusLabel] == string(containerd.Running) {
 		c.RestartCount, _ = strconv.Atoi(n.Labels[restart.CountLabel])
 	}
@@ -332,15 +335,20 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		}
 	}
 
+	var tmpfsMounts []MountPoint
+
 	if nerdctlMounts := n.Labels[labels.Mounts]; nerdctlMounts != "" {
 		mounts, err := parseMounts(nerdctlMounts)
 		if err != nil {
 			return nil, err
 		}
 		c.Mounts = mounts
+		if len(mounts) > 0 {
+			tmpfsMounts = filterTmpfsMounts(mounts)
+		}
 	}
+	c.HostConfig.Tmpfs = tmpfsMounts
 
-	c.HostConfig = new(HostConfig)
 	if nedctlExtraHosts := n.Labels[labels.ExtraHosts]; nedctlExtraHosts != "" {
 		c.HostConfig.ExtraHosts = parseExtraHosts(nedctlExtraHosts)
 	}
@@ -366,7 +374,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	}
 
 	// var hostConfigLabel HostConfigLabel
-	hostConfigLabel, err := getHostConfigLabelFromNative(n.Labels)
+	hostConfigLabel, _ := getHostConfigLabelFromNative(n.Labels)
 
 	c.HostConfig.BlkioWeight = hostConfigLabel.BlkioWeight
 	c.HostConfig.ContainerIDFile = hostConfigLabel.CidFile
@@ -480,6 +488,11 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 
 	c.HostConfig.Devices = hostConfigLabel.DeviceMapping
 
+	var pidMode string
+	if n.Labels[labels.PIDContainer] != "" {
+		pidMode = n.Labels[labels.PIDContainer]
+	}
+	c.HostConfig.PidMode = pidMode
 	return c, nil
 }
 
@@ -547,6 +560,18 @@ func mountsFromNative(spMounts []specs.Mount) []MountPoint {
 		mp.Mode = strings.Join(m.Options, ",")
 		mp.RW, mp.Propagation = ParseMountProperties(m.Options)
 		mountpoints = append(mountpoints, mp)
+	}
+
+	return mountpoints
+}
+
+// filterTmpfsMounts filters the tmpfs mounts
+func filterTmpfsMounts(spMounts []MountPoint) []MountPoint {
+	mountpoints := make([]MountPoint, 0, len(spMounts))
+	for _, m := range spMounts {
+		if m.Type == "tmpfs" {
+			mountpoints = append(mountpoints, m)
+		}
 	}
 
 	return mountpoints
@@ -799,15 +824,6 @@ func getSysctlFromNative(sp *specs.Spec) (map[string]string, error) {
 		res = sp.Linux.Sysctl
 	}
 	return res, nil
-}
-
-func parseDeviceMapping(deviceMappingJSON string) ([]string, error) {
-	var devices []string
-	err := json.Unmarshal([]byte(deviceMappingJSON), &devices)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse device mapping: %v", err)
-	}
-	return devices, nil
 }
 
 type IPAMConfig struct {

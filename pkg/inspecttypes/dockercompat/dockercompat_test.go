@@ -83,7 +83,7 @@ func TestContainerFromNative(t *testing.T) {
 						Opts:   map[string]string{},
 					},
 					UTSMode: "host",
-					Devices: []string{},
+					Tmpfs:   []MountPoint{},
 				},
 				Mounts: []MountPoint{
 					{
@@ -168,7 +168,6 @@ func TestContainerFromNative(t *testing.T) {
 						Opts:   map[string]string{},
 					},
 					UTSMode: "host",
-					Devices: []string{},
 				},
 				Mounts: []MountPoint{
 					{
@@ -250,7 +249,6 @@ func TestContainerFromNative(t *testing.T) {
 						Opts:   map[string]string{},
 					},
 					UTSMode: "host",
-					Devices: []string{},
 				},
 				Mounts: []MountPoint{
 					{
