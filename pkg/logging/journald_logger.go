@@ -161,7 +161,7 @@ func (journaldLogger *JournaldLogger) PostProcess() error {
 func FetchLogs(stdout, stderr io.Writer, journalctlArgs []string, stopChannel chan os.Signal) error {
 	journalctl, err := exec.LookPath("journalctl")
 	if err != nil {
-		return fmt.Errorf("could not find `journalctl` executable in PATH: %s", err)
+		return fmt.Errorf("could not find `journalctl` executable in PATH: %w", err)
 	}
 
 	cmd := exec.Command(journalctl, journalctlArgs...)
@@ -169,7 +169,7 @@ func FetchLogs(stdout, stderr io.Writer, journalctlArgs []string, stopChannel ch
 	cmd.Stderr = stderr
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start journalctl command with args %#v: %s", journalctlArgs, err)
+		return fmt.Errorf("failed to start journalctl command with args %#v: %w", journalctlArgs, err)
 	}
 
 	// Setup killing goroutine:

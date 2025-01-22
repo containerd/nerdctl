@@ -45,7 +45,7 @@ func (c *Composer) getOrphanContainers(ctx context.Context, parsedServices []*se
 		// to any name of given services.
 		containerLabels, err := container.Labels(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("error getting container labels: %s", err)
+			return nil, fmt.Errorf("error getting container labels: %w", err)
 		}
 		containerSvc := containerLabels[labels.ComposeService]
 		if inServices := parsedSvcNames[containerSvc]; !inServices {

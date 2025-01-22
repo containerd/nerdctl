@@ -194,7 +194,7 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		if err == nil {
 			networkManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netOpts, client)
 			if err != nil {
-				retErr = fmt.Errorf("failed to instantiate network options manager: %s", err)
+				retErr = fmt.Errorf("failed to instantiate network options manager: %w", err)
 				return
 			}
 

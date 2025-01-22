@@ -159,7 +159,7 @@ func (c *Composer) createServiceContainer(ctx context.Context, service *servicep
 	// check if container already exists
 	exists, err := c.containerExists(ctx, container.Name, service.Unparsed.Name)
 	if err != nil {
-		return "", fmt.Errorf("error while checking for containers with name %q: %s", container.Name, err)
+		return "", fmt.Errorf("error while checking for containers with name %q: %w", container.Name, err)
 	}
 
 	// delete container if it already exists and force-recreate is enabled
@@ -172,7 +172,7 @@ func (c *Composer) createServiceContainer(ctx context.Context, service *servicep
 		log.G(ctx).Debugf("Container %q already exists and force-created is enabled, deleting", container.Name)
 		delCmd := c.createNerdctlCmd(ctx, "rm", "-f", container.Name)
 		if err = delCmd.Run(); err != nil {
-			return "", fmt.Errorf("could not delete container %q: %s", container.Name, err)
+			return "", fmt.Errorf("could not delete container %q: %w", container.Name, err)
 		}
 		log.G(ctx).Infof("Re-creating container %s", container.Name)
 	} else {

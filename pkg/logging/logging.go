@@ -139,12 +139,12 @@ func LoadLogConfig(dataStore, ns, id string) (LogConfig, error) {
 	logConfigFilePath := LogConfigFilePath(dataStore, ns, id)
 	logConfigData, err := os.ReadFile(logConfigFilePath)
 	if err != nil {
-		return logConfig, fmt.Errorf("failed to read log config file %q: %s", logConfigFilePath, err)
+		return logConfig, fmt.Errorf("failed to read log config file %q: %w", logConfigFilePath, err)
 	}
 
 	err = json.Unmarshal(logConfigData, &logConfig)
 	if err != nil {
-		return logConfig, fmt.Errorf("failed to load JSON logging config file %q: %s", logConfigFilePath, err)
+		return logConfig, fmt.Errorf("failed to load JSON logging config file %q: %w", logConfigFilePath, err)
 	}
 	return logConfig, nil
 }
