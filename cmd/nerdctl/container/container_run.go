@@ -386,7 +386,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 				return
 			}
 			if err := netManager.CleanupNetworking(ctx, c); err != nil {
-				log.L.Warnf("failed to clean up container networking: %s", err)
+				log.L.WithError(err).Warnf("failed to clean up container networking")
 			}
 			if err := container.RemoveContainer(ctx, c, createOpt.GOptions, true, true, client); err != nil {
 				log.L.WithError(err).Warnf("failed to remove container %s", id)

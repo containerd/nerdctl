@@ -264,7 +264,7 @@ func startTail(ctx context.Context, logName string, w *fsnotify.Watcher) (bool, 
 				log.L.Debugf("Received unexpected fsnotify event: %v, retrying", e)
 			}
 		case err := <-w.Errors:
-			log.L.Debugf("Received fsnotify watch error, retrying unless no more retries left, retries: %d, error: %s", errRetry, err)
+			log.L.WithError(err).Debugf("Received fsnotify watch error, retrying unless no more retries left, retries: %d", errRetry)
 			if errRetry == 0 {
 				return false, err
 			}
