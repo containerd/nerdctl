@@ -101,27 +101,15 @@ const (
 	// (like "nerdctl/default-network=true" or "nerdctl/default-network=false")
 	NerdctlDefaultNetwork = Prefix + "default-network"
 
-	// LogConfig defines the logging configuration passed to the container
-	LogConfig = Prefix + "log-config"
-
 	// ContainerAutoRemove is to check whether the --rm option is specified.
 	ContainerAutoRemove = Prefix + "auto-remove"
 
-	// BlkioWeight to check if the --blkio-weight is specified
-	BlkioWeight = Prefix + "blkio-weight"
+	// LogConfig defines the logging configuration passed to the container
+	LogConfig = Prefix + "log-config"
 
-	// Cidfile is the ContainerId file set via the --cidfile flag
-	CIdFile = Prefix + "cid-file"
+	// HostConfigLabel sets the dockercompat host config values
+	HostConfigLabel = Prefix + "host-config"
 
-	// Custom DNS lookup servers.
-	DNSServer = Prefix + "dns"
-
-	// DNSResolvConfOptions set DNS options
-	DNSResolvConfOptions = Prefix + "dns-options"
-
-	// DNSSearchDomains set custom DNS search domains
-	DNSSearchDomains = Prefix + "dns-search"
-
-	//DeviceMapping specifies mapping host device to the container
-	DeviceMapping = Prefix + "devices"
+	// DNSSettings sets the dockercompat Dns config values
+	DNSSetting = Prefix + "dns"
 )

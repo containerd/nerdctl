@@ -236,6 +236,12 @@ type DNSSettings struct {
 	DNSSearchDomains     []string
 }
 
+type HostConfigLabel struct {
+	BlkioWeight   uint16
+	CidFile       string
+	DeviceMapping []string
+}
+
 type CPUSettings struct {
 	cpuSetCpus string
 	cpuSetMems string
@@ -359,18 +365,11 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		}
 	}
 
-	if blkioWeightSet := n.Labels[labels.BlkioWeight]; blkioWeightSet != "" {
-		var blkioWeight uint16
-		_, err := fmt.Sscanf(blkioWeightSet, "%d", &blkioWeight)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert string to uint: %v", err)
-		}
-		c.HostConfig.BlkioWeight = blkioWeight
-	}
+	// var hostConfigLabel HostConfigLabel
+	hostConfigLabel, err := getHostConfigLabelFromNative(n.Labels)
 
-	if cidFile := n.Labels[labels.CIdFile]; cidFile != "" {
-		c.HostConfig.ContainerIDFile = cidFile
-	}
+	c.HostConfig.BlkioWeight = hostConfigLabel.BlkioWeight
+	c.HostConfig.ContainerIDFile = hostConfigLabel.CidFile
 
 	groupAdd, err := groupAddFromNative(n.Spec.(*specs.Spec))
 	if err != nil {
@@ -479,11 +478,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	}
 	c.Config.Hostname = hostname
 
-	c.HostConfig.Devices = []string{}
-	if nedctlDeviceMapping := n.Labels[labels.DeviceMapping]; nedctlDeviceMapping != "" {
-		devices, _ := parseDeviceMapping(nedctlDeviceMapping)
-		c.HostConfig.Devices = devices
-	}
+	c.HostConfig.Devices = hostConfigLabel.DeviceMapping
 
 	return c, nil
 }
@@ -737,24 +732,23 @@ func getMemorySettingsFromNative(sp *specs.Spec) (*MemorySetting, error) {
 func getDNSFromNative(Labels map[string]string) (*DNSSettings, error) {
 	res := &DNSSettings{}
 
-	if dnsServers := Labels[labels.DNSServer]; dnsServers != "" {
-		if err := json.Unmarshal([]byte(dnsServers), &res.DNSServers); err != nil {
+	if dnsSettingJSON, ok := Labels[labels.DNSSetting]; ok {
+		if err := json.Unmarshal([]byte(dnsSettingJSON), &res); err != nil {
+			return nil, fmt.Errorf("failed to parse DNS settings: %v", err)
+		}
+	}
+
+	return res, nil
+}
+
+func getHostConfigLabelFromNative(Labels map[string]string) (*HostConfigLabel, error) {
+	res := &HostConfigLabel{}
+
+	if hostConfigLabelJSON, ok := Labels[labels.HostConfigLabel]; ok {
+		if err := json.Unmarshal([]byte(hostConfigLabelJSON), &res); err != nil {
 			return nil, fmt.Errorf("failed to parse DNS servers: %v", err)
 		}
 	}
-
-	if dnsOptions := Labels[labels.DNSResolvConfOptions]; dnsOptions != "" {
-		if err := json.Unmarshal([]byte(dnsOptions), &res.DNSResolvConfOptions); err != nil {
-			return nil, fmt.Errorf("failed to parse DNS options: %v", err)
-		}
-	}
-
-	if dnsSearch := Labels[labels.DNSSearchDomains]; dnsSearch != "" {
-		if err := json.Unmarshal([]byte(dnsSearch), &res.DNSSearchDomains); err != nil {
-			return nil, fmt.Errorf("failed to parse DNS search domains: %v", err)
-		}
-	}
-
 	return res, nil
 }
 

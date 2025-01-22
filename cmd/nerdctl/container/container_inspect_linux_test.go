@@ -255,7 +255,7 @@ func TestContainerInspectHostConfig(t *testing.T) {
 		"--shm-size", "256m",
 		"--runtime", "io.containerd.runtime.v1.linux",
 		"--sysctl", "net.core.somaxconn=1024",
-		"--device", "/dev/zero:/dev/null",
+		"--device", "/dev/null:/dev/null",
 		testutil.AlpineImage, "sleep", "infinity").AssertOK()
 
 	inspect := base.InspectContainer(testContainer)

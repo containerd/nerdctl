@@ -666,6 +666,8 @@ type internalLabels struct {
 // WithInternalLabels sets the internal labels for a container.
 func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerOpts, error) {
 	m := make(map[string]string)
+	var hostConfigLabel dockercompat.HostConfigLabel
+	var dnsSettings dockercompat.DNSSettings
 	m[labels.Namespace] = internalLabels.namespace
 	if internalLabels.name != "" {
 		m[labels.Name] = internalLabels.name
@@ -748,44 +750,40 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 	}
 
 	if internalLabels.blkioWeight > 0 {
-		m[labels.BlkioWeight] = fmt.Sprintf("%d", internalLabels.blkioWeight)
+		hostConfigLabel.BlkioWeight = internalLabels.blkioWeight
 	}
 
 	if internalLabels.cidFile != "" {
-		m[labels.CIdFile] = internalLabels.cidFile
+		hostConfigLabel.CidFile = internalLabels.cidFile
 	}
 
 	if len(internalLabels.dnsServers) > 0 {
-		dnsServersJSON, err := json.Marshal(internalLabels.dnsServers)
-		if err != nil {
-			return nil, err
-		}
-		m[labels.DNSServer] = string(dnsServersJSON)
+		dnsSettings.DNSServers = internalLabels.dnsServers
 	}
 
 	if len(internalLabels.dnsSearchDomains) > 0 {
-		dnsSearchJSON, err := json.Marshal(internalLabels.dnsSearchDomains)
-		if err != nil {
-			return nil, err
-		}
-		m[labels.DNSSearchDomains] = string(dnsSearchJSON)
+		dnsSettings.DNSSearchDomains = internalLabels.dnsSearchDomains
 	}
 
 	if len(internalLabels.dnsResolvConfOptions) > 0 {
-		dnsResolvConfOptionsJSON, err := json.Marshal(internalLabels.dnsResolvConfOptions)
-		if err != nil {
-			return nil, err
-		}
-		m[labels.DNSResolvConfOptions] = string(dnsResolvConfOptionsJSON)
+		dnsSettings.DNSResolvConfOptions = internalLabels.dnsResolvConfOptions
 	}
 
 	if len(internalLabels.deviceMapping) > 0 {
-		devicesJSON, err := json.Marshal(internalLabels.deviceMapping)
-		if err != nil {
-			return nil, err
-		}
-		m[labels.DeviceMapping] = string(devicesJSON)
+		hostConfigLabel.DeviceMapping = internalLabels.deviceMapping
 	}
+
+	hostConfigJSON, err := json.Marshal(hostConfigLabel)
+	if err != nil {
+		return nil, err
+	}
+	m[labels.HostConfigLabel] = string(hostConfigJSON)
+
+	dnsSettingsJSON, err := json.Marshal(dnsSettings)
+	if err != nil {
+		return nil, err
+	}
+	m[labels.DNSSetting] = string(dnsSettingsJSON)
 
 	return containerd.WithAdditionalContainerLabels(m), nil
 }
