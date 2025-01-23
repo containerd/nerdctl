@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"time"
 
 	"github.com/docker/go-units"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
@@ -241,7 +242,7 @@ func getUpdateOption(cmd *cobra.Command, globalOptions types.GlobalCommandOption
 	return options, nil
 }
 
-func updateContainer(ctx context.Context, client *containerd.Client, id string, opts updateResourceOptions, cmd *cobra.Command) error {
+func updateContainer(ctx context.Context, client *containerd.Client, id string, opts updateResourceOptions, cmd *cobra.Command) (retErr error) {
 	container, err := client.LoadContainer(ctx, id)
 	if err != nil {
 		return err
@@ -339,12 +340,18 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 	}
 
 	if err := updateContainerSpec(ctx, container, spec); err != nil {
-		log.G(ctx).WithError(err).Errorf("Failed to update spec %+v for container %q", spec, id)
-		// reset spec on error.
-		if err := updateContainerSpec(ctx, container, oldSpec); err != nil {
-			log.G(ctx).WithError(err).Errorf("Failed to update spec %+v for container %q", oldSpec, id)
-		}
+		return fmt.Errorf("failed to update spec %+v for container %q", spec, id)
 	}
+	defer func() {
+		if retErr != nil {
+			deferCtx, deferCancel := context.WithTimeout(ctx, 1*time.Minute)
+			defer deferCancel()
+			// Reset spec on error.
+			if err := updateContainerSpec(deferCtx, container, oldSpec); err != nil {
+				log.G(ctx).WithError(err).Errorf("Failed to update spec %+v for container %q", oldSpec, id)
+			}
+		}
+	}()
 
 	restart, err := cmd.Flags().GetString("restart")
 	if err != nil {

@@ -25,6 +25,10 @@ The usage of `containerd-rootless-setuptool.sh` is almost same as [`dockerd-root
 
 Resource limitation flags such as `nerdctl run --memory` require systemd and cgroup v2: https://rootlesscontaine.rs/getting-started/common/cgroup2/
 
+#### AppArmor Profile for Ubuntu 24.04+
+
+Configuring AppArmor is needed only on Ubuntu 24.04+, with RootlessKit installed under a non-standard path: https://rootlesscontaine.rs/getting-started/common/apparmor/
+
 ## Client (nerdctl)
 
 Just execute `nerdctl`. No need to specify the socket address manually.
