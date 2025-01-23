@@ -138,3 +138,60 @@ func TestSave(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+// TestSaveMultipleImagesWithSameIDAndLoad tests https://github.com/containerd/nerdctl/issues/3806
+func TestSaveMultipleImagesWithSameIDAndLoad(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	// This test relies on the fact that we can remove the common image, which definitely conflicts with others,
+	// hence the private mode.
+	// Further note though, that this will hide the fact this the save command could fail if some layers are missing.
+	// See https://github.com/containerd/nerdctl/issues/3425 and others for details.
+	testCase.Require = nerdtest.Private
+
+	if runtime.GOOS == "windows" {
+		testCase.Require = nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3524")
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Issue #3568 - Save multiple container images with the same image ID but different image names",
+			NoParallel:  true,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				if data.Get("id") != "" {
+					helpers.Anyhow("rmi", "-f", data.Get("id"))
+				}
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+				img := nerdtest.InspectImage(helpers, testutil.CommonImage)
+				var id string
+				if nerdtest.IsDocker() {
+					id = img.ID
+				} else {
+					id = strings.Split(img.RepoDigests[0], ":")[1]
+				}
+				helpers.Ensure("tag", testutil.CommonImage, data.Identifier())
+				tarPath := filepath.Join(data.TempDir(), "out.tar")
+				helpers.Ensure("save", "-o", tarPath, testutil.CommonImage, data.Identifier())
+				helpers.Ensure("rmi", "-f", id)
+				helpers.Ensure("load", "-i", tarPath)
+				data.Set("id", id)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("images", "--no-trunc")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Errors:   []error{},
+					Output: func(stdout string, info string, t *testing.T) {
+						assert.Equal(t, strings.Count(stdout, data.Get("id")), 2)
+					},
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
+}
