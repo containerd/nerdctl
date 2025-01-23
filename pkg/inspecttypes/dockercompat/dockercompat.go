@@ -440,7 +440,7 @@ func networkSettingsFromNative(n *native.NetNS, sp *specs.Spec) (*NetworkSetting
 			}
 		}
 		// TODO: set CNI name when possible
-		fakeDockerNetworkName := fmt.Sprintf("unknown_%s", x.Name)
+		fakeDockerNetworkName := fmt.Sprintf("unknown-%s", x.Name)
 		res.Networks[fakeDockerNetworkName] = nes
 
 		if portsLabel, ok := sp.Annotations[labels.Ports]; ok {
