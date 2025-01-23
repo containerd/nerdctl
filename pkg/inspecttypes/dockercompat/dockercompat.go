@@ -340,7 +340,9 @@ func ImageFromNative(nativeImage *native.Image) (*Image, error) {
 
 	if len(imgOCI.History) > 0 {
 		image.Comment = imgOCI.History[len(imgOCI.History)-1].Comment
-		image.Created = imgOCI.History[len(imgOCI.History)-1].Created.Format(time.RFC3339Nano)
+		if !imgOCI.History[len(imgOCI.History)-1].Created.IsZero() {
+			image.Created = imgOCI.History[len(imgOCI.History)-1].Created.Format(time.RFC3339Nano)
+		}
 		image.Author = imgOCI.History[len(imgOCI.History)-1].Author
 	}
 
