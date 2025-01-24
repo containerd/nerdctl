@@ -32,6 +32,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
@@ -206,7 +207,11 @@ func generateCgroupOpts(id string, options types.ContainerCreateOptions, interna
 			return nil, fmt.Errorf("failed to parse device %q: %w", f, err)
 		}
 		opts = append(opts, oci.WithDevices(devPath, conPath, mode))
-		internalLabels.deviceMapping = append(internalLabels.deviceMapping, f)
+		var deviceMap dockercompat.DeviceMapping
+		deviceMap.PathOnHost = devPath
+		deviceMap.PathInContainer = conPath
+		deviceMap.CgroupPermissions = mode
+		internalLabels.deviceMapping = append(internalLabels.deviceMapping, deviceMap)
 	}
 
 	return opts, nil
