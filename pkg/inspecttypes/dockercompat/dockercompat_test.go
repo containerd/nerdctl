@@ -78,12 +78,12 @@ func TestContainerFromNative(t *testing.T) {
 				HostConfig: &HostConfig{
 					PortBindings: nat.PortMap{},
 					GroupAdd:     []string{},
-					LogConfig: loggerLogConfig{
+					LogConfig: LoggerLogConfig{
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
 					UTSMode: "host",
-					Tmpfs:   []MountPoint{},
+					Tmpfs:   map[string]string{},
 				},
 				Mounts: []MountPoint{
 					{
@@ -163,11 +163,12 @@ func TestContainerFromNative(t *testing.T) {
 				HostConfig: &HostConfig{
 					PortBindings: nat.PortMap{},
 					GroupAdd:     []string{},
-					LogConfig: loggerLogConfig{
+					LogConfig: LoggerLogConfig{
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
 					UTSMode: "host",
+					Tmpfs:   map[string]string{},
 				},
 				Mounts: []MountPoint{
 					{
@@ -244,11 +245,12 @@ func TestContainerFromNative(t *testing.T) {
 				HostConfig: &HostConfig{
 					PortBindings: nat.PortMap{},
 					GroupAdd:     []string{},
-					LogConfig: loggerLogConfig{
+					LogConfig: LoggerLogConfig{
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
 					UTSMode: "host",
+					Tmpfs:   map[string]string{},
 				},
 				Mounts: []MountPoint{
 					{

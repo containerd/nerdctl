@@ -96,7 +96,7 @@ type ImageMetadata struct {
 	LastTagTime time.Time `json:",omitempty"`
 }
 
-type loggerLogConfig struct {
+type LoggerLogConfig struct {
 	Driver  string            `json:"driver"`
 	Opts    map[string]string `json:"opts,omitempty"`
 	LogURI  string            `json:"-"`
@@ -140,7 +140,7 @@ type Container struct {
 type HostConfig struct {
 	ExtraHosts      []string          // List of extra hosts
 	PortBindings    nat.PortMap       // Port mapping between the exposed port (container) and the host
-	LogConfig       loggerLogConfig   // Configuration of the logs for this container
+	LogConfig       LoggerLogConfig   // Configuration of the logs for this container
 	BlkioWeight     uint16            // Block IO weight (relative weight vs. other containers)
 	CPUSetMems      string            `json:"CpusetMems"` // CpusetMems 0-2, 0,1
 	CPUSetCPUs      string            `json:"CpusetCpus"` // CpusetCpus 0-2, 0,1
@@ -148,7 +148,7 @@ type HostConfig struct {
 	CPUShares       uint64            `json:"CpuShares"`  // CPU shares (relative weight vs. other containers)
 	ContainerIDFile string            // File (path) where the containerId is written
 	GroupAdd        []string          // GroupAdd specifies additional groups to join
-	IpcMode         string            // IPC namespace to use for the container
+	IpcMode         string            `json:"IpcMode"` // IPC namespace to use for the container
 	CgroupnsMode    string            // Cgroup namespace mode to use for the container
 	Memory          int64             // Memory limit (in bytes)
 	MemorySwap      int64             // Total memory usage (memory + swap); set `-1` to enable unlimited swap
@@ -162,9 +162,9 @@ type HostConfig struct {
 	ShmSize         int64             // Size of /dev/shm in bytes. The size must be greater than 0.
 	Sysctls         map[string]string // List of Namespaced sysctls used for the container
 	Runtime         string            // Runtime to use with this container
-	Devices         []string          // List of devices to map inside the container
+	Devices         []DeviceMapping   // List of devices to map inside the container
 	PidMode         string            // PID namespace to use for the container
-	Tmpfs           []MountPoint      `json:",omitempty"` // List of tmpfs (mounts) used for the container
+	Tmpfs           map[string]string `json:"Tmpfs,omitempty"` // List of tmpfs (mounts) used for the container
 }
 
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
@@ -239,9 +239,15 @@ type DNSSettings struct {
 }
 
 type HostConfigLabel struct {
-	BlkioWeight   uint16
-	CidFile       string
-	DeviceMapping []string
+	BlkioWeight uint16
+	CidFile     string
+	Devices     []DeviceMapping
+}
+
+type DeviceMapping struct {
+	PathOnHost        string
+	PathInContainer   string
+	CgroupPermissions string
 }
 
 type CPUSettings struct {
@@ -335,19 +341,19 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		}
 	}
 
-	var tmpfsMounts []MountPoint
-
+	c.HostConfig.Tmpfs = make(map[string]string)
 	if nerdctlMounts := n.Labels[labels.Mounts]; nerdctlMounts != "" {
 		mounts, err := parseMounts(nerdctlMounts)
 		if err != nil {
 			return nil, err
 		}
 		c.Mounts = mounts
-		if len(mounts) > 0 {
-			tmpfsMounts = filterTmpfsMounts(mounts)
+		for _, mount := range mounts {
+			if mount.Type == "tmpfs" {
+				c.HostConfig.Tmpfs[mount.Destination] = mount.Mode
+			}
 		}
 	}
-	c.HostConfig.Tmpfs = tmpfsMounts
 
 	if nedctlExtraHosts := n.Labels[labels.ExtraHosts]; nedctlExtraHosts != "" {
 		c.HostConfig.ExtraHosts = parseExtraHosts(nedctlExtraHosts)
@@ -357,7 +363,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		c.HostConfig.LogConfig.LogURI = nerdctlLoguri
 	}
 	if logConfigJSON, ok := n.Labels[labels.LogConfig]; ok {
-		var logConfig loggerLogConfig
+		var logConfig LoggerLogConfig
 		err := json.Unmarshal([]byte(logConfigJSON), &logConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal log config: %v", err)
@@ -367,7 +373,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		c.HostConfig.LogConfig = logConfig
 	} else {
 		// If LogConfig label is not present, set default values
-		c.HostConfig.LogConfig = loggerLogConfig{
+		c.HostConfig.LogConfig = LoggerLogConfig{
 			Driver: "json-file",
 			Opts:   make(map[string]string),
 		}
@@ -385,6 +391,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	}
 
 	c.HostConfig.GroupAdd = groupAdd
+	c.HostConfig.ShmSize = 0
 
 	if ipcMode := n.Labels[labels.IPC]; ipcMode != "" {
 		ipc, err := ipcutil.DecodeIPCLabel(ipcMode)
@@ -392,6 +399,13 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 			return nil, fmt.Errorf("failed to Decode IPC Label: %v", err)
 		}
 		c.HostConfig.IpcMode = string(ipc.Mode)
+		if ipc.ShmSize != "" {
+			shmSize, err := units.RAMInBytes(ipc.ShmSize)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse ShmSize: %v", err)
+			}
+			c.HostConfig.ShmSize = shmSize
+		}
 	}
 
 	cs := new(ContainerState)
@@ -467,9 +481,6 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	utsMode, _ := getUtsModeFromNative(n.Spec.(*specs.Spec))
 	c.HostConfig.UTSMode = utsMode
 
-	shmSize, _ := getShmSizeFromNative(n.Spec.(*specs.Spec))
-	c.HostConfig.ShmSize = shmSize
-
 	sysctls, _ := getSysctlFromNative(n.Spec.(*specs.Spec))
 	c.HostConfig.Sysctls = sysctls
 
@@ -486,7 +497,7 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	}
 	c.Config.Hostname = hostname
 
-	c.HostConfig.Devices = hostConfigLabel.DeviceMapping
+	c.HostConfig.Devices = hostConfigLabel.Devices
 
 	var pidMode string
 	if n.Labels[labels.PIDContainer] != "" {
@@ -560,18 +571,6 @@ func mountsFromNative(spMounts []specs.Mount) []MountPoint {
 		mp.Mode = strings.Join(m.Options, ",")
 		mp.RW, mp.Propagation = ParseMountProperties(m.Options)
 		mountpoints = append(mountpoints, mp)
-	}
-
-	return mountpoints
-}
-
-// filterTmpfsMounts filters the tmpfs mounts
-func filterTmpfsMounts(spMounts []MountPoint) []MountPoint {
-	mountpoints := make([]MountPoint, 0, len(spMounts))
-	for _, m := range spMounts {
-		if m.Type == "tmpfs" {
-			mountpoints = append(mountpoints, m)
-		}
 	}
 
 	return mountpoints
@@ -794,28 +793,6 @@ func getUtsModeFromNative(sp *specs.Spec) (string, error) {
 		}
 	}
 	return "host", nil
-}
-
-func getShmSizeFromNative(sp *specs.Spec) (int64, error) {
-	var res int64
-
-	if len(sp.Mounts) > 0 {
-		for _, mount := range sp.Mounts {
-			if mount.Destination == "/dev/shm" {
-				for _, option := range mount.Options {
-					if strings.HasPrefix(option, "size=") {
-						sizeStr := strings.TrimPrefix(option, "size=")
-						size, err := units.RAMInBytes(sizeStr)
-						if err != nil {
-							return 0, fmt.Errorf("failed to parse shm size: %v", err)
-						}
-						res = size
-					}
-				}
-			}
-		}
-	}
-	return res, nil
 }
 
 func getSysctlFromNative(sp *specs.Spec) (map[string]string, error) {

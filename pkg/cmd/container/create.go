@@ -224,6 +224,9 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	internalLabels.logURI = logConfig.LogURI
 	internalLabels.logConfig = logConfig
+	if logConfig.Driver == "" && logConfig.Address == options.GOptions.Address {
+		internalLabels.logConfig.Driver = "json-file"
+	}
 
 	restartOpts, err := generateRestartOpts(ctx, client, options.Restart, logConfig.LogURI, options.InRun)
 	if err != nil {
@@ -660,7 +663,7 @@ type internalLabels struct {
 	groupAdd []string
 
 	// label for device mapping set by the --device flag
-	deviceMapping []string
+	deviceMapping []dockercompat.DeviceMapping
 }
 
 // WithInternalLabels sets the internal labels for a container.
@@ -770,7 +773,7 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 	}
 
 	if len(internalLabels.deviceMapping) > 0 {
-		hostConfigLabel.DeviceMapping = internalLabels.deviceMapping
+		hostConfigLabel.Devices = append(hostConfigLabel.Devices, internalLabels.deviceMapping...)
 	}
 
 	hostConfigJSON, err := json.Marshal(hostConfigLabel)
