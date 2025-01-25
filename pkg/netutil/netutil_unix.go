@@ -206,7 +206,11 @@ func (e *CNIEnv) generateIPAM(driver string, subnets []string, gatewayStr, ipRan
 		ipamConfig = ipamConf
 	case "dhcp":
 		ipamConf := newDHCPIPAMConfig()
-		ipamConf.DaemonSocketPath = filepath.Join(defaults.CNIRuntimeDir(), "dhcp.sock")
+		crd, err := defaults.CNIRuntimeDir()
+		if err != nil {
+			return nil, err
+		}
+		ipamConf.DaemonSocketPath = filepath.Join(crd, "dhcp.sock")
 		if err := systemutil.IsSocketAccessible(ipamConf.DaemonSocketPath); err != nil {
 			log.L.Warnf("cannot access dhcp socket %q (hint: try running with `dhcp daemon --socketpath=%s &` in CNI_PATH to launch the dhcp daemon)", ipamConf.DaemonSocketPath, ipamConf.DaemonSocketPath)
 		}

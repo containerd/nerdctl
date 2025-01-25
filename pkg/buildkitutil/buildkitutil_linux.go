@@ -18,13 +18,12 @@ package buildkitutil
 
 import (
 	"fmt"
-
-	"github.com/containerd/log"
+	"os"
 
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
-func getRuntimeVariableDataDir() string {
+func getRuntimeVariableDataDir() (string, error) {
 	// Per Linux Foundation "Filesystem Hierarchy Standard" version 3.0 section 3.15.
 	// Under version 2.3, this was "/var/run".
 	run := "/run"
@@ -32,9 +31,11 @@ func getRuntimeVariableDataDir() string {
 		var err error
 		run, err = rootlessutil.XDGRuntimeDir()
 		if err != nil {
-			log.L.Warn(err)
-			run = fmt.Sprintf("/run/user/%d", rootlessutil.ParentEUID())
+			if rootlessutil.IsRootlessChild() {
+				return "", err
+			}
+			run = fmt.Sprintf("/run/user/%d", os.Geteuid())
 		}
 	}
-	return run
+	return run, nil
 }
