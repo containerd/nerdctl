@@ -277,6 +277,7 @@ func TestRunUlimit(t *testing.T) {
 func TestRunWithInit(t *testing.T) {
 	t.Parallel()
 	testutil.DockerIncompatible(t)
+	testutil.RequireExecutable(t, "tini-custom")
 	base := testutil.NewBase(t)
 
 	container := testutil.Identifier(t)
