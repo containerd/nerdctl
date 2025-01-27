@@ -31,7 +31,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
-	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/logging/jsonfile"
@@ -135,7 +134,7 @@ func viewLogsJSONFile(lvopts LogViewOptions, stdout, stderr io.Writer, stopChann
 	if _, err := os.Stat(logFilePath); err != nil {
 		// FIXME: this is a workaround for the actual issue, not a real solution
 		// https://github.com/containerd/nerdctl/issues/3187
-		if errors.Is(err, errdefs.ErrNotFound) {
+		if errors.Is(err, os.ErrNotExist) {
 			log.L.Warnf("Racing log file creation. Pausing briefly.")
 			time.Sleep(200 * time.Millisecond)
 			_, err = os.Stat(logFilePath)
