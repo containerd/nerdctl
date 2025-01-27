@@ -51,7 +51,7 @@ bar`
 	base.Cmd("logs", "-f", containerName).AssertOutContains("foo")
 
 	//test timestamps flag
-	base.Cmd("logs", "-t", containerName).AssertOutContains(time.Now().Format("2006-01-02"))
+	base.Cmd("logs", "-t", containerName).AssertOutContains(time.Now().UTC().Format("2006-01-02"))
 
 	//test tail flag
 	base.Cmd("logs", "-n", "all", containerName).AssertOutContains(expected)
