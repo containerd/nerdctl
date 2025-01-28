@@ -17,6 +17,7 @@
 package container
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -36,6 +37,10 @@ func TestRunWithSystemdAlways(t *testing.T) {
 }
 
 func TestRunWithSystemdTrueEnabled(t *testing.T) {
+	if runtime.GOARCH != "amd64" {
+		t.Skip("This test is currently broken on arm with no emulation, as the Systemd image being used is amd64 only")
+	}
+
 	testutil.DockerIncompatible(t)
 	t.Parallel()
 	base := testutil.NewBase(t)
@@ -60,6 +65,10 @@ systemctl list-jobs`).AssertOutContains("jobs")
 }
 
 func TestRunWithSystemdTrueDisabled(t *testing.T) {
+	if runtime.GOARCH != "amd64" {
+		t.Skip("This test is currently broken on arm with no emulation, as the Systemd image being used is amd64 only")
+	}
+
 	testutil.DockerIncompatible(t)
 	t.Parallel()
 	base := testutil.NewBase(t)
@@ -94,6 +103,10 @@ func TestRunWithNoSystemd(t *testing.T) {
 }
 
 func TestRunWithSystemdPrivilegedError(t *testing.T) {
+	if runtime.GOARCH != "amd64" {
+		t.Skip("This test is currently broken on arm with no emulation, as the Systemd image being used is amd64 only")
+	}
+
 	testutil.DockerIncompatible(t)
 	t.Parallel()
 	base := testutil.NewBase(t)
@@ -102,6 +115,10 @@ func TestRunWithSystemdPrivilegedError(t *testing.T) {
 }
 
 func TestRunWithSystemdPrivilegedSuccess(t *testing.T) {
+	if runtime.GOARCH != "amd64" {
+		t.Skip("This test is currently broken on arm with no emulation, as the Systemd image being used is amd64 only")
+	}
+
 	testutil.DockerIncompatible(t)
 	t.Parallel()
 	base := testutil.NewBase(t)
