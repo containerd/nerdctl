@@ -173,11 +173,20 @@ func FetchLogs(stdout, stderr io.Writer, journalctlArgs []string, stopChannel ch
 	}
 
 	// Setup killing goroutine:
+	killed := false
 	go func() {
 		<-stopChannel
+		killed = true
 		log.L.Debugf("killing journalctl logs process with PID: %#v", cmd.Process.Pid)
 		cmd.Process.Kill()
 	}()
+
+	err = cmd.Wait()
+	if exitError, ok := err.(*exec.ExitError); ok {
+		if !killed && exitError.ExitCode() != 0 {
+			return fmt.Errorf("journalctl command exited with non-zero exit code (%d): %w", exitError.ExitCode(), exitError)
+		}
+	}
 
 	return nil
 }
