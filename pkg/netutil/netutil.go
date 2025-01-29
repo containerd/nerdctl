@@ -408,11 +408,11 @@ func (e *CNIEnv) GetDefaultNetworkConfig() (*NetworkConfig, error) {
 func (e *CNIEnv) ensureDefaultNetworkConfig(bridgeIP string) error {
 	defaultNet, err := e.GetDefaultNetworkConfig()
 	if err != nil {
-		return fmt.Errorf("failed to check for default network: %s", err)
+		return fmt.Errorf("failed to check for default network: %w", err)
 	}
 	if defaultNet == nil {
 		if err := e.createDefaultNetworkConfig(bridgeIP); err != nil {
-			return fmt.Errorf("failed to create default network: %s", err)
+			return fmt.Errorf("failed to create default network: %w", err)
 		}
 	}
 	return nil
@@ -429,7 +429,7 @@ func (e *CNIEnv) createDefaultNetworkConfig(bridgeIP string) error {
 	if bridgeIP != "" {
 		bIP, bCIDR, err := net.ParseCIDR(bridgeIP)
 		if err != nil {
-			return fmt.Errorf("invalid bridge ip %s: %s", bridgeIP, err)
+			return fmt.Errorf("invalid bridge ip %s: %w", bridgeIP, err)
 		}
 		bridgeGatewayIP = bIP.String()
 		bridgeCIDR = bCIDR.String()

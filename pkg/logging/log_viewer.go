@@ -122,12 +122,12 @@ func InitContainerLogViewer(containerLabels map[string]string, lvopts LogViewOpt
 		lcfg.Driver = "cri"
 	} else {
 		if err := lvopts.Validate(); err != nil {
-			return nil, fmt.Errorf("invalid LogViewOptions provided (%#v): %s", lvopts, err)
+			return nil, fmt.Errorf("invalid LogViewOptions provided (%#v): %w", lvopts, err)
 		}
 
 		lcfg, err = LoadLogConfig(lvopts.DatastoreRootPath, lvopts.Namespace, lvopts.ContainerID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load logging config: %s", err)
+			return nil, fmt.Errorf("failed to load logging config: %w", err)
 		}
 	}
 

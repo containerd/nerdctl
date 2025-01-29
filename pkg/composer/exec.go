@@ -51,7 +51,7 @@ type ExecOptions struct {
 func (c *Composer) Exec(ctx context.Context, eo ExecOptions) error {
 	containers, err := c.Containers(ctx, eo.ServiceName)
 	if err != nil {
-		return fmt.Errorf("fail to get containers for service %s: %s", eo.ServiceName, err)
+		return fmt.Errorf("fail to get containers for service %s: %w", eo.ServiceName, err)
 	}
 	if len(containers) == 0 {
 		return fmt.Errorf("no running containers from service %s", eo.ServiceName)

@@ -85,7 +85,7 @@ func Logs(ctx context.Context, client *containerd.Client, container string, opti
 					} else {
 						waitCh, err := task.Wait(ctx)
 						if err != nil {
-							return fmt.Errorf("failed to get wait channel for task %#v: %s", task, err)
+							return fmt.Errorf("failed to get wait channel for task %#v: %w", task, err)
 						}
 
 						// Setup goroutine to send stop event if container task finishes:

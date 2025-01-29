@@ -160,13 +160,13 @@ func ServerSemVer(ctx context.Context, client *containerd.Client) (*semver.Versi
 func buildctlVersion() dockercompat.ComponentVersion {
 	buildctlBinary, err := buildkitutil.BuildctlBinary()
 	if err != nil {
-		log.L.Warnf("unable to determine buildctl version: %s", err.Error())
+		log.L.WithError(err).Warnf("unable to determine buildctl version")
 		return dockercompat.ComponentVersion{Name: "buildctl"}
 	}
 
 	stdout, err := exec.Command(buildctlBinary, "--version").Output()
 	if err != nil {
-		log.L.Warnf("unable to determine buildctl version: %s", err.Error())
+		log.L.WithError(err).Warnf("unable to determine buildctl version")
 		return dockercompat.ComponentVersion{Name: "buildctl"}
 	}
 
@@ -205,7 +205,7 @@ func parseBuildctlVersion(buildctlVersionStdout []byte) (*dockercompat.Component
 func runcVersion() dockercompat.ComponentVersion {
 	stdout, err := exec.Command("runc", "--version").Output()
 	if err != nil {
-		log.L.Warnf("unable to determine runc version: %s", err.Error())
+		log.L.WithError(err).Warnf("unable to determine runc version")
 		return dockercompat.ComponentVersion{Name: "runc"}
 	}
 	v, err := parseRuncVersion(stdout)

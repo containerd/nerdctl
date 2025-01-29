@@ -127,7 +127,7 @@ func getTailArgAsUint(arg string) (uint, error) {
 	}
 	num, err := strconv.Atoi(arg)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse `-n/--tail` argument %q: %s", arg, err)
+		return 0, fmt.Errorf("failed to parse `-n/--tail` argument %q: %w", arg, err)
 	}
 	if num < 0 {
 		return 0, fmt.Errorf("`-n/--tail` argument must be positive, got: %d", num)

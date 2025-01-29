@@ -73,7 +73,7 @@ func listHnsEndpointsRegex(hnsEndpointNameRegex string) ([]hcsshim.HNSEndpoint, 
 	}
 	hnsEndpoints, err := hcsshim.HNSListEndpointRequest()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list HNS endpoints for request: %s", err)
+		return nil, fmt.Errorf("failed to list HNS endpoints for request: %w", err)
 	}
 
 	res := []hcsshim.HNSEndpoint{}
