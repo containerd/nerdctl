@@ -1,3 +1,5 @@
+//go:build unix && !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,10 +16,9 @@
    limitations under the License.
 */
 
-package container
+package buildkitutil
 
-import "github.com/spf13/cobra"
-
-func AddCpCommand(rootCmd *cobra.Command) {
-	// NOP
+func getRuntimeVariableDataDir() string {
+	// Per hier(7) dated July 6, 2023.
+	return "/var/run"
 }

@@ -14,13 +14,24 @@
    limitations under the License.
 */
 
-package namespace
+package infoutil
 
 import (
-	"github.com/containerd/containerd/v2/pkg/namespaces"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/sysinfo"
 )
 
-func namespaceDeleteOpts(cgroup bool) ([]namespaces.DeleteOpts, error) {
-	var delOpts []namespaces.DeleteOpts
-	return delOpts, nil
+const UnameO = "Darwin"
+
+func CgroupsVersion() string {
+	return ""
+}
+
+func fulfillPlatformInfo(info *dockercompat.Info) {
+	// unimplemented
+}
+
+func mobySysInfo(info *dockercompat.Info) *sysinfo.SysInfo {
+	var sysinfo sysinfo.SysInfo
+	return &sysinfo
 }
