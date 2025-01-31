@@ -39,8 +39,8 @@ func CNINetConfPath() string {
 	return filepath.Join(os.Getenv("ProgramFiles"), "containerd", "cni", "conf")
 }
 
-func CNIRuntimeDir() string {
-	return ""
+func CNIRuntimeDir() (string, error) {
+	return "", nil
 }
 
 func IsSystemdAvailable() bool {

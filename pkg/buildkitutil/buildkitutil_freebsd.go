@@ -16,7 +16,7 @@
 
 package buildkitutil
 
-func getRuntimeVariableDataDir() string {
+func getRuntimeVariableDataDir() (string, error) {
 	// Per hier(7) dated July 6, 2023.
-	return "/var/run"
+	return "/var/run", nil
 }
