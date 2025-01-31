@@ -60,7 +60,7 @@ require (
 	github.com/rootless-containers/bypass4netns v0.4.2
 	github.com/rootless-containers/rootlesskit/v2 v2.3.2
 	github.com/spf13/cobra v1.8.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.6
 	github.com/vishvananda/netlink v1.3.0
 	github.com/vishvananda/netns v0.0.5
 	github.com/yuchanns/srslog v1.1.0
