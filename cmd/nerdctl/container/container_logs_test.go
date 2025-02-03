@@ -18,12 +18,14 @@ package container
 
 import (
 	"fmt"
+	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
@@ -109,8 +111,14 @@ func TestLogsWithInheritedFlags(t *testing.T) {
 }
 
 func TestLogsOfJournaldDriver(t *testing.T) {
-	t.Parallel()
 	testutil.RequireExecutable(t, "journalctl")
+	journalctl, _ := exec.LookPath("journalctl")
+	res := icmd.RunCmd(icmd.Command(journalctl, "-xe"))
+	if res.ExitCode != 0 {
+		t.Skipf("current user is not allowed to access journal logs: %s", res.Combined())
+	}
+
+	t.Parallel()
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
 

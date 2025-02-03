@@ -316,6 +316,13 @@ func TestRunWithJsonFileLogDriverAndLogPathOpt(t *testing.T) {
 }
 
 func TestRunWithJournaldLogDriver(t *testing.T) {
+	testutil.RequireExecutable(t, "journalctl")
+	journalctl, _ := exec.LookPath("journalctl")
+	res := icmd.RunCmd(icmd.Command(journalctl, "-xe"))
+	if res.ExitCode != 0 {
+		t.Skipf("current user is not allowed to access journal logs: %s", res.Combined())
+	}
+
 	if runtime.GOOS == "windows" {
 		t.Skip("journald log driver is not yet implemented on Windows")
 	}
@@ -327,8 +334,6 @@ func TestRunWithJournaldLogDriver(t *testing.T) {
 		"sh", "-euxc", "echo foo; echo bar").AssertOK()
 
 	time.Sleep(3 * time.Second)
-	journalctl, err := exec.LookPath("journalctl")
-	assert.NilError(t, err)
 
 	inspectedContainer := base.InspectContainer(containerName)
 
@@ -370,6 +375,13 @@ func TestRunWithJournaldLogDriver(t *testing.T) {
 }
 
 func TestRunWithJournaldLogDriverAndLogOpt(t *testing.T) {
+	testutil.RequireExecutable(t, "journalctl")
+	journalctl, _ := exec.LookPath("journalctl")
+	res := icmd.RunCmd(icmd.Command(journalctl, "-xe"))
+	if res.ExitCode != 0 {
+		t.Skipf("current user is not allowed to access journal logs: %s", res.Combined())
+	}
+
 	if runtime.GOOS == "windows" {
 		t.Skip("journald log driver is not yet implemented on Windows")
 	}
@@ -381,8 +393,6 @@ func TestRunWithJournaldLogDriverAndLogOpt(t *testing.T) {
 		"sh", "-euxc", "echo foo; echo bar").AssertOK()
 
 	time.Sleep(3 * time.Second)
-	journalctl, err := exec.LookPath("journalctl")
-	assert.NilError(t, err)
 	inspectedContainer := base.InspectContainer(containerName)
 	found := 0
 	check := func(log poll.LogT) poll.Result {
