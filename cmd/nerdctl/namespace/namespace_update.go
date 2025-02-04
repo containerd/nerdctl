@@ -17,6 +17,8 @@
 package namespace
 
 import (
+	"errors"
+
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
@@ -34,7 +36,7 @@ func newNamespacelabelUpdateCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	namespaceLabelCommand.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
+	namespaceLabelCommand.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace (required)")
 	return namespaceLabelCommand
 }
 
@@ -47,6 +49,11 @@ func processNamespaceUpdateCommandOption(cmd *cobra.Command) (types.NamespaceUpd
 	if err != nil {
 		return types.NamespaceUpdateOptions{}, err
 	}
+    
+    if (len(labels) == 0) {
+		return types.NamespaceUpdateOptions{}, errors.New("use \"--label\" or \"-l\" to specify labels for namespace");
+    }
+
 	return types.NamespaceUpdateOptions{
 		GOptions: globalOptions,
 		Labels:   labels,
