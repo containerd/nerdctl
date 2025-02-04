@@ -44,6 +44,7 @@ func labelArgs(labelStrings []string) map[string]string {
 	return labels
 }
 
+// Returns an error if name is invalid.
 func validateNamespaceName(name string) error {
     for _, c := range(name) {
         if (
