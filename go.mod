@@ -65,7 +65,7 @@ require (
 	github.com/vishvananda/netns v0.0.5
 	github.com/yuchanns/srslog v1.1.0
 	go.uber.org/mock v0.5.0
-	golang.org/x/crypto v0.32.0
+	golang.org/x/crypto v0.33.0
 	golang.org/x/net v0.34.0
 	golang.org/x/sync v0.11.0
 	golang.org/x/sys v0.30.0
