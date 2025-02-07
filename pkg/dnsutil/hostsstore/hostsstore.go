@@ -66,7 +66,7 @@ func New(dataStore string, namespace string) (retStore Store, err error) {
 		return nil, store.ErrInvalidArgument
 	}
 
-	st, err := store.New(filepath.Join(dataStore, hostsDirBasename, namespace), 0, 0o644)
+	st, err := store.New(filepath.Join(dataStore, hostsDirBasename, namespace), 0, 0o600)
 	if err != nil {
 		return nil, err
 	}
