@@ -25,6 +25,10 @@ import (
 )
 
 func Create(ctx context.Context, client *containerd.Client, namespace string, options types.NamespaceCreateOptions) error {
+    if err := validateNamespaceName(namespace); err != nil {
+        return err
+    }
+
 	labelsArg := objectWithLabelArgs(options.Labels)
 	namespaces := client.NamespaceService()
 	return namespaces.Create(ctx, namespace, labelsArg)
