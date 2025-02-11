@@ -1,3 +1,5 @@
+//go:build unix && !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,8 +16,16 @@
    limitations under the License.
 */
 
-package ocihook
+package containerinspector
 
-func loadAppArmor() {
-	//noop
+import (
+	"context"
+
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+)
+
+func InspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
+	r := &native.NetNS{}
+
+	return r, nil
 }

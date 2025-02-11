@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -16,11 +18,8 @@
 
 package container
 
-import (
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
-func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	candidates := []string{}
-	return candidates, cobra.ShellCompDirectiveNoFileComp
+func AddCpCommand(rootCmd *cobra.Command) {
+	// NOP
 }
