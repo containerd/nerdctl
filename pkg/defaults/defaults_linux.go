@@ -24,7 +24,6 @@ import (
 
 	"github.com/containerd/containerd/v2/plugins"
 	"github.com/containerd/go-cni"
-	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
@@ -88,16 +87,18 @@ func CNINetConfPath() string {
 	return filepath.Join(xch, "cni/net.d")
 }
 
-func CNIRuntimeDir() string {
+func CNIRuntimeDir() (string, error) {
 	if !rootlessutil.IsRootless() {
-		return "/run/cni"
+		return "/run/cni", nil
 	}
 	xdr, err := rootlessutil.XDGRuntimeDir()
 	if err != nil {
-		log.L.Warn(err)
-		xdr = fmt.Sprintf("/run/user/%d", rootlessutil.ParentEUID())
+		if rootlessutil.IsRootlessChild() {
+			return "", err
+		}
+		xdr = fmt.Sprintf("/run/user/%d", os.Geteuid())
 	}
-	return fmt.Sprintf("%s/cni", xdr)
+	return filepath.Join(xdr, "cni"), nil
 }
 
 func NerdctlTOML() string {
