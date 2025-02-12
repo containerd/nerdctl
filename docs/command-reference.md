@@ -1410,6 +1410,7 @@ Flags:
 
 - :whale: `-f, --file`: Specify an alternate compose file
 - :whale: `-p, --project-name`: Specify an alternate project name
+- :whale: `--project-directory`: Specify an alternate working directory
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 - :whale: `--profile: Specify a profile to enable
 - :whale: `--env-file` : Specify an alternate environment file
@@ -1451,6 +1452,7 @@ Flags:
 
 - :whale: `--no-color`: Produce monochrome output
 - :whale: `--no-log-prefix`: Don't print prefix in logs
+- :whale: `-f, --follow`: Follow log output.
 - :whale: `--timestamps`: Show timestamps
 - :whale: `--tail`: Number of lines to show from the end of the logs
 
@@ -1525,6 +1527,7 @@ Usage: `nerdctl compose images [OPTIONS] [SERVICE...]`
 Flags:
 
 - :whale: `-q, --quiet`: Only show numeric image IDs
+- :whale: `--format`: Format the output. Supported values: [json]
 
 ### :whale: nerdctl compose start
 
@@ -1674,6 +1677,28 @@ Flags:
 Run a one-off command on a service
 
 Usage: `nerdctl compose run [OPTIONS] SERVICE [COMMAND] [ARGS...]`
+
+Flags:
+
+- :whale: `--build`: Build images before starting containers. 
+- :whale: `-d, —detach`: Detached mode: Run containers in the background.
+- :whale: `--entrypoint`: Overwrite the default ENTRYPOINT of the image.
+- :whale: `-e, —env`: Set environment variables.
+- :whale: `-i, —interactive`: Keep STDIN open even if not attached (default true).
+- :whale: `-l, —label`: Set metadata on container.
+- :whale: `--name`: Assign a name to the container.
+- :whale: `--no-build`: Don't build an image, even if it's missing.
+- :whale: `--no-color`: Produce monochrome output.
+- :whale: `--no-deps`: Don't start dependencies.
+- :whale: `--no-log-prefix`: Don't print prefix in logs.
+- :whale: `--publish`: Publish a container's port(s) to the host.
+- :whale: `--quiet-pull`: Pull without printing progress information.
+- :whale: `--remove-orphans`: Remove containers for services not defined in the Compose file.
+- :whale: `--rm`: Automatically remove the container when it exits.
+- :whale: `--service-ports`: Run command with the service's ports enabled and mapped to the host.
+- :whale: `-u, —user`: Username or UID (format: <name|uid>[:<group|gid>]).
+- :whale: `-v, —volume`: Bind mount a volume.
+- :whale: `-w, —workdir`: Working directory inside the container.
 
 Unimplemented `docker-compose run` (V1) flags: `--use-aliases`, `--no-TTY`
 
