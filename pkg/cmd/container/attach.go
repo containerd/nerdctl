@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/containerd/console"
 	containerd "github.com/containerd/containerd/v2/client"
@@ -115,7 +116,7 @@ func Attach(ctx context.Context, client *containerd.Client, req string, options 
 		if err != nil {
 			return err
 		}
-		opt = cio.WithStreams(in, con, nil)
+		opt = cio.WithStreams(in, os.Stdout, os.Stderr)
 	} else {
 		opt = cio.WithStreams(options.Stdin, options.Stdout, options.Stderr)
 	}
