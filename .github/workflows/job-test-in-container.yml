@@ -153,7 +153,7 @@ jobs:
           # Besides, each job is running on a different instance, which means using host network here
           # is safe and has no side effects on others.
           [ "${{ inputs.target }}" == "rootful" ] \
-            && args=(test-integration ./hack/test-integration.sh) \
+            && args=(test-integration ./hack/test-integration.sh -test.allow-modify-users=true) \
             || args=(test-integration-${{ inputs.target }} /test-integration-rootless.sh ./hack/test-integration.sh)
           if [ "${{ inputs.ipv6 }}" == true ]; then
             docker run --network host -t --rm --privileged -e GITHUB_STEP_SUMMARY="$GITHUB_STEP_SUMMARY" -v "$GITHUB_STEP_SUMMARY":"$GITHUB_STEP_SUMMARY" -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622:-} "${args[@]}" -test.only-flaky=false -test.only-ipv6 -test.target=${{ inputs.binary }}

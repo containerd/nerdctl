@@ -26,6 +26,7 @@ snapshotter    = "stargz"
 cgroup_manager = "cgroupfs"
 hosts_dir      = ["/etc/containerd/certs.d", "/etc/docker/certs.d"]
 experimental   = true
+userns_remap   = ""
 ```
 
 ## Properties
@@ -48,6 +49,7 @@ experimental   = true
 | `bridge_ip`         | `--bridge-ip`                      | `NERDCTL_BRIDGE_IP`       | IP address for the default nerdctl bridge network, e.g., 10.1.100.1/24                                                                                           | Since 2.0.1      |
 | `kube_hide_dupe`    | `--kube-hide-dupe`                 |                           | Deduplicate images for Kubernetes with namespace k8s.io, no more redundant <none> ones are displayed    | Since 2.0.3      |
 | `cdi_spec_dirs`     | `--cdi-spec-dirs`                   |                          | The folders to use when searching for CDI ([container-device-interface](https://github.com/cncf-tags/container-device-interface)) specifications.    | Since 2.1.0 |
+| `userns_remap`      | `--userns-remap`                   |                           | Support idmapping of containers. This options is only supported on rootful linux. If `host` is passed, no idmapping is done. if a user name is passed, it does idmapping based on the uidmap and gidmap ranges specified in /etc/subuid and /etc/subgid respectively. |   Since 2.1.0 |
 
 The properties are parsed in the following precedence:
 1. CLI flag

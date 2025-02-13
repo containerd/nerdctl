@@ -25,6 +25,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -207,6 +209,13 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 	extendedBuildCtx, err := cmd.Flags().GetStringArray("build-context")
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
+	}
+
+	usernsRemap, err := cmd.Flags().GetString("userns-remap")
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	} else if usernsRemap != "" {
+		log.L.Warn("userns remap is not supported with nerdctl build. dropping the config.")
 	}
 
 	return types.BuilderBuildOptions{

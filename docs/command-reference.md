@@ -235,6 +235,8 @@ User flags:
 - :nerd_face: `--umask`: Set the umask inside the container. Defaults to 0022.
   Corresponds to Podman CLI.
 - :whale: `--group-add`: Add additional groups to join
+- :whale: `--userns`: Set it to `host` to disable user namespacing set in nerdctl.toml or in cli.
+
 
 Security flags:
 
@@ -426,7 +428,7 @@ IPFS flags:
 
 Unimplemented `docker run` flags:
     `--device-cgroup-rule`, `--disable-content-trust`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
-    `--link*`, `--publish-all`, `--storage-opt`, `--userns`, `--volume-driver`
+    `--link*`, `--publish-all`, `--storage-opt`, `--volume-driver`
 
 ### :whale: :blue_square: nerdctl exec
 
@@ -1771,6 +1773,7 @@ Flags:
 - :nerd_face: `--insecure-registry`: skips verifying HTTPS certs, and allows falling back to plain HTTP
 - :nerd_face: `--host-gateway-ip`: IP address that the special 'host-gateway' string in --add-host resolves to. It has no effect without setting --add-host
   - Default: the IP address of the host
+- :nerd_face: `--userns-remap=<username>:<groupname>`: Support idmapping of containers. This options is only supported on rootful linux for container create and run if a user name and optionally group name is passed, it does idmapping based on the uidmap and gidmap ranges specified in /etc/subuid and /etc/subgid respectively. Note: `--userns-remap` is not supported for building containers. Nerdctl Build doesn't support userns-remap feature. (format: <name|uid>[:<group|gid>])
 
 The global flags can be also specified in `/etc/nerdctl/nerdctl.toml` (rootful) and `~/.config/nerdctl/nerdctl.toml` (rootless).
 See [`./config.md`](./config.md).

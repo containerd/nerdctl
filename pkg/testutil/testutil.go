@@ -479,11 +479,12 @@ func (c *Cmd) Out() string {
 }
 
 var (
-	flagTestTarget     string
-	flagTestKillDaemon bool
-	flagTestIPv6       bool
-	flagTestKube       bool
-	flagTestFlaky      bool
+	flagTestTarget      string
+	flagTestKillDaemon  bool
+	flagTestIPv6        bool
+	flagTestKube        bool
+	flagTestFlaky       bool
+	flagTestModifyUsers bool
 )
 
 var (
@@ -493,6 +494,7 @@ var (
 func M(m *testing.M) {
 	flag.StringVar(&flagTestTarget, "test.target", "nerdctl", "target to test")
 	flag.BoolVar(&flagTestKillDaemon, "test.allow-kill-daemon", false, "enable tests that kill the daemon")
+	flag.BoolVar(&flagTestModifyUsers, "test.allow-modify-users", false, "enable tests that creates/deletes user accounts on the host")
 	flag.BoolVar(&flagTestIPv6, "test.only-ipv6", false, "enable tests on IPv6")
 	flag.BoolVar(&flagTestKube, "test.only-kubernetes", false, "enable tests on Kubernetes")
 	flag.BoolVar(&flagTestFlaky, "test.only-flaky", false, "enable testing of flaky tests only (if false, flaky tests are ignored)")
@@ -571,6 +573,10 @@ func GetFlakyEnvironment() bool {
 
 func GetDaemonIsKillable() bool {
 	return flagTestKillDaemon
+}
+
+func GetAllowModifyUsers() bool {
+	return flagTestModifyUsers
 }
 
 func IsDocker() bool {

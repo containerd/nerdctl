@@ -196,6 +196,35 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	opts = append(opts, rootfsOpts...)
 	cOpts = append(cOpts, rootfsCOpts...)
+	if options.UserNS != "" {
+		if !options.Rootfs {
+			if runtime.GOOS != "linux" {
+				return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), errors.New("UserNS is only supported on Rootful Linux")
+
+			} else if rootlessutil.IsRootless() {
+				return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), errors.New("UserNS is only supported in Rootful Linux")
+			}
+			userNameSpaceOpts, userNameSpaceCOpts, err := getUserNamespaceOpts(ctx, client, &options, *ensuredImage, id)
+			if err != nil {
+				return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
+			}
+			opts = append(opts, userNameSpaceOpts...)
+			cOpts = append(cOpts, userNameSpaceCOpts...)
+
+			userNsOpts, err := getContainerUserNamespaceNetOpts(ctx, client, netManager)
+			if err != nil {
+				return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
+			}
+			opts = append(opts, userNsOpts...)
+		} else {
+			return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), errors.New("UserNS is not supported with rootfs images")
+		}
+	} else {
+		if !options.Rootfs {
+			// UserNS not set and its a normal image
+			cOpts = append(cOpts, containerd.WithNewSnapshot(id, ensuredImage.Image))
+		}
+	}
 
 	if options.Workdir != "" {
 		opts = append(opts, oci.WithProcessCwd(options.Workdir))
@@ -383,7 +412,6 @@ func generateRootfsOpts(args []string, id string, ensured *imgutil.EnsuredImage,
 		cOpts = append(cOpts,
 			containerd.WithImage(ensured.Image),
 			containerd.WithSnapshotter(ensured.Snapshotter),
-			containerd.WithNewSnapshot(id, ensured.Image),
 			containerd.WithImageStopSignal(ensured.Image, "SIGTERM"),
 		)
 

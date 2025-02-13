@@ -464,6 +464,30 @@ func createOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
 	}
 	// #endregion
 
+	// #region for UserNS
+	opt.UserNS, err = cmd.Flags().GetString("userns-remap")
+	if err != nil {
+		return opt, err
+	}
+
+	userns, err := cmd.Flags().GetString("userns")
+	if err != nil {
+		return opt, err
+	}
+
+	if userns == "host" {
+		opt.UserNS = ""
+	} else if userns != "" {
+		return opt, fmt.Errorf("invalid user mode")
+	}
+
+	if opt.Privileged && opt.UserNS != "" {
+		//userns-remap is not supported with privileged flag.
+		// Ref: https://docs.docker.com/engine/security/userns-remap/
+		return opt, fmt.Errorf("privileged flag cannot be used with userns-remap")
+	}
+	// #endregion
+
 	return opt, nil
 }
 

@@ -17,6 +17,7 @@
 package nerdtest
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,12 +26,15 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 )
 
@@ -373,5 +377,42 @@ var Gomodjail = &test.Requirement{
 			mess = "current target is not packed with gomodjail"
 		}
 		return ret, mess
+	},
+}
+
+var AllowModifyUserns = &test.Requirement{
+	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+		if testutil.GetAllowModifyUsers() {
+			return true, "allow modify userns is enabled"
+		}
+		return false, "allow modify userns is disabled"
+	},
+}
+
+var RemapIDs = &test.Requirement{
+	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+		// Create a cobra command for ProcessRootCmdFlags to get globalOptions
+		ctx := context.Background()
+		snapshotterName := defaults.DefaultSnapshotter
+		namespace := defaultNamespace
+		address := defaults.DefaultAddress
+
+		client, ctx, cancel, err := clientutil.NewClient(ctx, namespace, address)
+		if err != nil {
+			return false, fmt.Sprintf("failed to create client: %v", err)
+		}
+		defer cancel()
+
+		caps, err := client.GetSnapshotterCapabilities(ctx, snapshotterName)
+		if err != nil {
+			return false, fmt.Sprintf("failed to get snapshotter capabilities: %v", err)
+		}
+
+		for _, cap := range caps {
+			if cap == "remap-ids" {
+				return true, "snapshotter supports ID remapping"
+			}
+		}
+		return false, "snapshotter does not support ID remapping"
 	},
 }
