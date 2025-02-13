@@ -264,6 +264,9 @@ type ContainerCreateOptions struct {
 
 	// ImagePullOpt specifies image pull options which holds the ImageVerifyOptions for verifying the image.
 	ImagePullOpt ImagePullOptions
+
+	// Userns name for user namespace mapping of container
+	Userns string
 }
 
 // ContainerStopOptions specifies options for `nerdctl (container) stop`.

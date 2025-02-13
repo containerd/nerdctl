@@ -20,12 +20,16 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
 	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/containerd/v2/defaults"
 
@@ -323,4 +327,161 @@ func TestCreateFromOCIArchive(t *testing.T) {
 	base.Cmd("build", "--tag", tag, fmt.Sprintf("--output=type=oci,dest=%s", tarPath), buildCtx).AssertOK()
 	base.Cmd("create", "--rm", "--name", containerName, fmt.Sprintf("oci-archive://%s", tarPath)).AssertOK()
 	base.Cmd("start", "--attach", containerName).AssertOutContains("test-nerdctl-create-from-oci-archive")
+}
+
+func TestUsernsMappingCreateCmd(t *testing.T) {
+	nerdtest.Setup()
+	testCase := &test.Case{
+		Require: test.Not(nerdtest.ContainerdV1),
+		SubTests: []*test.Case{
+			{
+				Description: "Test container start with valid userns",
+				NoParallel:  true, // Changes system config so running in non parallel mode
+				Setup: func(data test.Data, helpers test.Helpers) {
+					data.Set("validUserns", "nerdctltestuser")
+					data.Set("expectedHostUID", "123456789")
+					// need to be compiled with containerd version >2.0.2 to support multi uidmap and gidmap.
+					if err := appendUsernsConfig(data.Get("validUserns"), data.Get("expectedHostUID")); err != nil {
+						t.Fatalf("Failed to append userns config: %v", err)
+					}
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					removeUsernsConfig(t, data.Get("validUserns"), data.Get("expectedHostUID"))
+					helpers.Anyhow("rm", "-f", data.Identifier())
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					helpers.Ensure("create", "--tty", "--userns", data.Get("validUserns"), "--name", data.Identifier(), testutil.NginxAlpineImage)
+					return helpers.Command("start", data.Identifier())
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						ExitCode: 0,
+						Output: func(stdout string, info string, t *testing.T) {
+							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
+							if err != nil {
+								t.Fatalf("Failed to get container host UID: %v", err)
+							}
+							assert.Assert(t, actualHostUID == data.Get("expectedHostUID"), info)
+						},
+					}
+				},
+			},
+			{
+				Description: "Test container start with invalid userns",
+				Setup: func(data test.Data, helpers test.Helpers) {
+					data.Set("invalidUserns", "invaliduser")
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rm", "-f", data.Identifier())
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("create", "--tty", "--userns", data.Get("invalidUserns"), "--name", data.Identifier(), testutil.NginxAlpineImage)
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						ExitCode: 1,
+					}
+				},
+			},
+		},
+	}
+	testCase.Run(t)
+}
+
+func runUsernsContainer(t *testing.T, name, userns, image, cmd string) *icmd.Result {
+	base := testutil.NewBase(t)
+	removeContainerArgs := []string{
+		"rm", "-f", name,
+	}
+	base.Cmd(removeContainerArgs...).Run()
+
+	args := []string{
+		"run", "-d", "--userns", userns, "--name", name, image, "sh", "-c", cmd,
+	}
+	return base.Cmd(args...).Run()
+}
+
+func getContainerHostUID(helpers test.Helpers, containerName string) (string, error) {
+	result := helpers.Capture("inspect", "--format", "{{.State.Pid}}", containerName)
+	pidStr := strings.TrimSpace(result)
+	pid, err := strconv.Atoi(pidStr)
+	if err != nil {
+		return "", fmt.Errorf("invalid PID: %v", err)
+	}
+
+	stat, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
+	if err != nil {
+		return "", fmt.Errorf("failed to stat process: %v", err)
+	}
+
+	uid := int(stat.Sys().(*syscall.Stat_t).Uid)
+	return strconv.Itoa(uid), nil
+}
+
+func appendUsernsConfig(userns string, hostUid string) error {
+	if err := addUser(userns, hostUid); err != nil {
+		return fmt.Errorf("failed to add user %s: %w", userns, err)
+	}
+
+	entry := fmt.Sprintf("%s:%s:65536\n", userns, hostUid)
+
+	files := []string{"/etc/subuid", "/etc/subgid"}
+	for _, file := range files {
+		f, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to open %s: %w", file, err)
+		}
+		defer f.Close()
+
+		if _, err := f.WriteString(entry); err != nil {
+			return fmt.Errorf("failed to write to %s: %w", file, err)
+		}
+	}
+	return nil
+}
+
+func addUser(username string, hostId string) error {
+	cmd := exec.Command("groupadd", "-g", hostId, username)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("groupadd failed: %s, %w", string(output), err)
+	}
+	cmd = exec.Command("useradd", "-u", hostId, "-g", hostId, "-s", "/bin/false", username)
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("useradd failed: %s, %w", string(output), err)
+	}
+	return nil
+}
+
+func removeUsernsConfig(t *testing.T, userns string, hostUid string) {
+
+	if err := delUser(userns); err != nil {
+		t.Logf("failed to del user %s", userns)
+	}
+
+	entry := fmt.Sprintf("%s:%s:65536\n", userns, hostUid)
+
+	files := []string{"/etc/subuid", "/etc/subgid"}
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			t.Logf("Failed to read %s: %v", file, err)
+			continue
+		}
+
+		newContent := strings.ReplaceAll(string(content), entry, "")
+		if err := os.WriteFile(file, []byte(newContent), 0644); err != nil {
+			t.Logf("Failed to write to %s: %v", file, err)
+		}
+	}
+}
+
+func delUser(username string) error {
+	cmd := exec.Command("sudo", "userdel", username)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("userdel failed: %s, %w", string(output), err)
+	}
+	return nil
 }

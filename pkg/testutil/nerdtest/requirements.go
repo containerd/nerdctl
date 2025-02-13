@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"gotest.tools/v3/assert"
@@ -334,5 +336,25 @@ var Private = &test.Requirement{
 			helpers.Ensure("system", "prune", "-f", "--all", "--volumes")
 			helpers.Anyhow("namespace", "remove", data.Get("_deletenamespace"))
 		}
+	},
+}
+
+var ContainerdV1 = &test.Requirement{
+	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+		version := helpers.Capture("version", "-f", "{{range .Server.Components}}{{if eq .Name \"containerd\"}}{{.Version}}{{end}}{{end}}")
+		re := regexp.MustCompile(`v?(\d+)\.`)
+		matches := re.FindStringSubmatch(version)
+		if len(matches) > 1 {
+			v, err := strconv.Atoi(matches[1])
+			if err != nil {
+				return true, fmt.Sprintf("Failed to parse containerd version: %v", err)
+			}
+			if v > 1 {
+				return false, fmt.Sprintf("Containerd version is %d, which is greater than 1", v)
+			}
+		} else {
+			return true, fmt.Sprintf("Failed to parse containerd version: %s", version)
+		}
+		return true, "containerd version is less than equal to 1"
 	},
 }
