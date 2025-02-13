@@ -17,11 +17,7 @@
 package testutil
 
 import (
-	"errors"
 	"fmt"
-	"io"
-	"sync"
-	"time"
 )
 
 func mirrorOf(s string) string {
@@ -84,53 +80,3 @@ const (
 	FfmpegSociImage = "public.ecr.aws/soci-workshop-examples/ffmpeg:latest" // SOCI
 	UbuntuImage     = "public.ecr.aws/docker/library/ubuntu:23.10"          // Large enough for testing soci index creation
 )
-
-type delayOnceReader struct {
-	once    sync.Once
-	wrapped io.Reader
-}
-
-// NewDelayOnceReader returns a wrapper around io.Reader that delays the first Read() by one second.
-// It is used to test detaching from a container, and the reason why we need this is described below:
-//
-// Since detachableStdin.closer cancels the corresponding container's IO,
-// it has to be invoked after the corresponding task is started,
-// or the container could be resulted in an invalid state.
-//
-// However, in taskutil.go, the goroutines that copy the container's IO start
-// right after container.NewTask(ctx, ioCreator) is invoked and before the function returns,
-// which means that detachableStdin.closer could be invoked before the task is started,
-// and that's indeed the case for e2e test as the detach keys are "entered immediately".
-//
-// Since detaching from a container is only applicable when there is a TTY,
-// which usually means that there's a human in front of the computer waiting for a prompt to start typing,
-// it's reasonable to assume that the user will not type the detach keys before the task is started.
-//
-// Besides delaying the first Read() by one second,
-// the returned reader also sleeps for one second if EOF is reached for the wrapped reader.
-// The reason follows:
-//
-// NewDelayOnceReader is usually used with `unbuffer -p`, which has a caveat:
-// "unbuffer simply exits when it encounters an EOF from either its input or process2." [1]
-// The implication is if we use `unbuffer -p` to feed a command to container shell,
-// `unbuffer -p` will exit right after it finishes reading the command (i.e., encounter an EOF from its input),
-// and by that time, the container may have not executed the command and printed the wanted results to stdout,
-// which would fail the test if it asserts stdout to contain certain strings.
-//
-// As a result, to avoid flaky tests,
-// we give the container shell one second to process the command before `unbuffer -p` exits.
-//
-// [1] https://linux.die.net/man/1/unbuffer
-func NewDelayOnceReader(wrapped io.Reader) io.Reader {
-	return &delayOnceReader{wrapped: wrapped}
-}
-
-func (r *delayOnceReader) Read(p []byte) (int, error) {
-	// FIXME: this is obviously not exact science. At 1 second, it will fail regularly on the CI under load.
-	r.once.Do(func() { time.Sleep(5 * time.Second) })
-	n, err := r.wrapped.Read(p)
-	if errors.Is(err, io.EOF) {
-		time.Sleep(time.Second)
-	}
-	return n, err
-}
