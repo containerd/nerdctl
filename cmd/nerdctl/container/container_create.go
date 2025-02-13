@@ -446,6 +446,13 @@ func createOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
 	}
 	// #endregion
 
+	// #region for UserNS
+	opt.UserNS, err = cmd.Flags().GetString("userns")
+	if err != nil {
+		return opt, err
+	}
+	// #endregion
+
 	return opt, nil
 }
 
