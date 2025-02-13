@@ -35,6 +35,7 @@ import (
 
 const ExitCodeGenericFail = -1
 const ExitCodeNoCheck = -2
+const ExitCodeTimeout = -3
 
 // GenericCommand is a concrete Command implementation
 type GenericCommand struct {
@@ -148,11 +149,14 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		debug := result.String() + "Env:\n" + strings.Join(env, "\n")
 		// ExitCode goes first
 		if expect.ExitCode == ExitCodeNoCheck { //nolint:revive
-			// -2 means we do not care at all about exit code
+			// ExitCodeNoCheck means we do not care at all about exit code. It can be a failure, a success, or a timeout.
 		} else if expect.ExitCode == ExitCodeGenericFail {
-			// -1 means any error
+			// ExitCodeGenericFail means we expect an error (excluding timeout).
 			assert.Assert(gc.t, result.ExitCode != 0,
-				"Expected exit code to be different than 0\n"+debug)
+				"Command succeeded while we were expecting an error\n"+debug)
+		} else if result.Timeout {
+			assert.Assert(gc.t, expect.ExitCode == ExitCodeTimeout,
+				"Command unexpectedly timed-out\n"+debug)
 		} else {
 			assert.Assert(gc.t, expect.ExitCode == result.ExitCode,
 				fmt.Sprintf("Expected exit code: %d\n", expect.ExitCode)+debug)
