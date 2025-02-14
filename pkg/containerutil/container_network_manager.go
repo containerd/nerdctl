@@ -209,7 +209,8 @@ func (m *containerNetworkManager) VerifyNetworkOptions(_ context.Context) error 
 
 	// Note that mac-address is accepted, though it is a no-op
 	nonZeroParams := nonZeroMapValues(map[string]interface{}{
-		"--hostname": m.netOpts.Hostname,
+		"--hostname":   m.netOpts.Hostname,
+		"--domainname": m.netOpts.Domainname,
 		// NOTE: an empty slice still counts as a non-zero value so we check its length:
 		"-p/--publish": len(m.netOpts.PortMappings) != 0,
 		"--dns":        len(m.netOpts.DNSServers) != 0,
@@ -576,6 +577,9 @@ func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 		if hostnameOpts != nil {
 			specs = append(specs, hostnameOpts...)
 		}
+		if m.netOpts.Domainname != "" {
+			specs = append(specs, oci.WithDomainname(m.netOpts.Domainname))
+		}
 	}
 
 	if rootlessutil.IsRootless() {
@@ -643,9 +647,9 @@ func validateUtsSettings(netOpts types.NetworkOptions) error {
 	}
 
 	// Docker considers this a validation error so keep compat.
-	// https://docs.docker.com/engine/reference/run/#uts-settings---uts
-	if utsNamespace == UtsNamespaceHost && netOpts.Hostname != "" {
-		return fmt.Errorf("conflicting options: cannot set a --hostname with --uts=host")
+	// https://docs.docker.com/reference/cli/docker/container/run/#uts
+	if utsNamespace == UtsNamespaceHost && (netOpts.Hostname != "" || netOpts.Domainname != "") {
+		return fmt.Errorf("conflicting options: cannot set --hostname and/or --domainname with --uts=host")
 	}
 
 	return nil

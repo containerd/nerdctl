@@ -82,6 +82,7 @@ type Meta struct {
 	Hostname   string
 	ExtraHosts map[string]string // host:ip
 	Name       string
+	Domainname string
 }
 
 type Store interface {

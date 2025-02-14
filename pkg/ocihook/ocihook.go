@@ -457,6 +457,7 @@ func applyNetworkSettings(opts *handlerOpts) error {
 		ID:         opts.state.ID,
 		Networks:   make(map[string]*types100.Result, len(opts.cniNames)),
 		Hostname:   opts.state.Annotations[labels.Hostname],
+		Domainname: opts.state.Annotations[labels.Domainname],
 		ExtraHosts: opts.extraHosts,
 		Name:       opts.state.Annotations[labels.Name],
 	}
