@@ -131,6 +131,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("ip", "", "IPv4 address to assign to the container")
 	cmd.Flags().String("ip6", "", "IPv6 address to assign to the container")
 	cmd.Flags().StringP("hostname", "h", "", "Container host name")
+	cmd.Flags().String("domainname", "", "Container domain name")
 	cmd.Flags().String("mac-address", "", "MAC address to assign to the container")
 	// #endregion
 

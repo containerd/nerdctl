@@ -27,12 +27,13 @@ import (
 
 func TestCreateLine(t *testing.T) {
 	type testCase struct {
-		thatIP       string
-		thatNetwork  string
-		thatHostname string // nerdctl run --hostname
-		thatName     string // nerdctl run --name
-		myNetwork    string
-		expected     string
+		thatIP         string
+		thatNetwork    string
+		thatHostname   string // nerdctl run --hostname
+		thatDomainname string // nerdctl run --domainname
+		thatName       string // nerdctl run --name
+		myNetwork      string
+		expected       string
 	}
 	testCases := []testCase{
 		{
@@ -71,6 +72,46 @@ func TestCreateLine(t *testing.T) {
 			myNetwork:   "n2",
 			expected:    "",
 		},
+		{
+			thatIP:       "10.4.2.3",
+			thatNetwork:  "n1",
+			thatHostname: "bar.example.com", // using a fqdn as hostname
+			myNetwork:    "n1",
+			expected:     "bar.example.com bar.example.com.n1",
+		},
+		{
+			thatIP:         "10.4.2.7",
+			thatNetwork:    "n1",
+			thatHostname:   "bar", // unqualified hostname with separate domain name
+			thatName:       "foo",
+			thatDomainname: "example.com",
+			myNetwork:      "n1",
+			expected:       "bar.example.com bar bar.n1 foo foo.n1",
+		},
+		{
+			thatIP:         "10.4.2.8",
+			thatNetwork:    "n1",
+			thatHostname:   "bar",
+			thatDomainname: "example.com",
+			myNetwork:      "n1",
+			expected:       "bar.example.com bar bar.n1",
+		},
+		{
+			thatIP:         "10.4.2.9",
+			thatNetwork:    "bridge",
+			thatHostname:   "bar",
+			thatDomainname: "example.com",
+			myNetwork:      "bridge",
+			expected:       "bar.example.com bar",
+		},
+		{
+			thatIP:         "10.4.2.9",
+			thatNetwork:    "bridge",
+			thatHostname:   "bar.example.com",
+			thatDomainname: "example.com",
+			myNetwork:      "bridge",
+			expected:       "bar.example.com.example.com bar.example.com",
+		},
 	}
 	for _, tc := range testCases {
 		thatMeta := &Meta{
@@ -89,8 +130,9 @@ func TestCreateLine(t *testing.T) {
 					},
 				},
 			},
-			Hostname: tc.thatHostname,
-			Name:     tc.thatName,
+			Hostname:   tc.thatHostname,
+			Domainname: tc.thatDomainname,
+			Name:       tc.thatName,
 		}
 
 		myNetworks := map[string]struct{}{

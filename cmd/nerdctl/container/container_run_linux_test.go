@@ -166,6 +166,8 @@ func TestRunUtsHost(t *testing.T) {
 	base.Cmd("run", "--rm", "--uts=host", testutil.AlpineImage, "hostname").AssertOutContains(hostName)
 	// Validate we can't provide a hostname with uts=host
 	base.Cmd("run", "--rm", "--uts=host", "--hostname=foobar", testutil.AlpineImage, "hostname").AssertFail()
+	// Validate we can't provide a domainname with uts=host
+	base.Cmd("run", "--rm", "--uts=host", "--domainname=example.com", testutil.AlpineImage, "hostname").AssertFail()
 }
 
 func TestRunPidContainer(t *testing.T) {
