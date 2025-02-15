@@ -311,9 +311,6 @@ func TestRunWithInit(t *testing.T) {
 func TestRunTTY(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	if testutil.GetTarget() == testutil.Nerdctl {
-		testutil.RequireDaemonVersion(base, ">= 1.6.0-0")
-	}
 
 	const sttyPartialOutput = "speed 38400 baud"
 	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.

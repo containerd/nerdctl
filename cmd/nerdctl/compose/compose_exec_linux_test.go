@@ -164,9 +164,6 @@ services:
 func TestComposeExecTTY(t *testing.T) {
 	// `-i` in `compose run & exec` is only supported in compose v2.
 	base := testutil.NewBase(t)
-	if testutil.GetTarget() == testutil.Nerdctl {
-		testutil.RequireDaemonVersion(base, ">= 1.6.0-0")
-	}
 
 	var dockerComposeYAML = fmt.Sprintf(`
 version: '3.1'

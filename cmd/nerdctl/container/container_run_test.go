@@ -237,9 +237,6 @@ func TestRunHostnameEnv(t *testing.T) {
 func TestRunStdin(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	if testutil.GetTarget() == testutil.Nerdctl {
-		testutil.RequireDaemonVersion(base, ">= 1.6.0-0")
-	}
 
 	const testStr = "test-run-stdin"
 	opts := []func(*testutil.Cmd){
