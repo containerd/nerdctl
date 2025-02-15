@@ -719,3 +719,54 @@ func TestRunFromOCIArchive(t *testing.T) {
 	base.Cmd("build", "--tag", tag, fmt.Sprintf("--output=type=oci,dest=%s", tarPath), buildCtx).AssertOK()
 	base.Cmd("run", "--rm", fmt.Sprintf("oci-archive://%s", tarPath)).AssertOutContainsAll(fmt.Sprintf("Loaded image: %s", tag), sentinel)
 }
+
+func TestRunDomainname(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("run --hostname not implemented on Windows yet")
+	}
+
+	testCases := []struct {
+		name        string
+		hostname    string
+		domainname  string
+		Cmd         string
+		CmdFlag     string
+		expectedOut string
+	}{
+		{
+			name:        "Check domain name",
+			hostname:    "foobar",
+			domainname:  "example.com",
+			Cmd:         "hostname",
+			CmdFlag:     "-d",
+			expectedOut: "example.com",
+		},
+		{
+			name:        "check fqdn",
+			hostname:    "foobar",
+			domainname:  "example.com",
+			Cmd:         "hostname",
+			CmdFlag:     "-f",
+			expectedOut: "foobar.example.com",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			base := testutil.NewBase(t)
+
+			base.Cmd("run",
+				"--rm",
+				"--hostname", tc.hostname,
+				"--domainname", tc.domainname,
+				testutil.CommonImage,
+				tc.Cmd,
+				tc.CmdFlag,
+			).AssertOutContains(tc.expectedOut)
+		})
+	}
+}

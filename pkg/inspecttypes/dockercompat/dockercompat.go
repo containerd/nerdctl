@@ -142,8 +142,8 @@ type MountPoint struct {
 
 // config is from https://github.com/moby/moby/blob/8dbd90ec00daa26dc45d7da2431c965dec99e8b4/api/types/container/config.go#L37-L69
 type Config struct {
-	Hostname string `json:",omitempty"` // Hostname
-	// TODO: Domainname   string      // Domainname
+	Hostname    string `json:",omitempty"` // Hostname
+	Domainname  string `json:",omitempty"` // Domainname
 	User        string `json:",omitempty"` // User that will run the command(s) inside the container, also support user:group
 	AttachStdin bool   // Attach the standard input, makes possible user interaction
 	// TODO: AttachStdout bool        // Attach the standard output
@@ -317,6 +317,10 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		hostname = n.Labels[labels.Hostname]
 	}
 	c.Config.Hostname = hostname
+
+	if n.Labels[labels.Domainname] != "" {
+		c.Config.Domainname = n.Labels[labels.Domainname]
+	}
 
 	return c, nil
 }

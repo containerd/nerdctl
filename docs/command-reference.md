@@ -186,6 +186,7 @@ Network flags:
 - :whale: `--dns-search`: Set custom DNS search domains
 - :whale: `--dns-opt, --dns-option`: Set DNS options
 - :whale: `-h, --hostname`: Container host name
+- :whale: `--domainname`: Container domain name
 - :whale: `--add-host`: Add a custom host-to-IP mapping (host:ip). `ip` could be a special string `host-gateway`,
 - which will be resolved to the `host-gateway-ip` in nerdctl.toml or global flag.
 - :whale: `--ip`: Specific static IP address(es) to use. Note that unlike docker, nerdctl allows specifying it with the default bridge network.
@@ -413,7 +414,7 @@ IPFS flags:
 
 Unimplemented `docker run` flags:
     `--blkio-weight-device`, `--cpu-rt-*`, `--device-*`,
-    `--disable-content-trust`, `--domainname`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
+    `--disable-content-trust`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
     `--link*`, `--publish-all`, `--storage-opt`,
     `--userns`, `--volume-driver`
 

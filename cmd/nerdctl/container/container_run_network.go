@@ -93,6 +93,13 @@ func loadNetworkFlags(cmd *cobra.Command) (types.NetworkOptions, error) {
 	}
 	netOpts.Hostname = hostName
 
+	// --domainname=<container domainname>
+	domainname, err := cmd.Flags().GetString("domainname")
+	if err != nil {
+		return netOpts, err
+	}
+	netOpts.Domainname = domainname
+
 	// --dns=<DNS host> ...
 	dnsSlice, err := cmd.Flags().GetStringSlice("dns")
 	if err != nil {
