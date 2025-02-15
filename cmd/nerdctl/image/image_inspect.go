@@ -17,6 +17,8 @@
 package image
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
@@ -27,7 +29,7 @@ import (
 )
 
 func newImageInspectCommand() *cobra.Command {
-	var imageInspectCommand = &cobra.Command{
+	imageInspectCommand := &cobra.Command{
 		Use:               "inspect [flags] IMAGE [IMAGE...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Display detailed information on one or more images.",
@@ -87,6 +89,11 @@ func imageInspectAction(cmd *cobra.Command, args []string) error {
 	options, err := ProcessImageInspectOptions(cmd, nil)
 	if err != nil {
 		return err
+	}
+
+	// Verify we have a valid mode
+	if options.Mode != "native" && options.Mode != "dockercompat" {
+		return fmt.Errorf("unknown mode %q", options.Mode)
 	}
 
 	client, ctx, cancel, err := clientutil.NewClientWithPlatform(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address, options.Platform)
