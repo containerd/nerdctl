@@ -103,4 +103,13 @@ const (
 
 	// ContainerAutoRemove is to check whether the --rm option is specified.
 	ContainerAutoRemove = Prefix + "auto-remove"
+
+	// LogConfig defines the logging configuration passed to the container
+	LogConfig = Prefix + "log-config"
+
+	// HostConfigLabel sets the dockercompat host config values
+	HostConfigLabel = Prefix + "host-config"
+
+	// DNSSettings sets the dockercompat Dns config values
+	DNSSetting = Prefix + "dns"
 )
