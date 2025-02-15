@@ -17,7 +17,6 @@
 package helpers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,12 +26,6 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
-
-	containerd "github.com/containerd/containerd/v2/client"
-	"github.com/containerd/containerd/v2/core/content"
-
-	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 func CreateBuildContext(t *testing.T, dockerfile string) string {
@@ -40,47 +33,6 @@ func CreateBuildContext(t *testing.T, dockerfile string) string {
 	err := os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644)
 	assert.NilError(t, err)
 	return tmpDir
-}
-
-func RmiAll(base *testutil.Base) {
-	base.T.Logf("Pruning images")
-	imageIDs := base.Cmd("images", "--no-trunc", "-a", "-q").OutLines()
-	// remove empty output line at the end
-	imageIDs = imageIDs[:len(imageIDs)-1]
-	// use `Run` on purpose (same below) because `rmi all` may fail on individual
-	// image id that has an expected running container (e.g. a registry)
-	base.Cmd(append([]string{"rmi", "-f"}, imageIDs...)...).Run()
-
-	base.T.Logf("Pruning build caches")
-	if _, err := buildkitutil.GetBuildkitHost(testutil.Namespace); err == nil {
-		base.Cmd("builder", "prune", "--force").AssertOK()
-	}
-
-	// For BuildKit >= 0.11, pruning cache isn't enough to remove manifest blobs that are referred by build history blobs
-	// https://github.com/containerd/nerdctl/pull/1833
-	if base.Target == testutil.Nerdctl {
-		base.T.Logf("Pruning all content blobs")
-		addr := base.ContainerdAddress()
-		client, err := containerd.New(addr, containerd.WithDefaultNamespace(testutil.Namespace))
-		assert.NilError(base.T, err)
-		cs := client.ContentStore()
-		ctx := context.TODO()
-		wf := func(info content.Info) error {
-			base.T.Logf("Pruning blob %+v", info)
-			if err := cs.Delete(ctx, info.Digest); err != nil {
-				base.T.Log(err)
-			}
-			return nil
-		}
-		if err := cs.Walk(ctx, wf); err != nil {
-			base.T.Log(err)
-		}
-
-		base.T.Logf("Pruning all images (again?)")
-		imageIDs = base.Cmd("images", "--no-trunc", "-a", "-q").OutLines()
-		base.T.Logf("pruning following images: %+v", imageIDs)
-		base.Cmd(append([]string{"rmi", "-f"}, imageIDs...)...).Run()
-	}
 }
 
 func ExtractDockerArchive(archiveTarPath, rootfsPath string) error {

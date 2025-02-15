@@ -54,9 +54,6 @@ func TestExecWithUser(t *testing.T) {
 func TestExecTTY(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	if testutil.GetTarget() == testutil.Nerdctl {
-		testutil.RequireDaemonVersion(base, ">= 1.6.0-0")
-	}
 
 	testContainer := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", testContainer).Run()
