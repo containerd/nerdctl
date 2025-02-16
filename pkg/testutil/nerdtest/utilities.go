@@ -23,10 +23,12 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 const (
@@ -104,7 +106,7 @@ func EnsureContainerStarted(helpers test.Helpers, con string) {
 	for i := 0; i < maxRetry && !started; i++ {
 		helpers.Command("container", "inspect", con).
 			Run(&test.Expected{
-				ExitCode: test.ExitCodeNoCheck,
+				ExitCode: expect.ExitCodeNoCheck,
 				Output: func(stdout string, info string, t *testing.T) {
 					var dc []dockercompat.Container
 					err := json.Unmarshal([]byte(stdout), &dc)

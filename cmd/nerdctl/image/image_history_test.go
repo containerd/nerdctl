@@ -26,9 +26,11 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 type historyObj struct {
@@ -69,12 +71,12 @@ func TestImageHistory(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Require: test.Require(
-			test.Not(nerdtest.Docker),
+		Require: require.All(
+			require.Not(nerdtest.Docker),
 			// XXX the results here are obviously platform dependent - and it seems like windows cannot pull a linux image?
-			test.Not(test.Windows),
+			require.Not(require.Windows),
 			// XXX Currently, history does not work on non-native platform, so, we cannot test reliably on other platforms
-			test.Arm64,
+			require.Arm64,
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			// XXX: despite efforts to isolate this test, it keeps on having side effects linked to

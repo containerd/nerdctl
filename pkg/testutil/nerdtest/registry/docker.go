@@ -24,12 +24,13 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/ca"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/hoststoml"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func NewDockerRegistry(data test.Data, helpers test.Helpers, currentCA *ca.CA, port int, auth Auth) *Server {

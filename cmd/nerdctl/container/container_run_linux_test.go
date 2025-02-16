@@ -33,13 +33,15 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestRunCustomRootfs(t *testing.T) {
@@ -324,7 +326,7 @@ func TestRunTTY(t *testing.T) {
 				cmd.WithPseudoTTY()
 				return cmd
 			},
-			Expected: test.Expects(0, nil, test.Contains(sttyPartialOutput)),
+			Expected: test.Expects(0, nil, expect.Contains(sttyPartialOutput)),
 		},
 		{
 			Description: "stty with -t",
@@ -336,7 +338,7 @@ func TestRunTTY(t *testing.T) {
 				cmd.WithPseudoTTY()
 				return cmd
 			},
-			Expected: test.Expects(0, nil, test.Contains(sttyPartialOutput)),
+			Expected: test.Expects(0, nil, expect.Contains(sttyPartialOutput)),
 		},
 		{
 			Description: "stty with -i",
@@ -348,7 +350,7 @@ func TestRunTTY(t *testing.T) {
 				cmd.WithPseudoTTY()
 				return cmd
 			},
-			Expected: test.Expects(test.ExitCodeGenericFail, nil, nil),
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 		},
 		{
 			Description: "stty without params",
@@ -360,7 +362,7 @@ func TestRunTTY(t *testing.T) {
 				cmd.WithPseudoTTY()
 				return cmd
 			},
-			Expected: test.Expects(test.ExitCodeGenericFail, nil, nil),
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 		},
 	}
 }
@@ -383,7 +385,7 @@ func TestRunSigProxy(t *testing.T) {
 				return cmd
 			},
 
-			Expected: test.Expects(0, nil, test.Contains(nerdtest.SignalCaught)),
+			Expected: test.Expects(0, nil, expect.Contains(nerdtest.SignalCaught)),
 		},
 		{
 			Description: "SigProxyTrue",
@@ -399,7 +401,7 @@ func TestRunSigProxy(t *testing.T) {
 				return cmd
 			},
 
-			Expected: test.Expects(0, nil, test.Contains(nerdtest.SignalCaught)),
+			Expected: test.Expects(0, nil, expect.Contains(nerdtest.SignalCaught)),
 		},
 		{
 			Description: "SigProxyFalse",
@@ -415,7 +417,7 @@ func TestRunSigProxy(t *testing.T) {
 				return cmd
 			},
 
-			Expected: test.Expects(127, nil, test.DoesNotContain(nerdtest.SignalCaught)),
+			Expected: test.Expects(127, nil, expect.DoesNotContain(nerdtest.SignalCaught)),
 		},
 	}
 
@@ -523,8 +525,8 @@ func TestRunWithDetachKeys(t *testing.T) {
 		return &test.Expected{
 			ExitCode: 0,
 			Errors:   []error{errors.New("detach keys")},
-			Output: test.All(
-				test.Contains("markmark"),
+			Output: expect.All(
+				expect.Contains("markmark"),
 				func(stdout string, info string, t *testing.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 				},
@@ -591,8 +593,8 @@ func TestIssue3568(t *testing.T) {
 		return &test.Expected{
 			ExitCode: 0,
 			Errors:   []error{errors.New("detach keys")},
-			Output: test.All(
-				test.Contains("markmark"),
+			Output: expect.All(
+				expect.Contains("markmark"),
 				func(stdout string, info string, t *testing.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 				},
@@ -627,7 +629,7 @@ func TestPortBindingWithCustomHost(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: test.All(
+					Output: expect.All(
 						func(stdout string, info string, t *testing.T) {
 							resp, err := nettestutil.HTTPGet(address, 30, false)
 							assert.NilError(t, err)

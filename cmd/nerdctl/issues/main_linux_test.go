@@ -19,9 +19,11 @@ package issues
 import (
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestMain(m *testing.M) {
@@ -41,7 +43,7 @@ func TestIssue108(t *testing.T) {
 				cmd.WithPseudoTTY()
 				return cmd
 			},
-			Expected: test.Expects(0, nil, test.Equals("this was always working\r\n")),
+			Expected: test.Expects(0, nil, expect.Equals("this was always working\r\n")),
 		},
 		{
 			Description: "--net=host -it",
@@ -50,7 +52,7 @@ func TestIssue108(t *testing.T) {
 				cmd.WithPseudoTTY()
 				return cmd
 			},
-			Expected: test.Expects(0, nil, test.Equals("this was not working due to issue #108\r\n")),
+			Expected: test.Expects(0, nil, expect.Equals("this was not working due to issue #108\r\n")),
 		},
 	}
 

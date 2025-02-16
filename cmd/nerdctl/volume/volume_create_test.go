@@ -22,9 +22,10 @@ import (
 	"testing"
 
 	"github.com/containerd/errdefs"
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestVolumeCreate(t *testing.T) {
@@ -34,7 +35,7 @@ func TestVolumeCreate(t *testing.T) {
 		{
 			Description: "arg missing should create anonymous volume",
 			Command:     test.Command("volume", "create"),
-			Expected:    test.Expects(0, nil, test.Match(regexp.MustCompile("^[a-f0-9]{64}\n$"))),
+			Expected:    test.Expects(0, nil, expect.Match(regexp.MustCompile("^[a-f0-9]{64}\n$"))),
 		},
 		{
 			Description: "invalid identifier should fail",
@@ -56,7 +57,7 @@ func TestVolumeCreate(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Equals(data.Identifier() + "\n"),
+					Output: expect.Equals(data.Identifier() + "\n"),
 				}
 			},
 		},
@@ -70,7 +71,7 @@ func TestVolumeCreate(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Equals(data.Identifier() + "\n"),
+					Output: expect.Equals(data.Identifier() + "\n"),
 				}
 			},
 		},
@@ -99,7 +100,7 @@ func TestVolumeCreate(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Equals(data.Identifier() + "\n"),
+					Output: expect.Equals(data.Identifier() + "\n"),
 				}
 			},
 		},

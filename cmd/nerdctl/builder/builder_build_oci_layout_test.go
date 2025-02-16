@@ -25,9 +25,11 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestBuildContextWithOCILayout(t *testing.T) {
@@ -36,9 +38,9 @@ func TestBuildContextWithOCILayout(t *testing.T) {
 	var dockerBuilderArgs []string
 
 	testCase := &test.Case{
-		Require: test.Require(
+		Require: require.All(
 			nerdtest.Build,
-			test.Not(test.Windows),
+			require.Not(require.Windows),
 		),
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			if nerdtest.IsDocker() {

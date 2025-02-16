@@ -26,12 +26,14 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestIPFSCompNoBuild(t *testing.T) {
@@ -41,9 +43,9 @@ func TestIPFSCompNoBuild(t *testing.T) {
 
 	var ipfsRegistry *registry.Server
 
-	testCase.Require = test.Require(
-		test.Linux,
-		test.Not(nerdtest.Docker),
+	testCase.Require = require.All(
+		require.Linux,
+		require.Not(nerdtest.Docker),
 		nerdtest.Registry,
 		nerdtest.IPFS,
 		nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3510"),
@@ -194,11 +196,11 @@ func TestIPFSCompBuild(t *testing.T) {
 	assert.NilError(t, err)
 	var listenAddr = "localhost:" + strconv.Itoa(safePort)
 
-	testCase.Require = test.Require(
+	testCase.Require = require.All(
 		// Linux only
-		test.Linux,
+		require.Linux,
 		// Obviously not docker supported
-		test.Not(nerdtest.Docker),
+		require.Not(nerdtest.Docker),
 		nerdtest.Build,
 		nerdtest.IPFS,
 	)

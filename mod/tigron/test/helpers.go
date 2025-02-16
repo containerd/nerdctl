@@ -16,36 +16,11 @@
 
 package test
 
-import "testing"
+import (
+	"testing"
 
-// Helpers provides a set of helpers to run commands with simple expectations, available at all stages of a test (Setup, Cleanup, etc...)
-type Helpers interface {
-	// Ensure runs a command and verifies it is succeeding
-	Ensure(args ...string)
-	// Anyhow runs a command and ignores its result
-	Anyhow(args ...string)
-	// Fail runs a command and verifies it failed
-	Fail(args ...string)
-	// Capture runs a command, verifies it succeeded, and returns stdout
-	Capture(args ...string) string
-	// Err runs a command, and returns stderr regardless of its outcome
-	// This is mostly useful for debugging
-	Err(args ...string) string
-
-	// Command will return a populated command from the default internal command, with the provided arguments,
-	// ready to be Run or further configured
-	Command(args ...string) TestableCommand
-	// Custom will return a bare command, without configuration nor defaults (still has the Env)
-	Custom(binary string, args ...string) TestableCommand
-
-	// Read return the config value associated with a key
-	Read(key ConfigKey) ConfigValue
-	// Write saves a value in the config
-	Write(key ConfigKey, value ConfigValue)
-
-	// T returns the current testing object
-	T() *testing.T
-}
+	"github.com/containerd/nerdctl/mod/tigron/test/internal"
+)
 
 // This is the implementation of Helpers
 
@@ -70,7 +45,7 @@ func (help *helpersInternal) Anyhow(args ...string) {
 // Fail will run a command and make sure it does fail
 func (help *helpersInternal) Fail(args ...string) {
 	help.Command(args...).Run(&Expected{
-		ExitCode: ExitCodeGenericFail,
+		ExitCode: internal.ExitCodeGenericFail,
 	})
 }
 
@@ -85,7 +60,7 @@ func (help *helpersInternal) Capture(args ...string) string {
 	return ret
 }
 
-// Capture will run a command, ensure it is successful and return stdout
+// Err will run a command, ensure it is successful and return stdout
 func (help *helpersInternal) Err(args ...string) string {
 	cmd := help.Command(args...)
 	cmd.Run(nil)

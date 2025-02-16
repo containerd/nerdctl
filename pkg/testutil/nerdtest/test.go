@@ -19,7 +19,7 @@ package nerdtest
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 )
 
 var DockerConfig test.ConfigKey = "DockerConfig"

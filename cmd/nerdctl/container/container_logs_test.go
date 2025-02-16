@@ -27,9 +27,12 @@ import (
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestLogs(t *testing.T) {
@@ -164,7 +167,7 @@ func TestLogsWithFailingContainer(t *testing.T) {
 func TestLogsWithForegroundContainers(t *testing.T) {
 	testCase := nerdtest.Setup()
 	// dual logging is not supported on Windows
-	testCase.Require = test.Not(test.Windows)
+	testCase.Require = require.Not(require.Windows)
 
 	testCase.Run(t)
 
@@ -180,10 +183,10 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", data.Identifier())
 			},
-			Expected: test.Expects(0, nil, test.All(
-				test.Contains("foo"),
-				test.Contains("bar"),
-				test.DoesNotContain("baz"),
+			Expected: test.Expects(0, nil, expect.All(
+				expect.Contains("foo"),
+				expect.Contains("bar"),
+				expect.DoesNotContain("baz"),
 			)),
 		},
 		{
@@ -197,10 +200,10 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", data.Identifier())
 			},
-			Expected: test.Expects(0, nil, test.All(
-				test.Contains("foo"),
-				test.Contains("bar"),
-				test.DoesNotContain("baz"),
+			Expected: test.Expects(0, nil, expect.All(
+				expect.Contains("foo"),
+				expect.Contains("bar"),
+				expect.DoesNotContain("baz"),
 			)),
 		},
 		{
@@ -216,10 +219,10 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", data.Identifier())
 			},
-			Expected: test.Expects(0, nil, test.All(
-				test.Contains("foo"),
-				test.Contains("bar"),
-				test.DoesNotContain("baz"),
+			Expected: test.Expects(0, nil, expect.All(
+				expect.Contains("foo"),
+				expect.Contains("bar"),
+				expect.DoesNotContain("baz"),
 			)),
 		},
 		{
@@ -235,10 +238,10 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", data.Identifier())
 			},
-			Expected: test.Expects(0, nil, test.All(
-				test.Contains("foo"),
-				test.Contains("bar"),
-				test.DoesNotContain("baz"),
+			Expected: test.Expects(0, nil, expect.All(
+				expect.Contains("foo"),
+				expect.Contains("bar"),
+				expect.DoesNotContain("baz"),
 			)),
 		},
 	}

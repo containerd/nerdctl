@@ -24,7 +24,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 )
 
 // Auth describes a struct able to serialize authenticator information into arguments to be fed to a registry container run

@@ -26,12 +26,14 @@ import (
 	"github.com/coreos/go-iptables/iptables"
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	iptablesutil "github.com/containerd/nerdctl/v2/pkg/testutil/iptables"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestStopStart(t *testing.T) {
@@ -89,7 +91,7 @@ func TestStopWithStopSignal(t *testing.T) {
 	}
 
 	// Verify that SIGQUIT was sent to the container AND that the container did forcefully exit
-	testCase.Expected = test.Expects(137, nil, test.Contains(nerdtest.SignalCaught))
+	testCase.Expected = test.Expects(137, nil, expect.Contains(nerdtest.SignalCaught))
 
 	testCase.Run(t)
 }

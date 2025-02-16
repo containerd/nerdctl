@@ -25,11 +25,13 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 var BuildkitHost test.ConfigKey = "BuildkitHost"
@@ -94,7 +96,7 @@ var IsFlaky = func(issueLink string) *test.Requirement {
 }
 
 // Docker marks a test as suitable solely for Docker and not Nerdctl
-// Generally used as test.Not(nerdtest.Docker), which of course it the opposite
+// Generally used as require.Not(nerdtest.Docker), which of course it the opposite
 var Docker = &test.Requirement{
 	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
 		ret = getTarget() == targetDocker
@@ -151,7 +153,7 @@ var Rootless = &test.Requirement{
 }
 
 // Rootful marks a test as suitable only for rootful env
-var Rootful = test.Not(Rootless)
+var Rootful = require.Not(Rootless)
 
 // CGroup requires that cgroup is enabled
 var CGroup = &test.Requirement{
@@ -171,7 +173,7 @@ var CGroup = &test.Requirement{
 	},
 }
 
-var CgroupsAccessible = test.Require(
+var CgroupsAccessible = require.All(
 	CGroup,
 	&test.Requirement{
 		Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
@@ -229,9 +231,9 @@ var Stargz = &test.Requirement{
 }
 
 // Registry marks a test as requiring a registry to be deployed
-var Registry = test.Require(
+var Registry = require.All(
 	// Registry requires Linux currently
-	test.Linux,
+	require.Linux,
 	(func() *test.Requirement {
 		// Provisional: see note in cleanup
 		// var reg *registry.Server
@@ -307,7 +309,7 @@ var IPFS = &test.Requirement{
 		// FIXME: we should be able to access the env (at least through helpers.Command().) instead of this gym
 		helpers.Write(ipfs, enabled)
 		// FIXME: this is incomplete. We obviously need a daemon running, properly configured
-		return test.Binary("ipfs").Check(data, helpers)
+		return require.Binary("ipfs").Check(data, helpers)
 	},
 }
 

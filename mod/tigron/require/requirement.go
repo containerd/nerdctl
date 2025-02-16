@@ -14,17 +14,19 @@
    limitations under the License.
 */
 
-package test
+package require
 
 import (
 	"fmt"
 	"os/exec"
 	"runtime"
+
+	"github.com/containerd/nerdctl/mod/tigron/test"
 )
 
-func Binary(name string) *Requirement {
-	return &Requirement{
-		Check: func(data Data, helpers Helpers) (bool, string) {
+func Binary(name string) *test.Requirement {
+	return &test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
 			mess := fmt.Sprintf("executable %q has been found in PATH", name)
 			ret := true
 			if _, err := exec.LookPath(name); err != nil {
@@ -37,9 +39,9 @@ func Binary(name string) *Requirement {
 	}
 }
 
-func OS(os string) *Requirement {
-	return &Requirement{
-		Check: func(data Data, helpers Helpers) (bool, string) {
+func OS(os string) *test.Requirement {
+	return &test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
 			mess := fmt.Sprintf("current operating system is %q", runtime.GOOS)
 			ret := true
 			if runtime.GOOS != os {
@@ -51,9 +53,9 @@ func OS(os string) *Requirement {
 	}
 }
 
-func Arch(arch string) *Requirement {
-	return &Requirement{
-		Check: func(data Data, helpers Helpers) (bool, string) {
+func Arch(arch string) *test.Requirement {
+	return &test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
 			mess := fmt.Sprintf("current architecture is %q", runtime.GOARCH)
 			ret := true
 			if runtime.GOARCH != arch {
@@ -73,18 +75,18 @@ var Darwin = OS("darwin")
 
 // NOTE: Not will always lose setups and cleanups...
 
-func Not(requirement *Requirement) *Requirement {
-	return &Requirement{
-		Check: func(data Data, helpers Helpers) (bool, string) {
+func Not(requirement *test.Requirement) *test.Requirement {
+	return &test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
 			ret, mess := requirement.Check(data, helpers)
 			return !ret, mess
 		},
 	}
 }
 
-func Require(requirements ...*Requirement) *Requirement {
-	return &Requirement{
-		Check: func(data Data, helpers Helpers) (bool, string) {
+func All(requirements ...*test.Requirement) *test.Requirement {
+	return &test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
 			ret := true
 			mess := ""
 			var subMess string
@@ -97,14 +99,14 @@ func Require(requirements ...*Requirement) *Requirement {
 			}
 			return ret, mess
 		},
-		Setup: func(data Data, helpers Helpers) {
+		Setup: func(data test.Data, helpers test.Helpers) {
 			for _, requirement := range requirements {
 				if requirement.Setup != nil {
 					requirement.Setup(data, helpers)
 				}
 			}
 		},
-		Cleanup: func(data Data, helpers Helpers) {
+		Cleanup: func(data test.Data, helpers test.Helpers) {
 			for _, requirement := range requirements {
 				if requirement.Cleanup != nil {
 					requirement.Cleanup(data, helpers)

@@ -1,4 +1,4 @@
-module github.com/containerd/nerdctl/v2/pkg/testutil/test
+module github.com/containerd/nerdctl/mod/tigron
 
 go 1.23
 
