@@ -14,23 +14,12 @@
    limitations under the License.
 */
 
-package test
+package pty
 
 import (
-	"crypto/rand"
-	"encoding/base64"
-	"fmt"
+	"os"
 )
 
-// RandomStringBase64 generates a base64 encoded random string
-func RandomStringBase64(n int) string {
-	b := make([]byte, n)
-	l, err := rand.Read(b)
-	if err != nil {
-		panic(err)
-	}
-	if l != n {
-		panic(fmt.Errorf("expected %d bytes, got %d bytes", n, l))
-	}
-	return base64.URLEncoding.EncodeToString(b)
+func Open() (pty, tty *os.File, err error) {
+	return nil, nil, ErrPTYUnsupportedPlatform
 }

@@ -22,7 +22,9 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func testEventFilterExecutor(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -38,11 +40,12 @@ func TestEventFilters(t *testing.T) {
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "CapitalizedFilter",
-			Require:     test.Not(nerdtest.Docker),
+			Require:     require.Not(nerdtest.Docker),
 			Command:     testEventFilterExecutor,
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Get("output")),
+					ExitCode: expect.ExitCodeTimeout,
+					Output:   expect.Contains(data.Get("output")),
 				}
 			},
 			Data: test.WithData("filter", "event=START").
@@ -53,7 +56,8 @@ func TestEventFilters(t *testing.T) {
 			Command:     testEventFilterExecutor,
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Get("output")),
+					ExitCode: expect.ExitCodeTimeout,
+					Output:   expect.Contains(data.Get("output")),
 				}
 			},
 			Data: test.WithData("filter", "event=start").
@@ -61,11 +65,12 @@ func TestEventFilters(t *testing.T) {
 		},
 		{
 			Description: "UnsupportedEventFilter",
-			Require:     test.Not(nerdtest.Docker),
+			Require:     require.Not(nerdtest.Docker),
 			Command:     testEventFilterExecutor,
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Get("output")),
+					ExitCode: expect.ExitCodeTimeout,
+					Output:   expect.Contains(data.Get("output")),
 				}
 			},
 			Data: test.WithData("filter", "event=unknown").
@@ -76,7 +81,8 @@ func TestEventFilters(t *testing.T) {
 			Command:     testEventFilterExecutor,
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Get("output")),
+					ExitCode: expect.ExitCodeTimeout,
+					Output:   expect.Contains(data.Get("output")),
 				}
 			},
 			Data: test.WithData("filter", "status=start").
@@ -84,11 +90,12 @@ func TestEventFilters(t *testing.T) {
 		},
 		{
 			Description: "UnsupportedStatusFilter",
-			Require:     test.Not(nerdtest.Docker),
+			Require:     require.Not(nerdtest.Docker),
 			Command:     testEventFilterExecutor,
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Get("output")),
+					ExitCode: expect.ExitCodeTimeout,
+					Output:   expect.Contains(data.Get("output")),
 				}
 			},
 			Data: test.WithData("filter", "status=unknown").

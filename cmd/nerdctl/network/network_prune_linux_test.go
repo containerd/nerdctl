@@ -21,7 +21,8 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestNetworkPrune(t *testing.T) {
@@ -45,7 +46,7 @@ func TestNetworkPrune(t *testing.T) {
 			Command: test.Command("network", "prune", "-f"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.DoesNotContain(data.Identifier()),
+					Output: expect.DoesNotContain(data.Identifier()),
 				}
 			},
 		},
@@ -64,7 +65,7 @@ func TestNetworkPrune(t *testing.T) {
 			Command: test.Command("network", "prune", "-f"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Identifier()),
+					Output: expect.Contains(data.Identifier()),
 				}
 			},
 		},

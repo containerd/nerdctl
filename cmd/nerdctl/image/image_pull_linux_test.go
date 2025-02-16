@@ -29,8 +29,10 @@ import (
 	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestImagePullWithCosign(t *testing.T) {
@@ -40,11 +42,11 @@ func TestImagePullWithCosign(t *testing.T) {
 	var keyPair *testhelpers.CosignKeyPair
 
 	testCase := &test.Case{
-		Require: test.Require(
-			test.Linux,
+		Require: require.All(
+			require.Linux,
 			nerdtest.Build,
-			test.Binary("cosign"),
-			test.Not(nerdtest.Docker),
+			require.Binary("cosign"),
+			require.Not(nerdtest.Docker),
 		),
 		Env: map[string]string{
 			"COSIGN_PASSWORD": "1",
@@ -110,9 +112,9 @@ func TestImagePullPlainHttpWithDefaultPort(t *testing.T) {
 	var registry *testregistry.RegistryServer
 
 	testCase := &test.Case{
-		Require: test.Require(
-			test.Linux,
-			test.Not(nerdtest.Docker),
+		Require: require.All(
+			require.Linux,
+			require.Not(nerdtest.Docker),
 			nerdtest.Build,
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
@@ -154,9 +156,9 @@ func TestImagePullSoci(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Require: test.Require(
-			test.Linux,
-			test.Not(nerdtest.Docker),
+		Require: require.All(
+			require.Linux,
+			require.Not(nerdtest.Docker),
 			nerdtest.Soci,
 		),
 
@@ -251,7 +253,7 @@ func TestImagePullProcessOutput(t *testing.T) {
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("pull", testutil.BusyboxImage)
 				},
-				Expected: test.Expects(0, nil, test.Contains(testutil.BusyboxImage)),
+				Expected: test.Expects(0, nil, expect.Contains(testutil.BusyboxImage)),
 			},
 			{
 				Description: "Run Container with image pull - output should be in stderr",
@@ -262,7 +264,7 @@ func TestImagePullProcessOutput(t *testing.T) {
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("run", "--rm", testutil.BusyboxImage)
 				},
-				Expected: test.Expects(0, nil, test.DoesNotContain(testutil.BusyboxImage)),
+				Expected: test.Expects(0, nil, expect.DoesNotContain(testutil.BusyboxImage)),
 			},
 		},
 	}

@@ -23,7 +23,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/ca"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func BuildCtlCommand(helpers test.Helpers, args ...string) test.TestableCommand {

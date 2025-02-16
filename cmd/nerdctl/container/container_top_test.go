@@ -22,7 +22,8 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestTop(t *testing.T) {
@@ -47,7 +48,7 @@ func TestTop(t *testing.T) {
 		{
 			Description: "with o pid,user,cmd",
 			// Docker does not support top -o
-			Require: test.Not(nerdtest.Docker),
+			Require: require.Not(nerdtest.Docker),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("top", data.Get("cID"), "-o", "pid,user,cmd")
 			},

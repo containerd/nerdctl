@@ -27,7 +27,9 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestLoadStdinFromPipe(t *testing.T) {
@@ -35,7 +37,7 @@ func TestLoadStdinFromPipe(t *testing.T) {
 
 	testCase := &test.Case{
 		Description: "TestLoadStdinFromPipe",
-		Require:     test.Linux,
+		Require:     require.Linux,
 		Setup: func(data test.Data, helpers test.Helpers) {
 			identifier := data.Identifier()
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
@@ -56,8 +58,8 @@ func TestLoadStdinFromPipe(t *testing.T) {
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			identifier := data.Identifier()
 			return &test.Expected{
-				Output: test.All(
-					test.Contains(fmt.Sprintf("Loaded image: %s:latest", identifier)),
+				Output: expect.All(
+					expect.Contains(fmt.Sprintf("Loaded image: %s:latest", identifier)),
 					func(stdout string, info string, t *testing.T) {
 						assert.Assert(t, strings.Contains(helpers.Capture("images"), identifier))
 					},
@@ -74,7 +76,7 @@ func TestLoadStdinEmpty(t *testing.T) {
 
 	testCase := &test.Case{
 		Description: "TestLoadStdinEmpty",
-		Require:     test.Linux,
+		Require:     require.Linux,
 		Command:     test.Command("load"),
 		Expected:    test.Expects(1, nil, nil),
 	}
@@ -102,9 +104,9 @@ func TestLoadQuiet(t *testing.T) {
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
-				Output: test.All(
-					test.Contains(fmt.Sprintf("Loaded image: %s:latest", data.Identifier())),
-					test.DoesNotContain("Loading layer"),
+				Output: expect.All(
+					expect.Contains(fmt.Sprintf("Loaded image: %s:latest", data.Identifier())),
+					expect.DoesNotContain("Loading layer"),
 				),
 			}
 		},

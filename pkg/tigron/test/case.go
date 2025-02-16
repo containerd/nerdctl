@@ -23,7 +23,7 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-// Case describes an entire test-case, including data, setup and cleanup routines, command and expectations
+// Case describes an entire test-case, including data, setup and cleanup routines, command and expectations.
 type Case struct {
 	// Description contains a human-readable short desc, used as a seed for the identifier and as a title for the test
 	Description string

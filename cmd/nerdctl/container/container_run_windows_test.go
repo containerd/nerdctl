@@ -26,7 +26,8 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestRunHostProcessContainer(t *testing.T) {
@@ -141,7 +142,7 @@ func TestRunWithTtyAndDetached(t *testing.T) {
 		return helpers.Command("logs", data.Identifier("with-terminal"))
 	}
 
-	testCase.Expected = test.Expects(0, nil, test.Contains("Hello, World with TTY!"))
+	testCase.Expected = test.Expects(0, nil, expect.Contains("Hello, World with TTY!"))
 
 	testCase.Run(t)
 }

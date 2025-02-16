@@ -43,7 +43,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func extractHostPort(portMapping string, port string) (string, error) {
@@ -355,7 +356,7 @@ func TestRunPort(t *testing.T) {
 func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
 	testCase := nerdtest.Setup()
 	// docker does not set label restriction to 4096 bytes
-	testCase.Require = test.Not(nerdtest.Docker)
+	testCase.Require = require.Not(nerdtest.Docker)
 
 	testCase.SubTests = []*test.Case{
 		{

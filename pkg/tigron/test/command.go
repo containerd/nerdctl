@@ -17,6 +17,7 @@
 package test
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -24,12 +25,45 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/term"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
+
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test/internal"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test/internal/pty"
 )
 
-const ExitCodeGenericFail = -1
-const ExitCodeNoCheck = -2
+// CustomizableCommand is an interface meant for people who want to heavily customize the base command
+// of their test case.
+type CustomizableCommand interface {
+	TestableCommand
+
+	PrependArgs(args ...string)
+	// WithBlacklist allows to filter out unwanted variables from the embedding environment -
+	// default it pass any that is defined by WithEnv
+	WithBlacklist(env []string)
+
+	// withEnv *copies* the passed map to the environment of the command to be executed
+	// Note that this will override any variable defined in the embedding environment
+	withEnv(env map[string]string)
+	// withTempDir specifies a temporary directory to use
+	withTempDir(path string)
+	// WithConfig allows passing custom config properties from the test to the base command
+	withConfig(config Config)
+	withT(t *testing.T)
+	// Clear does a clone, but will clear binary and arguments, but retain the env, or any other custom properties
+	// Gotcha: if GenericCommand is embedded with a custom Run and an overridden clear to return the embedding type
+	// the result will be the embedding command, no longer the GenericCommand
+	clear() TestableCommand
+
+	// Will manipulate specific configuration option on the command
+	// Note that config is a copy of the test config
+	// Any modification done here will not be passed along to subtests, although they are shared
+	// amongst all commands of the test.
+	write(key ConfigKey, value ConfigValue)
+	read(key ConfigKey) ConfigValue
+}
 
 // GenericCommand is a concrete Command implementation
 type GenericCommand struct {
@@ -49,6 +83,7 @@ type GenericCommand struct {
 	stdin        io.Reader
 	async        bool
 	pty          bool
+	ptyWriters   []func(*os.File) error
 	timeout      time.Duration
 	workingDir   string
 
@@ -69,8 +104,9 @@ func (gc *GenericCommand) WithWrapper(binary string, args ...string) {
 	gc.helperArgs = args
 }
 
-func (gc *GenericCommand) WithPseudoTTY() {
+func (gc *GenericCommand) WithPseudoTTY(writers ...func(*os.File) error) {
 	gc.pty = true
+	gc.ptyWriters = writers
 }
 
 func (gc *GenericCommand) WithStdin(r io.Reader) {
@@ -81,11 +117,6 @@ func (gc *GenericCommand) WithCwd(path string) {
 	gc.workingDir = path
 }
 
-// TODO: it should be possible to timeout execution
-// Primitives (gc.timeout) is here, it is just a matter of exposing a WithTimeout method
-// - UX to be decided
-// - validate use case: would we ever need this?
-
 func (gc *GenericCommand) Run(expect *Expected) {
 	if gc.t != nil {
 		gc.t.Helper()
@@ -93,24 +124,49 @@ func (gc *GenericCommand) Run(expect *Expected) {
 
 	var result *icmd.Result
 	var env []string
-	if gc.async {
-		result = icmd.WaitOnCmd(gc.timeout, gc.result)
-		env = gc.result.Cmd.Env
-	} else {
+	output := &bytes.Buffer{}
+	stdout := ""
+	errorGroup := &errgroup.Group{}
+	var tty *os.File
+	var psty *os.File
+	if !gc.async {
 		iCmdCmd := gc.boot()
-		env = iCmdCmd.Env
-
 		if gc.pty {
-			pty, tty, _ := Open()
+			psty, tty, _ = pty.Open()
+			_, _ = term.MakeRaw(int(tty.Fd()))
+
 			iCmdCmd.Stdin = tty
 			iCmdCmd.Stdout = tty
-			iCmdCmd.Stderr = tty
-			defer pty.Close()
-			defer tty.Close()
-		}
 
-		// Run it
-		result = icmd.RunCmd(iCmdCmd)
+			gc.result = icmd.StartCmd(iCmdCmd)
+
+			for _, writer := range gc.ptyWriters {
+				_ = writer(psty)
+			}
+
+			// Copy from the master
+			errorGroup.Go(func() error {
+				_, _ = io.Copy(output, psty)
+				return nil
+			})
+		} else {
+			// Run it
+			gc.result = icmd.StartCmd(iCmdCmd)
+		}
+	}
+
+	result = icmd.WaitOnCmd(gc.timeout, gc.result)
+	env = gc.result.Cmd.Env
+
+	if gc.pty {
+		_ = tty.Close()
+		_ = psty.Close()
+		_ = errorGroup.Wait()
+	}
+
+	stdout = result.Stdout()
+	if stdout == "" {
+		stdout = output.String()
 	}
 
 	gc.rawStdErr = result.Stderr()
@@ -120,12 +176,15 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		// Build the debug string - additionally attach the env (which iCmd does not do)
 		debug := result.String() + "Env:\n" + strings.Join(env, "\n")
 		// ExitCode goes first
-		if expect.ExitCode == ExitCodeNoCheck { //nolint:revive
-			// -2 means we do not care at all about exit code
-		} else if expect.ExitCode == ExitCodeGenericFail {
-			// -1 means any error
+		if expect.ExitCode == internal.ExitCodeNoCheck { //nolint:revive
+			// ExitCodeNoCheck means we do not care at all about exit code. It can be a failure, a success, or a timeout.
+		} else if expect.ExitCode == internal.ExitCodeGenericFail {
+			// ExitCodeGenericFail means we expect an error (excluding timeout).
 			assert.Assert(gc.t, result.ExitCode != 0,
-				"Expected exit code to be different than 0\n"+debug)
+				"Command succeeded while we were expecting an error\n"+debug)
+		} else if result.Timeout {
+			assert.Assert(gc.t, expect.ExitCode == internal.ExitCodeTimeout,
+				"Command unexpectedly timed-out\n"+debug)
 		} else {
 			assert.Assert(gc.t, expect.ExitCode == result.ExitCode,
 				fmt.Sprintf("Expected exit code: %d\n", expect.ExitCode)+debug)
@@ -137,7 +196,7 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		}
 		// Finally, check the output if we are asked to
 		if expect.Output != nil {
-			expect.Output(result.Stdout(), debug, gc.t)
+			expect.Output(stdout, debug, gc.t)
 		}
 	}
 }

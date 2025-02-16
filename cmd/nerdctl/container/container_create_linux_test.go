@@ -33,7 +33,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestCreateWithLabel(t *testing.T) {
@@ -178,7 +179,7 @@ func TestCreateWithTty(t *testing.T) {
 func TestIssue2993(t *testing.T) {
 	testCase := nerdtest.Setup()
 
-	testCase.Require = test.Not(nerdtest.Docker)
+	testCase.Require = require.Not(nerdtest.Docker)
 
 	const (
 		containersPathKey = "containersPath"
