@@ -22,18 +22,19 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestImageConvert(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Require: test.Require(
+		Require: require.All(
 			// FIXME: windows does not support stargz
-			test.Not(test.Windows),
-			test.Not(nerdtest.Docker),
+			require.Not(require.Windows),
+			require.Not(nerdtest.Docker),
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
@@ -52,8 +53,8 @@ func TestImageConvert(t *testing.T) {
 			},
 			{
 				Description: "nydus",
-				Require: test.Require(
-					test.Binary("nydus-image"),
+				Require: require.All(
+					require.Binary("nydus-image"),
 				),
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
@@ -101,12 +102,12 @@ func TestImageConvertNydusVerify(t *testing.T) {
 	var registry *testregistry.RegistryServer
 
 	testCase := &test.Case{
-		Require: test.Require(
-			test.Linux,
-			test.Binary("nydus-image"),
-			test.Binary("nydusify"),
-			test.Binary("nydusd"),
-			test.Not(nerdtest.Docker),
+		Require: require.All(
+			require.Linux,
+			require.Binary("nydus-image"),
+			require.Binary("nydusify"),
+			require.Binary("nydusd"),
+			require.Not(nerdtest.Docker),
 			nerdtest.Rootful,
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {

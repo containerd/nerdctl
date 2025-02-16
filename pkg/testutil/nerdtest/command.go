@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 const defaultNamespace = testutil.Namespace

@@ -34,7 +34,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 type CesantaConfigServer struct {
@@ -92,7 +93,7 @@ func ensureContainerStarted(helpers test.Helpers, con string) {
 	for i := 0; i < 5 && !started; i++ {
 		helpers.Command("container", "inspect", con).
 			Run(&test.Expected{
-				ExitCode: test.ExitCodeNoCheck,
+				ExitCode: expect.ExitCodeNoCheck,
 				Output: func(stdout string, info string, t *testing.T) {
 					var dc []dockercompat.Container
 					err := json.Unmarshal([]byte(stdout), &dc)

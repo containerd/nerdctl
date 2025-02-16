@@ -23,7 +23,9 @@ import (
 	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestIPFSSimple(t *testing.T) {
@@ -32,9 +34,9 @@ func TestIPFSSimple(t *testing.T) {
 	const mainImageCIDKey = "mainImageCIDKey"
 	const transformedImageCIDKey = "transformedImageCIDKey"
 
-	testCase.Require = test.Require(
-		test.Linux,
-		test.Not(nerdtest.Docker),
+	testCase.Require = require.All(
+		require.Linux,
+		require.Not(nerdtest.Docker),
 		nerdtest.IPFS,
 		// We constantly rmi the image by its CID which is shared across tests, so, we make this group private
 		// and every subtest NoParallel
@@ -61,12 +63,12 @@ func TestIPFSSimple(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm", data.Get(mainImageCIDKey), "echo", "hello")
 			},
-			Expected: test.Expects(0, nil, test.Equals("hello\n")),
+			Expected: test.Expects(0, nil, expect.Equals("hello\n")),
 		},
 		{
 			Description: "with stargz snapshotter",
 			NoParallel:  true,
-			Require: test.Require(
+			Require: require.All(
 				nerdtest.Stargz,
 				nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3475"),
 			),
@@ -82,7 +84,7 @@ func TestIPFSSimple(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm", data.Get(mainImageCIDKey), "ls", "/.stargz-snapshotter")
 			},
-			Expected: test.Expects(0, nil, test.Match(regexp.MustCompile("sha256:.*[.]json[\n]"))),
+			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile("sha256:.*[.]json[\n]"))),
 		},
 		{
 			Description: "with commit and push",
@@ -116,12 +118,12 @@ func TestIPFSSimple(t *testing.T) {
 				return helpers.Command("run", "--rm", data.Get(transformedImageCIDKey), "cat", "/hello")
 			},
 
-			Expected: test.Expects(0, nil, test.Equals("hello\n")),
+			Expected: test.Expects(0, nil, expect.Equals("hello\n")),
 		},
 		{
 			Description: "with commit and push, stargz lazy pulling",
 			NoParallel:  true,
-			Require: test.Require(
+			Require: require.All(
 				nerdtest.Stargz,
 				nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3475"),
 			),
@@ -154,12 +156,12 @@ func TestIPFSSimple(t *testing.T) {
 				return helpers.Command("run", "--rm", data.Get(transformedImageCIDKey), "sh", "-c", "--", "cat /hello && ls /.stargz-snapshotter")
 			},
 
-			Expected: test.Expects(0, nil, test.Match(regexp.MustCompile("hello[\n]sha256:.*[.]json[\n]"))),
+			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile("hello[\n]sha256:.*[.]json[\n]"))),
 		},
 		{
 			Description: "with encryption",
 			NoParallel:  true,
-			Require:     test.Binary("openssl"),
+			Require:     require.Binary("openssl"),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.CommonImage))
 				helpers.Ensure("pull", "ipfs://"+data.Get(mainImageCIDKey))
@@ -176,12 +178,12 @@ func TestIPFSSimple(t *testing.T) {
 				cmd := helpers.Command("image", "inspect", "--mode=native", "--format={{len .Index.Manifests}}", data.Identifier("encrypted"))
 				cmd.Run(&test.Expected{
 					ExitCode: 1,
-					Output:   test.Equals("1\n"),
+					Output:   expect.Equals("1\n"),
 				})
 				cmd = helpers.Command("image", "inspect", "--mode=native", "--format={{json (index .Manifest.Layers 0) }}", data.Identifier("encrypted"))
 				cmd.Run(&test.Expected{
 					ExitCode: 1,
-					Output:   test.Contains("org.opencontainers.image.enc.keys.jwe"),
+					Output:   expect.Contains("org.opencontainers.image.enc.keys.jwe"),
 				})
 
 				// Push the encrypted image and save the CID

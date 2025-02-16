@@ -35,7 +35,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
 )
 
 func TestRunCgroupV2(t *testing.T) {
@@ -178,7 +178,7 @@ func TestRunCgroupV1(t *testing.T) {
 func TestIssue3781(t *testing.T) {
 	t.Parallel()
 	testCase := nerdtest.Setup()
-	testCase.Require = test.Not(nerdtest.Docker)
+	testCase.Require = require.Not(nerdtest.Docker)
 
 	base := testutil.NewBase(t)
 	info := base.Info()

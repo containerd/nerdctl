@@ -27,8 +27,9 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestPush(t *testing.T) {
@@ -37,7 +38,7 @@ func TestPush(t *testing.T) {
 	var registryNoAuthHTTPRandom, registryNoAuthHTTPDefault, registryTokenAuthHTTPSRandom *testregistry.RegistryServer
 
 	testCase := &test.Case{
-		Require: test.Linux,
+		Require: require.Linux,
 
 		Setup: func(data test.Data, helpers test.Helpers) {
 			base := testutil.NewBase(t)
@@ -80,7 +81,7 @@ func TestPush(t *testing.T) {
 			},
 			{
 				Description: "plain http with insecure",
-				Require:     test.Not(nerdtest.Docker),
+				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
@@ -114,7 +115,7 @@ func TestPush(t *testing.T) {
 			},
 			{
 				Description: "plain http with insecure, default port",
-				Require:     test.Not(nerdtest.Docker),
+				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s/%s:%s",
@@ -134,7 +135,7 @@ func TestPush(t *testing.T) {
 			},
 			{
 				Description: "with insecure, with login",
-				Require:     test.Not(nerdtest.Docker),
+				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
@@ -157,7 +158,7 @@ func TestPush(t *testing.T) {
 			},
 			{
 				Description: "with hosts dir, with login",
-				Require:     test.Not(nerdtest.Docker),
+				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
@@ -180,7 +181,7 @@ func TestPush(t *testing.T) {
 			},
 			{
 				Description: "non distributable artifacts",
-				Require:     test.Not(nerdtest.Docker),
+				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.NonDistBlobImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
@@ -212,7 +213,7 @@ func TestPush(t *testing.T) {
 			},
 			{
 				Description: "non distributable artifacts (with)",
-				Require:     test.Not(nerdtest.Docker),
+				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.NonDistBlobImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
@@ -244,9 +245,9 @@ func TestPush(t *testing.T) {
 			},
 			{
 				Description: "soci",
-				Require: test.Require(
+				Require: require.All(
 					nerdtest.Soci,
-					test.Not(nerdtest.Docker),
+					require.Not(nerdtest.Docker),
 				),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.UbuntuImage)

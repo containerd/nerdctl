@@ -41,7 +41,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestRunCustomRootfs(t *testing.T) {
@@ -503,8 +504,8 @@ func TestRunWithDetachKeys(t *testing.T) {
 		return &test.Expected{
 			ExitCode: 0,
 			Errors:   []error{errors.New("detach keys")},
-			Output: test.All(
-				test.Contains("markmark"),
+			Output: expect.All(
+				expect.Contains("markmark"),
 				func(stdout string, info string, t *testing.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 				},
@@ -570,8 +571,8 @@ func TestIssue3568(t *testing.T) {
 		return &test.Expected{
 			ExitCode: 0,
 			Errors:   []error{errors.New("detach keys")},
-			Output: test.All(
-				test.Contains("markmark"),
+			Output: expect.All(
+				expect.Contains("markmark"),
 				func(stdout string, info string, t *testing.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 				},
@@ -606,7 +607,7 @@ func TestPortBindingWithCustomHost(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: test.All(
+					Output: expect.All(
 						func(stdout string, info string, t *testing.T) {
 							resp, err := nettestutil.HTTPGet(address, 30, false)
 							assert.NilError(t, err)

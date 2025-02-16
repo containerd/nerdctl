@@ -27,7 +27,8 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 /*
@@ -88,8 +89,8 @@ func TestAttach(t *testing.T) {
 		return &test.Expected{
 			ExitCode: ex,
 			Errors:   []error{errors.New("read detach keys")},
-			Output: test.All(
-				test.Contains("markmark"),
+			Output: expect.All(
+				expect.Contains("markmark"),
 				func(stdout string, info string, t *testing.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 				},
@@ -150,8 +151,8 @@ func TestAttachDetachKeys(t *testing.T) {
 		return &test.Expected{
 			ExitCode: ex,
 			Errors:   []error{errors.New("read detach keys")},
-			Output: test.All(
-				test.Contains("markmark"),
+			Output: expect.All(
+				expect.Contains("markmark"),
 				func(stdout string, info string, t *testing.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 				},
@@ -202,8 +203,8 @@ func TestAttachForAutoRemovedContainer(t *testing.T) {
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
 			ExitCode: 42,
-			Output: test.All(
-				test.Contains("markmark"),
+			Output: expect.All(
+				expect.Contains("markmark"),
 				func(stdout string, info string, t *testing.T) {
 					assert.Assert(t, !strings.Contains(helpers.Capture("ps", "-a"), data.Identifier()))
 				},

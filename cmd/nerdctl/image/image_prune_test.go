@@ -28,7 +28,9 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestImagePrune(t *testing.T) {
@@ -47,10 +49,10 @@ func TestImagePrune(t *testing.T) {
 		{
 			Description: "without all",
 			NoParallel:  true,
-			Require: test.Require(
+			Require: require.All(
 				// This never worked with Docker - the only reason we ever got <none> was side effects from other tests
 				// See inline comments.
-				test.Not(nerdtest.Docker),
+				require.Not(nerdtest.Docker),
 				nerdtest.Build,
 			),
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -77,7 +79,7 @@ func TestImagePrune(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				identifier := data.Identifier()
 				return &test.Expected{
-					Output: test.All(
+					Output: expect.All(
 						func(stdout string, info string, t *testing.T) {
 							assert.Assert(t, !strings.Contains(stdout, identifier), info)
 						},
@@ -92,9 +94,9 @@ func TestImagePrune(t *testing.T) {
 		},
 		{
 			Description: "with all",
-			Require: test.Require(
+			Require: require.All(
 				// Same as above
-				test.Not(nerdtest.Docker),
+				require.Not(nerdtest.Docker),
 				nerdtest.Build,
 			),
 			// Cannot use a custom namespace with buildkitd right now, so, no parallel it is
@@ -123,7 +125,7 @@ func TestImagePrune(t *testing.T) {
 			Command: test.Command("image", "prune", "--force", "--all"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.All(
+					Output: expect.All(
 						func(stdout string, info string, t *testing.T) {
 							assert.Assert(t, !strings.Contains(stdout, data.Identifier()), info)
 						},
@@ -164,7 +166,7 @@ LABEL version=0.1`, testutil.CommonImage)
 			Command: test.Command("image", "prune", "--force", "--all", "--filter", "label=foo=baz"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.All(
+					Output: expect.All(
 						func(stdout string, info string, t *testing.T) {
 							assert.Assert(t, !strings.Contains(stdout, data.Identifier()), info)
 						},
@@ -205,8 +207,8 @@ CMD ["echo", "nerdctl-test-image-prune-until"]`, testutil.CommonImage)
 			Command: test.Command("image", "prune", "--force", "--all", "--filter", "until=12h"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.All(
-						test.DoesNotContain(data.Get("imageID")),
+					Output: expect.All(
+						expect.DoesNotContain(data.Get("imageID")),
 						func(stdout string, info string, t *testing.T) {
 							imgList := helpers.Capture("images")
 							assert.Assert(t, strings.Contains(imgList, data.Get("imageID")), info)
@@ -224,8 +226,8 @@ CMD ["echo", "nerdctl-test-image-prune-until"]`, testutil.CommonImage)
 					Command: test.Command("image", "prune", "--force", "--all", "--filter", "until=10ms"),
 					Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 						return &test.Expected{
-							Output: test.All(
-								test.Contains(data.Get("imageID")),
+							Output: expect.All(
+								expect.Contains(data.Get("imageID")),
 								func(stdout string, info string, t *testing.T) {
 									imgList := helpers.Capture("images")
 									assert.Assert(t, !strings.Contains(imgList, data.Get("imageID")), imgList, info)

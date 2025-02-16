@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func NewKuboRegistry(data test.Data, helpers test.Helpers, t *testing.T, currentCA *ca.CA, port int, auth Auth) *Server {

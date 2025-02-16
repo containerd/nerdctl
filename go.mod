@@ -7,7 +7,11 @@ go 1.23.0
 // as Moby is not going to move to containerd v2 anytime soon or fix these transient dependencies.
 // We should still move back to upstream in the future, and remove our copy.
 
-replace github.com/containerd/nerdctl/v2/pkg/testutil/test v0.0.0 => ./pkg/testutil/test
+replace github.com/containerd/nerdctl/v2/pkg/tigron v0.0.0 => ./pkg/tigron
+replace github.com/containerd/nerdctl/v2/pkg/tigron/test v0.0.0 => ./pkg/tigron/test
+replace github.com/containerd/nerdctl/v2/pkg/tigron/expect v0.0.0 => ./pkg/tigron/expect
+replace github.com/containerd/nerdctl/v2/pkg/tigron/require v0.0.0 => ./pkg/tigron/require
+replace github.com/containerd/nerdctl/v2/pkg/tigron/utils v0.0.0 => ./pkg/tigron/utils
 
 require (
 	github.com/Masterminds/semver/v3 v3.3.1
@@ -25,7 +29,7 @@ require (
 	github.com/containerd/go-cni v1.1.12
 	github.com/containerd/imgcrypt/v2 v2.0.0
 	github.com/containerd/log v0.1.0
-	github.com/containerd/nerdctl/v2/pkg/testutil/test v0.0.0
+	github.com/containerd/nerdctl/v2/pkg/tigron v0.0.0
 	github.com/containerd/nydus-snapshotter v0.15.0
 	github.com/containerd/platforms v1.0.0-rc.1
 	github.com/containerd/stargz-snapshotter v0.16.3

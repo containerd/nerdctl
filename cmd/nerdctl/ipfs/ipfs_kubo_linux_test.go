@@ -24,7 +24,9 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestIPFSAddrWithKubo(t *testing.T) {
@@ -35,9 +37,9 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 
 	var ipfsRegistry *registry.Server
 
-	testCase.Require = test.Require(
-		test.Linux,
-		test.Not(nerdtest.Docker),
+	testCase.Require = require.All(
+		require.Linux,
+		require.Not(nerdtest.Docker),
 		nerdtest.Registry,
 		nerdtest.Private,
 	)
@@ -74,12 +76,12 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm", data.Get(mainImageCIDKey), "echo", "hello")
 			},
-			Expected: test.Expects(0, nil, test.Equals("hello\n")),
+			Expected: test.Expects(0, nil, expect.Equals("hello\n")),
 		},
 		{
 			Description: "with stargz snapshotter",
 			NoParallel:  true,
-			Require: test.Require(
+			Require: require.All(
 				nerdtest.Stargz,
 				nerdtest.Private,
 				nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3475"),
@@ -97,7 +99,7 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm", data.Get(mainImageCIDKey), "ls", "/.stargz-snapshotter")
 			},
-			Expected: test.Expects(0, nil, test.Match(regexp.MustCompile("sha256:.*[.]json[\n]"))),
+			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile("sha256:.*[.]json[\n]"))),
 		},
 	}
 

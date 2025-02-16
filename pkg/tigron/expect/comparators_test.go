@@ -1,5 +1,3 @@
-//go:build !windows
-
 /*
    Copyright The containerd Authors.
 
@@ -16,14 +14,27 @@
    limitations under the License.
 */
 
-package nerdtest
+package expect_test
 
 import (
-	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
+	"regexp"
+	"testing"
+
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
 )
 
-var HyperV = &test.Requirement{
-	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
-		return false, "HyperV is a windows-only feature"
-	},
+func TestExpect(t *testing.T) {
+	t.Parallel()
+
+	expect.Contains("b")("a b c", "info", t)
+	expect.DoesNotContain("d")("a b c", "info", t)
+	expect.Equals("a b c")("a b c", "info", t)
+	expect.Match(regexp.MustCompile("[a-z ]+"))("a b c", "info", t)
+
+	expect.All(
+		expect.Contains("b"),
+		expect.DoesNotContain("d"),
+		expect.Equals("a b c"),
+		expect.Match(regexp.MustCompile("[a-z ]+")),
+	)("a b c", "info", t)
 }

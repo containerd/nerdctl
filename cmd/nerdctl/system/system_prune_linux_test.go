@@ -25,7 +25,9 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestSystemPrune(t *testing.T) {
@@ -76,7 +78,7 @@ func TestSystemPrune(t *testing.T) {
 			// FIXME: using a dedicated namespace does not work with rootful (because of buildkitd)
 			NoParallel: true,
 			// buildkitd is not available with docker
-			Require: test.Require(nerdtest.Build, test.Not(nerdtest.Docker)),
+			Require: require.All(nerdtest.Build, require.Not(nerdtest.Docker)),
 			// FIXME: this test will happily say "green" even if the command actually fails to do its duty
 			// if there is nothing in the build cache.
 			// Ensure with setup here that we DO build something first
@@ -86,7 +88,7 @@ func TestSystemPrune(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return nerdtest.BuildCtlCommand(helpers, "du")
 			},
-			Expected: test.Expects(0, nil, test.Contains("Total:\t\t0B")),
+			Expected: test.Expects(0, nil, expect.Contains("Total:\t\t0B")),
 		},
 	}
 

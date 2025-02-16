@@ -26,7 +26,9 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/expect"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func testInfoComparator(stdout string, info string, t *testing.T) {
@@ -53,22 +55,22 @@ func TestInfo(t *testing.T) {
 		},
 		{
 			Description: "info with namespace",
-			Require:     test.Not(nerdtest.Docker),
+			Require:     require.Not(nerdtest.Docker),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Custom("nerdctl", "info")
 			},
-			Expected: test.Expects(0, nil, test.Contains("Namespace:	default")),
+			Expected: test.Expects(0, nil, expect.Contains("Namespace:	default")),
 		},
 		{
 			Description: "info with namespace env var",
 			Env: map[string]string{
 				"CONTAINERD_NAMESPACE": "test",
 			},
-			Require: test.Not(nerdtest.Docker),
+			Require: require.Not(nerdtest.Docker),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Custom("nerdctl", "info")
 			},
-			Expected: test.Expects(0, nil, test.Contains("Namespace:	test")),
+			Expected: test.Expects(0, nil, expect.Contains("Namespace:	test")),
 		},
 	}
 

@@ -25,7 +25,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestIssue3425(t *testing.T) {
@@ -105,10 +106,10 @@ func TestIssue3425(t *testing.T) {
 			},
 			{
 				Description: "with convert",
-				Require: test.Require(
+				Require: require.All(
 					nerdtest.Private,
-					test.Not(test.Windows),
-					test.Not(nerdtest.Docker),
+					require.Not(require.Windows),
+					require.Not(nerdtest.Docker),
 				),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("image", "pull", testutil.CommonImage)
@@ -127,11 +128,11 @@ func TestIssue3425(t *testing.T) {
 			},
 			{
 				Description: "with ipfs",
-				Require: test.Require(
+				Require: require.All(
 					nerdtest.Private,
 					nerdtest.IPFS,
-					test.Not(test.Windows),
-					test.Not(nerdtest.Docker),
+					require.Not(require.Windows),
+					require.Not(nerdtest.Docker),
 				),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("image", "pull", testutil.CommonImage)

@@ -1,5 +1,3 @@
-//go:build !windows
-
 /*
    Copyright The containerd Authors.
 
@@ -16,14 +14,21 @@
    limitations under the License.
 */
 
-package nerdtest
+package test
 
 import (
-	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
+	"testing"
 )
 
-var HyperV = &test.Requirement{
-	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
-		return false, "HyperV is a windows-only feature"
-	},
+type Testable interface {
+	CustomCommand(testCase *Case, t *testing.T) CustomizableCommand
+	AmbientRequirements(testCase *Case, t *testing.T)
+}
+
+var (
+	registeredTestable Testable
+)
+
+func Customize(testable Testable) {
+	registeredTestable = testable
 }

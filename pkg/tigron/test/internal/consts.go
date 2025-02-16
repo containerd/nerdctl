@@ -1,5 +1,3 @@
-//go:build !windows
-
 /*
    Copyright The containerd Authors.
 
@@ -16,14 +14,12 @@
    limitations under the License.
 */
 
-package nerdtest
+package internal
 
-import (
-	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
+// This is duplicated form `expect` to avoid circular imports.
+const (
+	ExitCodeSuccess     = 0
+	ExitCodeGenericFail = -1
+	ExitCodeNoCheck     = -2
+	ExitCodeTimeout     = -3
 )
-
-var HyperV = &test.Requirement{
-	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
-		return false, "HyperV is a windows-only feature"
-	},
-}

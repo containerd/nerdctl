@@ -1,5 +1,3 @@
-//go:build !windows
-
 /*
    Copyright The containerd Authors.
 
@@ -16,14 +14,23 @@
    limitations under the License.
 */
 
-package nerdtest
+package utils
 
 import (
-	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
 )
 
-var HyperV = &test.Requirement{
-	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
-		return false, "HyperV is a windows-only feature"
-	},
+// RandomStringBase64 generates a base64 encoded random string
+func RandomStringBase64(n int) string {
+	b := make([]byte, n)
+	l, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
+	if l != n {
+		panic(fmt.Errorf("expected %d bytes, got %d bytes", n, l))
+	}
+	return base64.URLEncoding.EncodeToString(b)
 }

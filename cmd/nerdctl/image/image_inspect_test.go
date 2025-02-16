@@ -29,7 +29,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/require"
+	"github.com/containerd/nerdctl/v2/pkg/tigron/test"
 )
 
 func TestImageInspectSimpleCases(t *testing.T) {
@@ -95,10 +96,10 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 	}
 
 	testCase := &test.Case{
-		Require: test.Require(
-			test.Not(nerdtest.Docker),
+		Require: require.All(
+			require.Not(nerdtest.Docker),
 			// FIXME: this test depends on hub images that do not have windows versions
-			test.Not(test.Windows),
+			require.Not(require.Windows),
 			// We need a clean slate
 			nerdtest.Private,
 		),
