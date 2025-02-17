@@ -276,7 +276,7 @@ type ContainerStopOptions struct {
 	// If it's nil, the default is 10 seconds.
 	Timeout *time.Duration
 
-	// singal to send to the container, before sending sigkill
+	// Signal to send to the container, before sending SIGKILL
 	Signal string
 }
 
