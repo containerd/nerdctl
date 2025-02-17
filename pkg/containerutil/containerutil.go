@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	dockercliopts "github.com/docker/cli/opts"
@@ -336,7 +337,7 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 }
 
 // Stop stops `container` by sending SIGTERM. If the container is not stopped after `timeout`, it sends a SIGKILL.
-func Stop(ctx context.Context, container containerd.Container, timeout *time.Duration) (err error) {
+func Stop(ctx context.Context, container containerd.Container, timeout *time.Duration, signalValue string) (err error) {
 	// defer the storage of stop error in the dedicated label
 	defer func() {
 		if err != nil {
@@ -409,15 +410,9 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 	}
 
 	if *timeout > 0 {
-		sig, err := signal.ParseSignal("SIGTERM")
+		sig, err := getSignal(signalValue, l)
 		if err != nil {
 			return err
-		}
-		if stopSignal, ok := l[containerd.StopSignalLabel]; ok {
-			sig, err = signal.ParseSignal(stopSignal)
-			if err != nil {
-				return err
-			}
 		}
 
 		if err := task.Kill(ctx, sig); err != nil {
@@ -463,6 +458,18 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 		}
 	}
 	return waitContainerStop(ctx, exitCh, container.ID())
+}
+
+func getSignal(signalValue string, containerLabels map[string]string) (syscall.Signal, error) {
+	if signalValue != "" {
+		return signal.ParseSignal(signalValue)
+	}
+
+	if stopSignal, ok := containerLabels[containerd.StopSignalLabel]; ok {
+		return signal.ParseSignal(stopSignal)
+	}
+
+	return signal.ParseSignal("SIGTERM")
 }
 
 func waitContainerStop(ctx context.Context, exitCh <-chan containerd.ExitStatus, id string) error {
