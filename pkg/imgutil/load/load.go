@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/diff"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/images/archive"
 	"github.com/containerd/containerd/v2/pkg/archive/compression"
@@ -137,8 +138,7 @@ func unpackImage(ctx context.Context, client *containerd.Client, model images.Im
 	if !options.Quiet {
 		fmt.Fprintf(options.Stdout, "unpacking %s (%s)...\n", model.Name, model.Target.Digest)
 	}
-
-	err := image.Unpack(ctx, options.GOptions.Snapshotter)
+	err := image.Unpack(ctx, options.GOptions.Snapshotter, containerd.WithUnpackApplyOpts(diff.WithSyncFs(options.SyncFs)))
 	if err != nil {
 		return err
 	}

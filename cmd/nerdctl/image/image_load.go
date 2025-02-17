@@ -45,6 +45,7 @@ func NewLoadCommand() *cobra.Command {
 	loadCommand.Flags().StringSlice("platform", []string{}, "Import content for a specific platform")
 	loadCommand.RegisterFlagCompletionFunc("platform", completion.Platforms)
 	loadCommand.Flags().Bool("all-platforms", false, "Import content for all platforms")
+	loadCommand.Flags().BoolP("sync-fs", "s", true, "Synchronize the underlying filesystem containing files when unpack images")
 	// #endregion
 
 	return loadCommand
@@ -71,6 +72,10 @@ func processLoadCommandFlags(cmd *cobra.Command) (types.ImageLoadOptions, error)
 	if err != nil {
 		return types.ImageLoadOptions{}, err
 	}
+	syncfs, err := cmd.Flags().GetBool("sync-fs")
+	if err != nil {
+		return types.ImageLoadOptions{}, err
+	}
 	return types.ImageLoadOptions{
 		GOptions:     globalOptions,
 		Input:        input,
@@ -79,6 +84,7 @@ func processLoadCommandFlags(cmd *cobra.Command) (types.ImageLoadOptions, error)
 		Stdout:       cmd.OutOrStdout(),
 		Stdin:        cmd.InOrStdin(),
 		Quiet:        quiet,
+		SyncFs:       syncfs,
 	}, nil
 }
 
