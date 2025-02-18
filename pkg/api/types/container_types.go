@@ -275,6 +275,9 @@ type ContainerStopOptions struct {
 	// Timeout specifies how long to wait after sending a SIGTERM and before sending a SIGKILL.
 	// If it's nil, the default is 10 seconds.
 	Timeout *time.Duration
+
+	// Signal to send to the container, before sending SIGKILL
+	Signal string
 }
 
 // ContainerRestartOptions specifies options for `nerdctl (container) restart`.
