@@ -573,6 +573,7 @@ Flags:
 
 - :whale: `-t, --time=SECONDS`: Seconds to wait for stop before killing it (default "10")
   - Tips: If the init process in container is exited after receiving SIGTERM or exited before the time you specified, the container will be exited immediately
+- :whale: `-s, --signal=SIGNAL`: Signal to send to the container (e.g. SIGINT).
 
 ### :whale: nerdctl start
 
@@ -597,6 +598,7 @@ Flags:
 
 - :whale: `-t, --time=SECONDS`: Seconds to wait for stop before killing it (default "10")
   - Tips: If the init process in container is exited after receiving SIGTERM or exited before the time you specified, the container will be exited immediately
+- :whale: `-s, --signal=SIGNAL`: Signal to send to the container (e.g. SIGINT).
 
 ### :whale: nerdctl update
 
