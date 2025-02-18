@@ -17,6 +17,7 @@
 package testutil
 
 import (
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -109,4 +110,9 @@ func HyperVContainer(inspect dockercompat.Container) (bool, error) {
 	}
 
 	return hypervContainer, nil
+}
+
+func NewDelayOnceReader(wrapped io.Reader) io.Reader {
+	// not implemented
+	return nil
 }
