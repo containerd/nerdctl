@@ -25,6 +25,10 @@ import (
 )
 
 func Update(ctx context.Context, client *containerd.Client, namespace string, options types.NamespaceUpdateOptions) error {
+    if err := validateNamespaceName(namespace); err != nil {
+        return err
+    }
+
 	labelsArg := objectWithLabelArgs(options.Labels)
 	namespaces := client.NamespaceService()
 	for k, v := range labelsArg {
