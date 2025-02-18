@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package test
+package pty
 
 import (
 	"os"
