@@ -21,8 +21,11 @@ import (
 )
 
 // createLine returns a line string slice.
-// line is like "foo foo.nw0 bar bar.nw0\n"
-// for `nerdctl --name=foo --hostname=bar --network=n0`.
+// line is like "bar bar.nw0 foo foo.nw0\n"
+// for `nerdctl --name=foo --hostname=bar --network=nw0`.
+//
+// line is line "bar.example.com bar bar.nw0 foo foo.nw0\n"
+// for  `nerdctl --name=foo --hostname=bar --domainname=example.com --network=n0`.
 //
 // May return an empty string slice
 func createLine(thatNetwork string, meta *Meta, myNetworks map[string]struct{}) []string {
@@ -31,7 +34,13 @@ func createLine(thatNetwork string, meta *Meta, myNetworks map[string]struct{}) 
 		// Do not add lines for other networks
 		return line
 	}
+
+	if meta.Domainname != "" {
+		line = append(line, meta.Hostname+"."+meta.Domainname)
+	}
+
 	baseHostnames := []string{meta.Hostname}
+
 	if meta.Name != "" {
 		baseHostnames = append(baseHostnames, meta.Name)
 	}
