@@ -39,8 +39,8 @@ func CNINetConfPath() string {
 	return cni.DefaultNetDir
 }
 
-func CNIRuntimeDir() string {
-	return "/run/cni"
+func CNIRuntimeDir() (string, error) {
+	return "/run/cni", nil
 }
 
 func CgroupManager() string {
