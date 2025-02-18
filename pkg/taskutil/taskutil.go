@@ -71,10 +71,10 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			if err != nil {
 				return nil, err
 			}
-			ioCreator = cio.NewCreator(cio.WithStreams(in, con, nil), cio.WithTerminal)
+			ioCreator = cioutil.NewContainerIO(namespace, logURI, true, in, con, nil)
 		} else {
 			streams := processAttachStreamsOpt(attachStreamOpt)
-			ioCreator = cio.NewCreator(cio.WithStreams(streams.stdIn, streams.stdOut, streams.stdErr))
+			ioCreator = cioutil.NewContainerIO(namespace, logURI, false, streams.stdIn, streams.stdOut, streams.stdErr)
 		}
 
 	} else if flagT && flagD {

@@ -16,7 +16,10 @@
 
 package testutil
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+)
 
 const (
 	CommonImage = "docker.io/knast/freebsd:13-STABLE"
@@ -39,4 +42,9 @@ var (
 func mirrorOf(s string) string {
 	// plain mirror, NOT stargz-converted images
 	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
+}
+
+func NewDelayOnceReader(wrapped io.Reader) io.Reader {
+	// not implemented
+	return nil
 }
