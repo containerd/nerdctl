@@ -29,6 +29,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/content"
+	"github.com/containerd/containerd/v2/core/diff"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/containerd/v2/core/snapshots"
@@ -59,7 +60,7 @@ type EnsuredImage struct {
 type PullMode = string
 
 // GetExistingImage returns the specified image if exists in containerd. Return errdefs.NotFound() if not exists.
-func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotter, rawRef string, platform ocispec.Platform) (*EnsuredImage, error) {
+func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotter string, syncfs bool, rawRef string, platform ocispec.Platform) (*EnsuredImage, error) {
 	var res *EnsuredImage
 	imgwalker := &imagewalker.ImageWalker{
 		Client: client,
@@ -82,7 +83,7 @@ func GetExistingImage(ctx context.Context, client *containerd.Client, snapshotte
 				Remote:      getSnapshotterOpts(snapshotter).isRemote(),
 			}
 			if unpacked, err := image.IsUnpacked(ctx, snapshotter); err == nil && !unpacked {
-				if err := image.Unpack(ctx, snapshotter); err != nil {
+				if err := image.Unpack(ctx, snapshotter, containerd.WithUnpackApplyOpts(diff.WithSyncFs(syncfs))); err != nil {
 					return err
 				}
 			}
@@ -115,7 +116,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 
 	// if not `always` pull and given one platform and image found locally, return existing image directly.
 	if options.Mode != "always" && len(options.OCISpecPlatform) == 1 {
-		if res, err := GetExistingImage(ctx, client, options.GOptions.Snapshotter, rawRef, options.OCISpecPlatform[0]); err == nil {
+		if res, err := GetExistingImage(ctx, client, options.GOptions.Snapshotter, options.SyncFs, rawRef, options.OCISpecPlatform[0]); err == nil {
 			return res, nil
 		} else if !errdefs.IsNotFound(err) {
 			return nil, err
@@ -204,6 +205,7 @@ func PullImage(ctx context.Context, client *containerd.Client, resolver remotes.
 		Resolver:   resolver,
 		RemoteOpts: []containerd.RemoteOpt{},
 		Platforms:  options.OCISpecPlatform, // empty for all-platforms
+		SyncFs:     options.SyncFs,
 	}
 	if !options.Quiet {
 		config.ProgressOutput = options.Stderr

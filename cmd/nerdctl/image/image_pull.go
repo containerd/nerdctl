@@ -66,6 +66,7 @@ func NewPullCommand() *cobra.Command {
 	// #endregion
 
 	pullCommand.Flags().BoolP("quiet", "q", false, "Suppress verbose output")
+	pullCommand.Flags().BoolP("sync-fs", "s", true, "Synchronize the underlying filesystem containing files when unpack images")
 
 	pullCommand.Flags().String("ipfs-address", "", "multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)")
 
@@ -114,6 +115,11 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 		return types.ImagePullOptions{}, err
 	}
 
+	syncFs, err := cmd.Flags().GetBool("sync-fs")
+	if err != nil {
+		return types.ImagePullOptions{}, err
+	}
+
 	verifyOptions, err := helpers.ProcessImageVerifyOptions(cmd)
 	if err != nil {
 		return types.ImagePullOptions{}, err
@@ -123,6 +129,7 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 		VerifyOptions:   verifyOptions,
 		OCISpecPlatform: ociSpecPlatform,
 		Unpack:          unpack,
+		SyncFs:          syncFs,
 		Mode:            "always",
 		Quiet:           quiet,
 		IPFSAddress:     ipfsAddressStr,
