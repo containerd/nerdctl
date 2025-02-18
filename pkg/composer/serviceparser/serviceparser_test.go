@@ -403,6 +403,42 @@ services:
 	}
 }
 
+func TestParseVolumeLongSyntax(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("test is not compatible with windows")
+	}
+	const dockerComposeYAML = `
+services:
+  foo:
+    image: nginx:alpine
+    volumes:
+    - type: bind
+      source: /src/dir1
+      target: /tgt/dir1
+      read_only: true
+      bind:
+        propagation: rshared
+`
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	assert.NilError(t, err)
+
+	fooSvc, err := project.GetService("foo")
+	assert.NilError(t, err)
+
+	foo, err := Parse(project, fooSvc)
+	assert.NilError(t, err)
+
+	t.Logf("foo: %+v", foo)
+	for _, c := range foo.Containers {
+		assert.Assert(t, in(c.RunArgs, "-v=/src/dir1:/tgt/dir1:rshared,ro"))
+	}
+}
+
 func TestParseNetworkMode(t *testing.T) {
 	t.Parallel()
 	const dockerComposeYAML = `
