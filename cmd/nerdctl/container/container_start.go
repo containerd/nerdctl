@@ -43,7 +43,7 @@ func StartCommand() *cobra.Command {
 	cmd.Flags().SetInterspersed(false)
 	cmd.Flags().BoolP("attach", "a", false, "Attach STDOUT/STDERR and forward signals")
 	cmd.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
-
+	cmd.Flags().BoolP("interactive", "i", false, "Attach container's STDIN")
 	return cmd
 }
 
@@ -60,11 +60,16 @@ func startOptions(cmd *cobra.Command) (types.ContainerStartOptions, error) {
 	if err != nil {
 		return types.ContainerStartOptions{}, err
 	}
+	interactive, err := cmd.Flags().GetBool("interactive")
+	if err != nil {
+		return types.ContainerStartOptions{}, err
+	}
 	return types.ContainerStartOptions{
-		Stdout:     cmd.OutOrStdout(),
-		GOptions:   globalOptions,
-		Attach:     attach,
-		DetachKeys: detachKeys,
+		Stdout:      cmd.OutOrStdout(),
+		GOptions:    globalOptions,
+		Attach:      attach,
+		DetachKeys:  detachKeys,
+		Interactive: interactive,
 	}, nil
 }
 
