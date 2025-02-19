@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -73,7 +72,6 @@ func NewRunCommand() *cobra.Command {
 	setCreateFlags(cmd)
 
 	cmd.Flags().BoolP("detach", "d", false, "Run container in background and print container ID")
-	cmd.Flags().StringSliceP("attach", "a", []string{}, "Attach STDIN, STDOUT, or STDERR")
 
 	return cmd
 }
@@ -285,7 +283,7 @@ func setCreateFlags(cmd *cobra.Command) {
 		}
 		return []string{"default"}, cobra.ShellCompDirectiveNoFileComp
 	})
-
+	cmd.Flags().StringSliceP("attach", "a", []string{}, "Attach STDIN, STDOUT, or STDERR")
 }
 
 func processCreateCommandFlagsInRun(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
@@ -311,22 +309,6 @@ func processCreateCommandFlagsInRun(cmd *cobra.Command) (types.ContainerCreateOp
 	opt.DetachKeys, err = cmd.Flags().GetString("detach-keys")
 	if err != nil {
 		return opt, err
-	}
-	opt.Attach, err = cmd.Flags().GetStringSlice("attach")
-	if err != nil {
-		return opt, err
-	}
-
-	validAttachFlag := true
-	for i, str := range opt.Attach {
-		opt.Attach[i] = strings.ToUpper(str)
-
-		if opt.Attach[i] != "STDIN" && opt.Attach[i] != "STDOUT" && opt.Attach[i] != "STDERR" {
-			validAttachFlag = false
-		}
-	}
-	if !validAttachFlag {
-		return opt, fmt.Errorf("invalid stream specified with -a flag. Valid streams are STDIN, STDOUT, and STDERR")
 	}
 
 	return opt, nil

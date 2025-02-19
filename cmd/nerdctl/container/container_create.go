@@ -19,6 +19,7 @@ package container
 import (
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -79,6 +80,24 @@ func processContainerCreateOptions(cmd *cobra.Command) (types.ContainerCreateOpt
 	// The nerdctl create command similar to nerdctl run -d except the container is never started.
 	// So we keep the default value of `opt.Detach` true.
 	opt.Detach = true
+
+	opt.Attach, err = cmd.Flags().GetStringSlice("attach")
+	if err != nil {
+		return opt, err
+	}
+
+	validAttachFlag := true
+	for i, str := range opt.Attach {
+		opt.Attach[i] = strings.ToUpper(str)
+
+		if opt.Attach[i] != "STDIN" && opt.Attach[i] != "STDOUT" && opt.Attach[i] != "STDERR" {
+			validAttachFlag = false
+		}
+	}
+	if !validAttachFlag {
+		return opt, fmt.Errorf("invalid stream specified with -a flag. Valid streams are STDIN, STDOUT, and STDERR")
+	}
+
 	opt.Restart, err = cmd.Flags().GetString("restart")
 	if err != nil {
 		return opt, err

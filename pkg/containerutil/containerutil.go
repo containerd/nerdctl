@@ -24,6 +24,7 @@ import (
 	"io"
 	"path"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -216,7 +217,7 @@ func GenerateSharingPIDOpts(ctx context.Context, targetCon containerd.Container)
 }
 
 // Start starts `container` with `attach` flag. If `attach` is true, it will attach to the container's stdio.
-func Start(ctx context.Context, container containerd.Container, flagA bool, client *containerd.Client, detachKeys string) (err error) {
+func Start(ctx context.Context, container containerd.Container, attachStreamOpt []string, client *containerd.Client, detachKeys string) (err error) {
 	// defer the storage of start error in the dedicated label
 	defer func() {
 		if err != nil {
@@ -245,6 +246,7 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 		return err
 	}
 	flagT := process.Process.Terminal
+	flagA := slices.Contains(attachStreamOpt, "STDOUT") || slices.Contains(attachStreamOpt, "STDERR")
 	var con console.Console
 	if flagA && flagT {
 		con, err = consoleutil.Current()
@@ -281,12 +283,6 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 		}
 	}
 	detachC := make(chan struct{})
-	attachStreamOpt := []string{}
-	if flagA {
-		// In start, flagA attaches only STDOUT/STDERR
-		// source: https://github.com/containerd/nerdctl/blob/main/docs/command-reference.md#whale-nerdctl-start
-		attachStreamOpt = []string{"STDOUT", "STDERR"}
-	}
 	task, err := taskutil.NewTask(ctx, client, container, attachStreamOpt, false, flagT, true, con, logURI, detachKeys, namespace, detachC)
 	if err != nil {
 		return err

@@ -88,6 +88,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	var internalLabels internalLabels
 	internalLabels.platform = options.Platform
 	internalLabels.namespace = options.GOptions.Namespace
+	internalLabels.attachStreams = options.Attach
 
 	var (
 		id    = idgen.GenerateID()
@@ -624,11 +625,12 @@ func withStop(stopSignal string, stopTimeout int, ensuredImage *imgutil.EnsuredI
 
 type internalLabels struct {
 	// labels from cmd options
-	namespace   string
-	platform    string
-	extraHosts  []string
-	pidFile     string
-	blkioWeight uint16
+	namespace     string
+	platform      string
+	extraHosts    []string
+	pidFile       string
+	blkioWeight   uint16
+	attachStreams []string
 	// labels from cmd options or automatically set
 	name       string
 	hostname   string
@@ -752,6 +754,13 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 
 	if internalLabels.rm != "" {
 		m[labels.ContainerAutoRemove] = internalLabels.rm
+	}
+	if len(internalLabels.attachStreams) > 0 {
+		attachJSON, err := json.Marshal(internalLabels.attachStreams)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.AttachStreams] = string(attachJSON)
 	}
 
 	if internalLabels.blkioWeight > 0 {
