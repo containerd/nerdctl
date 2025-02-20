@@ -313,7 +313,7 @@ Metadata flags:
 
 Logging flags:
 
-- :whale: `--log-driver=(json-file|journald|fluentd|syslog)`: Logging driver for the container (default `json-file`).
+- :whale: `--log-driver=(json-file|journald|fluentd|syslog|none)`: Logging driver for the container (default `json-file`).
   - :whale: `--log-driver=json-file`: The logs are formatted as JSON. The default logging driver for nerdctl.
     - The `json-file` logging driver supports the following logging options:
       - :whale: `--log-opt=max-size=<MAX-SIZE>`: The maximum size of the log before it is rolled. A positive integer plus a modifier representing the unit of measure (k, m, or g). Defaults to unlimited.
@@ -364,6 +364,7 @@ Logging flags:
       - :whale: `--log-opt=tag=<VALUE>`: A string that is appended to the
           `APP-NAME` in the `syslog` message. By default, nerdctl uses the first
           12 characters of the container ID to tag log messages.
+  - :whale:  `--log-driver=none`: Disables logging for the container, preventing log output from being collected.
   - :nerd_face: Accepts a LogURI which is a containerd shim logger. A scheme must be specified for the URI. Example: `nerdctl run -d --log-driver binary:///usr/bin/ctr-journald-shim docker.io/library/hello-world:latest`. An implementation of shim logger can be found at (<https://github.com/containerd/containerd/tree/dbef1d56d7ebc05bc4553d72c419ed5ce025b05d/runtime/v2#logging>)
 
 Shared memory flags:
