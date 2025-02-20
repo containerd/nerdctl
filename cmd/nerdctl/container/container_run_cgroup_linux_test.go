@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/moby/sys/userns"
@@ -34,6 +35,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -224,6 +226,14 @@ func TestIssue3781(t *testing.T) {
 func TestRunDevice(t *testing.T) {
 	if os.Geteuid() != 0 || userns.RunningInUserNS() {
 		t.Skip("test requires the root in the initial user namespace")
+	}
+
+	if unameR := infoutil.UnameR(); strings.Contains(unameR, ".el8") {
+		t.Logf("Assuming to be running on EL8 (kernel release %q)", unameR)
+		t.Skip("FIXME: loopback.New fails on EL8 (when the test is executed inside a container) https://github.com/containerd/nerdctl/pull/3904#issuecomment-2670917820")
+		// > === FAIL: cmd/nerdctl/container TestRunDevice (0.44s)
+		// > container_run_cgroup_linux_test.go:236: assertion failed: error is not nil: loopback setup failed ([losetup --find --show /tmp/containerd-test-loopback3931357228]):
+		// > stdout="", stderr="losetup: /tmp/containerd-test-loopback3931357228: failed to set up loop device: No such file or directory\n": exit status 1
 	}
 
 	const n = 3

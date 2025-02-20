@@ -104,12 +104,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
-          - ubuntu: 20.04
-            containerd: v1.6.36
-            runner: "ubuntu-20.04"
-            arch: amd64
           - ubuntu: 22.04
             containerd: v1.7.25
             runner: "ubuntu-22.04"
@@ -228,16 +223,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-20.04: cgroup v1, ubuntu-22.04 and later: cgroup v2
         include:
-          - ubuntu: 20.04
-            containerd: v1.6.36
-            rootlesskit: v1.1.1  # Deprecated
-            target: rootless
-            arch: amd64
           - ubuntu: 22.04
             containerd: v1.7.25
-            rootlesskit: v2.3.2
+            rootlesskit: v1.1.1  # Deprecated
             target: rootless
             arch: amd64
           - ubuntu: 24.04
@@ -427,3 +416,92 @@ jobs:
         run: sudo vagrant up --provision-with=test-unit
       - name: test-integration
         run: sudo vagrant up --provision-with=test-integration
+
+  # EL8 is used for testing compatibility with cgroup v1.
+  # Do not upgrade this to EL9 (cgroup v2).
+  test-integration-el8:
+    timeout-minutes: 60
+    name: "EL8 (cgroup v1)"
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: ["rootful", "rootless"]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 1
+      - name: "Install QEMU"
+        run: |
+          set -eux
+          sudo apt-get update
+          sudo apt-get -qq install -y --no-install-recommends ovmf qemu-system-x86 qemu-utils
+          sudo modprobe kvm
+          # `sudo usermod -aG kvm $(whoami)` does not take an effect on GHA
+          sudo chown $(whoami) /dev/kvm
+      - name: "Install Lima"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}  # required by `gh attestation verify`
+        run: |
+          set -eux
+          LIMA_VERSION=$(curl -fsSL https://api.github.com/repos/lima-vm/lima/releases/latest | jq -r .tag_name)
+          FILE="lima-${LIMA_VERSION:1}-Linux-x86_64.tar.gz"
+          curl -fOSL https://github.com/lima-vm/lima/releases/download/${LIMA_VERSION}/${FILE}
+          gh attestation verify --owner=lima-vm "${FILE}"
+          sudo tar Cxzf /usr/local "${FILE}"
+          rm -f "${FILE}"
+          # Export LIMA_VERSION For the GHA cache key
+          echo "LIMA_VERSION=${LIMA_VERSION}" >>$GITHUB_ENV
+      - uses: actions/cache@0c907a75c2c80ebcb7f088228285e798b750cf8f  # v4.2.1
+        with:
+          path: ~/.cache/lima
+          key: lima-${{ env.LIMA_VERSION }}
+      - name: "Start the guest VM"
+        run: |
+          set -eux
+          # containerd=none is set because the built-in containerd support conflicts with Docker
+          limactl start \
+            --name=default \
+            --cpus=4 \
+            --memory=12 \
+            --containerd=none \
+            --set '.mounts=null | .portForwards=[{"guestSocket":"/var/run/docker.sock","hostSocket":"{{.Dir}}/sock/docker.sock"}]' \
+            template://almalinux-8
+      # FIXME: the tests should be directly executed in the VM without nesting Docker inside it
+      # https://github.com/containerd/nerdctl/issues/3858
+      - name: "Install dockerd in the guest VM"
+        run: |
+          set -eux
+          lima sudo mkdir -p /etc/systemd/system/docker.socket.d
+          cat <<-EOF | lima sudo tee /etc/systemd/system/docker.socket.d/override.conf
+          [Socket]
+          SocketUser=$(whoami)
+          EOF
+          lima sudo dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+          lima sudo dnf -q -y install docker-ce --nobest
+          lima sudo systemctl enable --now docker
+      - name: "Configure the host to use dockerd in the guest VM"
+        run: |
+          set -eux
+          sudo systemctl disable --now docker.service docker.socket
+          export DOCKER_HOST="unix://$(limactl ls --format '{{.Dir}}/sock/docker.sock' default)"
+          echo "DOCKER_HOST=${DOCKER_HOST}" >>$GITHUB_ENV
+          docker info
+          docker version
+      - name: "Prepare integration tests"
+        env:
+          MODE: ${{ matrix.mode }}
+        run: |
+          set -eux
+          TARGET=test-integration
+          [ "$MODE" = "rootless" ] && TARGET=test-integration-rootless
+          docker build -t test-integration --target "${TARGET}" .
+          # losetup not working as expected on EL8?
+          # > === FAIL: cmd/nerdctl/container TestRunDevice (0.44s)
+          # > container_run_cgroup_linux_test.go:236: assertion failed: error is not nil: loopback setup failed ([losetup --find --show /tmp/containerd-test-loopback3931357228]):
+          # > stdout="", stderr="losetup: /tmp/containerd-test-loopback3931357228: failed to set up loop device: No such file or directory\n": exit status 1
+          # https://github.com/containerd/nerdctl/pull/3904#issuecomment-2670917820
+          sudo losetup -Dv
+          sudo losetup -lv
+      - name: "Run integration tests"
+        run: docker run -t --rm --privileged test-integration
