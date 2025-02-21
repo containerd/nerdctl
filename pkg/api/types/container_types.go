@@ -286,6 +286,8 @@ type ContainerRestartOptions struct {
 	GOption GlobalCommandOptions
 	// Time to wait after sending a SIGTERM and before sending a SIGKILL.
 	Timeout *time.Duration
+	// Signal to send to stop the container, before sending SIGKILL
+	Signal string
 }
 
 // ContainerPauseOptions specifies options for `nerdctl (container) pause`.
