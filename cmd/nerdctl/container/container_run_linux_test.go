@@ -472,34 +472,47 @@ func TestRunWithOOMScoreAdj(t *testing.T) {
 }
 
 func TestRunWithDetachKeys(t *testing.T) {
-	t.Parallel()
+	testCase := nerdtest.Setup()
 
-	if testutil.GetTarget() == testutil.Docker {
-		t.Skip("When detaching from a container, for a session started with 'docker attach'" +
-			", it prints 'read escape sequence', but for one started with 'docker (run|start)', it prints nothing." +
-			" However, the flag is called '--detach-keys' in all cases" +
-			", so nerdctl prints 'read detach keys' for all cases" +
-			", and that's why this test is skipped for Docker.")
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
 
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-	opts := []func(*testutil.Cmd){
-		testutil.WithStdin(testutil.NewDelayOnceReader(bytes.NewReader([]byte{1, 2}))), // https://www.physics.udel.edu/~watson/scen103/ascii.html
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		// Run interactively and detach
+		cmd := helpers.Command("run", "-it", "--detach-keys=ctrl-a,ctrl-b", "--name", data.Identifier(), testutil.CommonImage)
+		cmd.WithPseudoTTY(func(f *os.File) error {
+			_, _ = f.WriteString("echo mark${NON}mark\n")
+			// Because of the way we proxy stdin, we have to wait here, otherwise we detach before
+			// the rest of the input ever reaches the container
+			// Note that this only concerns nerdctl, as docker seems to behave ok LOCALLY.
+			// But then, it fails for docker as well ON THE CI. It is unclear why at this point.
+			// Arbitrary time pauses would not work: what matters is that the container has started.
+			// if !nerdtest.IsDocker() {
+			nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+			// }
+			// ctrl+a and ctrl+b (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
+			_, err := f.Write([]byte{1, 2})
+			return err
+		})
+
+		return cmd
 	}
-	defer base.Cmd("container", "rm", "-f", containerName).AssertOK()
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	//
-	// "-p" is needed because we need unbuffer to read from stdin, and from [1]:
-	// "Normally, unbuffer does not read from stdin. This simplifies use of unbuffer in some situations.
-	//  To use unbuffer in a pipeline, use the -p flag."
-	//
-	// [1] https://linux.die.net/man/1/unbuffer
-	base.CmdWithHelper([]string{"unbuffer", "-p"}, "run", "-it", "--detach-keys=ctrl-a,ctrl-b", "--name", containerName, testutil.CommonImage).
-		CmdOption(opts...).AssertOutContains("read detach keys")
-	container := base.InspectContainer(containerName)
-	assert.Equal(base.T, container.State.Running, true)
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Errors:   []error{errors.New("detach keys")},
+			Output: test.All(
+				test.Contains("markmark"),
+				func(stdout string, info string, t *testing.T) {
+					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
+				},
+			),
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunWithTtyAndDetached(t *testing.T) {
@@ -527,43 +540,44 @@ func TestRunWithTtyAndDetached(t *testing.T) {
 func TestIssue3568(t *testing.T) {
 	testCase := nerdtest.Setup()
 
-	testCase.SubTests = []*test.Case{
-		{
-			Description: "Issue #3568 - Detaching from a container started by using --rm option causes the container to be deleted.",
-			// When detaching from a container, for a session started with 'docker attach', it prints 'read escape sequence', but for one started with 'docker (run|start)', it prints nothing.
-			// However, the flag is called '--detach-keys' in all cases, so nerdctl prints 'read detach keys' for all cases, and that's why this test is skipped for Docker.
-			Require: test.Require(
-				test.Not(nerdtest.Docker),
+	testCase.Description = "Issue #3568 - Detaching from a container started by using --rm option causes the container to be deleted."
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		// Run interactively and detach
+		cmd := helpers.Command("run", "--rm", "-it", "--detach-keys=ctrl-a,ctrl-b", "--name", data.Identifier(), testutil.CommonImage)
+		cmd.WithPseudoTTY(func(f *os.File) error {
+			_, _ = f.WriteString("echo mark${NON}mark\n")
+			// Because of the way we proxy stdin, we have to wait here, otherwise we detach before
+			// the rest of the input ever reaches the container
+			// Note that this only concerns nerdctl, as docker seems to behave ok LOCALLY.
+			// But then, it fails for docker as well ON THE CI. It is unclear why at this point.
+			// Arbitrary time pauses would not work: what matters is that the container has started.
+			// if !nerdtest.IsDocker() {
+			nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+			// }
+			// ctrl+a and ctrl+b (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
+			_, err := f.Write([]byte{1, 2})
+			return err
+		})
+
+		return cmd
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Errors:   []error{errors.New("detach keys")},
+			Output: test.All(
+				test.Contains("markmark"),
+				func(stdout string, info string, t *testing.T) {
+					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
+				},
 			),
-			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				cmd := helpers.Command("run", "--rm", "-it", "--detach-keys=ctrl-a,ctrl-b", "--name", data.Identifier(), testutil.CommonImage)
-				// unbuffer(1) can be installed with `apt-get install expect`.
-				//
-				// "-p" is needed because we need unbuffer to read from stdin, and from [1]:
-				// "Normally, unbuffer does not read from stdin. This simplifies use of unbuffer in some situations.
-				//  To use unbuffer in a pipeline, use the -p flag."
-				//
-				// [1] https://linux.die.net/man/1/unbuffer
-				cmd.WithWrapper("unbuffer", "-p")
-				cmd.WithStdin(testutil.NewDelayOnceReader(bytes.NewReader([]byte{1, 2}))) // https://www.physics.udel.edu/~watson/scen103/ascii.html
-				return cmd
-			},
-			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", data.Identifier())
-			},
-			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-				return &test.Expected{
-					ExitCode: 0,
-					Errors:   []error{},
-					Output: test.All(
-						test.Contains("read detach keys"),
-						func(stdout string, info string, t *testing.T) {
-							assert.Assert(t, strings.Contains(helpers.Capture("ps"), data.Identifier()))
-						},
-					),
-				}
-			},
-		},
+		}
 	}
 
 	testCase.Run(t)
