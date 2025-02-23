@@ -32,7 +32,6 @@ func NewApparmorCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	cmd.AddCommand(
-		newApparmorLsCommand(),
 		newApparmorInspectCommand(),
 		newApparmorLoadCommand(),
 		newApparmorUnloadCommand(),
