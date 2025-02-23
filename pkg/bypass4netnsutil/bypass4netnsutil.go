@@ -18,7 +18,6 @@ package bypass4netnsutil
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -30,6 +29,7 @@ import (
 	"github.com/containerd/containerd/v2/pkg/oci"
 
 	"github.com/containerd/nerdctl/v2/pkg/annotations"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
 func generateSecurityOpt(listenerPath string) (oci.SpecOpts, error) {
@@ -83,15 +83,8 @@ func GenerateBypass4netnsOpts(securityOptsMaps map[string]string, annotationsMap
 	return opts, nil
 }
 
-func getXDGRuntimeDir() (string, error) {
-	if xrd := os.Getenv("XDG_RUNTIME_DIR"); xrd != "" {
-		return xrd, nil
-	}
-	return "", fmt.Errorf("environment variable XDG_RUNTIME_DIR is not set")
-}
-
 func CreateSocketDir() error {
-	xdgRuntimeDir, err := getXDGRuntimeDir()
+	xdgRuntimeDir, err := rootlessutil.XDGRuntimeDir()
 	if err != nil {
 		return err
 	}
@@ -107,7 +100,7 @@ func CreateSocketDir() error {
 }
 
 func GetBypass4NetnsdDefaultSocketPath() (string, error) {
-	xdgRuntimeDir, err := getXDGRuntimeDir()
+	xdgRuntimeDir, err := rootlessutil.XDGRuntimeDir()
 	if err != nil {
 		return "", err
 	}
@@ -116,7 +109,7 @@ func GetBypass4NetnsdDefaultSocketPath() (string, error) {
 }
 
 func GetSocketPathByID(id string) (string, error) {
-	xdgRuntimeDir, err := getXDGRuntimeDir()
+	xdgRuntimeDir, err := rootlessutil.XDGRuntimeDir()
 	if err != nil {
 		return "", err
 	}
@@ -126,7 +119,7 @@ func GetSocketPathByID(id string) (string, error) {
 }
 
 func GetPidFilePathByID(id string) (string, error) {
-	xdgRuntimeDir, err := getXDGRuntimeDir()
+	xdgRuntimeDir, err := rootlessutil.XDGRuntimeDir()
 	if err != nil {
 		return "", err
 	}

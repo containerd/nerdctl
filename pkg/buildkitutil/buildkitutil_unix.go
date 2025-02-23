@@ -28,7 +28,10 @@ func getBuildkitHostCandidates(namespace string) ([]string, error) {
 		return []string{}, fmt.Errorf("namespace must be specified")
 	}
 	// Try candidate locations of the current containerd namespace.
-	run := getRuntimeVariableDataDir()
+	run, err := getRuntimeVariableDataDir()
+	if err != nil {
+		return []string{}, err
+	}
 	var candidates []string
 	if namespace != "default" {
 		candidates = append(candidates, "unix://"+filepath.Join(run, fmt.Sprintf("buildkit-%s/buildkitd.sock", namespace)))
