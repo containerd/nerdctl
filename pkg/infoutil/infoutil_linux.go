@@ -18,9 +18,11 @@ package infoutil
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/docker/docker/pkg/meminfo"
+	"github.com/docker/docker/pkg/sysinfo"
 
 	"github.com/containerd/cgroups/v3"
 
@@ -28,7 +30,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
-	"github.com/containerd/nerdctl/v2/pkg/sysinfo"
 )
 
 const UnameO = "GNU/Linux"
@@ -113,15 +114,19 @@ func fulfillPlatformInfo(info *dockercompat.Info) {
 	if !info.IPv4Forwarding {
 		info.Warnings = append(info.Warnings, "WARNING: IPv4 forwarding is disabled")
 	}
-	info.BridgeNfIptables = !mobySysInfo.BridgeNFCallIPTablesDisabled
+	// FIXME: BridgeNFCallIP6TablesDisabled is deprecated in moby and always false now
+	// Figure out what we want to do with this
+	info.BridgeNfIptables = true // !mobySysInfo.BridgeNFCallIPTablesDisabled
 	if !info.BridgeNfIptables {
 		info.Warnings = append(info.Warnings, "WARNING: bridge-nf-call-iptables is disabled")
 	}
-	info.BridgeNfIP6tables = !mobySysInfo.BridgeNFCallIP6TablesDisabled
+	// FIXME: BridgeNFCallIP6TablesDisabled is deprecated in moby and always false now
+	// Figure out what we want to do with this
+	info.BridgeNfIP6tables = true // !mobySysInfo.BridgeNFCallIP6TablesDisabled
 	if !info.BridgeNfIP6tables {
 		info.Warnings = append(info.Warnings, "WARNING: bridge-nf-call-ip6tables is disabled")
 	}
-	info.NCPU = sysinfo.NumCPU()
+	info.NCPU = runtime.NumCPU()
 	memLimit, err := meminfo.Read()
 	if err != nil {
 		info.Warnings = append(info.Warnings, fmt.Sprintf("failed to read mem info: %v", err))
