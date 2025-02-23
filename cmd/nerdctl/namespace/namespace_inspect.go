@@ -26,7 +26,7 @@ import (
 )
 
 func newNamespaceInspectCommand() *cobra.Command {
-	namespaceInspectCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:           "inspect NAMESPACE",
 		Short:         "Display detailed information on one or more namespaces.",
 		RunE:          labelInspectAction,
@@ -34,11 +34,11 @@ func newNamespaceInspectCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	namespaceInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
-	namespaceInspectCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	return namespaceInspectCommand
+	return cmd
 }
 
 func processNamespaceInspectOptions(cmd *cobra.Command) (types.NamespaceInspectOptions, error) {

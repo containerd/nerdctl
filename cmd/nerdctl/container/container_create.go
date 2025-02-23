@@ -40,7 +40,7 @@ func NewCreateCommand() *cobra.Command {
 		longHelp += "\n"
 		longHelp += "WARNING: `nerdctl create` is experimental on FreeBSD and currently requires `--net=none` (https://github.com/containerd/nerdctl/blob/main/docs/freebsd.md)"
 	}
-	var createCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "create [flags] IMAGE [COMMAND] [ARG...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             shortHelp,
@@ -50,9 +50,9 @@ func NewCreateCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	createCommand.Flags().SetInterspersed(false)
-	setCreateFlags(createCommand)
-	return createCommand
+	cmd.Flags().SetInterspersed(false)
+	setCreateFlags(cmd)
+	return cmd
 }
 
 func processContainerCreateOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {

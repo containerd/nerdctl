@@ -26,7 +26,7 @@ import (
 )
 
 func newContainerPruneCommand() *cobra.Command {
-	containerPruneCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove all stopped containers",
 		Args:          cobra.NoArgs,
@@ -34,8 +34,8 @@ func newContainerPruneCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	containerPruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
-	return containerPruneCommand
+	cmd.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
+	return cmd
 }
 
 func processContainerPruneOptions(cmd *cobra.Command) (types.ContainerPruneOptions, error) {

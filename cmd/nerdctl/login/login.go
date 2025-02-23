@@ -31,7 +31,7 @@ import (
 )
 
 func NewLoginCommand() *cobra.Command {
-	var loginCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:           "login [flags] [SERVER]",
 		Args:          cobra.MaximumNArgs(1),
 		Short:         "Log in to a container registry",
@@ -39,10 +39,10 @@ func NewLoginCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	loginCommand.Flags().StringP("username", "u", "", "Username")
-	loginCommand.Flags().StringP("password", "p", "", "Password")
-	loginCommand.Flags().Bool("password-stdin", false, "Take the password from stdin")
-	return loginCommand
+	cmd.Flags().StringP("username", "u", "", "Username")
+	cmd.Flags().StringP("password", "p", "", "Password")
+	cmd.Flags().Bool("password-stdin", false, "Take the password from stdin")
+	return cmd
 }
 
 func processLoginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) {

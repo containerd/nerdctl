@@ -28,7 +28,7 @@ import (
 )
 
 func NewRestartCommand() *cobra.Command {
-	var restartCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "restart [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Restart one or more running containers",
@@ -37,9 +37,9 @@ func NewRestartCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	restartCommand.Flags().UintP("time", "t", 10, "Seconds to wait for stop before killing it")
-	restartCommand.Flags().StringP("signal", "s", "", "Signal to send to stop the container, before killing it")
-	return restartCommand
+	cmd.Flags().UintP("time", "t", 10, "Seconds to wait for stop before killing it")
+	cmd.Flags().StringP("signal", "s", "", "Signal to send to stop the container, before killing it")
+	return cmd
 }
 
 func processContainerRestartOptions(cmd *cobra.Command) (types.ContainerRestartOptions, error) {

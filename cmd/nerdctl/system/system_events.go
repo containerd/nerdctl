@@ -28,7 +28,7 @@ import (
 func NewEventsCommand() *cobra.Command {
 	shortHelp := `Get real time events from the server`
 	longHelp := shortHelp + "\nNOTE: The output format is not compatible with Docker."
-	var eventsCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:           "events",
 		Args:          cobra.NoArgs,
 		Short:         shortHelp,
@@ -37,12 +37,12 @@ func NewEventsCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	eventsCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
-	eventsCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	eventsCommand.Flags().StringSliceP("filter", "f", []string{}, "Filter matches containers based on given conditions")
-	return eventsCommand
+	cmd.Flags().StringSliceP("filter", "f", []string{}, "Filter matches containers based on given conditions")
+	return cmd
 }
 
 func processSystemEventsOptions(cmd *cobra.Command) (types.SystemEventsOptions, error) {

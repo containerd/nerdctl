@@ -23,7 +23,7 @@ import (
 )
 
 func NewContainerCommand() *cobra.Command {
-	containerCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "container",
 		Short:         "Manage containers",
@@ -31,7 +31,7 @@ func NewContainerCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	containerCommand.AddCommand(
+	cmd.AddCommand(
 		NewCreateCommand(),
 		NewRunCommand(),
 		NewUpdateCommand(),
@@ -55,8 +55,8 @@ func NewContainerCommand() *cobra.Command {
 		NewStatsCommand(),
 		NewAttachCommand(),
 	)
-	AddCpCommand(containerCommand)
-	return containerCommand
+	AddCpCommand(cmd)
+	return cmd
 }
 
 func containerLsCommand() *cobra.Command {

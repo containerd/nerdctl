@@ -23,7 +23,7 @@ import (
 )
 
 func NewNetworkCommand() *cobra.Command {
-	networkCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "network",
 		Short:         "Manage networks",
@@ -31,12 +31,12 @@ func NewNetworkCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	networkCommand.AddCommand(
+	cmd.AddCommand(
 		newNetworkLsCommand(),
 		newNetworkInspectCommand(),
 		newNetworkCreateCommand(),
 		newNetworkRmCommand(),
 		newNetworkPruneCommand(),
 	)
-	return networkCommand
+	return cmd
 }

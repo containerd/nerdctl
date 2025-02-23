@@ -33,7 +33,7 @@ import (
 )
 
 func newSystemPruneCommand() *cobra.Command {
-	systemPruneCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove unused data",
 		Args:          cobra.NoArgs,
@@ -41,10 +41,10 @@ func newSystemPruneCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	systemPruneCommand.Flags().BoolP("all", "a", false, "Remove all unused images, not just dangling ones")
-	systemPruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
-	systemPruneCommand.Flags().Bool("volumes", false, "Prune volumes")
-	return systemPruneCommand
+	cmd.Flags().BoolP("all", "a", false, "Remove all unused images, not just dangling ones")
+	cmd.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
+	cmd.Flags().Bool("volumes", false, "Prune volumes")
+	return cmd
 }
 
 func processSystemPruneOptions(cmd *cobra.Command) (types.SystemPruneOptions, error) {

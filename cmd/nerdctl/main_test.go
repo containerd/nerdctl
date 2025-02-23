@@ -35,28 +35,28 @@ func TestMain(m *testing.M) {
 func TestUnknownCommand(t *testing.T) {
 	testCase := nerdtest.Setup()
 
-	var unknownSubCommand = errors.New("unknown subcommand")
+	var cmd = errors.New("unknown subcommand")
 
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "non-existent-command",
 			Command:     test.Command("non-existent-command"),
-			Expected:    test.Expects(1, []error{unknownSubCommand}, nil),
+			Expected:    test.Expects(1, []error{cmd}, nil),
 		},
 		{
 			Description: "non-existent-command info",
 			Command:     test.Command("non-existent-command", "info"),
-			Expected:    test.Expects(1, []error{unknownSubCommand}, nil),
+			Expected:    test.Expects(1, []error{cmd}, nil),
 		},
 		{
 			Description: "system non-existent-command",
 			Command:     test.Command("system", "non-existent-command"),
-			Expected:    test.Expects(1, []error{unknownSubCommand}, nil),
+			Expected:    test.Expects(1, []error{cmd}, nil),
 		},
 		{
 			Description: "system non-existent-command info",
 			Command:     test.Command("system", "non-existent-command", "info"),
-			Expected:    test.Expects(1, []error{unknownSubCommand}, nil),
+			Expected:    test.Expects(1, []error{cmd}, nil),
 		},
 		{
 			Description: "system",

@@ -33,7 +33,7 @@ import (
 )
 
 func NewNamespaceCommand() *cobra.Command {
-	namespaceCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "namespace",
 		Aliases:       []string{"ns"},
@@ -43,16 +43,16 @@ func NewNamespaceCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	namespaceCommand.AddCommand(newNamespaceLsCommand())
-	namespaceCommand.AddCommand(newNamespaceRmCommand())
-	namespaceCommand.AddCommand(newNamespaceCreateCommand())
-	namespaceCommand.AddCommand(newNamespacelabelUpdateCommand())
-	namespaceCommand.AddCommand(newNamespaceInspectCommand())
-	return namespaceCommand
+	cmd.AddCommand(newNamespaceLsCommand())
+	cmd.AddCommand(newNamespaceRmCommand())
+	cmd.AddCommand(newNamespaceCreateCommand())
+	cmd.AddCommand(newNamespacelabelUpdateCommand())
+	cmd.AddCommand(newNamespaceInspectCommand())
+	return cmd
 }
 
 func newNamespaceLsCommand() *cobra.Command {
-	namespaceLsCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:           "ls",
 		Aliases:       []string{"list"},
 		Short:         "List containerd namespaces",
@@ -60,8 +60,8 @@ func newNamespaceLsCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	namespaceLsCommand.Flags().BoolP("quiet", "q", false, "Only display names")
-	return namespaceLsCommand
+	cmd.Flags().BoolP("quiet", "q", false, "Only display names")
+	return cmd
 }
 
 func namespaceLsAction(cmd *cobra.Command, args []string) error {

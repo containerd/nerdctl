@@ -23,7 +23,7 @@ import (
 )
 
 func NewSystemCommand() *cobra.Command {
-	var systemCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "system",
 		Short:         "Manage containerd",
@@ -32,10 +32,10 @@ func NewSystemCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	// versionCommand is not here
-	systemCommand.AddCommand(
+	cmd.AddCommand(
 		NewEventsCommand(),
 		NewInfoCommand(),
 		newSystemPruneCommand(),
 	)
-	return systemCommand
+	return cmd
 }

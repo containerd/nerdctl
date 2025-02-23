@@ -26,14 +26,14 @@ import (
 )
 
 func newComposePushCommand() *cobra.Command {
-	var composePushCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:           "push [flags] [SERVICE...]",
 		Short:         "Push service images",
 		RunE:          composePushAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	return composePushCommand
+	return cmd
 }
 
 func composePushAction(cmd *cobra.Command, args []string) error {

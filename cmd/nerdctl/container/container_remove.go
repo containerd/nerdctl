@@ -27,7 +27,7 @@ import (
 )
 
 func NewRmCommand() *cobra.Command {
-	var rmCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "rm [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Remove one or more containers",
@@ -36,10 +36,10 @@ func NewRmCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	rmCommand.Aliases = []string{"remove"}
-	rmCommand.Flags().BoolP("force", "f", false, "Force the removal of a running|paused|unknown container (uses SIGKILL)")
-	rmCommand.Flags().BoolP("volumes", "v", false, "Remove volumes associated with the container")
-	return rmCommand
+	cmd.Aliases = []string{"remove"}
+	cmd.Flags().BoolP("force", "f", false, "Force the removal of a running|paused|unknown container (uses SIGKILL)")
+	cmd.Flags().BoolP("volumes", "v", false, "Remove volumes associated with the container")
+	return cmd
 }
 
 func rmAction(cmd *cobra.Command, args []string) error {

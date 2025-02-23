@@ -26,7 +26,7 @@ import (
 )
 
 func newNamespacelabelUpdateCommand() *cobra.Command {
-	namespaceLableCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:           "update [flags] NAMESPACE",
 		Short:         "Update labels for a namespace",
 		RunE:          labelUpdateAction,
@@ -34,8 +34,8 @@ func newNamespacelabelUpdateCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	namespaceLableCommand.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
-	return namespaceLableCommand
+	cmd.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
+	return cmd
 }
 
 func processNamespaceUpdateCommandOption(cmd *cobra.Command) (types.NamespaceUpdateOptions, error) {

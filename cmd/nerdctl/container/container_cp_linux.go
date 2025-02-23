@@ -45,7 +45,7 @@ Using 'nerdctl cp' with untrusted or malicious containers is unsupported and may
 
 	usage := `cp [flags] CONTAINER:SRC_PATH DEST_PATH|-
   nerdctl cp [flags] SRC_PATH|- CONTAINER:DEST_PATH`
-	var cpCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               usage,
 		Args:              helpers.IsExactArgs(2),
 		Short:             shortHelp,
@@ -56,9 +56,9 @@ Using 'nerdctl cp' with untrusted or malicious containers is unsupported and may
 		SilenceErrors:     true,
 	}
 
-	cpCommand.Flags().BoolP("follow-link", "L", false, "Always follow symbolic link in SRC_PATH.")
+	cmd.Flags().BoolP("follow-link", "L", false, "Always follow symbolic link in SRC_PATH.")
 
-	return cpCommand
+	return cmd
 }
 
 func cpAction(cmd *cobra.Command, args []string) error {

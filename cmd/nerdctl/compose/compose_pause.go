@@ -25,7 +25,7 @@ import (
 )
 
 func newComposePauseCommand() *cobra.Command {
-	var composePauseCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:                   "pause [SERVICE...]",
 		Short:                 "Pause all processes within containers of service(s). They can be unpaused with nerdctl compose unpause",
 		RunE:                  composePauseAction,
@@ -33,7 +33,7 @@ func newComposePauseCommand() *cobra.Command {
 		SilenceErrors:         true,
 		DisableFlagsInUseLine: true,
 	}
-	return composePauseCommand
+	return cmd
 }
 
 func composePauseAction(cmd *cobra.Command, args []string) error {
@@ -60,7 +60,7 @@ func composePauseAction(cmd *cobra.Command, args []string) error {
 }
 
 func newComposeUnpauseCommand() *cobra.Command {
-	var composeUnpauseCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:                   "unpause [SERVICE...]",
 		Short:                 "Unpause all processes within containers of service(s).",
 		RunE:                  composeUnpauseAction,
@@ -68,7 +68,7 @@ func newComposeUnpauseCommand() *cobra.Command {
 		SilenceErrors:         true,
 		DisableFlagsInUseLine: true,
 	}
-	return composeUnpauseCommand
+	return cmd
 }
 
 func composeUnpauseAction(cmd *cobra.Command, args []string) error {
