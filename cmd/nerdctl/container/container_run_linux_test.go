@@ -33,7 +33,6 @@ import (
 	"time"
 
 	"gotest.tools/v3/assert"
-	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -311,21 +310,60 @@ func TestRunWithInit(t *testing.T) {
 }
 
 func TestRunTTY(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-
 	const sttyPartialOutput = "speed 38400 baud"
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	unbuffer := []string{"unbuffer"}
-	base.CmdWithHelper(unbuffer, "run", "--rm", "-it", testutil.CommonImage, "stty").AssertOutContains(sttyPartialOutput)
-	base.CmdWithHelper(unbuffer, "run", "--rm", "-t", testutil.CommonImage, "stty").AssertOutContains(sttyPartialOutput)
-	base.Cmd("run", "--rm", "-i", testutil.CommonImage, "stty").AssertFail()
-	base.Cmd("run", "--rm", testutil.CommonImage, "stty").AssertFail()
 
-	// tests pipe works
-	res := icmd.RunCmd(icmd.Command("unbuffer", "/bin/sh", "-c", fmt.Sprintf("%q run --rm -it %q echo hi | grep hi", base.Binary, testutil.CommonImage)))
-	assert.Equal(t, 0, res.ExitCode, res)
+	testCase := nerdtest.Setup()
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "stty with -it",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("run", "-it", data.Identifier(), "stty")
+				cmd.WithPseudoTTY()
+				return cmd
+			},
+			Expected: test.Expects(0, nil, test.Contains(sttyPartialOutput)),
+		},
+		{
+			Description: "stty with -t",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("run", "-t", data.Identifier(), "stty")
+				cmd.WithPseudoTTY()
+				return cmd
+			},
+			Expected: test.Expects(0, nil, test.Contains(sttyPartialOutput)),
+		},
+		{
+			Description: "stty with -i",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("run", "-i", data.Identifier(), "stty")
+				cmd.WithPseudoTTY()
+				return cmd
+			},
+			Expected: test.Expects(test.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "stty without params",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("run", data.Identifier(), "stty")
+				cmd.WithPseudoTTY()
+				return cmd
+			},
+			Expected: test.Expects(test.ExitCodeGenericFail, nil, nil),
+		},
+	}
 }
 
 func runSigProxy(t *testing.T, args ...string) (string, bool, bool) {
