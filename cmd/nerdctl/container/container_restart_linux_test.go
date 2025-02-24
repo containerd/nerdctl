@@ -18,6 +18,7 @@ package container
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestRestart(t *testing.T) {
@@ -123,30 +125,38 @@ func TestRestartWithTime(t *testing.T) {
 }
 
 func TestRestartWithSignal(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base.Cmd("run", "-d", "--name", tID, testutil.AlpineImage, "sh", "-c", `
-		trap 'echo "Received SIGUSR1"; exit 0' SIGUSR1
-		echo "Starting"
-		while true; do
-			sleep 1
-		done
-	`).AssertOK()
-	defer base.Cmd("rm", "-f", tID).Run()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
 
-	base.EnsureContainerStarted(tID)
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := nerdtest.RunSigProxyContainer(nerdtest.SigUsr1, false, nil, data, helpers)
+		// Capture the current pid
+		data.Set("oldpid", strconv.Itoa(nerdtest.InspectContainer(helpers, data.Identifier()).State.Pid))
+		// Send the signal
+		helpers.Ensure("restart", "--signal", "SIGUSR1", data.Identifier())
+		return cmd
+	}
 
-	inspect := base.InspectContainer(tID)
-	initialPid := inspect.State.Pid
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			// Check the container did indeed exit
+			ExitCode: 137,
+			Output: test.All(
+				// Check that we saw SIGUSR1 inside the container
+				test.Contains(nerdtest.SignalCaught),
+				func(stdout string, info string, t *testing.T) {
+					// Ensure the container was restarted
+					nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+					// Check the new pid is different
+					newpid := strconv.Itoa(nerdtest.InspectContainer(helpers, data.Identifier()).State.Pid)
+					assert.Assert(helpers.T(), newpid != data.Get("oldpid"), info)
+				},
+			),
+		}
+	}
 
-	base.Cmd("restart", "--signal", "SIGUSR1", tID).AssertOK()
-	base.EnsureContainerStarted(tID)
-
-	newInspect := base.InspectContainer(tID)
-	newPid := newInspect.State.Pid
-
-	assert.Assert(t, initialPid != newPid, "Container PID should have changed after restart")
-
+	testCase.Run(t)
 }
