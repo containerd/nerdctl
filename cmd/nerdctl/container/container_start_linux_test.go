@@ -17,48 +17,67 @@
 package container
 
 import (
-	"bytes"
+	"errors"
+	"os"
 	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestStartDetachKeys(t *testing.T) {
-	t.Parallel()
+	testCase := nerdtest.Setup()
 
-	skipAttachForDocker(t)
-
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-
-	defer base.Cmd("container", "rm", "-f", containerName).AssertOK()
-	opts := []func(*testutil.Cmd){
-		// If NewDelayOnceReader is not used,
-		// the container state will be Created instead of Exited.
-		// Maybe `unbuffer` exits too early in that case?
-		testutil.WithStdin(testutil.NewDelayOnceReader(strings.NewReader("exit\n"))),
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	//
-	// "-p" is needed because we need unbuffer to read from stdin, and from [1]:
-	// "Normally, unbuffer does not read from stdin. This simplifies use of unbuffer in some situations.
-	//  To use unbuffer in a pipeline, use the -p flag."
-	//
-	// [1] https://linux.die.net/man/1/unbuffer
-	base.CmdWithHelper([]string{"unbuffer", "-p"}, "run", "-it", "--name", containerName, testutil.CommonImage).
-		CmdOption(opts...).AssertOK()
-	container := base.InspectContainer(containerName)
-	assert.Equal(base.T, container.State.Running, false)
 
-	opts = []func(*testutil.Cmd){
-		testutil.WithStdin(testutil.NewDelayOnceReader(bytes.NewReader([]byte{1, 2}))), // https://www.physics.udel.edu/~watson/scen103/ascii.html
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		cmd := helpers.Command("run", "-it", "--name", data.Identifier(), testutil.CommonImage)
+		cmd.WithPseudoTTY(func(f *os.File) error {
+			_, err := f.WriteString("exit\n")
+			return err
+		})
+		cmd.Run(&test.Expected{
+			ExitCode: 0,
+		})
+		assert.Assert(t,
+			strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":false"),
+		)
 	}
-	base.CmdWithHelper([]string{"unbuffer", "-p"}, "start", "-a", "--detach-keys=ctrl-a,ctrl-b", containerName).
-		CmdOption(opts...).AssertOutContains("read detach keys")
-	container = base.InspectContainer(containerName)
-	assert.Equal(base.T, container.State.Running, true)
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		flags := "-a"
+		// Started container must be interactive - which is apparently the default for nerdctl, which does not support
+		// the -i flag, while docker requires it explicitly
+		if nerdtest.IsDocker() {
+			flags += "i"
+		}
+		cmd := helpers.Command("start", flags, "--detach-keys=ctrl-a,ctrl-b", data.Identifier())
+		cmd.WithPseudoTTY(func(f *os.File) error {
+			// ctrl+a and ctrl+b (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
+			_, err := f.Write([]byte{1, 2})
+			return err
+		})
+
+		return cmd
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Errors:   []error{errors.New("detach keys")},
+			Output: test.All(
+				func(stdout string, info string, t *testing.T) {
+					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
+				},
+			),
+		}
+	}
+
+	testCase.Run(t)
 }

@@ -57,12 +57,12 @@ func (c *Composer) Down(ctx context.Context, downOptions DownOptions) error {
 	}
 	orphans, err := c.getOrphanContainers(ctx, parsedServices)
 	if err != nil && downOptions.RemoveOrphans {
-		return fmt.Errorf("error getting orphaned containers: %s", err)
+		return fmt.Errorf("error getting orphaned containers: %w", err)
 	}
 	if len(orphans) > 0 {
 		if downOptions.RemoveOrphans {
 			if err := c.removeContainers(ctx, orphans, RemoveOptions{Stop: true, Volumes: downOptions.RemoveVolumes}); err != nil {
-				return fmt.Errorf("error removeing orphaned containers: %s", err)
+				return fmt.Errorf("error removeing orphaned containers: %w", err)
 			}
 		} else {
 			log.G(ctx).Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), orphans)

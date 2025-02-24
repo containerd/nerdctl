@@ -781,8 +781,7 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 		log.L.Warnf("Ignoring: volume: %+v", unknown)
 	}
 	if c.Bind != nil {
-		// c.Bind is expected to be a non-nil reference to an empty Bind struct
-		if unknown := reflectutil.UnknownNonEmptyFields(c.Bind, "CreateHostPath"); len(unknown) > 0 {
+		if unknown := reflectutil.UnknownNonEmptyFields(c.Bind, "CreateHostPath", "Propagation"); len(unknown) > 0 {
 			log.L.Warnf("Ignoring: volume: Bind: %+v", unknown)
 		}
 	}
@@ -810,6 +809,7 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 	}
 
 	var src string
+	var opts []string
 	switch c.Type {
 	case "volume":
 		vol, ok := project.Volumes[c.Source]
@@ -830,12 +830,18 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 				mkdir = append(mkdir, src)
 			}
 		}
+		if c.Bind != nil && c.Bind.Propagation != "" {
+			opts = append(opts, c.Bind.Propagation)
+		}
 	default:
 		return "", nil, fmt.Errorf("unsupported volume type: %q", c.Type)
 	}
 	s := fmt.Sprintf("%s:%s", src, c.Target)
 	if c.ReadOnly {
-		s += ":ro"
+		opts = append(opts, "ro")
+	}
+	if len(opts) > 0 {
+		s = fmt.Sprintf("%s:%s", s, strings.Join(opts, ","))
 	}
 	return s, mkdir, nil
 }

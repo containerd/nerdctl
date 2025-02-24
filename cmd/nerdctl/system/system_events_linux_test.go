@@ -42,7 +42,8 @@ func TestEventFilters(t *testing.T) {
 			Command:     testEventFilterExecutor,
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Get("output")),
+					ExitCode: test.ExitCodeTimeout,
+					Output:   test.Contains(data.Get("output")),
 				}
 			},
 			Data: test.WithData("filter", "event=START").
@@ -53,7 +54,8 @@ func TestEventFilters(t *testing.T) {
 			Command:     testEventFilterExecutor,
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Get("output")),
+					ExitCode: test.ExitCodeTimeout,
+					Output:   test.Contains(data.Get("output")),
 				}
 			},
 			Data: test.WithData("filter", "event=start").
@@ -65,7 +67,8 @@ func TestEventFilters(t *testing.T) {
 			Command:     testEventFilterExecutor,
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Get("output")),
+					ExitCode: test.ExitCodeTimeout,
+					Output:   test.Contains(data.Get("output")),
 				}
 			},
 			Data: test.WithData("filter", "event=unknown").
@@ -76,7 +79,8 @@ func TestEventFilters(t *testing.T) {
 			Command:     testEventFilterExecutor,
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Get("output")),
+					ExitCode: test.ExitCodeTimeout,
+					Output:   test.Contains(data.Get("output")),
 				}
 			},
 			Data: test.WithData("filter", "status=start").
@@ -88,7 +92,8 @@ func TestEventFilters(t *testing.T) {
 			Command:     testEventFilterExecutor,
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Get("output")),
+					ExitCode: test.ExitCodeTimeout,
+					Output:   test.Contains(data.Get("output")),
 				}
 			},
 			Data: test.WithData("filter", "status=unknown").

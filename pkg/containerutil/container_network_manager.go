@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -42,6 +43,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/mountutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
+	"github.com/containerd/nerdctl/v2/pkg/resolvconf"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
@@ -84,6 +86,36 @@ func withCustomHosts(src string) func(context.Context, oci.Client, *containers.C
 		})
 		return nil
 	}
+}
+
+func fetchDNSResolverConfig(netOpts types.NetworkOptions) ([]string, []string, []string, error) {
+	dns := netOpts.DNSServers
+	dnsSearch := netOpts.DNSSearchDomains
+	dnsOptions := netOpts.DNSResolvConfOptions
+
+	conf, err := resolvconf.Get()
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return nil, nil, nil, err
+		}
+		// if resolvConf file does't exist, using default resolvers
+		conf = &resolvconf.File{}
+		log.L.WithError(err).Debugf("resolvConf file doesn't exist on host")
+	}
+	conf, err = resolvconf.FilterResolvDNS(conf.Content, true)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if len(netOpts.DNSServers) == 0 {
+		dns = resolvconf.GetNameservers(conf.Content, resolvconf.IP)
+	}
+	if len(netOpts.DNSSearchDomains) == 0 {
+		dnsSearch = resolvconf.GetSearchDomains(conf.Content)
+	}
+	if len(netOpts.DNSResolvConfOptions) == 0 {
+		dnsOptions = resolvconf.GetOptions(conf.Content)
+	}
+	return dns, dnsSearch, dnsOptions, err
 }
 
 // NetworkOptionsManager types.NetworkOptionsManager is an interface for reading/setting networking
@@ -157,31 +189,164 @@ func (m *noneNetworkManager) NetworkOptions() types.NetworkOptions {
 
 // VerifyNetworkOptions Verifies that the internal network settings are correct.
 func (m *noneNetworkManager) VerifyNetworkOptions(_ context.Context) error {
-	// No options to verify if no network settings are provided.
+	err := validateUtsSettings(m.netOpts)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // SetupNetworking Performs setup actions required for the container with the given ID.
-func (m *noneNetworkManager) SetupNetworking(_ context.Context, _ string) error {
+func (m *noneNetworkManager) SetupNetworking(ctx context.Context, containerID string) error {
+	// Retrieve the container
+	container, err := m.client.ContainerService().Get(ctx, containerID)
+	if err != nil {
+		return err
+	}
+
+	// Get the dataStore
+	dataStore, err := clientutil.DataStore(m.globalOptions.DataRoot, m.globalOptions.Address)
+	if err != nil {
+		return err
+	}
+
+	// Get the hostsStore
+	hs, err := hostsstore.New(dataStore, container.Labels[labels.Namespace])
+	if err != nil {
+		return err
+	}
+
+	// Get extra-hosts
+	extraHostsJSON := container.Labels[labels.ExtraHosts]
+	var extraHosts []string
+	if err = json.Unmarshal([]byte(extraHostsJSON), &extraHosts); err != nil {
+		return err
+	}
+
+	hosts := make(map[string]string)
+	for _, host := range extraHosts {
+		if v := strings.SplitN(host, ":", 2); len(v) == 2 {
+			hosts[v[0]] = v[1]
+		}
+	}
+
+	// Prep the meta
+	hsMeta := hostsstore.Meta{
+		ID:         container.ID,
+		Hostname:   container.Labels[labels.Hostname],
+		ExtraHosts: hosts,
+		Name:       container.Labels[labels.Name],
+	}
+
+	// Save the meta information
+	if err = hs.Acquire(hsMeta); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // CleanupNetworking Performs any required cleanup actions for the given container.
 // Should only be called to revert any setup steps performed in SetupNetworking.
-func (m *noneNetworkManager) CleanupNetworking(_ context.Context, _ containerd.Container) error {
+func (m *noneNetworkManager) CleanupNetworking(ctx context.Context, container containerd.Container) error {
+	// Get the dataStore
+	dataStore, err := clientutil.DataStore(m.globalOptions.DataRoot, m.globalOptions.Address)
+	if err != nil {
+		return err
+	}
+
+	// Get labels
+	lbls, err := container.Labels(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Get the hostsStore
+	hs, err := hostsstore.New(dataStore, lbls[labels.Namespace])
+	if err != nil {
+		return err
+	}
+
+	// Release
+	if err = hs.Release(container.ID()); err != nil {
+		return err
+	}
 	return nil
 }
 
 // InternalNetworkingOptionLabels Returns the set of NetworkingOptions which should be set as labels on the container.
 func (m *noneNetworkManager) InternalNetworkingOptionLabels(_ context.Context) (types.NetworkOptions, error) {
-	return m.netOpts, nil
+	opts := m.netOpts
+	// Cannot have a MAC address in host networking mode.
+	opts.MACAddress = ""
+	return opts, nil
 }
 
 // ContainerNetworkingOpts Returns a slice of `oci.SpecOpts` and `containerd.NewContainerOpts` which represent
 // the network specs which need to be applied to the container with the given ID.
-func (m *noneNetworkManager) ContainerNetworkingOpts(_ context.Context, _ string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
-	// No options to return if no network settings are provided.
-	return []oci.SpecOpts{}, []containerd.NewContainerOpts{}, nil
+func (m *noneNetworkManager) ContainerNetworkingOpts(_ context.Context, containerID string) ([]oci.SpecOpts, []containerd.NewContainerOpts, error) {
+	dataStore, err := clientutil.DataStore(m.globalOptions.DataRoot, m.globalOptions.Address)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stateDir, err := ContainerStateDirPath(m.globalOptions.Namespace, dataStore, containerID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resolvConfPath := filepath.Join(stateDir, "resolv.conf")
+	dns, dnsSearch, dnsOptions, err := fetchDNSResolverConfig(m.netOpts)
+	if err != nil {
+		return nil, nil, err
+	}
+	_, err = resolvconf.Build(resolvConfPath, dns, dnsSearch, dnsOptions)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	hs, err := hostsstore.New(dataStore, m.globalOptions.Namespace)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	etcHostsPath, err := hs.AllocHostsFile(containerID, []byte{})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// `/etc/host` does not exist in FreeBSD minimal rootfs image
+	// `/etc/resolv.conf` does not exist in FreeBSD minimal rootfs image
+	specs := []oci.SpecOpts{}
+	if runtime.GOOS == "linux" {
+		specs = []oci.SpecOpts{
+			withDedupMounts("/etc/resolv.conf", withCustomResolvConf(resolvConfPath)),
+			withDedupMounts("/etc/hosts", withCustomHosts(etcHostsPath)),
+		}
+	}
+
+	// `/etc/hostname` does not exist on FreeBSD
+	if runtime.GOOS == "linux" {
+		// If no hostname is set, default to first 12 characters of the container ID.
+		hostname := m.netOpts.Hostname
+		if hostname == "" {
+			hostname = containerID
+			if len(hostname) > 12 {
+				hostname = hostname[0:12]
+			}
+		}
+		m.netOpts.Hostname = hostname
+
+		hostnameOpts, err := writeEtcHostnameForContainer(m.globalOptions, m.netOpts.Hostname, containerID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if hostnameOpts != nil {
+			specs = append(specs, hostnameOpts...)
+		}
+	}
+	return specs, []containerd.NewContainerOpts{}, nil
 }
 
 // types.NetworkOptionsManager implementation for container networking settings.
@@ -203,13 +368,15 @@ func (m *containerNetworkManager) VerifyNetworkOptions(_ context.Context) error 
 		return errors.New("container networking mode is currently only supported on Linux")
 	}
 
-	if len(m.netOpts.NetworkSlice) > 1 {
-		return errors.New("conflicting options: only one network specification is allowed when using '--network=container:<container>'")
+	err := validateUtsSettings(m.netOpts)
+	if err != nil {
+		return err
 	}
 
 	// Note that mac-address is accepted, though it is a no-op
 	nonZeroParams := nonZeroMapValues(map[string]interface{}{
-		"--hostname": m.netOpts.Hostname,
+		"--hostname":   m.netOpts.Hostname,
+		"--domainname": m.netOpts.Domainname,
 		// NOTE: an empty slice still counts as a non-zero value so we check its length:
 		"-p/--publish": len(m.netOpts.PortMappings) != 0,
 		"--dns":        len(m.netOpts.DNSServers) != 0,
@@ -330,6 +497,10 @@ func (m *containerNetworkManager) ContainerNetworkingOpts(ctx context.Context, _
 		return nil, nil, err
 	}
 	hostname := s.Hostname
+	// if Utsnamespace is set we should not set the hostname
+	if m.netOpts.UTSNamespace == UtsNamespaceHost {
+		hostname = ""
+	}
 
 	netNSPath, err := ContainerNetNSPath(ctx, container)
 	if err != nil {
@@ -469,24 +640,6 @@ func withDedupMounts(mountPath string, defaultSpec oci.SpecOpts) oci.SpecOpts {
 	}
 }
 
-// copyFileContent copies a file and sets world readable permissions on it, regardless of umask.
-// This is used solely for /etc/resolv.conf and /etc/hosts
-func copyFileContent(src string, dst string) error {
-	data, err := os.ReadFile(src)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(dst, data, 0644)
-	if err != nil {
-		return err
-	}
-	err = os.Chmod(dst, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // getHostNetworkingNamespace Returns an oci.SpecOpts representing the network namespace to
 // be used by the hostNetworkManager. When running with `--network=host` this would be the host's
 // root namespace, but `--network=ns:<path>` can be used to run a container in an existing netns.
@@ -524,7 +677,15 @@ func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 	}
 
 	resolvConfPath := filepath.Join(stateDir, "resolv.conf")
-	copyFileContent("/etc/resolv.conf", resolvConfPath)
+	dns, dnsSearch, dnsOptions, err := fetchDNSResolverConfig(m.netOpts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	_, err = resolvconf.Build(resolvConfPath, dns, dnsSearch, dnsOptions)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	hs, err := hostsstore.New(dataStore, m.globalOptions.Namespace)
 	if err != nil {
@@ -548,12 +709,12 @@ func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 	}
 	specs := []oci.SpecOpts{
 		netNamespace,
-		withDedupMounts("/etc/hosts", withCustomHosts(etcHostsPath)),
 		withDedupMounts("/etc/resolv.conf", withCustomResolvConf(resolvConfPath)),
+		withDedupMounts("/etc/hosts", withCustomHosts(etcHostsPath)),
 	}
 
 	// `/etc/hostname` does not exist on FreeBSD
-	if runtime.GOOS == "linux" && m.netOpts.UTSNamespace != UtsNamespaceHost {
+	if runtime.GOOS == "linux" {
 		hostname := m.netOpts.Hostname
 		if hostname == "" {
 			// Hostname by default should be the host hostname
@@ -575,6 +736,9 @@ func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 		}
 		if hostnameOpts != nil {
 			specs = append(specs, hostnameOpts...)
+		}
+		if m.netOpts.Domainname != "" {
+			specs = append(specs, oci.WithDomainname(m.netOpts.Domainname))
 		}
 	}
 
@@ -643,9 +807,9 @@ func validateUtsSettings(netOpts types.NetworkOptions) error {
 	}
 
 	// Docker considers this a validation error so keep compat.
-	// https://docs.docker.com/engine/reference/run/#uts-settings---uts
-	if utsNamespace == UtsNamespaceHost && netOpts.Hostname != "" {
-		return fmt.Errorf("conflicting options: cannot set a --hostname with --uts=host")
+	// https://docs.docker.com/reference/cli/docker/container/run/#uts
+	if utsNamespace == UtsNamespaceHost && (netOpts.Hostname != "" || netOpts.Domainname != "") {
+		return fmt.Errorf("conflicting options: cannot set --hostname and/or --domainname with --uts=host")
 	}
 
 	return nil

@@ -41,6 +41,7 @@ func NewStopCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 	stopCommand.Flags().IntP("time", "t", 10, "Seconds to wait before sending a SIGKILL")
+	stopCommand.Flags().StringP("signal", "s", "SIGTERM", "Signal to send to the container")
 	return stopCommand
 }
 
@@ -58,11 +59,20 @@ func processContainerStopOptions(cmd *cobra.Command) (types.ContainerStopOptions
 		t := time.Duration(timeValue) * time.Second
 		timeout = &t
 	}
+	var signal string
+	if cmd.Flags().Changed("signal") {
+		signalValue, err := cmd.Flags().GetString("signal")
+		if err != nil {
+			return types.ContainerStopOptions{}, err
+		}
+		signal = signalValue
+	}
 	return types.ContainerStopOptions{
 		Stdout:   cmd.OutOrStdout(),
 		Stderr:   cmd.ErrOrStderr(),
 		GOptions: globalOptions,
 		Timeout:  timeout,
+		Signal:   signal,
 	}, nil
 }
 

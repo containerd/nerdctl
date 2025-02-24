@@ -142,8 +142,8 @@ type MountPoint struct {
 
 // config is from https://github.com/moby/moby/blob/8dbd90ec00daa26dc45d7da2431c965dec99e8b4/api/types/container/config.go#L37-L69
 type Config struct {
-	Hostname string `json:",omitempty"` // Hostname
-	// TODO: Domainname   string      // Domainname
+	Hostname    string `json:",omitempty"` // Hostname
+	Domainname  string `json:",omitempty"` // Domainname
 	User        string `json:",omitempty"` // User that will run the command(s) inside the container, also support user:group
 	AttachStdin bool   // Attach the standard input, makes possible user interaction
 	// TODO: AttachStdout bool        // Attach the standard output
@@ -318,6 +318,10 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	}
 	c.Config.Hostname = hostname
 
+	if n.Labels[labels.Domainname] != "" {
+		c.Config.Domainname = n.Labels[labels.Domainname]
+	}
+
 	return c, nil
 }
 
@@ -340,7 +344,9 @@ func ImageFromNative(nativeImage *native.Image) (*Image, error) {
 
 	if len(imgOCI.History) > 0 {
 		image.Comment = imgOCI.History[len(imgOCI.History)-1].Comment
-		image.Created = imgOCI.History[len(imgOCI.History)-1].Created.Format(time.RFC3339Nano)
+		if !imgOCI.History[len(imgOCI.History)-1].Created.IsZero() {
+			image.Created = imgOCI.History[len(imgOCI.History)-1].Created.Format(time.RFC3339Nano)
+		}
 		image.Author = imgOCI.History[len(imgOCI.History)-1].Author
 	}
 

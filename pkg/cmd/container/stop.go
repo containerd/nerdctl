@@ -39,7 +39,7 @@ func Stop(ctx context.Context, client *containerd.Client, reqs []string, opt typ
 			if err := cleanupNetwork(ctx, found.Container, opt.GOptions); err != nil {
 				return fmt.Errorf("unable to cleanup network for container: %s", found.Req)
 			}
-			if err := containerutil.Stop(ctx, found.Container, opt.Timeout); err != nil {
+			if err := containerutil.Stop(ctx, found.Container, opt.Timeout, opt.Signal); err != nil {
 				if errdefs.IsNotFound(err) {
 					fmt.Fprintf(opt.Stderr, "No such container: %s\n", found.Req)
 					return nil

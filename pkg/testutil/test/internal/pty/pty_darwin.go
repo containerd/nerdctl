@@ -14,8 +14,12 @@
    limitations under the License.
 */
 
-// Package sysinfo is a copy of https://github.com/moby/moby/tree/master/pkg/sysinfo
-// as of cff4f20c44a3a7c882ed73934dec6a77246c6323
-// This may be removed (and replaced by a dependency to moby again) once they
-// have migrated to containerd v2.
-package sysinfo
+package pty
+
+import (
+	"os"
+)
+
+func Open() (pty, tty *os.File, err error) {
+	return nil, nil, ErrPTYUnsupportedPlatform
+}

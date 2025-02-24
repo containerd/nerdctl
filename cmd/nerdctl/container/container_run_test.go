@@ -237,9 +237,6 @@ func TestRunHostnameEnv(t *testing.T) {
 func TestRunStdin(t *testing.T) {
 	t.Parallel()
 	base := testutil.NewBase(t)
-	if testutil.GetTarget() == testutil.Nerdctl {
-		testutil.RequireDaemonVersion(base, ">= 1.6.0-0")
-	}
 
 	const testStr = "test-run-stdin"
 	opts := []func(*testutil.Cmd){
@@ -316,6 +313,13 @@ func TestRunWithJsonFileLogDriverAndLogPathOpt(t *testing.T) {
 }
 
 func TestRunWithJournaldLogDriver(t *testing.T) {
+	testutil.RequireExecutable(t, "journalctl")
+	journalctl, _ := exec.LookPath("journalctl")
+	res := icmd.RunCmd(icmd.Command(journalctl, "-xe"))
+	if res.ExitCode != 0 {
+		t.Skipf("current user is not allowed to access journal logs: %s", res.Combined())
+	}
+
 	if runtime.GOOS == "windows" {
 		t.Skip("journald log driver is not yet implemented on Windows")
 	}
@@ -327,8 +331,6 @@ func TestRunWithJournaldLogDriver(t *testing.T) {
 		"sh", "-euxc", "echo foo; echo bar").AssertOK()
 
 	time.Sleep(3 * time.Second)
-	journalctl, err := exec.LookPath("journalctl")
-	assert.NilError(t, err)
 
 	inspectedContainer := base.InspectContainer(containerName)
 
@@ -370,6 +372,13 @@ func TestRunWithJournaldLogDriver(t *testing.T) {
 }
 
 func TestRunWithJournaldLogDriverAndLogOpt(t *testing.T) {
+	testutil.RequireExecutable(t, "journalctl")
+	journalctl, _ := exec.LookPath("journalctl")
+	res := icmd.RunCmd(icmd.Command(journalctl, "-xe"))
+	if res.ExitCode != 0 {
+		t.Skipf("current user is not allowed to access journal logs: %s", res.Combined())
+	}
+
 	if runtime.GOOS == "windows" {
 		t.Skip("journald log driver is not yet implemented on Windows")
 	}
@@ -381,8 +390,6 @@ func TestRunWithJournaldLogDriverAndLogOpt(t *testing.T) {
 		"sh", "-euxc", "echo foo; echo bar").AssertOK()
 
 	time.Sleep(3 * time.Second)
-	journalctl, err := exec.LookPath("journalctl")
-	assert.NilError(t, err)
 	inspectedContainer := base.InspectContainer(containerName)
 	found := 0
 	check := func(log poll.LogT) poll.Result {
@@ -711,4 +718,55 @@ func TestRunFromOCIArchive(t *testing.T) {
 
 	base.Cmd("build", "--tag", tag, fmt.Sprintf("--output=type=oci,dest=%s", tarPath), buildCtx).AssertOK()
 	base.Cmd("run", "--rm", fmt.Sprintf("oci-archive://%s", tarPath)).AssertOutContainsAll(fmt.Sprintf("Loaded image: %s", tag), sentinel)
+}
+
+func TestRunDomainname(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("run --hostname not implemented on Windows yet")
+	}
+
+	testCases := []struct {
+		name        string
+		hostname    string
+		domainname  string
+		Cmd         string
+		CmdFlag     string
+		expectedOut string
+	}{
+		{
+			name:        "Check domain name",
+			hostname:    "foobar",
+			domainname:  "example.com",
+			Cmd:         "hostname",
+			CmdFlag:     "-d",
+			expectedOut: "example.com",
+		},
+		{
+			name:        "check fqdn",
+			hostname:    "foobar",
+			domainname:  "example.com",
+			Cmd:         "hostname",
+			CmdFlag:     "-f",
+			expectedOut: "foobar.example.com",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			base := testutil.NewBase(t)
+
+			base.Cmd("run",
+				"--rm",
+				"--hostname", tc.hostname,
+				"--domainname", tc.domainname,
+				testutil.CommonImage,
+				tc.Cmd,
+				tc.CmdFlag,
+			).AssertOutContains(tc.expectedOut)
+		})
+	}
 }

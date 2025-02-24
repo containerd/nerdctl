@@ -66,7 +66,7 @@ func New(dataStore string, namespace string) (retStore Store, err error) {
 		return nil, store.ErrInvalidArgument
 	}
 
-	st, err := store.New(filepath.Join(dataStore, hostsDirBasename, namespace), 0, 0o644)
+	st, err := store.New(filepath.Join(dataStore, hostsDirBasename, namespace), 0, 0o600)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +82,7 @@ type Meta struct {
 	Hostname   string
 	ExtraHosts map[string]string // host:ip
 	Name       string
+	Domainname string
 }
 
 type Store interface {
@@ -111,16 +112,21 @@ func (x *hostsStore) Acquire(meta Meta) (err error) {
 			return err
 		}
 
-		if err = os.WriteFile(loc, []byte{}, 0o644); err != nil {
-			return errors.Join(store.ErrSystemFailure, err)
-		}
+		// See https://github.com/containerd/nerdctl/issues/3907
+		// Because of the way we call network manager ContainerNetworkingOpts then SetupNetworking in sequence
+		// we need to make sure we do not overwrite an already allocated hosts file.
+		if _, err = os.Stat(loc); os.IsNotExist(err) {
+			if err = os.WriteFile(loc, []byte{}, 0o644); err != nil {
+				return errors.Join(store.ErrSystemFailure, err)
+			}
 
-		// os.WriteFile relies on syscall.Open. Unless there are ACLs, the effective mode of the file will be matched
-		// against the current process umask.
-		// See https://www.man7.org/linux/man-pages/man2/open.2.html for details.
-		// Since we must make sure that these files are world readable, explicitly chmod them here.
-		if err = os.Chmod(loc, 0o644); err != nil {
-			err = errors.Join(store.ErrSystemFailure, err)
+			// os.WriteFile relies on syscall.Open. Unless there are ACLs, the effective mode of the file will be matched
+			// against the current process umask.
+			// See https://www.man7.org/linux/man-pages/man2/open.2.html for details.
+			// Since we must make sure that these files are world readable, explicitly chmod them here.
+			if err = os.Chmod(loc, 0o644); err != nil {
+				err = errors.Join(store.ErrSystemFailure, err)
+			}
 		}
 
 		var content []byte

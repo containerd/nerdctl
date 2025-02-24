@@ -457,6 +457,7 @@ func applyNetworkSettings(opts *handlerOpts) error {
 		ID:         opts.state.ID,
 		Networks:   make(map[string]*types100.Result, len(opts.cniNames)),
 		Hostname:   opts.state.Annotations[labels.Hostname],
+		Domainname: opts.state.Annotations[labels.Domainname],
 		ExtraHosts: opts.extraHosts,
 		Name:       opts.state.Annotations[labels.Name],
 	}
@@ -503,7 +504,7 @@ func applyNetworkSettings(opts *handlerOpts) error {
 		}
 		if !b4nnBindEnabled && len(opts.ports) > 0 {
 			if err := exposePortsRootless(ctx, opts.rootlessKitClient, opts.ports); err != nil {
-				return fmt.Errorf("failed to expose ports in rootless mode: %s", err)
+				return fmt.Errorf("failed to expose ports in rootless mode: %w", err)
 			}
 		}
 	}
@@ -590,7 +591,7 @@ func onPostStop(opts *handlerOpts) error {
 			}
 			if !b4nnBindEnabled && len(opts.ports) > 0 {
 				if err := unexposePortsRootless(ctx, opts.rootlessKitClient, opts.ports); err != nil {
-					return fmt.Errorf("failed to unexpose ports in rootless mode: %s", err)
+					return fmt.Errorf("failed to unexpose ports in rootless mode: %w", err)
 				}
 			}
 		}

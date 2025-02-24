@@ -443,7 +443,7 @@ func createAction(cmd *cobra.Command, args []string) error {
 
 	netFlags, err := loadNetworkFlags(cmd)
 	if err != nil {
-		return fmt.Errorf("failed to load networking flags: %s", err)
+		return fmt.Errorf("failed to load networking flags: %w", err)
 	}
 
 	netManager, err := containerutil.NewNetworkingOptionsManager(createOpt.GOptions, netFlags, client)

@@ -139,7 +139,7 @@ func splitVolumeSpec(raw string) ([]string, error) {
 
 	compiledRegex, err := regexp.Compile(rxWindows)
 	if err != nil {
-		return nil, fmt.Errorf("error compiling regex: %s", err)
+		return nil, fmt.Errorf("error compiling regex: %w", err)
 	}
 	return splitRawSpec(raw, compiledRegex)
 }

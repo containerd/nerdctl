@@ -35,7 +35,7 @@ func Restart(ctx context.Context, client *containerd.Client, containers []string
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := containerutil.Stop(ctx, found.Container, options.Timeout); err != nil {
+			if err := containerutil.Stop(ctx, found.Container, options.Timeout, options.Signal); err != nil {
 				return err
 			}
 			if err := containerutil.Start(ctx, found.Container, false, client, ""); err != nil {

@@ -17,6 +17,7 @@
 package test
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -24,12 +25,17 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/term"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test/internal/pty"
 )
 
 const ExitCodeGenericFail = -1
 const ExitCodeNoCheck = -2
+const ExitCodeTimeout = -3
 
 // GenericCommand is a concrete Command implementation
 type GenericCommand struct {
@@ -49,6 +55,7 @@ type GenericCommand struct {
 	stdin        io.Reader
 	async        bool
 	pty          bool
+	ptyWriters   []func(*os.File) error
 	timeout      time.Duration
 	workingDir   string
 
@@ -69,8 +76,9 @@ func (gc *GenericCommand) WithWrapper(binary string, args ...string) {
 	gc.helperArgs = args
 }
 
-func (gc *GenericCommand) WithPseudoTTY() {
+func (gc *GenericCommand) WithPseudoTTY(writers ...func(*os.File) error) {
 	gc.pty = true
+	gc.ptyWriters = writers
 }
 
 func (gc *GenericCommand) WithStdin(r io.Reader) {
@@ -81,11 +89,6 @@ func (gc *GenericCommand) WithCwd(path string) {
 	gc.workingDir = path
 }
 
-// TODO: it should be possible to timeout execution
-// Primitives (gc.timeout) is here, it is just a matter of exposing a WithTimeout method
-// - UX to be decided
-// - validate use case: would we ever need this?
-
 func (gc *GenericCommand) Run(expect *Expected) {
 	if gc.t != nil {
 		gc.t.Helper()
@@ -93,24 +96,49 @@ func (gc *GenericCommand) Run(expect *Expected) {
 
 	var result *icmd.Result
 	var env []string
-	if gc.async {
-		result = icmd.WaitOnCmd(gc.timeout, gc.result)
-		env = gc.result.Cmd.Env
-	} else {
+	output := &bytes.Buffer{}
+	stdout := ""
+	errorGroup := &errgroup.Group{}
+	var tty *os.File
+	var psty *os.File
+	if !gc.async {
 		iCmdCmd := gc.boot()
-		env = iCmdCmd.Env
-
 		if gc.pty {
-			pty, tty, _ := Open()
+			psty, tty, _ = pty.Open()
+			_, _ = term.MakeRaw(int(tty.Fd()))
+
 			iCmdCmd.Stdin = tty
 			iCmdCmd.Stdout = tty
-			iCmdCmd.Stderr = tty
-			defer pty.Close()
-			defer tty.Close()
-		}
 
-		// Run it
-		result = icmd.RunCmd(iCmdCmd)
+			gc.result = icmd.StartCmd(iCmdCmd)
+
+			for _, writer := range gc.ptyWriters {
+				_ = writer(psty)
+			}
+
+			// Copy from the master
+			errorGroup.Go(func() error {
+				_, _ = io.Copy(output, psty)
+				return nil
+			})
+		} else {
+			// Run it
+			gc.result = icmd.StartCmd(iCmdCmd)
+		}
+	}
+
+	result = icmd.WaitOnCmd(gc.timeout, gc.result)
+	env = gc.result.Cmd.Env
+
+	if gc.pty {
+		_ = tty.Close()
+		_ = psty.Close()
+		_ = errorGroup.Wait()
+	}
+
+	stdout = result.Stdout()
+	if stdout == "" {
+		stdout = output.String()
 	}
 
 	gc.rawStdErr = result.Stderr()
@@ -121,11 +149,14 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		debug := result.String() + "Env:\n" + strings.Join(env, "\n")
 		// ExitCode goes first
 		if expect.ExitCode == ExitCodeNoCheck { //nolint:revive
-			// -2 means we do not care at all about exit code
+			// ExitCodeNoCheck means we do not care at all about exit code. It can be a failure, a success, or a timeout.
 		} else if expect.ExitCode == ExitCodeGenericFail {
-			// -1 means any error
+			// ExitCodeGenericFail means we expect an error (excluding timeout).
 			assert.Assert(gc.t, result.ExitCode != 0,
-				"Expected exit code to be different than 0\n"+debug)
+				"Command succeeded while we were expecting an error\n"+debug)
+		} else if result.Timeout {
+			assert.Assert(gc.t, expect.ExitCode == ExitCodeTimeout,
+				"Command unexpectedly timed-out\n"+debug)
 		} else {
 			assert.Assert(gc.t, expect.ExitCode == result.ExitCode,
 				fmt.Sprintf("Expected exit code: %d\n", expect.ExitCode)+debug)
@@ -137,7 +168,7 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		}
 		// Finally, check the output if we are asked to
 		if expect.Output != nil {
-			expect.Output(result.Stdout(), debug, gc.t)
+			expect.Output(stdout, debug, gc.t)
 		}
 	}
 }

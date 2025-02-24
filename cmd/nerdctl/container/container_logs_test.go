@@ -18,14 +18,18 @@ package container
 
 import (
 	"fmt"
+	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"gotest.tools/v3/assert"
+	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestLogs(t *testing.T) {
@@ -51,7 +55,7 @@ bar`
 	base.Cmd("logs", "-f", containerName).AssertOutContains("foo")
 
 	//test timestamps flag
-	base.Cmd("logs", "-t", containerName).AssertOutContains(time.Now().Format("2006-01-02"))
+	base.Cmd("logs", "-t", containerName).AssertOutContains(time.Now().UTC().Format("2006-01-02"))
 
 	//test tail flag
 	base.Cmd("logs", "-n", "all", containerName).AssertOutContains(expected)
@@ -109,8 +113,14 @@ func TestLogsWithInheritedFlags(t *testing.T) {
 }
 
 func TestLogsOfJournaldDriver(t *testing.T) {
-	t.Parallel()
 	testutil.RequireExecutable(t, "journalctl")
+	journalctl, _ := exec.LookPath("journalctl")
+	res := icmd.RunCmd(icmd.Command(journalctl, "-xe"))
+	if res.ExitCode != 0 {
+		t.Skipf("current user is not allowed to access journal logs: %s", res.Combined())
+	}
+
+	t.Parallel()
 	base := testutil.NewBase(t)
 	containerName := testutil.Identifier(t)
 
@@ -152,64 +162,85 @@ func TestLogsWithFailingContainer(t *testing.T) {
 }
 
 func TestLogsWithForegroundContainers(t *testing.T) {
-	t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Skip("dual logging is not supported on Windows")
-	}
-	base := testutil.NewBase(t)
-	tid := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
+	// dual logging is not supported on Windows
+	testCase.Require = test.Not(test.Windows)
 
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	unbuffer := []string{"unbuffer"}
+	testCase.Run(t)
 
-	testCases := []struct {
-		name  string
-		flags []string
-		tty   bool
-	}{
+	testCase.SubTests = []*test.Case{
 		{
-			name:  "foreground",
-			flags: nil,
-			tty:   false,
+			Description: "foreground",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "--name", data.Identifier(), testutil.CommonImage, "sh", "-euxc", "echo foo; echo bar")
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", data.Identifier())
+			},
+			Expected: test.Expects(0, nil, test.All(
+				test.Contains("foo"),
+				test.Contains("bar"),
+				test.DoesNotContain("baz"),
+			)),
 		},
 		{
-			name:  "interactive",
-			flags: []string{"-i"},
-			tty:   false,
+			Description: "interactive",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-i", "--name", data.Identifier(), testutil.CommonImage, "sh", "-euxc", "echo foo; echo bar")
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", data.Identifier())
+			},
+			Expected: test.Expects(0, nil, test.All(
+				test.Contains("foo"),
+				test.Contains("bar"),
+				test.DoesNotContain("baz"),
+			)),
 		},
 		{
-			name:  "PTY",
-			flags: []string{"-t"},
-			tty:   true,
+			Description: "PTY",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				cmd := helpers.Command("run", "-t", "--name", data.Identifier(), testutil.CommonImage, "sh", "-euxc", "echo foo; echo bar")
+				cmd.WithPseudoTTY()
+				cmd.Run(&test.Expected{ExitCode: 0})
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", data.Identifier())
+			},
+			Expected: test.Expects(0, nil, test.All(
+				test.Contains("foo"),
+				test.Contains("bar"),
+				test.DoesNotContain("baz"),
+			)),
 		},
 		{
-			name:  "interactivePTY",
-			flags: []string{"-i", "-t"},
-			tty:   true,
+			Description: "interactivePTY",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Setup: func(data test.Data, helpers test.Helpers) {
+				cmd := helpers.Command("run", "-i", "-t", "--name", data.Identifier(), testutil.CommonImage, "sh", "-euxc", "echo foo; echo bar")
+				cmd.WithPseudoTTY()
+				cmd.Run(&test.Expected{ExitCode: 0})
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", data.Identifier())
+			},
+			Expected: test.Expects(0, nil, test.All(
+				test.Contains("foo"),
+				test.Contains("bar"),
+				test.DoesNotContain("baz"),
+			)),
 		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		func(t *testing.T) {
-			containerName := tid + "-" + tc.name
-			var cmdArgs []string
-			defer base.Cmd("rm", "-f", containerName).Run()
-			cmdArgs = append(cmdArgs, "run", "--name", containerName)
-			cmdArgs = append(cmdArgs, tc.flags...)
-			cmdArgs = append(cmdArgs, testutil.CommonImage, "sh", "-euxc", "echo foo; echo bar")
-
-			if tc.tty {
-				base.CmdWithHelper(unbuffer, cmdArgs...).AssertOK()
-			} else {
-				base.Cmd(cmdArgs...).AssertOK()
-			}
-
-			base.Cmd("logs", containerName).AssertOutContains("foo")
-			base.Cmd("logs", containerName).AssertOutContains("bar")
-			base.Cmd("logs", containerName).AssertOutNotContains("baz")
-		}(t)
 	}
 }
 

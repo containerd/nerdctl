@@ -84,7 +84,7 @@ func New(dataStore, namespace string) (volStore VolumeStore, err error) {
 		return nil, store.ErrInvalidArgument
 	}
 
-	st, err := store.New(filepath.Join(dataStore, volumeDirBasename, namespace), 0, 0o644)
+	st, err := store.New(filepath.Join(dataStore, volumeDirBasename, namespace), 0, 0o600)
 	if err != nil {
 		return nil, err
 	}

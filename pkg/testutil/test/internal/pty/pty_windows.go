@@ -1,5 +1,3 @@
-//go:build !linux
-
 /*
    Copyright The containerd Authors.
 
@@ -16,16 +14,12 @@
    limitations under the License.
 */
 
-/*
-   Portions from https://github.com/moby/moby/blob/cff4f20c44a3a7c882ed73934dec6a77246c6323/pkg/sysinfo/sysinfo_other.go
-   Copyright (C) Docker/Moby authors.
-   Licensed under the Apache License, Version 2.0
-   NOTICE: https://github.com/moby/moby/blob/cff4f20c44a3a7c882ed73934dec6a77246c6323/NOTICE
-*/
+package pty
 
-package sysinfo // import "github.com/docker/docker/pkg/sysinfo"
+import (
+	"os"
+)
 
-// New returns an empty SysInfo for non linux for now.
-func New(options ...Opt) *SysInfo {
-	return &SysInfo{}
+func Open() (pty, tty *os.File, err error) {
+	return nil, nil, ErrPTYUnsupportedPlatform
 }

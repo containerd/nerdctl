@@ -25,9 +25,25 @@ import (
 
 	"github.com/moby/sys/userns"
 
-	"github.com/containerd/containerd/v2/pkg/apparmor"
 	"github.com/containerd/log"
 )
+
+var (
+	appArmorSupported bool
+	checkAppArmor     sync.Once
+)
+
+// hostSupports returns true if apparmor is enabled for the host
+func hostSupports() bool {
+	checkAppArmor.Do(func() {
+		// see https://github.com/opencontainers/runc/blob/0d49470392206f40eaab3b2190a57fe7bb3df458/libcontainer/apparmor/apparmor_linux.go
+		if _, err := os.Stat("/sys/kernel/security/apparmor"); err == nil {
+			buf, err := os.ReadFile("/sys/module/apparmor/parameters/enabled")
+			appArmorSupported = err == nil && len(buf) > 1 && buf[0] == 'Y'
+		}
+	})
+	return appArmorSupported
+}
 
 // CanLoadNewProfile returns whether the current process can load a new AppArmor profile.
 //
@@ -37,7 +53,7 @@ import (
 //
 // Related: https://gitlab.com/apparmor/apparmor/-/blob/v3.0.3/libraries/libapparmor/src/kernel.c#L311
 func CanLoadNewProfile() bool {
-	return !userns.RunningInUserNS() && os.Geteuid() == 0 && apparmor.HostSupports()
+	return !userns.RunningInUserNS() && os.Geteuid() == 0 && hostSupports()
 }
 
 var (
