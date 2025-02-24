@@ -114,6 +114,8 @@ type TestableCommand interface {
 	Run(expect *Expected)
 	// Background allows starting a command in the background
 	Background(timeout time.Duration)
+	// Signal sends a signal to a backgrounded command
+	Signal(sig os.Signal) error
 	// Stderr allows retrieving the raw stderr output of the command
 	Stderr() string
 }
