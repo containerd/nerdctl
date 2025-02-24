@@ -18,8 +18,10 @@ package rootlessutil
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 func XDGRuntimeDir() (string, error) {
@@ -28,8 +30,11 @@ func XDGRuntimeDir() (string, error) {
 	}
 	// Fall back to "/run/user/<euid>".
 	// Note that We cannot rely on os.Geteuid() because we might be inside UserNS.
-	if euid := os.Getenv("ROOTLESSKIT_PARENT_EUID"); euid != "" {
-		return "/run/user/" + euid, nil
+	if parentEuid, ok := os.LookupEnv("ROOTLESSKIT_PARENT_EUID"); ok {
+		if _, err := strconv.Atoi(parentEuid); err != nil {
+			return "", fmt.Errorf("invalid ROOTLESSKIT_PARENT_EUID environment variable value %q: %w", parentEuid, err)
+		}
+		return "/run/user/" + parentEuid, nil
 	}
 	return "", errors.New("environment variable XDG_RUNTIME_DIR is not set, see https://rootlesscontaine.rs/getting-started/common/login/")
 }

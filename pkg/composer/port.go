@@ -38,7 +38,7 @@ type PortOptions struct {
 func (c *Composer) Port(ctx context.Context, writer io.Writer, po PortOptions) error {
 	containers, err := c.Containers(ctx, po.ServiceName)
 	if err != nil {
-		return fmt.Errorf("fail to get containers for service %s: %s", po.ServiceName, err)
+		return fmt.Errorf("fail to get containers for service %s: %w", po.ServiceName, err)
 	}
 	if len(containers) == 0 {
 		return fmt.Errorf("no running containers from service %s", po.ServiceName)

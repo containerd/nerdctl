@@ -106,12 +106,12 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 	// FYI: https://github.com/docker/compose/blob/v2.3.4/pkg/compose/create.go#L91-L112
 	orphans, err := c.getOrphanContainers(ctx, parsedServices)
 	if err != nil && uo.RemoveOrphans {
-		return fmt.Errorf("error getting orphaned containers: %s", err)
+		return fmt.Errorf("error getting orphaned containers: %w", err)
 	}
 	if len(orphans) > 0 {
 		if uo.RemoveOrphans {
 			if err := c.removeContainers(ctx, orphans, RemoveOptions{Stop: true, Volumes: true}); err != nil {
-				return fmt.Errorf("error removing orphaned containers: %s", err)
+				return fmt.Errorf("error removing orphaned containers: %w", err)
 			}
 		} else {
 			log.G(ctx).Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), orphans)

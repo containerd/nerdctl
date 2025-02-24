@@ -131,6 +131,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("ip", "", "IPv4 address to assign to the container")
 	cmd.Flags().String("ip6", "", "IPv6 address to assign to the container")
 	cmd.Flags().StringP("hostname", "h", "", "Container host name")
+	cmd.Flags().String("domainname", "", "Container domain name")
 	cmd.Flags().String("mac-address", "", "MAC address to assign to the container")
 	// #endregion
 
@@ -357,7 +358,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 
 	netFlags, err := loadNetworkFlags(cmd)
 	if err != nil {
-		return fmt.Errorf("failed to load networking flags: %s", err)
+		return fmt.Errorf("failed to load networking flags: %w", err)
 	}
 
 	netManager, err := containerutil.NewNetworkingOptionsManager(createOpt.GOptions, netFlags, client)
@@ -384,9 +385,6 @@ func runAction(cmd *cobra.Command, args []string) error {
 		defer func() {
 			if isDetached {
 				return
-			}
-			if err := netManager.CleanupNetworking(ctx, c); err != nil {
-				log.L.Warnf("failed to clean up container networking: %s", err)
 			}
 			if err := container.RemoveContainer(ctx, c, createOpt.GOptions, true, true, client); err != nil {
 				log.L.WithError(err).Warnf("failed to remove container %s", id)

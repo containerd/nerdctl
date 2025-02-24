@@ -146,7 +146,7 @@ func Decode(stdout, stderr io.Writer, r io.Reader, timestamps bool, since string
 		// Write out the entry directly
 		err := writeEntry(&e, stdout, stderr, now, timestamps, since, until)
 		if err != nil {
-			log.L.Errorf("error while writing log entry to output stream: %s", err)
+			log.L.WithError(err).Errorf("error while writing log entry to output stream")
 		}
 	}
 

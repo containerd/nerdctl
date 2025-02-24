@@ -232,7 +232,7 @@ func parsePSOutput(output []byte, procs []uint32) (*ContainerTopOKBody, error) {
 		}
 		p, err = strconv.Atoi(fields[pidIndex])
 		if err != nil {
-			return nil, fmt.Errorf("unexpected pid '%s': %s", fields[pidIndex], err)
+			return nil, fmt.Errorf("unexpected pid '%s': %w", fields[pidIndex], err)
 		}
 
 		if hasPid(procs, p) {

@@ -31,7 +31,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
-	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/logging/jsonfile"
@@ -135,7 +134,7 @@ func viewLogsJSONFile(lvopts LogViewOptions, stdout, stderr io.Writer, stopChann
 	if _, err := os.Stat(logFilePath); err != nil {
 		// FIXME: this is a workaround for the actual issue, not a real solution
 		// https://github.com/containerd/nerdctl/issues/3187
-		if errors.Is(err, errdefs.ErrNotFound) {
+		if errors.Is(err, os.ErrNotExist) {
 			log.L.Warnf("Racing log file creation. Pausing briefly.")
 			time.Sleep(200 * time.Millisecond)
 			_, err = os.Stat(logFilePath)
@@ -193,12 +192,12 @@ func viewLogsJSONFileDirect(lvopts LogViewOptions, jsonLogFilePath string, stdou
 					time.Sleep(5 * time.Millisecond)
 					if retryTimes == 0 {
 						log.L.Infof("finished parsing log JSON filefile, path: %s, line: %s", jsonLogFilePath, string(line))
-						return fmt.Errorf("error occurred while doing read of JSON logfile %q: %s, retryTimes: %d", jsonLogFilePath, err, retryTimes)
+						return fmt.Errorf("error occurred while doing read of JSON logfile %q: %w, retryTimes: %d", jsonLogFilePath, err, retryTimes)
 					}
 					retryTimes--
 					backBytes = len(line)
 				} else {
-					return fmt.Errorf("error occurred while doing read of JSON logfile %q: %s", jsonLogFilePath, err)
+					return fmt.Errorf("error occurred while doing read of JSON logfile %q: %w", jsonLogFilePath, err)
 				}
 			} else {
 				retryTimes = 2

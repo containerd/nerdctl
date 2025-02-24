@@ -148,6 +148,9 @@ func (m *cniNetworkManager) ContainerNetworkingOpts(_ context.Context, container
 		if hostnameOpts != nil {
 			opts = append(opts, hostnameOpts...)
 		}
+		if m.netOpts.Domainname != "" {
+			opts = append(opts, oci.WithDomainname(m.netOpts.Domainname))
+		}
 	}
 
 	return opts, cOpts, nil

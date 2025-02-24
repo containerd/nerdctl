@@ -48,8 +48,9 @@ func (m *cniNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 	}
 
 	nonZeroArgs := nonZeroMapValues(map[string]interface{}{
-		"--hostname": m.netOpts.Hostname,
-		"--uts":      m.netOpts.UTSNamespace,
+		"--hostname":   m.netOpts.Hostname,
+		"--domainname": m.netOpts.Domainname,
+		"--uts":        m.netOpts.UTSNamespace,
 		// NOTE: IP and MAC settings are currently ignored on Windows.
 		"--ip-address":  m.netOpts.IPAddress,
 		"--mac-address": m.netOpts.MACAddress,
@@ -69,7 +70,7 @@ func (m *cniNetworkManager) VerifyNetworkOptions(_ context.Context) error {
 func (m *cniNetworkManager) getCNI() (cni.CNI, error) {
 	e, err := netutil.NewCNIEnv(m.globalOptions.CNIPath, m.globalOptions.CNINetConfPath, netutil.WithNamespace(m.globalOptions.Namespace), netutil.WithDefaultNetwork(m.globalOptions.BridgeIP))
 	if err != nil {
-		return nil, fmt.Errorf("failed to instantiate CNI env: %s", err)
+		return nil, fmt.Errorf("failed to instantiate CNI env: %w", err)
 	}
 
 	cniOpts := []cni.Opt{
@@ -92,7 +93,7 @@ func (m *cniNetworkManager) getCNI() (cni.CNI, error) {
 func (m *cniNetworkManager) SetupNetworking(ctx context.Context, containerID string) error {
 	cni, err := m.getCNI()
 	if err != nil {
-		return fmt.Errorf("failed to get container networking for setup: %s", err)
+		return fmt.Errorf("failed to get container networking for setup: %w", err)
 	}
 
 	netNs, err := m.setupNetNs()
@@ -110,12 +111,12 @@ func (m *cniNetworkManager) CleanupNetworking(ctx context.Context, container con
 	containerID := container.ID()
 	cni, err := m.getCNI()
 	if err != nil {
-		return fmt.Errorf("failed to get container networking for cleanup: %s", err)
+		return fmt.Errorf("failed to get container networking for cleanup: %w", err)
 	}
 
 	spec, err := container.Spec(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get container specs for networking cleanup: %s", err)
+		return fmt.Errorf("failed to get container specs for networking cleanup: %w", err)
 	}
 
 	netNsID, found := spec.Annotations[ocihook.NetworkNamespace]

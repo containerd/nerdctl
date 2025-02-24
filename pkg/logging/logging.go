@@ -139,12 +139,12 @@ func LoadLogConfig(dataStore, ns, id string) (LogConfig, error) {
 	logConfigFilePath := LogConfigFilePath(dataStore, ns, id)
 	logConfigData, err := os.ReadFile(logConfigFilePath)
 	if err != nil {
-		return logConfig, fmt.Errorf("failed to read log config file %q: %s", logConfigFilePath, err)
+		return logConfig, fmt.Errorf("failed to read log config file %q: %w", logConfigFilePath, err)
 	}
 
 	err = json.Unmarshal(logConfigData, &logConfig)
 	if err != nil {
-		return logConfig, fmt.Errorf("failed to load JSON logging config file %q: %s", logConfigFilePath, err)
+		return logConfig, fmt.Errorf("failed to load JSON logging config file %q: %w", logConfigFilePath, err)
 	}
 	return logConfig, nil
 }
@@ -264,7 +264,7 @@ func startTail(ctx context.Context, logName string, w *fsnotify.Watcher) (bool, 
 				log.L.Debugf("Received unexpected fsnotify event: %v, retrying", e)
 			}
 		case err := <-w.Errors:
-			log.L.Debugf("Received fsnotify watch error, retrying unless no more retries left, retries: %d, error: %s", errRetry, err)
+			log.L.WithError(err).Debugf("Received fsnotify watch error, retrying unless no more retries left, retries: %d", errRetry)
 			if errRetry == 0 {
 				return false, err
 			}

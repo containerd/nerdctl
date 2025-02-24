@@ -219,20 +219,20 @@ func parseFluentdConfig(config map[string]string) (fluent.Config, error) {
 	result := fluent.Config{}
 	location, err := parseAddress(config[fluentAddress])
 	if err != nil {
-		return result, fmt.Errorf("error occurs %v,invalid fluentd address (%s)", err, config[fluentAddress])
+		return result, fmt.Errorf("error occurs %w,invalid fluentd address (%s)", err, config[fluentAddress])
 	}
 	bufferLimit := defaultBufferLimit
 	if config[fluentdBufferLimit] != "" {
 		bufferLimit, err = strconv.Atoi(config[fluentdBufferLimit])
 		if err != nil {
-			return result, fmt.Errorf("error occurs %v,invalid buffer limit (%s)", err, config[fluentdBufferLimit])
+			return result, fmt.Errorf("error occurs %w,invalid buffer limit (%s)", err, config[fluentdBufferLimit])
 		}
 	}
 	retryWait := int(defaultRetryWait)
 	if config[fluentdRetryWait] != "" {
 		temp, err := time.ParseDuration(config[fluentdRetryWait])
 		if err != nil {
-			return result, fmt.Errorf("error occurs %v,invalid retry wait (%s)", err, config[fluentdRetryWait])
+			return result, fmt.Errorf("error occurs %w,invalid retry wait (%s)", err, config[fluentdRetryWait])
 		}
 		retryWait = int(temp.Milliseconds())
 	}
@@ -240,21 +240,21 @@ func parseFluentdConfig(config map[string]string) (fluent.Config, error) {
 	if config[fluentdMaxRetries] != "" {
 		maxRetries, err = strconv.Atoi(config[fluentdMaxRetries])
 		if err != nil {
-			return result, fmt.Errorf("error occurs %v,invalid max retries (%s)", err, config[fluentdMaxRetries])
+			return result, fmt.Errorf("error occurs %w,invalid max retries (%s)", err, config[fluentdMaxRetries])
 		}
 	}
 	async := false
 	if config[fluentdAsync] != "" {
 		async, err = strconv.ParseBool(config[fluentdAsync])
 		if err != nil {
-			return result, fmt.Errorf("error occurs %v,invalid async (%s)", err, config[fluentdAsync])
+			return result, fmt.Errorf("error occurs %w,invalid async (%s)", err, config[fluentdAsync])
 		}
 	}
 	asyncReconnectInterval := 0
 	if config[fluentdAsyncReconnectInterval] != "" {
 		tempDuration, err := time.ParseDuration(config[fluentdAsyncReconnectInterval])
 		if err != nil {
-			return result, fmt.Errorf("error occurs %v,invalid async connect interval (%s)", err, config[fluentdAsyncReconnectInterval])
+			return result, fmt.Errorf("error occurs %w,invalid async connect interval (%s)", err, config[fluentdAsyncReconnectInterval])
 		}
 		if tempDuration != 0 && (tempDuration < minReconnectInterval || tempDuration > maxReconnectInterval) {
 			return result, fmt.Errorf("invalid async connect interval (%s), must be between %d and %d", config[fluentdAsyncReconnectInterval], minReconnectInterval.Milliseconds(), maxReconnectInterval.Milliseconds())
@@ -265,14 +265,14 @@ func parseFluentdConfig(config map[string]string) (fluent.Config, error) {
 	if config[fluentdSubSecondPrecision] != "" {
 		subSecondPrecision, err = strconv.ParseBool(config[fluentdSubSecondPrecision])
 		if err != nil {
-			return result, fmt.Errorf("error occurs %v,invalid sub second precision (%s)", err, config[fluentdSubSecondPrecision])
+			return result, fmt.Errorf("error occurs %w,invalid sub second precision (%s)", err, config[fluentdSubSecondPrecision])
 		}
 	}
 	requestAck := false
 	if config[fluentRequestAck] != "" {
 		requestAck, err = strconv.ParseBool(config[fluentRequestAck])
 		if err != nil {
-			return result, fmt.Errorf("error occurs %v,invalid request ack (%s)", err, config[fluentRequestAck])
+			return result, fmt.Errorf("error occurs %w,invalid request ack (%s)", err, config[fluentRequestAck])
 		}
 	}
 	result = fluent.Config{

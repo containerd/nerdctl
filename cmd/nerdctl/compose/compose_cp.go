@@ -71,15 +71,15 @@ func composeCopyAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	address := globalOptions.Address
+
 	// rootless cp runs in the host namespaces, so the address is different
 	if rootlessutil.IsRootless() {
-		address, err = rootlessutil.RootlessContainredSockAddress()
+		globalOptions.Address, err = rootlessutil.RootlessContainredSockAddress()
 		if err != nil {
 			return err
 		}
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
 	}

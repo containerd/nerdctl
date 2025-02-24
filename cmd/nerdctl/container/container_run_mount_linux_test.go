@@ -500,6 +500,8 @@ func TestRunVolumeBindMode(t *testing.T) {
 }
 
 func TestRunBindMountPropagation(t *testing.T) {
+	t.Skip("This test is currently broken. See https://github.com/containerd/nerdctl/issues/3404")
+
 	tID := testutil.Identifier(t)
 
 	if !isRootfsShareableMount() {

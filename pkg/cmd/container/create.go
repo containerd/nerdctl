@@ -230,19 +230,19 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	cOpts = append(cOpts, restartOpts...)
 
 	if err = netManager.VerifyNetworkOptions(ctx); err != nil {
-		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), fmt.Errorf("failed to verify networking settings: %s", err)
+		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), fmt.Errorf("failed to verify networking settings: %w", err)
 	}
 
 	netOpts, netNewContainerOpts, err := netManager.ContainerNetworkingOpts(ctx, id)
 	if err != nil {
-		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), fmt.Errorf("failed to generate networking spec options: %s", err)
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), fmt.Errorf("failed to generate networking spec options: %w", err)
 	}
 	opts = append(opts, netOpts...)
 	cOpts = append(cOpts, netNewContainerOpts...)
 
 	netLabelOpts, err := netManager.InternalNetworkingOptionLabels(ctx)
 	if err != nil {
-		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), fmt.Errorf("failed to generate internal networking labels: %s", err)
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), fmt.Errorf("failed to generate internal networking labels: %w", err)
 	}
 
 	envs = append(envs, "HOSTNAME="+netLabelOpts.Hostname)
@@ -621,8 +621,9 @@ type internalLabels struct {
 	extraHosts []string
 	pidFile    string
 	// labels from cmd options or automatically set
-	name     string
-	hostname string
+	name       string
+	hostname   string
+	domainname string
 	// automatically generated
 	stateDir string
 	// network
@@ -652,6 +653,7 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 		m[labels.Name] = internalLabels.name
 	}
 	m[labels.Hostname] = internalLabels.hostname
+	m[labels.Domainname] = internalLabels.domainname
 	extraHostsJSON, err := json.Marshal(internalLabels.extraHosts)
 	if err != nil {
 		return nil, err
@@ -729,6 +731,7 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 // loadNetOpts loads network options into InternalLabels.
 func (il *internalLabels) loadNetOpts(opts types.NetworkOptions) {
 	il.hostname = opts.Hostname
+	il.domainname = opts.Domainname
 	il.ports = opts.PortMappings
 	il.ipAddress = opts.IPAddress
 	il.ip6Address = opts.IP6Address

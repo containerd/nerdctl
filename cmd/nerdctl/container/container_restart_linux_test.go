@@ -121,3 +121,32 @@ func TestRestartWithTime(t *testing.T) {
 	// ensure that stop took at least 5 seconds
 	assert.Assert(t, timePostRestart.Sub(timePreRestart) >= time.Second*5)
 }
+
+func TestRestartWithSignal(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	tID := testutil.Identifier(t)
+
+	base.Cmd("run", "-d", "--name", tID, testutil.AlpineImage, "sh", "-c", `
+		trap 'echo "Received SIGUSR1"; exit 0' SIGUSR1
+		echo "Starting"
+		while true; do
+			sleep 1
+		done
+	`).AssertOK()
+	defer base.Cmd("rm", "-f", tID).Run()
+
+	base.EnsureContainerStarted(tID)
+
+	inspect := base.InspectContainer(tID)
+	initialPid := inspect.State.Pid
+
+	base.Cmd("restart", "--signal", "SIGUSR1", tID).AssertOK()
+	base.EnsureContainerStarted(tID)
+
+	newInspect := base.InspectContainer(tID)
+	newPid := newInspect.State.Pid
+
+	assert.Assert(t, initialPid != newPid, "Container PID should have changed after restart")
+
+}

@@ -19,7 +19,7 @@
 
 # Basic deps
 ARG CONTAINERD_VERSION=v2.0.2
-ARG RUNC_VERSION=v1.2.4
+ARG RUNC_VERSION=v1.2.5
 ARG CNI_PLUGINS_VERSION=v1.6.2
 
 # Extra deps: Build
@@ -227,10 +227,7 @@ RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/fuse-overlayfs: [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/containers/fuse-overlayfs/blob/${FUSE_OVERLAYFS_VERSION}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/{runc,bypass4netns,bypass4netnsd}: Apache License 2.0, statically linked with libseccomp ([LGPL 2.1](https://github.com/seccomp/libseccomp/blob/main/LICENSE), source code available at https://github.com/seccomp/libseccomp/)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/tini: [MIT License](https://github.com/krallin/tini/blob/${TINI_VERSION}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
-  echo "- Other files: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)" >> /out/share/doc/nerdctl-full/README.md && \
-  (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
-  mv /tmp/SHA256SUMS /out/share/doc/nerdctl-full/SHA256SUMS && \
-  chown -R 0:0 /out
+  echo "- Other files: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)" >> /out/share/doc/nerdctl-full/README.md
 
 FROM build-dependencies AS build-full
 COPY . /go/src/github.com/containerd/nerdctl
@@ -239,6 +236,9 @@ WORKDIR /go/src/github.com/containerd/nerdctl
 RUN BINDIR=/out/bin make binaries install
 COPY README.md /out/share/doc/nerdctl/
 COPY docs /out/share/doc/nerdctl/docs
+RUN (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
+  mv /tmp/SHA256SUMS /out/share/doc/nerdctl-full/SHA256SUMS && \
+  chown -R 0:0 /out
 
 FROM scratch AS out-full
 COPY --from=build-full /out /

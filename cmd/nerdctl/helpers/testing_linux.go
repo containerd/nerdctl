@@ -48,16 +48,6 @@ func FindIPv6(output string) net.IP {
 	return net.ParseIP(ipv6)
 }
 
-func RequiresStargz(base *testutil.Base) {
-	info := base.Info()
-	for _, p := range info.Plugins.Storage {
-		if p == "stargz" {
-			return
-		}
-	}
-	base.T.Skip("test requires stargz")
-}
-
 type JweKeyPair struct {
 	Prv     string
 	Pub     string
