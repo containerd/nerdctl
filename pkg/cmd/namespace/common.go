@@ -16,7 +16,11 @@
 
 package namespace
 
-import "strings"
+import (
+    "strings"
+    "unicode"
+    "errors"
+)
 
 func objectWithLabelArgs(args []string) map[string]string {
 	if len(args) >= 1 {
@@ -38,4 +42,20 @@ func labelArgs(labelStrings []string) map[string]string {
 	}
 
 	return labels
+}
+
+// Returns an error if name is invalid.
+func validateNamespaceName(name string) error {
+    for _, c := range(name) {
+        if (
+            c == ' ' ||
+            unicode.IsLower(c) ||
+            unicode.IsNumber(c)) {
+            continue
+        }
+
+        return errors.New("invalid namespace name - use only lowercase alphanumeric characters and hyphens")
+    }
+
+    return nil
 }
