@@ -66,6 +66,7 @@ jobs:
       run:
         shell: bash
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-2022
@@ -309,6 +310,7 @@ jobs:
     name: "build | ${{ matrix.go-version }}"
     runs-on: ubuntu-24.04
     strategy:
+      fail-fast: false
       matrix:
         go-version: ["1.22.x", "1.23.x"]
     steps:
