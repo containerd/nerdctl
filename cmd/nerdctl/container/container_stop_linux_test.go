@@ -29,7 +29,9 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	iptablesutil "github.com/containerd/nerdctl/v2/pkg/testutil/iptables"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestStopStart(t *testing.T) {
@@ -73,31 +75,23 @@ func TestStopStart(t *testing.T) {
 }
 
 func TestStopWithStopSignal(t *testing.T) {
-	t.Parallel()
-	// There may be issues with logs in Docker.
-	// This test is flaky with Docker. Might be related to https://github.com/containerd/nerdctl/pull/3557
-	base := testutil.NewBase(t)
-	testContainerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", testContainerName).Run()
+	testCase := nerdtest.Setup()
 
-	base.Cmd("run", "-d", "--stop-signal", "SIGQUIT", "--name", testContainerName, testutil.CommonImage, "sh", "-euxc", `#!/bin/sh
-set -eu
-echo "Script started"
-quit=0
-trap 'echo "SIGQUIT received"; quit=1' QUIT
-echo "Trap set"
-while true; do
-    if [ $quit -eq 1 ]; then
-        echo "Quitting loop"
-        break
-    fi
-    echo "In loop"
-    sleep 1
-done
-echo "signal quit"
-sync`).AssertOK()
-	base.Cmd("stop", testContainerName).AssertOK()
-	base.Cmd("logs", "-f", testContainerName).AssertOutContains("signal quit")
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := nerdtest.RunSigProxyContainer(nerdtest.SigQuit, false,
+			[]string{"--stop-signal", nerdtest.SigQuit.String()}, data, helpers)
+		helpers.Ensure("stop", data.Identifier())
+		return cmd
+	}
+
+	// Verify that SIGQUIT was sent to the container AND that the container did forcefully exit
+	testCase.Expected = test.Expects(137, nil, test.Contains(nerdtest.SignalCaught))
+
+	testCase.Run(t)
 }
 
 func TestStopCleanupForwards(t *testing.T) {

@@ -185,6 +185,10 @@ func (gc *GenericCommand) Background(timeout time.Duration) {
 	gc.result = icmd.StartCmd(i)
 }
 
+func (gc *GenericCommand) Signal(sig os.Signal) error {
+	return gc.result.Cmd.Process.Signal(sig)
+}
+
 func (gc *GenericCommand) withEnv(env map[string]string) {
 	if gc.Env == nil {
 		gc.Env = map[string]string{}
