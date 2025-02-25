@@ -1,6 +1,6 @@
 module github.com/containerd/nerdctl/v2/pkg/testutil/test
 
-go 1.22.7
+go 1.23
 
 require (
 	golang.org/x/sync v0.11.0
