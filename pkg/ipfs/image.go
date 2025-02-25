@@ -58,7 +58,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, scheme, ref, ip
 
 	// if not `always` pull and given one platform and image found locally, return existing image directly.
 	if options.Mode != "always" && len(options.OCISpecPlatform) == 1 {
-		if res, err := imgutil.GetExistingImage(ctx, client, options.GOptions.Snapshotter, ref, options.OCISpecPlatform[0]); err == nil {
+		if res, err := imgutil.GetExistingImage(ctx, client, options.GOptions.Snapshotter, options.SyncFs, ref, options.OCISpecPlatform[0]); err == nil {
 			return res, nil
 		} else if !errdefs.IsNotFound(err) {
 			return nil, err

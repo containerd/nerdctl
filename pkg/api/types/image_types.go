@@ -200,6 +200,7 @@ type ImagePullOptions struct {
 	// If nil, it will unpack automatically if only 1 platform is specified.
 	Unpack *bool
 	// Content for specific platforms. Empty if `--all-platforms` is true
+	SyncFs          bool
 	OCISpecPlatform []v1.Platform
 	// Pull mode
 	Mode string

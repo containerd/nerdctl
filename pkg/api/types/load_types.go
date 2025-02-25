@@ -30,5 +30,6 @@ type ImageLoadOptions struct {
 	// AllPlatforms import content for all platforms
 	AllPlatforms bool
 	// Quiet suppresses the load output.
-	Quiet bool
+	Quiet  bool
+	SyncFs bool
 }
