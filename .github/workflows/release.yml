@@ -5,6 +5,10 @@ on:
     tags:
     - 'v*'
     - 'test-action-release-*'
+
+env:
+  GOTOOLCHAIN: local
+
 jobs:
   release:
     runs-on: ubuntu-24.04

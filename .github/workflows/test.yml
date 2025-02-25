@@ -11,6 +11,7 @@ on:
 
 env:
   GO_VERSION: 1.24.x
+  GOTOOLCHAIN: local
   SHORT_TIMEOUT: 5
   LONG_TIMEOUT: 60
 
