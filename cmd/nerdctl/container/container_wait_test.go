@@ -18,6 +18,9 @@ package container
 
 import (
 	"testing"
+	"time"
+
+	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -27,24 +30,40 @@ import (
 func TestWait(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	start := time.Now()
+
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("rm", "-f", data.Identifier("1"), data.Identifier("2"), data.Identifier("3"))
 	}
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "-d", "--name", data.Identifier("1"), testutil.CommonImage)
-		helpers.Ensure("run", "-d", "--name", data.Identifier("2"), testutil.CommonImage, "sleep", "1")
-		helpers.Ensure("run", "-d", "--name", data.Identifier("3"), testutil.CommonImage, "sh", "-euxc", "sleep 5; exit 123")
+		t.Log("in setup", time.Since(start))
+		helpers.Ensure("pull", testutil.CommonImage)
+		t.Log("pull done", time.Since(start))
+
+		helpers.Ensure("run", "-d", "--pull", "never", "--name", data.Identifier("1"), testutil.CommonImage)
+		t.Log("run 1", time.Since(start))
+		helpers.Ensure("run", "-d", "--pull", "never", "--name", data.Identifier("2"), testutil.CommonImage, "sleep", "1")
+		t.Log("run 2", time.Since(start))
+		helpers.Ensure("run", "-d", "--pull", "never", "--name", data.Identifier("3"), testutil.CommonImage, "sh", "-euxc", "sleep 5; exit 123")
+		t.Log("run 3", time.Since(start))
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		t.Log("in command", time.Since(start))
 		return helpers.Command("wait", data.Identifier("1"), data.Identifier("2"), data.Identifier("3"))
 	}
 
-	testCase.Expected = test.Expects(0, nil, test.Equals(`0
-0
-123
-`))
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		t.Log("in expected", time.Since(start))
+		return &test.Expected{
+			ExitCode: 0,
+			Output: func(stdout string, info string, t *testing.T) {
+				t.Log("in output", time.Since(start))
+				assert.Assert(t, false, "forcing stop")
+			},
+		}
+	}
 
 	testCase.Run(t)
 }
