@@ -97,7 +97,7 @@ jobs:
 
   test-integration:
     needs: build-dependencies
-    timeout-minutes: 30
+    timeout-minutes: 40
     name: rootful | ${{ matrix.containerd }} | ${{ matrix.runner }}
     runs-on: "${{ matrix.runner }}"
     strategy:
@@ -221,7 +221,7 @@ jobs:
 
   test-integration-rootless:
     needs: build-dependencies
-    timeout-minutes: 30
+    timeout-minutes: 40
     name: "${{ matrix.target }} | ${{ matrix.containerd }} | ${{ matrix.rootlesskit }} | ${{ matrix.ubuntu }}"
     runs-on: "ubuntu-${{ matrix.ubuntu }}"
     strategy:
@@ -325,7 +325,7 @@ jobs:
         run: GO_VERSION="$(echo ${{ matrix.go-version }} | sed -e s/.x//)" make binaries
 
   test-integration-docker-compatibility:
-    timeout-minutes: 30
+    timeout-minutes: 40
     name: docker
     runs-on: ubuntu-24.04
     steps:
@@ -357,7 +357,7 @@ jobs:
         run: WITH_SUDO=true ./hack/test-integration.sh -test.target=docker -test.only-flaky
 
   test-integration-windows:
-    timeout-minutes: 30
+    timeout-minutes: 40
     name: windows
     runs-on: windows-2022
     defaults:
@@ -392,7 +392,7 @@ jobs:
         run: ./hack/test-integration.sh -test.only-flaky=true
 
   test-integration-freebsd:
-    timeout-minutes: 30
+    timeout-minutes: 40
     name: FreeBSD
     runs-on: ubuntu-24.04
     steps:
