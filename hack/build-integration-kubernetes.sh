@@ -21,7 +21,7 @@ readonly root
 # shellcheck source=/dev/null
 . "$root/scripts/lib.sh"
 
-GO_VERSION=1.23
+GO_VERSION=1.24
 KIND_VERSION=v0.24.0
 CNI_PLUGINS_VERSION=v1.5.1
 
