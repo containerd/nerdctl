@@ -67,7 +67,12 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 
 		// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3489
 		// XXX what if the image is a CID, or only otherwise available on ipfs?
-		err = EnsureAllContent(ctx, client, parsedReference.String(), options.GOptions)
+		platMC, err := platformutil.NewMatchComparer(options.AllPlatforms, options.Platforms)
+		if err != nil {
+			return err
+		}
+
+		err = EnsureAllContent(ctx, client, parsedReference.String(), platMC, options.GOptions)
 		if err != nil {
 			return err
 		}

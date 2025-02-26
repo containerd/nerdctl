@@ -50,7 +50,7 @@ func Save(ctx context.Context, client *containerd.Client, images []string, optio
 			}
 
 			// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3425
-			err = EnsureAllContent(ctx, client, found.Image.Name, options.GOptions)
+			err = EnsureAllContent(ctx, client, found.Image.Name, platMC, options.GOptions)
 			if err != nil {
 				return err
 			}
