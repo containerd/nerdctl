@@ -1,6 +1,6 @@
 module github.com/containerd/nerdctl/v2
 
-go 1.22.7
+go 1.23
 
 require (
 	github.com/Masterminds/semver/v3 v3.3.1

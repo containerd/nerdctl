@@ -10,7 +10,8 @@ on:
       - '**.md'
 
 env:
-  GO_VERSION: 1.23.x
+  GO_VERSION: 1.24.x
+  GOTOOLCHAIN: local
   SHORT_TIMEOUT: 5
   LONG_TIMEOUT: 60
 
@@ -312,7 +313,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: ["1.22.x", "1.23.x"]
+        go-version: ["1.23.x", "1.24.x"]
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
