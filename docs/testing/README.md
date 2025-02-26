@@ -5,18 +5,40 @@ and principles about writing tests.
 
 For more comprehensive information about nerdctl test tools, see [tools.md](tools.md).
 
-## Lint
+## Code, fix, lint, rinse, repeat
 
 ```
-go mod tidy
-golangci-lint run ./...
+# Do hack
+
+# When done:
+# This will ensure proper import formatting, modules, and basic formatting of your code
+make fix
+
+# And this will run all linters and report if any modification is required
+make lint
 ```
 
-This works on macOS as well - just pass along `GOOS=linux`.
+Note that both these tasks will work on any OS, including macOS.
+
+Also note that `make lint` does call on subtask `make lint-commits` which is going to lint commits for the range
+`main..HEAD` by default (this is fine for most development flows that expect to be merged in main).
+
+If you are targeting a specific branch that is not `main` (for example working against `release/1.7`),
+you likely want to explicitly set the commit range to that instead.
+
+eg:
+`LINT_COMMIT_RANGE=target_branch..HEAD make lint-commits`
+or
+`LINT_COMMIT_RANGE=target_branch..HEAD make lint`
 
 ## Unit testing
 
-Run `go test -v ./pkg/...`
+```
+# This will run basic unit testing
+make test
+```
+
+This task must be run on a supported OS (linux, windows, or freebsd).
 
 ## Integration testing
 
