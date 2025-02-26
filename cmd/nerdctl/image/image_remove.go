@@ -27,7 +27,7 @@ import (
 )
 
 func NewRmiCommand() *cobra.Command {
-	var rmiCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "rmi [flags] IMAGE [IMAGE, ...]",
 		Short:             "Remove one or more images",
 		Args:              cobra.MinimumNArgs(1),
@@ -36,10 +36,10 @@ func NewRmiCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	rmiCommand.Flags().BoolP("force", "f", false, "Force removal of the image")
+	cmd.Flags().BoolP("force", "f", false, "Force removal of the image")
 	// Alias `-a` is reserved for `--all`. Should be compatible with `podman rmi --all`.
-	rmiCommand.Flags().Bool("async", false, "Asynchronous mode")
-	return rmiCommand
+	cmd.Flags().Bool("async", false, "Asynchronous mode")
+	return cmd
 }
 
 func processImageRemoveOptions(cmd *cobra.Command) (types.ImageRemoveOptions, error) {

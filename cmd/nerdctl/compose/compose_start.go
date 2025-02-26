@@ -35,7 +35,7 @@ import (
 )
 
 func newComposeStartCommand() *cobra.Command {
-	var composeRestartCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:                   "start [SERVICE...]",
 		Short:                 "Start existing containers for service(s)",
 		RunE:                  composeStartAction,
@@ -43,7 +43,7 @@ func newComposeStartCommand() *cobra.Command {
 		SilenceErrors:         true,
 		DisableFlagsInUseLine: true,
 	}
-	return composeRestartCommand
+	return cmd
 }
 
 func composeStartAction(cmd *cobra.Command, args []string) error {

@@ -31,7 +31,7 @@ import (
 )
 
 func NewExecCommand() *cobra.Command {
-	var execCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "exec [flags] CONTAINER COMMAND [ARG...]",
 		Args:              cobra.MinimumNArgs(2),
 		Short:             "Run a command in a running container",
@@ -40,19 +40,19 @@ func NewExecCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	execCommand.Flags().SetInterspersed(false)
+	cmd.Flags().SetInterspersed(false)
 
-	execCommand.Flags().BoolP("tty", "t", false, "Allocate a pseudo-TTY")
-	execCommand.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
-	execCommand.Flags().BoolP("detach", "d", false, "Detached mode: run command in the background")
-	execCommand.Flags().StringP("workdir", "w", "", "Working directory inside the container")
+	cmd.Flags().BoolP("tty", "t", false, "Allocate a pseudo-TTY")
+	cmd.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
+	cmd.Flags().BoolP("detach", "d", false, "Detached mode: run command in the background")
+	cmd.Flags().StringP("workdir", "w", "", "Working directory inside the container")
 	// env needs to be StringArray, not StringSlice, to prevent "FOO=foo1,foo2" from being split to {"FOO=foo1", "foo2"}
-	execCommand.Flags().StringArrayP("env", "e", nil, "Set environment variables")
+	cmd.Flags().StringArrayP("env", "e", nil, "Set environment variables")
 	// env-file is defined as StringSlice, not StringArray, to allow specifying "--env-file=FILE1,FILE2" (compatible with Podman)
-	execCommand.Flags().StringSlice("env-file", nil, "Set environment variables from file")
-	execCommand.Flags().Bool("privileged", false, "Give extended privileges to the command")
-	execCommand.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
-	return execCommand
+	cmd.Flags().StringSlice("env-file", nil, "Set environment variables from file")
+	cmd.Flags().Bool("privileged", false, "Give extended privileges to the command")
+	cmd.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
+	return cmd
 }
 
 func processExecCommandOptions(cmd *cobra.Command) (types.ContainerExecOptions, error) {

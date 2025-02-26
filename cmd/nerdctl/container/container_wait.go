@@ -29,7 +29,7 @@ import (
 )
 
 func NewWaitCommand() *cobra.Command {
-	var waitCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "wait [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Block until one or more containers stop, then print their exit codes.",
@@ -38,7 +38,7 @@ func NewWaitCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	return waitCommand
+	return cmd
 }
 
 func processContainerWaitOptions(cmd *cobra.Command) (types.ContainerWaitOptions, error) {

@@ -26,7 +26,7 @@ import (
 )
 
 func newNamespaceRmCommand() *cobra.Command {
-	namespaceRmCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:           "remove [flags] NAMESPACE [NAMESPACE...]",
 		Aliases:       []string{"rm"},
 		Args:          cobra.MinimumNArgs(1),
@@ -35,8 +35,8 @@ func newNamespaceRmCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	namespaceRmCommand.Flags().BoolP("cgroup", "c", false, "delete the namespace's cgroup")
-	return namespaceRmCommand
+	cmd.Flags().BoolP("cgroup", "c", false, "delete the namespace's cgroup")
+	return cmd
 }
 
 func processNamespaceRemoveOptions(cmd *cobra.Command) (types.NamespaceRemoveOptions, error) {

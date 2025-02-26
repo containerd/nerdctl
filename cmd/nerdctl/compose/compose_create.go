@@ -28,19 +28,19 @@ import (
 )
 
 func newComposeCreateCommand() *cobra.Command {
-	var composeCreateCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:           "create [flags] [SERVICE...]",
 		Short:         "Creates containers for one or more services",
 		RunE:          composeCreateAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeCreateCommand.Flags().Bool("build", false, "Build images before starting containers.")
-	composeCreateCommand.Flags().Bool("no-build", false, "Don't build an image even if it's missing, conflict with --build.")
-	composeCreateCommand.Flags().Bool("force-recreate", false, "Recreate containers even if their configuration and image haven't changed.")
-	composeCreateCommand.Flags().Bool("no-recreate", false, "Don't recreate containers if they exist, conflict with --force-recreate.")
-	composeCreateCommand.Flags().String("pull", "missing", "Pull images before running. (support always|missing|never)")
-	return composeCreateCommand
+	cmd.Flags().Bool("build", false, "Build images before starting containers.")
+	cmd.Flags().Bool("no-build", false, "Don't build an image even if it's missing, conflict with --build.")
+	cmd.Flags().Bool("force-recreate", false, "Recreate containers even if their configuration and image haven't changed.")
+	cmd.Flags().Bool("no-recreate", false, "Don't recreate containers if they exist, conflict with --force-recreate.")
+	cmd.Flags().String("pull", "missing", "Pull images before running. (support always|missing|never)")
+	return cmd
 }
 
 func composeCreateAction(cmd *cobra.Command, args []string) error {

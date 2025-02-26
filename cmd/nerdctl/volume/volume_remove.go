@@ -27,7 +27,7 @@ import (
 )
 
 func newVolumeRmCommand() *cobra.Command {
-	volumeRmCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "rm [flags] VOLUME [VOLUME...]",
 		Aliases:           []string{"remove"},
 		Short:             "Remove one or more volumes",
@@ -38,8 +38,8 @@ func newVolumeRmCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	volumeRmCommand.Flags().BoolP("force", "f", false, "(unimplemented yet)")
-	return volumeRmCommand
+	cmd.Flags().BoolP("force", "f", false, "(unimplemented yet)")
+	return cmd
 }
 
 func processVolumeRmOptions(cmd *cobra.Command) (types.VolumeRemoveOptions, error) {

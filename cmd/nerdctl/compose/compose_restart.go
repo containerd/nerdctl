@@ -26,15 +26,15 @@ import (
 )
 
 func newComposeRestartCommand() *cobra.Command {
-	var composeRestartCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:           "restart [flags] [SERVICE...]",
 		Short:         "Restart containers of given (or all) services",
 		RunE:          composeRestartAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeRestartCommand.Flags().UintP("timeout", "t", 10, "Seconds to wait before restarting them")
-	return composeRestartCommand
+	cmd.Flags().UintP("timeout", "t", 10, "Seconds to wait before restarting them")
+	return cmd
 }
 
 func composeRestartAction(cmd *cobra.Command, args []string) error {

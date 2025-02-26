@@ -29,7 +29,7 @@ import (
 )
 
 func newVolumePruneCommand() *cobra.Command {
-	volumePruneCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove all unused local volumes",
 		Args:          cobra.NoArgs,
@@ -37,9 +37,9 @@ func newVolumePruneCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	volumePruneCommand.Flags().BoolP("all", "a", false, "Remove all unused volumes, not just anonymous ones")
-	volumePruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
-	return volumePruneCommand
+	cmd.Flags().BoolP("all", "a", false, "Remove all unused volumes, not just anonymous ones")
+	cmd.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
+	return cmd
 }
 
 func processVolumePruneOptions(cmd *cobra.Command) (types.VolumePruneOptions, error) {

@@ -29,7 +29,7 @@ import (
 )
 
 func newVolumeCreateCommand() *cobra.Command {
-	volumeCreateCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:           "create [flags] [VOLUME]",
 		Short:         "Create a volume",
 		Args:          cobra.MaximumNArgs(1),
@@ -37,8 +37,8 @@ func newVolumeCreateCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	volumeCreateCommand.Flags().StringArray("label", nil, "Set a label on the volume")
-	return volumeCreateCommand
+	cmd.Flags().StringArray("label", nil, "Set a label on the volume")
+	return cmd
 }
 
 func processVolumeCreateOptions(cmd *cobra.Command) (types.VolumeCreateOptions, error) {

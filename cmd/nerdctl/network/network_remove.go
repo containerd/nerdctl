@@ -28,7 +28,7 @@ import (
 )
 
 func newNetworkRmCommand() *cobra.Command {
-	networkRmCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "rm [flags] NETWORK [NETWORK, ...]",
 		Aliases:           []string{"remove"},
 		Short:             "Remove one or more networks",
@@ -39,7 +39,7 @@ func newNetworkRmCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	return networkRmCommand
+	return cmd
 }
 
 func networkRmAction(cmd *cobra.Command, args []string) error {

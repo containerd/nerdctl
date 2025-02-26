@@ -28,7 +28,7 @@ import (
 )
 
 func newImagePruneCommand() *cobra.Command {
-	imagePruneCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove unused images",
 		Args:          cobra.NoArgs,
@@ -37,10 +37,10 @@ func newImagePruneCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	imagePruneCommand.Flags().BoolP("all", "a", false, "Remove all unused images, not just dangling ones")
-	imagePruneCommand.Flags().StringSlice("filter", []string{}, "Filter output based on conditions provided")
-	imagePruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
-	return imagePruneCommand
+	cmd.Flags().BoolP("all", "a", false, "Remove all unused images, not just dangling ones")
+	cmd.Flags().StringSlice("filter", []string{}, "Filter output based on conditions provided")
+	cmd.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
+	return cmd
 }
 
 func processImagePruneOptions(cmd *cobra.Command) (types.ImagePruneOptions, error) {

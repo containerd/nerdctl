@@ -38,7 +38,7 @@ The following containers are supported:
 - Containers created with 'nerdctl compose'.
 - Containers created with Kubernetes (EXPERIMENTAL).
 `
-	var logsCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "logs [flags] CONTAINER",
 		Args:              helpers.IsExactArgs(1),
 		Short:             shortUsage,
@@ -48,12 +48,12 @@ The following containers are supported:
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	logsCommand.Flags().BoolP("follow", "f", false, "Follow log output")
-	logsCommand.Flags().BoolP("timestamps", "t", false, "Show timestamps")
-	logsCommand.Flags().StringP("tail", "n", "all", "Number of lines to show from the end of the logs")
-	logsCommand.Flags().String("since", "", "Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)")
-	logsCommand.Flags().String("until", "", "Show logs before a timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)")
-	return logsCommand
+	cmd.Flags().BoolP("follow", "f", false, "Follow log output")
+	cmd.Flags().BoolP("timestamps", "t", false, "Show timestamps")
+	cmd.Flags().StringP("tail", "n", "all", "Number of lines to show from the end of the logs")
+	cmd.Flags().String("since", "", "Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)")
+	cmd.Flags().String("until", "", "Show logs before a timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)")
+	return cmd
 }
 
 func processContainerLogsOptions(cmd *cobra.Command) (types.ContainerLogsOptions, error) {

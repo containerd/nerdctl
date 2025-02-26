@@ -26,7 +26,7 @@ import (
 )
 
 func newNamespaceCreateCommand() *cobra.Command {
-	namespaceCreateCommand := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:           "create NAMESPACE",
 		Short:         "Create a new namespace",
 		Args:          cobra.MinimumNArgs(1),
@@ -35,8 +35,8 @@ func newNamespaceCreateCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	namespaceCreateCommand.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
-	return namespaceCreateCommand
+	cmd.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
+	return cmd
 }
 
 func processNamespaceCreateCommandOption(cmd *cobra.Command) (types.NamespaceCreateOptions, error) {

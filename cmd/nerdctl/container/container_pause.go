@@ -29,7 +29,7 @@ import (
 )
 
 func NewPauseCommand() *cobra.Command {
-	var pauseCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "pause [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Pause all processes within one or more containers",
@@ -38,7 +38,7 @@ func NewPauseCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	return pauseCommand
+	return cmd
 }
 
 func processContainerPauseOptions(cmd *cobra.Command) (types.ContainerPauseOptions, error) {

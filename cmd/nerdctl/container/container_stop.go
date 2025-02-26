@@ -31,7 +31,7 @@ import (
 )
 
 func NewStopCommand() *cobra.Command {
-	var stopCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "stop [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Stop one or more running containers",
@@ -40,9 +40,9 @@ func NewStopCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	stopCommand.Flags().IntP("time", "t", 10, "Seconds to wait before sending a SIGKILL")
-	stopCommand.Flags().StringP("signal", "s", "SIGTERM", "Signal to send to the container")
-	return stopCommand
+	cmd.Flags().IntP("time", "t", 10, "Seconds to wait before sending a SIGKILL")
+	cmd.Flags().StringP("signal", "s", "SIGTERM", "Signal to send to the container")
+	return cmd
 }
 
 func processContainerStopOptions(cmd *cobra.Command) (types.ContainerStopOptions, error) {

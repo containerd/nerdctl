@@ -27,7 +27,7 @@ import (
 )
 
 func NewRenameCommand() *cobra.Command {
-	var renameCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "rename [flags] CONTAINER NEW_NAME",
 		Args:              helpers.IsExactArgs(2),
 		Short:             "rename a container",
@@ -36,7 +36,7 @@ func NewRenameCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	return renameCommand
+	return cmd
 }
 
 func processContainerRenameOptions(cmd *cobra.Command) (types.ContainerRenameOptions, error) {

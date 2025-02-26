@@ -30,7 +30,7 @@ import (
 )
 
 func NewStartCommand() *cobra.Command {
-	var startCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "start [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Start one or more running containers",
@@ -40,11 +40,11 @@ func NewStartCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 
-	startCommand.Flags().SetInterspersed(false)
-	startCommand.Flags().BoolP("attach", "a", false, "Attach STDOUT/STDERR and forward signals")
-	startCommand.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
+	cmd.Flags().SetInterspersed(false)
+	cmd.Flags().BoolP("attach", "a", false, "Attach STDOUT/STDERR and forward signals")
+	cmd.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
 
-	return startCommand
+	return cmd
 }
 
 func processContainerStartOptions(cmd *cobra.Command) (types.ContainerStartOptions, error) {

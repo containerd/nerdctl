@@ -35,7 +35,7 @@ import (
 )
 
 func NewInspectCommand() *cobra.Command {
-	var inspectCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "inspect",
 		Short:             "Return low-level information on objects.",
 		Args:              cobra.MinimumNArgs(1),
@@ -45,9 +45,9 @@ func NewInspectCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 
-	addInspectFlags(inspectCommand)
+	addInspectFlags(cmd)
 
-	return inspectCommand
+	return cmd
 }
 
 var validInspectType = map[string]bool{

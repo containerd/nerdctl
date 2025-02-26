@@ -45,7 +45,7 @@ Caveats:
 - Until dual logging (issue #1946) is implemented,
   a container that is spun up by either 'nerdctl run -d' or 'nerdctl start' (without '--attach') cannot be attached to.`
 
-	var attachCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "attach [flags] CONTAINER",
 		Args:              cobra.ExactArgs(1),
 		Short:             shortHelp,
@@ -55,8 +55,8 @@ Caveats:
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	attachCommand.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
-	return attachCommand
+	cmd.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
+	return cmd
 }
 
 func processContainerAttachOptions(cmd *cobra.Command) (types.ContainerAttachOptions, error) {
