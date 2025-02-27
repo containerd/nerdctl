@@ -5,7 +5,7 @@ run:
 linters:
   disable-all: true
   enable:
-    # - depguard
+    - depguard
     - gofmt
     - goimports
     - govet
@@ -134,6 +134,22 @@ linters-settings:
       - typeUnparen
       - unnamedResult
       - unnecessaryBlock
+
+  depguard:
+    rules:
+      # pkg files must not depend on cobra nor anything in cmd
+      pkg:
+        files:
+          - "**/pkg/**/*.go"
+        deny:
+          - pkg: "github.com/spf13/cobra"
+            desc: "pkg must not depend on cobra"
+          - pkg: "github.com/spf13/pflag"
+            desc: "pkg must not depend on pflag"
+          - pkg: "github.com/spf13/viper"
+            desc: "pkg must not depend on viper"
+          - pkg: "github.com/containerd/nerdctl/v2/cmd"
+            desc: "pkg must not depend on any cmd files"
 
 issues:
   max-issues-per-linter: 0
