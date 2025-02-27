@@ -35,7 +35,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
-func newVersionCommand() *cobra.Command {
+func versionCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "version",
 		Args:          cobra.NoArgs,

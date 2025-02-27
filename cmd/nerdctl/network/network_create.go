@@ -29,13 +29,13 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
-func newNetworkCreateCommand() *cobra.Command {
+func createCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "create [flags] NETWORK",
 		Short:         "Create a network",
 		Long:          `NOTE: To isolate CNI bridge, CNI plugin "firewall" (>= v1.1.0) is needed.`,
 		Args:          helpers.IsExactArgs(1),
-		RunE:          networkCreateAction,
+		RunE:          createAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -53,7 +53,7 @@ func newNetworkCreateCommand() *cobra.Command {
 	return cmd
 }
 
-func networkCreateAction(cmd *cobra.Command, args []string) error {
+func createAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

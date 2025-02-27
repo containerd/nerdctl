@@ -30,7 +30,7 @@ const (
 	allowNonDistFlag = "allow-nondistributable-artifacts"
 )
 
-func NewPushCommand() *cobra.Command {
+func PushCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "push [flags] NAME[:TAG]",
 		Short:             "Push an image or a repository to a registry. Optionally specify \"ipfs://\" or \"ipns://\" scheme to push image to IPFS.",
@@ -72,7 +72,7 @@ func NewPushCommand() *cobra.Command {
 	return cmd
 }
 
-func processImagePushOptions(cmd *cobra.Command) (types.ImagePushOptions, error) {
+func pushOptions(cmd *cobra.Command) (types.ImagePushOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ImagePushOptions{}, err
@@ -105,11 +105,11 @@ func processImagePushOptions(cmd *cobra.Command) (types.ImagePushOptions, error)
 	if err != nil {
 		return types.ImagePushOptions{}, err
 	}
-	signOptions, err := processImageSignOptions(cmd)
+	signOptions, err := signOptions(cmd)
 	if err != nil {
 		return types.ImagePushOptions{}, err
 	}
-	sociOptions, err := processSociOptions(cmd)
+	sociOptions, err := sociOptions(cmd)
 	if err != nil {
 		return types.ImagePushOptions{}, err
 	}
@@ -129,7 +129,7 @@ func processImagePushOptions(cmd *cobra.Command) (types.ImagePushOptions, error)
 }
 
 func pushAction(cmd *cobra.Command, args []string) error {
-	options, err := processImagePushOptions(cmd)
+	options, err := pushOptions(cmd)
 	if err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func pushShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]
 	return completion.ImageNames(cmd)
 }
 
-func processImageSignOptions(cmd *cobra.Command) (opt types.ImageSignOptions, err error) {
+func signOptions(cmd *cobra.Command) (opt types.ImageSignOptions, err error) {
 	if opt.Provider, err = cmd.Flags().GetString("sign"); err != nil {
 		return
 	}
@@ -162,7 +162,7 @@ func processImageSignOptions(cmd *cobra.Command) (opt types.ImageSignOptions, er
 	return
 }
 
-func processSociOptions(cmd *cobra.Command) (opt types.SociOptions, err error) {
+func sociOptions(cmd *cobra.Command) (opt types.SociOptions, err error) {
 	if opt.SpanSize, err = cmd.Flags().GetInt64("soci-span-size"); err != nil {
 		return
 	}

@@ -24,13 +24,13 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/network"
 )
 
-func newNetworkLsCommand() *cobra.Command {
+func listCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "ls",
 		Aliases:       []string{"list"},
 		Short:         "List networks",
 		Args:          cobra.NoArgs,
-		RunE:          networkLsAction,
+		RunE:          listAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -43,7 +43,7 @@ func newNetworkLsCommand() *cobra.Command {
 	return cmd
 }
 
-func networkLsAction(cmd *cobra.Command, args []string) error {
+func listAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

@@ -29,7 +29,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
 )
 
-func NewAttachCommand() *cobra.Command {
+func AttachCommand() *cobra.Command {
 	const shortHelp = "Attach stdin, stdout, and stderr to a running container."
 	const longHelp = `Attach stdin, stdout, and stderr to a running container. For example:
 
@@ -50,7 +50,7 @@ Caveats:
 		Args:              cobra.ExactArgs(1),
 		Short:             shortHelp,
 		Long:              longHelp,
-		RunE:              containerAttachAction,
+		RunE:              attachAction,
 		ValidArgsFunction: attachShellComplete,
 		SilenceUsage:      true,
 		SilenceErrors:     true,
@@ -59,7 +59,7 @@ Caveats:
 	return cmd
 }
 
-func processContainerAttachOptions(cmd *cobra.Command) (types.ContainerAttachOptions, error) {
+func attachOptions(cmd *cobra.Command) (types.ContainerAttachOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerAttachOptions{}, err
@@ -77,8 +77,8 @@ func processContainerAttachOptions(cmd *cobra.Command) (types.ContainerAttachOpt
 	}, nil
 }
 
-func containerAttachAction(cmd *cobra.Command, args []string) error {
-	options, err := processContainerAttachOptions(cmd)
+func attachAction(cmd *cobra.Command, args []string) error {
+	options, err := attachOptions(cmd)
 	if err != nil {
 		return err
 	}

@@ -26,7 +26,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
 )
 
-func NewRmiCommand() *cobra.Command {
+func RmiCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "rmi [flags] IMAGE [IMAGE, ...]",
 		Short:             "Remove one or more images",
@@ -42,7 +42,7 @@ func NewRmiCommand() *cobra.Command {
 	return cmd
 }
 
-func processImageRemoveOptions(cmd *cobra.Command) (types.ImageRemoveOptions, error) {
+func removeOptions(cmd *cobra.Command) (types.ImageRemoveOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ImageRemoveOptions{}, err
@@ -66,7 +66,7 @@ func processImageRemoveOptions(cmd *cobra.Command) (types.ImageRemoveOptions, er
 }
 
 func rmiAction(cmd *cobra.Command, args []string) error {
-	options, err := processImageRemoveOptions(cmd)
+	options, err := removeOptions(cmd)
 	if err != nil {
 		return err
 	}

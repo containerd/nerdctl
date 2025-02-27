@@ -28,13 +28,13 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 )
 
-func newContainerInspectCommand() *cobra.Command {
+func inspectCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "inspect [flags] CONTAINER [CONTAINER, ...]",
 		Short:             "Display detailed information on one or more containers.",
 		Long:              "Hint: set `--mode=native` for showing the full output",
 		Args:              cobra.MinimumNArgs(1),
-		RunE:              containerInspectAction,
+		RunE:              inspectAction,
 		ValidArgsFunction: containerInspectShellComplete,
 		SilenceUsage:      true,
 		SilenceErrors:     true,
@@ -57,7 +57,7 @@ var validModeType = map[string]bool{
 	"dockercompat": true,
 }
 
-func ProcessContainerInspectOptions(cmd *cobra.Command) (opt types.ContainerInspectOptions, err error) {
+func InspectOptions(cmd *cobra.Command) (opt types.ContainerInspectOptions, err error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return
@@ -89,8 +89,8 @@ func ProcessContainerInspectOptions(cmd *cobra.Command) (opt types.ContainerInsp
 	}, nil
 }
 
-func containerInspectAction(cmd *cobra.Command, args []string) error {
-	opt, err := ProcessContainerInspectOptions(cmd)
+func inspectAction(cmd *cobra.Command, args []string) error {
+	opt, err := InspectOptions(cmd)
 	if err != nil {
 		return err
 	}

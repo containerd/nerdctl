@@ -26,7 +26,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/load"
 )
 
-func NewLoadCommand() *cobra.Command {
+func LoadCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "load",
 		Args:          cobra.NoArgs,

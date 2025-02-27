@@ -29,7 +29,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
 )
 
-func NewStartCommand() *cobra.Command {
+func StartCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "start [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
@@ -47,7 +47,7 @@ func NewStartCommand() *cobra.Command {
 	return cmd
 }
 
-func processContainerStartOptions(cmd *cobra.Command) (types.ContainerStartOptions, error) {
+func startOptions(cmd *cobra.Command) (types.ContainerStartOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerStartOptions{}, err
@@ -69,7 +69,7 @@ func processContainerStartOptions(cmd *cobra.Command) (types.ContainerStartOptio
 }
 
 func startAction(cmd *cobra.Command, args []string) error {
-	options, err := processContainerStartOptions(cmd)
+	options, err := startOptions(cmd)
 	if err != nil {
 		return err
 	}

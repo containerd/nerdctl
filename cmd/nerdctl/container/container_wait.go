@@ -28,12 +28,12 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 )
 
-func NewWaitCommand() *cobra.Command {
+func WaitCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "wait [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Block until one or more containers stop, then print their exit codes.",
-		RunE:              containerWaitAction,
+		RunE:              waitAction,
 		ValidArgsFunction: waitShellComplete,
 		SilenceUsage:      true,
 		SilenceErrors:     true,
@@ -41,7 +41,7 @@ func NewWaitCommand() *cobra.Command {
 	return cmd
 }
 
-func processContainerWaitOptions(cmd *cobra.Command) (types.ContainerWaitOptions, error) {
+func waitOptions(cmd *cobra.Command) (types.ContainerWaitOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerWaitOptions{}, err
@@ -52,8 +52,8 @@ func processContainerWaitOptions(cmd *cobra.Command) (types.ContainerWaitOptions
 	}, nil
 }
 
-func containerWaitAction(cmd *cobra.Command, args []string) error {
-	options, err := processContainerWaitOptions(cmd)
+func waitAction(cmd *cobra.Command, args []string) error {
+	options, err := waitOptions(cmd)
 	if err != nil {
 		return err
 	}

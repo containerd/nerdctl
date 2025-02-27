@@ -27,11 +27,11 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposeCreateCommand() *cobra.Command {
+func createCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "create [flags] [SERVICE...]",
 		Short:         "Creates containers for one or more services",
-		RunE:          composeCreateAction,
+		RunE:          createAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -43,7 +43,7 @@ func newComposeCreateCommand() *cobra.Command {
 	return cmd
 }
 
-func composeCreateAction(cmd *cobra.Command, args []string) error {
+func createAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

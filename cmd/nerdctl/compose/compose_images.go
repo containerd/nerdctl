@@ -38,11 +38,11 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
-func newComposeImagesCommand() *cobra.Command {
+func imagesCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "images [flags] [SERVICE...]",
 		Short:         "List images used by created containers in services",
-		RunE:          composeImagesAction,
+		RunE:          imagesAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -51,7 +51,7 @@ func newComposeImagesCommand() *cobra.Command {
 	return cmd
 }
 
-func composeImagesAction(cmd *cobra.Command, args []string) error {
+func imagesAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

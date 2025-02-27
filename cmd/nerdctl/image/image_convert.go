@@ -39,7 +39,7 @@ For encryption and decryption, use 'nerdctl image (encrypt|decrypt)' command.
 `
 
 // imageConvertCommand is from https://github.com/containerd/stargz-snapshotter/blob/d58f43a8235e46da73fb94a1a35280cb4d607b2c/cmd/ctr-remote/commands/convert.go
-func newImageConvertCommand() *cobra.Command {
+func convertCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "convert [flags] <source_ref> <target_ref>...",
 		Short:             "convert an image",
@@ -104,7 +104,7 @@ func newImageConvertCommand() *cobra.Command {
 	return cmd
 }
 
-func processImageConvertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
+func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ImageConvertOptions{}, err
@@ -281,7 +281,7 @@ func processImageConvertOptions(cmd *cobra.Command) (types.ImageConvertOptions, 
 }
 
 func imageConvertAction(cmd *cobra.Command, args []string) error {
-	options, err := processImageConvertOptions(cmd)
+	options, err := convertOptions(cmd)
 	if err != nil {
 		return err
 	}

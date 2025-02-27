@@ -25,12 +25,12 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 )
 
-func newVolumeInspectCommand() *cobra.Command {
+func inspectCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "inspect [flags] VOLUME [VOLUME...]",
 		Short:             "Display detailed information on one or more volumes",
 		Args:              cobra.MinimumNArgs(1),
-		RunE:              volumeInspectAction,
+		RunE:              inspectAction,
 		ValidArgsFunction: volumeInspectShellComplete,
 		SilenceUsage:      true,
 		SilenceErrors:     true,
@@ -43,7 +43,7 @@ func newVolumeInspectCommand() *cobra.Command {
 	return cmd
 }
 
-func processVolumeInspectOptions(cmd *cobra.Command) (types.VolumeInspectOptions, error) {
+func inspectOptions(cmd *cobra.Command) (types.VolumeInspectOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.VolumeInspectOptions{}, err
@@ -64,8 +64,8 @@ func processVolumeInspectOptions(cmd *cobra.Command) (types.VolumeInspectOptions
 	}, nil
 }
 
-func volumeInspectAction(cmd *cobra.Command, args []string) error {
-	options, err := processVolumeInspectOptions(cmd)
+func inspectAction(cmd *cobra.Command, args []string) error {
+	options, err := inspectOptions(cmd)
 	if err != nil {
 		return err
 	}

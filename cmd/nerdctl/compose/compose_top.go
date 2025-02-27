@@ -32,11 +32,11 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
 
-func newComposeTopCommand() *cobra.Command {
+func topCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:                   "top [SERVICE...]",
 		Short:                 "Display the running processes of service containers",
-		RunE:                  composeTopAction,
+		RunE:                  topAction,
 		SilenceUsage:          true,
 		SilenceErrors:         true,
 		DisableFlagsInUseLine: true,
@@ -44,7 +44,7 @@ func newComposeTopCommand() *cobra.Command {
 	return cmd
 }
 
-func composeTopAction(cmd *cobra.Command, args []string) error {
+func topAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

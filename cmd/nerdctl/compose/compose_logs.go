@@ -25,11 +25,11 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposeLogsCommand() *cobra.Command {
+func logsCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "logs [flags] [SERVICE...]",
 		Short:         "Show logs of running containers",
-		RunE:          composeLogsAction,
+		RunE:          logsAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -41,7 +41,7 @@ func newComposeLogsCommand() *cobra.Command {
 	return cmd
 }
 
-func composeLogsAction(cmd *cobra.Command, args []string) error {
+func logsAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

@@ -25,12 +25,12 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/network"
 )
 
-func newNetworkInspectCommand() *cobra.Command {
+func inspectCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "inspect [flags] NETWORK [NETWORK, ...]",
 		Short:             "Display detailed information on one or more networks",
 		Args:              cobra.MinimumNArgs(1),
-		RunE:              networkInspectAction,
+		RunE:              inspectAction,
 		ValidArgsFunction: networkInspectShellComplete,
 		SilenceUsage:      true,
 		SilenceErrors:     true,
@@ -46,7 +46,7 @@ func newNetworkInspectCommand() *cobra.Command {
 	return cmd
 }
 
-func networkInspectAction(cmd *cobra.Command, args []string) error {
+func inspectAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

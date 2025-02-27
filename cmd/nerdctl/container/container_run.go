@@ -47,7 +47,7 @@ const (
 	tiniInitBinary = "tini"
 )
 
-func NewRunCommand() *cobra.Command {
+func RunCommand() *cobra.Command {
 	shortHelp := "Run a command in a new container. Optionally specify \"ipfs://\" or \"ipns://\" scheme to pull image from IPFS."
 	longHelp := shortHelp
 	switch runtime.GOOS {
@@ -289,7 +289,7 @@ func setCreateFlags(cmd *cobra.Command) {
 }
 
 func processCreateCommandFlagsInRun(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
-	opt, err := processContainerCreateOptions(cmd)
+	opt, err := createOptions(cmd)
 	if err != nil {
 		return opt, err
 	}

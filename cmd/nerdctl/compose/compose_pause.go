@@ -24,11 +24,11 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 )
 
-func newComposePauseCommand() *cobra.Command {
+func pauseCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:                   "pause [SERVICE...]",
 		Short:                 "Pause all processes within containers of service(s). They can be unpaused with nerdctl compose unpause",
-		RunE:                  composePauseAction,
+		RunE:                  pauseAction,
 		SilenceUsage:          true,
 		SilenceErrors:         true,
 		DisableFlagsInUseLine: true,
@@ -36,7 +36,7 @@ func newComposePauseCommand() *cobra.Command {
 	return cmd
 }
 
-func composePauseAction(cmd *cobra.Command, args []string) error {
+func pauseAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
@@ -59,11 +59,11 @@ func composePauseAction(cmd *cobra.Command, args []string) error {
 	return c.Pause(ctx, args, cmd.OutOrStdout())
 }
 
-func newComposeUnpauseCommand() *cobra.Command {
+func unpauseCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:                   "unpause [SERVICE...]",
 		Short:                 "Unpause all processes within containers of service(s).",
-		RunE:                  composeUnpauseAction,
+		RunE:                  unpauseAction,
 		SilenceUsage:          true,
 		SilenceErrors:         true,
 		DisableFlagsInUseLine: true,
@@ -71,7 +71,7 @@ func newComposeUnpauseCommand() *cobra.Command {
 	return cmd
 }
 
-func composeUnpauseAction(cmd *cobra.Command, args []string) error {
+func unpauseAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

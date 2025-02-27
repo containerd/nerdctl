@@ -29,7 +29,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
-func NewImagesCommand() *cobra.Command {
+func ImagesCommand() *cobra.Command {
 	shortHelp := "List images"
 	longHelp := shortHelp + `
 
@@ -70,7 +70,7 @@ Properties:
 	return cmd
 }
 
-func processImageListOptions(cmd *cobra.Command, args []string) (*types.ImageListOptions, error) {
+func listOptions(cmd *cobra.Command, args []string) (*types.ImageListOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func processImageListOptions(cmd *cobra.Command, args []string) (*types.ImageLis
 }
 
 func imagesAction(cmd *cobra.Command, args []string) error {
-	options, err := processImageListOptions(cmd, args)
+	options, err := listOptions(cmd, args)
 	if err != nil {
 		return err
 	}

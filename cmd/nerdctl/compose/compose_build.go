@@ -25,11 +25,11 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposeBuildCommand() *cobra.Command {
+func buildCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "build [flags] [SERVICE...]",
 		Short:         "Build or rebuild services",
-		RunE:          composeBuildAction,
+		RunE:          buildAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -40,7 +40,7 @@ func newComposeBuildCommand() *cobra.Command {
 	return cmd
 }
 
-func composeBuildAction(cmd *cobra.Command, args []string) error {
+func buildAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

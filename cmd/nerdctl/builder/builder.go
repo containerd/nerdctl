@@ -30,7 +30,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/builder"
 )
 
-func NewBuilderCommand() *cobra.Command {
+func Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "builder",
@@ -40,20 +40,20 @@ func NewBuilderCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	cmd.AddCommand(
-		NewBuildCommand(),
-		newBuilderPruneCommand(),
-		newBuilderDebugCommand(),
+		BuildCommand(),
+		pruneCommand(),
+		debugCommand(),
 	)
 	return cmd
 }
 
-func newBuilderPruneCommand() *cobra.Command {
+func pruneCommand() *cobra.Command {
 	shortHelp := `Clean up BuildKit build cache`
 	var cmd = &cobra.Command{
 		Use:           "prune",
 		Args:          cobra.NoArgs,
 		Short:         shortHelp,
-		RunE:          builderPruneAction,
+		RunE:          pruneAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -65,8 +65,8 @@ func newBuilderPruneCommand() *cobra.Command {
 	return cmd
 }
 
-func builderPruneAction(cmd *cobra.Command, _ []string) error {
-	options, err := processBuilderPruneOptions(cmd)
+func pruneAction(cmd *cobra.Command, _ []string) error {
+	options, err := pruneOptions(cmd)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func builderPruneAction(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func processBuilderPruneOptions(cmd *cobra.Command) (types.BuilderPruneOptions, error) {
+func pruneOptions(cmd *cobra.Command) (types.BuilderPruneOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.BuilderPruneOptions{}, err
@@ -131,13 +131,13 @@ func processBuilderPruneOptions(cmd *cobra.Command) (types.BuilderPruneOptions, 
 	}, nil
 }
 
-func newBuilderDebugCommand() *cobra.Command {
+func debugCommand() *cobra.Command {
 	shortHelp := `Debug Dockerfile`
 	var cmd = &cobra.Command{
 		Use:           "debug",
 		Short:         shortHelp,
 		PreRunE:       helpers.CheckExperimental("`nerdctl builder debug`"),
-		RunE:          builderDebugAction,
+		RunE:          debugAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -150,7 +150,7 @@ func newBuilderDebugCommand() *cobra.Command {
 	return cmd
 }
 
-func builderDebugAction(cmd *cobra.Command, args []string) error {
+func debugAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

@@ -57,7 +57,7 @@ type updateResourceOptions struct {
 	BlkioWeight        uint16
 }
 
-func NewUpdateCommand() *cobra.Command {
+func UpdateCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "update [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
