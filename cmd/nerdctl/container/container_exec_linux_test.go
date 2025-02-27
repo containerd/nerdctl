@@ -19,9 +19,11 @@ package container
 import (
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestExecWithUser(t *testing.T) {
@@ -74,7 +76,7 @@ func TestExecTTY(t *testing.T) {
 				cmd.WithPseudoTTY()
 				return cmd
 			},
-			Expected: test.Expects(0, nil, test.Contains(sttyPartialOutput)),
+			Expected: test.Expects(0, nil, expect.Contains(sttyPartialOutput)),
 		},
 		{
 			Description: "stty with -t",
@@ -83,7 +85,7 @@ func TestExecTTY(t *testing.T) {
 				cmd.WithPseudoTTY()
 				return cmd
 			},
-			Expected: test.Expects(0, nil, test.Contains(sttyPartialOutput)),
+			Expected: test.Expects(0, nil, expect.Contains(sttyPartialOutput)),
 		},
 		{
 			Description: "stty with -i",
@@ -92,7 +94,7 @@ func TestExecTTY(t *testing.T) {
 				cmd.WithPseudoTTY()
 				return cmd
 			},
-			Expected: test.Expects(test.ExitCodeGenericFail, nil, nil),
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 		},
 		{
 			Description: "stty without params",
@@ -101,7 +103,7 @@ func TestExecTTY(t *testing.T) {
 				cmd.WithPseudoTTY()
 				return cmd
 			},
-			Expected: test.Expects(test.ExitCodeGenericFail, nil, nil),
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 		},
 	}
 

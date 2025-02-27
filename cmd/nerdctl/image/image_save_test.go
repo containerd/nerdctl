@@ -25,10 +25,13 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestSaveContent(t *testing.T) {
@@ -36,7 +39,7 @@ func TestSaveContent(t *testing.T) {
 
 	testCase := &test.Case{
 		// FIXME: move to busybox for windows?
-		Require: test.Not(test.Windows),
+		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 		},
@@ -103,7 +106,7 @@ func TestSave(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm", data.Get("id"), "sh", "-euxc", "echo foo")
 			},
-			Expected: test.Expects(0, nil, test.Equals("foo\n")),
+			Expected: test.Expects(0, nil, expect.Equals("foo\n")),
 		},
 		{
 			Description: "Image with different names, by id",
@@ -132,7 +135,7 @@ func TestSave(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm", data.Get("id"), "sh", "-euxc", "echo foo")
 			},
-			Expected: test.Expects(0, nil, test.Equals("foo\n")),
+			Expected: test.Expects(0, nil, expect.Equals("foo\n")),
 		},
 	}
 

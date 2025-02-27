@@ -25,10 +25,11 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 const defaultNamespace = testutil.Namespace

@@ -30,12 +30,12 @@ import (
 	"github.com/containerd/cgroups/v3"
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/continuity/testutil/loopback"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestRunCgroupV2(t *testing.T) {
@@ -178,7 +178,7 @@ func TestRunCgroupV1(t *testing.T) {
 func TestIssue3781(t *testing.T) {
 	t.Parallel()
 	testCase := nerdtest.Setup()
-	testCase.Require = test.Not(nerdtest.Docker)
+	testCase.Require = require.Not(nerdtest.Docker)
 
 	base := testutil.NewBase(t)
 	info := base.Info()

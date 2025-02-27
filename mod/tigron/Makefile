@@ -34,7 +34,7 @@ ifdef VERBOSE
 	VERBOSE_FLAG_LONG := --verbose
 endif
 
-ifndef DC_NO_FANCY
+ifndef NO_COLORS
     NC := \033[0m
     GREEN := \033[1;32m
     ORANGE := \033[1;33m

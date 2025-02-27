@@ -14,23 +14,27 @@
    limitations under the License.
 */
 
-package test
+package expect_test
 
 import (
-	"crypto/rand"
-	"encoding/base64"
-	"fmt"
+	"regexp"
+	"testing"
+
+	"github.com/containerd/nerdctl/mod/tigron/expect"
 )
 
-// RandomStringBase64 generates a base64 encoded random string
-func RandomStringBase64(n int) string {
-	b := make([]byte, n)
-	l, err := rand.Read(b)
-	if err != nil {
-		panic(err)
-	}
-	if l != n {
-		panic(fmt.Errorf("expected %d bytes, got %d bytes", n, l))
-	}
-	return base64.URLEncoding.EncodeToString(b)
+func TestExpect(t *testing.T) {
+	t.Parallel()
+
+	expect.Contains("b")("a b c", "info", t)
+	expect.DoesNotContain("d")("a b c", "info", t)
+	expect.Equals("a b c")("a b c", "info", t)
+	expect.Match(regexp.MustCompile("[a-z ]+"))("a b c", "info", t)
+
+	expect.All(
+		expect.Contains("b"),
+		expect.DoesNotContain("d"),
+		expect.Equals("a b c"),
+		expect.Match(regexp.MustCompile("[a-z ]+")),
+	)("a b c", "info", t)
 }

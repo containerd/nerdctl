@@ -24,9 +24,12 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestNetworkInspect(t *testing.T) {
@@ -86,7 +89,7 @@ func TestNetworkInspect(t *testing.T) {
 		},
 		{
 			Description: "bridge",
-			Require:     test.Not(test.Windows),
+			Require:     require.Not(require.Windows),
 			Command:     test.Command("network", "inspect", "bridge"),
 			Expected: test.Expects(0, nil, func(stdout string, info string, t *testing.T) {
 				var dc []dockercompat.Network
@@ -98,7 +101,7 @@ func TestNetworkInspect(t *testing.T) {
 		},
 		{
 			Description: "nat",
-			Require:     test.Windows,
+			Require:     require.Windows,
 			Command:     test.Command("network", "inspect", "nat"),
 			Expected: test.Expects(0, nil, func(stdout string, info string, t *testing.T) {
 				var dc []dockercompat.Network
@@ -148,7 +151,7 @@ func TestNetworkInspect(t *testing.T) {
 			Description: "match part of id",
 			// FIXME: for windows, network inspect testnetworkinspect-basenet-468cf999 --format {{ .Id }} MAY fail here
 			// This is bizarre, as it is working in the match exact id test - and there does not seem to be a particular reason for that
-			Require: test.Not(test.Windows),
+			Require: require.Not(require.Windows),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				id := strings.TrimSpace(helpers.Capture("network", "inspect", data.Get("basenet"), "--format", "{{ .Id }}"))
 				return helpers.Command("network", "inspect", id[0:25])
@@ -169,7 +172,7 @@ func TestNetworkInspect(t *testing.T) {
 			Description: "using another net short id",
 			// FIXME: for windows, network inspect testnetworkinspect-basenet-468cf999 --format {{ .Id }} MAY fail here
 			// This is bizarre, as it is working in the match exact id test - and there does not seem to be a particular reason for that
-			Require: test.Not(test.Windows),
+			Require: require.Not(require.Windows),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				id := strings.TrimSpace(helpers.Capture("network", "inspect", data.Get("basenet"), "--format", "{{ .Id }}"))
 				helpers.Ensure("network", "create", id[0:12])
@@ -196,7 +199,7 @@ func TestNetworkInspect(t *testing.T) {
 		{
 			Description: "basic",
 			// FIXME: IPAMConfig is not implemented on Windows yet
-			Require: test.Not(test.Windows),
+			Require: require.Not(require.Windows),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", "--label", "tag=testNetwork", "--subnet", testSubnet,
 					"--gateway", testGateway, "--ip-range", testIPRange, data.Identifier())
@@ -230,7 +233,7 @@ func TestNetworkInspect(t *testing.T) {
 		},
 		{
 			Description: "with namespace",
-			Require:     test.Not(nerdtest.Docker),
+			Require:     require.Not(nerdtest.Docker),
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				identifier := data.Identifier()
 				helpers.Anyhow("network", "rm", identifier)
@@ -263,13 +266,13 @@ func TestNetworkInspect(t *testing.T) {
 						com = cmd.Clone()
 						com.WithArgs("network", "ls")
 						com.Run(&test.Expected{
-							Output: test.DoesNotContain(data.Identifier()),
+							Output: expect.DoesNotContain(data.Identifier()),
 						})
 
 						com = cmd.Clone()
 						com.WithArgs("network", "prune", "-f")
 						com.Run(&test.Expected{
-							Output: test.DoesNotContain(data.Identifier()),
+							Output: expect.DoesNotContain(data.Identifier()),
 						})
 					},
 				}

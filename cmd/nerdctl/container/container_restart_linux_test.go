@@ -25,9 +25,11 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestRestart(t *testing.T) {
@@ -144,9 +146,9 @@ func TestRestartWithSignal(t *testing.T) {
 		return &test.Expected{
 			// Check the container did indeed exit
 			ExitCode: 137,
-			Output: test.All(
+			Output: expect.All(
 				// Check that we saw SIGUSR1 inside the container
-				test.Contains(nerdtest.SignalCaught),
+				expect.Contains(nerdtest.SignalCaught),
 				func(stdout string, info string, t *testing.T) {
 					// Ensure the container was restarted
 					nerdtest.EnsureContainerStarted(helpers, data.Identifier())

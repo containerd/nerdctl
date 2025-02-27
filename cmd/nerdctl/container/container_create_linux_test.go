@@ -28,12 +28,13 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/containerd/v2/defaults"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestCreateWithLabel(t *testing.T) {
@@ -178,7 +179,7 @@ func TestCreateWithTty(t *testing.T) {
 func TestIssue2993(t *testing.T) {
 	testCase := nerdtest.Setup()
 
-	testCase.Require = test.Not(nerdtest.Docker)
+	testCase.Require = require.Not(nerdtest.Docker)
 
 	const (
 		containersPathKey = "containersPath"

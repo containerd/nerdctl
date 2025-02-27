@@ -23,10 +23,12 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	ipv6helper "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestNetworkCreate(t *testing.T) {
@@ -74,7 +76,7 @@ func TestNetworkCreate(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.CommonImage, "ifconfig", "eth0")
 			},
-			Expected: test.Expects(0, nil, test.Contains("MTU:9216")),
+			Expected: test.Expects(0, nil, expect.Contains("MTU:9216")),
 		},
 		{
 			Description: "with ipv6",

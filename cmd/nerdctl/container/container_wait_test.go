@@ -19,9 +19,11 @@ package container
 import (
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestWait(t *testing.T) {
@@ -41,7 +43,7 @@ func TestWait(t *testing.T) {
 		return helpers.Command("wait", data.Identifier("1"), data.Identifier("2"), data.Identifier("3"))
 	}
 
-	testCase.Expected = test.Expects(0, nil, test.Equals(`0
+	testCase.Expected = test.Expects(0, nil, expect.Equals(`0
 0
 123
 `))

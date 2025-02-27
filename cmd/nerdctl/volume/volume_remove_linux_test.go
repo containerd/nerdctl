@@ -24,10 +24,11 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/errdefs"
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 // TestVolumeRemove does test a large variety of volume remove situations, albeit none of them being
@@ -123,7 +124,7 @@ func TestVolumeRemove(t *testing.T) {
 
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Equals(data.Identifier() + "\n"),
+					Output: expect.Equals(data.Identifier() + "\n"),
 				}
 			},
 		},
@@ -144,7 +145,7 @@ func TestVolumeRemove(t *testing.T) {
 
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Equals(data.Identifier() + "\n"),
+					Output: expect.Equals(data.Identifier() + "\n"),
 				}
 			},
 		},
@@ -175,7 +176,7 @@ func TestVolumeRemove(t *testing.T) {
 						errdefs.ErrFailedPrecondition,
 						errdefs.ErrInvalidArgument,
 					},
-					Output: test.Equals(data.Identifier() + "\n"),
+					Output: expect.Equals(data.Identifier() + "\n"),
 				}
 			},
 		},
@@ -197,7 +198,7 @@ func TestVolumeRemove(t *testing.T) {
 
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Equals(data.Identifier("1") + "\n" + data.Identifier("2") + "\n"),
+					Output: expect.Equals(data.Identifier("1") + "\n" + data.Identifier("2") + "\n"),
 				}
 			},
 		},

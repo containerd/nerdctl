@@ -23,8 +23,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 const SignalCaught = "received"

@@ -30,12 +30,40 @@ import (
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test/internal/pty"
+	"github.com/containerd/nerdctl/mod/tigron/test/internal"
+	"github.com/containerd/nerdctl/mod/tigron/test/internal/pty"
 )
 
-const ExitCodeGenericFail = -1
-const ExitCodeNoCheck = -2
-const ExitCodeTimeout = -3
+// CustomizableCommand is an interface meant for people who want to heavily customize the base command
+// of their test case.
+type CustomizableCommand interface {
+	TestableCommand
+
+	PrependArgs(args ...string)
+	// WithBlacklist allows to filter out unwanted variables from the embedding environment -
+	// default it pass any that is defined by WithEnv
+	WithBlacklist(env []string)
+
+	// withEnv *copies* the passed map to the environment of the command to be executed
+	// Note that this will override any variable defined in the embedding environment
+	withEnv(env map[string]string)
+	// withTempDir specifies a temporary directory to use
+	withTempDir(path string)
+	// WithConfig allows passing custom config properties from the test to the base command
+	withConfig(config Config)
+	withT(t *testing.T)
+	// Clear does a clone, but will clear binary and arguments, but retain the env, or any other custom properties
+	// Gotcha: if GenericCommand is embedded with a custom Run and an overridden clear to return the embedding type
+	// the result will be the embedding command, no longer the GenericCommand
+	clear() TestableCommand
+
+	// Will manipulate specific configuration option on the command
+	// Note that config is a copy of the test config
+	// Any modification done here will not be passed along to subtests, although they are shared
+	// amongst all commands of the test.
+	write(key ConfigKey, value ConfigValue)
+	read(key ConfigKey) ConfigValue
+}
 
 // GenericCommand is a concrete Command implementation
 type GenericCommand struct {
@@ -148,14 +176,14 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		// Build the debug string - additionally attach the env (which iCmd does not do)
 		debug := result.String() + "Env:\n" + strings.Join(env, "\n")
 		// ExitCode goes first
-		if expect.ExitCode == ExitCodeNoCheck { //nolint:revive
+		if expect.ExitCode == internal.ExitCodeNoCheck { //nolint:revive
 			// ExitCodeNoCheck means we do not care at all about exit code. It can be a failure, a success, or a timeout.
-		} else if expect.ExitCode == ExitCodeGenericFail {
+		} else if expect.ExitCode == internal.ExitCodeGenericFail {
 			// ExitCodeGenericFail means we expect an error (excluding timeout).
 			assert.Assert(gc.t, result.ExitCode != 0,
 				"Command succeeded while we were expecting an error\n"+debug)
 		} else if result.Timeout {
-			assert.Assert(gc.t, expect.ExitCode == ExitCodeTimeout,
+			assert.Assert(gc.t, expect.ExitCode == internal.ExitCodeTimeout,
 				"Command unexpectedly timed-out\n"+debug)
 		} else {
 			assert.Assert(gc.t, expect.ExitCode == result.ExitCode,
