@@ -56,7 +56,7 @@ endif
 
 export GO_BUILD=CGO_ENABLED=0 GOOS=$(GOOS) $(GO) -C $(MAKEFILE_DIR) build -ldflags "$(GO_BUILD_LDFLAGS) $(VERBOSE_FLAG) -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
 
-ifndef NO_COLORS
+ifndef NO_COLOR
     NC := \033[0m
     GREEN := \033[1;32m
     ORANGE := \033[1;33m
