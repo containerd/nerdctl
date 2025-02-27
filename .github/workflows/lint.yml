@@ -68,11 +68,13 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
+      - name: install required linters and dev-tools
+        run: |
+          make install-dev-tools
       - name: yaml
         run: make lint-yaml
       - name: shell
         run: make lint-shell
       - name: go imports ordering
         run: |
-          go install -v github.com/incu6us/goimports-reviser/v3@latest
           make lint-imports

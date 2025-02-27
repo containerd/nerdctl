@@ -136,7 +136,12 @@ linters-settings:
       - unnecessaryBlock
 
 issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
   exclude-rules:
     - linters:
         - revive
       text: "unused-parameter"
+
+output:
+  sort-results: true
