@@ -19,6 +19,7 @@ package container
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"slices"
 	"strings"
 	"testing"
@@ -246,7 +247,6 @@ func TestContainerInspectHostConfig(t *testing.T) {
 	base.Cmd("run", "-d", "--name", testContainer,
 		"--cpuset-cpus", "0-1",
 		"--cpuset-mems", "0",
-		"--blkio-weight", "500",
 		"--cpu-shares", "1024",
 		"--cpu-quota", "100000",
 		"--group-add", "1000",
@@ -266,7 +266,6 @@ func TestContainerInspectHostConfig(t *testing.T) {
 
 	assert.Equal(t, "0-1", inspect.HostConfig.CPUSetCPUs)
 	assert.Equal(t, "0", inspect.HostConfig.CPUSetMems)
-	assert.Equal(t, uint16(500), inspect.HostConfig.BlkioWeight)
 	assert.Equal(t, uint64(1024), inspect.HostConfig.CPUShares)
 	assert.Equal(t, int64(100000), inspect.HostConfig.CPUQuota)
 	assert.Assert(t, slices.Contains(inspect.HostConfig.GroupAdd, "1000"), "Expected '1000' to be in GroupAdd")
@@ -311,6 +310,11 @@ func TestContainerInspectHostConfigDefaults(t *testing.T) {
 	assert.Equal(t, "", inspect.HostConfig.CPUSetCPUs)
 	assert.Equal(t, "", inspect.HostConfig.CPUSetMems)
 	assert.Equal(t, uint16(0), inspect.HostConfig.BlkioWeight)
+	assert.Equal(t, 0, len(inspect.HostConfig.BlkioWeightDevice))
+	assert.Equal(t, 0, len(inspect.HostConfig.BlkioDeviceReadBps))
+	assert.Equal(t, 0, len(inspect.HostConfig.BlkioDeviceReadIOps))
+	assert.Equal(t, 0, len(inspect.HostConfig.BlkioDeviceWriteBps))
+	assert.Equal(t, 0, len(inspect.HostConfig.BlkioDeviceWriteIOps))
 	assert.Equal(t, uint64(0), inspect.HostConfig.CPUShares)
 	assert.Equal(t, int64(0), inspect.HostConfig.CPUQuota)
 	assert.Equal(t, hc.GroupAddSize, len(inspect.HostConfig.GroupAdd))
@@ -454,6 +458,60 @@ func TestContainerInspectDevices(t *testing.T) {
 		},
 	}
 	assert.DeepEqual(t, expectedDevices, inspect.HostConfig.Devices)
+}
+
+func TestContainerInspectBlkioSettings(t *testing.T) {
+	testutil.DockerIncompatible(t)
+	testContainer := testutil.Identifier(t)
+	// Some of the blkio settings are not supported in cgroup v1.
+	// So skip this test if running on cgroup v1
+	if infoutil.CgroupsVersion() == "1" {
+		t.Skip("test skipped for rootless containers or if running with cgroup v1")
+	}
+
+	if rootlessutil.IsRootless() {
+		t.Skip("test requires root privilege to create a dummy device")
+	}
+
+	devPath := "/dev/dummy-zero"
+	// a dummy zero device: mknod /dev/dummy-zero c 1 5
+	helperCmd := exec.Command("mknod", []string{devPath, "c", "1", "5"}...)
+	if out, err := helperCmd.CombinedOutput(); err != nil {
+		err = fmt.Errorf("cannot create %q: %q: %w", devPath, string(out), err)
+		t.Fatal(err)
+	}
+
+	// ensure the file will be removed in case of failed in the test
+	defer func() {
+		if err := exec.Command("rm", "-f", devPath).Run(); err != nil {
+			t.Logf("failed to remove device %s: %v", devPath, err)
+		}
+	}()
+
+	base := testutil.NewBase(t)
+	defer base.Cmd("rm", "-f", testContainer).AssertOK()
+
+	base.Cmd("run", "-d", "--name", testContainer,
+		"--blkio-weight", "500",
+		"--blkio-weight-device", "/dev/dummy-zero:500",
+		"--device-read-bps", "/dev/dummy-zero:1048576",
+		"--device-read-iops", "/dev/dummy-zero:1000",
+		"--device-write-bps", "/dev/dummy-zero:2097152",
+		"--device-write-iops", "/dev/dummy-zero:2000",
+		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+
+	inspect := base.InspectContainer(testContainer)
+	assert.Equal(t, uint16(500), inspect.HostConfig.BlkioWeight)
+	assert.Equal(t, 1, len(inspect.HostConfig.BlkioWeightDevice))
+	assert.Equal(t, uint16(500), *inspect.HostConfig.BlkioWeightDevice[0].Weight)
+	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceReadBps))
+	assert.Equal(t, uint64(1048576), inspect.HostConfig.BlkioDeviceReadBps[0].Rate)
+	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceWriteBps))
+	assert.Equal(t, uint64(2097152), inspect.HostConfig.BlkioDeviceWriteBps[0].Rate)
+	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceReadIOps))
+	assert.Equal(t, uint64(1000), inspect.HostConfig.BlkioDeviceReadIOps[0].Rate)
+	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceWriteIOps))
+	assert.Equal(t, uint64(2000), inspect.HostConfig.BlkioDeviceWriteIOps[0].Rate)
 }
 
 type hostConfigValues struct {
