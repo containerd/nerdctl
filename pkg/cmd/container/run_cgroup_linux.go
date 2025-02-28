@@ -180,14 +180,11 @@ func generateCgroupOpts(id string, options types.ContainerCreateOptions, interna
 	}
 	opts = append(opts, withUnified(unifieds))
 
-	if options.BlkioWeight != 0 && !infoutil.BlockIOWeight(options.GOptions.CgroupManager) {
-		log.L.Warn("kernel support for cgroup blkio weight missing, weight discarded")
-		options.BlkioWeight = 0
+	blkioOpts, err := BlkioOCIOpts(options)
+	if err != nil {
+		return nil, err
 	}
-	if options.BlkioWeight > 0 && options.BlkioWeight < 10 || options.BlkioWeight > 1000 {
-		return nil, errors.New("range of blkio weight is from 10 to 1000")
-	}
-	opts = append(opts, withBlkioWeight(options.BlkioWeight))
+	opts = append(opts, blkioOpts...)
 
 	switch options.Cgroupns {
 	case "private":
@@ -310,16 +307,6 @@ func withUnified(unified map[string]string) oci.SpecOpts {
 		for k, v := range unified {
 			s.Linux.Resources.Unified[k] = v
 		}
-		return nil
-	}
-}
-
-func withBlkioWeight(blkioWeight uint16) oci.SpecOpts {
-	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
-		if blkioWeight == 0 {
-			return nil
-		}
-		s.Linux.Resources.BlockIO = &specs.LinuxBlockIO{Weight: &blkioWeight}
 		return nil
 	}
 }

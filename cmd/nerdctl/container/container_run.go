@@ -155,7 +155,6 @@ func setCreateFlags(cmd *cobra.Command) {
 	})
 	cmd.Flags().Int64("pids-limit", -1, "Tune container pids limit (set -1 for unlimited)")
 	cmd.Flags().StringSlice("cgroup-conf", nil, "Configure cgroup v2 (key=value)")
-	cmd.Flags().Uint16("blkio-weight", 0, "Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)")
 	cmd.Flags().String("cgroupns", defaults.CgroupnsMode(), `Cgroup namespace to use, the default depends on the cgroup version ("host"|"private")`)
 	cmd.Flags().String("cgroup-parent", "", "Optional parent cgroup for the container")
 	cmd.RegisterFlagCompletionFunc("cgroupns", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -171,6 +170,15 @@ func setCreateFlags(cmd *cobra.Command) {
 	// ulimit is defined as StringSlice, not StringArray, to allow specifying "--ulimit=ULIMIT1,ULIMIT2" (compatible with Podman)
 	cmd.Flags().StringSlice("ulimit", nil, "Ulimit options")
 	cmd.Flags().String("rdt-class", "", "Name of the RDT class (or CLOS) to associate the container with")
+	// #endregion
+
+	// #region blkio flags
+	cmd.Flags().Uint16("blkio-weight", 0, "Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)")
+	cmd.Flags().StringArray("blkio-weight-device", []string{}, "Block IO weight (relative device weight) (default [])")
+	cmd.Flags().StringArray("device-read-bps", []string{}, "Limit read rate (bytes per second) from a device (default [])")
+	cmd.Flags().StringArray("device-read-iops", []string{}, "Limit read rate (IO per second) from a device (default [])")
+	cmd.Flags().StringArray("device-write-bps", []string{}, "Limit write rate (bytes per second) to a device (default [])")
+	cmd.Flags().StringArray("device-write-iops", []string{}, "Limit write rate (IO per second) to a device (default [])")
 	// #endregion
 
 	// user flags

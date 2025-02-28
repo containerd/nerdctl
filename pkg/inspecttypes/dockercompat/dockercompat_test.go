@@ -82,8 +82,9 @@ func TestContainerFromNative(t *testing.T) {
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
-					UTSMode: "host",
-					Tmpfs:   map[string]string{},
+					UTSMode:            "host",
+					Tmpfs:              map[string]string{},
+					LinuxBlkioSettings: getDefaultLinuxBlkioSettings(),
 				},
 				Mounts: []MountPoint{
 					{
@@ -174,8 +175,9 @@ func TestContainerFromNative(t *testing.T) {
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
-					UTSMode: "host",
-					Tmpfs:   map[string]string{},
+					UTSMode:            "host",
+					Tmpfs:              map[string]string{},
+					LinuxBlkioSettings: getDefaultLinuxBlkioSettings(),
 				},
 				Mounts: []MountPoint{
 					{
@@ -264,8 +266,9 @@ func TestContainerFromNative(t *testing.T) {
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
-					UTSMode: "host",
-					Tmpfs:   map[string]string{},
+					UTSMode:            "host",
+					Tmpfs:              map[string]string{},
+					LinuxBlkioSettings: getDefaultLinuxBlkioSettings(),
 				},
 				Mounts: []MountPoint{
 					{
