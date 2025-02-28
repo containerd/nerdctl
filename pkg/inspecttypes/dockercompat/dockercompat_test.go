@@ -140,6 +140,12 @@ func TestContainerFromNative(t *testing.T) {
 							Source:      "sysfs",
 							Options:     []string{"nosuid", "noexec", "nodev", "ro"},
 						},
+						{
+							Destination: "/etc/hosts",
+							Type:        "bind",
+							Source:      "/mock-sandbox-dir/hosts",
+							Options:     []string{"bind", "rprivate", "rw"},
+						},
 					},
 				},
 				Process: &native.Process{
@@ -154,6 +160,7 @@ func TestContainerFromNative(t *testing.T) {
 				Platform:       runtime.GOOS,
 				ResolvConfPath: "/mock-sandbox-dir/resolv.conf",
 				HostnamePath:   "/mock-sandbox-dir/hostname",
+				HostsPath:      "/mock-sandbox-dir/hosts",
 				State: &ContainerState{
 					Status:     "running",
 					Running:    true,
@@ -194,6 +201,14 @@ func TestContainerFromNative(t *testing.T) {
 						Mode:        "rbind,rslave,rw",
 						RW:          true,
 						Propagation: "rslave",
+					},
+					{
+						Type:        "bind",
+						Source:      "/mock-sandbox-dir/hosts",
+						Destination: "/etc/hosts",
+						Mode:        "bind,rprivate,rw",
+						RW:          true,
+						Propagation: "rprivate",
 					},
 					// ignore sysfs mountpoint
 				},
