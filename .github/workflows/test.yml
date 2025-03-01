@@ -32,10 +32,10 @@ jobs:
             containerd: v1.7.25
             arch: amd64
           - runner: ubuntu-24.04
-            containerd: v2.0.2
+            containerd: v2.0.3
             arch: amd64
           - runner: ubuntu-24.04-arm
-            containerd: v2.0.2
+            containerd: v2.0.3
             arch: arm64
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -115,11 +115,11 @@ jobs:
             runner: "ubuntu-22.04"
             arch: amd64
           - ubuntu: 24.04
-            containerd: v2.0.2
+            containerd: v2.0.3
             runner: "ubuntu-24.04"
             arch: amd64
           - ubuntu: 24.04
-            containerd: v2.0.2
+            containerd: v2.0.3
             runner: ubuntu-24.04-arm
             arch: arm64
     env:
@@ -169,7 +169,7 @@ jobs:
       matrix:
         include:
           - ubuntu: 24.04
-            containerd: v2.0.2
+            containerd: v2.0.3
             arch: amd64
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -241,7 +241,7 @@ jobs:
             target: rootless
             arch: amd64
           - ubuntu: 24.04
-            containerd: v2.0.2
+            containerd: v2.0.3
             rootlesskit: v2.3.2
             target: rootless
             arch: amd64
@@ -406,7 +406,7 @@ jobs:
           key: vagrant-${{ matrix.box }}
       - name: Set up vagrant
         run: |
-          # from https://github.com/containerd/containerd/blob/v2.0.2/.github/workflows/ci.yml#L583-L596
+          # from https://github.com/containerd/containerd/blob/v2.0.3/.github/workflows/ci.yml#L583-L596
           # which is based on https://github.com/opencontainers/runc/blob/v1.1.8/.cirrus.yml#L41-L49
           curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
