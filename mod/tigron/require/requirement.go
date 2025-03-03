@@ -26,7 +26,7 @@ import (
 
 func Binary(name string) *test.Requirement {
 	return &test.Requirement{
-		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+		Check: func(_ test.Data, _ test.Helpers) (bool, string) {
 			mess := fmt.Sprintf("executable %q has been found in PATH", name)
 			ret := true
 			if _, err := exec.LookPath(name); err != nil {
@@ -41,7 +41,7 @@ func Binary(name string) *test.Requirement {
 
 func OS(os string) *test.Requirement {
 	return &test.Requirement{
-		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+		Check: func(_ test.Data, _ test.Helpers) (bool, string) {
 			mess := fmt.Sprintf("current operating system is %q", runtime.GOOS)
 			ret := true
 			if runtime.GOOS != os {
@@ -55,7 +55,7 @@ func OS(os string) *test.Requirement {
 
 func Arch(arch string) *test.Requirement {
 	return &test.Requirement{
-		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+		Check: func(_ test.Data, _ test.Helpers) (bool, string) {
 			mess := fmt.Sprintf("current architecture is %q", runtime.GOARCH)
 			ret := true
 			if runtime.GOARCH != arch {
@@ -67,18 +67,22 @@ func Arch(arch string) *test.Requirement {
 	}
 }
 
-var Amd64 = Arch("amd64")
-var Arm64 = Arch("arm64")
-var Windows = OS("windows")
-var Linux = OS("linux")
-var Darwin = OS("darwin")
+//nolint:gochecknoglobals
+var (
+	Amd64   = Arch("amd64")
+	Arm64   = Arch("arm64")
+	Windows = OS("windows")
+	Linux   = OS("linux")
+	Darwin  = OS("darwin")
+)
 
-// NOTE: Not will always lose setups and cleanups...
+// NOTE: Not will always ignore any setup and cleanup inside the wrapped requirement.
 
 func Not(requirement *test.Requirement) *test.Requirement {
 	return &test.Requirement{
 		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
 			ret, mess := requirement.Check(data, helpers)
+
 			return !ret, mess
 		},
 	}
@@ -93,10 +97,12 @@ func All(requirements ...*test.Requirement) *test.Requirement {
 			for _, requirement := range requirements {
 				ret, subMess = requirement.Check(data, helpers)
 				mess += "\n" + subMess
+
 				if !ret {
 					return ret, mess
 				}
 			}
+
 			return ret, mess
 		},
 		Setup: func(data test.Data, helpers test.Helpers) {

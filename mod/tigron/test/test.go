@@ -25,9 +25,10 @@ type Testable interface {
 	AmbientRequirements(testCase *Case, t *testing.T)
 }
 
-var (
-	registeredTestable Testable
-)
+// FIXME
+//
+//nolint:gochecknoglobals
+var registeredTestable Testable
 
 func Customize(testable Testable) {
 	registeredTestable = testable
