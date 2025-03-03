@@ -18,14 +18,12 @@ package container
 
 import (
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
-	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -43,11 +41,6 @@ func TestStats(t *testing.T) {
 			testCase.Require,
 			nerdtest.CgroupsAccessible,
 		)
-	}
-
-	if unameR := infoutil.UnameR(); strings.Contains(unameR, ".el8") {
-		t.Logf("Assuming to be running on EL8 (kernel release %q)", unameR)
-		t.Skip("FIXME: the test seems to hang on EL8: https://github.com/containerd/nerdctl/pull/3904#issuecomment-2693931822")
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
