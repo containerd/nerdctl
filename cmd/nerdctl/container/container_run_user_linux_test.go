@@ -168,7 +168,7 @@ func TestRunAddGroup_CVE_2023_25173(t *testing.T) {
 		},
 	}
 
-	base.Cmd("pull", testutil.BusyboxImage).AssertOK()
+	base.Cmd("pull", "--quiet", testutil.BusyboxImage).AssertOK()
 	for _, testCase := range testCases {
 		cmd := []string{"run", "--rm"}
 		if testCase.user != "" {

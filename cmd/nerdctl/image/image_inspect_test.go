@@ -39,7 +39,7 @@ func TestImageInspectSimpleCases(t *testing.T) {
 
 	testCase := &test.Case{
 		Setup: func(data test.Data, helpers test.Helpers) {
-			helpers.Ensure("pull", testutil.CommonImage)
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 		},
 		SubTests: []*test.Case{
 			{

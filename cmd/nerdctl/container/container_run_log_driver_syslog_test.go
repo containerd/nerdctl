@@ -39,7 +39,7 @@ func runSyslogTest(t *testing.T, networks []string, syslogFacilities map[string]
 	}
 
 	base := testutil.NewBase(t)
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
+	base.Cmd("pull", "--quiet", testutil.CommonImage).AssertOK()
 	hostname, err := os.Hostname()
 	if err != nil {
 		t.Fatalf("Error retrieving hostname")

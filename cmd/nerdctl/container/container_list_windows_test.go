@@ -38,7 +38,7 @@ type psTestContainer struct {
 func preparePsTestContainer(t *testing.T, identity string, restart bool, hyperv bool) (*testutil.Base, psTestContainer) {
 	base := testutil.NewBase(t)
 
-	base.Cmd("pull", testutil.NginxAlpineImage).AssertOK()
+	base.Cmd("pull", "--quiet", testutil.NginxAlpineImage).AssertOK()
 
 	testContainerName := testutil.Identifier(t) + identity
 	t.Cleanup(func() {

@@ -113,7 +113,7 @@ func TestMultiPlatformPullPushAllPlatforms(t *testing.T) {
 	pushImageName := fmt.Sprintf("localhost:%d/%s:latest", reg.Port, tID)
 	defer base.Cmd("rmi", pushImageName).Run()
 
-	base.Cmd("pull", "--all-platforms", testutil.AlpineImage).AssertOK()
+	base.Cmd("pull", "--quiet", "--all-platforms", testutil.AlpineImage).AssertOK()
 	base.Cmd("tag", testutil.AlpineImage, pushImageName).AssertOK()
 	base.Cmd("push", "--all-platforms", pushImageName).AssertOK()
 	testMultiPlatformRun(base, pushImageName)
