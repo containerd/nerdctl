@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/system"
 )
 
-func NewInfoCommand() *cobra.Command {
+func InfoCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "info",
 		Args:          cobra.NoArgs,
@@ -45,7 +45,7 @@ func NewInfoCommand() *cobra.Command {
 	return cmd
 }
 
-func processInfoOptions(cmd *cobra.Command) (types.SystemInfoOptions, error) {
+func infoOptions(cmd *cobra.Command) (types.SystemInfoOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.SystemInfoOptions{}, err
@@ -69,7 +69,7 @@ func processInfoOptions(cmd *cobra.Command) (types.SystemInfoOptions, error) {
 }
 
 func infoAction(cmd *cobra.Command, args []string) error {
-	options, err := processInfoOptions(cmd)
+	options, err := infoOptions(cmd)
 	if err != nil {
 		return err
 	}

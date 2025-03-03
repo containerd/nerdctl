@@ -24,7 +24,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/logout"
 )
 
-func NewLogoutCommand() *cobra.Command {
+func LogoutCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:               "logout [flags] [SERVER]",
 		Args:              cobra.MaximumNArgs(1),

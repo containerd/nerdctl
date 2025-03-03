@@ -26,7 +26,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 )
 
-func NewRenameCommand() *cobra.Command {
+func RenameCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "rename [flags] CONTAINER NEW_NAME",
 		Args:              helpers.IsExactArgs(2),
@@ -39,7 +39,7 @@ func NewRenameCommand() *cobra.Command {
 	return cmd
 }
 
-func processContainerRenameOptions(cmd *cobra.Command) (types.ContainerRenameOptions, error) {
+func renameOptions(cmd *cobra.Command) (types.ContainerRenameOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerRenameOptions{}, err
@@ -51,7 +51,7 @@ func processContainerRenameOptions(cmd *cobra.Command) (types.ContainerRenameOpt
 }
 
 func renameAction(cmd *cobra.Command, args []string) error {
-	options, err := processContainerRenameOptions(cmd)
+	options, err := renameOptions(cmd)
 	if err != nil {
 		return err
 	}

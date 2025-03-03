@@ -25,18 +25,18 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/defaults"
 )
 
-func newApparmorLoadCommand() *cobra.Command {
+func loadCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "load",
 		Short:         fmt.Sprintf("Load the default AppArmor profile %q. Requires root.", defaults.AppArmorProfileName),
 		Args:          cobra.NoArgs,
-		RunE:          apparmorLoadAction,
+		RunE:          loadAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
 	return cmd
 }
 
-func apparmorLoadAction(cmd *cobra.Command, args []string) error {
+func loadAction(cmd *cobra.Command, args []string) error {
 	return apparmor.Load()
 }

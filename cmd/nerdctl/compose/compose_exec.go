@@ -29,12 +29,12 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposeExecCommand() *cobra.Command {
+func execCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "exec [flags] SERVICE COMMAND [ARGS...]",
 		Short:         "Execute a command in a running container of the service",
 		Args:          cobra.MinimumNArgs(2),
-		RunE:          composeExecAction,
+		RunE:          execAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -61,7 +61,7 @@ func newComposeExecCommand() *cobra.Command {
 	return cmd
 }
 
-func composeExecAction(cmd *cobra.Command, args []string) error {
+func execAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

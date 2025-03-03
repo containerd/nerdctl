@@ -24,12 +24,12 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 )
 
-func newVolumeLsCommand() *cobra.Command {
+func listCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "ls",
 		Aliases:       []string{"list"},
 		Short:         "List volumes",
-		RunE:          volumeLsAction,
+		RunE:          listAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -45,7 +45,7 @@ func newVolumeLsCommand() *cobra.Command {
 	return cmd
 }
 
-func processVolumeLsOptions(cmd *cobra.Command) (types.VolumeListOptions, error) {
+func listOptions(cmd *cobra.Command) (types.VolumeListOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.VolumeListOptions{}, err
@@ -76,8 +76,8 @@ func processVolumeLsOptions(cmd *cobra.Command) (types.VolumeListOptions, error)
 	}, nil
 }
 
-func volumeLsAction(cmd *cobra.Command, args []string) error {
-	options, err := processVolumeLsOptions(cmd)
+func listAction(cmd *cobra.Command, args []string) error {
+	options, err := listOptions(cmd)
 	if err != nil {
 		return err
 	}

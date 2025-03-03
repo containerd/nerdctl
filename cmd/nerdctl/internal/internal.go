@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewInternalCommand() *cobra.Command {
+func Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "internal",
 		Short:         "DO NOT EXECUTE MANUALLY",

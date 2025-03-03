@@ -27,11 +27,11 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposeConfigCommand() *cobra.Command {
+func configCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "config",
 		Short:         "Validate and view the Compose file",
-		RunE:          composeConfigAction,
+		RunE:          configAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -45,7 +45,7 @@ func newComposeConfigCommand() *cobra.Command {
 	return cmd
 }
 
-func composeConfigAction(cmd *cobra.Command, args []string) error {
+func configAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

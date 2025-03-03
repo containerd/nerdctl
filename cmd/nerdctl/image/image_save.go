@@ -30,7 +30,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
 )
 
-func NewSaveCommand() *cobra.Command {
+func SaveCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "save",
 		Args:              cobra.MinimumNArgs(1),
@@ -53,7 +53,7 @@ func NewSaveCommand() *cobra.Command {
 	return cmd
 }
 
-func processImageSaveOptions(cmd *cobra.Command) (types.ImageSaveOptions, error) {
+func saveOptions(cmd *cobra.Command) (types.ImageSaveOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ImageSaveOptions{}, err
@@ -76,7 +76,7 @@ func processImageSaveOptions(cmd *cobra.Command) (types.ImageSaveOptions, error)
 }
 
 func saveAction(cmd *cobra.Command, args []string) error {
-	options, err := processImageSaveOptions(cmd)
+	options, err := saveOptions(cmd)
 	if err != nil {
 		return err
 	}

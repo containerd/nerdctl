@@ -32,7 +32,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 )
 
-func NewNamespaceCommand() *cobra.Command {
+func Command() *cobra.Command {
 	cmd := &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "namespace",
@@ -43,20 +43,20 @@ func NewNamespaceCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	cmd.AddCommand(newNamespaceLsCommand())
-	cmd.AddCommand(newNamespaceRmCommand())
-	cmd.AddCommand(newNamespaceCreateCommand())
-	cmd.AddCommand(newNamespacelabelUpdateCommand())
-	cmd.AddCommand(newNamespaceInspectCommand())
+	cmd.AddCommand(listCommand())
+	cmd.AddCommand(removeCommand())
+	cmd.AddCommand(createCommand())
+	cmd.AddCommand(updateCommand())
+	cmd.AddCommand(inspectCommand())
 	return cmd
 }
 
-func newNamespaceLsCommand() *cobra.Command {
+func listCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "ls",
 		Aliases:       []string{"list"},
 		Short:         "List containerd namespaces",
-		RunE:          namespaceLsAction,
+		RunE:          listAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -64,7 +64,7 @@ func newNamespaceLsCommand() *cobra.Command {
 	return cmd
 }
 
-func namespaceLsAction(cmd *cobra.Command, args []string) error {
+func listAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

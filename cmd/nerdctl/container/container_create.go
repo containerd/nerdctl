@@ -29,7 +29,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 )
 
-func NewCreateCommand() *cobra.Command {
+func CreateCommand() *cobra.Command {
 	shortHelp := "Create a new container. Optionally specify \"ipfs://\" or \"ipns://\" scheme to pull image from IPFS."
 	longHelp := shortHelp
 	switch runtime.GOOS {
@@ -55,7 +55,7 @@ func NewCreateCommand() *cobra.Command {
 	return cmd
 }
 
-func processContainerCreateOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
+func createOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
 	var err error
 	opt := types.ContainerCreateOptions{
 		Stdout: cmd.OutOrStdout(),
@@ -405,7 +405,7 @@ func processContainerCreateOptions(cmd *cobra.Command) (types.ContainerCreateOpt
 	// #endregion
 
 	// #region for image pull and verify options
-	imageVerifyOpt, err := helpers.ProcessImageVerifyOptions(cmd)
+	imageVerifyOpt, err := helpers.VerifyOptions(cmd)
 	if err != nil {
 		return opt, err
 	}
@@ -427,7 +427,7 @@ func processContainerCreateOptions(cmd *cobra.Command) (types.ContainerCreateOpt
 }
 
 func createAction(cmd *cobra.Command, args []string) error {
-	createOpt, err := processContainerCreateOptions(cmd)
+	createOpt, err := createOptions(cmd)
 	if err != nil {
 		return err
 	}

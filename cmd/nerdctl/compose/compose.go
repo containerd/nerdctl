@@ -23,7 +23,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func NewComposeCommand() *cobra.Command {
+func Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:              "compose [flags] COMMAND",
 		Short:            "Compose",
@@ -41,29 +41,29 @@ func NewComposeCommand() *cobra.Command {
 	cmd.PersistentFlags().StringArray("profile", []string{}, "Specify a profile to enable")
 
 	cmd.AddCommand(
-		newComposeUpCommand(),
-		newComposeLogsCommand(),
-		newComposeConfigCommand(),
-		newComposeCopyCommand(),
-		newComposeBuildCommand(),
-		newComposeExecCommand(),
-		newComposeImagesCommand(),
-		newComposePortCommand(),
-		newComposePushCommand(),
-		newComposePullCommand(),
-		newComposeDownCommand(),
-		newComposePsCommand(),
-		newComposeKillCommand(),
-		newComposeRestartCommand(),
-		newComposeRemoveCommand(),
-		newComposeRunCommand(),
-		newComposeVersionCommand(),
-		newComposeStartCommand(),
-		newComposeStopCommand(),
-		newComposePauseCommand(),
-		newComposeUnpauseCommand(),
-		newComposeTopCommand(),
-		newComposeCreateCommand(),
+		upCommand(),
+		logsCommand(),
+		configCommand(),
+		copyCommand(),
+		buildCommand(),
+		execCommand(),
+		imagesCommand(),
+		portCommand(),
+		pushCommand(),
+		pullCommand(),
+		downCommand(),
+		psCommand(),
+		killCommand(),
+		restartCommand(),
+		removeCommand(),
+		runCommand(),
+		versionCommand(),
+		startCommand(),
+		stopCommand(),
+		pauseCommand(),
+		unpauseCommand(),
+		topCommand(),
+		createCommand(),
 	)
 
 	return cmd

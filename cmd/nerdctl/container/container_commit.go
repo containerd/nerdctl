@@ -26,7 +26,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 )
 
-func NewCommitCommand() *cobra.Command {
+func CommitCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "commit [flags] CONTAINER REPOSITORY[:TAG]",
 		Short:             "Create a new image from a container's changes",
@@ -43,7 +43,7 @@ func NewCommitCommand() *cobra.Command {
 	return cmd
 }
 
-func processCommitCommandOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
+func commitOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerCommitOptions{}, err
@@ -78,7 +78,7 @@ func processCommitCommandOptions(cmd *cobra.Command) (types.ContainerCommitOptio
 }
 
 func commitAction(cmd *cobra.Command, args []string) error {
-	options, err := processCommitCommandOptions(cmd)
+	options, err := commitOptions(cmd)
 	if err != nil {
 		return err
 	}

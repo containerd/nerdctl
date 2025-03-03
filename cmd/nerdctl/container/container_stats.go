@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 )
 
-func NewStatsCommand() *cobra.Command {
+func StatsCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "stats",
 		Short:             "Display a live stream of container(s) resource usage statistics.",

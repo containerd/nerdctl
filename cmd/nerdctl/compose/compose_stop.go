@@ -25,11 +25,11 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposeStopCommand() *cobra.Command {
+func stopCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "stop [flags] [SERVICE...]",
 		Short:         "Stop running containers without removing them.",
-		RunE:          composeStopAction,
+		RunE:          stopAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -37,7 +37,7 @@ func newComposeStopCommand() *cobra.Command {
 	return cmd
 }
 
-func composeStopAction(cmd *cobra.Command, args []string) error {
+func stopAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

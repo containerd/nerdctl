@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
 )
 
-func newImageInspectCommand() *cobra.Command {
+func inspectCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "inspect [flags] IMAGE [IMAGE...]",
 		Args:              cobra.MinimumNArgs(1),
@@ -56,7 +56,7 @@ func newImageInspectCommand() *cobra.Command {
 	return cmd
 }
 
-func ProcessImageInspectOptions(cmd *cobra.Command, platform *string) (types.ImageInspectOptions, error) {
+func InspectOptions(cmd *cobra.Command, platform *string) (types.ImageInspectOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ImageInspectOptions{}, err
@@ -86,7 +86,7 @@ func ProcessImageInspectOptions(cmd *cobra.Command, platform *string) (types.Ima
 }
 
 func imageInspectAction(cmd *cobra.Command, args []string) error {
-	options, err := ProcessImageInspectOptions(cmd, nil)
+	options, err := InspectOptions(cmd, nil)
 	if err != nil {
 		return err
 	}

@@ -32,12 +32,12 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/system"
 )
 
-func newSystemPruneCommand() *cobra.Command {
+func pruneCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove unused data",
 		Args:          cobra.NoArgs,
-		RunE:          systemPruneAction,
+		RunE:          pruneAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -47,7 +47,7 @@ func newSystemPruneCommand() *cobra.Command {
 	return cmd
 }
 
-func processSystemPruneOptions(cmd *cobra.Command) (types.SystemPruneOptions, error) {
+func pruneOptions(cmd *cobra.Command) (types.SystemPruneOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.SystemPruneOptions{}, err
@@ -117,8 +117,8 @@ func grantSystemPrunePermission(cmd *cobra.Command, options types.SystemPruneOpt
 	return true, nil
 }
 
-func systemPruneAction(cmd *cobra.Command, _ []string) error {
-	options, err := processSystemPruneOptions(cmd)
+func pruneAction(cmd *cobra.Command, _ []string) error {
+	options, err := pruneOptions(cmd)
 	if err != nil {
 		return err
 	}

@@ -28,12 +28,12 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 )
 
-func newVolumeCreateCommand() *cobra.Command {
+func createCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "create [flags] [VOLUME]",
 		Short:         "Create a volume",
 		Args:          cobra.MaximumNArgs(1),
-		RunE:          volumeCreateAction,
+		RunE:          createAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -41,7 +41,7 @@ func newVolumeCreateCommand() *cobra.Command {
 	return cmd
 }
 
-func processVolumeCreateOptions(cmd *cobra.Command) (types.VolumeCreateOptions, error) {
+func createOptions(cmd *cobra.Command) (types.VolumeCreateOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.VolumeCreateOptions{}, err
@@ -63,8 +63,8 @@ func processVolumeCreateOptions(cmd *cobra.Command) (types.VolumeCreateOptions, 
 	}, nil
 }
 
-func volumeCreateAction(cmd *cobra.Command, args []string) error {
-	options, err := processVolumeCreateOptions(cmd)
+func createAction(cmd *cobra.Command, args []string) error {
+	options, err := createOptions(cmd)
 	if err != nil {
 		return err
 	}

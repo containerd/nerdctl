@@ -34,7 +34,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 )
 
-func NewInspectCommand() *cobra.Command {
+func Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "inspect",
 		Short:             "Return low-level information on objects.",
@@ -117,13 +117,13 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 	var containerInspectOptions types.ContainerInspectOptions
 	if inspectImage {
 		platform := ""
-		imageInspectOptions, err = imageCmd.ProcessImageInspectOptions(cmd, &platform)
+		imageInspectOptions, err = imageCmd.InspectOptions(cmd, &platform)
 		if err != nil {
 			return err
 		}
 	}
 	if inspectContainer {
-		containerInspectOptions, err = containerCmd.ProcessContainerInspectOptions(cmd)
+		containerInspectOptions, err = containerCmd.InspectOptions(cmd)
 		if err != nil {
 			return err
 		}

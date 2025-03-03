@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
-func NewPullCommand() *cobra.Command {
+func PullCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "pull [flags] NAME[:TAG]",
 		Short:         "Pull an image from a registry. Optionally specify \"ipfs://\" or \"ipns://\" scheme to pull image from IPFS.",
@@ -114,7 +114,7 @@ func processPullCommandFlags(cmd *cobra.Command) (types.ImagePullOptions, error)
 		return types.ImagePullOptions{}, err
 	}
 
-	verifyOptions, err := helpers.ProcessImageVerifyOptions(cmd)
+	verifyOptions, err := helpers.VerifyOptions(cmd)
 	if err != nil {
 		return types.ImagePullOptions{}, err
 	}

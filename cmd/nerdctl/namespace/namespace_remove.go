@@ -25,13 +25,13 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/namespace"
 )
 
-func newNamespaceRmCommand() *cobra.Command {
+func removeCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "remove [flags] NAMESPACE [NAMESPACE...]",
 		Aliases:       []string{"rm"},
 		Args:          cobra.MinimumNArgs(1),
 		Short:         "Remove one or more namespaces",
-		RunE:          namespaceRmAction,
+		RunE:          removeAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -39,7 +39,7 @@ func newNamespaceRmCommand() *cobra.Command {
 	return cmd
 }
 
-func processNamespaceRemoveOptions(cmd *cobra.Command) (types.NamespaceRemoveOptions, error) {
+func removeOptions(cmd *cobra.Command) (types.NamespaceRemoveOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.NamespaceRemoveOptions{}, err
@@ -55,8 +55,8 @@ func processNamespaceRemoveOptions(cmd *cobra.Command) (types.NamespaceRemoveOpt
 	}, nil
 }
 
-func namespaceRmAction(cmd *cobra.Command, args []string) error {
-	options, err := processNamespaceRemoveOptions(cmd)
+func removeAction(cmd *cobra.Command, args []string) error {
+	options, err := removeOptions(cmd)
 	if err != nil {
 		return err
 	}

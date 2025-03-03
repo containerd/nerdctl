@@ -34,7 +34,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
-func NewBuildCommand() *cobra.Command {
+func BuildCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "build [flags] PATH",
 		Short: "Build an image from a Dockerfile. Needs buildkitd to be running.",

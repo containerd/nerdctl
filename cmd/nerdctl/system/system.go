@@ -22,7 +22,7 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 )
 
-func NewSystemCommand() *cobra.Command {
+func Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "system",
@@ -33,9 +33,9 @@ func NewSystemCommand() *cobra.Command {
 	}
 	// versionCommand is not here
 	cmd.AddCommand(
-		NewEventsCommand(),
-		NewInfoCommand(),
-		newSystemPruneCommand(),
+		EventsCommand(),
+		InfoCommand(),
+		pruneCommand(),
 	)
 	return cmd
 }

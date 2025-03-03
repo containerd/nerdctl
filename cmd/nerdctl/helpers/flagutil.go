@@ -24,7 +24,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
-func ProcessImageVerifyOptions(cmd *cobra.Command) (opt types.ImageVerifyOptions, err error) {
+func VerifyOptions(cmd *cobra.Command) (opt types.ImageVerifyOptions, err error) {
 	if opt.Provider, err = cmd.Flags().GetString("verify"); err != nil {
 		return
 	}

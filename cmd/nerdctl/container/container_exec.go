@@ -30,7 +30,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 )
 
-func NewExecCommand() *cobra.Command {
+func ExecCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "exec [flags] CONTAINER COMMAND [ARG...]",
 		Args:              cobra.MinimumNArgs(2),
@@ -55,7 +55,7 @@ func NewExecCommand() *cobra.Command {
 	return cmd
 }
 
-func processExecCommandOptions(cmd *cobra.Command) (types.ContainerExecOptions, error) {
+func execOptions(cmd *cobra.Command) (types.ContainerExecOptions, error) {
 	// We do not check if we have a terminal here, as container.Exec calling console.Current will ensure that
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
@@ -123,7 +123,7 @@ func processExecCommandOptions(cmd *cobra.Command) (types.ContainerExecOptions, 
 }
 
 func execAction(cmd *cobra.Command, args []string) error {
-	options, err := processExecCommandOptions(cmd)
+	options, err := execOptions(cmd)
 	if err != nil {
 		return err
 	}

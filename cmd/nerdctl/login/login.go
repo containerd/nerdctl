@@ -30,7 +30,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/login"
 )
 
-func NewLoginCommand() *cobra.Command {
+func Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:           "login [flags] [SERVER]",
 		Args:          cobra.MaximumNArgs(1),
@@ -45,7 +45,7 @@ func NewLoginCommand() *cobra.Command {
 	return cmd
 }
 
-func processLoginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) {
+func loginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.LoginCommandOptions{}, err
@@ -96,7 +96,7 @@ func processLoginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) 
 }
 
 func loginAction(cmd *cobra.Command, args []string) error {
-	options, err := processLoginOptions(cmd)
+	options, err := loginOptions(cmd)
 	if err != nil {
 		return err
 	}

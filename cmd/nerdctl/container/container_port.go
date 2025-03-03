@@ -31,7 +31,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 )
 
-func NewPortCommand() *cobra.Command {
+func PortCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "port [flags] CONTAINER [PRIVATE_PORT[/PROTO]]",
 		Args:              cobra.RangeArgs(1, 2),

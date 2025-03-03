@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/system"
 )
 
-func NewEventsCommand() *cobra.Command {
+func EventsCommand() *cobra.Command {
 	shortHelp := `Get real time events from the server`
 	longHelp := shortHelp + "\nNOTE: The output format is not compatible with Docker."
 	var cmd = &cobra.Command{
@@ -45,7 +45,7 @@ func NewEventsCommand() *cobra.Command {
 	return cmd
 }
 
-func processSystemEventsOptions(cmd *cobra.Command) (types.SystemEventsOptions, error) {
+func eventsOptions(cmd *cobra.Command) (types.SystemEventsOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.SystemEventsOptions{}, err
@@ -67,7 +67,7 @@ func processSystemEventsOptions(cmd *cobra.Command) (types.SystemEventsOptions, 
 }
 
 func eventsAction(cmd *cobra.Command, args []string) error {
-	options, err := processSystemEventsOptions(cmd)
+	options, err := eventsOptions(cmd)
 	if err != nil {
 		return err
 	}

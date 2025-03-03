@@ -64,5 +64,5 @@ func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
 }
 
 func addApparmorCommand(rootCmd *cobra.Command) {
-	rootCmd.AddCommand(apparmor.NewApparmorCommand())
+	rootCmd.AddCommand(apparmor.Command())
 }
