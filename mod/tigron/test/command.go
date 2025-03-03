@@ -126,7 +126,7 @@ func (gc *GenericCommand) Run(expect *Expected) {
 	var env []string
 	output := &bytes.Buffer{}
 	stdout := ""
-	errorGroup := &errgroup.Group{}
+	copyGroup := &errgroup.Group{}
 	var tty *os.File
 	var psty *os.File
 	if !gc.async {
@@ -138,17 +138,37 @@ func (gc *GenericCommand) Run(expect *Expected) {
 			iCmdCmd.Stdin = tty
 			iCmdCmd.Stdout = tty
 
-			gc.result = icmd.StartCmd(iCmdCmd)
-
-			for _, writer := range gc.ptyWriters {
-				_ = writer(psty)
-			}
-
 			// Copy from the master
-			errorGroup.Go(func() error {
+			copyGroup.Go(func() error {
 				_, _ = io.Copy(output, psty)
 				return nil
 			})
+
+			// Cautiously start the command
+			startGroup := &errgroup.Group{}
+			startGroup.Go(func() error {
+				gc.result = icmd.StartCmd(iCmdCmd)
+				if gc.result.Error != nil {
+					gc.t.Log("start command failed")
+					gc.t.Log(gc.result.ExitCode)
+					gc.t.Log(gc.result.Error)
+					return gc.result.Error
+				}
+
+				for _, writer := range gc.ptyWriters {
+					err := writer(psty)
+					if err != nil {
+						gc.t.Log("writing to the pty failed")
+						gc.t.Log(err)
+						return err
+					}
+				}
+
+				return nil
+			})
+
+			// Let the error through for WaitOnCmd to handle
+			_ = startGroup.Wait()
 		} else {
 			// Run it
 			gc.result = icmd.StartCmd(iCmdCmd)
@@ -161,7 +181,7 @@ func (gc *GenericCommand) Run(expect *Expected) {
 	if gc.pty {
 		_ = tty.Close()
 		_ = psty.Close()
-		_ = errorGroup.Wait()
+		_ = copyGroup.Wait()
 	}
 
 	stdout = result.Stdout()
