@@ -81,6 +81,7 @@ require (
 	github.com/containerd/plugin v1.0.0 // indirect
 	github.com/containerd/ttrpc v1.2.7 // indirect
 	github.com/containers/ocicrypt v1.2.1 // indirect
+	github.com/creack/pty v1.1.24 // indirect
 	github.com/djherbis/times v1.6.0 // indirect
 	github.com/docker/docker-credential-helpers v0.8.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
