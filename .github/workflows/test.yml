@@ -406,7 +406,7 @@ jobs:
           key: vagrant-${{ matrix.box }}
       - name: Set up vagrant
         run: |
-          # from https://github.com/containerd/containerd/blob/v2.0.3/.github/workflows/ci.yml#L583-L596
+          # from https://github.com/containerd/containerd/blob/v2.0.2/.github/workflows/ci.yml#L583-L596
           # which is based on https://github.com/opencontainers/runc/blob/v1.1.8/.cirrus.yml#L41-L49
           curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
