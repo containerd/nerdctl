@@ -14,11 +14,33 @@
    limitations under the License.
 */
 
+// Package pty.
+// Note that creack is MIT licensed, making it better to depend on it rather than using derived code here.
+// Underlying creack implementation is OK though they have more (unnecessary to us) features and do not follow the
+// same coding standards.
 package pty
 
-import "errors"
+import (
+	"errors"
+	"os"
+
+	creack "github.com/creack/pty"
+)
 
 var (
-	ErrPTYFailure             = errors.New("pty failure")
-	ErrPTYUnsupportedPlatform = errors.New("pty not supported on this platform")
+	ErrFailure             = errors.New("pty failure")
+	ErrUnsupportedPlatform = errors.New("pty not supported on this platform")
 )
+
+func Open() (*os.File, *os.File, error) {
+	pty, tty, err := creack.Open()
+	if err != nil {
+		if errors.Is(err, creack.ErrUnsupported) {
+			err = errors.Join(ErrUnsupportedPlatform, err)
+		} else {
+			err = errors.Join(ErrFailure, err)
+		}
+	}
+
+	return pty, tty, err
+}

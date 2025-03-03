@@ -59,10 +59,13 @@ type Case struct {
 	parent  *Case
 }
 
-// Run prepares and executes the test, and any possible subtests
+// Run prepares and executes the test, and any possible subtests.
+//
+//nolint:gocognit
 func (test *Case) Run(t *testing.T) {
 	t.Helper()
 	// Run the test
+	//nolint:thelper
 	testRun := func(subT *testing.T) {
 		subT.Helper()
 
@@ -81,10 +84,13 @@ func (test *Case) Run(t *testing.T) {
 
 		// If we have a parent, get parent env, data and config
 		var parentData Data
+
 		var parentConfig Config
+
 		if test.parent != nil {
 			parentData = test.parent.Data
 			parentConfig = test.parent.Config
+
 			for k, v := range test.parent.Env {
 				if _, ok := test.Env[k]; !ok {
 					test.Env[k] = v
@@ -96,23 +102,22 @@ func (test *Case) Run(t *testing.T) {
 		test.Data = configureData(test.t, test.Data, parentData)
 		test.Config = configureConfig(test.Config, parentConfig)
 
-		var b CustomizableCommand
+		var custCom CustomizableCommand
 		if registeredTestable == nil {
-			b = &GenericCommand{}
+			custCom = &GenericCommand{}
 		} else {
-			b = registeredTestable.CustomCommand(test, test.t)
+			custCom = registeredTestable.CustomCommand(test, test.t)
 		}
 
-		b.WithCwd(test.Data.TempDir())
-
-		b.withT(test.t)
-		b.withTempDir(test.Data.TempDir())
-		b.withEnv(test.Env)
-		b.withConfig(test.Config)
+		custCom.WithCwd(test.Data.TempDir())
+		custCom.withT(test.t)
+		custCom.withTempDir(test.Data.TempDir())
+		custCom.withEnv(test.Env)
+		custCom.withConfig(test.Config)
 
 		// Attach the base command, and t
 		test.helpers = &helpersInternal{
-			cmdInternal: b,
+			cmdInternal: custCom,
 			t:           test.t,
 		}
 
@@ -125,9 +130,11 @@ func (test *Case) Run(t *testing.T) {
 			if !shouldRun {
 				test.t.Skipf("test skipped as: %s", message)
 			}
+
 			if test.Require.Setup != nil {
 				setups = append(setups, test.Require.Setup)
 			}
+
 			if test.Require.Cleanup != nil {
 				cleanups = append(cleanups, test.Require.Cleanup)
 			}
@@ -154,35 +161,46 @@ func (test *Case) Run(t *testing.T) {
 		}
 
 		// Execute cleanups now
+		test.t.Log("")
 		test.t.Log("======================== Pre-test cleanup ========================")
+
 		for _, cleanup := range cleanups {
 			cleanup(test.Data, test.helpers)
 		}
 
 		// Register the cleanups, in reverse
 		test.t.Cleanup(func() {
+			test.t.Log("")
 			test.t.Log("======================== Post-test cleanup ========================")
+
 			slices.Reverse(cleanups)
+
 			for _, cleanup := range cleanups {
 				cleanup(test.Data, test.helpers)
 			}
 		})
 
 		// Run the setups
+		test.t.Log("")
 		test.t.Log("======================== Test setup ========================")
+
 		for _, setup := range setups {
 			setup(test.Data, test.helpers)
 		}
 
 		// Run the command if any, with expectations
 		// Note: if we have a command, we already know we DO have Expected
+		test.t.Log("")
 		test.t.Log("======================== Test Run ========================")
+
 		if test.Command != nil {
 			test.Command(test.Data, test.helpers).Run(test.Expected(test.Data, test.helpers))
 		}
 
 		// Now go for the subtests
+		test.t.Log("")
 		test.t.Log("======================== Processing subtests ========================")
+
 		for _, subTest := range test.SubTests {
 			subTest.parent = test
 			subTest.Run(test.t)

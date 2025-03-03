@@ -19,18 +19,20 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
 )
 
-// RandomStringBase64 generates a base64 encoded random string
-func RandomStringBase64(n int) string {
-	b := make([]byte, n)
-	l, err := rand.Read(b)
+// RandomStringBase64 generates a base64 encoded random string.
+func RandomStringBase64(desiredLength int) string {
+	randomBytes := make([]byte, desiredLength)
+
+	randomLength, err := rand.Read(randomBytes)
 	if err != nil {
 		panic(err)
 	}
-	if l != n {
-		panic(fmt.Errorf("expected %d bytes, got %d bytes", n, l))
+
+	if randomLength != desiredLength {
+		panic("rand failing")
 	}
-	return base64.URLEncoding.EncodeToString(b)
+
+	return base64.URLEncoding.EncodeToString(randomBytes)
 }

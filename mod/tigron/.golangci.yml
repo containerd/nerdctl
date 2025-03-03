@@ -1,0 +1,54 @@
+---
+output:
+  sort-results: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+run:
+  concurrency: 0
+  timeout: 5m
+  issues-exit-code: 2
+  tests: true
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+  allow-serial-runners: true
+
+linters:
+  disable-all: false
+  enable-all: true
+  disable:
+    # Opting-out
+    - nonamedreturns  # named returns are occasionally useful
+    - exhaustruct  # does not serve much of a purpose
+    - funlen  # not interested
+    - cyclop  # not interested much
+    - godox  # having these are useful
+    # Duplicating
+    - gci  # we use go-imports instead
+    # Deprecated
+    - tenv
+    # TODO: Temporarily out until we wrap up all of them
+#    - wrapcheck
+
+linters-settings:
+  staticcheck:
+    checks:
+      - "all"
+
+  depguard:
+    rules:
+      main:
+        files:
+          - "$all"
+        allow:
+          - $gostd
+          - "github.com/containerd/nerdctl/mod/tigron"
+          # WATCHOUT! https://github.com/OpenPeeDeeP/depguard/issues/108
+          # Currently, depguard will fail detecting any dependency starting with a standard package name as third-party.
+          # Thus, the following three are allowed provisionally, though currently not "necessary".
+          - "golang.org/x/sync"
+          - "golang.org/x/term"
+          - "gotest.tools"
+          - "github.com/creack/pty"

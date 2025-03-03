@@ -16,14 +16,16 @@
 
 package test
 
-// RunCommand is the simplest way to express a test.TestableCommand for very basic cases when access to test data is not necessary
+// Command is the simplest way to express a test.TestableCommand for very basic cases
+// where access to test data is not necessary.
 func Command(args ...string) Executor {
-	return func(data Data, helpers Helpers) TestableCommand {
+	return func(_ Data, helpers Helpers) TestableCommand {
 		return helpers.Command(args...)
 	}
 }
 
-// Expects is provided as a simple helper covering "expectations" for simple use-cases where access to the test data is not necessary
+// Expects is provided as a simple helper covering "expectations" for simple use-cases
+// where access to the test data is not necessary.
 func Expects(exitCode int, errors []error, output Comparator) Manager {
 	return func(_ Data, _ Helpers) *Expected {
 		return &Expected{

@@ -30,56 +30,68 @@ type helpersInternal struct {
 	t *testing.T
 }
 
-// Ensure will run a command and make sure it is successful
+// Ensure will run a command and make sure it is successful.
 func (help *helpersInternal) Ensure(args ...string) {
 	help.Command(args...).Run(&Expected{
-		ExitCode: 0,
+		ExitCode: internal.ExitCodeSuccess,
 	})
 }
 
-// Anyhow will run a command regardless of outcome (may or may not fail)
+// Anyhow will run a command regardless of outcome (may or may not fail).
 func (help *helpersInternal) Anyhow(args ...string) {
-	help.Command(args...).Run(nil)
+	help.Command(args...).Run(&Expected{
+		ExitCode: internal.ExitCodeNoCheck,
+	})
 }
 
-// Fail will run a command and make sure it does fail
+// Fail will run a command and make sure it does fail.
 func (help *helpersInternal) Fail(args ...string) {
 	help.Command(args...).Run(&Expected{
 		ExitCode: internal.ExitCodeGenericFail,
 	})
 }
 
-// Capture will run a command, ensure it is successful and return stdout
+// Capture will run a command, ensure it is successful and return stdout.
 func (help *helpersInternal) Capture(args ...string) string {
 	var ret string
+
 	help.Command(args...).Run(&Expected{
-		Output: func(stdout string, info string, t *testing.T) {
+		//nolint:thelper
+		Output: func(stdout string, _ string, _ *testing.T) {
 			ret = stdout
 		},
 	})
+
 	return ret
 }
 
-// Err will run a command, ensure it is successful and return stdout
+// Err will run a command with no expectation and return Stderr.
 func (help *helpersInternal) Err(args ...string) string {
 	cmd := help.Command(args...)
 	cmd.Run(nil)
+
 	return cmd.Stderr()
 }
 
-// Command will return a clone of your base command without running it
+// Command will return a clone of your base command without running it.
+//
+//nolint:ireturn
 func (help *helpersInternal) Command(args ...string) TestableCommand {
 	cc := help.cmdInternal.Clone()
 	cc.WithArgs(args...)
+
 	return cc
 }
 
 // Custom will return a command for the requested binary and args, with the environment of your test
 // (eg: Env, Cwd, etc.)
+//
+//nolint:ireturn
 func (help *helpersInternal) Custom(binary string, args ...string) TestableCommand {
 	cc := help.cmdInternal.clear()
 	cc.WithBinary(binary)
 	cc.WithArgs(args...)
+
 	return cc
 }
 
