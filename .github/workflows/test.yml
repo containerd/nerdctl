@@ -288,18 +288,10 @@ jobs:
             --output=type=docker \
             --cache-from type=gha,scope=${ARCH}-${CONTAINERD_VERSION} \
             -t ${TEST_TARGET} --target ${TEST_TARGET} --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} --build-arg ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION} .
-      - name: "Disable BuildKit for RootlessKit v1 (workaround for issue #622)"
-        run: |
-          # https://github.com/containerd/nerdctl/issues/622
-          WORKAROUND_ISSUE_622=
-          if echo "${ROOTLESSKIT_VERSION}" | grep -q v1; then
-            WORKAROUND_ISSUE_622=1
-          fi
-          echo "WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622}" >> "$GITHUB_ENV"
       - name: "Test (network driver=slirp4netns, port driver=builtin)"
-        run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} ${TEST_TARGET} /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false
+        run: docker run -t --rm --privileged ${TEST_TARGET} /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false
       - name: "Test (network driver=slirp4netns, port driver=builtin) (flaky)"
-        run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} ${TEST_TARGET} /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true
+        run: docker run -t --rm --privileged ${TEST_TARGET} /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true
 
   build:
     timeout-minutes: 5

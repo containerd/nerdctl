@@ -25,11 +25,6 @@ if [[ "$(id -u)" = "0" ]]; then
 		nerdctl apparmor load
 	fi
 
-	: "${WORKAROUND_ISSUE_622:=}"
-	if [[ "$WORKAROUND_ISSUE_622" = "1" ]]; then
-		touch /workaround-issue-622
-	fi
-
 	# Switch to the rootless user via SSH
 	systemctl start ssh
 	exec ssh -o StrictHostKeyChecking=no rootless@localhost "$0" "$@"
@@ -39,11 +34,7 @@ else
 		containerd-rootless-setuptool.sh nsenter -- sh -euc 'echo "options use-vc" >>/etc/resolv.conf'
 	fi
 
-	if [[ -e /workaround-issue-622 ]]; then
-		echo "WORKAROUND_ISSUE_622: Not enabling BuildKit (https://github.com/containerd/nerdctl/issues/622)" >&2
-	else
-		CONTAINERD_NAMESPACE="nerdctl-test" containerd-rootless-setuptool.sh install-buildkit-containerd
-	fi
+	CONTAINERD_NAMESPACE="nerdctl-test" containerd-rootless-setuptool.sh install-buildkit-containerd
 	containerd-rootless-setuptool.sh install-stargz
 	if [ ! -f "/home/rootless/.config/containerd/config.toml" ] ; then
 		echo "version = 2" > /home/rootless/.config/containerd/config.toml
