@@ -137,7 +137,7 @@ jobs:
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
           sudo systemctl disable --now snapd.service snapd.socket
-          sudo apt-get purge -y snapd
+          sudo apt-get purge -qq snapd
           sudo losetup -Dv
           sudo losetup -lv
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -195,7 +195,7 @@ jobs:
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
           sudo systemctl disable --now snapd.service snapd.socket
-          sudo apt-get purge -y snapd
+          sudo apt-get purge -qq snapd
           sudo losetup -Dv
           sudo losetup -lv
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -337,8 +337,9 @@ jobs:
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Prepare integration test environment"
         run: |
-          sudo apt-get install -y expect
-          go install -v gotest.tools/gotestsum@v1
+          # FIXME: remove expect when we are done removing unbuffer from tests
+          sudo apt-get install -qq expect
+          make install-dev-tools
       - name: "Ensure that the integration test suite is compatible with Docker"
         run: WITH_SUDO=true ./hack/test-integration.sh -test.target=docker
       - name: "Ensure that the IPv6 integration test suite is compatible with Docker"
@@ -361,8 +362,9 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
-      - run: go install ./cmd/nerdctl
-      - run: go install -v gotest.tools/gotestsum@v1
+      - run: |
+          go install ./cmd/nerdctl
+          make install-dev-tools
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           repository: containerd/containerd
@@ -400,13 +402,13 @@ jobs:
           curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
           sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
-          sudo apt-get update
-          sudo apt-get install -y libvirt-daemon libvirt-daemon-system vagrant ovmf
+          sudo apt-get update -qq
+          sudo apt-get install -qq libvirt-daemon libvirt-daemon-system vagrant ovmf
           # https://github.com/vagrant-libvirt/vagrant-libvirt/issues/1725#issuecomment-1454058646
           sudo cp /usr/share/OVMF/OVMF_VARS_4M.fd /var/lib/libvirt/qemu/nvram/
           sudo systemctl enable --now libvirtd
-          sudo apt-get build-dep -y ruby-libvirt
-          sudo apt-get install -y --no-install-recommends libxslt-dev libxml2-dev libvirt-dev ruby-bundler ruby-dev zlib1g-dev
+          sudo apt-get build-dep -qq ruby-libvirt
+          sudo apt-get install -qq --no-install-recommends libxslt-dev libxml2-dev libvirt-dev ruby-bundler ruby-dev zlib1g-dev
           sudo vagrant plugin install vagrant-libvirt
       - name: Boot VM
         run: |
@@ -434,8 +436,8 @@ jobs:
       - name: "Install QEMU"
         run: |
           set -eux
-          sudo apt-get update
-          sudo apt-get -qq install -y --no-install-recommends ovmf qemu-system-x86 qemu-utils
+          sudo apt-get update -qq
+          sudo apt-get install -qq --no-install-recommends ovmf qemu-system-x86 qemu-utils
           sudo modprobe kvm
           # `sudo usermod -aG kvm $(whoami)` does not take an effect on GHA
           sudo chown $(whoami) /dev/kvm
