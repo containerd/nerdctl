@@ -65,7 +65,10 @@ func (ir *ImageReference) FamiliarName() string {
 }
 
 func (ir *ImageReference) FamiliarMatch(pattern string) (bool, error) {
-	return reference.FamiliarMatch(pattern, ir.nn)
+	if ir.nn != nil {
+		return reference.FamiliarMatch(pattern, ir.nn)
+	}
+	return false, nil
 }
 
 func (ir *ImageReference) String() string {
