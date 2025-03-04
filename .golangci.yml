@@ -150,6 +150,10 @@ linters-settings:
             desc: "pkg must not depend on viper"
           - pkg: "github.com/containerd/nerdctl/v2/cmd"
             desc: "pkg must not depend on any cmd files"
+      no-patent:
+        deny:
+          - pkg: "github.com/hashicorp/golang-lru/arc/v2"
+            desc: "patented (https://github.com/hashicorp/golang-lru/blob/arc/v2.0.7/arc/arc.go#L18)"
 
 issues:
   max-issues-per-linter: 0
