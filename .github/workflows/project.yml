@@ -24,9 +24,16 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: src/github.com/containerd/nerdctl
-      - uses: containerd/project-checks@434a07157608eeaa1d5c8d4dd506154204cd9401  # v1.1.0
+      - uses: containerd/project-checks@d7751f3c375b8fe4a84c02a068184ee4c1f59bc4  # v1.2.2
         with:
           working-directory: src/github.com/containerd/nerdctl
           repo-access-token: ${{ secrets.GITHUB_TOKEN }}
+          # go-licenses-ignore is set because go-licenses cannot detect the license of the following package:
+          # * go-base36: Apache-2.0 OR MIT (https://github.com/multiformats/go-base36/blob/master/LICENSE.md)
+          #
+          # The list of the CNCF-approved licenses can be found here:
+          # https://github.com/cncf/foundation/blob/main/allowed-third-party-license-policy.md
+          go-licenses-ignore: |
+            github.com/multiformats/go-base36
       - run: ./hack/verify-no-patent.sh
         working-directory: src/github.com/containerd/nerdctl
