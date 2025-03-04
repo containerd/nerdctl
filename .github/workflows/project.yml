@@ -24,7 +24,7 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: src/github.com/containerd/nerdctl
-      - uses: containerd/project-checks@434a07157608eeaa1d5c8d4dd506154204cd9401  # v1.1.0
+      - uses: containerd/project-checks@800740a80e93c309f9a40903ce26d749ad0909ec  # v1.2.1
         with:
           working-directory: src/github.com/containerd/nerdctl
           repo-access-token: ${{ secrets.GITHUB_TOKEN }}
