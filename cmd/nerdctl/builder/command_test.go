@@ -33,6 +33,10 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
+func TestMain(m *testing.M) {
+	testutil.M(m)
+}
+
 func TestBuilder(t *testing.T) {
 	nerdtest.Setup()
 
