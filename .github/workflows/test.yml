@@ -137,7 +137,7 @@ jobs:
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
           sudo systemctl disable --now snapd.service snapd.socket
-          sudo apt-get purge -y snapd
+          sudo apt-get purge -qq snapd
           sudo losetup -Dv
           sudo losetup -lv
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -195,7 +195,7 @@ jobs:
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
           sudo systemctl disable --now snapd.service snapd.socket
-          sudo apt-get purge -y snapd
+          sudo apt-get purge -qq snapd
           sudo losetup -Dv
           sudo losetup -lv
       - name: "Register QEMU (tonistiigi/binfmt)"
@@ -402,13 +402,13 @@ jobs:
           curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
           sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
-          sudo apt-get update
-          sudo apt-get install -y libvirt-daemon libvirt-daemon-system vagrant ovmf
+          sudo apt-get update -qq
+          sudo apt-get install -qq libvirt-daemon libvirt-daemon-system vagrant ovmf
           # https://github.com/vagrant-libvirt/vagrant-libvirt/issues/1725#issuecomment-1454058646
           sudo cp /usr/share/OVMF/OVMF_VARS_4M.fd /var/lib/libvirt/qemu/nvram/
           sudo systemctl enable --now libvirtd
-          sudo apt-get build-dep -y ruby-libvirt
-          sudo apt-get install -y --no-install-recommends libxslt-dev libxml2-dev libvirt-dev ruby-bundler ruby-dev zlib1g-dev
+          sudo apt-get build-dep -qq ruby-libvirt
+          sudo apt-get install -qq --no-install-recommends libxslt-dev libxml2-dev libvirt-dev ruby-bundler ruby-dev zlib1g-dev
           sudo vagrant plugin install vagrant-libvirt
       - name: Boot VM
         run: |
@@ -436,8 +436,8 @@ jobs:
       - name: "Install QEMU"
         run: |
           set -eux
-          sudo apt-get update
-          sudo apt-get -qq install -y --no-install-recommends ovmf qemu-system-x86 qemu-utils
+          sudo apt-get update -qq
+          sudo apt-get install -qq --no-install-recommends ovmf qemu-system-x86 qemu-utils
           sudo modprobe kvm
           # `sudo usermod -aG kvm $(whoami)` does not take an effect on GHA
           sudo chown $(whoami) /dev/kvm
