@@ -168,10 +168,17 @@ lint-mod:
 		&& go mod tidy --diff
 	$(call footer, $@)
 
+# FIXME: go-licenses cannot find LICENSE from root of repo when submodule is imported:
+# https://github.com/google/go-licenses/issues/186
+# This is impacting gotest.tools
+# FIXME: go-base36 is multi-license (MIT/Apache), using a custom boilerplate file that go-licenses fails to understand
 lint-licenses:
 	$(call title, $@: $(GOOS))
 	@cd $(MAKEFILE_DIR) \
-		&& ./hack/make-lint-licenses.sh
+		&& go-licenses check --include_tests --allowed_licenses=Apache-2.0,BSD-2-Clause,BSD-2-Clause-FreeBSD,BSD-3-Clause,MIT,ISC,Python-2.0,PostgreSQL,X11,Zlib \
+		  --ignore gotest.tools \
+		  --ignore github.com/multiformats/go-base36 \
+		  ./...
 	$(call footer, $@)
 
 lint-licenses-all:
