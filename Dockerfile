@@ -177,6 +177,31 @@ RUN xx-apt-get install -qq --no-install-recommends \
 # Enable CGO
 ENV CGO_ENABLED=1
 
+# tooling-runtime is the base stage that is used to build demo and testing images
+# Note that unlike every other tooling- stage, this is a multi-architecture stage
+FROM ubuntu:${UBUNTU_VERSION} AS tooling-runtime
+SHELL ["/bin/bash", "-o", "errexit", "-o", "errtrace", "-o", "functrace", "-o", "nounset", "-o", "pipefail", "-c"]
+ENV DEBIAN_FRONTEND="noninteractive"
+ENV TERM="xterm"
+ENV LANG="C.UTF-8"
+ENV LC_ALL="C.UTF-8"
+ENV TZ="America/Los_Angeles"
+ARG BINARY_NAME
+# fuse3 is required by stargz snapshotter
+RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
+  ca-certificates \
+  apparmor \
+  bash-completion \
+  iproute2 iptables \
+  dbus dbus-user-session systemd systemd-sysv \
+  curl \
+  fuse3 >/dev/null
+ARG CONTAINERIZED_SYSTEMD_VERSION
+RUN curl -o /docker-entrypoint.sh -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/AkihiroSuda/containerized-systemd/${CONTAINERIZED_SYSTEMD_VERSION}/docker-entrypoint.sh && \
+  chmod +x /docker-entrypoint.sh
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["bash", "--login", "-i"]
+
 FROM tooling-builder-with-c-dependencies AS build-containerd
 ARG TARGETARCH
 ARG CONTAINERD_VERSION
@@ -345,18 +370,7 @@ RUN (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
 FROM scratch AS out-full
 COPY --from=build-full /out /
 
-FROM ubuntu:${UBUNTU_VERSION} AS base
-# fuse3 is required by stargz snapshotter
-RUN apt-get update -qq && apt-get install -qq -y --no-install-recommends \
-  apparmor \
-  bash-completion \
-  ca-certificates curl \
-  iproute2 iptables \
-  dbus dbus-user-session systemd systemd-sysv \
-  fuse3
-ARG CONTAINERIZED_SYSTEMD_VERSION
-RUN curl -o /docker-entrypoint.sh -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/AkihiroSuda/containerized-systemd/${CONTAINERIZED_SYSTEMD_VERSION}/docker-entrypoint.sh && \
-  chmod +x /docker-entrypoint.sh
+FROM tooling-runtime AS base
 COPY --from=out-full / /usr/local/
 RUN perl -pi -e 's/multi-user.target/docker-entrypoint.target/g' /usr/local/lib/systemd/system/*.service && \
   systemctl enable containerd buildkit stargz-snapshotter && \
@@ -369,8 +383,6 @@ VOLUME /var/lib/containerd
 VOLUME /var/lib/buildkit
 VOLUME /var/lib/containerd-stargz-grpc
 VOLUME /var/lib/nerdctl
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["bash", "--login", "-i"]
 
 FROM base AS test-integration
 ARG BUILDPLATFORM
