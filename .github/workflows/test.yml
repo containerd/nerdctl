@@ -47,7 +47,7 @@ jobs:
         run: |
           docker buildx create --name with-gha --use
           docker buildx build \
-            --cache-to type=gha,mode=max,scope=${ARCH}-${CONTAINERD_VERSION} \
+            --cache-to type=gha,compression=zstd,mode=max,scope=${ARCH}-${CONTAINERD_VERSION} \
             --cache-from type=gha,scope=${ARCH}-${CONTAINERD_VERSION} \
             --target build-dependencies --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
 
