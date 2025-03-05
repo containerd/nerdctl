@@ -42,7 +42,6 @@ ARG TINI_VERSION=v0.19.0
 ARG BUILDG_VERSION=v0.4.1
 
 # Test deps
-ARG GO_VERSION=1.24
 ARG UBUNTU_VERSION=24.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
 ARG GOTESTSUM_VERSION=v1.12.0
@@ -50,28 +49,135 @@ ARG NYDUS_VERSION=v2.3.0
 ARG SOCI_SNAPSHOTTER_VERSION=0.8.0
 ARG KUBO_VERSION=v0.32.1
 
-FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.6.1 AS xx
+# Tooling versions
+ARG DEBIAN_VERSION=bookworm
+ARG XX_VERSION=1.6.1
+ARG GO_VERSION=1.24.0
+ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
 
+########################################################################################################################
+# Base images
+# These stages are purely tooling that other stages can leverage.
+# They are highly cacheable, and will only change if one of the following is changing:
+# - DEBIAN_VERSION (=bookworm) or content of it
+# - XX_VERSION
+# - GO_VERSION
+# - CONTAINERIZED_SYSTEMD_VERSION
+########################################################################################################################
+# tooling-base is the single base image we use for all other tooling image
+FROM --platform=$BUILDPLATFORM debian:$DEBIAN_VERSION AS tooling-base
+SHELL ["/bin/bash", "-o", "errexit", "-o", "errtrace", "-o", "functrace", "-o", "nounset", "-o", "pipefail", "-c"]
+ENV DEBIAN_FRONTEND="noninteractive"
+ENV TERM="xterm"
+ENV LANG="C.UTF-8"
+ENV LC_ALL="C.UTF-8"
+ENV TZ="America/Los_Angeles"
+ARG BINARY_NAME
+RUN apt-get update -qq >/dev/null && apt-get install -qq --no-install-recommends \
+  ca-certificates >/dev/null
 
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS build-base-debian
-COPY --from=xx / /
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
+# xx provides tooling to ease cross-compilation
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:$XX_VERSION AS tooling-xx
+
+# tooling-downloader purpose is to enable later stages to download content directly using curl
+FROM --platform=$BUILDPLATFORM tooling-base AS tooling-downloader
+# Current work directory where downloads will arrive
+WORKDIR /src
+# /out is meant to hold final / distributable assets
+RUN mkdir -p /out/bin
+# This directory is meant to hold transient information useful to build the final README (VERSION, LICENSE, etc)
+RUN mkdir -p /metadata
+# Get curl and jq
+RUN apt-get install -qq --no-install-recommends \
+  curl \
+  jq >/dev/null
+
+# tooling-downloader-golang will download a golang archive and expand it into /out/usr/local
+# You may set GO_VERSION to an explicit, complete version (eg: 1.23.0), or you can also set it to:
+# - canary: that will retrieve the latest alpha/beta/RC
+# - stable (or ""): that will retrieve the latest stable version
+# Note that for these last two, you need to bust the cache for this stage if you expect a refresh
+# Finally note that we are retrieving both architectures we are currently supporting (arm64 and amd64) in one stage,
+# and do NOT leverage TARGETARCH, as that would force cross compilation to use a non-native binary in dependent stages.
+FROM --platform=$BUILDPLATFORM tooling-downloader AS tooling-downloader-golang
+ARG BUILDPLATFORM
+ARG GO_VERSION
+# This run does:
+# a. retrieve golang list of versions
+# b. parse it to extract just the files for the requested GO_VERSION and GOOS
+# c. for both arm64 and amd64, extract the final filename
+# d. download the archive and extract it to /out/usr/local/GOOS/GOARCH
+# Consuming stages later on can just COPY --from=tooling-downloader-golang /out/usr/local/$BUILDPLATFORM /usr/local
+# to get native go for their current execution platform
+# Note that though we dynamically retrieve GOOS here, we only support linux
+RUN os="${BUILDPLATFORM%%/*}"; \
+    all_versions="$(curl -fsSL --proto '=https' --tlsv1.2 "https://go.dev/dl/?mode=json&include=all")"; \
+    candidates="$(case "$GO_VERSION" in \
+      canary) condition=".stable==false" ;; \
+      stable|"") condition=".stable==true" ;; \
+      *) condition='.version=="go'"$GO_VERSION"'"' ;; \
+    esac; \
+    jq -rc 'map(select('"$condition"'))[0].files | map(select(.os=="'"$os"'"))' <(printf "$all_versions"))"; \
+    arch=arm64; \
+    filename="$(jq -r 'map(select(.arch=="'"$arch"'"))[0].filename' <(printf "$candidates"))"; \
+    mkdir -p /out/usr/local/linux/"$arch"; \
+    [ "$filename" != "" ] && curl -fsSL --proto '=https' --tlsv1.2 https://go.dev/dl/"$filename" | tar xzC /out/usr/local/linux/"$arch" || {  \
+      echo "Failed retrieving go download for $arch: $GO_VERSION"; \
+      exit 1; \
+    }; \
+    arch=amd64; \
+    filename="$(jq -r 'map(select(.arch=="'"$arch"'"))[0].filename' <(printf "$candidates"))"; \
+    mkdir -p /out/usr/local/linux/"$arch"; \
+    [ "$filename" != "" ] && curl -fsSL --proto '=https' --tlsv1.2 https://go.dev/dl/"$filename" | tar xzC /out/usr/local/linux/"$arch" || {  \
+      echo "Failed retrieving go download for $arch: $GO_VERSION"; \
+      exit 1; \
+    }
+
+# tooling-builder is a go enabled stage with minimal build tooling installed that can be used to build non-cgo projects
+FROM --platform=$BUILDPLATFORM tooling-base AS tooling-builder
+# We do not want fancy display when building
+ENV NO_COLOR=true
+ARG BUILDPLATFORM
+WORKDIR /src
+RUN mkdir -p /out/bin
+RUN mkdir -p /metadata
+# libmagic-mgc libmagic1 file: runc, ipfs, bypassnetns
+# FIXME: separate build and download stages more cleanly and remove curl from here
+RUN apt-get install -qq --no-install-recommends \
+  curl \
   git \
-  dpkg-dev
+  make \
+  libmagic-mgc libmagic1 file >/dev/null
+# Prevent git from complaining on detached head
+RUN git config --global advice.detachedHead false
+# Add cross compilation tools
+COPY --from=tooling-xx / /
+# Add golang
+ENV PATH="/root/go/bin:/usr/local/go/bin:$PATH"
+COPY --from=tooling-downloader-golang /out/usr/local/$BUILDPLATFORM /usr/local
+# Disable CGO
+ENV CGO_ENABLED=0
+# Set xx-go as go
+ENV GO=xx-go
+
+# tooling-builder-with-c-dependencies is an expansion of the previous stages that adds extra c dependencies.
+# It is meant for (cross-compilation of) c and cgo projects.
+FROM --platform=$BUILDPLATFORM tooling-builder AS tooling-builder-with-c-dependencies
 ARG TARGETARCH
 # libbtrfs: for containerd
 # libseccomp: for runc and bypass4netns
-RUN xx-apt-get update -qq && xx-apt-get install -qq --no-install-recommends \
+RUN xx-apt-get install -qq --no-install-recommends \
   binutils \
   gcc \
+  dpkg-dev \
   libc6-dev \
   libbtrfs-dev \
   libseccomp-dev \
-  pkg-config
-RUN git config --global advice.detachedHead false
+  pkg-config >/dev/null
+# Enable CGO
+ENV CGO_ENABLED=1
 
-FROM build-base-debian AS build-containerd
+FROM tooling-builder-with-c-dependencies AS build-containerd
 ARG TARGETARCH
 ARG CONTAINERD_VERSION
 RUN git clone https://github.com/containerd/containerd.git /go/src/github.com/containerd/containerd
@@ -82,7 +188,7 @@ RUN git checkout ${CONTAINERD_VERSION} && \
 RUN GO=xx-go make STATIC=1 && \
   cp -a bin/containerd bin/containerd-shim-runc-v2 bin/ctr /out/$TARGETARCH
 
-FROM build-base-debian AS build-runc
+FROM tooling-builder-with-c-dependencies AS build-runc
 ARG RUNC_VERSION
 ARG TARGETARCH
 RUN git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc
@@ -93,7 +199,7 @@ ENV CGO_ENABLED=1
 RUN GO=xx-go CC=$(xx-info)-gcc STRIP=$(xx-info)-strip make static && \
   xx-verify --static runc && cp -v -a runc /out/runc.${TARGETARCH}
 
-FROM build-base-debian AS build-bypass4netns
+FROM tooling-builder-with-c-dependencies AS build-bypass4netns
 ARG BYPASS4NETNS_VERSION
 ARG TARGETARCH
 RUN git clone https://github.com/rootless-containers/bypass4netns.git /go/src/github.com/rootless-containers/bypass4netns
@@ -104,7 +210,7 @@ ENV CGO_ENABLED=1
 RUN GO=xx-go make static && \
   xx-verify --static bypass4netns && cp -a bypass4netns bypass4netnsd /out/${TARGETARCH}
 
-FROM build-base-debian AS build-kubo
+FROM tooling-builder-with-c-dependencies AS build-kubo
 ARG KUBO_VERSION
 ARG TARGETARCH
 RUN git clone https://github.com/ipfs/kubo.git /go/src/github.com/ipfs/kubo
@@ -116,15 +222,11 @@ RUN xx-go --wrap && \
   make build && \
   xx-verify --static cmd/ipfs/ipfs && cp -a cmd/ipfs/ipfs /out/${TARGETARCH}
 
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS build-base
-RUN apk add --no-cache make git curl
-RUN git config --global advice.detachedHead false
-
-FROM build-base AS build-minimal
+FROM tooling-builder AS build-minimal
 RUN BINDIR=/out/bin make binaries install
 # We do not set CMD to `go test` here, because it requires systemd
 
-FROM build-base AS build-dependencies
+FROM tooling-builder AS build-dependencies
 ARG TARGETARCH
 ENV GOARCH=${TARGETARCH}
 COPY ./Dockerfile.d/SHA256SUMS.d/ /SHA256SUMS.d
@@ -270,21 +372,18 @@ VOLUME /var/lib/nerdctl
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["bash", "--login", "-i"]
 
-# convert GO_VERSION=1.16 to the latest release such as "go1.16.1"
-FROM golang:${GO_VERSION}-alpine AS goversion
-RUN go env GOVERSION > /GOVERSION
-
 FROM base AS test-integration
+ARG BUILDPLATFORM
+ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive
 # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
 RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
   expect \
   git \
   make
-COPY --from=goversion /GOVERSION /GOVERSION
-ARG TARGETARCH
-RUN curl -fsSL --proto '=https' --tlsv1.2 https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local
-ENV PATH=/usr/local/go/bin:$PATH
+# Add go
+ENV PATH="/root/go/bin:/usr/local/go/bin:$PATH"
+COPY --from=tooling-downloader-golang /out/usr/local/$BUILDPLATFORM /usr/local
 ARG GOTESTSUM_VERSION
 RUN GOBIN=/usr/local/bin go install gotest.tools/gotestsum@${GOTESTSUM_VERSION}
 COPY . /go/src/github.com/containerd/nerdctl
