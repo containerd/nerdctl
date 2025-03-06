@@ -437,31 +437,12 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
-      - name: "Install QEMU"
-        run: |
-          set -eux
-          sudo apt-get update -qq
-          sudo apt-get install -qq --no-install-recommends ovmf qemu-system-x86 qemu-utils
-          sudo modprobe kvm
-          # `sudo usermod -aG kvm $(whoami)` does not take an effect on GHA
-          sudo chown $(whoami) /dev/kvm
-      - name: "Install Lima"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}  # required by `gh attestation verify`
-        run: |
-          set -eux
-          LIMA_VERSION=$(curl -fsSL https://api.github.com/repos/lima-vm/lima/releases/latest | jq -r .tag_name)
-          FILE="lima-${LIMA_VERSION:1}-Linux-x86_64.tar.gz"
-          curl -fOSL https://github.com/lima-vm/lima/releases/download/${LIMA_VERSION}/${FILE}
-          gh attestation verify --owner=lima-vm "${FILE}"
-          sudo tar Cxzf /usr/local "${FILE}"
-          rm -f "${FILE}"
-          # Export LIMA_VERSION For the GHA cache key
-          echo "LIMA_VERSION=${LIMA_VERSION}" >>$GITHUB_ENV
+      - uses: lima-vm/lima-actions/setup@be564a1408f84557d067b099a475652288074b2e  # v1.0.0
+        id: lima-actions-setup
       - uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
         with:
           path: ~/.cache/lima
-          key: lima-${{ env.LIMA_VERSION }}
+          key: lima-${{ steps.lima-actions-setup.outputs.version }}
       - name: "Start the guest VM"
         run: |
           set -eux
