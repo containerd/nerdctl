@@ -78,7 +78,7 @@ func TestLoggingProcessAdapter(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := loggingProcessAdapter(ctx, driver, "testDataStore", config)
+	err := loggingProcessAdapter(ctx, driver, "testDataStore", "", config)
 	if err != nil {
 		t.Fatal(err)
 	}
