@@ -51,6 +51,18 @@ GO_BUILD_FLAGS ?=
 ##########################
 # Helpers
 ##########################
+ARCH := amd64
+ifeq ($(shell uname -m), aarch64)
+	ARCH = arm64
+endif
+OS := linux
+ifeq ($(shell uname -s), Darwin)
+	OS = darwin
+endif
+ifeq ($(shell uname -s), FreeBSD)
+	OS = freebsd
+endif
+
 ifdef VERBOSE
 	VERBOSE_FLAG := -v
 	VERBOSE_FLAG_LONG := --verbose
@@ -237,8 +249,39 @@ install-dev-tools:
 		&& go install github.com/google/go-licenses/v2@d01822334fba5896920a060f762ea7ecdbd086e8 \
 		&& go install github.com/incu6us/goimports-reviser/v3@f034195cc8a7ffc7cc70d60aa3a25500874eaf04 \
 		&& go install gotest.tools/gotestsum@ac6dad9c7d87b969004f7749d1942938526c9716
-	@echo "Remember to add GOROOT/bin to your path"
+	@echo "Remember to add \$$HOME/go/bin to your path"
 	$(call footer, $@)
+
+GO_VERSION ?= stable
+GO_VERSION_SELECTOR =
+GO_VERSION_SELECTOR = .version | startswith("go$(GO_VERSION)")
+ifeq ($(GO_VERSION),canary)
+	GO_VERSION_SELECTOR = .stable==false
+endif
+ifeq ($(GO_VERSION),stable)
+	GO_VERSION_SELECTOR = .stable==true
+endif
+ifeq ($(GO_VERSION),)
+	GO_VERSION_SELECTOR = .stable==true
+endif
+
+GO_INSTALL_DESTINATION ?= /opt/$(BINARY)-dev-tools
+
+install-go:
+	$(call title, $@)
+	@mkdir -p $(GO_INSTALL_DESTINATION)
+	@if [ ! -e $(GO_INSTALL_DESTINATION)/go ]; then curl -fsSL --proto '=https' --tlsv1.2 https://go.dev/dl/$(shell curl -fsSL --proto "=https" --tlsv1.3 "https://go.dev/dl/?mode=json&include=all" | \
+		jq -rc 'map(select($(GO_VERSION_SELECTOR)))[0].files | map(select(.os=="$(OS)" and .arch=="$(ARCH)"))[0].filename') | \
+		tar xzC $(GO_INSTALL_DESTINATION) || exit; \
+	else \
+		echo "Install already detected, doing nothing."; \
+	fi
+	@echo Remember to add to your profile: export PATH="$(GO_INSTALL_DESTINATION)/go/bin:\$$HOME/go/bin:\$$PATH"
+	$(call footer, $@)
+
+install-go-resolve-version:
+	@curl -fsSL --proto "=https" --tlsv1.2 "https://go.dev/dl/?mode=json&include=all" | \
+		jq -rc 'map(select($(GO_VERSION_SELECTOR)))[0].version' | sed s/go//
 
 ##########################
 # Testing tasks
