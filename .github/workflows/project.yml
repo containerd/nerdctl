@@ -35,5 +35,3 @@ jobs:
           # https://github.com/cncf/foundation/blob/main/allowed-third-party-license-policy.md
           go-licenses-ignore: |
             github.com/multiformats/go-base36
-      - run: ./hack/verify-no-patent.sh
-        working-directory: src/github.com/containerd/nerdctl
