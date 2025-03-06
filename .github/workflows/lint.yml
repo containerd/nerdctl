@@ -8,75 +8,101 @@ on:
   pull_request:
 
 env:
-  GO_VERSION: 1.24.x
+  GO_VERSION: 1.24
   GOTOOLCHAIN: local
+  GO_INSTALL_DESTINATION: /opt
 
 jobs:
-  go:
+  go_current:
     timeout-minutes: 5
-    name: "go | ${{ matrix.goos }} | ${{ matrix.canary }}"
-    runs-on: "${{ matrix.os }}"
-    defaults:
-      run:
-        shell: bash
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            goos: linux
-          - os: ubuntu-24.04
-            goos: freebsd
-          # FIXME: this is currently failing in a non-sensical way, so, running on linux instead...
-          # - os: windows-2022
-          - os: ubuntu-24.04
-            goos: windows
-          - os: ubuntu-24.04
-            goos: linux
-            # This allows the canary script to select any upcoming golang alpha/beta/RC
-            canary: go-canary
+    name: "go stable"
+    runs-on: ubuntu-24.04
+    steps:
+      # First, setup: clone, install go (with cache), install dev tools (with cache)
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 100
+      - name: Environment setup
+        run: |
+          echo "GO_VERSION=$(make install-go-resolve-version)" >> "$GITHUB_ENV"
+          echo "PATH=$GO_INSTALL_DESTINATION/go/bin:$HOME/go/bin:$PATH" >> "$GITHUB_ENV"
+      - uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
+        id: cache-go
+        with:
+          path: /opt/go
+          key: golang-${{ env.GO_VERSION }}
+      - uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
+        id: cache-go-dev
+        with:
+          path: ~/go/bin
+          key: golang-dev-${{ env.GO_VERSION }}-${{ hashFiles('Makefile') }}
+      - if: ${{ steps.cache-go.outputs.cache-hit != 'true' }}
+        name: Install go
+        continue-on-error: false
+        run: make install-go
+      - if: ${{ steps.cache-go-dev.outputs.cache-hit != 'true' }}
+        name: Install dev tools
+        continue-on-error: false
+        run: make install-dev-tools
+
+      - name: imports
+        run: make lint-imports
+      - name: mod
+        run: make lint-mod
+      - name: go
+        run: make lint-go-all
+      - name: go
+        # This is duplicating some of the work done in projects-check (which uses an old / buggy version
+        # of go-licenses, and also only test for linux).
+        run: make lint-licenses-all
+
+  go_canary:
+    timeout-minutes: 5
+    name: "go canary"
+    runs-on: ubuntu-24.04
     env:
-      GOOS: "${{ matrix.goos }}"
+      GO_VERSION: canary
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
-      - name: Set GO env
+      - name: Environment setup
         run: |
-          # If canary is specified, get the latest available golang pre-release instead of the major version
-          if [ "$canary" != "" ]; then
-            . ./hack/build-integration-canary.sh
-            canary::golang::latest
-          fi
-      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
+          echo "GO_VERSION=$(make install-go-resolve-version)" >> "$GITHUB_ENV"
+          echo "PATH=$GO_INSTALL_DESTINATION/go/bin:$HOME/go/bin:$PATH" >> "$GITHUB_ENV"
+      - uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
+        id: cache-go
         with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837  # v6.5.0
+          path: /opt/go
+          key: golang-${{ env.GO_VERSION }}
+      - uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
+        id: cache-go-dev
         with:
-          args: --verbose
-          # See https://github.com/containerd/nerdctl/issues/3914
-          verify: false
+          path: ~/go/bin
+          key: golang-dev-${{ env.GO_VERSION }}-${{ hashFiles('Makefile') }}
+      - if: ${{ steps.cache-go.outputs.cache-hit != 'true' }}
+        name: Install go
+        run: make install-go
+      - if: ${{ steps.cache-go-dev.outputs.cache-hit != 'true' }}
+        name: Install dev tools
+        run: make install-dev-tools
+
+      - name: imports
+        run: make lint-imports
+      - name: mod
+        run: make lint-mod
+      - name: go
+        run: make lint-go-all
+
   other:
     timeout-minutes: 5
-    name: yaml | shell | imports order
+    name: "yaml | shell"
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 1
-      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-      - name: install required linters and dev-tools
-        run: |
-          make install-dev-tools
-      - name: yaml
+      - name: make lint-yaml
         run: make lint-yaml
-      - name: shell
+      - name: make lint-shell
         run: make lint-shell
-      - name: go imports ordering
-        run: |
-          make lint-imports
