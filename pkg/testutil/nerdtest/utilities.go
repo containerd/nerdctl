@@ -97,7 +97,7 @@ func InspectImage(helpers test.Helpers, name string) dockercompat.Image {
 }
 
 const (
-	maxRetry = 10
+	maxRetry = 20
 	sleep    = time.Second
 )
 
