@@ -54,7 +54,7 @@ func TestIPFSSimple(t *testing.T) {
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
 				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.CommonImage))
-				helpers.Ensure("pull", "ipfs://"+data.Get(mainImageCIDKey))
+				helpers.Ensure("pull", "--quiet", "ipfs://"+data.Get(mainImageCIDKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				if data.Get(mainImageCIDKey) != "" {
@@ -75,7 +75,7 @@ func TestIPFSSimple(t *testing.T) {
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.CommonImage, "--estargz"))
-				helpers.Ensure("pull", "ipfs://"+data.Get(mainImageCIDKey))
+				helpers.Ensure("pull", "--quiet", "ipfs://"+data.Get(mainImageCIDKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				if data.Get(mainImageCIDKey) != "" {
@@ -92,7 +92,7 @@ func TestIPFSSimple(t *testing.T) {
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
 				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.CommonImage))
-				helpers.Ensure("pull", "ipfs://"+data.Get(mainImageCIDKey))
+				helpers.Ensure("pull", "--quiet", "ipfs://"+data.Get(mainImageCIDKey))
 
 				// Run a container that does modify something, then commit and push it
 				helpers.Ensure("run", "--name", data.Identifier("commit-container"), data.Get(mainImageCIDKey), "sh", "-c", "--", "echo hello > /hello")
@@ -104,7 +104,7 @@ func TestIPFSSimple(t *testing.T) {
 				helpers.Ensure("rmi", data.Identifier("commit-image"))
 
 				// Pull back the committed image
-				helpers.Ensure("pull", "ipfs://"+data.Get(transformedImageCIDKey))
+				helpers.Ensure("pull", "--quiet", "ipfs://"+data.Get(transformedImageCIDKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier("commit-container"))
@@ -130,7 +130,7 @@ func TestIPFSSimple(t *testing.T) {
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.CommonImage, "--estargz"))
-				helpers.Ensure("pull", "ipfs://"+data.Get(mainImageCIDKey))
+				helpers.Ensure("pull", "--quiet", "ipfs://"+data.Get(mainImageCIDKey))
 
 				// Run a container that does modify something, then commit and push it
 				helpers.Ensure("run", "--name", data.Identifier("commit-container"), data.Get(mainImageCIDKey), "sh", "-c", "--", "echo hello > /hello")
@@ -142,7 +142,7 @@ func TestIPFSSimple(t *testing.T) {
 				helpers.Ensure("rmi", data.Identifier("commit-image"))
 
 				// Pull back the image
-				helpers.Ensure("pull", "ipfs://"+data.Get(transformedImageCIDKey))
+				helpers.Ensure("pull", "--quiet", "ipfs://"+data.Get(transformedImageCIDKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier("commit-container"))
@@ -165,7 +165,7 @@ func TestIPFSSimple(t *testing.T) {
 			Require:     require.Binary("openssl"),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.CommonImage))
-				helpers.Ensure("pull", "ipfs://"+data.Get(mainImageCIDKey))
+				helpers.Ensure("pull", "--quiet", "ipfs://"+data.Get(mainImageCIDKey))
 
 				// Prep a key pair
 				keyPair := testhelpers.NewJWEKeyPair(t)
@@ -193,7 +193,7 @@ func TestIPFSSimple(t *testing.T) {
 				helpers.Ensure("rmi", "-f", data.Get(transformedImageCIDKey))
 
 				// Pull back without unpacking
-				helpers.Ensure("pull", "--unpack=false", "ipfs://"+data.Get(transformedImageCIDKey))
+				helpers.Ensure("pull", "--quiet", "--unpack=false", "ipfs://"+data.Get(transformedImageCIDKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				if data.Get(mainImageCIDKey) != "" {

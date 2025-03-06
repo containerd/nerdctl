@@ -86,7 +86,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 			{
 				Description: "Pull with the correct key",
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Command("pull", "--verify=cosign", "--cosign-key="+keyPair.PublicKey, data.Get("imageref")+":one")
+					return helpers.Command("pull", "--quiet", "--verify=cosign", "--cosign-key="+keyPair.PublicKey, data.Get("imageref")+":one")
 				},
 				Expected: test.Expects(0, nil, nil),
 			},
@@ -97,7 +97,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					newKeyPair := testhelpers.NewCosignKeyPair(t, "cosign-key-pair-test", "2")
-					return helpers.Command("pull", "--verify=cosign", "--cosign-key="+newKeyPair.PublicKey, data.Get("imageref")+":two")
+					return helpers.Command("pull", "--quiet", "--verify=cosign", "--cosign-key="+newKeyPair.PublicKey, data.Get("imageref")+":two")
 				},
 				Expected: test.Expects(12, nil, nil),
 			},

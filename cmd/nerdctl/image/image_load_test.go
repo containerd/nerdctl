@@ -92,7 +92,7 @@ func TestLoadQuiet(t *testing.T) {
 		Description: "TestLoadQuiet",
 		Setup: func(data test.Data, helpers test.Helpers) {
 			identifier := data.Identifier()
-			helpers.Ensure("pull", testutil.CommonImage)
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 			helpers.Ensure("tag", testutil.CommonImage, identifier)
 			helpers.Ensure("save", identifier, "-o", filepath.Join(data.TempDir(), "common.tar"))
 			helpers.Ensure("rmi", "-f", identifier)

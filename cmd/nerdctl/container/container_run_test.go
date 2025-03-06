@@ -534,7 +534,7 @@ func TestRunAddHostRemainsWhenAnotherContainerCreated(t *testing.T) {
 // https://github.com/containerd/nerdctl/issues/2726
 func TestRunRmTime(t *testing.T) {
 	base := testutil.NewBase(t)
-	base.Cmd("pull", testutil.CommonImage)
+	base.Cmd("pull", "--quiet", testutil.CommonImage)
 	t0 := time.Now()
 	base.Cmd("run", "--rm", testutil.CommonImage, "true").AssertOK()
 	t1 := time.Now()

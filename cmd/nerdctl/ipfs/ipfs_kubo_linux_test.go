@@ -66,7 +66,7 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
 				ipfsCID := pushToIPFS(helpers, testutil.CommonImage, fmt.Sprintf("--ipfs-address=%s", data.Get(ipfsAddrKey)))
-				helpers.Ensure("pull", "--ipfs-address", data.Get(ipfsAddrKey), "ipfs://"+ipfsCID)
+				helpers.Ensure("pull", "--quiet", "--ipfs-address", data.Get(ipfsAddrKey), "ipfs://"+ipfsCID)
 				data.Set(mainImageCIDKey, ipfsCID)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -89,7 +89,7 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
 				ipfsCID := pushToIPFS(helpers, testutil.CommonImage, fmt.Sprintf("--ipfs-address=%s", data.Get(ipfsAddrKey)), "--estargz")
-				helpers.Ensure("pull", "--ipfs-address", data.Get(ipfsAddrKey), "ipfs://"+ipfsCID)
+				helpers.Ensure("pull", "--quiet", "--ipfs-address", data.Get(ipfsAddrKey), "ipfs://"+ipfsCID)
 				data.Set(mainImageCIDKey, ipfsCID)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
