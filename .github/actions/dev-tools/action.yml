@@ -1,0 +1,34 @@
+name: "Install: dev-tools"
+
+description: "This action installs the project dev-tools, with caching."
+
+runs:
+  using: composite
+  steps:
+    - name: Environment setup
+      shell: bash
+      run: |
+        # Get the arch
+        arch=$(echo "$RUNNER_ARCH" | sed -E "s/(X86|X64)/amd64/" | sed -E "s/(ARM|ARM64)/arm64/")
+
+        # Get the os
+        os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]' | sed -E "s/macos/darwin/")
+
+        # Get the hash of the Makefile
+        hash="${{ hashFiles('Makefile') }}"
+
+        # Get it all in to build the cache key, salted with the go version
+        echo "ACTION_INSTALL_DEVTOOLS_CACHE_KEY=$hash-$os-$arch-$(go version)" >> "$GITHUB_ENV"
+
+    - name: Enable cache
+      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
+      id: cache
+      with:
+        path: ~/go/bin
+        key: action-tools-install-${{ env.ACTION_INSTALL_DEVTOOLS_CACHE_KEY }}
+    - if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+      name: Install dev tools
+      shell: bash
+      continue-on-error: false
+      run: |
+        make install-dev-tools

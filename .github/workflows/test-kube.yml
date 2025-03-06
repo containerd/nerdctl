@@ -12,14 +12,12 @@ on:
 
 jobs:
   linux:
-    runs-on: "ubuntu-24.04"
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
       ROOTFUL: true
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-        with:
-          fetch-depth: 1
       - name: "Run Kubernetes integration tests"
         # See https://github.com/containerd/nerdctl/blob/main/docs/testing/README.md#about-parallelization
         run: |

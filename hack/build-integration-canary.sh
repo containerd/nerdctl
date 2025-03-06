@@ -28,7 +28,8 @@ readonly root
 # "Blacklisting" here means that any dependency which name is blacklisted will be left untouched, at the version
 # currently pinned in the Dockerfile.
 # This is convenient so that currently broken alpha/beta/RC can be held back temporarily to keep the build green
-blacklist=()
+blacklist=(
+)
 
 # List all the repositories we depend on to build and run integration tests
 dependencies=(
@@ -162,13 +163,18 @@ latest::release(){
     [ ! "$ignore" ] || ! grep -q "$ignore" <<<"$line" || continue
     name="$(echo "$line"  | jq -rc .name)"
     if [ "$name" == "" ] || [ "$name" == null ] ; then
-      log::debug " > bogus release name ($name) ignored"
-      continue
+      # Kubo latest releases are NOT setting a release name anymore :/
+      # Hail mary on .tag_name...
+      name="$(echo "$line"  | jq -rc .tag_name)"
+      if [ "$name" == "" ] || [ "$name" == null ] ; then
+        log::debug " > bogus release name: $line"
+        continue
+      fi
     fi
     log::debug " > found release: $name"
-    if version::compare <(echo "$line" | jq -rc .name); then
+    if version::compare <(echo "$name"); then
       higher_data="$line"
-      higher_readable="$(echo "$line" | jq -rc .name | sed -E 's/(.*[ ])?(v?[0-9][0-9.a-z-]+).*/\2/')"
+      higher_readable="$(echo "$name" | sed -E 's/(.*[ ])?(v?[0-9][0-9.a-z-]+).*/\2/')"
     fi
   done < <(github::releases "$repo")
 
@@ -211,7 +217,6 @@ assets::get(){
 ######################
 # Script
 ######################
-
 canary::build::integration(){
   docker_args=(docker build -t test-integration --target test-integration)
 
@@ -291,58 +296,8 @@ canary::build::integration(){
     docker_args+=(--build-arg "${shortsafename}_VERSION=$higher_readable")
   done
 
-  hub_available_go_version="$(canary::golang::hublatest)"
-  if [ "$hub_available_go_version" != "" ]; then
-    docker_args+=(--build-arg "GO_VERSION=$hub_available_go_version")
-  fi
+  docker_args+=(--build-arg "GO_VERSION=$GO_VERSION")
 
   log::debug "${docker_args[*]} ."
   "${docker_args[@]}" "."
-}
-
-# Hub usually has a delay before available golang version show-up. This method will find the latest available one.
-# See
-# - https://github.com/containerd/nerdctl/issues/3224
-# - https://github.com/containerd/nerdctl/issues/3306
-canary::golang::hublatest(){
-  local hub_tags
-  local go_version
-  local available_version=""
-  local index
-
-  hub_tags="$(http::get /dev/stdout "https://registry-1.docker.io/v2/library/golang/tags/list" -H "Authorization: Bearer $(http::get /dev/stdout "https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Alibrary%2Fgolang%3Apull" | jq  -rc .access_token)")"
-
-  index=0
-  while [ "$available_version" == "" ] && [ "$index" -lt 5 ]; do
-    go_version="$(http::get /dev/stdout "https://go.dev/dl/?mode=json&include=all" | jq -rc .[$index].version)"
-    go_version="${go_version##*go}"
-    available_version="$(printf "%s" "$hub_tags" | jq -rc ".tags[] | select(.==\"$go_version\")")"
-    ((index++))
-  done || true
-
-  printf "%s" "$available_version"
-}
-
-canary::golang::latest(){
-  # Enable extended globbing features to use advanced pattern matching
-  shopt -s extglob
-
-  # Get latest golang version and split it in components
-  norm=()
-  while read -r line; do
-    line_trimmed="${line//+([[:space:]])/}"
-    norm+=("$line_trimmed")
-  done < \
-    <(sed -E 's/^go([0-9]+)[.]([0-9]+)([.]([0-9]+))?(([a-z]+)([0-9]+))?/\1.\2\n\4\n\6\n\7/i' \
-      <(curl -fsSL "https://go.dev/dl/?mode=json&include=all" | jq -rc .[0].version) \
-    )
-
-  # Serialize version, making sure we have a patch version, and separate possible rcX into .rc-X
-  [ "${norm[1]}" != "" ] || norm[1]="0"
-  norm[1]=".${norm[1]}"
-  [ "${norm[2]}" == "" ] || norm[2]="-${norm[2]}"
-  [ "${norm[3]}" == "" ] || norm[3]=".${norm[3]}"
-  # Save it
-  IFS=
-  echo "GO_VERSION=${norm[*]}" >> "$GITHUB_ENV"
 }

@@ -26,7 +26,7 @@ ORG_PREFIXES := "github.com/containerd"
 
 DOCKER ?= docker
 GO ?= go
-GOOS ?= $(shell $(GO) env GOOS)
+GOOS ?= $(shell $(GO) env GOOS 2>/dev/null || true)
 ifeq ($(GOOS),windows)
 	BIN_EXT := .exe
 endif
@@ -55,12 +55,15 @@ ARCH := amd64
 ifeq ($(shell uname -m), aarch64)
 	ARCH = arm64
 endif
-OS := linux
+OS := windows
 ifeq ($(shell uname -s), Darwin)
 	OS = darwin
 endif
 ifeq ($(shell uname -s), FreeBSD)
 	OS = freebsd
+endif
+ifeq ($(shell uname -s), Linux)
+	OS = linux
 endif
 
 ifdef VERBOSE
@@ -253,7 +256,6 @@ install-dev-tools:
 	$(call footer, $@)
 
 GO_VERSION ?= stable
-GO_VERSION_SELECTOR =
 GO_VERSION_SELECTOR = .version | startswith("go$(GO_VERSION)")
 ifeq ($(GO_VERSION),canary)
 	GO_VERSION_SELECTOR = .stable==false
@@ -270,11 +272,13 @@ GO_INSTALL_DESTINATION ?= /opt/$(BINARY)-dev-tools
 install-go:
 	$(call title, $@)
 	@mkdir -p $(GO_INSTALL_DESTINATION)
-	@if [ ! -e $(GO_INSTALL_DESTINATION)/go ]; then curl -fsSL --proto '=https' --tlsv1.2 https://go.dev/dl/$(shell curl -fsSL --proto "=https" --tlsv1.3 "https://go.dev/dl/?mode=json&include=all" | \
-		jq -rc 'map(select($(GO_VERSION_SELECTOR)))[0].files | map(select(.os=="$(OS)" and .arch=="$(ARCH)"))[0].filename') | \
-		tar xzC $(GO_INSTALL_DESTINATION) || exit; \
+	@if [ ! -e $(GO_INSTALL_DESTINATION)/go ]; then cd $(GO_INSTALL_DESTINATION); \
+		curl -o go.archive -fsSL --proto '=https' --tlsv1.2 https://go.dev/dl/$(shell \
+			curl -fsSL --proto "=https" --tlsv1.2 "https://go.dev/dl/?mode=json&include=all" | \
+			jq -rc 'map(select($(GO_VERSION_SELECTOR)))[0].files | map(select(.os=="$(OS)" and .arch=="$(ARCH)"))[0].filename'); \
+		[ "$(OS)" = windows ] && unzip go.archive >/dev/null || tar xzf go.archive; \
 	else \
-		echo "Install already detected, doing nothing."; \
+		echo "Install already detected in $(GO_INSTALL_DESTINATION), doing nothing."; \
 	fi
 	@echo Remember to add to your profile: export PATH="$(GO_INSTALL_DESTINATION)/go/bin:\$$HOME/go/bin:\$$PATH"
 	$(call footer, $@)

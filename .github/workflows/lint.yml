@@ -10,7 +10,7 @@ on:
 env:
   GO_VERSION: 1.24
   GOTOOLCHAIN: local
-  GO_INSTALL_DESTINATION: /opt
+  GOOS: linux
 
 jobs:
   go_current:
@@ -18,32 +18,16 @@ jobs:
     name: "go stable"
     runs-on: ubuntu-24.04
     steps:
-      # First, setup: clone, install go (with cache), install dev tools (with cache)
+      # Clone
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      # Install go
+      - name: "Install go"
+        uses: ./.github/actions/install-go
         with:
-          fetch-depth: 100
-      - name: Environment setup
-        run: |
-          echo "GO_VERSION=$(make install-go-resolve-version)" >> "$GITHUB_ENV"
-          echo "PATH=$GO_INSTALL_DESTINATION/go/bin:$HOME/go/bin:$PATH" >> "$GITHUB_ENV"
-      - uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
-        id: cache-go
-        with:
-          path: /opt/go
-          key: golang-${{ env.GO_VERSION }}
-      - uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
-        id: cache-go-dev
-        with:
-          path: ~/go/bin
-          key: golang-dev-${{ env.GO_VERSION }}-${{ hashFiles('Makefile') }}
-      - if: ${{ steps.cache-go.outputs.cache-hit != 'true' }}
-        name: Install go
-        continue-on-error: false
-        run: make install-go
-      - if: ${{ steps.cache-go-dev.outputs.cache-hit != 'true' }}
-        name: Install dev tools
-        continue-on-error: false
-        run: make install-dev-tools
+          version: ${{ env.GO_VERSION }}
+      # Install dev-tools
+      - name: "Install dev-tools"
+        uses: ./.github/actions/dev-tools
 
       - name: imports
         run: make lint-imports
@@ -63,29 +47,16 @@ jobs:
     env:
       GO_VERSION: canary
     steps:
+      # Clone
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      # Install go
+      - name: "Install go"
+        uses: ./.github/actions/install-go
         with:
-          fetch-depth: 1
-      - name: Environment setup
-        run: |
-          echo "GO_VERSION=$(make install-go-resolve-version)" >> "$GITHUB_ENV"
-          echo "PATH=$GO_INSTALL_DESTINATION/go/bin:$HOME/go/bin:$PATH" >> "$GITHUB_ENV"
-      - uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
-        id: cache-go
-        with:
-          path: /opt/go
-          key: golang-${{ env.GO_VERSION }}
-      - uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
-        id: cache-go-dev
-        with:
-          path: ~/go/bin
-          key: golang-dev-${{ env.GO_VERSION }}-${{ hashFiles('Makefile') }}
-      - if: ${{ steps.cache-go.outputs.cache-hit != 'true' }}
-        name: Install go
-        run: make install-go
-      - if: ${{ steps.cache-go-dev.outputs.cache-hit != 'true' }}
-        name: Install dev tools
-        run: make install-dev-tools
+          version: ${{ env.GO_VERSION }}
+      # Install dev-tools
+      - name: "Install dev-tools"
+        uses: ./.github/actions/dev-tools
 
       - name: imports
         run: make lint-imports
@@ -100,8 +71,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-        with:
-          fetch-depth: 1
       - name: make lint-yaml
         run: make lint-yaml
       - name: make lint-shell
