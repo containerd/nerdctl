@@ -29,9 +29,6 @@ jobs:
             containerd: v1.6.36
             arch: amd64
           - runner: ubuntu-24.04
-            containerd: v1.7.25
-            arch: amd64
-          - runner: ubuntu-24.04
             containerd: v2.0.3
             arch: amd64
           - runner: ubuntu-24.04-arm
@@ -106,7 +103,7 @@ jobs:
       matrix:
         include:
           - ubuntu: 22.04
-            containerd: v1.7.25
+            containerd: v1.6.36
             runner: "ubuntu-22.04"
             arch: amd64
           - ubuntu: 24.04
@@ -115,7 +112,7 @@ jobs:
             arch: amd64
           - ubuntu: 24.04
             containerd: v2.0.3
-            runner: ubuntu-24.04-arm
+            runner: "ubuntu-24.04-arm"
             arch: arm64
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -219,26 +216,35 @@ jobs:
     needs: build-dependencies
     timeout-minutes: 40
     name: "${{ matrix.target }} | ${{ matrix.containerd }} | ${{ matrix.rootlesskit }} | ${{ matrix.ubuntu }}"
-    runs-on: "ubuntu-${{ matrix.ubuntu }}"
+    runs-on: "${{ matrix.runner }}"
     strategy:
       fail-fast: false
       matrix:
         include:
           - ubuntu: 22.04
-            containerd: v1.7.25
+            containerd: v1.6.36
             rootlesskit: v1.1.1  # Deprecated
             target: rootless
+            runner: "ubuntu-22.04"
             arch: amd64
           - ubuntu: 24.04
             containerd: v2.0.3
             rootlesskit: v2.3.2
             target: rootless
             arch: amd64
+            runner: "ubuntu-24.04"
           - ubuntu: 24.04
-            containerd: v1.7.25
+            containerd: v2.0.3
+            rootlesskit: v2.3.2
+            target: rootless
+            arch: arm64
+            runner: "ubuntu-24.04-arm"
+          - ubuntu: 24.04
+            containerd: v2.0.3
             rootlesskit: v2.3.2
             target: rootless-port-slirp4netns
             arch: amd64
+            runner: "ubuntu-24.04"
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
       ARCH: "${{ matrix.arch }}"
