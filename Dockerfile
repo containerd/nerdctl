@@ -115,7 +115,7 @@ RUN os="${BUILDPLATFORM%%/*}"; \
     candidates="$(case "$GO_VERSION" in \
       canary) condition=".stable==false" ;; \
       stable|"") condition=".stable==true" ;; \
-      *) condition='.version=="go'"$GO_VERSION"'"' ;; \
+      *) condition='.version | startswith("go'"$GO_VERSION"'")' ;; \
     esac; \
     jq -rc 'map(select('"$condition"'))[0].files | map(select(.os=="'"$os"'"))' <(printf "$all_versions"))"; \
     arch=arm64; \
