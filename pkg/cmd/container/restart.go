@@ -38,7 +38,7 @@ func Restart(ctx context.Context, client *containerd.Client, containers []string
 			if err := containerutil.Stop(ctx, found.Container, options.Timeout, options.Signal); err != nil {
 				return err
 			}
-			if err := containerutil.Start(ctx, found.Container, false, client, ""); err != nil {
+			if err := containerutil.Start(ctx, found.Container, []string{}, client, ""); err != nil {
 				return err
 			}
 			_, err := fmt.Fprintln(options.Stdout, found.Req)
