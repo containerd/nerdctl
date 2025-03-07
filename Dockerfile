@@ -270,10 +270,6 @@ VOLUME /var/lib/nerdctl
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["bash", "--login", "-i"]
 
-# convert GO_VERSION=1.16 to the latest release such as "go1.16.1"
-FROM golang:${GO_VERSION}-alpine AS goversion
-RUN go env GOVERSION > /GOVERSION
-
 FROM base AS test-integration
 ARG DEBIAN_FRONTEND=noninteractive
 # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
@@ -281,9 +277,9 @@ RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
   expect \
   git \
   make
-COPY --from=goversion /GOVERSION /GOVERSION
+# We wouldn't need this if Docker Hub could have "golang:${GO_VERSION}-ubuntu"
+COPY --from=build-base-debian /usr/local/go /usr/local/go
 ARG TARGETARCH
-RUN curl -fsSL --proto '=https' --tlsv1.2 https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local
 ENV PATH=/usr/local/go/bin:$PATH
 ARG GOTESTSUM_VERSION
 RUN GOBIN=/usr/local/bin go install gotest.tools/gotestsum@${GOTESTSUM_VERSION}
