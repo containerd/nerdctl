@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -476,4 +477,131 @@ func TestRunBlkioWeightCgroupV2(t *testing.T) {
 	base.Cmd("exec", containerName, "cat", "io.bfq.weight").AssertOutExactly("default 300\n")
 	base.Cmd("update", containerName, "--blkio-weight", "400").AssertOK()
 	base.Cmd("exec", containerName, "cat", "io.bfq.weight").AssertOutExactly("default 400\n")
+}
+
+func TestRunBlkioSettingCgroupV2(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "blkio-weight",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-d", "--name", data.Identifier(),
+					"--blkio-weight", "150",
+					testutil.AlpineImage, "sleep", "infinity")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						func(stdout string, info string, t *testing.T) {
+							assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "{{.HostConfig.BlkioWeight}}", data.Identifier()), "150"))
+						},
+					),
+				}
+			},
+		},
+		{
+			Description: "blkio-weight-device",
+			Require:     nerdtest.CGroupV2,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-d", "--name", data.Identifier(),
+					"--blkio-weight-device", "/dev/sda:100",
+					testutil.AlpineImage, "sleep", "infinity")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						func(stdout string, info string, t *testing.T) {
+							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioWeightDevice}}{{.Weight}}{{end}}", data.Identifier())
+							assert.Assert(t, strings.Contains(inspectOut, "100"))
+						},
+					),
+				}
+			},
+		},
+		{
+			Description: "device-read-bps",
+			Require:     nerdtest.CGroupV2,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-d", "--name", data.Identifier(),
+					"--device-read-bps", "/dev/sda:1048576",
+					testutil.AlpineImage, "sleep", "infinity")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						func(stdout string, info string, t *testing.T) {
+							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceReadBps}}{{.Rate}}{{end}}", data.Identifier())
+							assert.Assert(t, strings.Contains(inspectOut, "1048576"))
+						},
+					),
+				}
+			},
+		},
+		{
+			Description: "device-write-bps",
+			Require:     nerdtest.CGroupV2,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-d", "--name", data.Identifier(),
+					"--device-write-bps", "/dev/sda:2097152",
+					testutil.AlpineImage, "sleep", "infinity")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						func(stdout string, info string, t *testing.T) {
+							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceWriteBps}}{{.Rate}}{{end}}", data.Identifier())
+							assert.Assert(t, strings.Contains(inspectOut, "2097152"))
+						},
+					),
+				}
+			},
+		},
+		{
+			Description: "device-read-iops",
+			Require:     nerdtest.CGroupV2,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-d", "--name", data.Identifier(),
+					"--device-read-iops", "/dev/sda:1000",
+					testutil.AlpineImage, "sleep", "infinity")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						func(stdout string, info string, t *testing.T) {
+							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceReadIOps}}{{.Rate}}{{end}}", data.Identifier())
+							assert.Assert(t, strings.Contains(inspectOut, "1000"))
+						},
+					),
+				}
+			},
+		},
+		{
+			Description: "device-write-iops",
+			Require:     nerdtest.CGroupV2,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-d", "--name", data.Identifier(),
+					"--device-write-iops", "/dev/sda:2000",
+					testutil.AlpineImage, "sleep", "infinity")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						func(stdout string, info string, t *testing.T) {
+							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceWriteIOps}}{{.Rate}}{{end}}", data.Identifier())
+							assert.Assert(t, strings.Contains(inspectOut, "2000"))
+						},
+					),
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
 }

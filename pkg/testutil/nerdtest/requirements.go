@@ -190,6 +190,28 @@ var CgroupsAccessible = require.All(
 	},
 )
 
+// CGroupV2 requires that cgroup is enabled and cgroup version is 2
+var CGroupV2 = &test.Requirement{
+	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+		ret = true
+		mess = "cgroup is enabled"
+		stdout := helpers.Capture("info", "--format", "{{ json . }}")
+		var dinf dockercompat.Info
+		err := json.Unmarshal([]byte(stdout), &dinf)
+		assert.NilError(helpers.T(), err, "failed to parse docker info")
+		switch dinf.CgroupDriver {
+		case "none", "":
+			ret = false
+			mess = "cgroup is none"
+		}
+		if dinf.CgroupVersion != "2" {
+			ret = false
+			mess = "cgroup version is not 2"
+		}
+		return ret, mess
+	},
+}
+
 // Soci requires that the soci snapshotter is enabled
 var Soci = &test.Requirement{
 	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
