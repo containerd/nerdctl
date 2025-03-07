@@ -1,0 +1,56 @@
+name: "Install: go"
+
+description: "This action installs go, with caching"
+
+inputs:
+  version:
+    default: "stable"
+    description: "1.24 (latest patch release on the branch), 1.24.1 (specific version), stable (latest stable), canary (latest alpha/beta/RC)"
+
+runs:
+  using: composite
+  steps:
+    - name: Environment setup
+      shell: bash
+      run: |
+        # Get the selector from the input
+        case "${{ inputs.version }}" in
+          "stable" | "") selector=.stable==true ;;
+          "canary") selector=.stable==false ;;
+          *) selector=".version | startswith(\"go${{ inputs.version }}\")" ;;
+        esac
+
+        # Retrieve the files for the requested version
+        files="$(curl -fsSL --proto "=https" --tlsv1.3 "https://go.dev/dl/?mode=json&include=all" | jq -rc 'map(select('"$selector"'))[0].files')"
+
+        # Get the arch
+        arch=$(echo "$RUNNER_ARCH" | sed -E "s/(X86|X64)/amd64/" | sed -E "s/(ARM|ARM64)/arm64/")
+
+        # Get the os
+        os=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]' | sed -E "s/macos/darwin/")
+
+        # Get the filename for that os and arch
+        filename="$(jq -rc 'map(select(.os=="'"$os"'" and .arch=="'"$arch"'"))[0].filename' <<<"$files")"
+
+        # Save the filename to be used as cache key.
+        echo "ACTION_INSTALL_GO_FILENAME=$filename" >> "$GITHUB_ENV"
+
+        # Configure the path
+        echo "PATH=/opt/go/bin:$HOME/go/bin:$PATH" >> "$GITHUB_ENV"
+
+    - name: Enable cache
+      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
+      id: cache
+      with:
+        path: /opt/go
+        key: action-go-install-${{ env.ACTION_INSTALL_GO_FILENAME }}
+
+    - if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+      name: Install go
+      shell: bash
+      continue-on-error: false
+      run: |
+        cd /opt
+        curl -O -fsSL --proto '=https' --tlsv1.3 https://go.dev/dl/"$ACTION_INSTALL_GO_FILENAME"
+        [ "${ACTION_INSTALL_GO_FILENAME##*.}" = zip ] && unzip "$ACTION_INSTALL_GO_FILENAME" >/dev/null || tar xzf "$ACTION_INSTALL_GO_FILENAME"
+        rm -f "$ACTION_INSTALL_GO_FILENAME"

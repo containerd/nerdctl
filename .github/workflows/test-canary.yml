@@ -11,21 +11,25 @@ on:
       - '**.md'
 
 env:
-  UBUNTU_VERSION: "24.04"
+  GO_VERSION: canary
+  GOTOOLCHAIN: local
+  GO_INSTALL_DESTINATION: /opt
+  GOOS: linux
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   linux:
-    runs-on: "ubuntu-24.04"
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-        with:
-          fetch-depth: 1
-      - name: "Prepare integration test environment"
+      - name: "Setup environment"
         run: |
+          # Get latest canary go version
+          export GO_VERSION=$(make install-go-resolve-version)
+          # Build integration image with updated dependencies
           . ./hack/build-integration-canary.sh
-          canary::build::integration
+          LOG_LEVEL=info canary::build::integration
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
           sudo systemctl disable --now snapd.service snapd.socket
@@ -41,6 +45,7 @@ jobs:
           docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
+
       - name: "Run unit tests"
         run: go test -v ./pkg/...
       - name: "Run integration tests"
@@ -50,48 +55,56 @@ jobs:
 
   windows:
     timeout-minutes: 40
-    runs-on: windows-latest
+    runs-on: windows-2022
+    env:
+      GOOS: windows
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-        with:
-          fetch-depth: 1
-      - name: Set GO env
+      - name: "Clone"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - name: "Setup go environment"
         run: |
-          # Get latest containerd
+          echo "GO_VERSION=$(make install-go-resolve-version)" >> "$GITHUB_ENV"
+          echo "PATH=$GO_INSTALL_DESTINATION/go/bin:$HOME/go/bin:$PATH" >> "$GITHUB_ENV"
+      - name: "Cache go"
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
+        id: cache-go
+        with:
+          path: /opt/go
+          key: golang-${{ env.GOOS }}-${{ env.GO_VERSION }}
+      - if: ${{ steps.cache-go.outputs.cache-hit != 'true' }}
+        name: "Setup go"
+        continue-on-error: false
+        run: make install-go
+      - name: "Cache dev-tools"
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
+        id: cache-go-dev
+        with:
+          path: ~/go/bin
+          key: golang-dev-${{ env.GOOS }}-${{ env.GO_VERSION }}-${{ hashFiles('Makefile') }}
+      - if: ${{ steps.cache-go-dev.outputs.cache-hit != 'true' }}
+        name: "Setup dev tools"
+        continue-on-error: false
+        run: make install-dev-tools
+      - name: "Setup CNI & containerd"
+        run: |
+          # CNI install script has not been modified in 3+ years.
+          # There is little to no reason to update this to latest containerd
+          curl -fsSLO https://raw.githubusercontent.com/containerd/containerd/refs/tags/v1.7.25/script/setup/install-cni-windows
+          GOPATH=$(go env GOPATH) ./install-cni-windows
+          # Setup nerdctl
+          go install ./cmd/nerdctl
+          # Get latest tagged containerd
           args=(curl --proto '=https' --tlsv1.2 -fsSL -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28")
           [ "${GITHUB_TOKEN:-}" == "" ] && {
-            >&2 printf "GITHUB_TOKEN is not set - you might face rate limitations with the Github API\n"
+            echo "GITHUB_TOKEN is not set - you might face rate limitations with the Github API"
           } || args+=(-H "Authorization: Bearer $GITHUB_TOKEN")
           ctd_v="$("${args[@]}" https://api.github.com/repos/containerd/containerd/tags | jq -rc .[0].name)"
-          echo "CONTAINERD_VERSION=${ctd_v:1}" >> "$GITHUB_ENV"
-
-          . ./hack/build-integration-canary.sh
-          canary::golang::latest
-      - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-      - run: go install ./cmd/nerdctl
-      - run: make install-dev-tools
-      # This here is solely to get the cni install script, which has not been modified in 3+ years.
-      # There is little to no reason to update this to latest containerd
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-        with:
-          repository: containerd/containerd
-          ref: "v1.7.25"
-          path: containerd
-          fetch-depth: 1
-      - name: "Set up CNI"
-        working-directory: containerd
-        run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
-      # Windows setup script can only use released versions
-      - name: "Set up containerd"
-        env:
-          ctrdVersion: ${{ env.CONTAINERD_VERSION }}
-        run: powershell hack/configure-windows-ci.ps1
+          ctrdVersion="${ctd_v:1}" powershell hack/configure-windows-ci.ps1
+      - name: "Run unit tests"
+        run: go test -v ./pkg/...
       - name: "Run integration tests"
         run: ./hack/test-integration.sh -test.only-flaky=false
       - name: "Run integration tests (flaky)"

@@ -52,3 +52,4 @@ linters-settings:
           - "golang.org/x/term"
           - "gotest.tools"
           - "github.com/creack/pty"
+          - "github.com/containerd/nerdctl/mod/tigron"

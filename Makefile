@@ -26,7 +26,7 @@ ORG_PREFIXES := "github.com/containerd"
 
 DOCKER ?= docker
 GO ?= go
-GOOS ?= $(shell $(GO) env GOOS)
+GOOS ?= $(shell $(GO) env GOOS 2>/dev/null || true)
 ifeq ($(GOOS),windows)
 	BIN_EXT := .exe
 endif
@@ -39,9 +39,11 @@ DOCDIR  ?= $(DATADIR)/doc
 
 BINARY ?= "nerdctl"
 MAKEFILE_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
-VERSION ?= $(shell git -C $(MAKEFILE_DIR) describe --match 'v[0-9]*' --dirty='.m' --always --tags)
+VERSION ?= $(shell git -C $(MAKEFILE_DIR) describe --match 'v[0-9]*' --dirty='.m' --always --tags 2>/dev/null \
+	|| echo "no_git_information")
 VERSION_TRIMMED := $(VERSION:v%=%)
-REVISION ?= $(shell git -C $(MAKEFILE_DIR) rev-parse HEAD)$(shell if ! git -C $(MAKEFILE_DIR) diff --no-ext-diff --quiet --exit-code; then echo .m; fi)
+REVISION ?= $(shell git -C $(MAKEFILE_DIR) rev-parse HEAD 2>/dev/null || echo "no_git_information")$(shell \
+	if ! git -C $(MAKEFILE_DIR) diff --no-ext-diff --quiet --exit-code 2>/dev/null; then echo .m; fi)
 LINT_COMMIT_RANGE ?= main..HEAD
 GO_BUILD_LDFLAGS ?= -s -w
 GO_BUILD_FLAGS ?=
@@ -49,6 +51,21 @@ GO_BUILD_FLAGS ?=
 ##########################
 # Helpers
 ##########################
+ARCH := amd64
+ifeq ($(shell uname -m), aarch64)
+	ARCH = arm64
+endif
+OS := windows
+ifeq ($(shell uname -s), Darwin)
+	OS = darwin
+endif
+ifeq ($(shell uname -s), FreeBSD)
+	OS = freebsd
+endif
+ifeq ($(shell uname -s), Linux)
+	OS = linux
+endif
+
 ifdef VERBOSE
 	VERBOSE_FLAG := -v
 	VERBOSE_FLAG_LONG := --verbose
@@ -235,8 +252,40 @@ install-dev-tools:
 		&& go install github.com/google/go-licenses/v2@d01822334fba5896920a060f762ea7ecdbd086e8 \
 		&& go install github.com/incu6us/goimports-reviser/v3@f034195cc8a7ffc7cc70d60aa3a25500874eaf04 \
 		&& go install gotest.tools/gotestsum@ac6dad9c7d87b969004f7749d1942938526c9716
-	@echo "Remember to add GOROOT/bin to your path"
+	@echo "Remember to add \$$HOME/go/bin to your path"
 	$(call footer, $@)
+
+GO_VERSION ?= stable
+GO_VERSION_SELECTOR = .version | startswith("go$(GO_VERSION)")
+ifeq ($(GO_VERSION),canary)
+	GO_VERSION_SELECTOR = .stable==false
+endif
+ifeq ($(GO_VERSION),stable)
+	GO_VERSION_SELECTOR = .stable==true
+endif
+ifeq ($(GO_VERSION),)
+	GO_VERSION_SELECTOR = .stable==true
+endif
+
+GO_INSTALL_DESTINATION ?= /opt/$(BINARY)-dev-tools
+
+install-go:
+	$(call title, $@)
+	@mkdir -p $(GO_INSTALL_DESTINATION)
+	@if [ ! -e $(GO_INSTALL_DESTINATION)/go ]; then cd $(GO_INSTALL_DESTINATION); \
+		curl -o go.archive -fsSL --proto '=https' --tlsv1.2 https://go.dev/dl/$(shell \
+			curl -fsSL --proto "=https" --tlsv1.2 "https://go.dev/dl/?mode=json&include=all" | \
+			jq -rc 'map(select($(GO_VERSION_SELECTOR)))[0].files | map(select(.os=="$(OS)" and .arch=="$(ARCH)"))[0].filename'); \
+		[ "$(OS)" = windows ] && unzip go.archive >/dev/null || tar xzf go.archive; \
+	else \
+		echo "Install already detected in $(GO_INSTALL_DESTINATION), doing nothing."; \
+	fi
+	@echo Remember to add to your profile: export PATH="$(GO_INSTALL_DESTINATION)/go/bin:\$$HOME/go/bin:\$$PATH"
+	$(call footer, $@)
+
+install-go-resolve-version:
+	@curl -fsSL --proto "=https" --tlsv1.2 "https://go.dev/dl/?mode=json&include=all" | \
+		jq -rc 'map(select($(GO_VERSION_SELECTOR)))[0].version' | sed s/go//
 
 ##########################
 # Testing tasks
