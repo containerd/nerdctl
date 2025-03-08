@@ -162,7 +162,6 @@ func WaitForLogger(dataStore, ns, id string) error {
 	})
 }
 
-// getContainerWait loads the container from ID and returns its wait channel
 func getContainerWait(ctx context.Context, address string, config *logging.Config) (<-chan containerd.ExitStatus, error) {
 	client, err := containerd.New(address, containerd.WithDefaultNamespace(config.Namespace))
 	if err != nil {
@@ -203,7 +202,9 @@ func getContainerWait(ctx context.Context, address string, config *logging.Confi
 	}
 }
 
-func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, address string, config *logging.Config) error {
+type ContainerWaitFunc func(ctx context.Context, address string, config *logging.Config) (<-chan containerd.ExitStatus, error)
+
+func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, address string, getContainerWait ContainerWaitFunc, config *logging.Config) error {
 	if err := driver.PreProcess(ctx, dataStore, config); err != nil {
 		return err
 	}
@@ -250,7 +251,6 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, addres
 		for err == nil {
 			var s string
 			s, err = r.ReadString('\n')
-
 			if len(s) > 0 {
 				dataChan <- strings.TrimSuffix(s, "\n")
 			}
@@ -269,7 +269,7 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, addres
 	go func() {
 		// close stdout and stderr upon container exit
 		defer pipeStdoutW.Close()
-		defer pipeStdoutW.Close()
+		defer pipeStderrW.Close()
 
 		exitCh, err := getContainerWait(ctx, address, config)
 		if err != nil {
@@ -315,7 +315,8 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 				if err := ready(); err != nil {
 					return err
 				}
-				return loggingProcessAdapter(ctx, driver, dataStore, logConfig.Address, config)
+				// getContainerWait is extracted as parameter to allow mocking in tests.
+				return loggingProcessAdapter(ctx, driver, dataStore, logConfig.Address, getContainerWait, config)
 			})
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// the file does not exist if the container was created with nerdctl < 0.20
