@@ -1,3 +1,5 @@
+//go:build unix && !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,8 +16,9 @@
    limitations under the License.
 */
 
-package ocihook
+package buildkitutil
 
-func loadAppArmor() {
-	//noop
+func getRuntimeVariableDataDir() (string, error) {
+	// Per hier(7) dated July 6, 2023.
+	return "/var/run", nil
 }

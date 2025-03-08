@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,10 +16,16 @@
    limitations under the License.
 */
 
-package container
+package main
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+)
 
-func AddCpCommand(rootCmd *cobra.Command) {
+func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
+	return false
+}
+
+func addApparmorCommand(rootCmd *cobra.Command) {
 	// NOP
 }
