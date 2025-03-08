@@ -91,6 +91,10 @@ func Logs(ctx context.Context, client *containerd.Client, container string, opti
 						// Setup goroutine to send stop event if container task finishes:
 						go func() {
 							<-waitCh
+							// Wait for logger to process remaining logs after container exit
+							if err = logging.WaitForLogger(dataStore, l[labels.Namespace], found.Container.ID()); err != nil {
+								log.G(ctx).WithError(err).Error("failed to wait for logger shutdown")
+							}
 							log.G(ctx).Debugf("container task has finished, sending kill signal to log viewer")
 							stopChannel <- os.Interrupt
 						}()
