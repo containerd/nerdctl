@@ -228,19 +228,19 @@ jobs:
             arch: amd64
           - ubuntu: 24.04
             containerd: v2.0.3
-            rootlesskit: v2.3.2
+            rootlesskit: v2.3.4
             target: rootless
             arch: amd64
             runner: "ubuntu-24.04"
           - ubuntu: 24.04
             containerd: v2.0.3
-            rootlesskit: v2.3.2
+            rootlesskit: v2.3.4
             target: rootless
             arch: arm64
             runner: "ubuntu-24.04-arm"
           - ubuntu: 24.04
             containerd: v2.0.3
-            rootlesskit: v2.3.2
+            rootlesskit: v2.3.4
             target: rootless-port-slirp4netns
             arch: amd64
             runner: "ubuntu-24.04"
