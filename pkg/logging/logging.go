@@ -30,12 +30,14 @@ import (
 	"sync"
 	"time"
 
+	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/fsnotify/fsnotify"
 	"github.com/muesli/cancelreader"
 
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
+	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 )
 
 const (
@@ -149,7 +151,60 @@ func LoadLogConfig(dataStore, ns, id string) (LogConfig, error) {
 	return logConfig, nil
 }
 
-func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore string, config *logging.Config) error {
+func getLockPath(dataStore, ns, id string) string {
+	return filepath.Join(dataStore, "containers", ns, id, "logger-lock")
+}
+
+// WaitForLogger waits until the logger has finished executing and processing container logs
+func WaitForLogger(dataStore, ns, id string) error {
+	return lockutil.WithDirLock(getLockPath(dataStore, ns, id), func() error {
+		return nil
+	})
+}
+
+func getContainerWait(ctx context.Context, address string, config *logging.Config) (<-chan containerd.ExitStatus, error) {
+	client, err := containerd.New(address, containerd.WithDefaultNamespace(config.Namespace))
+	if err != nil {
+		return nil, err
+	}
+	con, err := client.LoadContainer(ctx, config.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	task, err := con.Task(ctx, nil)
+	if err == nil {
+		return task.Wait(ctx)
+	}
+	if !errdefs.IsNotFound(err) {
+		return nil, err
+	}
+
+	// If task was not found, it's possible that the container runtime is still being created.
+	// Retry every 100ms.
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, errors.New("timed out waiting for container task to start")
+		case <-ticker.C:
+			task, err = con.Task(ctx, nil)
+			if err != nil {
+				if errdefs.IsNotFound(err) {
+					continue
+				}
+				return nil, err
+			}
+			return task.Wait(ctx)
+		}
+	}
+}
+
+type ContainerWaitFunc func(ctx context.Context, address string, config *logging.Config) (<-chan containerd.ExitStatus, error)
+
+func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, address string, getContainerWait ContainerWaitFunc, config *logging.Config) error {
 	if err := driver.PreProcess(ctx, dataStore, config); err != nil {
 		return err
 	}
@@ -168,6 +223,20 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore string,
 		stderrR.Cancel()
 	}()
 
+	// initialize goroutines to copy stdout and stderr streams to a closable pipe
+	pipeStdoutR, pipeStdoutW := io.Pipe()
+	pipeStderrR, pipeStderrW := io.Pipe()
+	copyStream := func(reader io.Reader, writer *io.PipeWriter) {
+		// copy using a buffer of size 32K
+		buf := make([]byte, 32<<10)
+		_, err := io.CopyBuffer(writer, reader, buf)
+		if err != nil {
+			log.G(ctx).Errorf("failed to copy stream: %s", err)
+		}
+	}
+	go copyStream(stdoutR, pipeStdoutW)
+	go copyStream(stderrR, pipeStderrW)
+
 	var wg sync.WaitGroup
 	wg.Add(3)
 	stdout := make(chan string, 10000)
@@ -182,7 +251,6 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore string,
 		for err == nil {
 			var s string
 			s, err = r.ReadString('\n')
-
 			if len(s) > 0 {
 				dataChan <- strings.TrimSuffix(s, "\n")
 			}
@@ -192,11 +260,23 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore string,
 			}
 		}
 	}
-	go processLogFunc(stdoutR, stdout)
-	go processLogFunc(stderrR, stderr)
+	go processLogFunc(pipeStdoutR, stdout)
+	go processLogFunc(pipeStderrR, stderr)
 	go func() {
 		defer wg.Done()
 		driver.Process(stdout, stderr)
+	}()
+	go func() {
+		// close pipeStdoutW and pipeStderrW upon container exit
+		defer pipeStdoutW.Close()
+		defer pipeStderrW.Close()
+
+		exitCh, err := getContainerWait(ctx, address, config)
+		if err != nil {
+			log.G(ctx).Errorf("failed to get container task wait channel: %v", err)
+			return
+		}
+		<-exitCh
 	}()
 	wg.Wait()
 	return driver.PostProcess()
@@ -220,11 +300,24 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 			if err != nil {
 				return err
 			}
-			if err := ready(); err != nil {
+
+			loggerLock := getLockPath(dataStore, config.Namespace, config.ID)
+			f, err := os.Create(loggerLock)
+			if err != nil {
 				return err
 			}
+			defer f.Close()
 
-			return loggingProcessAdapter(ctx, driver, dataStore, config)
+			// the logger will obtain an exclusive lock on a file until the container is
+			// stopped and the driver has finished processing all output,
+			// so that waiting log viewers can be signalled when the process is complete.
+			return lockutil.WithDirLock(loggerLock, func() error {
+				if err := ready(); err != nil {
+					return err
+				}
+				// getContainerWait is extracted as parameter to allow mocking in tests.
+				return loggingProcessAdapter(ctx, driver, dataStore, logConfig.Address, getContainerWait, config)
+			})
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// the file does not exist if the container was created with nerdctl < 0.20
 			return err
