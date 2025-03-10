@@ -35,8 +35,6 @@ jobs:
             goos: linux
             # This allows the canary script to select any upcoming golang alpha/beta/RC
             canary: go-canary
-    env:
-      GOOS: "${{ matrix.goos }}"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
@@ -52,12 +50,12 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
+      - name: install required linters and dev-tools
+        run: |
+          make install-dev-tools
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837  # v6.5.0
-        with:
-          args: --verbose
-          # See https://github.com/containerd/nerdctl/issues/3914
-          verify: false
+        run: |
+          NO_COLOR=true GOOS="${{ matrix.goos }}" make lint-go
   other:
     timeout-minutes: 5
     name: yaml | shell | imports order
