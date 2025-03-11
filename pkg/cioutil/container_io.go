@@ -148,7 +148,7 @@ func NewContainerIO(namespace string, logURI string, tty bool, stdin io.Reader, 
 			stderrWriters = append(stderrWriters, stderr)
 		}
 
-		if runtime.GOOS != "windows" {
+		if runtime.GOOS != "windows" && logURI != "" && logURI != "none" {
 			// starting logging binary logic is from https://github.com/containerd/containerd/blob/194a1fdd2cde35bc019ef138f30485e27fe0913e/cmd/containerd-shim-runc-v2/process/io.go#L247
 			stdoutr, stdoutw, err := os.Pipe()
 			if err != nil {

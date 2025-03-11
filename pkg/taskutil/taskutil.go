@@ -121,7 +121,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			}
 		}
 		ioCreator = cioutil.NewContainerIO(namespace, logURI, true, in, os.Stdout, os.Stderr)
-	} else if flagD && logURI != "" {
+	} else if flagD && logURI != "" && logURI != "none" {
 		u, err := url.Parse(logURI)
 		if err != nil {
 			return nil, err
