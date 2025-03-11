@@ -428,7 +428,7 @@ jobs:
   # Do not upgrade this to EL9 (cgroup v2).
   test-integration-el8:
     timeout-minutes: 60
-    name: "EL8 (cgroup v1)"
+    name: "[flaky, see #3988] EL8 (cgroup v1)"
     strategy:
       fail-fast: false
       matrix:

@@ -1,5 +1,5 @@
 # This pipeline purpose is solely meant to run a subset of our test suites against upcoming or unreleased dependencies versions
-name: canary
+name: "[flaky, see #3988] canary"
 
 on:
   push:
