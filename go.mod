@@ -1,7 +1,12 @@
 //gomodjail:confined
 module github.com/containerd/nerdctl/v2
 
+<<<<<<< HEAD
 go 1.23.0
+=======
+go 1.22.7
+toolchain go1.23.7
+>>>>>>> 81afd026 (build(deps): bump golang.org/x/net from 0.35.0 to 0.36.0)
 
 require (
 	github.com/Masterminds/semver/v3 v3.3.1
@@ -60,6 +65,7 @@ require (
 	github.com/vishvananda/netlink v1.3.1-0.20250303224720-0e7078ed04c8 //gomodjail:unconfined
 	github.com/vishvananda/netns v0.0.5 //gomodjail:unconfined
 	github.com/yuchanns/srslog v1.1.0
+<<<<<<< HEAD
 	go.uber.org/mock v0.5.2
 	golang.org/x/crypto v0.38.0
 	golang.org/x/net v0.40.0
@@ -67,6 +73,15 @@ require (
 	golang.org/x/sys v0.33.0 //gomodjail:unconfined
 	golang.org/x/term v0.32.0 //gomodjail:unconfined
 	golang.org/x/text v0.25.0
+=======
+	go.uber.org/mock v0.5.0
+	golang.org/x/crypto v0.35.0
+	golang.org/x/net v0.36.0
+	golang.org/x/sync v0.11.0
+	golang.org/x/sys v0.30.0
+	golang.org/x/term v0.29.0
+	golang.org/x/text v0.22.0
+>>>>>>> 81afd026 (build(deps): bump golang.org/x/net from 0.35.0 to 0.36.0)
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.2
 	tags.cncf.io/container-device-interface v1.0.1 //gomodjail:unconfined
