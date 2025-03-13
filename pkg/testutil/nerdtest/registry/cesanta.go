@@ -29,12 +29,14 @@ import (
 	"gopkg.in/yaml.v3"
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/ca"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 type CesantaConfigServer struct {
@@ -92,7 +94,7 @@ func ensureContainerStarted(helpers test.Helpers, con string) {
 	for i := 0; i < 5 && !started; i++ {
 		helpers.Command("container", "inspect", con).
 			Run(&test.Expected{
-				ExitCode: test.ExitCodeNoCheck,
+				ExitCode: expect.ExitCodeNoCheck,
 				Output: func(stdout string, info string, t *testing.T) {
 					var dc []dockercompat.Container
 					err := json.Unmarshal([]byte(stdout), &dc)

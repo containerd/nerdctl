@@ -38,20 +38,20 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
-func newComposeImagesCommand() *cobra.Command {
-	var composeImagesCommand = &cobra.Command{
+func imagesCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "images [flags] [SERVICE...]",
 		Short:         "List images used by created containers in services",
-		RunE:          composeImagesAction,
+		RunE:          imagesAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeImagesCommand.Flags().String("format", "", "Format the output. Supported values: [json]")
-	composeImagesCommand.Flags().BoolP("quiet", "q", false, "Only show numeric image IDs")
-	return composeImagesCommand
+	cmd.Flags().String("format", "", "Format the output. Supported values: [json]")
+	cmd.Flags().BoolP("quiet", "q", false, "Only show numeric image IDs")
+	return cmd
 }
 
-func composeImagesAction(cmd *cobra.Command, args []string) error {
+func imagesAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

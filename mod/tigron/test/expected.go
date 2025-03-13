@@ -16,21 +16,22 @@
 
 package test
 
-import (
-	"crypto/rand"
-	"encoding/base64"
-	"fmt"
-)
+// Command is the simplest way to express a test.TestableCommand for very basic cases
+// where access to test data is not necessary.
+func Command(args ...string) Executor {
+	return func(_ Data, helpers Helpers) TestableCommand {
+		return helpers.Command(args...)
+	}
+}
 
-// RandomStringBase64 generates a base64 encoded random string
-func RandomStringBase64(n int) string {
-	b := make([]byte, n)
-	l, err := rand.Read(b)
-	if err != nil {
-		panic(err)
+// Expects is provided as a simple helper covering "expectations" for simple use-cases
+// where access to the test data is not necessary.
+func Expects(exitCode int, errors []error, output Comparator) Manager {
+	return func(_ Data, _ Helpers) *Expected {
+		return &Expected{
+			ExitCode: exitCode,
+			Errors:   errors,
+			Output:   output,
+		}
 	}
-	if l != n {
-		panic(fmt.Errorf("expected %d bytes, got %d bytes", n, l))
-	}
-	return base64.URLEncoding.EncodeToString(b)
 }

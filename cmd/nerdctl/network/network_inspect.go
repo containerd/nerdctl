@@ -25,28 +25,28 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/network"
 )
 
-func newNetworkInspectCommand() *cobra.Command {
-	networkInspectCommand := &cobra.Command{
+func inspectCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "inspect [flags] NETWORK [NETWORK, ...]",
 		Short:             "Display detailed information on one or more networks",
 		Args:              cobra.MinimumNArgs(1),
-		RunE:              networkInspectAction,
+		RunE:              inspectAction,
 		ValidArgsFunction: networkInspectShellComplete,
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	networkInspectCommand.Flags().String("mode", "dockercompat", `Inspect mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
-	networkInspectCommand.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().String("mode", "dockercompat", `Inspect mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
+	cmd.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"dockercompat", "native"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	networkInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
-	networkInspectCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	return networkInspectCommand
+	return cmd
 }
 
-func networkInspectAction(cmd *cobra.Command, args []string) error {
+func inspectAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

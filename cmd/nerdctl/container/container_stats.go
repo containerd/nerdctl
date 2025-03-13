@@ -28,8 +28,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 )
 
-func NewStatsCommand() *cobra.Command {
-	var statsCommand = &cobra.Command{
+func StatsCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "stats",
 		Short:             "Display a live stream of container(s) resource usage statistics.",
 		RunE:              statsAction,
@@ -38,9 +38,9 @@ func NewStatsCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 
-	addStatsFlags(statsCommand)
+	addStatsFlags(cmd)
 
-	return statsCommand
+	return cmd
 }
 
 func addStatsFlags(cmd *cobra.Command) {

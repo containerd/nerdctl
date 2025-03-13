@@ -25,8 +25,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/system"
 )
 
-func NewInfoCommand() *cobra.Command {
-	var infoCommand = &cobra.Command{
+func InfoCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "info",
 		Args:          cobra.NoArgs,
 		Short:         "Display system-wide information",
@@ -34,18 +34,18 @@ func NewInfoCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	infoCommand.Flags().String("mode", "dockercompat", `Information mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
-	infoCommand.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().String("mode", "dockercompat", `Information mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
+	cmd.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"dockercompat", "native"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	infoCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
-	infoCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	return infoCommand
+	return cmd
 }
 
-func processInfoOptions(cmd *cobra.Command) (types.SystemInfoOptions, error) {
+func infoOptions(cmd *cobra.Command) (types.SystemInfoOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.SystemInfoOptions{}, err
@@ -69,7 +69,7 @@ func processInfoOptions(cmd *cobra.Command) (types.SystemInfoOptions, error) {
 }
 
 func infoAction(cmd *cobra.Command, args []string) error {
-	options, err := processInfoOptions(cmd)
+	options, err := infoOptions(cmd)
 	if err != nil {
 		return err
 	}

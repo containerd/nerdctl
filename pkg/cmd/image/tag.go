@@ -26,6 +26,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
+	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
@@ -61,7 +62,12 @@ func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagO
 	defer done(ctx)
 
 	// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3425
-	err = EnsureAllContent(ctx, client, srcName, options.GOptions)
+	platMC, err := platformutil.NewMatchComparer(true, nil)
+	if err != nil {
+		return err
+	}
+
+	err = EnsureAllContent(ctx, client, srcName, platMC, options.GOptions)
 	if err != nil {
 		log.G(ctx).Warn("Unable to fetch missing layers before committing. " +
 			"If you try to save or push this image, it might fail. See https://github.com/containerd/nerdctl/issues/3439.")

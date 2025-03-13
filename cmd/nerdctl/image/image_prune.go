@@ -27,8 +27,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
 )
 
-func newImagePruneCommand() *cobra.Command {
-	imagePruneCommand := &cobra.Command{
+func pruneCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove unused images",
 		Args:          cobra.NoArgs,
@@ -37,13 +37,13 @@ func newImagePruneCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	imagePruneCommand.Flags().BoolP("all", "a", false, "Remove all unused images, not just dangling ones")
-	imagePruneCommand.Flags().StringSlice("filter", []string{}, "Filter output based on conditions provided")
-	imagePruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
-	return imagePruneCommand
+	cmd.Flags().BoolP("all", "a", false, "Remove all unused images, not just dangling ones")
+	cmd.Flags().StringSlice("filter", []string{}, "Filter output based on conditions provided")
+	cmd.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
+	return cmd
 }
 
-func processImagePruneOptions(cmd *cobra.Command) (types.ImagePruneOptions, error) {
+func pruneOptions(cmd *cobra.Command) (types.ImagePruneOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ImagePruneOptions{}, err
@@ -76,7 +76,7 @@ func processImagePruneOptions(cmd *cobra.Command) (types.ImagePruneOptions, erro
 }
 
 func imagePruneAction(cmd *cobra.Command, _ []string) error {
-	options, err := processImagePruneOptions(cmd)
+	options, err := pruneOptions(cmd)
 	if err != nil {
 		return err
 	}

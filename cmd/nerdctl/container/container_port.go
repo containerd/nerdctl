@@ -31,8 +31,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 )
 
-func NewPortCommand() *cobra.Command {
-	var portCommand = &cobra.Command{
+func PortCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "port [flags] CONTAINER [PRIVATE_PORT[/PROTO]]",
 		Args:              cobra.RangeArgs(1, 2),
 		Short:             "List port mappings or a specific mapping for the container",
@@ -41,7 +41,7 @@ func NewPortCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	return portCommand
+	return cmd
 }
 
 func portAction(cmd *cobra.Command, args []string) error {

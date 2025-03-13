@@ -18,18 +18,18 @@
 # TODO: verify commit hash
 
 # Basic deps
-ARG CONTAINERD_VERSION=v2.0.2
+ARG CONTAINERD_VERSION=v2.0.3
 ARG RUNC_VERSION=v1.2.5
 ARG CNI_PLUGINS_VERSION=v1.6.2
 
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.19.0
+ARG BUILDKIT_VERSION=v0.20.1
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.16.3
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=v2.0.0
 # Extra deps: Rootless
-ARG ROOTLESSKIT_VERSION=v2.3.2
+ARG ROOTLESSKIT_VERSION=v2.3.4
 ARG SLIRP4NETNS_VERSION=v1.3.1
 # Extra deps: bypass4netns
 ARG BYPASS4NETNS_VERSION=v0.4.2
@@ -42,7 +42,7 @@ ARG TINI_VERSION=v0.19.0
 ARG BUILDG_VERSION=v0.4.1
 
 # Test deps
-ARG GO_VERSION=1.23
+ARG GO_VERSION=1.24
 ARG UBUNTU_VERSION=24.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
 ARG GOTESTSUM_VERSION=v1.12.0
@@ -270,10 +270,6 @@ VOLUME /var/lib/nerdctl
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["bash", "--login", "-i"]
 
-# convert GO_VERSION=1.16 to the latest release such as "go1.16.1"
-FROM golang:${GO_VERSION}-alpine AS goversion
-RUN go env GOVERSION > /GOVERSION
-
 FROM base AS test-integration
 ARG DEBIAN_FRONTEND=noninteractive
 # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
@@ -281,9 +277,9 @@ RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
   expect \
   git \
   make
-COPY --from=goversion /GOVERSION /GOVERSION
+# We wouldn't need this if Docker Hub could have "golang:${GO_VERSION}-ubuntu"
+COPY --from=build-base-debian /usr/local/go /usr/local/go
 ARG TARGETARCH
-RUN curl -fsSL --proto '=https' --tlsv1.2 https://golang.org/dl/$(cat /GOVERSION).linux-${TARGETARCH:-amd64}.tar.gz | tar xzvC /usr/local
 ENV PATH=/usr/local/go/bin:$PATH
 ARG GOTESTSUM_VERSION
 RUN GOBIN=/usr/local/bin go install gotest.tools/gotestsum@${GOTESTSUM_VERSION}

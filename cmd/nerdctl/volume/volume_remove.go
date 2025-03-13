@@ -26,23 +26,23 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 )
 
-func newVolumeRmCommand() *cobra.Command {
-	volumeRmCommand := &cobra.Command{
+func removeCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "rm [flags] VOLUME [VOLUME...]",
 		Aliases:           []string{"remove"},
 		Short:             "Remove one or more volumes",
 		Long:              "NOTE: You cannot remove a volume that is in use by a container.",
 		Args:              cobra.MinimumNArgs(1),
-		RunE:              volumeRmAction,
-		ValidArgsFunction: volumeRmShellComplete,
+		RunE:              removeAction,
+		ValidArgsFunction: removeShellComplete,
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	volumeRmCommand.Flags().BoolP("force", "f", false, "(unimplemented yet)")
-	return volumeRmCommand
+	cmd.Flags().BoolP("force", "f", false, "(unimplemented yet)")
+	return cmd
 }
 
-func processVolumeRmOptions(cmd *cobra.Command) (types.VolumeRemoveOptions, error) {
+func removeOptions(cmd *cobra.Command) (types.VolumeRemoveOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.VolumeRemoveOptions{}, err
@@ -58,8 +58,8 @@ func processVolumeRmOptions(cmd *cobra.Command) (types.VolumeRemoveOptions, erro
 	}, nil
 }
 
-func volumeRmAction(cmd *cobra.Command, args []string) error {
-	options, err := processVolumeRmOptions(cmd)
+func removeAction(cmd *cobra.Command, args []string) error {
+	options, err := removeOptions(cmd)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func volumeRmAction(cmd *cobra.Command, args []string) error {
 	return volume.Remove(ctx, client, args, options)
 }
 
-func volumeRmShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func removeShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	// show volume names
 	return completion.VolumeNames(cmd)
 }

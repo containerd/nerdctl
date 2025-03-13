@@ -20,9 +20,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestVolumePrune(t *testing.T) {
@@ -66,11 +68,11 @@ func TestVolumePrune(t *testing.T) {
 			Command:     test.Command("volume", "prune", "-f"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.All(
-						test.DoesNotContain(data.Get("anonIDBusy")),
-						test.Contains(data.Get("anonIDDangling")),
-						test.DoesNotContain(data.Get("namedBusy")),
-						test.DoesNotContain(data.Get("namedDangling")),
+					Output: expect.All(
+						expect.DoesNotContain(data.Get("anonIDBusy")),
+						expect.Contains(data.Get("anonIDDangling")),
+						expect.DoesNotContain(data.Get("namedBusy")),
+						expect.DoesNotContain(data.Get("namedDangling")),
 						func(stdout string, info string, t *testing.T) {
 							helpers.Ensure("volume", "inspect", data.Get("anonIDBusy"))
 							helpers.Fail("volume", "inspect", data.Get("anonIDDangling"))
@@ -89,11 +91,11 @@ func TestVolumePrune(t *testing.T) {
 			Command:     test.Command("volume", "prune", "-f", "--all"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.All(
-						test.DoesNotContain(data.Get("anonIDBusy")),
-						test.Contains(data.Get("anonIDDangling")),
-						test.DoesNotContain(data.Get("namedBusy")),
-						test.Contains(data.Get("namedDangling")),
+					Output: expect.All(
+						expect.DoesNotContain(data.Get("anonIDBusy")),
+						expect.Contains(data.Get("anonIDDangling")),
+						expect.DoesNotContain(data.Get("namedBusy")),
+						expect.Contains(data.Get("namedDangling")),
 						func(stdout string, info string, t *testing.T) {
 							helpers.Ensure("volume", "inspect", data.Get("anonIDBusy"))
 							helpers.Fail("volume", "inspect", data.Get("anonIDDangling"))

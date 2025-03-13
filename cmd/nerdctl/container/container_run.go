@@ -47,7 +47,7 @@ const (
 	tiniInitBinary = "tini"
 )
 
-func NewRunCommand() *cobra.Command {
+func RunCommand() *cobra.Command {
 	shortHelp := "Run a command in a new container. Optionally specify \"ipfs://\" or \"ipns://\" scheme to pull image from IPFS."
 	longHelp := shortHelp
 	switch runtime.GOOS {
@@ -58,7 +58,7 @@ func NewRunCommand() *cobra.Command {
 		longHelp += "\n"
 		longHelp += "WARNING: `nerdctl run` is experimental on FreeBSD and currently requires `--net=none` (https://github.com/containerd/nerdctl/blob/main/docs/freebsd.md)"
 	}
-	var runCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "run [flags] IMAGE [COMMAND] [ARG...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             shortHelp,
@@ -69,13 +69,13 @@ func NewRunCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 
-	runCommand.Flags().SetInterspersed(false)
-	setCreateFlags(runCommand)
+	cmd.Flags().SetInterspersed(false)
+	setCreateFlags(cmd)
 
-	runCommand.Flags().BoolP("detach", "d", false, "Run container in background and print container ID")
-	runCommand.Flags().StringSliceP("attach", "a", []string{}, "Attach STDIN, STDOUT, or STDERR")
+	cmd.Flags().BoolP("detach", "d", false, "Run container in background and print container ID")
+	cmd.Flags().StringSliceP("attach", "a", []string{}, "Attach STDIN, STDOUT, or STDERR")
 
-	return runCommand
+	return cmd
 }
 
 func setCreateFlags(cmd *cobra.Command) {
@@ -289,7 +289,7 @@ func setCreateFlags(cmd *cobra.Command) {
 }
 
 func processCreateCommandFlagsInRun(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
-	opt, err := processContainerCreateOptions(cmd)
+	opt, err := createOptions(cmd)
 	if err != nil {
 		return opt, err
 	}

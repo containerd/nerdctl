@@ -23,8 +23,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func NewComposeCommand() *cobra.Command {
-	var composeCommand = &cobra.Command{
+func Command() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:              "compose [flags] COMMAND",
 		Short:            "Compose",
 		RunE:             helpers.UnknownSubcommandAction,
@@ -33,40 +33,40 @@ func NewComposeCommand() *cobra.Command {
 		TraverseChildren: true, // required for global short hands like -f
 	}
 	// `-f` is a nonPersistentAlias, as it conflicts with `nerdctl compose logs --follow`
-	helpers.AddPersistentStringArrayFlag(composeCommand, "file", nil, []string{"f"}, nil, "", "Specify an alternate compose file")
-	composeCommand.PersistentFlags().String("project-directory", "", "Specify an alternate working directory")
-	composeCommand.PersistentFlags().StringP("project-name", "p", "", "Specify an alternate project name")
-	composeCommand.PersistentFlags().String("env-file", "", "Specify an alternate environment file")
-	composeCommand.PersistentFlags().String("ipfs-address", "", "multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)")
-	composeCommand.PersistentFlags().StringArray("profile", []string{}, "Specify a profile to enable")
+	helpers.AddPersistentStringArrayFlag(cmd, "file", nil, []string{"f"}, nil, "", "Specify an alternate compose file")
+	cmd.PersistentFlags().String("project-directory", "", "Specify an alternate working directory")
+	cmd.PersistentFlags().StringP("project-name", "p", "", "Specify an alternate project name")
+	cmd.PersistentFlags().String("env-file", "", "Specify an alternate environment file")
+	cmd.PersistentFlags().String("ipfs-address", "", "multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)")
+	cmd.PersistentFlags().StringArray("profile", []string{}, "Specify a profile to enable")
 
-	composeCommand.AddCommand(
-		newComposeUpCommand(),
-		newComposeLogsCommand(),
-		newComposeConfigCommand(),
-		newComposeCopyCommand(),
-		newComposeBuildCommand(),
-		newComposeExecCommand(),
-		newComposeImagesCommand(),
-		newComposePortCommand(),
-		newComposePushCommand(),
-		newComposePullCommand(),
-		newComposeDownCommand(),
-		newComposePsCommand(),
-		newComposeKillCommand(),
-		newComposeRestartCommand(),
-		newComposeRemoveCommand(),
-		newComposeRunCommand(),
-		newComposeVersionCommand(),
-		newComposeStartCommand(),
-		newComposeStopCommand(),
-		newComposePauseCommand(),
-		newComposeUnpauseCommand(),
-		newComposeTopCommand(),
-		newComposeCreateCommand(),
+	cmd.AddCommand(
+		upCommand(),
+		logsCommand(),
+		configCommand(),
+		copyCommand(),
+		buildCommand(),
+		execCommand(),
+		imagesCommand(),
+		portCommand(),
+		pushCommand(),
+		pullCommand(),
+		downCommand(),
+		psCommand(),
+		killCommand(),
+		restartCommand(),
+		removeCommand(),
+		runCommand(),
+		versionCommand(),
+		startCommand(),
+		stopCommand(),
+		pauseCommand(),
+		unpauseCommand(),
+		topCommand(),
+		createCommand(),
 	)
 
-	return composeCommand
+	return cmd
 }
 
 func getComposeOptions(cmd *cobra.Command, debugFull, experimental bool) (composer.Options, error) {

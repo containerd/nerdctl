@@ -27,8 +27,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 )
 
-func NewRestartCommand() *cobra.Command {
-	var restartCommand = &cobra.Command{
+func RestartCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "restart [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Restart one or more running containers",
@@ -37,12 +37,12 @@ func NewRestartCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	restartCommand.Flags().UintP("time", "t", 10, "Seconds to wait for stop before killing it")
-	restartCommand.Flags().StringP("signal", "s", "", "Signal to send to stop the container, before killing it")
-	return restartCommand
+	cmd.Flags().UintP("time", "t", 10, "Seconds to wait for stop before killing it")
+	cmd.Flags().StringP("signal", "s", "", "Signal to send to stop the container, before killing it")
+	return cmd
 }
 
-func processContainerRestartOptions(cmd *cobra.Command) (types.ContainerRestartOptions, error) {
+func restartOptions(cmd *cobra.Command) (types.ContainerRestartOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerRestartOptions{}, err
@@ -78,7 +78,7 @@ func processContainerRestartOptions(cmd *cobra.Command) (types.ContainerRestartO
 }
 
 func restartAction(cmd *cobra.Command, args []string) error {
-	options, err := processContainerRestartOptions(cmd)
+	options, err := restartOptions(cmd)
 	if err != nil {
 		return err
 	}

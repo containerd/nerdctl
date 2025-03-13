@@ -21,9 +21,10 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/ca"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func BuildCtlCommand(helpers test.Helpers, args ...string) test.TestableCommand {

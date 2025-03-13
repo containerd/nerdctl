@@ -32,7 +32,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 )
 
 type CA struct {

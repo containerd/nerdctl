@@ -14,11 +14,25 @@
    limitations under the License.
 */
 
-package pty
+package utils
 
-import "errors"
-
-var (
-	ErrPTYFailure             = errors.New("pty failure")
-	ErrPTYUnsupportedPlatform = errors.New("pty not supported on this platform")
+import (
+	"crypto/rand"
+	"encoding/base64"
 )
+
+// RandomStringBase64 generates a base64 encoded random string.
+func RandomStringBase64(desiredLength int) string {
+	randomBytes := make([]byte, desiredLength)
+
+	randomLength, err := rand.Read(randomBytes)
+	if err != nil {
+		panic(err)
+	}
+
+	if randomLength != desiredLength {
+		panic("rand failing")
+	}
+
+	return base64.URLEncoding.EncodeToString(randomBytes)
+}

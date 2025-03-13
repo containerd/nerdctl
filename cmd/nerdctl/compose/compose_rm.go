@@ -28,21 +28,21 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposeRemoveCommand() *cobra.Command {
-	var composeRemoveCommand = &cobra.Command{
+func removeCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "rm [flags] [SERVICE...]",
 		Short:         "Remove stopped service containers",
-		RunE:          composeRemoveAction,
+		RunE:          removeAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeRemoveCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
-	composeRemoveCommand.Flags().BoolP("stop", "s", false, "Stop containers before removing")
-	composeRemoveCommand.Flags().BoolP("volumes", "v", false, "Remove anonymous volumes associated with containers")
-	return composeRemoveCommand
+	cmd.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
+	cmd.Flags().BoolP("stop", "s", false, "Stop containers before removing")
+	cmd.Flags().BoolP("volumes", "v", false, "Remove anonymous volumes associated with containers")
+	return cmd
 }
 
-func composeRemoveAction(cmd *cobra.Command, args []string) error {
+func removeAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

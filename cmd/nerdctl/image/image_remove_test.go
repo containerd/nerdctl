@@ -23,10 +23,13 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestRemove(t *testing.T) {
@@ -46,11 +49,11 @@ func TestRemove(t *testing.T) {
 		{
 			Description: "Remove image with stopped container - without -f",
 			NoParallel:  true,
-			Require: test.Require(
-				test.Not(nerdtest.Docker),
+			Require: require.All(
+				require.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage)
+				helpers.Ensure("run", "--quiet", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -62,7 +65,7 @@ func TestRemove(t *testing.T) {
 					Errors:   []error{errors.New("image is being used")},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.Contains(repoName),
+							Output: expect.Contains(repoName),
 						})
 					},
 				}
@@ -72,7 +75,7 @@ func TestRemove(t *testing.T) {
 			Description: "Remove image with stopped container - with -f",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage)
+				helpers.Ensure("run", "--quiet", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -82,7 +85,7 @@ func TestRemove(t *testing.T) {
 				return &test.Expected{
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.DoesNotContain(repoName),
+							Output: expect.DoesNotContain(repoName),
 						})
 					},
 				}
@@ -91,11 +94,11 @@ func TestRemove(t *testing.T) {
 		{
 			Description: "Remove image with running container - without -f",
 			NoParallel:  true,
-			Require: test.Require(
-				test.Not(nerdtest.Docker),
+			Require: require.All(
+				require.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("run", "--quiet", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -107,7 +110,7 @@ func TestRemove(t *testing.T) {
 					Errors:   []error{errors.New("image is being used")},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.Contains(repoName),
+							Output: expect.Contains(repoName),
 						})
 					},
 				}
@@ -116,11 +119,11 @@ func TestRemove(t *testing.T) {
 		{
 			Description: "Remove image with running container - with -f",
 			NoParallel:  true,
-			Require: test.Require(
-				test.Not(nerdtest.Docker),
+			Require: require.All(
+				require.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("run", "--quiet", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 
 				img := nerdtest.InspectImage(helpers, testutil.CommonImage)
 				repoName, _ := imgutil.ParseRepoTag(testutil.CommonImage)
@@ -139,7 +142,7 @@ func TestRemove(t *testing.T) {
 					Errors:   []error{},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.Contains("<none>"),
+							Output: expect.Contains("<none>"),
 						})
 					},
 				}
@@ -149,7 +152,7 @@ func TestRemove(t *testing.T) {
 			Description: "Remove image with created container - without -f",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("create", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("create", "--quiet", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -161,7 +164,7 @@ func TestRemove(t *testing.T) {
 					Errors:   []error{errors.New("image is being used")},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.Contains(repoName),
+							Output: expect.Contains(repoName),
 						})
 					},
 				}
@@ -172,7 +175,7 @@ func TestRemove(t *testing.T) {
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("pull", "--quiet", testutil.NginxAlpineImage)
-				helpers.Ensure("create", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("create", "--quiet", "--pull", "always", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 				helpers.Ensure("rmi", testutil.NginxAlpineImage)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -183,10 +186,10 @@ func TestRemove(t *testing.T) {
 				return &test.Expected{
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.All(
-								test.DoesNotContain(repoName),
+							Output: expect.All(
+								expect.DoesNotContain(repoName),
 								// a created container with removed image doesn't impact other `rmi` command
-								test.DoesNotContain(nginxRepoName),
+								expect.DoesNotContain(nginxRepoName),
 							),
 						})
 					},
@@ -196,12 +199,12 @@ func TestRemove(t *testing.T) {
 		{
 			Description: "Remove image with paused container - without -f",
 			NoParallel:  true,
-			Require: test.Require(
-				test.Not(nerdtest.Docker),
+			Require: require.All(
+				require.Not(nerdtest.Docker),
 				nerdtest.CGroup,
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("run", "--quiet", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 				helpers.Ensure("pause", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -214,7 +217,7 @@ func TestRemove(t *testing.T) {
 					Errors:   []error{errors.New("image is being used")},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.Contains(repoName),
+							Output: expect.Contains(repoName),
 						})
 					},
 				}
@@ -223,12 +226,12 @@ func TestRemove(t *testing.T) {
 		{
 			Description: "Remove image with paused container - with -f",
 			NoParallel:  true,
-			Require: test.Require(
+			Require: require.All(
 				nerdtest.CGroup,
-				test.Not(nerdtest.Docker),
+				require.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("run", "--quiet", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 				helpers.Ensure("pause", data.Identifier())
 
 				img := nerdtest.InspectImage(helpers, testutil.CommonImage)
@@ -248,7 +251,7 @@ func TestRemove(t *testing.T) {
 					Errors:   []error{},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.Contains("<none>"),
+							Output: expect.Contains("<none>"),
 						})
 					},
 				}
@@ -257,11 +260,11 @@ func TestRemove(t *testing.T) {
 		{
 			Description: "Remove image with killed container - without -f",
 			NoParallel:  true,
-			Require: test.Require(
-				test.Not(nerdtest.Docker),
+			Require: require.All(
+				require.Not(nerdtest.Docker),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("run", "--quiet", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 				helpers.Ensure("kill", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -274,7 +277,7 @@ func TestRemove(t *testing.T) {
 					Errors:   []error{errors.New("image is being used")},
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.Contains(repoName),
+							Output: expect.Contains(repoName),
 						})
 					},
 				}
@@ -284,7 +287,7 @@ func TestRemove(t *testing.T) {
 			Description: "Remove image with killed container - with -f",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("run", "--quiet", "--pull", "always", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
 				helpers.Ensure("kill", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -295,7 +298,7 @@ func TestRemove(t *testing.T) {
 				return &test.Expected{
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: test.DoesNotContain(repoName),
+							Output: expect.DoesNotContain(repoName),
 						})
 					},
 				}
@@ -318,8 +321,8 @@ func TestIssue3016(t *testing.T) {
 		{
 			Description: "Issue #3016 - Tags created using the short digest ids of container images cannot be deleted using the nerdctl rmi command.",
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("pull", testutil.CommonImage)
-				helpers.Ensure("pull", testutil.NginxAlpineImage)
+				helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+				helpers.Ensure("pull", "--quiet", testutil.NginxAlpineImage)
 
 				img := nerdtest.InspectImage(helpers, testutil.NginxAlpineImage)
 				repoName, _ := imgutil.ParseRepoTag(testutil.NginxAlpineImage)
@@ -363,7 +366,7 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 		numTags = len(strings.Split(strings.TrimSpace(helpers.Capture("--kube-hide-dupe", "images")), "\n"))
 		numNoTags = len(strings.Split(strings.TrimSpace(helpers.Capture("images")), "\n"))
 	}
-	testCase.Require = test.Require(
+	testCase.Require = require.All(
 		nerdtest.OnlyKubernetes,
 	)
 	testCase.SubTests = []*test.Case{
@@ -371,7 +374,7 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 			Description: "After removing the tag without kube-hide-dupe, repodigest is shown as <none>",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("pull", testutil.BusyboxImage)
+				helpers.Ensure("pull", "--quiet", testutil.BusyboxImage)
 			},
 			Command: test.Command("rmi", "-f", testutil.BusyboxImage),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -402,7 +405,7 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 				helpers.Anyhow("--kube-hide-dupe", "rmi", data.Identifier())
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("pull", testutil.BusyboxImage)
+				helpers.Ensure("pull", "--quiet", testutil.BusyboxImage)
 				helpers.Ensure("tag", testutil.BusyboxImage, data.Identifier())
 			},
 			Command: test.Command("--kube-hide-dupe", "rmi", testutil.BusyboxImage),
@@ -431,7 +434,7 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 			Description: "After deleting all repo:tag entries, all repodigests will be cleaned up",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("pull", testutil.BusyboxImage)
+				helpers.Ensure("pull", "--quiet", testutil.BusyboxImage)
 				helpers.Ensure("tag", testutil.BusyboxImage, data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -461,7 +464,7 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 			Description: "Test multiple IDs found with provided prefix and force with shortID",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("pull", testutil.BusyboxImage)
+				helpers.Ensure("pull", "--quiet", testutil.BusyboxImage)
 				helpers.Ensure("tag", testutil.BusyboxImage, data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -491,7 +494,7 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 			Description: "Test remove image with digestID",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("pull", testutil.BusyboxImage)
+				helpers.Ensure("pull", "--quiet", testutil.BusyboxImage)
 				helpers.Ensure("tag", testutil.BusyboxImage, data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {

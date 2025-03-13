@@ -22,8 +22,8 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 )
 
-func NewNetworkCommand() *cobra.Command {
-	networkCommand := &cobra.Command{
+func Command() *cobra.Command {
+	cmd := &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "network",
 		Short:         "Manage networks",
@@ -31,12 +31,12 @@ func NewNetworkCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	networkCommand.AddCommand(
-		newNetworkLsCommand(),
-		newNetworkInspectCommand(),
-		newNetworkCreateCommand(),
-		newNetworkRmCommand(),
-		newNetworkPruneCommand(),
+	cmd.AddCommand(
+		listCommand(),
+		inspectCommand(),
+		createCommand(),
+		removeCommand(),
+		pruneCommand(),
 	)
-	return networkCommand
+	return cmd
 }

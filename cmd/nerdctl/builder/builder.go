@@ -30,8 +30,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/builder"
 )
 
-func NewBuilderCommand() *cobra.Command {
-	var builderCommand = &cobra.Command{
+func Command() *cobra.Command {
+	var cmd = &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "builder",
 		Short:         "Manage builds",
@@ -39,34 +39,34 @@ func NewBuilderCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	builderCommand.AddCommand(
-		NewBuildCommand(),
-		newBuilderPruneCommand(),
-		newBuilderDebugCommand(),
+	cmd.AddCommand(
+		BuildCommand(),
+		pruneCommand(),
+		debugCommand(),
 	)
-	return builderCommand
+	return cmd
 }
 
-func newBuilderPruneCommand() *cobra.Command {
+func pruneCommand() *cobra.Command {
 	shortHelp := `Clean up BuildKit build cache`
-	var buildPruneCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:           "prune",
 		Args:          cobra.NoArgs,
 		Short:         shortHelp,
-		RunE:          builderPruneAction,
+		RunE:          pruneAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
 
-	helpers.AddStringFlag(buildPruneCommand, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
+	helpers.AddStringFlag(cmd, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
 
-	buildPruneCommand.Flags().BoolP("all", "a", false, "Remove all unused build cache, not just dangling ones")
-	buildPruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
-	return buildPruneCommand
+	cmd.Flags().BoolP("all", "a", false, "Remove all unused build cache, not just dangling ones")
+	cmd.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
+	return cmd
 }
 
-func builderPruneAction(cmd *cobra.Command, _ []string) error {
-	options, err := processBuilderPruneOptions(cmd)
+func pruneAction(cmd *cobra.Command, _ []string) error {
+	options, err := pruneOptions(cmd)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func builderPruneAction(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func processBuilderPruneOptions(cmd *cobra.Command) (types.BuilderPruneOptions, error) {
+func pruneOptions(cmd *cobra.Command) (types.BuilderPruneOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.BuilderPruneOptions{}, err
@@ -131,26 +131,26 @@ func processBuilderPruneOptions(cmd *cobra.Command) (types.BuilderPruneOptions, 
 	}, nil
 }
 
-func newBuilderDebugCommand() *cobra.Command {
+func debugCommand() *cobra.Command {
 	shortHelp := `Debug Dockerfile`
-	var buildDebugCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:           "debug",
 		Short:         shortHelp,
 		PreRunE:       helpers.CheckExperimental("`nerdctl builder debug`"),
-		RunE:          builderDebugAction,
+		RunE:          debugAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	buildDebugCommand.Flags().StringP("file", "f", "", "Name of the Dockerfile")
-	buildDebugCommand.Flags().String("target", "", "Set the target build stage to build")
-	buildDebugCommand.Flags().StringArray("build-arg", nil, "Set build-time variables")
-	buildDebugCommand.Flags().String("image", "", "Image to use for debugging stage")
-	buildDebugCommand.Flags().StringArray("ssh", nil, "Allow forwarding SSH agent to the build. Format: default|<id>[=<socket>|<key>[,<key>]]")
-	buildDebugCommand.Flags().StringArray("secret", nil, "Expose secret value to the build. Format: id=secretname,src=filepath")
-	return buildDebugCommand
+	cmd.Flags().StringP("file", "f", "", "Name of the Dockerfile")
+	cmd.Flags().String("target", "", "Set the target build stage to build")
+	cmd.Flags().StringArray("build-arg", nil, "Set build-time variables")
+	cmd.Flags().String("image", "", "Image to use for debugging stage")
+	cmd.Flags().StringArray("ssh", nil, "Allow forwarding SSH agent to the build. Format: default|<id>[=<socket>|<key>[,<key>]]")
+	cmd.Flags().StringArray("secret", nil, "Expose secret value to the build. Format: id=secretname,src=filepath")
+	return cmd
 }
 
-func builderDebugAction(cmd *cobra.Command, args []string) error {
+func debugAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

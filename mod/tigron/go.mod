@@ -1,8 +1,9 @@
-module github.com/containerd/nerdctl/v2/pkg/testutil/test
+module github.com/containerd/nerdctl/mod/tigron
 
-go 1.22.7
+go 1.23
 
 require (
+	github.com/creack/pty v1.1.24
 	golang.org/x/sync v0.11.0
 	golang.org/x/term v0.29.0
 	gotest.tools/v3 v3.5.2

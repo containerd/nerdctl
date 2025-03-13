@@ -27,10 +27,13 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestBuildBasics(t *testing.T) {
@@ -60,7 +63,7 @@ CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+				Expected: test.Expects(0, nil, expect.Equals("nerdctl-build-test-string\n")),
 			},
 			{
 				Description: "Successfully build with 'buildctx first', 'tag second'",
@@ -73,7 +76,7 @@ CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+				Expected: test.Expects(0, nil, expect.Equals("nerdctl-build-test-string\n")),
 			},
 			{
 				Description: "Successfully build with output docker, main tag still works",
@@ -86,7 +89,7 @@ CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+				Expected: test.Expects(0, nil, expect.Equals("nerdctl-build-test-string\n")),
 			},
 			{
 				Description: "Successfully build with output docker, name cannot be used",
@@ -126,7 +129,7 @@ func TestCanBuildOnOtherPlatform(t *testing.T) {
 	}
 
 	testCase := &test.Case{
-		Require: test.Require(
+		Require: require.All(
 			nerdtest.Build,
 			requireEmulation,
 		),
@@ -179,7 +182,7 @@ CMD ["cat", "/hello2"]`, data.Identifier("first"))
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 			return helpers.Command("run", "--rm", data.Identifier("second"))
 		},
-		Expected: test.Expects(0, nil, test.Equals("hello2\n")),
+		Expected: test.Expects(0, nil, expect.Equals("hello2\n")),
 	}
 
 	testCase.Run(t)
@@ -191,9 +194,9 @@ func TestBuildFromContainerd(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Require: test.Require(
+		Require: require.All(
 			nerdtest.Build,
-			test.Not(nerdtest.Docker),
+			require.Not(nerdtest.Docker),
 		),
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rmi", "-f", data.Identifier("first"))
@@ -213,7 +216,7 @@ CMD ["cat", "/hello2"]`, data.Identifier("first"))
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 			return helpers.Command("run", "--rm", data.Identifier("second"))
 		},
-		Expected: test.Expects(0, nil, test.Equals("hello2\n")),
+		Expected: test.Expects(0, nil, expect.Equals("hello2\n")),
 	}
 
 	testCase.Run(t)
@@ -397,7 +400,7 @@ CMD echo $TEST_STRING
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Expected: test.Expects(0, nil, test.Equals("1\n")),
+				Expected: test.Expects(0, nil, expect.Equals("1\n")),
 			},
 			{
 				Description: "ArgValueOverridesDefault",
@@ -410,7 +413,7 @@ CMD echo $TEST_STRING
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Expected: test.Expects(0, nil, test.Equals("2\n")),
+				Expected: test.Expects(0, nil, expect.Equals("2\n")),
 			},
 			{
 				Description: "EmptyArgValueOverridesDefault",
@@ -423,7 +426,7 @@ CMD echo $TEST_STRING
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Expected: test.Expects(0, nil, test.Equals("\n")),
+				Expected: test.Expects(0, nil, expect.Equals("\n")),
 			},
 			{
 				Description: "UnsetArgKeyPreservesDefault",
@@ -436,7 +439,7 @@ CMD echo $TEST_STRING
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Expected: test.Expects(0, nil, test.Equals("1\n")),
+				Expected: test.Expects(0, nil, expect.Equals("1\n")),
 			},
 			{
 				Description: "EnvValueOverridesDefault",
@@ -452,7 +455,7 @@ CMD echo $TEST_STRING
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Expected: test.Expects(0, nil, test.Equals("3\n")),
+				Expected: test.Expects(0, nil, expect.Equals("3\n")),
 			},
 			{
 				Description: "EmptyEnvValueOverridesDefault",
@@ -468,7 +471,7 @@ CMD echo $TEST_STRING
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Expected: test.Expects(0, nil, test.Equals("\n")),
+				Expected: test.Expects(0, nil, expect.Equals("\n")),
 			},
 		},
 	}
@@ -499,7 +502,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 			return helpers.Command("run", "--rm", string(imageID))
 		},
 
-		Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+		Expected: test.Expects(0, nil, expect.Equals("nerdctl-build-test-string\n")),
 	}
 
 	testCase.Run(t)
@@ -526,7 +529,7 @@ LABEL name=nerdctl-build-test-label
 			return helpers.Command("inspect", data.Identifier(), "--format", "{{json .Config.Labels }}")
 		},
 
-		Expected: test.Expects(0, nil, test.Equals("{\"label\":\"test\",\"name\":\"nerdctl-build-test-label\"}\n")),
+		Expected: test.Expects(0, nil, expect.Equals("{\"label\":\"test\",\"name\":\"nerdctl-build-test-label\"}\n")),
 	}
 
 	testCase.Run(t)
@@ -561,7 +564,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 					return helpers.Command("run", "--rm", data.Get("i1"))
 				},
 
-				Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+				Expected: test.Expects(0, nil, expect.Equals("nerdctl-build-test-string\n")),
 			},
 			{
 				Description: "i2",
@@ -569,7 +572,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 					return helpers.Command("run", "--rm", data.Get("i2"))
 				},
 
-				Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+				Expected: test.Expects(0, nil, expect.Equals("nerdctl-build-test-string\n")),
 			},
 			{
 				Description: "i3",
@@ -577,7 +580,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 					return helpers.Command("run", "--rm", data.Get("i3"))
 				},
 
-				Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+				Expected: test.Expects(0, nil, expect.Equals("nerdctl-build-test-string\n")),
 			},
 		},
 	}
@@ -589,9 +592,9 @@ func TestBuildWithContainerfile(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Require: test.Require(
+		Require: require.All(
 			nerdtest.Build,
-			test.Not(nerdtest.Docker),
+			require.Not(nerdtest.Docker),
 		),
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rmi", "-f", data.Identifier())
@@ -608,7 +611,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 			return helpers.Command("run", "--rm", data.Identifier())
 		},
-		Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+		Expected: test.Expects(0, nil, expect.Equals("nerdctl-build-test-string\n")),
 	}
 
 	testCase.Run(t)
@@ -639,7 +642,7 @@ CMD ["echo", "containerfile"]
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 			return helpers.Command("run", "--rm", data.Identifier())
 		},
-		Expected: test.Expects(0, nil, test.Equals("dockerfile\n")),
+		Expected: test.Expects(0, nil, expect.Equals("dockerfile\n")),
 	}
 
 	testCase.Run(t)
@@ -665,7 +668,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 			helpers.Ensure("build", buildCtx)
 		},
 		Command:  test.Command("images"),
-		Expected: test.Expects(0, nil, test.Contains("<none>")),
+		Expected: test.Expects(0, nil, expect.Contains("<none>")),
 	}
 
 	testCase.Run(t)
@@ -703,9 +706,9 @@ func TestBuildContextWithCopyFromDir(t *testing.T) {
 	filename := "hello.txt"
 
 	testCase := &test.Case{
-		Require: test.Require(
+		Require: require.All(
 			nerdtest.Build,
-			test.Not(nerdtest.Docker),
+			require.Not(nerdtest.Docker),
 		),
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rmi", "-f", data.Identifier())
@@ -739,9 +742,9 @@ func TestBuildSourceDateEpoch(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Require: test.Require(
+		Require: require.All(
 			nerdtest.Build,
-			test.Not(nerdtest.Docker),
+			require.Not(nerdtest.Docker),
 		),
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rmi", "-f", data.Identifier())
@@ -772,7 +775,7 @@ CMD ["cat", "/source-date-epoch"]
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("run", "--rm", data.Identifier())
 				},
-				Expected: test.Expects(0, nil, test.Equals("1111111111\n")),
+				Expected: test.Expects(0, nil, expect.Equals("1111111111\n")),
 			},
 			{
 				Description: "2222222222",
@@ -788,7 +791,7 @@ CMD ["cat", "/source-date-epoch"]
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("run", "--rm", data.Identifier())
 				},
-				Expected: test.Expects(0, nil, test.Equals("2222222222\n")),
+				Expected: test.Expects(0, nil, expect.Equals("2222222222\n")),
 			},
 		},
 	}
@@ -800,9 +803,9 @@ func TestBuildNetwork(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Require: test.Require(
+		Require: require.All(
 			nerdtest.Build,
-			test.Not(nerdtest.Docker),
+			require.Not(nerdtest.Docker),
 		),
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rmi", "-f", data.Identifier())
@@ -861,9 +864,9 @@ func TestBuildAttestation(t *testing.T) {
 	const testProvenanceFileName = "provenance.json"
 
 	testCase := &test.Case{
-		Require: test.Require(
+		Require: require.All(
 			nerdtest.Build,
-			test.Not(nerdtest.Docker),
+			require.Not(nerdtest.Docker),
 		),
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			if nerdtest.IsDocker() {
@@ -962,7 +965,7 @@ func TestBuildAddHost(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Require: test.Require(
+		Require: require.All(
 			nerdtest.Build,
 		),
 		Cleanup: func(data test.Data, helpers test.Helpers) {

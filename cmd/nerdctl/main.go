@@ -259,79 +259,79 @@ Config file ($NERDCTL_TOML): %s
 	}
 	rootCmd.RunE = helpers.UnknownSubcommandAction
 	rootCmd.AddCommand(
-		container.NewCreateCommand(),
+		container.CreateCommand(),
 		// #region Run & Exec
-		container.NewRunCommand(),
-		container.NewUpdateCommand(),
-		container.NewExecCommand(),
+		container.RunCommand(),
+		container.UpdateCommand(),
+		container.ExecCommand(),
 		// #endregion
 
 		// #region Container management
-		container.NewPsCommand(),
-		container.NewLogsCommand(),
-		container.NewPortCommand(),
-		container.NewStopCommand(),
-		container.NewStartCommand(),
-		container.NewDiffCommand(),
-		container.NewRestartCommand(),
-		container.NewKillCommand(),
-		container.NewRmCommand(),
-		container.NewPauseCommand(),
-		container.NewUnpauseCommand(),
-		container.NewCommitCommand(),
-		container.NewWaitCommand(),
-		container.NewRenameCommand(),
-		container.NewAttachCommand(),
+		container.PsCommand(),
+		container.LogsCommand(),
+		container.PortCommand(),
+		container.StopCommand(),
+		container.StartCommand(),
+		container.DiffCommand(),
+		container.RestartCommand(),
+		container.KillCommand(),
+		container.RemoveCommand(),
+		container.PauseCommand(),
+		container.UnpauseCommand(),
+		container.CommitCommand(),
+		container.WaitCommand(),
+		container.RenameCommand(),
+		container.AttachCommand(),
 		// #endregion
 
 		// Build
-		builder.NewBuildCommand(),
+		builder.BuildCommand(),
 
 		// #region Image management
-		image.NewImagesCommand(),
-		image.NewPullCommand(),
-		image.NewPushCommand(),
-		image.NewLoadCommand(),
-		image.NewSaveCommand(),
-		image.NewTagCommand(),
-		image.NewRmiCommand(),
-		image.NewHistoryCommand(),
+		image.ImagesCommand(),
+		image.PullCommand(),
+		image.PushCommand(),
+		image.LoadCommand(),
+		image.SaveCommand(),
+		image.TagCommand(),
+		image.RmiCommand(),
+		image.HistoryCommand(),
 		// #endregion
 
 		// #region System
-		system.NewEventsCommand(),
-		system.NewInfoCommand(),
-		newVersionCommand(),
+		system.EventsCommand(),
+		system.InfoCommand(),
+		versionCommand(),
 		// #endregion
 
 		// Inspect
-		inspect.NewInspectCommand(),
+		inspect.Command(),
 
 		// stats
-		container.NewTopCommand(),
-		container.NewStatsCommand(),
+		container.TopCommand(),
+		container.StatsCommand(),
 
 		// #region helpers.Management
-		container.NewContainerCommand(),
-		image.NewImageCommand(),
-		network.NewNetworkCommand(),
-		volume.NewVolumeCommand(),
-		system.NewSystemCommand(),
-		namespace.NewNamespaceCommand(),
-		builder.NewBuilderCommand(),
+		container.Command(),
+		image.Command(),
+		network.Command(),
+		volume.Command(),
+		system.Command(),
+		namespace.Command(),
+		builder.Command(),
 		// #endregion
 
 		// Internal
-		internal.NewInternalCommand(),
+		internal.Command(),
 
 		// login
-		login.NewLoginCommand(),
+		login.Command(),
 
 		// Logout
-		login.NewLogoutCommand(),
+		login.LogoutCommand(),
 
 		// Compose
-		compose.NewComposeCommand(),
+		compose.Command(),
 
 		// IPFS
 		ipfs.NewIPFSCommand(),

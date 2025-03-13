@@ -706,6 +706,7 @@ func TestBindMountWhenHostFolderDoesNotExist(t *testing.T) {
 	}
 	defer os.RemoveAll(hostDir)
 	hp := filepath.Join(hostDir, "does-not-exist")
+	base.Cmd("rm", "-f", containerName).AssertOK()
 	base.Cmd("run", "--name", containerName, "-d", "-v", fmt.Sprintf("%s:/tmp",
 		hp), testutil.AlpineImage).AssertOK()
 	base.Cmd("rm", "-f", containerName).AssertOK()

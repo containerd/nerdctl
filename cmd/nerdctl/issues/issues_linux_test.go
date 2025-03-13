@@ -22,10 +22,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestIssue3425(t *testing.T) {
@@ -50,10 +52,10 @@ func TestIssue3425(t *testing.T) {
 				Require:     nerdtest.Private,
 				Setup: func(data test.Data, helpers test.Helpers) {
 					identifier := data.Identifier()
-					helpers.Ensure("image", "pull", testutil.CommonImage)
+					helpers.Ensure("image", "pull", "--quiet", testutil.CommonImage)
 					helpers.Ensure("run", "-d", "--name", identifier, testutil.CommonImage)
 					helpers.Ensure("image", "rm", "-f", testutil.CommonImage)
-					helpers.Ensure("image", "pull", testutil.CommonImage)
+					helpers.Ensure("image", "pull", "--quiet", testutil.CommonImage)
 					helpers.Ensure("tag", testutil.CommonImage, fmt.Sprintf("localhost:%d/%s", reg.Port, identifier))
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -71,10 +73,10 @@ func TestIssue3425(t *testing.T) {
 				Require:     nerdtest.Private,
 				Setup: func(data test.Data, helpers test.Helpers) {
 					identifier := data.Identifier()
-					helpers.Ensure("image", "pull", testutil.CommonImage)
+					helpers.Ensure("image", "pull", "--quiet", testutil.CommonImage)
 					helpers.Ensure("run", "-d", "--name", identifier, testutil.CommonImage, "touch", "/something")
 					helpers.Ensure("image", "rm", "-f", testutil.CommonImage)
-					helpers.Ensure("image", "pull", testutil.CommonImage)
+					helpers.Ensure("image", "pull", "--quiet", testutil.CommonImage)
 					helpers.Ensure("commit", identifier, fmt.Sprintf("localhost:%d/%s", reg.Port, identifier))
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -90,10 +92,10 @@ func TestIssue3425(t *testing.T) {
 				Description: "with save",
 				Require:     nerdtest.Private,
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("image", "pull", testutil.CommonImage)
+					helpers.Ensure("image", "pull", "--quiet", testutil.CommonImage)
 					helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage)
 					helpers.Ensure("image", "rm", "-f", testutil.CommonImage)
-					helpers.Ensure("image", "pull", testutil.CommonImage)
+					helpers.Ensure("image", "pull", "--quiet", testutil.CommonImage)
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rm", "-f", data.Identifier())
@@ -105,16 +107,16 @@ func TestIssue3425(t *testing.T) {
 			},
 			{
 				Description: "with convert",
-				Require: test.Require(
+				Require: require.All(
 					nerdtest.Private,
-					test.Not(test.Windows),
-					test.Not(nerdtest.Docker),
+					require.Not(require.Windows),
+					require.Not(nerdtest.Docker),
 				),
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("image", "pull", testutil.CommonImage)
+					helpers.Ensure("image", "pull", "--quiet", testutil.CommonImage)
 					helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage)
 					helpers.Ensure("image", "rm", "-f", testutil.CommonImage)
-					helpers.Ensure("image", "pull", testutil.CommonImage)
+					helpers.Ensure("image", "pull", "--quiet", testutil.CommonImage)
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rm", "-f", data.Identifier())
@@ -127,17 +129,17 @@ func TestIssue3425(t *testing.T) {
 			},
 			{
 				Description: "with ipfs",
-				Require: test.Require(
+				Require: require.All(
 					nerdtest.Private,
 					nerdtest.IPFS,
-					test.Not(test.Windows),
-					test.Not(nerdtest.Docker),
+					require.Not(require.Windows),
+					require.Not(nerdtest.Docker),
 				),
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("image", "pull", testutil.CommonImage)
+					helpers.Ensure("image", "pull", "--quiet", testutil.CommonImage)
 					helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage)
 					helpers.Ensure("image", "rm", "-f", testutil.CommonImage)
-					helpers.Ensure("image", "pull", testutil.CommonImage)
+					helpers.Ensure("image", "pull", "--quiet", testutil.CommonImage)
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rm", "-f", data.Identifier())

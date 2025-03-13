@@ -22,8 +22,8 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 )
 
-func NewContainerCommand() *cobra.Command {
-	containerCommand := &cobra.Command{
+func Command() *cobra.Command {
+	cmd := &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "container",
 		Short:         "Manage containers",
@@ -31,36 +31,36 @@ func NewContainerCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	containerCommand.AddCommand(
-		NewCreateCommand(),
-		NewRunCommand(),
-		NewUpdateCommand(),
-		NewExecCommand(),
-		containerLsCommand(),
-		newContainerInspectCommand(),
-		NewLogsCommand(),
-		NewPortCommand(),
-		NewRmCommand(),
-		NewStopCommand(),
-		NewStartCommand(),
-		NewRestartCommand(),
-		NewKillCommand(),
-		NewPauseCommand(),
-		NewDiffCommand(),
-		NewWaitCommand(),
-		NewUnpauseCommand(),
-		NewCommitCommand(),
-		NewRenameCommand(),
-		newContainerPruneCommand(),
-		NewStatsCommand(),
-		NewAttachCommand(),
+	cmd.AddCommand(
+		CreateCommand(),
+		RunCommand(),
+		UpdateCommand(),
+		ExecCommand(),
+		listCommand(),
+		inspectCommand(),
+		LogsCommand(),
+		PortCommand(),
+		RemoveCommand(),
+		StopCommand(),
+		StartCommand(),
+		RestartCommand(),
+		KillCommand(),
+		PauseCommand(),
+		DiffCommand(),
+		WaitCommand(),
+		UnpauseCommand(),
+		CommitCommand(),
+		RenameCommand(),
+		pruneCommand(),
+		StatsCommand(),
+		AttachCommand(),
 	)
-	AddCpCommand(containerCommand)
-	return containerCommand
+	AddCpCommand(cmd)
+	return cmd
 }
 
-func containerLsCommand() *cobra.Command {
-	x := NewPsCommand()
+func listCommand() *cobra.Command {
+	x := PsCommand()
 	x.Use = "ls"
 	x.Aliases = []string{"list"}
 	return x

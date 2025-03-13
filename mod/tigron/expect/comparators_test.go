@@ -14,12 +14,27 @@
    limitations under the License.
 */
 
-package pty
+package expect_test
 
 import (
-	"os"
+	"regexp"
+	"testing"
+
+	"github.com/containerd/nerdctl/mod/tigron/expect"
 )
 
-func Open() (pty, tty *os.File, err error) {
-	return nil, nil, ErrPTYUnsupportedPlatform
+func TestExpect(t *testing.T) {
+	t.Parallel()
+
+	expect.Contains("b")("a b c", "info", t)
+	expect.DoesNotContain("d")("a b c", "info", t)
+	expect.Equals("a b c")("a b c", "info", t)
+	expect.Match(regexp.MustCompile("[a-z ]+"))("a b c", "info", t)
+
+	expect.All(
+		expect.Contains("b"),
+		expect.DoesNotContain("d"),
+		expect.Equals("a b c"),
+		expect.Match(regexp.MustCompile("[a-z ]+")),
+	)("a b c", "info", t)
 }

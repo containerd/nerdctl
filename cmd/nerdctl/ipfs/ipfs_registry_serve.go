@@ -31,7 +31,7 @@ const (
 )
 
 func newIPFSRegistryServeCommand() *cobra.Command {
-	var ipfsRegistryServeCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:           "serve",
 		Short:         "serve read-only registry backed by IPFS on localhost.",
 		RunE:          ipfsRegistryServeAction,
@@ -39,12 +39,12 @@ func newIPFSRegistryServeCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	helpers.AddStringFlag(ipfsRegistryServeCommand, "listen-registry", nil, defaultIPFSRegistry, "IPFS_REGISTRY_SERVE_LISTEN_REGISTRY", "address to listen")
-	helpers.AddStringFlag(ipfsRegistryServeCommand, "ipfs-address", nil, "", "IPFS_REGISTRY_SERVE_IPFS_ADDRESS", "multiaddr of IPFS API (default is pulled from $IPFS_PATH/api file. If $IPFS_PATH env var is not present, it defaults to ~/.ipfs)")
-	helpers.AddIntFlag(ipfsRegistryServeCommand, "read-retry-num", nil, defaultIPFSReadRetryNum, "IPFS_REGISTRY_SERVE_READ_RETRY_NUM", "times to retry query on IPFS. Zero or lower means no retry.")
-	helpers.AddDurationFlag(ipfsRegistryServeCommand, "read-timeout", nil, defaultIPFSReadTimeoutDuration, "IPFS_REGISTRY_SERVE_READ_TIMEOUT", "timeout duration of a read request to IPFS. Zero means no timeout.")
+	helpers.AddStringFlag(cmd, "listen-registry", nil, defaultIPFSRegistry, "IPFS_REGISTRY_SERVE_LISTEN_REGISTRY", "address to listen")
+	helpers.AddStringFlag(cmd, "ipfs-address", nil, "", "IPFS_REGISTRY_SERVE_IPFS_ADDRESS", "multiaddr of IPFS API (default is pulled from $IPFS_PATH/api file. If $IPFS_PATH env var is not present, it defaults to ~/.ipfs)")
+	helpers.AddIntFlag(cmd, "read-retry-num", nil, defaultIPFSReadRetryNum, "IPFS_REGISTRY_SERVE_READ_RETRY_NUM", "times to retry query on IPFS. Zero or lower means no retry.")
+	helpers.AddDurationFlag(cmd, "read-timeout", nil, defaultIPFSReadTimeoutDuration, "IPFS_REGISTRY_SERVE_READ_TIMEOUT", "timeout duration of a read request to IPFS. Zero means no timeout.")
 
-	return ipfsRegistryServeCommand
+	return cmd
 }
 
 func processIPFSRegistryServeOptions(cmd *cobra.Command) (opts types.IPFSRegistryServeOptions, err error) {

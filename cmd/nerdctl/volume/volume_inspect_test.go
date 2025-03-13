@@ -28,10 +28,12 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/errdefs"
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func createFileWithSize(mountPoint string, size int64) error {
@@ -95,8 +97,8 @@ func TestVolumeInspect(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.All(
-						test.Contains(data.Get("vol1")),
+					Output: expect.All(
+						expect.Contains(data.Get("vol1")),
 						func(stdout string, info string, t *testing.T) {
 							var dc []native.Volume
 							if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
@@ -117,8 +119,8 @@ func TestVolumeInspect(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.All(
-						test.Contains(data.Get("vol2")),
+					Output: expect.All(
+						expect.Contains(data.Get("vol2")),
 						func(stdout string, info string, t *testing.T) {
 							var dc []native.Volume
 							if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
@@ -135,14 +137,14 @@ func TestVolumeInspect(t *testing.T) {
 		},
 		{
 			Description: "inspect size",
-			Require:     test.Not(nerdtest.Docker),
+			Require:     require.Not(nerdtest.Docker),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("volume", "inspect", "--size", data.Get("vol1"))
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.All(
-						test.Contains(data.Get("vol1")),
+					Output: expect.All(
+						expect.Contains(data.Get("vol1")),
 						func(stdout string, info string, t *testing.T) {
 							var dc []native.Volume
 							if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
@@ -161,9 +163,9 @@ func TestVolumeInspect(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.All(
-						test.Contains(data.Get("vol1")),
-						test.Contains(data.Get("vol2")),
+					Output: expect.All(
+						expect.Contains(data.Get("vol1")),
+						expect.Contains(data.Get("vol2")),
 						func(stdout string, info string, t *testing.T) {
 							var dc []native.Volume
 							if err := json.Unmarshal([]byte(stdout), &dc); err != nil {
@@ -186,8 +188,8 @@ func TestVolumeInspect(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errdefs.ErrNotFound, errdefs.ErrInvalidArgument},
-					Output: test.All(
-						test.Contains(data.Get("vol1")),
+					Output: expect.All(
+						expect.Contains(data.Get("vol1")),
 						func(stdout string, info string, t *testing.T) {
 							var dc []native.Volume
 							if err := json.Unmarshal([]byte(stdout), &dc); err != nil {

@@ -34,8 +34,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
-func NewBuildCommand() *cobra.Command {
-	var buildCommand = &cobra.Command{
+func BuildCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:   "build [flags] PATH",
 		Short: "Build an image from a Dockerfile. Needs buildkitd to be running.",
 		Long: `Build an image from a Dockerfile. Needs buildkitd to be running.
@@ -44,44 +44,44 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	helpers.AddStringFlag(buildCommand, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
-	buildCommand.Flags().StringArray("add-host", nil, "Add a custom host-to-IP mapping (format: \"host:ip\")")
-	buildCommand.Flags().StringArrayP("tag", "t", nil, "Name and optionally a tag in the 'name:tag' format")
-	buildCommand.Flags().StringP("file", "f", "", "Name of the Dockerfile")
-	buildCommand.Flags().String("target", "", "Set the target build stage to build")
-	buildCommand.Flags().StringArray("build-arg", nil, "Set build-time variables")
-	buildCommand.Flags().Bool("no-cache", false, "Do not use cache when building the image")
-	buildCommand.Flags().StringP("output", "o", "", "Output destination (format: type=local,dest=path)")
-	buildCommand.Flags().String("progress", "auto", "Set type of progress output (auto, plain, tty). Use plain to show container output")
-	buildCommand.Flags().String("provenance", "", "Shorthand for \"--attest=type=provenance\"")
-	buildCommand.Flags().Bool("pull", false, "On true, always attempt to pull latest image version from remote. Default uses buildkit's default.")
-	buildCommand.Flags().StringArray("secret", nil, "Secret file to expose to the build: id=mysecret,src=/local/secret")
-	buildCommand.Flags().StringArray("allow", nil, "Allow extra privileged entitlement, e.g. network.host, security.insecure")
-	buildCommand.RegisterFlagCompletionFunc("allow", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	helpers.AddStringFlag(cmd, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
+	cmd.Flags().StringArray("add-host", nil, "Add a custom host-to-IP mapping (format: \"host:ip\")")
+	cmd.Flags().StringArrayP("tag", "t", nil, "Name and optionally a tag in the 'name:tag' format")
+	cmd.Flags().StringP("file", "f", "", "Name of the Dockerfile")
+	cmd.Flags().String("target", "", "Set the target build stage to build")
+	cmd.Flags().StringArray("build-arg", nil, "Set build-time variables")
+	cmd.Flags().Bool("no-cache", false, "Do not use cache when building the image")
+	cmd.Flags().StringP("output", "o", "", "Output destination (format: type=local,dest=path)")
+	cmd.Flags().String("progress", "auto", "Set type of progress output (auto, plain, tty). Use plain to show container output")
+	cmd.Flags().String("provenance", "", "Shorthand for \"--attest=type=provenance\"")
+	cmd.Flags().Bool("pull", false, "On true, always attempt to pull latest image version from remote. Default uses buildkit's default.")
+	cmd.Flags().StringArray("secret", nil, "Secret file to expose to the build: id=mysecret,src=/local/secret")
+	cmd.Flags().StringArray("allow", nil, "Allow extra privileged entitlement, e.g. network.host, security.insecure")
+	cmd.RegisterFlagCompletionFunc("allow", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"network.host", "security.insecure"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	buildCommand.Flags().StringArray("attest", nil, "Attestation parameters (format: \"type=sbom,generator=image\")")
-	buildCommand.Flags().StringArray("ssh", nil, "SSH agent socket or keys to expose to the build (format: default|<id>[=<socket>|<key>[,<key>]])")
-	buildCommand.Flags().BoolP("quiet", "q", false, "Suppress the build output and print image ID on success")
-	buildCommand.Flags().String("sbom", "", "Shorthand for \"--attest=type=sbom\"")
-	buildCommand.Flags().StringArray("cache-from", nil, "External cache sources (eg. user/app:cache, type=local,src=path/to/dir)")
-	buildCommand.Flags().StringArray("cache-to", nil, "Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir)")
-	buildCommand.Flags().Bool("rm", true, "Remove intermediate containers after a successful build")
-	buildCommand.Flags().String("network", "default", "Set type of network for build (format:network=default|none|host)")
-	buildCommand.RegisterFlagCompletionFunc("network", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().StringArray("attest", nil, "Attestation parameters (format: \"type=sbom,generator=image\")")
+	cmd.Flags().StringArray("ssh", nil, "SSH agent socket or keys to expose to the build (format: default|<id>[=<socket>|<key>[,<key>]])")
+	cmd.Flags().BoolP("quiet", "q", false, "Suppress the build output and print image ID on success")
+	cmd.Flags().String("sbom", "", "Shorthand for \"--attest=type=sbom\"")
+	cmd.Flags().StringArray("cache-from", nil, "External cache sources (eg. user/app:cache, type=local,src=path/to/dir)")
+	cmd.Flags().StringArray("cache-to", nil, "Cache export destinations (eg. user/app:cache, type=local,dest=path/to/dir)")
+	cmd.Flags().Bool("rm", true, "Remove intermediate containers after a successful build")
+	cmd.Flags().String("network", "default", "Set type of network for build (format:network=default|none|host)")
+	cmd.RegisterFlagCompletionFunc("network", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"default", "host", "none"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
-	buildCommand.Flags().StringSlice("platform", []string{}, "Set target platform for build (e.g., \"amd64\", \"arm64\")")
-	buildCommand.RegisterFlagCompletionFunc("platform", completion.Platforms)
-	buildCommand.Flags().StringArray("build-context", []string{}, "Additional build contexts (e.g., name=path)")
+	cmd.Flags().StringSlice("platform", []string{}, "Set target platform for build (e.g., \"amd64\", \"arm64\")")
+	cmd.RegisterFlagCompletionFunc("platform", completion.Platforms)
+	cmd.Flags().StringArray("build-context", []string{}, "Additional build contexts (e.g., name=path)")
 	// #endregion
 
-	buildCommand.Flags().String("iidfile", "", "Write the image ID to the file")
-	buildCommand.Flags().StringArray("label", nil, "Set metadata for an image")
+	cmd.Flags().String("iidfile", "", "Write the image ID to the file")
+	cmd.Flags().StringArray("label", nil, "Set metadata for an image")
 
-	return buildCommand
+	return cmd
 }
 
 func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBuildOptions, error) {

@@ -30,8 +30,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/login"
 )
 
-func NewLoginCommand() *cobra.Command {
-	var loginCommand = &cobra.Command{
+func Command() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "login [flags] [SERVER]",
 		Args:          cobra.MaximumNArgs(1),
 		Short:         "Log in to a container registry",
@@ -39,13 +39,13 @@ func NewLoginCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	loginCommand.Flags().StringP("username", "u", "", "Username")
-	loginCommand.Flags().StringP("password", "p", "", "Password")
-	loginCommand.Flags().Bool("password-stdin", false, "Take the password from stdin")
-	return loginCommand
+	cmd.Flags().StringP("username", "u", "", "Username")
+	cmd.Flags().StringP("password", "p", "", "Password")
+	cmd.Flags().Bool("password-stdin", false, "Take the password from stdin")
+	return cmd
 }
 
-func processLoginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) {
+func loginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.LoginCommandOptions{}, err
@@ -96,7 +96,7 @@ func processLoginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) 
 }
 
 func loginAction(cmd *cobra.Command, args []string) error {
-	options, err := processLoginOptions(cmd)
+	options, err := loginOptions(cmd)
 	if err != nil {
 		return err
 	}

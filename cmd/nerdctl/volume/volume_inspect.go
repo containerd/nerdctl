@@ -25,25 +25,25 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 )
 
-func newVolumeInspectCommand() *cobra.Command {
-	volumeInspectCommand := &cobra.Command{
+func inspectCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "inspect [flags] VOLUME [VOLUME...]",
 		Short:             "Display detailed information on one or more volumes",
 		Args:              cobra.MinimumNArgs(1),
-		RunE:              volumeInspectAction,
+		RunE:              inspectAction,
 		ValidArgsFunction: volumeInspectShellComplete,
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	volumeInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
-	volumeInspectCommand.Flags().BoolP("size", "s", false, "Display the disk usage of the volume")
-	volumeInspectCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	cmd.Flags().BoolP("size", "s", false, "Display the disk usage of the volume")
+	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	return volumeInspectCommand
+	return cmd
 }
 
-func processVolumeInspectOptions(cmd *cobra.Command) (types.VolumeInspectOptions, error) {
+func inspectOptions(cmd *cobra.Command) (types.VolumeInspectOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.VolumeInspectOptions{}, err
@@ -64,8 +64,8 @@ func processVolumeInspectOptions(cmd *cobra.Command) (types.VolumeInspectOptions
 	}, nil
 }
 
-func volumeInspectAction(cmd *cobra.Command, args []string) error {
-	options, err := processVolumeInspectOptions(cmd)
+func inspectAction(cmd *cobra.Command, args []string) error {
+	options, err := inspectOptions(cmd)
 	if err != nil {
 		return err
 	}

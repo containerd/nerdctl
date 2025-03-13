@@ -75,6 +75,16 @@ func TestContainerFromNative(t *testing.T) {
 					Pid:        10000,
 					FinishedAt: "",
 				},
+				HostConfig: &HostConfig{
+					PortBindings: nat.PortMap{},
+					GroupAdd:     []string{},
+					LogConfig: loggerLogConfig{
+						Driver: "json-file",
+						Opts:   map[string]string{},
+					},
+					UTSMode: "host",
+					Tmpfs:   map[string]string{},
+				},
 				Mounts: []MountPoint{
 					{
 						Type:        "bind",
@@ -130,6 +140,12 @@ func TestContainerFromNative(t *testing.T) {
 							Source:      "sysfs",
 							Options:     []string{"nosuid", "noexec", "nodev", "ro"},
 						},
+						{
+							Destination: "/etc/hosts",
+							Type:        "bind",
+							Source:      "/mock-sandbox-dir/hosts",
+							Options:     []string{"bind", "rprivate", "rw"},
+						},
 					},
 				},
 				Process: &native.Process{
@@ -144,11 +160,22 @@ func TestContainerFromNative(t *testing.T) {
 				Platform:       runtime.GOOS,
 				ResolvConfPath: "/mock-sandbox-dir/resolv.conf",
 				HostnamePath:   "/mock-sandbox-dir/hostname",
+				HostsPath:      "/mock-sandbox-dir/hosts",
 				State: &ContainerState{
 					Status:     "running",
 					Running:    true,
 					Pid:        10000,
 					FinishedAt: "",
+				},
+				HostConfig: &HostConfig{
+					PortBindings: nat.PortMap{},
+					GroupAdd:     []string{},
+					LogConfig: loggerLogConfig{
+						Driver: "json-file",
+						Opts:   map[string]string{},
+					},
+					UTSMode: "host",
+					Tmpfs:   map[string]string{},
 				},
 				Mounts: []MountPoint{
 					{
@@ -174,6 +201,14 @@ func TestContainerFromNative(t *testing.T) {
 						Mode:        "rbind,rslave,rw",
 						RW:          true,
 						Propagation: "rslave",
+					},
+					{
+						Type:        "bind",
+						Source:      "/mock-sandbox-dir/hosts",
+						Destination: "/etc/hosts",
+						Mode:        "bind,rprivate,rw",
+						RW:          true,
+						Propagation: "rprivate",
 					},
 					// ignore sysfs mountpoint
 				},
@@ -221,6 +256,16 @@ func TestContainerFromNative(t *testing.T) {
 					Running:    true,
 					Pid:        10000,
 					FinishedAt: "",
+				},
+				HostConfig: &HostConfig{
+					PortBindings: nat.PortMap{},
+					GroupAdd:     []string{},
+					LogConfig: loggerLogConfig{
+						Driver: "json-file",
+						Opts:   map[string]string{},
+					},
+					UTSMode: "host",
+					Tmpfs:   map[string]string{},
 				},
 				Mounts: []MountPoint{
 					{

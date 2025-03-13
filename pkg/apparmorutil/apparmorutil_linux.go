@@ -34,13 +34,29 @@ var (
 )
 
 // hostSupports returns true if apparmor is enabled for the host
+// We cannot use containerd implementation because it explicitly prevents it from working inside a container.
 func hostSupports() bool {
 	checkAppArmor.Do(func() {
-		// see https://github.com/opencontainers/runc/blob/0d49470392206f40eaab3b2190a57fe7bb3df458/libcontainer/apparmor/apparmor_linux.go
-		if _, err := os.Stat("/sys/kernel/security/apparmor"); err == nil {
-			buf, err := os.ReadFile("/sys/module/apparmor/parameters/enabled")
-			appArmorSupported = err == nil && len(buf) > 1 && buf[0] == 'Y'
+		var pth string
+		if _, err := os.Stat("/sys/kernel/security/apparmor"); err != nil {
+			appArmorSupported = false
+			return
 		}
+		// In some rare circumstances, apparmor may be enabled, but the tooling could be missing
+		// containerd implementation shells out to aa-parser, so, require it here.
+		// See https://github.com/containerd/nerdctl/issues/3945 for details.
+		pth, err := exec.LookPath("apparmor_parser")
+		if err != nil {
+			appArmorSupported = false
+			return
+		}
+		if _, err = os.Stat(pth); err != nil {
+			appArmorSupported = false
+			return
+		}
+		var buf []byte
+		buf, err = os.ReadFile("/sys/module/apparmor/parameters/enabled")
+		appArmorSupported = err == nil && len(buf) == 2 && string(buf) == "Y\n"
 	})
 	return appArmorSupported
 }
@@ -73,7 +89,7 @@ var (
 func CanApplyExistingProfile() bool {
 	paramEnabledOnce.Do(func() {
 		buf, err := os.ReadFile("/sys/module/apparmor/parameters/enabled")
-		paramEnabled = err == nil && len(buf) > 1 && buf[0] == 'Y'
+		paramEnabled = err == nil && len(buf) == 2 && string(buf) == "Y\n"
 	})
 	return paramEnabled
 }

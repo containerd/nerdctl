@@ -28,22 +28,22 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposePortCommand() *cobra.Command {
-	var composePortCommand = &cobra.Command{
+func portCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "port [flags] SERVICE PRIVATE_PORT",
 		Short:         "Print the public port for a port binding",
 		Args:          cobra.ExactArgs(2),
-		RunE:          composePortAction,
+		RunE:          portAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composePortCommand.Flags().Int("index", 1, "index of the container if the service has multiple instances.")
-	composePortCommand.Flags().String("protocol", "tcp", "protocol of the port (tcp|udp)")
+	cmd.Flags().Int("index", 1, "index of the container if the service has multiple instances.")
+	cmd.Flags().String("protocol", "tcp", "protocol of the port (tcp|udp)")
 
-	return composePortCommand
+	return cmd
 }
 
-func composePortAction(cmd *cobra.Command, args []string) error {
+func portAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

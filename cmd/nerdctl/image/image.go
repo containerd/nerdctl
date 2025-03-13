@@ -23,7 +23,7 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 )
 
-func NewImageCommand() *cobra.Command {
+func Command() *cobra.Command {
 	cmd := &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "image",
@@ -33,34 +33,34 @@ func NewImageCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	cmd.AddCommand(
-		builder.NewBuildCommand(),
+		builder.BuildCommand(),
 		// commitCommand is in "container", not in "image"
 		imageLsCommand(),
-		NewHistoryCommand(),
-		NewPullCommand(),
-		NewPushCommand(),
-		NewLoadCommand(),
-		NewSaveCommand(),
-		NewTagCommand(),
-		imageRmCommand(),
-		newImageConvertCommand(),
-		newImageInspectCommand(),
-		newImageEncryptCommand(),
-		newImageDecryptCommand(),
-		newImagePruneCommand(),
+		HistoryCommand(),
+		PullCommand(),
+		PushCommand(),
+		LoadCommand(),
+		SaveCommand(),
+		TagCommand(),
+		imageRemoveCommand(),
+		convertCommand(),
+		inspectCommand(),
+		encryptCommand(),
+		decryptCommand(),
+		pruneCommand(),
 	)
 	return cmd
 }
 
 func imageLsCommand() *cobra.Command {
-	x := NewImagesCommand()
+	x := ImagesCommand()
 	x.Use = "ls"
 	x.Aliases = []string{"list"}
 	return x
 }
 
-func imageRmCommand() *cobra.Command {
-	x := NewRmiCommand()
+func imageRemoveCommand() *cobra.Command {
+	x := RmiCommand()
 	x.Use = "rm"
 	x.Aliases = []string{"remove"}
 	return x

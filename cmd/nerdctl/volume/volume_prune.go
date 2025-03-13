@@ -28,21 +28,21 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 )
 
-func newVolumePruneCommand() *cobra.Command {
-	volumePruneCommand := &cobra.Command{
+func pruneCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove all unused local volumes",
 		Args:          cobra.NoArgs,
-		RunE:          volumePruneAction,
+		RunE:          pruneAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	volumePruneCommand.Flags().BoolP("all", "a", false, "Remove all unused volumes, not just anonymous ones")
-	volumePruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
-	return volumePruneCommand
+	cmd.Flags().BoolP("all", "a", false, "Remove all unused volumes, not just anonymous ones")
+	cmd.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
+	return cmd
 }
 
-func processVolumePruneOptions(cmd *cobra.Command) (types.VolumePruneOptions, error) {
+func pruneOptions(cmd *cobra.Command) (types.VolumePruneOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.VolumePruneOptions{}, err
@@ -67,8 +67,8 @@ func processVolumePruneOptions(cmd *cobra.Command) (types.VolumePruneOptions, er
 	return options, nil
 }
 
-func volumePruneAction(cmd *cobra.Command, _ []string) error {
-	options, err := processVolumePruneOptions(cmd)
+func pruneAction(cmd *cobra.Command, _ []string) error {
+	options, err := pruneOptions(cmd)
 	if err != nil {
 		return err
 	}

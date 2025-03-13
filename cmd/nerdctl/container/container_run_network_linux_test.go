@@ -37,13 +37,15 @@ import (
 	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/containerd/v2/pkg/netns"
 	"github.com/containerd/errdefs"
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func extractHostPort(portMapping string, port string) (string, error) {
@@ -355,7 +357,7 @@ func TestRunPort(t *testing.T) {
 func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
 	testCase := nerdtest.Setup()
 	// docker does not set label restriction to 4096 bytes
-	testCase.Require = test.Not(nerdtest.Docker)
+	testCase.Require = require.Not(nerdtest.Docker)
 
 	testCase.SubTests = []*test.Case{
 		{
@@ -515,7 +517,7 @@ func TestRunNetworkHost2613(t *testing.T) {
 func TestSharedNetworkSetup(t *testing.T) {
 	nerdtest.Setup()
 	testCase := &test.Case{
-		Require: test.Not(test.Windows),
+		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			data.Set("containerName1", data.Identifier("-container1"))
 			containerName1 := data.Get("containerName1")
@@ -678,7 +680,7 @@ func TestSharedNetworkSetup(t *testing.T) {
 func TestSharedNetworkWithNone(t *testing.T) {
 	nerdtest.Setup()
 	testCase := &test.Case{
-		Require: test.Not(test.Windows),
+		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			data.Set("containerName1", data.Identifier("-container1"))
 			containerName1 := data.Get("containerName1")
@@ -921,25 +923,21 @@ func TestRunContainerWithStaticIP6(t *testing.T) {
 func TestNoneNetworkHostName(t *testing.T) {
 	nerdtest.Setup()
 	testCase := &test.Case{
-		Require: test.Not(test.Windows),
+		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Set("containerName1", data.Identifier())
+			output := helpers.Capture("run", "-d", "--name", data.Identifier(), "--network", "none", testutil.NginxAlpineImage)
+			assert.Assert(helpers.T(), len(output) > 12, output)
+			data.Set("hostname", output[:12])
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rm", "-f", data.Identifier())
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			return helpers.Command("run", "-d", "--name", data.Identifier(), "--network", "none", testutil.NginxAlpineImage)
+			return helpers.Command("exec", data.Identifier(), "cat", "/etc/hostname")
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
-				Output: func(stdout string, info string, t *testing.T) {
-					hostname := stdout
-					if len(hostname) > 12 {
-						hostname = hostname[:12]
-					}
-					assert.Assert(t, strings.Compare(strings.TrimSpace(helpers.Capture("exec", data.Identifier(), "cat", "/etc/hostname")), hostname) == 0, info)
-				},
+				Output: expect.Equals(data.Get("hostname") + "\n"),
 			}
 		},
 	}
@@ -949,7 +947,7 @@ func TestNoneNetworkHostName(t *testing.T) {
 func TestHostNetworkHostName(t *testing.T) {
 	nerdtest.Setup()
 	testCase := &test.Case{
-		Require: test.Not(test.Windows),
+		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			data.Set("containerName1", data.Identifier())
 		},
@@ -974,7 +972,7 @@ func TestHostNetworkHostName(t *testing.T) {
 func TestNoneNetworkDnsConfigs(t *testing.T) {
 	nerdtest.Setup()
 	testCase := &test.Case{
-		Require: test.Not(test.Windows),
+		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			data.Set("containerName1", data.Identifier())
 		},
@@ -1003,7 +1001,7 @@ func TestNoneNetworkDnsConfigs(t *testing.T) {
 func TestHostNetworkDnsConfigs(t *testing.T) {
 	nerdtest.Setup()
 	testCase := &test.Case{
-		Require: test.Not(test.Windows),
+		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			data.Set("containerName1", data.Identifier())
 		},

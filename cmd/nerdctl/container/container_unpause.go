@@ -28,8 +28,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 )
 
-func NewUnpauseCommand() *cobra.Command {
-	var unpauseCommand = &cobra.Command{
+func UnpauseCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "unpause [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Unpause all processes within one or more containers",
@@ -38,10 +38,10 @@ func NewUnpauseCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	return unpauseCommand
+	return cmd
 }
 
-func processContainerUnpauseOptions(cmd *cobra.Command) (types.ContainerUnpauseOptions, error) {
+func unpauseOptions(cmd *cobra.Command) (types.ContainerUnpauseOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerUnpauseOptions{}, err
@@ -53,7 +53,7 @@ func processContainerUnpauseOptions(cmd *cobra.Command) (types.ContainerUnpauseO
 }
 
 func unpauseAction(cmd *cobra.Command, args []string) error {
-	options, err := processContainerUnpauseOptions(cmd)
+	options, err := unpauseOptions(cmd)
 	if err != nil {
 		return err
 	}

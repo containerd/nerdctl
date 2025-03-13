@@ -25,23 +25,23 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposeLogsCommand() *cobra.Command {
-	var composeLogsCommand = &cobra.Command{
+func logsCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "logs [flags] [SERVICE...]",
 		Short:         "Show logs of running containers",
-		RunE:          composeLogsAction,
+		RunE:          logsAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeLogsCommand.Flags().BoolP("follow", "f", false, "Follow log output.")
-	composeLogsCommand.Flags().BoolP("timestamps", "t", false, "Show timestamps")
-	composeLogsCommand.Flags().String("tail", "all", "Number of lines to show from the end of the logs")
-	composeLogsCommand.Flags().Bool("no-color", false, "Produce monochrome output")
-	composeLogsCommand.Flags().Bool("no-log-prefix", false, "Don't print prefix in logs")
-	return composeLogsCommand
+	cmd.Flags().BoolP("follow", "f", false, "Follow log output.")
+	cmd.Flags().BoolP("timestamps", "t", false, "Show timestamps")
+	cmd.Flags().String("tail", "all", "Number of lines to show from the end of the logs")
+	cmd.Flags().Bool("no-color", false, "Produce monochrome output")
+	cmd.Flags().Bool("no-log-prefix", false, "Don't print prefix in logs")
+	return cmd
 }
 
-func composeLogsAction(cmd *cobra.Command, args []string) error {
+func logsAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

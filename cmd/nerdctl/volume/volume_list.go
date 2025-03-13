@@ -24,28 +24,28 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 )
 
-func newVolumeLsCommand() *cobra.Command {
-	volumeLsCommand := &cobra.Command{
+func listCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:           "ls",
 		Aliases:       []string{"list"},
 		Short:         "List volumes",
-		RunE:          volumeLsAction,
+		RunE:          listAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
 
-	volumeLsCommand.Flags().BoolP("quiet", "q", false, "Only display volume names")
+	cmd.Flags().BoolP("quiet", "q", false, "Only display volume names")
 	// Alias "-f" is reserved for "--filter"
-	volumeLsCommand.Flags().String("format", "", "Format the output using the given go template")
-	volumeLsCommand.Flags().BoolP("size", "s", false, "Display the disk usage of volumes. Can be slow with volumes having loads of directories.")
-	volumeLsCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().String("format", "", "Format the output using the given go template")
+	cmd.Flags().BoolP("size", "s", false, "Display the disk usage of volumes. Can be slow with volumes having loads of directories.")
+	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json", "table", "wide"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	volumeLsCommand.Flags().StringSliceP("filter", "f", []string{}, "Filter matches volumes based on given conditions")
-	return volumeLsCommand
+	cmd.Flags().StringSliceP("filter", "f", []string{}, "Filter matches volumes based on given conditions")
+	return cmd
 }
 
-func processVolumeLsOptions(cmd *cobra.Command) (types.VolumeListOptions, error) {
+func listOptions(cmd *cobra.Command) (types.VolumeListOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.VolumeListOptions{}, err
@@ -76,8 +76,8 @@ func processVolumeLsOptions(cmd *cobra.Command) (types.VolumeListOptions, error)
 	}, nil
 }
 
-func volumeLsAction(cmd *cobra.Command, args []string) error {
-	options, err := processVolumeLsOptions(cmd)
+func listAction(cmd *cobra.Command, args []string) error {
+	options, err := listOptions(cmd)
 	if err != nil {
 		return err
 	}

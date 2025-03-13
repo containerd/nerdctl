@@ -35,8 +35,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
-func newVersionCommand() *cobra.Command {
-	var versionCommand = &cobra.Command{
+func versionCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "version",
 		Args:          cobra.NoArgs,
 		Short:         "Show the nerdctl version information",
@@ -44,11 +44,11 @@ func newVersionCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	versionCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
-	versionCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	return versionCommand
+	return cmd
 }
 
 func versionAction(cmd *cobra.Command, args []string) error {

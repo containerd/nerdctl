@@ -17,8 +17,9 @@
 package nerdtest
 
 import (
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 var HyperV = &test.Requirement{

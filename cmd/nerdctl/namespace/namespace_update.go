@@ -25,17 +25,17 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/namespace"
 )
 
-func newNamespacelabelUpdateCommand() *cobra.Command {
-	namespaceLableCommand := &cobra.Command{
+func updateCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:           "update [flags] NAMESPACE",
 		Short:         "Update labels for a namespace",
-		RunE:          labelUpdateAction,
+		RunE:          updateAction,
 		Args:          cobra.MinimumNArgs(1),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	namespaceLableCommand.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
-	return namespaceLableCommand
+	cmd.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
+	return cmd
 }
 
 func processNamespaceUpdateCommandOption(cmd *cobra.Command) (types.NamespaceUpdateOptions, error) {
@@ -53,7 +53,7 @@ func processNamespaceUpdateCommandOption(cmd *cobra.Command) (types.NamespaceUpd
 	}, nil
 }
 
-func labelUpdateAction(cmd *cobra.Command, args []string) error {
+func updateAction(cmd *cobra.Command, args []string) error {
 	options, err := processNamespaceUpdateCommandOption(cmd)
 	if err != nil {
 		return err

@@ -29,7 +29,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
-func NewImagesCommand() *cobra.Command {
+func ImagesCommand() *cobra.Command {
 	shortHelp := "List images"
 	longHelp := shortHelp + `
 
@@ -43,7 +43,7 @@ Properties:
 - SIZE:       Size of the unpacked snapshots
 - BLOB SIZE:  Size of the blobs (such as layer tarballs) in the content store
 `
-	var imagesCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:                   "images [flags] [REPOSITORY[:TAG]]",
 		Short:                 shortHelp,
 		Long:                  longHelp,
@@ -55,22 +55,22 @@ Properties:
 		DisableFlagsInUseLine: true,
 	}
 
-	imagesCommand.Flags().BoolP("quiet", "q", false, "Only show numeric IDs")
-	imagesCommand.Flags().Bool("no-trunc", false, "Don't truncate output")
+	cmd.Flags().BoolP("quiet", "q", false, "Only show numeric IDs")
+	cmd.Flags().Bool("no-trunc", false, "Don't truncate output")
 	// Alias "-f" is reserved for "--filter"
-	imagesCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}', 'wide'")
-	imagesCommand.Flags().StringSliceP("filter", "f", []string{}, "Filter output based on conditions provided")
-	imagesCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().String("format", "", "Format the output using the given Go template, e.g, '{{json .}}', 'wide'")
+	cmd.Flags().StringSliceP("filter", "f", []string{}, "Filter output based on conditions provided")
+	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json", "table", "wide"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	imagesCommand.Flags().Bool("digests", false, "Show digests (compatible with Docker, unlike ID)")
-	imagesCommand.Flags().Bool("names", false, "Show image names")
-	imagesCommand.Flags().BoolP("all", "a", true, "(unimplemented yet, always true)")
+	cmd.Flags().Bool("digests", false, "Show digests (compatible with Docker, unlike ID)")
+	cmd.Flags().Bool("names", false, "Show image names")
+	cmd.Flags().BoolP("all", "a", true, "(unimplemented yet, always true)")
 
-	return imagesCommand
+	return cmd
 }
 
-func processImageListOptions(cmd *cobra.Command, args []string) (*types.ImageListOptions, error) {
+func listOptions(cmd *cobra.Command, args []string) (*types.ImageListOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func processImageListOptions(cmd *cobra.Command, args []string) (*types.ImageLis
 }
 
 func imagesAction(cmd *cobra.Command, args []string) error {
-	options, err := processImageListOptions(cmd, args)
+	options, err := listOptions(cmd, args)
 	if err != nil {
 		return err
 	}

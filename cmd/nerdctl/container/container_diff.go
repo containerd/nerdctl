@@ -43,8 +43,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
 
-func NewDiffCommand() *cobra.Command {
-	var diffCommand = &cobra.Command{
+func DiffCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "diff [CONTAINER]",
 		Short:             "Inspect changes to files or directories on a container's filesystem",
 		Args:              cobra.MinimumNArgs(1),
@@ -53,10 +53,10 @@ func NewDiffCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	return diffCommand
+	return cmd
 }
 
-func processContainerDiffOptions(cmd *cobra.Command) (types.ContainerDiffOptions, error) {
+func diffOptions(cmd *cobra.Command) (types.ContainerDiffOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerDiffOptions{}, err
@@ -69,7 +69,7 @@ func processContainerDiffOptions(cmd *cobra.Command) (types.ContainerDiffOptions
 }
 
 func diffAction(cmd *cobra.Command, args []string) error {
-	options, err := processContainerDiffOptions(cmd)
+	options, err := diffOptions(cmd)
 	if err != nil {
 		return err
 	}

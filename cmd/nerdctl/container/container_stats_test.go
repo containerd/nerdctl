@@ -20,21 +20,24 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestStats(t *testing.T) {
 	testCase := nerdtest.Setup()
 
 	// FIXME: does not seem to work on windows
-	testCase.Require = test.Not(test.Windows)
+	testCase.Require = require.Not(require.Windows)
 
 	if runtime.GOOS == "linux" {
 		// this comment is for `nerdctl ps` but it also valid for `nerdctl stats` :
 		// https://github.com/containerd/nerdctl/pull/223#issuecomment-851395178
-		testCase.Require = test.Require(
+		testCase.Require = require.All(
 			testCase.Require,
 			nerdtest.CgroupsAccessible,
 		)
@@ -59,7 +62,7 @@ func TestStats(t *testing.T) {
 			Command:     test.Command("stats", "--no-stream", "--no-trunc"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Get("id")),
+					Output: expect.Contains(data.Get("id")),
 				}
 			},
 		},
@@ -68,7 +71,7 @@ func TestStats(t *testing.T) {
 			Command:     test.Command("container", "stats", "--no-stream", "--no-trunc"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: test.Contains(data.Get("id")),
+					Output: expect.Contains(data.Get("id")),
 				}
 			},
 		},
@@ -93,14 +96,14 @@ func TestStats(t *testing.T) {
 			},
 			// https://github.com/containerd/nerdctl/issues/1240
 			// nerdctl used to print UINT64_MAX as the memory limit, so, ensure it does no more
-			Expected: test.Expects(0, nil, test.DoesNotContain("16EiB")),
+			Expected: test.Expects(0, nil, expect.DoesNotContain("16EiB")),
 		},
 		{
 			Description: "mem limit set",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("stats", "--no-stream")
 			},
-			Expected: test.Expects(0, nil, test.Contains("1GiB")),
+			Expected: test.Expects(0, nil, expect.Contains("1GiB")),
 		},
 	}
 

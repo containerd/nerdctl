@@ -32,8 +32,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 )
 
-func NewNamespaceCommand() *cobra.Command {
-	namespaceCommand := &cobra.Command{
+func Command() *cobra.Command {
+	cmd := &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "namespace",
 		Aliases:       []string{"ns"},
@@ -43,28 +43,28 @@ func NewNamespaceCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	namespaceCommand.AddCommand(newNamespaceLsCommand())
-	namespaceCommand.AddCommand(newNamespaceRmCommand())
-	namespaceCommand.AddCommand(newNamespaceCreateCommand())
-	namespaceCommand.AddCommand(newNamespacelabelUpdateCommand())
-	namespaceCommand.AddCommand(newNamespaceInspectCommand())
-	return namespaceCommand
+	cmd.AddCommand(listCommand())
+	cmd.AddCommand(removeCommand())
+	cmd.AddCommand(createCommand())
+	cmd.AddCommand(updateCommand())
+	cmd.AddCommand(inspectCommand())
+	return cmd
 }
 
-func newNamespaceLsCommand() *cobra.Command {
-	namespaceLsCommand := &cobra.Command{
+func listCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:           "ls",
 		Aliases:       []string{"list"},
 		Short:         "List containerd namespaces",
-		RunE:          namespaceLsAction,
+		RunE:          listAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	namespaceLsCommand.Flags().BoolP("quiet", "q", false, "Only display names")
-	return namespaceLsCommand
+	cmd.Flags().BoolP("quiet", "q", false, "Only display names")
+	return cmd
 }
 
-func namespaceLsAction(cmd *cobra.Command, args []string) error {
+func listAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

@@ -23,10 +23,12 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
@@ -39,9 +41,9 @@ func TestImageEncryptJWE(t *testing.T) {
 	const remoteImageKey = "remoteImageKey"
 
 	testCase := &test.Case{
-		Require: test.Require(
-			test.Linux,
-			test.Not(nerdtest.Docker),
+		Require: require.All(
+			require.Linux,
+			require.Not(nerdtest.Docker),
 			// This test needs to rmi the common image
 			nerdtest.Private,
 		),

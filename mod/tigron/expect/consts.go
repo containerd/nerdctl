@@ -14,12 +14,11 @@
    limitations under the License.
 */
 
-package pty
+package expect
 
-import (
-	"os"
+const (
+	ExitCodeSuccess     = 0
+	ExitCodeGenericFail = -1
+	ExitCodeNoCheck     = -2
+	ExitCodeTimeout     = -3
 )
-
-func Open() (pty, tty *os.File, err error) {
-	return nil, nil, ErrPTYUnsupportedPlatform
-}

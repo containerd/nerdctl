@@ -34,19 +34,19 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
 
-func newComposeStartCommand() *cobra.Command {
-	var composeRestartCommand = &cobra.Command{
+func startCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:                   "start [SERVICE...]",
 		Short:                 "Start existing containers for service(s)",
-		RunE:                  composeStartAction,
+		RunE:                  startAction,
 		SilenceUsage:          true,
 		SilenceErrors:         true,
 		DisableFlagsInUseLine: true,
 	}
-	return composeRestartCommand
+	return cmd
 }
 
-func composeStartAction(cmd *cobra.Command, args []string) error {
+func startAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

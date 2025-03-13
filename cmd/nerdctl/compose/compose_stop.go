@@ -25,19 +25,19 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposeStopCommand() *cobra.Command {
-	var composeStopCommand = &cobra.Command{
+func stopCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "stop [flags] [SERVICE...]",
 		Short:         "Stop running containers without removing them.",
-		RunE:          composeStopAction,
+		RunE:          stopAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeStopCommand.Flags().UintP("timeout", "t", 10, "Seconds to wait for stop before killing them")
-	return composeStopCommand
+	cmd.Flags().UintP("timeout", "t", 10, "Seconds to wait for stop before killing them")
+	return cmd
 }
 
-func composeStopAction(cmd *cobra.Command, args []string) error {
+func stopAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

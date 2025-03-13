@@ -43,8 +43,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 )
 
-func NewHistoryCommand() *cobra.Command {
-	var historyCommand = &cobra.Command{
+func HistoryCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "history [flags] IMAGE",
 		Short:             "Show the history of an image",
 		Args:              helpers.IsExactArgs(1),
@@ -53,8 +53,8 @@ func NewHistoryCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	addHistoryFlags(historyCommand)
-	return historyCommand
+	addHistoryFlags(cmd)
+	return cmd
 }
 
 func addHistoryFlags(cmd *cobra.Command) {

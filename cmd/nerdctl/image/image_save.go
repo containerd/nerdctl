@@ -30,8 +30,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
 )
 
-func NewSaveCommand() *cobra.Command {
-	var saveCommand = &cobra.Command{
+func SaveCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "save",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Save one or more images to a tar archive (streamed to STDOUT by default)",
@@ -41,19 +41,19 @@ func NewSaveCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	saveCommand.Flags().StringP("output", "o", "", "Write to a file, instead of STDOUT")
+	cmd.Flags().StringP("output", "o", "", "Write to a file, instead of STDOUT")
 
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
-	saveCommand.Flags().StringSlice("platform", []string{}, "Export content for a specific platform")
-	saveCommand.RegisterFlagCompletionFunc("platform", completion.Platforms)
-	saveCommand.Flags().Bool("all-platforms", false, "Export content for all platforms")
+	cmd.Flags().StringSlice("platform", []string{}, "Export content for a specific platform")
+	cmd.RegisterFlagCompletionFunc("platform", completion.Platforms)
+	cmd.Flags().Bool("all-platforms", false, "Export content for all platforms")
 	// #endregion
 
-	return saveCommand
+	return cmd
 }
 
-func processImageSaveOptions(cmd *cobra.Command) (types.ImageSaveOptions, error) {
+func saveOptions(cmd *cobra.Command) (types.ImageSaveOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ImageSaveOptions{}, err
@@ -76,7 +76,7 @@ func processImageSaveOptions(cmd *cobra.Command) (types.ImageSaveOptions, error)
 }
 
 func saveAction(cmd *cobra.Command, args []string) error {
-	options, err := processImageSaveOptions(cmd)
+	options, err := saveOptions(cmd)
 	if err != nil {
 		return err
 	}

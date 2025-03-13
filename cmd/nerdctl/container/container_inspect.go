@@ -28,28 +28,28 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 )
 
-func newContainerInspectCommand() *cobra.Command {
-	var containerInspectCommand = &cobra.Command{
+func inspectCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "inspect [flags] CONTAINER [CONTAINER, ...]",
 		Short:             "Display detailed information on one or more containers.",
 		Long:              "Hint: set `--mode=native` for showing the full output",
 		Args:              cobra.MinimumNArgs(1),
-		RunE:              containerInspectAction,
+		RunE:              inspectAction,
 		ValidArgsFunction: containerInspectShellComplete,
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	containerInspectCommand.Flags().String("mode", "dockercompat", `Inspect mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
-	containerInspectCommand.Flags().BoolP("size", "s", false, "Display total file sizes")
+	cmd.Flags().String("mode", "dockercompat", `Inspect mode, "dockercompat" for Docker-compatible output, "native" for containerd-native output`)
+	cmd.Flags().BoolP("size", "s", false, "Display total file sizes")
 
-	containerInspectCommand.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.RegisterFlagCompletionFunc("mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"dockercompat", "native"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	containerInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
-	containerInspectCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	return containerInspectCommand
+	return cmd
 }
 
 var validModeType = map[string]bool{
@@ -57,7 +57,7 @@ var validModeType = map[string]bool{
 	"dockercompat": true,
 }
 
-func ProcessContainerInspectOptions(cmd *cobra.Command) (opt types.ContainerInspectOptions, err error) {
+func InspectOptions(cmd *cobra.Command) (opt types.ContainerInspectOptions, err error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return
@@ -89,8 +89,8 @@ func ProcessContainerInspectOptions(cmd *cobra.Command) (opt types.ContainerInsp
 	}, nil
 }
 
-func containerInspectAction(cmd *cobra.Command, args []string) error {
-	opt, err := ProcessContainerInspectOptions(cmd)
+func inspectAction(cmd *cobra.Command, args []string) error {
+	opt, err := InspectOptions(cmd)
 	if err != nil {
 		return err
 	}

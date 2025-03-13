@@ -26,8 +26,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/load"
 )
 
-func NewLoadCommand() *cobra.Command {
-	var loadCommand = &cobra.Command{
+func LoadCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "load",
 		Args:          cobra.NoArgs,
 		Short:         "Load an image from a tar archive or STDIN",
@@ -37,17 +37,17 @@ func NewLoadCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	loadCommand.Flags().StringP("input", "i", "", "Read from tar archive file, instead of STDIN")
-	loadCommand.Flags().BoolP("quiet", "q", false, "Suppress the load output")
+	cmd.Flags().StringP("input", "i", "", "Read from tar archive file, instead of STDIN")
+	cmd.Flags().BoolP("quiet", "q", false, "Suppress the load output")
 
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
-	loadCommand.Flags().StringSlice("platform", []string{}, "Import content for a specific platform")
-	loadCommand.RegisterFlagCompletionFunc("platform", completion.Platforms)
-	loadCommand.Flags().Bool("all-platforms", false, "Import content for all platforms")
+	cmd.Flags().StringSlice("platform", []string{}, "Import content for a specific platform")
+	cmd.RegisterFlagCompletionFunc("platform", completion.Platforms)
+	cmd.Flags().Bool("all-platforms", false, "Import content for all platforms")
 	// #endregion
 
-	return loadCommand
+	return cmd
 }
 
 func processLoadCommandFlags(cmd *cobra.Command) (types.ImageLoadOptions, error) {

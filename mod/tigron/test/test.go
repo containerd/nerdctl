@@ -14,12 +14,22 @@
    limitations under the License.
 */
 
-package pty
+package test
 
 import (
-	"os"
+	"testing"
 )
 
-func Open() (pty, tty *os.File, err error) {
-	return nil, nil, ErrPTYUnsupportedPlatform
+type Testable interface {
+	CustomCommand(testCase *Case, t *testing.T) CustomizableCommand
+	AmbientRequirements(testCase *Case, t *testing.T)
+}
+
+// FIXME
+//
+//nolint:gochecknoglobals
+var registeredTestable Testable
+
+func Customize(testable Testable) {
+	registeredTestable = testable
 }

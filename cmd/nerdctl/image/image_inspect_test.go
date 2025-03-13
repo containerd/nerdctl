@@ -26,10 +26,12 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestImageInspectSimpleCases(t *testing.T) {
@@ -37,7 +39,7 @@ func TestImageInspectSimpleCases(t *testing.T) {
 
 	testCase := &test.Case{
 		Setup: func(data test.Data, helpers test.Helpers) {
-			helpers.Ensure("pull", testutil.CommonImage)
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 		},
 		SubTests: []*test.Case{
 			{
@@ -95,10 +97,10 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 	}
 
 	testCase := &test.Case{
-		Require: test.Require(
-			test.Not(nerdtest.Docker),
+		Require: require.All(
+			require.Not(nerdtest.Docker),
 			// FIXME: this test depends on hub images that do not have windows versions
-			test.Not(test.Windows),
+			require.Not(require.Windows),
 			// We need a clean slate
 			nerdtest.Private,
 		),

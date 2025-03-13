@@ -28,14 +28,14 @@ import (
 )
 
 func newInternalOCIHookCommandCommand() *cobra.Command {
-	var internalOCIHookCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:           "oci-hook",
 		Short:         "OCI hook",
 		RunE:          internalOCIHookAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	return internalOCIHookCommand
+	return cmd
 }
 
 func internalOCIHookAction(cmd *cobra.Command, args []string) error {

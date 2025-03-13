@@ -25,21 +25,21 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposeDownCommand() *cobra.Command {
-	var composeDownCommand = &cobra.Command{
+func downCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "down",
 		Short:         "Remove containers and associated resources",
 		Args:          cobra.NoArgs,
-		RunE:          composeDownAction,
+		RunE:          downAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeDownCommand.Flags().BoolP("volumes", "v", false, "Remove named volumes declared in the `volumes` section of the Compose file and anonymous volumes attached to containers.")
-	composeDownCommand.Flags().Bool("remove-orphans", false, "Remove containers for services not defined in the Compose file.")
-	return composeDownCommand
+	cmd.Flags().BoolP("volumes", "v", false, "Remove named volumes declared in the `volumes` section of the Compose file and anonymous volumes attached to containers.")
+	cmd.Flags().Bool("remove-orphans", false, "Remove containers for services not defined in the Compose file.")
+	return cmd
 }
 
-func composeDownAction(cmd *cobra.Command, args []string) error {
+func downAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

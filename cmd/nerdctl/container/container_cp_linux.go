@@ -31,7 +31,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
-func newCpCommand() *cobra.Command {
+func copyCommand() *cobra.Command {
 	shortHelp := "Copy files/folders between a running container and the local filesystem."
 
 	longHelp := shortHelp + `
@@ -45,24 +45,24 @@ Using 'nerdctl cp' with untrusted or malicious containers is unsupported and may
 
 	usage := `cp [flags] CONTAINER:SRC_PATH DEST_PATH|-
   nerdctl cp [flags] SRC_PATH|- CONTAINER:DEST_PATH`
-	var cpCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               usage,
 		Args:              helpers.IsExactArgs(2),
 		Short:             shortHelp,
 		Long:              longHelp,
-		RunE:              cpAction,
-		ValidArgsFunction: cpShellComplete,
+		RunE:              copyAction,
+		ValidArgsFunction: copyShellComplete,
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
 
-	cpCommand.Flags().BoolP("follow-link", "L", false, "Always follow symbolic link in SRC_PATH.")
+	cmd.Flags().BoolP("follow-link", "L", false, "Always follow symbolic link in SRC_PATH.")
 
-	return cpCommand
+	return cmd
 }
 
-func cpAction(cmd *cobra.Command, args []string) error {
-	options, err := processCpOptions(cmd, args)
+func copyAction(cmd *cobra.Command, args []string) error {
+	options, err := copyOptions(cmd, args)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func cpAction(cmd *cobra.Command, args []string) error {
 	return container.Cp(ctx, client, options)
 }
 
-func processCpOptions(cmd *cobra.Command, args []string) (types.ContainerCpOptions, error) {
+func copyOptions(cmd *cobra.Command, args []string) (types.ContainerCpOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerCpOptions{}, err
@@ -132,12 +132,12 @@ func processCpOptions(cmd *cobra.Command, args []string) (types.ContainerCpOptio
 }
 
 func AddCpCommand(rootCmd *cobra.Command) {
-	rootCmd.AddCommand(newCpCommand())
+	rootCmd.AddCommand(copyCommand())
 }
 
 var errFileSpecDoesntMatchFormat = errors.New("filespec must match the canonical format: [container:]file/path")
 
-func parseCpFileSpec(arg string) (*cpFileSpec, error) {
+func parseCpFileSpec(arg string) (*copyFileSpec, error) {
 	i := strings.Index(arg, ":")
 
 	// filespec starting with a semicolon is invalid
@@ -147,7 +147,7 @@ func parseCpFileSpec(arg string) (*cpFileSpec, error) {
 
 	if filepath.IsAbs(arg) {
 		// Explicit local absolute path, e.g., `C:\foo` or `/foo`.
-		return &cpFileSpec{
+		return &copyFileSpec{
 			Container: nil,
 			Path:      arg,
 		}, nil
@@ -158,22 +158,22 @@ func parseCpFileSpec(arg string) (*cpFileSpec, error) {
 	if len(parts) == 1 || strings.HasPrefix(parts[0], ".") {
 		// Either there's no `:` in the arg
 		// OR it's an explicit local relative path like `./file:name.txt`.
-		return &cpFileSpec{
+		return &copyFileSpec{
 			Path: arg,
 		}, nil
 	}
 
-	return &cpFileSpec{
+	return &copyFileSpec{
 		Container: &parts[0],
 		Path:      parts[1],
 	}, nil
 }
 
-type cpFileSpec struct {
+type copyFileSpec struct {
 	Container *string
 	Path      string
 }
 
-func cpShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func copyShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return nil, cobra.ShellCompDirectiveFilterFileExt
 }

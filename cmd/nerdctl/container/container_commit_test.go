@@ -19,9 +19,12 @@ package container
 import (
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestCommit(t *testing.T) {
@@ -51,11 +54,11 @@ func TestCommit(t *testing.T) {
 					identifier, identifier)
 				return helpers.Command("run", "--rm", identifier)
 			},
-			Expected: test.Expects(0, nil, test.Equals("hello-test-commit\n")),
+			Expected: test.Expects(0, nil, expect.Equals("hello-test-commit\n")),
 		},
 		{
 			Description: "no pause",
-			Require:     test.Not(test.Windows),
+			Require:     require.Not(require.Windows),
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				identifier := data.Identifier()
 				helpers.Anyhow("rm", "-f", identifier)
@@ -77,7 +80,7 @@ func TestCommit(t *testing.T) {
 					identifier, identifier)
 				return helpers.Command("run", "--rm", identifier)
 			},
-			Expected: test.Expects(0, nil, test.Equals("hello-test-commit\n")),
+			Expected: test.Expects(0, nil, expect.Equals("hello-test-commit\n")),
 		},
 	}
 

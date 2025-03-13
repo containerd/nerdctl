@@ -34,7 +34,7 @@ ifdef VERBOSE
 	VERBOSE_FLAG_LONG := --verbose
 endif
 
-ifndef DC_NO_FANCY
+ifndef NO_COLOR
     NC := \033[0m
     GREEN := \033[1;32m
     ORANGE := \033[1;33m
@@ -75,6 +75,7 @@ lint-go-all:
 	$(call title, $@)
 	@cd $(MAKEFILE_DIR) \
 		&& GOOS=darwin make lint-go \
+		&& GOOS=freebsd make lint-go \
 		&& GOOS=linux make lint-go \
 		&& GOOS=windows make lint-go
 	$(call footer, $@)
@@ -82,7 +83,7 @@ lint-go-all:
 lint-imports:
 	$(call title, $@)
 	@cd $(MAKEFILE_DIR) \
-		&& goimports-reviser -recursive -list-diff -set-exit-status -output stdout -company-prefixes "github.com/containerd"  ./...
+		&& goimports-reviser -recursive -list-diff -set-exit-status -output stdout -company-prefixes "$(ORG_PREFIXES)"  ./...
 	$(call footer, $@)
 
 lint-yaml:
@@ -124,6 +125,7 @@ lint-licenses-all:
 	$(call title, $@)
 	@cd $(MAKEFILE_DIR) \
 		&& GOOS=darwin make lint-licenses \
+		&& GOOS=freebsd make lint-licenses \
 		&& GOOS=linux make lint-licenses \
 		&& GOOS=windows make lint-licenses
 	$(call footer, $@)
@@ -141,6 +143,7 @@ fix-go-all:
 	$(call title, $@)
 	@cd $(MAKEFILE_DIR) \
 		&& GOOS=darwin make fix-go \
+		&& GOOS=freebsd make fix-go \
 		&& GOOS=linux make fix-go \
 		&& GOOS=windows make fix-go
 	$(call footer, $@)

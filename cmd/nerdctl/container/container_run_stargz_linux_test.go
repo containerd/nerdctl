@@ -19,18 +19,20 @@ package container
 import (
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestRunStargz(t *testing.T) {
 	testCase := nerdtest.Setup()
 
-	testCase.Require = test.Require(
+	testCase.Require = require.All(
 		nerdtest.Stargz,
-		test.Amd64,
-		test.Not(nerdtest.Docker),
+		require.Amd64,
+		require.Not(nerdtest.Docker),
 	)
 
 	testCase.Command = test.Command("--snapshotter=stargz", "run", "--rm", testutil.FedoraESGZImage, "ls", "/.stargz-snapshotter")

@@ -25,18 +25,18 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposePushCommand() *cobra.Command {
-	var composePushCommand = &cobra.Command{
+func pushCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "push [flags] [SERVICE...]",
 		Short:         "Push service images",
-		RunE:          composePushAction,
+		RunE:          pushAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	return composePushCommand
+	return cmd
 }
 
-func composePushAction(cmd *cobra.Command, args []string) error {
+func pushAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

@@ -128,7 +128,7 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 	}
 
 	// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3425
-	err = image.EnsureAllContent(ctx, client, baseImg.Name(), globalOptions)
+	err = image.EnsureAllContent(ctx, client, baseImg.Name(), platformMC, globalOptions)
 	if err != nil {
 		log.G(ctx).Warn("Unable to fetch missing layers before committing. " +
 			"If you try to save or push this image, it might fail. See https://github.com/containerd/nerdctl/issues/3439.")

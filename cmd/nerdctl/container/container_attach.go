@@ -29,7 +29,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
 )
 
-func NewAttachCommand() *cobra.Command {
+func AttachCommand() *cobra.Command {
 	const shortHelp = "Attach stdin, stdout, and stderr to a running container."
 	const longHelp = `Attach stdin, stdout, and stderr to a running container. For example:
 
@@ -45,21 +45,21 @@ Caveats:
 - Until dual logging (issue #1946) is implemented,
   a container that is spun up by either 'nerdctl run -d' or 'nerdctl start' (without '--attach') cannot be attached to.`
 
-	var attachCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "attach [flags] CONTAINER",
 		Args:              cobra.ExactArgs(1),
 		Short:             shortHelp,
 		Long:              longHelp,
-		RunE:              containerAttachAction,
+		RunE:              attachAction,
 		ValidArgsFunction: attachShellComplete,
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	attachCommand.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
-	return attachCommand
+	cmd.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
+	return cmd
 }
 
-func processContainerAttachOptions(cmd *cobra.Command) (types.ContainerAttachOptions, error) {
+func attachOptions(cmd *cobra.Command) (types.ContainerAttachOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerAttachOptions{}, err
@@ -77,8 +77,8 @@ func processContainerAttachOptions(cmd *cobra.Command) (types.ContainerAttachOpt
 	}, nil
 }
 
-func containerAttachAction(cmd *cobra.Command, args []string) error {
-	options, err := processContainerAttachOptions(cmd)
+func attachAction(cmd *cobra.Command, args []string) error {
+	options, err := attachOptions(cmd)
 	if err != nil {
 		return err
 	}

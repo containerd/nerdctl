@@ -39,8 +39,8 @@ For encryption and decryption, use 'nerdctl image (encrypt|decrypt)' command.
 `
 
 // imageConvertCommand is from https://github.com/containerd/stargz-snapshotter/blob/d58f43a8235e46da73fb94a1a35280cb4d607b2c/cmd/ctr-remote/commands/convert.go
-func newImageConvertCommand() *cobra.Command {
-	imageConvertCommand := &cobra.Command{
+func convertCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "convert [flags] <source_ref> <target_ref>...",
 		Short:             "convert an image",
 		Long:              imageConvertHelp,
@@ -51,60 +51,60 @@ func newImageConvertCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 
-	imageConvertCommand.Flags().String("format", "", "Format the output using the given Go template, e.g, 'json'")
+	cmd.Flags().String("format", "", "Format the output using the given Go template, e.g, 'json'")
 
 	// #region estargz flags
-	imageConvertCommand.Flags().Bool("estargz", false, "Convert legacy tar(.gz) layers to eStargz for lazy pulling. Should be used in conjunction with '--oci'")
-	imageConvertCommand.Flags().String("estargz-record-in", "", "Read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)")
-	imageConvertCommand.Flags().Int("estargz-compression-level", gzip.BestCompression, "eStargz compression level")
-	imageConvertCommand.Flags().Int("estargz-chunk-size", 0, "eStargz chunk size")
-	imageConvertCommand.Flags().Int("estargz-min-chunk-size", 0, "The minimal number of bytes of data must be written in one gzip stream. (requires stargz-snapshotter >= v0.13.0)")
-	imageConvertCommand.Flags().Bool("estargz-external-toc", false, "Separate TOC JSON into another image (called \"TOC image\"). The name of TOC image is the original + \"-esgztoc\" suffix. Both eStargz and the TOC image should be pushed to the same registry. (requires stargz-snapshotter >= v0.13.0) (EXPERIMENTAL)")
-	imageConvertCommand.Flags().Bool("estargz-keep-diff-id", false, "Convert to esgz without changing diffID (cannot be used in conjunction with '--estargz-record-in'. must be specified with '--estargz-external-toc')")
+	cmd.Flags().Bool("estargz", false, "Convert legacy tar(.gz) layers to eStargz for lazy pulling. Should be used in conjunction with '--oci'")
+	cmd.Flags().String("estargz-record-in", "", "Read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)")
+	cmd.Flags().Int("estargz-compression-level", gzip.BestCompression, "eStargz compression level")
+	cmd.Flags().Int("estargz-chunk-size", 0, "eStargz chunk size")
+	cmd.Flags().Int("estargz-min-chunk-size", 0, "The minimal number of bytes of data must be written in one gzip stream. (requires stargz-snapshotter >= v0.13.0)")
+	cmd.Flags().Bool("estargz-external-toc", false, "Separate TOC JSON into another image (called \"TOC image\"). The name of TOC image is the original + \"-esgztoc\" suffix. Both eStargz and the TOC image should be pushed to the same registry. (requires stargz-snapshotter >= v0.13.0) (EXPERIMENTAL)")
+	cmd.Flags().Bool("estargz-keep-diff-id", false, "Convert to esgz without changing diffID (cannot be used in conjunction with '--estargz-record-in'. must be specified with '--estargz-external-toc')")
 	// #endregion
 
 	// #region zstd flags
-	imageConvertCommand.Flags().Bool("zstd", false, "Convert legacy tar(.gz) layers to zstd. Should be used in conjunction with '--oci'")
-	imageConvertCommand.Flags().Int("zstd-compression-level", 3, "zstd compression level")
+	cmd.Flags().Bool("zstd", false, "Convert legacy tar(.gz) layers to zstd. Should be used in conjunction with '--oci'")
+	cmd.Flags().Int("zstd-compression-level", 3, "zstd compression level")
 	// #endregion
 
 	// #region zstd:chunked flags
-	imageConvertCommand.Flags().Bool("zstdchunked", false, "Convert legacy tar(.gz) layers to zstd:chunked for lazy pulling. Should be used in conjunction with '--oci'")
-	imageConvertCommand.Flags().String("zstdchunked-record-in", "", "Read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)")
-	imageConvertCommand.Flags().Int("zstdchunked-compression-level", 3, "zstd:chunked compression level") // SpeedDefault; see also https://pkg.go.dev/github.com/klauspost/compress/zstd#EncoderLevel
-	imageConvertCommand.Flags().Int("zstdchunked-chunk-size", 0, "zstd:chunked chunk size")
+	cmd.Flags().Bool("zstdchunked", false, "Convert legacy tar(.gz) layers to zstd:chunked for lazy pulling. Should be used in conjunction with '--oci'")
+	cmd.Flags().String("zstdchunked-record-in", "", "Read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)")
+	cmd.Flags().Int("zstdchunked-compression-level", 3, "zstd:chunked compression level") // SpeedDefault; see also https://pkg.go.dev/github.com/klauspost/compress/zstd#EncoderLevel
+	cmd.Flags().Int("zstdchunked-chunk-size", 0, "zstd:chunked chunk size")
 	// #endregion
 
 	// #region nydus flags
-	imageConvertCommand.Flags().Bool("nydus", false, "Convert an OCI image to Nydus image. Should be used in conjunction with '--oci'")
-	imageConvertCommand.Flags().String("nydus-builder-path", "nydus-image", "The nydus-image binary path, if unset, search in PATH environment")
-	imageConvertCommand.Flags().String("nydus-work-dir", "", "Work directory path for image conversion, default is the nerdctl data root directory")
-	imageConvertCommand.Flags().String("nydus-prefetch-patterns", "", "The file path pattern list want to prefetch")
-	imageConvertCommand.Flags().String("nydus-compressor", "lz4_block", "Nydus blob compression algorithm, possible values: `none`, `lz4_block`, `zstd`, default is `lz4_block`")
+	cmd.Flags().Bool("nydus", false, "Convert an OCI image to Nydus image. Should be used in conjunction with '--oci'")
+	cmd.Flags().String("nydus-builder-path", "nydus-image", "The nydus-image binary path, if unset, search in PATH environment")
+	cmd.Flags().String("nydus-work-dir", "", "Work directory path for image conversion, default is the nerdctl data root directory")
+	cmd.Flags().String("nydus-prefetch-patterns", "", "The file path pattern list want to prefetch")
+	cmd.Flags().String("nydus-compressor", "lz4_block", "Nydus blob compression algorithm, possible values: `none`, `lz4_block`, `zstd`, default is `lz4_block`")
 	// #endregion
 
 	// #region overlaybd flags
-	imageConvertCommand.Flags().Bool("overlaybd", false, "Convert tar.gz layers to overlaybd layers")
-	imageConvertCommand.Flags().String("overlaybd-fs-type", "ext4", "Filesystem type for overlaybd")
-	imageConvertCommand.Flags().String("overlaybd-dbstr", "", "Database config string for overlaybd")
+	cmd.Flags().Bool("overlaybd", false, "Convert tar.gz layers to overlaybd layers")
+	cmd.Flags().String("overlaybd-fs-type", "ext4", "Filesystem type for overlaybd")
+	cmd.Flags().String("overlaybd-dbstr", "", "Database config string for overlaybd")
 	// #endregion
 
 	// #region generic flags
-	imageConvertCommand.Flags().Bool("uncompress", false, "Convert tar.gz layers to uncompressed tar layers")
-	imageConvertCommand.Flags().Bool("oci", false, "Convert Docker media types to OCI media types")
+	cmd.Flags().Bool("uncompress", false, "Convert tar.gz layers to uncompressed tar layers")
+	cmd.Flags().Bool("oci", false, "Convert Docker media types to OCI media types")
 	// #endregion
 
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
-	imageConvertCommand.Flags().StringSlice("platform", []string{}, "Convert content for a specific platform")
-	imageConvertCommand.RegisterFlagCompletionFunc("platform", completion.Platforms)
-	imageConvertCommand.Flags().Bool("all-platforms", false, "Convert content for all platforms")
+	cmd.Flags().StringSlice("platform", []string{}, "Convert content for a specific platform")
+	cmd.RegisterFlagCompletionFunc("platform", completion.Platforms)
+	cmd.Flags().Bool("all-platforms", false, "Convert content for all platforms")
 	// #endregion
 
-	return imageConvertCommand
+	return cmd
 }
 
-func processImageConvertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
+func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ImageConvertOptions{}, err
@@ -281,7 +281,7 @@ func processImageConvertOptions(cmd *cobra.Command) (types.ImageConvertOptions, 
 }
 
 func imageConvertAction(cmd *cobra.Command, args []string) error {
-	options, err := processImageConvertOptions(cmd)
+	options, err := convertOptions(cmd)
 	if err != nil {
 		return err
 	}

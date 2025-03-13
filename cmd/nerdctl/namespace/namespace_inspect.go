@@ -25,23 +25,23 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/namespace"
 )
 
-func newNamespaceInspectCommand() *cobra.Command {
-	namespaceInspectCommand := &cobra.Command{
+func inspectCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:           "inspect NAMESPACE",
 		Short:         "Display detailed information on one or more namespaces.",
-		RunE:          labelInspectAction,
+		RunE:          inspectAction,
 		Args:          cobra.MinimumNArgs(1),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	namespaceInspectCommand.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
-	namespaceInspectCommand.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
+	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	return namespaceInspectCommand
+	return cmd
 }
 
-func processNamespaceInspectOptions(cmd *cobra.Command) (types.NamespaceInspectOptions, error) {
+func inspectOptions(cmd *cobra.Command) (types.NamespaceInspectOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.NamespaceInspectOptions{}, err
@@ -57,8 +57,8 @@ func processNamespaceInspectOptions(cmd *cobra.Command) (types.NamespaceInspectO
 	}, nil
 }
 
-func labelInspectAction(cmd *cobra.Command, args []string) error {
-	options, err := processNamespaceInspectOptions(cmd)
+func inspectAction(cmd *cobra.Command, args []string) error {
+	options, err := inspectOptions(cmd)
 	if err != nil {
 		return err
 	}

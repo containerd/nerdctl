@@ -25,18 +25,18 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/namespace"
 )
 
-func newNamespaceCreateCommand() *cobra.Command {
-	namespaceCreateCommand := &cobra.Command{
+func createCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:           "create NAMESPACE",
 		Short:         "Create a new namespace",
 		Args:          cobra.MinimumNArgs(1),
-		RunE:          namespaceCreateAction,
+		RunE:          createAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
 
-	namespaceCreateCommand.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
-	return namespaceCreateCommand
+	cmd.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
+	return cmd
 }
 
 func processNamespaceCreateCommandOption(cmd *cobra.Command) (types.NamespaceCreateOptions, error) {
@@ -54,7 +54,7 @@ func processNamespaceCreateCommandOption(cmd *cobra.Command) (types.NamespaceCre
 	}, nil
 }
 
-func namespaceCreateAction(cmd *cobra.Command, args []string) error {
+func createAction(cmd *cobra.Command, args []string) error {
 	options, err := processNamespaceCreateCommandOption(cmd)
 	if err != nil {
 		return err

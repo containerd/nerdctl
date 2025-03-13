@@ -22,8 +22,8 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 )
 
-func NewSystemCommand() *cobra.Command {
-	var systemCommand = &cobra.Command{
+func Command() *cobra.Command {
+	var cmd = &cobra.Command{
 		Annotations:   map[string]string{helpers.Category: helpers.Management},
 		Use:           "system",
 		Short:         "Manage containerd",
@@ -32,10 +32,10 @@ func NewSystemCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 	// versionCommand is not here
-	systemCommand.AddCommand(
-		NewEventsCommand(),
-		NewInfoCommand(),
-		newSystemPruneCommand(),
+	cmd.AddCommand(
+		EventsCommand(),
+		InfoCommand(),
+		pruneCommand(),
 	)
-	return systemCommand
+	return cmd
 }

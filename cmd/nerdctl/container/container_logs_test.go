@@ -27,9 +27,12 @@ import (
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func TestLogs(t *testing.T) {
@@ -161,10 +164,59 @@ func TestLogsWithFailingContainer(t *testing.T) {
 	base.Cmd("rm", "-f", containerName).AssertOK()
 }
 
+func TestLogsWithRunningContainer(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", containerName).Run()
+	expected := make([]string, 10)
+	for i := 0; i < 10; i++ {
+		expected[i] = fmt.Sprint(i + 1)
+	}
+
+	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
+		"sh", "-euc", "for i in `seq 1 10`; do echo $i; sleep 1; done").AssertOK()
+	base.Cmd("logs", "-f", containerName).AssertOutContainsAll(expected...)
+}
+
+func TestLogsWithoutNewlineOrEOF(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("FIXME: test does not work on Windows yet because containerd doesn't send an exit event appropriately after task exit on Windows")
+	}
+	t.Parallel()
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", containerName).Run()
+	expected := []string{"Hello World!", "There is no newline"}
+	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
+		"printf", "'Hello World!\nThere is no newline'").AssertOK()
+	time.Sleep(3 * time.Second)
+	base.Cmd("logs", "-f", containerName).AssertOutContainsAll(expected...)
+}
+
+func TestLogsAfterRestartingContainer(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("FIXME: test does not work on Windows yet. Restarting a container fails with: failed to create shim task: hcs::CreateComputeSystem <id>: The requested operation for attach namespace failed.: unknown")
+	}
+	t.Parallel()
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", containerName).Run()
+	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
+		"printf", "'Hello World!\nThere is no newline'").AssertOK()
+	expected := []string{"Hello World!", "There is no newline"}
+	time.Sleep(3 * time.Second)
+	base.Cmd("logs", "-f", containerName).AssertOutContainsAll(expected...)
+	// restart and check logs again
+	base.Cmd("start", containerName)
+	time.Sleep(3 * time.Second)
+	base.Cmd("logs", "-f", containerName).AssertOutContainsAll(expected...)
+}
+
 func TestLogsWithForegroundContainers(t *testing.T) {
 	testCase := nerdtest.Setup()
 	// dual logging is not supported on Windows
-	testCase.Require = test.Not(test.Windows)
+	testCase.Require = require.Not(require.Windows)
 
 	testCase.Run(t)
 
@@ -180,10 +232,10 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", data.Identifier())
 			},
-			Expected: test.Expects(0, nil, test.All(
-				test.Contains("foo"),
-				test.Contains("bar"),
-				test.DoesNotContain("baz"),
+			Expected: test.Expects(0, nil, expect.All(
+				expect.Contains("foo"),
+				expect.Contains("bar"),
+				expect.DoesNotContain("baz"),
 			)),
 		},
 		{
@@ -197,10 +249,10 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", data.Identifier())
 			},
-			Expected: test.Expects(0, nil, test.All(
-				test.Contains("foo"),
-				test.Contains("bar"),
-				test.DoesNotContain("baz"),
+			Expected: test.Expects(0, nil, expect.All(
+				expect.Contains("foo"),
+				expect.Contains("bar"),
+				expect.DoesNotContain("baz"),
 			)),
 		},
 		{
@@ -216,10 +268,10 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", data.Identifier())
 			},
-			Expected: test.Expects(0, nil, test.All(
-				test.Contains("foo"),
-				test.Contains("bar"),
-				test.DoesNotContain("baz"),
+			Expected: test.Expects(0, nil, expect.All(
+				expect.Contains("foo"),
+				expect.Contains("bar"),
+				expect.DoesNotContain("baz"),
 			)),
 		},
 		{
@@ -235,10 +287,10 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", data.Identifier())
 			},
-			Expected: test.Expects(0, nil, test.All(
-				test.Contains("foo"),
-				test.Contains("bar"),
-				test.DoesNotContain("baz"),
+			Expected: test.Expects(0, nil, expect.All(
+				expect.Contains("foo"),
+				expect.Contains("bar"),
+				expect.DoesNotContain("baz"),
 			)),
 		},
 	}

@@ -28,24 +28,24 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
-func newComposeCopyCommand() *cobra.Command {
+func copyCommand() *cobra.Command {
 	usage := `cp [OPTIONS] SERVICE:SRC_PATH DEST_PATH|-
        nerdctl compose cp [OPTIONS] SRC_PATH|- SERVICE:DEST_PATH`
-	var composeCpCommand = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:           usage,
 		Short:         "Copy files/folders between a service container and the local filesystem",
 		Args:          cobra.ExactArgs(2),
-		RunE:          composeCopyAction,
+		RunE:          copyAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeCpCommand.Flags().Bool("dry-run", false, "Execute command in dry run mode")
-	composeCpCommand.Flags().BoolP("follow-link", "L", false, "Always follow symbol link in SRC_PATH")
-	composeCpCommand.Flags().Int("index", 0, "index of the container if service has multiple replicas")
-	return composeCpCommand
+	cmd.Flags().Bool("dry-run", false, "Execute command in dry run mode")
+	cmd.Flags().BoolP("follow-link", "L", false, "Always follow symbol link in SRC_PATH")
+	cmd.Flags().Int("index", 0, "index of the container if service has multiple replicas")
+	return cmd
 }
 
-func composeCopyAction(cmd *cobra.Command, args []string) error {
+func copyAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

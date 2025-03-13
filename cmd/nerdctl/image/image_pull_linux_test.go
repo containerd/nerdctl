@@ -26,10 +26,13 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
@@ -40,11 +43,11 @@ func TestImagePullWithCosign(t *testing.T) {
 	var keyPair *testhelpers.CosignKeyPair
 
 	testCase := &test.Case{
-		Require: test.Require(
-			test.Linux,
+		Require: require.All(
+			require.Linux,
 			nerdtest.Build,
-			test.Binary("cosign"),
-			test.Not(nerdtest.Docker),
+			require.Binary("cosign"),
+			require.Not(nerdtest.Docker),
 		),
 		Env: map[string]string{
 			"COSIGN_PASSWORD": "1",
@@ -83,7 +86,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 			{
 				Description: "Pull with the correct key",
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Command("pull", "--verify=cosign", "--cosign-key="+keyPair.PublicKey, data.Get("imageref")+":one")
+					return helpers.Command("pull", "--quiet", "--verify=cosign", "--cosign-key="+keyPair.PublicKey, data.Get("imageref")+":one")
 				},
 				Expected: test.Expects(0, nil, nil),
 			},
@@ -94,7 +97,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					newKeyPair := testhelpers.NewCosignKeyPair(t, "cosign-key-pair-test", "2")
-					return helpers.Command("pull", "--verify=cosign", "--cosign-key="+newKeyPair.PublicKey, data.Get("imageref")+":two")
+					return helpers.Command("pull", "--quiet", "--verify=cosign", "--cosign-key="+newKeyPair.PublicKey, data.Get("imageref")+":two")
 				},
 				Expected: test.Expects(12, nil, nil),
 			},
@@ -110,9 +113,9 @@ func TestImagePullPlainHttpWithDefaultPort(t *testing.T) {
 	var registry *testregistry.RegistryServer
 
 	testCase := &test.Case{
-		Require: test.Require(
-			test.Linux,
-			test.Not(nerdtest.Docker),
+		Require: require.All(
+			require.Linux,
+			require.Not(nerdtest.Docker),
 			nerdtest.Build,
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
@@ -154,9 +157,9 @@ func TestImagePullSoci(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Require: test.Require(
-			test.Linux,
-			test.Not(nerdtest.Docker),
+		Require: require.All(
+			require.Linux,
+			require.Not(nerdtest.Docker),
 			nerdtest.Soci,
 		),
 
@@ -166,8 +169,7 @@ func TestImagePullSoci(t *testing.T) {
 			{
 				Description: "Run without specifying SOCI index",
 				NoParallel:  true,
-				Data: test.
-					WithData("remoteSnapshotsExpectedCount", "11").
+				Data: test.WithData("remoteSnapshotsExpectedCount", "11").
 					Set("sociIndexDigest", ""),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					cmd := helpers.Custom("mount")
@@ -200,8 +202,7 @@ func TestImagePullSoci(t *testing.T) {
 			{
 				Description: "Run with bad SOCI index",
 				NoParallel:  true,
-				Data: test.
-					WithData("remoteSnapshotsExpectedCount", "11").
+				Data: test.WithData("remoteSnapshotsExpectedCount", "11").
 					Set("sociIndexDigest", "sha256:thisisabadindex0000000000000000000000000000000000000000000000000"),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					cmd := helpers.Custom("mount")
@@ -251,7 +252,7 @@ func TestImagePullProcessOutput(t *testing.T) {
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("pull", testutil.BusyboxImage)
 				},
-				Expected: test.Expects(0, nil, test.Contains(testutil.BusyboxImage)),
+				Expected: test.Expects(0, nil, expect.Contains(testutil.BusyboxImage)),
 			},
 			{
 				Description: "Run Container with image pull - output should be in stderr",
@@ -262,7 +263,7 @@ func TestImagePullProcessOutput(t *testing.T) {
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("run", "--rm", testutil.BusyboxImage)
 				},
-				Expected: test.Expects(0, nil, test.DoesNotContain(testutil.BusyboxImage)),
+				Expected: test.Expects(0, nil, expect.DoesNotContain(testutil.BusyboxImage)),
 			},
 		},
 	}

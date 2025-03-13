@@ -29,31 +29,31 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
-func newNetworkCreateCommand() *cobra.Command {
-	var networkCreateCommand = &cobra.Command{
+func createCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "create [flags] NETWORK",
 		Short:         "Create a network",
 		Long:          `NOTE: To isolate CNI bridge, CNI plugin "firewall" (>= v1.1.0) is needed.`,
 		Args:          helpers.IsExactArgs(1),
-		RunE:          networkCreateAction,
+		RunE:          createAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	networkCreateCommand.Flags().StringP("driver", "d", DefaultNetworkDriver, "Driver to manage the Network")
-	networkCreateCommand.RegisterFlagCompletionFunc("driver", completion.NetworkDrivers)
-	networkCreateCommand.Flags().StringArrayP("opt", "o", nil, "Set driver specific options")
-	networkCreateCommand.Flags().String("ipam-driver", "default", "IP Address helpers.Management Driver")
-	networkCreateCommand.RegisterFlagCompletionFunc("ipam-driver", completion.IPAMDrivers)
-	networkCreateCommand.Flags().StringArray("ipam-opt", nil, "Set IPAM driver specific options")
-	networkCreateCommand.Flags().StringArray("subnet", nil, `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
-	networkCreateCommand.Flags().String("gateway", "", `Gateway for the master subnet`)
-	networkCreateCommand.Flags().String("ip-range", "", `Allocate container ip from a sub-range`)
-	networkCreateCommand.Flags().StringArray("label", nil, "Set metadata for a network")
-	networkCreateCommand.Flags().Bool("ipv6", false, "Enable IPv6 networking")
-	return networkCreateCommand
+	cmd.Flags().StringP("driver", "d", DefaultNetworkDriver, "Driver to manage the Network")
+	cmd.RegisterFlagCompletionFunc("driver", completion.NetworkDrivers)
+	cmd.Flags().StringArrayP("opt", "o", nil, "Set driver specific options")
+	cmd.Flags().String("ipam-driver", "default", "IP Address helpers.Management Driver")
+	cmd.RegisterFlagCompletionFunc("ipam-driver", completion.IPAMDrivers)
+	cmd.Flags().StringArray("ipam-opt", nil, "Set IPAM driver specific options")
+	cmd.Flags().StringArray("subnet", nil, `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
+	cmd.Flags().String("gateway", "", `Gateway for the master subnet`)
+	cmd.Flags().String("ip-range", "", `Allocate container ip from a sub-range`)
+	cmd.Flags().StringArray("label", nil, "Set metadata for a network")
+	cmd.Flags().Bool("ipv6", false, "Enable IPv6 networking")
+	return cmd
 }
 
-func networkCreateAction(cmd *cobra.Command, args []string) error {
+func createAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

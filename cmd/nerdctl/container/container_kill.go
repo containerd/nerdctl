@@ -28,8 +28,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 )
 
-func NewKillCommand() *cobra.Command {
-	var killCommand = &cobra.Command{
+func KillCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "kill [flags] CONTAINER [CONTAINER, ...]",
 		Short:             "Kill one or more running containers",
 		Args:              cobra.MinimumNArgs(1),
@@ -38,8 +38,8 @@ func NewKillCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	killCommand.Flags().StringP("signal", "s", "KILL", "Signal to send to the container")
-	return killCommand
+	cmd.Flags().StringP("signal", "s", "KILL", "Signal to send to the container")
+	return cmd
 }
 
 func killAction(cmd *cobra.Command, args []string) error {

@@ -23,13 +23,13 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/apparmor"
 )
 
-func newApparmorLsCommand() *cobra.Command {
+func listCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "ls",
 		Aliases:       []string{"list"},
 		Short:         "List the loaded AppArmor profiles",
 		Args:          cobra.NoArgs,
-		RunE:          apparmorLsAction,
+		RunE:          listAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -42,7 +42,7 @@ func newApparmorLsCommand() *cobra.Command {
 	return cmd
 }
 
-func processApparmorListOptions(cmd *cobra.Command) (types.ApparmorListOptions, error) {
+func listOptions(cmd *cobra.Command) (types.ApparmorListOptions, error) {
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		return types.ApparmorListOptions{}, err
@@ -58,8 +58,8 @@ func processApparmorListOptions(cmd *cobra.Command) (types.ApparmorListOptions, 
 	}, nil
 }
 
-func apparmorLsAction(cmd *cobra.Command, args []string) error {
-	options, err := processApparmorListOptions(cmd)
+func listAction(cmd *cobra.Command, args []string) error {
+	options, err := listOptions(cmd)
 	if err != nil {
 		return err
 	}

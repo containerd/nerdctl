@@ -27,9 +27,12 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/test"
 )
 
 func pushToIPFS(helpers test.Helpers, name string, opts ...string) string {
@@ -56,9 +59,9 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 
 	var ipfsServer test.TestableCommand
 
-	testCase.Require = test.Require(
-		test.Linux,
-		test.Not(nerdtest.Docker),
+	testCase.Require = require.All(
+		require.Linux,
+		require.Not(nerdtest.Docker),
 		nerdtest.IPFS,
 	)
 
@@ -96,7 +99,7 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm", data.Get(ipfsImageURLKey), "echo", "hello")
 			},
-			Expected: test.Expects(0, nil, test.Equals("hello\n")),
+			Expected: test.Expects(0, nil, expect.Equals("hello\n")),
 		},
 		{
 			Description: "with stargz snapshotterr",
@@ -114,7 +117,7 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm", data.Get(ipfsImageURLKey), "ls", "/.stargz-snapshotter")
 			},
-			Expected: test.Expects(0, nil, test.Match(regexp.MustCompile("sha256:.*[.]json[\n]"))),
+			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile("sha256:.*[.]json[\n]"))),
 		},
 		{
 			Description: "with build",
@@ -142,7 +145,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm", data.Identifier("built-image"))
 			},
-			Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
+			Expected: test.Expects(0, nil, expect.Equals("nerdctl-build-test-string\n")),
 		},
 	}
 

@@ -30,20 +30,20 @@ import (
 
 var NetworkDriversToKeep = []string{"host", "none", DefaultNetworkDriver}
 
-func newNetworkPruneCommand() *cobra.Command {
-	networkPruneCommand := &cobra.Command{
+func pruneCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove all unused networks",
 		Args:          cobra.NoArgs,
-		RunE:          networkPruneAction,
+		RunE:          pruneAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	networkPruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
-	return networkPruneCommand
+	cmd.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
+	return cmd
 }
 
-func networkPruneAction(cmd *cobra.Command, _ []string) error {
+func pruneAction(cmd *cobra.Command, _ []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

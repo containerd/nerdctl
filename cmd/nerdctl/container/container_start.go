@@ -29,8 +29,8 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
 )
 
-func NewStartCommand() *cobra.Command {
-	var startCommand = &cobra.Command{
+func StartCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "start [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Start one or more running containers",
@@ -40,14 +40,14 @@ func NewStartCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 
-	startCommand.Flags().SetInterspersed(false)
-	startCommand.Flags().BoolP("attach", "a", false, "Attach STDOUT/STDERR and forward signals")
-	startCommand.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
+	cmd.Flags().SetInterspersed(false)
+	cmd.Flags().BoolP("attach", "a", false, "Attach STDOUT/STDERR and forward signals")
+	cmd.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
 
-	return startCommand
+	return cmd
 }
 
-func processContainerStartOptions(cmd *cobra.Command) (types.ContainerStartOptions, error) {
+func startOptions(cmd *cobra.Command) (types.ContainerStartOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.ContainerStartOptions{}, err
@@ -69,7 +69,7 @@ func processContainerStartOptions(cmd *cobra.Command) (types.ContainerStartOptio
 }
 
 func startAction(cmd *cobra.Command, args []string) error {
-	options, err := processContainerStartOptions(cmd)
+	options, err := startOptions(cmd)
 	if err != nil {
 		return err
 	}

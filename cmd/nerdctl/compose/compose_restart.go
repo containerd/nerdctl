@@ -25,19 +25,19 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposeRestartCommand() *cobra.Command {
-	var composeRestartCommand = &cobra.Command{
+func restartCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "restart [flags] [SERVICE...]",
 		Short:         "Restart containers of given (or all) services",
-		RunE:          composeRestartAction,
+		RunE:          restartAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeRestartCommand.Flags().UintP("timeout", "t", 10, "Seconds to wait before restarting them")
-	return composeRestartCommand
+	cmd.Flags().UintP("timeout", "t", 10, "Seconds to wait before restarting them")
+	return cmd
 }
 
-func composeRestartAction(cmd *cobra.Command, args []string) error {
+func restartAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

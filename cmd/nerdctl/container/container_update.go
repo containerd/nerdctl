@@ -57,8 +57,8 @@ type updateResourceOptions struct {
 	BlkioWeight        uint16
 }
 
-func NewUpdateCommand() *cobra.Command {
-	var updateCommand = &cobra.Command{
+func UpdateCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "update [flags] CONTAINER [CONTAINER, ...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Update one or more running containers",
@@ -67,9 +67,9 @@ func NewUpdateCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	updateCommand.Flags().SetInterspersed(false)
-	setUpdateFlags(updateCommand)
-	return updateCommand
+	cmd.Flags().SetInterspersed(false)
+	setUpdateFlags(cmd)
+	return cmd
 }
 
 func setUpdateFlags(cmd *cobra.Command) {

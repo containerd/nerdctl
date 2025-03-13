@@ -32,22 +32,22 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/system"
 )
 
-func newSystemPruneCommand() *cobra.Command {
-	systemPruneCommand := &cobra.Command{
+func pruneCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:           "prune [flags]",
 		Short:         "Remove unused data",
 		Args:          cobra.NoArgs,
-		RunE:          systemPruneAction,
+		RunE:          pruneAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	systemPruneCommand.Flags().BoolP("all", "a", false, "Remove all unused images, not just dangling ones")
-	systemPruneCommand.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
-	systemPruneCommand.Flags().Bool("volumes", false, "Prune volumes")
-	return systemPruneCommand
+	cmd.Flags().BoolP("all", "a", false, "Remove all unused images, not just dangling ones")
+	cmd.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
+	cmd.Flags().Bool("volumes", false, "Prune volumes")
+	return cmd
 }
 
-func processSystemPruneOptions(cmd *cobra.Command) (types.SystemPruneOptions, error) {
+func pruneOptions(cmd *cobra.Command) (types.SystemPruneOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return types.SystemPruneOptions{}, err
@@ -117,8 +117,8 @@ func grantSystemPrunePermission(cmd *cobra.Command, options types.SystemPruneOpt
 	return true, nil
 }
 
-func systemPruneAction(cmd *cobra.Command, _ []string) error {
-	options, err := processSystemPruneOptions(cmd)
+func pruneAction(cmd *cobra.Command, _ []string) error {
+	options, err := pruneOptions(cmd)
 	if err != nil {
 		return err
 	}

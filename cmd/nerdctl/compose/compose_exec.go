@@ -29,39 +29,39 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 )
 
-func newComposeExecCommand() *cobra.Command {
-	var composeExecCommand = &cobra.Command{
+func execCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:           "exec [flags] SERVICE COMMAND [ARGS...]",
 		Short:         "Execute a command in a running container of the service",
 		Args:          cobra.MinimumNArgs(2),
-		RunE:          composeExecAction,
+		RunE:          execAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	composeExecCommand.Flags().SetInterspersed(false)
+	cmd.Flags().SetInterspersed(false)
 
 	_, isTerminal := term.GetFdInfo(os.Stdout)
-	composeExecCommand.Flags().BoolP("no-TTY", "T", !isTerminal, "Disable pseudo-TTY allocation. By default nerdctl compose exec allocates a TTY.")
-	composeExecCommand.Flags().BoolP("detach", "d", false, "Detached mode: Run containers in the background")
-	composeExecCommand.Flags().StringP("workdir", "w", "", "Working directory inside the container")
+	cmd.Flags().BoolP("no-TTY", "T", !isTerminal, "Disable pseudo-TTY allocation. By default nerdctl compose exec allocates a TTY.")
+	cmd.Flags().BoolP("detach", "d", false, "Detached mode: Run containers in the background")
+	cmd.Flags().StringP("workdir", "w", "", "Working directory inside the container")
 	// env needs to be StringArray, not StringSlice, to prevent "FOO=foo1,foo2" from being split to {"FOO=foo1", "foo2"}
-	composeExecCommand.Flags().StringArrayP("env", "e", nil, "Set environment variables")
-	composeExecCommand.Flags().Bool("privileged", false, "Give extended privileges to the command")
-	composeExecCommand.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
-	composeExecCommand.Flags().Int("index", 1, "index of the container if the service has multiple instances.")
+	cmd.Flags().StringArrayP("env", "e", nil, "Set environment variables")
+	cmd.Flags().Bool("privileged", false, "Give extended privileges to the command")
+	cmd.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
+	cmd.Flags().Int("index", 1, "index of the container if the service has multiple instances.")
 
-	composeExecCommand.Flags().BoolP("interactive", "i", true, "Keep STDIN open even if not attached")
-	composeExecCommand.Flags().MarkHidden("interactive")
+	cmd.Flags().BoolP("interactive", "i", true, "Keep STDIN open even if not attached")
+	cmd.Flags().MarkHidden("interactive")
 	// The -t does not has effect to keep the compatibility with docker.
 	// The proposal of -t is to keep "muscle memory" with compose v1: https://github.com/docker/compose/issues/9207
 	// FYI: https://github.com/docker/compose/blob/v2.23.1/cmd/compose/exec.go#L77
-	composeExecCommand.Flags().BoolP("tty", "t", true, "Allocate a pseudo-TTY")
-	composeExecCommand.Flags().MarkHidden("tty")
+	cmd.Flags().BoolP("tty", "t", true, "Allocate a pseudo-TTY")
+	cmd.Flags().MarkHidden("tty")
 
-	return composeExecCommand
+	return cmd
 }
 
-func composeExecAction(cmd *cobra.Command, args []string) error {
+func execAction(cmd *cobra.Command, args []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err

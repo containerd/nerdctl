@@ -43,7 +43,7 @@ type psTestContainer struct {
 func preparePsTestContainer(t *testing.T, identity string, keepAlive bool) (*testutil.Base, psTestContainer) {
 	base := testutil.NewBase(t)
 
-	base.Cmd("pull", testutil.CommonImage).AssertOK()
+	base.Cmd("pull", "--quiet", testutil.CommonImage).AssertOK()
 
 	testContainerName := testutil.Identifier(t) + identity
 	rwVolName := testContainerName + "-rw"
