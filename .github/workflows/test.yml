@@ -47,8 +47,8 @@ jobs:
         run: |
           docker buildx create --name with-gha --use
           docker buildx build \
-            --cache-to type=gha,compression=zstd,mode=max,scope=${ARCH}-${CONTAINERD_VERSION} \
-            --cache-from type=gha,scope=${ARCH}-${CONTAINERD_VERSION} \
+            --cache-to type=gha,compression=zstd,mode=max,scope=test-integration-dependencies-${ARCH} \
+            --cache-from type=gha,scope=test-integration-dependencies-${ARCH} \
             --target build-dependencies --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
 
   test-unit:
@@ -128,7 +128,7 @@ jobs:
           docker buildx create --name with-gha --use
           docker buildx build \
             --output=type=docker \
-            --cache-from type=gha,scope=${ARCH}-${CONTAINERD_VERSION} \
+            --cache-from type=gha,scope=test-integration-dependencies-${ARCH} \
             -t test-integration --target test-integration --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
@@ -186,7 +186,7 @@ jobs:
           docker buildx create --name with-gha --use
           docker buildx build \
             --output=type=docker \
-            --cache-from type=gha,scope=${ARCH}-${CONTAINERD_VERSION} \
+            --cache-from type=gha,scope=test-integration-dependencies-${ARCH} \
             -t test-integration --target test-integration --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} .
       - name: "Remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
         run: |
@@ -285,7 +285,7 @@ jobs:
           docker buildx create --name with-gha --use
           docker buildx build \
             --output=type=docker \
-            --cache-from type=gha,scope=${ARCH}-${CONTAINERD_VERSION} \
+            --cache-from type=gha,scope=test-integration-dependencies-${ARCH} \
             -t ${TEST_TARGET} --target ${TEST_TARGET} --build-arg UBUNTU_VERSION=${UBUNTU_VERSION} --build-arg CONTAINERD_VERSION=${CONTAINERD_VERSION} --build-arg ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION} .
       - name: "Disable BuildKit for RootlessKit v1 (workaround for issue #622)"
         run: |
