@@ -57,7 +57,11 @@ func TestContainerFromNative(t *testing.T) {
 						"nerdctl/hostname":  "host1",
 					},
 				},
-				Spec: &specs.Spec{},
+				Spec: &specs.Spec{
+					Process: &specs.Process{
+						Env: []string{"/some/path"},
+					},
+				},
 				Process: &native.Process{
 					Pid: 10000,
 					Status: containerd.Status{
@@ -102,6 +106,7 @@ func TestContainerFromNative(t *testing.T) {
 						"nerdctl/hostname":  "host1",
 					},
 					Hostname: "host1",
+					Env:      []string{"/some/path"},
 				},
 				NetworkSettings: &NetworkSettings{
 					Ports:    &nat.PortMap{},
