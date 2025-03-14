@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -16,11 +18,8 @@
 
 package container
 
-import (
-	"github.com/opencontainers/runtime-spec/specs-go"
-)
+import "github.com/spf13/cobra"
 
-func setExecCapabilities(pspec *specs.Process) error {
-	//no op freebsd
-	return nil
+func AddCpCommand(rootCmd *cobra.Command) {
+	// NOP
 }
