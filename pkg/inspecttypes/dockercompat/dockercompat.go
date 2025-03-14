@@ -566,6 +566,11 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 			c.Config.Env = spec.Process.Env
 		}
 	}
+
+	if n.Labels[labels.User] != "" {
+		c.Config.User = n.Labels[labels.User]
+	}
+
 	return c, nil
 }
 
