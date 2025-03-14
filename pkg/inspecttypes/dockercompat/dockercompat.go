@@ -167,19 +167,18 @@ type HostConfig struct {
 	Tmpfs   map[string]string `json:"Tmpfs,omitempty"` // List of tmpfs (mounts) used for the container
 	UTSMode string            // UTS namespace to use for the container
 	// UsernsMode      UsernsMode        // The user namespace to use for the container
-	ShmSize int64             // Size of /dev/shm in bytes. The size must be greater than 0.
-	Sysctls map[string]string // List of Namespaced sysctls used for the container
-	Runtime string            // Runtime to use with this container
-
-	BlkioWeight    uint16          // Block IO weight (relative weight vs. other containers)
-	CPUSetMems     string          `json:"CpusetMems"` // CpusetMems 0-2, 0,1
-	CPUSetCPUs     string          `json:"CpusetCpus"` // CpusetCpus 0-2, 0,1
-	CPUQuota       int64           `json:"CpuQuota"`   // CPU CFS (Completely Fair Scheduler) quota
-	CPUShares      uint64          `json:"CpuShares"`  // CPU shares (relative weight vs. other containers)
-	Memory         int64           // Memory limit (in bytes)
-	MemorySwap     int64           // Total memory usage (memory + swap); set `-1` to enable unlimited swap
-	OomKillDisable bool            // specifies whether to disable OOM Killer
-	Devices        []DeviceMapping // List of devices to map inside the container
+	ShmSize        int64             // Size of /dev/shm in bytes. The size must be greater than 0.
+	Sysctls        map[string]string // List of Namespaced sysctls used for the container
+	Runtime        string            // Runtime to use with this container
+	CPUSetMems     string            `json:"CpusetMems"` // CpusetMems 0-2, 0,1
+	CPUSetCPUs     string            `json:"CpusetCpus"` // CpusetCpus 0-2, 0,1
+	CPUQuota       int64             `json:"CpuQuota"`   // CPU CFS (Completely Fair Scheduler) quota
+	CPUShares      uint64            `json:"CpuShares"`  // CPU shares (relative weight vs. other containers)
+	Memory         int64             // Memory limit (in bytes)
+	MemorySwap     int64             // Total memory usage (memory + swap); set `-1` to enable unlimited swap
+	OomKillDisable bool              // specifies whether to disable OOM Killer
+	Devices        []DeviceMapping   // List of devices to map inside the container
+	LinuxBlkioSettings
 }
 
 // From https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L416-L427
@@ -301,6 +300,15 @@ type NetworkEndpointSettings struct {
 	GlobalIPv6PrefixLen int
 	MacAddress          string
 	// TODO DriverOpts          map[string]string
+}
+
+type LinuxBlkioSettings struct {
+	BlkioWeight          uint16 // Block IO weight (relative weight vs. other containers)
+	BlkioWeightDevice    []*specs.LinuxWeightDevice
+	BlkioDeviceReadBps   []*specs.LinuxThrottleDevice
+	BlkioDeviceWriteBps  []*specs.LinuxThrottleDevice
+	BlkioDeviceReadIOps  []*specs.LinuxThrottleDevice
+	BlkioDeviceWriteIOps []*specs.LinuxThrottleDevice
 }
 
 // ContainerFromNative instantiates a Docker-compatible Container from containerd-native Container.
@@ -540,6 +548,11 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		pidMode = n.Labels[labels.PIDContainer]
 	}
 	c.HostConfig.PidMode = pidMode
+
+	if err := getBlkioSettingsFromSpec(n.Spec.(*specs.Spec), c.HostConfig); err != nil {
+		return nil, fmt.Errorf("failed to get blkio settings: %w", err)
+	}
+
 	return c, nil
 }
 
@@ -924,4 +937,79 @@ func ParseMountProperties(option []string) (rw bool, propagation string) {
 		}
 	}
 	return
+}
+
+func getDefaultLinuxBlkioSettings() LinuxBlkioSettings {
+	return LinuxBlkioSettings{
+		BlkioWeight:          0,
+		BlkioWeightDevice:    make([]*specs.LinuxWeightDevice, 0),
+		BlkioDeviceReadBps:   make([]*specs.LinuxThrottleDevice, 0),
+		BlkioDeviceWriteBps:  make([]*specs.LinuxThrottleDevice, 0),
+		BlkioDeviceReadIOps:  make([]*specs.LinuxThrottleDevice, 0),
+		BlkioDeviceWriteIOps: make([]*specs.LinuxThrottleDevice, 0),
+	}
+}
+
+func getBlkioSettingsFromSpec(spec *specs.Spec, hostConfig *HostConfig) error {
+	if spec == nil {
+		return fmt.Errorf("spec cannot be nil")
+	}
+	if hostConfig == nil {
+		return fmt.Errorf("hostConfig cannot be nil")
+	}
+
+	// Initialize empty arrays by default
+	hostConfig.LinuxBlkioSettings = getDefaultLinuxBlkioSettings()
+
+	if spec.Linux == nil || spec.Linux.Resources == nil || spec.Linux.Resources.BlockIO == nil {
+		return nil
+	}
+
+	blockIO := spec.Linux.Resources.BlockIO
+
+	// Set block IO weight
+	if blockIO.Weight != nil {
+		hostConfig.BlkioWeight = *blockIO.Weight
+	}
+
+	// Set weight devices
+	if len(blockIO.WeightDevice) > 0 {
+		hostConfig.BlkioWeightDevice = make([]*specs.LinuxWeightDevice, len(blockIO.WeightDevice))
+		for i, dev := range blockIO.WeightDevice {
+			hostConfig.BlkioWeightDevice[i] = &dev
+		}
+	}
+
+	// Set throttle devices for read BPS
+	if len(blockIO.ThrottleReadBpsDevice) > 0 {
+		hostConfig.BlkioDeviceReadBps = make([]*specs.LinuxThrottleDevice, len(blockIO.ThrottleReadBpsDevice))
+		for i, dev := range blockIO.ThrottleReadBpsDevice {
+			hostConfig.BlkioDeviceReadBps[i] = &dev
+		}
+	}
+
+	// Set throttle devices for write BPS
+	if len(blockIO.ThrottleWriteBpsDevice) > 0 {
+		hostConfig.BlkioDeviceWriteBps = make([]*specs.LinuxThrottleDevice, len(blockIO.ThrottleWriteBpsDevice))
+		for i, dev := range blockIO.ThrottleWriteBpsDevice {
+			hostConfig.BlkioDeviceWriteBps[i] = &dev
+		}
+	}
+
+	// Set throttle devices for read IOPs
+	if len(blockIO.ThrottleReadIOPSDevice) > 0 {
+		hostConfig.BlkioDeviceReadIOps = make([]*specs.LinuxThrottleDevice, len(blockIO.ThrottleReadIOPSDevice))
+		for i, dev := range blockIO.ThrottleReadIOPSDevice {
+			hostConfig.BlkioDeviceReadIOps[i] = &dev
+		}
+	}
+
+	// Set throttle devices for write IOPs
+	if len(blockIO.ThrottleWriteIOPSDevice) > 0 {
+		hostConfig.BlkioDeviceWriteIOps = make([]*specs.LinuxThrottleDevice, len(blockIO.ThrottleWriteIOPSDevice))
+		for i, dev := range blockIO.ThrottleWriteIOPSDevice {
+			hostConfig.BlkioDeviceWriteIOps[i] = &dev
+		}
+	}
+	return nil
 }
