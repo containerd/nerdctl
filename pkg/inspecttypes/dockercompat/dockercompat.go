@@ -540,6 +540,17 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		pidMode = n.Labels[labels.PIDContainer]
 	}
 	c.HostConfig.PidMode = pidMode
+
+	if n.Spec != nil {
+		if spec, ok := n.Spec.(*specs.Spec); ok && spec.Process != nil {
+			c.Config.Env = spec.Process.Env
+		}
+	}
+
+	if n.Labels[labels.User] != "" {
+		c.Config.User = n.Labels[labels.User]
+	}
+
 	return c, nil
 }
 

@@ -26,11 +26,14 @@ import (
 	"github.com/docker/go-connections/nat"
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestContainerInspectContainsPortConfig(t *testing.T) {
@@ -454,6 +457,23 @@ func TestContainerInspectDevices(t *testing.T) {
 		},
 	}
 	assert.DeepEqual(t, expectedDevices, inspect.HostConfig.Devices)
+}
+
+func TestContainerInspectUser(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Description: "Container inspect contains User",
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("create", "--name", data.Identifier(), "--user", "test", testutil.AlpineImage)
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("inspect", "--format", "{{.Config.User}}", data.Identifier())
+		},
+		Expected: test.Expects(0, nil, expect.Equals("test\n")),
+	}
+
+	testCase.Run(t)
 }
 
 type hostConfigValues struct {

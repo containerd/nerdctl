@@ -115,4 +115,7 @@ const (
 
 	// DNSSettings sets the dockercompat DNS config values
 	DNSSetting = Prefix + "dns"
+
+	// User is the username of the container
+	User = Prefix + "user"
 )
