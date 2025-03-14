@@ -55,6 +55,7 @@ func TestContainerFromNative(t *testing.T) {
 						"nerdctl/mounts":    "[{\"Type\":\"bind\",\"Source\":\"/mnt/foo\",\"Destination\":\"/mnt/foo\",\"Mode\":\"rshared,rw\",\"RW\":true,\"Propagation\":\"rshared\"}]",
 						"nerdctl/state-dir": tempStateDir,
 						"nerdctl/hostname":  "host1",
+						"nerdctl/user":      "test-user",
 					},
 				},
 				Spec: &specs.Spec{
@@ -104,9 +105,11 @@ func TestContainerFromNative(t *testing.T) {
 						"nerdctl/mounts":    "[{\"Type\":\"bind\",\"Source\":\"/mnt/foo\",\"Destination\":\"/mnt/foo\",\"Mode\":\"rshared,rw\",\"RW\":true,\"Propagation\":\"rshared\"}]",
 						"nerdctl/state-dir": tempStateDir,
 						"nerdctl/hostname":  "host1",
+						"nerdctl/user":      "test-user",
 					},
 					Hostname: "host1",
 					Env:      []string{"/some/path"},
+					User:     "test-user",
 				},
 				NetworkSettings: &NetworkSettings{
 					Ports:    &nat.PortMap{},
