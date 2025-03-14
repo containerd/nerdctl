@@ -561,6 +561,11 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		return nil, fmt.Errorf("failed to get blkio settings: %w", err)
 	}
 
+	if n.Spec != nil {
+		if spec, ok := n.Spec.(*specs.Spec); ok && spec.Process != nil {
+			c.Config.Env = spec.Process.Env
+		}
+	}
 	return c, nil
 }
 
