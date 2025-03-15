@@ -18,6 +18,9 @@ package container
 
 import (
 	"encoding/json"
+	"fmt"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -126,4 +129,92 @@ func TestCreateHyperVContainer(t *testing.T) {
 	}
 
 	testCase.Run(t)
+}
+
+func TestCreateWithAttach(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("create attach test is not yet implemented on Windows")
+	}
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	// Test --attach stdout only
+	stdoutContainer := testutil.Identifier(t) + "-stdout"
+	t.Cleanup(func() {
+		base.Cmd("rm", "-f", stdoutContainer).Run()
+	})
+	base.Cmd("create", "--name", stdoutContainer, "--attach", "stdout",
+		testutil.CommonImage, "sh", "-c", "echo stdout-msg && echo stderr-msg >&2").AssertOK()
+	base.Cmd("start", stdoutContainer).AssertOutStreamsWithFunc(func(stdout, stderr string) error {
+		// Verify stdout message is present
+		expected := "stdout-msg"
+		if !strings.Contains(stdout, expected) {
+			return fmt.Errorf("expected %q, got %q", expected, stdout)
+		}
+		// Verify stderr message is not present
+		if strings.Contains(stderr, "stderr-msg") {
+			return fmt.Errorf("stderr message was captured but should not be: %q", stderr)
+		}
+		return nil
+	})
+
+	// Test --attach stderr only
+	stderrContainer := testutil.Identifier(t) + "-stderr"
+	t.Cleanup(func() {
+		base.Cmd("rm", "-f", stderrContainer).Run()
+	})
+	base.Cmd("create", "--name", stderrContainer, "--attach", "stderr",
+		testutil.CommonImage, "sh", "-c", "echo stdout-msg && echo stderr-msg >&2").AssertOK()
+	base.Cmd("start", stderrContainer).AssertOutStreamsWithFunc(func(stdout, stderr string) error {
+		// Verify stderr message is present
+		expected := "stderr-msg"
+		if !strings.Contains(stderr, expected) {
+			return fmt.Errorf("expected %q, got %q", expected, stderr)
+		}
+		// Verify stdout message is not present
+		if strings.Contains(stdout, "stdout-msg") {
+			return fmt.Errorf("stdout message was captured but should not be: %q", stderr)
+		}
+		return nil
+	})
+
+	// Test both stdout and stderr
+	bothContainer := testutil.Identifier(t) + "-both"
+	t.Cleanup(func() {
+		base.Cmd("rm", "-f", bothContainer).Run()
+	})
+	base.Cmd("create", "--name", bothContainer, "--attach", "stdout", "--attach", "stderr",
+		testutil.CommonImage, "sh", "-c", "echo stdout-msg && echo stderr-msg >&2").AssertOK()
+	base.Cmd("start", bothContainer).AssertOutStreamsWithFunc(func(stdout, stderr string) error {
+		// Verify stdout message is present
+		expectedStdout := "stdout-msg"
+		if !strings.Contains(stdout, expectedStdout) {
+			return fmt.Errorf("Expected stdout message %q, got %q", expectedStdout, stdout)
+		}
+		// Verify stderr message is present
+		expectedStderr := "stderr-msg"
+		if !strings.Contains(stderr, expectedStderr) {
+			return fmt.Errorf("Expected stderr message %q, got %q", expectedStderr, stderr)
+		}
+		return nil
+	})
+
+	// Test start --attach
+	attachContainer := testutil.Identifier(t) + "-attach"
+	defer base.Cmd("rm", "-f", attachContainer).Run()
+	base.Cmd("create", "--name", attachContainer,
+		testutil.CommonImage, "sh", "-c", "echo stdout-msg && echo stderr-msg >&2").AssertOK()
+	base.Cmd("start", "--attach", attachContainer).AssertOutStreamsWithFunc(func(stdout, stderr string) error {
+		// Verify stdout message is present
+		expectedStdout := "stdout-msg"
+		if !strings.Contains(stdout, expectedStdout) {
+			return fmt.Errorf("Expected stdout message %q, got %q", expectedStdout, stdout)
+		}
+		// Verify stderr message is present
+		expectedStderr := "stderr-msg"
+		if !strings.Contains(stderr, expectedStderr) {
+			return fmt.Errorf("Expected stderr message %q, got %q", expectedStderr, stderr)
+		}
+		return nil
+	})
 }

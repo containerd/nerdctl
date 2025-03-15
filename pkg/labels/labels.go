@@ -115,4 +115,7 @@ const (
 
 	// DNSSettings sets the dockercompat DNS config values
 	DNSSetting = Prefix + "dns"
+
+	// AttachStreams is the list of streams to attach on container start/run.
+	AttachStreams = Prefix + "attach-streams"
 )
