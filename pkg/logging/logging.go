@@ -47,6 +47,8 @@ const (
 	MaxSize    = "max-size"
 	MaxFile    = "max-file"
 	Tag        = "tag"
+	Env        = "env"
+	Labels     = "labels"
 )
 
 type Driver interface {
