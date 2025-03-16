@@ -355,3 +355,31 @@ func TestNoneLoggerHasNoLogURI(t *testing.T) {
 	testCase.Expected = test.Expects(1, nil, nil)
 	testCase.Run(t)
 }
+
+func TestLogsWithDetails(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--log-driver", "json-file",
+			"--log-opt", "max-size=10m",
+			"--log-opt", "max-file=3",
+			"--log-opt", "env=ENV",
+			"--env", "ENV=foo",
+			"--log-opt", "labels=LABEL",
+			"--label", "LABEL=bar",
+			"--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-ec", "echo baz")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("logs", "--details", data.Identifier())
+	}
+
+	testCase.Expected = test.Expects(0, nil, expect.Contains("ENV=foo", "LABEL=bar", "baz"))
+
+	testCase.Run(t)
+}
