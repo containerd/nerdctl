@@ -39,11 +39,7 @@ import (
 )
 
 func ContainerStatus(ctx context.Context, c containerd.Container) string {
-	// Just in case, there is something wrong in server.
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
 	titleCaser := cases.Title(language.English)
-
 	task, err := c.Task(ctx, nil)
 	if err != nil {
 		// NOTE: NotFound doesn't mean that container hasn't started.
