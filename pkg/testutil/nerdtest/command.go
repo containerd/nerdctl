@@ -56,20 +56,28 @@ func newNerdCommand(conf test.Config, t *testing.T) *nerdCommand {
 	trgt := getTarget()
 	switch trgt {
 	case targetNerdctl:
-		binary, err = exec.LookPath(trgt)
+		nerdctl := trgt
+		if env := os.Getenv("NERDCTL"); env != "" {
+			nerdctl = env
+		}
+		binary, err = exec.LookPath(nerdctl)
 		if err != nil {
-			t.Fatalf("unable to find binary %q: %v", trgt, err)
+			t.Fatalf("unable to find binary %q: %v", nerdctl, err)
 		}
 		// Set the default namespace if we do not have something already
 		if conf.Read(Namespace) == "" {
 			conf.Write(Namespace, defaultNamespace)
 		}
 	case targetDocker:
-		binary, err = exec.LookPath(trgt)
-		if err != nil {
-			t.Fatalf("unable to find binary %q: %v", trgt, err)
+		docker := trgt
+		if env := os.Getenv("DOCKER"); env != "" {
+			docker = env
 		}
-		if err = exec.Command("docker", "compose", "version").Run(); err != nil {
+		binary, err = exec.LookPath(docker)
+		if err != nil {
+			t.Fatalf("unable to find binary %q: %v", docker, err)
+		}
+		if err = exec.Command(binary, "compose", "version").Run(); err != nil {
 			t.Fatalf("docker does not support compose: %v", err)
 		}
 	default:
