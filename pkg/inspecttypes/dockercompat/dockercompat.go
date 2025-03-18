@@ -458,6 +458,14 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		}
 		c.NetworkSettings = nSettings
 		c.HostConfig.PortBindings = *nSettings.Ports
+	} else {
+		// n.process is not set if the container is not started, making the networkSetting null
+		// we should send an empty object even in this case inorder for it to be compatible with docker inspect response
+		nSettings, err := networkSettingsFromNative(nil, n.Spec.(*specs.Spec))
+		if err != nil {
+			return nil, err
+		}
+		c.NetworkSettings = nSettings
 	}
 
 	cpuSetting, err := cpuSettingsFromNative(n.Spec.(*specs.Spec))
