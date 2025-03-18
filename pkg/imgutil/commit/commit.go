@@ -173,6 +173,9 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 	}
 	defer done(ctx)
 
+	// Sync filesystem to make sure that all the data writes in container could be persisted to disk.
+	Sync()
+
 	diffLayerDesc, diffID, err := createDiff(ctx, id, sn, client.ContentStore(), differ)
 	if err != nil {
 		return emptyDigest, fmt.Errorf("failed to export layer: %w", err)
