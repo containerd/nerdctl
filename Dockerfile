@@ -40,6 +40,9 @@ ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v2.1.1
 ARG TINI_VERSION=v0.19.0
 # Extra deps: Debug
 ARG BUILDG_VERSION=v0.4.1
+# Extra deps: gomodjail
+ARG MAKESELF_VERSION=v2.5.0
+ARG GOMODJAIL_VERSION=1109d8486266bb945788da2dc67705ae4fb6041b
 
 # Test deps
 ARG GO_VERSION=1.24
@@ -117,7 +120,8 @@ RUN xx-go --wrap && \
   xx-verify --static cmd/ipfs/ipfs && cp -a cmd/ipfs/ipfs /out/${TARGETARCH}
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS build-base
-RUN apk add --no-cache make git curl
+# tar: required by makeself (executed by `gomodjail unpack`)
+RUN apk add --no-cache make git curl tar
 RUN git config --global advice.detachedHead false
 
 FROM build-base AS build-minimal
@@ -220,6 +224,24 @@ RUN fname="rootlesskit-$(cat /target_uname_m).tar.gz" && \
   tar xzf "${fname}" -C /out/bin && \
   rm -f "${fname}" /out/bin/rootlesskit-docker-proxy && \
   echo "- RootlessKit: ${ROOTLESSKIT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+# makeself is needed by `gomodjail pack`.
+# TODO: remove dependency on makeself https://github.com/AkihiroSuda/gomodjail/issues/31
+ARG MAKESELF_VERSION
+RUN fname="makeself-${MAKESELF_VERSION/v}.run" && \
+  curl -o "${fname}" -fsSL --proto '=https' --tlsv1.2 "https://github.com/megastep/makeself/releases/download/release-${MAKESELF_VERSION/v}/${fname}" && \
+  grep "${fname}" "/SHA256SUMS.d/makeself-${MAKESELF_VERSION}" | sha256sum -c && \
+  dirname="makeself-${MAKESELF_VERSION/v}" && \
+  sh "${fname}" && \
+  cp -a "${dirname}"/makeself-header.sh /usr/local/bin/ && \
+  cp -a "${dirname}"/makeself.sh /usr/local/bin/makeself && \
+  rm -rf "${fname}" "${dirname}"
+ARG GOMODJAIL_VERSION
+RUN git clone https://github.com/AkihiroSuda/gomodjail.git /go/src/github.com/AkihiroSuda/gomodjail && \
+  cd /go/src/github.com/AkihiroSuda/gomodjail && \
+  git checkout "${GOMODJAIL_VERSION}" && \
+  make STATIC=1 && \
+  cp -a _output/bin/gomodjail /out/bin/ && \
+  echo "- gomodjail: ${GOMODJAIL_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
@@ -234,6 +256,8 @@ COPY . /go/src/github.com/containerd/nerdctl
 RUN { echo "# nerdctl (full distribution)"; echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)"; cat /out/share/doc/nerdctl-full/README.md; } > /out/share/doc/nerdctl-full/README.md.new; mv /out/share/doc/nerdctl-full/README.md.new /out/share/doc/nerdctl-full/README.md
 WORKDIR /go/src/github.com/containerd/nerdctl
 RUN BINDIR=/out/bin make binaries install
+RUN /out/bin/gomodjail pack --go-mod=/go/src/github.com/containerd/nerdctl/go.mod /out/bin/nerdctl && \
+  cp -a nerdctl.gomodjail /out/bin/
 COPY README.md /out/share/doc/nerdctl/
 COPY docs /out/share/doc/nerdctl/docs
 RUN (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
