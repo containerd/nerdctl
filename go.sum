@@ -45,8 +45,8 @@ github.com/containerd/go-cni v1.1.12 h1:wm/5VD/i255hjM4uIZjBRiEQ7y98W9ACy/mHeLi4
 github.com/containerd/go-cni v1.1.12/go.mod h1:+jaqRBdtW5faJxj2Qwg1Of7GsV66xcvnCx4mSJtUlxU=
 github.com/containerd/go-runc v1.1.0 h1:OX4f+/i2y5sUT7LhmcJH7GYrjjhHa1QI4e8yO0gGleA=
 github.com/containerd/go-runc v1.1.0/go.mod h1:xJv2hFF7GvHtTJd9JqTS2UVxMkULUYw4JN5XAUZqH5U=
-github.com/containerd/imgcrypt/v2 v2.0.0 h1:vd2ByN6cXeearzXCQljH1eYe77FgFO5/B9+dK14mng0=
-github.com/containerd/imgcrypt/v2 v2.0.0/go.mod h1:S4kOVvPZRerVueZULagcwkJK7sKc/wQI/ixcmyj26uY=
+github.com/containerd/imgcrypt/v2 v2.0.1 h1:gQcmeCKA97fAl0wlpq0itSY/PagFBsn4/mlKUy6kOio=
+github.com/containerd/imgcrypt/v2 v2.0.1/go.mod h1:/qIJL8nxzdzMA2n5iYyyuIY36KfoVQWmgTWdfVtyebM=
 github.com/containerd/log v0.1.0 h1:TCJt7ioM2cr/tfR8GPbGf9/VRAX8D2B4PjzCpfX540I=
 github.com/containerd/log v0.1.0/go.mod h1:VRRf09a7mHDIRezVKTRCrOq78v577GXq3bSa3EhrzVo=
 github.com/containerd/nydus-snapshotter v0.15.0 h1:RqZRs1GPeM6T3wmuxJV9u+2Rg4YETVMwTmiDeX+iWC8=
