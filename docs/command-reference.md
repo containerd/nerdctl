@@ -213,6 +213,11 @@ Resource flags:
 - :whale: `--pids-limit`: Tune container pids limit
 - :nerd_face: `--cgroup-conf`: Configure cgroup v2 (key=value)
 - :whale: `--blkio-weight`: Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)
+- :whale: `--blkio-weight-device`: Block IO weight (relative device weight)
+- :whale: `--device-read-bps`: Limit read rate (bytes per second) from a device
+- :whale: `--device-read-iops`: Limit read rate (IO per second) from a device
+- :whale: `--device-write-bps`: Limit write rate (bytes per second) to a device
+- :whale: `--device-write-iops`: Limit write rate (IO per second) to a device
 - :whale: `--cgroupns=(host|private)`: Cgroup namespace to use
   - Default: "private" on cgroup v2 hosts, "host" on cgroup v1 hosts
 - :whale: `--cgroup-parent`: Optional parent cgroup for the container
@@ -414,7 +419,7 @@ IPFS flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker run` flags:
-    `--blkio-weight-device`, `--cpu-rt-*`, `--device-*`,
+    `--cpu-rt-*`, `--device-cgroup-rule`,
     `--disable-content-trust`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
     `--link*`, `--publish-all`, `--storage-opt`,
     `--userns`, `--volume-driver`
