@@ -75,7 +75,7 @@ ADD hack/git-checkout-tag-with-hash.sh /usr/local/bin/
 FROM build-base-debian AS build-containerd
 ARG TARGETARCH
 ARG CONTAINERD_VERSION
-RUN git clone https://github.com/containerd/containerd.git /go/src/github.com/containerd/containerd
+RUN git clone --quiet --depth 1 --branch "${CONTAINERD_VERSION%@*}" https://github.com/containerd/containerd.git /go/src/github.com/containerd/containerd
 WORKDIR /go/src/github.com/containerd/containerd
 RUN git-checkout-tag-with-hash.sh ${CONTAINERD_VERSION} && \
   mkdir -p /out /out/$TARGETARCH && \
@@ -86,7 +86,7 @@ RUN GO=xx-go make STATIC=1 && \
 FROM build-base-debian AS build-runc
 ARG RUNC_VERSION
 ARG TARGETARCH
-RUN git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc
+RUN git clone --quiet --depth 1 --branch "${RUNC_VERSION%@*}" https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc
 WORKDIR /go/src/github.com/opencontainers/runc
 RUN git-checkout-tag-with-hash.sh ${RUNC_VERSION} && \
   mkdir -p /out
@@ -97,7 +97,7 @@ RUN GO=xx-go CC=$(xx-info)-gcc STRIP=$(xx-info)-strip make static && \
 FROM build-base-debian AS build-bypass4netns
 ARG BYPASS4NETNS_VERSION
 ARG TARGETARCH
-RUN git clone https://github.com/rootless-containers/bypass4netns.git /go/src/github.com/rootless-containers/bypass4netns
+RUN git clone --quiet --depth 1 --branch "${BYPASS4NETNS_VERSION%@*}" https://github.com/rootless-containers/bypass4netns.git /go/src/github.com/rootless-containers/bypass4netns
 WORKDIR /go/src/github.com/rootless-containers/bypass4netns
 RUN git-checkout-tag-with-hash.sh ${BYPASS4NETNS_VERSION} && \
   mkdir -p /out/${TARGETARCH}
@@ -108,7 +108,7 @@ RUN GO=xx-go make static && \
 FROM build-base-debian AS build-kubo
 ARG KUBO_VERSION
 ARG TARGETARCH
-RUN git clone https://github.com/ipfs/kubo.git /go/src/github.com/ipfs/kubo
+RUN git clone --quiet --depth 1 --branch "${KUBO_VERSION%@*}" https://github.com/ipfs/kubo.git /go/src/github.com/ipfs/kubo
 WORKDIR /go/src/github.com/ipfs/kubo
 RUN git-checkout-tag-with-hash.sh ${KUBO_VERSION} && \
   mkdir -p /out/${TARGETARCH}
@@ -176,7 +176,7 @@ RUN STARGZ_SNAPSHOTTER_VERSION=${STARGZ_SNAPSHOTTER_VERSION/@BINARY}; \
   mv stargz-snapshotter.service /out/lib/systemd/system/stargz-snapshotter.service && \
   echo "- Stargz Snapshotter: ${STARGZ_SNAPSHOTTER_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG IMGCRYPT_VERSION
-RUN git clone https://github.com/containerd/imgcrypt.git /go/src/github.com/containerd/imgcrypt && \
+RUN git clone --quiet --depth 1 --branch "${IMGCRYPT_VERSION%@*}" https://github.com/containerd/imgcrypt.git /go/src/github.com/containerd/imgcrypt && \
   cd /go/src/github.com/containerd/imgcrypt && \
   git-checkout-tag-with-hash.sh "${IMGCRYPT_VERSION}" && \
   CGO_ENABLED=0 make && DESTDIR=/out make install && \
