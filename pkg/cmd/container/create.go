@@ -179,6 +179,15 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		}
 	}
 
+	if ensuredImage != nil && ensuredImage.ImageConfig.User != "" {
+		internalLabels.user = ensuredImage.ImageConfig.User
+	}
+
+	// Override it if User is passed
+	if options.User != "" {
+		internalLabels.user = options.User
+	}
+
 	rootfsOpts, rootfsCOpts, err := generateRootfsOpts(args, id, ensuredImage, options)
 	if err != nil {
 		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
@@ -271,6 +280,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	if err != nil {
 		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
+
 	opts = append(opts, uOpts...)
 	gOpts, err := generateGroupsOpts(options.GroupAdd)
 	internalLabels.groupAdd = options.GroupAdd
@@ -662,6 +672,8 @@ type internalLabels struct {
 
 	// label for device mapping set by the --device flag
 	deviceMapping []dockercompat.DeviceMapping
+
+	user string
 }
 
 // WithInternalLabels sets the internal labels for a container.
@@ -782,6 +794,10 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 		return nil, err
 	}
 	m[labels.DNSSetting] = string(dnsSettingsJSON)
+
+	if internalLabels.user != "" {
+		m[labels.User] = internalLabels.user
+	}
 
 	return containerd.WithAdditionalContainerLabels(m), nil
 }
