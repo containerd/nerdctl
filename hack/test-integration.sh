@@ -47,7 +47,7 @@ for arg in "$@"; do
 done
 
 if [ "$needsudo" == "true" ] || [ "$needsudo" == "yes" ] || [ "$needsudo" == "1" ]; then
-  gotestsum "${args[@]}" -- -timeout="$timeout" -p 1 -exec sudo -args -test.allow-kill-daemon "$@"
+  gotestsum "${args[@]}" -- -timeout="$timeout" -p 1 -exec sudo -args -test.allow-kill-daemon -test.allow-modify-user "$@"
 else
   gotestsum "${args[@]}" -- -timeout="$timeout" -p 1 -args -test.allow-kill-daemon "$@"
 fi

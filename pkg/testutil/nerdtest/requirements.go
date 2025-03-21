@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"gotest.tools/v3/assert"
@@ -31,6 +33,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 )
 
@@ -357,6 +360,36 @@ var Private = &test.Requirement{
 			}
 			helpers.Ensure("system", "prune", "-f", "--all", "--volumes")
 			helpers.Anyhow("namespace", "remove", data.Get("_deletenamespace"))
+		}
+	},
+}
+
+var ContainerdV1 = &test.Requirement{
+	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+		version := helpers.Capture("version", "-f", "{{range .Server.Components}}{{if eq .Name \"containerd\"}}{{.Version}}{{end}}{{end}}")
+		re := regexp.MustCompile(`v?(\d+)\.`)
+		matches := re.FindStringSubmatch(version)
+		if len(matches) > 1 {
+			v, err := strconv.Atoi(matches[1])
+			if err != nil {
+				return true, fmt.Sprintf("Failed to parse containerd version: %v", err)
+			}
+			if v > 1 {
+				return false, fmt.Sprintf("Containerd version is %d, which is greater than 1", v)
+			}
+		} else {
+			return true, fmt.Sprintf("Failed to parse containerd version: %s", version)
+		}
+		return true, "containerd version is less than equal to 1"
+	},
+}
+
+var AllowModifyUserns = &test.Requirement{
+	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+		if testutil.GetAllowUserNS() {
+			return true, "allow modify userns is enabled"
+		} else {
+			return false, "allow modify userns is disabled"
 		}
 	},
 }
