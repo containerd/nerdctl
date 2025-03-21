@@ -42,6 +42,8 @@ var JSONDriverLogOpts = []string{
 	LogPath,
 	MaxSize,
 	MaxFile,
+	Env,
+	Labels,
 }
 
 type JSONLogger struct {
