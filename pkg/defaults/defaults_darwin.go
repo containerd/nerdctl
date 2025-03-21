@@ -20,20 +20,40 @@
 
 package defaults
 
+import gocni "github.com/containerd/go-cni"
+
+const (
+	AppArmorProfileName = ""
+	SeccompProfileName  = ""
+	Runtime             = ""
+)
+
 func CNIPath() string {
-	return ""
+	return gocni.DefaultCNIDir
+}
+
+func CNIRuntimeDir() (string, error) {
+	return "/var/run/cni", nil
 }
 
 func CNINetConfPath() string {
-	return ""
+	return gocni.DefaultNetDir
 }
 
 func DataRoot() string {
-	return ""
+	return "/var/lib/nerdctl"
 }
 
 func CgroupManager() string {
 	return ""
+}
+
+func CgroupnsMode() string {
+	return ""
+}
+
+func NerdctlTOML() string {
+	return "/etc/nerdctl/nerdctl.toml"
 }
 
 func HostsDirs() []string {

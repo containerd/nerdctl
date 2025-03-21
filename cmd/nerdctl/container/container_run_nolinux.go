@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,16 +16,13 @@
    limitations under the License.
 */
 
-package main
+package container
 
 import (
 	"github.com/spf13/cobra"
 )
 
-func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
-	return false
-}
-
-func addApparmorCommand(rootCmd *cobra.Command) {
-	// NOP
+func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	candidates := []string{}
+	return candidates, cobra.ShellCompDirectiveNoFileComp
 }
