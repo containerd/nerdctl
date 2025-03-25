@@ -345,3 +345,5 @@ Config file ($NERDCTL_TOML): %s
 	}
 	return rootCmd, nil
 }
+
+// dummy commit to trigger CI
