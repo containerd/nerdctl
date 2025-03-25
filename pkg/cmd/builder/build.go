@@ -376,7 +376,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 	}
 
 	for _, l := range strutil.DedupeStrSlice(options.Label) {
-		buildctlArgs = append(buildctlArgs, "--opt=label:"+l)
+		buildctlArgs = append(buildctlArgs, "--opt=label="+l)
 	}
 
 	if options.NoCache {
