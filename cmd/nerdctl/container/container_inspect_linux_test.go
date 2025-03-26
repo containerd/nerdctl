@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -27,11 +28,14 @@ import (
 	"github.com/docker/go-connections/nat"
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestContainerInspectContainsPortConfig(t *testing.T) {
@@ -512,6 +516,36 @@ func TestContainerInspectBlkioSettings(t *testing.T) {
 	assert.Equal(t, uint64(1000), inspect.HostConfig.BlkioDeviceReadIOps[0].Rate)
 	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceWriteIOps))
 	assert.Equal(t, uint64(2000), inspect.HostConfig.BlkioDeviceWriteIOps[0].Rate)
+}
+
+func TestContainerInspectUser(t *testing.T) {
+	nerdtest.Setup()
+	testCase := &test.Case{
+		Description: "Container inspect contains User",
+		Require:     nerdtest.Build,
+		Setup: func(data test.Data, helpers test.Helpers) {
+			dockerfile := fmt.Sprintf(`
+FROM %s
+RUN groupadd -r test && useradd -r -g test test
+USER test
+`, testutil.UbuntuImage)
+
+			err := os.WriteFile(filepath.Join(data.TempDir(), "Dockerfile"), []byte(dockerfile), 0o600)
+			assert.NilError(helpers.T(), err)
+
+			helpers.Ensure("build", "-t", data.Identifier(), data.TempDir())
+			helpers.Ensure("create", "--name", data.Identifier(), "--user", "test", data.Identifier())
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rm", "-f", data.Identifier())
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("inspect", "--format", "{{.Config.User}}", data.Identifier())
+		},
+		Expected: test.Expects(0, nil, expect.Equals("test\n")),
+	}
+
+	testCase.Run(t)
 }
 
 type hostConfigValues struct {
