@@ -126,7 +126,7 @@ func parseMountFlags(volStore volumestore.VolumeStore, options types.ContainerCr
 // Other mounts such as procfs mount are not handled here.
 func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredImage *imgutil.EnsuredImage,
 	volStore volumestore.VolumeStore, options types.ContainerCreateOptions) ([]oci.SpecOpts, []string, []*mountutil.Processed, error) {
-	//nolint:golint,prealloc
+	//nolint:prealloc
 	var (
 		opts        []oci.SpecOpts
 		anonVolumes []string

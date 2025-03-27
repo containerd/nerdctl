@@ -75,6 +75,3 @@ jobs:
         run: make lint-yaml
       - name: shell
         run: make lint-shell
-      - name: go imports ordering
-        run: |
-          make lint-imports
