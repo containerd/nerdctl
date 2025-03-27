@@ -57,16 +57,16 @@ endef
 ##########################
 # High-level tasks definitions
 ##########################
-lint: lint-go-all lint-imports lint-yaml lint-shell lint-commits lint-headers lint-mod lint-licenses-all
+lint: lint-go-all lint-yaml lint-shell lint-commits lint-headers lint-mod lint-licenses-all
 test: test-unit test-unit-race test-unit-bench
 unit: test-unit test-unit-race test-unit-bench
-fix: fix-mod fix-imports fix-go-all
+fix: fix-mod fix-go-all
 
 ##########################
 # Linting tasks
 ##########################
 lint-go:
-	$(call title, $@)
+	$(call title, $@: $(GOOS))
 	@cd $(MAKEFILE_DIR) \
 		&& golangci-lint run $(VERBOSE_FLAG_LONG) ./...
 	$(call footer, $@)
@@ -78,12 +78,6 @@ lint-go-all:
 		&& GOOS=freebsd make lint-go \
 		&& GOOS=linux make lint-go \
 		&& GOOS=windows make lint-go
-	$(call footer, $@)
-
-lint-imports:
-	$(call title, $@)
-	@cd $(MAKEFILE_DIR) \
-		&& goimports-reviser -recursive -list-diff -set-exit-status -output stdout -company-prefixes "$(ORG_PREFIXES)"  ./...
 	$(call footer, $@)
 
 lint-yaml:
@@ -115,10 +109,15 @@ lint-mod:
 		&& go mod tidy --diff
 	$(call footer, $@)
 
+# FIXME: go-licenses cannot find LICENSE from root of repo when submodule is imported:
+# https://github.com/google/go-licenses/issues/186
+# This is impacting gotest.tools
 lint-licenses:
-	$(call title, $@)
+	$(call title, $@: $(GOOS))
 	@cd $(MAKEFILE_DIR) \
-		&& ./hack/make-lint-licenses.sh
+		&& go-licenses check --include_tests --allowed_licenses=Apache-2.0,BSD-2-Clause,BSD-3-Clause,MIT,MPL-2.0 \
+		  --ignore gotest.tools \
+		  ./...
 	$(call footer, $@)
 
 lint-licenses-all:
@@ -134,7 +133,7 @@ lint-licenses-all:
 # Automated fixing tasks
 ##########################
 fix-go:
-	$(call title, $@)
+	$(call title, $@: $(GOOS))
 	@cd $(MAKEFILE_DIR) \
 		&& golangci-lint run --fix
 	$(call footer, $@)
@@ -146,12 +145,6 @@ fix-go-all:
 		&& GOOS=freebsd make fix-go \
 		&& GOOS=linux make fix-go \
 		&& GOOS=windows make fix-go
-	$(call footer, $@)
-
-fix-imports:
-	$(call title, $@)
-	@cd $(MAKEFILE_DIR) \
-		&& goimports-reviser -company-prefixes $(ORG_PREFIXES) ./...
 	$(call footer, $@)
 
 fix-mod:
@@ -171,18 +164,16 @@ up:
 ##########################
 install-dev-tools:
 	$(call title, $@)
-	# golangci: v1.64.5
-	# git-validation: main from 2023/11
-	# ltag: v0.2.5
-	# go-licenses: v2.0.0-alpha.1
-	# goimports-reviser: v3.9.0
+	# golangci: v2.0.2 (2024-03-26)
+	# git-validation: main (2025-02-25)
+	# ltag: main (2025-03-04)
+	# go-licenses: v2.0.0-alpha.1 (2024-06-27)
 	@cd $(MAKEFILE_DIR) \
-		&& go install github.com/golangci/golangci-lint/cmd/golangci-lint@0a603e49e5e9870f5f9f2035bcbe42cd9620a9d5 \
-		&& go install github.com/vbatts/git-validation@679e5cad8c50f1605ab3d8a0a947aaf72fb24c07 \
-		&& go install github.com/kunalkushwaha/ltag@b0cfa33e4cc9383095dc584d3990b62c95096de0 \
-		&& go install github.com/google/go-licenses/v2@d01822334fba5896920a060f762ea7ecdbd086e8 \
-		&& go install github.com/incu6us/goimports-reviser/v3@698f92d226d50a01731ca8551993ebc1bb7fc788
-	@echo "Remember to add GOROOT/bin to your path"
+		&& go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@2b224c2cf4c9f261c22a16af7f8ca6408467f338 \
+		&& go install github.com/vbatts/git-validation@7b60e35b055dd2eab5844202ffffad51d9c93922 \
+		&& go install github.com/containerd/ltag@66e6a514664ee2d11a470735519fa22b1a9eaabd \
+		&& go install github.com/google/go-licenses/v2@d01822334fba5896920a060f762ea7ecdbd086e8
+	@echo "Remember to add \$$HOME/go/bin to your path"
 	$(call footer, $@)
 
 ##########################
@@ -190,7 +181,7 @@ install-dev-tools:
 ##########################
 test-unit:
 	$(call title, $@)
-	@go test $(VERBOSE_FLAG) $(MAKEFILE_DIR)/...
+	@EXPERIMENTAL_HIGHK_FD=true go test $(VERBOSE_FLAG) $(MAKEFILE_DIR)/...
 	$(call footer, $@)
 
 test-unit-bench:
@@ -200,7 +191,7 @@ test-unit-bench:
 
 test-unit-race:
 	$(call title, $@)
-	@go test $(VERBOSE_FLAG) $(MAKEFILE_DIR)/... -race
+	@EXPERIMENTAL_HIGHK_FD=true go test $(VERBOSE_FLAG) $(MAKEFILE_DIR)/... -race
 	$(call footer, $@)
 
 .PHONY: \
@@ -210,6 +201,6 @@ test-unit-race:
 	up \
 	unit \
 	install-dev-tools \
-	lint-commits lint-go lint-go-all lint-headers lint-imports lint-licenses lint-licenses-all lint-mod lint-shell lint-yaml \
-	fix-go fix-go-all fix-imports fix-mod \
+	lint-commits lint-go lint-go-all lint-headers lint-licenses lint-licenses-all lint-mod lint-shell lint-yaml \
+	fix-go fix-go-all fix-mod \
 	test-unit test-unit-race test-unit-bench
