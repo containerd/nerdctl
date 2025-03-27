@@ -26,8 +26,7 @@ import (
 // Data is meant to hold information about a test:
 // - first, any random key value data that the test implementer wants to carry / modify - this is
 // test data - second, some commonly useful immutable test properties (a way to generate unique
-// identifiers for that test,
-// temporary directory, etc.)
+// identifiers for that test, temporary directory, etc.)
 // Note that Data is inherited, from parent test to subtest (except for Identifier and TempDir of
 // course).
 type Data interface {
