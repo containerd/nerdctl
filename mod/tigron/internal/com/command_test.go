@@ -47,11 +47,11 @@ func TestFaultyDoubleRunWait(t *testing.T) {
 		Timeout: time.Second,
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
-	err = command.Run(context.Background())
+	err = command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIs(t, err, com.ErrExecAlreadyStarted)
 
@@ -73,7 +73,7 @@ func TestFaultyRunDoubleWait(t *testing.T) {
 		Timeout: time.Second,
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -99,11 +99,11 @@ func TestFailRun(t *testing.T) {
 		Binary: "does-not-exist",
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIs(t, err, com.ErrFailedStarting)
 
-	err = command.Run(context.Background())
+	err = command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIs(t, err, com.ErrExecAlreadyFinished)
 
@@ -130,7 +130,7 @@ func TestBasicRunWait(t *testing.T) {
 		Args:   []string{"one"},
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -150,7 +150,7 @@ func TestBasicFail(t *testing.T) {
 		Args:   []string{"-c", "--", "does-not-exist"},
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -171,7 +171,7 @@ func TestWorkingDir(t *testing.T) {
 		WorkingDir: dir,
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -198,7 +198,7 @@ func TestEnvBlacklist(t *testing.T) {
 		Binary: "env",
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -214,7 +214,7 @@ func TestEnvBlacklist(t *testing.T) {
 		EnvBlackList: []string{"FOO"},
 	}
 
-	err = command.Run(context.Background())
+	err = command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -238,7 +238,8 @@ func TestEnvBlacklist(t *testing.T) {
 		EnvBlackList: []string{"*"},
 	}
 
-	err = command.Run(context.Background())
+	err = command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
+
 	assertive.ErrorIsNil(t, err)
 
 	res, err = command.Wait()
@@ -263,7 +264,7 @@ func TestEnvAdd(t *testing.T) {
 		EnvBlackList: []string{"BLED"},
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -285,7 +286,7 @@ func TestStdoutStderr(t *testing.T) {
 		Args:   []string{"-c", "--", "printf onstdout; >&2 printf onstderr;"},
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -309,7 +310,7 @@ func TestTimeoutPlain(t *testing.T) {
 		Timeout: 1 * time.Second,
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -336,7 +337,7 @@ func TestTimeoutDelayed(t *testing.T) {
 		Timeout: 1 * time.Second,
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -372,7 +373,7 @@ func TestPTYStdout(t *testing.T) {
 
 	command.WithPTY(false, true, false)
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -403,7 +404,7 @@ func TestPTYStderr(t *testing.T) {
 
 	command.WithPTY(false, false, true)
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -432,7 +433,7 @@ func TestPTYBoth(t *testing.T) {
 
 	command.WithPTY(true, true, true)
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -465,7 +466,7 @@ func TestWriteStdin(t *testing.T) {
 	command.Feed(strings.NewReader("hello world\n"))
 	command.Feed(strings.NewReader("hello again\n"))
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -500,7 +501,7 @@ func TestWritePTYStdin(t *testing.T) {
 	command.Feed(strings.NewReader("hello world"))
 	command.Feed(strings.NewReader("hello again"))
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -521,7 +522,7 @@ func TestSignalOnCompleted(t *testing.T) {
 		Timeout: 3 * time.Second,
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -546,7 +547,7 @@ func TestSignalOnCompleted(t *testing.T) {
 //		Timeout: 3 * time.Second,
 //	}
 //
-//	err := command.Run(context.Background())
+//  err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 //
 //	assertive.ErrorIsNil(t, err)
 //
@@ -580,7 +581,7 @@ func TestSignalNormal(t *testing.T) {
 		Timeout: 3 * time.Second,
 	}
 
-	err := command.Run(context.Background())
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 
@@ -605,7 +606,7 @@ func TestSignalNormal(t *testing.T) {
 		Timeout: 3 * time.Second,
 	}
 
-	err = command.Run(context.Background())
+	err = command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
 	assertive.ErrorIsNil(t, err)
 

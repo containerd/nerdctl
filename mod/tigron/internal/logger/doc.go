@@ -1,5 +1,3 @@
-//go:build !windows
-
 /*
    Copyright The containerd Authors.
 
@@ -16,24 +14,8 @@
    limitations under the License.
 */
 
-package com
-
-import (
-	"os/exec"
-	"syscall"
-)
-
-func addAttr(cmd *exec.Cmd) func() error {
-	// Default shutdown will leave child processes behind in certain circumstances
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setsid: true,
-		// FIXME: understand why we would want that
-		// Setctty: true,
-	}
-
-	return func() error {
-		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-
-		return nil
-	}
-}
+// Package logger is a very simple stub allowing developers to hook whatever logger they want to
+// debug internal behavior of the com package.
+// The passed logger just has to implement the Log(args...interface{}) method.
+// Typically, that would be testing.T.
+package logger

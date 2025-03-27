@@ -379,6 +379,7 @@ func TestRunSigProxy(t *testing.T) {
 			},
 
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				// FIXME: os.Interrupt will likely not work on Windows
 				cmd := nerdtest.RunSigProxyContainer(os.Interrupt, true, nil, data, helpers)
 				err := cmd.Signal(os.Interrupt)
 				assert.NilError(helpers.T(), err)
@@ -417,7 +418,7 @@ func TestRunSigProxy(t *testing.T) {
 				return cmd
 			},
 
-			Expected: test.Expects(127, nil, expect.DoesNotContain(nerdtest.SignalCaught)),
+			Expected: test.Expects(expect.ExitCodeSignaled, nil, expect.DoesNotContain(nerdtest.SignalCaught)),
 		},
 	}
 

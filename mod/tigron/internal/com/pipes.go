@@ -23,10 +23,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/term"
 
+	"github.com/containerd/nerdctl/mod/tigron/internal/logger"
 	"github.com/containerd/nerdctl/mod/tigron/internal/pty"
 )
 
@@ -53,7 +53,7 @@ type stdPipes struct {
 	stderr     *pipe
 	fromStdout string
 	fromStderr string
-	log        zerolog.Logger
+	log        logger.Logger
 }
 
 func (pipes *stdPipes) closeCallee() {
@@ -63,58 +63,55 @@ func (pipes *stdPipes) closeCallee() {
 	// - then context deadline is hit
 	// - then closeCallee is called here
 	// 2. if we have a pty attached on both stdout and stderr
-	pipes.log.Trace().Msg("<- closing callee pipes")
+	pipes.log.Helper()
+	pipes.log.Log("<- closing callee pipes")
 
 	if pipes.stdin.reader != nil {
-		cerr := pipes.stdin.reader.Close()
-		if cerr != nil {
-			pipes.log.Info().Err(cerr).Msg(" x failed closing callee stdin")
+		if closeErr := pipes.stdin.reader.Close(); closeErr != nil {
+			pipes.log.Log(" x failed closing callee stdin", closeErr)
 		}
 	}
 
 	if pipes.stdout.writer != nil {
-		cerr := pipes.stdout.writer.Close()
-		if cerr != nil {
-			pipes.log.Info().Err(cerr).Msg(" x failed closing callee stdout")
+		if closeErr := pipes.stdout.writer.Close(); closeErr != nil {
+			pipes.log.Log(" x failed closing callee stdout", closeErr)
 		}
 	}
 
 	if pipes.stderr.writer != nil {
-		cerr := pipes.stderr.writer.Close()
-		if cerr != nil {
-			pipes.log.Info().Err(cerr).Msg(" x failed closing callee stderr")
+		if closeErr := pipes.stderr.writer.Close(); closeErr != nil {
+			pipes.log.Log(" x failed closing callee stderr", closeErr)
 		}
 	}
 }
 
 func (pipes *stdPipes) closeCaller() {
-	pipes.log.Trace().Msg("<- closing caller pipes")
+	pipes.log.Helper()
+	pipes.log.Log("<- closing caller pipes")
 
 	if pipes.stdin.writer != nil {
-		cerr := pipes.stdin.writer.Close()
-		if cerr != nil {
-			pipes.log.Info().Err(cerr).Msg(" x failed closing caller stdin")
+		if closeErr := pipes.stdin.writer.Close(); closeErr != nil {
+			pipes.log.Log(" x failed closing caller stdin", closeErr)
 		}
 	}
 
 	if pipes.stdout.reader != nil {
-		cerr := pipes.stdout.reader.Close()
-		if cerr != nil {
-			pipes.log.Info().Err(cerr).Msg(" x failed closing caller stdout")
+		if closeErr := pipes.stdout.reader.Close(); closeErr != nil {
+			pipes.log.Log(" x failed closing caller stdout", closeErr)
 		}
 	}
 
 	if pipes.stderr.reader != nil {
-		cerr := pipes.stderr.reader.Close()
-		if cerr != nil {
-			pipes.log.Info().Err(cerr).Msg(" x failed closing caller stderr")
+		if closeErr := pipes.stderr.reader.Close(); closeErr != nil {
+			pipes.log.Log(" x failed closing caller stderr", closeErr)
 		}
 	}
 }
 
+//nolint:gocognit
 func newStdPipes(
 	ctx context.Context,
-	log zerolog.Logger,
+	log *logger.ConcreteLogger,
 	ptyStdout, ptyStderr, ptyStdin bool,
 	writers []func() io.Reader,
 ) (pipes *stdPipes, err error) {
@@ -126,11 +123,12 @@ func newStdPipes(
 		}
 	}()
 
+	log = log.Set(">", "pipes")
 	pipes = &stdPipes{
 		stdin:  &pipe{},
 		stdout: &pipe{},
 		stderr: &pipe{},
-		log:    log.With().Str("module", "pipes").Logger(),
+		log:    log,
 	}
 
 	var (
@@ -140,63 +138,63 @@ func newStdPipes(
 
 	// If we want a pty, configure it now
 	if ptyStdout || ptyStderr || ptyStdin {
-		pipes.log.Trace().Msg("<- opening pty")
+		pipes.log.Log("<- opening pty")
 
 		mty, tty, err = pty.Open()
 		if err != nil {
-			pipes.log.Error().Err(err).Msg(" x failed opening pty")
+			pipes.log.Log(" x failed opening pty", err)
 
 			return nil, errors.Join(ErrFailedCreating, err)
 		}
 
 		if _, err = term.MakeRaw(int(tty.Fd())); err != nil {
-			pipes.log.Error().Err(err).Msg(" x failed making pty raw")
+			pipes.log.Log(" x failed making pty raw", err)
 
 			return nil, errors.Join(ErrFailedCreating, err)
 		}
 	}
 
 	if ptyStdin {
-		pipes.log.Trace().Msg("<- assigning pty to stdin")
+		pipes.log.Log("<- assigning pty to stdin")
 
 		pipes.stdin.writer = mty
 		pipes.stdin.reader = tty
 	} else if len(writers) > 0 {
-		pipes.log.Trace().Msg(" * assigning a pipe to stdin as we have writers")
+		pipes.log.Log(" * assigning a pipe to stdin as we have writers")
 
 		// Only create a pipe for stdin if we intend on writing to stdin.
 		// Otherwise, processes awaiting end of stream will just hang there.
 		pipes.stdin.reader, pipes.stdin.writer, err = os.Pipe()
 		if err != nil {
-			pipes.log.Error().Err(err).Msg(" x failed creating pipe for stdin")
+			pipes.log.Log(" x failed creating pipe for stdin", err)
 
 			return nil, errors.Join(ErrFailedCreating, err)
 		}
 	}
 
 	if ptyStdout {
-		pipes.log.Trace().Msg("<- assigning pty to stdout")
+		pipes.log.Log("<- assigning pty to stdout")
 
 		pipes.stdout.writer = tty
 		pipes.stdout.reader = mty
 	} else {
 		pipes.stdout.reader, pipes.stdout.writer, err = os.Pipe()
 		if err != nil {
-			pipes.log.Error().Err(err).Msg(" x failed creating pipe for stdout")
+			pipes.log.Log(" x failed creating pipe for stdout", err)
 
 			return nil, errors.Join(ErrFailedCreating, err)
 		}
 	}
 
 	if ptyStderr {
-		pipes.log.Trace().Msg("<- assigning pty to stderr")
+		pipes.log.Log("<- assigning pty to stderr")
 
 		pipes.stderr.writer = tty
 		pipes.stderr.reader = mty
 	} else {
 		pipes.stderr.reader, pipes.stderr.writer, err = os.Pipe()
 		if err != nil {
-			pipes.log.Error().Err(err).Msg(" x failed creating pipe for stderr")
+			pipes.log.Log(" x failed creating pipe for stderr", err)
 
 			return nil, errors.Join(ErrFailedCreating, err)
 		}
@@ -207,36 +205,42 @@ func newStdPipes(
 
 	// Writers to stdin
 	pipes.ioGroup.Go(func() error {
-		pipes.log.Trace().Msg("-> about to write to stdin")
+		pipes.log.Log("-> about to write to stdin")
 
 		for _, writer := range writers {
 			if _, copyErr := io.Copy(pipes.stdin.writer, writer()); copyErr != nil {
-				pipes.log.Error().Err(copyErr).Msg(" x failed writing to stdin")
+				pipes.log.Log(" x failed writing to stdin", copyErr)
 
 				return errors.Join(ErrFailedWriting, copyErr)
 			}
 		}
 
-		pipes.log.Trace().Msg("<- done writing to stdin")
+		pipes.log.Log("<- done writing to stdin")
+
+		if !ptyStdin && pipes.stdin.writer != nil {
+			if closeErr := pipes.stdin.writer.Close(); closeErr != nil {
+				pipes.log.Log(" x failed closing caller stdin", closeErr)
+			}
+		}
 
 		return nil
 	})
 
 	// Read stdout...
 	pipes.ioGroup.Go(func() error {
-		pipes.log.Trace().Msg("-> about to read stdout")
+		pipes.log.Log("-> about to read stdout")
 
 		buf := &bytes.Buffer{}
 		_, copyErr := io.Copy(buf, pipes.stdout.reader)
 		pipes.fromStdout = buf.String()
 
 		if copyErr != nil {
-			pipes.log.Error().Err(copyErr).Msg(" x failed reading from stdout")
+			pipes.log.Log(" x failed reading from stdout", copyErr)
 
 			copyErr = errors.Join(ErrFailedReading, copyErr)
 		}
 
-		pipes.log.Trace().Msg("<- done reading stdout")
+		pipes.log.Log("<- done reading stdout")
 
 		return copyErr
 	})
@@ -244,19 +248,19 @@ func newStdPipes(
 	// ... and stderr (if not the same - eg: pty)
 	if pipes.stderr.reader != pipes.stdout.reader {
 		pipes.ioGroup.Go(func() error {
-			pipes.log.Trace().Msg("-> about to read stderr")
+			pipes.log.Log("-> about to read stderr")
 
 			buf := &bytes.Buffer{}
 			_, copyErr := io.Copy(buf, pipes.stderr.reader)
 			pipes.fromStderr = buf.String()
 
 			if copyErr != nil {
-				pipes.log.Error().Err(copyErr).Msg(" x failed reading from stderr")
+				pipes.log.Log(" x failed reading from stderr", copyErr)
 
 				copyErr = errors.Join(ErrFailedReading, copyErr)
 			}
 
-			pipes.log.Trace().Msg("<- done reading stderr")
+			pipes.log.Log("<- done reading stderr")
 
 			return copyErr
 		})

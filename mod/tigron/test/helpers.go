@@ -75,7 +75,7 @@ func (help *helpersInternal) Err(args ...string) string {
 
 // Command will return a clone of your base command without running it.
 //
-//nolint:ireturn
+//nolint:ireturn,nolintlint
 func (help *helpersInternal) Command(args ...string) TestableCommand {
 	cc := help.cmdInternal.Clone()
 	cc.WithArgs(args...)
@@ -86,7 +86,7 @@ func (help *helpersInternal) Command(args ...string) TestableCommand {
 // Custom will return a command for the requested binary and args, with the environment of your test
 // (eg: Env, Cwd, etc.)
 //
-//nolint:ireturn
+//nolint:ireturn,nolintlint
 func (help *helpersInternal) Custom(binary string, args ...string) TestableCommand {
 	cc := help.cmdInternal.clear()
 	cc.WithBinary(binary)

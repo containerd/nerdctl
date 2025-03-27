@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package com_test
+package test_test
 
 import (
 	"fmt"
@@ -62,7 +62,8 @@ func TestMain(m *testing.M) {
 
 	if err := highk.FindGoRoutines(); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "Leaking go routines")
-		_, _ = fmt.Fprintln(os.Stderr, err.Error())
+
+		_, _ = fmt.Fprintln(os.Stderr, os.Stderr, err.Error())
 
 		exitCode = 1
 	}

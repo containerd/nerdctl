@@ -142,7 +142,7 @@ func (gc *GenericCommand) PrependArgs(args ...string) {
 func (gc *GenericCommand) Background() {
 	gc.async = true
 
-	_ = gc.cmd.Run(context.Background())
+	_ = gc.cmd.Run(context.WithValue(context.Background(), com.LoggerKey, gc.t))
 }
 
 func (gc *GenericCommand) Signal(sig os.Signal) error {
@@ -156,7 +156,7 @@ func (gc *GenericCommand) Run(expect *Expected) {
 	}
 
 	if !gc.async {
-		_ = gc.cmd.Run(context.Background())
+		_ = gc.cmd.Run(context.WithValue(context.Background(), com.LoggerKey, gc.t))
 	}
 
 	result, err := gc.cmd.Wait()
@@ -175,7 +175,7 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		// FIXME: this is ugly af. Do better.
 		debug := fmt.Sprintf(
 			"\n%s\n| Command:\t%s\n| Working Dir:\t%s\n| Timeout:\t%s\n%s\n"+
-				"%s\n%s\n| Stderr:\n%s\n%s\n%s\n| Stdout:\n%s\n%s\n%s\n| Exit Code: %d\n%s",
+				"%s\n%s\n| Stderr:\n%s\n%s\n%s\n| Stdout:\n%s\n%s\n%s\n| Exit Code: %d\n| Signaled: %v\n| Err: %v\n%s",
 			separator,
 			debugCommand,
 			debugWD,
@@ -190,6 +190,8 @@ func (gc *GenericCommand) Run(expect *Expected) {
 			result.Stdout,
 			separator,
 			result.ExitCode,
+			result.Signal,
+			err,
 			separator,
 		)
 
@@ -220,7 +222,7 @@ func (gc *GenericCommand) Run(expect *Expected) {
 				gc.t,
 				err,
 				com.ErrSignaled,
-				"Command should have been signalled",
+				"Command should have been signaled",
 				debug,
 			)
 		case internal.ExitCodeSuccess:

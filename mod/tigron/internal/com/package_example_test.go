@@ -92,7 +92,7 @@ func ExampleCommand_Signal() {
 	fmt.Println("Signal:", exec.Signal)
 
 	// Output:
-	// Wait err: command execution signalled
+	// Wait err: command execution signaled
 	// Exit code: -1
 	// Stdout:
 	//
