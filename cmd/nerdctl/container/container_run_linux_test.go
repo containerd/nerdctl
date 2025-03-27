@@ -503,8 +503,9 @@ func TestRunWithDetachKeys(t *testing.T) {
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		// Run interactively and detach
 		cmd := helpers.Command("run", "-it", "--detach-keys=ctrl-a,ctrl-b", "--name", data.Identifier(), testutil.CommonImage)
-		cmd.WithPseudoTTY(func(f *os.File) error {
-			_, _ = f.WriteString("echo mark${NON}mark\n")
+		cmd.WithPseudoTTY()
+		cmd.Feed(strings.NewReader("echo mark${NON}mark\n"))
+		cmd.WithFeeder(func() io.Reader {
 			// Because of the way we proxy stdin, we have to wait here, otherwise we detach before
 			// the rest of the input ever reaches the container
 			// Note that this only concerns nerdctl, as docker seems to behave ok LOCALLY.
@@ -514,8 +515,7 @@ func TestRunWithDetachKeys(t *testing.T) {
 			nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			// }
 			// ctrl+a and ctrl+b (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
-			_, err := f.Write([]byte{1, 2})
-			return err
+			return bytes.NewReader([]byte{1, 2})
 		})
 
 		return cmd
@@ -571,8 +571,9 @@ func TestIssue3568(t *testing.T) {
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		// Run interactively and detach
 		cmd := helpers.Command("run", "--rm", "-it", "--detach-keys=ctrl-a,ctrl-b", "--name", data.Identifier(), testutil.CommonImage)
-		cmd.WithPseudoTTY(func(f *os.File) error {
-			_, _ = f.WriteString("echo mark${NON}mark\n")
+		cmd.WithPseudoTTY()
+		cmd.Feed(strings.NewReader("echo mark${NON}mark\n"))
+		cmd.WithFeeder(func() io.Reader {
 			// Because of the way we proxy stdin, we have to wait here, otherwise we detach before
 			// the rest of the input ever reaches the container
 			// Note that this only concerns nerdctl, as docker seems to behave ok LOCALLY.
@@ -582,8 +583,7 @@ func TestIssue3568(t *testing.T) {
 			nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			// }
 			// ctrl+a and ctrl+b (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
-			_, err := f.Write([]byte{1, 2})
-			return err
+			return bytes.NewReader([]byte{1, 2})
 		})
 
 		return cmd

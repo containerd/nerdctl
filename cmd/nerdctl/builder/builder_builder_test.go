@@ -83,7 +83,7 @@ CMD ["echo", "nerdctl-builder-debug-test-string"]`, testutil.CommonImage)
 					err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 					assert.NilError(helpers.T(), err)
 					cmd := helpers.Command("builder", "debug", buildCtx)
-					cmd.WithStdin(bytes.NewReader([]byte("c\n")))
+					cmd.Feed(bytes.NewReader([]byte("c\n")))
 					return cmd
 				},
 				Expected: test.Expects(0, nil, nil),
