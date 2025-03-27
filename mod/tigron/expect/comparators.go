@@ -22,8 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"gotest.tools/v3/assert"
-
+	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 )
 
@@ -45,7 +44,7 @@ func Contains(compare string) test.Comparator {
 	//nolint:thelper
 	return func(stdout, info string, t *testing.T) {
 		t.Helper()
-		assert.Check(t, strings.Contains(stdout, compare),
+		assertive.Check(t, strings.Contains(stdout, compare),
 			fmt.Sprintf("Output does not contain: %q", compare)+info)
 	}
 }
@@ -56,8 +55,8 @@ func DoesNotContain(compare string) test.Comparator {
 	//nolint:thelper
 	return func(stdout, info string, t *testing.T) {
 		t.Helper()
-		assert.Check(t, !strings.Contains(stdout, compare),
-			fmt.Sprintf("Output does contain: %q", compare)+info)
+		assertive.Check(t, !strings.Contains(stdout, compare),
+			fmt.Sprintf("Output should not contain: %q", compare)+info)
 	}
 }
 
@@ -66,7 +65,11 @@ func Equals(compare string) test.Comparator {
 	//nolint:thelper
 	return func(stdout, info string, t *testing.T) {
 		t.Helper()
-		assert.Equal(t, compare, stdout, info)
+		assertive.Check(
+			t,
+			compare == stdout,
+			fmt.Sprintf("Output is not equal to: %q", compare)+info,
+		)
 	}
 }
 
@@ -76,6 +79,11 @@ func Match(reg *regexp.Regexp) test.Comparator {
 	//nolint:thelper
 	return func(stdout, info string, t *testing.T) {
 		t.Helper()
-		assert.Check(t, reg.MatchString(stdout), "Output does not match: "+reg.String(), info)
+		assertive.Check(
+			t,
+			reg.MatchString(stdout),
+			fmt.Sprintf("Output does not match: %q", reg.String()),
+			info,
+		)
 	}
 }
