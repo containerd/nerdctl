@@ -28,9 +28,9 @@ import (
 
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/term"
-	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 
+	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
 	"github.com/containerd/nerdctl/mod/tigron/test/internal"
 	"github.com/containerd/nerdctl/mod/tigron/test/internal/pty"
 )
@@ -215,19 +215,19 @@ func (gc *GenericCommand) Run(expect *Expected) {
 			// success, or a timeout.
 		case internal.ExitCodeGenericFail:
 			// ExitCodeGenericFail means we expect an error (excluding timeout).
-			assert.Assert(gc.t, result.ExitCode != 0,
+			assertive.True(gc.t, result.ExitCode != 0,
 				"Expected exit code to be different than 0\n"+debug)
 		case internal.ExitCodeTimeout:
-			assert.Assert(gc.t, expect.ExitCode == internal.ExitCodeTimeout,
+			assertive.True(gc.t, expect.ExitCode == internal.ExitCodeTimeout,
 				"Command unexpectedly timed-out\n"+debug)
 		default:
-			assert.Assert(gc.t, expect.ExitCode == result.ExitCode,
+			assertive.True(gc.t, expect.ExitCode == result.ExitCode,
 				fmt.Sprintf("Expected exit code: %d\n", expect.ExitCode)+debug)
 		}
 
 		// Range through the expected errors and confirm they are seen on stderr
 		for _, expectErr := range expect.Errors {
-			assert.Assert(gc.t, strings.Contains(gc.rawStdErr, expectErr.Error()),
+			assertive.True(gc.t, strings.Contains(gc.rawStdErr, expectErr.Error()),
 				fmt.Sprintf("Expected error: %q to be found in stderr\n", expectErr.Error())+debug)
 		}
 
