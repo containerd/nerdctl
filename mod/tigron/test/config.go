@@ -29,7 +29,7 @@ func WithConfig(key ConfigKey, value ConfigValue) Config {
 // Contains the implementation of the Config interface
 
 //nolint:ireturn
-func configureConfig(cfg Config, parent Config) Config {
+func configureConfig(cfg, parent Config) Config {
 	if cfg == nil {
 		cfg = &config{
 			config: make(map[ConfigKey]ConfigValue),

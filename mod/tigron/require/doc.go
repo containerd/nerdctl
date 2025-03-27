@@ -14,24 +14,6 @@
    limitations under the License.
 */
 
-package test
-
-import (
-	"testing"
-)
-
-// Testable TODO.
-type Testable interface {
-	CustomCommand(testCase *Case, t *testing.T) CustomizableCommand
-	AmbientRequirements(testCase *Case, t *testing.T)
-}
-
-// FIXME
-//
-//nolint:gochecknoglobals
-var registeredTestable Testable
-
-// Customize TODO.
-func Customize(testable Testable) {
-	registeredTestable = testable
-}
+// Package require provides a set of concrete test.Requirements to express the need for a specific
+// architecture, OS, or binary, along with Not() and All() which allow Requirements composition.
+package require

@@ -181,7 +181,7 @@ install-dev-tools:
 ##########################
 test-unit:
 	$(call title, $@)
-	@EXPERIMENTAL_HIGHK_FD=true go test $(VERBOSE_FLAG) $(MAKEFILE_DIR)/...
+	@go test $(VERBOSE_FLAG) $(MAKEFILE_DIR)/...
 	$(call footer, $@)
 
 test-unit-bench:
@@ -191,7 +191,7 @@ test-unit-bench:
 
 test-unit-race:
 	$(call title, $@)
-	@EXPERIMENTAL_HIGHK_FD=true go test $(VERBOSE_FLAG) $(MAKEFILE_DIR)/... -race
+	@CGO_ENABLED=1 go test $(VERBOSE_FLAG) $(MAKEFILE_DIR)/... -race
 	$(call footer, $@)
 
 .PHONY: \

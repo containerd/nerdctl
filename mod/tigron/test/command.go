@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+//nolint:revive
 package test
 
 import (
@@ -34,7 +35,8 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/test/internal/pty"
 )
 
-// CustomizableCommand is an interface meant for people who want to heavily customize the base command
+// CustomizableCommand is an interface meant for people who want to heavily customize the base
+// command
 // of their test case.
 type CustomizableCommand interface {
 	TestableCommand
@@ -52,8 +54,9 @@ type CustomizableCommand interface {
 	// WithConfig allows passing custom config properties from the test to the base command
 	withConfig(config Config)
 	withT(t *testing.T)
-	// Clear does a clone, but will clear binary and arguments, but retain the env, or any other custom properties
-	// Gotcha: if GenericCommand is embedded with a custom Run and an overridden clear to return the embedding type
+	// Clear does a clone, but will clear binary and arguments, but retain the env, or any other
+	// custom properties Gotcha: if GenericCommand is embedded with a custom Run and an overridden
+	// clear to return the embedding type
 	// the result will be the embedding command, no longer the GenericCommand
 	clear() TestableCommand
 
@@ -127,12 +130,13 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		env    []string
 		tty    *os.File
 		psty   *os.File
+		stdout string
 	)
 
 	output := &bytes.Buffer{}
-	stdout := ""
 	copyGroup := &errgroup.Group{}
 
+	//nolint:nestif
 	if !gc.async {
 		iCmdCmd := gc.boot()
 
@@ -158,6 +162,7 @@ func (gc *GenericCommand) Run(expect *Expected) {
 					gc.t.Log("start command failed")
 					gc.t.Log(gc.result.ExitCode)
 					gc.t.Log(gc.result.Error)
+
 					return gc.result.Error
 				}
 
@@ -166,6 +171,7 @@ func (gc *GenericCommand) Run(expect *Expected) {
 					if err != nil {
 						gc.t.Log("writing to the pty failed")
 						gc.t.Log(err)
+
 						return err
 					}
 				}
@@ -205,7 +211,8 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		// ExitCode goes first
 		switch expect.ExitCode {
 		case internal.ExitCodeNoCheck:
-			// ExitCodeNoCheck means we do not care at all about exit code. It can be a failure, a success, or a timeout.
+			// ExitCodeNoCheck means we do not care at all about exit code. It can be a failure, a
+			// success, or a timeout.
 		case internal.ExitCodeGenericFail:
 			// ExitCodeGenericFail means we expect an error (excluding timeout).
 			assert.Assert(gc.t, result.ExitCode != 0,
@@ -367,7 +374,8 @@ func (gc *GenericCommand) boot() icmd.Cmd {
 		}
 	}
 
-	// Ensure the subprocess gets executed in a temporary directory unless explicitly instructed otherwise
+	// Ensure the subprocess gets executed in a temporary directory unless explicitly instructed
+	// otherwise
 	iCmdCmd.Dir = gc.workingDir
 
 	if gc.stdin != nil {

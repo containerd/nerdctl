@@ -21,11 +21,12 @@ import "testing"
 // An Evaluator is a function that decides whether a test should run or not.
 type Evaluator func(data Data, helpers Helpers) (bool, string)
 
-// A Butler is the function signature meant to be attached to a Setup or Cleanup routine for a Case or Requirement.
+// A Butler is the function signature meant to be attached to a Setup or Cleanup routine for a Case
+// or Requirement.
 type Butler func(data Data, helpers Helpers)
 
 // A Comparator is the function signature to implement for the Output property of an Expected.
-type Comparator func(stdout string, info string, t *testing.T)
+type Comparator func(stdout, info string, t *testing.T)
 
 // A Manager is the function signature meant to produce expectations for a command.
 type Manager func(data Data, helpers Helpers) *Expected

@@ -30,7 +30,7 @@ import (
 // All can be used as a parameter for expected.Output to group a set of comparators.
 func All(comparators ...test.Comparator) test.Comparator {
 	//nolint:thelper
-	return func(stdout string, info string, t *testing.T) {
+	return func(stdout, info string, t *testing.T) {
 		t.Helper()
 
 		for _, comparator := range comparators {
@@ -43,17 +43,18 @@ func All(comparators ...test.Comparator) test.Comparator {
 // is found contained in the output.
 func Contains(compare string) test.Comparator {
 	//nolint:thelper
-	return func(stdout string, info string, t *testing.T) {
+	return func(stdout, info string, t *testing.T) {
 		t.Helper()
 		assert.Check(t, strings.Contains(stdout, compare),
 			fmt.Sprintf("Output does not contain: %q", compare)+info)
 	}
 }
 
-// DoesNotContain is to be used for expected.Output to ensure a comparison string is NOT found in the output.
+// DoesNotContain is to be used for expected.Output to ensure a comparison string is NOT found in
+// the output.
 func DoesNotContain(compare string) test.Comparator {
 	//nolint:thelper
-	return func(stdout string, info string, t *testing.T) {
+	return func(stdout, info string, t *testing.T) {
 		t.Helper()
 		assert.Check(t, !strings.Contains(stdout, compare),
 			fmt.Sprintf("Output does contain: %q", compare)+info)
@@ -63,7 +64,7 @@ func DoesNotContain(compare string) test.Comparator {
 // Equals is to be used for expected.Output to ensure it is exactly the output.
 func Equals(compare string) test.Comparator {
 	//nolint:thelper
-	return func(stdout string, info string, t *testing.T) {
+	return func(stdout, info string, t *testing.T) {
 		t.Helper()
 		assert.Equal(t, compare, stdout, info)
 	}
@@ -73,7 +74,7 @@ func Equals(compare string) test.Comparator {
 // Provisional - expected use, but have not seen it so far.
 func Match(reg *regexp.Regexp) test.Comparator {
 	//nolint:thelper
-	return func(stdout string, info string, t *testing.T) {
+	return func(stdout, info string, t *testing.T) {
 		t.Helper()
 		assert.Check(t, reg.MatchString(stdout), "Output does not match: "+reg.String(), info)
 	}
