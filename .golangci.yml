@@ -1,167 +1,233 @@
----
+version: "2"
+
 run:
-  concurrency: 6
-  timeout: 5m
+  modules-download-mode: readonly
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
 linters:
-  disable-all: true
+  default: none
   enable:
     - depguard
-    - gofmt
-    - goimports
     - govet
     - ineffassign
     - misspell
     - nakedret
     - prealloc
-    - typecheck
-    # - asciicheck
-    # - bodyclose
-    # - dogsled
-    # - dupl
-    # - errcheck
-    # - errorlint
-    # - exhaustive
-    # - exhaustivestruct
-    # - exportloopref
-    # - funlen
-    # - gci
-    # - gochecknoglobals
-    # - gochecknoinits
-    # - gocognit
-    # - goconst
-    # - gocritic
-    # - gocyclo
-    # - godot
-    # - godox
-    # - goerr113
-    # - gofumpt
-    # - goheader
-    # - golint
-    # - gomnd
-    # - gomodguard
-    # - goprintffuncname
-    # - gosec (gas)
-    - gosimple  # (megacheck)
-    # - interfacer
-    # - lll
-    # - maligned
-    # - nestif
-    # - nlreturn
-    # - noctx
-    # - nolintlint
     - revive
-    # - rowserrcheck
-    # - scopelint
-    # - sqlclosecheck
     - staticcheck
-    - stylecheck
-    # - testpackage
-    # - tparallel
     - unconvert
-    # - unparam
     - unused
-    # - whitespace
-    # - wrapcheck
-    # - wsl
-linters-settings:
-  gocritic:
-    enabled-checks:
-      # Diagnostic
-      - appendAssign
-      - argOrder
-      - badCond
-      - caseOrder
-      - codegenComment
-      - commentedOutCode
-      - deprecatedComment
-      - dupArg
-      - dupBranchBody
-      - dupCase
-      - dupSubExpr
-      - exitAfterDefer
-      - flagDeref
-      - flagName
-      - nilValReturn
-      - offBy1
-      - sloppyReassign
-      - weakCond
-      - octalLiteral
+  settings:
+    staticcheck:
+      checks:
+        # Below is the default set
+        - "all"
+        - "-ST1000"
+        - "-ST1003"
+        - "-ST1016"
+        - "-ST1020"
+        - "-ST1021"
+        - "-ST1022"
+        # FIXME: this below this point is disabled for now, but we should investigate
+        - "-QF1008"  # Omit embedded fields from selector expression https://staticcheck.dev/docs/checks#QF1008
+        - "-QF1003"  # Convert if/else-if chain to tagged switch https://staticcheck.dev/docs/checks#QF1003
+        - "-QF1009"  # Use time.Time.Equal instead of == operator https://staticcheck.dev/docs/checks#QF1009
+        - "-QF1001"  # Apply De Morgan’s law https://staticcheck.dev/docs/checks#QF1001
+        - "-QF1012"  # Use fmt.Fprintf(x, ...) instead of x.Write(fmt.Sprintf(...)) https://staticcheck.dev/docs/checks#QF1012
+        - "-ST1005"  # Expand call to math.Pow https://staticcheck.dev/docs/checks#QF1005
+        - "-QF1004"  # Use strings.ReplaceAll instead of strings.Replace with n == -1 https://staticcheck.dev/docs/checks#QF1004
+    revive:
+      enable-all-rules: true
+      rules:
+        # See https://revive.run/r
+        # Below are unsorted, and we might want to review them to decide which one we want to enable
+        - name: exported
+          disabled: true
+        - name: add-constant
+          disabled: true
+        - name: cognitive-complexity
+          disabled: true
+        - name: package-comments
+          disabled: true
+        - name: cyclomatic
+          disabled: true
+        - name: deep-exit
+          disabled: true
+        - name: function-length
+          disabled: true
+        - name: flag-parameter
+          disabled: true
+        - name: max-public-structs
+          disabled: true
+        - name: max-control-nesting
+          disabled: true
+        - name: confusing-results
+          disabled: true
+        - name: nested-structs
+          disabled: true
+        - name: import-alias-naming
+          disabled: true
+        - name: filename-format
+          disabled: true
+        - name: use-any
+          disabled: true
+        # FIXME: we should enable these below
+        - name: struct-tag
+          disabled: true
+        - name: redundant-import-alias
+          disabled: true
+        - name: empty-lines
+          disabled: true
+        - name: unhandled-error
+          disabled: true
+        - name: confusing-naming
+          disabled: true
+        - name: unused-parameter
+          disabled: true
+        - name: unused-receiver
+          disabled: true
+        - name: import-shadowing
+          disabled: true
+        - name: use-errors-new
+          disabled: true
+        - name: argument-limit
+          disabled: true
+        - name: time-equal
+          disabled: true
+        - name: defer
+          disabled: true
+        - name: early-return
+          disabled: true
+        - name: comment-spacings
+          disabled: true
+        - name: function-result-limit
+          disabled: true
+        - name: unexported-naming
+          disabled: true
+        - name: unnecessary-stmt
+          disabled: true
+        - name: if-return
+          disabled: true
+        - name: unchecked-type-assertion
+          disabled: true
+        - name: bare-return
+          disabled: true
+        # Below have been reviewed and disabled
+        - name: line-length-limit
+          # Better dealt with by formatter golines
+          disabled: true
 
-      # Performance
-      - appendCombine
-      - equalFold
-      - hugeParam
-      - indexAlloc
-      - rangeExprCopy
-      - rangeValCopy
+    depguard:
+      rules:
+        no-patent:
+          # do not link in golang-lru anywhere (problematic patent)
+          deny:
+            - pkg: github.com/hashicorp/golang-lru/arc/v2
+              desc: patented (https://github.com/hashicorp/golang-lru/blob/arc/v2.0.7/arc/arc.go#L18)
+        pkg:
+          # pkg files must not depend on cobra nor anything in cmd
+          files:
+            - '**/pkg/**/*.go'
+          deny:
+            - pkg: github.com/spf13/cobra
+              desc: pkg must not depend on cobra
+            - pkg: github.com/spf13/pflag
+              desc: pkg must not depend on pflag
+            - pkg: github.com/spf13/viper
+              desc: pkg must not depend on viper
+            - pkg: github.com/containerd/nerdctl/v2/cmd
+              desc: pkg must not depend on any cmd files
+    gocritic:
+      enabled-checks:
+        - appendAssign
+        - argOrder
+        - badCond
+        - caseOrder
+        - codegenComment
+        - commentedOutCode
+        - deprecatedComment
+        - dupArg
+        - dupBranchBody
+        - dupCase
+        - dupSubExpr
+        - exitAfterDefer
+        - flagDeref
+        - flagName
+        - nilValReturn
+        - offBy1
+        - sloppyReassign
+        - weakCond
+        - octalLiteral
+        - appendCombine
+        - equalFold
+        - hugeParam
+        - indexAlloc
+        - rangeExprCopy
+        - rangeValCopy
+        - assignOp
+        - boolExprSimplify
+        - captLocal
+        - commentFormatting
+        - commentedOutImport
+        - defaultCaseOrder
+        - docStub
+        - elseif
+        - emptyFallthrough
+        - emptyStringTest
+        - hexLiteral
+        - ifElseChain
+        - methodExprCall
+        - regexpMust
+        - singleCaseSwitch
+        - sloppyLen
+        - stringXbytes
+        - switchTrue
+        - typeAssertChain
+        - typeSwitchVar
+        - underef
+        - unlabelStmt
+        - unlambda
+        - unslice
+        - valSwap
+        - wrapperFunc
+        - yodaStyleExpr
+        - builtinShadow
+        - importShadow
+        - initClause
+        - nestingReduce
+        - paramTypeCombine
+        - ptrToRefParam
+        - typeUnparen
+        - unnamedResult
+        - unnecessaryBlock
+  exclusions:
+    generated: disable
 
-      # Style
-      - assignOp
-      - boolExprSimplify
-      - captLocal
-      - commentFormatting
-      - commentedOutImport
-      - defaultCaseOrder
-      - docStub
-      - elseif
-      - emptyFallthrough
-      - emptyStringTest
-      - hexLiteral
-      - ifElseChain
-      - methodExprCall
-      - regexpMust
-      - singleCaseSwitch
-      - sloppyLen
-      - stringXbytes
-      - switchTrue
-      - typeAssertChain
-      - typeSwitchVar
-      - underef
-      - unlabelStmt
-      - unlambda
-      - unslice
-      - valSwap
-      - wrapperFunc
-      - yodaStyleExpr
-
-      # Opinionated
-      - builtinShadow
-      - importShadow
-      - initClause
-      - nestingReduce
-      - paramTypeCombine
-      - ptrToRefParam
-      - typeUnparen
-      - unnamedResult
-      - unnecessaryBlock
-
-  depguard:
-    rules:
-      # pkg files must not depend on cobra nor anything in cmd
-      pkg:
-        files:
-          - "**/pkg/**/*.go"
-        deny:
-          - pkg: "github.com/spf13/cobra"
-            desc: "pkg must not depend on cobra"
-          - pkg: "github.com/spf13/pflag"
-            desc: "pkg must not depend on pflag"
-          - pkg: "github.com/spf13/viper"
-            desc: "pkg must not depend on viper"
-          - pkg: "github.com/containerd/nerdctl/v2/cmd"
-            desc: "pkg must not depend on any cmd files"
-      no-patent:
-        deny:
-          - pkg: "github.com/hashicorp/golang-lru/arc/v2"
-            desc: "patented (https://github.com/hashicorp/golang-lru/blob/arc/v2.0.7/arc/arc.go#L18)"
-
-issues:
-  max-issues-per-linter: 0
-  max-same-issues: 0
-  exclude-rules:
-    - linters:
-        - revive
-      text: "unused-parameter"
-
-output:
-  sort-results: true
+formatters:
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/containerd)
+        - localmodule
+      no-inline-comments: true
+      no-prefix-comments: true
+      custom-order: true
+    gofumpt:
+      extra-rules: true
+    golines:
+      max-len: 100
+      tab-len: 4
+      shorten-comments: true
+  enable:
+    - gci
+    - gofmt
+    # We might consider enabling the following:
+    #    - gofumpt
+    #    - golines
+  exclusions:
+    generated: disable
