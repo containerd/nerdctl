@@ -111,7 +111,7 @@ func (test *Case) Run(t *testing.T) {
 
 		var custCom CustomizableCommand
 		if registeredTestable == nil {
-			custCom = &GenericCommand{}
+			custCom = NewGenericCommand()
 		} else {
 			custCom = registeredTestable.CustomCommand(test, test.t)
 		}

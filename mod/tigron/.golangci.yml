@@ -31,6 +31,8 @@ linters:
             - golang.org/x/sync
             - golang.org/x/term
             - gotest.tools/v3
+            - github.com/rs/zerolog
+            - github.com/rs/zerolog/log
             - go.uber.org/goleak
     staticcheck:
       checks:

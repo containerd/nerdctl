@@ -19,7 +19,7 @@ package test
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/mod/tigron/test/internal"
+	"github.com/containerd/nerdctl/mod/tigron/internal"
 )
 
 // This is the implementation of Helpers
