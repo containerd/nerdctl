@@ -546,6 +546,7 @@ var (
 	flagTestKube       bool
 	flagVerbose        bool
 	flagTestFlaky      bool
+	flagTestUserNS     bool
 )
 
 var (
@@ -555,6 +556,7 @@ var (
 func M(m *testing.M) {
 	flag.StringVar(&flagTestTarget, "test.target", Nerdctl, "target to test")
 	flag.BoolVar(&flagTestKillDaemon, "test.allow-kill-daemon", false, "enable tests that kill the daemon")
+	flag.BoolVar(&flagTestUserNS, "test.allow-modify-user", false, "enable tests on userns")
 	flag.BoolVar(&flagTestIPv6, "test.only-ipv6", false, "enable tests on IPv6")
 	flag.BoolVar(&flagTestKube, "test.only-kubernetes", false, "enable tests on Kubernetes")
 	flag.BoolVar(&flagTestFlaky, "test.only-flaky", false, "enable testing of flaky tests only (if false, flaky tests are ignored)")
@@ -632,6 +634,10 @@ func GetFlakyEnvironment() bool {
 
 func GetDaemonIsKillable() bool {
 	return flagTestKillDaemon
+}
+
+func GetAllowUserNS() bool {
+	return flagTestUserNS
 }
 
 func IsDocker() bool {
