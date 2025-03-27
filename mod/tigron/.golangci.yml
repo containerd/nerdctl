@@ -1,54 +1,63 @@
----
-output:
-  sort-results: true
+version: "2"
+
+run:
+  issues-exit-code: 2
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+  allow-serial-runners: true
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
 
-run:
-  concurrency: 0
-  timeout: 5m
-  issues-exit-code: 2
-  tests: true
-  modules-download-mode: readonly
-  allow-parallel-runners: true
-  allow-serial-runners: true
-
 linters:
-  disable-all: false
-  enable-all: true
+  default: all
   disable:
-    # Opting-out
-    - nonamedreturns  # named returns are occasionally useful
-    - exhaustruct  # does not serve much of a purpose
-    - funlen  # not interested
-    - cyclop  # not interested much
-    - godox  # having these are useful
-    # Duplicating
-    - gci  # we use go-imports instead
-    # Deprecated
-    - tenv
-    # TODO: Temporarily out until we wrap up all of them
-#    - wrapcheck
+    - cyclop
+    - exhaustruct
+    - funlen
+    - godox
+    - nonamedreturns
+  settings:
+    depguard:
+      rules:
+        main:
+          files:
+            - $all
+          allow:
 
-linters-settings:
-  staticcheck:
-    checks:
-      - "all"
+            - $gostd
+            - github.com/containerd/nerdctl/mod/tigron
+            - github.com/creack/pty
+            - golang.org/x/sync
+            - golang.org/x/term
+            - gotest.tools/v3
+    staticcheck:
+      checks:
+        - all
+  exclusions:
+    generated: disable
 
-  depguard:
-    rules:
-      main:
-        files:
-          - "$all"
-        allow:
-          - $gostd
-          - "github.com/containerd/nerdctl/mod/tigron"
-          # WATCHOUT! https://github.com/OpenPeeDeeP/depguard/issues/108
-          # Currently, depguard will fail detecting any dependency starting with a standard package name as third-party.
-          # Thus, the following three are allowed provisionally, though currently not "necessary".
-          - "golang.org/x/sync"
-          - "golang.org/x/term"
-          - "gotest.tools"
-          - "github.com/creack/pty"
+formatters:
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/containerd)
+        - localmodule
+      no-inline-comments: true
+      no-prefix-comments: true
+      custom-order: true
+    gofumpt:
+      extra-rules: true
+    golines:
+      max-len: 100
+      tab-len: 4
+      shorten-comments: true
+  enable:
+    - gci
+    - gofumpt
+    - golines
+  exclusions:
+    generated: disable

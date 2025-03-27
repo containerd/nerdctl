@@ -14,24 +14,5 @@
    limitations under the License.
 */
 
+// Package test is the main entrypoint for Tigron.
 package test
-
-import (
-	"testing"
-)
-
-// Testable TODO.
-type Testable interface {
-	CustomCommand(testCase *Case, t *testing.T) CustomizableCommand
-	AmbientRequirements(testCase *Case, t *testing.T)
-}
-
-// FIXME
-//
-//nolint:gochecknoglobals
-var registeredTestable Testable
-
-// Customize TODO.
-func Customize(testable Testable) {
-	registeredTestable = testable
-}

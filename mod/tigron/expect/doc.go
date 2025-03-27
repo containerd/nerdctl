@@ -14,24 +14,6 @@
    limitations under the License.
 */
 
-package test
-
-import (
-	"testing"
-)
-
-// Testable TODO.
-type Testable interface {
-	CustomCommand(testCase *Case, t *testing.T) CustomizableCommand
-	AmbientRequirements(testCase *Case, t *testing.T)
-}
-
-// FIXME
-//
-//nolint:gochecknoglobals
-var registeredTestable Testable
-
-// Customize TODO.
-func Customize(testable Testable) {
-	registeredTestable = testable
-}
+// Package expect provides a set of simple concrete test.Comparator implementations to use by tests
+// on stdout, along with exit code expectations.
+package expect

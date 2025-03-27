@@ -14,24 +14,6 @@
    limitations under the License.
 */
 
-package test
-
-import (
-	"testing"
-)
-
-// Testable TODO.
-type Testable interface {
-	CustomCommand(testCase *Case, t *testing.T) CustomizableCommand
-	AmbientRequirements(testCase *Case, t *testing.T)
-}
-
-// FIXME
-//
-//nolint:gochecknoglobals
-var registeredTestable Testable
-
-// Customize TODO.
-func Customize(testable Testable) {
-	registeredTestable = testable
-}
+// Package utils provides generic helpers that are regularly useful for a range of test authors.
+// TODO: question the usefulness of this and whether this should even be part of tigron.
+package utils

@@ -23,20 +23,23 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-// Case describes an entire test-case, including data, setup and cleanup routines, command and expectations.
+// Case describes an entire test-case, including data, setup and cleanup routines, command and
+// expectations.
 type Case struct {
-	// Description contains a human-readable short desc, used as a seed for the identifier and as a title for the test
+	// Description contains a human-readable short desc, used as a seed for the identifier and as a
+	// title for the test.
 	Description string
-	// NoParallel disables parallel execution if set to true
+	// NoParallel disables parallel execution if set to true.
 	// This obviously implies that all tests run in parallel, by default. This is a design choice.
 	NoParallel bool
-	// Env contains a map of environment variables to use as a base for all commands run in Setup, Command and Cleanup
-	// Note that the environment is inherited by subtests
+	// Env contains a map of environment variables to use as a base for all commands run in Setup,
+	// Command and Cleanup.
+	// Note that the environment is inherited by subtests.
 	Env map[string]string
-	// Data contains test specific data, accessible to all operations, also inherited by subtests
+	// Data contains test specific data, accessible to all operations, also inherited by subtests.
 	Data Data
 	// Config contains specific information meaningful to the binary being tested.
-	// It is also inherited by subtests
+	// It is also inherited by subtests.
 	Config Config
 
 	// Requirement
@@ -73,7 +76,11 @@ func (test *Case) Run(t *testing.T) {
 
 		// Attach testing.T
 		test.t = subT
-		assert.Assert(test.t, test.Description != "" || test.parent == nil, "A test description cannot be empty")
+		assert.Assert(
+			test.t,
+			test.Description != "" || test.parent == nil,
+			"A test description cannot be empty",
+		)
 		assert.Assert(test.t, test.Command == nil || test.Expected != nil,
 			"Expectations for a test command cannot be nil. You may want to use Setup instead.")
 

@@ -31,7 +31,7 @@ const (
 // WithData returns a data object with a certain key value set.
 //
 //nolint:ireturn
-func WithData(key string, value string) Data {
+func WithData(key, value string) Data {
 	dat := &data{}
 	dat.Set(key, value)
 
@@ -41,7 +41,7 @@ func WithData(key string, value string) Data {
 // Contains the implementation of the Data interface
 
 //nolint:ireturn
-func configureData(t *testing.T, seedData Data, parent Data) Data {
+func configureData(t *testing.T, seedData, parent Data) Data {
 	t.Helper()
 
 	if seedData == nil {
@@ -78,7 +78,7 @@ func (dt *data) Get(key string) string {
 }
 
 //nolint:ireturn
-func (dt *data) Set(key string, value string) Data {
+func (dt *data) Set(key, value string) Data {
 	if dt.labels == nil {
 		dt.labels = map[string]string{}
 	}

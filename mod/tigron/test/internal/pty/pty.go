@@ -14,10 +14,10 @@
    limitations under the License.
 */
 
-// Package pty.
-// Note that creack is MIT licensed, making it better to depend on it rather than using derived code here.
-// Underlying creack implementation is OK though they have more (unnecessary to us) features and do not follow the
-// same coding standards.
+// Package pty provides a simple to manipulate pty Open method.
+// Note that creack is MIT licensed, making it better to depend on it rather than using derived code
+// here. Underlying implementation is OK though they have more (unnecessary to us) features and do
+// not follow the same coding standards.
 package pty
 
 import (
@@ -28,10 +28,13 @@ import (
 )
 
 var (
-	ErrFailure             = errors.New("pty failure")
+	// ErrFailure is wrapping system pty creation failure returned by Open().
+	ErrFailure = errors.New("pty failure")
+	// ErrUnsupportedPlatform is returned by Open() on unsupported platforms.
 	ErrUnsupportedPlatform = errors.New("pty not supported on this platform")
 )
 
+// Open will allocate and return a new pty.
 func Open() (*os.File, *os.File, error) {
 	pty, tty, err := creack.Open()
 	if err != nil {
