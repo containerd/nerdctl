@@ -25,13 +25,13 @@ linters:
           files:
             - $all
           allow:
-
             - $gostd
             - github.com/containerd/nerdctl/mod/tigron
             - github.com/creack/pty
             - golang.org/x/sync
             - golang.org/x/term
             - gotest.tools/v3
+            - go.uber.org/goleak
     staticcheck:
       checks:
         - all
