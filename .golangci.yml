@@ -54,11 +54,9 @@ linters:
         # FIXME: this below this point is disabled for now, but we should investigate
         - "-QF1008"  # Omit embedded fields from selector expression https://staticcheck.dev/docs/checks#QF1008
         - "-QF1003"  # Convert if/else-if chain to tagged switch https://staticcheck.dev/docs/checks#QF1003
-        - "-QF1009"  # Use time.Time.Equal instead of == operator https://staticcheck.dev/docs/checks#QF1009
         - "-QF1001"  # Apply De Morgan’s law https://staticcheck.dev/docs/checks#QF1001
         - "-QF1012"  # Use fmt.Fprintf(x, ...) instead of x.Write(fmt.Sprintf(...)) https://staticcheck.dev/docs/checks#QF1012
         - "-ST1005"  # Expand call to math.Pow https://staticcheck.dev/docs/checks#QF1005
-        - "-QF1004"  # Use strings.ReplaceAll instead of strings.Replace with n == -1 https://staticcheck.dev/docs/checks#QF1004
     revive:
       enable-all-rules: true
       rules:
