@@ -56,7 +56,6 @@ linters:
         - "-QF1003"  # Convert if/else-if chain to tagged switch https://staticcheck.dev/docs/checks#QF1003
         - "-QF1001"  # Apply De Morgan’s law https://staticcheck.dev/docs/checks#QF1001
         - "-QF1012"  # Use fmt.Fprintf(x, ...) instead of x.Write(fmt.Sprintf(...)) https://staticcheck.dev/docs/checks#QF1012
-        - "-ST1005"  # Expand call to math.Pow https://staticcheck.dev/docs/checks#QF1005
     revive:
       enable-all-rules: true
       rules:
