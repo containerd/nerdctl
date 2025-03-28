@@ -90,8 +90,6 @@ linters:
           disabled: true
         - name: import-alias-naming
           disabled: true
-        - name: filename-format
-          disabled: true
         - name: use-any
           disabled: true
         # FIXME: we should enable these below
