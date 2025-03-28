@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/containerd/console"
 	"github.com/containerd/log"
@@ -407,7 +408,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		defer con.Reset()
-		if err := con.SetRaw(); err != nil {
+		if _, err := term.MakeRaw(int(con.Fd())); err != nil {
 			return err
 		}
 	}
