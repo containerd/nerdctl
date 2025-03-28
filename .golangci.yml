@@ -97,8 +97,6 @@ linters:
         # FIXME: we should enable these below
         - name: struct-tag
           disabled: true
-        - name: redundant-import-alias
-          disabled: true
         - name: empty-lines
           disabled: true
         - name: unhandled-error
