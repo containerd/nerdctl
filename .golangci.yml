@@ -95,8 +95,6 @@ linters:
         - name: use-any
           disabled: true
         # FIXME: we should enable these below
-        - name: struct-tag
-          disabled: true
         - name: empty-lines
           disabled: true
         - name: unhandled-error
