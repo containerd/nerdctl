@@ -63,68 +63,103 @@ linters:
       enable-all-rules: true
       rules:
         # See https://revive.run/r
-        # Below are unsorted, and we might want to review them to decide which one we want to enable
-        - name: exported
-          disabled: true
-        - name: add-constant
-          disabled: true
-        - name: cognitive-complexity
-          disabled: true
-        - name: package-comments
-          disabled: true
-        - name: cyclomatic
-          disabled: true
-        - name: deep-exit
-          disabled: true
-        - name: function-length
-          disabled: true
-        - name: flag-parameter
-          disabled: true
-        - name: max-public-structs
-          disabled: true
+
+        ##### P0: we should do it ASAP.
         - name: max-control-nesting
-          disabled: true
-        - name: confusing-results
-          disabled: true
-        - name: nested-structs
-          disabled: true
-        - name: use-any
-          disabled: true
-        # FIXME: we should enable these below
-        - name: empty-lines
-          disabled: true
-        - name: unhandled-error
-          disabled: true
-        - name: confusing-naming
-          disabled: true
-        - name: unused-parameter
-          disabled: true
-        - name: unused-receiver
-          disabled: true
-        - name: import-shadowing
-          disabled: true
-        - name: use-errors-new
-          disabled: true
-        - name: argument-limit
-          disabled: true
-        - name: defer
-          disabled: true
-        - name: early-return
-          disabled: true
-        - name: comment-spacings
-          disabled: true
-        - name: function-result-limit
-          disabled: true
-        - name: unnecessary-stmt
+          # 10 occurences (at default 5). Deep nesting hurts readibility.
+          arguments: [7]
+        - name: deep-exit
+          # 11 occurrences. Do not exit in random places.
           disabled: true
         - name: unchecked-type-assertion
+          # 14 occurrences. This is generally risky and encourages bad coding for newcomers.
           disabled: true
         - name: bare-return
+          # 31 occurrences. Bare returns are just evil, very unfriendly, and make reading and editing much harder.
           disabled: true
-        # Below have been reviewed and disabled
+        - name: import-shadowing
+          # 44 occurrences. Shadowing makes things prone to errors / confusing to read.
+          disabled: true
+        - name: use-errors-new
+          # 84 occurrences. Improves error testing.
+          disabled: true
+
+        ##### P1: consider making a dent on these, but not critical.
+        - name: argument-limit
+          # 4 occurrences (at default 8). Long windy arguments list for functions are hard to read. Use structs instead.
+          arguments: [12]
+        - name: unnecessary-stmt
+          # 5 occurrences. Increase readability.
+          disabled: true
+        - name: defer
+          # 7 occurrences. Confusing to read for newbies.
+          disabled: true
+        - name: confusing-naming
+          # 10 occurrences. Hurts readability.
+          disabled: true
+        - name: early-return
+          # 10 occurrences. Would improve readability.
+          disabled: true
+        - name: function-result-limit
+          # 12 occurrences (at default 3). A function returning many results is probably too big.
+          arguments: [7]
+        - name: function-length
+          # 155 occurrences (at default 0, 75). Really long functions should really be broken up in most cases.
+          arguments: [0, 400]
+        - name: cyclomatic
+          # 204 occurrences (at default 10)
+          arguments: [100]
+        - name: unhandled-error
+          # 222 occurrences. Could indicate failure to handle broken conditions.
+          disabled: true
+        - name: cognitive-complexity
+          arguments: [197]
+          # 441 occurrences (at default 7). We should try to lower it (involves significant refactoring).
+
+        ##### P2: nice to have.
+        - name: max-public-structs
+          # 7 occurrences (at default 5). Might indicate overcrowding of public API.
+          arguments: [21]
+        - name: confusing-results
+          # 13 occurrences. Have named returns when the type stutters.
+          # Makes it a bit easier to figure out function behavior just looking at signature.
+          disabled: true
+        - name: comment-spacings
+          # 50 occurrences. Makes code look less wonky / ease readability.
+          disabled: true
+        - name: use-any
+          # 30 occurrences. `any` instead of `interface{}`. Cosmetic.
+          disabled: true
+        - name: empty-lines
+          # 85 occurrences. Makes code look less wonky / ease readability.
+          disabled: true
+        - name: package-comments
+          # 100 occurrences. Better for documentation...
+          disabled: true
+        - name: exported
+          # 577 occurrences. Forces documentation of any exported symbol.
+          disabled: true
+
+        ###### Permanently disabled. Below have been reviewed and vetted to be unnecessary.
         - name: line-length-limit
-          # Better dealt with by formatter golines
+          # Formatter `golines` takes care of this.
           disabled: true
+        - name: nested-structs
+          # 5 occurrences. Trivial. This is not that hard to read.
+          disabled: true
+        - name: flag-parameter
+          # 52 occurrences. Not sure if this is valuable.
+          disabled: true
+        - name: unused-parameter
+          # 505 occurrences. A lot of work for a marginal improvement.
+          disabled: true
+        - name: unused-receiver
+          # 31 occurrences. Ibid.
+          disabled: true
+        - name: add-constant
+          # 2605 occurrences. Kind of useful in itself, but unacceptable amount of effort to fix
+          disabled: true
+
     depguard:
       rules:
         no-patent:
