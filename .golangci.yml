@@ -10,16 +10,36 @@ issues:
 linters:
   default: none
   enable:
-    - depguard
+    # 1. This is the default enabled set of golanci
+
+    # We should consider enabling errcheck
+    # - errcheck
     - govet
     - ineffassign
-    - misspell
-    - nakedret
-    - prealloc
-    - revive
     - staticcheck
-    - unconvert
     - unused
+
+    # 2. These are not part of the default set
+
+    # Important to prevent import of certain packages
+    - depguard
+    # Removes unnecessary conversions
+    - unconvert
+    # Flag common typos
+    - misspell
+    # A meta-linter seen as a good replacement for golint
+    - revive
+    # Gocritic
+    - gocritic
+
+    # 3. We used to use these, but have now removed them
+
+    # Use of prealloc is generally premature optimization and performance profiling should be done instead
+    # https://golangci-lint.run/usage/linters/#prealloc
+    # - prealloc
+    # Provided by revive in a better way
+    # - nakedret
+
   settings:
     staticcheck:
       checks:
@@ -119,7 +139,6 @@ linters:
         - name: line-length-limit
           # Better dealt with by formatter golines
           disabled: true
-
     depguard:
       rules:
         no-patent:
@@ -141,67 +160,53 @@ linters:
             - pkg: github.com/containerd/nerdctl/v2/cmd
               desc: pkg must not depend on any cmd files
     gocritic:
-      enabled-checks:
+      disabled-checks:
+        # Below are normally enabled by default, but we do not pass
         - appendAssign
-        - argOrder
-        - badCond
-        - caseOrder
-        - codegenComment
-        - commentedOutCode
-        - deprecatedComment
-        - dupArg
-        - dupBranchBody
-        - dupCase
-        - dupSubExpr
-        - exitAfterDefer
-        - flagDeref
-        - flagName
+        - ifElseChain
+        - unslice
+        - badCall
+        - assignOp
+        - commentFormatting
+        - captLocal
+        - singleCaseSwitch
+        - wrapperFunc
+        - elseif
+        - regexpMust
+      enabled-checks:
+        # Below used to be enabled, but we do not pass anymore
+        # - paramTypeCombine
+        # - octalLiteral
+        # - unnamedResult
+        # - equalFold
+        # - sloppyReassign
+        # - emptyStringTest
+        # - hugeParam
+        # - appendCombine
+        # - stringXbytes
+        # - ptrToRefParam
+        # - commentedOutCode
+        # - rangeValCopy
+        # - methodExprCall
+        # - yodaStyleExpr
+        # - typeUnparen
+
+        # We enabled these and we pass
         - nilValReturn
-        - offBy1
-        - sloppyReassign
         - weakCond
-        - octalLiteral
-        - appendCombine
-        - equalFold
-        - hugeParam
         - indexAlloc
         - rangeExprCopy
-        - rangeValCopy
-        - assignOp
         - boolExprSimplify
-        - captLocal
-        - commentFormatting
         - commentedOutImport
-        - defaultCaseOrder
         - docStub
-        - elseif
         - emptyFallthrough
-        - emptyStringTest
         - hexLiteral
-        - ifElseChain
-        - methodExprCall
-        - regexpMust
-        - singleCaseSwitch
-        - sloppyLen
-        - stringXbytes
-        - switchTrue
         - typeAssertChain
-        - typeSwitchVar
-        - underef
         - unlabelStmt
-        - unlambda
-        - unslice
-        - valSwap
-        - wrapperFunc
-        - yodaStyleExpr
         - builtinShadow
         - importShadow
         - initClause
         - nestingReduce
-        - paramTypeCombine
-        - ptrToRefParam
-        - typeUnparen
-        - unnamedResult
         - unnecessaryBlock
   exclusions:
     generated: disable
@@ -220,7 +225,7 @@ formatters:
     gofumpt:
       extra-rules: true
     golines:
-      max-len: 100
+      max-len: 500
       tab-len: 4
       shorten-comments: true
   enable:
@@ -228,6 +233,6 @@ formatters:
     - gofmt
     # We might consider enabling the following:
     #    - gofumpt
-    #    - golines
+    - golines
   exclusions:
     generated: disable
