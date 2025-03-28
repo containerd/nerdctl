@@ -240,11 +240,7 @@ func (m *noneNetworkManager) SetupNetworking(ctx context.Context, containerID st
 	}
 
 	// Save the meta information
-	if err = hs.Acquire(hsMeta); err != nil {
-		return err
-	}
-
-	return nil
+	return hs.Acquire(hsMeta)
 }
 
 // CleanupNetworking Performs any required cleanup actions for the given container.
@@ -269,10 +265,7 @@ func (m *noneNetworkManager) CleanupNetworking(ctx context.Context, container co
 	}
 
 	// Release
-	if err = hs.Release(container.ID()); err != nil {
-		return err
-	}
-	return nil
+	return hs.Release(container.ID())
 }
 
 // InternalNetworkingOptionLabels Returns the set of NetworkingOptions which should be set as labels on the container.
