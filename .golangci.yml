@@ -119,8 +119,6 @@ linters:
           disabled: true
         - name: function-result-limit
           disabled: true
-        - name: unexported-naming
-          disabled: true
         - name: unnecessary-stmt
           disabled: true
         - name: if-return
