@@ -51,11 +51,23 @@ linters:
         - "-ST1020"
         - "-ST1021"
         - "-ST1022"
-        # FIXME: this below this point is disabled for now, but we should investigate
-        - "-QF1008"  # Omit embedded fields from selector expression https://staticcheck.dev/docs/checks#QF1008
-        - "-QF1003"  # Convert if/else-if chain to tagged switch https://staticcheck.dev/docs/checks#QF1003
-        - "-QF1001"  # Apply De Morgan’s law https://staticcheck.dev/docs/checks#QF1001
-        - "-QF1012"  # Use fmt.Fprintf(x, ...) instead of x.Write(fmt.Sprintf(...)) https://staticcheck.dev/docs/checks#QF1012
+
+        ##### TODO: fix and enable these
+        # 4 occurrences.
+        # Use fmt.Fprintf(x, ...) instead of x.Write(fmt.Sprintf(...)) https://staticcheck.dev/docs/checks#QF1012
+        - "-QF1012"
+        # 6 occurrences.
+        # Apply De Morgan’s law https://staticcheck.dev/docs/checks#QF1001
+        - "-QF1001"
+        # 10 occurrences.
+        # Convert if/else-if chain to tagged switch https://staticcheck.dev/docs/checks#QF1003
+        - "-QF1003"
+
+        ##### These have been vetted to be disabled.
+        # 55 occurrences. Omit embedded fields from selector expression https://staticcheck.dev/docs/checks#QF1008
+        # Usefulness is questionable.
+        - "-QF1008"
+
     revive:
       enable-all-rules: true
       rules:
