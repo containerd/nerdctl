@@ -884,11 +884,20 @@ type IPAM struct {
 // Network mimics a `docker network inspect` object.
 // From https://github.com/moby/moby/blob/v20.10.7/api/types/types.go#L430-L448
 type Network struct {
-	Name   string            `json:"Name"`
-	ID     string            `json:"Id,omitempty"` // optional in nerdctl
-	IPAM   IPAM              `json:"IPAM,omitempty"`
-	Labels map[string]string `json:"Labels"`
+	Name       string                      `json:"Name"`
+	ID         string                      `json:"Id,omitempty"` // optional in nerdctl
+	IPAM       IPAM                        `json:"IPAM,omitempty"`
+	Labels     map[string]string           `json:"Labels"`
+	Containers map[string]EndpointResource `json:"Containers"` // Containers contains endpoints belonging to the network
 	// Scope, Driver, etc. are omitted
+}
+
+type EndpointResource struct {
+	Name string `json:"Name"`
+	// EndpointID  string `json:"EndpointID"`
+	// MacAddress  string `json:"MacAddress"`
+	// IPv4Address string `json:"IPv4Address"`
+	// IPv6Address string `json:"IPv6Address"`
 }
 
 type structuredCNI struct {
@@ -928,6 +937,17 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 
 	if n.NerdctlLabels != nil {
 		res.Labels = *n.NerdctlLabels
+	}
+
+	res.Containers = make(map[string]EndpointResource)
+	for _, container := range n.Containers {
+		res.Containers[container.ID] = EndpointResource{
+			Name: container.Labels[labels.Name],
+			// EndpointID:  container.EndpointID,
+			// MacAddress:  container.MacAddress,
+			// IPv4Address: container.IPv4Address,
+			// IPv6Address: container.IPv6Address,
+		}
 	}
 
 	return &res, nil
