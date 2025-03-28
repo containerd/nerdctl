@@ -111,8 +111,6 @@ linters:
           disabled: true
         - name: argument-limit
           disabled: true
-        - name: time-equal
-          disabled: true
         - name: defer
           disabled: true
         - name: early-return
