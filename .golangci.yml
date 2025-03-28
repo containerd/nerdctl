@@ -121,8 +121,6 @@ linters:
           disabled: true
         - name: unnecessary-stmt
           disabled: true
-        - name: if-return
-          disabled: true
         - name: unchecked-type-assertion
           disabled: true
         - name: bare-return
