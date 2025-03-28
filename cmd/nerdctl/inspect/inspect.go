@@ -23,9 +23,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
-	containerCmd "github.com/containerd/nerdctl/v2/cmd/nerdctl/container"
+	containercmd "github.com/containerd/nerdctl/v2/cmd/nerdctl/container"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
-	imageCmd "github.com/containerd/nerdctl/v2/cmd/nerdctl/image"
+	imagecmd "github.com/containerd/nerdctl/v2/cmd/nerdctl/image"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -117,13 +117,13 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 	var containerInspectOptions types.ContainerInspectOptions
 	if inspectImage {
 		platform := ""
-		imageInspectOptions, err = imageCmd.InspectOptions(cmd, &platform)
+		imageInspectOptions, err = imagecmd.InspectOptions(cmd, &platform)
 		if err != nil {
 			return err
 		}
 	}
 	if inspectContainer {
-		containerInspectOptions, err = containerCmd.InspectOptions(cmd)
+		containerInspectOptions, err = containercmd.InspectOptions(cmd)
 		if err != nil {
 			return err
 		}
