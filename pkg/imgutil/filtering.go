@@ -158,8 +158,7 @@ func FilterByCreatedAt(ctx context.Context, client *containerd.Client, before []
 				return []images.Image{}, err
 			}
 			if len(beforeImages) == 0 {
-				//nolint:stylecheck
-				return []images.Image{}, fmt.Errorf("No such image: %s", fetchImageNames(before))
+				return []images.Image{}, fmt.Errorf("no such image: %s", fetchImageNames(before))
 			}
 			maxTime = beforeImages[0].CreatedAt
 			for _, image := range beforeImages {
@@ -175,8 +174,7 @@ func FilterByCreatedAt(ctx context.Context, client *containerd.Client, before []
 				return []images.Image{}, err
 			}
 			if len(sinceImages) == 0 {
-				//nolint:stylecheck
-				return []images.Image{}, fmt.Errorf("No such image: %s", fetchImageNames(since))
+				return []images.Image{}, fmt.Errorf("no such image: %s", fetchImageNames(since))
 			}
 			minTime = sinceImages[0].CreatedAt
 			for _, image := range sinceImages {

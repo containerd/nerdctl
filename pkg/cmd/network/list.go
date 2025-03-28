@@ -35,7 +35,7 @@ type networkPrintable struct {
 	Name   string
 	Labels string
 	// TODO: "CreatedAt", "Driver", "IPv6", "Internal", "Scope"
-	file string `json:"-"`
+	file string
 }
 
 func List(ctx context.Context, options types.NetworkListOptions) error {

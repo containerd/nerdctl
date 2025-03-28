@@ -30,13 +30,14 @@ import (
 	"sync"
 	"time"
 
-	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/fsnotify/fsnotify"
 	"github.com/muesli/cancelreader"
 
+	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 )
 

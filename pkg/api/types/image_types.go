@@ -19,7 +19,7 @@ package types
 import (
 	"io"
 
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ImageListOptions specifies options for `nerdctl image list`.
