@@ -70,8 +70,9 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 
 		// Start a local ipfs backed registry
 		ipfsServer = helpers.Command("ipfs", "registry", "serve", "--listen-registry", listenAddr)
-		// Once foregrounded, do not wait for it more than a second
-		ipfsServer.Background(1 * time.Second)
+		// This should not take longer than that
+		ipfsServer.WithTimeout(30 * time.Second)
+		ipfsServer.Background()
 		// Apparently necessary to let it start...
 		time.Sleep(time.Second)
 	}
@@ -79,7 +80,7 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		if ipfsServer != nil {
 			// Close the server once done
-			ipfsServer.Run(nil)
+			ipfsServer.Signal(os.Kill)
 		}
 	}
 
