@@ -17,6 +17,7 @@
 package expect
 
 import (
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strings"
@@ -45,7 +46,8 @@ func Contains(compare string) test.Comparator {
 	return func(stdout, info string, t *testing.T) {
 		t.Helper()
 		assertive.Check(t, strings.Contains(stdout, compare),
-			fmt.Sprintf("Output does not contain: %q", compare)+info)
+			fmt.Sprintf("Output does not contain: %q", compare),
+			info)
 	}
 }
 
@@ -56,7 +58,7 @@ func DoesNotContain(compare string) test.Comparator {
 	return func(stdout, info string, t *testing.T) {
 		t.Helper()
 		assertive.Check(t, !strings.Contains(stdout, compare),
-			fmt.Sprintf("Output should not contain: %q", compare)+info)
+			fmt.Sprintf("Output should not contain: %q", compare), info)
 	}
 }
 
@@ -65,10 +67,14 @@ func Equals(compare string) test.Comparator {
 	//nolint:thelper
 	return func(stdout, info string, t *testing.T) {
 		t.Helper()
+
+		hexdump := hex.Dump([]byte(stdout))
 		assertive.Check(
 			t,
 			compare == stdout,
-			fmt.Sprintf("Output is not equal to: %q", compare)+info,
+			fmt.Sprintf("Output is not equal to: %q", compare),
+			"\n"+hexdump,
+			info,
 		)
 	}
 }

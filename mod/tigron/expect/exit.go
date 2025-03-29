@@ -21,9 +21,12 @@ const (
 	ExitCodeSuccess = 0
 	// ExitCodeGenericFail will verify that the command ran and exited with a non-zero error code.
 	// This does NOT include timeouts, cancellation, or signals.
-	ExitCodeGenericFail = -1
+	ExitCodeGenericFail = -10
 	// ExitCodeNoCheck does not enforce any check at all on the function.
-	ExitCodeNoCheck = -2
+	ExitCodeNoCheck = -11
 	// ExitCodeTimeout verifies that the command was cancelled on timeout.
-	ExitCodeTimeout = -3
+	ExitCodeTimeout = -12
+	// ExitCodeSignaled verifies that the command has been terminated by a signal.
+	ExitCodeSignaled = -13
+	// ExitCodeCancelled = -14.
 )
