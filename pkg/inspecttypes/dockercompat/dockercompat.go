@@ -878,7 +878,7 @@ type Network struct {
 	ID         string                      `json:"Id,omitempty"` // optional in nerdctl
 	IPAM       IPAM                        `json:"IPAM,omitempty"`
 	Labels     map[string]string           `json:"Labels"`
-	Containers map[string]EndpointResource // Containers contains endpoints belonging to the network
+	Containers map[string]EndpointResource `json:"Containers"` // Containers contains endpoints belonging to the network
 	// Scope, Driver, etc. are omitted
 }
 
@@ -929,8 +929,8 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 		res.Labels = *n.NerdctlLabels
 	}
 
+	res.Containers = make(map[string]EndpointResource)
 	if n.Containers != nil {
-		res.Containers = make(map[string]EndpointResource)
 		for _, container := range n.Containers {
 			res.Containers[container.ID] = EndpointResource{
 				Name: container.Labels[labels.Name],
