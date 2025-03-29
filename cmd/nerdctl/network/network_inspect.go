@@ -22,6 +22,7 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/network"
 )
 
@@ -59,13 +60,22 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return network.Inspect(cmd.Context(), types.NetworkInspectOptions{
+
+	options := types.NetworkInspectOptions{
 		GOptions: globalOptions,
 		Mode:     mode,
 		Format:   format,
 		Networks: args,
 		Stdout:   cmd.OutOrStdout(),
-	})
+	}
+
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	return network.Inspect(ctx, client, options)
 }
 
 func networkInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
