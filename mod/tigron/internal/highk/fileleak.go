@@ -30,8 +30,8 @@ import (
 //
 //nolint:gochecknoglobals
 var whitelist = map[string]bool{
-	"5u  KQUEUE":   true,
-	"10u  a_inode": true,
+	"KQUEUE":  true,
+	"a_inode": true,
 }
 
 // SnapshotOpenFiles will capture the list of currently open-files for the process.
