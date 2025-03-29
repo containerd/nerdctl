@@ -17,13 +17,16 @@
 // Package internal provides an assert library, pty, a command wrapper, and a leak detection library
 // for internal use in Tigron.
 // The objective for these is not to become generic use-cases libraries, but instead to deliver what
-// Tigron needs in the simplest possible form.
+// Tigron needs
+// in the simplest possible form.
 package internal
 
-// This is duplicated form `expect` to avoid circular imports.
+// This is duplicated from `expect` to avoid circular imports.
 const (
 	ExitCodeSuccess     = 0
-	ExitCodeGenericFail = -1
-	ExitCodeNoCheck     = -2
-	ExitCodeTimeout     = -3
+	ExitCodeGenericFail = -10
+	ExitCodeNoCheck     = -11
+	ExitCodeTimeout     = -12
+	ExitCodeSignaled    = -13
+	// ExitCodeCancelled = -14.
 )
