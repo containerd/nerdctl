@@ -506,18 +506,18 @@ jobs:
           set -eux
           [ "$MODE" = "rootless" ] && {
             echo "rootless"
-            docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false
+            docker run -t -v /dev:/dev --rm --privileged --env HIGHK_EXPERIMENTAL_FD=true test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false
           } || {
             echo "rootful"
-            docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=false
+            docker run -t -v /dev:/dev --rm --privileged --env HIGHK_EXPERIMENTAL_FD=true test-integration ./hack/test-integration.sh -test.only-flaky=false
           }
       - name: "Run integration tests (flaky)"
         run: |
           set -eux
           [ "$MODE" = "rootless" ] && {
             echo "rootless"
-            docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true
+            docker run -t -v /dev:/dev --rm --privileged --env HIGHK_EXPERIMENTAL_FD=true test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true
           } || {
             echo "rootful"
-            docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=true
+            docker run -t -v /dev:/dev --rm --privileged --env HIGHK_EXPERIMENTAL_FD=true test-integration ./hack/test-integration.sh -test.only-flaky=true
           }

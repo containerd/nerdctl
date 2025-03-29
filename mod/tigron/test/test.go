@@ -17,7 +17,11 @@
 package test
 
 import (
+	"fmt"
+	"os"
 	"testing"
+
+	"github.com/containerd/nerdctl/mod/tigron/internal/highk"
 )
 
 // Testable TODO.
@@ -32,4 +36,49 @@ var registeredTestable Testable
 // Customize TODO.
 func Customize(testable Testable) {
 	registeredTestable = testable
+}
+
+// LeakMainWrapper is to be called inside a TestMain function to enable goroutine and file descriptors leak detection.
+func LeakMainWrapper(runner func() int) int {
+	var exitCode int
+
+	if err := highk.FindGoRoutines(); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "Leaking go routines")
+		_, _ = fmt.Fprintln(os.Stderr, err.Error())
+
+		return 1
+	}
+
+	var (
+		snapFile      *os.File
+		before, after []byte
+	)
+
+	if os.Getenv("HIGHK_EXPERIMENTAL_FD") != "" {
+		snapFile, _ = os.CreateTemp("", "fileleaks")
+		before, _ = highk.SnapshotOpenFiles(snapFile)
+	}
+
+	exitCode = runner()
+
+	if exitCode != 0 {
+		return exitCode
+	}
+
+	if os.Getenv("HIGHK_EXPERIMENTAL_FD") != "" {
+		after, _ = highk.SnapshotOpenFiles(snapFile)
+		diff := highk.Diff(string(before), string(after))
+
+		if len(diff) != 0 {
+			_, _ = fmt.Fprintln(os.Stderr, "Leaking file descriptors")
+
+			for _, file := range diff {
+				_, _ = fmt.Fprintln(os.Stderr, file)
+			}
+
+			exitCode = 1
+		}
+	}
+
+	return exitCode
 }
