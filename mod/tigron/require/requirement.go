@@ -58,7 +58,7 @@ func Arch(arch string) *test.Requirement {
 	}
 }
 
-//nolint:gochecknoglobals
+//nolint:gochecknoglobals // Fine.
 var (
 	// Amd64 requires an intel x86_64 CPU.
 	Amd64 = Arch("amd64")

@@ -16,6 +16,6 @@
 
 // Package logger is a very simple stub allowing developers to hook whatever logger they want to
 // debug internal behavior of the com package.
-// The passed logger just has to implement the Log(args...interface{}) method.
+// The passed logger just has to implement the Log(args...any) method.
 // Typically, that would be testing.T.
 package logger

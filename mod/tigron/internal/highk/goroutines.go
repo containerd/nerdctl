@@ -22,7 +22,7 @@ import (
 
 // FindGoRoutines retrieves leaked go routines, which are returned as an error.
 //
-//nolint:wrapcheck
+//nolint:wrapcheck // FIXME: work in progress
 func FindGoRoutines() error {
 	return goleak.Find()
 }

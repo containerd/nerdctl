@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+//revive:disable:add-constant
 package assertive_test
 
 import (
@@ -31,7 +32,7 @@ func TestY(t *testing.T) {
 
 	assertive.ErrorIsNil(t, err)
 
-	//nolint:err113
+	//nolint:err113 // Fine, this is a test
 	someErr := errors.New("test error")
 
 	err = fmt.Errorf("wrap: %w", someErr)

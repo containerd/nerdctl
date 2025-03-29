@@ -108,7 +108,6 @@ func (pipes *stdPipes) closeCaller() {
 	}
 }
 
-//nolint:gocognit
 func newStdPipes(
 	ctx context.Context,
 	log *logger.ConcreteLogger,

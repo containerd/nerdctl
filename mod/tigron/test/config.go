@@ -17,8 +17,6 @@
 package test
 
 // WithConfig returns a config object with a certain config property set.
-//
-//nolint:ireturn
 func WithConfig(key ConfigKey, value ConfigValue) Config {
 	cfg := &config{}
 	cfg.Write(key, value)
@@ -28,7 +26,6 @@ func WithConfig(key ConfigKey, value ConfigValue) Config {
 
 // Contains the implementation of the Config interface
 
-//nolint:ireturn
 func configureConfig(cfg, parent Config) Config {
 	if cfg == nil {
 		cfg = &config{
@@ -38,8 +35,9 @@ func configureConfig(cfg, parent Config) Config {
 
 	if parent != nil {
 		// Note: implementation dependent
-		//nolint:forcetypeassert
-		cfg.(*config).adopt(parent)
+		if o, ok := cfg.(*config); ok {
+			o.adopt(parent)
+		}
 	}
 
 	return cfg
@@ -49,7 +47,6 @@ type config struct {
 	config map[ConfigKey]ConfigValue
 }
 
-//nolint:ireturn
 func (cfg *config) Write(key ConfigKey, value ConfigValue) Config {
 	if cfg.config == nil {
 		cfg.config = make(map[ConfigKey]ConfigValue)
@@ -74,11 +71,12 @@ func (cfg *config) Read(key ConfigKey) ConfigValue {
 
 func (cfg *config) adopt(parent Config) {
 	// Note: implementation dependent
-	//nolint:forcetypeassert
-	for k, v := range parent.(*config).config {
-		// Only copy keys that are not set already
-		if _, ok := cfg.config[k]; !ok {
-			cfg.Write(k, v)
+	if castConfig, ok := parent.(*config); ok {
+		for k, v := range castConfig.config {
+			// Only copy keys that are not set already
+			if _, ok := cfg.config[k]; !ok {
+				cfg.Write(k, v)
+			}
 		}
 	}
 }

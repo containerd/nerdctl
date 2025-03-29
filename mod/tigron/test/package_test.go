@@ -24,9 +24,14 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/internal/highk"
 )
 
+const (
+	success = 0
+	failure = 1
+)
+
 func TestMain(m *testing.M) {
 	// Prep exit code
-	exitCode := 0
+	exitCode := success
 	defer func() { os.Exit(exitCode) }()
 
 	var (
@@ -41,7 +46,7 @@ func TestMain(m *testing.M) {
 
 	exitCode = m.Run()
 
-	if exitCode != 0 {
+	if exitCode != success {
 		return
 	}
 
@@ -56,7 +61,7 @@ func TestMain(m *testing.M) {
 				_, _ = fmt.Fprintln(os.Stderr, file)
 			}
 
-			exitCode = 1
+			exitCode = failure
 		}
 	}
 
@@ -64,6 +69,6 @@ func TestMain(m *testing.M) {
 		_, _ = fmt.Fprintln(os.Stderr, "Leaking go routines")
 		_, _ = fmt.Fprintln(os.Stderr, os.Stderr, err.Error())
 
-		exitCode = 1
+		exitCode = failure
 	}
 }

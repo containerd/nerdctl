@@ -14,7 +14,8 @@
    limitations under the License.
 */
 
-//nolint:testpackage
+//revive:disable:add-constant
+//nolint:testpackage // We need to test some internals here
 package test
 
 import (

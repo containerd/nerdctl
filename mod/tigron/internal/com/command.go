@@ -75,7 +75,7 @@ type Result struct {
 }
 
 type execution struct {
-	//nolint:containedctx
+	//nolint:containedctx // Is there a way around this?
 	context context.Context
 	cancel  context.CancelFunc
 	command *exec.Cmd
@@ -138,8 +138,7 @@ func (gc *Command) Clone() *Command {
 }
 
 // WithPTY requests that the command be executed with a pty for std streams. Parameters allow
-// showing which streams
-// are to be tied to the pty.
+// showing which streams are to be tied to the pty.
 // This command has no effect if Run has already been called.
 func (gc *Command) WithPTY(stdin, stdout, stderr bool) {
 	gc.ptyStdout = stdout
@@ -396,7 +395,7 @@ func (gc *Command) buildCommand(ctx context.Context) *exec.Cmd {
 		binary = gc.WrapBinary
 	}
 
-	//nolint:gosec
+	//nolint:gosec // G204 is fine here
 	cmd := exec.CommandContext(ctx, binary, args...)
 
 	// Add dir

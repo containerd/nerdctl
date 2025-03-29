@@ -26,9 +26,7 @@ type Testable interface {
 	AmbientRequirements(testCase *Case, t *testing.T)
 }
 
-// FIXME
-//
-//nolint:gochecknoglobals
+//nolint:gochecknoglobals // FIXME get rid of this
 var registeredTestable Testable
 
 // Customize TODO.

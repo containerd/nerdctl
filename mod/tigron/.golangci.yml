@@ -12,13 +12,74 @@ issues:
 
 linters:
   default: all
+
+  enable:
+    # These are the default set of golangci
+    - errcheck          # Errcheck is a program for checking for unchecked errors in Go code. These unchecked errors can be critical bugs in some cases.
+    - govet             # Vet examines Go source code and reports suspicious constructs. It is roughly the same as 'go vet' and uses its passes.
+    - ineffassign       # Detects when assignments to existing variables are not used.
+    - staticcheck       # It's the set of rules from staticcheck.
+    - unused            # Checks Go code for unused constants, variables, functions and types.
+    # These are the linters we knowingly want enabled in addition to the default set
+    - containedctx      # avoid embedding context into structs
+    - depguard          # Allows to explicitly allow or disallow third party modules
+    - err113            # encourage static errors
+    - forcetypeassert   # not asserting is risky and bad influence for newcomers
+    - gochecknoglobals  # globals should be avoided as much as possible
+    - godot             # forces dot at the end of comments
+    - gosec             # various security checks
+    - interfacebloat    # limit complexity in public APIs
+    - paralleltest      # enforces tests using parallel
+    - revive            # meta linter (see settings below)
+    - testpackage       # test packages should be separate from the package they test (eg: name them package_test)
+    - testableexamples  # makes sure that examples are testable (have an expected output)
+    - thelper           # enforces use of t.Helper()
+    - varnamelen        # encourage readable descriptive names for variables instead of x, y, z
+
   disable:
-    - cyclop
-    - exhaustruct
-    - funlen
-    - godox
-    - nonamedreturns
+    # These are the linters that we know we do not want
+    - cyclop          # provided by revive
+    - exhaustruct     # does not serve much of a purpose
+    - funlen          # provided by revive
+    - gocognit        # provided by revive
+    - goconst         # provided by revive
+    - godox           # not helpful unless we could downgrade it to warning / info
+    - ginkgolinter    # no ginkgo
+    - gomodguard      # we use depguard instead
+    - ireturn         # too annoying with not enough value
+    - lll             # provided by golines
+    - nonamedreturns  # named returns are occasionally useful
+    - promlinter      # no prometheus
+    - sloglint        # no slog
+    - testifylint     # no testify
+    - zerologlint     # no zerolog
+
   settings:
+    interfacebloat:
+      # Default is 10
+      max: 13
+    revive:
+      enable-all-rules: true
+      rules:
+        - name: cognitive-complexity
+          # Default is 7
+          arguments: [50]
+        - name: function-length
+          # Default is 50, 75
+          arguments: [70, 160]
+        - name: cyclomatic
+          # Default is 10
+          arguments: [25]
+        - name: add-constant
+          arguments:
+            - allowInts: "0,1,2"
+              allowStrs: '""'
+        - name: flag-parameter
+          # Not sure why this is valuable.
+          disabled: true
+        - name: line-length-limit
+          # Formatter `golines` takes care of this.
+          disabled: true
     depguard:
       rules:
         main:
@@ -27,9 +88,8 @@ linters:
           allow:
             - $gostd
             - github.com/containerd/nerdctl/mod/tigron
+            - golang.org/x
             - github.com/creack/pty
-            - golang.org/x/sync
-            - golang.org/x/term
             - go.uber.org/goleak
     staticcheck:
       checks:
@@ -51,7 +111,7 @@ formatters:
     gofumpt:
       extra-rules: true
     golines:
-      max-len: 100
+      max-len: 120
       tab-len: 4
       shorten-comments: true
   enable:

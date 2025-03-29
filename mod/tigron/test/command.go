@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-//nolint:revive
+//revive:disable:exported,package-comments // TODO: document exported symbols
 package test
 
 import (
@@ -36,9 +36,7 @@ const defaultExecutionTimeout = 3 * time.Minute
 // CustomizableCommand is an interface meant for people who want to heavily customize the base
 // command of their test case.
 // FIXME: now that most of the logic got moved to the internal command, consider simplifying this /
-// removing some of the extra layers from here
-//
-//nolint:interfacebloat
+// removing some of the extra layers from here.
 type CustomizableCommand interface {
 	TestableCommand
 
@@ -71,7 +69,6 @@ type CustomizableCommand interface {
 	read(key ConfigKey) ConfigValue
 }
 
-//nolint:ireturn
 func NewGenericCommand() CustomizableCommand {
 	genericCom := &GenericCommand{
 		Env: map[string]string{},
@@ -146,7 +143,7 @@ func (gc *GenericCommand) Background() {
 }
 
 func (gc *GenericCommand) Signal(sig os.Signal) error {
-	//nolint:wrapcheck
+	//nolint:wrapcheck // FIXME: re-evaluate when we clean-up this
 	return gc.cmd.Signal(sig)
 }
 
@@ -263,7 +260,6 @@ func (gc *GenericCommand) withConfig(config Config) {
 	gc.Config = config
 }
 
-//nolint:ireturn
 func (gc *GenericCommand) Clone() TestableCommand {
 	// Copy the command and return a new one - with almost everything from the parent command
 	clone := *gc
@@ -287,7 +283,6 @@ func (gc *GenericCommand) T() *testing.T {
 	return gc.t
 }
 
-//nolint:ireturn
 func (gc *GenericCommand) clear() TestableCommand {
 	comcopy := *gc
 	// Reset internal command

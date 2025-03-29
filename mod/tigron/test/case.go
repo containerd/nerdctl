@@ -63,8 +63,6 @@ type Case struct {
 }
 
 // Run prepares and executes the test, and any possible subtests.
-//
-//nolint:gocognit
 func (test *Case) Run(t *testing.T) {
 	t.Helper()
 	// Run the test
