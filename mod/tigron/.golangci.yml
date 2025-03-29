@@ -30,7 +30,6 @@ linters:
             - github.com/creack/pty
             - golang.org/x/sync
             - golang.org/x/term
-            - gotest.tools/v3
             - go.uber.org/goleak
     staticcheck:
       checks:

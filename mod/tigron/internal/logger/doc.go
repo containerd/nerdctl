@@ -14,16 +14,8 @@
    limitations under the License.
 */
 
-// Package internal provides an assert library, pty, a command wrapper, and a leak detection library
-// for internal use in Tigron.
-// The objective for these is not to become generic use-cases libraries, but instead to deliver what
-// Tigron needs in the simplest possible form.
-package internal
-
-// This is duplicated form `expect` to avoid circular imports.
-const (
-	ExitCodeSuccess     = 0
-	ExitCodeGenericFail = -1
-	ExitCodeNoCheck     = -2
-	ExitCodeTimeout     = -3
-)
+// Package logger is a very simple stub allowing developers to hook whatever logger they want to
+// debug internal behavior of the com package.
+// The passed logger just has to implement the Log(args...interface{}) method.
+// Typically, that would be testing.T.
+package logger

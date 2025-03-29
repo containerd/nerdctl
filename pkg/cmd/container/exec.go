@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"golang.org/x/term"
 
 	"github.com/containerd/console"
 	containerd "github.com/containerd/containerd/v2/client"
@@ -111,7 +112,7 @@ func execActionWithContainer(ctx context.Context, client *containerd.Client, con
 			return err
 		}
 		defer con.Reset()
-		if err := con.SetRaw(); err != nil {
+		if _, err := term.MakeRaw(int(con.Fd())); err != nil {
 			return err
 		}
 	}
