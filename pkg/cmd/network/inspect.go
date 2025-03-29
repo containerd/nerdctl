@@ -72,7 +72,7 @@ func Inspect(ctx context.Context, client *containerd.Client, options types.Netwo
 		for _, container := range filteredContainers {
 			cStatus, err := containerutil.ContainerStatus(ctx, container)
 			if err != nil {
-				return err
+				continue
 			}
 
 			if cStatus.Status != containerd.Running {
