@@ -52,7 +52,7 @@ func parseHostsButSkipMarkedRegion(w io.Writer, r io.Reader) error {
 LINE:
 	for scanner.Scan() {
 		line := scanner.Text()
-		line = strings.Replace(strings.Trim(line, " \t"), "\t", " ", -1)
+		line = strings.ReplaceAll(strings.Trim(line, " \t"), "\t", " ")
 		sawMarkerEnd := false
 		if strings.HasPrefix(line, "#") {
 			com := strings.TrimSpace(line[1:])

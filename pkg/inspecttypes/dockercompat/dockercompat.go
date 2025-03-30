@@ -820,10 +820,10 @@ func getMemorySettingsFromNative(sp *specs.Spec) (*MemorySetting, error) {
 	return res, nil
 }
 
-func getDNSFromNative(Labels map[string]string) (*DNSSettings, error) {
+func getDNSFromNative(lbls map[string]string) (*DNSSettings, error) {
 	res := &DNSSettings{}
 
-	if dnsSettingJSON, ok := Labels[labels.DNSSetting]; ok {
+	if dnsSettingJSON, ok := lbls[labels.DNSSetting]; ok {
 		if err := json.Unmarshal([]byte(dnsSettingJSON), &res); err != nil {
 			return nil, fmt.Errorf("failed to parse DNS settings: %v", err)
 		}
@@ -832,10 +832,10 @@ func getDNSFromNative(Labels map[string]string) (*DNSSettings, error) {
 	return res, nil
 }
 
-func getHostConfigLabelFromNative(Labels map[string]string) (*HostConfigLabel, error) {
+func getHostConfigLabelFromNative(lbls map[string]string) (*HostConfigLabel, error) {
 	res := &HostConfigLabel{}
 
-	if hostConfigLabelJSON, ok := Labels[labels.HostConfigLabel]; ok {
+	if hostConfigLabelJSON, ok := lbls[labels.HostConfigLabel]; ok {
 		if err := json.Unmarshal([]byte(hostConfigLabelJSON), &res); err != nil {
 			return nil, fmt.Errorf("failed to parse DNS servers: %v", err)
 		}
