@@ -76,17 +76,8 @@ jobs:
           check-latest: true
       - run: go install ./cmd/nerdctl
       - run: make install-dev-tools
-      # This here is solely to get the cni install script, which has not been modified in 3+ years.
-      # There is little to no reason to update this to latest containerd
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-        with:
-          repository: containerd/containerd
-          ref: "v1.7.27"
-          path: containerd
-          fetch-depth: 1
       - name: "Set up CNI"
-        working-directory: containerd
-        run: GOPATH=$(go env GOPATH) script/setup/install-cni-windows
+        run: GOPATH=$(go env GOPATH) ./hack/provisioning/windows/cni.sh
       # Windows setup script can only use released versions
       - name: "Set up containerd"
         env:
