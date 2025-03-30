@@ -14,7 +14,7 @@ env:
 jobs:
   go:
     timeout-minutes: 5
-    name: "go | ${{ matrix.goos }} | ${{ matrix.canary }}"
+    name: "${{ matrix.goos }} | ${{ matrix.canary }}"
     runs-on: "${{ matrix.os }}"
     defaults:
       run:
@@ -42,7 +42,7 @@ jobs:
       - name: Set GO env
         run: |
           # If canary is specified, get the latest available golang pre-release instead of the major version
-          if [ "$canary" != "" ]; then
+          if [ "${{ matrix.canary }}" != "" ]; then
             . ./hack/build-integration-canary.sh
             canary::golang::latest
           fi
