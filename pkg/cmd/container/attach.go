@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 
+	"golang.org/x/term"
+
 	"github.com/containerd/console"
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/cio"
@@ -93,7 +95,8 @@ func Attach(ctx context.Context, client *containerd.Client, req string, options 
 			return err
 		}
 		defer con.Reset()
-		if err := con.SetRaw(); err != nil {
+
+		if _, err := term.MakeRaw(int(con.Fd())); err != nil {
 			return fmt.Errorf("failed to set the console to raw mode: %w", err)
 		}
 		closer := func() {
