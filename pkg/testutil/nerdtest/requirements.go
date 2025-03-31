@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"gotest.tools/v3/assert"
@@ -414,5 +415,17 @@ var RemapIDs = &test.Requirement{
 			}
 		}
 		return false, "snapshotter does not support ID remapping"
+	},
+}
+
+var ContainerdVersionV2 = &test.Requirement{
+	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+		stdout := helpers.Capture("info", "--format", "{{ json . }}")
+		var dinf dockercompat.Info
+		err := json.Unmarshal([]byte(stdout), &dinf)
+		assert.NilError(helpers.T(), err, "failed to parse docker info")
+		matched, err := regexp.MatchString(`^v2\.\d+`, dinf.ServerVersion)
+		assert.NilError(helpers.T(), err, "failed to regexp match")
+		return matched, "containerd v2 expected"
 	},
 }
