@@ -27,7 +27,6 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/containerinspector"
-	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
@@ -70,18 +69,12 @@ func Inspect(ctx context.Context, client *containerd.Client, options types.Netwo
 		var containers []*native.Container
 
 		for _, container := range filteredContainers {
-			cStatus, err := containerutil.ContainerStatus(ctx, container)
-			if err != nil {
-				continue
-			}
-
-			if cStatus.Status != containerd.Running {
-				continue
-			}
-
 			nativeContainer, err := containerinspector.Inspect(ctx, container)
 			if err != nil {
-				return err
+				continue
+			}
+			if nativeContainer.Process.Status.Status != containerd.Running {
+				continue
 			}
 			containers = append(containers, nativeContainer)
 		}
