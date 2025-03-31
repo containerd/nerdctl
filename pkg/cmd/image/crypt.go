@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/imgcrypt/v2/images/encryption/parsehelpers"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	nerdconverter "github.com/containerd/nerdctl/v2/pkg/imgutil/converter"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
@@ -93,7 +94,7 @@ func Crypt(ctx context.Context, client *containerd.Client, srcRawRef, targetRawR
 	convertOpts = append(convertOpts, converter.WithIndexConvertFunc(convertFunc))
 
 	// converter.Convert() gains the lease by itself
-	newImg, err := converter.Convert(ctx, client, targetRef, srcRef, convertOpts...)
+	newImg, err := nerdconverter.Convert(ctx, client, targetRef, srcRef, convertOpts...)
 	if err != nil {
 		return err
 	}
