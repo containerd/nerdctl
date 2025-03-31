@@ -19,6 +19,7 @@ package container
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -66,9 +67,18 @@ func topAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer cancel()
-	return container.Top(ctx, client, args, types.ContainerTopOptions{
+
+	containerID := args[0]
+	var psArgs string
+	if len(args) > 1 {
+		// Join all remaining arguments as ps args
+		psArgs = strings.Join(args[1:], " ")
+	}
+
+	return container.Top(ctx, client, []string{containerID}, types.ContainerTopOptions{
 		Stdout:   cmd.OutOrStdout(),
 		GOptions: globalOptions,
+		PsArgs:   psArgs,
 	})
 
 }
