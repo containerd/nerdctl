@@ -17,6 +17,8 @@
 package container
 
 import (
+	"errors"
+
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
@@ -40,6 +42,7 @@ func CommitCommand() *cobra.Command {
 	cmd.Flags().StringP("message", "m", "", "Commit message")
 	cmd.Flags().StringArrayP("change", "c", nil, "Apply Dockerfile instruction to the created image (supported directives: [CMD, ENTRYPOINT])")
 	cmd.Flags().BoolP("pause", "p", true, "Pause container during commit")
+	cmd.Flags().StringP("compression", "", "gzip", "commit compression algorithm (zstd or gzip)")
 	return cmd
 }
 
@@ -66,15 +69,22 @@ func commitOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 		return types.ContainerCommitOptions{}, err
 	}
 
+	com, err := cmd.Flags().GetString("compression")
+	if err != nil {
+		return types.ContainerCommitOptions{}, err
+	}
+	if com != string(types.Zstd) && com != string(types.Gzip) {
+		return types.ContainerCommitOptions{}, errors.New("--compression param only supports zstd or gzip")
+	}
 	return types.ContainerCommitOptions{
-		Stdout:   cmd.OutOrStdout(),
-		GOptions: globalOptions,
-		Author:   author,
-		Message:  message,
-		Pause:    pause,
-		Change:   change,
+		Stdout:      cmd.OutOrStdout(),
+		GOptions:    globalOptions,
+		Author:      author,
+		Message:     message,
+		Pause:       pause,
+		Change:      change,
+		Compression: types.CompressionType(com),
 	}, nil
-
 }
 
 func commitAction(cmd *cobra.Command, args []string) error {
@@ -82,7 +92,6 @@ func commitAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err

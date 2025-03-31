@@ -19,10 +19,14 @@ package container
 import (
 	"testing"
 
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -79,6 +83,55 @@ func TestCommit(t *testing.T) {
 					"--pause=false",
 					identifier, identifier)
 				return helpers.Command("run", "--rm", identifier)
+			},
+			Expected: test.Expects(0, nil, expect.Equals("hello-test-commit\n")),
+		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestZstdCommit(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		// FIXME: Docker  does not support compression
+		require.Not(nerdtest.Docker),
+		nerdtest.ContainerdVersion("2.0.0"),
+		nerdtest.CGroup,
+	)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		helpers.Anyhow("rmi", "-f", data.Identifier("image"))
+	}
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		identifier := data.Identifier()
+		helpers.Ensure("run", "-d", "--name", identifier, testutil.CommonImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, identifier)
+		helpers.Ensure("exec", identifier, "sh", "-euxc", `echo hello-test-commit > /foo`)
+		helpers.Ensure("commit", identifier, data.Identifier("image"), "--compression=zstd")
+		data.Labels().Set("image", data.Identifier("image"))
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "verify zstd has been used",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("image", "inspect", "--mode=native", data.Labels().Get("image"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.JSON([]native.Image{}, func(images []native.Image, s string, t tig.T) {
+						assert.Equal(t, len(images), 1)
+						assert.Equal(helpers.T(), images[0].Manifest.Layers[len(images[0].Manifest.Layers)-1].MediaType, "application/vnd.docker.image.rootfs.diff.tar.zstd")
+					}),
+				}
+			},
+		},
+		{
+			Description: "verify the image is working",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", data.Labels().Get("image"), "sh", "-c", "--", "cat /foo")
 			},
 			Expected: test.Expects(0, nil, expect.Equals("hello-test-commit\n")),
 		},
