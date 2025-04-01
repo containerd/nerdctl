@@ -35,7 +35,7 @@ func TestRunStargz(t *testing.T) {
 		require.Not(nerdtest.Docker),
 	)
 
-	testCase.Command = test.Command("--snapshotter=stargz", "run", "--rm", testutil.FedoraESGZImage, "ls", "/.stargz-snapshotter")
+	testCase.Command = test.Command("--snapshotter=stargz", "run", "--quiet", "--rm", testutil.FedoraESGZImage, "ls", "/.stargz-snapshotter")
 
 	testCase.Expected = test.Expects(0, nil, nil)
 
