@@ -28,7 +28,6 @@ package container
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	containerd "github.com/containerd/containerd/v2/client"
 
@@ -60,7 +59,7 @@ func Top(ctx context.Context, client *containerd.Client, containers []string, op
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			return containerTop(ctx, opt.Stdout, client, found.Container.ID(), strings.Join(containers[1:], " "))
+			return containerTop(ctx, opt.Stdout, client, found.Container.ID(), opt.PsArgs)
 		},
 	}
 
