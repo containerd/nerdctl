@@ -364,6 +364,18 @@ func TestRunTTY(t *testing.T) {
 			},
 			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 		},
+		{
+			Description: "stty with -td",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("run", "-td", data.Identifier(), "stty")
+				cmd.WithPseudoTTY()
+				return cmd
+			},
+			Expected: test.Expects(0, nil, nil),
+		},
 	}
 }
 
