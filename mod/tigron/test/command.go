@@ -234,7 +234,7 @@ func (gc *GenericCommand) Run(expect *Expected) {
 
 		// Range through the expected errors and confirm they are seen on stderr
 		for _, expectErr := range expect.Errors {
-			assertive.StringContains(gc.t, result.Stderr, expectErr.Error(),
+			assertive.Contains(gc.t, result.Stderr, expectErr.Error(),
 				fmt.Sprintf("Expected error: %q to be found in stderr\n", expectErr.Error()), debug)
 		}
 
