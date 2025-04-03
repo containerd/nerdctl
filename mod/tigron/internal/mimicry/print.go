@@ -40,7 +40,7 @@ func PrintCall(call *Call) string {
 	}
 
 	output := []string{
-		formatter.Table(debug),
+		formatter.Table(debug, "-"),
 		sectionSeparator,
 	}
 

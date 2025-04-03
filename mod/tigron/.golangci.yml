@@ -46,6 +46,7 @@ linters:
     - gomodguard      # we use depguard instead
     - ireturn         # too annoying with not enough value
     - lll             # provided by golines
+    - nestif          # already provided ten different ways with revive cognitive complexity, etc
     - nonamedreturns  # named returns are occasionally useful
     - prealloc        # premature optimization
     - promlinter      # no prometheus
@@ -64,7 +65,7 @@ linters:
           arguments: [60]
         - name: function-length
           # Default is 50, 75
-          arguments: [80, 160]
+          arguments: [80, 180]
         - name: cyclomatic
           # Default is 10
           arguments: [30]

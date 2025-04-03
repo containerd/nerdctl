@@ -14,12 +14,11 @@
    limitations under the License.
 */
 
-//nolint:revive
+//revive:disable:exported,package-comments,add-constant // TODO.
 package test
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -29,9 +28,14 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/internal"
 	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
 	"github.com/containerd/nerdctl/mod/tigron/internal/com"
+	"github.com/containerd/nerdctl/mod/tigron/internal/formatter"
 )
 
-const defaultExecutionTimeout = 3 * time.Minute
+const (
+	defaultExecutionTimeout = 3 * time.Minute
+	alertDecorator          = "🤦🏾"
+	annotationDecorator     = "🖊️"
+)
 
 // CustomizableCommand is an interface meant for people who want to heavily customize the base
 // command of their test case.
@@ -95,6 +99,7 @@ type GenericCommand struct {
 	async bool
 
 	rawStdErr string
+	fullDebug bool
 }
 
 func (gc *GenericCommand) WithBinary(binary string) {
@@ -150,49 +155,62 @@ func (gc *GenericCommand) Signal(sig os.Signal) error {
 }
 
 func (gc *GenericCommand) Run(expect *Expected) {
-	if gc.t != nil {
-		gc.t.Helper()
-	}
+	gc.t.Helper()
+
+	var debug [][]any
 
 	if !gc.async {
 		_ = gc.cmd.Run(context.WithValue(context.Background(), com.LoggerKey, gc.t))
 	}
 
 	result, err := gc.cmd.Wait()
+	if err != nil {
+		debug = append(debug, []any{"Err", err.Error()})
+	}
+
+	debug = append(debug,
+		[]any{"Command", gc.cmd.Binary + " " + strings.Join(gc.cmd.Args, " ")},
+	)
+
 	if result != nil {
 		gc.rawStdErr = result.Stderr
+
+		if result.ExitCode != 0 {
+			debug = append(debug, []any{"Exit", result.ExitCode})
+		}
+
+		if result.Stdout != "" {
+			debug = append(debug, []any{"Stdout", result.Stdout})
+		}
+
+		if result.Stderr != "" {
+			debug = append(debug, []any{"Stderr", result.Stderr})
+		}
+
+		if result.Signal != nil {
+			debug = append(debug, []any{"Signal", result.Signal.String()})
+		}
+
+		if gc.fullDebug {
+			debug = append(debug,
+				[]any{"Environ", strings.Join(result.Environ, "\n")},
+			)
+		}
 	}
+
+	// FIXME: wire this so that we can get the environ display back in
+	if gc.fullDebug {
+		debug = append(debug,
+			[]any{"Dir", gc.cmd.WorkingDir},
+			[]any{"Limit", gc.cmd.Timeout},
+		)
+	}
+
+	gc.t.Log("\n\n" + formatter.Table(debug, "-") + "\n")
 
 	// Check our expectations, if any
 	if expect != nil {
-		// Build the debug string
-		separator := "================================="
-		debugCommand := gc.cmd.Binary + " " + strings.Join(gc.cmd.Args, " ")
-		debugTimeout := gc.cmd.Timeout
-		debugWD := gc.cmd.WorkingDir
-
-		// FIXME: this is ugly af. Do better.
-		debug := fmt.Sprintf(
-			"\n%s\n| Command:\t%s\n| Working Dir:\t%s\n| Timeout:\t%s\n%s\n"+
-				"%s\n%s\n| Stderr:\n%s\n%s\n%s\n| Stdout:\n%s\n%s\n%s\n| Exit Code: %d\n| Signaled: %v\n| Err: %v\n%s",
-			separator,
-			debugCommand,
-			debugWD,
-			debugTimeout,
-			separator,
-			"\t"+strings.Join(result.Environ, "\n\t"),
-			separator,
-			separator,
-			result.Stderr,
-			separator,
-			separator,
-			result.Stdout,
-			separator,
-			result.ExitCode,
-			result.Signal,
-			err,
-			separator,
-		)
+		assertT := assertive.WithSilentSuccess(gc.t)
 
 		// ExitCode goes first
 		switch expect.ExitCode {
@@ -202,11 +220,10 @@ func (gc *GenericCommand) Run(expect *Expected) {
 			// ExitCodeGenericFail means we expect an error (excluding timeout, cancellation,
 			// signalling).
 			assertive.ErrorIs(
-				gc.t,
+				assertT,
 				err,
 				com.ErrExecutionFailed,
 				"Command should have failed",
-				debug,
 			)
 		case internal.ExitCodeTimeout:
 			assertive.ErrorIs(
@@ -214,7 +231,6 @@ func (gc *GenericCommand) Run(expect *Expected) {
 				err,
 				com.ErrTimeout,
 				"Command should have timed out",
-				debug,
 			)
 		case internal.ExitCodeSignaled:
 			assertive.ErrorIs(
@@ -222,24 +238,49 @@ func (gc *GenericCommand) Run(expect *Expected) {
 				err,
 				com.ErrSignaled,
 				"Command should have been signaled",
-				debug,
 			)
 		case internal.ExitCodeSuccess:
-			assertive.ErrorIsNil(gc.t, err, "Command should have succeeded", debug)
+			assertive.ErrorIsNil(
+				assertT,
+				err,
+				"Command should have succeeded",
+			)
 		default:
-			assertive.IsEqual(gc.t, expect.ExitCode, result.ExitCode,
-				fmt.Sprintf("Expected exit code: %d\n", expect.ExitCode), debug)
+			exc := -1
+			if result != nil {
+				exc = result.ExitCode
+			}
+
+			assertive.IsEqual(
+				assertT,
+				expect.ExitCode,
+				exc,
+				"Command exit code is unexpected",
+			)
 		}
+
+		// Switch to fail later mode so that we get ALL subsequent asserts failures from there on.
+		// Also does allow using assert(ive) in go routines.
+		assertT = assertive.WithFailLater(gc.t)
 
 		// Range through the expected errors and confirm they are seen on stderr
 		for _, expectErr := range expect.Errors {
-			assertive.Contains(gc.t, result.Stderr, expectErr.Error(),
-				fmt.Sprintf("Expected error: %q to be found in stderr\n", expectErr.Error()), debug)
+			assertive.Contains(
+				assertT,
+				result.Stderr,
+				expectErr.Error(),
+				"Stderr to contain expected error",
+			)
 		}
 
 		// Finally, check the output if we are asked to
+		// FIXME: we cannot pass on assertT further for now until we move to tig.T
 		if expect.Output != nil {
-			expect.Output(result.Stdout, debug, gc.t)
+			expect.Output(
+				result.Stdout,
+				"",
+				gc.t,
+			)
 		}
 	}
 }

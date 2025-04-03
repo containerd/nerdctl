@@ -137,8 +137,7 @@ func (mi *Core) Register(fun, handler any) {
 
 func getFunID(fun any) string {
 	// The point of keeping only the func name is to avoid type mismatch dependent on what interface
-	// is used by the
-	// consumer.
+	// is used by the consumer.
 	origin := runtime.FuncForPC(reflect.ValueOf(fun).Pointer()).Name()
 	seg := strings.Split(origin, ".")
 	origin = seg[len(seg)-1]

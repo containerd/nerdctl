@@ -64,32 +64,26 @@ func chunk(s string, length int) []string {
 // Maybe the csv writer could be cheat-used to get the right widths.
 //
 //nolint:mnd // Too annoying
-func Table(data [][]any) string {
+func Table(data [][]any, mark string) string {
 	var output string
 
 	for _, row := range data {
 		key := fmt.Sprintf("%v", row[0])
 		value := strings.ReplaceAll(fmt.Sprintf("%v", row[1]), "\t", "  ")
 
-		output += fmt.Sprintf("+%s+\n", strings.Repeat("-", maxLineLength-2))
+		output += fmt.Sprintf("+%s+\n", strings.Repeat(mark, maxLineLength-2))
 
 		if utf8.RuneCountInString(key) > kMaxLength {
 			key = string([]rune(key)[:kMaxLength-3]) + "..."
 		}
 
 		for _, line := range chunk(value, maxLineLength-kMaxLength-7) {
-			output += fmt.Sprintf(
-				"| %-*s | %-*s |\n",
-				kMaxLength,
-				key,
-				maxLineLength-kMaxLength-7,
-				line,
-			)
+			output += fmt.Sprintf("| %-*s | %-*s |\n", kMaxLength, key, maxLineLength-kMaxLength-7, line)
 			key = ""
 		}
 	}
 
-	output += fmt.Sprintf("+%s+", strings.Repeat("-", maxLineLength-2))
+	output += fmt.Sprintf("+%s+", strings.Repeat(mark, maxLineLength-2))
 
 	return output
 }

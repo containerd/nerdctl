@@ -372,7 +372,9 @@ func TestTimeoutDelayed(t *testing.T) {
 	assertive.ErrorIsNil(t, err, "Err")
 
 	start := time.Now()
+
 	time.Sleep(2 * time.Second)
+
 	res, err := command.Wait()
 	end := time.Now()
 
