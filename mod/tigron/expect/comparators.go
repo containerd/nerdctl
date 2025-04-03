@@ -19,11 +19,13 @@
 package expect
 
 import (
+	"encoding/json"
 	"regexp"
 	"testing"
 
 	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
 // All can be used as a parameter for expected.Output to group a set of comparators.
@@ -67,5 +69,20 @@ func Match(reg *regexp.Regexp) test.Comparator {
 	return func(stdout, info string, t *testing.T) {
 		t.Helper()
 		assertive.Match(assertive.WithFailLater(t), stdout, reg, info)
+	}
+}
+
+// JSON allows to verify that the output can be marshalled into T, and optionally can be further verified by a provided
+// method.
+func JSON[T any](obj T, verifier func(T, string, tig.T)) test.Comparator {
+	return func(stdout, info string, t *testing.T) {
+		t.Helper()
+
+		err := json.Unmarshal([]byte(stdout), &obj)
+		assertive.ErrorIsNil(assertive.WithFailLater(t), err, "failed to unmarshal JSON from stdout")
+
+		if verifier != nil && err == nil {
+			verifier(obj, info, t)
+		}
 	}
 }
