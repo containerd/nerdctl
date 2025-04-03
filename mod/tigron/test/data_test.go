@@ -56,10 +56,10 @@ func TestDataIdentifier(t *testing.T) {
 	two := dataObj.Identifier()
 
 	assertive.IsEqual(t, one, two)
-	assertive.StringHasPrefix(t, one, "testdataidentifier")
+	assertive.HasPrefix(t, one, "testdataidentifier")
 
 	three := dataObj.Identifier("Some Add ∞ Funky∞Prefix")
-	assertive.StringHasPrefix(t, three, "testdataidentifier-some-add-funky-prefix")
+	assertive.HasPrefix(t, three, "testdataidentifier-some-add-funky-prefix")
 }
 
 func TestDataIdentifierThatIsReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyLong(
@@ -73,7 +73,7 @@ func TestDataIdentifierThatIsReallyReallyReallyReallyReallyReallyReallyReallyRea
 	two := dataObj.Identifier()
 
 	assertive.IsEqual(t, one, two)
-	assertive.StringHasPrefix(t, one, "testdataidentifier")
+	assertive.HasPrefix(t, one, "testdataidentifier")
 	assertive.IsEqual(t, len(one), identifierMaxLength)
 
 	three := dataObj.Identifier("Add something")
