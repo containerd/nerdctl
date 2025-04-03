@@ -137,7 +137,7 @@ func TestVolumeInspect(t *testing.T) {
 				return &test.Expected{
 					Output: expect.All(
 						expect.Contains(data.Get("vol1")),
-						expect.JSON([]native.Volume{}, func(dc []native.Volume, info string, t tig.T) {
+						expect.JSON([]*native.Volume{}, func(dc []*native.Volume, info string, t tig.T) {
 							assert.Assert(t, dc[0].Size == size, fmt.Sprintf("expected size to be %d (was %d)", size, dc[0].Size))
 						}),
 					),
