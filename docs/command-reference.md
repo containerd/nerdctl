@@ -203,6 +203,8 @@ Resource flags:
 - :whale: `--cpu-shares`: CPU shares (relative weight)
 - :whale: `--cpuset-cpus`: CPUs in which to allow execution (0-3, 0,1)
 - :whale: `--cpuset-mems`: Memory nodes (MEMs) in which to allow execution (0-3, 0,1). Only effective on NUMA systems
+- :whale: `--cpu-rt-period`: Limit CPU real-time period in microseconds. Only supported with cgroup v1.
+- :whale: `--cpu-rt-runtime`: Limit CPU real-time runtime in microseconds. Only supported with cgroup v1.
 - :whale: `--memory`: Memory limit
 - :whale: `--memory-reservation`: Memory soft limit
 - :whale: `--memory-swap`: Swap limit equal to memory plus swap: '-1' to enable unlimited swap
@@ -419,10 +421,8 @@ IPFS flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker run` flags:
-    `--cpu-rt-*`, `--device-cgroup-rule`,
-    `--disable-content-trust`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
-    `--link*`, `--publish-all`, `--storage-opt`,
-    `--userns`, `--volume-driver`
+    `--device-cgroup-rule`, `--disable-content-trust`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
+    `--link*`, `--publish-all`, `--storage-opt`, `--userns`, `--volume-driver`
 
 ### :whale: :blue_square: nerdctl exec
 
