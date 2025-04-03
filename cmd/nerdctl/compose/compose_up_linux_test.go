@@ -19,6 +19,7 @@ package compose
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -499,6 +500,12 @@ func TestComposeUpProfile(t *testing.T) {
 	serviceRegular := testutil.Identifier(t) + "-regular"
 	serviceProfiled := testutil.Identifier(t) + "-profiled"
 
+	// write the env.common file to tmpdir
+	tmpDir := t.TempDir()
+	envFilePath := fmt.Sprintf("%s/env.common", tmpDir)
+	err := os.WriteFile(envFilePath, []byte("TEST_ENV_INJECTION=WORKS\n"), 0644)
+	assert.NilError(t, err)
+
 	dockerComposeYAML := fmt.Sprintf(`
 services:
   %s:
@@ -508,7 +515,9 @@ services:
     image: %[3]s
     profiles:
       - test-profile
-`, serviceRegular, serviceProfiled, testutil.NginxAlpineImage)
+    env_file:
+      - %[4]s
+`, serviceRegular, serviceProfiled, testutil.NginxAlpineImage, envFilePath)
 
 	// * Test with profile
 	//   Should run both the services:
@@ -521,6 +530,10 @@ services:
 	psCmd := base.Cmd("ps", "-a", "--format={{.Names}}")
 	psCmd.AssertOutContains(serviceRegular)
 	psCmd.AssertOutContains(serviceProfiled)
+
+	execCmd := base.ComposeCmd("-f", comp1.YAMLFullPath(), "exec", serviceProfiled, "env")
+	execCmd.AssertOutContains("TEST_ENV_INJECTION=WORKS")
+
 	base.ComposeCmd("-f", comp1.YAMLFullPath(), "--profile", "test-profile", "down", "-v").AssertOK()
 
 	// * Test without profile

@@ -84,6 +84,7 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 		composecli.WithEnvFiles(),
 		composecli.WithDotEnv,
 		composecli.WithName(o.Project),
+		composecli.WithProfiles(o.Profiles),
 	)
 
 	projectOptions, err := composecli.NewProjectOptions(o.ConfigPaths, optionsFn...)
@@ -91,19 +92,6 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 		return nil, err
 	}
 	project, err := projectOptions.LoadProject(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-
-	if len(o.Services) > 0 {
-		s, err := project.GetServices(o.Services...)
-		if err != nil {
-			return nil, err
-		}
-		o.Profiles = append(o.Profiles, s.GetProfiles()...)
-	}
-
-	project, err = project.WithProfiles(o.Profiles)
 	if err != nil {
 		return nil, err
 	}
