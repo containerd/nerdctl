@@ -38,7 +38,7 @@ const defaultExecutionTimeout = 3 * time.Minute
 // FIXME: now that most of the logic got moved to the internal command, consider simplifying this /
 // removing some of the extra layers from here
 //
-//nolint:interfacebloat
+
 type CustomizableCommand interface {
 	TestableCommand
 

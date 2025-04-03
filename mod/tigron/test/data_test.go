@@ -15,6 +15,7 @@
 */
 
 //nolint:testpackage
+//revive:disable:add-constant
 package test
 
 import (

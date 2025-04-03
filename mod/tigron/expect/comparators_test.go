@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+//revive:disable:add-constant
 package expect_test
 
 import (
