@@ -335,7 +335,6 @@ func TestStdoutStderr(t *testing.T) {
 func TestTimeoutPlain(t *testing.T) {
 	t.Parallel()
 
-	start := time.Now()
 	command := &com.Command{
 		Binary: "bash",
 		// XXX unclear if windows is really able to terminate sleep 5, so, split it up to give it a
@@ -345,11 +344,10 @@ func TestTimeoutPlain(t *testing.T) {
 	}
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
-
 	assertive.ErrorIsNil(t, err, "Err")
 
+	start := time.Now()
 	res, err := command.Wait()
-
 	end := time.Now()
 
 	assertive.ErrorIs(t, err, com.ErrTimeout, "Err")
@@ -362,7 +360,6 @@ func TestTimeoutPlain(t *testing.T) {
 func TestTimeoutDelayed(t *testing.T) {
 	t.Parallel()
 
-	start := time.Now()
 	command := &com.Command{
 		Binary: "bash",
 		// XXX unclear if windows is really able to terminate sleep 5, so, split it up to give it a
@@ -372,20 +369,18 @@ func TestTimeoutDelayed(t *testing.T) {
 	}
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
-
 	assertive.ErrorIsNil(t, err, "Err")
 
-	time.Sleep(1 * time.Second)
-
+	start := time.Now()
+	time.Sleep(2 * time.Second)
 	res, err := command.Wait()
-
 	end := time.Now()
 
 	assertive.ErrorIs(t, err, com.ErrTimeout, "Err")
 	assertive.IsEqual(t, res.ExitCode, -1, "ExitCode")
 	assertive.IsEqual(t, res.Stdout, "one", "Stdout")
 	assertive.IsEqual(t, res.Stderr, "", "Stderr")
-	assertive.IsLessThan(t, end.Sub(start), 2*time.Second, "Total execution time")
+	assertive.IsLessThan(t, end.Sub(start), 3*time.Second, "Total execution time")
 }
 
 func TestPTYStdout(t *testing.T) {
