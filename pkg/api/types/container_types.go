@@ -114,6 +114,10 @@ type ContainerCreateOptions struct {
 	CPUSetCPUs string
 	// CPUSetMems specifies the memory nodes (MEMs) in which to allow execution (0-3, 0,1). Only effective on NUMA systems.
 	CPUSetMems string
+	// Limit CPU real-time period in microseconds
+	CPURealtimePeriod uint64
+	// Limit CPU real-time runtime in microseconds
+	CPURealtimeRuntime uint64
 	// Memory specifies the memory limit
 	Memory string
 	// MemoryReservationChanged specifies whether the memory soft limit has been changed
