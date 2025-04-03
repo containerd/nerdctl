@@ -13,11 +13,23 @@ issues:
 linters:
   default: all
   disable:
-    - cyclop
-    - exhaustruct
-    - funlen
-    - godox
-    - nonamedreturns
+    # These are the linters that we know we do not want
+    - cyclop          # provided by revive
+    - exhaustruct     # does not serve much of a purpose
+    - funlen          # provided by revive
+    - gocognit        # provided by revive
+    - goconst         # provided by revive
+    - godox           # not helpful unless we could downgrade it to warning / info
+    - ginkgolinter    # no ginkgo
+    - gomodguard      # we use depguard instead
+    - ireturn         # too annoying with not enough value
+    - lll             # provided by golines
+    - nonamedreturns  # named returns are occasionally useful
+    - prealloc        # premature optimization
+    - promlinter      # no prometheus
+    - sloglint        # no slog
+    - testifylint     # no testify
+    - zerologlint     # no zerolog
   settings:
     depguard:
       rules:
@@ -51,7 +63,7 @@ formatters:
     gofumpt:
       extra-rules: true
     golines:
-      max-len: 100
+      max-len: 120
       tab-len: 4
       shorten-comments: true
   enable:
