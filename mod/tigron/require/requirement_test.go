@@ -57,7 +57,7 @@ func TestRequire(t *testing.T) {
 		pass, _ = require.Arch(runtime.GOARCH).Check(nil, nil)
 	}
 
-	assertive.IsEqual(t, pass, true)
+	assertive.IsEqual(t, pass, true, "Require works as expected")
 }
 
 func TestNot(t *testing.T) {
@@ -76,7 +76,7 @@ func TestNot(t *testing.T) {
 		pass, _ = require.Not(require.Linux).Check(nil, nil)
 	}
 
-	assertive.IsEqual(t, pass, true)
+	assertive.IsEqual(t, pass, true, "require.Not works as expected")
 }
 
 func TestAllSuccess(t *testing.T) {
@@ -99,7 +99,7 @@ func TestAllSuccess(t *testing.T) {
 			require.Not(require.Darwin)).Check(nil, nil)
 	}
 
-	assertive.IsEqual(t, pass, true)
+	assertive.IsEqual(t, pass, true, "require.All works as expected")
 }
 
 func TestAllOneFail(t *testing.T) {
@@ -122,5 +122,5 @@ func TestAllOneFail(t *testing.T) {
 			require.Not(require.Darwin)).Check(nil, nil)
 	}
 
-	assertive.IsEqual(t, pass, true)
+	assertive.IsEqual(t, pass, true, "mixing require.All and require.Not works as expected")
 }

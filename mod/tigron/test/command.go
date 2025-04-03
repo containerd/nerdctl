@@ -71,7 +71,6 @@ type CustomizableCommand interface {
 	read(key ConfigKey) ConfigValue
 }
 
-//nolint:ireturn
 func NewGenericCommand() CustomizableCommand {
 	genericCom := &GenericCommand{
 		Env: map[string]string{},
@@ -263,7 +262,6 @@ func (gc *GenericCommand) withConfig(config Config) {
 	gc.Config = config
 }
 
-//nolint:ireturn
 func (gc *GenericCommand) Clone() TestableCommand {
 	// Copy the command and return a new one - with almost everything from the parent command
 	clone := *gc
@@ -287,7 +285,6 @@ func (gc *GenericCommand) T() *testing.T {
 	return gc.t
 }
 
-//nolint:ireturn
 func (gc *GenericCommand) clear() TestableCommand {
 	comcopy := *gc
 	// Reset internal command

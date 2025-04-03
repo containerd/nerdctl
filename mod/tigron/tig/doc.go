@@ -15,7 +15,6 @@
 */
 
 // Package tig defines interfaces for third-party packages that tigron needs to interact with.
-// The main upside of expressing our expectations instead of depending directly on concrete
-// implementations is evidently
+// The main upside of expressing our expectations instead of depending directly on concrete implementations is evidently
 // the ability to mock easily, which in turn makes testing much easier.
 package tig
