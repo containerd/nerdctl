@@ -14,16 +14,25 @@
    limitations under the License.
 */
 
-package main
+package infoutil
 
 import (
-	"github.com/spf13/cobra"
+	"github.com/docker/docker/pkg/sysinfo"
+
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 )
 
-func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
-	return false
+const UnameO = "Darwin"
+
+func CgroupsVersion() string {
+	return ""
 }
 
-func addApparmorCommand(rootCmd *cobra.Command) {
-	// NOP
+func fulfillPlatformInfo(info *dockercompat.Info) {
+	// unimplemented
+}
+
+func mobySysInfo(info *dockercompat.Info) *sysinfo.SysInfo {
+	var sysinfo sysinfo.SysInfo
+	return &sysinfo
 }

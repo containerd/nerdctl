@@ -1,3 +1,5 @@
+//go:build unix && !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,13 +16,16 @@
    limitations under the License.
 */
 
-package container
+package containerinspector
 
 import (
-	"github.com/opencontainers/runtime-spec/specs-go"
+	"context"
+
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 )
 
-func setExecCapabilities(pspec *specs.Process) error {
-	//no op windows
-	return nil
+func InspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
+	r := &native.NetNS{}
+
+	return r, nil
 }
