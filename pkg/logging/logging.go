@@ -164,7 +164,7 @@ func WaitForLogger(dataStore, ns, id string) error {
 }
 
 func getContainerWait(ctx context.Context, address string, config *logging.Config) (<-chan containerd.ExitStatus, error) {
-	client, err := containerd.New(address, containerd.WithDefaultNamespace(config.Namespace))
+	client, err := containerd.New(strings.TrimPrefix(address, "unix://"), containerd.WithDefaultNamespace(config.Namespace))
 	if err != nil {
 		return nil, err
 	}
