@@ -21,7 +21,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"gotest.tools/v3/assert"
 
@@ -78,7 +77,10 @@ func newNerdCommand(conf test.Config, t *testing.T) *nerdCommand {
 	}
 
 	// Create the base command, with the right binary, t
-	ret := &nerdCommand{}
+	ret := &nerdCommand{
+		GenericCommand: *(test.NewGenericCommand().(*test.GenericCommand)),
+	}
+
 	ret.WithBinary(binary)
 	// Not interested in these - and insulate us from parent environment side effects
 	ret.WithBlacklist([]string{
@@ -103,6 +105,7 @@ type nerdCommand struct {
 }
 
 func (nc *nerdCommand) Run(expect *test.Expected) {
+	nc.T().Helper()
 	nc.prep()
 	if getTarget() == targetDocker {
 		// We are not in the business of testing docker *error* output, so, spay expectation here
@@ -113,9 +116,9 @@ func (nc *nerdCommand) Run(expect *test.Expected) {
 	nc.GenericCommand.Run(expect)
 }
 
-func (nc *nerdCommand) Background(timeout time.Duration) {
+func (nc *nerdCommand) Background() {
 	nc.prep()
-	nc.GenericCommand.Background(timeout)
+	nc.GenericCommand.Background()
 }
 
 // Run does override the generic command run, as we are testing both docker and nerdctl
