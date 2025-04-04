@@ -14,7 +14,8 @@
    limitations under the License.
 */
 
-//nolint:testpackage
+//revive:disable:add-constant
+//nolint:testpackage // We need to test some internals here
 package test
 
 import (
@@ -46,8 +47,11 @@ func TestConfig(t *testing.T) {
 	cfg2 := WithConfig("test", "two")
 	cfg2.Write("adopt", "two")
 
-	//nolint:forcetypeassert
-	cfg.(*config).adopt(cfg2)
+	cnf, ok := cfg.(*config)
+
+	assertive.True(t, ok)
+
+	cnf.adopt(cfg2)
 
 	assertive.IsEqual(t, string(cfg.Read("test")), "one")
 	assertive.IsEqual(t, string(cfg.Read("adopt")), "two")

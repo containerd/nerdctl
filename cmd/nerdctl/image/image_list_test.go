@@ -270,13 +270,13 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				Description: "since=non-exists-image",
 				Require:     nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3511"),
 				Command:     test.Command("images", "--filter", "since=non-exists-image"),
-				Expected:    test.Expects(-1, []error{errors.New("No such image: ")}, nil),
+				Expected:    test.Expects(expect.ExitCodeGenericFail, []error{errors.New("No such image: ")}, nil),
 			},
 			{
 				Description: "before=non-exists-image",
 				Require:     nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3511"),
 				Command:     test.Command("images", "--filter", "before=non-exists-image"),
-				Expected:    test.Expects(-1, []error{errors.New("No such image: ")}, nil),
+				Expected:    test.Expects(expect.ExitCodeGenericFail, []error{errors.New("No such image: ")}, nil),
 			},
 		},
 	}
