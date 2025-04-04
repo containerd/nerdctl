@@ -14,16 +14,19 @@
    limitations under the License.
 */
 
-// Package internal provides an assert library, pty, a command wrapper, and a leak detection library
-// for internal use in Tigron.
-// The objective for these is not to become generic use-cases libraries, but instead to deliver what
-// Tigron needs in the simplest possible form.
-package internal
+package formatter
 
-// This is duplicated form `expect` to avoid circular imports.
-const (
-	ExitCodeSuccess     = 0
-	ExitCodeGenericFail = -1
-	ExitCodeNoCheck     = -2
-	ExitCodeTimeout     = -3
-)
+import "fmt"
+
+// OSC8 hyperlinks implementation.
+type OSC8 struct {
+	Location string `json:"location"`
+	Line     int    `json:"line"`
+	Text     string `json:"text"`
+}
+
+func (o *OSC8) String() string {
+	// FIXME: not sure if any desktop software does support line numbers anchors?
+	// FIXME: test that the terminal is able to display these and fallback to printing the information if not.
+	return fmt.Sprintf("\x1b]8;;%s#%d:1\x07%s\x1b]8;;\x07"+"\u001b[0m", o.Location, o.Line, o.Text)
+}

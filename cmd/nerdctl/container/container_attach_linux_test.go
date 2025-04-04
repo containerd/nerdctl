@@ -17,8 +17,9 @@
 package container
 
 import (
+	"bytes"
 	"errors"
-	"os"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -56,11 +57,9 @@ func TestAttach(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		cmd := helpers.Command("run", "--rm", "-it", "--name", data.Identifier(), testutil.CommonImage)
-		cmd.WithPseudoTTY(func(f *os.File) error {
-			// ctrl+p and ctrl+q (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
-			_, err := f.Write([]byte{16, 17})
-			return err
-		})
+		cmd.WithPseudoTTY()
+		// ctrl+p and ctrl+q (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
+		cmd.Feed(bytes.NewReader([]byte{16, 17}))
 
 		cmd.Run(&test.Expected{
 			ExitCode: 0,
@@ -74,15 +73,15 @@ func TestAttach(t *testing.T) {
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		// Run interactively and detach
 		cmd := helpers.Command("attach", data.Identifier())
-		cmd.WithPseudoTTY(func(f *os.File) error {
-			_, _ = f.WriteString("echo mark${NON}mark\n")
+
+		cmd.WithPseudoTTY()
+		cmd.Feed(strings.NewReader("echo mark${NON}mark\n"))
+		cmd.WithFeeder(func() io.Reader {
 			// Interestingly, and unlike with run, on attach, docker (like nerdctl) ALSO needs a pause so that the
 			// container can read stdin before we detach
 			time.Sleep(time.Second)
 			// ctrl+p and ctrl+q (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
-			_, err := f.Write([]byte{16, 17})
-
-			return err
+			return bytes.NewReader([]byte{16, 17})
 		})
 
 		return cmd
@@ -120,10 +119,8 @@ func TestAttachDetachKeys(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		cmd := helpers.Command("run", "--rm", "-it", "--detach-keys=ctrl-q", "--name", data.Identifier(), testutil.CommonImage)
-		cmd.WithPseudoTTY(func(f *os.File) error {
-			_, err := f.Write([]byte{17})
-			return err
-		})
+		cmd.WithPseudoTTY()
+		cmd.Feed(bytes.NewReader([]byte{17}))
 
 		cmd.Run(&test.Expected{
 			ExitCode: 0,
@@ -137,15 +134,14 @@ func TestAttachDetachKeys(t *testing.T) {
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		// Run interactively and detach
 		cmd := helpers.Command("attach", "--detach-keys=ctrl-a,ctrl-b", data.Identifier())
-		cmd.WithPseudoTTY(func(f *os.File) error {
-			_, _ = f.WriteString("echo mark${NON}mark\n")
+		cmd.WithPseudoTTY()
+		cmd.Feed(strings.NewReader("echo mark${NON}mark\n"))
+		cmd.WithFeeder(func() io.Reader {
 			// Interestingly, and unlike with run, on attach, docker (like nerdctl) ALSO needs a pause so that the
 			// container can read stdin before we detach
 			time.Sleep(time.Second)
-			// ctrl+a and ctrl+b (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
-			_, err := f.Write([]byte{1, 2})
-
-			return err
+			// ctrl+p and ctrl+q (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
+			return bytes.NewReader([]byte{1, 2})
 		})
 
 		return cmd
@@ -179,11 +175,9 @@ func TestAttachForAutoRemovedContainer(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		cmd := helpers.Command("run", "--rm", "-it", "--detach-keys=ctrl-a,ctrl-b", "--name", data.Identifier(), testutil.CommonImage)
-		cmd.WithPseudoTTY(func(f *os.File) error {
-			// ctrl+a and ctrl+b (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
-			_, err := f.Write([]byte{1, 2})
-			return err
-		})
+		cmd.WithPseudoTTY()
+		// ctrl+a and ctrl+b (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
+		cmd.Feed(bytes.NewReader([]byte{1, 2}))
 
 		cmd.Run(&test.Expected{
 			ExitCode: 0,
@@ -197,10 +191,8 @@ func TestAttachForAutoRemovedContainer(t *testing.T) {
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		// Run interactively and detach
 		cmd := helpers.Command("attach", data.Identifier())
-		cmd.WithPseudoTTY(func(f *os.File) error {
-			_, err := f.WriteString("echo mark${NON}mark\nexit 42\n")
-			return err
-		})
+		cmd.WithPseudoTTY()
+		cmd.Feed(strings.NewReader("echo mark${NON}mark\nexit 42\n"))
 
 		return cmd
 	}

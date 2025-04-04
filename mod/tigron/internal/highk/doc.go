@@ -14,8 +14,8 @@
    limitations under the License.
 */
 
-// Package highk (for "high-κ dielectric") is a highly experimental leak detection library
-// (for file descriptors and go routines).
+// Package highk (for "high-κ dielectric") is a highly experimental leak detection library (for file descriptors and go
+// routines).
 // It is purely internal for now and used only as part of the tests for tigron.
 // TODO:
 // - get rid of lsof and implement in go

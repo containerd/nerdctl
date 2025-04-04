@@ -61,7 +61,7 @@ func TestTest(t *testing.T) {
 		{
 			Description: "failure with multiple error testing",
 			Command:     test.Command("-fail"),
-			Expected:    test.Expects(-1, []error{errors.New("unknown"), errors.New("shorthand")}, nil),
+			Expected:    test.Expects(expect.ExitCodeGenericFail, []error{errors.New("unknown"), errors.New("shorthand")}, nil),
 		},
 		{
 			Description: "success with exact output testing",
