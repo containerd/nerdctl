@@ -26,20 +26,20 @@ import (
 	"syscall"
 )
 
-// FIXME: it seems that lsof (or go test) is interefering and showing false positive KQUEUE / inodes
+// FIXME: it seems that lsof (or go test) is interfering and showing false positive KQUEUE / inodes
 //
-//nolint:gochecknoglobals
+//nolint:gochecknoglobals // FIXME rewrite all of this anyhow
 var whitelist = map[string]bool{
-	"5u  KQUEUE":   true,
-	"10u  a_inode": true,
+	"KQUEUE":  true,
+	"a_inode": true,
 }
 
 // SnapshotOpenFiles will capture the list of currently open-files for the process.
 //
-//nolint:wrapcheck
+//nolint:wrapcheck // FIXME: work in progress
 func SnapshotOpenFiles(file *os.File) ([]byte, error) {
-	// Using a buffer would add a pipe to the list of files
-	// Reimplement this stuff in go ASAP and toss lsof instead of passing around fd
+	// Using a buffer would add a pipe to the list of files.
+	// Reimplement this stuff in go ASAP and toss lsof instead of passing around fd.
 	_, _ = file.Seek(0, 0)
 	_ = file.Truncate(0)
 
@@ -48,7 +48,7 @@ func SnapshotOpenFiles(file *os.File) ([]byte, error) {
 		return nil, err
 	}
 
-	//nolint:gosec
+	//nolint:gosec // G204 is fine here
 	cmd := exec.Command(exe, "-nP", "-p", strconv.Itoa(syscall.Getpid()))
 	cmd.Stdout = file
 

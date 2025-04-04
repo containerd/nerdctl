@@ -23,8 +23,7 @@ type (
 	ConfigValue string
 )
 
-// A Requirement offers a way to verify random conditions to decide if a test should be skipped or
-// run.
+// A Requirement offers a way to verify random conditions to decide if a test should be skipped or run.
 // It can also (optionally) provide custom Setup and Cleanup routines.
 type Requirement struct {
 	// Check is expected to verify if the requirement is fulfilled, and return a boolean and an

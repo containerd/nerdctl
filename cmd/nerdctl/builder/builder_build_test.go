@@ -102,7 +102,7 @@ CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Expected: test.Expects(-1, nil, nil),
+				Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 			},
 		},
 	}
@@ -234,7 +234,7 @@ func TestBuildFromStdin(t *testing.T) {
 			dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-stdin"]`, testutil.CommonImage)
 			cmd := helpers.Command("build", "-t", data.Identifier(), "-f", "-", ".")
-			cmd.WithStdin(strings.NewReader(dockerfile))
+			cmd.Feed(strings.NewReader(dockerfile))
 			return cmd
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
