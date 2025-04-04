@@ -940,15 +940,13 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 	}
 
 	res.Containers = make(map[string]EndpointResource)
-	if n.Containers != nil {
-		for _, container := range n.Containers {
-			res.Containers[container.ID] = EndpointResource{
-				Name: container.Labels[labels.Name],
-				// EndpointID:  container.EndpointID,
-				// MacAddress:  container.MacAddress,
-				// IPv4Address: container.IPv4Address,
-				// IPv6Address: container.IPv6Address,
-			}
+	for _, container := range n.Containers {
+		res.Containers[container.ID] = EndpointResource{
+			Name: container.Labels[labels.Name],
+			// EndpointID:  container.EndpointID,
+			// MacAddress:  container.MacAddress,
+			// IPv4Address: container.IPv4Address,
+			// IPv6Address: container.IPv6Address,
 		}
 	}
 
