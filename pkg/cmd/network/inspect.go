@@ -73,7 +73,7 @@ func Inspect(ctx context.Context, client *containerd.Client, options types.Netwo
 			if err != nil {
 				continue
 			}
-			if nativeContainer.Process.Status.Status != containerd.Running {
+			if nativeContainer.Process == nil || nativeContainer.Process.Status.Status != containerd.Running {
 				continue
 			}
 			containers = append(containers, nativeContainer)
