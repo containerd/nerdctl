@@ -14,16 +14,8 @@
    limitations under the License.
 */
 
-package expect
-
-const (
-	// ExitCodeSuccess will ensure that the command effectively ran returned with exit code zero.
-	ExitCodeSuccess = 0
-	// ExitCodeGenericFail will verify that the command ran and exited with a non-zero error code.
-	// This does NOT include timeouts, cancellation, or signals.
-	ExitCodeGenericFail = -1
-	// ExitCodeNoCheck does not enforce any check at all on the function.
-	ExitCodeNoCheck = -2
-	// ExitCodeTimeout verifies that the command was cancelled on timeout.
-	ExitCodeTimeout = -3
-)
+// Package logger is a very simple stub allowing developers to hook whatever logger they want to
+// debug internal behavior of the com package.
+// The passed logger just has to implement the Log(args...interface{}) method.
+// Typically, that would be testing.T.
+package logger
