@@ -79,6 +79,8 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 
 			if cid, ok := runningImages[found.Image.Name]; ok {
 				if options.Force {
+					// FIXME: this is suspicious, but passing the opt seem to break some tests
+					// if err = is.Delete(ctx, found.Image.Name, delOpts...); err != nil {
 					if err = is.Delete(ctx, found.Image.Name); err != nil {
 						return err
 					}
@@ -126,6 +128,8 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 
 			if cid, ok := runningImages[found.Image.Name]; ok {
 				if options.Force {
+					// FIXME: this is suspicious, but passing the opt seem to break some tests
+					// if err = is.Delete(ctx, found.Image.Name, delOpts...); err != nil {
 					if err = is.Delete(ctx, found.Image.Name); err != nil {
 						return false, err
 					}

@@ -190,7 +190,7 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 	}
 
 	// converter.Convert() gains the lease by itself
-	newImg, err := converter.Convert(ctx, client, targetRef, srcRef, convertOpts...)
+	newImg, err := converterutil.Convert(ctx, client, targetRef, srcRef, convertOpts...)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 			return err
 		}
 		is := client.ImageService()
-		_ = is.Delete(ctx, newI.Name)
+		_ = is.Delete(ctx, newI.Name, images.SynchronousDelete())
 		finimg, err := is.Create(ctx, *newI)
 		if err != nil {
 			return err
