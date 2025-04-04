@@ -165,6 +165,7 @@ func True(testing tig.T, comp bool, msg ...string) bool {
 // Failing later is necessary when asserting inside go routines, and also if you want many
 // successive asserts to all
 // evaluate instead of stopping at the first failing one.
+// FIXME: it should be possible to have both WithFailLater and WithSilentSuccess at the same time.
 func WithFailLater(t tig.T) tig.T {
 	return &failLater{
 		t,

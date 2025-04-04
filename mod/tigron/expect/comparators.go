@@ -79,7 +79,7 @@ func JSON[T any](obj T, verifier func(T, string, tig.T)) test.Comparator {
 		t.Helper()
 
 		err := json.Unmarshal([]byte(stdout), &obj)
-		assertive.ErrorIsNil(assertive.WithFailLater(t), err, "Unmarshalling JSON from stdout must succeed")
+		assertive.ErrorIsNil(assertive.WithSilentSuccess(t), err, "Unmarshalling JSON from stdout must succeed")
 
 		if verifier != nil && err == nil {
 			verifier(obj, "Inspecting output (JSON)", t)

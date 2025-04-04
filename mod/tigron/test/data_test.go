@@ -34,6 +34,23 @@ func TestDataBasic(t *testing.T) {
 
 	dataObj.Set("test", "set")
 	assertive.IsEqual(t, dataObj.Get("test"), "set")
+
+	t.Run("verify that (parallel) subtest can access parent data", func(t *testing.T) {
+		t.Parallel()
+
+		assertive.IsEqual(t, dataObj.Get("doesnotexist"), "")
+		// NOTE: this is really tricky. Test being parallel means it will execute once the parent is done.
+		assertive.IsEqual(t, dataObj.Get("test"), "setagain")
+	})
+
+	//nolint:paralleltest
+	t.Run("verify that (non-parallel) subtest can access parent data", func(t *testing.T) {
+		assertive.IsEqual(t, dataObj.Get("doesnotexist"), "")
+		assertive.IsEqual(t, dataObj.Get("test"), "set")
+	})
+
+	dataObj.Set("test", "setagain")
+	assertive.IsEqual(t, dataObj.Get("test"), "setagain")
 }
 
 func TestDataTempDir(t *testing.T) {
@@ -46,6 +63,14 @@ func TestDataTempDir(t *testing.T) {
 
 	assertive.IsEqual(t, one, two)
 	assertive.IsNotEqual(t, one, "")
+
+	t.Run("verify that subtest has an independent TempDir", func(t *testing.T) {
+		t.Parallel()
+
+		dataObj = configureData(t, nil, nil)
+		three := dataObj.TempDir()
+		assertive.IsNotEqual(t, one, three)
+	})
 }
 
 func TestDataIdentifier(t *testing.T) {

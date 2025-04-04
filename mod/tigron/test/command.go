@@ -191,6 +191,7 @@ func (gc *GenericCommand) Run(expect *Expected) {
 			debug = append(debug, []any{"Signal", result.Signal.String()})
 		}
 
+		// FIXME: wire this
 		if gc.fullDebug {
 			debug = append(debug,
 				[]any{"Environ", strings.Join(result.Environ, "\n")},
@@ -199,12 +200,13 @@ func (gc *GenericCommand) Run(expect *Expected) {
 	}
 
 	// FIXME: wire this so that we can get the environ display back in
-	if gc.fullDebug {
-		debug = append(debug,
-			[]any{"Dir", gc.cmd.WorkingDir},
-			[]any{"Limit", gc.cmd.Timeout},
-		)
-	}
+	// FIXME: we should also be able to inspect `test.Config` and `test.Data` (especially with assets)
+	// if gc.fullDebug {
+	debug = append(debug,
+		[]any{"Dir", gc.cmd.WorkingDir},
+		[]any{"Limit", gc.cmd.Timeout},
+	)
+	// }
 
 	gc.t.Log("\n\n" + formatter.Table(debug, "-") + "\n")
 

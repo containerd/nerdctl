@@ -28,12 +28,19 @@ import (
 // test data - second, some commonly useful immutable test properties (a way to generate unique
 // identifiers for that test, temporary directory, etc.)
 // Note that Data is inherited, from parent test to subtest (except for Identifier and TempDir of
-// course).
+// course - along with Assets, which are private as well).
 type Data interface {
 	// Get returns the value of a certain key for custom data
 	Get(key string) string
 	// Set will save `value` for `key`
 	Set(key, value string) Data
+
+	// AssetSave will store data on the filesystem, inside the test private temp directory
+	AssetSave(key, value string) Data
+	// AssetLoad will retrieve previously stored data from the filesystem
+	AssetLoad(key string) string
+	// AssetPath will return the absolute path for the asset
+	AssetPath(key string) string
 
 	// Identifier returns the test identifier that can be used to name resources
 	Identifier(suffix ...string) string
