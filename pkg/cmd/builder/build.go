@@ -580,7 +580,7 @@ func parseBuildContextFromOCILayout(name, path string) ([]string, error) {
 
 	var digest string
 	for _, manifest := range ociIndex.Manifests {
-		if images.IsManifestType(manifest.MediaType) {
+		if images.IsManifestType(manifest.MediaType) || images.IsIndexType(manifest.MediaType) {
 			digest = manifest.Digest.String()
 		}
 	}
