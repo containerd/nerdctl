@@ -18,7 +18,7 @@
 # Basic deps
 # @BINARY: the binary checksums are verified via Dockerfile.d/SHA256SUMS.d/<COMPONENT>-<VERSION>
 ARG CONTAINERD_VERSION=v2.0.4@1a43cb6a1035441f9aca8f5666a9b3ef9e70ab20
-ARG RUNC_VERSION=v1.2.6@e89a29929c775025419ab0d218a43588b4c12b9a
+ARG RUNC_VERSION=2ea0a21e58a2eca47b7f37ffda0db5b9e804cc6a@2ea0a21e58a2eca47b7f37ffda0db5b9e804cc6a
 ARG CNI_PLUGINS_VERSION=v1.6.2@BINARY
 
 # Extra deps: Build
@@ -86,7 +86,9 @@ RUN GO=xx-go make STATIC=1 && \
 FROM build-base-debian AS build-runc
 ARG RUNC_VERSION
 ARG TARGETARCH
-RUN git clone --quiet --depth 1 --branch "${RUNC_VERSION%@*}" https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc
+#RUN git clone --quiet --depth 1 --branch "${RUNC_VERSION%@*}" https://github.com/rata/runc.git /go/src/github.com/opencontainers/runc
+RUN git clone --quiet https://github.com/rata/runc.git /go/src/github.com/opencontainers/runc
+RUN cd /go/src/github.com/opencontainers/runc; git reset --hard "${RUNC_VERSION%@*}"
 WORKDIR /go/src/github.com/opencontainers/runc
 RUN git-checkout-tag-with-hash.sh ${RUNC_VERSION} && \
   mkdir -p /out
