@@ -17,8 +17,9 @@
 package container
 
 import (
+	"bytes"
 	"errors"
-	"os"
+	"io"
 	"strings"
 	"testing"
 
@@ -40,10 +41,8 @@ func TestStartDetachKeys(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		cmd := helpers.Command("run", "-it", "--name", data.Identifier(), testutil.CommonImage)
-		cmd.WithPseudoTTY(func(f *os.File) error {
-			_, err := f.WriteString("exit\n")
-			return err
-		})
+		cmd.WithPseudoTTY()
+		cmd.Feed(strings.NewReader("exit\n"))
 		cmd.Run(&test.Expected{
 			ExitCode: 0,
 		})
@@ -60,10 +59,10 @@ func TestStartDetachKeys(t *testing.T) {
 			flags += "i"
 		}
 		cmd := helpers.Command("start", flags, "--detach-keys=ctrl-a,ctrl-b", data.Identifier())
-		cmd.WithPseudoTTY(func(f *os.File) error {
+		cmd.WithPseudoTTY()
+		cmd.WithFeeder(func() io.Reader {
 			// ctrl+a and ctrl+b (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
-			_, err := f.Write([]byte{1, 2})
-			return err
+			return bytes.NewReader([]byte{1, 2})
 		})
 
 		return cmd
