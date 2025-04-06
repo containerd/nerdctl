@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 
@@ -81,7 +82,7 @@ func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagO
 	img.Name = parsedReference.String()
 	if _, err = imageService.Create(ctx, img); err != nil {
 		if errdefs.IsAlreadyExists(err) {
-			if err = imageService.Delete(ctx, img.Name); err != nil {
+			if err = imageService.Delete(ctx, img.Name, images.SynchronousDelete()); err != nil {
 				return err
 			}
 			if _, err = imageService.Create(ctx, img); err != nil {

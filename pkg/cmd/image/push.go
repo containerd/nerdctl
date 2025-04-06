@@ -43,6 +43,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
+	nerdconverter "github.com/containerd/nerdctl/v2/pkg/imgutil/converter"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/push"
 	"github.com/containerd/nerdctl/v2/pkg/ipfs"
@@ -119,7 +120,12 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		pushRef = ref + "-tmp-reduced-platform"
 		// Push fails with "400 Bad Request" when the manifest is multi-platform but we do not locally have multi-platform blobs.
 		// So we create a tmp reduced-platform image to avoid the error.
-		platImg, err := converter.Convert(ctx, client, pushRef, ref, converter.WithPlatform(platMC))
+		// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3425
+		err = EnsureAllContent(ctx, client, ref, platMC, options.GOptions)
+		if err != nil {
+			return err
+		}
+		platImg, err := nerdconverter.Convert(ctx, client, pushRef, ref, converter.WithPlatform(platMC))
 		if err != nil {
 			if len(options.Platforms) == 0 {
 				return fmt.Errorf("failed to create a tmp single-platform image %q: %w", pushRef, err)
@@ -132,7 +138,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 
 	if options.Estargz {
 		pushRef = ref + "-tmp-esgz"
-		esgzImg, err := converter.Convert(ctx, client, pushRef, ref, converter.WithPlatform(platMC), converter.WithLayerConvertFunc(eStargzConvertFunc()))
+		esgzImg, err := nerdconverter.Convert(ctx, client, pushRef, ref, converter.WithPlatform(platMC), converter.WithLayerConvertFunc(eStargzConvertFunc()))
 		if err != nil {
 			return fmt.Errorf("failed to convert to eStargz: %v", err)
 		}
