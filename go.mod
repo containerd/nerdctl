@@ -35,7 +35,7 @@ require (
 	github.com/docker/docker v28.0.4+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0
-	github.com/fahedouch/go-logrotate v0.2.1
+	github.com/fahedouch/go-logrotate v0.3.0
 	github.com/fatih/color v1.18.0
 	github.com/fluent/fluent-logger-golang v1.9.0
 	github.com/fsnotify/fsnotify v1.9.0
