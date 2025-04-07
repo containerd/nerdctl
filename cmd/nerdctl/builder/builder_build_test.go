@@ -79,9 +79,9 @@ CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
 				Expected: test.Expects(0, nil, expect.Equals("nerdctl-build-test-string\n")),
 			},
 			{
-				Description: "Successfully build with output docker, main tag still works",
+				Description: "Successfully build with output image, main tag still works",
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("build", data.Get("buildCtx"), "-t", data.Identifier(), "--output=type=docker,name="+data.Identifier("ignored"))
+					helpers.Ensure("build", data.Get("buildCtx"), "-t", data.Identifier(), "--output=type=image,name="+data.Identifier("ignored"))
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("run", "--rm", data.Identifier())
@@ -92,17 +92,17 @@ CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
 				Expected: test.Expects(0, nil, expect.Equals("nerdctl-build-test-string\n")),
 			},
 			{
-				Description: "Successfully build with output docker, name cannot be used",
+				Description: "Successfully build with output docker, named image",
 				Setup: func(data test.Data, helpers test.Helpers) {
-					helpers.Ensure("build", data.Get("buildCtx"), "-t", data.Identifier(), "--output=type=docker,name="+data.Identifier("ignored"))
+					helpers.Ensure("build", data.Get("buildCtx"), "--output=type=docker,name="+data.Identifier())
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Command("run", "--rm", data.Identifier("ignored"))
+					return helpers.Command("run", "--rm", data.Identifier())
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
-				Expected: test.Expects(-1, nil, nil),
+				Expected: test.Expects(0, nil, test.Equals("nerdctl-build-test-string\n")),
 			},
 		},
 	}

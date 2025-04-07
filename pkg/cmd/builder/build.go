@@ -62,18 +62,22 @@ func (p platformParser) DefaultSpec() platforms.Platform {
 }
 
 func Build(ctx context.Context, client *containerd.Client, options types.BuilderBuildOptions) error {
-	buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, err := generateBuildctlArgs(ctx, client, options)
+	buildCtlArgs, err := generateBuildctlArgs(ctx, client, options)
 	if err != nil {
 		return err
 	}
-	if cleanup != nil {
-		defer cleanup()
+	if buildCtlArgs.Cleanup != nil {
+		defer buildCtlArgs.Cleanup()
 	}
+
+	buildctlBinary := buildCtlArgs.BuildctlBinary
+	buildctlArgs := buildCtlArgs.BuildctlArgs
 
 	log.L.Debugf("running %s %v", buildctlBinary, buildctlArgs)
 	buildctlCmd := exec.Command(buildctlBinary, buildctlArgs...)
 	buildctlCmd.Env = os.Environ()
 
+	needsLoading := buildCtlArgs.NeedsLoading
 	var buildctlStdout io.Reader
 	if needsLoading {
 		buildctlStdout, err = buildctlCmd.StdoutPipe()
@@ -96,6 +100,8 @@ func Build(ctx context.Context, client *containerd.Client, options types.Builder
 		if err != nil {
 			return err
 		}
+
+		// Load the image into the containerd image store
 		if err = loadImage(ctx, buildctlStdout, options.GOptions.Namespace, options.GOptions.Address, options.GOptions.Snapshotter, options.Stdout, platMC, options.Quiet); err != nil {
 			return err
 		}
@@ -106,7 +112,7 @@ func Build(ctx context.Context, client *containerd.Client, options types.Builder
 	}
 
 	if options.IidFile != "" {
-		id, err := getDigestFromMetaFile(metaFile)
+		id, err := getDigestFromMetaFile(buildCtlArgs.MetaFile)
 		if err != nil {
 			return err
 		}
@@ -115,6 +121,7 @@ func Build(ctx context.Context, client *containerd.Client, options types.Builder
 		}
 	}
 
+	tags := buildCtlArgs.Tags
 	if len(tags) > 1 {
 		log.L.Debug("Found more than 1 tag")
 		imageService := client.ImageService()
@@ -161,11 +168,15 @@ func loadImage(ctx context.Context, in io.Reader, namespace, address, snapshotte
 		client.Close()
 	}()
 	r := &readCounter{Reader: in}
-	imgs, err := client.Import(ctx, r, containerd.WithDigestRef(archive.DigestTranslator(snapshotter)), containerd.WithSkipDigestRef(func(name string) bool { return name != "" }), containerd.WithImportPlatform(platMC))
+	imgs, err := client.Import(ctx, r,
+		containerd.WithDigestRef(archive.DigestTranslator(snapshotter)),
+		containerd.WithSkipDigestRef(func(name string) bool { return name != "" }),
+		containerd.WithImportPlatform(platMC),
+	)
 	if err != nil {
 		if r.N == 0 {
 			// Avoid confusing "unrecognized image format"
-			return errors.New("no image was built")
+			return fmt.Errorf("no image was built: %w", err)
 		}
 		if errors.Is(err, images.ErrEmptyWalk) {
 			err = fmt.Errorf("%w (Hint: set `--platform=PLATFORM` or `--all-platforms`)", err)
@@ -193,34 +204,44 @@ func loadImage(ctx context.Context, in io.Reader, namespace, address, snapshotte
 	return nil
 }
 
-func generateBuildctlArgs(ctx context.Context, client *containerd.Client, options types.BuilderBuildOptions) (buildCtlBinary string,
-	buildctlArgs []string, needsLoading bool, metaFile string, tags []string, cleanup func(), err error) {
+type BuildctlArgsResult struct {
+	BuildctlArgs   []string
+	BuildctlBinary string
+	Cleanup        func()
+	DestFile       string
+	MetaFile       string
+	NeedsLoading   bool // Specifies whether the image needs to be loaded into the containerd image store
+	Tags           []string
+}
 
+func generateBuildctlArgs(ctx context.Context, client *containerd.Client, options types.BuilderBuildOptions) (result BuildctlArgsResult, err error) {
 	buildctlBinary, err := buildkitutil.BuildctlBinary()
 	if err != nil {
-		return "", nil, false, "", nil, nil, err
+		return result, err
 	}
+	result.BuildctlBinary = buildctlBinary
 
 	output := options.Output
 	if output == "" {
 		info, err := client.Server(ctx)
 		if err != nil {
-			return "", nil, false, "", nil, nil, err
+			return result, err
 		}
 		sharable, err := isImageSharable(options.BuildKitHost, options.GOptions.Namespace, info.UUID, options.GOptions.Snapshotter, options.Platform)
 		if err != nil {
-			return "", nil, false, "", nil, nil, err
+			return result, err
 		}
 		if sharable {
 			output = "type=image,unpack=true" // ensure the target stage is unlazied (needed for any snapshotters)
 		} else {
-			output = "type=docker"
+			// https://github.com/moby/buildkit?tab=readme-ov-file#output
+			// type=image is the native type for containerd
+			output = "type=image"
 			if len(options.Platform) > 1 {
 				// For avoiding `error: failed to solve: docker exporter does not currently support exporting manifest lists`
 				// TODO: consider using type=oci for single-options.Platform build too
 				output = "type=oci"
 			}
-			needsLoading = true
 		}
 	} else {
 		if !strings.Contains(output, "type=") {
@@ -228,17 +249,20 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 			// type=local,dest=<DIR>
 			output = fmt.Sprintf("type=local,dest=%s", output)
 		}
-		if strings.Contains(output, "type=docker") || strings.Contains(output, "type=oci") {
-			if !strings.Contains(output, "dest=") {
-				needsLoading = true
-			}
+	}
+
+	if strings.Contains(output, "type=docker") || strings.Contains(output, "type=oci") {
+		if !strings.Contains(output, "dest=") {
+			result.NeedsLoading = true
 		}
 	}
+
+	var tags []string
 	if tags = strutil.DedupeStrSlice(options.Tag); len(tags) > 0 {
 		ref := tags[0]
 		parsedReference, err := referenceutil.Parse(ref)
 		if err != nil {
-			return "", nil, false, "", nil, nil, err
+			return result, err
 		}
 		output += ",name=" + parsedReference.String()
 
@@ -246,16 +270,16 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		for idx, tag := range tags {
 			parsedReference, err = referenceutil.Parse(tag)
 			if err != nil {
-				return "", nil, false, "", nil, nil, err
+				return result, err
 			}
 			tags[idx] = parsedReference.String()
 		}
 	} else if len(tags) == 0 {
 		output = output + ",dangling-name-prefix=<none>"
 	}
+	result.Tags = tags
 
-	buildctlArgs = buildkitutil.BuildctlBaseArgs(options.BuildKitHost)
-
+	buildctlArgs := buildkitutil.BuildctlBaseArgs(options.BuildKitHost)
 	buildctlArgs = append(buildctlArgs, []string{
 		"build",
 		"--progress=" + options.Progress,
@@ -272,9 +296,9 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 			var err error
 			dir, err = buildkitutil.WriteTempDockerfile(options.Stdin)
 			if err != nil {
-				return "", nil, false, "", nil, nil, err
+				return result, err
 			}
-			cleanup = func() {
+			result.Cleanup = func() {
 				os.RemoveAll(dir)
 			}
 		} else {
@@ -287,12 +311,12 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 	}
 	dir, file, err = buildkitutil.BuildKitFile(dir, file)
 	if err != nil {
-		return "", nil, false, "", nil, nil, err
+		return result, err
 	}
 
 	buildCtx, err := parseContextNames(options.ExtendedBuildContext)
 	if err != nil {
-		return "", nil, false, "", nil, nil, err
+		return result, err
 	}
 
 	for k, v := range buildCtx {
@@ -307,7 +331,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		if isOCILayout := strings.HasPrefix(v, "oci-layout://"); isOCILayout {
 			args, err := parseBuildContextFromOCILayout(k, v)
 			if err != nil {
-				return "", nil, false, "", nil, nil, err
+				return result, err
 			}
 
 			buildctlArgs = append(buildctlArgs, args...)
@@ -316,7 +340,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 
 		path, err := filepath.Abs(v)
 		if err != nil {
-			return "", nil, false, "", nil, nil, err
+			return result, err
 		}
 		buildctlArgs = append(buildctlArgs, fmt.Sprintf("--local=%s=%s", k, path))
 		buildctlArgs = append(buildctlArgs, fmt.Sprintf("--opt=context:%s=local:%s", k, k))
@@ -363,7 +387,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 				}
 			}
 		} else {
-			return "", nil, false, "", nil, nil, fmt.Errorf("invalid build arg %q", ba)
+			return result, fmt.Errorf("invalid build arg %q", ba)
 		}
 	}
 
@@ -406,7 +430,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 			optAttestType := strings.TrimPrefix(optAttestType, "type=")
 			buildctlArgs = append(buildctlArgs, fmt.Sprintf("--opt=attest:%s=%s", optAttestType, optAttestAttrs))
 		} else {
-			return "", nil, false, "", nil, nil, fmt.Errorf("attestation type not specified")
+			return result, fmt.Errorf("attestation type not specified")
 		}
 	}
 
@@ -435,11 +459,11 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 	if options.IidFile != "" {
 		file, err := os.CreateTemp("", "buildkit-meta-*")
 		if err != nil {
-			return "", nil, false, "", nil, cleanup, err
+			return result, err
 		}
 		defer file.Close()
-		metaFile = file.Name()
-		buildctlArgs = append(buildctlArgs, "--metadata-file="+metaFile)
+		result.MetaFile = file.Name()
+		buildctlArgs = append(buildctlArgs, "--metadata-file="+result.MetaFile)
 	}
 
 	if options.NetworkMode != "" {
@@ -462,7 +486,9 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		buildctlArgs = append(buildctlArgs, "--opt=add-hosts="+strings.Join(extraHosts, ","))
 	}
 
-	return buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, nil
+	result.BuildctlArgs = buildctlArgs
+
+	return result, nil
 }
 
 func getDigestFromMetaFile(path string) (string, error) {

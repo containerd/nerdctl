@@ -720,7 +720,10 @@ Flags:
 - :whale: `--target`: Set the target build stage to build
 - :whale: `--build-arg`: Set build-time variables
 - :whale: `--no-cache`: Do not use cache when building the image
-- :whale: `--output=OUTPUT`: Output destination (format: type=local,dest=path)
+- :whale: `--output=OUTPUT`: Output destination (format: type=local,dest=path). See [buildctl output](https://github.com/moby/buildkit?tab=readme-ov-file#output) option for more details.
+
+  If this flag is not specified, it defaults to `type=image,name=docker.io/library/<TAG>:latest`.
+
   - :whale: `type=local,dest=path/to/output-dir`: Local directory
   - :whale: `type=oci[,dest=path/to/output.tar]`: Docker/OCI dual-format tar ball (compatible with `docker buildx build`)
   - :whale: `type=docker[,dest=path/to/output.tar]`: Docker format tar ball (compatible with `docker buildx build`)
