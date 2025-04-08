@@ -85,7 +85,7 @@ func TestVolumeCreate(t *testing.T) {
 				helpers.Anyhow("volume", "rm", "-f", data.Identifier())
 			},
 			// NOTE: docker returns 125 on this
-			Expected: test.Expects(-1, []error{errdefs.ErrInvalidArgument}, nil),
+			Expected: test.Expects(expect.ExitCodeGenericFail, []error{errdefs.ErrInvalidArgument}, nil),
 		},
 		{
 			Description: "creating already existing volume should succeed",
