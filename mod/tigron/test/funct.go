@@ -25,6 +25,10 @@ type Evaluator func(data Data, helpers Helpers) (bool, string)
 // or Requirement.
 type Butler func(data Data, helpers Helpers)
 
+// TODO: when we will break API:
+// - remove the info parameter
+// - move to tig.T
+
 // A Comparator is the function signature to implement for the Output property of an Expected.
 type Comparator func(stdout, info string, t *testing.T)
 

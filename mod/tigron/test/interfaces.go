@@ -28,12 +28,19 @@ import (
 // test data - second, some commonly useful immutable test properties (a way to generate unique
 // identifiers for that test, temporary directory, etc.)
 // Note that Data is inherited, from parent test to subtest (except for Identifier and TempDir of
-// course).
+// course - along with Assets, which are private as well).
 type Data interface {
 	// Get returns the value of a certain key for custom data
 	Get(key string) string
 	// Set will save `value` for `key`
 	Set(key, value string) Data
+
+	// AssetSave will store data on the filesystem, inside the test private temp directory
+	AssetSave(key, value string) Data
+	// AssetLoad will retrieve previously stored data from the filesystem
+	AssetLoad(key string) string
+	// AssetPath will return the absolute path for the asset
+	AssetPath(key string) string
 
 	// Identifier returns the test identifier that can be used to name resources
 	Identifier(suffix ...string) string
@@ -75,7 +82,7 @@ type Helpers interface {
 // with an Expected. A TestableCommand can be used as a Case Command obviously, but also as part of
 // a Setup or Cleanup routine, and as the basis of any type of helper.
 // For more powerful use-cases outside of test cases, see below CustomizableCommand.
-type TestableCommand interface { //nolint:interfacebloat
+type TestableCommand interface {
 	// WithBinary specifies what binary to execute.
 	WithBinary(binary string)
 	// WithArgs specifies the args to pass to the binary. Note that WithArgs can be used multiple
@@ -83,24 +90,29 @@ type TestableCommand interface { //nolint:interfacebloat
 	WithArgs(args ...string)
 	// WithWrapper allows wrapping a command with another command (for example: `time`).
 	WithWrapper(binary string, args ...string)
-	WithPseudoTTY(writers ...func(*os.File) error)
-	// WithStdin allows passing a reader to be used for stdin for the command.
-	WithStdin(r io.Reader)
+	// WithPseudoTTY will allocate a new pty and set the command stdin and stdout to it.
+	WithPseudoTTY()
 	// WithCwd allows specifying the working directory for the command.
 	WithCwd(path string)
+	// WithTimeout defines the execution timeout for a command.
+	WithTimeout(timeout time.Duration)
+	// WithFeeder allows passing a reader to be fed to the command stdin.
+	WithFeeder(fun func() io.Reader)
+	// Feed allows passing a reader to be fed to the command stdin.
+	Feed(r io.Reader)
 	// Clone returns a copy of the command.
 	Clone() TestableCommand
 
 	// Run does execute the command, and compare the output with the provided expectation.
 	// Passing nil for `Expected` will just run the command regardless of outcome.
 	// An empty `&Expected{}` is (of course) equivalent to &Expected{Exit: 0}, meaning the command
-	// is verified to be successful
+	// is verified to be successful.
 	Run(expect *Expected)
-	// Background allows starting a command in the background
-	Background(timeout time.Duration)
-	// Signal sends a signal to a backgrounded command
+	// Background allows starting a command in the background.
+	Background()
+	// Signal sends a signal to a backgrounded command.
 	Signal(sig os.Signal) error
-	// Stderr allows retrieving the raw stderr output of the command once it has been run
+	// Stderr allows retrieving the raw stderr output of the command once it has been run.
 	Stderr() string
 }
 
