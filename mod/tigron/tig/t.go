@@ -14,15 +14,14 @@
    limitations under the License.
 */
 
-package highk
+package tig
 
-import (
-	"go.uber.org/goleak"
-)
-
-// FindGoRoutines retrieves leaked go routines, which are returned as an error.
-//
-//nolint:wrapcheck // FIXME: work in progress
-func FindGoRoutines() error {
-	return goleak.Find()
+// T is what we Tigron needs from a testing implementation (*testing.T obviously satisfies it).
+type T interface {
+	Helper()
+	FailNow()
+	Fail()
+	Log(args ...any)
+	Name() string
+	TempDir() string
 }

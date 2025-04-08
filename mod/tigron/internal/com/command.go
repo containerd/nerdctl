@@ -43,16 +43,14 @@ var (
 	ErrFailedStarting = errors.New("command failed starting")
 	// ErrSignaled is returned by Wait() if a signal was sent to the command while running.
 	ErrSignaled = errors.New("command execution signaled")
-	// ErrExecutionFailed is returned by Wait() when a command executes but returns a non-zero error
-	// code.
+	// ErrExecutionFailed is returned by Wait() when a command executes but returns a non-zero error code.
 	ErrExecutionFailed = errors.New("command returned a non-zero exit code")
 	// ErrFailedSendingSignal may happen if sending a signal to an already terminated process.
 	ErrFailedSendingSignal = errors.New("failed sending signal")
 
 	// ErrExecAlreadyStarted is a system error normally indicating a bogus double call to Run().
 	ErrExecAlreadyStarted = errors.New("command has already been started (double `Run`)")
-	// ErrExecNotStarted is a system error normally indicating that Wait() has been called without
-	// first calling Run().
+	// ErrExecNotStarted is a system error normally indicating that Wait() has been called without first calling Run().
 	ErrExecNotStarted = errors.New("command has not been started (call `Run` first)")
 	// ErrExecAlreadyFinished is a system error indicating a double call to Wait().
 	ErrExecAlreadyFinished = errors.New("command is already finished")
@@ -75,7 +73,7 @@ type Result struct {
 }
 
 type execution struct {
-	//nolint:containedctx
+	//nolint:containedctx // Is there a way around this?
 	context context.Context
 	cancel  context.CancelFunc
 	command *exec.Cmd
@@ -93,10 +91,10 @@ type Command struct {
 	WrapArgs    []string
 	Timeout     time.Duration
 
-	WorkingDir string
-	Env        map[string]string
-	// FIXME: EnvBlackList might change for a better mechanism (regexp and/or whitelist + blacklist)
+	WorkingDir   string
+	Env          map[string]string
 	EnvBlackList []string
+	EnvWhiteList []string
 
 	writers []func() io.Reader
 
@@ -122,6 +120,7 @@ func (gc *Command) Clone() *Command {
 		WorkingDir:   gc.WorkingDir,
 		Env:          map[string]string{},
 		EnvBlackList: append([]string(nil), gc.EnvBlackList...),
+		EnvWhiteList: append([]string(nil), gc.EnvWhiteList...),
 
 		writers: append([]func() io.Reader(nil), gc.writers...),
 
@@ -137,9 +136,8 @@ func (gc *Command) Clone() *Command {
 	return com
 }
 
-// WithPTY requests that the command be executed with a pty for std streams. Parameters allow
-// showing which streams
-// are to be tied to the pty.
+// WithPTY requests that the command be executed with a pty for std streams.
+// Parameters allow showing which streams are to be tied to the pty.
 // This command has no effect if Run has already been called.
 func (gc *Command) WithPTY(stdin, stdout, stderr bool) {
 	gc.ptyStdout = stdout
@@ -147,17 +145,15 @@ func (gc *Command) WithPTY(stdin, stdout, stderr bool) {
 	gc.ptyStdin = stdin
 }
 
-// WithFeeder ensures that the provider function will be executed and its output fed to the command
-// stdin. WithFeeder, like Feed, can be used multiple times, and writes will be performed
-// sequentially, in order.
+// WithFeeder ensures that the provider function will be executed and its output fed to the command stdin.
+// WithFeeder, like Feed, can be used multiple times, and writes will be performed sequentially, in order.
 // This command has no effect if Run has already been called.
 func (gc *Command) WithFeeder(writers ...func() io.Reader) {
 	gc.writers = append(gc.writers, writers...)
 }
 
 // Feed ensures that the provider reader will be copied on the command stdin.
-// Feed, like WithFeeder, can be used multiple times, and writes will be performed in sequentially,
-// in order.
+// Feed, like WithFeeder, can be used multiple times, and writes will be performed in sequentially, in order.
 // This command has no effect if Run has already been called.
 func (gc *Command) Feed(reader io.Reader) {
 	gc.writers = append(gc.writers, func() io.Reader {
@@ -197,7 +193,6 @@ func (gc *Command) Run(parentCtx context.Context) error {
 
 	// Create a contextual command, set the logger
 	cmd = gc.buildCommand(ctx)
-
 	// Get a debug-logger from the context
 	var (
 		log logger.Logger
@@ -338,8 +333,7 @@ func (gc *Command) wrap() error {
 		err      error
 	)
 
-	// XXXgolang: this is troubling. cmd.ProcessState.ExitCode() is always fine, even if
-	// cmd.ProcessState is nil.
+	// XXXgolang: this is troubling. cmd.ProcessState.ExitCode() is always fine, even if cmd.ProcessState is nil.
 	exitCode = cmd.ProcessState.ExitCode()
 
 	if cmd.ProcessState != nil {
@@ -356,7 +350,7 @@ func (gc *Command) wrap() error {
 		}
 	}
 
-	// Catch-up on the context
+	// Catch-up on the context.
 	switch ctx.Err() {
 	case context.DeadlineExceeded:
 		err = ErrTimeout
@@ -365,7 +359,7 @@ func (gc *Command) wrap() error {
 	default:
 	}
 
-	// Stuff everything in Result and return err
+	// Stuff everything in Result and return err.
 	gc.result = &Result{
 		ExitCode: exitCode,
 		Stdout:   pipes.fromStdout,
@@ -382,7 +376,7 @@ func (gc *Command) wrap() error {
 }
 
 func (gc *Command) buildCommand(ctx context.Context) *exec.Cmd {
-	// Build arguments and binary
+	// Build arguments and binary.
 	args := gc.Args
 	if gc.PrependArgs != nil {
 		args = append(gc.PrependArgs, args...)
@@ -399,23 +393,52 @@ func (gc *Command) buildCommand(ctx context.Context) *exec.Cmd {
 	//nolint:gosec
 	cmd := exec.CommandContext(ctx, binary, args...)
 
-	// Add dir
+	// Add dir.
 	cmd.Dir = gc.WorkingDir
 
-	// Set wait delay after waits returns
+	// Set wait delay after waits returns.
 	cmd.WaitDelay = delayAfterWait
 
-	// Build env
+	// Build env.
 	cmd.Env = []string{}
-	// TODO: replace with regexps? and/or whitelist?
+
+	const (
+		star  = "*"
+		equal = "="
+	)
+
 	for _, envValue := range os.Environ() {
 		add := true
 
-		for _, b := range gc.EnvBlackList {
-			if b == "*" || strings.HasPrefix(envValue, b+"=") {
+		for _, needle := range gc.EnvBlackList {
+			if strings.HasSuffix(needle, star) {
+				needle = strings.TrimSuffix(needle, star)
+			} else if needle != star && !strings.Contains(needle, equal) {
+				needle += equal
+			}
+
+			if needle == star || strings.HasPrefix(envValue, needle) {
 				add = false
 
 				break
+			}
+		}
+
+		if len(gc.EnvWhiteList) > 0 {
+			add = false
+
+			for _, needle := range gc.EnvWhiteList {
+				if strings.HasSuffix(needle, star) {
+					needle = strings.TrimSuffix(needle, star)
+				} else if needle != star && !strings.Contains(needle, equal) {
+					needle += equal
+				}
+
+				if needle == star || strings.HasPrefix(envValue, needle) {
+					add = true
+
+					break
+				}
 			}
 		}
 
@@ -429,12 +452,12 @@ func (gc *Command) buildCommand(ctx context.Context) *exec.Cmd {
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}
 
-	// Attach platform ProcAttr and get optional custom cancellation routine
+	// Attach platform ProcAttr and get optional custom cancellation routine.
 	if cancellation := addAttr(cmd); cancellation != nil {
 		cmd.Cancel = func() error {
 			gc.exec.log.Log("command cancelled")
 
-			// Call the platform dependent cancellation routine
+			// Call the platform dependent cancellation routine.
 			return cancellation()
 		}
 	}

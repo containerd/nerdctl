@@ -14,15 +14,5 @@
    limitations under the License.
 */
 
-package highk
-
-import (
-	"go.uber.org/goleak"
-)
-
-// FindGoRoutines retrieves leaked go routines, which are returned as an error.
-//
-//nolint:wrapcheck // FIXME: work in progress
-func FindGoRoutines() error {
-	return goleak.Find()
-}
+// Package mocks provides a collection of tigron internal mocks to ease testing.
+package mocks
