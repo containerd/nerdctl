@@ -21,15 +21,18 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
+	"github.com/containerd/nerdctl/v2/pkg/formatter"
 )
 
 func inspectCommand() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "inspect [flags] CONTAINER [CONTAINER, ...]",
 		Short:             "Display detailed information on one or more containers.",
 		Long:              "Hint: set `--mode=native` for showing the full output",
@@ -100,7 +103,18 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	return container.Inspect(ctx, client, args, opt)
+	entries, err := container.Inspect(ctx, client, args, opt)
+	if err != nil {
+		return err
+	}
+
+	// Display
+	if len(entries) > 0 {
+		if formatErr := formatter.FormatSlice(opt.Format, opt.Stdout, entries); formatErr != nil {
+			log.G(ctx).Error(formatErr)
+		}
+	}
+	return err
 }
 
 func containerInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
