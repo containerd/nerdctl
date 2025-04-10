@@ -190,7 +190,6 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, 
 }
 
 func newApp() (*cobra.Command, error) {
-
 	tomlPath := ncdefaults.NerdctlTOML()
 	if v, ok := os.LookupEnv("NERDCTL_TOML"); ok {
 		tomlPath = v
@@ -214,6 +213,10 @@ Config file ($NERDCTL_TOML): %s
 	rootCmd.SetUsageFunc(usage)
 	aliasToBeInherited, err := initRootCmdFlags(rootCmd, tomlPath)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := resetSavedSETUID(); err != nil {
 		return nil, err
 	}
 
