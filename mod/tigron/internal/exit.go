@@ -14,11 +14,6 @@
    limitations under the License.
 */
 
-// Package internal provides an assert library, pty, a command wrapper, and a leak detection library
-// for internal use in Tigron.
-// The objective for these is not to become generic use-cases libraries, but instead to deliver what
-// Tigron needs
-// in the simplest possible form.
 package internal
 
 // This is duplicated from `expect` to avoid circular imports.

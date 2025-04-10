@@ -14,15 +14,8 @@
    limitations under the License.
 */
 
-package highk
-
-import (
-	"go.uber.org/goleak"
-)
-
-// FindGoRoutines retrieves leaked go routines, which are returned as an error.
-//
-//nolint:wrapcheck // FIXME: work in progress
-func FindGoRoutines() error {
-	return goleak.Find()
-}
+// Package mimicry provides a very rough and rudimentary mimicry library to help with internal tigron testing.
+// It does not require generation, does not abuse reflect (too much), and keeps the amount of boilerplate baloney to a
+// minimum.
+// This is NOT a generic mock library. Use something else if you need one.
+package mimicry

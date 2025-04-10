@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+//revive:disable:add-constant
 package com_test
 
 import (
@@ -35,23 +36,23 @@ func ExampleCommand() {
 
 	err := cmd.Run(context.Background())
 	if err != nil {
-		fmt.Println("Run err:", err)
+		_, _ = fmt.Println("Run err:", err)
 
 		return
 	}
 
 	exec, err := cmd.Wait()
 	if err != nil {
-		fmt.Println("Wait err:", err)
+		_, _ = fmt.Println("Wait err:", err)
 
 		return
 	}
 
-	fmt.Println("Exit code:", exec.ExitCode)
-	fmt.Println("Stdout:")
-	fmt.Println(exec.Stdout)
-	fmt.Println("Stderr:")
-	fmt.Println(exec.Stderr)
+	_, _ = fmt.Println("Exit code:", exec.ExitCode)
+	_, _ = fmt.Println("Stdout:")
+	_, _ = fmt.Println(exec.Stdout)
+	_, _ = fmt.Println("Stderr:")
+	_, _ = fmt.Println(exec.Stderr)
 
 	// Output:
 	// Exit code: 0
@@ -70,26 +71,26 @@ func ExampleCommand_Signal() {
 
 	err := cmd.Run(context.Background())
 	if err != nil {
-		fmt.Println("Run err:", err)
+		_, _ = fmt.Println("Run err:", err)
 
 		return
 	}
 
 	err = cmd.Signal(os.Interrupt)
 	if err != nil {
-		fmt.Println("Signal err:", err)
+		_, _ = fmt.Println("Signal err:", err)
 
 		return
 	}
 
 	exec, err := cmd.Wait()
-	fmt.Println("Wait err:", err)
-	fmt.Println("Exit code:", exec.ExitCode)
-	fmt.Println("Stdout:")
-	fmt.Println(exec.Stdout)
-	fmt.Println("Stderr:")
-	fmt.Println(exec.Stderr)
-	fmt.Println("Signal:", exec.Signal)
+	_, _ = fmt.Println("Wait err:", err)
+	_, _ = fmt.Println("Exit code:", exec.ExitCode)
+	_, _ = fmt.Println("Stdout:")
+	_, _ = fmt.Println(exec.Stdout)
+	_, _ = fmt.Println("Stderr:")
+	_, _ = fmt.Println(exec.Stderr)
+	_, _ = fmt.Println("Signal:", exec.Signal)
 
 	// Output:
 	// Wait err: command execution signaled
@@ -118,23 +119,23 @@ func ExampleCommand_WithPTY() {
 
 	err := cmd.Run(context.Background())
 	if err != nil {
-		fmt.Println("Run err:", err)
+		_, _ = fmt.Println("Run err:", err)
 
 		return
 	}
 
 	exec, err := cmd.Wait()
 	if err != nil {
-		fmt.Println("Wait err:", err)
+		_, _ = fmt.Println("Wait err:", err)
 
 		return
 	}
 
-	fmt.Println("Exit code:", exec.ExitCode)
-	fmt.Println("Stdout:")
-	fmt.Println(exec.Stdout)
-	fmt.Println("Stderr:")
-	fmt.Println(exec.Stderr)
+	_, _ = fmt.Println("Exit code:", exec.ExitCode)
+	_, _ = fmt.Println("Stdout:")
+	_, _ = fmt.Println(exec.Stdout)
+	_, _ = fmt.Println("Stderr:")
+	_, _ = fmt.Println(exec.Stderr)
 
 	// Output:
 	// Exit code: 0
@@ -166,23 +167,23 @@ func ExampleCommand_Feed() {
 
 	err := cmd.Run(context.Background())
 	if err != nil {
-		fmt.Println("Run err:", err)
+		_, _ = fmt.Println("Run err:", err)
 
 		return
 	}
 
 	exec, err := cmd.Wait()
 	if err != nil {
-		fmt.Println("Wait err:", err)
+		_, _ = fmt.Println("Wait err:", err)
 
 		return
 	}
 
-	fmt.Println("Exit code:", exec.ExitCode)
-	fmt.Println("Stdout:")
-	fmt.Println(exec.Stdout)
-	fmt.Println("Stderr:")
-	fmt.Println(exec.Stderr)
+	_, _ = fmt.Println("Exit code:", exec.ExitCode)
+	_, _ = fmt.Println("Stdout:")
+	_, _ = fmt.Println(exec.Stdout)
+	_, _ = fmt.Println("Stderr:")
+	_, _ = fmt.Println(exec.Stderr)
 
 	// Output:
 	// Exit code: 0
@@ -201,18 +202,18 @@ func ExampleErrTimeout() {
 
 	err := cmd.Run(context.Background())
 	if err != nil {
-		fmt.Println("Run err:", err)
+		_, _ = fmt.Println("Run err:", err)
 
 		return
 	}
 
 	exec, err := cmd.Wait()
-	fmt.Println("Wait err:", err)
-	fmt.Println("Exit code:", exec.ExitCode)
-	fmt.Println("Stdout:")
-	fmt.Println(exec.Stdout)
-	fmt.Println("Stderr:")
-	fmt.Println(exec.Stderr)
+	_, _ = fmt.Println("Wait err:", err)
+	_, _ = fmt.Println("Exit code:", exec.ExitCode)
+	_, _ = fmt.Println("Stdout:")
+	_, _ = fmt.Println(exec.Stdout)
+	_, _ = fmt.Println("Stderr:")
+	_, _ = fmt.Println(exec.Stderr)
 
 	// Output:
 	// Wait err: command timed out
@@ -230,8 +231,8 @@ func ExampleErrFailedStarting() {
 
 	err := cmd.Run(context.Background())
 
-	fmt.Println("Run err:")
-	fmt.Println(err)
+	_, _ = fmt.Println("Run err:")
+	_, _ = fmt.Println(err)
 
 	// Output:
 	// Run err:
@@ -247,14 +248,14 @@ func ExampleErrExecutionFailed() {
 
 	err := cmd.Run(context.Background())
 	if err != nil {
-		fmt.Println("Run err:", err)
+		_, _ = fmt.Println("Run err:", err)
 
 		return
 	}
 
 	exec, err := cmd.Wait()
-	fmt.Println("Wait err:", err)
-	fmt.Println("Exit code:", exec.ExitCode)
+	_, _ = fmt.Println("Wait err:", err)
+	_, _ = fmt.Println("Exit code:", exec.ExitCode)
 
 	// Output:
 	// Wait err: command returned a non-zero exit code
