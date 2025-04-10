@@ -18,8 +18,10 @@ package container
 
 import (
 	"fmt"
+	"io"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -343,5 +345,88 @@ func TestNoneLoggerHasNoLogURI(t *testing.T) {
 		return helpers.Command("logs", data.Identifier())
 	}
 	testCase.Expected = test.Expects(1, nil, nil)
+	testCase.Run(t)
+}
+
+func TestLogsWithStartContainer(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	// For windows we  havent added support for dual logging so not adding the test.
+	testCase.Require = require.All(require.Not(require.Windows))
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Test logs are directed correctly for container start of a interactive container",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				cmd := helpers.Command("run", "-it", "--name", data.Identifier(), testutil.CommonImage)
+				cmd.WithPseudoTTY()
+				cmd.WithFeeder(func() io.Reader {
+					// Note: Without the sleep the test seems flaky.
+					time.Sleep(time.Second)
+					return strings.NewReader("echo foo\nexit\n")
+				})
+
+				cmd.Run(&test.Expected{
+					ExitCode: 0,
+				})
+
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("start", "-a", data.Identifier())
+				cmd.WithPseudoTTY()
+				cmd.WithFeeder(func() io.Reader {
+					// Note: Without the sleep the test seems flaky.
+					time.Sleep(time.Second)
+					return strings.NewReader("echo bar\nexit\n")
+				})
+				cmd.Run(&test.Expected{
+					ExitCode: 0,
+				})
+				cmd = helpers.Command("logs", data.Identifier())
+
+				return cmd
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, info string, t *testing.T) {
+						assert.Assert(t, strings.Contains(stdout, "foo"))
+						assert.Assert(t, strings.Contains(stdout, "bar"))
+					},
+				}
+			},
+		},
+		{
+			Description: "Test logs are captured after stopping and starting a non-interactive container and continue capturing new logs",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sh", "-c", "while true; do echo foo; sleep 1; done")
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				helpers.Ensure("stop", data.Identifier())
+				initialLogs := helpers.Capture("logs", data.Identifier())
+				initialFooCount := strings.Count(initialLogs, "foo")
+				data.Set("initialFooCount", strconv.Itoa(initialFooCount))
+				helpers.Ensure("start", data.Identifier())
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+				return helpers.Command("logs", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, info string, t *testing.T) {
+						finalLogsCount := strings.Count(stdout, "foo")
+						initialFooCount, _ := strconv.Atoi(data.Get("initialFooCount"))
+						assert.Assert(t, finalLogsCount > initialFooCount, "Expected 'foo' count to increase after restart", info)
+					},
+				}
+			},
+		},
+	}
 	testCase.Run(t)
 }
