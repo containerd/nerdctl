@@ -159,7 +159,7 @@ func TestBasicFail(t *testing.T) {
 	assertive.ErrorIs(t, err, com.ErrExecutionFailed)
 	assertive.IsEqual(t, 127, res.ExitCode)
 	assertive.IsEqual(t, "", res.Stdout)
-	assertive.StringHasSuffix(t, res.Stderr, "does-not-exist: command not found\n")
+	assertive.HasSuffix(t, res.Stderr, "does-not-exist: command not found\n")
 }
 
 func TestWorkingDir(t *testing.T) {
@@ -187,7 +187,7 @@ func TestWorkingDir(t *testing.T) {
 		t.Skip("skipping last check on windows, see note")
 	}
 
-	assertive.StringHasSuffix(t, res.Stdout, dir+"\n")
+	assertive.HasSuffix(t, res.Stdout, dir+"\n")
 }
 
 func TestEnvBlacklist(t *testing.T) {
@@ -206,8 +206,8 @@ func TestEnvBlacklist(t *testing.T) {
 
 	assertive.ErrorIsNil(t, err)
 	assertive.IsEqual(t, 0, res.ExitCode)
-	assertive.StringContains(t, res.Stdout, "FOO=BAR")
-	assertive.StringContains(t, res.Stdout, "FOOBAR=BARBAR")
+	assertive.Contains(t, res.Stdout, "FOO=BAR")
+	assertive.Contains(t, res.Stdout, "FOOBAR=BARBAR")
 
 	command = &com.Command{
 		Binary:       "env",
@@ -222,8 +222,8 @@ func TestEnvBlacklist(t *testing.T) {
 
 	assertive.ErrorIsNil(t, err)
 	assertive.IsEqual(t, res.ExitCode, 0)
-	assertive.StringDoesNotContain(t, res.Stdout, "FOO=BAR")
-	assertive.StringContains(t, res.Stdout, "FOOBAR=BARBAR")
+	assertive.DoesNotContain(t, res.Stdout, "FOO=BAR")
+	assertive.Contains(t, res.Stdout, "FOOBAR=BARBAR")
 
 	// On windows, with mingw, SYSTEMROOT,TERM and HOME (possibly others) will be forcefully added
 	// to the environment regardless, so, we can't test "*" blacklist
@@ -272,10 +272,10 @@ func TestEnvAdd(t *testing.T) {
 
 	assertive.ErrorIsNil(t, err)
 	assertive.IsEqual(t, res.ExitCode, 0)
-	assertive.StringContains(t, res.Stdout, "FOO=REPLACE")
-	assertive.StringContains(t, res.Stdout, "BAR=NEW")
-	assertive.StringContains(t, res.Stdout, "BAZ=OLD")
-	assertive.StringContains(t, res.Stdout, "BLED=EXPLICIT")
+	assertive.Contains(t, res.Stdout, "FOO=REPLACE")
+	assertive.Contains(t, res.Stdout, "BAR=NEW")
+	assertive.Contains(t, res.Stdout, "BAZ=OLD")
+	assertive.Contains(t, res.Stdout, "BLED=EXPLICIT")
 }
 
 func TestStdoutStderr(t *testing.T) {
@@ -322,7 +322,7 @@ func TestTimeoutPlain(t *testing.T) {
 	assertive.IsEqual(t, res.ExitCode, -1)
 	assertive.IsEqual(t, res.Stdout, "one")
 	assertive.IsEqual(t, res.Stderr, "")
-	assertive.DurationIsLessThan(t, end.Sub(start), 2*time.Second)
+	assertive.IsLessThan(t, end.Sub(start), 2*time.Second)
 }
 
 func TestTimeoutDelayed(t *testing.T) {
@@ -351,7 +351,7 @@ func TestTimeoutDelayed(t *testing.T) {
 	assertive.IsEqual(t, res.ExitCode, -1)
 	assertive.IsEqual(t, res.Stdout, "one")
 	assertive.IsEqual(t, res.Stderr, "")
-	assertive.DurationIsLessThan(t, end.Sub(start), 2*time.Second)
+	assertive.IsLessThan(t, end.Sub(start), 2*time.Second)
 }
 
 func TestPTYStdout(t *testing.T) {

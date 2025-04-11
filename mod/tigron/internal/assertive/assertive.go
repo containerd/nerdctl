@@ -14,156 +14,274 @@
    limitations under the License.
 */
 
+//revive:disable:add-constant,package-comments
 package assertive
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
+	"os"
+	"regexp"
+	"runtime"
 	"strings"
 	"time"
+
+	"github.com/containerd/nerdctl/mod/tigron/internal/formatter"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
-type testingT interface {
-	Helper()
-	FailNow()
-	Fail()
-	Log(args ...interface{})
+// TODO: once debugging output will be cleaned-up, reintroduce hexdump.
+
+const (
+	expectedSuccessDecorator = "✅️ does verify:\t\t"
+	expectedFailDecorator    = "❌ does not verify:\t"
+	receivedDecorator        = "👀 testing:\t\t"
+	hyperlinkDecorator       = "🔗"
+)
+
+// ErrorIsNil fails a test if err is not nil.
+func ErrorIsNil(testing tig.T, err error, msg ...string) {
+	testing.Helper()
+
+	evaluate(testing, errors.Is(err, nil), err, "is `<nil>`", msg...)
 }
 
-// ErrorIsNil immediately fails a test if err is not nil.
-func ErrorIsNil(t testingT, err error, msg ...string) {
-	t.Helper()
+// ErrorIs fails a test if err is not the comparison error.
+func ErrorIs(testing tig.T, err, expected error, msg ...string) {
+	testing.Helper()
 
+	evaluate(testing, errors.Is(err, expected), err, fmt.Sprintf("is `%v`", expected), msg...)
+}
+
+// IsEqual fails a test if the two interfaces are not equal.
+func IsEqual[T comparable](testing tig.T, actual, expected T, msg ...string) {
+	testing.Helper()
+
+	evaluate(testing, actual == expected, actual, fmt.Sprintf("= `%v`", expected), msg...)
+}
+
+// IsNotEqual fails a test if the two interfaces are equal.
+func IsNotEqual[T comparable](testing tig.T, actual, expected T, msg ...string) {
+	testing.Helper()
+
+	evaluate(testing, actual != expected, actual, fmt.Sprintf("!= `%v`", expected), msg...)
+}
+
+// Contains fails a test if the actual string does not contain the other string.
+func Contains(testing tig.T, actual, contains string, msg ...string) {
+	testing.Helper()
+
+	evaluate(
+		testing,
+		strings.Contains(actual, contains),
+		actual,
+		fmt.Sprintf("~= `%v`", contains),
+		msg...)
+}
+
+// DoesNotContain fails a test if the actual string contains the other string.
+func DoesNotContain(testing tig.T, actual, contains string, msg ...string) {
+	testing.Helper()
+
+	evaluate(
+		testing,
+		!strings.Contains(actual, contains),
+		actual,
+		fmt.Sprintf("! ~= `%v`", contains),
+		msg...)
+}
+
+// HasSuffix fails a test if the string does not end with suffix.
+func HasSuffix(testing tig.T, actual, suffix string, msg ...string) {
+	testing.Helper()
+
+	evaluate(
+		testing,
+		strings.HasSuffix(actual, suffix),
+		actual,
+		fmt.Sprintf("`%v` $", suffix),
+		msg...)
+}
+
+// HasPrefix fails a test if the string does not start with prefix.
+func HasPrefix(testing tig.T, actual, prefix string, msg ...string) {
+	testing.Helper()
+
+	evaluate(
+		testing,
+		strings.HasPrefix(actual, prefix),
+		actual,
+		fmt.Sprintf("^ `%v`", prefix),
+		msg...)
+}
+
+// Match fails a test if the string does not match the regexp.
+func Match(testing tig.T, actual string, reg *regexp.Regexp, msg ...string) {
+	testing.Helper()
+
+	evaluate(testing, reg.MatchString(actual), actual, fmt.Sprintf("`%v`", reg), msg...)
+}
+
+// DoesNotMatch fails a test if the string does match the regexp.
+func DoesNotMatch(testing tig.T, actual string, reg *regexp.Regexp, msg ...string) {
+	testing.Helper()
+
+	evaluate(testing, !reg.MatchString(actual), actual, fmt.Sprintf("`%v`", reg), msg...)
+}
+
+// IsLessThan fails a test if the actual is more or equal than the reference.
+func IsLessThan[T ~int | ~float64 | time.Duration](
+	testing tig.T,
+	actual, expected T,
+	msg ...string,
+) {
+	testing.Helper()
+
+	evaluate(testing, actual < expected, actual, fmt.Sprintf("< `%v`", expected), msg...)
+}
+
+// IsMoreThan fails a test if the actual is less or equal than the reference.
+func IsMoreThan[T ~int | ~float64 | time.Duration](
+	testing tig.T,
+	actual, expected T,
+	msg ...string,
+) {
+	testing.Helper()
+
+	evaluate(testing, actual > expected, actual, fmt.Sprintf("< `%v`", expected), msg...)
+}
+
+// True fails a test if the boolean is not true...
+func True(testing tig.T, comp bool, msg ...string) bool {
+	testing.Helper()
+
+	evaluate(testing, comp, comp, true, msg...)
+
+	return comp
+}
+
+// WithFailLater will allow an assertion to not fail the test immediately.
+// Failing later is necessary when asserting inside go routines, and also if you want many
+// successive asserts to all
+// evaluate instead of stopping at the first failing one.
+func WithFailLater(t tig.T) tig.T {
+	return &failLater{
+		t,
+	}
+}
+
+// WithSilentSuccess (used to wrap a *testing.T struct) will not log debugging assertive information
+// when the result is
+// a success.
+// In some cases, this is convenient to avoid crowding the display with successful checks info.
+func WithSilentSuccess(t tig.T) tig.T {
+	return &silentSuccess{
+		t,
+	}
+}
+
+type failLater struct {
+	tig.T
+}
+type silentSuccess struct {
+	tig.T
+}
+
+func evaluate(testing tig.T, isSuccess bool, actual, expected any, msg ...string) {
+	testing.Helper()
+
+	decorate(testing, isSuccess, actual, expected, msg...)
+
+	if !isSuccess {
+		if _, ok := testing.(*failLater); ok {
+			testing.Fail()
+		} else {
+			testing.FailNow()
+		}
+	}
+}
+
+func decorate(testing tig.T, isSuccess bool, actual, expected any, msg ...string) {
+	testing.Helper()
+
+	header := "\t"
+
+	hyperlink := getTopFrameFile()
+	if hyperlink != "" {
+		msg = append([]string{hyperlink + "\n"}, msg...)
+	}
+
+	msg = append(msg, fmt.Sprintf("\t%s`%v`", receivedDecorator, actual))
+
+	if isSuccess {
+		msg = append(msg,
+			fmt.Sprintf("\t%s%v", expectedSuccessDecorator, expected),
+		)
+	} else {
+		msg = append(msg,
+			fmt.Sprintf("\t%s%v", expectedFailDecorator, expected),
+		)
+	}
+
+	if _, ok := testing.(*silentSuccess); !isSuccess || !ok {
+		testing.Log(header + strings.Join(msg, "\n") + "\n")
+	}
+}
+
+func getTopFrameFile() string {
+	// Get the frames.
+	//nolint:mnd // Whatever mnd...
+	pc := make([]uintptr, 20)
+	//nolint:mnd // Whatever mnd...
+	n := runtime.Callers(2, pc)
+	callersFrames := runtime.CallersFrames(pc[:n])
+
+	var file string
+
+	var lineNumber int
+
+	var frame runtime.Frame
+	for range 20 {
+		frame, _ = callersFrames.Next()
+		if !strings.Contains(frame.Function, "/") {
+			break
+		}
+
+		file = frame.File
+		lineNumber = frame.Line
+	}
+
+	if file == "" {
+		return ""
+	}
+
+	//nolint:gosec // file is coming from runtime frames so, fine
+	source, err := os.Open(file)
 	if err != nil {
-		t.Log("expecting nil error, but got:", err)
-		failNow(t, msg...)
-	}
-}
-
-// ErrorIs immediately fails a test if err is not the comparison error.
-func ErrorIs(t testingT, err, compErr error, msg ...string) {
-	t.Helper()
-
-	if !errors.Is(err, compErr) {
-		t.Log("expected error to be:", compErr, "- instead it is:", err)
-		failNow(t, msg...)
-	}
-}
-
-// IsEqual immediately fails a test if the two interfaces are not equal.
-func IsEqual(t testingT, actual, expected interface{}, msg ...string) {
-	t.Helper()
-
-	if !isEqual(t, actual, expected) {
-		t.Log("expected:", actual, " - to be equal to:", expected)
-		failNow(t, msg...)
-	}
-}
-
-// IsNotEqual immediately fails a test if the two interfaces are equal.
-func IsNotEqual(t testingT, actual, expected interface{}, msg ...string) {
-	t.Helper()
-
-	if isEqual(t, actual, expected) {
-		t.Log("expected:", actual, " - to be equal to:", expected)
-		failNow(t, msg...)
-	}
-}
-
-// StringContains immediately fails a test if the actual string does not contain the other string.
-func StringContains(t testingT, actual, contains string, msg ...string) {
-	t.Helper()
-
-	if !strings.Contains(actual, contains) {
-		t.Log("expected:", actual, " - to contain:", contains)
-		failNow(t, msg...)
-	}
-}
-
-// StringDoesNotContain immediately fails a test if the actual string contains the other string.
-func StringDoesNotContain(t testingT, actual, contains string, msg ...string) {
-	t.Helper()
-
-	if strings.Contains(actual, contains) {
-		t.Log("expected:", actual, " - to NOT contain:", contains)
-		failNow(t, msg...)
-	}
-}
-
-// StringHasSuffix immediately fails a test if the string does not end with suffix.
-func StringHasSuffix(t testingT, actual, suffix string, msg ...string) {
-	t.Helper()
-
-	if !strings.HasSuffix(actual, suffix) {
-		t.Log("expected:", actual, " - to end with:", suffix)
-		failNow(t, msg...)
-	}
-}
-
-// StringHasPrefix immediately fails a test if the string does not start with prefix.
-func StringHasPrefix(t testingT, actual, prefix string, msg ...string) {
-	t.Helper()
-
-	if !strings.HasPrefix(actual, prefix) {
-		t.Log("expected:", actual, " - to start with:", prefix)
-		failNow(t, msg...)
-	}
-}
-
-// DurationIsLessThan immediately fails a test if the duration is more than the reference.
-func DurationIsLessThan(t testingT, actual, expected time.Duration, msg ...string) {
-	t.Helper()
-
-	if actual >= expected {
-		t.Log("expected:", actual, " - to be less than:", expected)
-		failNow(t, msg...)
-	}
-}
-
-// True immediately fails a test if the boolean is not true...
-func True(t testingT, comp bool, msg ...string) bool {
-	t.Helper()
-
-	if !comp {
-		failNow(t, msg...)
+		return ""
 	}
 
-	return comp
-}
+	defer func() {
+		_ = source.Close()
+	}()
 
-// Check marks a test as failed if the boolean is not true (safe in go routines)
-//
-//nolint:varnamelen
-func Check(t testingT, comp bool, msg ...string) bool {
-	t.Helper()
+	index := 1
+	scanner := bufio.NewScanner(source)
 
-	if !comp {
-		for _, m := range msg {
-			t.Log(m)
+	var line string
+
+	for ; scanner.Err() == nil && index <= lineNumber; index++ {
+		if !scanner.Scan() {
+			break
 		}
 
-		t.Fail()
+		line = strings.Trim(scanner.Text(), "\t ")
 	}
 
-	return comp
-}
-
-//nolint:varnamelen
-func failNow(t testingT, msg ...string) {
-	t.Helper()
-
-	if len(msg) > 0 {
-		for _, m := range msg {
-			t.Log(m)
-		}
-	}
-
-	t.FailNow()
-}
-
-func isEqual(t testingT, actual, expected interface{}) bool {
-	t.Helper()
-
-	// FIXME: this is risky and limited. Right now this is fine internally, but do better if this
-	// becomes public.
-	return actual == expected
+	return hyperlinkDecorator + " " + (&formatter.OSC8{
+		Text:     line,
+		Location: "file://" + file,
+		Line:     frame.Line,
+	}).String()
 }
