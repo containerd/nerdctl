@@ -668,3 +668,39 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestRunCPURealTimeSettingCgroupV1(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Description: "cpu-rt-runtime-and-period",
+		Require: require.All(
+			require.Not(nerdtest.CGroupV2),
+			nerdtest.Rootful,
+		),
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("create", "--name", data.Identifier(),
+				"--cpu-rt-runtime", "950000",
+				"--cpu-rt-period", "1000000",
+				testutil.AlpineImage, "sleep", "infinity")
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rm", "-f", data.Identifier())
+		},
+		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+			return &test.Expected{
+				ExitCode: 0,
+				Output: expect.All(
+					func(stdout string, info string, t *testing.T) {
+						rtRuntime := helpers.Capture("inspect", "--format", "{{.HostConfig.CPURealtimeRuntime}}", data.Identifier())
+						rtPeriod := helpers.Capture("inspect", "--format", "{{.HostConfig.CPURealtimePeriod}}", data.Identifier())
+						assert.Assert(t, strings.Contains(rtRuntime, "950000"))
+						assert.Assert(t, strings.Contains(rtPeriod, "1000000"))
+					},
+				),
+			}
+		},
+	}
+
+	testCase.Run(t)
+}

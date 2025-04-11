@@ -37,6 +37,7 @@ type Info struct {
 	CPUCfsQuota       bool `json:"CpuCfsQuota"`
 	CPUShares         bool
 	CPUSet            bool
+	CPURealtime       bool
 	PidsLimit         bool
 	IPv4Forwarding    bool
 	BridgeNfIptables  bool
