@@ -343,6 +343,9 @@ type ContainerTopOptions struct {
 	Stdout io.Writer
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
+
+	// Arguments to pass through to the ps command
+	PsArgs string
 }
 
 // ContainerInspectOptions specifies options for `nerdctl container inspect`
