@@ -14,7 +14,10 @@
    limitations under the License.
 */
 
+//revive:disable:add-constant
 package expect_test
+
+// TODO: add a lot more tests including failure conditions with mimicry
 
 import (
 	"regexp"

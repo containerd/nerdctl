@@ -35,8 +35,8 @@ var (
 )
 
 // Open will allocate and return a new pty.
-func Open() (*os.File, *os.File, error) {
-	pty, tty, err := creack.Open()
+func Open() (pty, tty *os.File, err error) {
+	pty, tty, err = creack.Open()
 	if err != nil {
 		if errors.Is(err, creack.ErrUnsupported) {
 			err = errors.Join(ErrUnsupportedPlatform, err)
