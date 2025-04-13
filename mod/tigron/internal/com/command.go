@@ -93,10 +93,10 @@ type Command struct {
 	WrapArgs    []string
 	Timeout     time.Duration
 
-	WorkingDir string
-	Env        map[string]string
-	// FIXME: EnvBlackList might change for a better mechanism (regexp and/or whitelist + blacklist)
+	WorkingDir   string
+	Env          map[string]string
 	EnvBlackList []string
+	EnvWhiteList []string
 
 	writers []func() io.Reader
 
@@ -122,6 +122,7 @@ func (gc *Command) Clone() *Command {
 		WorkingDir:   gc.WorkingDir,
 		Env:          map[string]string{},
 		EnvBlackList: append([]string(nil), gc.EnvBlackList...),
+		EnvWhiteList: append([]string(nil), gc.EnvWhiteList...),
 
 		writers: append([]func() io.Reader(nil), gc.writers...),
 
@@ -399,23 +400,52 @@ func (gc *Command) buildCommand(ctx context.Context) *exec.Cmd {
 	//nolint:gosec
 	cmd := exec.CommandContext(ctx, binary, args...)
 
-	// Add dir
+	// Add dir.
 	cmd.Dir = gc.WorkingDir
 
-	// Set wait delay after waits returns
+	// Set wait delay after waits returns.
 	cmd.WaitDelay = delayAfterWait
 
-	// Build env
+	// Build env.
 	cmd.Env = []string{}
-	// TODO: replace with regexps? and/or whitelist?
+
+	const (
+		star  = "*"
+		equal = "="
+	)
+
 	for _, envValue := range os.Environ() {
 		add := true
 
-		for _, b := range gc.EnvBlackList {
-			if b == "*" || strings.HasPrefix(envValue, b+"=") {
+		for _, needle := range gc.EnvBlackList {
+			if strings.HasSuffix(needle, star) {
+				needle = strings.TrimSuffix(needle, star)
+			} else if needle != star && !strings.Contains(needle, equal) {
+				needle += equal
+			}
+
+			if needle == star || strings.HasPrefix(envValue, needle) {
 				add = false
 
 				break
+			}
+		}
+
+		if len(gc.EnvWhiteList) > 0 {
+			add = false
+
+			for _, needle := range gc.EnvWhiteList {
+				if strings.HasSuffix(needle, star) {
+					needle = strings.TrimSuffix(needle, star)
+				} else if needle != star && !strings.Contains(needle, equal) {
+					needle += equal
+				}
+
+				if needle == star || strings.HasPrefix(envValue, needle) {
+					add = true
+
+					break
+				}
 			}
 		}
 
