@@ -105,6 +105,7 @@ type nerdCommand struct {
 }
 
 func (nc *nerdCommand) Run(expect *test.Expected) {
+	nc.T().Helper()
 	nc.prep()
 	if getTarget() == targetDocker {
 		// We are not in the business of testing docker *error* output, so, spay expectation here
