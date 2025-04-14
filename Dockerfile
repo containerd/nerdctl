@@ -250,6 +250,9 @@ COPY docs /out/share/doc/nerdctl/docs
 RUN (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
   mv /tmp/SHA256SUMS /out/share/doc/nerdctl-full/SHA256SUMS && \
   chown -R 0:0 /out
+RUN git clone https://github.com/apostasie/buildg.git /tmp/buildg; cd /tmp/buildg; \
+    go build -o /out/bin/buildg .
+
 
 FROM scratch AS out-full
 COPY --from=build-full /out /

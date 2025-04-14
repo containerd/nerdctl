@@ -21,9 +21,12 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
+
+	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -228,7 +231,18 @@ func debugAction(cmd *cobra.Command, args []string) error {
 	buildgCmd.Stdout = cmd.OutOrStdout()
 	buildgCmd.Stderr = cmd.ErrOrStderr()
 	if err := buildgCmd.Start(); err != nil {
-		return err
+		// Tentative workaround for https://github.com/containerd/nerdctl/issues/4046
+		log.L.Errorf("failed to start buildg: %v", err)
+		time.Sleep(time.Second)
+		buildgCmd = exec.Command(buildgBinary, append(buildgArgs, args[0])...)
+		buildgCmd.Env = os.Environ()
+		buildgCmd.Stdin = cmd.InOrStdin()
+		buildgCmd.Stdout = cmd.OutOrStdout()
+		buildgCmd.Stderr = cmd.ErrOrStderr()
+		if err := buildgCmd.Start(); err != nil {
+			log.L.Errorf("failed to start buildg (retry): %v", err)
+			return err
+		}
 	}
 
 	return buildgCmd.Wait()
