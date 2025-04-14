@@ -17,10 +17,13 @@
 package test
 
 import (
+	"encoding/json"
+	"fmt"
 	"slices"
 	"testing"
 
 	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
+	"github.com/containerd/nerdctl/mod/tigron/internal/formatter"
 )
 
 // Case describes an entire test-case, including data, setup and cleanup routines, command and
@@ -62,9 +65,15 @@ type Case struct {
 	parent  *Case
 }
 
+const (
+	startDecorator  = "🚀"
+	cleanDecorator  = "🧽"
+	setupDecorator  = "🏗"
+	subinDecorator  = "⤵️"
+	suboutDecorator = "↩️"
+)
+
 // Run prepares and executes the test, and any possible subtests.
-//
-//nolint:gocognit
 func (test *Case) Run(t *testing.T) {
 	t.Helper()
 	// Run the test
@@ -72,17 +81,17 @@ func (test *Case) Run(t *testing.T) {
 	testRun := func(subT *testing.T) {
 		subT.Helper()
 
-		assertive.True(subT, test.t == nil, "You cannot run a test multiple times")
+		silentT := assertive.WithSilentSuccess(subT)
+
+		assertive.True(silentT, test.t == nil, "You cannot run a test multiple times")
+		assertive.True(silentT, test.Description != "" || test.parent == nil,
+			"A subtest description cannot be empty")
+		assertive.True(silentT, test.Command == nil || test.Expected != nil,
+			"Expectations for a test command cannot be nil. You may want to use `Setup` instead"+
+				"of `Command`.")
 
 		// Attach testing.T
 		test.t = subT
-		assertive.True(
-			test.t,
-			test.Description != "" || test.parent == nil,
-			"A test description cannot be empty",
-		)
-		assertive.True(test.t, test.Command == nil || test.Expected != nil,
-			"Expectations for a test command cannot be nil. You may want to use Setup instead.")
 
 		// Ensure we have env
 		if test.Env == nil {
@@ -168,49 +177,83 @@ func (test *Case) Run(t *testing.T) {
 		}
 
 		// Execute cleanups now
-		test.t.Log("")
-		test.t.Log("======================== Pre-test cleanup ========================")
-
-		for _, cleanup := range cleanups {
-			cleanup(test.Data, test.helpers)
-		}
-
-		// Register the cleanups, in reverse
-		test.t.Cleanup(func() {
-			test.t.Log("")
-			test.t.Log("======================== Post-test cleanup ========================")
-
-			slices.Reverse(cleanups)
+		if len(cleanups) > 0 {
+			test.t.Log(
+				"\n\n" + formatter.Table(
+					[][]any{{cleanDecorator, fmt.Sprintf("%q: initial cleanup", test.t.Name())}},
+					"=",
+				) + "\n",
+			)
 
 			for _, cleanup := range cleanups {
 				cleanup(test.Data, test.helpers)
 			}
-		})
+
+			// Register the cleanups, in reverse
+			test.t.Cleanup(func() {
+				test.t.Helper()
+				test.t.Log(
+					"\n\n" + formatter.Table(
+						[][]any{{cleanDecorator, fmt.Sprintf("%q: post-cleanup", test.t.Name())}},
+						"=",
+					) + "\n",
+				)
+
+				slices.Reverse(cleanups)
+
+				for _, cleanup := range cleanups {
+					cleanup(test.Data, test.helpers)
+				}
+			})
+		}
 
 		// Run the setups
-		test.t.Log("")
-		test.t.Log("======================== Test setup ========================")
+		if len(setups) > 0 {
+			test.t.Log(
+				"\n\n" + formatter.Table(
+					[][]any{{setupDecorator, fmt.Sprintf("%q: setup", test.t.Name())}},
+					"=",
+				) + "\n",
+			)
 
-		for _, setup := range setups {
-			setup(test.Data, test.helpers)
+			for _, setup := range setups {
+				setup(test.Data, test.helpers)
+			}
 		}
 
 		// Run the command if any, with expectations
 		// Note: if we have a command, we already know we DO have Expected
-		test.t.Log("")
-		test.t.Log("======================== Test Run ========================")
-
 		if test.Command != nil {
-			test.Command(test.Data, test.helpers).Run(test.Expected(test.Data, test.helpers))
+			cmd := test.Command(test.Data, test.helpers)
+
+			debugConfig, _ := json.MarshalIndent(test.Config.(*config).config, "", "  ")
+			debugData, _ := json.MarshalIndent(test.Data.(*data).labels, "", "  ")
+
+			test.t.Log(
+				"\n\n" + formatter.Table(
+					[][]any{
+						{startDecorator, fmt.Sprintf("%q: starting test!", test.t.Name())},
+						{"cwd", test.Data.TempDir()},
+						{"config", string(debugConfig)},
+						{"data", string(debugData)},
+					},
+					"=",
+				) + "\n",
+			)
+
+			cmd.Run(test.Expected(test.Data, test.helpers))
 		}
 
-		// Now go for the subtests
-		test.t.Log("")
-		test.t.Log("======================== Processing subtests ========================")
+		if len(test.SubTests) > 0 {
+			// Now go for the subtests
+			test.t.Logf("\n%s️ %q: into subtests prep", subinDecorator, test.t.Name())
 
-		for _, subTest := range test.SubTests {
-			subTest.parent = test
-			subTest.Run(test.t)
+			for _, subTest := range test.SubTests {
+				subTest.parent = test
+				subTest.Run(test.t)
+			}
+
+			test.t.Logf("\n%s️ %q: done with subtests prep", suboutDecorator, test.t.Name())
 		}
 	}
 

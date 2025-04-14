@@ -14,14 +14,14 @@
    limitations under the License.
 */
 
-//nolint:revive
+//revive:disable:exported,package-comments,add-constant // TODO.
 package test
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -29,9 +29,17 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/internal"
 	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
 	"github.com/containerd/nerdctl/mod/tigron/internal/com"
+	"github.com/containerd/nerdctl/mod/tigron/internal/formatter"
 )
 
-const defaultExecutionTimeout = 3 * time.Minute
+const (
+	defaultExecutionTimeout = 3 * time.Minute
+	commandDecorator        = "⚙️"
+	errorDecorator          = "🚫"
+	exitDecorator           = "⚠️"
+	stdoutDecorator         = "🟢"
+	stderrDecorator         = "🟠"
+)
 
 // CustomizableCommand is an interface meant for people who want to heavily customize the base
 // command of their test case.
@@ -71,7 +79,6 @@ type CustomizableCommand interface {
 	read(key ConfigKey) ConfigValue
 }
 
-//nolint:ireturn
 func NewGenericCommand() CustomizableCommand {
 	genericCom := &GenericCommand{
 		Env: map[string]string{},
@@ -151,49 +158,56 @@ func (gc *GenericCommand) Signal(sig os.Signal) error {
 }
 
 func (gc *GenericCommand) Run(expect *Expected) {
-	if gc.t != nil {
-		gc.t.Helper()
-	}
+	gc.t.Helper()
+
+	var debug [][]any
 
 	if !gc.async {
 		_ = gc.cmd.Run(context.WithValue(context.Background(), com.LoggerKey, gc.t))
 	}
 
+	debug = append(debug,
+		[]any{"➡️", commandDecorator + " " + gc.cmd.Binary + " " + strings.Join(gc.cmd.Args, " ")},
+	)
+
+	// Wait for the command and if Err is not nil, append it to the debug information
 	result, err := gc.cmd.Wait()
-	if result != nil {
-		gc.rawStdErr = result.Stderr
+	if err != nil {
+		debug = append(debug, []any{"", errorDecorator + " " + err.Error()})
 	}
 
-	// Check our expectations, if any
-	if expect != nil {
-		// Build the debug string
-		separator := "================================="
-		debugCommand := gc.cmd.Binary + " " + strings.Join(gc.cmd.Args, " ")
-		debugTimeout := gc.cmd.Timeout
-		debugWD := gc.cmd.WorkingDir
+	// If we were requested to perform expectation matching, add non-empty debugging information
+	if result != nil {
+		gc.rawStdErr = result.Stderr
 
-		// FIXME: this is ugly af. Do better.
-		debug := fmt.Sprintf(
-			"\n%s\n| Command:\t%s\n| Working Dir:\t%s\n| Timeout:\t%s\n%s\n"+
-				"%s\n%s\n| Stderr:\n%s\n%s\n%s\n| Stdout:\n%s\n%s\n%s\n| Exit Code: %d\n| Signaled: %v\n| Err: %v\n%s",
-			separator,
-			debugCommand,
-			debugWD,
-			debugTimeout,
-			separator,
-			"\t"+strings.Join(result.Environ, "\n\t"),
-			separator,
-			separator,
-			result.Stderr,
-			separator,
-			separator,
-			result.Stdout,
-			separator,
-			result.ExitCode,
-			result.Signal,
-			err,
-			separator,
+		if result.ExitCode != 0 {
+			debug = append(debug, []any{"", exitDecorator + " " + strconv.Itoa(result.ExitCode)})
+		}
+
+		if result.Stdout != "" {
+			debug = append(debug, []any{"", stdoutDecorator + " " + result.Stdout})
+		}
+
+		if result.Stderr != "" {
+			debug = append(debug, []any{"", stderrDecorator + " " + result.Stderr})
+		}
+
+		if result.Signal != nil {
+			debug = append(debug, []any{"Signal", result.Signal.String()})
+		}
+
+		debug = append(debug,
+			[]any{"Limit", gc.cmd.Timeout},
+			[]any{"Environ", strings.Join(result.Environ, "\n")},
 		)
+	}
+
+	// Print the command info
+	gc.t.Log("\n\n" + formatter.Table(debug, "-") + "\n")
+
+	// Now, check our expectations, if any
+	if expect != nil {
+		assertT := assertive.WithSilentSuccess(gc.t)
 
 		// ExitCode goes first
 		switch expect.ExitCode {
@@ -203,44 +217,67 @@ func (gc *GenericCommand) Run(expect *Expected) {
 			// ExitCodeGenericFail means we expect an error (excluding timeout, cancellation,
 			// signalling).
 			assertive.ErrorIs(
-				gc.t,
+				assertT,
 				err,
 				com.ErrExecutionFailed,
-				"Command should have failed",
-				debug,
+				"Command should fail",
 			)
 		case internal.ExitCodeTimeout:
 			assertive.ErrorIs(
 				gc.t,
 				err,
 				com.ErrTimeout,
-				"Command should have timed out",
-				debug,
+				"Command should time-out",
 			)
 		case internal.ExitCodeSignaled:
 			assertive.ErrorIs(
 				gc.t,
 				err,
 				com.ErrSignaled,
-				"Command should have been signaled",
-				debug,
+				"Command should get signaled",
 			)
 		case internal.ExitCodeSuccess:
-			assertive.ErrorIsNil(gc.t, err, "Command should have succeeded", debug)
+			assertive.ErrorIsNil(
+				assertT,
+				err,
+				"Command should succeed",
+			)
 		default:
-			assertive.IsEqual(gc.t, expect.ExitCode, result.ExitCode,
-				fmt.Sprintf("Expected exit code: %d\n", expect.ExitCode), debug)
+			exc := -1
+			if result != nil {
+				exc = result.ExitCode
+			}
+
+			assertive.IsEqual(
+				assertT,
+				expect.ExitCode,
+				exc,
+				"Exit code should match expectation",
+			)
 		}
+
+		// Switch to fail later mode so that we get ALL subsequent asserts failures from there on.
+		// Also does allow using assert(ive) in go routines.
+		assertT = assertive.WithFailLater(gc.t)
 
 		// Range through the expected errors and confirm they are seen on stderr
 		for _, expectErr := range expect.Errors {
-			assertive.Contains(gc.t, result.Stderr, expectErr.Error(),
-				fmt.Sprintf("Expected error: %q to be found in stderr\n", expectErr.Error()), debug)
+			assertive.Contains(
+				assertT,
+				gc.rawStdErr,
+				expectErr.Error(),
+				"Stderr should contain expected error",
+			)
 		}
 
 		// Finally, check the output if we are asked to
+		// FIXME: we cannot pass on assertT further for now until we move to tig.T
 		if expect.Output != nil {
-			expect.Output(result.Stdout, debug, gc.t)
+			expect.Output(
+				result.Stdout,
+				"",
+				gc.t,
+			)
 		}
 	}
 }
@@ -263,7 +300,6 @@ func (gc *GenericCommand) withConfig(config Config) {
 	gc.Config = config
 }
 
-//nolint:ireturn
 func (gc *GenericCommand) Clone() TestableCommand {
 	// Copy the command and return a new one - with almost everything from the parent command
 	clone := *gc
@@ -287,7 +323,6 @@ func (gc *GenericCommand) T() *testing.T {
 	return gc.t
 }
 
-//nolint:ireturn
 func (gc *GenericCommand) clear() TestableCommand {
 	comcopy := *gc
 	// Reset internal command

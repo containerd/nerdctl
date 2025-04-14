@@ -37,6 +37,7 @@ linters:
     - cyclop            # provided by revive
     - exhaustruct       # does not serve much of a purpose
     - errcheck          # provided by revive
+    - errchkjson        # forces handling of json err (eg: prevents _), which is too much
     - forcetypeassert   # provided by revive
     - funlen            # provided by revive
     - gocognit          # provided by revive
@@ -65,7 +66,7 @@ linters:
           arguments: [60]
         - name: function-length
           # Default is 50, 75
-          arguments: [80, 180]
+          arguments: [80, 200]
         - name: cyclomatic
           # Default is 10
           arguments: [30]
@@ -93,11 +94,17 @@ linters:
           files:
             - $all
           allow:
+            # Allowing go standard library and tigron itself
             - $gostd
             - github.com/containerd/nerdctl/mod/tigron
+            # We use creack as our base for pty
             - github.com/creack/pty
+            # Used for display width computation in internal/formatter
+            - golang.org/x/text/width
+            # errgroups and term (make raw) are used by internal/pipes
             - golang.org/x/sync
             - golang.org/x/term
+            # EXPERIMENTAL: for go routines leakage detection
             - go.uber.org/goleak
     staticcheck:
       checks:

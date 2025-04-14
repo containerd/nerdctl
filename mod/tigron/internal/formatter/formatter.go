@@ -19,77 +19,99 @@ package formatter
 import (
 	"fmt"
 	"strings"
-	"unicode/utf8"
+
+	"golang.org/x/text/width"
 )
 
 const (
 	maxLineLength = 110
 	maxLines      = 100
 	kMaxLength    = 7
+	spacer        = " "
 )
 
-func chunk(s string, length int) []string {
-	var chunks []string
-
-	lines := strings.Split(s, "\n")
-
-	for x := 0; x < maxLines && x < len(lines); x++ {
-		line := lines[x]
-		if utf8.RuneCountInString(line) < length {
-			chunks = append(chunks, line)
-
-			continue
-		}
-
-		for index := 0; index < utf8.RuneCountInString(line); index += length {
-			end := index + length
-			if end > utf8.RuneCountInString(line) {
-				end = utf8.RuneCountInString(line)
-			}
-
-			chunks = append(chunks, string([]rune(line)[index:end]))
-		}
-	}
-
-	if len(chunks) == maxLines {
-		chunks = append(chunks, "...")
-	}
-
-	return chunks
-}
-
-// Table formats a `n x 2` dataset into a series of rows.
-// FIXME: the problem with full-width emoji is that they are going to eff-up the maths and display
-// here...
-// Maybe the csv writer could be cheat-used to get the right widths.
+// Table formats a `n x 2` dataset into a series of n rows by 2 columns.
 //
 //nolint:mnd // Too annoying
-func Table(data [][]any) string {
+func Table(data [][]any, mark string) string {
 	var output string
 
 	for _, row := range data {
 		key := fmt.Sprintf("%v", row[0])
 		value := strings.ReplaceAll(fmt.Sprintf("%v", row[1]), "\t", "  ")
 
-		output += fmt.Sprintf("+%s+\n", strings.Repeat("-", maxLineLength-2))
+		output += fmt.Sprintf("+%s+\n", strings.Repeat(mark, maxLineLength-2))
 
-		if utf8.RuneCountInString(key) > kMaxLength {
-			key = string([]rune(key)[:kMaxLength-3]) + "..."
-		}
-
-		for _, line := range chunk(value, maxLineLength-kMaxLength-7) {
+		for _, line := range chunk(value, maxLineLength-kMaxLength-7, maxLines) {
 			output += fmt.Sprintf(
-				"| %-*s | %-*s |\n",
-				kMaxLength,
-				key,
-				maxLineLength-kMaxLength-7,
+				"| %s | %s |\n",
+				// Keys longer than one line of kMaxLength will be striped to one line
+				chunk(key, kMaxLength, 1)[0],
 				line,
 			)
 			key = ""
 		}
 	}
 
-	output += fmt.Sprintf("+%s+", strings.Repeat("-", maxLineLength-2))
+	output += fmt.Sprintf("+%s+", strings.Repeat(mark, maxLineLength-2))
 
 	return output
+}
+
+// chunk does take a string and split it in lines of maxLength size, accounting for characters display width.
+func chunk(s string, maxLength, maxLines int) []string {
+	chunks := []string{}
+
+	runes := []rune(s)
+
+	size := 0
+	start := 0
+
+	for index := range runes {
+		var segment string
+
+		switch width.LookupRune(runes[index]).Kind() {
+		case width.EastAsianWide, width.EastAsianFullwidth:
+			size += 2
+		case width.EastAsianAmbiguous, width.Neutral, width.EastAsianHalfwidth, width.EastAsianNarrow:
+			size++
+		default:
+			size++
+		}
+
+		switch {
+		case runes[index] == '\n':
+			// Met a line-break. Pad to size (removing the line break)
+			segment = string(runes[start:index])
+			segment += strings.Repeat(spacer, maxLength-size+1)
+			start = index + 1
+			size = 0
+		case size == maxLength:
+			// Line is full. Add the segment.
+			segment = string(runes[start : index+1])
+			start = index + 1
+			size = 0
+		case size > maxLength:
+			// Last char was double width. Push it back to next line, and pad with a single space.
+			segment = string(runes[start:index]) + spacer
+			start = index
+			size = 2
+		case index == len(runes)-1:
+			// End of string. Pad it to size.
+			segment = string(runes[start : index+1])
+			segment += strings.Repeat(spacer, maxLength-size)
+		default:
+			continue
+		}
+
+		chunks = append(chunks, segment)
+	}
+
+	if len(chunks) > maxLines {
+		chunks = append(chunks[0:maxLines], "...")
+	} else if len(chunks) == 0 {
+		chunks = []string{strings.Repeat(spacer, maxLength)}
+	}
+
+	return chunks
 }
