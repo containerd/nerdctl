@@ -30,7 +30,6 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
-	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/imageinspector"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
@@ -87,7 +86,7 @@ func inspectIdentifier(ctx context.Context, client *containerd.Client, identifie
 }
 
 // Inspect prints detailed information of each image in `images`.
-func Inspect(ctx context.Context, client *containerd.Client, identifiers []string, options types.ImageInspectOptions) error {
+func Inspect(ctx context.Context, client *containerd.Client, identifiers []string, options types.ImageInspectOptions) ([]any, error) {
 	// Set a timeout
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -189,16 +188,9 @@ func Inspect(ctx context.Context, client *containerd.Client, identifiers []strin
 		}
 	}
 
-	// Display
-	if len(entries) > 0 {
-		if formatErr := formatter.FormatSlice(options.Format, options.Stdout, entries); formatErr != nil {
-			log.G(ctx).Error(formatErr)
-		}
-	}
-
 	if len(errs) > 0 {
-		return fmt.Errorf("%d errors:\n%w", len(errs), errors.Join(errs...))
+		return []any{}, fmt.Errorf("%d errors:\n%w", len(errs), errors.Join(errs...))
 	}
 
-	return nil
+	return entries, nil
 }
