@@ -33,11 +33,9 @@ import (
 var (
 	// ErrFailedCreating could be returned by newStdPipes() on pty creation failure.
 	ErrFailedCreating = errors.New("failed acquiring pipe")
-	// ErrFailedReading could be returned by the ioGroup in case the go routines fails to read out
-	// of a pipe.
+	// ErrFailedReading could be returned by the ioGroup in case the go routines fails to read out of a pipe.
 	ErrFailedReading = errors.New("failed reading")
-	// ErrFailedWriting could be returned by the ioGroup in case the go routines fails to write on a
-	// pipe.
+	// ErrFailedWriting could be returned by the ioGroup in case the go routines fails to write on a pipe.
 	ErrFailedWriting = errors.New("failed writing")
 )
 
@@ -108,7 +106,6 @@ func (pipes *stdPipes) closeCaller() {
 	}
 }
 
-//nolint:gocognit
 func newStdPipes(
 	ctx context.Context,
 	log *logger.ConcreteLogger,

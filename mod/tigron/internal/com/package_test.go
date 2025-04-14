@@ -50,10 +50,10 @@ func TestMain(m *testing.M) {
 		diff := highk.Diff(string(before), string(after))
 
 		if len(diff) != 0 {
-			_, _ = fmt.Fprintln(os.Stderr, "Leaking file descriptors")
+			fmt.Fprintln(os.Stderr, "Leaking file descriptors")
 
 			for _, file := range diff {
-				_, _ = fmt.Fprintln(os.Stderr, file)
+				fmt.Fprintln(os.Stderr, file)
 			}
 
 			exitCode = 1
@@ -61,8 +61,8 @@ func TestMain(m *testing.M) {
 	}
 
 	if err := highk.FindGoRoutines(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "Leaking go routines")
-		_, _ = fmt.Fprintln(os.Stderr, err.Error())
+		fmt.Fprintln(os.Stderr, "Leaking go routines")
+		fmt.Fprintln(os.Stderr, err.Error())
 
 		exitCode = 1
 	}

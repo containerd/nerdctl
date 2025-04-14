@@ -14,15 +14,8 @@
    limitations under the License.
 */
 
-package highk
-
-import (
-	"go.uber.org/goleak"
-)
-
-// FindGoRoutines retrieves leaked go routines, which are returned as an error.
-//
-//nolint:wrapcheck // FIXME: work in progress
-func FindGoRoutines() error {
-	return goleak.Find()
-}
+// Package internal provides an assert library, pty, a command wrapper, and a leak detection library
+// for internal use in Tigron. The objective for these is not to become generic use-cases libraries,
+// but instead to deliver what Tigron
+// needs in the simplest possible form.
+package internal

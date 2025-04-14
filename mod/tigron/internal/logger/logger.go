@@ -22,13 +22,13 @@ import (
 
 // Logger describes a passed logger, useful only for debugging.
 type Logger interface {
-	Log(args ...interface{})
+	Log(args ...any)
 	Helper()
 }
 
 // ConcreteLogger is a simple struct allowing to set additional metadata for a Logger.
 type ConcreteLogger struct {
-	meta       []interface{}
+	meta       []any
 	wrappedLog Logger
 }
 
@@ -41,12 +41,12 @@ func (cl *ConcreteLogger) Set(key, value string) *ConcreteLogger {
 }
 
 // Log prints a message using the Log method of the embedded Logger.
-func (cl *ConcreteLogger) Log(args ...interface{}) {
+func (cl *ConcreteLogger) Log(args ...any) {
 	if cl.wrappedLog != nil {
 		cl.wrappedLog.Helper()
 		cl.wrappedLog.Log(
 			append(
-				append([]interface{}{"[" + time.Now().Format(time.RFC3339) + "]"}, cl.meta...),
+				append([]any{"[" + time.Now().Format(time.RFC3339) + "]"}, cl.meta...),
 				args...)...)
 	}
 }

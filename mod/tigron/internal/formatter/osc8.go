@@ -27,5 +27,6 @@ type OSC8 struct {
 
 func (o *OSC8) String() string {
 	// FIXME: not sure if any desktop software does support line numbers anchors?
+	// FIXME: test that the terminal is able to display these and fallback to printing the information if not.
 	return fmt.Sprintf("\x1b]8;;%s#%d:1\x07%s\x1b]8;;\x07"+"\u001b[0m", o.Location, o.Line, o.Text)
 }

@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+//revive:disable:add-constant
 package com_test
 
 import (
@@ -49,18 +50,18 @@ func TestFaultyDoubleRunWait(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	err = command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIs(t, err, com.ErrExecAlreadyStarted)
+	assertive.ErrorIs(t, err, com.ErrExecAlreadyStarted, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, expect.ExitCodeSuccess, res.ExitCode)
-	assertive.IsEqual(t, "one", res.Stdout)
-	assertive.IsEqual(t, "", res.Stderr)
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, expect.ExitCodeSuccess, res.ExitCode, "ExitCode")
+	assertive.IsEqual(t, "one", res.Stdout, "Stdout")
+	assertive.IsEqual(t, "", res.Stderr, "Stderr")
 }
 
 func TestFaultyRunDoubleWait(t *testing.T) {
@@ -75,21 +76,21 @@ func TestFaultyRunDoubleWait(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, expect.ExitCodeSuccess, res.ExitCode)
-	assertive.IsEqual(t, "one", res.Stdout)
-	assertive.IsEqual(t, "", res.Stderr)
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, expect.ExitCodeSuccess, res.ExitCode, "ExitCode")
+	assertive.IsEqual(t, "one", res.Stdout, "Stdout")
+	assertive.IsEqual(t, "", res.Stderr, "Stderr")
 
 	res, err = command.Wait()
 
-	assertive.ErrorIs(t, err, com.ErrExecAlreadyFinished)
-	assertive.IsEqual(t, expect.ExitCodeSuccess, res.ExitCode)
-	assertive.IsEqual(t, "one", res.Stdout)
-	assertive.IsEqual(t, "", res.Stderr)
+	assertive.ErrorIs(t, err, com.ErrExecAlreadyFinished, "Err")
+	assertive.IsEqual(t, expect.ExitCodeSuccess, res.ExitCode, "ExitCode")
+	assertive.IsEqual(t, "one", res.Stdout, "Stdout")
+	assertive.IsEqual(t, "", res.Stderr, "Stderr")
 }
 
 func TestFailRun(t *testing.T) {
@@ -101,25 +102,25 @@ func TestFailRun(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIs(t, err, com.ErrFailedStarting)
+	assertive.ErrorIs(t, err, com.ErrFailedStarting, "Err")
 
 	err = command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIs(t, err, com.ErrExecAlreadyFinished)
+	assertive.ErrorIs(t, err, com.ErrExecAlreadyFinished, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIs(t, err, com.ErrFailedStarting)
-	assertive.IsEqual(t, -1, res.ExitCode)
-	assertive.IsEqual(t, "", res.Stdout)
-	assertive.IsEqual(t, "", res.Stderr)
+	assertive.ErrorIs(t, err, com.ErrFailedStarting, "Err")
+	assertive.IsEqual(t, -1, res.ExitCode, "ExitCode")
+	assertive.IsEqual(t, "", res.Stdout, "Stdout")
+	assertive.IsEqual(t, "", res.Stderr, "Stderr")
 
 	res, err = command.Wait()
 
-	assertive.ErrorIs(t, err, com.ErrFailedStarting)
-	assertive.IsEqual(t, -1, res.ExitCode)
-	assertive.IsEqual(t, "", res.Stdout)
-	assertive.IsEqual(t, "", res.Stderr)
+	assertive.ErrorIs(t, err, com.ErrFailedStarting, "Err")
+	assertive.IsEqual(t, -1, res.ExitCode, "ExitCode")
+	assertive.IsEqual(t, "", res.Stdout, "Stdout")
+	assertive.IsEqual(t, "", res.Stderr, "Stderr")
 }
 
 func TestBasicRunWait(t *testing.T) {
@@ -132,14 +133,14 @@ func TestBasicRunWait(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, 0, res.ExitCode)
-	assertive.IsEqual(t, "one", res.Stdout)
-	assertive.IsEqual(t, "", res.Stderr)
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, 0, res.ExitCode, "ExitCode")
+	assertive.IsEqual(t, "one", res.Stdout, "Stdout")
+	assertive.IsEqual(t, "", res.Stderr, "Stderr")
 }
 
 func TestBasicFail(t *testing.T) {
@@ -152,14 +153,14 @@ func TestBasicFail(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIs(t, err, com.ErrExecutionFailed)
-	assertive.IsEqual(t, 127, res.ExitCode)
-	assertive.IsEqual(t, "", res.Stdout)
-	assertive.HasSuffix(t, res.Stderr, "does-not-exist: command not found\n")
+	assertive.ErrorIs(t, err, com.ErrExecutionFailed, "Err")
+	assertive.IsEqual(t, 127, res.ExitCode, "ExitCode")
+	assertive.IsEqual(t, "", res.Stdout, "Stdout")
+	assertive.HasSuffix(t, res.Stderr, "does-not-exist: command not found\n", "Stderr")
 }
 
 func TestWorkingDir(t *testing.T) {
@@ -173,12 +174,12 @@ func TestWorkingDir(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, 0, res.ExitCode)
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, 0, res.ExitCode, "ExitCode")
 
 	// Note:
 	// - darwin will link to /private/DIR, so, check with HasSuffix
@@ -187,43 +188,72 @@ func TestWorkingDir(t *testing.T) {
 		t.Skip("skipping last check on windows, see note")
 	}
 
-	assertive.HasSuffix(t, res.Stdout, dir+"\n")
+	assertive.HasSuffix(t, res.Stdout, dir+"\n", "Stdout")
 }
 
 func TestEnvBlacklist(t *testing.T) {
 	t.Setenv("FOO", "BAR")
 	t.Setenv("FOOBAR", "BARBAR")
 
+	// First, test that environment gets through to the command
 	command := &com.Command{
 		Binary: "env",
+		// Note: LS_COLORS is just too loud
+		EnvBlackList: []string{
+			"LS_COLORS",
+		},
 	}
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, 0, res.ExitCode)
-	assertive.Contains(t, res.Stdout, "FOO=BAR")
-	assertive.Contains(t, res.Stdout, "FOOBAR=BARBAR")
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, 0, res.ExitCode, "ExitCode")
+	assertive.Contains(t, res.Stdout, "FOO=BAR", "Stdout")
+	assertive.Contains(t, res.Stdout, "FOOBAR=BARBAR", "Stdout")
 
+	// Now test that we can blacklist a single variable with fully qualified name (FOO)
 	command = &com.Command{
-		Binary:       "env",
-		EnvBlackList: []string{"FOO"},
+		Binary: "env",
+		EnvBlackList: []string{
+			"LS_COLORS",
+			"FOO",
+		},
 	}
 
 	err = command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err = command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, res.ExitCode, 0)
-	assertive.DoesNotContain(t, res.Stdout, "FOO=BAR")
-	assertive.Contains(t, res.Stdout, "FOOBAR=BARBAR")
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, res.ExitCode, 0, "ExitCode")
+	assertive.DoesNotContain(t, res.Stdout, "FOO=", "Stdout")
+	assertive.Contains(t, res.Stdout, "FOOBAR=BARBAR", "Stdout")
+
+	// Now test that we can blacklist multiple variables with FOO*
+	command = &com.Command{
+		Binary: "env",
+		EnvBlackList: []string{
+			"LS_COLORS",
+			"FOO*",
+		},
+	}
+
+	err = command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
+
+	assertive.ErrorIsNil(t, err, "Err")
+
+	res, err = command.Wait()
+
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, res.ExitCode, 0, "ExitCode")
+	assertive.DoesNotContain(t, res.Stdout, "FOO=", "Stdout")
+	assertive.DoesNotContain(t, res.Stdout, "FOOBAR=", "Stdout")
 
 	// On windows, with mingw, SYSTEMROOT,TERM and HOME (possibly others) will be forcefully added
 	// to the environment regardless, so, we can't test "*" blacklist
@@ -233,20 +263,93 @@ func TestEnvBlacklist(t *testing.T) {
 		)
 	}
 
+	// Now, test that we can blacklist everything
 	command = &com.Command{
 		Binary:       "env",
 		EnvBlackList: []string{"*"},
 	}
 
 	err = command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
-
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err = command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, res.ExitCode, 0)
-	assertive.IsEqual(t, res.Stdout, "")
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, res.ExitCode, 0, "ExitCode")
+	assertive.IsEqual(t, res.Stdout, "", "Stdout")
+}
+
+func TestEnvWhiteList(t *testing.T) {
+	t.Setenv("FOO", "BAR")
+	t.Setenv("FOOBAR", "BARBAR")
+
+	// Test that whitelist does let through only FOO
+	command := &com.Command{
+		Binary: "env",
+		EnvWhiteList: []string{
+			"FOO",
+		},
+	}
+
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
+
+	assertive.ErrorIsNil(t, err, "Err")
+
+	res, err := command.Wait()
+
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, 0, res.ExitCode, "ExitCode")
+	assertive.Contains(t, res.Stdout, "FOO=BAR", "Stdout")
+	assertive.DoesNotContain(t, res.Stdout, "FOOBAR=", "Stdout")
+	assertive.DoesNotContain(t, res.Stdout, "LS_COLORS=", "Stdout")
+
+	// Test that whitelist does let through FOO and FOOBAR with FOO*
+	command = &com.Command{
+		Binary: "env",
+		EnvWhiteList: []string{
+			"FOO*",
+		},
+	}
+
+	err = command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
+
+	assertive.ErrorIsNil(t, err, "Err")
+
+	res, err = command.Wait()
+
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, 0, res.ExitCode, "ExitCode")
+	assertive.Contains(t, res.Stdout, "FOO=BAR", "Stdout")
+	assertive.Contains(t, res.Stdout, "FOOBAR=BARBAR", "Stdout")
+	assertive.DoesNotContain(t, res.Stdout, "LS_COLORS=", "Stdout")
+}
+
+func TestEnvBlacklistWhiteList(t *testing.T) {
+	t.Setenv("FOO", "BAR")
+	t.Setenv("FOOBAR", "BARBAR")
+
+	// Test that if both are specified, only whitelist is taken into account
+	command := &com.Command{
+		Binary: "env",
+		EnvBlackList: []string{
+			"*",
+			"FOO*",
+		},
+		EnvWhiteList: []string{
+			"*",
+		},
+	}
+
+	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
+
+	assertive.ErrorIsNil(t, err, "Err")
+
+	res, err := command.Wait()
+
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, 0, res.ExitCode, "ExitCode")
+	assertive.Contains(t, res.Stdout, "FOO=BAR", "Stdout")
+	assertive.Contains(t, res.Stdout, "FOOBAR=BARBAR", "Stdout")
 }
 
 func TestEnvAdd(t *testing.T) {
@@ -261,21 +364,28 @@ func TestEnvAdd(t *testing.T) {
 			"BAR":  "NEW",
 			"BLED": "EXPLICIT",
 		},
-		EnvBlackList: []string{"BLED"},
+		EnvBlackList: []string{
+			"LS_COLORS",
+			"BLED",
+		},
 	}
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, res.ExitCode, 0)
-	assertive.Contains(t, res.Stdout, "FOO=REPLACE")
-	assertive.Contains(t, res.Stdout, "BAR=NEW")
-	assertive.Contains(t, res.Stdout, "BAZ=OLD")
-	assertive.Contains(t, res.Stdout, "BLED=EXPLICIT")
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, res.ExitCode, 0, "ExitCode")
+	// Confirm explicit Env: declaration overrides os.Environ
+	assertive.Contains(t, res.Stdout, "FOO=REPLACE", "Stdout")
+	// Confirm explicit Env: declaration does add a new variable
+	assertive.Contains(t, res.Stdout, "BAR=NEW", "Stdout")
+	// Confirm explicit Env: declaration for unrelated variable does not reset os.Environ
+	assertive.Contains(t, res.Stdout, "BAZ=OLD", "Stdout")
+	// Confirm that blacklist only operates on os.Environ and not on any explicitly added Env: declaration
+	assertive.Contains(t, res.Stdout, "BLED=EXPLICIT", "Stdout")
 }
 
 func TestStdoutStderr(t *testing.T) {
@@ -288,14 +398,14 @@ func TestStdoutStderr(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, res.ExitCode, 0)
-	assertive.IsEqual(t, res.Stdout, "onstdout")
-	assertive.IsEqual(t, res.Stderr, "onstderr")
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, res.ExitCode, 0, "ExitCode")
+	assertive.IsEqual(t, res.Stdout, "onstdout", "Stdout", "Stdout")
+	assertive.IsEqual(t, res.Stderr, "onstderr", "Stderr", "Stderr")
 }
 
 func TestTimeoutPlain(t *testing.T) {
@@ -312,17 +422,17 @@ func TestTimeoutPlain(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
 	end := time.Now()
 
-	assertive.ErrorIs(t, err, com.ErrTimeout)
-	assertive.IsEqual(t, res.ExitCode, -1)
-	assertive.IsEqual(t, res.Stdout, "one")
-	assertive.IsEqual(t, res.Stderr, "")
-	assertive.IsLessThan(t, end.Sub(start), 2*time.Second)
+	assertive.ErrorIs(t, err, com.ErrTimeout, "Err")
+	assertive.IsEqual(t, res.ExitCode, -1, "ExitCode")
+	assertive.IsEqual(t, res.Stdout, "one", "Stdout")
+	assertive.IsEqual(t, res.Stderr, "", "Stderr")
+	assertive.IsLessThan(t, end.Sub(start), 2*time.Second, "Total execution time")
 }
 
 func TestTimeoutDelayed(t *testing.T) {
@@ -339,7 +449,7 @@ func TestTimeoutDelayed(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	time.Sleep(1 * time.Second)
 
@@ -347,11 +457,11 @@ func TestTimeoutDelayed(t *testing.T) {
 
 	end := time.Now()
 
-	assertive.ErrorIs(t, err, com.ErrTimeout)
-	assertive.IsEqual(t, res.ExitCode, -1)
-	assertive.IsEqual(t, res.Stdout, "one")
-	assertive.IsEqual(t, res.Stderr, "")
-	assertive.IsLessThan(t, end.Sub(start), 2*time.Second)
+	assertive.ErrorIs(t, err, com.ErrTimeout, "Err")
+	assertive.IsEqual(t, res.ExitCode, -1, "ExitCode")
+	assertive.IsEqual(t, res.Stdout, "one", "Stdout")
+	assertive.IsEqual(t, res.Stderr, "", "Stderr")
+	assertive.IsLessThan(t, end.Sub(start), 2*time.Second, "Total execution time")
 }
 
 func TestPTYStdout(t *testing.T) {
@@ -375,14 +485,14 @@ func TestPTYStdout(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, res.ExitCode, 0)
-	assertive.IsEqual(t, res.Stdout, "onstdout")
-	assertive.IsEqual(t, res.Stderr, "onstderr")
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, res.ExitCode, 0, "ExitCode")
+	assertive.IsEqual(t, res.Stdout, "onstdout", "Stdout")
+	assertive.IsEqual(t, res.Stderr, "onstderr", "Stderr")
 }
 
 func TestPTYStderr(t *testing.T) {
@@ -406,14 +516,14 @@ func TestPTYStderr(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, res.ExitCode, 0)
-	assertive.IsEqual(t, res.Stdout, "onstdout")
-	assertive.IsEqual(t, res.Stderr, "onstderr")
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, res.ExitCode, 0, "ExitCode")
+	assertive.IsEqual(t, res.Stdout, "onstdout", "Stdout")
+	assertive.IsEqual(t, res.Stderr, "onstderr", "Stderr")
 }
 
 func TestPTYBoth(t *testing.T) {
@@ -435,14 +545,14 @@ func TestPTYBoth(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, res.ExitCode, 0)
-	assertive.IsEqual(t, res.Stdout, "onstdoutonstderr")
-	assertive.IsEqual(t, res.Stderr, "")
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, res.ExitCode, 0, "ExitCode")
+	assertive.IsEqual(t, res.Stdout, "onstdoutonstderr", "Stdout")
+	assertive.IsEqual(t, res.Stderr, "", "Stderr")
 }
 
 func TestWriteStdin(t *testing.T) {
@@ -468,13 +578,13 @@ func TestWriteStdin(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIsNil(t, err)
-	assertive.IsEqual(t, 0, res.ExitCode)
-	assertive.IsEqual(t, "from stdinhello firsthello worldhello again", res.Stdout)
+	assertive.ErrorIsNil(t, err, "Err")
+	assertive.IsEqual(t, 0, res.ExitCode, "ExitCode")
+	assertive.IsEqual(t, "from stdinhello firsthello worldhello again", res.Stdout, "Stdout")
 }
 
 func TestWritePTYStdin(t *testing.T) {
@@ -503,13 +613,13 @@ func TestWritePTYStdin(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIs(t, err, com.ErrTimeout)
-	assertive.IsEqual(t, -1, res.ExitCode)
-	assertive.IsEqual(t, "hello firsthello worldhello again", res.Stdout)
+	assertive.ErrorIs(t, err, com.ErrTimeout, "Err")
+	assertive.IsEqual(t, -1, res.ExitCode, "ExitCode")
+	assertive.IsEqual(t, "hello firsthello worldhello again", res.Stdout, "Stdout")
 }
 
 func TestSignalOnCompleted(t *testing.T) {
@@ -524,15 +634,15 @@ func TestSignalOnCompleted(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	_, err = command.Wait()
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	err = command.Signal(usig)
 
-	assertive.ErrorIs(t, err, com.ErrFailedSendingSignal)
+	assertive.ErrorIs(t, err, com.ErrFailedSendingSignal, "Err")
 }
 
 // FIXME: this is not working as expected, and proc.Signal returns nil error while it should not.
@@ -549,7 +659,7 @@ func TestSignalOnCompleted(t *testing.T) {
 //
 //  err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 //
-//	assertive.ErrorIsNil(t, err)
+//	assertive.ErrorIsNil(t, err, "Err")
 //
 //	time.Sleep(1 * time.Second)
 //
@@ -583,22 +693,22 @@ func TestSignalNormal(t *testing.T) {
 
 	err := command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	// A bit arbitrary - just want to wait for stdout to go through before sending the signal
 	time.Sleep(100 * time.Millisecond)
 
 	_ = command.Signal(usig)
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err := command.Wait()
 
-	assertive.ErrorIs(t, err, com.ErrExecutionFailed)
-	assertive.IsEqual(t, res.Stdout, "entrysetcaught")
-	assertive.IsEqual(t, res.Stderr, "")
-	assertive.IsEqual(t, res.ExitCode, 42)
-	assertive.True(t, res.Signal == nil)
+	assertive.ErrorIs(t, err, com.ErrExecutionFailed, "Err")
+	assertive.IsEqual(t, res.Stdout, "entrysetcaught", "Stdout")
+	assertive.IsEqual(t, res.Stderr, "", "Stderr")
+	assertive.IsEqual(t, res.ExitCode, 42, "ExitCode")
+	assertive.True(t, res.Signal == nil, "Signal")
 
 	command = &com.Command{
 		Binary:  "sleep",
@@ -608,17 +718,17 @@ func TestSignalNormal(t *testing.T) {
 
 	err = command.Run(context.WithValue(context.Background(), com.LoggerKey, t))
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	err = command.Signal(usig)
 
-	assertive.ErrorIsNil(t, err)
+	assertive.ErrorIsNil(t, err, "Err")
 
 	res, err = command.Wait()
 
-	assertive.ErrorIs(t, err, com.ErrSignaled)
-	assertive.IsEqual(t, res.Stdout, "")
-	assertive.IsEqual(t, res.Stderr, "")
-	assertive.IsEqual(t, res.Signal, usig)
-	assertive.IsEqual(t, res.ExitCode, -1)
+	assertive.ErrorIs(t, err, com.ErrSignaled, "Err")
+	assertive.IsEqual(t, res.Stdout, "", "Stdout")
+	assertive.IsEqual(t, res.Stderr, "", "Stderr")
+	assertive.IsEqual(t, res.Signal, usig, "Signal")
+	assertive.IsEqual(t, res.ExitCode, -1, "ExitCode")
 }
