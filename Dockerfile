@@ -39,6 +39,9 @@ ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v2.1.2@BINARY
 ARG TINI_VERSION=v0.19.0@BINARY
 # Extra deps: Debug
 ARG BUILDG_VERSION=v0.4.1@BINARY
+# Extra deps: gomodjail
+# TODO: pin the version
+ARG GOMODJAIL_VERSION=master
 
 # Test deps
 # Currently, the Docker Official Images and the test deps are not pinned by the hash
@@ -231,6 +234,13 @@ RUN ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION/@BINARY}; \
   tar xzf "${fname}" -C /out/bin && \
   rm -f "${fname}" /out/bin/rootlesskit-docker-proxy && \
   echo "- RootlessKit: ${ROOTLESSKIT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+ARG GOMODJAIL_VERSION
+RUN git clone https://github.com/AkihiroSuda/gomodjail.git /go/src/github.com/AkihiroSuda/gomodjail && \
+  cd /go/src/github.com/AkihiroSuda/gomodjail && \
+  git checkout "${GOMODJAIL_VERSION}" && \
+  make STATIC=1 && \
+  cp -a _output/bin/gomodjail /out/bin/ && \
+  echo "- gomodjail: ${GOMODJAIL_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
@@ -245,6 +255,8 @@ COPY . /go/src/github.com/containerd/nerdctl
 RUN { echo "# nerdctl (full distribution)"; echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)"; cat /out/share/doc/nerdctl-full/README.md; } > /out/share/doc/nerdctl-full/README.md.new; mv /out/share/doc/nerdctl-full/README.md.new /out/share/doc/nerdctl-full/README.md
 WORKDIR /go/src/github.com/containerd/nerdctl
 RUN BINDIR=/out/bin make binaries install
+RUN /out/bin/gomodjail pack --go-mod=/go/src/github.com/containerd/nerdctl/go.mod /out/bin/nerdctl && \
+  cp -a nerdctl.gomodjail /out/bin/
 COPY README.md /out/share/doc/nerdctl/
 COPY docs /out/share/doc/nerdctl/docs
 RUN (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \

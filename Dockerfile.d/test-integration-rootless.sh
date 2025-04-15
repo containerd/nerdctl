@@ -15,6 +15,7 @@
 #   limitations under the License.
 
 set -eux -o pipefail
+: "${NERDCTL:=}"
 if [[ "$(id -u)" = "0" ]]; then
   # Ensure securityfs is mounted for apparmor to work
   if ! mountpoint -q /sys/kernel/security; then
@@ -32,7 +33,7 @@ if [[ "$(id -u)" = "0" ]]; then
 
 	# Switch to the rootless user via SSH
 	systemctl start ssh
-	exec ssh -o StrictHostKeyChecking=no rootless@localhost "$0" "$@"
+	exec ssh -o StrictHostKeyChecking=no rootless@localhost NERDCTL="$NERDCTL" "$0" "$@"
 else
 	containerd-rootless-setuptool.sh install
 	if grep -q "options use-vc" /etc/resolv.conf; then
@@ -63,5 +64,5 @@ EOF
 	# Once ssh-ed, we lost the Dockerfile working dir, so, get back in the nerdctl checkout
 	cd /go/src/github.com/containerd/nerdctl
 	# We also lose the PATH (and SendEnv=PATH would require sshd config changes)
-	exec env PATH="/usr/local/go/bin:$PATH" "$@"
+	exec env PATH="/usr/local/go/bin:$PATH" NERDCTL="$NERDCTL" "$@"
 fi
