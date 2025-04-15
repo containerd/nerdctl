@@ -70,6 +70,7 @@ type Result struct {
 	Stderr   string
 	ExitCode int
 	Signal   os.Signal
+	Duration time.Duration
 }
 
 type execution struct {
@@ -102,9 +103,10 @@ type Command struct {
 	ptyStderr bool
 	ptyStdin  bool
 
-	exec   *execution
-	mutex  sync.Mutex
-	result *Result
+	exec      *execution
+	mutex     sync.Mutex
+	result    *Result
+	startTime time.Time
 }
 
 // Clone does just duplicate a command, resetting its execution.
@@ -184,12 +186,12 @@ func (gc *Command) Run(parentCtx context.Context) error {
 	)
 
 	// Get a timing-out context
-	timeout := gc.Timeout
-	if timeout == 0 {
-		timeout = defaultTimeout
+	if gc.Timeout == 0 {
+		gc.Timeout = defaultTimeout
 	}
 
-	ctx, ctxCancel = context.WithTimeout(parentCtx, timeout)
+	ctx, ctxCancel = context.WithTimeout(parentCtx, gc.Timeout)
+	gc.startTime = time.Now()
 
 	// Create a contextual command, set the logger
 	cmd = gc.buildCommand(ctx)
@@ -366,6 +368,7 @@ func (gc *Command) wrap() error {
 		Stderr:   pipes.fromStderr,
 		Environ:  cmd.Environ(),
 		Signal:   signal,
+		Duration: time.Since(gc.startTime),
 	}
 
 	if gc.exec.err == nil {
