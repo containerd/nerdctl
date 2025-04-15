@@ -32,6 +32,7 @@ type helpersInternal struct {
 
 // Ensure will run a command and make sure it is successful.
 func (help *helpersInternal) Ensure(args ...string) {
+	help.t.Helper()
 	help.Command(args...).Run(&Expected{
 		ExitCode: internal.ExitCodeSuccess,
 	})
@@ -39,6 +40,7 @@ func (help *helpersInternal) Ensure(args ...string) {
 
 // Anyhow will run a command regardless of outcome (may or may not fail).
 func (help *helpersInternal) Anyhow(args ...string) {
+	help.t.Helper()
 	help.Command(args...).Run(&Expected{
 		ExitCode: internal.ExitCodeNoCheck,
 	})
@@ -46,6 +48,7 @@ func (help *helpersInternal) Anyhow(args ...string) {
 
 // Fail will run a command and make sure it does fail.
 func (help *helpersInternal) Fail(args ...string) {
+	help.t.Helper()
 	help.Command(args...).Run(&Expected{
 		ExitCode: internal.ExitCodeGenericFail,
 	})
@@ -55,6 +58,7 @@ func (help *helpersInternal) Fail(args ...string) {
 func (help *helpersInternal) Capture(args ...string) string {
 	var ret string
 
+	help.t.Helper()
 	help.Command(args...).Run(&Expected{
 		//nolint:thelper
 		Output: func(stdout, _ string, _ *testing.T) {
@@ -67,6 +71,7 @@ func (help *helpersInternal) Capture(args ...string) string {
 
 // Err will run a command with no expectation and return Stderr.
 func (help *helpersInternal) Err(args ...string) string {
+	help.t.Helper()
 	cmd := help.Command(args...)
 	cmd.Run(nil)
 

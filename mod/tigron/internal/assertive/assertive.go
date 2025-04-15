@@ -31,12 +31,12 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
-// TODO: once debugging output will be cleaned-up, reintroduce hexdump.
-
 const (
+	markLineLength           = 20
 	expectedSuccessDecorator = "✅️ does verify:\t\t"
-	expectedFailDecorator    = "❌ does not verify:\t"
+	expectedFailDecorator    = "❌ FAILED!\t\t"
 	receivedDecorator        = "👀 testing:\t\t"
+	annotationDecorator      = "🖊️"
 	hyperlinkDecorator       = "🔗"
 )
 
@@ -163,8 +163,8 @@ func True(testing tig.T, comp bool, msg ...string) bool {
 
 // WithFailLater will allow an assertion to not fail the test immediately.
 // Failing later is necessary when asserting inside go routines, and also if you want many
-// successive asserts to all
-// evaluate instead of stopping at the first failing one.
+// successive asserts to all evaluate instead of stopping at the first failing one.
+// FIXME: it should be possible to have both WithFailLater and WithSilentSuccess at the same time.
 func WithFailLater(t tig.T) tig.T {
 	return &failLater{
 		t,
@@ -205,47 +205,74 @@ func evaluate(testing tig.T, isSuccess bool, actual, expected any, msg ...string
 func decorate(testing tig.T, isSuccess bool, actual, expected any, msg ...string) {
 	testing.Helper()
 
-	header := "\t"
-
-	hyperlink := getTopFrameFile()
-	if hyperlink != "" {
-		msg = append([]string{hyperlink + "\n"}, msg...)
-	}
-
-	msg = append(msg, fmt.Sprintf("\t%s`%v`", receivedDecorator, actual))
-
-	if isSuccess {
-		msg = append(msg,
-			fmt.Sprintf("\t%s%v", expectedSuccessDecorator, expected),
-		)
-	} else {
-		msg = append(msg,
-			fmt.Sprintf("\t%s%v", expectedFailDecorator, expected),
-		)
-	}
-
 	if _, ok := testing.(*silentSuccess); !isSuccess || !ok {
-		testing.Log(header + strings.Join(msg, "\n") + "\n")
+		head := strings.Repeat("<", markLineLength)
+		footer := strings.Repeat(">", markLineLength)
+		header := "\t"
+
+		custom := fmt.Sprintf("\t%s %s", annotationDecorator, strings.Join(msg, "\n"))
+
+		msg = append([]string{"", head}, custom)
+
+		msg = append([]string{getTopFrameFile()}, msg...)
+
+		msg = append(msg, fmt.Sprintf("\t%s`%v`", receivedDecorator, actual))
+
+		if isSuccess {
+			msg = append(msg,
+				fmt.Sprintf("\t%s%v", expectedSuccessDecorator, expected),
+			)
+		} else {
+			msg = append(msg,
+				fmt.Sprintf("\t%s%v", expectedFailDecorator, expected),
+			)
+		}
+
+		testing.Log(header + strings.Join(msg, "\n") + "\n" + footer + "\n")
 	}
 }
 
+// XXX FIXME #expert
+// Because of how golang testing works, the upper frame is the one from where t.Run is being called,
+// as (presumably) the passed function is starting with its own stack in a go routine.
+// In the case of subtests, t.Run being called from inside Tigron will make it so that the top frame
+// is case.go around line 233 (where we call Command.Run(), which is the one calling assertive).
+// To possibly address this:
+// plan a. just drop entirely OSC8 links and source extracts and trash all of this
+// plan b. get the top frame from the root test, and pass it to subtests on a custom property, the somehow into here
+// plan c. figure out a hack to call t.Run from the test file without ruining the Tigron UX
+// Dereference t.Run? Return a closure to be called from the top? w/o disabling inlining in the right place?
+// Short term, blacklisting /tigron (and /nerdtest) will at least prevent the wrong links from appearing in the output.
 func getTopFrameFile() string {
-	// Get the frames.
+	// Get the frames. Skip the first two frames - current one and caller.
 	//nolint:mnd // Whatever mnd...
-	pc := make([]uintptr, 20)
+	pc := make([]uintptr, 40)
 	//nolint:mnd // Whatever mnd...
 	n := runtime.Callers(2, pc)
 	callersFrames := runtime.CallersFrames(pc[:n])
 
-	var file string
+	var (
+		file       string
+		lineNumber int
+		frame      runtime.Frame
+	)
 
-	var lineNumber int
+	more := true
+	for more {
+		frame, more = callersFrames.Next()
 
-	var frame runtime.Frame
-	for range 20 {
-		frame, _ = callersFrames.Next()
+		// Once we are in the go main stack, bail out
 		if !strings.Contains(frame.Function, "/") {
 			break
+		}
+
+		// XXX see note above
+		if strings.Contains(frame.File, "/tigron") {
+			continue
+		}
+
+		if strings.Contains(frame.File, "/nerdtest") {
+			continue
 		}
 
 		file = frame.File
@@ -282,6 +309,6 @@ func getTopFrameFile() string {
 	return hyperlinkDecorator + " " + (&formatter.OSC8{
 		Text:     line,
 		Location: "file://" + file,
-		Line:     frame.Line,
+		Line:     lineNumber,
 	}).String()
 }

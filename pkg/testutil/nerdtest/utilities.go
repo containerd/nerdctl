@@ -45,6 +45,7 @@ func IsDocker() bool {
 
 // InspectContainer is a helper that can be used inside custom commands or Setup
 func InspectContainer(helpers test.Helpers, name string) dockercompat.Container {
+	helpers.T().Helper()
 	var dc []dockercompat.Container
 	cmd := helpers.Command("container", "inspect", name)
 	cmd.Run(&test.Expected{
@@ -58,6 +59,7 @@ func InspectContainer(helpers test.Helpers, name string) dockercompat.Container 
 }
 
 func InspectVolume(helpers test.Helpers, name string) native.Volume {
+	helpers.T().Helper()
 	var dc []native.Volume
 	cmd := helpers.Command("volume", "inspect", name)
 	cmd.Run(&test.Expected{
@@ -71,6 +73,7 @@ func InspectVolume(helpers test.Helpers, name string) native.Volume {
 }
 
 func InspectNetwork(helpers test.Helpers, name string) dockercompat.Network {
+	helpers.T().Helper()
 	var dc []dockercompat.Network
 	cmd := helpers.Command("network", "inspect", name)
 	cmd.Run(&test.Expected{
@@ -84,6 +87,7 @@ func InspectNetwork(helpers test.Helpers, name string) dockercompat.Network {
 }
 
 func InspectImage(helpers test.Helpers, name string) dockercompat.Image {
+	helpers.T().Helper()
 	var dc []dockercompat.Image
 	cmd := helpers.Command("image", "inspect", name)
 	cmd.Run(&test.Expected{
@@ -102,6 +106,7 @@ const (
 )
 
 func EnsureContainerStarted(helpers test.Helpers, con string) {
+	helpers.T().Helper()
 	started := false
 	for i := 0; i < maxRetry && !started; i++ {
 		helpers.Command("container", "inspect", con).
