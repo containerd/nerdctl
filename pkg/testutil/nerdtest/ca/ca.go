@@ -69,8 +69,7 @@ func New(data test.Data, t *testing.T) *CA {
 		BasicConstraintsValid: true,
 	}
 
-	dir, err := os.MkdirTemp(data.TempDir(), "ca")
-	assert.NilError(t, err)
+	dir := data.Temp().Dir("ca")
 	keyPath := filepath.Join(dir, "ca.key")
 	certPath := filepath.Join(dir, "ca.cert")
 	writePair(t, keyPath, certPath, cert, cert, key, key)

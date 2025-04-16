@@ -48,12 +48,12 @@ func TestSystemPrune(t *testing.T) {
 				helpers.Ensure("run", "-v", fmt.Sprintf("%s:/volume", data.Identifier()),
 					"--net", data.Identifier(), "--name", data.Identifier(), testutil.CommonImage)
 
-				data.Set("anonIdentifier", anonIdentifier)
+				data.Labels().Set("anonIdentifier", anonIdentifier)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("network", "rm", data.Identifier())
 				helpers.Anyhow("volume", "rm", data.Identifier())
-				helpers.Anyhow("volume", "rm", data.Get("anonIdentifier"))
+				helpers.Anyhow("volume", "rm", data.Labels().Get("anonIdentifier"))
 				helpers.Anyhow("rm", "-f", data.Identifier())
 			},
 			Command: test.Command("system", "prune", "-f", "--volumes", "--all"),
@@ -66,7 +66,7 @@ func TestSystemPrune(t *testing.T) {
 						images := helpers.Capture("images")
 						containers := helpers.Capture("ps", "-a")
 						assert.Assert(t, strings.Contains(volumes, data.Identifier()), volumes)
-						assert.Assert(t, !strings.Contains(volumes, data.Get("anonIdentifier")), volumes)
+						assert.Assert(t, !strings.Contains(volumes, data.Labels().Get("anonIdentifier")), volumes)
 						assert.Assert(t, !strings.Contains(containers, data.Identifier()), containers)
 						assert.Assert(t, !strings.Contains(networks, data.Identifier()), networks)
 						assert.Assert(t, !strings.Contains(images, testutil.CommonImage), images)

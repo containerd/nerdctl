@@ -242,7 +242,7 @@ func TestRunDevice(t *testing.T) {
 			t.Logf("lo[%d] = %+v", i, lo[i])
 			loContent := fmt.Sprintf("lo%d-content", i)
 			assert.NilError(t, os.WriteFile(lo[i].Device, []byte(loContent), 0o700))
-			data.Set("loContent"+strconv.Itoa(i), loContent)
+			data.Labels().Set("loContent"+strconv.Itoa(i), loContent)
 		}
 
 		// lo0 is readable but not writable.
@@ -254,7 +254,7 @@ func TestRunDevice(t *testing.T) {
 			"--device", lo[0].Device+":r",
 			"--device", lo[1].Device,
 			testutil.AlpineImage, "sleep", nerdtest.Infinity)
-		data.Set("id", data.Identifier())
+		data.Labels().Set("id", data.Identifier())
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -270,25 +270,25 @@ func TestRunDevice(t *testing.T) {
 		{
 			Description: "can read lo0",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("exec", data.Get("id"), "cat", lo[0].Device)
+				return helpers.Command("exec", data.Labels().Get("id"), "cat", lo[0].Device)
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: expect.Contains(data.Get("locontent0")),
+					Output: expect.Contains(data.Labels().Get("locontent0")),
 				}
 			},
 		},
 		{
 			Description: "cannot write lo0",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("exec", data.Get("id"), "sh", "-ec", "echo -n \"overwritten-lo1-content\">"+lo[0].Device)
+				return helpers.Command("exec", data.Labels().Get("id"), "sh", "-ec", "echo -n \"overwritten-lo1-content\">"+lo[0].Device)
 			},
 			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 		},
 		{
 			Description: "cannot read lo2",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("exec", data.Get("id"), "cat", lo[2].Device)
+				return helpers.Command("exec", data.Labels().Get("id"), "cat", lo[2].Device)
 			},
 			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 		},
@@ -296,11 +296,11 @@ func TestRunDevice(t *testing.T) {
 			Description: "can read lo1",
 			NoParallel:  true,
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("exec", data.Get("id"), "cat", lo[1].Device)
+				return helpers.Command("exec", data.Labels().Get("id"), "cat", lo[1].Device)
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: expect.Contains(data.Get("locontent1")),
+					Output: expect.Contains(data.Labels().Get("locontent1")),
 				}
 			},
 		},
@@ -308,7 +308,7 @@ func TestRunDevice(t *testing.T) {
 			Description: "can write lo1 and read back updated value",
 			NoParallel:  true,
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("exec", data.Get("id"), "sh", "-ec", "echo -n \"overwritten-lo1-content\">"+lo[1].Device)
+				return helpers.Command("exec", data.Labels().Get("id"), "sh", "-ec", "echo -n \"overwritten-lo1-content\">"+lo[1].Device)
 			},
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, info string, t *testing.T) {
 				lo1Read, err := os.ReadFile(lo[1].Device)

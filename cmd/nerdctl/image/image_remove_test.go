@@ -129,11 +129,11 @@ func TestRemove(t *testing.T) {
 				repoName, _ := imgutil.ParseRepoTag(testutil.CommonImage)
 				imgShortID := strings.TrimPrefix(img.RepoDigests[0], repoName+"@sha256:")[0:8]
 
-				data.Set(imgShortIDKey, imgShortID)
+				data.Labels().Set(imgShortIDKey, imgShortID)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
-				helpers.Anyhow("rmi", "-f", data.Get(imgShortIDKey))
+				helpers.Anyhow("rmi", "-f", data.Labels().Get(imgShortIDKey))
 			},
 			Command: test.Command("rmi", "-f", testutil.CommonImage),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -238,11 +238,11 @@ func TestRemove(t *testing.T) {
 				repoName, _ := imgutil.ParseRepoTag(testutil.CommonImage)
 				imgShortID := strings.TrimPrefix(img.RepoDigests[0], repoName+"@sha256:")[0:8]
 
-				data.Set(imgShortIDKey, imgShortID)
+				data.Labels().Set(imgShortIDKey, imgShortID)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
-				helpers.Anyhow("rmi", "-f", data.Get(imgShortIDKey))
+				helpers.Anyhow("rmi", "-f", data.Labels().Get(imgShortIDKey))
 			},
 			Command: test.Command("rmi", "-f", testutil.CommonImage),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -330,17 +330,17 @@ func TestIssue3016(t *testing.T) {
 
 				helpers.Ensure("tag", testutil.CommonImage, tagID)
 
-				data.Set(tagIDKey, tagID)
+				data.Labels().Set(tagIDKey, tagID)
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("rmi", data.Get(tagIDKey))
+				return helpers.Command("rmi", data.Labels().Get(tagIDKey))
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
 					Output: func(stdout string, info string, t *testing.T) {
-						helpers.Command("images", data.Get(tagIDKey)).Run(&test.Expected{
+						helpers.Command("images", data.Labels().Get(tagIDKey)).Run(&test.Expected{
 							ExitCode: 0,
 							Output: func(stdout string, info string, t *testing.T) {
 								assert.Equal(t, len(strings.Split(stdout, "\n")), 2)

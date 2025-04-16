@@ -31,12 +31,12 @@ func TestNetworkLsFilter(t *testing.T) {
 	testCase := nerdtest.Setup()
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		data.Set("identifier", data.Identifier())
-		data.Set("label", "mylabel=label-1")
-		data.Set("net1", data.Identifier("1"))
-		data.Set("net2", data.Identifier("2"))
-		data.Set("netID1", helpers.Capture("network", "create", "--label="+data.Get("label"), data.Get("net1")))
-		data.Set("netID2", helpers.Capture("network", "create", data.Get("net2")))
+		data.Labels().Set("identifier", data.Identifier())
+		data.Labels().Set("label", "mylabel=label-1")
+		data.Labels().Set("net1", data.Identifier("1"))
+		data.Labels().Set("net2", data.Identifier("2"))
+		data.Labels().Set("netID1", helpers.Capture("network", "create", "--label="+data.Labels().Get("label"), data.Labels().Get("net1")))
+		data.Labels().Set("netID2", helpers.Capture("network", "create", data.Labels().Get("net2")))
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -48,7 +48,7 @@ func TestNetworkLsFilter(t *testing.T) {
 		{
 			Description: "filter label",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("network", "ls", "--quiet", "--filter", "label="+data.Get("label"))
+				return helpers.Command("network", "ls", "--quiet", "--filter", "label="+data.Labels().Get("label"))
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -56,7 +56,7 @@ func TestNetworkLsFilter(t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 1, info)
 						netNames := map[string]struct{}{
-							data.Get("netID1")[:12]: {},
+							data.Labels().Get("netID1")[:12]: {},
 						}
 
 						for _, name := range lines {
@@ -70,7 +70,7 @@ func TestNetworkLsFilter(t *testing.T) {
 		{
 			Description: "filter name",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("network", "ls", "--quiet", "--filter", "name="+data.Get("net2"))
+				return helpers.Command("network", "ls", "--quiet", "--filter", "name="+data.Labels().Get("net2"))
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -78,7 +78,7 @@ func TestNetworkLsFilter(t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 1, info)
 						netNames := map[string]struct{}{
-							data.Get("netID2")[:12]: {},
+							data.Labels().Get("netID2")[:12]: {},
 						}
 
 						for _, name := range lines {

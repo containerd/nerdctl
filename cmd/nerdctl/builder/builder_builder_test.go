@@ -17,14 +17,10 @@
 package builder
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
+	"strings"
 	"testing"
-
-	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
@@ -49,10 +45,8 @@ func TestBuilder(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-test-builder-prune"]`, testutil.CommonImage)
-					buildCtx := data.TempDir()
-					err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
-					assert.NilError(helpers.T(), err)
-					helpers.Ensure("build", buildCtx)
+					data.Temp().Save(dockerfile, "Dockerfile")
+					helpers.Ensure("build", data.Temp().Path())
 				},
 				Command:  test.Command("builder", "prune", "--force"),
 				Expected: test.Expects(0, nil, nil),
@@ -63,10 +57,8 @@ CMD ["echo", "nerdctl-test-builder-prune"]`, testutil.CommonImage)
 				Setup: func(data test.Data, helpers test.Helpers) {
 					dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-test-builder-prune"]`, testutil.CommonImage)
-					buildCtx := data.TempDir()
-					err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
-					assert.NilError(helpers.T(), err)
-					helpers.Ensure("build", buildCtx)
+					data.Temp().Save(dockerfile, "Dockerfile")
+					helpers.Ensure("build", data.Temp().Path())
 				},
 				Command:  test.Command("builder", "prune", "--force", "--all"),
 				Expected: test.Expects(0, nil, nil),
@@ -79,11 +71,9 @@ CMD ["echo", "nerdctl-test-builder-prune"]`, testutil.CommonImage)
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-builder-debug-test-string"]`, testutil.CommonImage)
-					buildCtx := data.TempDir()
-					err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
-					assert.NilError(helpers.T(), err)
-					cmd := helpers.Command("builder", "debug", buildCtx)
-					cmd.Feed(bytes.NewReader([]byte("c\n")))
+					data.Temp().Save(dockerfile, "Dockerfile")
+					cmd := helpers.Command("builder", "debug", data.Temp().Path())
+					cmd.Feed(strings.NewReader("c\n"))
 					return cmd
 				},
 				Expected: test.Expects(0, nil, nil),
@@ -103,13 +93,10 @@ CMD ["echo", "nerdctl-builder-debug-test-string"]`, testutil.CommonImage)
 					helpers.Ensure("tag", oldImage, newImage)
 
 					dockerfile := fmt.Sprintf(`FROM %s`, newImage)
-					buildCtx := data.TempDir()
-					err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
-					assert.NilError(helpers.T(), err)
-
-					data.Set("buildCtx", buildCtx)
-					data.Set("oldImageSha", oldImageSha)
-					data.Set("newImageSha", newImageSha)
+					data.Temp().Save(dockerfile, "Dockerfile")
+					data.Labels().Set("oldImageSha", oldImageSha)
+					data.Labels().Set("newImageSha", newImageSha)
+					data.Labels().Set("base", data.Temp().Dir())
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", testutil.AlpineImage)
@@ -119,11 +106,11 @@ CMD ["echo", "nerdctl-builder-debug-test-string"]`, testutil.CommonImage)
 						Description: "pull false",
 						NoParallel:  true,
 						Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-							return helpers.Command("build", data.Get("buildCtx"), "--pull=false")
+							return helpers.Command("build", data.Labels().Get("base"), "--pull=false")
 						},
 						Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 							return &test.Expected{
-								Errors: []error{errors.New(data.Get("oldImageSha"))},
+								Errors: []error{errors.New(data.Labels().Get("oldImageSha"))},
 							}
 						},
 					},
@@ -131,11 +118,11 @@ CMD ["echo", "nerdctl-builder-debug-test-string"]`, testutil.CommonImage)
 						Description: "pull true",
 						NoParallel:  true,
 						Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-							return helpers.Command("build", data.Get("buildCtx"), "--pull=true")
+							return helpers.Command("build", data.Labels().Get("base"), "--pull=true")
 						},
 						Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 							return &test.Expected{
-								Errors: []error{errors.New(data.Get("newImageSha"))},
+								Errors: []error{errors.New(data.Labels().Get("newImageSha"))},
 							}
 						},
 					},
@@ -143,11 +130,11 @@ CMD ["echo", "nerdctl-builder-debug-test-string"]`, testutil.CommonImage)
 						Description: "no pull",
 						NoParallel:  true,
 						Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-							return helpers.Command("build", data.Get("buildCtx"))
+							return helpers.Command("build", data.Labels().Get("base"))
 						},
 						Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 							return &test.Expected{
-								Errors: []error{errors.New(data.Get("newImageSha"))},
+								Errors: []error{errors.New(data.Labels().Get("newImageSha"))},
 							}
 						},
 					},

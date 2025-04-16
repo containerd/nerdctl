@@ -71,7 +71,7 @@ func TestImagePrune(t *testing.T) {
 				CMD ["echo", "nerdctl-test-image-prune"]
 					`, testutil.CommonImage)
 
-				buildCtx := data.TempDir()
+				buildCtx := data.Temp().Path()
 				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 				assert.NilError(helpers.T(), err)
 				helpers.Ensure("build", buildCtx)
@@ -119,7 +119,7 @@ func TestImagePrune(t *testing.T) {
 				CMD ["echo", "nerdctl-test-image-prune"]
 					`, testutil.CommonImage)
 
-				buildCtx := data.TempDir()
+				buildCtx := data.Temp().Path()
 				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 				assert.NilError(helpers.T(), err)
 				helpers.Ensure("build", buildCtx)
@@ -163,7 +163,7 @@ func TestImagePrune(t *testing.T) {
 CMD ["echo", "nerdctl-test-image-prune-filter-label"]
 LABEL foo=bar
 LABEL version=0.1`, testutil.CommonImage)
-				buildCtx := data.TempDir()
+				buildCtx := data.Temp().Path()
 				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 				assert.NilError(helpers.T(), err)
 				helpers.Ensure("build", "-t", data.Identifier(), buildCtx)
@@ -203,22 +203,22 @@ LABEL version=0.1`, testutil.CommonImage)
 				dockerfile := fmt.Sprintf(`FROM %s
 RUN echo "Anything, so that we create actual content for docker to set the current time for CreatedAt"
 CMD ["echo", "nerdctl-test-image-prune-until"]`, testutil.CommonImage)
-				buildCtx := data.TempDir()
+				buildCtx := data.Temp().Path()
 				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 				assert.NilError(helpers.T(), err)
 				helpers.Ensure("build", "-t", data.Identifier(), buildCtx)
 				imgList := helpers.Capture("images")
 				assert.Assert(t, strings.Contains(imgList, data.Identifier()), "Missing "+data.Identifier())
-				data.Set("imageID", data.Identifier())
+				data.Labels().Set("imageID", data.Identifier())
 			},
 			Command: test.Command("image", "prune", "--force", "--all", "--filter", "until=12h"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					Output: expect.All(
-						expect.DoesNotContain(data.Get("imageID")),
+						expect.DoesNotContain(data.Labels().Get("imageID")),
 						func(stdout string, info string, t *testing.T) {
 							imgList := helpers.Capture("images")
-							assert.Assert(t, strings.Contains(imgList, data.Get("imageID")), info)
+							assert.Assert(t, strings.Contains(imgList, data.Labels().Get("imageID")), info)
 						},
 					),
 				}
@@ -234,10 +234,10 @@ CMD ["echo", "nerdctl-test-image-prune-until"]`, testutil.CommonImage)
 					Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 						return &test.Expected{
 							Output: expect.All(
-								expect.Contains(data.Get("imageID")),
+								expect.Contains(data.Labels().Get("imageID")),
 								func(stdout string, info string, t *testing.T) {
 									imgList := helpers.Capture("images")
-									assert.Assert(t, !strings.Contains(imgList, data.Get("imageID")), imgList, info)
+									assert.Assert(t, !strings.Contains(imgList, data.Labels().Get("imageID")), imgList, info)
 								},
 							),
 						}

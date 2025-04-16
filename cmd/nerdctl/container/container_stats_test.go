@@ -53,7 +53,7 @@ func TestStats(t *testing.T) {
 		helpers.Ensure("run", "-d", "--name", data.Identifier("container"), testutil.CommonImage, "sleep", nerdtest.Infinity)
 		helpers.Ensure("run", "-d", "--name", data.Identifier("memlimited"), "--memory", "1g", testutil.CommonImage, "sleep", nerdtest.Infinity)
 		helpers.Ensure("run", "--name", data.Identifier("exited"), testutil.CommonImage, "echo", "'exited'")
-		data.Set("id", data.Identifier("container"))
+		data.Labels().Set("id", data.Identifier("container"))
 	}
 
 	testCase.SubTests = []*test.Case{
@@ -62,7 +62,7 @@ func TestStats(t *testing.T) {
 			Command:     test.Command("stats", "--no-stream", "--no-trunc"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: expect.Contains(data.Get("id")),
+					Output: expect.Contains(data.Labels().Get("id")),
 				}
 			},
 		},
@@ -71,21 +71,21 @@ func TestStats(t *testing.T) {
 			Command:     test.Command("container", "stats", "--no-stream", "--no-trunc"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: expect.Contains(data.Get("id")),
+					Output: expect.Contains(data.Labels().Get("id")),
 				}
 			},
 		},
 		{
 			Description: "stats ID",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("stats", "--no-stream", data.Get("id"))
+				return helpers.Command("stats", "--no-stream", data.Labels().Get("id"))
 			},
 			Expected: test.Expects(0, nil, nil),
 		},
 		{
 			Description: "container stats ID",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("container", "stats", "--no-stream", data.Get("id"))
+				return helpers.Command("container", "stats", "--no-stream", data.Labels().Get("id"))
 			},
 			Expected: test.Expects(0, nil, nil),
 		},

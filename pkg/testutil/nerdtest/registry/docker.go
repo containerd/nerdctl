@@ -96,7 +96,7 @@ func NewDockerRegistry(data test.Data, helpers test.Helpers, currentCA *ca.CA, p
 	// FIXME: in the future, we will want to further manipulate hosts toml file from the test
 	// This should then return the struct, instead of saving it on its own
 	hostsDir, err := func() (string, error) {
-		hDir, err := os.MkdirTemp(data.TempDir(), "certs.d")
+		hDir := data.Temp().Dir("certs.d")
 		assert.NilError(helpers.T(), err, fmt.Errorf("failed creating directory certs.d: %w", err))
 
 		if currentCA != nil {

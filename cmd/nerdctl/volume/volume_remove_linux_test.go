@@ -89,17 +89,17 @@ func TestVolumeRemove(t *testing.T) {
 					}
 				}
 				assert.Assert(t, anonName != "", "Failed to find anonymous volume id", inspect)
-				data.Set("anonName", anonName)
+				data.Labels().Set("anonName", anonName)
 			},
 
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
-				helpers.Anyhow("volume", "rm", "-f", data.Get("anonName"))
+				helpers.Anyhow("volume", "rm", "-f", data.Labels().Get("anonName"))
 			},
 
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				// Try to remove that anon volume
-				return helpers.Command("volume", "rm", data.Get("anonName"))
+				return helpers.Command("volume", "rm", data.Labels().Get("anonName"))
 			},
 
 			Expected: test.Expects(1, []error{errdefs.ErrFailedPrecondition}, nil),

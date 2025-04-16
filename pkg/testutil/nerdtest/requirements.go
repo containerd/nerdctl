@@ -342,7 +342,7 @@ var Private = &test.Requirement{
 		// We need this to happen NOW and not in setup, as otherwise cleanup with operate on the default namespace
 		namespace := data.Identifier("private")
 		helpers.Write(Namespace, test.ConfigValue(namespace))
-		data.Set("_deletenamespace", namespace)
+		data.Labels().Set("_deletenamespace", namespace)
 		// FIXME: is this necessary? Should NoParallel be subsumed into config?
 		helpers.Write(modePrivate, enabled)
 		return true, "private mode creates a dedicated namespace for nerdctl, and disable parallelism for docker"
@@ -356,7 +356,7 @@ var Private = &test.Requirement{
 				helpers.Ensure(append([]string{"rm", "-f"}, strings.Split(containerList, "\n")...)...)
 			}
 			helpers.Ensure("system", "prune", "-f", "--all", "--volumes")
-			helpers.Anyhow("namespace", "remove", data.Get("_deletenamespace"))
+			helpers.Anyhow("namespace", "remove", data.Labels().Get("_deletenamespace"))
 		}
 	},
 }

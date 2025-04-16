@@ -43,7 +43,7 @@ func TestNetworkInspect(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("network", "create", data.Identifier("basenet"))
-		data.Set("basenet", data.Identifier("basenet"))
+		data.Labels().Set("basenet", data.Identifier("basenet"))
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -132,7 +132,7 @@ func TestNetworkInspect(t *testing.T) {
 			Description: "match exact id",
 			// See notes below
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				id := strings.TrimSpace(helpers.Capture("network", "inspect", data.Get("basenet"), "--format", "{{ .Id }}"))
+				id := strings.TrimSpace(helpers.Capture("network", "inspect", data.Labels().Get("basenet"), "--format", "{{ .Id }}"))
 				return helpers.Command("network", "inspect", id)
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -142,7 +142,7 @@ func TestNetworkInspect(t *testing.T) {
 						err := json.Unmarshal([]byte(stdout), &dc)
 						assert.NilError(t, err, "Unable to unmarshal output\n"+info)
 						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
-						assert.Equal(t, dc[0].Name, data.Get("basenet"))
+						assert.Equal(t, dc[0].Name, data.Labels().Get("basenet"))
 					},
 				}
 			},
@@ -153,7 +153,7 @@ func TestNetworkInspect(t *testing.T) {
 			// This is bizarre, as it is working in the match exact id test - and there does not seem to be a particular reason for that
 			Require: require.Not(require.Windows),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				id := strings.TrimSpace(helpers.Capture("network", "inspect", data.Get("basenet"), "--format", "{{ .Id }}"))
+				id := strings.TrimSpace(helpers.Capture("network", "inspect", data.Labels().Get("basenet"), "--format", "{{ .Id }}"))
 				return helpers.Command("network", "inspect", id[0:25])
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -163,7 +163,7 @@ func TestNetworkInspect(t *testing.T) {
 						err := json.Unmarshal([]byte(stdout), &dc)
 						assert.NilError(t, err, "Unable to unmarshal output\n"+info)
 						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
-						assert.Equal(t, dc[0].Name, data.Get("basenet"))
+						assert.Equal(t, dc[0].Name, data.Labels().Get("basenet"))
 					},
 				}
 			},
@@ -174,15 +174,15 @@ func TestNetworkInspect(t *testing.T) {
 			// This is bizarre, as it is working in the match exact id test - and there does not seem to be a particular reason for that
 			Require: require.Not(require.Windows),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				id := strings.TrimSpace(helpers.Capture("network", "inspect", data.Get("basenet"), "--format", "{{ .Id }}"))
+				id := strings.TrimSpace(helpers.Capture("network", "inspect", data.Labels().Get("basenet"), "--format", "{{ .Id }}"))
 				helpers.Ensure("network", "create", id[0:12])
-				data.Set("netname", id[0:12])
+				data.Labels().Set("netname", id[0:12])
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("network", "remove", data.Get("netname"))
+				helpers.Anyhow("network", "remove", data.Labels().Get("netname"))
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("network", "inspect", data.Get("netname"))
+				return helpers.Command("network", "inspect", data.Labels().Get("netname"))
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -191,7 +191,7 @@ func TestNetworkInspect(t *testing.T) {
 						err := json.Unmarshal([]byte(stdout), &dc)
 						assert.NilError(t, err, "Unable to unmarshal output\n"+info)
 						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
-						assert.Equal(t, dc[0].Name, data.Get("netname"))
+						assert.Equal(t, dc[0].Name, data.Labels().Get("netname"))
 					},
 				}
 			},
