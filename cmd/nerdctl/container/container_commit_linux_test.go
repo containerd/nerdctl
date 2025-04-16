@@ -19,6 +19,7 @@ package container
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
@@ -36,7 +37,7 @@ func TestKubeCommitSave(t *testing.T) {
 		containerID := ""
 		// NOTE: kubectl namespaces are not the same as containerd namespaces.
 		// We still want kube test objects segregated in their own Kube API namespace.
-		nerdtest.KubeCtlCommand(helpers, "create", "namespace", "nerdctl-test-k8s").Run(&test.Expected{})
+		nerdtest.KubeCtlCommand(helpers, "create", "namespace", "nerdctl-test-k8s").Run(nil)
 		nerdtest.KubeCtlCommand(helpers, "run", "--image", testutil.CommonImage, identifier, "--", "sleep", nerdtest.Infinity).Run(&test.Expected{})
 		nerdtest.KubeCtlCommand(helpers, "wait", "pod", identifier, "--for=condition=ready", "--timeout=1m").Run(&test.Expected{})
 		nerdtest.KubeCtlCommand(helpers, "exec", identifier, "--", "mkdir", "-p", "/tmp/whatever").Run(&test.Expected{})
@@ -53,8 +54,18 @@ func TestKubeCommitSave(t *testing.T) {
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		helpers.Ensure("commit", data.Labels().Get("containerID"), "testcommitsave")
-		return helpers.Command("save", "testcommitsave")
+		helpers.Ensure("commit", data.Labels().Get("containerID"), data.Identifier("testcommitsave"))
+		capt := helpers.Capture("images")
+		if !strings.Contains(capt, data.Identifier("testcommitsave")) {
+			helpers.T().Log(capt)
+			nerdtest.KubeCtlCommand(helpers, "wait", "pod", data.Identifier(), "--for=condition=ready", "--timeout=1m").Run(&test.Expected{})
+			capt = helpers.Capture("images")
+			helpers.T().Log(capt)
+			time.Sleep(time.Second)
+			capt = helpers.Capture("images")
+			helpers.T().Log(capt)
+		}
+		return helpers.Command("save", data.Identifier("testcommitsave"))
 	}
 
 	testCase.Expected = test.Expects(0, nil, nil)

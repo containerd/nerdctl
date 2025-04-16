@@ -82,6 +82,24 @@ func TestCommit(t *testing.T) {
 			},
 			Expected: test.Expects(0, nil, expect.Equals("hello-test-commit\n")),
 		},
+		{
+			Description: "commit then save",
+			Require:     nerdtest.CGroup,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				identifier := data.Identifier()
+				helpers.Ensure("run", "-d", "--name", identifier, testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, identifier)
+				helpers.Ensure("exec", identifier, "mkdir", "-p", "/tmp/whatever")
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				helpers.Ensure("commit", data.Identifier(), data.Identifier("testcommitsave"))
+				return helpers.Command("save", data.Identifier("testcommitsave"))
+			},
+			Expected: test.Expects(0, nil, nil),
+		},
 	}
 
 	testCase.Run(t)

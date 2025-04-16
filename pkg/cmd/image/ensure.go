@@ -52,7 +52,9 @@ func EnsureAllContent(ctx context.Context, client *containerd.Client, srcName st
 	imagesList, _ := read(ctx, provider, snapshotter, img.Target)
 	// Iterate through the list
 	for _, i := range imagesList {
+		log.L.Warn("auditing", i.platform)
 		if platMC.Match(i.platform) {
+			log.L.Warn("verifying image has content for", i.platform, platMC)
 			err = ensureOne(ctx, client, srcName, img.Target, i.platform, options)
 			if err != nil {
 				return err
@@ -75,6 +77,7 @@ func ensureOne(ctx context.Context, client *containerd.Client, rawRef string, ta
 	if err != nil {
 		return err
 	}
+	log.L.Warn("missing layers", missing)
 
 	if len(missing) > 0 {
 		// Get a resolver
