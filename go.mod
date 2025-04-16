@@ -25,7 +25,7 @@ require (
 	github.com/containerd/stargz-snapshotter/estargz v0.16.3
 	github.com/containerd/stargz-snapshotter/ipfs v0.16.3
 	github.com/containerd/typeurl/v2 v2.2.3
-	github.com/containernetworking/cni v1.2.3
+	github.com/containernetworking/cni v1.3.0
 	github.com/containernetworking/plugins v1.6.2
 	github.com/coreos/go-iptables v0.8.0
 	github.com/coreos/go-systemd/v22 v22.5.0

@@ -81,23 +81,27 @@ subnet="$(calculate_subnet "$GATEWAY" "$PREFIX_LEN")"
 # https://github.com/microsoft/windows-container-networking/pull/45),
 # so it must match a network type in:
 # https://docs.microsoft.com/en-us/windows-server/networking/technologies/hcn/hcn-json-document-schemas
-bash -c 'cat >"'"${CNI_CONFIG_DIR}"'"/0-containerd-nat.conf <<EOF
+bash -c 'cat >"'"${CNI_CONFIG_DIR}"'"/0-containerd-nat.conflist <<EOF
 {
-    "cniVersion": "1.0.0",
-    "name": "nat",
-    "type": "nat",
-    "master": "Ethernet",
-    "ipam": {
+  "cniVersion": "1.0.0",
+  "name": "nat",
+  "plugins": [
+    {
+      "type": "nat",
+      "master": "Ethernet",
+      "ipam": {
         "subnet": "'"$subnet"'",
         "routes": [
-            {
-                "GW": "'"$GATEWAY"'"
-            }
+          {
+            "GW": "'"$GATEWAY"'"
+          }
         ]
-    },
-    "capabilities": {
+      },
+      "capabilities": {
         "portMappings": true,
         "dns": true
+      }
     }
+  ]
 }
 EOF'
