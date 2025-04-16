@@ -58,8 +58,7 @@ func pruneCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	helpers.AddStringFlag(cmd, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
-
+	cmd.Flags().String("buildkit-host", "", "BuildKit address")
 	cmd.Flags().BoolP("all", "a", false, "Remove all unused build cache, not just dangling ones")
 	cmd.Flags().BoolP("force", "f", false, "Do not prompt for confirmation")
 	return cmd
