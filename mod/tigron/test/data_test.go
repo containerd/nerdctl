@@ -24,34 +24,45 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
 )
 
-func TestDataBasic(t *testing.T) {
+func TestLabels(t *testing.T) {
 	t.Parallel()
 
-	dataObj := WithData("test", "create")
+	dataLabels := WithLabels(map[string]string{"test": "create"}).Labels()
 
-	assertive.IsEqual(t, dataObj.Get("test"), "create")
-	assertive.IsEqual(t, dataObj.Get("doesnotexist"), "")
+	assertive.IsEqual(t, dataLabels.Get("test"), "create")
+	assertive.IsEqual(t, dataLabels.Get("doesnotexist"), "")
 
-	dataObj.Set("test", "set")
-	assertive.IsEqual(t, dataObj.Get("test"), "set")
+	dataLabels.Set("test", "set")
+	assertive.IsEqual(t, dataLabels.Get("test"), "set")
+
+	dataLabels.Set("test", "reset")
+	assertive.IsEqual(t, dataLabels.Get("test"), "reset")
 }
 
-func TestDataTempDir(t *testing.T) {
+func TestTemp(t *testing.T) {
 	t.Parallel()
 
-	dataObj := configureData(t, nil, nil)
+	dataObj := newData(t, nil, nil)
 
-	one := dataObj.TempDir()
-	two := dataObj.TempDir()
+	one := dataObj.Temp().Path()
+	two := dataObj.Temp().Path()
 
 	assertive.IsEqual(t, one, two)
 	assertive.IsNotEqual(t, one, "")
+
+	t.Run("verify that subtest has an independent TempDir", func(t *testing.T) {
+		t.Parallel()
+
+		dataObj = newData(t, nil, nil)
+		three := dataObj.Temp().Path()
+		assertive.IsNotEqual(t, one, three)
+	})
 }
 
 func TestDataIdentifier(t *testing.T) {
 	t.Parallel()
 
-	dataObj := configureData(t, nil, nil)
+	dataObj := newData(t, nil, nil)
 
 	one := dataObj.Identifier()
 	two := dataObj.Identifier()
@@ -68,7 +79,7 @@ func TestDataIdentifierThatIsReallyReallyReallyReallyReallyReallyReallyReallyRea
 ) {
 	t.Parallel()
 
-	dataObj := configureData(t, nil, nil)
+	dataObj := newData(t, nil, nil)
 
 	one := dataObj.Identifier()
 	two := dataObj.Identifier()

@@ -23,22 +23,44 @@ import (
 	"time"
 )
 
-// Data is meant to hold information about a test:
-// - first, any random key value data that the test implementer wants to carry / modify - this is
-// test data - second, some commonly useful immutable test properties (a way to generate unique
-// identifiers for that test, temporary directory, etc.)
-// Note that Data is inherited, from parent test to subtest (except for Identifier and TempDir of
-// course).
-type Data interface {
-	// Get returns the value of a certain key for custom data
+// DataLabels holds key-value test information set by the test authors.
+// Note that retrieving a non-existent label will return the empty string.
+type DataLabels interface {
+	// Get returns the value of the requested label.
 	Get(key string) string
-	// Set will save `value` for `key`
-	Set(key, value string) Data
+	// Set will save the label `key` with `value`.
+	Set(key, value string)
+}
 
-	// Identifier returns the test identifier that can be used to name resources
+// DataTemp allows test authors to easily manipulate test fixtures / temporary files.
+type DataTemp interface {
+	// Load will retrieve the content stored in the file
+	// Asserts on failure.
+	Load(key ...string) string
+	// Save will store the content in the file, ensuring parent dir exists, and return the path.
+	// Asserts on failure.
+	Save(data string, key ...string) string
+	// Path will return the absolute path for the asset, whether it exists or not.
+	Path(key ...string) string
+	// Exists asserts that the object exist.
+	Exists(key ...string)
+	// Dir ensures the directory under temp is created, and returns the path.
+	// Asserts on failure.
+	Dir(key ...string) string
+}
+
+// Data is meant to hold information about a test:
+// - first, key-value data that the test implementer wants to carry around - this is Labels()
+// - second, some commonly useful immutable test properties (eg: a way to generate unique
+// identifiers for that test)
+// - third, ability to manipulate test files inside managed temporary directories
+// Note that Data Labels are inherited from parent test to subtest.
+// This is not true for Identifier and Temp().Dir(), which are bound to the test itself, though temporary files
+// can be accessed by subtests if their location is passed around (in Labels).
+type Data interface {
+	Temp() DataTemp
+	Labels() DataLabels
 	Identifier(suffix ...string) string
-	// TempDir returns the test temporary directory
-	TempDir() string
 }
 
 // Helpers provides a set of helpers to run commands with simple expectations,

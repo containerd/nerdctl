@@ -169,7 +169,7 @@ To achieve that, you should write your own `test.Manager` instead of using the h
 A manager is a simple function which only role is to return a `test.Expected` struct.
 The `test.Manager` signature makes available `test.Data` and `test.Helpers` to you.
 
-Here is an example, where we are using `data.Get("sometestdata")`.
+Here is an example, where we are using `data.Labels().Get("sometestdata")`.
 
 ```go
 package main
@@ -191,7 +191,7 @@ func TestMyThing(t *testing.T) {
         // Do things...
         // ...
         // Save this for later
-        data.Set("something", "lalala")
+        data.Labels().Set("something", "lalala")
     }
 
     // Attach a command to run
@@ -210,7 +210,7 @@ func TestMyThing(t *testing.T) {
                 t.Helper()
 
                 // Retrieve the data that was set during the Setup phase.
-                assert.Assert(t, stdout == data.Get("sometestdata"), info)
+                assert.Assert(t, stdout == data.Labels().Get("sometestdata"), info)
             },
         }
     }
