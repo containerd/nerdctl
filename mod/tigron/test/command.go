@@ -142,6 +142,10 @@ func (gc *GenericCommand) WithBlacklist(env []string) {
 	gc.cmd.EnvBlackList = env
 }
 
+func (gc *GenericCommand) WithWhitelist(env []string) {
+	gc.cmd.EnvWhiteList = env
+}
+
 func (gc *GenericCommand) WithTimeout(timeout time.Duration) {
 	gc.cmd.Timeout = timeout
 }
