@@ -44,7 +44,7 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	helpers.AddStringFlag(cmd, "buildkit-host", nil, "", "BUILDKIT_HOST", "BuildKit address")
+	cmd.Flags().String("buildkit-host", "", "BuildKit address")
 	cmd.Flags().StringArray("add-host", nil, "Add a custom host-to-IP mapping (format: \"host:ip\")")
 	cmd.Flags().StringArrayP("tag", "t", nil, "Name and optionally a tag in the 'name:tag' format")
 	cmd.Flags().StringP("file", "f", "", "Name of the Dockerfile")
@@ -242,7 +242,7 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 }
 
 func GetBuildkitHost(cmd *cobra.Command, namespace string) (string, error) {
-	if cmd.Flags().Changed("buildkit-host") || os.Getenv("BUILDKIT_HOST") != "" {
+	if cmd.Flags().Changed("buildkit-host") {
 		// If address is explicitly specified, use it.
 		buildkitHost, err := cmd.Flags().GetString("buildkit-host")
 		if err != nil {
@@ -252,6 +252,14 @@ func GetBuildkitHost(cmd *cobra.Command, namespace string) (string, error) {
 			return "", err
 		}
 		return buildkitHost, nil
+	}
+
+	if buildkitHost := os.Getenv("BUILDKIT_HOST"); buildkitHost != "" {
+		if err := buildkitutil.PingBKDaemon(buildkitHost); err != nil {
+			return "", err
+		}
+		return buildkitHost, nil
+
 	}
 	return buildkitutil.GetBuildkitHost(namespace)
 }
