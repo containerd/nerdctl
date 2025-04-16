@@ -330,3 +330,18 @@ func TestTailFollowRotateLogs(t *testing.T) {
 	}
 	assert.Equal(t, true, len(tailLogs) > linesPerFile, logRun.Stderr())
 }
+func TestNoneLoggerHasNoLogURI(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "--name", data.Identifier(), "--log-driver", "none", testutil.CommonImage, "sh", "-euxc", "echo foo")
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("logs", data.Identifier())
+	}
+	testCase.Expected = test.Expects(1, nil, nil)
+	testCase.Run(t)
+}

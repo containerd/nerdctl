@@ -33,6 +33,7 @@ import (
 	dockeropts "github.com/docker/docker/opts"
 	"github.com/moby/sys/signal"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"golang.org/x/term"
 
 	"github.com/containerd/console"
 	containerd "github.com/containerd/containerd/v2/client"
@@ -86,10 +87,6 @@ func PrintHostPort(ctx context.Context, writer io.Writer, container containerd.C
 
 // ContainerStatus returns the container's status from its task.
 func ContainerStatus(ctx context.Context, c containerd.Container) (containerd.Status, error) {
-	// Just in case, there is something wrong in server.
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
 	task, err := c.Task(ctx, nil)
 	if err != nil {
 		return containerd.Status{}, err
@@ -252,7 +249,7 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 			return err
 		}
 		defer con.Reset()
-		if err := con.SetRaw(); err != nil {
+		if _, err := term.MakeRaw(int(con.Fd())); err != nil {
 			return err
 		}
 	}

@@ -53,7 +53,7 @@ func TestLoadStdinFromPipe(t *testing.T) {
 			cmd := helpers.Command("load")
 			reader, err := os.Open(filepath.Join(data.TempDir(), "common.tar"))
 			assert.NilError(t, err, "failed to open common.tar")
-			cmd.WithStdin(reader)
+			cmd.Feed(reader)
 			return cmd
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {

@@ -1,54 +1,137 @@
----
-output:
-  sort-results: true
+version: "2"
+
+run:
+  issues-exit-code: 2
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+  allow-serial-runners: true
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
 
-run:
-  concurrency: 0
-  timeout: 5m
-  issues-exit-code: 2
-  tests: true
-  modules-download-mode: readonly
-  allow-parallel-runners: true
-  allow-serial-runners: true
-
 linters:
-  disable-all: false
-  enable-all: true
+  default: all
+  enable:
+    # These are the default set of golangci (errcheck is disabled, see below)
+    - govet             # Vet examines Go source code and reports suspicious constructs. It is roughly the same as 'go vet' and uses its passes.
+    - ineffassign       # Detects when assignments to existing variables are not used.
+    - staticcheck       # It's the set of rules from staticcheck.
+    - unused            # Checks Go code for unused constants, variables, functions and types.
+    # These are the linters we knowingly want enabled in addition to the default set
+    - containedctx      # avoid embedding context into structs
+    - depguard          # Allows to explicitly allow or disallow third party modules
+    - err113            # encourage static errors
+    - gochecknoglobals  # globals should be avoided as much as possible
+    - godot             # forces dot at the end of comments
+    - gosec             # various security checks
+    - interfacebloat    # limit complexity in public APIs
+    - paralleltest      # enforces tests using parallel
+    - revive            # meta linter (see settings below)
+    - testpackage       # test packages should be separate from the package they test (eg: name them package_test)
+    - testableexamples  # makes sure that examples are testable (have an expected output)
+    - thelper           # enforces use of t.Helper()
+    - varnamelen        # encourage readable descriptive names for variables instead of x, y, z
   disable:
-    # Opting-out
-    - nonamedreturns  # named returns are occasionally useful
-    - exhaustruct  # does not serve much of a purpose
-    - funlen  # not interested
-    - cyclop  # not interested much
-    - godox  # having these are useful
-    # Duplicating
-    - gci  # we use go-imports instead
-    # Deprecated
-    - tenv
-    # TODO: Temporarily out until we wrap up all of them
-#    - wrapcheck
+    # These are the linters that we know we do not want
+    - cyclop            # provided by revive
+    - exhaustruct       # does not serve much of a purpose
+    - errcheck          # provided by revive
+    - errchkjson        # forces handling of json err (eg: prevents _), which is too much
+    - forcetypeassert   # provided by revive
+    - funlen            # provided by revive
+    - gocognit          # provided by revive
+    - goconst           # provided by revive
+    - godox             # not helpful unless we could downgrade it to warning / info
+    - ginkgolinter      # no ginkgo
+    - gomodguard        # we use depguard instead
+    - ireturn           # too annoying with not enough value
+    - lll               # provided by golines
+    - nestif            # already provided ten different ways with revive cognitive complexity, etc
+    - nonamedreturns    # named returns are occasionally useful
+    - prealloc          # premature optimization
+    - promlinter        # no prometheus
+    - sloglint          # no slog
+    - testifylint       # no testify
+    - zerologlint       # no zerolog
+  settings:
+    interfacebloat:
+      # Default is 10
+      max: 13
+    revive:
+      enable-all-rules: true
+      rules:
+        - name: cognitive-complexity
+          # Default is 7
+          arguments: [60]
+        - name: function-length
+          # Default is 50, 75
+          arguments: [80, 200]
+        - name: cyclomatic
+          # Default is 10
+          arguments: [30]
+        - name: add-constant
+          arguments:
+            - allowInts: "0,1,2"
+              allowStrs: '""'
+        - name: flag-parameter
+          # Not sure why this is valuable.
+          disabled: true
+        - name: line-length-limit
+          # Formatter `golines` takes care of this.
+          disabled: true
+        - name: unhandled-error
+          arguments:
+            - "fmt.Print"
+            - "fmt.Println"
+            - "fmt.Printf"
+            - "fmt.Fprint"
+            - "fmt.Fprintln"
+            - "fmt.Fprintf"
+    depguard:
+      rules:
+        main:
+          files:
+            - $all
+          allow:
+            # Allowing go standard library and tigron itself
+            - $gostd
+            - github.com/containerd/nerdctl/mod/tigron
+            # We use creack as our base for pty
+            - github.com/creack/pty
+            # Used for display width computation in internal/formatter
+            - golang.org/x/text/width
+            # errgroups and term (make raw) are used by internal/pipes
+            - golang.org/x/sync
+            - golang.org/x/term
+            # EXPERIMENTAL: for go routines leakage detection
+            - go.uber.org/goleak
+    staticcheck:
+      checks:
+        - all
+  exclusions:
+    generated: disable
 
-linters-settings:
-  staticcheck:
-    checks:
-      - "all"
-
-  depguard:
-    rules:
-      main:
-        files:
-          - "$all"
-        allow:
-          - $gostd
-          - "github.com/containerd/nerdctl/mod/tigron"
-          # WATCHOUT! https://github.com/OpenPeeDeeP/depguard/issues/108
-          # Currently, depguard will fail detecting any dependency starting with a standard package name as third-party.
-          # Thus, the following three are allowed provisionally, though currently not "necessary".
-          - "golang.org/x/sync"
-          - "golang.org/x/term"
-          - "gotest.tools"
-          - "github.com/creack/pty"
+formatters:
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/containerd)
+        - localmodule
+      no-inline-comments: true
+      no-prefix-comments: true
+      custom-order: true
+    gofumpt:
+      extra-rules: true
+    golines:
+      max-len: 120
+      tab-len: 4
+      shorten-comments: true
+  enable:
+    - gci
+    - gofumpt
+    - golines
+  exclusions:
+    generated: disable

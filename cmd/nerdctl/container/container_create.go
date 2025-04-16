@@ -199,10 +199,6 @@ func createOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
 	if err != nil {
 		return opt, err
 	}
-	opt.BlkioWeight, err = cmd.Flags().GetUint16("blkio-weight")
-	if err != nil {
-		return opt, err
-	}
 	opt.Cgroupns, err = cmd.Flags().GetString("cgroupns")
 	if err != nil {
 		return opt, err
@@ -212,6 +208,33 @@ func createOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
 		return opt, err
 	}
 	opt.Device, err = cmd.Flags().GetStringSlice("device")
+	if err != nil {
+		return opt, err
+	}
+	// #endregion
+
+	// #region for blkio flags
+	opt.BlkioWeight, err = cmd.Flags().GetUint16("blkio-weight")
+	if err != nil {
+		return opt, err
+	}
+	opt.BlkioWeightDevice, err = cmd.Flags().GetStringArray("blkio-weight-device")
+	if err != nil {
+		return opt, err
+	}
+	opt.BlkioDeviceReadBps, err = cmd.Flags().GetStringArray("device-read-bps")
+	if err != nil {
+		return opt, err
+	}
+	opt.BlkioDeviceWriteBps, err = cmd.Flags().GetStringArray("device-write-bps")
+	if err != nil {
+		return opt, err
+	}
+	opt.BlkioDeviceReadIOps, err = cmd.Flags().GetStringArray("device-read-iops")
+	if err != nil {
+		return opt, err
+	}
+	opt.BlkioDeviceWriteIOps, err = cmd.Flags().GetStringArray("device-write-iops")
 	if err != nil {
 		return opt, err
 	}

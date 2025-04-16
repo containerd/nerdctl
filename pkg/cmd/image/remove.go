@@ -79,16 +79,22 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 
 			if cid, ok := runningImages[found.Image.Name]; ok {
 				if options.Force {
-					if err = is.Delete(ctx, found.Image.Name); err != nil {
-						return err
-					}
-					fmt.Fprintf(options.Stdout, "Untagged: %s\n", found.Image.Name)
-					fmt.Fprintf(options.Stdout, "Untagged: %s\n", found.Image.Target.Digest.String())
-
+					// This is a running image, so, we need to keep a ref on it so that containerd does not GC the layers
+					// First create the new image with an empty name
+					originalName := found.Image.Name
 					found.Image.Name = ":"
 					if _, err = is.Create(ctx, found.Image); err != nil {
 						return err
 					}
+
+					// Now, delete the original
+					if err = is.Delete(ctx, originalName, delOpts...); err != nil {
+						return err
+					}
+
+					fmt.Fprintf(options.Stdout, "Untagged: %s\n", originalName)
+					fmt.Fprintf(options.Stdout, "Untagged: %s@%s\n", originalName, found.Image.Target.Digest.String())
+
 					return nil
 				}
 				return fmt.Errorf("conflict: unable to delete %s (cannot be forced) - image is being used by running container %s", found.Req, cid)
@@ -126,16 +132,22 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 
 			if cid, ok := runningImages[found.Image.Name]; ok {
 				if options.Force {
-					if err = is.Delete(ctx, found.Image.Name); err != nil {
-						return false, err
-					}
-					fmt.Fprintf(options.Stdout, "Untagged: %s\n", found.Image.Name)
-					fmt.Fprintf(options.Stdout, "Untagged: %s\n", found.Image.Target.Digest.String())
-
+					// This is a running image, so, we need to keep a ref on it so that containerd does not GC the layers
+					// First create the new image with an empty name
+					originalName := found.Image.Name
 					found.Image.Name = ":"
 					if _, err = is.Create(ctx, found.Image); err != nil {
 						return false, err
 					}
+
+					// Now, delete the original
+					if err = is.Delete(ctx, originalName, delOpts...); err != nil {
+						return false, err
+					}
+
+					fmt.Fprintf(options.Stdout, "Untagged: %s\n", originalName)
+					fmt.Fprintf(options.Stdout, "Untagged: %s@%s\n", originalName, found.Image.Target.Digest.String())
+
 					return false, nil
 				}
 				return false, fmt.Errorf("conflict: unable to delete %s (cannot be forced) - image is being used by running container %s", found.Req, cid)

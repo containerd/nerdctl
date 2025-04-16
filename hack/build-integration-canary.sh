@@ -276,9 +276,10 @@ canary::build::integration(){
     fi
 
     while read -r line; do
-      # Extract value after "=" from a possible dockerfile `ARG XXX_VERSION`
+      # Extract value after "=" from a possible dockerfile `ARG XXX_VERSION`, stripping out @ suffixes
       old_version=$(echo "$line" | grep "ARG ${shortsafename}_VERSION=") || true
       old_version="${old_version##*=}"
+      old_version="${old_version%%@*}"
       [ "$old_version" != "" ] || continue
       # If the Dockerfile version does NOT start with a v, adapt to that
       [ "${old_version:0:1}" == "v" ] || higher_readable="${higher_readable:1}"

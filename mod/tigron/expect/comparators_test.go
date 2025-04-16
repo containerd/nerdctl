@@ -14,27 +14,51 @@
    limitations under the License.
 */
 
+//revive:disable:add-constant
 package expect_test
 
+// TODO: add a lot more tests including failure conditions with mimicry
+
 import (
+	"encoding/json"
 	"regexp"
 	"testing"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
 func TestExpect(t *testing.T) {
 	t.Parallel()
 
-	expect.Contains("b")("a b c", "info", t)
-	expect.DoesNotContain("d")("a b c", "info", t)
-	expect.Equals("a b c")("a b c", "info", t)
-	expect.Match(regexp.MustCompile("[a-z ]+"))("a b c", "info", t)
+	expect.Contains("b")("a b c", "contains works", t)
+	expect.DoesNotContain("d")("a b c", "does not contain works", t)
+	expect.Equals("a b c")("a b c", "equals work", t)
+	expect.Match(regexp.MustCompile("[a-z ]+"))("a b c", "match works", t)
 
 	expect.All(
 		expect.Contains("b"),
 		expect.DoesNotContain("d"),
 		expect.Equals("a b c"),
 		expect.Match(regexp.MustCompile("[a-z ]+")),
-	)("a b c", "info", t)
+	)("a b c", "all", t)
+
+	type foo struct {
+		Foo map[string]string `json:"foo"`
+	}
+
+	data, err := json.Marshal(&foo{
+		Foo: map[string]string{
+			"foo": "bar",
+		},
+	})
+
+	assertive.ErrorIsNil(t, err)
+
+	expect.JSON(&foo{}, nil)(string(data), "json, no verifier", t)
+
+	expect.JSON(&foo{}, func(obj *foo, info string, t tig.T) {
+		assertive.IsEqual(t, obj.Foo["foo"], "bar", info)
+	})(string(data), "json, with verifier", t)
 }

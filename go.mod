@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/Microsoft/hcsshim v0.12.9
-	github.com/compose-spec/compose-go/v2 v2.4.8
+	github.com/compose-spec/compose-go/v2 v2.6.0
 	github.com/containerd/accelerated-container-image v1.3.0
 	github.com/containerd/cgroups/v3 v3.0.5
 	github.com/containerd/console v1.0.4
@@ -16,10 +16,10 @@ require (
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0
 	github.com/containerd/go-cni v1.1.12
-	github.com/containerd/imgcrypt/v2 v2.0.0
+	github.com/containerd/imgcrypt/v2 v2.0.1
 	github.com/containerd/log v0.1.0
 	github.com/containerd/nerdctl/mod/tigron v0.0.0
-	github.com/containerd/nydus-snapshotter v0.15.0
+	github.com/containerd/nydus-snapshotter v0.15.1
 	github.com/containerd/platforms v1.0.0-rc.1
 	github.com/containerd/stargz-snapshotter v0.16.3
 	github.com/containerd/stargz-snapshotter/estargz v0.16.3
@@ -31,14 +31,14 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.4.1
 	github.com/distribution/reference v0.6.0
-	github.com/docker/cli v28.0.1+incompatible
-	github.com/docker/docker v28.0.1+incompatible
+	github.com/docker/cli v28.0.4+incompatible
+	github.com/docker/docker v28.0.4+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0
-	github.com/fahedouch/go-logrotate v0.2.1
+	github.com/fahedouch/go-logrotate v0.3.0
 	github.com/fatih/color v1.18.0
 	github.com/fluent/fluent-logger-golang v1.9.0
-	github.com/fsnotify/fsnotify v1.8.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-viper/mapstructure/v2 v2.2.1
 	github.com/ipfs/go-cid v0.5.0
 	github.com/klauspost/compress v1.18.0
@@ -51,7 +51,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/opencontainers/runtime-spec v1.2.1
-	github.com/pelletier/go-toml/v2 v2.2.3
+	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/rootless-containers/bypass4netns v0.4.2
 	github.com/rootless-containers/rootlesskit/v2 v2.3.4
 	github.com/spf13/cobra v1.9.1
@@ -59,13 +59,13 @@ require (
 	github.com/vishvananda/netlink v1.3.0
 	github.com/vishvananda/netns v0.0.5
 	github.com/yuchanns/srslog v1.1.0
-	go.uber.org/mock v0.5.0
-	golang.org/x/crypto v0.36.0
-	golang.org/x/net v0.37.0
-	golang.org/x/sync v0.12.0
-	golang.org/x/sys v0.31.0
-	golang.org/x/term v0.30.0
-	golang.org/x/text v0.23.0
+	go.uber.org/mock v0.5.1
+	golang.org/x/crypto v0.37.0
+	golang.org/x/net v0.39.0
+	golang.org/x/sync v0.13.0
+	golang.org/x/sys v0.32.0
+	golang.org/x/term v0.31.0
+	golang.org/x/text v0.24.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.2
 )
@@ -127,6 +127,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
+	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.56.0 // indirect
 	go.opentelemetry.io/otel v1.31.0 // indirect

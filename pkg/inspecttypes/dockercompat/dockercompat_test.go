@@ -55,9 +55,14 @@ func TestContainerFromNative(t *testing.T) {
 						"nerdctl/mounts":    "[{\"Type\":\"bind\",\"Source\":\"/mnt/foo\",\"Destination\":\"/mnt/foo\",\"Mode\":\"rshared,rw\",\"RW\":true,\"Propagation\":\"rshared\"}]",
 						"nerdctl/state-dir": tempStateDir,
 						"nerdctl/hostname":  "host1",
+						"nerdctl/user":      "test-user",
 					},
 				},
-				Spec: &specs.Spec{},
+				Spec: &specs.Spec{
+					Process: &specs.Process{
+						Env: []string{"/some/path"},
+					},
+				},
 				Process: &native.Process{
 					Pid: 10000,
 					Status: containerd.Status{
@@ -82,8 +87,9 @@ func TestContainerFromNative(t *testing.T) {
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
-					UTSMode: "host",
-					Tmpfs:   map[string]string{},
+					UTSMode:            "host",
+					Tmpfs:              map[string]string{},
+					LinuxBlkioSettings: getDefaultLinuxBlkioSettings(),
 				},
 				Mounts: []MountPoint{
 					{
@@ -100,8 +106,11 @@ func TestContainerFromNative(t *testing.T) {
 						"nerdctl/mounts":    "[{\"Type\":\"bind\",\"Source\":\"/mnt/foo\",\"Destination\":\"/mnt/foo\",\"Mode\":\"rshared,rw\",\"RW\":true,\"Propagation\":\"rshared\"}]",
 						"nerdctl/state-dir": tempStateDir,
 						"nerdctl/hostname":  "host1",
+						"nerdctl/user":      "test-user",
 					},
 					Hostname: "host1",
+					Env:      []string{"/some/path"},
+					User:     "test-user",
 				},
 				NetworkSettings: &NetworkSettings{
 					Ports:    &nat.PortMap{},
@@ -174,8 +183,9 @@ func TestContainerFromNative(t *testing.T) {
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
-					UTSMode: "host",
-					Tmpfs:   map[string]string{},
+					UTSMode:            "host",
+					Tmpfs:              map[string]string{},
+					LinuxBlkioSettings: getDefaultLinuxBlkioSettings(),
 				},
 				Mounts: []MountPoint{
 					{
@@ -264,8 +274,9 @@ func TestContainerFromNative(t *testing.T) {
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
-					UTSMode: "host",
-					Tmpfs:   map[string]string{},
+					UTSMode:            "host",
+					Tmpfs:              map[string]string{},
+					LinuxBlkioSettings: getDefaultLinuxBlkioSettings(),
 				},
 				Mounts: []MountPoint{
 					{

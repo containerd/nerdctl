@@ -17,8 +17,6 @@
 package test
 
 // WithConfig returns a config object with a certain config property set.
-//
-//nolint:ireturn
 func WithConfig(key ConfigKey, value ConfigValue) Config {
 	cfg := &config{}
 	cfg.Write(key, value)
@@ -26,10 +24,8 @@ func WithConfig(key ConfigKey, value ConfigValue) Config {
 	return cfg
 }
 
-// Contains the implementation of the Config interface
-
-//nolint:ireturn
-func configureConfig(cfg Config, parent Config) Config {
+// Contains the implementation of the Config interface.
+func configureConfig(cfg, parent Config) Config {
 	if cfg == nil {
 		cfg = &config{
 			config: make(map[ConfigKey]ConfigValue),
@@ -49,7 +45,6 @@ type config struct {
 	config map[ConfigKey]ConfigValue
 }
 
-//nolint:ireturn
 func (cfg *config) Write(key ConfigKey, value ConfigValue) Config {
 	if cfg.config == nil {
 		cfg.config = make(map[ConfigKey]ConfigValue)

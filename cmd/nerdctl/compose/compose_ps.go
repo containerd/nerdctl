@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"strings"
 	"text/tabwriter"
-	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -345,10 +344,6 @@ func formatPublishers(labelMap map[string]string) []PortPublisher {
 
 // statusForFilter returns the status value to be matched with the 'status' filter
 func statusForFilter(ctx context.Context, c containerd.Container) string {
-	// Just in case, there is something wrong in server.
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
 	task, err := c.Task(ctx, nil)
 	if err != nil {
 		// NOTE: NotFound doesn't mean that container hasn't started.

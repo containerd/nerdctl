@@ -30,13 +30,14 @@ import (
 	"sync"
 	"time"
 
-	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/fsnotify/fsnotify"
 	"github.com/muesli/cancelreader"
 
+	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 )
 
@@ -163,7 +164,7 @@ func WaitForLogger(dataStore, ns, id string) error {
 }
 
 func getContainerWait(ctx context.Context, address string, config *logging.Config) (<-chan containerd.ExitStatus, error) {
-	client, err := containerd.New(address, containerd.WithDefaultNamespace(config.Namespace))
+	client, err := containerd.New(strings.TrimPrefix(address, "unix://"), containerd.WithDefaultNamespace(config.Namespace))
 	if err != nil {
 		return nil, err
 	}

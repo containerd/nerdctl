@@ -140,14 +140,27 @@ type ContainerCreateOptions struct {
 	PidsLimit int64
 	// CgroupConf specifies to configure cgroup v2 (key=value)
 	CgroupConf []string
-	// BlkioWeight specifies the block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)
-	BlkioWeight uint16
 	// Cgroupns specifies the cgroup namespace to use
 	Cgroupns string
 	// CgroupParent specifies the optional parent cgroup for the container
 	CgroupParent string
 	// Device specifies add a host device to the container
 	Device []string
+	// #endregion
+
+	// #region for blkio related flags
+	// BlkioWeight specifies the block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)
+	BlkioWeight uint16
+	// BlkioWeightDevice specifies the Block IO weight (relative device weight)
+	BlkioWeightDevice []string
+	// BlkioDeviceReadBps specifies the Block IO read rate limit(bytes per second) of a device
+	BlkioDeviceReadBps []string
+	// BlkioDeviceWriteBps specifies the Block IO write rate limit(bytes per second) of a device
+	BlkioDeviceWriteBps []string
+	// BlkioDeviceReadIOps specifies the Block IO read rate limit(IO per second) of a device
+	BlkioDeviceReadIOps []string
+	// BlkioDeviceWriteIOps specifies the Block IO read rate limit(IO per second) of a device
+	BlkioDeviceWriteIOps []string
 	// #endregion
 
 	// #region for intel RDT flags
@@ -330,6 +343,9 @@ type ContainerTopOptions struct {
 	Stdout io.Writer
 	// GOptions is the global options
 	GOptions GlobalCommandOptions
+
+	// Arguments to pass through to the ps command
+	PsArgs string
 }
 
 // ContainerInspectOptions specifies options for `nerdctl container inspect`

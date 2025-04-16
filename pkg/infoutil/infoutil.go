@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/docker/docker/pkg/sysinfo"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/introspection"
@@ -244,13 +245,42 @@ func parseRuncVersion(runcVersionStdout []byte) (*dockercompat.ComponentVersion,
 	}, nil
 }
 
-// BlockIOWeight return whether Block IO weight is supported or not
-func BlockIOWeight(cgroupManager string) bool {
+// getMobySysInfo returns the moby system info for the given cgroup manager
+func getMobySysInfo(cgroupManager string) *sysinfo.SysInfo {
 	var info dockercompat.Info
 	info.CgroupVersion = CgroupsVersion()
 	info.CgroupDriver = cgroupManager
-	mobySysInfo := mobySysInfo(&info)
+	return mobySysInfo(&info)
+}
+
+// BlockIOWeight returns whether Block IO weight is supported or not
+func BlockIOWeight(cgroupManager string) bool {
 	// blkio weight is not available on cgroup v1 since kernel 5.0.
 	// On cgroup v2, blkio weight is implemented using io.weight
-	return mobySysInfo.BlkioWeight
+	return getMobySysInfo(cgroupManager).BlkioWeight
+}
+
+// BlockIOWeightDevice returns whether Block IO weight device is supported or not
+func BlockIOWeightDevice(cgroupManager string) bool {
+	return getMobySysInfo(cgroupManager).BlkioWeightDevice
+}
+
+// BlockIOReadBpsDevice returns whether Block IO read limit in bytes per second is supported or not
+func BlockIOReadBpsDevice(cgroupManager string) bool {
+	return getMobySysInfo(cgroupManager).BlkioReadBpsDevice
+}
+
+// BlockIOWriteBpsDevice returns whether Block IO write limit in bytes per second is supported or not
+func BlockIOWriteBpsDevice(cgroupManager string) bool {
+	return getMobySysInfo(cgroupManager).BlkioWriteBpsDevice
+}
+
+// BlockIOReadIOpsDevice returns whether Block IO read limit in IO per second is supported or not
+func BlockIOReadIOpsDevice(cgroupManager string) bool {
+	return getMobySysInfo(cgroupManager).BlkioReadIOpsDevice
+}
+
+// BlockIOWriteIOpsDevice returns whether Block IO write limit in IO per second is supported or not
+func BlockIOWriteIOpsDevice(cgroupManager string) bool {
+	return getMobySysInfo(cgroupManager).BlkioWriteIOpsDevice
 }

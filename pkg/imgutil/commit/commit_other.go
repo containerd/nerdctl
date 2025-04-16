@@ -1,3 +1,5 @@
+//go:build !unix
+
 /*
    Copyright The containerd Authors.
 
@@ -14,12 +16,8 @@
    limitations under the License.
 */
 
-package internal
+package commit
 
-// This is duplicated form `expect` to avoid circular imports.
-const (
-	ExitCodeSuccess     = 0
-	ExitCodeGenericFail = -1
-	ExitCodeNoCheck     = -2
-	ExitCodeTimeout     = -3
-)
+func Sync() {
+
+}

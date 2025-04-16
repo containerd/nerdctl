@@ -22,20 +22,23 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/log"
+
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
-	containerCmd "github.com/containerd/nerdctl/v2/cmd/nerdctl/container"
+	containercmd "github.com/containerd/nerdctl/v2/cmd/nerdctl/container"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
-	imageCmd "github.com/containerd/nerdctl/v2/cmd/nerdctl/image"
+	imagecmd "github.com/containerd/nerdctl/v2/cmd/nerdctl/image"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
+	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 )
 
 func Command() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "inspect",
 		Short:             "Return low-level information on objects.",
 		Args:              cobra.MinimumNArgs(1),
@@ -79,6 +82,10 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 	}
 	namespace := globalOptions.Namespace
 	address := globalOptions.Address
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
 	inspectType, err := cmd.Flags().GetString("type")
 	if err != nil {
 		return err
@@ -117,19 +124,20 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 	var containerInspectOptions types.ContainerInspectOptions
 	if inspectImage {
 		platform := ""
-		imageInspectOptions, err = imageCmd.InspectOptions(cmd, &platform)
+		imageInspectOptions, err = imagecmd.InspectOptions(cmd, &platform)
 		if err != nil {
 			return err
 		}
 	}
 	if inspectContainer {
-		containerInspectOptions, err = containerCmd.InspectOptions(cmd)
+		containerInspectOptions, err = containercmd.InspectOptions(cmd)
 		if err != nil {
 			return err
 		}
 	}
 
 	var errs []error
+	var entries []interface{}
 	for _, req := range args {
 		var ni int
 		var nc int
@@ -150,18 +158,26 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 		if ni == 0 && nc == 0 {
 			errs = append(errs, fmt.Errorf("no such object %s", req))
 		} else if ni > 0 {
-			if err := image.Inspect(ctx, client, []string{req}, imageInspectOptions); err != nil {
+			if imageEntries, err := image.Inspect(ctx, client, []string{req}, imageInspectOptions); err != nil {
 				errs = append(errs, err)
+			} else {
+				entries = append(entries, imageEntries...)
 			}
 		} else if nc > 0 {
-			if err := container.Inspect(ctx, client, []string{req}, containerInspectOptions); err != nil {
+			if containerEntries, err := container.Inspect(ctx, client, []string{req}, containerInspectOptions); err != nil {
 				errs = append(errs, err)
+			} else {
+				entries = append(entries, containerEntries...)
 			}
 		}
 	}
 
 	if len(errs) > 0 {
 		return fmt.Errorf("%d errors: %v", len(errs), errs)
+	}
+
+	if formatErr := formatter.FormatSlice(format, cmd.OutOrStdout(), entries); formatErr != nil {
+		log.G(ctx).Error(formatErr)
 	}
 
 	return nil

@@ -23,19 +23,17 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/snapshots"
-	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerinspector"
-	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 )
 
 // Inspect prints detailed information for each container in `containers`.
-func Inspect(ctx context.Context, client *containerd.Client, containers []string, options types.ContainerInspectOptions) error {
+func Inspect(ctx context.Context, client *containerd.Client, containers []string, options types.ContainerInspectOptions) ([]any, error) {
 	f := &containerInspector{
 		mode:        options.Mode,
 		size:        options.Size,
@@ -48,13 +46,11 @@ func Inspect(ctx context.Context, client *containerd.Client, containers []string
 	}
 
 	err := walker.WalkAll(ctx, containers, true)
-	if len(f.entries) > 0 {
-		if formatErr := formatter.FormatSlice(options.Format, options.Stdout, f.entries); formatErr != nil {
-			log.L.Error(formatErr)
-		}
+	if err != nil {
+		return []any{}, err
 	}
 
-	return err
+	return f.entries, nil
 }
 
 type containerInspector struct {

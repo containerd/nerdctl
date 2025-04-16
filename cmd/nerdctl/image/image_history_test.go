@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
+	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -93,11 +94,6 @@ func TestImageHistory(t *testing.T) {
 					history, err := decode(stdout)
 					assert.NilError(t, err, info)
 					assert.Equal(t, len(history), 2, info)
-					assert.Equal(t, history[0].Size, "0B", info)
-					// FIXME: how is this going to age?
-					assert.Equal(t, history[0].CreatedSince, "3 years ago", info)
-					assert.Equal(t, history[0].Snapshot, "<missing>", info)
-					assert.Equal(t, history[0].Comment, "", info)
 
 					localTimeL1, _ := time.Parse(time.RFC3339, "2021-03-31T10:21:23-07:00")
 					localTimeL2, _ := time.Parse(time.RFC3339, "2021-03-31T10:21:21-07:00")
@@ -108,8 +104,13 @@ func TestImageHistory(t *testing.T) {
 					assert.Equal(t, compTime2.UTC().String(), localTimeL2.UTC().String(), info)
 					assert.Equal(t, history[1].CreatedBy, "/bin/sh -c #(nop) ADD file:3b16ffee2b26d8af5…", info)
 
+					assert.Equal(t, history[0].Size, "0B", info)
+					assert.Equal(t, history[0].CreatedSince, formatter.TimeSinceInHuman(compTime1), info)
+					assert.Equal(t, history[0].Snapshot, "<missing>", info)
+					assert.Equal(t, history[0].Comment, "", info)
+
 					assert.Equal(t, history[1].Size, "5.947MB", info)
-					assert.Equal(t, history[1].CreatedSince, "3 years ago", info)
+					assert.Equal(t, history[1].CreatedSince, formatter.TimeSinceInHuman(compTime2), info)
 					assert.Equal(t, history[1].Snapshot, "sha256:56bf55b8eed1f0b4794a30386e4d1d3da949c…", info)
 					assert.Equal(t, history[1].Comment, "", info)
 				}),

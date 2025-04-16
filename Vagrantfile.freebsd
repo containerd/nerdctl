@@ -36,6 +36,10 @@ Vagrant.configure("2") do |config|
     sh.inline = <<~SHELL
         #!/usr/bin/env bash
         set -eux -o pipefail
+        freebsd-version -kru
+        # switching to "release_2" ensures compatibility with the current Vagrant box
+        # https://github.com/moby/buildkit/pull/5893
+        sed -i '' 's/latest/release_2/' /usr/local/etc/pkg/repos/FreeBSD.conf
         # `pkg install go` still installs Go 1.20 (March 2024)
         pkg install -y go122 containerd runj
         ln -s go122 /usr/local/bin/go
@@ -59,7 +63,7 @@ Vagrant.configure("2") do |config|
         set -eux -o pipefail
         daemon -o containerd.out containerd
         sleep 3
-        /root/go/bin/nerdctl run --rm --net=none dougrabson/freebsd-minimal:13 echo "Nerdctl is up and running."
+        /root/go/bin/nerdctl run --rm --quiet --net=none dougrabson/freebsd-minimal:13 echo "Nerdctl is up and running."
     SHELL
   end
 

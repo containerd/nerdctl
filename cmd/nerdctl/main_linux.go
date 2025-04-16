@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/spf13/cobra"
+	"golang.org/x/sys/unix"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/apparmor"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -65,4 +66,19 @@ func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
 
 func addApparmorCommand(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(apparmor.Command())
+}
+
+// resetSavedSETUID drops the saved UID of a setuid-root process to the original real UID.
+// This ensures the process cannot regain root privileges later.
+// It only performs the operation if the process is currently running with effective UID 0 (root)
+// and was started by a non-root user (i.e., real UID != effective UID).
+// For more info see issue https://github.com/containerd/nerdctl/issues/4098
+func resetSavedSETUID() error {
+	var err error
+	uid := unix.Getuid()
+	euid := unix.Geteuid()
+	if uid != euid && euid == 0 {
+		err = unix.Setresuid(0, 0, uid)
+	}
+	return err
 }

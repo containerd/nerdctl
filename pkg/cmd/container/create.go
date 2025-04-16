@@ -179,6 +179,15 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		}
 	}
 
+	if ensuredImage != nil && ensuredImage.ImageConfig.User != "" {
+		internalLabels.user = ensuredImage.ImageConfig.User
+	}
+
+	// Override it if User is passed
+	if options.User != "" {
+		internalLabels.user = options.User
+	}
+
 	rootfsOpts, rootfsCOpts, err := generateRootfsOpts(args, id, ensuredImage, options)
 	if err != nil {
 		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
@@ -271,6 +280,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	if err != nil {
 		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
+
 	opts = append(opts, uOpts...)
 	gOpts, err := generateGroupsOpts(options.GroupAdd)
 	internalLabels.groupAdd = options.GroupAdd
@@ -330,8 +340,6 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	internalLabels.extraHosts = extraHosts
 
 	internalLabels.rm = containerutil.EncodeContainerRmOptLabel(options.Rm)
-
-	internalLabels.blkioWeight = options.BlkioWeight
 
 	// TODO: abolish internal labels and only use annotations
 	ilOpt, err := withInternalLabels(internalLabels)
@@ -624,11 +632,10 @@ func withStop(stopSignal string, stopTimeout int, ensuredImage *imgutil.EnsuredI
 
 type internalLabels struct {
 	// labels from cmd options
-	namespace   string
-	platform    string
-	extraHosts  []string
-	pidFile     string
-	blkioWeight uint16
+	namespace  string
+	platform   string
+	extraHosts []string
+	pidFile    string
 	// labels from cmd options or automatically set
 	name       string
 	hostname   string
@@ -665,6 +672,8 @@ type internalLabels struct {
 
 	// label for device mapping set by the --device flag
 	deviceMapping []dockercompat.DeviceMapping
+
+	user string
 }
 
 // WithInternalLabels sets the internal labels for a container.
@@ -754,10 +763,6 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 		m[labels.ContainerAutoRemove] = internalLabels.rm
 	}
 
-	if internalLabels.blkioWeight > 0 {
-		hostConfigLabel.BlkioWeight = internalLabels.blkioWeight
-	}
-
 	if internalLabels.cidFile != "" {
 		hostConfigLabel.CidFile = internalLabels.cidFile
 	}
@@ -789,6 +794,10 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 		return nil, err
 	}
 	m[labels.DNSSetting] = string(dnsSettingsJSON)
+
+	if internalLabels.user != "" {
+		m[labels.User] = internalLabels.user
+	}
 
 	return containerd.WithAdditionalContainerLabels(m), nil
 }
@@ -885,7 +894,7 @@ func writeCIDFile(path, id string) error {
 // generateLogConfig creates a LogConfig for the current container store
 func generateLogConfig(dataStore string, id string, logDriver string, logOpt []string, ns, address string) (logConfig logging.LogConfig, err error) {
 	var u *url.URL
-	if u, err = url.Parse(logDriver); err == nil && u.Scheme != "" {
+	if u, err = url.Parse(logDriver); err == nil && (u.Scheme != "" || logDriver == "none") {
 		logConfig.LogURI = logDriver
 	} else {
 		logConfig.Driver = logDriver

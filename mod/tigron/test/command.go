@@ -14,28 +14,39 @@
    limitations under the License.
 */
 
+//revive:disable:exported,package-comments,add-constant // TODO.
 package test
 
 import (
-	"bytes"
-	"fmt"
+	"context"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-	"golang.org/x/term"
-	"gotest.tools/v3/assert"
-	"gotest.tools/v3/icmd"
-
-	"github.com/containerd/nerdctl/mod/tigron/test/internal"
-	"github.com/containerd/nerdctl/mod/tigron/test/internal/pty"
+	"github.com/containerd/nerdctl/mod/tigron/internal"
+	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
+	"github.com/containerd/nerdctl/mod/tigron/internal/com"
+	"github.com/containerd/nerdctl/mod/tigron/internal/formatter"
 )
 
-// CustomizableCommand is an interface meant for people who want to heavily customize the base command
-// of their test case.
+const (
+	defaultExecutionTimeout = 3 * time.Minute
+	commandDecorator        = "⚙️"
+	errorDecorator          = "🚫"
+	exitDecorator           = "⚠️"
+	stdoutDecorator         = "🟢"
+	stderrDecorator         = "🟠"
+)
+
+// CustomizableCommand is an interface meant for people who want to heavily customize the base
+// command of their test case.
+// FIXME: now that most of the logic got moved to the internal command, consider simplifying this /
+// removing some of the extra layers from here
+//
+
 type CustomizableCommand interface {
 	TestableCommand
 
@@ -43,6 +54,8 @@ type CustomizableCommand interface {
 	// WithBlacklist allows to filter out unwanted variables from the embedding environment -
 	// default it pass any that is defined by WithEnv
 	WithBlacklist(env []string)
+	// T returns the current testing object
+	T() *testing.T
 
 	// withEnv *copies* the passed map to the environment of the command to be executed
 	// Note that this will override any variable defined in the embedding environment
@@ -52,9 +65,10 @@ type CustomizableCommand interface {
 	// WithConfig allows passing custom config properties from the test to the base command
 	withConfig(config Config)
 	withT(t *testing.T)
-	// Clear does a clone, but will clear binary and arguments, but retain the env, or any other custom properties
-	// Gotcha: if GenericCommand is embedded with a custom Run and an overridden clear to return the embedding type
-	// the result will be the embedding command, no longer the GenericCommand
+	// Clear does a clone, but will clear binary and arguments while retaining the env, or any other
+	// custom properties Gotcha: if genericCommand is embedded with a custom Run and an overridden
+	// clear to return the embedding type the result will be the embedding command, no longer the
+	// genericCommand
 	clear() TestableCommand
 
 	// Will manipulate specific configuration option on the command
@@ -65,6 +79,18 @@ type CustomizableCommand interface {
 	read(key ConfigKey) ConfigValue
 }
 
+func NewGenericCommand() CustomizableCommand {
+	genericCom := &GenericCommand{
+		Env: map[string]string{},
+		cmd: &com.Command{},
+	}
+
+	genericCom.cmd.Env = genericCom.Env
+	genericCom.cmd.Timeout = defaultExecutionTimeout
+
+	return genericCom
+}
+
 // GenericCommand is a concrete Command implementation.
 type GenericCommand struct {
 	Config  Config
@@ -73,160 +99,185 @@ type GenericCommand struct {
 
 	t *testing.T
 
-	helperBinary string
-	helperArgs   []string
-	prependArgs  []string
-	mainBinary   string
-	mainArgs     []string
+	cmd   *com.Command
+	async bool
 
-	envBlackList []string
-	stdin        io.Reader
-	async        bool
-	pty          bool
-	ptyWriters   []func(*os.File) error
-	timeout      time.Duration
-	workingDir   string
-
-	result    *icmd.Result
 	rawStdErr string
 }
 
 func (gc *GenericCommand) WithBinary(binary string) {
-	gc.mainBinary = binary
+	gc.cmd.Binary = binary
 }
 
 func (gc *GenericCommand) WithArgs(args ...string) {
-	gc.mainArgs = append(gc.mainArgs, args...)
+	gc.cmd.Args = append(gc.cmd.Args, args...)
 }
 
 func (gc *GenericCommand) WithWrapper(binary string, args ...string) {
-	gc.helperBinary = binary
-	gc.helperArgs = args
+	gc.cmd.WrapBinary = binary
+	gc.cmd.WrapArgs = args
 }
 
-func (gc *GenericCommand) WithPseudoTTY(writers ...func(*os.File) error) {
-	gc.pty = true
-	gc.ptyWriters = writers
+func (gc *GenericCommand) WithPseudoTTY() {
+	gc.cmd.WithPTY(true, true, false)
 }
 
-func (gc *GenericCommand) WithStdin(r io.Reader) {
-	gc.stdin = r
+func (gc *GenericCommand) Feed(r io.Reader) {
+	gc.cmd.Feed(r)
+}
+
+func (gc *GenericCommand) WithFeeder(fun func() io.Reader) {
+	gc.cmd.WithFeeder(fun)
 }
 
 func (gc *GenericCommand) WithCwd(path string) {
-	gc.workingDir = path
+	gc.cmd.WorkingDir = path
+}
+
+func (gc *GenericCommand) WithBlacklist(env []string) {
+	gc.cmd.EnvBlackList = env
+}
+
+func (gc *GenericCommand) WithTimeout(timeout time.Duration) {
+	gc.cmd.Timeout = timeout
+}
+
+func (gc *GenericCommand) PrependArgs(args ...string) {
+	gc.cmd.PrependArgs = args
+}
+
+func (gc *GenericCommand) Background() {
+	gc.async = true
+
+	_ = gc.cmd.Run(context.WithValue(context.Background(), com.LoggerKey, gc.t))
+}
+
+func (gc *GenericCommand) Signal(sig os.Signal) error {
+	//nolint:wrapcheck
+	return gc.cmd.Signal(sig)
 }
 
 func (gc *GenericCommand) Run(expect *Expected) {
-	if gc.t != nil {
-		gc.t.Helper()
-	}
+	gc.t.Helper()
 
-	var (
-		result *icmd.Result
-		env    []string
-		tty    *os.File
-		psty   *os.File
-	)
-
-	output := &bytes.Buffer{}
-	stdout := ""
-	copyGroup := &errgroup.Group{}
+	var debug [][]any
 
 	if !gc.async {
-		iCmdCmd := gc.boot()
+		_ = gc.cmd.Run(context.WithValue(context.Background(), com.LoggerKey, gc.t))
+	}
 
-		if gc.pty {
-			psty, tty, _ = pty.Open()
-			_, _ = term.MakeRaw(int(tty.Fd()))
+	debug = append(debug,
+		[]any{"➡️", commandDecorator + " " + gc.cmd.Binary + " " + strings.Join(gc.cmd.Args, " ")},
+	)
 
-			iCmdCmd.Stdin = tty
-			iCmdCmd.Stdout = tty
+	// Wait for the command and if Err is not nil, append it to the debug information
+	result, err := gc.cmd.Wait()
+	if err != nil {
+		debug = append(debug, []any{"", errorDecorator + " " + err.Error()})
+	}
 
-			// Copy from the master
-			copyGroup.Go(func() error {
-				_, _ = io.Copy(output, psty)
+	// If we were requested to perform expectation matching, add non-empty debugging information
+	if result != nil {
+		gc.rawStdErr = result.Stderr
 
-				return nil
-			})
-
-			// Cautiously start the command
-			startGroup := &errgroup.Group{}
-			startGroup.Go(func() error {
-				gc.result = icmd.StartCmd(iCmdCmd)
-				if gc.result.Error != nil {
-					gc.t.Log("start command failed")
-					gc.t.Log(gc.result.ExitCode)
-					gc.t.Log(gc.result.Error)
-					return gc.result.Error
-				}
-
-				for _, writer := range gc.ptyWriters {
-					err := writer(psty)
-					if err != nil {
-						gc.t.Log("writing to the pty failed")
-						gc.t.Log(err)
-						return err
-					}
-				}
-
-				return nil
-			})
-
-			// Let the error through for WaitOnCmd to handle
-			_ = startGroup.Wait()
-		} else {
-			// Run it
-			gc.result = icmd.StartCmd(iCmdCmd)
+		if result.ExitCode != 0 {
+			debug = append(debug, []any{"", exitDecorator + " " + strconv.Itoa(result.ExitCode)})
 		}
+
+		if result.Stdout != "" {
+			debug = append(debug, []any{"", stdoutDecorator + " " + result.Stdout})
+		}
+
+		if result.Stderr != "" {
+			debug = append(debug, []any{"", stderrDecorator + " " + result.Stderr})
+		}
+
+		if result.Signal != nil {
+			debug = append(debug, []any{"Signal", result.Signal.String()})
+		}
+
+		debug = append(debug,
+			[]any{"Limit", gc.cmd.Timeout},
+			[]any{"Environ", strings.Join(result.Environ, "\n")},
+		)
 	}
 
-	result = icmd.WaitOnCmd(gc.timeout, gc.result)
-	env = gc.result.Cmd.Env
+	// Print the command info
+	gc.t.Log("\n\n" + formatter.Table(debug, "-") + "\n")
 
-	if gc.pty {
-		_ = tty.Close()
-		_ = psty.Close()
-		_ = copyGroup.Wait()
-	}
-
-	stdout = result.Stdout()
-	if stdout == "" {
-		stdout = output.String()
-	}
-
-	gc.rawStdErr = result.Stderr()
-
-	// Check our expectations, if any
+	// Now, check our expectations, if any
 	if expect != nil {
-		// Build the debug string - additionally attach the env (which iCmd does not do)
-		debug := result.String() + "Env:\n" + strings.Join(env, "\n")
+		assertT := assertive.WithSilentSuccess(gc.t)
 
 		// ExitCode goes first
 		switch expect.ExitCode {
 		case internal.ExitCodeNoCheck:
-			// ExitCodeNoCheck means we do not care at all about exit code. It can be a failure, a success, or a timeout.
+			// ExitCodeNoCheck means we do not care at all about what happened. Fire and forget...
 		case internal.ExitCodeGenericFail:
-			// ExitCodeGenericFail means we expect an error (excluding timeout).
-			assert.Assert(gc.t, result.ExitCode != 0,
-				"Expected exit code to be different than 0\n"+debug)
+			// ExitCodeGenericFail means we expect an error (excluding timeout, cancellation,
+			// signalling).
+			assertive.ErrorIs(
+				assertT,
+				err,
+				com.ErrExecutionFailed,
+				"Command should fail",
+			)
 		case internal.ExitCodeTimeout:
-			assert.Assert(gc.t, expect.ExitCode == internal.ExitCodeTimeout,
-				"Command unexpectedly timed-out\n"+debug)
+			assertive.ErrorIs(
+				gc.t,
+				err,
+				com.ErrTimeout,
+				"Command should time-out",
+			)
+		case internal.ExitCodeSignaled:
+			assertive.ErrorIs(
+				gc.t,
+				err,
+				com.ErrSignaled,
+				"Command should get signaled",
+			)
+		case internal.ExitCodeSuccess:
+			assertive.ErrorIsNil(
+				assertT,
+				err,
+				"Command should succeed",
+			)
 		default:
-			assert.Assert(gc.t, expect.ExitCode == result.ExitCode,
-				fmt.Sprintf("Expected exit code: %d\n", expect.ExitCode)+debug)
+			exc := -1
+			if result != nil {
+				exc = result.ExitCode
+			}
+
+			assertive.IsEqual(
+				assertT,
+				expect.ExitCode,
+				exc,
+				"Exit code should match expectation",
+			)
 		}
+
+		// Switch to fail later mode so that we get ALL subsequent asserts failures from there on.
+		// Also does allow using assert(ive) in go routines.
+		assertT = assertive.WithFailLater(gc.t)
 
 		// Range through the expected errors and confirm they are seen on stderr
 		for _, expectErr := range expect.Errors {
-			assert.Assert(gc.t, strings.Contains(gc.rawStdErr, expectErr.Error()),
-				fmt.Sprintf("Expected error: %q to be found in stderr\n", expectErr.Error())+debug)
+			assertive.Contains(
+				assertT,
+				gc.rawStdErr,
+				expectErr.Error(),
+				"Stderr should contain expected error",
+			)
 		}
 
 		// Finally, check the output if we are asked to
+		// FIXME: we cannot pass on assertT further for now until we move to tig.T
 		if expect.Output != nil {
-			expect.Output(stdout, debug, gc.t)
+			expect.Output(
+				result.Stdout,
+				"",
+				gc.t,
+			)
 		}
 	}
 }
@@ -235,27 +286,9 @@ func (gc *GenericCommand) Stderr() string {
 	return gc.rawStdErr
 }
 
-func (gc *GenericCommand) Background(timeout time.Duration) {
-	// Run it
-	gc.async = true
-
-	i := gc.boot()
-
-	gc.timeout = timeout
-	gc.result = icmd.StartCmd(i)
-}
-
-func (gc *GenericCommand) Signal(sig os.Signal) error {
-	return gc.result.Cmd.Process.Signal(sig) //nolint:wrapcheck
-}
-
 func (gc *GenericCommand) withEnv(env map[string]string) {
-	if gc.Env == nil {
-		gc.Env = map[string]string{}
-	}
-
 	for k, v := range env {
-		gc.Env[k] = v
+		gc.cmd.Env[k] = v
 	}
 }
 
@@ -263,56 +296,51 @@ func (gc *GenericCommand) withTempDir(path string) {
 	gc.TempDir = path
 }
 
-func (gc *GenericCommand) WithBlacklist(env []string) {
-	gc.envBlackList = env
-}
-
 func (gc *GenericCommand) withConfig(config Config) {
 	gc.Config = config
 }
 
-func (gc *GenericCommand) PrependArgs(args ...string) {
-	gc.prependArgs = append(gc.prependArgs, args...)
-}
-
-//nolint:ireturn
 func (gc *GenericCommand) Clone() TestableCommand {
 	// Copy the command and return a new one - with almost everything from the parent command
-	com := *gc
-	com.result = nil
-	com.stdin = nil
-	com.timeout = 0
-	com.rawStdErr = ""
+	clone := *gc
+	clone.rawStdErr = ""
+	clone.async = false
+
 	// Clone Env
-	com.Env = make(map[string]string, len(gc.Env))
+	clone.Env = make(map[string]string, len(gc.Env))
 	for k, v := range gc.Env {
-		com.Env[k] = v
+		clone.Env[k] = v
 	}
 
-	return &com
+	// Clone the underlying command
+	clone.cmd = gc.cmd.Clone()
+	clone.cmd.Env = clone.Env
+
+	return &clone
 }
 
 func (gc *GenericCommand) T() *testing.T {
 	return gc.t
 }
 
-//nolint:ireturn
 func (gc *GenericCommand) clear() TestableCommand {
-	com := *gc
-	com.mainBinary = ""
-	com.helperBinary = ""
-	com.mainArgs = []string{}
-	com.prependArgs = []string{}
-	com.helperArgs = []string{}
+	comcopy := *gc
+	// Reset internal command
+	comcopy.cmd = &com.Command{}
+	comcopy.rawStdErr = ""
+	comcopy.async = false
 	// Clone Env
-	com.Env = make(map[string]string, len(gc.Env))
+	comcopy.Env = make(map[string]string, len(gc.Env))
 	// Reset configuration
-	com.Config = &config{}
+	comcopy.Config = &config{}
+	// Copy the env
 	for k, v := range gc.Env {
-		com.Env[k] = v
+		comcopy.Env[k] = v
 	}
 
-	return &com
+	comcopy.cmd.Env = comcopy.Env
+
+	return &comcopy
 }
 
 func (gc *GenericCommand) withT(t *testing.T) {
@@ -326,58 +354,4 @@ func (gc *GenericCommand) read(key ConfigKey) ConfigValue {
 
 func (gc *GenericCommand) write(key ConfigKey, value ConfigValue) {
 	gc.Config.Write(key, value)
-}
-
-func (gc *GenericCommand) boot() icmd.Cmd {
-	// This is a helper function, not to appear in the debugging output
-	if gc.t != nil {
-		gc.t.Helper()
-	}
-
-	binary := gc.mainBinary
-	//nolint:gocritic
-	args := append(gc.prependArgs, gc.mainArgs...)
-
-	if gc.helperBinary != "" {
-		args = append([]string{binary}, args...)
-		args = append(gc.helperArgs, args...)
-		binary = gc.helperBinary
-	}
-
-	// Create the command and set the env
-	// TODO: do we really need iCmd?
-	gc.t.Log(binary, strings.Join(args, " "))
-
-	iCmdCmd := icmd.Command(binary, args...)
-	iCmdCmd.Env = []string{}
-
-	for _, envValue := range os.Environ() {
-		add := true
-
-		for _, b := range gc.envBlackList {
-			if strings.HasPrefix(envValue, b+"=") {
-				add = false
-
-				break
-			}
-		}
-
-		if add {
-			iCmdCmd.Env = append(iCmdCmd.Env, envValue)
-		}
-	}
-
-	// Ensure the subprocess gets executed in a temporary directory unless explicitly instructed otherwise
-	iCmdCmd.Dir = gc.workingDir
-
-	if gc.stdin != nil {
-		iCmdCmd.Stdin = gc.stdin
-	}
-
-	// Attach any extra env we have
-	for k, v := range gc.Env {
-		iCmdCmd.Env = append(iCmdCmd.Env, fmt.Sprintf("%s=%s", k, v))
-	}
-
-	return iCmdCmd
 }

@@ -30,7 +30,9 @@ import (
 
 func testEventFilterExecutor(data test.Data, helpers test.Helpers) test.TestableCommand {
 	cmd := helpers.Command("events", "--filter", data.Get("filter"), "--format", "json")
-	cmd.Background(1 * time.Second)
+	// 3 seconds is too short on slow rig (EL8)
+	cmd.WithTimeout(10 * time.Second)
+	cmd.Background()
 	helpers.Ensure("run", "--rm", testutil.CommonImage)
 	return cmd
 }
