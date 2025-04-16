@@ -18,6 +18,7 @@ package nerdtest
 
 import (
 	"os/exec"
+	"time"
 
 	"gotest.tools/v3/assert"
 
@@ -41,6 +42,7 @@ func KubeCtlCommand(helpers test.Helpers, args ...string) test.TestableCommand {
 	cmd := helpers.Custom(kubectl)
 	cmd.WithArgs("--namespace=nerdctl-test-k8s")
 	cmd.WithArgs(args...)
+	cmd.WithTimeout(20 * time.Second)
 	return cmd
 }
 
