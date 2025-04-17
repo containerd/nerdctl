@@ -29,10 +29,10 @@ jobs:
             containerd: v1.6.38
             arch: amd64
           - runner: ubuntu-24.04
-            containerd: v2.0.4
+            containerd: v2.0.5
             arch: amd64
           - runner: ubuntu-24.04-arm
-            containerd: v2.0.4
+            containerd: v2.0.5
             arch: arm64
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -98,11 +98,11 @@ jobs:
             runner: "ubuntu-22.04"
             arch: amd64
           - ubuntu: 24.04
-            containerd: v2.0.4
+            containerd: v2.0.5
             runner: "ubuntu-24.04"
             arch: amd64
           - ubuntu: 24.04
-            containerd: v2.0.4
+            containerd: v2.0.5
             runner: "ubuntu-24.04-arm"
             arch: arm64
     env:
@@ -152,7 +152,7 @@ jobs:
       matrix:
         include:
           - ubuntu: 24.04
-            containerd: v2.0.4
+            containerd: v2.0.5
             arch: amd64
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
@@ -219,19 +219,19 @@ jobs:
             runner: "ubuntu-22.04"
             arch: amd64
           - ubuntu: 24.04
-            containerd: v2.0.4
+            containerd: v2.0.5
             rootlesskit: v2.3.4
             target: rootless
             arch: amd64
             runner: "ubuntu-24.04"
           - ubuntu: 24.04
-            containerd: v2.0.4
+            containerd: v2.0.5
             rootlesskit: v2.3.4
             target: rootless
             arch: arm64
             runner: "ubuntu-24.04-arm"
           - ubuntu: 24.04
-            containerd: v2.0.4
+            containerd: v2.0.5
             rootlesskit: v2.3.4
             target: rootless-port-slirp4netns
             arch: amd64
@@ -422,7 +422,7 @@ jobs:
     env:
       MODE: ${{ matrix.mode }}
       # FIXME: this is only necessary to access the build cache. To remove with build cleanup.
-      CONTAINERD_VERSION: v2.0.4
+      CONTAINERD_VERSION: v2.0.5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
