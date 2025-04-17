@@ -16,8 +16,6 @@
 
 package testutil
 
-import "fmt"
-
 const (
 	CommonImage = "docker.io/knast/freebsd:13-STABLE"
 
@@ -35,8 +33,3 @@ var (
 	NginxAlpineImage = mirrorOf("nginx:1.19-alpine")
 	GolangImage      = mirrorOf("golang:1.18")
 )
-
-func mirrorOf(s string) string {
-	// plain mirror, NOT stargz-converted images
-	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
-}

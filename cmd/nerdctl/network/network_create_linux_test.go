@@ -17,6 +17,7 @@
 package network
 
 import (
+	"fmt"
 	"net"
 	"strings"
 	"testing"
@@ -26,7 +27,6 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
-	ipv6helper "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -100,8 +100,8 @@ func TestNetworkCreate(t *testing.T) {
 					ExitCode: 0,
 					Output: func(stdout string, info string, t *testing.T) {
 						_, subnet, _ := net.ParseCIDR(data.Labels().Get("subnetStr"))
-						ip := ipv6helper.FindIPv6(stdout)
-						assert.Assert(t, subnet.Contains(ip), info)
+						ip := nerdtest.FindIPv6(stdout)
+						assert.Assert(t, subnet.Contains(ip), fmt.Sprintf("subnet %s contains ip %s", subnet, ip))
 					},
 				}
 			},
