@@ -89,6 +89,8 @@ type TestableCommand interface {
 	WithCwd(path string)
 	// WithTimeout defines the execution timeout for a command.
 	WithTimeout(timeout time.Duration)
+	// Setenv allows to override a specific env variable directly for a specific command instead of test-wide
+	Setenv(key, value string)
 	// WithFeeder allows passing a reader to be fed to the command stdin.
 	WithFeeder(fun func() io.Reader)
 	// Feed allows passing a reader to be fed to the command stdin.

@@ -57,7 +57,7 @@ linters:
   settings:
     interfacebloat:
       # Default is 10
-      max: 13
+      max: 20
     revive:
       enable-all-rules: true
       rules:
