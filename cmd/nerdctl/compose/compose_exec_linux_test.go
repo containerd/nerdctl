@@ -17,20 +17,23 @@
 package compose
 
 import (
-	"errors"
 	"fmt"
 	"net"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposeExec(t *testing.T) {
-	base := testutil.NewBase(t)
-	var dockerComposeYAML = fmt.Sprintf(`
+	dockerComposeYAML := fmt.Sprintf(`
 version: '3.1'
 
 services:
@@ -42,107 +45,108 @@ services:
     command: "sleep infinity"
 `, testutil.CommonImage, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	testCase := nerdtest.Setup()
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "svc0").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		yamlPath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		data.Labels().Set("YAMLPath", yamlPath)
+		helpers.Ensure("compose", "-f", yamlPath, "up", "-d", "svc0")
+	}
 
-	// test basic functionality and `--workdir` flag
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY", "svc0", "echo", "success").AssertOutExactly("success\n")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY", "--workdir", "/tmp", "svc0", "pwd").AssertOutExactly("/tmp\n")
-	// cannot `exec` on non-running service
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "svc1", "echo", "success").AssertFail()
-}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
 
-func TestComposeExecWithEnv(t *testing.T) {
-	base := testutil.NewBase(t)
-	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "exec no tty",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command(
+					"compose",
+					"-f",
+					data.Labels().Get("YAMLPath"),
+					"exec",
+					"-i=false",
+					"--no-TTY",
+					"svc0",
+					"echo",
+					"success",
+				)
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("success\n")),
+		},
+		{
+			Description: "exec no tty with workdir",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command(
+					"compose",
+					"-f",
+					data.Labels().Get("YAMLPath"),
+					"exec",
+					"-i=false",
+					"--no-TTY",
+					"--workdir",
+					"/tmp",
+					"svc0",
+					"pwd",
+				)
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("/tmp\n")),
+		},
+		{
+			Description: "cannot exec on non-running service",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("YAMLPath"), "exec", "svc1", "echo", "success")
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "with env",
+			Env: map[string]string{
+				"CORGE":  "corge-value-in-host",
+				"GARPLY": "garply-value-in-host",
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command(
+					"compose",
+					"-f",
+					data.Labels().Get("YAMLPath"),
+					"exec",
+					"-i=false",
+					"--no-TTY",
+					"--env", "FOO=foo1,foo2",
+					"--env", "BAR=bar1 bar2",
+					"--env", "BAZ=",
+					"--env", "QUX", // not exported in OS
+					"--env", "QUUX=quux1",
+					"--env", "QUUX=quux2",
+					"--env", "CORGE", // OS exported
+					"--env", "GRAULT=grault_key=grault_value", // value contains `=` char
+					"--env", "GARPLY=", // OS exported
+					"--env", "WALDO=", // not exported in OS
+					"svc0",
+					"env")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
+				expect.Contains("\nFOO=foo1,foo2\n"),
+				expect.Contains("\nBAR=bar1 bar2\n"),
+				expect.Contains("\nBAZ=\n"),
+				expect.DoesNotContain("QUX"),
+				expect.Contains("\nQUUX=quux2\n"),
+				expect.Contains("\nCORGE=corge-value-in-host\n"),
+				expect.Contains("\nGRAULT=grault_key=grault_value\n"),
+				expect.Contains("\nGARPLY=\n"),
+				expect.Contains("\nWALDO=\n"),
+			)),
+		},
+	}
 
-services:
-  svc0:
-    image: %s
-    command: "sleep infinity"
-`, testutil.CommonImage)
+	userSubTest := &test.Case{
+		Description: "with user",
+		SubTests:    []*test.Case{},
+	}
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
-
-	// FYI: https://github.com/containerd/nerdctl/blob/e4b2b6da56555dc29ed66d0fd8e7094ff2bc002d/cmd/nerdctl/run_test.go#L177
-	base.Env = append(base.Env, "CORGE=corge-value-in-host", "GARPLY=garply-value-in-host")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY",
-		"--env", "FOO=foo1,foo2",
-		"--env", "BAR=bar1 bar2",
-		"--env", "BAZ=",
-		"--env", "QUX", // not exported in OS
-		"--env", "QUUX=quux1",
-		"--env", "QUUX=quux2",
-		"--env", "CORGE", // OS exported
-		"--env", "GRAULT=grault_key=grault_value", // value contains `=` char
-		"--env", "GARPLY=", // OS exported
-		"--env", "WALDO=", // not exported in OS
-
-		"svc0", "env").AssertOutWithFunc(func(stdout string) error {
-		if !strings.Contains(stdout, "\nFOO=foo1,foo2\n") {
-			return errors.New("got bad FOO")
-		}
-		if !strings.Contains(stdout, "\nBAR=bar1 bar2\n") {
-			return errors.New("got bad BAR")
-		}
-		if !strings.Contains(stdout, "\nBAZ=\n") {
-			return errors.New("got bad BAZ")
-		}
-		if strings.Contains(stdout, "QUX") {
-			return errors.New("got bad QUX (should not be set)")
-		}
-		if !strings.Contains(stdout, "\nQUUX=quux2\n") {
-			return errors.New("got bad QUUX")
-		}
-		if !strings.Contains(stdout, "\nCORGE=corge-value-in-host\n") {
-			return errors.New("got bad CORGE")
-		}
-		if !strings.Contains(stdout, "\nGRAULT=grault_key=grault_value\n") {
-			return errors.New("got bad GRAULT")
-		}
-		if !strings.Contains(stdout, "\nGARPLY=\n") {
-			return errors.New("got bad GARPLY")
-		}
-		if !strings.Contains(stdout, "\nWALDO=\n") {
-			return errors.New("got bad WALDO")
-		}
-
-		return nil
-	})
-}
-
-func TestComposeExecWithUser(t *testing.T) {
-	base := testutil.NewBase(t)
-	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
-services:
-  svc0:
-    image: %s
-    command: "sleep infinity"
-`, testutil.CommonImage)
-
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
-
-	testCases := map[string]string{
+	userCasesMap := map[string]string{
 		"":             "uid=0(root) gid=0(root)",
 		"1000":         "uid=1000 gid=0(root)",
 		"1000:users":   "uid=1000 gid=100(users)",
@@ -151,21 +155,29 @@ services:
 		"nobody:users": "uid=65534(nobody) gid=100(users)",
 	}
 
-	for userStr, expected := range testCases {
-		args := []string{"-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY"}
-		if userStr != "" {
-			args = append(args, "--user", userStr)
-		}
-		args = append(args, "svc0", "id")
-		base.ComposeCmd(args...).AssertOutContains(expected)
+	for k, v := range userCasesMap {
+		userSubTest.SubTests = append(userSubTest.SubTests, &test.Case{
+			Description: k + " " + v,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				args := []string{"compose", "-f", data.Labels().Get("YAMLPath"), "exec", "-i=false", "--no-TTY"}
+				if k != "" {
+					args = append(args, "--user", k)
+				}
+				args = append(args, "svc0", "id")
+				return helpers.Command(args...)
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(v)),
+		})
 	}
+
+	testCase.SubTests = append(testCase.SubTests, userSubTest)
+
+	testCase.Run(t)
 }
 
 func TestComposeExecTTY(t *testing.T) {
-	// `-i` in `compose run & exec` is only supported in compose v2.
-	base := testutil.NewBase(t)
-
-	var dockerComposeYAML = fmt.Sprintf(`
+	const expectedOutput = "speed 38400 baud"
+	dockerComposeYAML := fmt.Sprintf(`
 version: '3.1'
 
 services:
@@ -175,29 +187,85 @@ services:
     image: %s
 `, testutil.CommonImage, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	testCase := nerdtest.Setup()
 
-	testContainer := testutil.Identifier(t)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "run", "-d", "-i=false", "--name", testContainer, "svc0", "sleep", "1h").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
-	base.EnsureContainerStarted(testContainer)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		yamlPath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		data.Labels().Set("YAMLPath", yamlPath)
+		helpers.Ensure(
+			"compose",
+			"-f",
+			yamlPath,
+			"run",
+			"-d",
+			"-i=false",
+			"--name",
+			data.Identifier(),
+			"svc0",
+			"sleep",
+			"1h",
+		)
+	}
 
-	const sttyPartialOutput = "speed 38400 baud"
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	unbuffer := []string{"unbuffer"}
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "svc0", "stty").AssertOutContains(sttyPartialOutput)             // `-it`
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "-i=false", "svc0", "stty").AssertOutContains(sttyPartialOutput) // `-t`
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "--no-TTY", "svc0", "stty").AssertFail()                         // `-i`
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY", "svc0", "stty").AssertFail()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		// FIXME?
+		// similar, other test does *also* remove the container
+		helpers.Anyhow("compose", "-f", data.Labels().Get("YAMLPath"), "down", "-v")
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "stty exec",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("compose", "-f", data.Labels().Get("YAMLPath"), "exec", "svc0", "stty")
+				cmd.WithPseudoTTY()
+				return cmd
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(expectedOutput)),
+		},
+		{
+			Description: "-i=false stty exec",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("compose", "-f", data.Labels().Get("YAMLPath"), "exec", "-i=false", "svc0", "stty")
+				cmd.WithPseudoTTY()
+				return cmd
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(expectedOutput)),
+		},
+		{
+			Description: "--no-TTY stty exec",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("compose", "-f", data.Labels().Get("YAMLPath"), "exec", "--no-TTY", "svc0", "stty")
+				cmd.WithPseudoTTY()
+				return cmd
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "-i=false --no-TTY stty exec",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command(
+					"compose",
+					"-f",
+					data.Labels().Get("YAMLPath"),
+					"exec",
+					"-i=false",
+					"--no-TTY",
+					"svc0",
+					"stty",
+				)
+				cmd.WithPseudoTTY()
+				return cmd
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeExecWithIndex(t *testing.T) {
-	base := testutil.NewBase(t)
-	var dockerComposeYAML = fmt.Sprintf(`
+	dockerComposeYAML := fmt.Sprintf(`
 version: '3.1'
 
 services:
@@ -208,39 +276,52 @@ services:
       replicas: 3
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	t.Cleanup(func() {
-		comp.CleanUp()
-	})
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	testCase := nerdtest.Setup()
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "svc0").AssertOK()
-	t.Cleanup(func() {
-		base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
-	})
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		yamlPath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		data.Labels().Set("YAMLPath", yamlPath)
+		data.Labels().Set("projectName", strings.ToLower(filepath.Base(data.Temp().Dir())))
 
-	// try 5 times to ensure that results are stable
-	for i := 0; i < 5; i++ {
-		for _, j := range []string{"1", "2", "3"} {
-			name := fmt.Sprintf("%s-svc0-%s", projectName, j)
-			host := fmt.Sprintf("%s.%s_default", name, projectName)
-			var (
-				expectIP string
-				realIP   string
-			)
-			//  docker and nerdctl have different DNS resolution behaviors.
-			// it uses the ID in the /etc/hosts file, so we need to fetch the ID first.
-			if testutil.GetTarget() == testutil.Docker {
-				base.Cmd("ps", "--filter", fmt.Sprintf("name=%s", name), "--format", "{{.ID}}").AssertOutWithFunc(func(stdout string) error {
-					host = strings.TrimSpace(stdout)
-					return nil
-				})
-			}
-			cmds := []string{"-f", comp.YAMLFullPath(), "exec", "-i=false", "--no-TTY", "--index", j, "svc0"}
-			base.ComposeCmd(append(cmds, "cat", "/etc/hosts")...).
-				AssertOutWithFunc(func(stdout string) error {
-					lines := strings.Split(stdout, "\n")
+		helpers.Ensure("compose", "-f", yamlPath, "up", "-d", "svc0")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	for _, index := range []string{"1", "2", "3"} {
+		testCase.SubTests = append(testCase.SubTests, &test.Case{
+			Description: index,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				// try 5 times to ensure that results are stable
+				for range 5 {
+					cmds := []string{
+						"compose",
+						"-f",
+						data.Labels().Get("YAMLPath"),
+						"exec",
+						"-i=false",
+						"--no-TTY",
+						"--index",
+						index,
+						"svc0",
+					}
+
+					hsts := helpers.Capture(append(cmds, "cat", "/etc/hosts")...)
+					ips := helpers.Capture(append(cmds, "ip", "addr", "show", "dev", "eth0")...)
+
+					var (
+						expectIP string
+						realIP   string
+					)
+					name := fmt.Sprintf("%s-svc0-%s", data.Labels().Get("projectName"), index)
+					host := fmt.Sprintf("%s.%s_default", name, data.Labels().Get("projectName"))
+					if nerdtest.IsDocker() {
+						host = strings.TrimSpace(helpers.Capture("ps", "--filter", "name="+name, "--format", "{{.ID}}"))
+					}
+
+					lines := strings.Split(hsts, "\n")
 					for _, line := range lines {
 						if !strings.Contains(line, host) {
 							continue
@@ -250,37 +331,32 @@ services:
 							continue
 						}
 						expectIP = fields[0]
-						return nil
 					}
-					return errors.New("fail to get the expected ip address")
-				})
-			base.ComposeCmd(append(cmds, "ip", "addr", "show", "dev", "eth0")...).
-				AssertOutWithFunc(func(stdout string) error {
-					ip := findIP(stdout)
-					if ip == nil {
-						return errors.New("fail to get the real ip address")
-					}
-					realIP = ip.String()
-					return nil
-				})
-			assert.Equal(t, realIP, expectIP)
-		}
-	}
-}
 
-func findIP(output string) net.IP {
-	var ip string
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if !strings.Contains(line, "inet ") {
-			continue
-		}
-		fields := strings.Fields(line)
-		if len(fields) <= 1 {
-			continue
-		}
-		ip = strings.Split(fields[1], "/")[0]
-		break
+					var ip string
+					lines = strings.Split(ips, "\n")
+					for _, line := range lines {
+						if !strings.Contains(line, "inet ") {
+							continue
+						}
+						fields := strings.Fields(line)
+						if len(fields) <= 1 {
+							continue
+						}
+						ip = strings.Split(fields[1], "/")[0]
+						break
+					}
+
+					pip := net.ParseIP(ip)
+
+					assert.Assert(helpers.T(), pip != nil, "fail to get the real ip address")
+					realIP = pip.String()
+
+					assert.Equal(helpers.T(), realIP, expectIP)
+				}
+			},
+		})
 	}
-	return net.ParseIP(ip)
+
+	testCase.Run(t)
 }
