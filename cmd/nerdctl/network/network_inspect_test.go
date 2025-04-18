@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
@@ -274,6 +275,42 @@ func TestNetworkInspect(t *testing.T) {
 						com.Run(&test.Expected{
 							Output: expect.DoesNotContain(data.Identifier()),
 						})
+					},
+				}
+			},
+		},
+		{
+			Description: "Verify that only active containers appear in the network inspect output",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier("nginx-network-1"))
+				helpers.Ensure("network", "create", data.Identifier("nginx-network-2"))
+				helpers.Ensure("create", "--name", data.Identifier("nginx-container-1"), "--network", data.Identifier("nginx-network-1"), testutil.NginxAlpineImage)
+				helpers.Ensure("create", "--name", data.Identifier("nginx-container-2"), "--network", data.Identifier("nginx-network-1"), testutil.NginxAlpineImage)
+				helpers.Ensure("create", "--name", data.Identifier("nginx-container-on-diff-network"), "--network", data.Identifier("nginx-network-2"), testutil.NginxAlpineImage)
+				helpers.Ensure("start", data.Identifier("nginx-container-1"), data.Identifier("nginx-container-on-diff-network"))
+				data.Set("nginx-container-1-id", strings.Trim(helpers.Capture("inspect", data.Identifier("nginx-container-1"), "--format", "{{.Id}}"), "\n"))
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier("nginx-container-1"))
+				helpers.Anyhow("rm", "-f", data.Identifier("nginx-container-2"))
+				helpers.Anyhow("rm", "-f", data.Identifier("nginx-container-on-diff-network"))
+				helpers.Anyhow("network", "remove", data.Identifier("nginx-network-1"))
+				helpers.Anyhow("network", "remove", data.Identifier("nginx-network-2"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("network", "inspect", data.Identifier("nginx-network-1"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, info string, t *testing.T) {
+						var dc []dockercompat.Network
+						err := json.Unmarshal([]byte(stdout), &dc)
+						assert.NilError(t, err, "Unable to unmarshal output\n"+info)
+						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+						assert.Equal(t, dc[0].Name, data.Identifier("nginx-network-1"))
+						// Assert only the "running" containers on the same network are returned.
+						assert.Equal(t, 1, len(dc[0].Containers), "Expected a single container as per configuration, but got multiple.")
+						assert.Equal(t, data.Identifier("nginx-container-1"), dc[0].Containers[data.Get("nginx-container-1-id")].Name)
 					},
 				}
 			},
