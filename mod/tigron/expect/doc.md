@@ -53,8 +53,8 @@ The last parameter of `test.Expects` accepts a `test.Comparator`, which allows t
 output on `stdout`.
 
 The following ready-made `test.Comparator` generators are provided:
-- `expect.Contains(string)`: verifies that stdout contains the string parameter
-- `expect.DoesNotContain(string)`: negation of above
+- `expect.Contains(string, ...string)`: verifies that stdout does contain the provided parameters
+- `expect.DoesNotContain(string, ...string)`: verifies that stdout does not contain any of the passed parameters
 - `expect.Equals(string)`: strict equality
 - `expect.Match(*regexp.Regexp)`: regexp matching
 - `expect.All(comparators ...Comparator)`: allows to bundle together a bunch of other comparators
