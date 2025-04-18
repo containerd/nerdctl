@@ -41,18 +41,18 @@ func TestVolumePrune(t *testing.T) {
 			"-v", namedBusy+":/namedbusyvolume",
 			"-v", anonIDBusy+":/anonbusyvolume", testutil.CommonImage)
 
-		data.Set("anonIDBusy", anonIDBusy)
-		data.Set("anonIDDangling", anonIDDangling)
-		data.Set("namedBusy", namedBusy)
-		data.Set("namedDangling", namedDangling)
+		data.Labels().Set("anonIDBusy", anonIDBusy)
+		data.Labels().Set("anonIDDangling", anonIDDangling)
+		data.Labels().Set("namedBusy", namedBusy)
+		data.Labels().Set("namedDangling", namedDangling)
 	}
 
 	var cleanup = func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("rm", "-f", data.Identifier())
-		helpers.Anyhow("volume", "rm", "-f", data.Get("anonIDBusy"))
-		helpers.Anyhow("volume", "rm", "-f", data.Get("anonIDDangling"))
-		helpers.Anyhow("volume", "rm", "-f", data.Get("namedBusy"))
-		helpers.Anyhow("volume", "rm", "-f", data.Get("namedDangling"))
+		helpers.Anyhow("volume", "rm", "-f", data.Labels().Get("anonIDBusy"))
+		helpers.Anyhow("volume", "rm", "-f", data.Labels().Get("anonIDDangling"))
+		helpers.Anyhow("volume", "rm", "-f", data.Labels().Get("namedBusy"))
+		helpers.Anyhow("volume", "rm", "-f", data.Labels().Get("namedDangling"))
 	}
 
 	testCase := nerdtest.Setup()
@@ -69,15 +69,15 @@ func TestVolumePrune(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					Output: expect.All(
-						expect.DoesNotContain(data.Get("anonIDBusy")),
-						expect.Contains(data.Get("anonIDDangling")),
-						expect.DoesNotContain(data.Get("namedBusy")),
-						expect.DoesNotContain(data.Get("namedDangling")),
+						expect.DoesNotContain(data.Labels().Get("anonIDBusy")),
+						expect.Contains(data.Labels().Get("anonIDDangling")),
+						expect.DoesNotContain(data.Labels().Get("namedBusy")),
+						expect.DoesNotContain(data.Labels().Get("namedDangling")),
 						func(stdout string, info string, t *testing.T) {
-							helpers.Ensure("volume", "inspect", data.Get("anonIDBusy"))
-							helpers.Fail("volume", "inspect", data.Get("anonIDDangling"))
-							helpers.Ensure("volume", "inspect", data.Get("namedBusy"))
-							helpers.Ensure("volume", "inspect", data.Get("namedDangling"))
+							helpers.Ensure("volume", "inspect", data.Labels().Get("anonIDBusy"))
+							helpers.Fail("volume", "inspect", data.Labels().Get("anonIDDangling"))
+							helpers.Ensure("volume", "inspect", data.Labels().Get("namedBusy"))
+							helpers.Ensure("volume", "inspect", data.Labels().Get("namedDangling"))
 						},
 					),
 				}
@@ -92,15 +92,15 @@ func TestVolumePrune(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					Output: expect.All(
-						expect.DoesNotContain(data.Get("anonIDBusy")),
-						expect.Contains(data.Get("anonIDDangling")),
-						expect.DoesNotContain(data.Get("namedBusy")),
-						expect.Contains(data.Get("namedDangling")),
+						expect.DoesNotContain(data.Labels().Get("anonIDBusy")),
+						expect.Contains(data.Labels().Get("anonIDDangling")),
+						expect.DoesNotContain(data.Labels().Get("namedBusy")),
+						expect.Contains(data.Labels().Get("namedDangling")),
 						func(stdout string, info string, t *testing.T) {
-							helpers.Ensure("volume", "inspect", data.Get("anonIDBusy"))
-							helpers.Fail("volume", "inspect", data.Get("anonIDDangling"))
-							helpers.Ensure("volume", "inspect", data.Get("namedBusy"))
-							helpers.Fail("volume", "inspect", data.Get("namedDangling"))
+							helpers.Ensure("volume", "inspect", data.Labels().Get("anonIDBusy"))
+							helpers.Fail("volume", "inspect", data.Labels().Get("anonIDDangling"))
+							helpers.Ensure("volume", "inspect", data.Labels().Get("namedBusy"))
+							helpers.Fail("volume", "inspect", data.Labels().Get("namedDangling"))
 						},
 					),
 				}

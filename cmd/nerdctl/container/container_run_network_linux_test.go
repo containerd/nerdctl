@@ -363,10 +363,10 @@ func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
 		{
 			Description: "Run a container with invalid ports, and then clean up.",
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "--data-root", data.TempDir(), "-f", data.Identifier())
+				helpers.Anyhow("rm", "--data-root", data.Temp().Path(), "-f", data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("run", "--data-root", data.TempDir(), "--rm", "--name", data.Identifier(), "-p", "22200-22299:22200-22299", testutil.CommonImage)
+				return helpers.Command("run", "--data-root", data.Temp().Path(), "--rm", "--name", data.Identifier(), "-p", "22200-22299:22200-22299", testutil.CommonImage)
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -382,7 +382,7 @@ func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
 							return h
 						}
 
-						dataRoot := data.TempDir()
+						dataRoot := data.Temp().Path()
 						h := getAddrHash(defaults.DefaultAddress)
 						dataStore := filepath.Join(dataRoot, h)
 						namespace := string(helpers.Read(nerdtest.Namespace))
@@ -519,8 +519,8 @@ func TestSharedNetworkSetup(t *testing.T) {
 	testCase := &test.Case{
 		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Set("containerName1", data.Identifier("-container1"))
-			containerName1 := data.Get("containerName1")
+			data.Labels().Set("containerName1", data.Identifier("-container1"))
+			containerName1 := data.Labels().Get("containerName1")
 			helpers.Ensure("run", "-d", "--name", containerName1,
 				testutil.NginxAlpineImage)
 		},
@@ -538,7 +538,7 @@ func TestSharedNetworkSetup(t *testing.T) {
 					containerName2 := data.Identifier()
 					cmd := helpers.Command()
 					cmd.WithArgs("run", "-d", "--name", containerName2,
-						"--network=container:"+data.Get("containerName1"),
+						"--network=container:"+data.Labels().Get("containerName1"),
 						testutil.NginxAlpineImage)
 					return cmd
 				},
@@ -547,7 +547,7 @@ func TestSharedNetworkSetup(t *testing.T) {
 						Output: func(stdout string, info string, t *testing.T) {
 							containerName2 := data.Identifier()
 							assert.Assert(t, strings.Contains(helpers.Capture("exec", containerName2, "wget", "-qO-", "http://127.0.0.1:80"), testutil.NginxAlpineIndexHTMLSnippet), info)
-							helpers.Ensure("restart", data.Get("containerName1"))
+							helpers.Ensure("restart", data.Labels().Get("containerName1"))
 							helpers.Ensure("stop", "--time=1", containerName2)
 							helpers.Ensure("start", containerName2)
 							assert.Assert(t, strings.Contains(helpers.Capture("exec", containerName2, "wget", "-qO-", "http://127.0.0.1:80"), testutil.NginxAlpineIndexHTMLSnippet), info)
@@ -564,7 +564,7 @@ func TestSharedNetworkSetup(t *testing.T) {
 					containerName2 := data.Identifier()
 					cmd := helpers.Command()
 					cmd.WithArgs("run", "-d", "--name", containerName2, "--uts", "host",
-						"--network=container:"+data.Get("containerName1"),
+						"--network=container:"+data.Labels().Get("containerName1"),
 						testutil.AlpineImage)
 					return cmd
 				},
@@ -583,7 +583,7 @@ func TestSharedNetworkSetup(t *testing.T) {
 					containerName2 := data.Identifier()
 					cmd := helpers.Command()
 					cmd.WithArgs("run", "-d", "--name", containerName2, "--dns", "0.1.2.3",
-						"--network=container:"+data.Get("containerName1"),
+						"--network=container:"+data.Labels().Get("containerName1"),
 						testutil.AlpineImage)
 					return cmd
 				},
@@ -608,7 +608,7 @@ func TestSharedNetworkSetup(t *testing.T) {
 					containerName2 := data.Identifier()
 					cmd := helpers.Command()
 					cmd.WithArgs("run", "--name", containerName2, "--dns-option", "attempts:5",
-						"--network=container:"+data.Get("containerName1"),
+						"--network=container:"+data.Labels().Get("containerName1"),
 						testutil.AlpineImage, "cat", "/etc/resolv.conf")
 					return cmd
 				},
@@ -631,7 +631,7 @@ func TestSharedNetworkSetup(t *testing.T) {
 					containerName2 := data.Identifier()
 					cmd := helpers.Command()
 					cmd.WithArgs("run", "-d", "--name", containerName2, "--publish", "80:8080",
-						"--network=container:"+data.Get("containerName1"),
+						"--network=container:"+data.Labels().Get("containerName1"),
 						testutil.AlpineImage)
 					return cmd
 				},
@@ -656,7 +656,7 @@ func TestSharedNetworkSetup(t *testing.T) {
 					containerName2 := data.Identifier()
 					cmd := helpers.Command()
 					cmd.WithArgs("run", "-d", "--name", containerName2, "--hostname", "test",
-						"--network=container:"+data.Get("containerName1"),
+						"--network=container:"+data.Labels().Get("containerName1"),
 						testutil.AlpineImage)
 					return cmd
 				},
@@ -682,19 +682,19 @@ func TestSharedNetworkWithNone(t *testing.T) {
 	testCase := &test.Case{
 		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Set("containerName1", data.Identifier("-container1"))
-			containerName1 := data.Get("containerName1")
+			data.Labels().Set("containerName1", data.Identifier("-container1"))
+			containerName1 := data.Labels().Get("containerName1")
 			helpers.Ensure("run", "-d", "--name", containerName1, "--network", "none",
 				testutil.NginxAlpineImage)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
-			helpers.Anyhow("rm", "-f", data.Get("containerName1"))
+			helpers.Anyhow("rm", "-f", data.Labels().Get("containerName1"))
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 			containerName2 := data.Identifier()
 			cmd := helpers.Command()
 			cmd.WithArgs("run", "-d", "--name", containerName2,
-				"--network=container:"+data.Get("containerName1"),
+				"--network=container:"+data.Labels().Get("containerName1"),
 				testutil.NginxAlpineImage)
 			return cmd
 		},
@@ -927,7 +927,7 @@ func TestNoneNetworkHostName(t *testing.T) {
 		Setup: func(data test.Data, helpers test.Helpers) {
 			output := helpers.Capture("run", "-d", "--name", data.Identifier(), "--network", "none", testutil.NginxAlpineImage)
 			assert.Assert(helpers.T(), len(output) > 12, output)
-			data.Set("hostname", output[:12])
+			data.Labels().Set("hostname", output[:12])
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rm", "-f", data.Identifier())
@@ -937,7 +937,7 @@ func TestNoneNetworkHostName(t *testing.T) {
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
-				Output: expect.Equals(data.Get("hostname") + "\n"),
+				Output: expect.Equals(data.Labels().Get("hostname") + "\n"),
 			}
 		},
 	}
@@ -949,7 +949,7 @@ func TestHostNetworkHostName(t *testing.T) {
 	testCase := &test.Case{
 		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Set("containerName1", data.Identifier())
+			data.Labels().Set("containerName1", data.Identifier())
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rm", "-f", data.Identifier())
@@ -974,7 +974,7 @@ func TestNoneNetworkDnsConfigs(t *testing.T) {
 	testCase := &test.Case{
 		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Set("containerName1", data.Identifier())
+			data.Labels().Set("containerName1", data.Identifier())
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rm", "-f", data.Identifier())
@@ -1003,7 +1003,7 @@ func TestHostNetworkDnsConfigs(t *testing.T) {
 	testCase := &test.Case{
 		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Set("containerName1", data.Identifier())
+			data.Labels().Set("containerName1", data.Identifier())
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rm", "-f", data.Identifier())

@@ -40,11 +40,11 @@ func TestNetworkRemove(t *testing.T) {
 			Setup: func(data test.Data, helpers test.Helpers) {
 				identifier := data.Identifier()
 				helpers.Ensure("network", "create", identifier)
-				data.Set("netID", nerdtest.InspectNetwork(helpers, identifier).ID)
+				data.Labels().Set("netID", nerdtest.InspectNetwork(helpers, identifier).ID)
 				helpers.Ensure("run", "--rm", "--net", identifier, "--name", identifier, testutil.CommonImage)
 				// Verity the network is here
-				_, err := netlink.LinkByName("br-" + data.Get("netID")[:12])
-				assert.NilError(t, err, "failed to find network br-"+data.Get("netID")[:12], "%v")
+				_, err := netlink.LinkByName("br-" + data.Labels().Get("netID")[:12])
+				assert.NilError(t, err, "failed to find network br-"+data.Labels().Get("netID")[:12], "%v")
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("network", "rm", data.Identifier())
@@ -56,7 +56,7 @@ func TestNetworkRemove(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output: func(stdout string, info string, t *testing.T) {
-						_, err := netlink.LinkByName("br-" + data.Get("netID")[:12])
+						_, err := netlink.LinkByName("br-" + data.Labels().Get("netID")[:12])
 						assert.Error(t, err, "Link not found", info)
 					},
 				}
@@ -81,14 +81,14 @@ func TestNetworkRemove(t *testing.T) {
 			Description: "Network remove by id",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier())
-				data.Set("netID", nerdtest.InspectNetwork(helpers, data.Identifier()).ID)
+				data.Labels().Set("netID", nerdtest.InspectNetwork(helpers, data.Identifier()).ID)
 				helpers.Ensure("run", "--rm", "--net", data.Identifier(), "--name", data.Identifier(), testutil.CommonImage)
 				// Verity the network is here
-				_, err := netlink.LinkByName("br-" + data.Get("netID")[:12])
-				assert.NilError(t, err, "failed to find network br-"+data.Get("netID")[:12], "%v")
+				_, err := netlink.LinkByName("br-" + data.Labels().Get("netID")[:12])
+				assert.NilError(t, err, "failed to find network br-"+data.Labels().Get("netID")[:12], "%v")
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("network", "rm", data.Get("netID"))
+				return helpers.Command("network", "rm", data.Labels().Get("netID"))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("network", "rm", data.Identifier())
@@ -97,7 +97,7 @@ func TestNetworkRemove(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output: func(stdout string, info string, t *testing.T) {
-						_, err := netlink.LinkByName("br-" + data.Get("netID")[:12])
+						_, err := netlink.LinkByName("br-" + data.Labels().Get("netID")[:12])
 						assert.Error(t, err, "Link not found", info)
 					},
 				}
@@ -107,14 +107,14 @@ func TestNetworkRemove(t *testing.T) {
 			Description: "Network remove by short id",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier())
-				data.Set("netID", nerdtest.InspectNetwork(helpers, data.Identifier()).ID)
+				data.Labels().Set("netID", nerdtest.InspectNetwork(helpers, data.Identifier()).ID)
 				helpers.Ensure("run", "--rm", "--net", data.Identifier(), "--name", data.Identifier(), testutil.CommonImage)
 				// Verity the network is here
-				_, err := netlink.LinkByName("br-" + data.Get("netID")[:12])
-				assert.NilError(t, err, "failed to find network br-"+data.Get("netID")[:12], "%v")
+				_, err := netlink.LinkByName("br-" + data.Labels().Get("netID")[:12])
+				assert.NilError(t, err, "failed to find network br-"+data.Labels().Get("netID")[:12], "%v")
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("network", "rm", data.Get("netID")[:12])
+				return helpers.Command("network", "rm", data.Labels().Get("netID")[:12])
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("network", "rm", data.Identifier())
@@ -123,7 +123,7 @@ func TestNetworkRemove(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output: func(stdout string, info string, t *testing.T) {
-						_, err := netlink.LinkByName("br-" + data.Get("netID")[:12])
+						_, err := netlink.LinkByName("br-" + data.Labels().Get("netID")[:12])
 						assert.Error(t, err, "Link not found", info)
 					},
 				}

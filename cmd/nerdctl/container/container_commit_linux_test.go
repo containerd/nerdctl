@@ -45,7 +45,7 @@ func TestKubeCommitSave(t *testing.T) {
 				containerID = strings.TrimPrefix(stdout, "containerd://")
 			},
 		})
-		data.Set("containerID", containerID)
+		data.Labels().Set("containerID", containerID)
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -53,7 +53,7 @@ func TestKubeCommitSave(t *testing.T) {
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		helpers.Ensure("commit", data.Get("containerID"), "testcommitsave")
+		helpers.Ensure("commit", data.Labels().Get("containerID"), "testcommitsave")
 		return helpers.Command("save", "testcommitsave")
 	}
 

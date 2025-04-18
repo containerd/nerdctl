@@ -148,10 +148,10 @@ LABEL foo=bar
 LABEL version=0.1
 RUN echo "actually creating a layer so that docker sets the createdAt time"
 `, testutil.CommonImage)
-			buildCtx := data.TempDir()
+			buildCtx := data.Temp().Path()
 			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 			assert.NilError(helpers.T(), err)
-			data.Set("buildCtx", buildCtx)
+			data.Labels().Set("buildCtx", buildCtx)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rmi", "-f", "taggedimage:one-fragment-one")
@@ -159,8 +159,8 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 			helpers.Anyhow("rmi", "-f", data.Identifier())
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			data.Set("builtImageID", data.Identifier())
-			return helpers.Command("build", "-t", data.Identifier(), data.Get("buildCtx"))
+			data.Labels().Set("builtImageID", data.Identifier())
+			return helpers.Command("build", "-t", data.Identifier(), data.Labels().Get("buildCtx"))
 		},
 		Expected: test.Expects(0, nil, nil),
 		SubTests: []*test.Case{
@@ -169,7 +169,7 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				Command:     test.Command("images", "--filter", "label=foo=bar"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.Contains(data.Get("builtImageID")),
+						Output: expect.Contains(data.Labels().Get("builtImageID")),
 					}
 				},
 			},
@@ -178,7 +178,7 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				Command:     test.Command("images", "--filter", "label=foo=bar1"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.DoesNotContain(data.Get("builtImageID")),
+						Output: expect.DoesNotContain(data.Labels().Get("builtImageID")),
 					}
 				},
 			},
@@ -187,7 +187,7 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				Command:     test.Command("images", "--filter", "label=foo=bar", "--filter", "label=version=0.1"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.Contains(data.Get("builtImageID")),
+						Output: expect.Contains(data.Labels().Get("builtImageID")),
 					}
 				},
 			},
@@ -196,7 +196,7 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				Command:     test.Command("images", "--filter", "label=foo=bar", "--filter", "label=version=0.2"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.DoesNotContain(data.Get("builtImageID")),
+						Output: expect.DoesNotContain(data.Labels().Get("builtImageID")),
 					}
 				},
 			},
@@ -205,18 +205,18 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				Command:     test.Command("images", "--filter", "label=version"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.Contains(data.Get("builtImageID")),
+						Output: expect.Contains(data.Labels().Get("builtImageID")),
 					}
 				},
 			},
 			{
 				Description: "reference=ID*",
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Command("images", "--filter", fmt.Sprintf("reference=%s*", data.Get("builtImageID")))
+					return helpers.Command("images", "--filter", fmt.Sprintf("reference=%s*", data.Labels().Get("builtImageID")))
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.Contains(data.Get("builtImageID")),
+						Output: expect.Contains(data.Labels().Get("builtImageID")),
 					}
 				},
 			},
@@ -231,13 +231,13 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 			{
 				Description: "before=ID:latest",
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Command("images", "--filter", fmt.Sprintf("before=%s:latest", data.Get("builtImageID")))
+					return helpers.Command("images", "--filter", fmt.Sprintf("before=%s:latest", data.Labels().Get("builtImageID")))
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: expect.All(
 							expect.Contains(testutil.ImageRepo(testutil.CommonImage)),
-							expect.DoesNotContain(data.Get("builtImageID")),
+							expect.DoesNotContain(data.Labels().Get("builtImageID")),
 						),
 					}
 				},
@@ -248,7 +248,7 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: expect.All(
-							expect.Contains(data.Get("builtImageID")),
+							expect.Contains(data.Labels().Get("builtImageID")),
 							expect.DoesNotContain(testutil.ImageRepo(testutil.CommonImage)),
 						),
 					}
@@ -260,7 +260,7 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: expect.All(
-							expect.DoesNotContain(data.Get("builtImageID")),
+							expect.DoesNotContain(data.Labels().Get("builtImageID")),
 							expect.DoesNotContain(testutil.ImageRepo(testutil.CommonImage)),
 						),
 					}
@@ -296,17 +296,17 @@ func TestImagesFilterDangling(t *testing.T) {
 			dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-notag-string"]
 	`, testutil.CommonImage)
-			buildCtx := data.TempDir()
+			buildCtx := data.Temp().Path()
 			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 			assert.NilError(helpers.T(), err)
-			data.Set("buildCtx", buildCtx)
+			data.Labels().Set("buildCtx", buildCtx)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("container", "prune", "-f")
 			helpers.Anyhow("image", "prune", "--all", "-f")
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			return helpers.Command("build", data.Get("buildCtx"))
+			return helpers.Command("build", data.Labels().Get("buildCtx"))
 		},
 		Expected: test.Expects(0, nil, nil),
 		SubTests: []*test.Case{

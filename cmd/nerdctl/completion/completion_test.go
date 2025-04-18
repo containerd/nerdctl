@@ -41,7 +41,7 @@ func TestCompletion(t *testing.T) {
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 			helpers.Ensure("network", "create", identifier)
 			helpers.Ensure("volume", "create", identifier)
-			data.Set("identifier", identifier)
+			data.Labels().Set("identifier", identifier)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			identifier := data.Identifier()
@@ -93,7 +93,7 @@ func TestCompletion(t *testing.T) {
 					return &test.Expected{
 						Output: expect.All(
 							expect.Contains("host\n"),
-							expect.Contains(data.Get("identifier")+"\n"),
+							expect.Contains(data.Labels().Get("identifier")+"\n"),
 						),
 					}
 				},
@@ -105,7 +105,7 @@ func TestCompletion(t *testing.T) {
 					return &test.Expected{
 						Output: expect.All(
 							expect.Contains("host\n"),
-							expect.Contains(data.Get("identifier")+"\n"),
+							expect.Contains(data.Labels().Get("identifier")+"\n"),
 						),
 					}
 				},
@@ -117,7 +117,7 @@ func TestCompletion(t *testing.T) {
 					return &test.Expected{
 						Output: expect.All(
 							expect.Contains("host\n"),
-							expect.Contains(data.Get("identifier")+"\n"),
+							expect.Contains(data.Labels().Get("identifier")+"\n"),
 						),
 					}
 				},
@@ -134,7 +134,7 @@ func TestCompletion(t *testing.T) {
 					return &test.Expected{
 						Output: expect.All(
 							expect.DoesNotContain("host\n"),
-							expect.Contains(data.Get("identifier")+"\n"),
+							expect.Contains(data.Labels().Get("identifier")+"\n"),
 						),
 					}
 				},
@@ -153,7 +153,7 @@ func TestCompletion(t *testing.T) {
 				Command:     test.Command("__complete", "volume", "inspect", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.Contains(data.Get("identifier") + "\n"),
+						Output: expect.Contains(data.Labels().Get("identifier") + "\n"),
 					}
 				},
 			},
@@ -162,7 +162,7 @@ func TestCompletion(t *testing.T) {
 				Command:     test.Command("__complete", "volume", "rm", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.Contains(data.Get("identifier") + "\n"),
+						Output: expect.Contains(data.Labels().Get("identifier") + "\n"),
 					}
 				},
 			},

@@ -65,6 +65,7 @@ type CustomizableCommand interface {
 	// Note that this will override any variable defined in the embedding environment
 	withEnv(env map[string]string)
 	// withTempDir specifies a temporary directory to use
+	// FIXME: this is only required because of the current command extension mechanism
 	withTempDir(path string)
 	// WithConfig allows passing custom config properties from the test to the base command
 	withConfig(config Config)

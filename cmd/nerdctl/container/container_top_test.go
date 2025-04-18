@@ -38,7 +38,7 @@ func TestTop(t *testing.T) {
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		// FIXME: busybox 1.36 on windows still appears to not support sleep inf. Unclear why.
 		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
-		data.Set("cID", data.Identifier())
+		data.Labels().Set("cID", data.Identifier())
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -51,7 +51,7 @@ func TestTop(t *testing.T) {
 			// Docker does not support top -o
 			Require: require.Not(nerdtest.Docker),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("top", data.Get("cID"), "-o", "pid,user,cmd")
+				return helpers.Command("top", data.Labels().Get("cID"), "-o", "pid,user,cmd")
 			},
 
 			Expected: test.Expects(0, nil, nil),
@@ -59,7 +59,7 @@ func TestTop(t *testing.T) {
 		{
 			Description: "simple",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("top", data.Get("cID"))
+				return helpers.Command("top", data.Labels().Get("cID"))
 			},
 
 			Expected: test.Expects(0, nil, nil),

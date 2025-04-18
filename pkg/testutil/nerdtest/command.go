@@ -130,7 +130,7 @@ func (nc *nerdCommand) prep() {
 	if customDCConfig := nc.GenericCommand.Config.Read(DockerConfig); customDCConfig != "" {
 		if !nc.hasWrittenDockerConfig {
 			dest := filepath.Join(nc.Env["DOCKER_CONFIG"], "config.json")
-			err := os.WriteFile(dest, []byte(customDCConfig), 0400)
+			err := os.WriteFile(dest, []byte(customDCConfig), test.FilePermissionsDefault)
 			assert.NilError(nc.T(), err, "failed to write custom docker config json file for test")
 			nc.hasWrittenDockerConfig = true
 		}
@@ -174,7 +174,7 @@ func (nc *nerdCommand) prep() {
 		if nc.Config.Read(NerdctlToml) != "" {
 			if !nc.hasWrittenToml {
 				dest := nc.Env["NERDCTL_TOML"]
-				err := os.WriteFile(dest, []byte(nc.Config.Read(NerdctlToml)), 0400)
+				err := os.WriteFile(dest, []byte(nc.Config.Read(NerdctlToml)), test.FilePermissionsDefault)
 				assert.NilError(nc.T(), err, "failed to write NerdctlToml")
 				nc.hasWrittenToml = true
 			}

@@ -83,7 +83,7 @@ func TestImageHistory(t *testing.T) {
 			// XXX: despite efforts to isolate this test, it keeps on having side effects linked to
 			// https://github.com/containerd/nerdctl/issues/3512
 			// Isolating it into a completely different root is the last ditched attempt at avoiding the issue
-			helpers.Write(nerdtest.DataRoot, test.ConfigValue(data.TempDir()))
+			helpers.Write(nerdtest.DataRoot, test.ConfigValue(data.Temp().Path()))
 			helpers.Ensure("pull", "--quiet", "--platform", "linux/arm64", testutil.CommonImage)
 		},
 		SubTests: []*test.Case{

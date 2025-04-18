@@ -122,22 +122,22 @@ func TestVolumeLsFilter(t *testing.T) {
 		err = createFileWithSize(nerdtest.InspectVolume(helpers, vol4).Mountpoint, 1024000)
 		assert.NilError(t, err, "File creation failed")
 
-		data.Set("vol1", vol1)
-		data.Set("vol2", vol2)
-		data.Set("vol3", vol3)
-		data.Set("vol4", vol4)
-		data.Set("mainlabel", "mylabel")
-		data.Set("label1", label1)
-		data.Set("label2", label2)
-		data.Set("label3", label3)
-		data.Set("label4", label4)
+		data.Labels().Set("vol1", vol1)
+		data.Labels().Set("vol2", vol2)
+		data.Labels().Set("vol3", vol3)
+		data.Labels().Set("vol4", vol4)
+		data.Labels().Set("mainlabel", "mylabel")
+		data.Labels().Set("label1", label1)
+		data.Labels().Set("label2", label2)
+		data.Labels().Set("label3", label3)
+		data.Labels().Set("label4", label4)
 
 	}
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("volume", "rm", "-f", data.Get("vol1"))
-		helpers.Anyhow("volume", "rm", "-f", data.Get("vol2"))
-		helpers.Anyhow("volume", "rm", "-f", data.Get("vol3"))
-		helpers.Anyhow("volume", "rm", "-f", data.Get("vol4"))
+		helpers.Anyhow("volume", "rm", "-f", data.Labels().Get("vol1"))
+		helpers.Anyhow("volume", "rm", "-f", data.Labels().Get("vol2"))
+		helpers.Anyhow("volume", "rm", "-f", data.Labels().Get("vol3"))
+		helpers.Anyhow("volume", "rm", "-f", data.Labels().Get("vol4"))
 	}
 	testCase.SubTests = []*test.Case{
 		{
@@ -149,10 +149,10 @@ func TestVolumeLsFilter(t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 4, "expected at least 4 lines"+info)
 						volNames := map[string]struct{}{
-							data.Get("vol1"): {},
-							data.Get("vol2"): {},
-							data.Get("vol3"): {},
-							data.Get("vol4"): {},
+							data.Labels().Get("vol1"): {},
+							data.Labels().Get("vol2"): {},
+							data.Labels().Get("vol3"): {},
+							data.Labels().Get("vol4"): {},
 						}
 						var numMatches = 0
 						for _, name := range lines {
@@ -170,7 +170,7 @@ func TestVolumeLsFilter(t *testing.T) {
 		{
 			Description: "Retrieving label=mainlabel",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("volume", "ls", "--quiet", "--filter", "label="+data.Get("mainlabel"))
+				return helpers.Command("volume", "ls", "--quiet", "--filter", "label="+data.Labels().Get("mainlabel"))
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -178,9 +178,9 @@ func TestVolumeLsFilter(t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines"+info)
 						volNames := map[string]struct{}{
-							data.Get("vol1"): {},
-							data.Get("vol2"): {},
-							data.Get("vol3"): {},
+							data.Labels().Get("vol1"): {},
+							data.Labels().Get("vol2"): {},
+							data.Labels().Get("vol3"): {},
 						}
 						for _, name := range lines {
 							_, ok := volNames[name]
@@ -193,7 +193,7 @@ func TestVolumeLsFilter(t *testing.T) {
 		{
 			Description: "Retrieving label=mainlabel=label2",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("volume", "ls", "--quiet", "--filter", "label="+data.Get("label2"))
+				return helpers.Command("volume", "ls", "--quiet", "--filter", "label="+data.Labels().Get("label2"))
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -201,7 +201,7 @@ func TestVolumeLsFilter(t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 1, "expected at least 1 lines"+info)
 						volNames := map[string]struct{}{
-							data.Get("vol2"): {},
+							data.Labels().Get("vol2"): {},
 						}
 						for _, name := range lines {
 							_, ok := volNames[name]
@@ -214,7 +214,7 @@ func TestVolumeLsFilter(t *testing.T) {
 		{
 			Description: "Retrieving label=mainlabel=",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("volume", "ls", "--quiet", "--filter", "label="+data.Get("mainlabel")+"=")
+				return helpers.Command("volume", "ls", "--quiet", "--filter", "label="+data.Labels().Get("mainlabel")+"=")
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -227,7 +227,7 @@ func TestVolumeLsFilter(t *testing.T) {
 		{
 			Description: "Retrieving label=mainlabel=label1 and label=mainlabel=label2",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("volume", "ls", "--quiet", "--filter", "label="+data.Get("label1"), "--filter", "label="+data.Get("label2"))
+				return helpers.Command("volume", "ls", "--quiet", "--filter", "label="+data.Labels().Get("label1"), "--filter", "label="+data.Labels().Get("label2"))
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -240,7 +240,7 @@ func TestVolumeLsFilter(t *testing.T) {
 		{
 			Description: "Retrieving label=mainlabel and label=grouplabel=label4",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("volume", "ls", "--quiet", "--filter", "label="+data.Get("mainlabel"), "--filter", "label="+data.Get("label4"))
+				return helpers.Command("volume", "ls", "--quiet", "--filter", "label="+data.Labels().Get("mainlabel"), "--filter", "label="+data.Labels().Get("label4"))
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -248,8 +248,8 @@ func TestVolumeLsFilter(t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines"+info)
 						volNames := map[string]struct{}{
-							data.Get("vol1"): {},
-							data.Get("vol2"): {},
+							data.Labels().Get("vol1"): {},
+							data.Labels().Get("vol2"): {},
 						}
 						for _, name := range lines {
 							_, ok := volNames[name]
@@ -262,7 +262,7 @@ func TestVolumeLsFilter(t *testing.T) {
 		{
 			Description: "Retrieving name=volume1",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("volume", "ls", "--quiet", "--filter", "name="+data.Get("vol1"))
+				return helpers.Command("volume", "ls", "--quiet", "--filter", "name="+data.Labels().Get("vol1"))
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -270,7 +270,7 @@ func TestVolumeLsFilter(t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 1, "expected at least 1 line"+info)
 						volNames := map[string]struct{}{
-							data.Get("vol1"): {},
+							data.Labels().Get("vol1"): {},
 						}
 						for _, name := range lines {
 							_, ok := volNames[name]
@@ -285,7 +285,7 @@ func TestVolumeLsFilter(t *testing.T) {
 			// Nerdctl filter behavior is broken
 			Require: nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3452"),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("volume", "ls", "--quiet", "--filter", "name="+data.Get("vol1"), "--filter", "name="+data.Get("vol2"))
+				return helpers.Command("volume", "ls", "--quiet", "--filter", "name="+data.Labels().Get("vol1"), "--filter", "name="+data.Labels().Get("vol2"))
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
@@ -293,8 +293,8 @@ func TestVolumeLsFilter(t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines"+info)
 						volNames := map[string]struct{}{
-							data.Get("vol1"): {},
-							data.Get("vol2"): {},
+							data.Labels().Get("vol1"): {},
+							data.Labels().Get("vol2"): {},
 						}
 						for _, name := range lines {
 							_, ok := volNames[name]
@@ -316,8 +316,8 @@ func TestVolumeLsFilter(t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines"+info)
 						volNames := map[string]struct{}{
-							data.Get("vol2"): {},
-							data.Get("vol4"): {},
+							data.Labels().Get("vol2"): {},
+							data.Labels().Get("vol4"): {},
 						}
 						var tab = tabutil.NewReader("VOLUME NAME\tDIRECTORY\tSIZE")
 						var err = tab.ParseHeader(lines[0])
@@ -347,8 +347,8 @@ func TestVolumeLsFilter(t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines"+info)
 						volNames := map[string]struct{}{
-							data.Get("vol2"): {},
-							data.Get("vol4"): {},
+							data.Labels().Get("vol2"): {},
+							data.Labels().Get("vol4"): {},
 						}
 						var tab = tabutil.NewReader("VOLUME NAME\tDIRECTORY\tSIZE")
 						var err = tab.ParseHeader(lines[0])
@@ -378,8 +378,8 @@ func TestVolumeLsFilter(t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines"+info)
 						volNames := map[string]struct{}{
-							data.Get("vol1"): {},
-							data.Get("vol3"): {},
+							data.Labels().Get("vol1"): {},
+							data.Labels().Get("vol3"): {},
 						}
 						var tab = tabutil.NewReader("VOLUME NAME\tDIRECTORY\tSIZE")
 						var err = tab.ParseHeader(lines[0])

@@ -531,10 +531,10 @@ RUN groupadd -r test && useradd -r -g test test
 USER test
 `, testutil.UbuntuImage)
 
-			err := os.WriteFile(filepath.Join(data.TempDir(), "Dockerfile"), []byte(dockerfile), 0o600)
+			err := os.WriteFile(filepath.Join(data.Temp().Path(), "Dockerfile"), []byte(dockerfile), 0o600)
 			assert.NilError(helpers.T(), err)
 
-			helpers.Ensure("build", "-t", data.Identifier(), data.TempDir())
+			helpers.Ensure("build", "-t", data.Identifier(), data.Temp().Path())
 			helpers.Ensure("create", "--name", data.Identifier(), "--user", "test", data.Identifier())
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {

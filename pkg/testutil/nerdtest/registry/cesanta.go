@@ -128,10 +128,6 @@ func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *ca.CA, port 
 	assert.NilError(helpers.T(), err, fmt.Errorf("failed bcrypt encrypting password: %w", err))
 	// Prepare configuration file for authentication server
 	// Details: https://github.com/cesanta/docker_auth/blob/1.7.1/examples/simple.yml
-	configFile, err := os.CreateTemp(data.TempDir(), "authconfig")
-	assert.NilError(helpers.T(), err, fmt.Errorf("failed creating temporary directory for config file: %w", err))
-	configFileName := configFile.Name()
-
 	cc := &CesantaConfig{
 		Server: CesantaConfigServer{
 			Addr: ":5100",
@@ -165,6 +161,7 @@ func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *ca.CA, port 
 		cc.Token.Key = "/auth/domain.key"
 	}
 
+	configFileName := data.Temp().Path("authconfig")
 	err = cc.Save(configFileName)
 	assert.NilError(helpers.T(), err, fmt.Errorf("failed writing configuration: %w", err))
 
@@ -181,19 +178,11 @@ func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *ca.CA, port 
 		helpers.Ensure("rm", "-f", containerName)
 		errPortRelease := portlock.Release(port)
 		errCertClose := cert.Close()
-		errConfigClose := configFile.Close()
-		errConfigRemove := os.Remove(configFileName)
 		if errPortRelease != nil {
 			helpers.T().Error(errPortRelease.Error())
 		}
 		if errCertClose != nil {
 			helpers.T().Error(errCertClose.Error())
-		}
-		if errConfigClose != nil {
-			helpers.T().Error(errConfigClose.Error())
-		}
-		if errConfigRemove != nil {
-			helpers.T().Error(errConfigRemove.Error())
 		}
 	}
 

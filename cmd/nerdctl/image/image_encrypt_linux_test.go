@@ -51,7 +51,7 @@ func TestImageEncryptJWE(t *testing.T) {
 			if registry != nil {
 				registry.Cleanup(nil)
 				keyPair.Cleanup()
-				helpers.Anyhow("rmi", "-f", data.Get(remoteImageKey))
+				helpers.Anyhow("rmi", "-f", data.Labels().Get(remoteImageKey))
 			}
 			helpers.Anyhow("rmi", "-f", data.Identifier("decrypted"))
 		},
@@ -69,13 +69,13 @@ func TestImageEncryptJWE(t *testing.T) {
 			helpers.Ensure("push", encryptImageRef)
 			helpers.Anyhow("rmi", "-f", encryptImageRef)
 			helpers.Anyhow("rmi", "-f", testutil.CommonImage)
-			data.Set(remoteImageKey, encryptImageRef)
+			data.Labels().Set(remoteImageKey, encryptImageRef)
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			helpers.Fail("pull", data.Get(remoteImageKey))
-			helpers.Ensure("pull", "--quiet", "--unpack=false", data.Get(remoteImageKey))
-			helpers.Fail("image", "decrypt", "--key="+keyPair.Pub, data.Get(remoteImageKey), data.Identifier("decrypted")) // decryption needs prv key, not pub key
-			return helpers.Command("image", "decrypt", "--key="+keyPair.Prv, data.Get(remoteImageKey), data.Identifier("decrypted"))
+			helpers.Fail("pull", data.Labels().Get(remoteImageKey))
+			helpers.Ensure("pull", "--quiet", "--unpack=false", data.Labels().Get(remoteImageKey))
+			helpers.Fail("image", "decrypt", "--key="+keyPair.Pub, data.Labels().Get(remoteImageKey), data.Identifier("decrypted")) // decryption needs prv key, not pub key
+			return helpers.Command("image", "decrypt", "--key="+keyPair.Prv, data.Labels().Get(remoteImageKey), data.Identifier("decrypted"))
 		},
 		Expected: test.Expects(0, nil, nil),
 	}

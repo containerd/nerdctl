@@ -25,6 +25,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
@@ -46,58 +47,54 @@ func IsDocker() bool {
 // InspectContainer is a helper that can be used inside custom commands or Setup
 func InspectContainer(helpers test.Helpers, name string) dockercompat.Container {
 	helpers.T().Helper()
-	var dc []dockercompat.Container
+	var res dockercompat.Container
 	cmd := helpers.Command("container", "inspect", name)
 	cmd.Run(&test.Expected{
-		Output: func(stdout string, info string, t *testing.T) {
-			err := json.Unmarshal([]byte(stdout), &dc)
-			assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
-		},
+		Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, _ string, t tig.T) {
+			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
+			res = dc[0]
+		}),
 	})
-	return dc[0]
+	return res
 }
 
 func InspectVolume(helpers test.Helpers, name string) native.Volume {
 	helpers.T().Helper()
-	var dc []native.Volume
+	var res native.Volume
 	cmd := helpers.Command("volume", "inspect", name)
 	cmd.Run(&test.Expected{
-		Output: func(stdout string, info string, t *testing.T) {
-			err := json.Unmarshal([]byte(stdout), &dc)
-			assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
-		},
+		Output: expect.JSON([]native.Volume{}, func(dc []native.Volume, _ string, t tig.T) {
+			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
+			res = dc[0]
+		}),
 	})
-	return dc[0]
+	return res
 }
 
 func InspectNetwork(helpers test.Helpers, name string) dockercompat.Network {
 	helpers.T().Helper()
-	var dc []dockercompat.Network
+	var res dockercompat.Network
 	cmd := helpers.Command("network", "inspect", name)
 	cmd.Run(&test.Expected{
-		Output: func(stdout string, info string, t *testing.T) {
-			err := json.Unmarshal([]byte(stdout), &dc)
-			assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
-		},
+		Output: expect.JSON([]dockercompat.Network{}, func(dc []dockercompat.Network, _ string, t tig.T) {
+			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
+			res = dc[0]
+		}),
 	})
-	return dc[0]
+	return res
 }
 
 func InspectImage(helpers test.Helpers, name string) dockercompat.Image {
 	helpers.T().Helper()
-	var dc []dockercompat.Image
+	var res dockercompat.Image
 	cmd := helpers.Command("image", "inspect", name)
 	cmd.Run(&test.Expected{
-		Output: func(stdout string, info string, t *testing.T) {
-			err := json.Unmarshal([]byte(stdout), &dc)
-			assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
-		},
+		Output: expect.JSON([]dockercompat.Image{}, func(dc []dockercompat.Image, _ string, t tig.T) {
+			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
+			res = dc[0]
+		}),
 	})
-	return dc[0]
+	return res
 }
 
 const (

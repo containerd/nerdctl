@@ -58,7 +58,7 @@ func TestIPFSCompNoBuild(t *testing.T) {
 		// Start Kubo
 		ipfsRegistry = registry.NewKuboRegistry(data, helpers, t, nil, 0, nil)
 		ipfsRegistry.Setup(data, helpers)
-		data.Set(ipfsAddrKey, fmt.Sprintf("/ip4/%s/tcp/%d", ipfsRegistry.IP, ipfsRegistry.Port))
+		data.Labels().Set(ipfsAddrKey, fmt.Sprintf("/ip4/%s/tcp/%d", ipfsRegistry.IP, ipfsRegistry.Port))
 
 		// Ensure we have the images
 		helpers.Ensure("pull", "--quiet", testutil.WordpressImage)
@@ -114,15 +114,15 @@ func subtestTestIPFSCompNoB(t *testing.T, stargz bool, byAddr bool) *test.Case {
 			ipfsCIDWP = pushToIPFS(helpers, testutil.WordpressImage, "--estargz")
 			ipfsCIDMD = pushToIPFS(helpers, testutil.MariaDBImage, "--estargz")
 		} else if byAddr {
-			ipfsCIDWP = pushToIPFS(helpers, testutil.WordpressImage, "--ipfs-address="+data.Get(ipfsAddrKey))
-			ipfsCIDMD = pushToIPFS(helpers, testutil.MariaDBImage, "--ipfs-address="+data.Get(ipfsAddrKey))
-			data.Set(composeExtraKey, "--ipfs-address="+data.Get(ipfsAddrKey))
+			ipfsCIDWP = pushToIPFS(helpers, testutil.WordpressImage, "--ipfs-address="+data.Labels().Get(ipfsAddrKey))
+			ipfsCIDMD = pushToIPFS(helpers, testutil.MariaDBImage, "--ipfs-address="+data.Labels().Get(ipfsAddrKey))
+			data.Labels().Set(composeExtraKey, "--ipfs-address="+data.Labels().Get(ipfsAddrKey))
 		} else {
 			ipfsCIDWP = pushToIPFS(helpers, testutil.WordpressImage)
 			ipfsCIDMD = pushToIPFS(helpers, testutil.MariaDBImage)
 		}
-		data.Set(wordpressImageCIDKey, ipfsCIDWP)
-		data.Set(mariaImageCIDKey, ipfsCIDMD)
+		data.Labels().Set(wordpressImageCIDKey, ipfsCIDWP)
+		data.Labels().Set(mariaImageCIDKey, ipfsCIDMD)
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -131,9 +131,9 @@ func subtestTestIPFSCompNoB(t *testing.T, stargz bool, byAddr bool) *test.Case {
 		// they have the same cid - except for the estargz version obviously)
 		// Deliberately electing to not remove them here so that we can parallelize and cut down the running time
 		/*
-			if data.Get(mariaImageCIDKey) != "" {
-				helpers.Anyhow("rmi", "-f", data.Get(mariaImageCIDKey))
-				helpers.Anyhow("rmi", "-f", data.Get(wordpressImageCIDKey))
+			if data.Labels().Get(mariaImageCIDKey) != "" {
+				helpers.Anyhow("rmi", "-f", data.Labels().Get(mariaImageCIDKey))
+				helpers.Anyhow("rmi", "-f", data.Labels().Get(wordpressImageCIDKey))
 			}
 		*/
 	}
@@ -141,7 +141,7 @@ func subtestTestIPFSCompNoB(t *testing.T, stargz bool, byAddr bool) *test.Case {
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		safePort, err := portlock.Acquire(0)
 		assert.NilError(helpers.T(), err)
-		data.Set("wordpressPort", strconv.Itoa(safePort))
+		data.Labels().Set("wordpressPort", strconv.Itoa(safePort))
 		composeUP(data, helpers, fmt.Sprintf(`
 version: '3.1'
 
@@ -175,7 +175,7 @@ services:
 volumes:
   wordpress:
   db:
-`, data.Get(wordpressImageCIDKey), safePort, data.Get(mariaImageCIDKey)), data.Get(composeExtraKey))
+`, data.Labels().Get(wordpressImageCIDKey), safePort, data.Labels().Get(mariaImageCIDKey)), data.Labels().Get(composeExtraKey))
 		// FIXME: need to break down composeUP into testable commands instead
 		// Right now, this is just a dummy placeholder
 		return helpers.Command("info")
@@ -219,7 +219,7 @@ func TestIPFSCompBuild(t *testing.T) {
 		time.Sleep(time.Second)
 
 		// Save nginx to ipfs
-		data.Set(mainImageCIDKey, pushToIPFS(helpers, testutil.NginxAlpineImage))
+		data.Labels().Set(mainImageCIDKey, pushToIPFS(helpers, testutil.NginxAlpineImage))
 
 		const dockerComposeYAML = `
 services:
@@ -230,7 +230,7 @@ services:
 `
 		dockerfile := fmt.Sprintf(`FROM %s/ipfs/%s
 COPY index.html /usr/share/nginx/html/index.html
-`, listenAddr, data.Get(mainImageCIDKey))
+`, listenAddr, data.Labels().Get(mainImageCIDKey))
 
 		comp = testutil.NewComposeDir(t, dockerComposeYAML)
 		comp.WriteFile("Dockerfile", dockerfile)
@@ -239,7 +239,7 @@ COPY index.html /usr/share/nginx/html/index.html
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		if ipfsServer != nil {
-			helpers.Anyhow("rmi", "-f", data.Get(mainImageCIDKey))
+			helpers.Anyhow("rmi", "-f", data.Labels().Get(mainImageCIDKey))
 			ipfsServer.Signal(os.Kill)
 		}
 		if comp != nil {
@@ -290,7 +290,7 @@ func composeUP(data test.Data, helpers test.Helpers, dockerComposeYAML string, o
 
 	checkWordpress := func() error {
 		// FIXME: see other notes on using the same port repeatedly
-		resp, err := nettestutil.HTTPGet("http://127.0.0.1:"+data.Get("wordpressPort"), 5, false)
+		resp, err := nettestutil.HTTPGet("http://127.0.0.1:"+data.Labels().Get("wordpressPort"), 5, false)
 		if err != nil {
 			return err
 		}

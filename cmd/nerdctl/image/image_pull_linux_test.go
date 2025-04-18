@@ -61,7 +61,7 @@ func TestImagePullWithCosign(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-			buildCtx := data.TempDir()
+			buildCtx := data.Temp().Path()
 			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 			assert.NilError(helpers.T(), err)
 			helpers.Ensure("build", "-t", testImageRef+":one", buildCtx)
@@ -69,7 +69,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 			helpers.Ensure("push", "--sign=cosign", "--cosign-key="+keyPair.PrivateKey, testImageRef+":one")
 			helpers.Ensure("push", "--sign=cosign", "--cosign-key="+keyPair.PrivateKey, testImageRef+":two")
 			helpers.Ensure("rmi", "-f", testImageRef)
-			data.Set("imageref", testImageRef)
+			data.Labels().Set("imageref", testImageRef)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			if keyPair != nil {
@@ -86,7 +86,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 			{
 				Description: "Pull with the correct key",
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Command("pull", "--quiet", "--verify=cosign", "--cosign-key="+keyPair.PublicKey, data.Get("imageref")+":one")
+					return helpers.Command("pull", "--quiet", "--verify=cosign", "--cosign-key="+keyPair.PublicKey, data.Labels().Get("imageref")+":one")
 				},
 				Expected: test.Expects(0, nil, nil),
 			},
@@ -97,7 +97,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					newKeyPair := testhelpers.NewCosignKeyPair(t, "cosign-key-pair-test", "2")
-					return helpers.Command("pull", "--quiet", "--verify=cosign", "--cosign-key="+newKeyPair.PublicKey, data.Get("imageref")+":two")
+					return helpers.Command("pull", "--quiet", "--verify=cosign", "--cosign-key="+newKeyPair.PublicKey, data.Labels().Get("imageref")+":two")
 				},
 				Expected: test.Expects(12, nil, nil),
 			},
@@ -127,7 +127,7 @@ func TestImagePullPlainHttpWithDefaultPort(t *testing.T) {
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
 
-			buildCtx := data.TempDir()
+			buildCtx := data.Temp().Path()
 			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 			assert.NilError(helpers.T(), err)
 			helpers.Ensure("build", "-t", testImageRef, buildCtx)
@@ -169,13 +169,15 @@ func TestImagePullSoci(t *testing.T) {
 			{
 				Description: "Run without specifying SOCI index",
 				NoParallel:  true,
-				Data: test.WithData("remoteSnapshotsExpectedCount", "11").
-					Set("sociIndexDigest", ""),
+				Data: test.WithLabels(map[string]string{
+					"remoteSnapshotsExpectedCount": "11",
+					"sociIndexDigest":              "",
+				}),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					cmd := helpers.Custom("mount")
 					cmd.Run(&test.Expected{
 						Output: func(stdout string, info string, t *testing.T) {
-							data.Set("remoteSnapshotsInitialCount", strconv.Itoa(strings.Count(stdout, "fuse.rawBridge")))
+							data.Labels().Set("remoteSnapshotsInitialCount", strconv.Itoa(strings.Count(stdout, "fuse.rawBridge")))
 						},
 					})
 					helpers.Ensure("--snapshotter=soci", "pull", testutil.FfmpegSociImage)
@@ -189,10 +191,10 @@ func TestImagePullSoci(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: func(stdout string, info string, t *testing.T) {
-							remoteSnapshotsInitialCount, _ := strconv.Atoi(data.Get("remoteSnapshotsInitialCount"))
+							remoteSnapshotsInitialCount, _ := strconv.Atoi(data.Labels().Get("remoteSnapshotsInitialCount"))
 							remoteSnapshotsActualCount := strings.Count(stdout, "fuse.rawBridge")
 							assert.Equal(t,
-								data.Get("remoteSnapshotsExpectedCount"),
+								data.Labels().Get("remoteSnapshotsExpectedCount"),
 								strconv.Itoa(remoteSnapshotsActualCount-remoteSnapshotsInitialCount),
 								info)
 						},
@@ -202,13 +204,15 @@ func TestImagePullSoci(t *testing.T) {
 			{
 				Description: "Run with bad SOCI index",
 				NoParallel:  true,
-				Data: test.WithData("remoteSnapshotsExpectedCount", "11").
-					Set("sociIndexDigest", "sha256:thisisabadindex0000000000000000000000000000000000000000000000000"),
+				Data: test.WithLabels(map[string]string{
+					"remoteSnapshotsExpectedCount": "11",
+					"sociIndexDigest":              "sha256:thisisabadindex0000000000000000000000000000000000000000000000000",
+				}),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					cmd := helpers.Custom("mount")
 					cmd.Run(&test.Expected{
 						Output: func(stdout string, info string, t *testing.T) {
-							data.Set("remoteSnapshotsInitialCount", strconv.Itoa(strings.Count(stdout, "fuse.rawBridge")))
+							data.Labels().Set("remoteSnapshotsInitialCount", strconv.Itoa(strings.Count(stdout, "fuse.rawBridge")))
 						},
 					})
 					helpers.Ensure("--snapshotter=soci", "pull", testutil.FfmpegSociImage)
@@ -222,10 +226,10 @@ func TestImagePullSoci(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: func(stdout string, info string, t *testing.T) {
-							remoteSnapshotsInitialCount, _ := strconv.Atoi(data.Get("remoteSnapshotsInitialCount"))
+							remoteSnapshotsInitialCount, _ := strconv.Atoi(data.Labels().Get("remoteSnapshotsInitialCount"))
 							remoteSnapshotsActualCount := strings.Count(stdout, "fuse.rawBridge")
 							assert.Equal(t,
-								data.Get("remoteSnapshotsExpectedCount"),
+								data.Labels().Get("remoteSnapshotsExpectedCount"),
 								strconv.Itoa(remoteSnapshotsActualCount-remoteSnapshotsInitialCount),
 								info)
 						},

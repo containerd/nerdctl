@@ -43,7 +43,7 @@ func TestLoadStdinFromPipe(t *testing.T) {
 			identifier := data.Identifier()
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 			helpers.Ensure("tag", testutil.CommonImage, identifier)
-			helpers.Ensure("save", identifier, "-o", filepath.Join(data.TempDir(), "common.tar"))
+			helpers.Ensure("save", identifier, "-o", filepath.Join(data.Temp().Path(), "common.tar"))
 			helpers.Ensure("rmi", "-f", identifier)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -51,7 +51,7 @@ func TestLoadStdinFromPipe(t *testing.T) {
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 			cmd := helpers.Command("load")
-			reader, err := os.Open(filepath.Join(data.TempDir(), "common.tar"))
+			reader, err := os.Open(filepath.Join(data.Temp().Path(), "common.tar"))
 			assert.NilError(t, err, "failed to open common.tar")
 			cmd.Feed(reader)
 			return cmd
@@ -94,14 +94,14 @@ func TestLoadQuiet(t *testing.T) {
 			identifier := data.Identifier()
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 			helpers.Ensure("tag", testutil.CommonImage, identifier)
-			helpers.Ensure("save", identifier, "-o", filepath.Join(data.TempDir(), "common.tar"))
+			helpers.Ensure("save", identifier, "-o", filepath.Join(data.Temp().Path(), "common.tar"))
 			helpers.Ensure("rmi", "-f", identifier)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rmi", "-f", data.Identifier())
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			return helpers.Command("load", "--quiet", "--input", filepath.Join(data.TempDir(), "common.tar"))
+			return helpers.Command("load", "--quiet", "--input", filepath.Join(data.Temp().Path(), "common.tar"))
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{

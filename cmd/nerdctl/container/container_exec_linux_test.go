@@ -65,14 +65,14 @@ func TestExecTTY(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
-		data.Set("container_name", data.Identifier())
+		data.Labels().Set("container_name", data.Identifier())
 	}
 
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "stty with -it",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				cmd := helpers.Command("exec", "-it", data.Get("container_name"), "stty")
+				cmd := helpers.Command("exec", "-it", data.Labels().Get("container_name"), "stty")
 				cmd.WithPseudoTTY()
 				return cmd
 			},
@@ -81,7 +81,7 @@ func TestExecTTY(t *testing.T) {
 		{
 			Description: "stty with -t",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				cmd := helpers.Command("exec", "-t", data.Get("container_name"), "stty")
+				cmd := helpers.Command("exec", "-t", data.Labels().Get("container_name"), "stty")
 				cmd.WithPseudoTTY()
 				return cmd
 			},
@@ -90,7 +90,7 @@ func TestExecTTY(t *testing.T) {
 		{
 			Description: "stty with -i",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				cmd := helpers.Command("exec", "-i", data.Get("container_name"), "stty")
+				cmd := helpers.Command("exec", "-i", data.Labels().Get("container_name"), "stty")
 				cmd.WithPseudoTTY()
 				return cmd
 			},
@@ -99,7 +99,7 @@ func TestExecTTY(t *testing.T) {
 		{
 			Description: "stty without params",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				cmd := helpers.Command("exec", data.Get("container_name"), "stty")
+				cmd := helpers.Command("exec", data.Labels().Get("container_name"), "stty")
 				cmd.WithPseudoTTY()
 				return cmd
 			},
