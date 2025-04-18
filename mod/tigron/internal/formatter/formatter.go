@@ -108,7 +108,10 @@ func chunk(s string, maxLength, maxLines int) []string {
 	}
 
 	if len(chunks) > maxLines {
-		chunks = append(chunks[0:maxLines], "...")
+		abbreviator := "..."
+		chunks = append(
+			append(chunks[0:maxLines/2], abbreviator+strings.Repeat(spacer, maxLength-len(abbreviator))),
+			chunks[len(chunks)-maxLines/2:]...)
 	} else if len(chunks) == 0 {
 		chunks = []string{strings.Repeat(spacer, maxLength)}
 	}

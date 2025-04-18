@@ -39,6 +39,10 @@ const (
 	exitDecorator           = "⚠️"
 	stdoutDecorator         = "🟢"
 	stderrDecorator         = "🟠"
+	timeoutDecorator        = "⏰"
+	cwdDecorator            = "📁"
+	envDecorator            = "🌱"
+	sigDecorator            = "⚡"
 )
 
 // CustomizableCommand is an interface meant for people who want to heavily customize the base
@@ -138,6 +142,10 @@ func (gc *GenericCommand) WithBlacklist(env []string) {
 	gc.cmd.EnvBlackList = env
 }
 
+func (gc *GenericCommand) WithWhitelist(env []string) {
+	gc.cmd.EnvWhiteList = env
+}
+
 func (gc *GenericCommand) WithTimeout(timeout time.Duration) {
 	gc.cmd.Timeout = timeout
 }
@@ -193,12 +201,18 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		}
 
 		if result.Signal != nil {
-			debug = append(debug, []any{"Signal", result.Signal.String()})
+			debug = append(debug, []any{"", sigDecorator + " " + result.Signal.String()})
+		}
+
+		duration := result.Duration.String()
+		if result.Duration < time.Second {
+			duration = "<1s"
 		}
 
 		debug = append(debug,
-			[]any{"Limit", gc.cmd.Timeout},
-			[]any{"Environ", strings.Join(result.Environ, "\n")},
+			[]any{envDecorator, strings.Join(result.Environ, "\n")},
+			[]any{timeoutDecorator, duration + " (limit: " + gc.cmd.Timeout.String() + ")"},
+			[]any{cwdDecorator, gc.cmd.WorkingDir},
 		)
 	}
 

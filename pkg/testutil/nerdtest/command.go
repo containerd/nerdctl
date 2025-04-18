@@ -82,17 +82,14 @@ func newNerdCommand(conf test.Config, t *testing.T) *nerdCommand {
 	}
 
 	ret.WithBinary(binary)
-	// Not interested in these - and insulate us from parent environment side effects
-	ret.WithBlacklist([]string{
-		"LS_COLORS",
-		"DOCKER_CONFIG",
-		"CONTAINERD_SNAPSHOTTER",
-		"NERDCTL_TOML",
-		"CONTAINERD_ADDRESS",
-		"CNI_PATH",
-		"NETCONFPATH",
-		"NERDCTL_EXPERIMENTAL",
-		"NERDCTL_HOST_GATEWAY_IP",
+	ret.WithWhitelist([]string{
+		"PATH",
+		"HOME",
+		"XDG_*",
+		// Windows needs ProgramData, AppData, etc
+		"Program*",
+		"PROGRAM*",
+		"APPDATA",
 	})
 	return ret
 }

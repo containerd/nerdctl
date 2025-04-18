@@ -233,7 +233,7 @@ func (test *Case) Run(t *testing.T) {
 				"\n\n" + formatter.Table(
 					[][]any{
 						{startDecorator, fmt.Sprintf("%q: starting test!", test.t.Name())},
-						{"cwd", test.Data.TempDir()},
+						{"temp", test.Data.TempDir()},
 						{"config", string(debugConfig)},
 						{"data", string(debugData)},
 					},
