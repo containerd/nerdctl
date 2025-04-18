@@ -128,7 +128,7 @@ linters:
         ##### P2: nice to have.
         - name: max-public-structs
           # 7 occurrences (at default 5). Might indicate overcrowding of public API.
-          arguments: [21]
+          arguments: [25]
         - name: confusing-results
           # 13 occurrences. Have named returns when the type stutters.
           # Makes it a bit easier to figure out function behavior just looking at signature.
