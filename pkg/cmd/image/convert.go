@@ -208,8 +208,7 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 			return err
 		}
 		is := client.ImageService()
-		_ = is.Delete(ctx, newI.Name, images.SynchronousDelete())
-		finimg, err := is.Create(ctx, *newI)
+		finimg, err := is.Update(ctx, *newI)
 		if err != nil {
 			return err
 		}
