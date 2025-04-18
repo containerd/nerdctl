@@ -58,7 +58,7 @@ The following ready-made `test.Comparator` generators are provided:
 - `expect.Equals(string)`: strict equality
 - `expect.Match(*regexp.Regexp)`: regexp matching
 - `expect.All(comparators ...Comparator)`: allows to bundle together a bunch of other comparators
-- `expect.JSON[T any](obj T, verifier func(T, string, tig.T))`: allows to verify the output is valid JSON and optionally
+- `expect.JSON[T any](obj T, verifier func(T, tig.T))`: allows to verify the output is valid JSON and optionally
 pass `verifier(T, string, tig.T)` extra validation
 
 ### A complete example
@@ -93,8 +93,8 @@ func TestMyThing(t *testing.T) {
         expect.All(
             expect.Contains("out"),
             expect.DoesNotContain("something"),
-            expect.JSON(&Thing{}, func(obj *Thing, info string, t tig.T) {
-                assert.Equal(t, obj.Name, "something", info)
+            expect.JSON(&Thing{}, func(obj *Thing, t tig.T) {
+                assert.Equal(t, obj.Name, "something")
             }),
         ),
     )
@@ -206,11 +206,11 @@ func TestMyThing(t *testing.T) {
             Errors: []error{
                 errors.New("foobla"),
             },
-            Output: func(stdout, info string, t tig.T) {
+            Output: func(stdout string, t tig.T) {
                 t.Helper()
 
                 // Retrieve the data that was set during the Setup phase.
-                assert.Assert(t, stdout == data.Labels().Get("sometestdata"), info)
+                assert.Assert(t, stdout == data.Labels().Get("sometestdata"))
             },
         }
     }

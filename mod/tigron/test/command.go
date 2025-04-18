@@ -294,7 +294,6 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		if expect.Output != nil {
 			expect.Output(
 				result.Stdout,
-				"",
 				gc.t,
 			)
 		}

@@ -30,11 +30,11 @@ import (
 
 // All can be used as a parameter for expected.Output to group a set of comparators.
 func All(comparators ...test.Comparator) test.Comparator {
-	return func(stdout, _ string, t *testing.T) {
+	return func(stdout string, t *testing.T) {
 		t.Helper()
 
 		for _, comparator := range comparators {
-			comparator(stdout, "", t)
+			comparator(stdout, t)
 		}
 	}
 }
@@ -42,7 +42,7 @@ func All(comparators ...test.Comparator) test.Comparator {
 // Contains can be used as a parameter for expected.Output and ensures a comparison string is found contained in the
 // output.
 func Contains(compare string, more ...string) test.Comparator {
-	return func(stdout, _ string, t *testing.T) {
+	return func(stdout string, t *testing.T) {
 		t.Helper()
 
 		assertive.Contains(assertive.WithFailLater(t), stdout, compare, "Inspecting output (contains)")
@@ -55,7 +55,7 @@ func Contains(compare string, more ...string) test.Comparator {
 
 // DoesNotContain is to be used for expected.Output to ensure a comparison string is NOT found in the output.
 func DoesNotContain(compare string, more ...string) test.Comparator {
-	return func(stdout, _ string, t *testing.T) {
+	return func(stdout string, t *testing.T) {
 		t.Helper()
 
 		assertive.DoesNotContain(assertive.WithFailLater(t), stdout, compare, "Inspecting output (does not contain)")
@@ -68,7 +68,7 @@ func DoesNotContain(compare string, more ...string) test.Comparator {
 
 // Equals is to be used for expected.Output to ensure it is exactly the output.
 func Equals(compare string) test.Comparator {
-	return func(stdout, _ string, t *testing.T) {
+	return func(stdout string, t *testing.T) {
 		t.Helper()
 		assertive.IsEqual(assertive.WithFailLater(t), stdout, compare, "Inspecting output (equals)")
 	}
@@ -76,7 +76,7 @@ func Equals(compare string) test.Comparator {
 
 // Match is to be used for expected.Output to ensure we match a regexp.
 func Match(reg *regexp.Regexp) test.Comparator {
-	return func(stdout, _ string, t *testing.T) {
+	return func(stdout string, t *testing.T) {
 		t.Helper()
 		assertive.Match(assertive.WithFailLater(t), stdout, reg, "Inspecting output (match)")
 	}
@@ -84,15 +84,15 @@ func Match(reg *regexp.Regexp) test.Comparator {
 
 // JSON allows to verify that the output can be marshalled into T, and optionally can be further verified by a provided
 // method.
-func JSON[T any](obj T, verifier func(T, string, tig.T)) test.Comparator {
-	return func(stdout, _ string, t *testing.T) {
+func JSON[T any](obj T, verifier func(T, tig.T)) test.Comparator {
+	return func(stdout string, t *testing.T) {
 		t.Helper()
 
 		err := json.Unmarshal([]byte(stdout), &obj)
 		assertive.ErrorIsNil(assertive.WithSilentSuccess(t), err, "Unmarshalling JSON from stdout must succeed")
 
 		if verifier != nil && err == nil {
-			verifier(obj, "Inspecting output (JSON)", t)
+			verifier(obj, t)
 		}
 	}
 }
