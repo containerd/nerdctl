@@ -28,7 +28,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/containernetworking/cni/libcni"
 
@@ -533,21 +532,9 @@ func cniLoad(fileNames []string) (configList []*NetworkConfig, err error) {
 		}
 
 		var netConfigList *libcni.NetworkConfigList
-		if strings.HasSuffix(fileName, ".conflist") {
-			netConfigList, err = libcni.ConfListFromBytes(bytes)
-			if err != nil {
-				return nil, wrapCNIError(fileName, err)
-			}
-		} else {
-			var netConfig *libcni.NetworkConfig
-			netConfig, err = libcni.ConfFromBytes(bytes)
-			if err != nil {
-				return nil, wrapCNIError(fileName, err)
-			}
-			netConfigList, err = libcni.ConfListFromConf(netConfig)
-			if err != nil {
-				return nil, wrapCNIError(fileName, err)
-			}
+		netConfigList, err = libcni.NetworkConfFromBytes(bytes)
+		if err != nil {
+			return nil, wrapCNIError(fileName, err)
 		}
 		id, nerdctlLabels := nerdctlIDLabels(netConfigList.Bytes)
 		configList = append(configList, &NetworkConfig{
