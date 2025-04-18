@@ -87,8 +87,7 @@ CMD ["echo", "bar"]
 				},
 				Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
 					expect.Contains("blah"),
-					expect.DoesNotContain("foo"),
-					expect.DoesNotContain("bar"),
+					expect.DoesNotContain("foo", "bar"),
 				)),
 			},
 			{
@@ -98,8 +97,7 @@ CMD ["echo", "bar"]
 				},
 				Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
 					expect.Contains("blah"),
-					expect.DoesNotContain("foo"),
-					expect.DoesNotContain("bar"),
+					expect.DoesNotContain("foo", "bar"),
 				)),
 			},
 		},
@@ -207,11 +205,11 @@ func TestRunEnvFile(t *testing.T) {
 			testutil.CommonImage, "env")
 	}
 
-	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.All(
-		expect.Contains("TESTKEY1=TESTVAL1"),
-		expect.Contains("TESTKEY2=TESTVAL2"),
-		expect.Contains("HOST_ENV=ENV-IN-HOST"),
-	))
+	testCase.Expected = test.Expects(
+		expect.ExitCodeSuccess,
+		nil,
+		expect.Contains("TESTKEY1=TESTVAL1", "TESTKEY2=TESTVAL2", "HOST_ENV=ENV-IN-HOST"),
+	)
 
 	testCase.Run(t)
 }
@@ -240,20 +238,24 @@ func TestRunEnv(t *testing.T) {
 	}
 
 	validate := []test.Comparator{
-		expect.Contains("\nFOO=foo1,foo2\n"),
-		expect.Contains("\nBAR=bar1 bar2\n"),
+		expect.Contains(
+			"\nFOO=foo1,foo2\n",
+			"\nBAR=bar1 bar2\n",
+			"\nQUUX=quux2\n",
+			"\nCORGE=corge-value-in-host\n",
+			"\nGRAULT=grault_key=grault_value\n",
+		),
 		expect.DoesNotContain("QUX"),
-		expect.Contains("\nQUUX=quux2\n"),
-		expect.Contains("\nCORGE=corge-value-in-host\n"),
-		expect.Contains("\nGRAULT=grault_key=grault_value\n"),
 	}
 
 	if runtime.GOOS != "windows" {
 		validate = append(
 			validate,
-			expect.Contains("\nBAZ=\n"),
-			expect.Contains("\nGARPLY=\n"),
-			expect.Contains("\nWALDO=\n"),
+			expect.Contains(
+				"\nBAZ=\n",
+				"\nGARPLY=\n",
+				"\nWALDO=\n",
+			),
 		)
 	}
 
