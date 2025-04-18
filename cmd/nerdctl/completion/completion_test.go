@@ -91,10 +91,7 @@ func TestCompletion(t *testing.T) {
 				Command:     test.Command("__complete", "run", "--net", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.All(
-							expect.Contains("host\n"),
-							expect.Contains(data.Labels().Get("identifier")+"\n"),
-						),
+						Output: expect.Contains("host\n", data.Labels().Get("identifier")+"\n"),
 					}
 				},
 			},
@@ -103,10 +100,7 @@ func TestCompletion(t *testing.T) {
 				Command:     test.Command("__complete", "run", "-it", "--net", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.All(
-							expect.Contains("host\n"),
-							expect.Contains(data.Labels().Get("identifier")+"\n"),
-						),
+						Output: expect.Contains("host\n", data.Labels().Get("identifier")+"\n"),
 					}
 				},
 			},
@@ -115,10 +109,7 @@ func TestCompletion(t *testing.T) {
 				Command:     test.Command("__complete", "run", "-it", "--rm", "--net", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.All(
-							expect.Contains("host\n"),
-							expect.Contains(data.Labels().Get("identifier")+"\n"),
-						),
+						Output: expect.Contains("host\n", data.Labels().Get("identifier")+"\n"),
 					}
 				},
 			},
