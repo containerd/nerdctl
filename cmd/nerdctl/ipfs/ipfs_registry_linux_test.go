@@ -40,7 +40,7 @@ func pushToIPFS(helpers test.Helpers, name string, opts ...string) string {
 	cmd := helpers.Command("push", "ipfs://"+name)
 	cmd.WithArgs(opts...)
 	cmd.Run(&test.Expected{
-		Output: func(stdout string, info string, t *testing.T) {
+		Output: func(stdout string, t *testing.T) {
 			lines := strings.Split(stdout, "\n")
 			assert.Equal(t, len(lines) >= 2, true)
 			ipfsCID = lines[len(lines)-2]

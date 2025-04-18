@@ -73,7 +73,7 @@ func TestStartDetachKeys(t *testing.T) {
 			ExitCode: 0,
 			Errors:   []error{errors.New("detach keys")},
 			Output: expect.All(
-				func(stdout string, info string, t *testing.T) {
+				func(stdout string, t *testing.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 				},
 			),

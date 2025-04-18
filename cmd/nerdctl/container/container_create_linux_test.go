@@ -231,7 +231,7 @@ func TestIssue2993(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errors.New("is already used by ID")},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						containersDirs, err := os.ReadDir(data.Labels().Get(containersPathKey))
 						assert.NilError(t, err)
 						assert.Equal(t, len(containersDirs), 1)
@@ -278,7 +278,7 @@ func TestIssue2993(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						containersDirs, err := os.ReadDir(data.Labels().Get(containersPathKey))
 						assert.NilError(t, err)
 						assert.Equal(t, len(containersDirs), 0)

@@ -156,7 +156,7 @@ func TestRunExitCode(t *testing.T) {
 			Output: expect.All(
 				expect.Match(regexp.MustCompile("Exited [(]123[)][A-Za-z0-9 ]+"+data.Identifier("exit123"))),
 				expect.Match(regexp.MustCompile("Exited [(]0[)][A-Za-z0-9 ]+"+data.Identifier("exit0"))),
-				func(stdout, info string, t *testing.T) {
+				func(stdout string, t *testing.T) {
 					assert.Equal(t, nerdtest.InspectContainer(helpers, data.Identifier("exit0")).State.Status, "exited")
 					assert.Equal(t, nerdtest.InspectContainer(helpers, data.Identifier("exit123")).State.Status, "exited")
 				},

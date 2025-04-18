@@ -337,7 +337,7 @@ COPY %s /`, testFileName)
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							// Expecting testFileName to exist inside the output target directory
 							assert.Equal(t, data.Temp().Load(testFileName), testContent, "file content is identical")
 						},
@@ -351,7 +351,7 @@ COPY %s /`, testFileName)
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							assert.Equal(t, data.Temp().Load(testFileName), testContent, "file content is identical")
 						},
 					}
@@ -888,7 +888,7 @@ func TestBuildAttestation(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							data.Temp().Exists("dir-for-bom", testSBOMFileName)
 						},
 					}
@@ -910,7 +910,7 @@ func TestBuildAttestation(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							data.Temp().Exists("dir-for-prov", testProvenanceFileName)
 						},
 					}
@@ -933,7 +933,7 @@ func TestBuildAttestation(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							data.Temp().Exists("dir-for-attest", testSBOMFileName)
 							data.Temp().Exists("dir-for-attest", testProvenanceFileName)
 						},

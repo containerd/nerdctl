@@ -371,7 +371,7 @@ func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errdefs.ErrInvalidArgument},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						getAddrHash := func(addr string) string {
 							const addrHashLen = 8
 
@@ -543,13 +543,13 @@ func TestSharedNetworkSetup(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							containerName2 := data.Identifier()
-							assert.Assert(t, strings.Contains(helpers.Capture("exec", containerName2, "wget", "-qO-", "http://127.0.0.1:80"), testutil.NginxAlpineIndexHTMLSnippet), info)
+							assert.Assert(t, strings.Contains(helpers.Capture("exec", containerName2, "wget", "-qO-", "http://127.0.0.1:80"), testutil.NginxAlpineIndexHTMLSnippet))
 							helpers.Ensure("restart", data.Labels().Get("containerName1"))
 							helpers.Ensure("stop", "--time=1", containerName2)
 							helpers.Ensure("start", containerName2)
-							assert.Assert(t, strings.Contains(helpers.Capture("exec", containerName2, "wget", "-qO-", "http://127.0.0.1:80"), testutil.NginxAlpineIndexHTMLSnippet), info)
+							assert.Assert(t, strings.Contains(helpers.Capture("exec", containerName2, "wget", "-qO-", "http://127.0.0.1:80"), testutil.NginxAlpineIndexHTMLSnippet))
 						},
 					}
 				},
@@ -615,8 +615,8 @@ func TestSharedNetworkSetup(t *testing.T) {
 					// The Option doesnt throw an error but is never inserted to the resolv.conf
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, info string, t *testing.T) {
-							assert.Assert(t, !strings.Contains(stdout, "attempts:5"), info)
+						Output: func(stdout string, t *testing.T) {
+							assert.Assert(t, !strings.Contains(stdout, "attempts:5"))
 						},
 					}
 				},
@@ -938,9 +938,6 @@ func TestHostNetworkHostName(t *testing.T) {
 	nerdtest.Setup()
 	testCase := &test.Case{
 		Require: require.Not(require.Windows),
-		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Labels().Set("containerName1", data.Identifier())
-		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rm", "-f", data.Identifier())
 		},
@@ -949,9 +946,14 @@ func TestHostNetworkHostName(t *testing.T) {
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
-				Output: func(stdout string, info string, t *testing.T) {
-					hostname := stdout
-					assert.Assert(t, strings.Compare(strings.TrimSpace(helpers.Capture("run", "--name", data.Identifier(), "--network", "host", testutil.AlpineImage, "cat", "/etc/hostname")), strings.TrimSpace(hostname)) == 0, info)
+				Output: func(stdout string, t *testing.T) {
+					hostHostname := stdout
+					containerHostname := helpers.Capture("run", "--name", data.Identifier(), "--network", "host", testutil.AlpineImage, "cat", "/etc/hostname")
+					assert.Equal(
+						t,
+						strings.TrimSpace(containerHostname),
+						strings.TrimSpace(hostHostname),
+					)
 				},
 			}
 		},
@@ -964,26 +966,27 @@ func TestNoneNetworkDnsConfigs(t *testing.T) {
 	testCase := &test.Case{
 		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Labels().Set("containerName1", data.Identifier())
+			helpers.Ensure(
+				"run", "-d", "--name", data.Identifier(),
+				"--network", "none",
+				"--dns", "0.1.2.3",
+				"--dns-search", "example.com",
+				"--dns-option", "timeout:3",
+				"--dns-option", "attempts:5",
+				testutil.NginxAlpineImage)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rm", "-f", data.Identifier())
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			return helpers.Command("run", "-d", "--name", data.Identifier(), "--network", "none", "--dns", "0.1.2.3", "--dns-search", "example.com", "--dns-option", "timeout:3", "--dns-option", "attempts:5", testutil.NginxAlpineImage)
+			return helpers.Command("exec", data.Identifier(), "cat", "/etc/resolv.conf")
 		},
-		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-			return &test.Expected{
-				Output: func(stdout string, info string, t *testing.T) {
-					out := helpers.Capture("exec", data.Identifier(), "cat", "/etc/resolv.conf")
-					assert.Assert(t, strings.Contains(out, "0.1.2.3"), info)
-					assert.Assert(t, strings.Contains(out, "example.com"), info)
-					assert.Assert(t, strings.Contains(out, "attempts:5"), info)
-					assert.Assert(t, strings.Contains(out, "timeout:3"), info)
-
-				},
-			}
-		},
+		Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(
+			"0.1.2.3",
+			"example.com",
+			"attempts:5",
+			"timeout:3",
+		)),
 	}
 	testCase.Run(t)
 }
@@ -993,26 +996,28 @@ func TestHostNetworkDnsConfigs(t *testing.T) {
 	testCase := &test.Case{
 		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Labels().Set("containerName1", data.Identifier())
+			helpers.Ensure(
+				"run", "-d", "--name", data.Identifier(),
+				"--network", "host",
+				"--dns", "0.1.2.3",
+				"--dns-search", "example.com",
+				"--dns-option", "timeout:3",
+				"--dns-option", "attempts:5",
+				testutil.NginxAlpineImage,
+			)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rm", "-f", data.Identifier())
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			return helpers.Command("run", "-d", "--name", data.Identifier(), "--network", "host", "--dns", "0.1.2.3", "--dns-search", "example.com", "--dns-option", "timeout:3", "--dns-option", "attempts:5", testutil.NginxAlpineImage)
+			return helpers.Command("exec", data.Identifier(), "cat", "/etc/resolv.conf")
 		},
-		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-			return &test.Expected{
-				Output: func(stdout string, info string, t *testing.T) {
-					out := helpers.Capture("exec", data.Identifier(), "cat", "/etc/resolv.conf")
-					assert.Assert(t, strings.Contains(out, "0.1.2.3"), info)
-					assert.Assert(t, strings.Contains(out, "example.com"), info)
-					assert.Assert(t, strings.Contains(out, "attempts:5"), info)
-					assert.Assert(t, strings.Contains(out, "timeout:3"), info)
-
-				},
-			}
-		},
+		Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(
+			"0.1.2.3",
+			"example.com",
+			"attempts:5",
+			"timeout:3",
+		)),
 	}
 	testCase.Run(t)
 }
