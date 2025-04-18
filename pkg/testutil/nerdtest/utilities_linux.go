@@ -57,7 +57,9 @@ func RunSigProxyContainer(signal os.Signal, exitOnSignal bool, args []string, da
 
 	cmd := helpers.Command(args...)
 	// NOTE: because of a test like TestStopWithStopSignal, we need to wait enough for nerdctl to terminate the container
-	cmd.WithTimeout(20 * time.Second)
+	// It looks like EL8 could be particularly slow (https://github.com/containerd/nerdctl/issues/4068)
+	// Note that in normal circumstances, 10 seconds is plenty enough.
+	cmd.WithTimeout(40 * time.Second)
 	cmd.Background()
 	EnsureContainerStarted(helpers, data.Identifier())
 
