@@ -26,6 +26,9 @@ if [[ "$(id -u)" = "0" ]]; then
   fi
 fi
 
+systemctl status --no-pager test-integration-ipfs-offline || echo FAIL TO RETRIEVE IPFS STATUS
+ls -lA /root/.ipfs/api || echo FAILED TO LIST API ENDPOINT
+
 readonly timeout="60m"
 readonly retries="2"
 readonly needsudo="${WITH_SUDO:-}"
