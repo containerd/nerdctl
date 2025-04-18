@@ -24,6 +24,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -55,7 +56,7 @@ func TestNetworkRemove(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						_, err := netlink.LinkByName("br-" + data.Labels().Get("netID")[:12])
 						assert.Error(t, err, "Link not found")
 					},
@@ -96,7 +97,7 @@ func TestNetworkRemove(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						_, err := netlink.LinkByName("br-" + data.Labels().Get("netID")[:12])
 						assert.Error(t, err, "Link not found")
 					},
@@ -122,7 +123,7 @@ func TestNetworkRemove(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						_, err := netlink.LinkByName("br-" + data.Labels().Get("netID")[:12])
 						assert.Error(t, err, "Link not found")
 					},

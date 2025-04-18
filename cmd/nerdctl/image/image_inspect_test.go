@@ -28,6 +28,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -45,7 +46,7 @@ func TestImageInspectSimpleCases(t *testing.T) {
 			{
 				Description: "Contains some stuff",
 				Command:     test.Command("image", "inspect", testutil.CommonImage),
-				Expected: test.Expects(0, nil, func(stdout string, t *testing.T) {
+				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
 					var dc []dockercompat.Image
 					err := json.Unmarshal([]byte(stdout), &dc)
 					assert.NilError(t, err, "Unable to unmarshal output\n")
@@ -115,7 +116,7 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 				Command:     test.Command("image", "inspect", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							var dc []dockercompat.Image
 							err := json.Unmarshal([]byte(stdout), &dc)
 							assert.NilError(t, err, "Unable to unmarshal output\n")
@@ -140,7 +141,7 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 				Command:     test.Command("image", "inspect", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							var dc []dockercompat.Image
 							err := json.Unmarshal([]byte(stdout), &dc)
 							assert.NilError(t, err, "Unable to unmarshal output\n")
@@ -173,7 +174,7 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 				Command:     test.Command("image", "inspect", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							var dc []dockercompat.Image
 							err := json.Unmarshal([]byte(stdout), &dc)
 							assert.NilError(t, err, "Unable to unmarshal output\n")
@@ -196,7 +197,7 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 				Command:     test.Command("image", "inspect", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							var dc []dockercompat.Image
 							err := json.Unmarshal([]byte(stdout), &dc)
 							assert.NilError(t, err, "Unable to unmarshal output\n")
@@ -218,7 +219,7 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 				Command:     test.Command("image", "inspect", "busybox", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							var dc []dockercompat.Image
 							err := json.Unmarshal([]byte(stdout), &dc)
 							assert.NilError(t, err, "Unable to unmarshal output\n")

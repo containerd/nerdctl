@@ -22,6 +22,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -73,7 +74,7 @@ func TestVolumePrune(t *testing.T) {
 						expect.Contains(data.Labels().Get("anonIDDangling")),
 						expect.DoesNotContain(data.Labels().Get("namedBusy")),
 						expect.DoesNotContain(data.Labels().Get("namedDangling")),
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							helpers.Ensure("volume", "inspect", data.Labels().Get("anonIDBusy"))
 							helpers.Fail("volume", "inspect", data.Labels().Get("anonIDDangling"))
 							helpers.Ensure("volume", "inspect", data.Labels().Get("namedBusy"))
@@ -96,7 +97,7 @@ func TestVolumePrune(t *testing.T) {
 						expect.Contains(data.Labels().Get("anonIDDangling")),
 						expect.DoesNotContain(data.Labels().Get("namedBusy")),
 						expect.Contains(data.Labels().Get("namedDangling")),
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							helpers.Ensure("volume", "inspect", data.Labels().Get("anonIDBusy"))
 							helpers.Fail("volume", "inspect", data.Labels().Get("anonIDDangling"))
 							helpers.Ensure("volume", "inspect", data.Labels().Get("namedBusy"))

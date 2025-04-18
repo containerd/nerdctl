@@ -28,6 +28,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -90,7 +91,7 @@ func TestImageHistory(t *testing.T) {
 			{
 				Description: "trunc, no quiet, human",
 				Command:     test.Command("image", "history", "--human=true", "--format=json", testutil.CommonImage),
-				Expected: test.Expects(0, nil, func(stdout string, t *testing.T) {
+				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
 					history, err := decode(stdout)
 					assert.NilError(t, err, "decode should not fail")
 					assert.Equal(t, len(history), 2, "history should be 2 in length")
@@ -118,7 +119,7 @@ func TestImageHistory(t *testing.T) {
 			{
 				Description: "no human - dates and sizes and not prettyfied",
 				Command:     test.Command("image", "history", "--human=false", "--format=json", testutil.CommonImage),
-				Expected: test.Expects(0, nil, func(stdout string, t *testing.T) {
+				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
 					history, err := decode(stdout)
 					assert.NilError(t, err, "decode should not fail")
 					assert.Equal(t, history[0].Size, "0")
@@ -130,7 +131,7 @@ func TestImageHistory(t *testing.T) {
 			{
 				Description: "no trunc - do not truncate sha or cmd",
 				Command:     test.Command("image", "history", "--human=false", "--no-trunc", "--format=json", testutil.CommonImage),
-				Expected: test.Expects(0, nil, func(stdout string, t *testing.T) {
+				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
 					history, err := decode(stdout)
 					assert.NilError(t, err, "decode should not fail")
 					assert.Equal(t, history[1].Snapshot, "sha256:56bf55b8eed1f0b4794a30386e4d1d3da949c25bcb5155e898097cd75dc77c2a")
@@ -140,14 +141,14 @@ func TestImageHistory(t *testing.T) {
 			{
 				Description: "Quiet has no effect with format, so, go no-json, no-trunc",
 				Command:     test.Command("image", "history", "--human=false", "--no-trunc", "--quiet", testutil.CommonImage),
-				Expected: test.Expects(0, nil, func(stdout string, t *testing.T) {
+				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
 					assert.Equal(t, stdout, "<missing>\nsha256:56bf55b8eed1f0b4794a30386e4d1d3da949c25bcb5155e898097cd75dc77c2a\n")
 				}),
 			},
 			{
 				Description: "With quiet, trunc has no effect",
 				Command:     test.Command("image", "history", "--human=false", "--no-trunc", "--quiet", testutil.CommonImage),
-				Expected: test.Expects(0, nil, func(stdout string, t *testing.T) {
+				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
 					assert.Equal(t, stdout, "<missing>\nsha256:56bf55b8eed1f0b4794a30386e4d1d3da949c25bcb5155e898097cd75dc77c2a\n")
 				}),
 			},

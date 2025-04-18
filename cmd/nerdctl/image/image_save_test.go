@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -48,7 +49,7 @@ func TestSaveContent(t *testing.T) {
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
-				Output: func(stdout string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
 					rootfsPath := filepath.Join(data.Temp().Path(), "rootfs")
 					err := testhelpers.ExtractDockerArchive(filepath.Join(data.Temp().Path(), "out.tar"), rootfsPath)
 					assert.NilError(t, err)
@@ -188,7 +189,7 @@ func TestSaveMultipleImagesWithSameIDAndLoad(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						assert.Equal(t, strings.Count(stdout, data.Labels().Get("id")), 2)
 					},
 				}

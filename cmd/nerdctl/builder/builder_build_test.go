@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -337,7 +338,7 @@ COPY %s /`, testFileName)
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							// Expecting testFileName to exist inside the output target directory
 							assert.Equal(t, data.Temp().Load(testFileName), testContent, "file content is identical")
 						},
@@ -351,7 +352,7 @@ COPY %s /`, testFileName)
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							assert.Equal(t, data.Temp().Load(testFileName), testContent, "file content is identical")
 						},
 					}
@@ -888,7 +889,7 @@ func TestBuildAttestation(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							data.Temp().Exists("dir-for-bom", testSBOMFileName)
 						},
 					}
@@ -910,7 +911,7 @@ func TestBuildAttestation(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							data.Temp().Exists("dir-for-prov", testProvenanceFileName)
 						},
 					}
@@ -933,7 +934,7 @@ func TestBuildAttestation(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							data.Temp().Exists("dir-for-attest", testSBOMFileName)
 							data.Temp().Exists("dir-for-attest", testProvenanceFileName)
 						},

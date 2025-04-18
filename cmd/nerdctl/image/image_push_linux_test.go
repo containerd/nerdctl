@@ -27,6 +27,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -200,7 +201,7 @@ func TestPush(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							blobURL := fmt.Sprintf("http://%s:%d/v2/%s/blobs/%s", registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), testutil.NonDistBlobDigest)
 							resp, err := http.Get(blobURL)
 							assert.Assert(t, err, "error making http request")
@@ -232,7 +233,7 @@ func TestPush(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							blobURL := fmt.Sprintf("http://%s:%d/v2/%s/blobs/%s", registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), testutil.NonDistBlobDigest)
 							resp, err := http.Get(blobURL)
 							assert.Assert(t, err, "error making http request")

@@ -40,6 +40,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -371,7 +372,7 @@ func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errdefs.ErrInvalidArgument},
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						getAddrHash := func(addr string) string {
 							const addrHashLen = 8
 
@@ -543,7 +544,7 @@ func TestSharedNetworkSetup(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							containerName2 := data.Identifier()
 							assert.Assert(t, strings.Contains(helpers.Capture("exec", containerName2, "wget", "-qO-", "http://127.0.0.1:80"), testutil.NginxAlpineIndexHTMLSnippet))
 							helpers.Ensure("restart", data.Labels().Get("containerName1"))
@@ -615,7 +616,7 @@ func TestSharedNetworkSetup(t *testing.T) {
 					// The Option doesnt throw an error but is never inserted to the resolv.conf
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							assert.Assert(t, !strings.Contains(stdout, "attempts:5"))
 						},
 					}
@@ -946,7 +947,7 @@ func TestHostNetworkHostName(t *testing.T) {
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
-				Output: func(stdout string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
 					hostHostname := stdout
 					containerHostname := helpers.Capture("run", "--name", data.Identifier(), "--network", "host", testutil.AlpineImage, "cat", "/etc/hostname")
 					assert.Equal(
