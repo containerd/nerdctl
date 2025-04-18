@@ -22,7 +22,6 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"testing"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -31,6 +30,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 	"github.com/containerd/nerdctl/mod/tigron/utils/testca"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
@@ -95,7 +95,7 @@ func ensureContainerStarted(helpers test.Helpers, con string) {
 		helpers.Command("container", "inspect", con).
 			Run(&test.Expected{
 				ExitCode: expect.ExitCodeNoCheck,
-				Output: func(stdout string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
 					var dc []dockercompat.Container
 					err := json.Unmarshal([]byte(stdout), &dc)
 					if err != nil || len(dc) == 0 {

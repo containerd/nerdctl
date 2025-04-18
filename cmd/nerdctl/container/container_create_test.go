@@ -25,6 +25,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -104,7 +105,7 @@ func TestCreateHyperVContainer(t *testing.T) {
 					helpers.Command("container", "inspect", data.Labels().Get("cID")).
 						Run(&test.Expected{
 							ExitCode: expect.ExitCodeNoCheck,
-							Output: func(stdout string, t *testing.T) {
+							Output: func(stdout string, t tig.T) {
 								var dc []dockercompat.Container
 								err := json.Unmarshal([]byte(stdout), &dc)
 								if err != nil || len(dc) == 0 {

@@ -21,7 +21,6 @@ import (
 	"net"
 	"path/filepath"
 	"strings"
-	"testing"
 	"time"
 
 	"gotest.tools/v3/assert"
@@ -113,7 +112,7 @@ func EnsureContainerStarted(helpers test.Helpers, con string) {
 		helpers.Command("container", "inspect", con).
 			Run(&test.Expected{
 				ExitCode: expect.ExitCodeNoCheck,
-				Output: func(stdout string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
 					var dc []dockercompat.Container
 					err := json.Unmarshal([]byte(stdout), &dc)
 					if err != nil || len(dc) == 0 {

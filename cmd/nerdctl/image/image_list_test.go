@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/tabutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -52,7 +53,7 @@ func TestImages(t *testing.T) {
 				Command:     test.Command("images"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							lines := strings.Split(strings.TrimSpace(stdout), "\n")
 							assert.Assert(t, len(lines) >= 2, "there should be at least two lines\n")
 							header := "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE"
@@ -83,7 +84,7 @@ func TestImages(t *testing.T) {
 					return &test.Expected{
 						Output: expect.All(
 							expect.Contains(testutil.CommonImage),
-							func(stdout string, t *testing.T) {
+							func(stdout string, t tig.T) {
 								lines := strings.Split(strings.TrimSpace(stdout), "\n")
 								assert.Assert(t, len(lines) >= 2, "there should be at least two lines\n")
 								tab := tabutil.NewReader("NAME\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE")
@@ -109,7 +110,7 @@ func TestImages(t *testing.T) {
 				Command:     test.Command("images", "--format", "'{{json .CreatedAt}}'"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							lines := strings.Split(strings.TrimSpace(stdout), "\n")
 							assert.Assert(t, len(lines) >= 2, "there should be at least two lines\n")
 							createdTimes := lines
@@ -343,7 +344,7 @@ func TestImagesKubeWithKubeHideDupe(t *testing.T) {
 				Command:     test.Command("--kube-hide-dupe", "images"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							var imageID string
 							var skipLine int
 							lines := strings.Split(strings.TrimSpace(stdout), "\n")

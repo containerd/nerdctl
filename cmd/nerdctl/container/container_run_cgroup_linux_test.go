@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
@@ -310,7 +311,7 @@ func TestRunDevice(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("exec", data.Labels().Get("id"), "sh", "-ec", "echo -n \"overwritten-lo1-content\">"+lo[1].Device)
 			},
-			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, t *testing.T) {
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, t tig.T) {
 				lo1Read, err := os.ReadFile(lo[1].Device)
 				assert.NilError(t, err)
 				assert.Equal(t, string(bytes.Trim(lo1Read, "\x00")), "overwritten-lo1-content")
@@ -523,7 +524,7 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output: expect.All(
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "{{.HostConfig.BlkioWeight}}", data.Identifier()), "150"))
 						},
 					),
@@ -545,7 +546,7 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output: expect.All(
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioWeightDevice}}{{.Weight}}{{end}}", data.Identifier())
 							assert.Assert(t, strings.Contains(inspectOut, "100"))
 						},
@@ -574,7 +575,7 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output: expect.All(
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceReadBps}}{{.Rate}}{{end}}", data.Identifier())
 							assert.Assert(t, strings.Contains(inspectOut, "1048576"))
 						},
@@ -603,7 +604,7 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output: expect.All(
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceWriteBps}}{{.Rate}}{{end}}", data.Identifier())
 							assert.Assert(t, strings.Contains(inspectOut, "2097152"))
 						},
@@ -632,7 +633,7 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output: expect.All(
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceReadIOps}}{{.Rate}}{{end}}", data.Identifier())
 							assert.Assert(t, strings.Contains(inspectOut, "1000"))
 						},
@@ -661,7 +662,7 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output: expect.All(
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceWriteIOps}}{{.Rate}}{{end}}", data.Identifier())
 							assert.Assert(t, strings.Contains(inspectOut, "2000"))
 						},
@@ -696,7 +697,7 @@ func TestRunCPURealTimeSettingCgroupV1(t *testing.T) {
 			return &test.Expected{
 				ExitCode: 0,
 				Output: expect.All(
-					func(stdout string, t *testing.T) {
+					func(stdout string, t tig.T) {
 						rtRuntime := helpers.Capture("inspect", "--format", "{{.HostConfig.CPURealtimeRuntime}}", data.Identifier())
 						rtPeriod := helpers.Capture("inspect", "--format", "{{.HostConfig.CPURealtimePeriod}}", data.Identifier())
 						assert.Assert(t, strings.Contains(rtRuntime, "950000"))

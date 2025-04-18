@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -231,7 +232,7 @@ func TestIssue2993(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errors.New("is already used by ID")},
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						containersDirs, err := os.ReadDir(data.Labels().Get(containersPathKey))
 						assert.NilError(t, err)
 						assert.Equal(t, len(containersDirs), 1)
@@ -278,7 +279,7 @@ func TestIssue2993(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						containersDirs, err := os.ReadDir(data.Labels().Get(containersPathKey))
 						assert.NilError(t, err)
 						assert.Equal(t, len(containersDirs), 0)

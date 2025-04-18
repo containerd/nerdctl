@@ -29,6 +29,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -254,12 +255,12 @@ COPY index.html /usr/share/nginx/html/index.html
 
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
-			Output: func(stdout string, t *testing.T) {
+			Output: func(stdout string, t tig.T) {
 				resp, err := nettestutil.HTTPGet("http://127.0.0.1:8081", 10, false)
 				assert.NilError(t, err)
 				respBody, err := io.ReadAll(resp.Body)
 				assert.NilError(t, err)
-				t.Logf("respBody=%q", respBody)
+				t.Log(fmt.Sprintf("respBody=%q", respBody))
 				assert.Assert(t, strings.Contains(string(respBody), data.Identifier("indexhtml")))
 			},
 		}

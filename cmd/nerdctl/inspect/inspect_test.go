@@ -23,6 +23,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -50,7 +51,7 @@ func TestInspectSimpleCase(t *testing.T) {
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
-				Output: func(stdout string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
 					var inspectResult []json.RawMessage
 					err := json.Unmarshal([]byte(stdout), &inspectResult)
 					assert.NilError(t, err, "Unable to unmarshal output\n")
