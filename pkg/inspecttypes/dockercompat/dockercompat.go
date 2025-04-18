@@ -167,17 +167,20 @@ type HostConfig struct {
 	Tmpfs   map[string]string `json:"Tmpfs,omitempty"` // List of tmpfs (mounts) used for the container
 	UTSMode string            // UTS namespace to use for the container
 	// UsernsMode      UsernsMode        // The user namespace to use for the container
-	ShmSize        int64             // Size of /dev/shm in bytes. The size must be greater than 0.
-	Sysctls        map[string]string // List of Namespaced sysctls used for the container
-	Runtime        string            // Runtime to use with this container
-	CPUSetMems     string            `json:"CpusetMems"` // CpusetMems 0-2, 0,1
-	CPUSetCPUs     string            `json:"CpusetCpus"` // CpusetCpus 0-2, 0,1
-	CPUQuota       int64             `json:"CpuQuota"`   // CPU CFS (Completely Fair Scheduler) quota
-	CPUShares      uint64            `json:"CpuShares"`  // CPU shares (relative weight vs. other containers)
-	Memory         int64             // Memory limit (in bytes)
-	MemorySwap     int64             // Total memory usage (memory + swap); set `-1` to enable unlimited swap
-	OomKillDisable bool              // specifies whether to disable OOM Killer
-	Devices        []DeviceMapping   // List of devices to map inside the container
+	ShmSize            int64             // Size of /dev/shm in bytes. The size must be greater than 0.
+	Sysctls            map[string]string // List of Namespaced sysctls used for the container
+	Runtime            string            // Runtime to use with this container
+	CPUSetMems         string            `json:"CpusetMems"`         // CpusetMems 0-2, 0,1
+	CPUSetCPUs         string            `json:"CpusetCpus"`         // CpusetCpus 0-2, 0,1
+	CPUQuota           int64             `json:"CpuQuota"`           // CPU CFS (Completely Fair Scheduler) quota
+	CPUShares          uint64            `json:"CpuShares"`          // CPU shares (relative weight vs. other containers)
+	CPUPeriod          uint64            `json:"CpuPeriod"`          // Limits the CPU CFS (Completely Fair Scheduler) period
+	CPURealtimePeriod  uint64            `json:"CpuRealtimePeriod"`  // Limits the CPU real-time period in microseconds
+	CPURealtimeRuntime int64             `json:"CpuRealtimeRuntime"` // Limits the CPU real-time runtime in microseconds
+	Memory             int64             // Memory limit (in bytes)
+	MemorySwap         int64             // Total memory usage (memory + swap); set `-1` to enable unlimited swap
+	OomKillDisable     bool              // specifies whether to disable OOM Killer
+	Devices            []DeviceMapping   // List of devices to map inside the container
 	LinuxBlkioSettings
 }
 
@@ -264,11 +267,14 @@ type DeviceMapping struct {
 	CgroupPermissions string
 }
 
-type cpuSettings struct {
-	cpuSetCpus string
-	cpuSetMems string
-	cpuShares  uint64
-	cpuQuota   int64
+type CPUSettings struct {
+	CPUSetCpus         string
+	CPUSetMems         string
+	CPUShares          uint64
+	CPUQuota           int64
+	CPUPeriod          uint64
+	CPURealtimePeriod  uint64
+	CPURealtimeRuntime int64
 }
 
 // DefaultNetworkSettings is from https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L405-L414
@@ -478,12 +484,15 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 
 	cpuSetting, err := cpuSettingsFromNative(n.Spec.(*specs.Spec))
 	if err != nil {
-		return nil, fmt.Errorf("failed to Decode cpuSettings: %v", err)
+		return nil, fmt.Errorf("failed to Decode cpuSetting: %v", err)
 	}
-	c.HostConfig.CPUSetCPUs = cpuSetting.cpuSetCpus
-	c.HostConfig.CPUSetMems = cpuSetting.cpuSetMems
-	c.HostConfig.CPUQuota = cpuSetting.cpuQuota
-	c.HostConfig.CPUShares = cpuSetting.cpuShares
+	c.HostConfig.CPUSetCPUs = cpuSetting.CPUSetCpus
+	c.HostConfig.CPUSetMems = cpuSetting.CPUSetMems
+	c.HostConfig.CPUQuota = cpuSetting.CPUQuota
+	c.HostConfig.CPUShares = cpuSetting.CPUShares
+	c.HostConfig.CPUPeriod = cpuSetting.CPUPeriod
+	c.HostConfig.CPURealtimePeriod = cpuSetting.CPURealtimePeriod
+	c.HostConfig.CPURealtimeRuntime = cpuSetting.CPURealtimeRuntime
 
 	cgroupNamespace, err := getCgroupnsFromNative(n.Spec.(*specs.Spec))
 	if err != nil {
@@ -728,23 +737,32 @@ func networkSettingsFromNative(n *native.NetNS, sp *specs.Spec) (*NetworkSetting
 	return res, nil
 }
 
-func cpuSettingsFromNative(sp *specs.Spec) (*cpuSettings, error) {
-	res := &cpuSettings{}
+func cpuSettingsFromNative(sp *specs.Spec) (*CPUSettings, error) {
+	res := &CPUSettings{}
 	if sp.Linux != nil && sp.Linux.Resources != nil && sp.Linux.Resources.CPU != nil {
 		if sp.Linux.Resources.CPU.Cpus != "" {
-			res.cpuSetCpus = sp.Linux.Resources.CPU.Cpus
+			res.CPUSetCpus = sp.Linux.Resources.CPU.Cpus
 		}
 
 		if sp.Linux.Resources.CPU.Mems != "" {
-			res.cpuSetMems = sp.Linux.Resources.CPU.Mems
+			res.CPUSetMems = sp.Linux.Resources.CPU.Mems
 		}
 
 		if sp.Linux.Resources.CPU.Shares != nil && *sp.Linux.Resources.CPU.Shares > 0 {
-			res.cpuShares = *sp.Linux.Resources.CPU.Shares
+			res.CPUShares = *sp.Linux.Resources.CPU.Shares
 		}
 
 		if sp.Linux.Resources.CPU.Quota != nil && *sp.Linux.Resources.CPU.Quota > 0 {
-			res.cpuQuota = *sp.Linux.Resources.CPU.Quota
+			res.CPUQuota = *sp.Linux.Resources.CPU.Quota
+		}
+		if sp.Linux.Resources.CPU.Period != nil && *sp.Linux.Resources.CPU.Period > 0 {
+			res.CPUPeriod = *sp.Linux.Resources.CPU.Period
+		}
+		if sp.Linux.Resources.CPU.RealtimePeriod != nil && *sp.Linux.Resources.CPU.RealtimePeriod > 0 {
+			res.CPURealtimePeriod = *sp.Linux.Resources.CPU.RealtimePeriod
+		}
+		if sp.Linux.Resources.CPU.RealtimeRuntime != nil && *sp.Linux.Resources.CPU.RealtimeRuntime > 0 {
+			res.CPURealtimeRuntime = *sp.Linux.Resources.CPU.RealtimeRuntime
 		}
 	}
 

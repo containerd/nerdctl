@@ -284,3 +284,8 @@ func BlockIOReadIOpsDevice(cgroupManager string) bool {
 func BlockIOWriteIOpsDevice(cgroupManager string) bool {
 	return getMobySysInfo(cgroupManager).BlkioWriteIOpsDevice
 }
+
+// CPURealtime returns whether CPU realtime period is supported or not
+func CPURealtime(cgroupManager string) bool {
+	return getMobySysInfo(cgroupManager).CPURealtime
+}
