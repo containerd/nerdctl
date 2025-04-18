@@ -64,7 +64,7 @@ func TestAttach(t *testing.T) {
 		cmd.Run(&test.Expected{
 			ExitCode: 0,
 			Errors:   []error{errors.New("read detach keys")},
-			Output: func(stdout string, info string, t *testing.T) {
+			Output: func(stdout string, t *testing.T) {
 				assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 			},
 		})
@@ -93,7 +93,7 @@ func TestAttach(t *testing.T) {
 			Errors:   []error{errors.New("read detach keys")},
 			Output: expect.All(
 				expect.Contains("markmark"),
-				func(stdout string, info string, t *testing.T) {
+				func(stdout string, t *testing.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 				},
 			),
@@ -125,7 +125,7 @@ func TestAttachDetachKeys(t *testing.T) {
 		cmd.Run(&test.Expected{
 			ExitCode: 0,
 			Errors:   []error{errors.New("read detach keys")},
-			Output: func(stdout string, info string, t *testing.T) {
+			Output: func(stdout string, t *testing.T) {
 				assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 			},
 		})
@@ -153,7 +153,7 @@ func TestAttachDetachKeys(t *testing.T) {
 			Errors:   []error{errors.New("read detach keys")},
 			Output: expect.All(
 				expect.Contains("markmark"),
-				func(stdout string, info string, t *testing.T) {
+				func(stdout string, t *testing.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 				},
 			),
@@ -182,8 +182,8 @@ func TestAttachForAutoRemovedContainer(t *testing.T) {
 		cmd.Run(&test.Expected{
 			ExitCode: 0,
 			Errors:   []error{errors.New("read detach keys")},
-			Output: func(stdout string, info string, t *testing.T) {
-				assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"), info)
+			Output: func(stdout string, t *testing.T) {
+				assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 			},
 		})
 	}
@@ -202,7 +202,7 @@ func TestAttachForAutoRemovedContainer(t *testing.T) {
 			ExitCode: 42,
 			Output: expect.All(
 				expect.Contains("markmark"),
-				func(stdout string, info string, t *testing.T) {
+				func(stdout string, t *testing.T) {
 					assert.Assert(t, !strings.Contains(helpers.Capture("ps", "-a"), data.Identifier()))
 				},
 			),

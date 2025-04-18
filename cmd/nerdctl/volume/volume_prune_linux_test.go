@@ -75,7 +75,7 @@ func TestVolumePrune(t *testing.T) {
 							data.Labels().Get("namedBusy"),
 							data.Labels().Get("namedDangling"),
 						),
-						func(stdout string, info string, t *testing.T) {
+						func(stdout string, t *testing.T) {
 							helpers.Ensure("volume", "inspect", data.Labels().Get("anonIDBusy"))
 							helpers.Fail("volume", "inspect", data.Labels().Get("anonIDDangling"))
 							helpers.Ensure("volume", "inspect", data.Labels().Get("namedBusy"))
@@ -96,7 +96,7 @@ func TestVolumePrune(t *testing.T) {
 					Output: expect.All(
 						expect.DoesNotContain(data.Labels().Get("anonIDBusy"), data.Labels().Get("namedBusy")),
 						expect.Contains(data.Labels().Get("anonIDDangling"), data.Labels().Get("namedDangling")),
-						func(stdout string, info string, t *testing.T) {
+						func(stdout string, t *testing.T) {
 							helpers.Ensure("volume", "inspect", data.Labels().Get("anonIDBusy"))
 							helpers.Fail("volume", "inspect", data.Labels().Get("anonIDDangling"))
 							helpers.Ensure("volume", "inspect", data.Labels().Get("namedBusy"))

@@ -182,7 +182,7 @@ func TestImagePullSoci(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					cmd := helpers.Custom("mount")
 					cmd.Run(&test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							data.Labels().Set("remoteSnapshotsInitialCount", strconv.Itoa(strings.Count(stdout, "fuse.rawBridge")))
 						},
 					})
@@ -196,7 +196,7 @@ func TestImagePullSoci(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, _ string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							remoteSnapshotsInitialCount, _ := strconv.Atoi(data.Labels().Get("remoteSnapshotsInitialCount"))
 							remoteSnapshotsActualCount := strings.Count(stdout, "fuse.rawBridge")
 							assert.Equal(t,
@@ -218,7 +218,7 @@ func TestImagePullSoci(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					cmd := helpers.Custom("mount")
 					cmd.Run(&test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							data.Labels().Set("remoteSnapshotsInitialCount", strconv.Itoa(strings.Count(stdout, "fuse.rawBridge")))
 						},
 					})
@@ -232,7 +232,7 @@ func TestImagePullSoci(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							remoteSnapshotsInitialCount, _ := strconv.Atoi(data.Labels().Get("remoteSnapshotsInitialCount"))
 							remoteSnapshotsActualCount := strings.Count(stdout, "fuse.rawBridge")
 							assert.Equal(t,

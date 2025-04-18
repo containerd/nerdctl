@@ -54,7 +54,7 @@ func InspectContainer(helpers test.Helpers, name string) dockercompat.Container 
 	var res dockercompat.Container
 	cmd := helpers.Command("container", "inspect", name)
 	cmd.Run(&test.Expected{
-		Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, _ string, t tig.T) {
+		Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
 			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
 			res = dc[0]
 		}),
@@ -67,7 +67,7 @@ func InspectVolume(helpers test.Helpers, name string) native.Volume {
 	var res native.Volume
 	cmd := helpers.Command("volume", "inspect", name)
 	cmd.Run(&test.Expected{
-		Output: expect.JSON([]native.Volume{}, func(dc []native.Volume, _ string, t tig.T) {
+		Output: expect.JSON([]native.Volume{}, func(dc []native.Volume, t tig.T) {
 			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
 			res = dc[0]
 		}),
@@ -80,7 +80,7 @@ func InspectNetwork(helpers test.Helpers, name string) dockercompat.Network {
 	var res dockercompat.Network
 	cmd := helpers.Command("network", "inspect", name)
 	cmd.Run(&test.Expected{
-		Output: expect.JSON([]dockercompat.Network{}, func(dc []dockercompat.Network, _ string, t tig.T) {
+		Output: expect.JSON([]dockercompat.Network{}, func(dc []dockercompat.Network, t tig.T) {
 			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
 			res = dc[0]
 		}),
@@ -93,7 +93,7 @@ func InspectImage(helpers test.Helpers, name string) dockercompat.Image {
 	var res dockercompat.Image
 	cmd := helpers.Command("image", "inspect", name)
 	cmd.Run(&test.Expected{
-		Output: expect.JSON([]dockercompat.Image{}, func(dc []dockercompat.Image, _ string, t tig.T) {
+		Output: expect.JSON([]dockercompat.Image{}, func(dc []dockercompat.Image, t tig.T) {
 			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
 			res = dc[0]
 		}),
@@ -113,13 +113,13 @@ func EnsureContainerStarted(helpers test.Helpers, con string) {
 		helpers.Command("container", "inspect", con).
 			Run(&test.Expected{
 				ExitCode: expect.ExitCodeNoCheck,
-				Output: func(stdout string, info string, t *testing.T) {
+				Output: func(stdout string, t *testing.T) {
 					var dc []dockercompat.Container
 					err := json.Unmarshal([]byte(stdout), &dc)
 					if err != nil || len(dc) == 0 {
 						return
 					}
-					assert.Equal(t, len(dc), 1, "Unexpectedly got multiple results\n"+info)
+					assert.Equal(t, len(dc), 1, "Unexpectedly got multiple results\n")
 					started = dc[0].State.Running
 				},
 			})

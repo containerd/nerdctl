@@ -111,7 +111,7 @@ services:
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
 			ExitCode: 0,
-			Output: func(stdout, info string, t *testing.T) {
+			Output: func(stdout string, t *testing.T) {
 				assert.Assert(t, data.Labels().Get("hash") != stdout, "hash should be different")
 			},
 		}

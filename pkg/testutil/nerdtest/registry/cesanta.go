@@ -95,13 +95,13 @@ func ensureContainerStarted(helpers test.Helpers, con string) {
 		helpers.Command("container", "inspect", con).
 			Run(&test.Expected{
 				ExitCode: expect.ExitCodeNoCheck,
-				Output: func(stdout string, info string, t *testing.T) {
+				Output: func(stdout string, t *testing.T) {
 					var dc []dockercompat.Container
 					err := json.Unmarshal([]byte(stdout), &dc)
 					if err != nil || len(dc) == 0 {
 						return
 					}
-					assert.Equal(t, len(dc), 1, "Unexpectedly got multiple results\n"+info)
+					assert.Equal(t, len(dc), 1, "Unexpectedly got multiple results\n")
 					started = dc[0].State.Running
 				},
 			})

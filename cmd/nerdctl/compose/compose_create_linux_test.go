@@ -66,7 +66,7 @@ services:
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "ps", "svc0", "-a")
 			},
-			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout, info string, t *testing.T) {
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, t *testing.T) {
 				assert.Assert(t,
 					strings.Contains(stdout, "created") || strings.Contains(stdout, "Created"),
 					"stdout should contain `created`")
@@ -125,7 +125,7 @@ services:
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "ps", "svc0", "-a")
 			},
-			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout, info string, t *testing.T) {
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, t *testing.T) {
 				assert.Assert(t,
 					strings.Contains(stdout, "created") || strings.Contains(stdout, "Created"),
 					"stdout should contain `created`")
@@ -137,7 +137,7 @@ services:
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "ps", "svc1", "-a")
 			},
-			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout, info string, t *testing.T) {
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, t *testing.T) {
 				assert.Assert(t,
 					strings.Contains(stdout, "created") || strings.Contains(stdout, "Created"),
 					"stdout should contain `created`")
