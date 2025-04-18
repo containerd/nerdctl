@@ -489,20 +489,20 @@ jobs:
         # This might be due to the old kernel shipped with Alma (4.18), or something else between centos/docker.
         run: |
           set -eux
-          [ "$MODE" = "rootless" ] && {
+          if [ "$MODE" = "rootless" ]; then
             echo "rootless"
             docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false
-          } || {
+          else
             echo "rootful"
             docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=false
-          }
+          fi
       - name: "Run integration tests (flaky)"
         run: |
           set -eux
-          [ "$MODE" = "rootless" ] && {
+          if [ "$MODE" = "rootless" ]; then
             echo "rootless"
             docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true
-          } || {
+          else
             echo "rootful"
             docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=true
-          }
+          fi
