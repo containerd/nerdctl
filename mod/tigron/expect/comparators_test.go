@@ -30,6 +30,7 @@ import (
 )
 
 func TestExpect(t *testing.T) {
+	// TODO: write more tests once we can mock t in Comparator signature
 	t.Parallel()
 
 	expect.Contains("b")("a b c", "contains works", t)
@@ -39,7 +40,9 @@ func TestExpect(t *testing.T) {
 
 	expect.All(
 		expect.Contains("b"),
+		expect.Contains("b", "c"),
 		expect.DoesNotContain("d"),
+		expect.DoesNotContain("d", "e"),
 		expect.Equals("a b c"),
 		expect.Match(regexp.MustCompile("[a-z ]+")),
 	)("a b c", "all", t)
