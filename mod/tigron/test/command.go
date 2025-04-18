@@ -130,6 +130,10 @@ func (gc *GenericCommand) Feed(r io.Reader) {
 	gc.cmd.Feed(r)
 }
 
+func (gc *GenericCommand) Setenv(key, value string) {
+	gc.cmd.Env[key] = value
+}
+
 func (gc *GenericCommand) WithFeeder(fun func() io.Reader) {
 	gc.cmd.WithFeeder(fun)
 }
