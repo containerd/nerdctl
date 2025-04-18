@@ -69,10 +69,12 @@ func TestVolumePrune(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					Output: expect.All(
-						expect.DoesNotContain(data.Labels().Get("anonIDBusy")),
 						expect.Contains(data.Labels().Get("anonIDDangling")),
-						expect.DoesNotContain(data.Labels().Get("namedBusy")),
-						expect.DoesNotContain(data.Labels().Get("namedDangling")),
+						expect.DoesNotContain(
+							data.Labels().Get("anonIDBusy"),
+							data.Labels().Get("namedBusy"),
+							data.Labels().Get("namedDangling"),
+						),
 						func(stdout string, info string, t *testing.T) {
 							helpers.Ensure("volume", "inspect", data.Labels().Get("anonIDBusy"))
 							helpers.Fail("volume", "inspect", data.Labels().Get("anonIDDangling"))
@@ -92,10 +94,8 @@ func TestVolumePrune(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					Output: expect.All(
-						expect.DoesNotContain(data.Labels().Get("anonIDBusy")),
-						expect.Contains(data.Labels().Get("anonIDDangling")),
-						expect.DoesNotContain(data.Labels().Get("namedBusy")),
-						expect.Contains(data.Labels().Get("namedDangling")),
+						expect.DoesNotContain(data.Labels().Get("anonIDBusy"), data.Labels().Get("namedBusy")),
+						expect.Contains(data.Labels().Get("anonIDDangling"), data.Labels().Get("namedDangling")),
 						func(stdout string, info string, t *testing.T) {
 							helpers.Ensure("volume", "inspect", data.Labels().Get("anonIDBusy"))
 							helpers.Fail("volume", "inspect", data.Labels().Get("anonIDDangling"))

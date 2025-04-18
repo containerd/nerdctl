@@ -162,12 +162,11 @@ services:
 					"config",
 				)
 			},
-			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
-				expect.Contains("alpine:3.13"),
-				expect.Contains("alpine:3.14"),
-				expect.Contains("hello1"),
-				expect.Contains("hello2"),
-			)),
+			Expected: test.Expects(
+				expect.ExitCodeSuccess,
+				nil,
+				expect.Contains("alpine:3.13", "alpine:3.14", "hello1", "hello2"),
+			),
 		},
 		{
 			Description: "project dir",
@@ -230,12 +229,11 @@ services:
 				cmd.Setenv("COMPOSE_PATH_SEPARATOR", ",")
 				return cmd
 			},
-			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
-				expect.Contains("alpine:3.13"),
-				expect.Contains("alpine:3.14"),
-				expect.Contains("hello1"),
-				expect.Contains("hello2"),
-			)),
+			Expected: test.Expects(
+				expect.ExitCodeSuccess,
+				nil,
+				expect.Contains("alpine:3.13", "alpine:3.14", "hello1", "hello2"),
+			),
 		},
 		{
 			Description: "env with project dir",
@@ -249,12 +247,11 @@ services:
 				cmd.Setenv("COMPOSE_PATH_SEPARATOR", ",")
 				return cmd
 			},
-			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
-				expect.Contains("alpine:3.13"),
-				expect.Contains("alpine:3.14"),
-				expect.Contains("hello1"),
-				expect.Contains("hello2"),
-			)),
+			Expected: test.Expects(
+				expect.ExitCodeSuccess,
+				nil,
+				expect.Contains("alpine:3.13", "alpine:3.14", "hello1", "hello2"),
+			),
 		},
 	}
 

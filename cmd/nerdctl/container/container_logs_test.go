@@ -247,8 +247,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 				return helpers.Command("logs", data.Identifier())
 			},
 			Expected: test.Expects(0, nil, expect.All(
-				expect.Contains("foo"),
-				expect.Contains("bar"),
+				expect.Contains("foo", "bar"),
 				expect.DoesNotContain("baz"),
 			)),
 		},
@@ -264,8 +263,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 				return helpers.Command("logs", data.Identifier())
 			},
 			Expected: test.Expects(0, nil, expect.All(
-				expect.Contains("foo"),
-				expect.Contains("bar"),
+				expect.Contains("foo", "bar"),
 				expect.DoesNotContain("baz"),
 			)),
 		},
@@ -283,8 +281,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 				return helpers.Command("logs", data.Identifier())
 			},
 			Expected: test.Expects(0, nil, expect.All(
-				expect.Contains("foo"),
-				expect.Contains("bar"),
+				expect.Contains("foo", "bar"),
 				expect.DoesNotContain("baz"),
 			)),
 		},
@@ -302,8 +299,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 				return helpers.Command("logs", data.Identifier())
 			},
 			Expected: test.Expects(0, nil, expect.All(
-				expect.Contains("foo"),
-				expect.Contains("bar"),
+				expect.Contains("foo", "bar"),
 				expect.DoesNotContain("baz"),
 			)),
 		},

@@ -186,11 +186,8 @@ func TestRemove(t *testing.T) {
 				return &test.Expected{
 					Output: func(stdout string, info string, t *testing.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: expect.All(
-								expect.DoesNotContain(repoName),
-								// a created container with removed image doesn't impact other `rmi` command
-								expect.DoesNotContain(nginxRepoName),
-							),
+							// a created container with removed image doesn't impact other `rmi` command
+							Output: expect.DoesNotContain(repoName, nginxRepoName),
 						})
 					},
 				}

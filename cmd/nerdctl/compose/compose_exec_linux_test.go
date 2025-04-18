@@ -128,15 +128,16 @@ services:
 					"env")
 			},
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
-				expect.Contains("\nFOO=foo1,foo2\n"),
-				expect.Contains("\nBAR=bar1 bar2\n"),
-				expect.Contains("\nBAZ=\n"),
+				expect.Contains(
+					"\nFOO=foo1,foo2\n",
+					"\nBAR=bar1 bar2\n",
+					"\nBAZ=\n",
+					"\nQUUX=quux2\n",
+					"\nCORGE=corge-value-in-host\n",
+					"\nGRAULT=grault_key=grault_value\n",
+					"\nGARPLY=\n",
+					"\nWALDO=\n"),
 				expect.DoesNotContain("QUX"),
-				expect.Contains("\nQUUX=quux2\n"),
-				expect.Contains("\nCORGE=corge-value-in-host\n"),
-				expect.Contains("\nGRAULT=grault_key=grault_value\n"),
-				expect.Contains("\nGARPLY=\n"),
-				expect.Contains("\nWALDO=\n"),
 			)),
 		},
 	}
