@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/containerd/nerdctl/mod/tigron/internal"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
 // This is the implementation of Helpers
@@ -60,8 +61,7 @@ func (help *helpersInternal) Capture(args ...string) string {
 
 	help.t.Helper()
 	help.Command(args...).Run(&Expected{
-		//nolint:thelper
-		Output: func(stdout string, _ *testing.T) {
+		Output: func(stdout string, _ tig.T) {
 			ret = stdout
 		},
 	})
