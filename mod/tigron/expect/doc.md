@@ -131,7 +131,7 @@ func TestMyThing(t *testing.T) {
     myTest.Command = test.Custom("ls")
 
     // Set your expectations
-    myTest.Expected = test.Expects(0, nil, func(stdout, info string, t tig.T){
+    myTest.Expected = test.Expects(0, nil, func(stdout string, t tig.T){
         t.Helper()
         // Bla bla, do whatever advanced stuff and some asserts
     })
@@ -143,7 +143,7 @@ func TestMyThing(t *testing.T) {
 // You can of course generalize your comparator into a generator if it is going to be useful repeatedly
 
 func MyComparatorGenerator(param1, param2 any) test.Comparator {
-    return func(stdout, info string, t tig.T) {
+    return func(stdout string, t tig.T) {
         t.Helper()
         // Do your thing...
         // ...
@@ -154,10 +154,6 @@ func MyComparatorGenerator(param1, param2 any) test.Comparator {
 
 You can now pass along `MyComparator(comparisonString)` as the third parameter of `test.Expects`, or compose it with
 other comparators using `expect.All(MyComparator(comparisonString), OtherComparator(somethingElse))`
-
-Note that you have access to an opaque `info` string, that provides a brief formatted header message that assert
-will use in case of failure to provide context on the error.
-You may of course ignore it and write your own message.
 
 ### Advanced expectations
 
@@ -180,6 +176,7 @@ import (
 
     "gotest.tools/v3/assert"
 
+    "github.com/containerd/nerdctl/mod/tigron/tig"
     "github.com/containerd/nerdctl/mod/tigron/test"
 )
 
