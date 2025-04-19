@@ -18,12 +18,15 @@ package nerdtest
 
 import (
 	"encoding/json"
-	"testing"
+	"fmt"
+	"net"
+	"strings"
 	"time"
 
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
@@ -50,7 +53,7 @@ func InspectContainer(helpers test.Helpers, name string) dockercompat.Container 
 	var res dockercompat.Container
 	cmd := helpers.Command("container", "inspect", name)
 	cmd.Run(&test.Expected{
-		Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, _ string, t tig.T) {
+		Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
 			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
 			res = dc[0]
 		}),
@@ -63,7 +66,7 @@ func InspectVolume(helpers test.Helpers, name string) native.Volume {
 	var res native.Volume
 	cmd := helpers.Command("volume", "inspect", name)
 	cmd.Run(&test.Expected{
-		Output: expect.JSON([]native.Volume{}, func(dc []native.Volume, _ string, t tig.T) {
+		Output: expect.JSON([]native.Volume{}, func(dc []native.Volume, t tig.T) {
 			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
 			res = dc[0]
 		}),
@@ -76,7 +79,7 @@ func InspectNetwork(helpers test.Helpers, name string) dockercompat.Network {
 	var res dockercompat.Network
 	cmd := helpers.Command("network", "inspect", name)
 	cmd.Run(&test.Expected{
-		Output: expect.JSON([]dockercompat.Network{}, func(dc []dockercompat.Network, _ string, t tig.T) {
+		Output: expect.JSON([]dockercompat.Network{}, func(dc []dockercompat.Network, t tig.T) {
 			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
 			res = dc[0]
 		}),
@@ -89,7 +92,7 @@ func InspectImage(helpers test.Helpers, name string) dockercompat.Image {
 	var res dockercompat.Image
 	cmd := helpers.Command("image", "inspect", name)
 	cmd.Run(&test.Expected{
-		Output: expect.JSON([]dockercompat.Image{}, func(dc []dockercompat.Image, _ string, t tig.T) {
+		Output: expect.JSON([]dockercompat.Image{}, func(dc []dockercompat.Image, t tig.T) {
 			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
 			res = dc[0]
 		}),
@@ -102,20 +105,22 @@ const (
 	sleep    = time.Second
 )
 
-func EnsureContainerStarted(helpers test.Helpers, con string) {
+func EnsureContainerStarted(helpers test.Helpers, containerName string) {
 	helpers.T().Helper()
+
 	started := false
 	for i := 0; i < maxRetry && !started; i++ {
-		helpers.Command("container", "inspect", con).
+		helpers.Command("container", "inspect", containerName).
 			Run(&test.Expected{
 				ExitCode: expect.ExitCodeNoCheck,
-				Output: func(stdout string, info string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
+					// Note: we can't use JSON comparator because it would hard fail if there is no content
 					var dc []dockercompat.Container
 					err := json.Unmarshal([]byte(stdout), &dc)
 					if err != nil || len(dc) == 0 {
 						return
 					}
-					assert.Equal(t, len(dc), 1, "Unexpectedly got multiple results\n"+info)
+					assert.Equal(t, len(dc), 1, "Unexpectedly got multiple results\n")
 					started = dc[0].State.Running
 				},
 			})
@@ -123,12 +128,73 @@ func EnsureContainerStarted(helpers test.Helpers, con string) {
 	}
 
 	if !started {
-		ins := helpers.Capture("container", "inspect", con)
-		lgs := helpers.Capture("logs", con)
+		ins := helpers.Capture("container", "inspect", containerName)
 		ps := helpers.Capture("ps", "-a")
+		stdout := helpers.Capture("logs", containerName)
+		stderr := helpers.Err("logs", containerName)
+
 		helpers.T().Log(ins)
-		helpers.T().Log(lgs)
 		helpers.T().Log(ps)
-		helpers.T().Fatalf("container %s still not running after %d retries", con, maxRetry)
+		helpers.T().Log(stdout)
+		helpers.T().Log(stderr)
+		helpers.T().Log(fmt.Sprintf("container %s still not running after %d retries", containerName, maxRetry))
+		helpers.T().FailNow()
+
 	}
+}
+
+func GenerateJWEKeyPair(data test.Data, helpers test.Helpers) (string, string) {
+	helpers.T().Helper()
+
+	path := "jwe-key-pair"
+	data.Temp().Dir(path)
+
+	pass, message := require.Binary("openssl").Check(data, helpers)
+	if !pass {
+		helpers.T().Skip(message)
+	}
+
+	pri := data.Temp().Path(path, "mykey.pem")
+	pub := data.Temp().Path(path, "mypubkey.pem")
+
+	// Exec openssl commands to ensure that nerdctl is compatible with the output of openssl commands.
+	// Do NOT refactor this function to use "crypto/rsa" stdlib.
+	helpers.Custom("openssl", "genrsa", "-out", pri).Run(&test.Expected{})
+	helpers.Custom("openssl", "rsa", "-in", pri, "-pubout", "-out", pub).Run(&test.Expected{})
+
+	return pri, pub
+}
+
+func GenerateCosignKeyPair(data test.Data, helpers test.Helpers, password string) (pri string, pub string) {
+	helpers.T().Helper()
+
+	path := "cosign-key-pair"
+	data.Temp().Dir(path)
+
+	pass, message := require.Binary("cosign").Check(data, helpers)
+	if !pass {
+		helpers.T().Skip(message)
+	}
+
+	cmd := helpers.Custom("cosign", "generate-key-pair")
+	cmd.WithCwd(data.Temp().Path(path))
+	cmd.Setenv("COSIGN_PASSWORD", password)
+	cmd.Run(&test.Expected{})
+
+	return data.Temp().Path(path, "cosign.key"), data.Temp().Path(path, "cosign.pub")
+}
+
+func FindIPv6(output string) net.IP {
+	var ipv6 string
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "inet6") {
+			fields := strings.Fields(line)
+			if len(fields) > 1 {
+				ipv6 = strings.Split(fields[1], "/")[0]
+				break
+			}
+		}
+	}
+	return net.ParseIP(ipv6)
 }

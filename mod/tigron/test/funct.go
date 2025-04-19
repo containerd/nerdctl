@@ -16,7 +16,9 @@
 
 package test
 
-import "testing"
+import (
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+)
 
 // An Evaluator is a function that decides whether a test should run or not.
 type Evaluator func(data Data, helpers Helpers) (bool, string)
@@ -30,7 +32,7 @@ type Butler func(data Data, helpers Helpers)
 // - move to tig.T
 
 // A Comparator is the function signature to implement for the Output property of an Expected.
-type Comparator func(stdout, info string, t *testing.T)
+type Comparator func(stdout string, t tig.T)
 
 // A Manager is the function signature meant to produce expectations for a command.
 type Manager func(data Data, helpers Helpers) *Expected

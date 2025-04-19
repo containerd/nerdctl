@@ -48,7 +48,7 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 
-		ipfsRegistry = registry.NewKuboRegistry(data, helpers, t, nil, 0, nil)
+		ipfsRegistry = registry.NewKuboRegistry(data, helpers, nil, 0, nil)
 		ipfsRegistry.Setup(data, helpers)
 		ipfsAddr := fmt.Sprintf("/ip4/%s/tcp/%d", ipfsRegistry.IP, ipfsRegistry.Port)
 		data.Labels().Set(ipfsAddrKey, ipfsAddr)

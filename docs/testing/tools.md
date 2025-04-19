@@ -88,16 +88,12 @@ import (
 )
 
 func MyComparator(compare string) test.Comparator {
-	return func(stdout string, info string, t *testing.T) {
+	return func(stdout string, t tig.T) {
 		t.Helper()
-		assert.Assert(t, stdout == compare, info)
+		assert.Assert(t, stdout == compare)
 	}
 }
 ```
-
-Note that you have access to an opaque `info` string.
-It contains relevant debugging information in case your comparator is going to fail,
-and you should make sure it is displayed.
 
 ### Advanced expectations
 
@@ -142,8 +138,8 @@ func TestMyThing(t *testing.T) {
 					errors.New("foobla"),
 					errdefs.ErrNotFound,
 				},
-				Output: func(stdout string, info string, t *testing.T) {
-					assert.Assert(t, stdout == data.Labels().Get("sometestdata"), info)
+				Output: func(stdout string, t tig.T) {
+					assert.Assert(t, stdout == data.Labels().Get("sometestdata"))
 				},
 			}
 		},
@@ -255,8 +251,8 @@ func TestMyThing(t *testing.T) {
 					errors.New("foobla"),
 					errdefs.ErrNotFound,
 				},
-				Output: func(stdout string, info string, t *testing.T) {
-					assert.Assert(t, stdout == data.Labels().Get("sometestdata"), info)
+				Output: func(stdout string, t tig.T) {
+					assert.Assert(t, stdout == data.Labels().Get("sometestdata"))
 				},
 			}
 		},
@@ -344,8 +340,8 @@ func TestMyThing(t *testing.T) {
 					errors.New("foobla"),
 					errdefs.ErrNotFound,
 				},
-				Output: func(stdout string, info string, t *testing.T) {
-					assert.Assert(t, stdout == data.Labels().Get("sometestdata"), info)
+				Output: func(stdout string, t tig.T) {
+					assert.Assert(t, stdout == data.Labels().Get("sometestdata"))
 				},
 			}
 		},

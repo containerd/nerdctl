@@ -37,4 +37,5 @@ type T interface {
 	Log(args ...any)
 	Name() string
 	TempDir() string
+	Skip(args ...any)
 }

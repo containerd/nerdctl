@@ -92,8 +92,7 @@ func TestCompletion(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: expect.All(
-							expect.Contains("host\n"),
-							expect.Contains(data.Labels().Get("identifier")+"\n"),
+							expect.Contains("host\n", data.Labels().Get("identifier")+"\n"),
 						),
 					}
 				},
@@ -104,8 +103,7 @@ func TestCompletion(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: expect.All(
-							expect.Contains("host\n"),
-							expect.Contains(data.Labels().Get("identifier")+"\n"),
+							expect.Contains("host\n", data.Labels().Get("identifier")+"\n"),
 						),
 					}
 				},
@@ -116,8 +114,7 @@ func TestCompletion(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: expect.All(
-							expect.Contains("host\n"),
-							expect.Contains(data.Labels().Get("identifier")+"\n"),
+							expect.Contains("host\n", data.Labels().Get("identifier")+"\n"),
 						),
 					}
 				},

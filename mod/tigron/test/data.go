@@ -19,6 +19,7 @@ package test
 import (
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -110,7 +111,42 @@ func (tp *temp) Save(value string, key ...string) string {
 	assertive.ErrorIsNil(
 		assertive.WithSilentSuccess(tp.t),
 		err,
-		fmt.Sprintf("Saving file %q must succeed", filepath.Join(key...)),
+		fmt.Sprintf("Saving file %q must succeed", pth),
+	)
+
+	return pth
+}
+
+func (tp *temp) SaveToWriter(writer func(file io.Writer) error, key ...string) string {
+	tp.t.Helper()
+
+	tp.Dir(key[:len(key)-1]...)
+
+	pth := filepath.Join(append([]string{tp.tempDir}, key...)...)
+	silentT := assertive.WithSilentSuccess(tp.t)
+
+	//nolint:gosec // it is fine
+	file, err := os.OpenFile(pth, os.O_CREATE, FilePermissionsDefault)
+	assertive.ErrorIsNil(
+		silentT,
+		err,
+		fmt.Sprintf("Opening file %q must succeed", pth),
+	)
+
+	defer func() {
+		err = file.Close()
+		assertive.ErrorIsNil(
+			silentT,
+			err,
+			fmt.Sprintf("Closing file %q must succeed", pth),
+		)
+	}()
+
+	err = writer(file)
+	assertive.ErrorIsNil(
+		silentT,
+		err,
+		fmt.Sprintf("Filewriter failed while attempting to write to %q", pth),
 	)
 
 	return pth
