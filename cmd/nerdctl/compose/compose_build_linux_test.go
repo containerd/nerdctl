@@ -17,17 +17,31 @@
 package compose
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposeBuild(t *testing.T) {
-	const imageSvc0 = "composebuild_svc0"
-	const imageSvc1 = "composebuild_svc1"
+	dockerfile := "FROM " + testutil.AlpineImage
 
-	dockerComposeYAML := fmt.Sprintf(`
+	testCase := nerdtest.Setup()
+
+	testCase.Require = nerdtest.Build
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		// Make sure we shard the image name to something unique to the test to avoid conflicts with other tests
+		imageSvc0 := data.Identifier("svc0")
+		imageSvc1 := data.Identifier("svc1")
+
+		// We are not going to run them, so, ports conflicts should not matter here
+		dockerComposeYAML := fmt.Sprintf(`
 services:
   svc0:
     build: .
@@ -43,31 +57,78 @@ services:
     - 8081:80
 `, imageSvc0, imageSvc1)
 
-	dockerfile := fmt.Sprintf(`FROM %s`, testutil.AlpineImage)
+		data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		data.Temp().Save(dockerfile, "Dockerfile")
 
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
+		data.Labels().Set("composeYaml", data.Temp().Path("compose.yaml"))
+		data.Labels().Set("imageSvc0", imageSvc0)
+		data.Labels().Set("imageSvc1", imageSvc1)
+	}
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	comp.WriteFile("Dockerfile", dockerfile)
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "build svc0",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYaml"), "build", "svc0")
+			},
 
-	defer base.Cmd("rmi", imageSvc0).Run()
-	defer base.Cmd("rmi", imageSvc1).Run()
+			Command: test.Command("images"),
 
-	// 1. build only 1 service without triggering the dependency service build
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "build", "svc0").AssertOK()
-	base.Cmd("images").AssertOutContains(imageSvc0)
-	base.Cmd("images").AssertOutNotContains(imageSvc1)
-	// 2. build multiple services
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "build", "svc0", "svc1").AssertOK()
-	base.Cmd("images").AssertOutContains(imageSvc0)
-	base.Cmd("images").AssertOutContains(imageSvc1)
-	// 3. build all if no args are given
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "build").AssertOK()
-	// 4. fail if some services args not exist in compose.yml
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "build", "svc0", "svc100").AssertFail()
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.All(
+						expect.Contains(data.Labels().Get("imageSvc0")),
+						expect.DoesNotContain(data.Labels().Get("imageSvc1")),
+					),
+				}
+			},
+		},
+		{
+			Description: "build svc0 and svc1",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYaml"), "build", "svc0", "svc1")
+			},
+
+			Command: test.Command("images"),
+
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.Contains(data.Labels().Get("imageSvc0"), data.Labels().Get("imageSvc1")),
+				}
+			},
+		},
+		{
+			Description: "build no arg",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "build")
+			},
+
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "build bogus",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command(
+					"compose",
+					"-f",
+					data.Labels().Get("composeYaml"),
+					"build",
+					"svc0",
+					"svc100",
+				)
+			},
+
+			Expected: test.Expects(1, []error{errors.New("no such service: svc100")}, nil),
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("imageSvc0") != "" {
+			helpers.Anyhow("rmi", data.Labels().Get("imageSvc0"), data.Labels().Get("imageSvc1"))
+		}
+	}
+
+	testCase.Run(t)
 }

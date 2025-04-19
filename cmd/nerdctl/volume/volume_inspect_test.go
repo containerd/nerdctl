@@ -152,8 +152,7 @@ func TestVolumeInspect(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					Output: expect.All(
-						expect.Contains(data.Labels().Get("vol1")),
-						expect.Contains(data.Labels().Get("vol2")),
+						expect.Contains(data.Labels().Get("vol1"), data.Labels().Get("vol2")),
 						expect.JSON([]native.Volume{}, func(dc []native.Volume, info string, t tig.T) {
 							assert.Assert(t, len(dc) == 2, fmt.Sprintf("two results, not %d", len(dc)))
 							assert.Assert(t, dc[0].Name == data.Labels().Get("vol1"), fmt.Sprintf("expected name to be %q (was %q)", data.Labels().Get("vol1"), dc[0].Name))

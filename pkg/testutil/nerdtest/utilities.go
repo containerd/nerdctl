@@ -18,12 +18,15 @@ package nerdtest
 
 import (
 	"encoding/json"
+	"net"
+	"strings"
 	"testing"
 	"time"
 
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
@@ -131,4 +134,60 @@ func EnsureContainerStarted(helpers test.Helpers, con string) {
 		helpers.T().Log(ps)
 		helpers.T().Fatalf("container %s still not running after %d retries", con, maxRetry)
 	}
+}
+
+func GenerateJWEKeyPair(data test.Data, helpers test.Helpers) (string, string) {
+	helpers.T().Helper()
+
+	path := "jwe-key-pair"
+	data.Temp().Dir(path)
+
+	pass, message := require.Binary("openssl").Check(data, helpers)
+	if !pass {
+		helpers.T().Skip(message)
+	}
+
+	pri := data.Temp().Path(path, "mykey.pem")
+	pub := data.Temp().Path(path, "mypubkey.pem")
+
+	// Exec openssl commands to ensure that nerdctl is compatible with the output of openssl commands.
+	// Do NOT refactor this function to use "crypto/rsa" stdlib.
+	helpers.Custom("openssl", "genrsa", "-out", pri).Run(&test.Expected{})
+	helpers.Custom("openssl", "rsa", "-in", pri, "-pubout", "-out", pub).Run(&test.Expected{})
+
+	return pri, pub
+}
+
+func GenerateCosignKeyPair(data test.Data, helpers test.Helpers, password string) (pri string, pub string) {
+	helpers.T().Helper()
+
+	path := "cosign-key-pair"
+	data.Temp().Dir(path)
+
+	pass, message := require.Binary("cosign").Check(data, helpers)
+	if !pass {
+		helpers.T().Skip(message)
+	}
+
+	cmd := helpers.Custom("cosign", "generate-key-pair")
+	cmd.WithCwd(data.Temp().Path(path))
+	cmd.Setenv("COSIGN_PASSWORD", password)
+	cmd.Run(&test.Expected{})
+
+	return data.Temp().Path(path, "cosign.key"), data.Temp().Path(path, "cosign.pub")
+}
+
+func FindIPv6(output string) net.IP {
+	var ipv6 string
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "inet6") {
+			fields := strings.Fields(line)
+			if len(fields) > 1 {
+				ipv6 = strings.Split(fields[1], "/")[0]
+				break
+			}
+		}
+	}
+	return net.ParseIP(ipv6)
 }
