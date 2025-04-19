@@ -18,18 +18,18 @@ package compose
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposeCopy(t *testing.T) {
-	base := testutil.NewBase(t)
-
 	var dockerComposeYAML = fmt.Sprintf(`
 version: '3.1'
 
@@ -39,31 +39,54 @@ services:
     command: "sleep infinity"
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	const testFileContent = "test-file-content"
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+	testCase := nerdtest.Setup()
 
-	// gernetate test file
-	srcDir := t.TempDir()
-	srcFile := filepath.Join(srcDir, "test-file")
-	srcFileContent := []byte("test-file-content")
-	err := os.WriteFile(srcFile, srcFileContent, 0o644)
-	assert.NilError(t, err)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		compYamlPath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		helpers.Ensure("compose", "-f", compYamlPath, "up", "-d")
 
-	// test copy to service
-	destPath := "/dest-no-exist-no-slash"
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "cp", srcFile, "svc0:"+destPath).AssertOK()
+		srcFilePath := data.Temp().Save(testFileContent, "test-file")
 
-	// test copy from service
-	destFile := filepath.Join(srcDir, "test-file2")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "cp", "svc0:"+destPath, destFile).AssertOK()
+		data.Labels().Set("composeYaml", compYamlPath)
+		data.Labels().Set("srcFile", srcFilePath)
+	}
 
-	destFileContent, err := os.ReadFile(destFile)
-	assert.NilError(t, err)
-	assert.DeepEqual(t, srcFileContent, destFileContent)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
 
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "test copy to service /dest-no-exist-no-slash",
+			// These are expected to run in sequence
+			NoParallel: true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose",
+					"-f", data.Labels().Get("composeYaml"),
+					"cp", data.Labels().Get("srcFile"), "svc0:/dest-no-exist-no-slash")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "test copy from service test-file2",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose",
+					"-f", data.Labels().Get("composeYaml"),
+					"cp", "svc0:/dest-no-exist-no-slash", data.Temp().Path("test-file2"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout, info string, t *testing.T) {
+						copied := data.Temp().Load("test-file2")
+						assert.Equal(t, copied, testFileContent)
+					},
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
 }

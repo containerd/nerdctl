@@ -41,7 +41,6 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -682,27 +681,18 @@ func TestSharedNetworkWithNone(t *testing.T) {
 	testCase := &test.Case{
 		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Labels().Set("containerName1", data.Identifier("-container1"))
-			containerName1 := data.Labels().Get("containerName1")
-			helpers.Ensure("run", "-d", "--name", containerName1, "--network", "none",
+			helpers.Ensure("run", "-d", "--name", data.Identifier("container1"), "--network", "none",
 				testutil.NginxAlpineImage)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
-			helpers.Anyhow("rm", "-f", data.Labels().Get("containerName1"))
+			helpers.Anyhow("rm", "-f", data.Identifier("container1"))
+			helpers.Anyhow("rm", "-f", data.Identifier("container2"))
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			containerName2 := data.Identifier()
-			cmd := helpers.Command()
-			cmd.WithArgs("run", "-d", "--name", containerName2,
-				"--network=container:"+data.Labels().Get("containerName1"),
-				testutil.NginxAlpineImage)
-			return cmd
+			return helpers.Command("run", "-d", "--name", data.Identifier("container2"),
+				"--network=container:"+data.Identifier("container1"), testutil.NginxAlpineImage)
 		},
-		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-			return &test.Expected{
-				ExitCode: 0,
-			}
-		},
+		Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 	}
 	testCase.Run(t)
 }
@@ -905,7 +895,7 @@ func TestRunContainerWithStaticIP6(t *testing.T) {
 				return
 			}
 			cmd.AssertOutWithFunc(func(stdout string) error {
-				ip := helpers.FindIPv6(stdout)
+				ip := nerdtest.FindIPv6(stdout)
 				if !subnet.Contains(ip) {
 					return fmt.Errorf("expected subnet %s include ip %s", subnet, ip)
 				}

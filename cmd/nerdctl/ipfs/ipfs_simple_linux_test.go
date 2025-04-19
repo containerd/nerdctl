@@ -24,7 +24,6 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
-	testhelpers "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -168,14 +167,12 @@ func TestIPFSSimple(t *testing.T) {
 				helpers.Ensure("pull", "--quiet", "ipfs://"+data.Labels().Get(mainImageCIDKey))
 
 				// Prep a key pair
-				keyPair := testhelpers.NewJWEKeyPair(t)
-				// FIXME: this will only cleanup when the group is done, not right, but it works
-				t.Cleanup(keyPair.Cleanup)
-				data.Labels().Set("pub", keyPair.Pub)
-				data.Labels().Set("prv", keyPair.Prv)
+				pri, pub := nerdtest.GenerateJWEKeyPair(data, helpers)
+				data.Labels().Set("prv", pri)
+				data.Labels().Set("pub", pub)
 
 				// Encrypt the image, and verify it is encrypted
-				helpers.Ensure("image", "encrypt", "--recipient=jwe:"+keyPair.Pub, data.Labels().Get(mainImageCIDKey), data.Identifier("encrypted"))
+				helpers.Ensure("image", "encrypt", "--recipient=jwe:"+pub, data.Labels().Get(mainImageCIDKey), data.Identifier("encrypted"))
 				cmd := helpers.Command("image", "inspect", "--mode=native", "--format={{len .Index.Manifests}}", data.Identifier("encrypted"))
 				cmd.Run(&test.Expected{
 					Output: expect.Equals("1\n"),
