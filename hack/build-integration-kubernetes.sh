@@ -22,8 +22,8 @@ readonly root
 . "$root/scripts/lib.sh"
 
 GO_VERSION=1.24
-KIND_VERSION=v0.24.0
-CNI_PLUGINS_VERSION=v1.5.1
+KIND_VERSION=v0.27.0
+CNI_PLUGINS_VERSION=v1.6.2
 
 [ "$(uname -m)" == "aarch64" ] && GOARCH=arm64 || GOARCH=amd64
 
