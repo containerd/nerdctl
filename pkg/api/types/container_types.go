@@ -404,6 +404,8 @@ type ContainerLogsOptions struct {
 	Since string
 	// Show logs before a timestamp (e.g., 2013-01-02T13:23:37Z) or relative (e.g., 42m for 42 minutes).
 	Until string
+	// Details specifies whether to show extra details provided to logs
+	Details bool
 }
 
 // ContainerWaitOptions specifies options for `nerdctl (container) wait`.
