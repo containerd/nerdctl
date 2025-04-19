@@ -1,5 +1,5 @@
 # This pipeline purpose is solely meant to run a subset of our test suites against a kubernetes cluster
-name: kubernetes
+name: "[flaky, see #3988] kubernetes"
 
 on:
   push:
