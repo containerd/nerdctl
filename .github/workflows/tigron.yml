@@ -14,7 +14,7 @@ env:
 
 jobs:
   lint:
-    timeout-minutes: 10
+    timeout-minutes: 15
     name: "${{ matrix.goos }} ${{ matrix.os }} | go ${{ matrix.canary }}"
     runs-on: ${{ matrix.os }}
     defaults:
