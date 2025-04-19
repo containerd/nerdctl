@@ -48,6 +48,9 @@ type (
 
 	TTempDirIn  struct{}
 	TTempDirOut = string
+
+	TSkipIn  []any
+	TSkipOut struct{}
 )
 
 type MockT struct {
@@ -92,4 +95,10 @@ func (m *MockT) TempDir() string {
 	}
 
 	return ""
+}
+
+func (m *MockT) Skip(args ...any) {
+	if handler := m.Retrieve(); handler != nil {
+		handler.(mimicry.Function[TSkipIn, TSkipOut])(args)
+	}
 }

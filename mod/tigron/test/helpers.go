@@ -17,8 +17,6 @@
 package test
 
 import (
-	"testing"
-
 	"github.com/containerd/nerdctl/mod/tigron/internal"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
@@ -28,7 +26,7 @@ import (
 type helpersInternal struct {
 	cmdInternal CustomizableCommand
 
-	t *testing.T
+	t tig.T
 }
 
 // Ensure will run a command and make sure it is successful.
@@ -104,6 +102,6 @@ func (help *helpersInternal) Write(key ConfigKey, value ConfigValue) {
 	help.cmdInternal.write(key, value)
 }
 
-func (help *helpersInternal) T() *testing.T {
+func (help *helpersInternal) T() tig.T {
 	return help.t
 }

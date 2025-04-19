@@ -17,14 +17,15 @@
 package nerdtest
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"testing"
 
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -49,7 +50,7 @@ func getTarget() string {
 	return testutil.GetTarget()
 }
 
-func newNerdCommand(conf test.Config, t *testing.T) *nerdCommand {
+func newNerdCommand(conf test.Config, t tig.T) *nerdCommand {
 	// Decide what binary we are running
 	var err error
 	var binary string
@@ -58,7 +59,8 @@ func newNerdCommand(conf test.Config, t *testing.T) *nerdCommand {
 	case targetNerdctl:
 		binary, err = exec.LookPath(trgt)
 		if err != nil {
-			t.Fatalf("unable to find binary %q: %v", trgt, err)
+			t.Log(fmt.Sprintf("unable to find binary %q: %v", trgt, err))
+			t.FailNow()
 		}
 		// Set the default namespace if we do not have something already
 		if conf.Read(Namespace) == "" {
@@ -67,13 +69,16 @@ func newNerdCommand(conf test.Config, t *testing.T) *nerdCommand {
 	case targetDocker:
 		binary, err = exec.LookPath(trgt)
 		if err != nil {
-			t.Fatalf("unable to find binary %q: %v", trgt, err)
+			t.Log(fmt.Sprintf("unable to find binary %q: %v", trgt, err))
+			t.FailNow()
 		}
 		if err = exec.Command("docker", "compose", "version").Run(); err != nil {
-			t.Fatalf("docker does not support compose: %v", err)
+			t.Log(fmt.Sprintf("docker does not support compose: %v", err))
+			t.FailNow()
 		}
 	default:
-		t.Fatalf("unknown target %q", getTarget())
+		t.Log(fmt.Sprintf("unknown target %q", getTarget()))
+		t.FailNow()
 	}
 
 	// Create the base command, with the right binary, t

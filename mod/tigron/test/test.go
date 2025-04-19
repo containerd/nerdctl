@@ -17,13 +17,13 @@
 package test
 
 import (
-	"testing"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
 // Testable TODO.
 type Testable interface {
-	CustomCommand(testCase *Case, t *testing.T) CustomizableCommand
-	AmbientRequirements(testCase *Case, t *testing.T)
+	CustomCommand(testCase *Case, t tig.T) CustomizableCommand
+	AmbientRequirements(testCase *Case, t tig.T)
 }
 
 // FIXME
