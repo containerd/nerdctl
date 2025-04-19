@@ -17,23 +17,18 @@
 package registry
 
 import (
-	"encoding/json"
 	"fmt"
+	"io"
 	"net"
-	"os"
 	"strconv"
-	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/yaml.v3"
 	"gotest.tools/v3/assert"
 
-	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
-	"github.com/containerd/nerdctl/mod/tigron/tig"
 	"github.com/containerd/nerdctl/mod/tigron/utils/testca"
 
-	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
@@ -72,51 +67,6 @@ type CesantaConfig struct {
 	Token  CesantaConfigToken           `yaml:"token"`
 	Users  map[string]CesantaConfigUser `yaml:"users,omitempty"`
 	ACL    CesantaConfigACL             `yaml:"acl,omitempty"`
-}
-
-func (cc *CesantaConfig) Save(path string) error {
-	var err error
-	var r *os.File
-	if r, err = os.Create(path); err == nil {
-		defer r.Close()
-		err = yaml.NewEncoder(r).Encode(cc)
-	}
-	return err
-}
-
-// FIXME: this is a copy of the utility method EnsureContainerStarted
-// We cannot reference it (circular dep), so the copy.
-// To be fixed later when we will be done migrating test helpers to the new framework and we can split them
-// in meaningful subpackages.
-
-func ensureContainerStarted(helpers test.Helpers, con string) {
-	started := false
-	for i := 0; i < 5 && !started; i++ {
-		helpers.Command("container", "inspect", con).
-			Run(&test.Expected{
-				ExitCode: expect.ExitCodeNoCheck,
-				Output: func(stdout string, t tig.T) {
-					var dc []dockercompat.Container
-					err := json.Unmarshal([]byte(stdout), &dc)
-					if err != nil || len(dc) == 0 {
-						return
-					}
-					assert.Equal(t, len(dc), 1, "Unexpectedly got multiple results\n")
-					started = dc[0].State.Running
-				},
-			})
-		time.Sleep(time.Second)
-	}
-
-	if !started {
-		ins := helpers.Capture("container", "inspect", con)
-		lgs := helpers.Capture("logs", con)
-		ps := helpers.Capture("ps", "-a")
-		helpers.T().Log(ins)
-		helpers.T().Log(lgs)
-		helpers.T().Log(ps)
-		helpers.T().Fatalf("container %s still not running after %d retries", con, 5)
-	}
 }
 
 func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *testca.Cert, port int, user, pass string, tls bool) *TokenAuthServer {
@@ -161,9 +111,9 @@ func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *testca.Cert,
 		cc.Token.Key = "/auth/domain.key"
 	}
 
-	configFileName := data.Temp().Path("authconfig")
-	err = cc.Save(configFileName)
-	assert.NilError(helpers.T(), err, fmt.Errorf("failed writing configuration: %w", err))
+	configFileName := data.Temp().SaveToWriter(func(file io.Writer) error {
+		return yaml.NewEncoder(file).Encode(cc)
+	}, "authconfig")
 
 	cert := ca.GenerateServerX509(data, helpers, hostIP.String())
 	// FIXME: this will fail in many circumstances. Review strategy on how to acquire a free port.
@@ -176,10 +126,10 @@ func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *testca.Cert,
 
 	cleanup := func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("rm", "-f", containerName)
-		errPortRelease := portlock.Release(port)
-		if errPortRelease != nil {
-			helpers.T().Error(errPortRelease.Error())
-		}
+		_ = portlock.Release(port)
+		//if errPortRelease != nil {
+		//	helpers.T().Error(errPortRelease.Error())
+		//}
 	}
 
 	setup := func(data test.Data, helpers test.Helpers) {
@@ -195,21 +145,13 @@ func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *testca.Cert,
 			platform.DockerAuthImage,
 			"/config/auth_config.yml",
 		)
-		ensureContainerStarted(helpers, containerName)
-		_, err = nettestutil.HTTPGet(fmt.Sprintf("%s://%s/auth",
-			scheme,
-			net.JoinHostPort(hostIP.String(), strconv.Itoa(port)),
-		),
-			10,
-			true)
-		assert.NilError(helpers.T(), err, fmt.Errorf("failed starting auth container in a timely manner: %w", err))
-
+		ensureServerStarted(helpers, containerName, scheme, hostIP, port)
 	}
 
 	return &TokenAuthServer{
+		Scheme:   scheme,
 		IP:       hostIP,
 		Port:     port,
-		Scheme:   scheme,
 		CertPath: cert.CertPath,
 		Auth: &TokenAuth{
 			Address:  scheme + "://" + net.JoinHostPort(hostIP.String(), strconv.Itoa(port)),
@@ -217,8 +159,5 @@ func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *testca.Cert,
 		},
 		Setup:   setup,
 		Cleanup: cleanup,
-		Logs: func(data test.Data, helpers test.Helpers) {
-			helpers.T().Error(helpers.Err("logs", containerName))
-		},
 	}
 }

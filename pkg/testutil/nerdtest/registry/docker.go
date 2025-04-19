@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
 
 	"gotest.tools/v3/assert"
 
@@ -84,9 +83,7 @@ func NewDockerRegistry(data test.Data, helpers test.Helpers, currentCA *testca.C
 
 	cleanup := func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("rm", "-f", containerName)
-		errPortRelease := portlock.Release(port)
-
-		assert.NilError(helpers.T(), errPortRelease, fmt.Errorf("failed releasing port: %w", err))
+		assert.NilError(helpers.T(), portlock.Release(port), fmt.Errorf("failed releasing port"))
 	}
 
 	// FIXME: in the future, we will want to further manipulate hosts toml file from the test
@@ -127,25 +124,15 @@ func NewDockerRegistry(data test.Data, helpers test.Helpers, currentCA *testca.C
 
 	setup := func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure(args...)
-		ensureContainerStarted(helpers, containerName)
-		_, err = nettestutil.HTTPGet(fmt.Sprintf("%s://%s/v2/",
-			scheme,
-			net.JoinHostPort(hostIP.String(), strconv.Itoa(port)),
-		),
-			10,
-			true)
-		assert.NilError(helpers.T(), err, fmt.Errorf("failed starting docker registry in a timely manner: %w", err))
+		ensureServerStarted(helpers, containerName, scheme, hostIP, port)
 	}
 
 	return &Server{
-		Scheme:  scheme,
-		IP:      hostIP,
-		Port:    port,
-		Cleanup: cleanup,
-		Setup:   setup,
-		Logs: func(data test.Data, helpers test.Helpers) {
-			helpers.T().Error(helpers.Err("logs", containerName))
-		},
+		Scheme:   scheme,
+		IP:       hostIP,
+		Port:     port,
+		Setup:    setup,
+		Cleanup:  cleanup,
 		HostsDir: hostsDir,
 	}
 }

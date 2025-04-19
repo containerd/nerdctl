@@ -18,6 +18,7 @@ package nerdtest
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"path/filepath"
 	"strings"
@@ -105,14 +106,16 @@ const (
 	sleep    = time.Second
 )
 
-func EnsureContainerStarted(helpers test.Helpers, con string) {
+func EnsureContainerStarted(helpers test.Helpers, containerName string) {
 	helpers.T().Helper()
+
 	started := false
 	for i := 0; i < maxRetry && !started; i++ {
-		helpers.Command("container", "inspect", con).
+		helpers.Command("container", "inspect", containerName).
 			Run(&test.Expected{
 				ExitCode: expect.ExitCodeNoCheck,
 				Output: func(stdout string, t tig.T) {
+					// Note: we can't use JSON comparator because it would hard fail if there is no content
 					var dc []dockercompat.Container
 					err := json.Unmarshal([]byte(stdout), &dc)
 					if err != nil || len(dc) == 0 {
@@ -126,13 +129,18 @@ func EnsureContainerStarted(helpers test.Helpers, con string) {
 	}
 
 	if !started {
-		ins := helpers.Capture("container", "inspect", con)
-		lgs := helpers.Capture("logs", con)
+		ins := helpers.Capture("container", "inspect", containerName)
 		ps := helpers.Capture("ps", "-a")
+		stdout := helpers.Capture("logs", containerName)
+		stderr := helpers.Err("logs", containerName)
+
 		helpers.T().Log(ins)
-		helpers.T().Log(lgs)
 		helpers.T().Log(ps)
-		helpers.T().Fatalf("container %s still not running after %d retries", con, maxRetry)
+		helpers.T().Log(stdout)
+		helpers.T().Log(stderr)
+		helpers.T().Log(fmt.Sprintf("container %s still not running after %d retries", containerName, maxRetry))
+		helpers.T().FailNow()
+
 	}
 }
 
