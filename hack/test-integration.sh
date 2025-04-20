@@ -44,7 +44,7 @@ fi
 
 for arg in "$@"; do
   if [ "$arg" == "-test.only-flaky=true" ] || [ "$arg" == "-test.only-flaky" ]; then
-    args+=("--rerun-fails=$retries")
+#    args+=("--rerun-fails=$retries")
     break
   fi
 done
