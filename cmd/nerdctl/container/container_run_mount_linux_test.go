@@ -27,6 +27,8 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/containerd/v2/core/mount"
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -304,68 +306,103 @@ func TestRunBindMountTmpfs(t *testing.T) {
 	base.Cmd("run", "--rm", "--mount", "type=tmpfs,target=/tmp,tmpfs-size=64m", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=65536k"}))
 }
 
-func TestRunBindMountBind(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-	rwDir, err := os.MkdirTemp(t.TempDir(), "rw")
-	if err != nil {
-		t.Fatal(err)
-	}
-	roDir, err := os.MkdirTemp(t.TempDir(), "ro")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	containerName := tID
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	base.Cmd("run",
-		"-d",
-		"--name", containerName,
-		"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1", rwDir),
-		"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt2,ro", roDir),
-		testutil.AlpineImage,
-		"top",
-	).AssertOK()
-	base.Cmd("exec", containerName, "sh", "-exc", "echo -n str1 > /mnt1/file1").AssertOK()
-	base.Cmd("exec", containerName, "sh", "-exc", "echo -n str2 > /mnt2/file2").AssertFail()
-
-	base.Cmd("run",
-		"--rm",
-		"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1", rwDir),
-		testutil.AlpineImage,
-		"cat", "/mnt1/file1",
-	).AssertOutExactly("str1")
-
-	// check `bind-propagation`
-	f := func(allow string) func(stdout string) error {
-		return func(stdout string) error {
-			lines := strings.Split(strings.TrimSpace(stdout), "\n")
-			if len(lines) != 1 {
-				return fmt.Errorf("expected 1 lines, got %q", stdout)
+func mountExistsWithOpt(mountPoint, mountOpt string) test.Comparator {
+	return func(stdout, info string, t *testing.T) {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		mountOutput := []string{}
+		for _, line := range lines {
+			if strings.Contains(line, mountPoint) {
+				mountOutput = strings.Split(line, " ")
+				break
 			}
-			fields := strings.Split(lines[0], " ")
-			if len(fields) < 4 {
-				return fmt.Errorf("invalid /proc/mounts format %q", stdout)
-			}
-
-			options := strings.Split(fields[3], ",")
-
-			found := false
-			for _, s := range options {
-				if allow == s {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return fmt.Errorf("expected stdout to contain %q, got %+v", allow, options)
-			}
-			return nil
 		}
+
+		assert.Assert(t, len(mountOutput) > 0, "we should have found the mount point in /proc/mounts")
+		assert.Assert(t, len(mountOutput) >= 4, "invalid format for mount line")
+
+		options := strings.Split(mountOutput[3], ",")
+
+		found := false
+		for _, opt := range options {
+			if mountOpt == opt {
+				found = true
+				break
+			}
+		}
+
+		assert.Assert(t, found, "mount option %s not found", mountOpt)
 	}
-	base.Cmd("exec", containerName, "grep", "/mnt1", "/proc/mounts").AssertOutWithFunc(f("rw"))
-	base.Cmd("exec", containerName, "grep", "/mnt2", "/proc/mounts").AssertOutWithFunc(f("ro"))
+}
+
+func TestRunBindMountBind(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		// Run a container with bind mount directories, one rw, the other ro
+		rwDir := data.Temp().Dir("rw")
+		roDir := data.Temp().Dir("ro")
+
+		helpers.Ensure(
+			"run",
+			"-d",
+			"--name", data.Identifier("container"),
+			"--mount", fmt.Sprintf("type=bind,src=%s,target=/mntrw", rwDir),
+			"--mount", fmt.Sprintf("type=bind,src=%s,target=/mntro,ro", roDir),
+			testutil.AlpineImage,
+			"top",
+		)
+
+		// Save host rwDir location and container id for subtests
+		data.Labels().Set("container", data.Identifier("container"))
+		data.Labels().Set("rwDir", rwDir)
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "ensure we cannot write to ro mount",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("container"), "sh", "-exc", "echo -n failure > /mntro/file")
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "ensure we can write to rw, and read it back from another container mounting the same target",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("exec", data.Labels().Get("container"), "sh", "-exc", "echo -n success > /mntrw/file")
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command(
+					"run",
+					"--rm",
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mntrw", data.Labels().Get("rwDir")),
+					testutil.AlpineImage,
+					"cat", "/mntrw/file",
+				)
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("success")),
+		},
+		{
+			Description: "Check that mntrw is seen in /proc/mounts",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("container"), "cat", "/proc/mounts")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.All(
+						// Ensure we have mntrw in the mount list
+						mountExistsWithOpt("/mntrw", "rw"),
+						mountExistsWithOpt("/mntro", "ro"),
+					),
+				}
+			},
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier("container"))
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunMountBindMode(t *testing.T) {
