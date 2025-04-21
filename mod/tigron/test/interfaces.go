@@ -40,6 +40,9 @@ type DataTemp interface {
 	// Save will store the content in the file, ensuring parent dir exists, and return the path.
 	// Asserts on failure.
 	Save(data string, key ...string) string
+	// SaveToWriter allows to write to the file as a writer.
+	// This is particularly useful for encoding functions like pem.Encode.
+	SaveToWriter(writer func(file io.Writer) error, key ...string) string
 	// Path will return the absolute path for the asset, whether it exists or not.
 	Path(key ...string) string
 	// Exists asserts that the object exist.
