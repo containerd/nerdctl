@@ -31,9 +31,9 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/utils/testca"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/ca"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
@@ -119,7 +119,7 @@ func ensureContainerStarted(helpers test.Helpers, con string) {
 	}
 }
 
-func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *ca.CA, port int, user, pass string, tls bool) *TokenAuthServer {
+func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *testca.Cert, port int, user, pass string, tls bool) *TokenAuthServer {
 	// listen on 0.0.0.0 to enable 127.0.0.1
 	listenIP := net.ParseIP("0.0.0.0")
 	hostIP, err := nettestutil.NonLoopbackIPv4()
@@ -165,7 +165,7 @@ func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *ca.CA, port 
 	err = cc.Save(configFileName)
 	assert.NilError(helpers.T(), err, fmt.Errorf("failed writing configuration: %w", err))
 
-	cert := ca.NewCert(hostIP.String())
+	cert := ca.GenerateServerX509(data, helpers, hostIP.String())
 	// FIXME: this will fail in many circumstances. Review strategy on how to acquire a free port.
 	// We probably have better code for that already somewhere.
 	port, err = portlock.Acquire(port)
@@ -177,12 +177,8 @@ func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *ca.CA, port 
 	cleanup := func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("rm", "-f", containerName)
 		errPortRelease := portlock.Release(port)
-		errCertClose := cert.Close()
 		if errPortRelease != nil {
 			helpers.T().Error(errPortRelease.Error())
-		}
-		if errCertClose != nil {
-			helpers.T().Error(errCertClose.Error())
 		}
 	}
 
