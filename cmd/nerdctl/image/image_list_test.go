@@ -223,10 +223,11 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 			{
 				Description: "reference=tagged*:*fragment*",
 				Command:     test.Command("images", "--filter", "reference=tagged*:*fragment*"),
-				Expected: test.Expects(0, nil, expect.All(
-					expect.Contains("one-"),
-					expect.Contains("two-"),
-				)),
+				Expected: test.Expects(
+					0,
+					nil,
+					expect.Contains("one-", "two-"),
+				),
 			},
 			{
 				Description: "before=ID:latest",
@@ -259,9 +260,9 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				Command:     test.Command("images", "--filter", fmt.Sprintf("since=%s", testutil.CommonImage), testutil.CommonImage),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.All(
-							expect.DoesNotContain(data.Labels().Get("builtImageID")),
-							expect.DoesNotContain(testutil.ImageRepo(testutil.CommonImage)),
+						Output: expect.DoesNotContain(
+							data.Labels().Get("builtImageID"),
+							testutil.ImageRepo(testutil.CommonImage),
 						),
 					}
 				},

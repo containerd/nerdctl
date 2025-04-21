@@ -95,10 +95,7 @@ services:
 
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: expect.All(
-						expect.Contains(data.Labels().Get("imageSvc0")),
-						expect.Contains(data.Labels().Get("imageSvc1")),
-					),
+					Output: expect.Contains(data.Labels().Get("imageSvc0"), data.Labels().Get("imageSvc1")),
 				}
 			},
 		},
