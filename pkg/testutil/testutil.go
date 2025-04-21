@@ -413,14 +413,6 @@ func (c *Cmd) AssertOutContains(s string) {
 	c.Assert(expected)
 }
 
-func (c *Cmd) AssertErrContains(s string) {
-	c.Base.T.Helper()
-	expected := icmd.Expected{
-		Err: s,
-	}
-	c.Assert(expected)
-}
-
 func (c *Cmd) AssertCombinedOutContains(s string) {
 	c.Base.T.Helper()
 	res := c.runIfNecessary()
@@ -465,16 +457,6 @@ func (c *Cmd) AssertOutNotContains(s string) {
 	})
 }
 
-func (c *Cmd) AssertErrNotContains(s string) {
-	c.Base.T.Helper()
-	c.AssertOutWithFunc(func(stderr string) error {
-		if strings.Contains(stderr, s) {
-			return fmt.Errorf("expected stdout to not contain %q", s)
-		}
-		return nil
-	})
-}
-
 func (c *Cmd) AssertOutExactly(s string) {
 	c.Base.T.Helper()
 	fn := func(stdout string) error {
@@ -486,24 +468,6 @@ func (c *Cmd) AssertOutExactly(s string) {
 	c.AssertOutWithFunc(fn)
 }
 
-func (c *Cmd) AssertOutStreamsExactly(stdout, stderr string) {
-	c.Base.T.Helper()
-	fn := func(sout, serr string) error {
-		msg := ""
-		if sout != stdout {
-			msg += fmt.Sprintf("stdout mismatch, expected %q, got %q\n", stdout, sout)
-		}
-		if serr != stderr {
-			msg += fmt.Sprintf("stderr mismatch, expected %q, got %q\n", stderr, serr)
-		}
-		if msg != "" {
-			return errors.New(msg)
-		}
-		return nil
-	}
-	c.AssertOutStreamsWithFunc(fn)
-}
-
 func (c *Cmd) AssertOutWithFunc(fn func(stdout string) error) {
 	c.Base.T.Helper()
 	res := c.runIfNecessary()
@@ -511,25 +475,11 @@ func (c *Cmd) AssertOutWithFunc(fn func(stdout string) error) {
 	assert.NilError(c.Base.T, fn(res.Stdout()), res.Combined())
 }
 
-func (c *Cmd) AssertOutStreamsWithFunc(fn func(stdout, stderr string) error) {
-	c.Base.T.Helper()
-	res := c.runIfNecessary()
-	assert.Equal(c.Base.T, 0, res.ExitCode, res)
-	assert.NilError(c.Base.T, fn(res.Stdout(), res.Stderr()), res.Combined())
-}
-
 func (c *Cmd) Out() string {
 	c.Base.T.Helper()
 	res := c.runIfNecessary()
 	assert.Equal(c.Base.T, 0, res.ExitCode, res)
 	return res.Stdout()
-}
-
-func (c *Cmd) OutLines() []string {
-	c.Base.T.Helper()
-	out := c.Out()
-	// FIXME: improve memory efficiency
-	return strings.Split(out, "\n")
 }
 
 type Target = string
@@ -544,7 +494,6 @@ var (
 	flagTestKillDaemon bool
 	flagTestIPv6       bool
 	flagTestKube       bool
-	flagVerbose        bool
 	flagTestFlaky      bool
 )
 
@@ -558,9 +507,6 @@ func M(m *testing.M) {
 	flag.BoolVar(&flagTestIPv6, "test.only-ipv6", false, "enable tests on IPv6")
 	flag.BoolVar(&flagTestKube, "test.only-kubernetes", false, "enable tests on Kubernetes")
 	flag.BoolVar(&flagTestFlaky, "test.only-flaky", false, "enable testing of flaky tests only (if false, flaky tests are ignored)")
-	if flag.Lookup("test.v") != nil {
-		flagVerbose = true
-	}
 	flag.Parse()
 
 	os.Exit(func() int {
@@ -638,8 +584,6 @@ func IsDocker() bool {
 	return GetTarget() == Docker
 }
 
-func GetVerbose() bool { return flagVerbose }
-
 func DockerIncompatible(t testing.TB) {
 	if IsDocker() {
 		t.Skip("test is incompatible with Docker")
@@ -664,22 +608,6 @@ func RequireExecPlatform(t testing.TB, ss ...string) {
 			msg += fmt.Sprintf(": %v", err)
 		}
 		t.Skip(msg)
-	}
-}
-
-func RequireDaemonVersion(b *Base, constraint string) {
-	b.T.Helper()
-	c, err := semver.NewConstraint(constraint)
-	if err != nil {
-		b.T.Fatal(err)
-	}
-	info := b.Info()
-	sv, err := semver.NewVersion(info.ServerVersion)
-	if err != nil {
-		b.T.Skip(err)
-	}
-	if !c.Check(sv) {
-		b.T.Skipf("version %v does not satisfy constraints %v", sv, c)
 	}
 }
 
@@ -838,4 +766,9 @@ func RegisterBuildCacheCleanup(t *testing.T) {
 	t.Cleanup(func() {
 		NewBase(t).Cmd("builder", "prune", "--all", "--force").Run()
 	})
+}
+
+func mirrorOf(s string) string {
+	// plain mirror, NOT stargz-converted images
+	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
 }

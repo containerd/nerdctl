@@ -43,9 +43,6 @@ const (
 	NginxAlpineImage            = "registry.k8s.io/e2e-test-images/nginx:1.14-2"
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
 
-	GolangImage = "fixme-test-using-this-image-is-disabled-on-windows"
-	AlpineImage = "fixme-test-using-this-image-is-disabled-on-windows"
-
 	// This error string is expected when attempting to connect to a TCP socket
 	// for a service which actively refuses the connection.
 	// (e.g. attempting to connect using http to an https endpoint).
@@ -56,6 +53,9 @@ const (
 )
 
 var (
+	GolangImage = mirrorOf("fixme-test-using-this-image-is-disabled-on-windows")
+	AlpineImage = mirrorOf("fixme-test-using-this-image-is-disabled-on-windows")
+
 	hypervContainer     bool
 	hypervSupported     bool
 	hypervSupportedOnce sync.Once

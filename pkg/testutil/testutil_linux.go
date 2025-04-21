@@ -16,15 +16,6 @@
 
 package testutil
 
-import (
-	"fmt"
-)
-
-func mirrorOf(s string) string {
-	// plain mirror, NOT stargz-converted images
-	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
-}
-
 var (
 	BusyboxImage                = "ghcr.io/containerd/busybox:1.36"
 	AlpineImage                 = mirrorOf("alpine:3.13")
