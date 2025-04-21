@@ -40,7 +40,7 @@ func CNINetConfPath() string {
 }
 
 func CNIRuntimeDir() (string, error) {
-	return "/run/cni", nil
+	return "/var/run/cni", nil
 }
 
 func CgroupManager() string {

@@ -35,6 +35,8 @@ func TestBuildKitFile(t *testing.T) {
 	var tmp = t.TempDir()
 	var wd, err = os.Getwd()
 	assert.NilError(t, err)
+	tmp, err = filepath.EvalSymlinks(tmp)
+	assert.NilError(t, err)
 	err = os.Chdir(tmp)
 	assert.NilError(t, err)
 	defer os.Chdir(wd)

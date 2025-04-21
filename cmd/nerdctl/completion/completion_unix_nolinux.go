@@ -1,3 +1,5 @@
+//go:build unix && !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,10 +16,10 @@
    limitations under the License.
 */
 
-package container
+package completion
 
 import "github.com/spf13/cobra"
 
-func AddCpCommand(rootCmd *cobra.Command) {
-	// NOP
+func CgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }

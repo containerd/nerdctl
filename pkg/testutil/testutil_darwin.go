@@ -14,13 +14,22 @@
    limitations under the License.
 */
 
-package container
+package testutil
 
-import (
-	"github.com/opencontainers/runtime-spec/specs-go"
+const (
+	CommonImage = ""
+
+	// This error string is expected when attempting to connect to a TCP socket
+	// for a service which actively refuses the connection.
+	// (e.g. attempting to connect using http to an https endpoint).
+	// It should be "connection refused" as per the TCP RFC.
+	// https://www.rfc-editor.org/rfc/rfc793
+	ExpectedConnectionRefusedError = "connection refused"
 )
 
-func setExecCapabilities(pspec *specs.Process) error {
-	//no op windows
-	return nil
-}
+var (
+	BusyboxImage     = "ghcr.io/containerd/busybox:1.36"
+	AlpineImage      = mirrorOf("alpine:3.13")
+	NginxAlpineImage = mirrorOf("nginx:1.19-alpine")
+	GolangImage      = mirrorOf("golang:1.18")
+)

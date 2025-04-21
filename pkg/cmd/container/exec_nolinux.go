@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -17,10 +19,10 @@
 package container
 
 import (
-	"github.com/spf13/cobra"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func capShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	candidates := []string{}
-	return candidates, cobra.ShellCompDirectiveNoFileComp
+func setExecCapabilities(pspec *specs.Process) error {
+	//no op freebsd
+	return nil
 }

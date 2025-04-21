@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
    Copyright The containerd Authors.
 
@@ -14,13 +16,13 @@
    limitations under the License.
 */
 
-package namespace
+package container
 
 import (
-	"github.com/containerd/containerd/v2/pkg/namespaces"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/statsutil"
 )
 
-func namespaceDeleteOpts(cgroup bool) ([]namespaces.DeleteOpts, error) {
-	var delOpts []namespaces.DeleteOpts
-	return delOpts, nil
+func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStats, firstSet bool, anydata interface{}, pid int, interfaces []native.NetInterface) (statsutil.StatsEntry, error) {
+	return statsutil.StatsEntry{}, nil
 }

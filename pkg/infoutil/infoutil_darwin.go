@@ -14,10 +14,25 @@
    limitations under the License.
 */
 
-package completion
+package infoutil
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/docker/docker/pkg/sysinfo"
 
-func CgroupManagerNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return nil, cobra.ShellCompDirectiveNoFileComp
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+)
+
+const UnameO = "Darwin"
+
+func CgroupsVersion() string {
+	return ""
+}
+
+func fulfillPlatformInfo(info *dockercompat.Info) {
+	// unimplemented
+}
+
+func mobySysInfo(info *dockercompat.Info) *sysinfo.SysInfo {
+	var sysinfo sysinfo.SysInfo
+	return &sysinfo
 }
