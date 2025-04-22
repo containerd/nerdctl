@@ -127,7 +127,6 @@ jobs:
           # To avoid that, we explicitly list the architectures we do want emulation for.
           docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
-          docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Run integration tests"
         run: docker run -t --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=false
       - name: "Run integration tests (flaky)"
@@ -185,7 +184,6 @@ jobs:
           # To avoid that, we explicitly list the architectures we do want emulation for.
           docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
-          docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Run integration tests"
         # The nested IPv6 network inside docker and qemu is complex and needs a bunch of sysctl config.
         # Therefore, it's hard to debug why the IPv6 tests fail in such an isolation layer.
@@ -269,7 +267,6 @@ jobs:
           # To avoid that, we explicitly list the architectures we do want emulation for.
           docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
-          docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Expose GitHub Runtime variables for gha"
         uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124  # v3.1.0
       - name: "Prepare (network driver=slirp4netns, port driver=builtin)"

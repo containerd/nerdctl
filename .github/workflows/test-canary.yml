@@ -40,7 +40,8 @@ jobs:
           # To avoid that, we explicitly list the architectures we do want emulation for.
           docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
-          docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
+      - name: "Run unit tests"
+        run: go test -v ./pkg/...
       - name: "Run integration tests"
         run: docker run -t --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=false
       - name: "Run integration tests (flaky)"
