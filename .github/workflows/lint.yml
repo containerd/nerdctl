@@ -1,0 +1,80 @@
+name: lint
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+
+env:
+  GO_VERSION: 1.24.x
+  GOTOOLCHAIN: local
+
+jobs:
+  go:
+    timeout-minutes: 5
+    name: "${{ matrix.goos }} | ${{ matrix.canary }}"
+    runs-on: "${{ matrix.os }}"
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      # Note: technically, `make lint-go-all` will run the linter for all platforns, and could be called on a single instance.
+      # The point of running it instead on a matrix here is to verify that the tooling itself is working on the target OS.
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            goos: linux
+          - os: ubuntu-24.04
+            goos: freebsd
+          - os: macos-15
+          # FIXME: this is currently failing in a non-sensical way, so, running on linux instead...
+          # - os: windows-2022
+          - os: ubuntu-24.04
+            goos: windows
+          - os: ubuntu-24.04
+            goos: linux
+            # This allows the canary script to select any upcoming golang alpha/beta/RC
+            canary: go-canary
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 1
+      - name: Set GO env
+        run: |
+          # If canary is specified, get the latest available golang pre-release instead of the major version
+          if [ "${{ matrix.canary }}" != "" ]; then
+            . ./hack/build-integration-canary.sh
+            canary::golang::latest
+          fi
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b  # v5.4.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+      - name: install required linters and dev-tools
+        run: |
+          make install-dev-tools
+      - name: golangci-lint
+        run: |
+          NO_COLOR=true GOOS="${{ matrix.goos }}" make lint-go
+  other:
+    timeout-minutes: 5
+    name: yaml | shell | imports order
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b  # v5.4.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+      - name: install required linters and dev-tools
+        run: |
+          make install-dev-tools
+      - name: yaml
+        run: make lint-yaml
+      - name: shell
+        run: make lint-shell
