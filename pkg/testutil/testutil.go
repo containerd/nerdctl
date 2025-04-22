@@ -721,13 +721,21 @@ func newBase(t *testing.T, ns string, ipv6Compatible bool, kubernetesCompatible 
 	var err error
 	switch base.Target {
 	case Nerdctl:
-		base.Binary, err = exec.LookPath("nerdctl")
+		nerdctl := "nerdctl"
+		if env := os.Getenv("NERDCTL"); env != "" {
+			nerdctl = env
+		}
+		base.Binary, err = exec.LookPath(nerdctl)
 		if err != nil {
 			t.Fatal(err)
 		}
 		base.Args = []string{"--namespace=" + ns}
 	case Docker:
-		base.Binary, err = exec.LookPath("docker")
+		docker := "docker"
+		if env := os.Getenv("DOCKER"); env != "" {
+			docker = env
+		}
+		base.Binary, err = exec.LookPath(docker)
 		if err != nil {
 			t.Fatal(err)
 		}

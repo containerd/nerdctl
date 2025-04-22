@@ -197,7 +197,7 @@ jobs:
   test-integration-rootless:
     needs: build-dependencies
     timeout-minutes: 40
-    name: "${{ matrix.target }} | ${{ matrix.containerd }} | ${{ matrix.rootlesskit }} | ${{ matrix.ubuntu }}"
+    name: "${{ matrix.target }} | ${{ matrix.containerd }} | ${{ matrix.rootlesskit }} | ${{ matrix.ubuntu }} || ${{ matrix.nerdctl }}"
     runs-on: "${{ matrix.runner }}"
     strategy:
       fail-fast: false
@@ -209,30 +209,47 @@ jobs:
             target: rootless
             runner: "ubuntu-22.04"
             arch: amd64
+            nerdctl: ""
+            comment: ""
           - ubuntu: 24.04
             containerd: v2.0.5
             rootlesskit: v2.3.4
             target: rootless
             arch: amd64
             runner: "ubuntu-24.04"
+            nerdctl: ""
+            comment: ""
           - ubuntu: 24.04
             containerd: v2.0.5
             rootlesskit: v2.3.4
             target: rootless
             arch: arm64
             runner: "ubuntu-24.04-arm"
+            nerdctl: ""
+            comment: ""
           - ubuntu: 24.04
             containerd: v2.0.5
             rootlesskit: v2.3.4
             target: rootless-port-slirp4netns
             arch: amd64
             runner: "ubuntu-24.04"
+            nerdctl: ""
+            comment: ""
+          - ubuntu: 24.04
+            containerd: v2.0.5
+            rootlesskit: v2.3.4
+            target: rootless
+            arch: amd64
+            runner: "ubuntu-24.04"
+            nerdctl: "nerdctl.gomodjail"
+            comment: "Flaky, not a blocker for merging PRs"
     env:
       CONTAINERD_VERSION: "${{ matrix.containerd }}"
       ARCH: "${{ matrix.arch }}"
       UBUNTU_VERSION: "${{ matrix.ubuntu }}"
       ROOTLESSKIT_VERSION: "${{ matrix.rootlesskit }}"
       TEST_TARGET: "test-integration-${{ matrix.target }}"
+      NERDCTL: "${{ matrix.nerdctl }}"
     steps:
       - name: "Set up AppArmor"
         if: matrix.ubuntu == '24.04'
@@ -279,9 +296,10 @@ jobs:
           fi
           echo "WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622}" >> "$GITHUB_ENV"
       - name: "Test (network driver=slirp4netns, port driver=builtin)"
-        run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} ${TEST_TARGET} /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false
+        run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} -e NERDCTL=${NERDCTL} ${TEST_TARGET} /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false
       - name: "Test (network driver=slirp4netns, port driver=builtin) (flaky)"
-        run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} ${TEST_TARGET} /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true
+        if: matrix.nerdctl != 'nerdctl.gomodjail'
+        run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} -e NERDCTL=${NERDCTL} ${TEST_TARGET} /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true
 
   test-integration-docker-compatibility:
     timeout-minutes: 40

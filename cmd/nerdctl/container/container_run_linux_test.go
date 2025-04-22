@@ -34,6 +34,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
@@ -381,6 +382,7 @@ func TestRunTTY(t *testing.T) {
 
 func TestRunSigProxy(t *testing.T) {
 	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Gomodjail) // FIXME
 
 	testCase.SubTests = []*test.Case{
 		{
