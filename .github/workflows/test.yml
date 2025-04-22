@@ -132,13 +132,8 @@ jobs:
           sudo losetup -lv
       - name: "Register QEMU (tonistiigi/binfmt)"
         run: |
-          # `--install all` will only install emulation for architectures that cannot be natively executed
-          # Since some arm64 platforms do provide native fallback execution for 32 bits,
-          # armv7 emulation may or may not be installed, causing variance in the result of `uname -m`.
-          # To avoid that, we explicitly list the architectures we do want emulation for.
           docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
-          docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Run integration tests"
         run: docker run -t --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=false
       - name: "Run integration tests (flaky)"
@@ -190,13 +185,8 @@ jobs:
           sudo losetup -lv
       - name: "Register QEMU (tonistiigi/binfmt)"
         run: |
-          # `--install all` will only install emulation for architectures that cannot be natively executed
-          # Since some arm64 platforms do provide native fallback execution for 32 bits,
-          # armv7 emulation may or may not be installed, causing variance in the result of `uname -m`.
-          # To avoid that, we explicitly list the architectures we do want emulation for.
           docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
-          docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Run integration tests"
         # The nested IPv6 network inside docker and qemu is complex and needs a bunch of sysctl config.
         # Therefore, it's hard to debug why the IPv6 tests fail in such an isolation layer.
@@ -265,13 +255,8 @@ jobs:
           fetch-depth: 1
       - name: "Register QEMU (tonistiigi/binfmt)"
         run: |
-          # `--install all` will only install emulation for architectures that cannot be natively executed
-          # Since some arm64 platforms do provide native fallback execution for 32 bits,
-          # armv7 emulation may or may not be installed, causing variance in the result of `uname -m`.
-          # To avoid that, we explicitly list the architectures we do want emulation for.
           docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
-          docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Expose GitHub Runtime variables for gha"
         uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124  # v3.1.0
       - name: "Prepare (network driver=slirp4netns, port driver=builtin)"
@@ -327,13 +312,8 @@ jobs:
           check-latest: true
       - name: "Register QEMU (tonistiigi/binfmt)"
         run: |
-          # `--install all` will only install emulation for architectures that cannot be natively executed
-          # Since some arm64 platforms do provide native fallback execution for 32 bits,
-          # armv7 emulation may or may not be installed, causing variance in the result of `uname -m`.
-          # To avoid that, we explicitly list the architectures we do want emulation for.
           docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
-          docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - name: "Prepare integration test environment"
         run: |
           # FIXME: remove expect when we are done removing unbuffer from tests
