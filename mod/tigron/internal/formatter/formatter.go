@@ -25,7 +25,7 @@ import (
 
 const (
 	maxLineLength = 110
-	maxLines      = 100
+	maxLines      = 50
 	kMaxLength    = 7
 	spacer        = " "
 )
@@ -107,11 +107,20 @@ func chunk(s string, maxLength, maxLines int) []string {
 		chunks = append(chunks, segment)
 	}
 
+	// If really long, preserve the starting first quarter, the trailing three quarters, and inform.
 	if len(chunks) > maxLines {
-		abbreviator := "..."
+		abbreviator := fmt.Sprintf("... %d lines are being ignored...", len(chunks)-maxLines)
 		chunks = append(
-			append(chunks[0:maxLines/2], abbreviator+strings.Repeat(spacer, maxLength-len(abbreviator))),
-			chunks[len(chunks)-maxLines/2:]...)
+			append(chunks[0:maxLines/4], abbreviator+strings.Repeat(spacer, maxLength-len(abbreviator))),
+			chunks[len(chunks)-maxLines*3/4:]...,
+		)
+		chunks = append(
+			[]string{
+				fmt.Sprintf("Actual content is %d lines long and has been abbreviated to %d\n", len(chunks), maxLines),
+				strings.Repeat(spacer, maxLength),
+			},
+			chunks...,
+		)
 	} else if len(chunks) == 0 {
 		chunks = []string{strings.Repeat(spacer, maxLength)}
 	}
