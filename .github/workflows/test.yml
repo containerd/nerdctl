@@ -401,7 +401,8 @@ jobs:
           sudo systemctl enable --now libvirtd
           sudo apt-get build-dep -qq ruby-libvirt
           sudo apt-get install -qq --no-install-recommends libxslt-dev libxml2-dev libvirt-dev ruby-bundler ruby-dev zlib1g-dev
-          sudo vagrant plugin install vagrant-libvirt
+          # Disable strict dependency enforcement to bypass gem version conflicts during the installation of the vagrant-libvirt plugin.
+          sudo env VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT=1 vagrant plugin install vagrant-libvirt
       - name: Boot VM
         run: |
           ln -sf Vagrantfile.freebsd Vagrantfile
