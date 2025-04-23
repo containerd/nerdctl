@@ -600,7 +600,8 @@ func TestRunRmTime(t *testing.T) {
 	base.Cmd("run", "--rm", testutil.CommonImage, "true").AssertOK()
 	t1 := time.Now()
 	took := t1.Sub(t0)
-	const deadline = 3 * time.Second
+	// FIXME? Windows 2025 and canary takes around 7 seconds
+	const deadline = 10 * time.Second
 	if took > deadline {
 		t.Fatalf("expected to have completed in %v, took %v", deadline, took)
 	}
