@@ -56,7 +56,7 @@ func newNerdCommand(conf test.Config, t *testing.T) *nerdCommand {
 
 	binary, err = exec.LookPath(trgt)
 	if err != nil {
-		t.Fatalf("unable to find binary %q: %v", binary, err)
+		t.Fatalf("unable to find binary %q: %v", trgt, err)
 	}
 
 	if isTargetNerdish() {

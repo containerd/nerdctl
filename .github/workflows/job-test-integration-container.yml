@@ -1,0 +1,200 @@
+# This job runs integration tests inside a container, for a series of variants:
+# - ipv6
+# - canary
+# - rootful / rootless
+# - port-slirp4netns
+# - ubuntu old / current
+# - rootlesskit old / current
+# - containerd old / current
+# Note that it is linux only, and does not test docker.
+name: job-test-integration-container
+
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: true
+        type: number
+      runner:
+        required: true
+        type: string
+      canary:
+        required: false
+        default: false
+        type: boolean
+      target:
+        required: false
+        default: ''
+        type: string
+      binary:
+        required: false
+        default: nerdctl
+        type: string
+      containerd-version:
+        required: false
+        default: ''
+        type: string
+      rootlesskit-version:
+        required: false
+        default: ''
+        type: string
+      ipv6:
+        required: false
+        default: false
+        type: boolean
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  test:
+    name: |
+      ${{ inputs.binary != 'nerdctl' && format('{0} < ', inputs.binary) || '' }}
+      ${{ inputs.target }}
+      ${{ contains(inputs.runner, 'arm') && '(arm)' || '' }}
+      ${{ contains(inputs.runner, '22.04') && '(old ubuntu)' || '' }}
+      ${{ inputs.ipv6 && ' (ipv6)' || '' }}
+      ${{ inputs.canary && ' (canary)' || '' }}
+      ${{ inputs.containerd-version && format(' (ctd: {0})', inputs.containerd-version) || '' }}
+      ${{ inputs.rootlesskit-version && format(' (rlk: {0})', inputs.rootlesskit-version) || '' }}
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: ${{ inputs.runner }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: "Init: expose GitHub Runtime variables for gha"
+        uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124  # v3.1.0
+
+      - name: "Init: register QEMU (tonistiigi/binfmt)"
+        run: |
+          # `--install all` will only install emulation for architectures that cannot be natively executed
+          # Since some arm64 platforms do provide native fallback execution for 32 bits,
+          # armv7 emulation may or may not be installed, causing variance in the result of `uname -m`.
+          # To avoid that, we explicitly list the architectures we do want emulation for.
+          docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
+          docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
+          docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
+
+      - if: ${{ inputs.canary }}
+        name: "Init (canary): prepare updated test image"
+        run: |
+          . ./hack/build-integration-canary.sh
+          canary::build::integration
+
+      - if: ${{ ! inputs.canary }}
+        name: "Init: prepare test image"
+        run: |
+          buildargs=()
+
+          # If the runner is old, use old ubuntu inside the container as well
+          [ "${{ contains(inputs.runner, '22.04') }}" != "true" ] || buildargs=(--build-arg UBUNTU_VERSION=22.04)
+
+          # Honor if we want old containerd
+          [ "${{ inputs.containerd-version }}" == "" ] || buildargs+=(--build-arg CONTAINERD_VERSION=${{ inputs.containerd-version }})
+
+          # Honor custom targets and if we want old rootlesskit
+          target=test-integration
+          if [ "${{ inputs.target }}" != "rootful" ]; then
+            target+=-${{ inputs.target }}
+            if [ "${{ inputs.rootlesskit-version }}" != "" ]; then
+              buildargs+=(--build-arg ROOTLESSKIT_VERSION=${{ inputs.rootlesskit-version }})
+            fi
+          fi
+
+          # Cache is sharded per-architecture
+          arch=${{ env.RUNNER_ARCH == 'ARM64' && 'arm64' || 'amd64' }}
+
+          docker buildx create --name with-gha --use
+          docker buildx build \
+            --output=type=docker \
+            --cache-from type=gha,scope=test-integration-dependencies-"$arch" \
+            -t "$target" --target "$target" \
+            "${buildargs[@]}" \
+            .
+
+      # Rootful needs to disable snap
+      - if: ${{ inputs.target == 'rootful' }}
+        name: "Init: remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
+        run: |
+          sudo systemctl disable --now snapd.service snapd.socket
+          sudo apt-get purge -qq snapd
+          sudo losetup -Dv
+          sudo losetup -lv
+
+      # Rootless on modern ubuntu wants apparmor
+      - if: ${{ inputs.target != 'rootful' && ! contains(inputs.runner, '22.04') }}
+        name: "Init: prepare apparmor for rootless + ubuntu 24+"
+        run: |
+          cat <<EOT | sudo tee "/etc/apparmor.d/usr.local.bin.rootlesskit"
+          abi <abi/4.0>,
+          include <tunables/global>
+
+          /usr/local/bin/rootlesskit flags=(unconfined) {
+            userns,
+
+            # Site-specific additions and overrides. See local/README for details.
+            include if exists <local/usr.local.bin.rootlesskit>
+          }
+          EOT
+          sudo systemctl restart apparmor.service
+
+      # ipv6 wants... ipv6
+      - if: ${{ inputs.ipv6 }}
+        name: "Init: ipv6"
+        run: |
+          # Enable ipv4 and ipv6 forwarding
+          sudo sysctl -w net.ipv6.conf.all.forwarding=1
+          sudo sysctl -w net.ipv4.ip_forward=1
+          # Enable IPv6 for Docker, and configure docker to use containerd for gha
+          sudo mkdir -p /etc/docker
+          echo '{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64", "experimental": true, "ip6tables": true}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+
+      # Rootless with old rootlesskit wants to disable buildkit
+      - if: ${{ inputs.target != 'rootful' && inputs.rootlesskit-version != '' }}
+        name: "Init: disable buildkit for old rootlesskit"
+        run: |
+          # https://github.com/containerd/nerdctl/issues/622
+          WORKAROUND_ISSUE_622=
+          if echo "${ROOTLESSKIT_VERSION}" | grep -q v1; then
+            WORKAROUND_ISSUE_622=1
+          fi
+          echo "WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622}" >> "$GITHUB_ENV"
+
+      - name: "Run: integration tests"
+        run: |
+          # IPV6 note: nested IPv6 network inside docker and qemu is complex and needs a bunch of sysctl config.
+          # Therefore, it's hard to debug why the IPv6 tests fail in such an isolation layer.
+          # On the other side, using the host network is easier at configuration.
+          # Besides, each job is running on a different instance, which means using host network here
+          # is safe and has no side effects on others.
+
+          [ "${{ inputs.target }}" == "rootful" ] \
+            && args=(test-integration ./hack/test-integration.sh) \
+            || args=(test-integration-${{ inputs.target }} /test-integration-rootless.sh ./hack/test-integration.sh)
+
+          if [ "${{ inputs.ipv6 }}" == true ]; then
+            docker run --network host -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} "${args[@]}" -test.only-flaky=false -test.only-ipv6 -test.target=${{ inputs.binary }}
+          else
+            docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} "${args[@]}" -test.only-flaky=false -test.target=${{ inputs.binary }}
+          fi
+
+      # FIXME: this NEEDS to go away
+      - name: "Run: integration tests (flaky)"
+        run: |
+          [ "${{ inputs.target }}" == "rootful" ] \
+            && args=(test-integration ./hack/test-integration.sh) \
+            || args=(test-integration-${{ inputs.target }} /test-integration-rootless.sh ./hack/test-integration.sh)
+
+          if [ "${{ inputs.ipv6 }}" == true ]; then
+            docker run --network host -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} "${args[@]}" -test.only-flaky=true -test.only-ipv6 -test.target=${{ inputs.binary }}
+          else
+            docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} "${args[@]}" -test.only-flaky=true -test.target=${{ inputs.binary }}
+          fi

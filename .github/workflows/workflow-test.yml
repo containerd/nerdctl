@@ -1,3 +1,5 @@
+# This workflow runs tests (unit and integration) for windows, macOS and linux (including testing docker).
+# See the flaky workflow for additional targets.
 name: test
 
 on:
