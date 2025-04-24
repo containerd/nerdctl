@@ -19,12 +19,17 @@ package builder
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
+	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -61,6 +66,68 @@ CMD ["echo", "nerdctl-test-builder-prune"]`, testutil.CommonImage)
 					helpers.Ensure("build", data.Temp().Path())
 				},
 				Command:  test.Command("builder", "prune", "--force", "--all"),
+				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "builder with buildkit-host",
+				NoParallel:  true,
+				Require:     require.Not(nerdtest.Docker),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					// Get BuildkitAddr
+					buildkitAddr, err := buildkitutil.GetBuildkitHost(testutil.Namespace)
+					assert.NilError(helpers.T(), err)
+					buildkitAddr = strings.TrimPrefix(buildkitAddr, "unix://")
+
+					// Symlink the buildkit Socket for testing
+					symlinkedBuildkitAddr := filepath.Join(data.Temp().Path(), "buildkit.sock")
+					data.Labels().Set("symlinkedBuildkitAddr", symlinkedBuildkitAddr)
+
+					// Do a negative test to check the setup
+					helpers.Fail("builder", "prune", "--force", "--buildkit-host", fmt.Sprintf("unix://%s", symlinkedBuildkitAddr))
+
+					// Test build with the symlinked socket
+					cmd := helpers.Custom("ln", "-s", buildkitAddr, symlinkedBuildkitAddr)
+					cmd.Run(&test.Expected{
+						ExitCode: 0,
+					})
+
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("builder", "prune", "--force", "--buildkit-host", fmt.Sprintf("unix://%s", data.Labels().Get("symlinkedBuildkitAddr")))
+				},
+				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "builder with env",
+				NoParallel:  true,
+				Require:     require.Not(nerdtest.Docker),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					// Get BuildkitAddr
+					buildkitAddr, err := buildkitutil.GetBuildkitHost(testutil.Namespace)
+					assert.NilError(helpers.T(), err)
+					buildkitAddr = strings.TrimPrefix(buildkitAddr, "unix://")
+
+					// Symlink the buildkit Socket for testing
+					symlinkedBuildkitAddr := filepath.Join(data.Temp().Path(), "buildkit-env.sock")
+					data.Labels().Set("symlinkedBuildkitAddr", symlinkedBuildkitAddr)
+
+					// Do a negative test to ensure setting up the env variable is effective
+					cmd := helpers.Command("builder", "prune", "--force")
+					cmd.Setenv("BUILDKIT_HOST", fmt.Sprintf("unix://%s", symlinkedBuildkitAddr))
+					cmd.Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
+
+					// Symlink the buildkit socket for testing
+					cmd = helpers.Custom("ln", "-s", buildkitAddr, symlinkedBuildkitAddr)
+					cmd.Run(&test.Expected{
+						ExitCode: 0,
+					})
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					symlinkedBuildkitAddr := data.Labels().Get("symlinkedBuildkitAddr")
+					cmd := helpers.Command("builder", "prune", "--force")
+					cmd.Setenv("BUILDKIT_HOST", fmt.Sprintf("unix://%s", symlinkedBuildkitAddr))
+					return cmd
+				},
 				Expected: test.Expects(0, nil, nil),
 			},
 			{
