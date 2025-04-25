@@ -196,9 +196,9 @@ func testDefaultNetworkCreation(t *testing.T) {
 	}
 	err = filepath.Walk(cniConfTestDir, walkF)
 	assert.NilError(t, err)
-	assert.Assert(t, len(files) == 2) // files[0] is the entry for '.'
-	assert.Assert(t, filepath.Join(cniConfTestDir, files[1].Name()) == defaultNetConf.File)
-	assert.Assert(t, firstConfigModTime.Equal(files[1].ModTime()))
+	assert.Equal(t, len(files), 3) // files[0] is the entry for '.', files[1] is the lock
+	assert.Assert(t, filepath.Join(cniConfTestDir, files[2].Name()) == defaultNetConf.File)
+	assert.Assert(t, firstConfigModTime.Equal(files[2].ModTime()))
 }
 
 // Tests whether nerdctl properly creates the default network
@@ -295,9 +295,9 @@ func testDefaultNetworkCreationWithBridgeIP(t *testing.T) {
 	}
 	err = filepath.Walk(cniConfTestDir, walkF)
 	assert.NilError(t, err)
-	assert.Assert(t, len(files) == 2) // files[0] is the entry for '.'
-	assert.Assert(t, filepath.Join(cniConfTestDir, files[1].Name()) == defaultNetConf.File)
-	assert.Assert(t, firstConfigModTime.Equal(files[1].ModTime()))
+	assert.Equal(t, len(files), 3) // files[0] is the entry for '.', files[1] is the lock
+	assert.Assert(t, filepath.Join(cniConfTestDir, files[2].Name()) == defaultNetConf.File)
+	assert.Assert(t, firstConfigModTime.Equal(files[2].ModTime()))
 }
 
 // Tests whether nerdctl skips the creation of the default network if a
