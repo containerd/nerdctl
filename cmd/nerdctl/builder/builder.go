@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
@@ -146,6 +147,7 @@ func debugCommand() *cobra.Command {
 	cmd.Flags().String("image", "", "Image to use for debugging stage")
 	cmd.Flags().StringArray("ssh", nil, "Allow forwarding SSH agent to the build. Format: default|<id>[=<socket>|<key>[,<key>]]")
 	cmd.Flags().StringArray("secret", nil, "Expose secret value to the build. Format: id=secretname,src=filepath")
+	helpers.AddDurationFlag(cmd, "buildg-startup-timeout", nil, 1*time.Minute, "", "Timeout for starting up buildg")
 	return cmd
 }
 
@@ -166,6 +168,12 @@ func debugAction(cmd *cobra.Command, args []string) error {
 	if globalOptions.Debug {
 		buildgArgs = append([]string{"--debug"}, buildgArgs...)
 	}
+
+	startupTimeout, err := cmd.Flags().GetDuration("buildg-startup-timeout")
+	if err != nil {
+		return err
+	}
+	buildgArgs = append(buildgArgs, "--startup-timeout="+startupTimeout.String())
 
 	if file, err := cmd.Flags().GetString("file"); err != nil {
 		return err
