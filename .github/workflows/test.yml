@@ -428,8 +428,6 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       MODE: ${{ matrix.mode }}
-      # FIXME: this is only necessary to access the build cache. To remove with build cleanup.
-      CONTAINERD_VERSION: v2.0.5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
@@ -486,7 +484,7 @@ jobs:
           docker buildx create --name with-gha --use
           docker buildx build \
             --output=type=docker \
-            --cache-from type=gha,scope=amd64-${CONTAINERD_VERSION} \
+            --cache-from type=gha,scope=test-integration-dependencies-amd64 \
             -t test-integration --target "${TARGET}" \
             .
 
