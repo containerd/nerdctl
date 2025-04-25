@@ -369,7 +369,7 @@ jobs:
       - name: "Set up containerd"
         env:
           ctrdVersion: 1.7.27
-        run: powershell hack/configure-windows-ci.ps1
+        run: powershell hack/provisioning/windows/containerd.ps1
       - name: "Run integration tests"
         run: ./hack/test-integration.sh -test.only-flaky=false
       - name: "Run integration tests (flaky)"

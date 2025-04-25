@@ -37,10 +37,9 @@ jobs:
           fetch-depth: 100
       - name: "Set GO env"
         run: |
-          # If canary is specified, get the latest available golang pre-release instead of the major version
           if [ "${{ matrix.canary }}" != "" ]; then
-            . ./hack/build-integration-canary.sh
-            canary::golang::latest
+            . ./hack/provisioning/version/fetch.sh
+            printf "GO_VERSION=%s\n" "$(go::canary::for::go-setup)" >> "$GITHUB_ENV"
           fi
       - name: "Install go"
         uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b  # v5.4.0

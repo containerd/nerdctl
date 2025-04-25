@@ -323,27 +323,3 @@ canary::golang::hublatest(){
 
   printf "%s" "$available_version"
 }
-
-canary::golang::latest(){
-  # Enable extended globbing features to use advanced pattern matching
-  shopt -s extglob
-
-  # Get latest golang version and split it in components
-  norm=()
-  while read -r line; do
-    line_trimmed="${line//+([[:space:]])/}"
-    norm+=("$line_trimmed")
-  done < \
-    <(sed -E 's/^go([0-9]+)[.]([0-9]+)([.]([0-9]+))?(([a-z]+)([0-9]+))?/\1.\2\n\4\n\6\n\7/i' \
-      <(curl -fsSL "https://go.dev/dl/?mode=json&include=all" | jq -rc .[0].version) \
-    )
-
-  # Serialize version, making sure we have a patch version, and separate possible rcX into .rc-X
-  [ "${norm[1]}" != "" ] || norm[1]="0"
-  norm[1]=".${norm[1]}"
-  [ "${norm[2]}" == "" ] || norm[2]="-${norm[2]}"
-  [ "${norm[3]}" == "" ] || norm[3]=".${norm[3]}"
-  # Save it
-  IFS=
-  echo "GO_VERSION=${norm[*]}" >> "$GITHUB_ENV"
-}
