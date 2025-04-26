@@ -1,5 +1,3 @@
-# To install CNI, see https://github.com/containerd/containerd/blob/release/1.7/script/setup/install-cni-windows
-
 $ErrorActionPreference = "Stop"
 
 #install containerd
