@@ -176,7 +176,7 @@ func NewContainerIO(namespace string, logURI string, tty bool, stdin io.Reader, 
 			cmd.ExtraFiles = append(cmd.ExtraFiles, stdoutr, stderrr, w)
 
 			if err := cmd.Start(); err != nil {
-				return nil, fmt.Errorf("failed to start binary process with cmdArgs %v: %w", cmd.Args, err)
+				return nil, fmt.Errorf("failed to start binary process with cmdArgs %v (logURI: %s): %w", cmd.Args, logURI, err)
 			}
 
 			closers = append(closers, func() error { return cmd.Process.Kill() })
