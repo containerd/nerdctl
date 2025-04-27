@@ -38,7 +38,7 @@ ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v2.1.2@BINARY
 # Extra deps: Init
 ARG TINI_VERSION=v0.19.0@BINARY
 # Extra deps: Debug
-ARG BUILDG_VERSION=v0.4.1@BINARY
+ARG BUILDG_VERSION=v0.5.2@BINARY
 
 # Test deps
 # Currently, the Docker Official Images and the test deps are not pinned by the hash
