@@ -93,7 +93,7 @@ func Stats(ctx context.Context, client *containerd.Client, containerIDs []string
 	closeChan := make(chan error)
 
 	var err error
-	var w = options.Stdout
+	w := options.Stdout
 	var tmpl *template.Template
 	switch options.Format {
 	case "", "table":
@@ -128,7 +128,6 @@ func Stats(ctx context.Context, client *containerd.Client, containerIDs []string
 				return
 			}
 		}
-
 	}
 
 	// getContainerList get all existing containers (only used when calling `nerdctl stats` without arguments).
@@ -145,7 +144,9 @@ func Stats(ctx context.Context, client *containerd.Client, containerIDs []string
 					continue
 				}
 			}
-			s := statsutil.NewStats(c.ID())
+			// if an error occurs when getting labels, the ID alone is sufficient for the stats screen.
+			clabels, _ := c.Labels(ctx)
+			s := statsutil.NewStats(c.ID(), containerutil.GetContainerName(clabels))
 			if cStats.add(s) {
 				waitFirst.Add(1)
 				go collect(ctx, options.GOptions, s, waitFirst, c.ID(), !options.NoStream)
@@ -176,7 +177,11 @@ func Stats(ctx context.Context, client *containerd.Client, containerIDs []string
 					return
 				}
 			}
-			s := statsutil.NewStats(datacc.ID)
+			// Load the container to get its ID for retrieving the container name from Labels.
+			// if an error occurs, the ID alone is sufficient for the stats screen.
+			container, _ := client.LoadContainer(ctx, datacc.ID)
+			clabels, _ := container.Labels(ctx)
+			s := statsutil.NewStats(datacc.ID, containerutil.GetContainerName(clabels))
 			if cStats.add(s) {
 				waitFirst.Add(1)
 				go collect(ctx, options.GOptions, s, waitFirst, datacc.ID, !options.NoStream)
@@ -219,7 +224,9 @@ func Stats(ctx context.Context, client *containerd.Client, containerIDs []string
 		walker := &containerwalker.ContainerWalker{
 			Client: client,
 			OnFound: func(ctx context.Context, found containerwalker.Found) error {
-				s := statsutil.NewStats(found.Container.ID())
+				// if an error occurs when getting labels, the ID alone is sufficient for the stats screen.
+				clabels, _ := found.Container.Labels(ctx)
+				s := statsutil.NewStats(found.Container.ID(), containerutil.GetContainerName(clabels))
 				if cStats.add(s) {
 					waitFirst.Add(1)
 					go collect(ctx, options.GOptions, s, waitFirst, found.Container.ID(), !options.NoStream)
@@ -249,7 +256,7 @@ func Stats(ctx context.Context, client *containerd.Client, containerIDs []string
 
 	// firstTick is for creating distant CPU readings.
 	// firstTick stats are not displayed.
-	var firstTick = true
+	firstTick := true
 	for range ticker.C {
 		cleanScreen()
 		ccstats := []statsutil.StatsEntry{}
@@ -353,20 +360,12 @@ func collect(ctx context.Context, globalOptions types.GlobalCommandOptions, s *s
 		s.SetError(err)
 		return
 	}
-
 	go func() {
 		previousStats := new(statsutil.ContainerStats)
 		firstSet := true
 		for {
-			//task is in the for loop to avoid nil task just after Container creation
+			// task is in the for loop to avoid nil task just after Container creation
 			task, err := container.Task(ctx, nil)
-			if err != nil {
-				u <- err
-				continue
-			}
-
-			//labels is in the for loop to avoid nil labels just after Container creation
-			clabels, err := container.Labels(ctx)
 			if err != nil {
 				u <- err
 				continue
@@ -395,8 +394,6 @@ func collect(ctx context.Context, globalOptions types.GlobalCommandOptions, s *s
 				u <- err
 				continue
 			}
-			statsEntry.Name = containerutil.GetContainerName(clabels)
-			statsEntry.ID = container.ID()
 
 			if firstSet {
 				firstSet = false
@@ -404,7 +401,7 @@ func collect(ctx context.Context, globalOptions types.GlobalCommandOptions, s *s
 				s.SetStatistics(statsEntry)
 			}
 			u <- nil
-			//sleep to create distant CPU readings
+			// sleep to create distant CPU readings
 			time.Sleep(500 * time.Millisecond)
 		}
 	}()
@@ -421,7 +418,7 @@ func collect(ctx context.Context, globalOptions types.GlobalCommandOptions, s *s
 			}
 		case err := <-u:
 			if err != nil {
-				if !errdefs.IsNotFound(err) {
+				if !errdefs.IsNotFound(err) && !strings.Contains(err.Error(), "no such file or directory") {
 					s.SetError(err)
 					continue
 				}
