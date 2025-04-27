@@ -107,7 +107,7 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	if err != nil {
 		return err
 	}
-	lock, err := lockutil.Lock(cniNetconfPath)
+	lock, err := lockutil.Lock(filepath.Join(cniNetconfPath, ".nerdctl.lock"))
 	if err != nil {
 		return err
 	}

@@ -28,6 +28,7 @@ import (
 )
 
 func WithDirLock(dir string, fn func() error) error {
+	_ = os.MkdirAll(dir, 0700)
 	dirFile, err := os.Open(dir)
 	if err != nil {
 		return err
@@ -55,6 +56,7 @@ func flock(f *os.File, flags int) error {
 }
 
 func Lock(dir string) (*os.File, error) {
+	_ = os.MkdirAll(dir, 0700)
 	dirFile, err := os.Open(dir)
 	if err != nil {
 		return nil, err
