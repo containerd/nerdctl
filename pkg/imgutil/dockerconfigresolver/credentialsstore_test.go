@@ -25,6 +25,8 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
 func createTempDir(t *testing.T, mode os.FileMode) string {
@@ -40,12 +42,10 @@ func createTempDir(t *testing.T, mode os.FileMode) string {
 }
 
 func TestBrokenCredentialsStore(t *testing.T) {
-	if runtime.GOOS == "freebsd" {
-		// It is unclear why these tests are failing on FreeBSD, and if it is a problem with Vagrant or differences
-		// with FreeBSD
-		// Anyhow, this test is about extreme cases & conditions (filesystem errors wrt credentials loading).
-		t.Skip("skipping broken credential store tests for freebsd")
+	if !rootlessutil.IsRootless() {
+		t.Skip("test is for rootless")
 	}
+
 	if runtime.GOOS == "windows" {
 		// Same as above
 		t.Skip("test is not compatible with windows")

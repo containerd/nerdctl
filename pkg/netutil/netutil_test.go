@@ -34,7 +34,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-const testBridgeIP = "10.1.100.1/24" // nolint:unused
+const testBridgeIP = "10.42.100.1/24" // nolint:unused
 
 const preExistingNetworkConfigTemplate = `
 {
@@ -278,8 +278,8 @@ func testDefaultNetworkCreationWithBridgeIP(t *testing.T) {
 	// Assert on bridge plugin configuration
 	assert.Equal(t, "bridge", bridgeConfig.Type)
 	// Assert on IPAM configuration
-	assert.Equal(t, "10.1.100.1", bridgeConfig.IPAM.Ranges[0][0].Gateway)
-	assert.Equal(t, "10.1.100.0/24", bridgeConfig.IPAM.Ranges[0][0].Subnet)
+	assert.Equal(t, "10.42.100.1", bridgeConfig.IPAM.Ranges[0][0].Gateway)
+	assert.Equal(t, "10.42.100.0/24", bridgeConfig.IPAM.Ranges[0][0].Subnet)
 	assert.Equal(t, "0.0.0.0/0", bridgeConfig.IPAM.Routes[0].Dst)
 	assert.Equal(t, "host-local", bridgeConfig.IPAM.Type)
 
