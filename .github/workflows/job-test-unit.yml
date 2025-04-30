@@ -80,3 +80,9 @@ jobs:
         name: "Run"
         run: |
           make test-unit
+
+      # On linux, also run with root
+      - if: ${{ env.GO_VERSION != '' && env.RUNNER_OS == 'Linux' }}
+        name: "Run: with root"
+        run: |
+          sudo make test-unit
