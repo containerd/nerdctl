@@ -1,5 +1,7 @@
-# Note: freebsd tests are not ran here (see integration instead)
-name: job-test-unit
+# This job runs golangci-lint
+# Note that technically, `make lint-go-all` would run the linter for all targets, and could be called once, on a single instance.
+# The point of running it on a matrix instead, each GOOS separately, is to verify that the tooling itself is working on the target OS.
+name: job-lint-go
 
 on:
   workflow_call:
@@ -17,30 +19,21 @@ on:
         required: false
         default: false
         type: boolean
-      windows-cni-version:
-        required: true
-        type: string
-      linux-cni-version:
-        required: true
-        type: string
-      linux-cni-sha:
+      goos:
         required: true
         type: string
 
 env:
   GOTOOLCHAIN: local
-  # Windows fails without this
-  CGO_ENABLED: 0
 
 jobs:
-  test-unit:
-    name: ${{ format('{0}{1}', inputs.runner, inputs.canary && ' (go canary)' || '') }}
+  lint-go:
+    name: ${{ format('{0}{1}', inputs.goos, inputs.canary && ' (go canary)' || '') }}
     timeout-minutes: ${{ inputs.timeout }}
     runs-on: "${{ inputs.runner }}"
     defaults:
       run:
         shell: bash
-
     env:
       GO_VERSION: ${{ inputs.go-version }}
 
@@ -50,14 +43,13 @@ jobs:
         with:
           fetch-depth: 1
 
-      # If canary is requested, check for the latest unstable release
       - if: ${{ inputs.canary }}
         name: "Init (canary): retrieve GO_VERSION"
         run: |
           latest_go="$(. ./hack/provisioning/version/fetch.sh; go::canary::for::go-setup)"
           printf "GO_VERSION=%s\n" "$latest_go" >> "$GITHUB_ENV"
           [ "$latest_go" != "" ] || \
-            echo "::warning title=No canary go::There is currently no canary go version to test. Following steps will not run."
+            echo "::warning title=No canary go::There is currently no canary go version to test. Steps will not run."
 
       - if: ${{ env.GO_VERSION != '' }}
         name: "Init: install go"
@@ -66,23 +58,19 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
 
-      # Install CNI
       - if: ${{ env.GO_VERSION != '' }}
-        name: "Init: set up CNI"
+        name: "Init: install dev-tools"
         run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            GOPATH=$(go env GOPATH) WINCNI_VERSION=${{ inputs.windows-cni-version }} ./hack/provisioning/windows/cni.sh
-          elif [ "$RUNNER_OS" == "Linux" ]; then
-            ./hack/provisioning/linux/cni.sh "${{ inputs.linux-cni-version }}" "amd64" "${{ inputs.linux-cni-sha }}"
-          fi
+          echo "::group:: make install-dev-tools"
+          make install-dev-tools
+          echo "::endgroup::"
 
       - if: ${{ env.GO_VERSION != '' }}
         name: "Run"
         run: |
-          make test-unit
-
-      # On linux, also run with root
-      - if: ${{ env.GO_VERSION != '' && env.RUNNER_OS == 'Linux' }}
-        name: "Run: with root"
-        run: |
-          sudo make test-unit
+          # On canary, lint for all supported targets
+          if [ "${{ inputs.canary }}" == "true" ]; then
+            NO_COLOR=true make lint-go-all
+          else
+            NO_COLOR=true GOOS="${{ inputs.goos }}" make lint-go
+          fi
