@@ -69,15 +69,20 @@ type ContainerStats struct {
 }
 
 // NewStats is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L113-L116
-func NewStats(containerID string) *Stats {
-	return &Stats{StatsEntry: StatsEntry{ID: containerID}}
+func NewStats(containerID string, containerName string) *Stats {
+	return &Stats{StatsEntry: StatsEntry{ID: containerID, Name: containerName}}
 }
 
 // SetStatistics is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L87-L93
 func (cs *Stats) SetStatistics(s StatsEntry) {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
+	// The statsEntry ID and Name fields are already populated within the cs.StatsEntry
+	cStatsName := cs.StatsEntry.Name
+	cStatsID := cs.StatsEntry.ID
 	cs.StatsEntry = s
+	cs.StatsEntry.Name = cStatsName
+	cs.StatsEntry.ID = cStatsID
 }
 
 // GetStatistics is from https://github.com/docker/cli/blob/3fb4fb83dfb5db0c0753a8316f21aea54dab32c5/cli/command/container/formatter_stats.go#L95-L100
