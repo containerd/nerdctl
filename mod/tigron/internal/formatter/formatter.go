@@ -108,20 +108,21 @@ func chunk(s string, maxLength, maxLines int) []string {
 	}
 
 	// If really long, preserve the starting first quarter, the trailing three quarters, and inform.
-	if len(chunks) > maxLines {
-		abbreviator := fmt.Sprintf("... %d lines are being ignored...", len(chunks)-maxLines)
+	actualLength := len(chunks)
+	if actualLength > maxLines {
+		abbreviator := fmt.Sprintf("... %d lines are being ignored...", actualLength-maxLines)
 		chunks = append(
 			append(chunks[0:maxLines/4], abbreviator+strings.Repeat(spacer, maxLength-len(abbreviator))),
-			chunks[len(chunks)-maxLines*3/4:]...,
+			chunks[actualLength-maxLines*3/4:]...,
 		)
 		chunks = append(
 			[]string{
-				fmt.Sprintf("Actual content is %d lines long and has been abbreviated to %d\n", len(chunks), maxLines),
+				fmt.Sprintf("Actual content is %d lines long and has been abbreviated to %d\n", actualLength, maxLines),
 				strings.Repeat(spacer, maxLength),
 			},
 			chunks...,
 		)
-	} else if len(chunks) == 0 {
+	} else if actualLength == 0 {
 		chunks = []string{strings.Repeat(spacer, maxLength)}
 	}
 
