@@ -328,6 +328,11 @@ jobs:
           # FIXME: remove expect when we are done removing unbuffer from tests
           sudo apt-get install -qq expect
           make install-dev-tools
+      - name: Enable CDI in the Docker daemon.
+        run: |
+          sudo mkdir -p /etc/docker
+          sudo jq '.features.cdi = true' /etc/docker/daemon.json | sudo tee /etc/docker/daemon.json.tmp && sudo mv /etc/docker/daemon.json.tmp /etc/docker/daemon.json
+          sudo systemctl restart docker
       - name: "Ensure that the integration test suite is compatible with Docker"
         run: WITH_SUDO=true ./hack/test-integration.sh -test.target=docker
       - name: "Ensure that the IPv6 integration test suite is compatible with Docker"

@@ -47,6 +47,7 @@ experimental   = true
 | `host_gateway_ip`   | `--host-gateway-ip`                | `NERDCTL_HOST_GATEWAY_IP` | IP address that the special 'host-gateway' string in --add-host resolves to. Defaults to the IP address of the host. It has no effect without setting --add-host | Since 1.3.0      |
 | `bridge_ip`         | `--bridge-ip`                      | `NERDCTL_BRIDGE_IP`       | IP address for the default nerdctl bridge network, e.g., 10.1.100.1/24                                                                                           | Since 2.0.1      |
 | `kube_hide_dupe`    | `--kube-hide-dupe`                 |                           | Deduplicate images for Kubernetes with namespace k8s.io, no more redundant <none> ones are displayed    | Since 2.0.3      |
+| `cdi_spec_dirs`     | `--cdi-spec-dirs`                   |                          | The folders to use when searching for CDI ([container-device-interface](https://github.com/cncf-tags/container-device-interface)) specifications.    | Since 2.1.0 |
 
 The properties are parsed in the following precedence:
 1. CLI flag
