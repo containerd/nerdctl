@@ -360,3 +360,19 @@ var Private = &test.Requirement{
 		}
 	},
 }
+
+// Gomodjail returns whether the binary is packed with gomodjail.
+// https://github.com/AkihiroSuda/gomodjail
+var Gomodjail = &test.Requirement{
+	Check: func(_ test.Data, helpers test.Helpers) (ret bool, mess string) {
+		binary := helpers.Command().Binary()
+		// FIXME: do not rely on the filename
+		ret = strings.HasSuffix(binary, ".gomodjail")
+		if ret {
+			mess = "current target is packed with gomodjail"
+		} else {
+			mess = "current target is not packed with gomodjail"
+		}
+		return ret, mess
+	},
+}

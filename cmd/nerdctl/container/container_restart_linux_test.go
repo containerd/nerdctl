@@ -26,6 +26,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -128,6 +129,8 @@ func TestRestartWithTime(t *testing.T) {
 
 func TestRestartWithSignal(t *testing.T) {
 	testCase := nerdtest.Setup()
+
+	testCase.Require = require.Not(nerdtest.Gomodjail) // FIXME
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("rm", "-f", data.Identifier())
