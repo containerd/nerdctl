@@ -1,0 +1,69 @@
+# This job just builds nerdctl for the golang versions we support (as a smoke test)
+name: job-build
+
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: true
+        type: number
+      go-version:
+        required: true
+        type: string
+      runner:
+        required: true
+        type: string
+      canary:
+        required: false
+        default: false
+        type: boolean
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  build-all-targets:
+    name: ${{ format('go {0}', inputs.canary && 'canary' || inputs.go-version ) }}
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: "${{ inputs.runner }}"
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      GO_VERSION: ${{ inputs.go-version }}
+
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - if: ${{ inputs.canary }}
+        name: "Init (canary): retrieve GO_VERSION"
+        run: |
+          latest_go="$(. ./hack/provisioning/version/fetch.sh; go::canary::for::go-setup)"
+          printf "GO_VERSION=%s\n" "$latest_go" >> "$GITHUB_ENV"
+          [ "$latest_go" != "" ] || \
+            echo "::warning title=No canary go::There is currently no canary go version to test. Steps will not run."
+
+      - if: ${{ env.GO_VERSION != '' }}
+        name: "Init: install go"
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b  # v5.4.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      - if: ${{ env.GO_VERSION != '' }}
+        name: "Run: make binaries"
+        run: |
+          # We officially support these
+          GOOS=linux make binaries
+          GOOS=windows make binaries
+          GOOS=freebsd make binaries
+          GOOS=darwin make binaries
+          GOARCH=arm GOARM=6 make binaries
+          # These architectures are not released, but we still verify that we can at least compile
+          GOARCH=ppc64le make binaries
+          GOARCH=riscv64 make binaries
+          GOARCH=s390x make binaries

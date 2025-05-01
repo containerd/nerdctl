@@ -15,20 +15,20 @@ env:
 jobs:
   lint:
     timeout-minutes: 15
-    name: "${{ matrix.goos }} ${{ matrix.os }} | go ${{ matrix.canary }}"
-    runs-on: ${{ matrix.os }}
+    name: "${{ matrix.goos }} ${{ matrix.runner }} | go ${{ matrix.canary }}"
+    runs-on: ${{ matrix.runner }}
     defaults:
       run:
         shell: bash
     strategy:
       matrix:
         include:
-          - os: ubuntu-24.04
-          - os: macos-15
-          - os: windows-2022
-          - os: ubuntu-24.04
+          - runner: ubuntu-24.04
+          - runner: macos-15
+          - runner: windows-2022
+          - runner: ubuntu-24.04
             goos: freebsd
-          - os: ubuntu-24.04
+          - runner: ubuntu-24.04
             canary: go-canary
     steps:
       - name: "Checkout project"
@@ -58,16 +58,11 @@ jobs:
             brew install yamllint shellcheck
           fi
           echo "::endgroup::"
-      - if: ${{ env.GO_VERSION != '' }}
+      - if: ${{ env.GO_VERSION != '' && env.RUNNER_OS == 'Linux' && matrix.goos == '' }}
         name: "lint"
         env:
           NO_COLOR: true
         run: |
-          if [ "$RUNNER_OS" != "Linux" ] || [ "${{ matrix.goos }}" != "" ]; then
-            echo "It is not necessary to run the linter on this platform (${{ env.RUNNER_OS }} ${{ matrix.goos }})"
-            exit
-          fi
-
           echo "::group:: lint"
           cd mod/tigron
           export LINT_COMMIT_RANGE="$(jq -r '.after + "..HEAD"' ${GITHUB_EVENT_PATH})"
