@@ -110,7 +110,7 @@ func TestRunCgroupV2(t *testing.T) {
 	update := []string{"update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
 		"--memory", "42m",
 		"--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1"}
-	if base.Target == testutil.Docker && info.CgroupVersion == "2" && info.SwapLimit {
+	if nerdtest.IsDocker() && info.CgroupVersion == "2" && info.SwapLimit {
 		// Workaround for Docker with cgroup v2:
 		// > Error response from daemon: Cannot update container 67c13276a13dd6a091cdfdebb355aa4e1ecb15fbf39c2b5c9abee89053e88fce:
 		// > Memory limit should be smaller than already set memoryswap limit, update the memoryswap at the same time
@@ -450,7 +450,7 @@ func TestRunCgroupParent(t *testing.T) {
 	expected := filepath.Join(parent, id)
 	if info.CgroupDriver == "systemd" {
 		expected = filepath.Join(parent, fmt.Sprintf("nerdctl-%s", id))
-		if base.Target == testutil.Docker {
+		if nerdtest.IsDocker() {
 			expected = filepath.Join(parent, fmt.Sprintf("docker-%s", id))
 		}
 	}

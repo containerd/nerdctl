@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 // This is a separate set of tests for cp specifically meant to test corner or extreme cases that do not fit in the normal testing rig
@@ -87,7 +88,7 @@ func TestCopyAcid(t *testing.T) {
 		setup()
 
 		expectedErr := containerutil.ErrTargetIsReadOnly.Error()
-		if testutil.GetTarget() == testutil.Docker {
+		if nerdtest.IsDocker() {
 			expectedErr = ""
 		}
 

@@ -19,6 +19,7 @@ package system
 import (
 	"encoding/json"
 	"fmt"
+	"os/exec"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
@@ -42,6 +44,11 @@ func testInfoComparator(stdout string, info string, t *testing.T) {
 
 func TestInfo(t *testing.T) {
 	testCase := nerdtest.Setup()
+
+	// Note: some functions need to be tested without the automatic --namespace nerdctl-test argument, so we need
+	// to retrieve the binary name.
+	// Note that we know this works already, so no need to assert err.
+	bin, _ := exec.LookPath(testutil.GetTarget())
 
 	testCase.SubTests = []*test.Case{
 		{
@@ -58,7 +65,7 @@ func TestInfo(t *testing.T) {
 			Description: "info with namespace",
 			Require:     require.Not(nerdtest.Docker),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Custom("nerdctl", "info")
+				return helpers.Custom(bin, "info")
 			},
 			Expected: test.Expects(0, nil, expect.Contains("Namespace:	default")),
 		},
@@ -69,7 +76,7 @@ func TestInfo(t *testing.T) {
 			},
 			Require: require.Not(nerdtest.Docker),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Custom("nerdctl", "info")
+				return helpers.Custom(bin, "info")
 			},
 			Expected: test.Expects(0, nil, expect.Contains("Namespace:	test")),
 		},

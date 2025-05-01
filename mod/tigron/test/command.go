@@ -110,10 +110,6 @@ type GenericCommand struct {
 	rawStdErr string
 }
 
-func (gc *GenericCommand) Binary() string {
-	return gc.cmd.Binary
-}
-
 func (gc *GenericCommand) WithBinary(binary string) {
 	gc.cmd.Binary = binary
 }

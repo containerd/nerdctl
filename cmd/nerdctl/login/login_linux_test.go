@@ -33,6 +33,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testca"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
@@ -76,7 +77,7 @@ func (ag *Client) Run(base *testutil.Base, host string) *testutil.Cmd {
 		ag.configPath, _ = os.MkdirTemp(base.T.TempDir(), "docker-config")
 	}
 	args := []string{"login"}
-	if base.Target == "nerdctl" {
+	if !nerdtest.IsDocker() {
 		args = append(args, "--debug-full")
 	}
 	args = append(args, ag.args...)

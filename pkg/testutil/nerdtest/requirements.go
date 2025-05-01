@@ -99,7 +99,7 @@ var IsFlaky = func(issueLink string) *test.Requirement {
 // Generally used as require.Not(nerdtest.Docker), which of course it the opposite
 var Docker = &test.Requirement{
 	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
-		ret = getTarget() == targetDocker
+		ret = !isTargetNerdish()
 		if ret {
 			mess = "current target is docker"
 		} else {
@@ -114,7 +114,7 @@ var Docker = &test.Requirement{
 var NerdctlNeedsFixing = func(issueLink string) *test.Requirement {
 	return &test.Requirement{
 		Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
-			ret = getTarget() == targetDocker
+			ret = !isTargetNerdish()
 			if ret {
 				mess = "current target is docker"
 			} else {
@@ -142,7 +142,7 @@ var BrokenTest = func(message string, req *test.Requirement) *test.Requirement {
 var Rootless = &test.Requirement{
 	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
 		// Make sure we DO not return "IsRootless true" for docker
-		ret = getTarget() == targetNerdctl && rootlessutil.IsRootless()
+		ret = isTargetNerdish() && rootlessutil.IsRootless()
 		if ret {
 			mess = "environment is root-less"
 		} else {
@@ -177,7 +177,7 @@ var CgroupsAccessible = require.All(
 	CGroup,
 	&test.Requirement{
 		Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
-			isRootLess := getTarget() == targetNerdctl && rootlessutil.IsRootless()
+			isRootLess := isTargetNerdish() && rootlessutil.IsRootless()
 			if isRootLess {
 				stdout := helpers.Capture("info", "--format", "{{ json . }}")
 				var dinf dockercompat.Info
@@ -298,7 +298,7 @@ var Build = &test.Requirement{
 		ret := true
 		mess := "buildkitd is enabled"
 
-		if getTarget() == targetNerdctl {
+		if isTargetNerdish() {
 			bkHostAddr, err := buildkitutil.GetBuildkitHost(defaultNamespace)
 			if err != nil {
 				ret = false
@@ -349,7 +349,7 @@ var Private = &test.Requirement{
 	},
 
 	Cleanup: func(data test.Data, helpers test.Helpers) {
-		if getTarget() == targetNerdctl {
+		if isTargetNerdish() {
 			// FIXME: there are conditions where we still have some stuff in there and this fails...
 			containerList := strings.TrimSpace(helpers.Capture("ps", "-aq"))
 			if containerList != "" {
@@ -365,9 +365,8 @@ var Private = &test.Requirement{
 // https://github.com/AkihiroSuda/gomodjail
 var Gomodjail = &test.Requirement{
 	Check: func(_ test.Data, helpers test.Helpers) (ret bool, mess string) {
-		binary := helpers.Command().Binary()
 		// FIXME: do not rely on the filename
-		ret = strings.HasSuffix(binary, ".gomodjail")
+		ret = strings.HasSuffix(getTarget(), ".gomodjail")
 		if ret {
 			mess = "current target is packed with gomodjail"
 		} else {

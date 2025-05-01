@@ -27,6 +27,7 @@ import (
 	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 // https://github.com/containerd/nerdctl/issues/1942
@@ -49,7 +50,8 @@ services:
 		ExitCode: 1,
 		Err:      `exec: \"invalid\": executable file not found in $PATH`,
 	}
-	if base.Target == testutil.Docker {
+	// Docker expected err is different
+	if nerdtest.IsDocker() {
 		expected.Err = `unknown or invalid runtime name: invalid`
 	}
 	c.Assert(expected)

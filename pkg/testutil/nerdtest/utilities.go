@@ -19,6 +19,7 @@ package nerdtest
 import (
 	"encoding/json"
 	"net"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -44,7 +45,7 @@ const (
 )
 
 func IsDocker() bool {
-	return testutil.GetTarget() == "docker"
+	return strings.HasPrefix(filepath.Base(testutil.GetTarget()), "docker")
 }
 
 // InspectContainer is a helper that can be used inside custom commands or Setup

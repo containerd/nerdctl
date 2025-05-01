@@ -198,7 +198,7 @@ func TestContainerInspectState(t *testing.T) {
 	// nerdctl: run error produces a nil Task, so the Status is empty because Status comes from Task.
 	// docker : run error gives => `Status=created` as  in docker there is no a separation between container and Task.
 	errStatus := ""
-	if base.Target == testutil.Docker {
+	if nerdtest.IsDocker() {
 		errStatus = "created"
 	}
 	testCases := []testCase{
@@ -295,7 +295,7 @@ func TestContainerInspectHostConfigDefaults(t *testing.T) {
 
 	// Hostconfig default values differ with Docker.
 	// This is because we directly retrieve the configured values instead of using preset defaults.
-	if testutil.GetTarget() == testutil.Docker {
+	if nerdtest.IsDocker() {
 		hc.Driver = ""
 		hc.GroupAddSize = 0
 		hc.ShmSize = int64(67108864) // Docker default 64M
@@ -399,7 +399,7 @@ func TestContainerInspectHostConfigPID(t *testing.T) {
 
 	var hc hostConfigValues
 
-	if testutil.GetTarget() == testutil.Docker {
+	if nerdtest.IsDocker() {
 		hc.PidMode = "container:" + containerID1
 	} else {
 		hc.PidMode = containerID1
@@ -444,7 +444,7 @@ func TestContainerInspectDevices(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if testutil.GetTarget() == testutil.Docker {
+	if nerdtest.IsDocker() {
 		dir = "/dev/zero"
 	}
 

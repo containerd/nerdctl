@@ -51,7 +51,7 @@ import (
 
 type Base struct {
 	T                    testing.TB
-	Target               Target
+	Target               string
 	DaemonIsKillable     bool
 	EnableIPv6           bool
 	IPv6Compatible       bool
@@ -134,15 +134,11 @@ func (b *Base) CmdWithHelper(helper []string, args ...string) *Cmd {
 }
 
 func (b *Base) systemctlTarget() string {
-	switch b.Target {
-	case Nerdctl:
-		return "containerd.service"
-	case Docker:
+	if IsDocker() {
 		return "docker.service"
-	default:
-		b.T.Fatalf("unexpected target %q", b.Target)
-		return ""
 	}
+
+	return "containerd.service"
 }
 
 func (b *Base) systemctlArgs() []string {
@@ -270,7 +266,7 @@ func (b *Base) Info() dockercompat.Info {
 
 func (b *Base) InfoNative() native.Info {
 	b.T.Helper()
-	if GetTarget() != Nerdctl {
+	if IsDocker() {
 		b.T.Skip("InfoNative() should not be called for non-nerdctl target")
 	}
 	cmdResult := b.Cmd("info", "--mode", "native", "--format", "{{ json . }}").Run()
@@ -284,7 +280,7 @@ func (b *Base) InfoNative() native.Info {
 
 func (b *Base) ContainerdAddress() string {
 	b.T.Helper()
-	if GetTarget() != Nerdctl {
+	if IsDocker() {
 		b.T.Skip("ContainerdAddress() should not be called for non-nerdctl target")
 	}
 	if os.Geteuid() == 0 {
@@ -482,15 +478,8 @@ func (c *Cmd) Out() string {
 	return res.Stdout()
 }
 
-type Target = string
-
-const (
-	Nerdctl = Target("nerdctl")
-	Docker  = Target("docker")
-)
-
 var (
-	flagTestTarget     Target
+	flagTestTarget     string
 	flagTestKillDaemon bool
 	flagTestIPv6       bool
 	flagTestKube       bool
@@ -502,12 +491,16 @@ var (
 )
 
 func M(m *testing.M) {
-	flag.StringVar(&flagTestTarget, "test.target", Nerdctl, "target to test")
+	flag.StringVar(&flagTestTarget, "test.target", "nerdctl", "target to test")
 	flag.BoolVar(&flagTestKillDaemon, "test.allow-kill-daemon", false, "enable tests that kill the daemon")
 	flag.BoolVar(&flagTestIPv6, "test.only-ipv6", false, "enable tests on IPv6")
 	flag.BoolVar(&flagTestKube, "test.only-kubernetes", false, "enable tests on Kubernetes")
 	flag.BoolVar(&flagTestFlaky, "test.only-flaky", false, "enable testing of flaky tests only (if false, flaky tests are ignored)")
 	flag.Parse()
+
+	if flagTestTarget == "" {
+		flagTestTarget = "nerdctl"
+	}
 
 	os.Exit(func() int {
 		// If there is a lockfile (no err), or if we error-ed stating it (permission), another test run is currently going.
@@ -581,7 +574,7 @@ func GetDaemonIsKillable() bool {
 }
 
 func IsDocker() bool {
-	return GetTarget() == Docker
+	return strings.HasPrefix(filepath.Base(GetTarget()), "docker")
 }
 
 func DockerIncompatible(t testing.TB) {
@@ -591,7 +584,7 @@ func DockerIncompatible(t testing.TB) {
 }
 
 func RequiresBuild(t testing.TB) {
-	if GetTarget() == Nerdctl {
+	if !IsDocker() {
 		buildkitHost, err := buildkitutil.GetBuildkitHost(Namespace)
 		if err != nil {
 			t.Skipf("test requires buildkitd: %+v", err)
@@ -719,32 +712,19 @@ func newBase(t *testing.T, ns string, ipv6Compatible bool, kubernetesCompatible 
 		t.Skip("legacy tests are considered flaky by default and are skipped unless in the flaky environment")
 	}
 	var err error
-	switch base.Target {
-	case Nerdctl:
-		nerdctl := "nerdctl"
-		if env := os.Getenv("NERDCTL"); env != "" {
-			nerdctl = env
-		}
-		base.Binary, err = exec.LookPath(nerdctl)
-		if err != nil {
-			t.Fatal(err)
-		}
-		base.Args = []string{"--namespace=" + ns}
-	case Docker:
-		docker := "docker"
-		if env := os.Getenv("DOCKER"); env != "" {
-			docker = env
-		}
-		base.Binary, err = exec.LookPath(docker)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := exec.Command("docker", "compose", "version").Run(); err != nil {
-			t.Fatal(err)
-		}
-	default:
-		t.Fatalf("unknown test target %q", base.Target)
+	base.Binary, err = exec.LookPath(base.Target)
+	if err != nil {
+		t.Fatal(err)
 	}
+
+	if IsDocker() {
+		if err = exec.Command(base.Binary, "compose", "version").Run(); err != nil {
+			t.Fatalf("docker does not support compose: %v", err)
+		}
+	} else {
+		base.Args = []string{"--namespace=" + ns}
+	}
+
 	return base
 }
 

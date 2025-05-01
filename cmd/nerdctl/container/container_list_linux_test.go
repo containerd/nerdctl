@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/tabutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 type psTestContainer struct {
@@ -146,7 +147,7 @@ func TestContainerList(t *testing.T) {
 
 		// there is some difference between nerdctl and docker in calculating the size of the container
 		expectedSize := "26.2MB (virtual "
-		if base.Target != testutil.Docker {
+		if !nerdtest.IsDocker() {
 			expectedSize = "25.0 MiB (virtual "
 		}
 
