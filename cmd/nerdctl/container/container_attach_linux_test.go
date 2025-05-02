@@ -211,3 +211,44 @@ func TestAttachForAutoRemovedContainer(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestAttachNoStdin(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		cmd := helpers.Command("run", "-it", "--detach-keys=ctrl-p,ctrl-q", "--name", data.Identifier(),
+			testutil.CommonImage, "sleep", "5")
+		cmd.WithPseudoTTY()
+		cmd.Feed(bytes.NewReader([]byte{16, 17})) // Ctrl-p, Ctrl-q to detach (https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
+		cmd.Run(&test.Expected{
+			ExitCode: 0,
+			Output: func(stdout string, info string, t *testing.T) {
+				assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "{{.State.Running}}", data.Identifier()), "true"))
+			},
+		})
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := helpers.Command("attach", "--no-stdin", data.Identifier())
+		cmd.WithPseudoTTY()
+		cmd.Feed(strings.NewReader("should-not-appear\n"))
+		cmd.Feed(bytes.NewReader([]byte{16, 17}))
+		return cmd
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0, // Since it's a normal exit and not detach.
+			Output: func(stdout string, info string, t *testing.T) {
+				logs := helpers.Capture("logs", data.Identifier())
+				assert.Assert(t, !strings.Contains(logs, "should-not-appear"))
+			},
+		}
+	}
+
+	testCase.Run(t)
+}
