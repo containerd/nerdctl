@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 
 	"golang.org/x/term"
 
@@ -114,9 +115,12 @@ func Attach(ctx context.Context, client *containerd.Client, req string, options 
 			}
 			io.Cancel()
 		}
-		in, err := consoleutil.NewDetachableStdin(con, options.DetachKeys, closer)
-		if err != nil {
-			return err
+		var in io.Reader
+		if options.Stdin != nil {
+			in, err = consoleutil.NewDetachableStdin(con, options.DetachKeys, closer)
+			if err != nil {
+				return err
+			}
 		}
 		opt = cio.WithStreams(in, con, nil)
 	} else {

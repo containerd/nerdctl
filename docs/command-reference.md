@@ -686,8 +686,9 @@ Usage: `nerdctl attach CONTAINER`
 Flags:
 
 - :whale: `--detach-keys`: Override the default detach keys
+- :whale: `--no-stdin`: Do not attach STDIN
 
-Unimplemented `docker attach` flags: `--no-stdin`, `--sig-proxy`
+Unimplemented `docker attach` flags: `--sig-proxy`
 
 ### :whale: nerdctl container prune
 

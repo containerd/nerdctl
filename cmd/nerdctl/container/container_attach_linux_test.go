@@ -211,3 +211,61 @@ func TestAttachForAutoRemovedContainer(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestAttachNoStdin(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		cmd := helpers.Command("run", "-it", "--detach-keys=ctrl-p,ctrl-q", "--name", data.Identifier(),
+			testutil.CommonImage, "sh", "-c", `echo ready; sleep 5`)
+		cmd.WithPseudoTTY()
+		time.Sleep(1 * time.Second)
+		cmd.Feed(bytes.NewReader([]byte{16, 17})) // Ctrl-p, Ctrl-q to detach (https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
+		cmd.Run(&test.Expected{
+			ExitCode: 0,
+			Output: func(stdout string, info string, t *testing.T) {
+				assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "{{.State.Running}}", data.Identifier()), "true"))
+			},
+		})
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := helpers.Command("attach", "--no-stdin", data.Identifier())
+		cmd.WithPseudoTTY()
+		cmd.WithFeeder(func() io.Reader {
+			maxRetries := 30
+			retryCount := 0
+			for {
+				if retryCount >= maxRetries {
+					t.Fatalf("Container did not output 'ready' message after %d retries", maxRetries)
+					return nil
+				}
+				out := helpers.Capture("logs", data.Identifier())
+				if strings.Contains(out, "ready") {
+					break
+				}
+				time.Sleep(1 * time.Second)
+				retryCount++
+			}
+			return strings.NewReader("should-not-appear\n")
+		})
+		return cmd
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0, // Since it's a normal exit and not detach.
+			Output: func(stdout string, info string, t *testing.T) {
+				logs := helpers.Capture("logs", data.Identifier())
+				assert.Assert(t, strings.Contains(logs, "ready"))
+				assert.Assert(t, !strings.Contains(stdout, "should-not-appear"))
+			},
+		}
+	}
+
+	testCase.Run(t)
+}

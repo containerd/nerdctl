@@ -17,6 +17,8 @@
 package container
 
 import (
+	"io"
+
 	"github.com/spf13/cobra"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -56,6 +58,7 @@ Caveats:
 		SilenceErrors:     true,
 	}
 	cmd.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
+	cmd.Flags().Bool("no-stdin", false, "Do not attach STDIN")
 	return cmd
 }
 
@@ -68,9 +71,18 @@ func attachOptions(cmd *cobra.Command) (types.ContainerAttachOptions, error) {
 	if err != nil {
 		return types.ContainerAttachOptions{}, err
 	}
+	noStdin, err := cmd.Flags().GetBool("no-stdin")
+	if err != nil {
+		return types.ContainerAttachOptions{}, err
+	}
+
+	var stdin io.Reader
+	if !noStdin {
+		stdin = cmd.InOrStdin()
+	}
 	return types.ContainerAttachOptions{
 		GOptions:   globalOptions,
-		Stdin:      cmd.InOrStdin(),
+		Stdin:      stdin,
 		Stdout:     cmd.OutOrStdout(),
 		Stderr:     cmd.ErrOrStderr(),
 		DetachKeys: detachKeys,
