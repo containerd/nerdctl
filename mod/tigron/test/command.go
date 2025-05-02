@@ -160,7 +160,7 @@ func (gc *GenericCommand) WithTimeout(timeout time.Duration) {
 }
 
 func (gc *GenericCommand) PrependArgs(args ...string) {
-	gc.cmd.PrependArgs = args
+	gc.cmd.PrependArgs = append(gc.cmd.PrependArgs, args...)
 }
 
 func (gc *GenericCommand) Background() {
