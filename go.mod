@@ -152,3 +152,5 @@ require (
 )
 
 replace github.com/containerd/nerdctl/mod/tigron v0.0.0 => ./mod/tigron
+
+replace github.com/syndtr/gocapability => ./internal/replace/gocapability
