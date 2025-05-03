@@ -95,7 +95,7 @@ main(){
   local sha
   sha="CNI_PLUGINS_SHA_$(tr "[:lower:]" "[:upper:]" <<<"$GOARCH")"
   # shellcheck source=/dev/null
-  "$root"/../linux/cni.sh "$CNI_PLUGINS_VERSION" "$GOARCH" "${!sha}"
+  "$root"/../linux/cni.sh install "$CNI_PLUGINS_VERSION" "$GOARCH" "${!sha}"
 
   # Hack to get go into kind control plane
   exec::nerdctl rm -f go-kind 2>/dev/null || true

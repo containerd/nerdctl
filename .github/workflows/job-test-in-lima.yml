@@ -1,0 +1,118 @@
+# Currently, Lima job test only for EL, though in the future it could be used to also test FreeBSD or other linux-es
+name: job-test-in-lima
+
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: true
+        type: number
+      runner:
+        required: true
+        type: string
+      target:
+        required: true
+        type: string
+      guest:
+        required: true
+        type: string
+
+jobs:
+  test:
+    name: "${{ inputs.guest }} ${{ inputs.target }}"
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: "${{ inputs.runner }}"
+    env:
+      TARGET: ${{ inputs.target }}
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: "Init: lima"
+        uses: lima-vm/lima-actions/setup@be564a1408f84557d067b099a475652288074b2e  # v1.0.0
+        id: lima-actions-setup
+
+      - name: "Init: Cache"
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
+        with:
+          path: ~/.cache/lima
+          key: lima-${{ steps.lima-actions-setup.outputs.version }}
+
+      - name: "Init: start the guest VM"
+        run: |
+          set -eux
+          # containerd=none is set because the built-in containerd support conflicts with Docker
+          limactl start \
+            --name=default \
+            --cpus=4 \
+            --memory=12 \
+            --containerd=none \
+            --set '.mounts=null | .portForwards=[{"guestSocket":"/var/run/docker.sock","hostSocket":"{{.Dir}}/sock/docker.sock"}]' \
+            template://${{ inputs.guest }}
+
+      # FIXME: the tests should be directly executed in the VM without nesting Docker inside it
+      # https://github.com/containerd/nerdctl/issues/3858
+      - name: "Init: install dockerd in the guest VM"
+        run: |
+          set -eux
+          lima sudo mkdir -p /etc/systemd/system/docker.socket.d
+          cat <<-EOF | lima sudo tee /etc/systemd/system/docker.socket.d/override.conf
+          [Socket]
+          SocketUser=$(whoami)
+          EOF
+          lima sudo dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+          lima sudo dnf -q -y install docker-ce --nobest
+          lima sudo systemctl enable --now docker
+
+      - name: "Init: configure the host to use dockerd in the guest VM"
+        run: |
+          set -eux
+          sudo systemctl disable --now docker.service docker.socket
+          export DOCKER_HOST="unix://$(limactl ls --format '{{.Dir}}/sock/docker.sock' default)"
+          echo "DOCKER_HOST=${DOCKER_HOST}" >>$GITHUB_ENV
+          docker info
+          docker version
+
+      - name: "Init: expose GitHub Runtime variables for gha"
+        uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124  # v3.1.0
+
+      - name: "Init: prepare integration tests"
+        run: |
+          set -eux
+
+          sudo losetup -Dv
+          sudo losetup -lv
+
+          [ "$TARGET" = "rootless" ] && TARGET=test-integration-rootless || TARGET=test-integration
+          docker buildx create --name with-gha --use
+          docker buildx build \
+            --output=type=docker \
+            --cache-from type=gha,scope=test-integration-dependencies-amd64 \
+            -t test-integration --target "${TARGET}" \
+            .
+
+      - name: "Run integration tests"
+        # Presumably, something is broken with the way docker exposes /dev to the container, as it appears to only
+        # randomly work. Mounting /dev does workaround the issue.
+        # This might be due to the old kernel shipped with Alma (4.18), or something else between centos/docker.
+        run: |
+          set -eux
+          if [ "$TARGET" = "rootless" ]; then
+            echo "rootless"
+            docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false
+          else
+            echo "rootful"
+            docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=false
+          fi
+      - name: "Run: integration tests (flaky)"
+        run: |
+          set -eux
+          if [ "$TARGET" = "rootless" ]; then
+            echo "rootless"
+            docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true
+          else
+            echo "rootful"
+            docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=true
+          fi

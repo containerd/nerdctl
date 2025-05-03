@@ -73,7 +73,7 @@ jobs:
           if [ "$RUNNER_OS" == "Windows" ]; then
             GOPATH=$(go env GOPATH) WINCNI_VERSION=${{ inputs.windows-cni-version }} ./hack/provisioning/windows/cni.sh
           elif [ "$RUNNER_OS" == "Linux" ]; then
-            ./hack/provisioning/linux/cni.sh "${{ inputs.linux-cni-version }}" "amd64" "${{ inputs.linux-cni-sha }}"
+            ./hack/provisioning/linux/cni.sh install "${{ inputs.linux-cni-version }}" "amd64" "${{ inputs.linux-cni-sha }}"
           fi
 
       - if: ${{ env.GO_VERSION != '' }}

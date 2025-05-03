@@ -293,204 +293,38 @@ jobs:
         if: matrix.nerdctl != 'nerdctl.gomodjail'
         run: docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} ${TEST_TARGET} /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true -test.target=${NERDCTL}
 
-  test-integration-docker-compatibility:
-    timeout-minutes: 40
-    name: docker
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-        with:
-          fetch-depth: 1
-      - name: "Install go"
-        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b  # v5.4.0
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-      - name: "Register QEMU (tonistiigi/binfmt)"
-        run: |
-          # `--install all` will only install emulation for architectures that cannot be natively executed
-          # Since some arm64 platforms do provide native fallback execution for 32 bits,
-          # armv7 emulation may or may not be installed, causing variance in the result of `uname -m`.
-          # To avoid that, we explicitly list the architectures we do want emulation for.
-          docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
-          docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
-          docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
-      - name: "Prepare integration test environment"
-        run: |
-          # FIXME: remove expect when we are done removing unbuffer from tests
-          sudo apt-get install -qq expect
-          make install-dev-tools
-      - name: Enable CDI in the Docker daemon.
-        run: |
-          sudo mkdir -p /etc/docker
-          sudo jq '.features.cdi = true' /etc/docker/daemon.json | sudo tee /etc/docker/daemon.json.tmp && sudo mv /etc/docker/daemon.json.tmp /etc/docker/daemon.json
-          sudo systemctl restart docker
-      - name: "Ensure that the integration test suite is compatible with Docker"
-        run: WITH_SUDO=true ./hack/test-integration.sh -test.target=docker
-      - name: "Ensure that the IPv6 integration test suite is compatible with Docker"
-        run: WITH_SUDO=true ./hack/test-integration.sh -test.target=docker -test.only-ipv6
-      - name: "Ensure that the integration test suite is compatible with Docker (flaky only)"
-        run: WITH_SUDO=true ./hack/test-integration.sh -test.target=docker -test.only-flaky
-
-  test-integration-windows:
-    timeout-minutes: 40
-    name: windows
-    runs-on: windows-2022
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-        with:
-          fetch-depth: 1
-      - name: "Install go"
-        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b  # v5.4.0
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-      - run: |
-          go install ./cmd/nerdctl
-          make install-dev-tools
-      - name: "Set up CNI"
-        run: GOPATH=$(go env GOPATH) ./hack/provisioning/windows/cni.sh
-      - name: "Set up containerd"
-        env:
-          ctrdVersion: 1.7.27
-        run: powershell hack/provisioning/windows/containerd.ps1
-      - name: "Run integration tests"
-        run: ./hack/test-integration.sh -test.only-flaky=false
-      - name: "Run integration tests (flaky)"
-        run: ./hack/test-integration.sh -test.only-flaky=true
-
-  test-integration-freebsd:
-    timeout-minutes: 40
-    name: FreeBSD
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-        with:
-          fetch-depth: 1
-      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
-        with:
-          path: /root/.vagrant.d
-          key: vagrant
-      - name: Set up vagrant
-        run: |
-          # from https://github.com/containerd/containerd/blob/v2.0.2/.github/workflows/ci.yml#L583-L596
-          # which is based on https://github.com/opencontainers/runc/blob/v1.1.8/.cirrus.yml#L41-L49
-          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-          sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
-          sudo apt-get update -qq
-          sudo apt-get install -qq libvirt-daemon libvirt-daemon-system vagrant ovmf
-          # https://github.com/vagrant-libvirt/vagrant-libvirt/issues/1725#issuecomment-1454058646
-          sudo cp /usr/share/OVMF/OVMF_VARS_4M.fd /var/lib/libvirt/qemu/nvram/
-          sudo systemctl enable --now libvirtd
-          sudo apt-get build-dep -qq ruby-libvirt
-          sudo apt-get install -qq --no-install-recommends libxslt-dev libxml2-dev libvirt-dev ruby-bundler ruby-dev zlib1g-dev
-          # Disable strict dependency enforcement to bypass gem version conflicts during the installation of the vagrant-libvirt plugin.
-          sudo env VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT=1 vagrant plugin install vagrant-libvirt
-      - name: Boot VM
-        run: |
-          ln -sf Vagrantfile.freebsd Vagrantfile
-          sudo vagrant up --no-tty
-      - name: test-unit
-        run: sudo vagrant up --provision-with=test-unit
-      - name: test-integration
-        run: sudo vagrant up --provision-with=test-integration
-
-  # EL8 is used for testing compatibility with cgroup v1.
-  # Do not upgrade this to EL9 (cgroup v2).
-  test-integration-el8:
-    timeout-minutes: 60
-    name: "[flaky, see #3988] EL8 (cgroup v1)"
+  test-integration-host:
+    name: "in-host${{ inputs.hack }}"
+    uses: ./.github/workflows/job-test-in-host.yml
     strategy:
       fail-fast: false
       matrix:
-        mode: ["rootful", "rootless"]
-    runs-on: ubuntu-24.04
-    env:
-      MODE: ${{ matrix.mode }}
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-        with:
-          fetch-depth: 1
-      - uses: lima-vm/lima-actions/setup@be564a1408f84557d067b099a475652288074b2e  # v1.0.0
-        id: lima-actions-setup
-      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
-        with:
-          path: ~/.cache/lima
-          key: lima-${{ steps.lima-actions-setup.outputs.version }}
-      - name: "Start the guest VM"
-        run: |
-          set -eux
-          # containerd=none is set because the built-in containerd support conflicts with Docker
-          limactl start \
-            --name=default \
-            --cpus=4 \
-            --memory=12 \
-            --containerd=none \
-            --set '.mounts=null | .portForwards=[{"guestSocket":"/var/run/docker.sock","hostSocket":"{{.Dir}}/sock/docker.sock"}]' \
-            template://almalinux-8
-      # FIXME: the tests should be directly executed in the VM without nesting Docker inside it
-      # https://github.com/containerd/nerdctl/issues/3858
-      - name: "Install dockerd in the guest VM"
-        run: |
-          set -eux
-          lima sudo mkdir -p /etc/systemd/system/docker.socket.d
-          cat <<-EOF | lima sudo tee /etc/systemd/system/docker.socket.d/override.conf
-          [Socket]
-          SocketUser=$(whoami)
-          EOF
-          lima sudo dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-          lima sudo dnf -q -y install docker-ce --nobest
-          lima sudo systemctl enable --now docker
-      - name: "Configure the host to use dockerd in the guest VM"
-        run: |
-          set -eux
-          sudo systemctl disable --now docker.service docker.socket
-          export DOCKER_HOST="unix://$(limactl ls --format '{{.Dir}}/sock/docker.sock' default)"
-          echo "DOCKER_HOST=${DOCKER_HOST}" >>$GITHUB_ENV
-          docker info
-          docker version
-      - name: "Expose GitHub Runtime variables for gha"
-        uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124  # v3.1.0
-      - name: "Prepare integration tests"
-        run: |
-          set -eux
+        include:
+          # Test on windows w/o canary
+          - runner: windows-2022
+          - runner: windows-2025
+            canary: true
+          # Test docker on linux
+          - runner: ubuntu-24.04
+            binary: docker
 
-          sudo losetup -Dv
-          sudo losetup -lv
-
-          TARGET=test-integration
-          [ "$MODE" = "rootless" ] && TARGET=test-integration-rootless
-          docker buildx create --name with-gha --use
-          docker buildx build \
-            --output=type=docker \
-            --cache-from type=gha,scope=test-integration-dependencies-amd64 \
-            -t test-integration --target "${TARGET}" \
-            .
-
-      - name: "Run integration tests"
-        # Presumably, something is broken with the way docker exposes /dev to the container, as it appears to only
-        # randomly work. Mounting /dev does workaround the issue.
-        # This might be due to the old kernel shipped with Alma (4.18), or something else between centos/docker.
-        run: |
-          set -eux
-          if [ "$MODE" = "rootless" ]; then
-            echo "rootless"
-            docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false
-          else
-            echo "rootful"
-            docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=false
-          fi
-      - name: "Run integration tests (flaky)"
-        run: |
-          set -eux
-          if [ "$MODE" = "rootless" ]; then
-            echo "rootless"
-            docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true
-          else
-            echo "rootful"
-            docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=true
-          fi
+          # FIXME: running nerdctl on the host is work in progress
+          # (we miss runc to be installed on the host - and obviously other deps)
+          # Plan is to pause this for now and first consolidate dependencies management (wrt Dockerfile vs. host-testing CI)
+          # before we can really start testing linux nerdctl on the host.
+          # - runner: ubuntu-24.04
+          # - runner: ubuntu-24.04
+          #  canary: true
+    with:
+      timeout: 45
+      runner: ${{ matrix.runner }}
+      binary: ${{ matrix.binary != '' && matrix.binary || 'nerdctl' }}
+      canary: ${{ matrix.canary && true || false }}
+      go-version: 1.24
+      windows-cni-version: v0.3.1
+      containerd-version: 2.0.5
+      # Note: these as for amd64
+      containerd-sha: 88ab31f3e78e4d2fa12dcb933032122d11d441c83b79a89c6c8076f871e50df8
+      containerd-service-sha: 12a76c13cad132222d2b3d2025e56212d205d37eca77508dbbfcdf6ababbf70a
+      linux-cni-version: v1.7.1
+      linux-cni-sha: 1a28a0506bfe5bcdc981caf1a49eeab7e72da8321f1119b7be85f22621013098
