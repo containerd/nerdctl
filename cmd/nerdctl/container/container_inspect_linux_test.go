@@ -478,6 +478,11 @@ func TestContainerInspectBlkioSettings(t *testing.T) {
 		t.Skip("test requires root privilege to create a dummy device")
 	}
 
+	// See https://github.com/containerd/nerdctl/issues/4185
+	// It is unclear if this is truly a kernel version problem, a runc issue, or a distro (EL9) issue.
+	// For now, disable the test unless on a recent kernel.
+	testutil.RequireKernelVersion(t, ">= 6.0.0-0")
+
 	devPath := "/dev/dummy-zero"
 	// a dummy zero device: mknod /dev/dummy-zero c 1 5
 	helperCmd := exec.Command("mknod", []string{devPath, "c", "1", "5"}...)

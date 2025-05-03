@@ -610,7 +610,9 @@ func RequireKernelVersion(t testing.TB, constraint string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	unameR, err := semver.NewVersion(infoutil.UnameR())
+	// EL kernel versions are not semver, so, cleanup first
+	un := strings.Split(infoutil.UnameR(), "-")[0]
+	unameR, err := semver.NewVersion(un)
 	if err != nil {
 		t.Skip(err)
 	}
