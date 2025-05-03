@@ -133,8 +133,7 @@ CMD ["echo", "nerdctl-test-builder-prune"]`, testutil.CommonImage)
 			{
 				Description: "Debug",
 				// `nerdctl builder debug` is currently incompatible with `docker buildx debug`.
-				// FIXME: fails with gomodjail: "timed out to access cache storage. other debug session is running?"
-				Require:    require.All(require.Not(nerdtest.Docker), require.Not(nerdtest.Gomodjail)),
+				Require:    require.All(require.Not(nerdtest.Docker)),
 				NoParallel: true,
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					dockerfile := fmt.Sprintf(`FROM %s

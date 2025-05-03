@@ -104,7 +104,7 @@ If you are going to use blanket destructive operations (like `prune`), please:
 and be sure that your namespace is named after the test id
 - remove the namespace in your test `Cleanup`
 - since docker does not support namespaces, be sure to:
-  - only enable `Parallel` if the target is NOT docker: `	if testutil.GetTarget() != testutil.Docker { t.Parallel() }`
+  - only enable `Parallel` if the target is NOT docker: `	if !nerdtest.IsDocker() { t.Parallel() }`
   - double check that what you do in the default namespace is safe
 
 #### Clean-up after (and before) yourself

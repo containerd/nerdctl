@@ -126,7 +126,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 				assert.Assert(t, strings.Contains(res.Stdout(), expect), fmt.Sprintf("expected output to contain %q: %q", expect, res.Stdout()))
 				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded")
 			} else {
-				if testutil.GetTarget() == testutil.Docker &&
+				if nerdtest.IsDocker() &&
 					(network == networkIPvlan || network == "container:whatever"+tID) {
 					// unlike nerdctl
 					// when using network ipvlan or container in Docker
@@ -137,7 +137,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 				}
 
 				// See https://github.com/containerd/nerdctl/issues/3101
-				if testutil.GetTarget() == testutil.Docker &&
+				if nerdtest.IsDocker() &&
 					(network == networkBridge) {
 					expect = ""
 				}

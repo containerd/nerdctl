@@ -19,6 +19,7 @@ package network
 import (
 	"encoding/json"
 	"errors"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -248,7 +249,11 @@ func TestNetworkInspect(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output: func(stdout string, info string, t *testing.T) {
-						cmd := helpers.Custom("nerdctl", "--namespace", data.Identifier())
+						// Note: some functions need to be tested without the automatic --namespace nerdctl-test argument, so we need
+						// to retrieve the binary name.
+						// Note that we know this works already, so no need to assert err.
+						bin, _ := exec.LookPath(testutil.GetTarget())
+						cmd := helpers.Custom(bin, "--namespace", data.Identifier())
 
 						com := cmd.Clone()
 						com.WithArgs("network", "inspect", data.Identifier())

@@ -57,7 +57,7 @@ func (ns *nerdctlSetup) AmbientRequirements(testCase *test.Case, t *testing.T) {
 		t.Skip("runner skips non-flaky tests in the flaky environment")
 	}
 
-	if getTarget() == targetDocker && testCase.Config.Read(modePrivate) == enabled {
+	if !isTargetNerdish() && testCase.Config.Read(modePrivate) == enabled {
 		// For docker, we do disable parallel since there is no namespace where we can isolate
 		testCase.NoParallel = true
 	}

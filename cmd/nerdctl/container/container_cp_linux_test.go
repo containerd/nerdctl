@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 // For the test matrix, see https://docs.docker.com/engine/reference/commandline/cp/
@@ -898,7 +899,7 @@ func cpTestHelper(t *testing.T, tg *testgroup) {
 				setup()
 
 				// If Docker, removes the err part of expectation
-				if testutil.GetTarget() == testutil.Docker {
+				if nerdtest.IsDocker() {
 					testCase.expect.Err = ""
 				}
 
@@ -938,7 +939,7 @@ func cpTestHelper(t *testing.T, tg *testgroup) {
 					cmd = base.Cmd("cp", containerStopped+":"+sourceSpec, destinationSpec)
 				}
 
-				if rootlessutil.IsRootless() && testutil.GetTarget() == testutil.Nerdctl {
+				if rootlessutil.IsRootless() && !nerdtest.IsDocker() {
 					cmd.Assert(
 						icmd.Expected{
 							ExitCode: 1,

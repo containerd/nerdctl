@@ -130,7 +130,7 @@ func TestStopCleanupForwards(t *testing.T) {
 
 	// define iptables chain name depending on the target (docker/nerdctl)
 	var chain string
-	if testutil.GetTarget() == testutil.Docker {
+	if nerdtest.IsDocker() {
 		chain = "DOCKER"
 	} else {
 		redirectChain := "CNI-HOSTPORT-DNAT"

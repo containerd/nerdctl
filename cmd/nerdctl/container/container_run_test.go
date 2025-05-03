@@ -717,7 +717,7 @@ func TestRunAttachFlag(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actualOut := tc.testFunc(t, tc.testStr, tc.args)
 			errorMsg := fmt.Sprintf("%s failed;\nExpected: '%s'\nActual: '%s'", tc.name, tc.expectedOut, actualOut)
-			if testutil.GetTarget() == testutil.Docker {
+			if nerdtest.IsDocker() {
 				assert.Equal(t, true, strings.Contains(actualOut, tc.dockerOut), errorMsg)
 			} else {
 				assert.Equal(t, true, strings.Contains(actualOut, tc.expectedOut), errorMsg)
@@ -744,7 +744,7 @@ func TestRunQuiet(t *testing.T) {
 	}
 
 	// Docker and nerdctl image pulls are not 1:1.
-	if testutil.GetTarget() == testutil.Docker {
+	if nerdtest.IsDocker() {
 		sentinel = "Pull complete"
 	} else {
 		sentinel = "resolved"

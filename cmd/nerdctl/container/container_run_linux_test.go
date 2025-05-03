@@ -382,7 +382,9 @@ func TestRunTTY(t *testing.T) {
 
 func TestRunSigProxy(t *testing.T) {
 	testCase := nerdtest.Setup()
-	testCase.Require = require.Not(nerdtest.Gomodjail) // FIXME
+
+	// FIXME: gomodjail signal handling is not working yet: https://github.com/AkihiroSuda/gomodjail/issues/51
+	testCase.Require = require.Not(nerdtest.Gomodjail)
 
 	testCase.SubTests = []*test.Case{
 		{
