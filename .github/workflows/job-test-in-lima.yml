@@ -16,14 +16,25 @@ on:
       guest:
         required: true
         type: string
+      packages:
+        required: false
+        default: ""
+        type: string
+      flaky:
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   test:
-    name: "${{ inputs.guest }} ${{ inputs.target }}"
+    name: |
+      ${{ inputs.guest }} ${{ inputs.target }} ${{ inputs.packages != '' && inputs.packages || '' }}
+      ${{ inputs.flaky &&  '(flaky)' ||  '' }}
     timeout-minutes: ${{ inputs.timeout }}
     runs-on: "${{ inputs.runner }}"
     env:
       TARGET: ${{ inputs.target }}
+      TEST_PACKAGES: ${{ inputs.packages }}
     steps:
       - name: "Init: checkout"
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
@@ -101,18 +112,8 @@ jobs:
           set -eux
           if [ "$TARGET" = "rootless" ]; then
             echo "rootless"
-            docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false
+            docker run -t -v /dev:/dev -e TEST_PACKAGES="$TEST_PACKAGES" --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=${{ inputs.flaky }}
           else
             echo "rootful"
-            docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=false
-          fi
-      - name: "Run: integration tests (flaky)"
-        run: |
-          set -eux
-          if [ "$TARGET" = "rootless" ]; then
-            echo "rootless"
-            docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true
-          else
-            echo "rootful"
-            docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=true
+            docker run -t -v /dev:/dev -e TEST_PACKAGES="$TEST_PACKAGES" --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=${{ inputs.flaky }}
           fi

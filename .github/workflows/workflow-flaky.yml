@@ -24,11 +24,23 @@ jobs:
       matrix:
         guest: ["almalinux-8", "almalinux-9"]
         target: ["rootful", "rootless"]
+        flaky: [true, false]
+        includes:
+          - guest: "almalinux-8"
+            target: "rootless"
+            flaky: true
+            packages: "./cmd/nerdctl/container"
+          - guest: "almalinux-8"
+            target: "rootless"
+            flaky: true
+            packages: "./cmd/nerdctl/compose"
     with:
       timeout: 60
       runner: ubuntu-24.04
       guest: ${{ matrix.guest }}
       target: ${{ matrix.target }}
+      flaky: ${{ matrix.flaky }}
+      packages: ${{ matrix.packages }}
 
   test-integration-freebsd:
     name: "FreeBSD"
