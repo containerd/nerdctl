@@ -32,6 +32,8 @@ readonly needsudo="${WITH_SUDO:-}"
 
 # See https://github.com/containerd/nerdctl/blob/main/docs/testing/README.md#about-parallelization
 args=(--format=testname --jsonfile /tmp/test-integration.log --packages="$root"/../cmd/nerdctl/...)
+# Not working on windows
+[ "$(uname -s)" != "Linux" ] || args+=(--post-run-command "$root"/github/gotestsum-reporter.sh)
 
 if [ "$#" == 0 ]; then
   "$root"/test-integration.sh -test.only-flaky=false
@@ -51,6 +53,3 @@ if [ "$needsudo" == "true" ] || [ "$needsudo" == "yes" ] || [ "$needsudo" == "1"
 else
   gotestsum "${args[@]}" -- -timeout="$timeout" -p 1 -args -test.allow-kill-daemon "$@"
 fi
-
-echo "These are the tests that took more than 10 seconds:"
-gotestsum tool slowest --threshold 10s --jsonfile /tmp/test-integration.log

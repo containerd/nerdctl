@@ -146,9 +146,12 @@ jobs:
           if echo "${ROOTLESSKIT_VERSION}" | grep -q v1; then
             WORKAROUND_ISSUE_622=1
           fi
-          echo "WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622}" >> "$GITHUB_ENV"
+          echo "WORKAROUND_ISSUE_622=$WORKAROUND_ISSUE_622" >> "$GITHUB_ENV"
       - name: "Run: integration tests"
         run: |
+          . ./hack/github/action-helpers.sh
+          github::md::h2 "non-flaky" >> "$GITHUB_STEP_SUMMARY"
+
           # IPV6 note: nested IPv6 network inside docker and qemu is complex and needs a bunch of sysctl config.
           # Therefore, it's hard to debug why the IPv6 tests fail in such an isolation layer.
           # On the other side, using the host network is easier at configuration.
@@ -158,18 +161,21 @@ jobs:
             && args=(test-integration ./hack/test-integration.sh) \
             || args=(test-integration-${{ inputs.target }} /test-integration-rootless.sh ./hack/test-integration.sh)
           if [ "${{ inputs.ipv6 }}" == true ]; then
-            docker run --network host -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} "${args[@]}" -test.only-flaky=false -test.only-ipv6 -test.target=${{ inputs.binary }}
+            docker run --network host -t --rm --privileged -e GITHUB_STEP_SUMMARY="$GITHUB_STEP_SUMMARY" -v "$GITHUB_STEP_SUMMARY":"$GITHUB_STEP_SUMMARY" -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622:-} "${args[@]}" -test.only-flaky=false -test.only-ipv6 -test.target=${{ inputs.binary }}
           else
-            docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} "${args[@]}" -test.only-flaky=false -test.target=${{ inputs.binary }}
+            docker run -t --rm --privileged -e GITHUB_STEP_SUMMARY="$GITHUB_STEP_SUMMARY" -v "$GITHUB_STEP_SUMMARY":"$GITHUB_STEP_SUMMARY" -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622:-} "${args[@]}" -test.only-flaky=false -test.target=${{ inputs.binary }}
           fi
       # FIXME: this NEEDS to go away
       - name: "Run: integration tests (flaky)"
         run: |
+          . ./hack/github/action-helpers.sh
+          github::md::h2 "flaky" >> "$GITHUB_STEP_SUMMARY"
+
           [ "${{ inputs.target }}" == "rootful" ] \
             && args=(test-integration ./hack/test-integration.sh) \
             || args=(test-integration-${{ inputs.target }} /test-integration-rootless.sh ./hack/test-integration.sh)
           if [ "${{ inputs.ipv6 }}" == true ]; then
-            docker run --network host -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} "${args[@]}" -test.only-flaky=true -test.only-ipv6 -test.target=${{ inputs.binary }}
+            docker run --network host -t --rm --privileged -e GITHUB_STEP_SUMMARY="$GITHUB_STEP_SUMMARY" -v "$GITHUB_STEP_SUMMARY":"$GITHUB_STEP_SUMMARY" -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622:-} "${args[@]}" -test.only-flaky=true -test.only-ipv6 -test.target=${{ inputs.binary }}
           else
-            docker run -t --rm --privileged -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622} "${args[@]}" -test.only-flaky=true -test.target=${{ inputs.binary }}
+            docker run -t --rm --privileged -e GITHUB_STEP_SUMMARY="$GITHUB_STEP_SUMMARY" -v "$GITHUB_STEP_SUMMARY":"$GITHUB_STEP_SUMMARY" -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622:-} "${args[@]}" -test.only-flaky=true -test.target=${{ inputs.binary }}
           fi
