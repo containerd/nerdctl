@@ -1,0 +1,54 @@
+# This job pre-heats the cache for the test image by building all dependencies
+name: job-test-dependencies
+
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: true
+        type: number
+      runner:
+        required: true
+        type: string
+      containerd-version:
+        required: false
+        default: ''
+        type: string
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  # This job builds the dependency target of the test docker image for all supported architectures and cache it in GHA
+  build-dependencies:
+    # Note: for whatever reason, you cannot access env.RUNNER_ARCH here
+    name: "${{ contains(inputs.runner, 'arm') && 'arm64' || 'amd64' }}${{ inputs.containerd-version && format(' | {0}', inputs.containerd-version) || ''}}"
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: "${{ inputs.runner }}"
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: "Init: expose GitHub Runtime variables for gha"
+        uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124  # v3.1.0
+
+      - name: "Run: build dependencies for the integration test environment image"
+        run: |
+          # Cache is sharded per-architecture
+          arch=${{ env.RUNNER_ARCH == 'ARM64' && 'arm64' || 'amd64' }}
+          docker buildx create --name with-gha --use
+          # Honor old containerd if requested
+          args=()
+          if [ "${{ inputs.containerd-version }}" != "" ]; then
+            args=(--build-arg CONTAINERD_VERSION=${{ inputs.containerd-version }})
+          fi
+          docker buildx build \
+            --cache-to type=gha,compression=zstd,mode=max,scope=test-integration-dependencies-"$arch" \
+            --cache-from type=gha,scope=test-integration-dependencies-"$arch" \
+            --target build-dependencies "${args[@]}" .
