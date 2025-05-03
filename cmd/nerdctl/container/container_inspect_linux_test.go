@@ -263,7 +263,6 @@ func TestContainerInspectHostConfig(t *testing.T) {
 		"--read-only",
 		"--shm-size", "256m",
 		"--uts", "host",
-		"--sysctl", "net.core.somaxconn=1024",
 		"--runtime", "io.containerd.runc.v2",
 		testutil.AlpineImage, "sleep", "infinity").AssertOK()
 
