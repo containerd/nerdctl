@@ -134,7 +134,7 @@ func TestImageHistory(t *testing.T) {
 				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
 					history, err := decode(stdout)
 					assert.NilError(t, err, "decode should not fail")
-					assert.Equal(t, history[1].Snapshot, "sha256:56bf55b8eed1f0b4794a30386e4d1d3da949c25bcb5155e898097cd75dc77c2a")
+					assert.Equal(t, history[1].Snapshot, "sha256:a16e98724c05975ee8c40d8fe389c3481373d34ab20a1cf52ea2accc43f71f4c")
 					assert.Equal(t, history[1].CreatedBy, "/bin/sh -c #(nop) ADD file:3b16ffee2b26d8af5db152fcc582aaccd9e1ec9e3343874e9969a205550fe07d in / ")
 				}),
 			},
@@ -142,14 +142,14 @@ func TestImageHistory(t *testing.T) {
 				Description: "Quiet has no effect with format, so, go no-json, no-trunc",
 				Command:     test.Command("image", "history", "--human=false", "--no-trunc", "--quiet", testutil.CommonImage),
 				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
-					assert.Equal(t, stdout, "<missing>\nsha256:56bf55b8eed1f0b4794a30386e4d1d3da949c25bcb5155e898097cd75dc77c2a\n")
+					assert.Equal(t, stdout, "<missing>\nsha256:a16e98724c05975ee8c40d8fe389c3481373d34ab20a1cf52ea2accc43f71f4c\n")
 				}),
 			},
 			{
 				Description: "With quiet, trunc has no effect",
 				Command:     test.Command("image", "history", "--human=false", "--no-trunc", "--quiet", testutil.CommonImage),
 				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
-					assert.Equal(t, stdout, "<missing>\nsha256:56bf55b8eed1f0b4794a30386e4d1d3da949c25bcb5155e898097cd75dc77c2a\n")
+					assert.Equal(t, stdout, "<missing>\nsha256:a16e98724c05975ee8c40d8fe389c3481373d34ab20a1cf52ea2accc43f71f4c\n")
 				}),
 			},
 		},

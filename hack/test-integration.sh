@@ -26,6 +26,11 @@ if [[ "$(id -u)" = "0" ]]; then
   fi
 fi
 
+# If we are being asked to use the proofing system, configure it
+if [ "${PROOFING_IP:-}" != "" ]; then
+  "$root"/../mod/proofing/spoof.sh guest::configure "$root"/pkg/testutil/images.env "$PROOFING_IP"
+fi
+
 readonly timeout="60m"
 readonly retries="2"
 readonly needsudo="${WITH_SUDO:-}"

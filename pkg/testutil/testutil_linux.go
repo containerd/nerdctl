@@ -17,20 +17,24 @@
 package testutil
 
 var (
-	BusyboxImage                = "ghcr.io/containerd/busybox:1.36"
-	AlpineImage                 = mirrorOf("alpine:3.13")
-	NginxAlpineImage            = mirrorOf("nginx:1.19-alpine")
+	AlpineImage         = getImage("alpine")
+	BusyboxImage        = getImage("busybox")
+	DockerAuthImage     = getImage("cesanta/docker_auth")
+	FluentdImage        = getImage("fluentd")
+	GolangImage         = getImage("golang")
+	KuboImage           = getImage("ipfs/kubo")
+	MariaDBImage        = getImage("mariadb")
+	NginxAlpineImage    = getImage("nginx")
+	RegistryImageStable = getImage("registry")
+	RegistryImageNext   = getImage("registry")
+	SystemdImage        = getImage("ghcr.io/containerd/stargz-snapshotter")
+	WordpressImage      = getImage("wordpress")
+
+	// Until we remove the helper
+	_ = mirrorOf("nblblbl")
+
 	NginxAlpineIndexHTMLSnippet = "<title>Welcome to nginx!</title>"
-	RegistryImageStable         = mirrorOf("registry:2")
-	RegistryImageNext           = "ghcr.io/distribution/distribution:"
-	WordpressImage              = mirrorOf("wordpress:5.7")
 	WordpressIndexHTMLSnippet   = "<title>WordPress &rsaquo; Installation</title>"
-	MariaDBImage                = mirrorOf("mariadb:10.5")
-	DockerAuthImage             = mirrorOf("cesanta/docker_auth:1.7")
-	FluentdImage                = "fluent/fluentd:v1.17.0-debian-1.0"
-	KuboImage                   = mirrorOf("ipfs/kubo:v0.16.0")
-	SystemdImage                = "ghcr.io/containerd/stargz-snapshotter:0.15.1-kind"
-	GolangImage                 = mirrorOf("golang:1.18")
 
 	// Source: https://gist.github.com/cpuguy83/fcf3041e5d8fb1bb5c340915aabeebe0
 	NonDistBlobImage = "ghcr.io/cpuguy83/non-dist-blob:latest"

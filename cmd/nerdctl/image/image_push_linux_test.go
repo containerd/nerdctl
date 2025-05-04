@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
@@ -38,6 +39,7 @@ func TestPush(t *testing.T) {
 	nerdtest.Setup()
 
 	var registryNoAuthHTTPRandom, registryNoAuthHTTPDefault, registryTokenAuthHTTPSRandom *testregistry.RegistryServer
+	commonImage, _ := referenceutil.Parse(testutil.CommonImage)
 
 	testCase := &test.Case{
 		Require: require.Linux,
@@ -67,7 +69,7 @@ func TestPush(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), commonImage.Tag)
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 				},
