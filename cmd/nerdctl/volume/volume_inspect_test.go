@@ -99,10 +99,10 @@ func TestVolumeInspect(t *testing.T) {
 				return &test.Expected{
 					Output: expect.All(
 						expect.Contains(data.Labels().Get("vol1")),
-						expect.JSON([]native.Volume{}, func(dc []native.Volume, info string, t tig.T) {
-							assert.Assert(t, len(dc) == 1, fmt.Sprintf("one result, not %d", len(dc))+info)
-							assert.Assert(t, dc[0].Name == data.Labels().Get("vol1"), fmt.Sprintf("expected name to be %q (was %q)", data.Labels().Get("vol1"), dc[0].Name)+info)
-							assert.Assert(t, dc[0].Labels == nil, fmt.Sprintf("expected labels to be nil and were %v", dc[0].Labels)+info)
+						expect.JSON([]native.Volume{}, func(dc []native.Volume, t tig.T) {
+							assert.Assert(t, len(dc) == 1, fmt.Sprintf("one result, not %d", len(dc)))
+							assert.Assert(t, dc[0].Name == data.Labels().Get("vol1"), fmt.Sprintf("expected name to be %q (was %q)", data.Labels().Get("vol1"), dc[0].Name))
+							assert.Assert(t, dc[0].Labels == nil, fmt.Sprintf("expected labels to be nil and were %v", dc[0].Labels))
 						}),
 					),
 				}
@@ -117,7 +117,7 @@ func TestVolumeInspect(t *testing.T) {
 				return &test.Expected{
 					Output: expect.All(
 						expect.Contains(data.Labels().Get("vol2")),
-						expect.JSON([]native.Volume{}, func(dc []native.Volume, info string, t tig.T) {
+						expect.JSON([]native.Volume{}, func(dc []native.Volume, t tig.T) {
 							labels := *dc[0].Labels
 							assert.Assert(t, len(labels) == 2, fmt.Sprintf("two results, not %d", len(labels)))
 							assert.Assert(t, labels["foo"] == "fooval", fmt.Sprintf("label foo should be fooval, not %s", labels["foo"]))
@@ -137,7 +137,7 @@ func TestVolumeInspect(t *testing.T) {
 				return &test.Expected{
 					Output: expect.All(
 						expect.Contains(data.Labels().Get("vol1")),
-						expect.JSON([]native.Volume{}, func(dc []native.Volume, info string, t tig.T) {
+						expect.JSON([]native.Volume{}, func(dc []native.Volume, t tig.T) {
 							assert.Assert(t, dc[0].Size == size, fmt.Sprintf("expected size to be %d (was %d)", size, dc[0].Size))
 						}),
 					),
@@ -153,7 +153,7 @@ func TestVolumeInspect(t *testing.T) {
 				return &test.Expected{
 					Output: expect.All(
 						expect.Contains(data.Labels().Get("vol1"), data.Labels().Get("vol2")),
-						expect.JSON([]native.Volume{}, func(dc []native.Volume, info string, t tig.T) {
+						expect.JSON([]native.Volume{}, func(dc []native.Volume, t tig.T) {
 							assert.Assert(t, len(dc) == 2, fmt.Sprintf("two results, not %d", len(dc)))
 							assert.Assert(t, dc[0].Name == data.Labels().Get("vol1"), fmt.Sprintf("expected name to be %q (was %q)", data.Labels().Get("vol1"), dc[0].Name))
 							assert.Assert(t, dc[1].Name == data.Labels().Get("vol2"), fmt.Sprintf("expected name to be %q (was %q)", data.Labels().Get("vol2"), dc[1].Name))
@@ -173,7 +173,7 @@ func TestVolumeInspect(t *testing.T) {
 					Errors:   []error{errdefs.ErrNotFound, errdefs.ErrInvalidArgument},
 					Output: expect.All(
 						expect.Contains(data.Labels().Get("vol1")),
-						expect.JSON([]native.Volume{}, func(dc []native.Volume, info string, t tig.T) {
+						expect.JSON([]native.Volume{}, func(dc []native.Volume, t tig.T) {
 							assert.Assert(t, len(dc) == 1, fmt.Sprintf("one result, not %d", len(dc)))
 							assert.Assert(t, dc[0].Name == data.Labels().Get("vol1"), fmt.Sprintf("expected name to be %q (was %q)", data.Labels().Get("vol1"), dc[0].Name))
 						}),

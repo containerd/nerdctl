@@ -19,8 +19,6 @@ package registry
 import (
 	"fmt"
 	"net"
-	"strconv"
-	"testing"
 
 	"gotest.tools/v3/assert"
 
@@ -32,13 +30,13 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 )
 
-func NewKuboRegistry(data test.Data, helpers test.Helpers, t *testing.T, currentCA *testca.Cert, port int, auth Auth) *Server {
+func NewKuboRegistry(data test.Data, helpers test.Helpers, currentCA *testca.Cert, port int, auth Auth) *Server {
 	// listen on 0.0.0.0 to enable 127.0.0.1
 	listenIP := net.ParseIP("0.0.0.0")
 	hostIP, err := nettestutil.NonLoopbackIPv4()
-	assert.NilError(t, err, fmt.Errorf("failed finding ipv4 non loopback interface: %w", err))
+	assert.NilError(helpers.T(), err, fmt.Errorf("failed finding ipv4 non loopback interface: %w", err))
 	port, err = portlock.Acquire(port)
-	assert.NilError(t, err, fmt.Errorf("failed acquiring port: %w", err))
+	assert.NilError(helpers.T(), err, fmt.Errorf("failed acquiring port: %w", err))
 
 	containerName := data.Identifier(fmt.Sprintf("kubo-registry-server-%d-%t", port, currentCA != nil))
 	// Cleanup possible leftovers first
@@ -62,30 +60,19 @@ func NewKuboRegistry(data test.Data, helpers test.Helpers, t *testing.T, current
 		helpers.Anyhow("rm", "-f", containerName)
 		errPortRelease := portlock.Release(port)
 
-		assert.NilError(t, errPortRelease, fmt.Errorf("failed releasing port: %w", err))
+		assert.NilError(helpers.T(), errPortRelease, fmt.Errorf("failed releasing port: %w", err))
 	}
 
 	setup := func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure(args...)
-		ensureContainerStarted(helpers, containerName)
-		_, err = nettestutil.HTTPGet(fmt.Sprintf("%s://%s/api/v0",
-			scheme,
-			net.JoinHostPort(hostIP.String(), strconv.Itoa(port)),
-		),
-			30,
-			true)
-		logs := helpers.Capture("logs", containerName)
-		assert.NilError(t, err, fmt.Errorf("failed starting kubo registry in a timely manner: %w - logs: %s", err, logs))
+		ensureServerStarted(helpers, containerName, scheme, hostIP, port)
 	}
 
 	return &Server{
+		Scheme:  scheme,
 		IP:      hostIP,
 		Port:    port,
-		Scheme:  scheme,
-		Cleanup: cleanup,
 		Setup:   setup,
-		Logs: func(data test.Data, helpers test.Helpers) {
-			helpers.T().Error(helpers.Err("logs", containerName))
-		},
+		Cleanup: cleanup,
 	}
 }

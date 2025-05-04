@@ -19,8 +19,9 @@ package test
 import (
 	"io"
 	"os"
-	"testing"
 	"time"
+
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
 // DataLabels holds key-value test information set by the test authors.
@@ -93,7 +94,7 @@ type Helpers interface {
 	Write(key ConfigKey, value ConfigValue)
 
 	// T returns the current testing object.
-	T() *testing.T
+	T() tig.T
 }
 
 // The TestableCommand interface represents a low-level command to execute, typically to be compared

@@ -58,7 +58,7 @@ The following ready-made `test.Comparator` generators are provided:
 - `expect.Equals(string)`: strict equality
 - `expect.Match(*regexp.Regexp)`: regexp matching
 - `expect.All(comparators ...Comparator)`: allows to bundle together a bunch of other comparators
-- `expect.JSON[T any](obj T, verifier func(T, string, tig.T))`: allows to verify the output is valid JSON and optionally
+- `expect.JSON[T any](obj T, verifier func(T, tig.T))`: allows to verify the output is valid JSON and optionally
 pass `verifier(T, string, tig.T)` extra validation
 
 ### A complete example
@@ -93,8 +93,8 @@ func TestMyThing(t *testing.T) {
         expect.All(
             expect.Contains("out"),
             expect.DoesNotContain("something"),
-            expect.JSON(&Thing{}, func(obj *Thing, info string, t tig.T) {
-                assert.Equal(t, obj.Name, "something", info)
+            expect.JSON(&Thing{}, func(obj *Thing, t tig.T) {
+                assert.Equal(t, obj.Name, "something")
             }),
         ),
     )
@@ -131,7 +131,7 @@ func TestMyThing(t *testing.T) {
     myTest.Command = test.Custom("ls")
 
     // Set your expectations
-    myTest.Expected = test.Expects(0, nil, func(stdout, info string, t tig.T){
+    myTest.Expected = test.Expects(0, nil, func(stdout string, t tig.T){
         t.Helper()
         // Bla bla, do whatever advanced stuff and some asserts
     })
@@ -143,7 +143,7 @@ func TestMyThing(t *testing.T) {
 // You can of course generalize your comparator into a generator if it is going to be useful repeatedly
 
 func MyComparatorGenerator(param1, param2 any) test.Comparator {
-    return func(stdout, info string, t tig.T) {
+    return func(stdout string, t tig.T) {
         t.Helper()
         // Do your thing...
         // ...
@@ -154,10 +154,6 @@ func MyComparatorGenerator(param1, param2 any) test.Comparator {
 
 You can now pass along `MyComparator(comparisonString)` as the third parameter of `test.Expects`, or compose it with
 other comparators using `expect.All(MyComparator(comparisonString), OtherComparator(somethingElse))`
-
-Note that you have access to an opaque `info` string, that provides a brief formatted header message that assert
-will use in case of failure to provide context on the error.
-You may of course ignore it and write your own message.
 
 ### Advanced expectations
 
@@ -180,6 +176,7 @@ import (
 
     "gotest.tools/v3/assert"
 
+    "github.com/containerd/nerdctl/mod/tigron/tig"
     "github.com/containerd/nerdctl/mod/tigron/test"
 )
 
@@ -206,11 +203,11 @@ func TestMyThing(t *testing.T) {
             Errors: []error{
                 errors.New("foobla"),
             },
-            Output: func(stdout, info string, t tig.T) {
+            Output: func(stdout string, t tig.T) {
                 t.Helper()
 
                 // Retrieve the data that was set during the Setup phase.
-                assert.Assert(t, stdout == data.Labels().Get("sometestdata"), info)
+                assert.Assert(t, stdout == data.Labels().Get("sometestdata"))
             },
         }
     }

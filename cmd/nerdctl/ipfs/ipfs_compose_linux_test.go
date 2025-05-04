@@ -29,6 +29,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -56,7 +57,7 @@ func TestIPFSCompNoBuild(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		// Start Kubo
-		ipfsRegistry = registry.NewKuboRegistry(data, helpers, t, nil, 0, nil)
+		ipfsRegistry = registry.NewKuboRegistry(data, helpers, nil, 0, nil)
 		ipfsRegistry.Setup(data, helpers)
 		data.Labels().Set(ipfsAddrKey, fmt.Sprintf("/ip4/%s/tcp/%d", ipfsRegistry.IP, ipfsRegistry.Port))
 
@@ -254,12 +255,12 @@ COPY index.html /usr/share/nginx/html/index.html
 
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
-			Output: func(stdout string, info string, t *testing.T) {
+			Output: func(stdout string, t tig.T) {
 				resp, err := nettestutil.HTTPGet("http://127.0.0.1:8081", 10, false)
 				assert.NilError(t, err)
 				respBody, err := io.ReadAll(resp.Body)
 				assert.NilError(t, err)
-				t.Logf("respBody=%q", respBody)
+				t.Log(fmt.Sprintf("respBody=%q", respBody))
 				assert.Assert(t, strings.Contains(string(respBody), data.Identifier("indexhtml")))
 			},
 		}
@@ -269,6 +270,7 @@ COPY index.html /usr/share/nginx/html/index.html
 }
 
 func composeUP(data test.Data, helpers test.Helpers, dockerComposeYAML string, opts string) {
+	// FIXME: get rid of ComposeDir and remove the typecast
 	comp := testutil.NewComposeDir(helpers.T(), dockerComposeYAML)
 	// defer comp.CleanUp()
 
@@ -318,9 +320,13 @@ func composeUP(data test.Data, helpers test.Helpers, dockerComposeYAML string, o
 
 	if !wordpressWorking {
 		ccc := helpers.Capture("ps", "-a")
+		stdout := helpers.Capture("logs", projectName+"-wordpress-1")
+		stderr := helpers.Err("logs", projectName+"-wordpress-1")
 		helpers.T().Log(ccc)
-		helpers.T().Error(helpers.Err("logs", projectName+"-wordpress-1"))
-		helpers.T().Fatalf("wordpress is not working %v", err)
+		helpers.T().Log(stdout)
+		helpers.T().Log(stderr)
+		helpers.T().Log(fmt.Sprintf("wordpress is not working %v", err))
+		helpers.T().FailNow()
 	}
 
 	helpers.Ensure("compose", "-f", comp.YAMLFullPath(), "down", "-v")

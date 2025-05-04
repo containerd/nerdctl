@@ -23,6 +23,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -50,23 +51,23 @@ func TestInspectSimpleCase(t *testing.T) {
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
-				Output: func(stdout string, info string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
 					var inspectResult []json.RawMessage
 					err := json.Unmarshal([]byte(stdout), &inspectResult)
-					assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-					assert.Equal(t, len(inspectResult), 2, "Unexpectedly got multiple results\n"+info)
+					assert.NilError(t, err, "Unable to unmarshal output\n")
+					assert.Equal(t, len(inspectResult), 2, "Unexpectedly got multiple results\n")
 
 					var dci dockercompat.Image
 					err = json.Unmarshal(inspectResult[0], &dci)
-					assert.NilError(t, err, "Unable to unmarshal output\n"+info)
+					assert.NilError(t, err, "Unable to unmarshal output\n")
 					inspecti := nerdtest.InspectImage(helpers, testutil.CommonImage)
-					assert.Equal(t, dci.ID, inspecti.ID, info)
+					assert.Equal(t, dci.ID, inspecti.ID, "id should match\n")
 
 					var dcc dockercompat.Container
 					err = json.Unmarshal(inspectResult[1], &dcc)
-					assert.NilError(t, err, "Unable to unmarshal output\n"+info)
+					assert.NilError(t, err, "Unable to unmarshal output\n")
 					inspectc := nerdtest.InspectContainer(helpers, data.Identifier())
-					assert.Assert(t, dcc.ID == inspectc.ID, info)
+					assert.Equal(t, dcc.ID, inspectc.ID, "id should match\n")
 				},
 			}
 		},

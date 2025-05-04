@@ -42,8 +42,6 @@ provision::containerd::uninstall(){
 provision::containerd::rootful(){
   local version="$1"
   local arch="$2"
-  local bin_sha="$3"
-  local service_sha="$4"
 
   # Be tolerant with passed versions - with or without leading "v"
   [ "${version:0:1}" != "v" ] || version="${version:1}"
@@ -51,24 +49,16 @@ provision::containerd::rootful(){
   cd "$(fs::mktemp "containerd-install")"
 
   # Get the binary and install it
-  if [ "$bin_sha" == "canary is volatile and I accept the risk" ]; then
-    http::get \
-      containerd.tar.gz \
-      https://github.com/containerd/containerd/releases/download/v"$version"/containerd-"$version"-linux-"$arch".tar.gz
-  else
-    http::get::secure \
-      containerd.tar.gz \
-      https://github.com/containerd/containerd/releases/download/v"$version"/containerd-"$version"-linux-"$arch".tar.gz \
-      "$bin_sha"
-  fi
+  http::get \
+    containerd.tar.gz \
+    https://github.com/containerd/containerd/releases/download/v"$version"/containerd-"$version"-linux-"$arch".tar.gz
 
-  sudo tar -C /usr/local -xzf containerd.tar.gz
+  sudo tar -C /usr/local -xvf containerd.tar.gz
 
   # Get the systemd unit
-  http::get::secure \
+  http::get \
     containerd.service \
-    https://raw.githubusercontent.com/containerd/containerd/refs/tags/v"$version"/containerd.service \
-    "$service_sha"
+    https://raw.githubusercontent.com/containerd/containerd/refs/tags/v"$version"/containerd.service
 
   sudo cp containerd.service /lib/systemd/system/containerd.service
 

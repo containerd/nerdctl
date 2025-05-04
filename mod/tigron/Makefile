@@ -26,6 +26,10 @@ VERSION_TRIMMED := $(VERSION:v%=%)
 REVISION ?= $(shell git -C $(MAKEFILE_DIR) rev-parse HEAD)$(shell if ! git -C $(MAKEFILE_DIR) diff --no-ext-diff --quiet --exit-code; then echo .m; fi)
 LINT_COMMIT_RANGE ?= main..HEAD
 
+# Remove when 1.23 is no longer supported.
+# https://medium.com/@okoanton/generic-type-aliases-in-go-1-24-what-they-are-and-why-we-need-them-07ca05539500
+GOEXPERIMENT = aliastypeparams
+
 ##########################
 # Helpers
 ##########################

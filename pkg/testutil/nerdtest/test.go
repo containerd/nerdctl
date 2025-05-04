@@ -17,9 +17,8 @@
 package nerdtest
 
 import (
-	"testing"
-
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
 var DockerConfig test.ConfigKey = "DockerConfig"
@@ -39,11 +38,11 @@ func Setup() *test.Case {
 type nerdctlSetup struct {
 }
 
-func (ns *nerdctlSetup) CustomCommand(testCase *test.Case, t *testing.T) test.CustomizableCommand {
+func (ns *nerdctlSetup) CustomCommand(testCase *test.Case, t tig.T) test.CustomizableCommand {
 	return newNerdCommand(testCase.Config, t)
 }
 
-func (ns *nerdctlSetup) AmbientRequirements(testCase *test.Case, t *testing.T) {
+func (ns *nerdctlSetup) AmbientRequirements(testCase *test.Case, t tig.T) {
 	// Ambient requirements, bail out now if these do not match
 	if environmentHasIPv6() && testCase.Config.Read(ipv6) != only {
 		t.Skip("runner skips non-IPv6 compatible tests in the IPv6 environment")
