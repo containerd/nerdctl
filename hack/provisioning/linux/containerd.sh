@@ -32,7 +32,7 @@ provision::containerd::uninstall(){
   # Remove conf
   rm -f /etc/containerd/containerd.toml
   # Remove manually installed containerd if leftover
-  systemctl stop containerd 2>/dev/null
+  systemctl stop containerd 2>/dev/null || true
   rm -f /lib/systemd/system/containerd.service
   systemctl daemon-reload 2>/dev/null || true
   ! command -v containerd || rm -f "$(which containerd)"
@@ -51,12 +51,18 @@ provision::containerd::rootful(){
   cd "$(fs::mktemp "containerd-install")"
 
   # Get the binary and install it
-  http::get::secure \
-    containerd.tar.gz \
-    https://github.com/containerd/containerd/releases/download/v"$version"/containerd-"$version"-linux-"$arch".tar.gz \
-    "$bin_sha"
+  if [ "$bin_sha" == "canary is volatile and I accept the risk" ]; then
+    http::get \
+      containerd.tar.gz \
+      https://github.com/containerd/containerd/releases/download/v"$version"/containerd-"$version"-linux-"$arch".tar.gz
+  else
+    http::get::secure \
+      containerd.tar.gz \
+      https://github.com/containerd/containerd/releases/download/v"$version"/containerd-"$version"-linux-"$arch".tar.gz \
+      "$bin_sha"
+  fi
 
-  sudo tar::expand /usr/local containerd.tar.gz
+  sudo tar -C /usr/local -xzf containerd.tar.gz
 
   # Get the systemd unit
   http::get::secure \
@@ -73,4 +79,6 @@ provision::containerd::rootful(){
   cd - >/dev/null || true
 }
 
-provision::containerd::rootful "$1" "$2" "$3" "$4"
+com="$1"
+shift
+provision::containerd::"$com" "$@"

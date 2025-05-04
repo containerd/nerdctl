@@ -1,0 +1,60 @@
+# Right now, this is testing solely FreeBSD, but could be used to test other targets.
+# Alternatively, this might get replaced entirely by Lima eventually.
+name: job-test-in-vagrant
+
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: true
+        type: number
+      runner:
+        required: true
+        type: string
+
+jobs:
+  test:
+    # Will appear as freebsd / 14 in GitHub UI
+    name: "14"
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: "${{ inputs.runner }}"
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: "Init: setup cache"
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684  # v4.2.3
+        with:
+          path: /root/.vagrant.d
+          key: vagrant
+
+      - name: "Init: set up vagrant"
+        run: |
+          # from https://github.com/containerd/containerd/blob/v2.0.2/.github/workflows/ci.yml#L583-L596
+          # which is based on https://github.com/opencontainers/runc/blob/v1.1.8/.cirrus.yml#L41-L49
+          # FIXME: https://github.com/containerd/nerdctl/issues/4163
+          curl -fsSL --proto '=https' --tlsv1.2 https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update -qq
+          sudo apt-get install -qq libvirt-daemon libvirt-daemon-system vagrant ovmf
+          # https://github.com/vagrant-libvirt/vagrant-libvirt/issues/1725#issuecomment-1454058646
+          sudo cp /usr/share/OVMF/OVMF_VARS_4M.fd /var/lib/libvirt/qemu/nvram/
+          sudo systemctl enable --now libvirtd
+          sudo apt-get build-dep -qq ruby-libvirt
+          sudo apt-get install -qq --no-install-recommends libxslt-dev libxml2-dev libvirt-dev ruby-bundler ruby-dev zlib1g-dev
+          # Disable strict dependency enforcement to bypass gem version conflicts during the installation of the vagrant-libvirt plugin.
+          sudo env VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT=1 vagrant plugin install vagrant-libvirt
+
+      - name: "Init: boot VM"
+        run: |
+          ln -sf Vagrantfile.freebsd Vagrantfile
+          sudo vagrant up --no-tty
+
+      - name: "Run: test-unit"
+        run: sudo vagrant up --provision-with=test-unit
+
+      - name: "Run: test-integration"
+        run: sudo vagrant up --provision-with=test-integration

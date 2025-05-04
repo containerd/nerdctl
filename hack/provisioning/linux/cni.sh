@@ -30,7 +30,7 @@ provision::cni::uninstall(){
 }
 
 # provision::containerd::cni will retrieve a specific version of cni plugins and extract it in place on the host
-provision::cni(){
+provision::cni::install(){
   local version="$1"
   local arch="$2"
   local bin_sha="$3"
@@ -48,4 +48,6 @@ provision::cni(){
   cd - >/dev/null
 }
 
-provision::cni "$1" "$2" "$3"
+com="$1"
+shift
+provision::cni::"$com" "$@"
