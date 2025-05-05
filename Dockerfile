@@ -295,8 +295,10 @@ CMD ["bash", "--login", "-i"]
 FROM base AS test-integration
 ARG DEBIAN_FRONTEND=noninteractive
 # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
+# `jq` is required to generate test summaries
 RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
   expect \
+  jq \
   git \
   make
 # We wouldn't need this if Docker Hub could have "golang:${GO_VERSION}-ubuntu"

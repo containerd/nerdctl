@@ -156,6 +156,8 @@ jobs:
           go install ./cmd/nerdctl
           echo "::endgroup::"
 
+          choco install jq
+
       - if: ${{ env.SHOULD_RUN == 'yes' }}
         name: "Init: install dev tools"
         run: |
@@ -167,15 +169,24 @@ jobs:
       - if: ${{ contains(inputs.runner, 'ubuntu') && env.SHOULD_RUN == 'yes' }}
         name: "Run (linux): integration tests (IPv6)"
         run: |
+          . ./hack/github/action-helpers.sh
+          github::md::h2 "ipv6" >> "$GITHUB_STEP_SUMMARY"
+
           ./hack/test-integration.sh -test.target=${{ inputs.binary }} -test.only-ipv6
 
       - if: ${{ env.SHOULD_RUN == 'yes' }}
         name: "Run: integration tests"
         run: |
+          . ./hack/github/action-helpers.sh
+          github::md::h2 "non-flaky" >> "$GITHUB_STEP_SUMMARY"
+
           ./hack/test-integration.sh -test.target=${{ inputs.binary }} -test.only-flaky=false
 
       # FIXME: this must go
       - if: ${{ env.SHOULD_RUN == 'yes' }}
         name: "Run: integration tests (flaky)"
         run: |
+          . ./hack/github/action-helpers.sh
+          github::md::h2 "flaky" >> "$GITHUB_STEP_SUMMARY"
+
           ./hack/test-integration.sh -test.target=${{ inputs.binary }} -test.only-flaky=true

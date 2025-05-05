@@ -74,7 +74,7 @@ jobs:
           - go-version: "1.24"
             canary: true
     with:
-      timeout: 5
+      timeout: 10
       go-version: ${{ matrix.go-version }}
       runner: ubuntu-24.04
       canary: ${{ matrix.canary && true || false }}
