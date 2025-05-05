@@ -25,6 +25,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
@@ -106,6 +107,7 @@ func (cl *containerFilterContext) foldExitedFilter(_ context.Context, filter, va
 	if err != nil {
 		return err
 	}
+	log.L.Infof("checking exit status %v %v", filter, value)
 	cl.exitedFilterFuncs = append(cl.exitedFilterFuncs, func(exitStatus int) bool {
 		return exited == exitStatus
 	})
@@ -235,6 +237,10 @@ func (cl *containerFilterContext) matchesTaskFilters(ctx context.Context, contai
 	defer cancel()
 	task, err := container.Task(ctx, nil)
 	if err != nil {
+		if errdefs.IsNotFound(err) {
+			// Check if we want to filter created containers
+			return cl.matchesExitedFilter(containerd.Status{Status: containerd.Created}) && cl.matchesStatusFilter(containerd.Status{Status: containerd.Created})
+		}
 		log.G(ctx).Warn(err)
 		return false
 	}

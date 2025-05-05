@@ -26,6 +26,8 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/tabutil"
@@ -627,4 +629,36 @@ func TestContainerListCheckCreatedTime(t *testing.T) {
 	if !slices.IsSorted(createdTimes) {
 		t.Errorf("expected containers in decending order")
 	}
+}
+
+func TestContainerListStatusFilter(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("create", "--name", data.Identifier("container"), testutil.CommonImage, "echo", "foo")
+		data.Labels().Set("cID", data.Identifier("container"))
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier("container"))
+	}
+
+	testCase.SubTests = []*test.Case{
+		// TODO: Refactor other filter tests
+		{
+			Description: "ps filter with status=created",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-a", "--filter", "status=created", "--filter", fmt.Sprintf("name=%s", data.Labels().Get("cID")))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout, info string, t *testing.T) {
+						assert.Assert(t, strings.Contains(stdout, data.Labels().Get("cID")), "No container found with status created")
+					},
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
 }
