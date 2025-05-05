@@ -56,6 +56,11 @@ jobs:
       run:
         shell: bash
 
+    env:
+      # https://github.com/containerd/nerdctl/issues/622
+      # The only case when rootlesskit-version is force-specified is when we downgrade explicitly to v1
+      WORKAROUND_ISSUE_622: ${{ inputs.rootlesskit-version }}
+
     steps:
       - name: "Init: checkout"
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
@@ -137,16 +142,6 @@ jobs:
           sudo mkdir -p /etc/docker
           echo '{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64", "experimental": true, "ip6tables": true}' | sudo tee /etc/docker/daemon.json
           sudo systemctl restart docker
-      # Rootless with old rootlesskit wants to disable buildkit
-      - if: ${{ inputs.target != 'rootful' && inputs.rootlesskit-version != '' }}
-        name: "Init: disable buildkit for old rootlesskit"
-        run: |
-          # https://github.com/containerd/nerdctl/issues/622
-          WORKAROUND_ISSUE_622=
-          if echo "${ROOTLESSKIT_VERSION}" | grep -q v1; then
-            WORKAROUND_ISSUE_622=1
-          fi
-          echo "WORKAROUND_ISSUE_622=$WORKAROUND_ISSUE_622" >> "$GITHUB_ENV"
       - name: "Run: integration tests"
         run: |
           . ./hack/github/action-helpers.sh
