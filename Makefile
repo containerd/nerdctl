@@ -136,7 +136,8 @@ lint-go-all:
 	@cd $(MAKEFILE_DIR) \
 		&& GOOS=linux make lint-go \
 		&& GOOS=windows make lint-go \
-		&& GOOS=freebsd make lint-go
+		&& GOOS=freebsd make lint-go \
+		&& GOOS=darwin make lint-go
 	$(call footer, $@)
 
 lint-yaml:
@@ -179,8 +180,9 @@ lint-licenses-all:
 	$(call title, $@)
 	@cd $(MAKEFILE_DIR) \
 		&& GOOS=linux make lint-licenses \
+		&& GOOS=windows make lint-licenses \
 		&& GOOS=freebsd make lint-licenses \
-		&& GOOS=windows make lint-licenses
+		&& GOOS=darwin make lint-go
 	$(call footer, $@)
 
 ##########################
@@ -196,8 +198,9 @@ fix-go-all:
 	$(call title, $@)
 	@cd $(MAKEFILE_DIR) \
 		&& GOOS=linux make fix-go \
+		&& GOOS=windows make fix-go \
 		&& GOOS=freebsd make fix-go \
-		&& GOOS=windows make fix-go
+		&& GOOS=darwin make lint-go
 	$(call footer, $@)
 
 fix-mod:
