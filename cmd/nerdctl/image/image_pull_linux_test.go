@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
@@ -113,6 +114,7 @@ func TestImagePullPlainHttpWithDefaultPort(t *testing.T) {
 	nerdtest.Setup()
 
 	var reg *registry.Server
+	im, _ := referenceutil.Parse(testutil.CommonImage)
 	dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-string"]
 	`, testutil.CommonImage)
@@ -130,7 +132,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 			reg = nerdtest.RegistryWithNoAuth(data, helpers, 80, false)
 			reg.Setup(data, helpers)
 			testImageRef := fmt.Sprintf("%s/%s:%s",
-				reg.IP.String(), data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+				reg.IP.String(), data.Identifier(), im.Tag)
 			buildCtx := data.Temp().Path()
 
 			helpers.Ensure("build", "-t", testImageRef, buildCtx)
