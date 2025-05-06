@@ -17,6 +17,7 @@
 package container
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"runtime"
@@ -76,16 +77,29 @@ bar`
 // Tests whether `nerdctl logs` properly separates stdout/stderr output
 // streams for containers using the jsonfile logging driver:
 func TestLogsOutStreamsSeparated(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	defer base.Cmd("rm", containerName).Run()
-	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
-		"sh", "-euc", "echo stdout1; echo stderr1 >&2; echo stdout2; echo stderr2 >&2").AssertOK()
-	time.Sleep(3 * time.Second)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-euc", "echo stdout1; echo stderr1 >&2; echo stdout2; echo stderr2 >&2")
+	}
 
-	base.Cmd("logs", containerName).AssertOutStreamsExactly("stdout1\nstdout2\n", "stderr1\nstderr2\n")
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		// Arbitrary, but we need to wait until the logs show up
+		time.Sleep(3 * time.Second)
+		return helpers.Command("logs", data.Identifier())
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, []error{
+		//revive:disable:error-strings
+		errors.New("stderr1\nstderr2\n"),
+	}, expect.Equals("stdout1\nstdout2\n"))
+
+	testCase.Run(t)
 }
 
 func TestLogsWithInheritedFlags(t *testing.T) {
@@ -233,8 +247,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 				return helpers.Command("logs", data.Identifier())
 			},
 			Expected: test.Expects(0, nil, expect.All(
-				expect.Contains("foo"),
-				expect.Contains("bar"),
+				expect.Contains("foo", "bar"),
 				expect.DoesNotContain("baz"),
 			)),
 		},
@@ -250,8 +263,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 				return helpers.Command("logs", data.Identifier())
 			},
 			Expected: test.Expects(0, nil, expect.All(
-				expect.Contains("foo"),
-				expect.Contains("bar"),
+				expect.Contains("foo", "bar"),
 				expect.DoesNotContain("baz"),
 			)),
 		},
@@ -269,8 +281,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 				return helpers.Command("logs", data.Identifier())
 			},
 			Expected: test.Expects(0, nil, expect.All(
-				expect.Contains("foo"),
-				expect.Contains("bar"),
+				expect.Contains("foo", "bar"),
 				expect.DoesNotContain("baz"),
 			)),
 		},
@@ -288,8 +299,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 				return helpers.Command("logs", data.Identifier())
 			},
 			Expected: test.Expects(0, nil, expect.All(
-				expect.Contains("foo"),
-				expect.Contains("bar"),
+				expect.Contains("foo", "bar"),
 				expect.DoesNotContain("baz"),
 			)),
 		},
@@ -343,5 +353,33 @@ func TestNoneLoggerHasNoLogURI(t *testing.T) {
 		return helpers.Command("logs", data.Identifier())
 	}
 	testCase.Expected = test.Expects(1, nil, nil)
+	testCase.Run(t)
+}
+
+func TestLogsWithDetails(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--log-driver", "json-file",
+			"--log-opt", "max-size=10m",
+			"--log-opt", "max-file=3",
+			"--log-opt", "env=ENV",
+			"--env", "ENV=foo",
+			"--log-opt", "labels=LABEL",
+			"--label", "LABEL=bar",
+			"--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-ec", "echo baz")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("logs", "--details", data.Identifier())
+	}
+
+	testCase.Expected = test.Expects(0, nil, expect.Contains("ENV=foo", "LABEL=bar", "baz"))
+
 	testCase.Run(t)
 }

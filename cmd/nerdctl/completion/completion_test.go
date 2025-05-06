@@ -17,6 +17,7 @@
 package completion
 
 import (
+	"os/exec"
 	"testing"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
@@ -34,6 +35,11 @@ func TestMain(m *testing.M) {
 func TestCompletion(t *testing.T) {
 	nerdtest.Setup()
 
+	// Note: some functions need to be tested without the automatic --namespace nerdctl-test argument, so we need
+	// to retrieve the binary name.
+	// Note that we know this works already, so no need to assert err.
+	bin, _ := exec.LookPath(testutil.GetTarget())
+
 	testCase := &test.Case{
 		Require: require.Not(nerdtest.Docker),
 		Setup: func(data test.Data, helpers test.Helpers) {
@@ -41,7 +47,7 @@ func TestCompletion(t *testing.T) {
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 			helpers.Ensure("network", "create", identifier)
 			helpers.Ensure("volume", "create", identifier)
-			data.Set("identifier", identifier)
+			data.Labels().Set("identifier", identifier)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			identifier := data.Identifier()
@@ -91,10 +97,7 @@ func TestCompletion(t *testing.T) {
 				Command:     test.Command("__complete", "run", "--net", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.All(
-							expect.Contains("host\n"),
-							expect.Contains(data.Get("identifier")+"\n"),
-						),
+						Output: expect.Contains("host\n", data.Labels().Get("identifier")+"\n"),
 					}
 				},
 			},
@@ -103,10 +106,7 @@ func TestCompletion(t *testing.T) {
 				Command:     test.Command("__complete", "run", "-it", "--net", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.All(
-							expect.Contains("host\n"),
-							expect.Contains(data.Get("identifier")+"\n"),
-						),
+						Output: expect.Contains("host\n", data.Labels().Get("identifier")+"\n"),
 					}
 				},
 			},
@@ -115,10 +115,7 @@ func TestCompletion(t *testing.T) {
 				Command:     test.Command("__complete", "run", "-it", "--rm", "--net", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.All(
-							expect.Contains("host\n"),
-							expect.Contains(data.Get("identifier")+"\n"),
-						),
+						Output: expect.Contains("host\n", data.Labels().Get("identifier")+"\n"),
 					}
 				},
 			},
@@ -134,7 +131,7 @@ func TestCompletion(t *testing.T) {
 					return &test.Expected{
 						Output: expect.All(
 							expect.DoesNotContain("host\n"),
-							expect.Contains(data.Get("identifier")+"\n"),
+							expect.Contains(data.Labels().Get("identifier")+"\n"),
 						),
 					}
 				},
@@ -153,7 +150,7 @@ func TestCompletion(t *testing.T) {
 				Command:     test.Command("__complete", "volume", "inspect", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.Contains(data.Get("identifier") + "\n"),
+						Output: expect.Contains(data.Labels().Get("identifier") + "\n"),
 					}
 				},
 			},
@@ -162,22 +159,22 @@ func TestCompletion(t *testing.T) {
 				Command:     test.Command("__complete", "volume", "rm", ""),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: expect.Contains(data.Get("identifier") + "\n"),
+						Output: expect.Contains(data.Labels().Get("identifier") + "\n"),
 					}
 				},
 			},
 			{
-				Description: "no namespace --cgroup-manager",
+				Description: "--cgroup-manager",
 				Require:     require.Not(require.Windows),
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Custom("nerdctl", "__complete", "--cgroup-manager", "")
+					return helpers.Command("__complete", "--cgroup-manager", "")
 				},
 				Expected: test.Expects(0, nil, expect.Contains("cgroupfs\n")),
 			},
 			{
-				Description: "no namespace empty",
+				Description: "empty",
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Custom("nerdctl", "__complete", "")
+					return helpers.Command("__complete", "")
 				},
 				Expected: test.Expects(0, nil, expect.Contains("run\t")),
 			},
@@ -185,7 +182,7 @@ func TestCompletion(t *testing.T) {
 				Description: "namespace space empty",
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					// mind {"--namespace=nerdctl-test"} vs {"--namespace", "nerdctl-test"}
-					return helpers.Custom("nerdctl", "__complete", "--namespace", string(helpers.Read(nerdtest.Namespace)), "")
+					return helpers.Custom(bin, "__complete", "--namespace", string(helpers.Read(nerdtest.Namespace)), "")
 				},
 				Expected: test.Expects(0, nil, expect.Contains("run\t")),
 			},
@@ -208,7 +205,7 @@ func TestCompletion(t *testing.T) {
 				Description: "namespace run -i",
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					// mind {"--namespace=nerdctl-test"} vs {"--namespace", "nerdctl-test"}
-					return helpers.Custom("nerdctl", "__complete", "--namespace", string(helpers.Read(nerdtest.Namespace)), "run", "-i", "")
+					return helpers.Custom(bin, "__complete", "--namespace", string(helpers.Read(nerdtest.Namespace)), "run", "-i", "")
 				},
 				Expected: test.Expects(0, nil, expect.Contains(testutil.CommonImage+"\n")),
 			},

@@ -110,7 +110,7 @@ func TestRunCgroupV2(t *testing.T) {
 	update := []string{"update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
 		"--memory", "42m",
 		"--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1"}
-	if base.Target == testutil.Docker && info.CgroupVersion == "2" && info.SwapLimit {
+	if nerdtest.IsDocker() && info.CgroupVersion == "2" && info.SwapLimit {
 		// Workaround for Docker with cgroup v2:
 		// > Error response from daemon: Cannot update container 67c13276a13dd6a091cdfdebb355aa4e1ecb15fbf39c2b5c9abee89053e88fce:
 		// > Memory limit should be smaller than already set memoryswap limit, update the memoryswap at the same time
@@ -242,7 +242,7 @@ func TestRunDevice(t *testing.T) {
 			t.Logf("lo[%d] = %+v", i, lo[i])
 			loContent := fmt.Sprintf("lo%d-content", i)
 			assert.NilError(t, os.WriteFile(lo[i].Device, []byte(loContent), 0o700))
-			data.Set("loContent"+strconv.Itoa(i), loContent)
+			data.Labels().Set("loContent"+strconv.Itoa(i), loContent)
 		}
 
 		// lo0 is readable but not writable.
@@ -254,7 +254,7 @@ func TestRunDevice(t *testing.T) {
 			"--device", lo[0].Device+":r",
 			"--device", lo[1].Device,
 			testutil.AlpineImage, "sleep", nerdtest.Infinity)
-		data.Set("id", data.Identifier())
+		data.Labels().Set("id", data.Identifier())
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -270,25 +270,25 @@ func TestRunDevice(t *testing.T) {
 		{
 			Description: "can read lo0",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("exec", data.Get("id"), "cat", lo[0].Device)
+				return helpers.Command("exec", data.Labels().Get("id"), "cat", lo[0].Device)
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: expect.Contains(data.Get("locontent0")),
+					Output: expect.Contains(data.Labels().Get("locontent0")),
 				}
 			},
 		},
 		{
 			Description: "cannot write lo0",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("exec", data.Get("id"), "sh", "-ec", "echo -n \"overwritten-lo1-content\">"+lo[0].Device)
+				return helpers.Command("exec", data.Labels().Get("id"), "sh", "-ec", "echo -n \"overwritten-lo1-content\">"+lo[0].Device)
 			},
 			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 		},
 		{
 			Description: "cannot read lo2",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("exec", data.Get("id"), "cat", lo[2].Device)
+				return helpers.Command("exec", data.Labels().Get("id"), "cat", lo[2].Device)
 			},
 			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 		},
@@ -296,11 +296,11 @@ func TestRunDevice(t *testing.T) {
 			Description: "can read lo1",
 			NoParallel:  true,
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("exec", data.Get("id"), "cat", lo[1].Device)
+				return helpers.Command("exec", data.Labels().Get("id"), "cat", lo[1].Device)
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: expect.Contains(data.Get("locontent1")),
+					Output: expect.Contains(data.Labels().Get("locontent1")),
 				}
 			},
 		},
@@ -308,7 +308,7 @@ func TestRunDevice(t *testing.T) {
 			Description: "can write lo1 and read back updated value",
 			NoParallel:  true,
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("exec", data.Get("id"), "sh", "-ec", "echo -n \"overwritten-lo1-content\">"+lo[1].Device)
+				return helpers.Command("exec", data.Labels().Get("id"), "sh", "-ec", "echo -n \"overwritten-lo1-content\">"+lo[1].Device)
 			},
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, info string, t *testing.T) {
 				lo1Read, err := os.ReadFile(lo[1].Device)
@@ -450,7 +450,7 @@ func TestRunCgroupParent(t *testing.T) {
 	expected := filepath.Join(parent, id)
 	if info.CgroupDriver == "systemd" {
 		expected = filepath.Join(parent, fmt.Sprintf("nerdctl-%s", id))
-		if base.Target == testutil.Docker {
+		if nerdtest.IsDocker() {
 			expected = filepath.Join(parent, fmt.Sprintf("docker-%s", id))
 		}
 	}
@@ -483,6 +483,11 @@ func TestRunBlkioWeightCgroupV2(t *testing.T) {
 func TestRunBlkioSettingCgroupV2(t *testing.T) {
 	testCase := nerdtest.Setup()
 	testCase.Require = nerdtest.Rootful
+
+	// See https://github.com/containerd/nerdctl/issues/4185
+	// It is unclear if this is truly a kernel version problem, a runc issue, or a distro (EL9) issue.
+	// For now, disable the test unless on a recent kernel.
+	testutil.RequireKernelVersion(t, ">= 6.0.0-0")
 
 	// Create dummy device path
 	dummyDev := "/dev/dummy-zero"
@@ -663,6 +668,42 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 					),
 				}
 			},
+		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestRunCPURealTimeSettingCgroupV1(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Description: "cpu-rt-runtime-and-period",
+		Require: require.All(
+			require.Not(nerdtest.CGroupV2),
+			nerdtest.Rootful,
+		),
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("create", "--name", data.Identifier(),
+				"--cpu-rt-runtime", "950000",
+				"--cpu-rt-period", "1000000",
+				testutil.AlpineImage, "sleep", "infinity")
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rm", "-f", data.Identifier())
+		},
+		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+			return &test.Expected{
+				ExitCode: 0,
+				Output: expect.All(
+					func(stdout string, info string, t *testing.T) {
+						rtRuntime := helpers.Capture("inspect", "--format", "{{.HostConfig.CPURealtimeRuntime}}", data.Identifier())
+						rtPeriod := helpers.Capture("inspect", "--format", "{{.HostConfig.CPURealtimePeriod}}", data.Identifier())
+						assert.Assert(t, strings.Contains(rtRuntime, "950000"))
+						assert.Assert(t, strings.Contains(rtPeriod, "1000000"))
+					},
+				),
+			}
 		},
 	}
 

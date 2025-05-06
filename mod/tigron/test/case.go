@@ -19,7 +19,9 @@ package test
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
@@ -71,6 +73,7 @@ const (
 	setupDecorator  = "🏗"
 	subinDecorator  = "⤵️"
 	suboutDecorator = "↩️"
+	tempDecorator   = "⏳"
 )
 
 // Run prepares and executes the test, and any possible subtests.
@@ -115,7 +118,7 @@ func (test *Case) Run(t *testing.T) {
 		}
 
 		// Inherit and attach Data and Config
-		test.Data = configureData(test.t, test.Data, parentData)
+		test.Data = newData(test.t, test.Data, parentData)
 		test.Config = configureConfig(test.Config, parentConfig)
 
 		var custCom CustomizableCommand
@@ -125,9 +128,13 @@ func (test *Case) Run(t *testing.T) {
 			custCom = registeredTestable.CustomCommand(test, test.t)
 		}
 
-		custCom.WithCwd(test.Data.TempDir())
+		// Separate cwd from the temp directory
+		custCom.WithCwd(test.t.TempDir())
 		custCom.withT(test.t)
-		custCom.withTempDir(test.Data.TempDir())
+		// Set the command tempdir to another temp location.
+		// This is required for the current extension mechanism to allow creation of command dependent configuration
+		// assets. Note that this is a different location than both CWD and Data.Temp().Path().
+		custCom.withTempDir(test.t.TempDir())
 		custCom.withEnv(test.Env)
 		custCom.withConfig(test.Config)
 
@@ -229,18 +236,28 @@ func (test *Case) Run(t *testing.T) {
 			debugConfig, _ := json.MarshalIndent(test.Config.(*config).config, "", "  ")
 			debugData, _ := json.MarshalIndent(test.Data.(*data).labels, "", "  ")
 
+			// Show the files in the temp directory BEFORE the command is executed
+			tempFiles := []string{}
+
+			if files, err := os.ReadDir(test.Data.Temp().Path()); err == nil {
+				for _, file := range files {
+					tempFiles = append(tempFiles, file.Name())
+				}
+			}
+
 			test.t.Log(
 				"\n\n" + formatter.Table(
 					[][]any{
 						{startDecorator, fmt.Sprintf("%q: starting test!", test.t.Name())},
-						{"cwd", test.Data.TempDir()},
+						{tempDecorator, test.Data.Temp().Dir()},
+						{"", strings.Join(tempFiles, "\n")},
 						{"config", string(debugConfig)},
-						{"data", string(debugData)},
+						{"labels", string(debugData)},
 					},
 					"=",
 				) + "\n",
 			)
-
+			// FIXME: so, the expected function will run BEFORE the command
 			cmd.Run(test.Expected(test.Data, test.helpers))
 		}
 

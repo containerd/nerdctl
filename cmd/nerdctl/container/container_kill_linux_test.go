@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	iptablesutil "github.com/containerd/nerdctl/v2/pkg/testutil/iptables"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 // TestKillCleanupForwards runs a container that exposes a port and then kill it.
@@ -66,7 +67,7 @@ func TestKillCleanupForwards(t *testing.T) {
 
 	// define iptables chain name depending on the target (docker/nerdctl)
 	var chain string
-	if testutil.GetTarget() == testutil.Docker {
+	if nerdtest.IsDocker() {
 		chain = "DOCKER"
 	} else {
 		redirectChain := "CNI-HOSTPORT-DNAT"

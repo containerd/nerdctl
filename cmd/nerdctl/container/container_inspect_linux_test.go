@@ -198,7 +198,7 @@ func TestContainerInspectState(t *testing.T) {
 	// nerdctl: run error produces a nil Task, so the Status is empty because Status comes from Task.
 	// docker : run error gives => `Status=created` as  in docker there is no a separation between container and Task.
 	errStatus := ""
-	if base.Target == testutil.Docker {
+	if nerdtest.IsDocker() {
 		errStatus = "created"
 	}
 	testCases := []testCase{
@@ -263,7 +263,6 @@ func TestContainerInspectHostConfig(t *testing.T) {
 		"--read-only",
 		"--shm-size", "256m",
 		"--uts", "host",
-		"--sysctl", "net.core.somaxconn=1024",
 		"--runtime", "io.containerd.runc.v2",
 		testutil.AlpineImage, "sleep", "infinity").AssertOK()
 
@@ -295,7 +294,7 @@ func TestContainerInspectHostConfigDefaults(t *testing.T) {
 
 	// Hostconfig default values differ with Docker.
 	// This is because we directly retrieve the configured values instead of using preset defaults.
-	if testutil.GetTarget() == testutil.Docker {
+	if nerdtest.IsDocker() {
 		hc.Driver = ""
 		hc.GroupAddSize = 0
 		hc.ShmSize = int64(67108864) // Docker default 64M
@@ -399,7 +398,7 @@ func TestContainerInspectHostConfigPID(t *testing.T) {
 
 	var hc hostConfigValues
 
-	if testutil.GetTarget() == testutil.Docker {
+	if nerdtest.IsDocker() {
 		hc.PidMode = "container:" + containerID1
 	} else {
 		hc.PidMode = containerID1
@@ -444,7 +443,7 @@ func TestContainerInspectDevices(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if testutil.GetTarget() == testutil.Docker {
+	if nerdtest.IsDocker() {
 		dir = "/dev/zero"
 	}
 
@@ -477,6 +476,11 @@ func TestContainerInspectBlkioSettings(t *testing.T) {
 	if rootlessutil.IsRootless() {
 		t.Skip("test requires root privilege to create a dummy device")
 	}
+
+	// See https://github.com/containerd/nerdctl/issues/4185
+	// It is unclear if this is truly a kernel version problem, a runc issue, or a distro (EL9) issue.
+	// For now, disable the test unless on a recent kernel.
+	testutil.RequireKernelVersion(t, ">= 6.0.0-0")
 
 	devPath := "/dev/dummy-zero"
 	// a dummy zero device: mknod /dev/dummy-zero c 1 5
@@ -531,10 +535,10 @@ RUN groupadd -r test && useradd -r -g test test
 USER test
 `, testutil.UbuntuImage)
 
-			err := os.WriteFile(filepath.Join(data.TempDir(), "Dockerfile"), []byte(dockerfile), 0o600)
+			err := os.WriteFile(filepath.Join(data.Temp().Path(), "Dockerfile"), []byte(dockerfile), 0o600)
 			assert.NilError(helpers.T(), err)
 
-			helpers.Ensure("build", "-t", data.Identifier(), data.TempDir())
+			helpers.Ensure("build", "-t", data.Identifier(), data.Temp().Path())
 			helpers.Ensure("create", "--name", data.Identifier(), "--user", "test", data.Identifier())
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {

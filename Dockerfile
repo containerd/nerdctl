@@ -17,12 +17,12 @@
 
 # Basic deps
 # @BINARY: the binary checksums are verified via Dockerfile.d/SHA256SUMS.d/<COMPONENT>-<VERSION>
-ARG CONTAINERD_VERSION=v2.0.4@1a43cb6a1035441f9aca8f5666a9b3ef9e70ab20
-ARG RUNC_VERSION=v1.2.6@e89a29929c775025419ab0d218a43588b4c12b9a
-ARG CNI_PLUGINS_VERSION=v1.6.2@BINARY
+ARG CONTAINERD_VERSION=v2.0.5@fb4c30d4ede3531652d86197bf3fc9515e5276d9
+ARG RUNC_VERSION=v1.3.0@4ca628d1d4c974f92d24daccb901aa078aad748e
+ARG CNI_PLUGINS_VERSION=v1.7.1@BINARY
 
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.20.1@BINARY
+ARG BUILDKIT_VERSION=v0.21.1@BINARY
 # Extra deps: Lazy-pulling
 ARG STARGZ_SNAPSHOTTER_VERSION=v0.16.3@BINARY
 # Extra deps: Encryption
@@ -38,17 +38,19 @@ ARG CONTAINERD_FUSE_OVERLAYFS_VERSION=v2.1.2@BINARY
 # Extra deps: Init
 ARG TINI_VERSION=v0.19.0@BINARY
 # Extra deps: Debug
-ARG BUILDG_VERSION=v0.4.1@BINARY
+ARG BUILDG_VERSION=v0.5.2@BINARY
+# Extra deps: gomodjail
+ARG GOMODJAIL_VERSION=v0.1.1@756b1b9636c6de78984cbad1a974d930e2f0e851
 
 # Test deps
 # Currently, the Docker Official Images and the test deps are not pinned by the hash
 ARG GO_VERSION=1.24
 ARG UBUNTU_VERSION=24.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
-ARG GOTESTSUM_VERSION=v1.12.0
-ARG NYDUS_VERSION=v2.3.0
-ARG SOCI_SNAPSHOTTER_VERSION=0.8.0
-ARG KUBO_VERSION=v0.33.2
+ARG GOTESTSUM_VERSION=v1.12.1
+ARG NYDUS_VERSION=v2.3.1
+ARG SOCI_SNAPSHOTTER_VERSION=0.9.0
+ARG KUBO_VERSION=v0.34.1
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.6.1@sha256:923441d7c25f1e2eb5789f82d987693c47b8ed987c4ab3b075d6ed2b5d6779a3 AS xx
 
@@ -231,6 +233,13 @@ RUN ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION/@BINARY}; \
   tar xzf "${fname}" -C /out/bin && \
   rm -f "${fname}" /out/bin/rootlesskit-docker-proxy && \
   echo "- RootlessKit: ${ROOTLESSKIT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+ARG GOMODJAIL_VERSION
+RUN git clone https://github.com/AkihiroSuda/gomodjail.git /go/src/github.com/AkihiroSuda/gomodjail && \
+  cd /go/src/github.com/AkihiroSuda/gomodjail && \
+  git-checkout-tag-with-hash.sh "${GOMODJAIL_VERSION}" && \
+  make STATIC=1 && \
+  cp -a _output/bin/gomodjail /out/bin/ && \
+  echo "- gomodjail: ${GOMODJAIL_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
@@ -245,6 +254,8 @@ COPY . /go/src/github.com/containerd/nerdctl
 RUN { echo "# nerdctl (full distribution)"; echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)"; cat /out/share/doc/nerdctl-full/README.md; } > /out/share/doc/nerdctl-full/README.md.new; mv /out/share/doc/nerdctl-full/README.md.new /out/share/doc/nerdctl-full/README.md
 WORKDIR /go/src/github.com/containerd/nerdctl
 RUN BINDIR=/out/bin make binaries install
+RUN /out/bin/gomodjail pack --go-mod=/go/src/github.com/containerd/nerdctl/go.mod /out/bin/nerdctl && \
+  cp -a nerdctl.gomodjail /out/bin/
 COPY README.md /out/share/doc/nerdctl/
 COPY docs /out/share/doc/nerdctl/docs
 RUN (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
@@ -284,8 +295,10 @@ CMD ["bash", "--login", "-i"]
 FROM base AS test-integration
 ARG DEBIAN_FRONTEND=noninteractive
 # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
+# `jq` is required to generate test summaries
 RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
   expect \
+  jq \
   git \
   make
 # We wouldn't need this if Docker Hub could have "golang:${GO_VERSION}-ubuntu"

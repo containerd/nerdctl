@@ -26,6 +26,7 @@ PACKAGE := "github.com/containerd/nerdctl/v2"
 DOCKER ?= docker
 GO ?= go
 GOOS ?= $(shell $(GO) env GOOS)
+GOARCH ?= $(shell $(GO) env GOARCH)
 ifeq ($(GOOS),windows)
 	BIN_EXT := .exe
 endif
@@ -102,7 +103,7 @@ help:
 binaries: $(CURDIR)/_output/$(BINARY)$(BIN_EXT)
 
 $(CURDIR)/_output/$(BINARY)$(BIN_EXT):
-	$(call title, $@)
+	$(call title, $@: $(GOOS)/$(GOARCH))
 	$(GO_BUILD) $(GO_BUILD_FLAGS) $(VERBOSE_FLAG) -o $(CURDIR)/_output/$(BINARY)$(BIN_EXT) ./cmd/nerdctl
 	$(call footer, $@)
 

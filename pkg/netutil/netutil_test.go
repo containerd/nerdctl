@@ -34,7 +34,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
-const testBridgeIP = "10.1.100.1/24" // nolint:unused
+const testBridgeIP = "10.42.100.1/24" // nolint:unused
 
 const preExistingNetworkConfigTemplate = `
 {
@@ -196,9 +196,9 @@ func testDefaultNetworkCreation(t *testing.T) {
 	}
 	err = filepath.Walk(cniConfTestDir, walkF)
 	assert.NilError(t, err)
-	assert.Assert(t, len(files) == 2) // files[0] is the entry for '.'
-	assert.Assert(t, filepath.Join(cniConfTestDir, files[1].Name()) == defaultNetConf.File)
-	assert.Assert(t, firstConfigModTime.Equal(files[1].ModTime()))
+	assert.Equal(t, len(files), 3) // files[0] is the entry for '.', files[1] is the lock
+	assert.Assert(t, filepath.Join(cniConfTestDir, files[2].Name()) == defaultNetConf.File)
+	assert.Assert(t, firstConfigModTime.Equal(files[2].ModTime()))
 }
 
 // Tests whether nerdctl properly creates the default network
@@ -278,8 +278,8 @@ func testDefaultNetworkCreationWithBridgeIP(t *testing.T) {
 	// Assert on bridge plugin configuration
 	assert.Equal(t, "bridge", bridgeConfig.Type)
 	// Assert on IPAM configuration
-	assert.Equal(t, "10.1.100.1", bridgeConfig.IPAM.Ranges[0][0].Gateway)
-	assert.Equal(t, "10.1.100.0/24", bridgeConfig.IPAM.Ranges[0][0].Subnet)
+	assert.Equal(t, "10.42.100.1", bridgeConfig.IPAM.Ranges[0][0].Gateway)
+	assert.Equal(t, "10.42.100.0/24", bridgeConfig.IPAM.Ranges[0][0].Subnet)
 	assert.Equal(t, "0.0.0.0/0", bridgeConfig.IPAM.Routes[0].Dst)
 	assert.Equal(t, "host-local", bridgeConfig.IPAM.Type)
 
@@ -295,9 +295,9 @@ func testDefaultNetworkCreationWithBridgeIP(t *testing.T) {
 	}
 	err = filepath.Walk(cniConfTestDir, walkF)
 	assert.NilError(t, err)
-	assert.Assert(t, len(files) == 2) // files[0] is the entry for '.'
-	assert.Assert(t, filepath.Join(cniConfTestDir, files[1].Name()) == defaultNetConf.File)
-	assert.Assert(t, firstConfigModTime.Equal(files[1].ModTime()))
+	assert.Equal(t, len(files), 3) // files[0] is the entry for '.', files[1] is the lock
+	assert.Assert(t, filepath.Join(cniConfTestDir, files[2].Name()) == defaultNetConf.File)
+	assert.Assert(t, firstConfigModTime.Equal(files[2].ModTime()))
 }
 
 // Tests whether nerdctl skips the creation of the default network if a

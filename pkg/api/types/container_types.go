@@ -114,6 +114,10 @@ type ContainerCreateOptions struct {
 	CPUSetCPUs string
 	// CPUSetMems specifies the memory nodes (MEMs) in which to allow execution (0-3, 0,1). Only effective on NUMA systems.
 	CPUSetMems string
+	// Limit CPU real-time period in microseconds
+	CPURealtimePeriod uint64
+	// Limit CPU real-time runtime in microseconds
+	CPURealtimeRuntime uint64
 	// Memory specifies the memory limit
 	Memory string
 	// MemoryReservationChanged specifies whether the memory soft limit has been changed
@@ -146,6 +150,8 @@ type ContainerCreateOptions struct {
 	CgroupParent string
 	// Device specifies add a host device to the container
 	Device []string
+	// CDIDevices specifies the CDI devices to add to the container
+	CDIDevices []string
 	// #endregion
 
 	// #region for blkio related flags
@@ -400,6 +406,8 @@ type ContainerLogsOptions struct {
 	Since string
 	// Show logs before a timestamp (e.g., 2013-01-02T13:23:37Z) or relative (e.g., 42m for 42 minutes).
 	Until string
+	// Details specifies whether to show extra details provided to logs
+	Details bool
 }
 
 // ContainerWaitOptions specifies options for `nerdctl (container) wait`.

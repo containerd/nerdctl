@@ -41,18 +41,28 @@ func All(comparators ...test.Comparator) test.Comparator {
 
 // Contains can be used as a parameter for expected.Output and ensures a comparison string is found contained in the
 // output.
-func Contains(compare string) test.Comparator {
+func Contains(compare string, more ...string) test.Comparator {
 	return func(stdout, _ string, t *testing.T) {
 		t.Helper()
+
 		assertive.Contains(assertive.WithFailLater(t), stdout, compare, "Inspecting output (contains)")
+
+		for _, m := range more {
+			assertive.Contains(assertive.WithFailLater(t), stdout, m, "Inspecting output (contains)")
+		}
 	}
 }
 
 // DoesNotContain is to be used for expected.Output to ensure a comparison string is NOT found in the output.
-func DoesNotContain(compare string) test.Comparator {
+func DoesNotContain(compare string, more ...string) test.Comparator {
 	return func(stdout, _ string, t *testing.T) {
 		t.Helper()
+
 		assertive.DoesNotContain(assertive.WithFailLater(t), stdout, compare, "Inspecting output (does not contain)")
+
+		for _, m := range more {
+			assertive.DoesNotContain(assertive.WithFailLater(t), stdout, m, "Inspecting output (does not contain)")
+		}
 	}
 }
 

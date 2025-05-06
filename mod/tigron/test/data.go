@@ -19,9 +19,14 @@ package test
 import (
 	"crypto/sha256"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
-	"testing"
+
+	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
 const (
@@ -30,27 +35,208 @@ const (
 	identifierSignatureLength = 8
 )
 
-// WithData returns a data object with a certain key value set.
-func WithData(key, value string) Data {
-	dat := &data{}
-	dat.Set(key, value)
+// WithLabels returns a Data object with specific key value labels set.
+func WithLabels(in map[string]string) Data {
+	dat := &data{
+		labels: &labels{
+			inMap: in,
+		},
+		temp: &temp{},
+	}
 
 	return dat
 }
 
-// Contains the implementation of the Data interface.
-func configureData(t *testing.T, seedData, parent Data) Data {
+type labels struct {
+	inMap map[string]string
+}
+
+func (lb *labels) Get(key string) string {
+	return lb.inMap[key]
+}
+
+func (lb *labels) Set(key, value string) {
+	lb.inMap[key] = value
+}
+
+type temp struct {
+	tempDir string
+	t       tig.T
+}
+
+func (tp *temp) Load(key ...string) string {
+	tp.t.Helper()
+
+	pth := filepath.Join(append([]string{tp.tempDir}, key...)...)
+
+	//nolint:gosec // Fine in the context of testing
+	content, err := os.ReadFile(pth)
+
+	assertive.ErrorIsNil(
+		assertive.WithSilentSuccess(tp.t),
+		err,
+		fmt.Sprintf("Loading file %q must succeed", pth),
+	)
+
+	return string(content)
+}
+
+func (tp *temp) Exists(key ...string) {
+	tp.t.Helper()
+
+	pth := filepath.Join(append([]string{tp.tempDir}, key...)...)
+
+	_, err := os.Stat(pth)
+
+	assertive.ErrorIsNil(
+		assertive.WithSilentSuccess(tp.t),
+		err,
+		fmt.Sprintf("File %q must exist", pth),
+	)
+}
+
+func (tp *temp) Save(value string, key ...string) string {
+	tp.t.Helper()
+
+	tp.Dir(key[:len(key)-1]...)
+
+	pth := filepath.Join(append([]string{tp.tempDir}, key...)...)
+
+	err := os.WriteFile(
+		pth,
+		[]byte(value),
+		FilePermissionsDefault,
+	)
+
+	assertive.ErrorIsNil(
+		assertive.WithSilentSuccess(tp.t),
+		err,
+		fmt.Sprintf("Saving file %q must succeed", pth),
+	)
+
+	return pth
+}
+
+func (tp *temp) SaveToWriter(writer func(file io.Writer) error, key ...string) string {
+	tp.t.Helper()
+
+	tp.Dir(key[:len(key)-1]...)
+
+	pth := filepath.Join(append([]string{tp.tempDir}, key...)...)
+	silentT := assertive.WithSilentSuccess(tp.t)
+
+	//nolint:gosec // it is fine
+	file, err := os.OpenFile(pth, os.O_CREATE, FilePermissionsDefault)
+	assertive.ErrorIsNil(
+		silentT,
+		err,
+		fmt.Sprintf("Opening file %q must succeed", pth),
+	)
+
+	defer func() {
+		err = file.Close()
+		assertive.ErrorIsNil(
+			silentT,
+			err,
+			fmt.Sprintf("Closing file %q must succeed", pth),
+		)
+	}()
+
+	err = writer(file)
+	assertive.ErrorIsNil(
+		silentT,
+		err,
+		fmt.Sprintf("Filewriter failed while attempting to write to %q", pth),
+	)
+
+	return pth
+}
+
+func (tp *temp) Dir(key ...string) string {
+	tp.t.Helper()
+
+	pth := filepath.Join(append([]string{tp.tempDir}, key...)...)
+	err := os.MkdirAll(pth, DirPermissionsDefault)
+
+	assertive.ErrorIsNil(
+		assertive.WithSilentSuccess(tp.t),
+		err,
+		fmt.Sprintf("Creating directory %q must succeed", pth),
+	)
+
+	return pth
+}
+
+func (tp *temp) Path(key ...string) string {
+	tp.t.Helper()
+
+	return filepath.Join(append([]string{tp.tempDir}, key...)...)
+}
+
+type data struct {
+	temp   DataTemp
+	labels DataLabels
+	testID func(suffix ...string) string
+}
+
+func (dt *data) Identifier(suffix ...string) string {
+	return dt.testID(suffix...)
+}
+
+func (dt *data) Labels() DataLabels {
+	return dt.labels
+}
+
+func (dt *data) Temp() DataTemp {
+	return dt.temp
+}
+
+// Contains the implementation of the Data interface
+//
+//nolint:varnamelen
+func newData(t tig.T, seed, parent Data) Data {
 	t.Helper()
 
-	if seedData == nil {
-		seedData = &data{}
+	t = assertive.WithSilentSuccess(t)
+
+	seedMap := map[string]string{}
+
+	if seed != nil {
+		if inLab, ok := seed.Labels().(*labels); ok {
+			seedMap = inLab.inMap
+		}
 	}
 
-	//nolint:forcetypeassert
+	if parent != nil {
+		for k, v := range parent.Labels().(*labels).inMap {
+			// Only copy keys that are not set already
+			if _, ok := seedMap[k]; !ok {
+				seedMap[k] = v
+			}
+		}
+	}
+
+	// NOTE: certain systems will use the path dirname to decide how they name resources.
+	// t.TempDir() will always return /tmp/TestTempDir2153252249/001, meaning these systems will all
+	// use the identical 001 part. This is true for compose specifically.
+	// Appending the base test identifier here would guarantee better unicity.
+	// Note though that Windows will barf if >256 characters, so, hashing...
+	// Small caveat: identically named tests in different modules WILL still end-up with the same last segment.
+	tempDir := filepath.Join(
+		t.TempDir(),
+		fmt.Sprintf("%x", sha256.Sum256([]byte(t.Name())))[0:identifierSignatureLength],
+	)
+
+	assertive.ErrorIsNil(t, os.MkdirAll(tempDir, DirPermissionsDefault))
+
 	dat := &data{
-		// Note: implementation dependent
-		labels:  seedData.(*data).labels,
-		tempDir: t.TempDir(),
+		labels: &labels{
+			inMap: seedMap,
+		},
+		temp: &temp{
+			tempDir: tempDir,
+			t:       t,
+		},
 		testID: func(suffix ...string) string {
 			suffix = append([]string{t.Name()}, suffix...)
 
@@ -58,51 +244,7 @@ func configureData(t *testing.T, seedData, parent Data) Data {
 		},
 	}
 
-	if parent != nil {
-		dat.adopt(parent)
-	}
-
 	return dat
-}
-
-type data struct {
-	labels  map[string]string
-	testID  func(suffix ...string) string
-	tempDir string
-}
-
-func (dt *data) Get(key string) string {
-	return dt.labels[key]
-}
-
-func (dt *data) Set(key, value string) Data {
-	if dt.labels == nil {
-		dt.labels = map[string]string{}
-	}
-
-	dt.labels[key] = value
-
-	return dt
-}
-
-func (dt *data) Identifier(suffix ...string) string {
-	return dt.testID(suffix...)
-}
-
-func (dt *data) TempDir() string {
-	return dt.tempDir
-}
-
-func (dt *data) adopt(parent Data) {
-	// Note: implementation dependent
-	if castData, ok := parent.(*data); ok {
-		for k, v := range castData.labels {
-			// Only copy keys that are not set already
-			if _, ok := dt.labels[k]; !ok {
-				dt.Set(k, v)
-			}
-		}
-	}
 }
 
 func defaultIdentifierHashing(names ...string) string {

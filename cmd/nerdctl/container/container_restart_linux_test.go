@@ -26,6 +26,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -129,6 +130,9 @@ func TestRestartWithTime(t *testing.T) {
 func TestRestartWithSignal(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	// FIXME: gomodjail signal handling is not working yet: https://github.com/AkihiroSuda/gomodjail/issues/51
+	testCase.Require = require.Not(nerdtest.Gomodjail)
+
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
@@ -136,7 +140,7 @@ func TestRestartWithSignal(t *testing.T) {
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		cmd := nerdtest.RunSigProxyContainer(nerdtest.SigUsr1, false, nil, data, helpers)
 		// Capture the current pid
-		data.Set("oldpid", strconv.Itoa(nerdtest.InspectContainer(helpers, data.Identifier()).State.Pid))
+		data.Labels().Set("oldpid", strconv.Itoa(nerdtest.InspectContainer(helpers, data.Identifier()).State.Pid))
 		// Send the signal
 		helpers.Ensure("restart", "--signal", "SIGUSR1", data.Identifier())
 		return cmd
@@ -154,7 +158,7 @@ func TestRestartWithSignal(t *testing.T) {
 					nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 					// Check the new pid is different
 					newpid := strconv.Itoa(nerdtest.InspectContainer(helpers, data.Identifier()).State.Pid)
-					assert.Assert(helpers.T(), newpid != data.Get("oldpid"), info)
+					assert.Assert(helpers.T(), newpid != data.Labels().Get("oldpid"), info)
 				},
 			),
 		}

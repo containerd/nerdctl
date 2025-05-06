@@ -21,6 +21,7 @@ import (
 	"runtime"
 
 	"github.com/spf13/cobra"
+	cdiparser "tags.cncf.io/container-device-interface/pkg/parser"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -55,6 +56,7 @@ func CreateCommand() *cobra.Command {
 	return cmd
 }
 
+//revive:disable:function-length
 func createOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
 	var err error
 	opt := types.ContainerCreateOptions{
@@ -159,6 +161,14 @@ func createOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
 	if err != nil {
 		return opt, err
 	}
+	opt.CPURealtimePeriod, err = cmd.Flags().GetUint64("cpu-rt-period")
+	if err != nil {
+		return opt, err
+	}
+	opt.CPURealtimeRuntime, err = cmd.Flags().GetUint64("cpu-rt-runtime")
+	if err != nil {
+		return opt, err
+	}
 	opt.Memory, err = cmd.Flags().GetString("memory")
 	if err != nil {
 		return opt, err
@@ -207,9 +217,17 @@ func createOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
 	if err != nil {
 		return opt, err
 	}
-	opt.Device, err = cmd.Flags().GetStringSlice("device")
+
+	allDevices, err := cmd.Flags().GetStringSlice("device")
 	if err != nil {
 		return opt, err
+	}
+	for _, device := range allDevices {
+		if cdiparser.IsQualifiedName(device) {
+			opt.CDIDevices = append(opt.CDIDevices, device)
+		} else {
+			opt.Device = append(opt.Device, device)
+		}
 	}
 	// #endregion
 

@@ -1,0 +1,98 @@
+# This job just builds nerdctl for the golang versions we support (as a smoke test)
+name: job-build
+
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: true
+        type: number
+      go-version:
+        required: true
+        type: string
+      runner:
+        required: true
+        type: string
+      canary:
+        required: false
+        default: false
+        type: boolean
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  build-all-targets:
+    name: ${{ format('go {0}', inputs.canary && 'canary' || inputs.go-version ) }}
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: "${{ inputs.runner }}"
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      GO_VERSION: ${{ inputs.go-version }}
+
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - if: ${{ inputs.canary }}
+        name: "Init (canary): retrieve GO_VERSION"
+        run: |
+          . ./hack/github/action-helpers.sh
+          latest_go="$(. ./hack/provisioning/version/fetch.sh; go::canary::for::go-setup)"
+          printf "GO_VERSION=%s\n" "$latest_go" >> "$GITHUB_ENV"
+          [ "$latest_go" != "" ] || \
+            github::log::warning "No canary go" "There is currently no canary go version to test. Steps will not run."
+
+      - if: ${{ env.GO_VERSION != '' }}
+        name: "Init: install go"
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b  # v5.4.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      - if: ${{ env.GO_VERSION != '' }}
+        name: "Run: make binaries"
+        run: |
+          . ./hack/github/action-helpers.sh
+
+          github::md::table::header "OS" "Arch" "Result" "Time" >> $GITHUB_STEP_SUMMARY
+
+          failure=
+
+          build(){
+            local goos="$1"
+            local goarch="${2:-amd64}"
+            local goarm="${3:-}"
+            local result
+
+            github::timer::begin
+
+            GOOS="$goos" GOARCH="$goarch" GOARM="$goarm" make binaries \
+              && result="$decorator_success" \
+              || {
+                failure=true
+                result="$decorator_failure"
+              }
+
+            [ ! "$goarm" ] || goarch="$goarch/v$goarm"
+            github::md::table::line "$goos" "$goarch" "$result" "$(github::timer::format <(github::timer::tick))" >> $GITHUB_STEP_SUMMARY
+          }
+
+          # We officially support these
+          build linux
+          build linux arm64
+          build windows
+          build freebsd
+          build darwin
+          build linux arm 6
+          # These architectures are not released, but we still verify that we can at least compile
+          build linux ppc64le
+          build linux riscv64
+          build linux s390x
+
+          [ ! "$failure" ] || exit 1

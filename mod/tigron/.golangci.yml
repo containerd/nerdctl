@@ -57,16 +57,19 @@ linters:
   settings:
     interfacebloat:
       # Default is 10
-      max: 13
+      max: 20
     revive:
       enable-all-rules: true
       rules:
+        - name: max-public-structs
+          # Default is 5
+          arguments: 7
         - name: cognitive-complexity
           # Default is 7
-          arguments: [60]
+          arguments: [100]
         - name: function-length
           # Default is 50, 75
-          arguments: [80, 200]
+          arguments: [80, 220]
         - name: cyclomatic
           # Default is 10
           arguments: [30]

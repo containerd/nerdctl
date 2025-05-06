@@ -51,7 +51,7 @@ import (
 
 type Base struct {
 	T                    testing.TB
-	Target               Target
+	Target               string
 	DaemonIsKillable     bool
 	EnableIPv6           bool
 	IPv6Compatible       bool
@@ -134,15 +134,11 @@ func (b *Base) CmdWithHelper(helper []string, args ...string) *Cmd {
 }
 
 func (b *Base) systemctlTarget() string {
-	switch b.Target {
-	case Nerdctl:
-		return "containerd.service"
-	case Docker:
+	if IsDocker() {
 		return "docker.service"
-	default:
-		b.T.Fatalf("unexpected target %q", b.Target)
-		return ""
 	}
+
+	return "containerd.service"
 }
 
 func (b *Base) systemctlArgs() []string {
@@ -270,7 +266,7 @@ func (b *Base) Info() dockercompat.Info {
 
 func (b *Base) InfoNative() native.Info {
 	b.T.Helper()
-	if GetTarget() != Nerdctl {
+	if IsDocker() {
 		b.T.Skip("InfoNative() should not be called for non-nerdctl target")
 	}
 	cmdResult := b.Cmd("info", "--mode", "native", "--format", "{{ json . }}").Run()
@@ -284,7 +280,7 @@ func (b *Base) InfoNative() native.Info {
 
 func (b *Base) ContainerdAddress() string {
 	b.T.Helper()
-	if GetTarget() != Nerdctl {
+	if IsDocker() {
 		b.T.Skip("ContainerdAddress() should not be called for non-nerdctl target")
 	}
 	if os.Geteuid() == 0 {
@@ -413,14 +409,6 @@ func (c *Cmd) AssertOutContains(s string) {
 	c.Assert(expected)
 }
 
-func (c *Cmd) AssertErrContains(s string) {
-	c.Base.T.Helper()
-	expected := icmd.Expected{
-		Err: s,
-	}
-	c.Assert(expected)
-}
-
 func (c *Cmd) AssertCombinedOutContains(s string) {
 	c.Base.T.Helper()
 	res := c.runIfNecessary()
@@ -465,16 +453,6 @@ func (c *Cmd) AssertOutNotContains(s string) {
 	})
 }
 
-func (c *Cmd) AssertErrNotContains(s string) {
-	c.Base.T.Helper()
-	c.AssertOutWithFunc(func(stderr string) error {
-		if strings.Contains(stderr, s) {
-			return fmt.Errorf("expected stdout to not contain %q", s)
-		}
-		return nil
-	})
-}
-
 func (c *Cmd) AssertOutExactly(s string) {
 	c.Base.T.Helper()
 	fn := func(stdout string) error {
@@ -486,36 +464,11 @@ func (c *Cmd) AssertOutExactly(s string) {
 	c.AssertOutWithFunc(fn)
 }
 
-func (c *Cmd) AssertOutStreamsExactly(stdout, stderr string) {
-	c.Base.T.Helper()
-	fn := func(sout, serr string) error {
-		msg := ""
-		if sout != stdout {
-			msg += fmt.Sprintf("stdout mismatch, expected %q, got %q\n", stdout, sout)
-		}
-		if serr != stderr {
-			msg += fmt.Sprintf("stderr mismatch, expected %q, got %q\n", stderr, serr)
-		}
-		if msg != "" {
-			return errors.New(msg)
-		}
-		return nil
-	}
-	c.AssertOutStreamsWithFunc(fn)
-}
-
 func (c *Cmd) AssertOutWithFunc(fn func(stdout string) error) {
 	c.Base.T.Helper()
 	res := c.runIfNecessary()
 	assert.Equal(c.Base.T, 0, res.ExitCode, res)
 	assert.NilError(c.Base.T, fn(res.Stdout()), res.Combined())
-}
-
-func (c *Cmd) AssertOutStreamsWithFunc(fn func(stdout, stderr string) error) {
-	c.Base.T.Helper()
-	res := c.runIfNecessary()
-	assert.Equal(c.Base.T, 0, res.ExitCode, res)
-	assert.NilError(c.Base.T, fn(res.Stdout(), res.Stderr()), res.Combined())
 }
 
 func (c *Cmd) Out() string {
@@ -525,26 +478,11 @@ func (c *Cmd) Out() string {
 	return res.Stdout()
 }
 
-func (c *Cmd) OutLines() []string {
-	c.Base.T.Helper()
-	out := c.Out()
-	// FIXME: improve memory efficiency
-	return strings.Split(out, "\n")
-}
-
-type Target = string
-
-const (
-	Nerdctl = Target("nerdctl")
-	Docker  = Target("docker")
-)
-
 var (
-	flagTestTarget     Target
+	flagTestTarget     string
 	flagTestKillDaemon bool
 	flagTestIPv6       bool
 	flagTestKube       bool
-	flagVerbose        bool
 	flagTestFlaky      bool
 )
 
@@ -553,15 +491,16 @@ var (
 )
 
 func M(m *testing.M) {
-	flag.StringVar(&flagTestTarget, "test.target", Nerdctl, "target to test")
+	flag.StringVar(&flagTestTarget, "test.target", "nerdctl", "target to test")
 	flag.BoolVar(&flagTestKillDaemon, "test.allow-kill-daemon", false, "enable tests that kill the daemon")
 	flag.BoolVar(&flagTestIPv6, "test.only-ipv6", false, "enable tests on IPv6")
 	flag.BoolVar(&flagTestKube, "test.only-kubernetes", false, "enable tests on Kubernetes")
 	flag.BoolVar(&flagTestFlaky, "test.only-flaky", false, "enable testing of flaky tests only (if false, flaky tests are ignored)")
-	if flag.Lookup("test.v") != nil {
-		flagVerbose = true
-	}
 	flag.Parse()
+
+	if flagTestTarget == "" {
+		flagTestTarget = "nerdctl"
+	}
 
 	os.Exit(func() int {
 		// If there is a lockfile (no err), or if we error-ed stating it (permission), another test run is currently going.
@@ -635,10 +574,8 @@ func GetDaemonIsKillable() bool {
 }
 
 func IsDocker() bool {
-	return GetTarget() == Docker
+	return strings.HasPrefix(filepath.Base(GetTarget()), "docker")
 }
-
-func GetVerbose() bool { return flagVerbose }
 
 func DockerIncompatible(t testing.TB) {
 	if IsDocker() {
@@ -647,7 +584,7 @@ func DockerIncompatible(t testing.TB) {
 }
 
 func RequiresBuild(t testing.TB) {
-	if GetTarget() == Nerdctl {
+	if !IsDocker() {
 		buildkitHost, err := buildkitutil.GetBuildkitHost(Namespace)
 		if err != nil {
 			t.Skipf("test requires buildkitd: %+v", err)
@@ -667,29 +604,15 @@ func RequireExecPlatform(t testing.TB, ss ...string) {
 	}
 }
 
-func RequireDaemonVersion(b *Base, constraint string) {
-	b.T.Helper()
-	c, err := semver.NewConstraint(constraint)
-	if err != nil {
-		b.T.Fatal(err)
-	}
-	info := b.Info()
-	sv, err := semver.NewVersion(info.ServerVersion)
-	if err != nil {
-		b.T.Skip(err)
-	}
-	if !c.Check(sv) {
-		b.T.Skipf("version %v does not satisfy constraints %v", sv, c)
-	}
-}
-
 func RequireKernelVersion(t testing.TB, constraint string) {
 	t.Helper()
 	c, err := semver.NewConstraint(constraint)
 	if err != nil {
 		t.Fatal(err)
 	}
-	unameR, err := semver.NewVersion(infoutil.UnameR())
+	// EL kernel versions are not semver, so, cleanup first
+	un := strings.Split(infoutil.UnameR(), "-")[0]
+	unameR, err := semver.NewVersion(un)
 	if err != nil {
 		t.Skip(err)
 	}
@@ -791,24 +714,19 @@ func newBase(t *testing.T, ns string, ipv6Compatible bool, kubernetesCompatible 
 		t.Skip("legacy tests are considered flaky by default and are skipped unless in the flaky environment")
 	}
 	var err error
-	switch base.Target {
-	case Nerdctl:
-		base.Binary, err = exec.LookPath("nerdctl")
-		if err != nil {
-			t.Fatal(err)
-		}
-		base.Args = []string{"--namespace=" + ns}
-	case Docker:
-		base.Binary, err = exec.LookPath("docker")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := exec.Command("docker", "compose", "version").Run(); err != nil {
-			t.Fatal(err)
-		}
-	default:
-		t.Fatalf("unknown test target %q", base.Target)
+	base.Binary, err = exec.LookPath(base.Target)
+	if err != nil {
+		t.Fatal(err)
 	}
+
+	if IsDocker() {
+		if err = exec.Command(base.Binary, "compose", "version").Run(); err != nil {
+			t.Fatalf("docker does not support compose: %v", err)
+		}
+	} else {
+		base.Args = []string{"--namespace=" + ns}
+	}
+
 	return base
 }
 
@@ -838,4 +756,9 @@ func RegisterBuildCacheCleanup(t *testing.T) {
 	t.Cleanup(func() {
 		NewBase(t).Cmd("builder", "prune", "--all", "--force").Run()
 	})
+}
+
+func mirrorOf(s string) string {
+	// plain mirror, NOT stargz-converted images
+	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
 }

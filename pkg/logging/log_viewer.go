@@ -82,6 +82,12 @@ type LogViewOptions struct {
 	// Start/end timestampts to filter logs by.
 	Since string
 	Until string
+
+	// Details enables showing extra details(env and label) in logs.
+	Details bool
+
+	// DetailPrefix is the prefix added when Details is enabled.
+	DetailPrefix *string
 }
 
 func (lvo *LogViewOptions) Validate() error {
@@ -150,6 +156,14 @@ func InitContainerLogViewer(containerLabels map[string]string, lvopts LogViewOpt
 
 // Prints all logs for this LogViewer's containers to the provided io.Writers.
 func (lv *ContainerLogViewer) PrintLogsTo(stdout, stderr io.Writer) error {
+	if lv.logViewingOptions.Details {
+		if lv.logViewingOptions.DetailPrefix != nil {
+			prefix := *lv.logViewingOptions.DetailPrefix + " "
+			stdout = NewDetailWriter(stdout, prefix)
+			stderr = NewDetailWriter(stderr, prefix)
+		}
+
+	}
 	viewerFunc, err := getLogViewer(lv.loggingConfig.Driver)
 	if err != nil {
 		return err

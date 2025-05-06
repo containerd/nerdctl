@@ -203,6 +203,8 @@ Resource flags:
 - :whale: `--cpu-shares`: CPU shares (relative weight)
 - :whale: `--cpuset-cpus`: CPUs in which to allow execution (0-3, 0,1)
 - :whale: `--cpuset-mems`: Memory nodes (MEMs) in which to allow execution (0-3, 0,1). Only effective on NUMA systems
+- :whale: `--cpu-rt-period`: Limit CPU real-time period in microseconds. Only supported with cgroup v1.
+- :whale: `--cpu-rt-runtime`: Limit CPU real-time runtime in microseconds. Only supported with cgroup v1.
 - :whale: `--memory`: Memory limit
 - :whale: `--memory-reservation`: Memory soft limit
 - :whale: `--memory-swap`: Swap limit equal to memory plus swap: '-1' to enable unlimited swap
@@ -326,8 +328,12 @@ Logging flags:
       - :nerd_face: `--log-opt=log-path=<LOG-PATH>`: The log path where the logs are written. The path will be created if it does not exist. If the log file exists, the old file will be renamed to `<LOG-PATH>.1`.
         - Default: `<data-root>/<containerd-socket-hash>/<namespace>/<container-id>/<container-id>-json.log`
         - Example: `/var/lib/nerdctl/1935db59/containers/default/<container-id>/<container-id>-json.log`
+      - :whale: `--log-opt labels=production_status,geo`: A comma-separated list of logging-related labels this daemon accepts.
+      - :whale: `--log-opt env=os,customer`: A comma-separated list of logging-related environment variables this daemon accepts.
   - :whale: `--log-driver=journald`: Writes log messages to `journald`. The `journald` daemon must be running on the host machine.
     - :whale: `--log-opt=tag=<TEMPLATE>`: Specify template to set `SYSLOG_IDENTIFIER` value in journald logs.
+    - :whale: `--log-opt labels=production_status,geo`: A comma-separated list of logging-related labels this daemon accepts.
+    - :whale: `--log-opt env=os,customer`: A comma-separated list of logging-related environment variables this daemon accepts.
   - :whale: `--log-driver=fluentd`: Writes log messages to `fluentd`. The `fluentd` daemon must be running on the host machine.
     - The `fluentd` logging driver supports the following logging options:
       - :whale: `--log-opt=fluentd-address=<ADDRESS>`: The address of the `fluentd` daemon, tcp(default) and unix sockets are supported..
@@ -419,10 +425,8 @@ IPFS flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker run` flags:
-    `--cpu-rt-*`, `--device-cgroup-rule`,
-    `--disable-content-trust`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
-    `--link*`, `--publish-all`, `--storage-opt`,
-    `--userns`, `--volume-driver`
+    `--device-cgroup-rule`, `--disable-content-trust`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
+    `--link*`, `--publish-all`, `--storage-opt`, `--userns`, `--volume-driver`
 
 ### :whale: :blue_square: nerdctl exec
 
@@ -542,13 +546,12 @@ Usage: `nerdctl logs [OPTIONS] CONTAINER`
 
 Flags:
 
+- :whale: `--details`: Show extra details provided to logs
 - :whale: `-f, --follow`: Follow log output
 - :whale: `--since`: Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)
 - :whale: `--until`: Show logs before a timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)
 - :whale: `-t, --timestamps`: Show timestamps
 - :whale: `-n, --tail`: Number of lines to show from the end of the logs (default "all")
-
-Unimplemented `docker logs` flags: `--details`
 
 ### :whale: nerdctl port
 

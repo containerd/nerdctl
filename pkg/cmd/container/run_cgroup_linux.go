@@ -102,6 +102,19 @@ func generateCgroupOpts(id string, options types.ContainerCreateOptions, interna
 		opts = append(opts, oci.WithCPUsMems(options.CPUSetMems))
 	}
 
+	if options.CPURealtimePeriod != 0 || options.CPURealtimeRuntime != 0 {
+		if !infoutil.CPURealtime(options.GOptions.CgroupManager) {
+			// CPU realtime scheduling is not supported in cgroup V2
+			return nil, errors.New("kernel does not support CPU real-time scheduler")
+		}
+
+		if options.CPURealtimePeriod != 0 && options.CPURealtimeRuntime != 0 &&
+			options.CPURealtimeRuntime > options.CPURealtimePeriod {
+			return nil, errors.New("cpu real-time runtime cannot be higher than cpu real-time period")
+		}
+	}
+	opts = append(opts, oci.WithCPURT(int64(options.CPURealtimeRuntime), options.CPURealtimePeriod))
+
 	var mem64 int64
 	if options.Memory != "" {
 		mem64, err = units.RAMInBytes(options.Memory)

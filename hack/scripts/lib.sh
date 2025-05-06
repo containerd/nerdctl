@@ -83,11 +83,18 @@ log::error(){
 
 # Helpers
 host::require(){
-  local binary="$1"
+  local binary
 
-  log::debug "Checking presence of $binary"
-  command -v "$binary" >/dev/null || {
-    log::error "You need $binary for this script to work, and it cannot be found in your path"
+  miss=
+  for binary in "$@"; do
+    log::debug "Checking presence of $binary"
+    command -v "$binary" >/dev/null || {
+      miss+="$binary"
+    }
+  done
+
+  [ "$miss" == "" ] || {
+    log::error "For this script to work, you need: $miss (could not find them in your path)"
     return 1
   }
 }
@@ -160,6 +167,23 @@ http::get(){
   _http::get "$url" "$output" "2" "1" "" "" "$@"
 }
 
+http::get::secure(){
+  local output="$1"
+  local url="$2"
+  local sha="$3"
+  shift
+  shift
+  shift
+
+  _http::get "$url" "$output" "2" "1" "" "" "$@"
+  shasum -a 256 -c <<<"$sha  $output" || {
+    ret=$?
+    log::error "Expected sha: $sha"
+    log::error "Actual sha: $(shasum -a 256 "$output")"
+    return $ret
+  }
+}
+
 http::healthcheck(){
   local url="$1"
   local retry="${2:-5}"
@@ -181,8 +205,6 @@ http::checksum(){
 
   local temp
   temp="$(fs::mktemp "http-checksum")"
-
-  host::require shasum
 
   for url in "${urls[@]}"; do
     http::get "$temp/${url##*/}" "$url"
@@ -232,6 +254,4 @@ github::releases::latest(){
 }
 
 log::init
-host::require jq
-host::require tar
-host::require curl
+host::require jq tar curl shasum

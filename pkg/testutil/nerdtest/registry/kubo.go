@@ -25,14 +25,14 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/utils/testca"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/ca"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 )
 
-func NewKuboRegistry(data test.Data, helpers test.Helpers, t *testing.T, currentCA *ca.CA, port int, auth Auth) *Server {
+func NewKuboRegistry(data test.Data, helpers test.Helpers, t *testing.T, currentCA *testca.Cert, port int, auth Auth) *Server {
 	// listen on 0.0.0.0 to enable 127.0.0.1
 	listenIP := net.ParseIP("0.0.0.0")
 	hostIP, err := nettestutil.NonLoopbackIPv4()

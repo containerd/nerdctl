@@ -1,0 +1,148 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  test-unit:
+    # Note: inputs.hack is undefined - its purpose is to prevent GitHub Actions from displaying all matrix variants as part of the name.
+    name: "unit${{ inputs.hack }}"
+    uses: ./.github/workflows/job-test-unit.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        # Run on all supported platforms but freebsd
+        # Additionally run on canary for linux
+        include:
+          - runner: "ubuntu-24.04"
+          - runner: "macos-15"
+          - runner: "windows-2025"
+          - runner: "ubuntu-24.04"
+            canary: true
+    with:
+      runner: ${{ matrix.runner }}
+      canary: ${{ matrix.canary && true || false }}
+      # Windows routinely go over 5 minutes
+      timeout: 10
+      go-version: 1.24
+      windows-cni-version: v0.3.1
+      linux-cni-version: v1.7.1
+      linux-cni-sha: 1a28a0506bfe5bcdc981caf1a49eeab7e72da8321f1119b7be85f22621013098
+
+  # This job builds the dependency target of the test-image for all supported architectures and cache it in GHA
+  build-dependencies:
+    name: "dependencies${{ inputs.hack }}"
+    uses: ./.github/workflows/job-test-dependencies.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Build for arm & amd, current containerd
+          - runner: ubuntu-24.04
+          - runner: ubuntu-24.04-arm
+          # Additionally build for old containerd on amd
+          - runner: ubuntu-24.04
+            containerd-version: v1.6.38
+    with:
+      runner: ${{ matrix.runner }}
+      containerd-version: ${{ matrix.containerd-version }}
+      timeout: 20
+
+  test-integration-container:
+    name: "in-container${{ inputs.hack }}"
+    uses: ./.github/workflows/job-test-in-container.yml
+    needs: build-dependencies
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          ###### Rootless
+          # amd64
+          - runner: ubuntu-24.04
+            target: rootless
+          # arm64
+          - runner: ubuntu-24.04-arm
+            target: rootless
+          # port-slirp4netns
+          - runner: ubuntu-24.04
+            target: rootless-port-slirp4netns
+          # old containerd + old ubuntu + old rootlesskit
+          - runner: ubuntu-22.04
+            target: rootless
+            containerd-version: v1.6.38
+            rootlesskit-version: v1.1.1
+          # gomodjail
+          - runner: ubuntu-24.04
+            target: rootless
+            binary: "nerdctl.gomodjail"
+          ###### Rootful
+          # amd64
+          - runner: ubuntu-24.04
+            target: rootful
+          # arm64
+          - runner: ubuntu-24.04-arm
+            target: rootful
+          # old containerd + old ubuntu
+          - runner: ubuntu-22.04
+            target: rootful
+            containerd-version: v1.6.38
+          # ipv6
+          - runner: ubuntu-24.04
+            target: rootful
+            ipv6: true
+          # all canary
+          - runner: ubuntu-24.04
+            target: rootful
+            canary: true
+
+    with:
+      timeout: 45
+      runner: ${{ matrix.runner }}
+      target: ${{ matrix.target }}
+      binary: ${{ matrix.binary && matrix.binary || 'nerdctl' }}
+      containerd-version: ${{ matrix.containerd-version }}
+      rootlesskit-version: ${{ matrix.rootlesskit-version }}
+      ipv6: ${{ matrix.ipv6 && true || false }}
+      canary: ${{ matrix.canary && true || false }}
+
+  test-integration-host:
+    name: "in-host${{ inputs.hack }}"
+    uses: ./.github/workflows/job-test-in-host.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Test on windows w/o canary
+          - runner: windows-2022
+          - runner: windows-2025
+            canary: true
+          # Test docker on linux
+          - runner: ubuntu-24.04
+            binary: docker
+
+          # FIXME: running nerdctl on the host is work in progress
+          # (we miss runc to be installed on the host - and obviously other deps)
+          # Plan is to pause this for now and first consolidate dependencies management (wrt Dockerfile vs. host-testing CI)
+          # before we can really start testing linux nerdctl on the host.
+          # - runner: ubuntu-24.04
+          # - runner: ubuntu-24.04
+          #  canary: true
+    with:
+      timeout: 45
+      runner: ${{ matrix.runner }}
+      binary: ${{ matrix.binary != '' && matrix.binary || 'nerdctl' }}
+      canary: ${{ matrix.canary && true || false }}
+      go-version: 1.24
+      windows-cni-version: v0.3.1
+      containerd-version: 2.0.5
+      # Note: these as for amd64
+      containerd-sha: 88ab31f3e78e4d2fa12dcb933032122d11d441c83b79a89c6c8076f871e50df8
+      containerd-service-sha: 12a76c13cad132222d2b3d2025e56212d205d37eca77508dbbfcdf6ababbf70a
+      linux-cni-version: v1.7.1
+      linux-cni-sha: 1a28a0506bfe5bcdc981caf1a49eeab7e72da8321f1119b7be85f22621013098

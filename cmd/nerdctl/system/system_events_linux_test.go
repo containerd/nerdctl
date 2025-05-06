@@ -29,7 +29,7 @@ import (
 )
 
 func testEventFilterExecutor(data test.Data, helpers test.Helpers) test.TestableCommand {
-	cmd := helpers.Command("events", "--filter", data.Get("filter"), "--format", "json")
+	cmd := helpers.Command("events", "--filter", data.Labels().Get("filter"), "--format", "json")
 	// 3 seconds is too short on slow rig (EL8)
 	cmd.WithTimeout(10 * time.Second)
 	cmd.Background()
@@ -48,11 +48,13 @@ func TestEventFilters(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeTimeout,
-					Output:   expect.Contains(data.Get("output")),
+					Output:   expect.Contains(data.Labels().Get("output")),
 				}
 			},
-			Data: test.WithData("filter", "event=START").
-				Set("output", "\"Status\":\"start\""),
+			Data: test.WithLabels(map[string]string{
+				"filter": "event=START",
+				"output": "\"Status\":\"start\"",
+			}),
 		},
 		{
 			Description: "StartEventFilter",
@@ -60,11 +62,13 @@ func TestEventFilters(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeTimeout,
-					Output:   expect.Contains(data.Get("output")),
+					Output:   expect.Contains(data.Labels().Get("output")),
 				}
 			},
-			Data: test.WithData("filter", "event=start").
-				Set("output", "tatus\":\"start\""),
+			Data: test.WithLabels(map[string]string{
+				"filter": "event=start",
+				"output": "tatus\":\"start\"",
+			}),
 		},
 		{
 			Description: "UnsupportedEventFilter",
@@ -73,11 +77,13 @@ func TestEventFilters(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeTimeout,
-					Output:   expect.Contains(data.Get("output")),
+					Output:   expect.Contains(data.Labels().Get("output")),
 				}
 			},
-			Data: test.WithData("filter", "event=unknown").
-				Set("output", "\"Status\":\"unknown\""),
+			Data: test.WithLabels(map[string]string{
+				"filter": "event=unknown",
+				"output": "\"Status\":\"unknown\"",
+			}),
 		},
 		{
 			Description: "StatusFilter",
@@ -85,11 +91,13 @@ func TestEventFilters(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeTimeout,
-					Output:   expect.Contains(data.Get("output")),
+					Output:   expect.Contains(data.Labels().Get("output")),
 				}
 			},
-			Data: test.WithData("filter", "status=start").
-				Set("output", "tatus\":\"start\""),
+			Data: test.WithLabels(map[string]string{
+				"filter": "status=start",
+				"output": "tatus\":\"start\"",
+			}),
 		},
 		{
 			Description: "UnsupportedStatusFilter",
@@ -98,11 +106,13 @@ func TestEventFilters(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeTimeout,
-					Output:   expect.Contains(data.Get("output")),
+					Output:   expect.Contains(data.Labels().Get("output")),
 				}
 			},
-			Data: test.WithData("filter", "status=unknown").
-				Set("output", "\"Status\":\"unknown\""),
+			Data: test.WithLabels(map[string]string{
+				"filter": "status=unknown",
+				"output": "\"Status\":\"unknown\"",
+			}),
 		},
 	}
 

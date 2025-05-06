@@ -39,6 +39,10 @@ const (
 	exitDecorator           = "⚠️"
 	stdoutDecorator         = "🟢"
 	stderrDecorator         = "🟠"
+	timeoutDecorator        = "⏰"
+	cwdDecorator            = "📁"
+	envDecorator            = "🌱"
+	sigDecorator            = "⚡"
 )
 
 // CustomizableCommand is an interface meant for people who want to heavily customize the base
@@ -61,6 +65,7 @@ type CustomizableCommand interface {
 	// Note that this will override any variable defined in the embedding environment
 	withEnv(env map[string]string)
 	// withTempDir specifies a temporary directory to use
+	// FIXME: this is only required because of the current command extension mechanism
 	withTempDir(path string)
 	// WithConfig allows passing custom config properties from the test to the base command
 	withConfig(config Config)
@@ -126,6 +131,10 @@ func (gc *GenericCommand) Feed(r io.Reader) {
 	gc.cmd.Feed(r)
 }
 
+func (gc *GenericCommand) Setenv(key, value string) {
+	gc.cmd.Env[key] = value
+}
+
 func (gc *GenericCommand) WithFeeder(fun func() io.Reader) {
 	gc.cmd.WithFeeder(fun)
 }
@@ -138,12 +147,16 @@ func (gc *GenericCommand) WithBlacklist(env []string) {
 	gc.cmd.EnvBlackList = env
 }
 
+func (gc *GenericCommand) WithWhitelist(env []string) {
+	gc.cmd.EnvWhiteList = env
+}
+
 func (gc *GenericCommand) WithTimeout(timeout time.Duration) {
 	gc.cmd.Timeout = timeout
 }
 
 func (gc *GenericCommand) PrependArgs(args ...string) {
-	gc.cmd.PrependArgs = args
+	gc.cmd.PrependArgs = append(gc.cmd.PrependArgs, args...)
 }
 
 func (gc *GenericCommand) Background() {
@@ -193,12 +206,18 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		}
 
 		if result.Signal != nil {
-			debug = append(debug, []any{"Signal", result.Signal.String()})
+			debug = append(debug, []any{"", sigDecorator + " " + result.Signal.String()})
+		}
+
+		duration := result.Duration.String()
+		if result.Duration < time.Second {
+			duration = "<1s"
 		}
 
 		debug = append(debug,
-			[]any{"Limit", gc.cmd.Timeout},
-			[]any{"Environ", strings.Join(result.Environ, "\n")},
+			[]any{envDecorator, strings.Join(result.Environ, "\n")},
+			[]any{timeoutDecorator, duration + " (limit: " + gc.cmd.Timeout.String() + ")"},
+			[]any{cwdDecorator, gc.cmd.WorkingDir},
 		)
 	}
 

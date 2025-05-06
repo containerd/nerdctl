@@ -41,6 +41,8 @@ type Config struct {
 	HostGatewayIP    string   `toml:"host_gateway_ip"`
 	BridgeIP         string   `toml:"bridge_ip, omitempty"`
 	KubeHideDupe     bool     `toml:"kube_hide_dupe"`
+	// CDISpecDirs is a list of directories in which CDI specifications can be found.
+	CDISpecDirs []string `toml:"cdi_spec_dirs,omitempty"`
 }
 
 // New creates a default Config object statically,
@@ -61,5 +63,6 @@ func New() *Config {
 		Experimental:     true,
 		HostGatewayIP:    ncdefaults.HostGatewayIP(),
 		KubeHideDupe:     false,
+		CDISpecDirs:      ncdefaults.CDISpecDirs(),
 	}
 }

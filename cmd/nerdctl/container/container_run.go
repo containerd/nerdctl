@@ -166,6 +166,8 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().Uint64("cpu-shares", 0, "CPU shares (relative weight)")
 	cmd.Flags().Int64("cpu-quota", -1, "Limit CPU CFS (Completely Fair Scheduler) quota")
 	cmd.Flags().Uint64("cpu-period", 0, "Limit CPU CFS (Completely Fair Scheduler) period")
+	cmd.Flags().Uint64("cpu-rt-period", 0, "Limit CPU real-time period in microseconds")
+	cmd.Flags().Uint64("cpu-rt-runtime", 0, "Limit CPU real-time runtime in microseconds")
 	// device is defined as StringSlice, not StringArray, to allow specifying "--device=DEV1,DEV2" (compatible with Podman)
 	cmd.Flags().StringSlice("device", nil, "Add a host device to the container")
 	// ulimit is defined as StringSlice, not StringArray, to allow specifying "--ulimit=ULIMIT1,ULIMIT2" (compatible with Podman)

@@ -17,60 +17,63 @@
 package container
 
 import (
-	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRunSoci(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	tests := []struct {
-		name                         string
-		image                        string
-		remoteSnapshotsExpectedCount int
-	}{
-		{
-			name:                         "Run with SOCI",
-			image:                        testutil.FfmpegSociImage,
-			remoteSnapshotsExpectedCount: 11,
-		},
-	}
+	testCase := nerdtest.Setup()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			base := testutil.NewBase(t)
-			helpers.RequiresSoci(base)
+	testCase.Require = require.All(
+		require.Not(nerdtest.Docker),
+		nerdtest.Soci,
+	)
 
-			//counting initial snapshot mounts
-			initialMounts, err := exec.Command("mount").Output()
-			if err != nil {
-				t.Fatal(err)
-			}
+	// Tests relying on the output of "mount" cannot be run in parallel obviously
+	testCase.NoParallel = true
 
-			remoteSnapshotsInitialCount := strings.Count(string(initialMounts), "fuse.rawBridge")
-
-			runOutput := base.Cmd("--snapshotter=soci", "run", "--rm", testutil.FfmpegSociImage).Out()
-			base.T.Logf("run output: %s", runOutput)
-
-			actualMounts, err := exec.Command("mount").Output()
-			if err != nil {
-				t.Fatal(err)
-			}
-			remoteSnapshotsActualCount := strings.Count(string(actualMounts), "fuse.rawBridge")
-			base.T.Logf("number of actual mounts: %v", remoteSnapshotsActualCount)
-
-			rmiOutput := base.Cmd("rmi", testutil.FfmpegSociImage).Out()
-			base.T.Logf("rmi output: %s", rmiOutput)
-
-			base.T.Logf("number of expected mounts: %v", tt.remoteSnapshotsExpectedCount)
-
-			if tt.remoteSnapshotsExpectedCount != (remoteSnapshotsActualCount - remoteSnapshotsInitialCount) {
-				t.Fatalf("incorrect number of remote snapshots; expected=%d, actual=%d",
-					tt.remoteSnapshotsExpectedCount, remoteSnapshotsActualCount-remoteSnapshotsInitialCount)
-			}
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Custom("mount").Run(&test.Expected{
+			ExitCode: 0,
+			Output: func(stdout, info string, t *testing.T) {
+				data.Labels().Set("beforeCount", strconv.Itoa(strings.Count(stdout, "fuse.rawBridge")))
+			},
 		})
 	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rmi", "-f", testutil.FfmpegSociImage)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("--snapshotter=soci", "run", "--rm", testutil.FfmpegSociImage)
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			Output: func(stdout, info string, t *testing.T) {
+				var afterCount int
+				beforeCount, _ := strconv.Atoi(data.Labels().Get("beforeCount"))
+
+				helpers.Custom("mount").Run(&test.Expected{
+					Output: func(stdout, info string, t *testing.T) {
+						afterCount = strings.Count(stdout, "fuse.rawBridge")
+					},
+				})
+
+				assert.Equal(t, 11, afterCount-beforeCount, "expected the number of fuse.rawBridge")
+			},
+		}
+	}
+
+	testCase.Run(t)
 }

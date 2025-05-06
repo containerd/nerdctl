@@ -22,8 +22,8 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/utils/testca"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/ca"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
 )
 
@@ -45,16 +45,16 @@ func KubeCtlCommand(helpers test.Helpers, args ...string) test.TestableCommand {
 }
 
 func RegistryWithTokenAuth(data test.Data, helpers test.Helpers, user, pass string, port int, tls bool) (*registry.Server, *registry.TokenAuthServer) {
-	rca := ca.New(data, helpers.T())
+	rca := testca.NewX509(data, helpers)
 	as := registry.NewCesantaAuthServer(data, helpers, rca, 0, user, pass, tls)
 	re := registry.NewDockerRegistry(data, helpers, rca, port, as.Auth)
 	return re, as
 }
 
 func RegistryWithNoAuth(data test.Data, helpers test.Helpers, port int, tls bool) *registry.Server {
-	var rca *ca.CA
+	var rca *testca.Cert
 	if tls {
-		rca = ca.New(data, helpers.T())
+		rca = testca.NewX509(data, helpers)
 	}
 	return registry.NewDockerRegistry(data, helpers, rca, port, &registry.NoAuth{})
 }
@@ -64,9 +64,9 @@ func RegistryWithBasicAuth(data test.Data, helpers test.Helpers, user, pass stri
 		Username: user,
 		Password: pass,
 	}
-	var rca *ca.CA
+	var rca *testca.Cert
 	if tls {
-		rca = ca.New(data, helpers.T())
+		rca = testca.NewX509(data, helpers)
 	}
 	return registry.NewDockerRegistry(data, helpers, rca, port, auth)
 }

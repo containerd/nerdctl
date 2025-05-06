@@ -43,6 +43,8 @@ import (
 
 var JournalDriverLogOpts = []string{
 	Tag,
+	Env,
+	Labels,
 }
 
 func JournalLogOptsValidate(logOptMap map[string]string) error {

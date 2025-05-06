@@ -22,16 +22,19 @@ import (
 	"errors"
 	"fmt"
 
+	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/containerinspector"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 )
 
-func Inspect(ctx context.Context, options types.NetworkInspectOptions) error {
+func Inspect(ctx context.Context, client *containerd.Client, options types.NetworkInspectOptions) error {
 	if options.Mode != "native" && options.Mode != "dockercompat" {
 		return fmt.Errorf("unknown mode %q", options.Mode)
 	}
@@ -53,12 +56,35 @@ func Inspect(ctx context.Context, options types.NetworkInspectOptions) error {
 			errs = append(errs, fmt.Errorf("no network found matching: %s", req))
 			continue
 		}
+
 		network := netList[0]
+		var filters = []string{fmt.Sprintf("labels.%q==%q", labels.Networks, []string{network.Name})}
+
+		filteredContainers, err := client.Containers(ctx, filters...)
+
+		if err != nil {
+			return err
+		}
+
+		var containers []*native.Container
+
+		for _, container := range filteredContainers {
+			nativeContainer, err := containerinspector.Inspect(ctx, container)
+			if err != nil {
+				continue
+			}
+			if nativeContainer.Process == nil || nativeContainer.Process.Status.Status != containerd.Running {
+				continue
+			}
+			containers = append(containers, nativeContainer)
+		}
+
 		r := &native.Network{
 			CNI:           json.RawMessage(network.Bytes),
 			NerdctlID:     network.NerdctlID,
 			NerdctlLabels: network.NerdctlLabels,
 			File:          network.File,
+			Containers:    containers,
 		}
 		switch options.Mode {
 		case "native":

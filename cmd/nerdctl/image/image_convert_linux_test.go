@@ -115,16 +115,16 @@ func TestImageConvertNydusVerify(t *testing.T) {
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 			base := testutil.NewBase(t)
 			registry = testregistry.NewWithNoAuth(base, 0, false)
-			data.Set(remoteImageKey, fmt.Sprintf("%s:%d/nydusd-image:test", "localhost", registry.Port))
+			data.Labels().Set(remoteImageKey, fmt.Sprintf("%s:%d/nydusd-image:test", "localhost", registry.Port))
 			helpers.Ensure("image", "convert", "--nydus", "--oci", testutil.CommonImage, data.Identifier("converted-image"))
-			helpers.Ensure("tag", data.Identifier("converted-image"), data.Get(remoteImageKey))
-			helpers.Ensure("push", data.Get(remoteImageKey))
+			helpers.Ensure("tag", data.Identifier("converted-image"), data.Labels().Get(remoteImageKey))
+			helpers.Ensure("push", data.Labels().Get(remoteImageKey))
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
 			if registry != nil {
 				registry.Cleanup(nil)
-				helpers.Anyhow("rmi", "-f", data.Get(remoteImageKey))
+				helpers.Anyhow("rmi", "-f", data.Labels().Get(remoteImageKey))
 			}
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -133,7 +133,7 @@ func TestImageConvertNydusVerify(t *testing.T) {
 				"--source",
 				testutil.CommonImage,
 				"--target",
-				data.Get(remoteImageKey),
+				data.Labels().Get(remoteImageKey),
 				"--source-insecure",
 				"--target-insecure",
 			)

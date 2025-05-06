@@ -126,7 +126,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 				assert.Assert(t, strings.Contains(res.Stdout(), expect), fmt.Sprintf("expected output to contain %q: %q", expect, res.Stdout()))
 				assert.Assert(t, res.ExitCode == 0, "Command should have succeeded")
 			} else {
-				if testutil.GetTarget() == testutil.Docker &&
+				if nerdtest.IsDocker() &&
 					(network == networkIPvlan || network == "container:whatever"+tID) {
 					// unlike nerdctl
 					// when using network ipvlan or container in Docker
@@ -137,7 +137,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 				}
 
 				// See https://github.com/containerd/nerdctl/issues/3101
-				if testutil.GetTarget() == testutil.Docker &&
+				if nerdtest.IsDocker() &&
 					(network == networkBridge) {
 					expect = ""
 				}
@@ -199,7 +199,7 @@ func TestIssue2993(t *testing.T) {
 		{
 			Description: "Issue #2993 - nerdctl no longer leaks containers and etchosts directories and files when container creation fails.",
 			Setup: func(data test.Data, helpers test.Helpers) {
-				dataRoot := data.TempDir()
+				dataRoot := data.Temp().Path()
 
 				helpers.Ensure("run", "--data-root", dataRoot, "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", nerdtest.Infinity)
 
@@ -218,25 +218,25 @@ func TestIssue2993(t *testing.T) {
 				assert.NilError(t, err)
 				assert.Equal(t, len(etchostsDirs), 1)
 
-				data.Set(containersPathKey, containersPath)
-				data.Set(etchostsPathKey, etchostsPath)
+				data.Labels().Set(containersPathKey, containersPath)
+				data.Labels().Set(etchostsPathKey, etchostsPath)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "--data-root", data.TempDir(), "-f", data.Identifier())
+				helpers.Anyhow("rm", "--data-root", data.Temp().Path(), "-f", data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("run", "--data-root", data.TempDir(), "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", nerdtest.Infinity)
+				return helpers.Command("run", "--data-root", data.Temp().Path(), "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", nerdtest.Infinity)
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errors.New("is already used by ID")},
 					Output: func(stdout string, info string, t *testing.T) {
-						containersDirs, err := os.ReadDir(data.Get(containersPathKey))
+						containersDirs, err := os.ReadDir(data.Labels().Get(containersPathKey))
 						assert.NilError(t, err)
 						assert.Equal(t, len(containersDirs), 1)
 
-						etchostsDirs, err := os.ReadDir(data.Get(etchostsPathKey))
+						etchostsDirs, err := os.ReadDir(data.Labels().Get(etchostsPathKey))
 						assert.NilError(t, err)
 						assert.Equal(t, len(etchostsDirs), 1)
 					},
@@ -246,7 +246,7 @@ func TestIssue2993(t *testing.T) {
 		{
 			Description: "Issue #2993 - nerdctl no longer leaks containers and etchosts directories and files when containers are removed.",
 			Setup: func(data test.Data, helpers test.Helpers) {
-				dataRoot := data.TempDir()
+				dataRoot := data.Temp().Path()
 
 				helpers.Ensure("run", "--data-root", dataRoot, "--name", data.Identifier(), "-d", testutil.AlpineImage, "sleep", nerdtest.Infinity)
 
@@ -265,25 +265,25 @@ func TestIssue2993(t *testing.T) {
 				assert.NilError(t, err)
 				assert.Equal(t, len(etchostsDirs), 1)
 
-				data.Set(containersPathKey, containersPath)
-				data.Set(etchostsPathKey, etchostsPath)
+				data.Labels().Set(containersPathKey, containersPath)
+				data.Labels().Set(etchostsPathKey, etchostsPath)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("--data-root", data.TempDir(), "rm", "-f", data.Identifier())
+				helpers.Anyhow("--data-root", data.Temp().Path(), "rm", "-f", data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("--data-root", data.TempDir(), "rm", "-f", data.Identifier())
+				return helpers.Command("--data-root", data.Temp().Path(), "rm", "-f", data.Identifier())
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
 					Output: func(stdout string, info string, t *testing.T) {
-						containersDirs, err := os.ReadDir(data.Get(containersPathKey))
+						containersDirs, err := os.ReadDir(data.Labels().Get(containersPathKey))
 						assert.NilError(t, err)
 						assert.Equal(t, len(containersDirs), 0)
 
-						etchostsDirs, err := os.ReadDir(data.Get(etchostsPathKey))
+						etchostsDirs, err := os.ReadDir(data.Labels().Get(etchostsPathKey))
 						assert.NilError(t, err)
 						assert.Equal(t, len(etchostsDirs), 0)
 					},

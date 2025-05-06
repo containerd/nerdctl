@@ -51,7 +51,7 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 		ipfsRegistry = registry.NewKuboRegistry(data, helpers, t, nil, 0, nil)
 		ipfsRegistry.Setup(data, helpers)
 		ipfsAddr := fmt.Sprintf("/ip4/%s/tcp/%d", ipfsRegistry.IP, ipfsRegistry.Port)
-		data.Set(ipfsAddrKey, ipfsAddr)
+		data.Labels().Set(ipfsAddrKey, ipfsAddr)
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -65,17 +65,17 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 			Description: "with default snapshotter",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				ipfsCID := pushToIPFS(helpers, testutil.CommonImage, fmt.Sprintf("--ipfs-address=%s", data.Get(ipfsAddrKey)))
-				helpers.Ensure("pull", "--quiet", "--ipfs-address", data.Get(ipfsAddrKey), "ipfs://"+ipfsCID)
-				data.Set(mainImageCIDKey, ipfsCID)
+				ipfsCID := pushToIPFS(helpers, testutil.CommonImage, fmt.Sprintf("--ipfs-address=%s", data.Labels().Get(ipfsAddrKey)))
+				helpers.Ensure("pull", "--quiet", "--ipfs-address", data.Labels().Get(ipfsAddrKey), "ipfs://"+ipfsCID)
+				data.Labels().Set(mainImageCIDKey, ipfsCID)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				if data.Get(mainImageCIDKey) != "" {
-					helpers.Anyhow("rmi", "-f", data.Get(mainImageCIDKey))
+				if data.Labels().Get(mainImageCIDKey) != "" {
+					helpers.Anyhow("rmi", "-f", data.Labels().Get(mainImageCIDKey))
 				}
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("run", "--rm", data.Get(mainImageCIDKey), "echo", "hello")
+				return helpers.Command("run", "--rm", data.Labels().Get(mainImageCIDKey), "echo", "hello")
 			},
 			Expected: test.Expects(0, nil, expect.Equals("hello\n")),
 		},
@@ -88,17 +88,17 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 				nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3475"),
 			),
 			Setup: func(data test.Data, helpers test.Helpers) {
-				ipfsCID := pushToIPFS(helpers, testutil.CommonImage, fmt.Sprintf("--ipfs-address=%s", data.Get(ipfsAddrKey)), "--estargz")
-				helpers.Ensure("pull", "--quiet", "--ipfs-address", data.Get(ipfsAddrKey), "ipfs://"+ipfsCID)
-				data.Set(mainImageCIDKey, ipfsCID)
+				ipfsCID := pushToIPFS(helpers, testutil.CommonImage, fmt.Sprintf("--ipfs-address=%s", data.Labels().Get(ipfsAddrKey)), "--estargz")
+				helpers.Ensure("pull", "--quiet", "--ipfs-address", data.Labels().Get(ipfsAddrKey), "ipfs://"+ipfsCID)
+				data.Labels().Set(mainImageCIDKey, ipfsCID)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				if data.Get(mainImageCIDKey) != "" {
-					helpers.Anyhow("rmi", "-f", data.Get(mainImageCIDKey))
+				if data.Labels().Get(mainImageCIDKey) != "" {
+					helpers.Anyhow("rmi", "-f", data.Labels().Get(mainImageCIDKey))
 				}
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("run", "--rm", data.Get(mainImageCIDKey), "ls", "/.stargz-snapshotter")
+				return helpers.Command("run", "--rm", data.Labels().Get(mainImageCIDKey), "ls", "/.stargz-snapshotter")
 			},
 			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile("sha256:.*[.]json[\n]"))),
 		},

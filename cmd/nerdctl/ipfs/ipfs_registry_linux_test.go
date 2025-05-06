@@ -89,16 +89,16 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 			Description: "with default snapshotter",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				data.Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.CommonImage))
-				helpers.Ensure("pull", "--quiet", data.Get(ipfsImageURLKey))
+				data.Labels().Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.CommonImage))
+				helpers.Ensure("pull", "--quiet", data.Labels().Get(ipfsImageURLKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				if data.Get(ipfsImageURLKey) != "" {
-					helpers.Anyhow("rmi", "-f", data.Get(ipfsImageURLKey))
+				if data.Labels().Get(ipfsImageURLKey) != "" {
+					helpers.Anyhow("rmi", "-f", data.Labels().Get(ipfsImageURLKey))
 				}
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("run", "--rm", data.Get(ipfsImageURLKey), "echo", "hello")
+				return helpers.Command("run", "--rm", data.Labels().Get(ipfsImageURLKey), "echo", "hello")
 			},
 			Expected: test.Expects(0, nil, expect.Equals("hello\n")),
 		},
@@ -107,16 +107,16 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 			NoParallel:  true,
 			Require:     nerdtest.Stargz,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				data.Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.CommonImage, "--estargz"))
-				helpers.Ensure("pull", "--quiet", data.Get(ipfsImageURLKey))
+				data.Labels().Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.CommonImage, "--estargz"))
+				helpers.Ensure("pull", "--quiet", data.Labels().Get(ipfsImageURLKey))
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				if data.Get(ipfsImageURLKey) != "" {
-					helpers.Anyhow("rmi", "-f", data.Get(ipfsImageURLKey))
+				if data.Labels().Get(ipfsImageURLKey) != "" {
+					helpers.Anyhow("rmi", "-f", data.Labels().Get(ipfsImageURLKey))
 				}
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("run", "--rm", data.Get(ipfsImageURLKey), "ls", "/.stargz-snapshotter")
+				return helpers.Command("run", "--rm", data.Labels().Get(ipfsImageURLKey), "ls", "/.stargz-snapshotter")
 			},
 			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile("sha256:.*[.]json[\n]"))),
 		},
@@ -126,18 +126,18 @@ func TestIPFSNerdctlRegistry(t *testing.T) {
 			Require:     nerdtest.Build,
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rmi", "-f", data.Identifier("built-image"))
-				if data.Get(ipfsImageURLKey) != "" {
-					helpers.Anyhow("rmi", "-f", data.Get(ipfsImageURLKey))
+				if data.Labels().Get(ipfsImageURLKey) != "" {
+					helpers.Anyhow("rmi", "-f", data.Labels().Get(ipfsImageURLKey))
 				}
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
-				data.Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.CommonImage))
+				data.Labels().Set(ipfsImageURLKey, listenAddr+"/ipfs/"+pushToIPFS(helpers, testutil.CommonImage))
 
 				dockerfile := fmt.Sprintf(`FROM %s
 CMD ["echo", "nerdctl-build-test-string"]
-	`, data.Get(ipfsImageURLKey))
+	`, data.Labels().Get(ipfsImageURLKey))
 
-				buildCtx := data.TempDir()
+				buildCtx := data.Temp().Path()
 				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 				assert.NilError(helpers.T(), err)
 

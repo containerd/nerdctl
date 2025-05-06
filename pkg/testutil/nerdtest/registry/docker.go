@@ -25,15 +25,15 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/utils/testca"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/ca"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/hoststoml"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 )
 
-func NewDockerRegistry(data test.Data, helpers test.Helpers, currentCA *ca.CA, port int, auth Auth) *Server {
+func NewDockerRegistry(data test.Data, helpers test.Helpers, currentCA *testca.Cert, port int, auth Auth) *Server {
 	// listen on 0.0.0.0 to enable 127.0.0.1
 	listenIP := net.ParseIP("0.0.0.0")
 	hostIP, err := nettestutil.NonLoopbackIPv4()
@@ -56,10 +56,10 @@ func NewDockerRegistry(data test.Data, helpers test.Helpers, currentCA *ca.CA, p
 		"--name", containerName,
 	}
 	scheme := "http"
-	var cert *ca.Cert
+	var cert *testca.Cert
 	if currentCA != nil {
 		scheme = "https"
-		cert = currentCA.NewCert(hostIP.String(), "127.0.0.1", "localhost", "::1")
+		cert = currentCA.GenerateServerX509(data, helpers, hostIP.String(), "127.0.0.1", "localhost", "::1")
 		args = append(args,
 			"--env", "REGISTRY_HTTP_TLS_CERTIFICATE=/registry/domain.crt",
 			"--env", "REGISTRY_HTTP_TLS_KEY=/registry/domain.key",
@@ -86,17 +86,13 @@ func NewDockerRegistry(data test.Data, helpers test.Helpers, currentCA *ca.CA, p
 		helpers.Anyhow("rm", "-f", containerName)
 		errPortRelease := portlock.Release(port)
 
-		if cert != nil {
-			assert.NilError(helpers.T(), cert.Close(), fmt.Errorf("failed cleaning certificates: %w", err))
-		}
-
 		assert.NilError(helpers.T(), errPortRelease, fmt.Errorf("failed releasing port: %w", err))
 	}
 
 	// FIXME: in the future, we will want to further manipulate hosts toml file from the test
 	// This should then return the struct, instead of saving it on its own
 	hostsDir, err := func() (string, error) {
-		hDir, err := os.MkdirTemp(data.TempDir(), "certs.d")
+		hDir := data.Temp().Dir("certs.d")
 		assert.NilError(helpers.T(), err, fmt.Errorf("failed creating directory certs.d: %w", err))
 
 		if currentCA != nil {

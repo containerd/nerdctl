@@ -16,11 +16,9 @@
 
 # adapted from: https://raw.githubusercontent.com/containerd/containerd/refs/tags/v2.0.3/script/setup/install-cni-windows
 
-#shellcheck disable=SC2154
 set -o errexit -o errtrace -o functrace -o nounset -o pipefail
 
-# FIXME: make this configurable
-WINCNI_VERSION=v0.3.1
+WINCNI_VERSION="${WINCNI_VERSION:-v0.3.1}"
 
 git config --global advice.detachedHead false
 
@@ -28,7 +26,7 @@ DESTDIR="${DESTDIR:-"C:\\Program Files\\containerd\\cni"}"
 WINCNI_BIN_DIR="${DESTDIR}/bin"
 WINCNI_PKG=github.com/Microsoft/windows-container-networking
 
-git clone --depth 1 --branch "${WINCNI_VERSION}" "https://${WINCNI_PKG}.git" "${GOPATH}/src/${WINCNI_PKG}"
+git clone --quiet --depth 1 --branch "${WINCNI_VERSION}" "https://${WINCNI_PKG}.git" "${GOPATH}/src/${WINCNI_PKG}"
 cd "${GOPATH}/src/${WINCNI_PKG}"
 make all
 install -D -m 755 "out/nat.exe" "${WINCNI_BIN_DIR}/nat.exe"
@@ -62,6 +60,7 @@ calculate_subnet() {
       mask=0
     fi
     (( len -= 8 ))
+    #shellcheck disable=SC2154
     result_array[i]=$(( gateway_array[i] & mask ))
   done
   result="$(printf ".%s" "${result_array[@]}")"
@@ -81,23 +80,27 @@ subnet="$(calculate_subnet "$GATEWAY" "$PREFIX_LEN")"
 # https://github.com/microsoft/windows-container-networking/pull/45),
 # so it must match a network type in:
 # https://docs.microsoft.com/en-us/windows-server/networking/technologies/hcn/hcn-json-document-schemas
-bash -c 'cat >"'"${CNI_CONFIG_DIR}"'"/0-containerd-nat.conf <<EOF
+bash -c 'cat >"'"${CNI_CONFIG_DIR}"'"/0-containerd-nat.conflist <<EOF
 {
-    "cniVersion": "1.0.0",
-    "name": "nat",
-    "type": "nat",
-    "master": "Ethernet",
-    "ipam": {
+  "cniVersion": "1.0.0",
+  "name": "nat",
+  "plugins": [
+    {
+      "type": "nat",
+      "master": "Ethernet",
+      "ipam": {
         "subnet": "'"$subnet"'",
         "routes": [
-            {
-                "GW": "'"$GATEWAY"'"
-            }
+          {
+            "GW": "'"$GATEWAY"'"
+          }
         ]
-    },
-    "capabilities": {
+      },
+      "capabilities": {
         "portMappings": true,
         "dns": true
+      }
     }
+  ]
 }
 EOF'

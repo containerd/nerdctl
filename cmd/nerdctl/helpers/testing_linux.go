@@ -19,7 +19,6 @@ package helpers
 import (
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,64 +31,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 )
-
-func FindIPv6(output string) net.IP {
-	var ipv6 string
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "inet6") {
-			fields := strings.Fields(line)
-			if len(fields) > 1 {
-				ipv6 = strings.Split(fields[1], "/")[0]
-				break
-			}
-		}
-	}
-	return net.ParseIP(ipv6)
-}
-
-type JweKeyPair struct {
-	Prv     string
-	Pub     string
-	Cleanup func()
-}
-
-func NewJWEKeyPair(t testing.TB) *JweKeyPair {
-	testutil.RequireExecutable(t, "openssl")
-	td, err := os.MkdirTemp(t.TempDir(), "jwe-key-pair")
-	assert.NilError(t, err)
-	prv := filepath.Join(td, "mykey.pem")
-	pub := filepath.Join(td, "mypubkey.pem")
-	cmds := [][]string{
-		// Exec openssl commands to ensure that nerdctl is compatible with the output of openssl commands.
-		// Do NOT refactor this function to use "crypto/rsa" stdlib.
-		{"openssl", "genrsa", "-out", prv},
-		{"openssl", "rsa", "-in", prv, "-pubout", "-out", pub},
-	}
-	for _, f := range cmds {
-		cmd := exec.Command(f[0], f[1:]...)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("failed to run %v: %v (%q)", cmd.Args, err, string(out))
-		}
-	}
-	return &JweKeyPair{
-		Prv: prv,
-		Pub: pub,
-		Cleanup: func() {
-			_ = os.RemoveAll(td)
-		},
-	}
-}
-
-func RequiresSoci(base *testutil.Base) {
-	info := base.Info()
-	for _, p := range info.Plugins.Storage {
-		if p == "soci" {
-			return
-		}
-	}
-	base.T.Skip("test requires soci")
-}
 
 type CosignKeyPair struct {
 	PublicKey  string

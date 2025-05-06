@@ -40,7 +40,7 @@ func CNINetConfPath() string {
 }
 
 func CNIRuntimeDir() (string, error) {
-	return "/run/cni", nil
+	return "/var/run/cni", nil
 }
 
 func CgroupManager() string {
@@ -61,4 +61,8 @@ func HostsDirs() []string {
 
 func HostGatewayIP() string {
 	return ""
+}
+
+func CDISpecDirs() []string {
+	return []string{"/etc/cdi", "/var/run/cdi"}
 }

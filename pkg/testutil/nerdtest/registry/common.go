@@ -19,8 +19,6 @@ package registry
 import (
 	"fmt"
 	"net"
-	"os"
-	"path/filepath"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -71,9 +69,7 @@ func (ba *BasicAuth) Params(data test.Data) []string {
 	if ba.HtFile == "" && ba.Username != "" && ba.Password != "" {
 		pass := ba.Password
 		encryptedPass, _ := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
-		tmpDir, _ := os.MkdirTemp(data.TempDir(), "htpasswd")
-		ba.HtFile = filepath.Join(tmpDir, "htpasswd")
-		_ = os.WriteFile(ba.HtFile, []byte(fmt.Sprintf(`%s:%s`, ba.Username, string(encryptedPass[:]))), 0600)
+		ba.HtFile = data.Temp().Save(fmt.Sprintf(`%s:%s`, ba.Username, string(encryptedPass[:])), "htpasswd")
 	}
 	ret := []string{
 		"--env", "REGISTRY_AUTH=htpasswd",

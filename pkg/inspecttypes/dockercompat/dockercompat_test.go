@@ -417,3 +417,97 @@ func TestNetworkSettingsFromNative(t *testing.T) {
 		})
 	}
 }
+
+func TestCpuSettingsFromNative(t *testing.T) {
+	// Helper function to create uint64 pointer
+	uint64Ptr := func(i uint64) *uint64 {
+		return &i
+	}
+
+	int64Ptr := func(i int64) *int64 {
+		return &i
+	}
+
+	testcases := []struct {
+		name     string
+		spec     *specs.Spec
+		expected *CPUSettings
+	}{
+		{
+			name:     "Test with empty spec",
+			spec:     &specs.Spec{},
+			expected: &CPUSettings{},
+		},
+		{
+			name: "Full CPU Settings",
+			spec: &specs.Spec{
+				Linux: &specs.Linux{
+					Resources: &specs.LinuxResources{
+						CPU: &specs.LinuxCPU{
+							Cpus:            "0-3",
+							Mems:            "0-1",
+							Shares:          uint64Ptr(1024),
+							Quota:           int64Ptr(100000),
+							Period:          uint64Ptr(100000),
+							RealtimePeriod:  uint64Ptr(1000000),
+							RealtimeRuntime: int64Ptr(950000),
+						},
+					},
+				},
+			},
+			expected: &CPUSettings{
+				CPUSetCpus:         "0-3",
+				CPUSetMems:         "0-1",
+				CPUShares:          1024,
+				CPUQuota:           100000,
+				CPUPeriod:          100000,
+				CPURealtimePeriod:  1000000,
+				CPURealtimeRuntime: 950000,
+			},
+		},
+		{
+			name: "Partial CPU Settings",
+			spec: &specs.Spec{
+				Linux: &specs.Linux{
+					Resources: &specs.LinuxResources{
+						CPU: &specs.LinuxCPU{
+							Cpus:   "0,1",
+							Shares: uint64Ptr(512),
+						},
+					},
+				},
+			},
+			expected: &CPUSettings{
+				CPUSetCpus: "0,1",
+				CPUShares:  512,
+			},
+		},
+		{
+			name: "Zero Values Should Be Ignored",
+			spec: &specs.Spec{
+				Linux: &specs.Linux{
+					Resources: &specs.LinuxResources{
+						CPU: &specs.LinuxCPU{
+							Shares:          uint64Ptr(0),
+							Quota:           int64Ptr(0),
+							Period:          uint64Ptr(0),
+							RealtimePeriod:  uint64Ptr(0),
+							RealtimeRuntime: int64Ptr(0),
+						},
+					},
+				},
+			},
+			expected: &CPUSettings{},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := cpuSettingsFromNative(tc.spec)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			assert.DeepEqual(t, result, tc.expected)
+		})
+	}
+}

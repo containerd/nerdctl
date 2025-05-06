@@ -109,7 +109,7 @@ that this name is then visible in the list of containers.
 
 To achieve that, you should write your own `Manager`, leveraging test `Data`.
 
-Here is an example, where we are using `data.Get("sometestdata")`.
+Here is an example, where we are using `data.Labels().Get("sometestdata")`.
 
 ```go
 package main
@@ -133,7 +133,7 @@ func TestMyThing(t *testing.T) {
 
 	// Declare your test
 	myTest := &test.Case{
-		Data:        test.WithData("sometestdata", "blah"),
+		Data:        test.WithLabels(map[string]string{"sometestdata": "blah"}),
 		Command:     test.Command("info"),
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
@@ -143,7 +143,7 @@ func TestMyThing(t *testing.T) {
 					errdefs.ErrNotFound,
 				},
 				Output: func(stdout string, info string, t *testing.T) {
-					assert.Assert(t, stdout == data.Get("sometestdata"), info)
+					assert.Assert(t, stdout == data.Labels().Get("sometestdata"), info)
 				},
 			}
 		},
@@ -157,7 +157,7 @@ func TestMyThing(t *testing.T) {
 
 `Data` is provided to allow storing mutable key-value information that pertain to the test.
 
-While it can be provided through `test.WithData(key string, value string)`,
+While it can be provided through `test.WithLabels(map[string]string{key: value})`,
 inside the testcase definition, it can also be dynamically manipulated inside `Setup`, or `Command`.
 
 Note that `Data` additionally exposes the following functions:
@@ -244,9 +244,9 @@ func TestMyThing(t *testing.T) {
 
 	// Declare your test
 	myTest := &test.Case{
-		Data:        test.WithData("sometestdata", "blah"),
+		Data:        test.WithLabels(map[string]string{"sometestdata": "blah"}),
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			return helpers.Command("run", "--name", data.Get("sometestdata"))
+			return helpers.Command("run", "--name", data.Labels().Get("sometestdata"))
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
@@ -256,7 +256,7 @@ func TestMyThing(t *testing.T) {
 					errdefs.ErrNotFound,
 				},
 				Output: func(stdout string, info string, t *testing.T) {
-					assert.Assert(t, stdout == data.Get("sometestdata"), info)
+					assert.Assert(t, stdout == data.Labels().Get("sometestdata"), info)
 				},
 			}
 		},
@@ -325,7 +325,7 @@ func TestMyThing(t *testing.T) {
 
 	// Declare your test
 	myTest := &test.Case{
-		Data:        test.WithData("sometestdata", "blah"),
+		Data:        test.WithLabels(map[string]string{"sometestdata": "blah"}),
 		Setup: func(data *test.Data, helpers test.Helpers){
 			helpers.Ensure("volume", "create", "foo")
 			helpers.Ensure("volume", "create", "bar")
@@ -335,7 +335,7 @@ func TestMyThing(t *testing.T) {
 			helpers.Anyhow("volume", "rm", "bar")
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			return helpers.Command("run", "--name", data.Identifier()+data.Get("sometestdata"))
+			return helpers.Command("run", "--name", data.Identifier()+data.Labels().Get("sometestdata"))
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
@@ -345,7 +345,7 @@ func TestMyThing(t *testing.T) {
 					errdefs.ErrNotFound,
 				},
 				Output: func(stdout string, info string, t *testing.T) {
-					assert.Assert(t, stdout == data.Get("sometestdata"), info)
+					assert.Assert(t, stdout == data.Labels().Get("sometestdata"), info)
 				},
 			}
 		},

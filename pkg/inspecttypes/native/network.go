@@ -18,10 +18,11 @@ package native
 
 import "encoding/json"
 
-// Network corresponds to pkg/netutil.NetworkConfigList
+// Network corresponds to pkg/netutil.NetworkConfig
 type Network struct {
 	CNI           json.RawMessage    `json:"CNI,omitempty"`
 	NerdctlID     *string            `json:"NerdctlID"`
 	NerdctlLabels *map[string]string `json:"NerdctlLabels,omitempty"`
 	File          string             `json:"File,omitempty"`
+	Containers    []*Container       `json:"Containers"`
 }
