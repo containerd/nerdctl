@@ -111,7 +111,7 @@ func Stats(ctx context.Context, client *containerd.Client, containerIDs []string
 	waitFirst := &sync.WaitGroup{}
 	cStats := stats{}
 
-	monitorContainerEvents := func(started chan<- struct{}, c chan *events.Envelope) {
+	monitorContainerEvents := func(started chan<- struct{}, c chan *events.Envelope, closeEventChan chan struct{}) {
 		eventsClient := client.EventService()
 		eventsCh, errCh := eventsClient.Subscribe(ctx)
 
@@ -121,6 +121,9 @@ func Stats(ctx context.Context, client *containerd.Client, containerIDs []string
 
 		for {
 			select {
+			case <-closeEventChan:
+				// c is closed, so we can stop monitoring events
+				return
 			case event := <-eventsCh:
 				c <- event
 			case err = <-errCh:
@@ -207,11 +210,16 @@ func Stats(ctx context.Context, client *containerd.Client, containerIDs []string
 		})
 
 		eventChan := make(chan *events.Envelope)
+		closeEventChan := make(chan struct{})
 
 		go eh.Watch(eventChan)
-		go monitorContainerEvents(started, eventChan)
+		go monitorContainerEvents(started, eventChan, closeEventChan)
 
-		defer close(eventChan)
+		defer func() {
+			closeEventChan <- struct{}{}
+			close(eventChan)
+		}()
+
 		<-started
 
 		// Start a goroutine to retrieve the initial list of containers stats.
