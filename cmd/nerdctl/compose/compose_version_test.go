@@ -19,20 +19,29 @@ package compose
 import (
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposeVersion(t *testing.T) {
-	base := testutil.NewBase(t)
-	base.ComposeCmd("version").AssertOutContains("Compose version ")
+	testCase := nerdtest.Setup()
+	testCase.Command = test.Command("compose", "version")
+	testCase.Expected = test.Expects(0, nil, expect.Contains("Compose version "))
+	testCase.Run(t)
 }
 
 func TestComposeVersionShort(t *testing.T) {
-	base := testutil.NewBase(t)
-	base.ComposeCmd("version", "--short").AssertOK()
+	testCase := nerdtest.Setup()
+	testCase.Command = test.Command("compose", "version", "--short")
+	testCase.Expected = test.Expects(0, nil, nil)
+	testCase.Run(t)
 }
 
 func TestComposeVersionJson(t *testing.T) {
-	base := testutil.NewBase(t)
-	base.ComposeCmd("version", "--format", "json").AssertOutContains("{\"version\":\"")
+	testCase := nerdtest.Setup()
+	testCase.Command = test.Command("compose", "version", "--format", "json")
+	testCase.Expected = test.Expects(0, nil, expect.Contains("{\"version\":\""))
+	testCase.Run(t)
 }
