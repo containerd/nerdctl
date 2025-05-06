@@ -194,18 +194,26 @@ func TestLogsWithRunningContainer(t *testing.T) {
 }
 
 func TestLogsWithoutNewlineOrEOF(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("FIXME: test does not work on Windows yet because containerd doesn't send an exit event appropriately after task exit on Windows")
+	testCase := nerdtest.Setup()
+	// FIXME: test does not work on Windows yet because containerd doesn't send an exit event appropriately after task exit on Windows")
+	// FIXME: nerdctl behavior does not match docker - test disabled for nerdctl until we fix
+	testCase.Require = require.All(
+		require.Linux,
+		nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/4201"),
+	)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "printf", "'Hello World!\nThere is no newline'")
 	}
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", containerName).Run()
-	expected := []string{"Hello World!", "There is no newline"}
-	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
-		"printf", "'Hello World!\nThere is no newline'").AssertOK()
-	time.Sleep(3 * time.Second)
-	base.Cmd("logs", "-f", containerName).AssertOutContainsAll(expected...)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		// FIXME: arbitrary timeouts are by nature a problem.
+		time.Sleep(5 * time.Second)
+		return helpers.Command("logs", "-f", data.Identifier())
+	}
+	testCase.Expected = test.Expects(0, nil, expect.Equals("'Hello World!\nThere is no newline'"))
+	testCase.Run(t)
 }
 
 func TestLogsAfterRestartingContainer(t *testing.T) {
