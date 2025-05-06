@@ -26,6 +26,13 @@ if [[ "$(id -u)" = "0" ]]; then
   fi
 fi
 
+# This is a temporary workaround for https://github.com/AkihiroSuda/gomodjail/issues/50
+# FIXME: remove this once above has been fixed.
+if command -v nerdctl.gomodjail >/dev/null 2>&1; then
+  # We do not care that it fails or succeeds - just need gomodjail to unpack once.
+  nerdctl.gomodjail info >/dev/null 2>&1 || true
+fi
+
 readonly timeout="60m"
 readonly retries="2"
 readonly needsudo="${WITH_SUDO:-}"
