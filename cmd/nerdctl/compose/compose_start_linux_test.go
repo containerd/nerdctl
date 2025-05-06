@@ -18,16 +18,18 @@ package compose
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposeStart(t *testing.T) {
-	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s
@@ -37,50 +39,68 @@ services:
     command: "sleep infinity"
 `, testutil.CommonImage, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	testCase := nerdtest.Setup()
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down")
+	}
 
-	// calling `compose start` after all services up has no effect.
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "start").AssertOK()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "start")
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "stop", "--timeout", "1", "svc0")
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "kill", "svc1")
+	}
 
-	// `compose start`` can start a stopped/killed service container
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "--timeout", "1", "svc0").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "kill", "svc1").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "start").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0").AssertOutContainsAny("Up", "running")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc1").AssertOutContainsAny("Up", "running")
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "start")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Errors:   nil,
+			Output: func(stdout, info string, t *testing.T) {
+				svc0 := helpers.Capture("compose", "-f", data.Temp().Path("compose.yaml"), "ps", "svc0")
+				svc1 := helpers.Capture("compose", "-f", data.Temp().Path("compose.yaml"), "ps", "svc1")
+				comp := expect.Match(regexp.MustCompile("Up|running"))
+				comp(svc0, "", t)
+				comp(svc1, "", t)
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeStartFailWhenServicePause(t *testing.T) {
-	base := testutil.NewBase(t)
-	switch base.Info().CgroupDriver {
-	case "none", "":
-		t.Skip("requires cgroup (for pausing)")
-	}
-
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s
     command: "sleep infinity"
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	testCase := nerdtest.Setup()
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+	testCase.Require = nerdtest.CGroup
 
-	// `compose start` cannot start a paused service container
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "pause", "svc0").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "start").AssertFail()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down")
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "pause", "svc0")
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "start")
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeGenericFail, nil, nil)
+
+	testCase.Run(t)
 }

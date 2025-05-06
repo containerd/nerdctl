@@ -17,77 +17,26 @@
 package compose
 
 import (
-	"encoding/json"
 	"fmt"
-	"strings"
 	"testing"
 
+	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposeImages(t *testing.T) {
-	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
-services:
-  wordpress:
-    image: %s
-    ports:
-      - 8080:80
-    environment:
-      WORDPRESS_DB_HOST: db
-      WORDPRESS_DB_USER: exampleuser
-      WORDPRESS_DB_PASSWORD: examplepass
-      WORDPRESS_DB_NAME: exampledb
-    volumes:
-      - wordpress:/var/www/html
-  db:
-    image: %s
-    environment:
-      MYSQL_DATABASE: exampledb
-      MYSQL_USER: exampleuser
-      MYSQL_PASSWORD: examplepass
-      MYSQL_RANDOM_ROOT_PASSWORD: '1'
-    volumes:
-      - db:/var/lib/mysql
-
-volumes:
-  wordpress:
-  db:
-`, testutil.WordpressImage, testutil.MariaDBImage)
-
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
-
-	wordpressImageName := strings.Split(testutil.WordpressImage, ":")[0]
-	dbImageName := strings.Split(testutil.MariaDBImage, ":")[0]
-
-	// check one service image
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "db").AssertOutContains(dbImageName)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "db").AssertOutNotContains(wordpressImageName)
-
-	// check all service images
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images").AssertOutContains(dbImageName)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images").AssertOutContains(wordpressImageName)
-}
-
-func TestComposeImagesJson(t *testing.T) {
-	base := testutil.NewBase(t)
-	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   wordpress:
     image: %s
     container_name: wordpress
-    ports:
-      - 8080:80
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: exampleuser
@@ -111,41 +60,71 @@ volumes:
   db:
 `, testutil.WordpressImage, testutil.MariaDBImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	wordpressImageName, _ := referenceutil.Parse(testutil.WordpressImage)
+	dbImageName, _ := referenceutil.Parse(testutil.MariaDBImage)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	testCase := nerdtest.Setup()
 
-	assertHandler := func(svc string, count int, fields ...string) func(stdout string) error {
-		return func(stdout string) error {
-			// 1. check json output can be unmarshalled back to printables.
-			var printables []composeContainerPrintable
-			if err := json.Unmarshal([]byte(stdout), &printables); err != nil {
-				return fmt.Errorf("[service: %s]failed to unmarshal json output from `compose images`: %s", svc, stdout)
-			}
-			// 2. check #printables matches expected count.
-			if len(printables) != count {
-				return fmt.Errorf("[service: %s]unmarshal generates %d printables, expected %d: %s", svc, len(printables), count, stdout)
-			}
-			// 3. check marshalled json string has all expected substrings.
-			for _, field := range fields {
-				if !strings.Contains(stdout, field) {
-					return fmt.Errorf("[service: %s]marshalled json output doesn't have expected string (%s): %s", svc, field, stdout)
-				}
-			}
-			return nil
-		}
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		data.Labels().Set("composeYaml", data.Temp().Path("compose.yaml"))
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
 	}
 
-	// check other formats are not supported
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "--format", "yaml").AssertFail()
-	// check all services are up (can be marshalled and unmarshalled)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "--format", "json").
-		AssertOutWithFunc(assertHandler("all", 2, `"ContainerName":"wordpress"`, `"ContainerName":"db"`))
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down")
+	}
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "--format", "json", "wordpress").
-		AssertOutWithFunc(assertHandler("wordpress", 1, `"ContainerName":"wordpress"`))
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "images db",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images", "db")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
+				expect.Contains(dbImageName.Name()),
+				expect.DoesNotContain(wordpressImageName.Name()),
+			)),
+		},
+		{
+			Description: "images",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(dbImageName.Name(), wordpressImageName.Name())),
+		},
+		{
+			Description: "images --format yaml",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images", "--format", "yaml")
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "images --format json",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images", "--format", "json")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
+				expect.JSON([]composeContainerPrintable{}, func(printables []composeContainerPrintable, s string, t tig.T) {
+					assert.Equal(t, len(printables), 2)
+				}),
+				expect.Contains(`"ContainerName":"wordpress"`, `"ContainerName":"db"`),
+			)),
+		},
+		{
+			Description: "images --format json wordpress",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images", "--format", "json", "wordpress")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
+				expect.JSON([]composeContainerPrintable{}, func(printables []composeContainerPrintable, s string, t tig.T) {
+					assert.Equal(t, len(printables), 1)
+				}),
+				expect.Contains(`"ContainerName":"wordpress"`),
+			)),
+		},
+	}
+
+	testCase.Run(t)
 }

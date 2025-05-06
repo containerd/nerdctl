@@ -46,8 +46,6 @@ services:
   svc0:
     build: .
     image: %s
-    ports:
-    - 8080:80
     depends_on:
     - svc1
   svc1:

@@ -17,66 +17,88 @@
 package compose
 
 import (
+	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"runtime"
 	"testing"
 
 	"gotest.tools/v3/assert"
-	"gotest.tools/v3/icmd"
+
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 // https://github.com/containerd/nerdctl/issues/1942
 func TestComposeUpDetailedError(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("FIXME: test does not work on Windows yet (runtime \"io.containerd.runc.v2\" binary not installed \"containerd-shim-runc-v2.exe\": file does not exist)")
-	}
-	base := testutil.NewBase(t)
 	dockerComposeYAML := fmt.Sprintf(`
 services:
   foo:
     image: %s
     runtime: invalid
 `, testutil.CommonImage)
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
 
-	c := base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d")
-	expected := icmd.Expected{
-		ExitCode: 1,
-		Err:      `invalid runtime name`,
+	testCase := nerdtest.Setup()
+
+	// "FIXME: test does not work on Windows yet (runtime \"io.containerd.runc.v2\" binary not installed \"containerd-shim-runc-v2.exe\": file does not exist)
+	testCase.Require = require.Not(require.Windows)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Temp().Save(dockerComposeYAML, "compose.yaml")
 	}
-	c.Assert(expected)
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+	}
+
+	testCase.Expected = test.Expects(
+		1,
+		[]error{errors.New(`invalid runtime name`)},
+		nil,
+	)
+
+	testCase.Run(t)
 }
 
 // https://github.com/containerd/nerdctl/issues/1652
 func TestComposeUpBindCreateHostPath(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip(`FIXME: no support for Windows path: (error: "volume target must be an absolute path, got \"/mnt\")`)
-	}
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
+	// `FIXME: no support for Windows path: (error: "volume target must be an absolute path, got \"/mnt\")`
+	testCase.Require = require.Not(require.Windows)
 
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var dockerComposeYAML = fmt.Sprintf(`
 services:
   test:
     image: %s
     command: sh -euxc "echo hi >/mnt/test"
     volumes:
-      # ./foo should be automatically created
-      - ./foo:/mnt
-`, testutil.CommonImage)
+      # tempdir/foo should be automatically created
+      - %s:/mnt
+`, testutil.CommonImage, data.Temp().Path("foo"))
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
+		data.Temp().Save(dockerComposeYAML, "compose.yaml")
+	}
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down").AssertOK()
-	testFile := filepath.Join(comp.Dir(), "foo", "test")
-	testB, err := os.ReadFile(testFile)
-	assert.NilError(t, err)
-	assert.Equal(t, "hi\n", string(testB))
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "up")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Errors:   nil,
+			Output: func(stdout, info string, t *testing.T) {
+				assert.Equal(t, data.Temp().Load("foo", "test"), "hi\n")
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
